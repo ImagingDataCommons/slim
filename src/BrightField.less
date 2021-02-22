@@ -1,0 +1,29 @@
+@import 'antd/lib/style/themes/default.less';
+@import 'antd/dist/antd.less';
+
+@card-background: transparent;
+
+:root {
+  /* --font-family: Arial, Helvetica, sans-serif; */
+  --border-color: @border-color-split;
+  --padding: @padding-xss;
+  --header-bg-color: #8cb8c6;
+  --header-color: var(--color);
+}
+
+.ant-layout-header {
+    color: white
+}
+
+.ant-layout-sider-children {
+    overflow-y: auto;
+}
+
+.ant-divider-horizontal.ant-divider-with-text {
+    margin: var(--padding) 0 0 0;
+}
+
+img {
+  object-fit: contain;
+  max-height: 100%;
+}

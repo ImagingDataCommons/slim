@@ -1,0 +1,62 @@
+{
+  "name": "@mghcomppath/microscopy-viewer",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@craco/craco": "^5.8.0",
+    "@testing-library/jest-dom": "^4.2.4",
+    "@testing-library/react": "^11.2.2",
+    "@testing-library/user-event": "^7.1.2",
+    "@types/classnames": "^2.2.11",
+    "@types/jest": "^26.0.15",
+    "@types/node": "^14.14.9",
+    "@types/react": "^16.14.0",
+    "@types/react-dom": "^16.9.9",
+    "@types/react-router-dom": "^5.1.6",
+    "@types/react-table": "^7.0.25",
+    "@types/uuid": "^8.3.0",
+    "antd": "^4.8.6",
+    "classnames": "^2.2.6",
+    "craco-less": "^1.17.0",
+    "dcmjs": "^0.16.7",
+    "dicom-microscopy-viewer": "^0.22.1",
+    "dicomweb-client": "^0.6.0",
+    "keycloak-js": "^10.0.2",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1",
+    "react-icons": "^3.11.0",
+    "react-router-dom": "^5.2.0",
+    "react-scripts": "3.4.3",
+    "react-table": "^7.5.1",
+    "ts-standard": "^9.0.0",
+    "typescript": "^4.1.0"
+  },
+  "scripts": {
+    "start": "craco start",
+    "build": "craco build",
+    "lint": "ts-standard --env jest 'src/**/*.tsx'",
+    "fmt": "ts-standard --env jest 'src/**/*.tsx' --fix",
+    "test": "ts-standard --env jest 'src/**/*.tsx' && react-scripts test",
+    "eject": "craco eject"
+  },
+  "eslintConfig": {
+    "extends": "react-app"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "jest": {
+    "transformIgnorePatterns": [
+      "/node_modules/(?!antd|@ant-design|rc-.+?|@babel/runtime).+(js|jsx)$"
+    ]
+  }
+}
