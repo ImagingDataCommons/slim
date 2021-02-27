@@ -24,20 +24,144 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
+
     <title>SliM</title>
+
+    <meta name="google-signin-client_id" content="765360741916-s7bs8f9peg2mk5hs4cv444ljua4e72si.apps.googleusercontent.com">
+
   </head>
+
+
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
-    <!--
-      This HTML file is a template.
-      If you open it directly in the browser, you will see an empty page.
 
-      You can add webfonts, meta tags, or analytics to this file.
-      The build step will place the bundled scripts into the <body> tag.
+<script src="https://apis.google.com/js/platform.js" async defer></script>
 
-      To begin the development, run `npm start` or `yarn start`.
-      To create a production bundle, use `npm run build` or `yarn build`.
-    -->
+<script>
+let server = "http://server.dcmjs.org";
+let availableDicomStores = [];
+
+function onSignIn(googleUser) {
+  var profile = googleUser.getBasicProfile();
+  console.log('ID: ' + profile.getId()); // Do not send to your backend! Use an ID token instead.
+  console.log('Name: ' + profile.getName());
+  console.log('Image URL: ' + profile.getImageUrl());
+  console.log('Email: ' + profile.getEmail()); // This is null if the 'email' scope is not present.
+}
+
+// https://developers.google.com/identity/sign-in/web/incremental-auth
+function requestHealthcare() {
+  let projectsURL = 'https://cloudresourcemanager.googleapis.com/v1/projects'
+  let healthcareBaseURL = `https://healthcare.googleapis.com/v1`;
+  // Request base scopes
+  auth2 = gapi.auth2.getAuthInstance();
+
+  // Request additional scopes
+  const options = new gapi.auth2.SigninOptionsBuilder();
+  options.setScope([
+    'email', 'profile', 'openid',
+    'https://www.googleapis.com/auth/cloudplatformprojects.readonly',
+    'https://www.googleapis.com/auth/cloud-healthcare'
+    ].join(' ')
+  );
+  googleUser = auth2.currentUser.get();
+  googleUser.grant(options).then(
+    function(googleUser){
+      console.log(googleUser);
+      let projectRequest = new XMLHttpRequest();
+      let token =  googleUser.getAuthResponse().access_token;
+      projectRequest.open("GET", projectsURL);
+      projectRequest.setRequestHeader('Authorization', 'Bearer ' + token);
+      projectRequest.onload = () => {
+        let projects = JSON.parse(projectRequest.response).projects;
+        projects.forEach( (project) => {
+          let url = `${healthcareBaseURL}/projects/${project.projectId}/locations`;
+          let locationRequest = new XMLHttpRequest();
+          locationRequest.open("GET", url);
+          locationRequest.setRequestHeader('Authorization', 'Bearer ' + token);
+          locationRequest.onload = () => {
+            let locations = JSON.parse(locationRequest.response).locations;
+            locations.forEach( (location) => {
+              let datasetRequest = new XMLHttpRequest();
+              let url = `${healthcareBaseURL}/projects/${project.projectId}/locations/${location.locationId}/datasets`;
+              datasetRequest.open("GET", url);
+              datasetRequest.setRequestHeader('Authorization', 'Bearer ' + token);
+              datasetRequest.onload = () => {
+                let datasets = JSON.parse(datasetRequest.response).datasets;
+                datasets.forEach( (dataset) => {
+                  console.log(dataset);
+                  let dicomStoreRequest = new XMLHttpRequest();
+                  let url = `${healthcareBaseURL}/${dataset.name}/dicomStores`;
+                  dicomStoreRequest.open("GET", url);
+                  dicomStoreRequest.setRequestHeader('Authorization', 'Bearer ' + token);
+                  dicomStoreRequest.onload = () => {
+                    let dicomStores = JSON.parse(dicomStoreRequest.response).dicomStores;
+                    dicomStores.forEach( (dicomStore) => {
+                      let url = `${healthcareBaseURL}/${dicomStore.name}`
+                      availableDicomStores.push({project, location, dataset, dicomStore, url});
+                    });
+                  };
+                  dicomStoreRequest.onerror = (error) => {
+                    if (JSON.parse(dicomStoreRequest.response).error.code != 403) {
+                        console.log(`no dicomStore project for dataset ${dataset}`);
+                    } else {
+                      console.error(dicomStoreRequest.response);
+                    }
+                  };
+                  dicomStoreRequest.send();
+                });
+              };
+              datasetRequest.onerror = (error) => {
+                if (JSON.parse(datasetRequest.response).error.code != 403) {
+                    console.log(`no dataset project for location ${location}`);
+                } else {
+                  console.error(datasetRequest.response);
+                }
+              };
+              datasetRequest.send();
+            });
+          };
+          locationRequest.onerror = (error) => {
+            if (JSON.parse(locationRequest.response).error.code != 403) {
+                console.log(`no locations project ${project}`);
+            } else {
+              console.error(locationRequest.response);
+            }
+          };
+          locationRequest.send();
+        });
+      };
+      projectRequest.onerror = (error) => {
+        if (JSON.parse(projectRequest.response).error.code != 403) {
+          console.log(`no projects for you`);
+        } else {
+          console.error(projectRequest.response);
+        }
+      };
+      projectRequest.send();
+    },
+    function(fail){
+      alert(JSON.stringify({message: "fail", value: fail}));
+    }
+  );
+}
+
+function signOut() {
+  var auth2 = gapi.auth2.getAuthInstance();
+  auth2.signOut().then(function () {
+    console.log('User signed out.');
+  });
+}
+</script>
+
+<div id="google-box">
+  <div class="g-signin2" data-onsuccess="onSignIn"></div>
+  <a href="#" onclick="requestHealthcare();">Request healthcare API access</a><p>
+  <a href="#" onclick="signOut();">Sign out</a><p>
+</div>
+
+<div id="auth"></div>
+<div id="root"></div>
+
   </body>
 </html>
