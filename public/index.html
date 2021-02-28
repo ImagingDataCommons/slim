@@ -49,6 +49,9 @@ function onSignIn(googleUser) {
   console.log('Email: ' + profile.getEmail()); // This is null if the 'email' scope is not present.
 }
 
+function addDicomStoreLink(dicomStore) {
+}
+
 // https://developers.google.com/identity/sign-in/web/incremental-auth
 function requestHealthcare() {
   let projectsURL = 'https://cloudresourcemanager.googleapis.com/v1/projects'
@@ -88,6 +91,7 @@ function requestHealthcare() {
               datasetRequest.setRequestHeader('Authorization', 'Bearer ' + token);
               datasetRequest.onload = () => {
                 let datasets = JSON.parse(datasetRequest.response).datasets;
+                if (!datasets) return;
                 datasets.forEach( (dataset) => {
                   console.log(dataset);
                   let dicomStoreRequest = new XMLHttpRequest();
@@ -96,9 +100,12 @@ function requestHealthcare() {
                   dicomStoreRequest.setRequestHeader('Authorization', 'Bearer ' + token);
                   dicomStoreRequest.onload = () => {
                     let dicomStores = JSON.parse(dicomStoreRequest.response).dicomStores;
+                    if (!dicomStores) return;
                     dicomStores.forEach( (dicomStore) => {
                       let url = `${healthcareBaseURL}/${dicomStore.name}`
-                      availableDicomStores.push({project, location, dataset, dicomStore, url});
+                      let store = {project, location, dataset, dicomStore, url});
+                      availableDicomStores.push(store);
+                      addDicomStoreLink(store);
                     });
                   };
                   dicomStoreRequest.onerror = (error) => {
