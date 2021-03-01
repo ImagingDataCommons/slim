@@ -532,7 +532,8 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
         this.volumeViewport.current.innerHTML = ''
         this.volumeViewer = new dmv.viewer.VolumeImageViewer({
           client: this.props.client,
-          metadata: volumeMetadata
+          metadata: volumeMetadata,
+          retrieveRendered: false
         })
         this.volumeViewer.render({ container: this.volumeViewport.current })
         this.volumeViewer.activateSelectInteraction({})

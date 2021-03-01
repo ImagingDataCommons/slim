@@ -65,35 +65,30 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
               console.debug(
                 `parse specimen preparation step "${processingType}"`
               )
-            }
-            else {
+            } else {
               if (doesCodeMatch(name, 'SCT', '17636008')) {
                 attributes.push({
                   name: 'Surgical collection',
                   value: value.CodeMeaning
                 })
-              }
-              else if (doesCodeMatch(name, 'SCT', '430864009')) {
+              } else if (doesCodeMatch(name, 'SCT', '430864009')) {
                 attributes.push({
                   name: 'Fixative',
                   value: value.CodeMeaning
                 })
-              }
-              else if (doesCodeMatch(name, 'SCT', '430863003')) {
+              } else if (doesCodeMatch(name, 'SCT', '430863003')) {
                 attributes.push({
                   name: 'Embedding medium',
                   value: value.CodeMeaning
                 })
-              }
-              else if (doesCodeMatch(name, 'SCT', '424361007')) {
+              } else if (doesCodeMatch(name, 'SCT', '424361007')) {
                 attributes.push({
                   name: 'Stain',
                   value: value.CodeMeaning
                 })
               }
             }
-          }
-          else if (item.ValueType === 'TEXT') {
+          } else if (item.ValueType === 'TEXT') {
             item = item as dcmjs.sr.valueTypes.TextContentItem
             if (doesCodeMatch(name, 'SCT', '424361007')) {
               attributes.push({
@@ -101,8 +96,7 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
                 value: item.TextValue
               })
             }
-          }
-          else {
+          } else {
             console.debug(`specimen preparation step #${index} not rendered`)
           }
         })

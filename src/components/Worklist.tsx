@@ -143,9 +143,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
         rowKey={record => record.StudyInstanceUID}
         dataSource={this.state.studies}
         pagination={pagination}
-        onRow={(
-          record: dmv.metadata.Study,
-        ): object => {
+        onRow={(record: dmv.metadata.Study): object => {
           return {
             onClick: (event: React.SyntheticEvent): void => {
               return this.handleClick(event, record)
