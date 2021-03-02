@@ -1,52 +1,33 @@
-import Keycloak from 'keycloak-js'
 import React from 'react'
 import ReactDOM from 'react-dom'
 import { message } from 'antd'
 import './index.css'
 import App from './BrightField'
 
-if (process.env.REACT_APP_REQUIRES_AUTH === 'false') {
-  ReactDOM.render(
-    <React.StrictMode>
-      <App
-        dicomwebUrl={process.env.REACT_APP_DICOMWEB_URL}
-        dicomwebPath={process.env.REACT_APP_DICOMWEB_PATH}
-        qidoPathPrefix={process.env.REACT_APP_DICOMWEB_QIDO_PATH_PREFIX}
-        wadoPathPrefix={process.env.REACT_APP_DICOMWEB_WADO_PATH_PREFIX}
-      />
-    </React.StrictMode>,
-    document.getElementById('root')
-  )
-} else {
-  console.info('authenticate...')
-  const keycloak = Keycloak(window.location.origin + '/keycloak.json')
-  keycloak
-    .init({
-      onLoad: 'login-required',
-      flow: 'standard'
-    })
-    .then((authenticated: boolean): void => {
-      if (!authenticated) {
-        console.error('Keycloak initialization failed')
-        return
-      }
-
-      ReactDOM.render(
-        <React.StrictMode>
-          <App
-            dicomwebUrl={process.env.REACT_APP_DICOMWEB_URL}
-            dicomwebPath={process.env.REACT_APP_DICOMWEB_PATH}
-            qidoPathPrefix={process.env.REACT_APP_DICOMWEB_QIDO_PATH_PREFIX}
-            wadoPathPrefix={process.env.REACT_APP_DICOMWEB_WADO_PATH_PREFIX}
-            keycloak={keycloak}
-          />
-        </React.StrictMode>,
-        document.getElementById('root')
-      )
-    })
-    .catch((): void => {
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      message.error('not authenticated')
-      window.location.reload()
-    })
+// expose app for configuration from js login code
+declare global {
+  interface Window {
+    app:any;
+  }
 }
+
+console.log(window.localStorage.getItem('slim_dicomWeb_url'));
+console.log(window.sessionStorage.getItem('slim_google_access_token'));
+
+let slim_dicomWeb_url = window.localStorage.getItem('slim_dicomWeb_url') + "/dicomWeb";
+let slim_google_access_token = window.sessionStorage.getItem('slim_google_access_token');
+
+// @ts-ignore
+const createdApp = ReactDOM.render(
+  React.createElement(
+    App,
+    { dicomwebUrl: slim_dicomWeb_url || "",
+      dicomwebPath: slim_dicomWeb_url || "",
+      qidoPathPrefix: slim_dicomWeb_url || "",
+      wadoPathPrefix: slim_dicomWeb_url || "",
+      access_token: slim_google_access_token || "",
+    }, null),
+  document.getElementById('root')
+);
+
+window.app = createdApp;

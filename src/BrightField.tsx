@@ -11,6 +11,7 @@ import {
   KeycloakProfile
 } from 'keycloak-js'
 import { Layout } from 'antd'
+import { message } from 'antd'
 
 import Header from './components/Header'
 import Viewer from './components/Viewer'
@@ -26,7 +27,8 @@ interface AppProps {
   dicomwebPath?: string
   qidoPathPrefix?: string
   wadoPathPrefix?: string
-  keycloak?: KeycloakInstance
+  keycloak?: KeycloakInstance,
+  access_token?: string,
 }
 
 interface AppState {
@@ -123,6 +125,13 @@ class App extends React.Component<AppProps, AppState> {
         },
         10000
       )
+    }
+
+    if (props.access_token !== undefined) {
+      this.clientConfig.headers = {
+        Authorization: `Bearer ${props.access_token}`
+      }
+      message.success('Accessing with Google token');
     }
 
     this.state = {

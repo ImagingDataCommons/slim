@@ -38,7 +38,6 @@
 <script src="https://apis.google.com/js/platform.js" async defer></script>
 
 <script>
-let server = "http://server.dcmjs.org";
 let availableDicomStores = [];
 
 function onSignIn(googleUser) {
@@ -49,7 +48,32 @@ function onSignIn(googleUser) {
   console.log('Email: ' + profile.getEmail()); // This is null if the 'email' scope is not present.
 }
 
-function addDicomStoreLink(dicomStore) {
+function setDicomStore(url) {
+
+  window.localStorage.setItem('slim_dicomWeb_url', url);
+  const dicomWebURL = url + "/dicomWeb";
+  const client = window.app.state.client;
+  client.baseURL = dicomWebURL;
+  client.qidoURL = dicomWebURL;
+  client.wadoURL = dicomWebURL;
+  client.stowURL = dicomWebURL;
+  const token = window.sessionStorage.getItem('slim_google_access_token');
+  client.headers = {"Authorization": `Bearer ${token}`};
+  window.app.setState({client});
+
+  window.location.reload();
+}
+
+function addDicomStoreLink(store) {
+  const linkElement = document.createElement("a");
+  const pathParts = store.dicomStore.name.split('/');
+  linkElement.innerText = `${pathParts[1]}: ${pathParts[5]}, ${pathParts[7]}`;
+  linkElement.setAttribute("data-dicomStoreURL", store.url);
+  linkElement.onclick = () => {
+    setDicomStore(store.url);
+  };
+  document.getElementById('google-box').appendChild(linkElement);
+  document.getElementById('google-box').appendChild(document.createElement("br"));
 }
 
 // https://developers.google.com/identity/sign-in/web/incremental-auth
@@ -73,10 +97,12 @@ function requestHealthcare() {
       console.log(googleUser);
       let projectRequest = new XMLHttpRequest();
       let token =  googleUser.getAuthResponse().access_token;
+      window.sessionStorage.setItem('slim_google_access_token', token);
       projectRequest.open("GET", projectsURL);
       projectRequest.setRequestHeader('Authorization', 'Bearer ' + token);
       projectRequest.onload = () => {
         let projects = JSON.parse(projectRequest.response).projects;
+        if (!projects) return;
         projects.forEach( (project) => {
           let url = `${healthcareBaseURL}/projects/${project.projectId}/locations`;
           let locationRequest = new XMLHttpRequest();
@@ -84,6 +110,7 @@ function requestHealthcare() {
           locationRequest.setRequestHeader('Authorization', 'Bearer ' + token);
           locationRequest.onload = () => {
             let locations = JSON.parse(locationRequest.response).locations;
+            if (!locations) return;
             locations.forEach( (location) => {
               let datasetRequest = new XMLHttpRequest();
               let url = `${healthcareBaseURL}/projects/${project.projectId}/locations/${location.locationId}/datasets`;
@@ -103,7 +130,7 @@ function requestHealthcare() {
                     if (!dicomStores) return;
                     dicomStores.forEach( (dicomStore) => {
                       let url = `${healthcareBaseURL}/${dicomStore.name}`
-                      let store = {project, location, dataset, dicomStore, url});
+                      let store = {project, location, dataset, dicomStore, url};
                       availableDicomStores.push(store);
                       addDicomStoreLink(store);
                     });
