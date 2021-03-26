@@ -12,4 +12,13 @@ const AppProvider = ({ children, config }) => {
   );
 };
 
+export const withApp = Component => {
+  return function WrappedComponent(props) {
+    const { appConfig } = useAppContext();
+    return (
+      <Component {...props} appConfig={appConfig} />
+    );
+  };
+};
+
 export default AppProvider;

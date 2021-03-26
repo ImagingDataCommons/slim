@@ -2,11 +2,18 @@ import React from "react";
 
 import { AuthConsumer } from "../../providers/AuthProvider";
 
-const Callback = () => (
+const Callback = ({ history }) => (
   <AuthConsumer>
-    {({ signinRedirectCallback }) => {
-      signinRedirectCallback();
-      return <span>Loading...</span>;
+    {({ completeLogin }) => {
+      completeLogin();
+      // for standalone 
+      // completeLogin().then(() => {
+      //   const { pathname, search = "" } = JSON.parse(
+      //     sessionStorage.getItem("slim-redirect-to")
+      //   );
+      //   history.push({ pathname, search });
+      // });
+      return <span>Redirecting...</span>;
     }}
   </AuthConsumer>
 );

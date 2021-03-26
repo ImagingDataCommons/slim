@@ -4,8 +4,8 @@ import { AuthConsumer } from "../../providers/AuthProvider";
 
 const SilentRenew = () => (
   <AuthConsumer>
-    {({ signinSilentCallback }) => {
-      signinSilentCallback();
+    {({ completeSilentLogin }) => {
+      completeSilentLogin();
       return <span>Loading...</span>;
     }}
   </AuthConsumer>

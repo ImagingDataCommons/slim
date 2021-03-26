@@ -1,26 +1,19 @@
 import React from "react";
-import {
-  BrowserRouter,
-  Switch,
-  Route,
-  RouteComponentProps,
-} from "react-router-dom";
+import { BrowserRouter, Switch, RouteComponentProps } from "react-router-dom";
 import * as dwc from "dicomweb-client";
 import { Layout } from "antd";
+import { AuthProvider } from "oidc-react";
 
 /** Providers */
-import AuthProvider from "./providers/AuthProvider";
 import AppProvider from "./providers/AppProvider";
 
 /** Components */
-import Logout from "./components/auth/Logout";
-import Callback from "./components/auth/Callback";
 import PrivateRoute from "./components/routes/PrivateRoute";
-import SilentRenew from "./components/auth/SilentRenew";
-import LogoutCallback from "./components/auth/LogoutCallback";
 import Header from "./components/Header";
 import Viewer from "./components/Viewer";
 import Worklist from "./components/Worklist";
+
+import { makeAbsoluteIfNecessary } from "./utils";
 
 /** Styles */
 import "antd/dist/antd.less";
@@ -146,22 +139,51 @@ class App extends React.Component<AppProps, AppState> {
       studyListFunctionsEnabled: true,
     };
 
+    const google = {
+      onSignIn: async (user: any) => {
+        alert("You just signed in, congratz! Check out the console!");
+        console.log(user);
+        window.location.href = "/";
+      },
+      /** Required */
+      authority: "https://accounts.google.com",
+      clientId:
+        "723928408739-k9k9r3i44j32rhu69vlnibipmmk9i57p.apps.googleusercontent.com",
+      redirectUri: "/callback",
+      responseType: "id_token token",
+      scope:
+        "email profile openid https://www.googleapis.com/auth/cloudplatformprojects.readonly https://www.googleapis.com/auth/cloud-healthcare", // email profile openid
+      /** Optional */
+      postLogoutRedirectUri: "/logout-redirect",
+      revokeUri: "https://accounts.google.com/o/oauth2/revoke?token=",
+      automaticSilentRenew: true,
+      revokeAccessTokenOnSignout: true,
+      filterProtocolClaims: true /** Took from OHIF */,
+    };
+
+    const { routerBasename } = HARDCODED_CONFIG;
+    const { protocol, host } = window.location;
+    const baseUri = `${protocol}//${host}${routerBasename}`;
+
+    if (google.redirectUri) {
+      google.redirectUri = makeAbsoluteIfNecessary(google.redirectUri, baseUri);
+    }
+
+    if (google.postLogoutRedirectUri) {
+      google.postLogoutRedirectUri = makeAbsoluteIfNecessary(
+        google.postLogoutRedirectUri,
+        baseUri
+      );
+    }
+
     return (
       <AppProvider config={HARDCODED_CONFIG}>
-        <AuthProvider>
+        <AuthProvider {...google}>
           <BrowserRouter>
             <Layout style={{ height: "100vh" }}>
               <Header app={appInfo} user={this.state.user} />
               <Layout.Content style={{ height: "100%" }}>
                 <Switch>
-                  <Route exact path="/callback" component={Callback} />
-                  <Route exact path="/logout" component={Logout} />
-                  <Route
-                    exact
-                    path="/logout-redirect"
-                    component={LogoutCallback}
-                  />
-                  <Route exact path="/silent-renew" component={SilentRenew} />
                   <PrivateRoute exact path="/" component={ExtendedWorklist} />
                   <PrivateRoute
                     path="/studies/:StudyInstanceUID"

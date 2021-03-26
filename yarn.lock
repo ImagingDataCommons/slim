@@ -8072,6 +8072,13 @@ oidc-client@^1.11.5:
     crypto-js "^4.0.0"
     serialize-javascript "^4.0.0"
 
+oidc-react@^1.4.0:
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/oidc-react/-/oidc-react-1.4.0.tgz#afc33eb0717323940811e904815e29d8452799df"
+  integrity sha512-KVSAE84MtweatQV0OSgpuK68K9DYqGzDQ95Se2rIiZ/hHNs6v+Cqco2SNN4nAdSR0VmcaBMTiv7wajgkDQQR9Q==
+  dependencies:
+    oidc-client "^1.11.5"
+
 ol-mapbox-style@^6.1.1:
   version "6.3.1"
   resolved "https://registry.yarnpkg.com/ol-mapbox-style/-/ol-mapbox-style-6.3.1.tgz#3babf8fd6427c54186e388c5f4c1f194d5102fd8"

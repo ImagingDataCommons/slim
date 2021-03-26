@@ -4,8 +4,8 @@ import { AuthConsumer } from "../../providers/AuthProvider";
 
 const LogoutCallback = () => (
   <AuthConsumer>
-    {({ signoutRedirectCallback }) => {
-      signoutRedirectCallback();
+    {({ completeLogout }) => {
+      completeLogout();
       return <span>Loading...</span>;
     }}
   </AuthConsumer>

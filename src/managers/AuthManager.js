@@ -3,9 +3,13 @@ import { UserManager, WebStorageStateStore, Log } from "oidc-client";
 import { makeAbsoluteIfNecessary } from "../utils";
 
 export default class AuthManager {
-  UserManager;
+  user;
+  userManager;
 
   constructor({ appConfig }) {
+    debugger;
+    this.appConfig = appConfig;
+
     const { oidc, routerBasename } = appConfig;
     const oidcConfig = oidc !== null && oidc[0];
 
@@ -33,104 +37,86 @@ export default class AuthManager {
       );
     }
 
-    this.UserManager = new UserManager({
+    this.userManager = new UserManager({
       ...oidcConfig,
-      userStore: new WebStorageStateStore({ store: window.sessionStorage }),
-      // metadata: {
-      //   ...your metadata here
-      // },
+      // userStore: new WebStorageStateStore({ store: window.sessionStorage }),
     });
 
     Log.logger = console;
     Log.level = Log.DEBUG;
 
-    this.UserManager.events.addUserLoaded((user) => {
-      if (window.location.href.indexOf("signin-oidc") !== -1) {
+    this.userManager.events.addUserLoaded((user) => {
+      if (window.location.href.indexOf("callback") !== -1) {
         this.navigateToScreen();
       }
     });
 
-    this.UserManager.events.addSilentRenewError((e) => {
-      console.log("silent renew error", e.message);
+    this.userManager.events.addSilentRenewError((event) => {
+      console.log("silent renew error", event.message);
     });
 
-    this.UserManager.events.addAccessTokenExpired(() => {
+    this.userManager.events.addAccessTokenExpired(() => {
       console.log("token expired");
-      this.signinSilent();
+      this.silentLogin();
     });
   }
 
-  signinRedirectCallback = () => {
-    this.UserManager.signinRedirectCallback().then(() => {
-      "";
-    });
+  loadUser() {
+    this.userManager.getUser().then((user) => (this.user = user));
+  }
+
+  navigateToScreen = () => {
+    window.location.replace(this.appConfig.routerBasename || "/");
   };
 
+  completeLogin = () => {
+    debugger;
+    return this.userManager
+      .signinRedirectCallback()
+      .then((user) => (this.user = user));
+  };
+
+  loadUser() {
+    this.userManager.getUser().then((user) => (this.user = user));
+  }
+
   getUser = async () => {
-    const user = await this.UserManager.getUser();
+    const user = await this.userManager.getUser();
 
     if (!user) {
-      return await this.UserManager.signinRedirectCallback();
+      return await this.userManager.signinRedirectCallback();
     }
 
     return user;
   };
 
-  parseJwt = (token) => {
-    const base64Url = token.split(".")[1];
-    const base64 = base64Url.replace("-", "+").replace("_", "/");
-    return JSON.parse(window.atob(base64));
+  login = ({ login_hint } = {}) => {
+    this.userManager.signinRedirect({ login_hint });
   };
 
-  signinRedirect = () => {
-    localStorage.setItem("redirectUri", window.location.pathname);
-    this.UserManager.signinRedirect({});
+  isLoggedIn = () => {
+    return this.user && this.user.access_token;
   };
 
-  navigateToScreen = () => {
-    window.location.replace("/en/dashboard");
+  silentLogin = () => {
+    this.userManager.signinSilent().then((user) => {
+      this.user = user;
+      console.log("signed in", user);
+    });
   };
 
-  isAuthenticated = () => {
-    const oidcStorage = JSON.parse(
-      sessionStorage.getItem(
-        `oidc.user:${process.env.REACT_APP_AUTH_URL}:${process.env.REACT_APP_IDENTITY_CLIENT_ID}`
-      )
-    );
-
-    return !!oidcStorage && !!oidcStorage.access_token;
-  };
-
-  signinSilent = () => {
-    this.UserManager.signinSilent()
-      .then((user) => {
-        console.log("signed in", user);
-      })
-      .catch((err) => {
-        console.log(err);
-      });
-  };
-
-  signinSilentCallback = () => {
-    this.UserManager.signinSilentCallback();
-  };
-
-  createSigninRequest = () => {
-    return this.UserManager.createSigninRequest();
+  completeSilentLogin = () => {
+    this.userManager.signinSilentCallback();
   };
 
   logout = () => {
-    this.UserManager.signoutRedirect({
-      id_token_hint: localStorage.getItem("id_token"),
-    });
-    this.UserManager.clearStaleState();
+    this.userManager.signoutRedirect();
   };
 
-  signoutRedirectCallback = () => {
-    this.UserManager.signoutRedirectCallback().then(() => {
-      localStorage.clear();
-      window.location.replace(process.env.REACT_APP_PUBLIC_URL);
+  completeLogout = () => {
+    this.userManager.signoutRedirectCallback().then(() => {
+      this.userManager.removeUser();
+      this.user = null;
     });
-    this.UserManager.clearStaleState();
   };
 }
