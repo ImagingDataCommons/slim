@@ -141,9 +141,7 @@ class App extends React.Component<AppProps, AppState> {
 
     const google = {
       onSignIn: async (user: any) => {
-        alert("You just signed in, congratz! Check out the console!");
-        console.log(user);
-        window.location.href = "/";
+        window.location.href = HARDCODED_CONFIG.routerBasename;
       },
       /** Required */
       authority: "https://accounts.google.com",
@@ -184,7 +182,11 @@ class App extends React.Component<AppProps, AppState> {
               <Header app={appInfo} user={this.state.user} />
               <Layout.Content style={{ height: "100%" }}>
                 <Switch>
-                  <PrivateRoute exact path="/" component={ExtendedWorklist} />
+                  <PrivateRoute
+                    exact
+                    path={routerBasename}
+                    component={ExtendedWorklist}
+                  />
                   <PrivateRoute
                     path="/studies/:StudyInstanceUID"
                     component={ExtendedViewer}
