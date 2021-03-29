@@ -15,7 +15,7 @@ import {
 import useServerFromURL from "./hooks/useServerFromURL";
 
 /** Utils */
-import { updateWorklistURL } from "./utils";
+import { routes as routesUtils } from "./utils";
 
 /** Components */
 import { PrivateRoute, Header, Viewer, Worklist } from "./components";
@@ -104,7 +104,11 @@ class App extends React.Component<AppProps, AppState> {
         dataset,
         dicomStore,
       });
-      updateWorklistURL(HARDCODED_CONFIG, server, props.history);
+
+      if (HARDCODED_CONFIG.enableGoogleCloudAdapter) {
+        routesUtils.updateWorklistURL(HARDCODED_CONFIG, server, props.history);
+      }
+
       return (
         <>
           <Worklist {...props} />
@@ -113,15 +117,19 @@ class App extends React.Component<AppProps, AppState> {
     };
 
     const ViewerRoute = (props: any) => {
-      const { project, location, dataset, dicomStore } = props.match.params;
+      const {
+        project,
+        location,
+        dataset,
+        dicomStore,
+        studyInstanceUID,
+      } = props.match.params;
       const server = useServerFromURL({
         project,
         location,
         dataset,
         dicomStore,
       });
-      const path = props.location.pathname;
-      const studyInstanceUID = path.split("/")[2];
       return (
         <>
           <Viewer studyInstanceUID={studyInstanceUID} />
@@ -172,16 +180,16 @@ class App extends React.Component<AppProps, AppState> {
                         component={WorklistRoute}
                       />
                       <PrivateRoute
-                        path="/studies/:StudyInstanceUID"
+                        path="/studies/:studyInstanceUID"
                         component={ViewerRoute}
                       />
                       <PrivateRoute
+                        exact
                         path="/projects/:project/locations/:location/datasets/:dataset/dicomStores/:dicomStore"
                         component={WorklistRoute}
                       />
-
                       <PrivateRoute
-                        path="/projects/:project/locations/:location/datasets/:dataset/dicomStores/:dicomStore/study/:studyInstanceUIDs"
+                        path="/projects/:project/locations/:location/datasets/:dataset/dicomStores/:dicomStore/study/:studyInstanceUID"
                         component={ViewerRoute}
                       />
                     </Switch>

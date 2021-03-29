@@ -39,6 +39,7 @@ const parse = (toParse) => {
 
   return {};
 };
+
 const parseParam = (paramStr) => {
   const _paramDecoded = decode(paramStr);
   if (_paramDecoded && typeof _paramDecoded === "string") {

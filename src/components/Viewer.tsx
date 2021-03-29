@@ -32,10 +32,12 @@ import SpecimenList from "./SpecimenList";
 import { withAuth } from "../providers/AuthProvider";
 import { withApp } from "../providers/AppProvider";
 import { withDataStore } from "../providers/DataStoreProvider";
+import { withServer } from "../providers/ServerProvider";
 
 interface ViewerProps {
   dataStore: any;
   studyInstanceUID: string;
+  servers: any;
   app: {
     info: {
       name: string;
@@ -166,7 +168,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     }));
   }
 
-  componentDidMount(): void {
+  retrieveStudy() {
     const studyInstanceUID = this.props.studyInstanceUID;
     console.info(`search for series of study "${studyInstanceUID}"...`);
     this.setState({ isLoading: true });
@@ -192,6 +194,18 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         message.error("Image metadata could not be loaded");
       });
+  }
+
+  componentDidUpdate(prevProps: ViewerProps) {
+    const activeServer = this.props.servers.find((s: any) => !!s.active);
+    const oldServer = prevProps.servers.find((s: any) => !!s.active);
+    if (activeServer !== oldServer) { 
+      this.retrieveStudy();
+    }
+  }
+
+  componentDidMount(): void {
+    this.retrieveStudy();
 
     document.body.addEventListener(
       "dicommicroscopyviewer_roi_drawn",
@@ -810,4 +824,4 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
   }
 }
 
-export default withDataStore(withApp(withAuth(Viewer)));
+export default withServer(withDataStore(withApp(withAuth(Viewer))));

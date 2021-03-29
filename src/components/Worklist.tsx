@@ -6,15 +6,20 @@ import * as dmv from "dicom-microscopy-viewer";
 
 /** Providers */
 import { withDataStore } from "../providers/DataStoreProvider";
+import { withApp } from "../providers/AppProvider";
+import { withServer } from "../providers/ServerProvider";
 
 /** Utils */
 import { parseDate, parseName, parseSex, parseTime } from "../valueUtils";
+import { routes as routesUtils } from "../utils";
 
 /** Components */
 import { DICOMStorePickerModal } from "../components";
 
 interface WorklistProps extends RouteComponentProps {
   dataStore: any;
+  app: any;
+  servers: any;
 }
 
 interface WorklistState {
@@ -43,11 +48,12 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   }
 
   componentDidUpdate(prevProps: WorklistProps): void {
-    if (prevProps.dataStore === this.props.dataStore) {
-      return;
+    /** TODO: Resolve async issues with server */
+    const activeServer = this.props.servers.find((s: any) => !!s.active);
+    const oldServer = prevProps.servers.find((s: any) => !!s.active);
+    if (activeServer !== oldServer) {
+      this.retrieveStudies();
     }
-
-    this.retrieveStudies();
   }
 
   componentDidMount(): void {
@@ -71,10 +77,17 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   }
 
   handleClick(event: React.SyntheticEvent, study: dmv.metadata.Study): void {
-    this.props.history.push({
-      pathname: `/studies/${study.StudyInstanceUID}`,
-      state: { metadata: study },
-    });
+    // this.props.history.push({
+    //   pathname: `/studies/${study.StudyInstanceUID}`,
+    //   state: { metadata: study },
+    // });
+    const activeServer = this.props.servers.find((s: any) => !!s.active);
+    routesUtils.updateViewerURL(
+      this.props.app.config,
+      activeServer,
+      this.props.history,
+      study.StudyInstanceUID
+    );
   }
 
   fetchData(offset: number, limit: number): void {
@@ -199,4 +212,4 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   }
 }
 
-export default withDataStore(withRouter(Worklist));
+export default withServer(withApp(withDataStore(withRouter(Worklist))));
