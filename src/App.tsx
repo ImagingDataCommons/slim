@@ -14,6 +14,9 @@ import {
 /** Hooks */
 import useServerFromURL from "./hooks/useServerFromURL";
 
+/** Utils */
+import { updateWorklistURL } from "./utils";
+
 /** Components */
 import { PrivateRoute, Header, Viewer, Worklist } from "./components";
 
@@ -101,6 +104,7 @@ class App extends React.Component<AppProps, AppState> {
         dataset,
         dicomStore,
       });
+      updateWorklistURL(HARDCODED_CONFIG, server, props.history);
       return (
         <>
           <Worklist {...props} />
