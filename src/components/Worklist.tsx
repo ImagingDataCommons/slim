@@ -1,15 +1,17 @@
-import React from 'react'
-import { withRouter, RouteComponentProps } from 'react-router-dom'
-import { Table, TablePaginationConfig, message } from 'antd'
-import { ColumnsType } from 'antd/es/table'
+import React from 'react';
+import { withRouter, RouteComponentProps } from 'react-router-dom';
+import { Table, TablePaginationConfig, message } from 'antd';
+import { ColumnsType } from 'antd/es/table';
+import * as dmv from 'dicom-microscopy-viewer';
 
-import * as dmv from 'dicom-microscopy-viewer'
-import * as dwc from 'dicomweb-client'
+/** Providers */
+import { withDataStore } from "../providers/DataStoreProvider";
 
-import { parseDate, parseName, parseSex, parseTime } from '../valueUtils'
+/** Utils */
+import { parseDate, parseName, parseSex, parseTime } from '../valueUtils';
 
 interface WorklistProps extends RouteComponentProps {
-  client: dwc.api.DICOMwebClient
+  dataStore: any
 }
 
 interface WorklistState {
@@ -40,7 +42,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
         ModalitiesInStudy: 'SM'
       }
     }
-    this.props.client.searchForStudies(searchOptions).then((studies) => {
+    this.props.dataStore.searchForStudies(searchOptions).then((studies: any) => {
       // TODO: get total number of studies from response message header
       this.setState((state) => ({ numStudies: studies.length }))
     }).catch(() => message.error('Request to search for studies failed.'))
@@ -62,9 +64,9 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
         limit: limit
       }
     }
-    this.props.client.searchForStudies(searchOptions).then((studies) => {
+    this.props.dataStore.searchForStudies(searchOptions).then((studies: any) => {
       this.setState((state) => ({
-        studies: studies.map((study) => {
+        studies: studies.map((study: any) => {
           const metadata = dmv.metadata.formatMetadata(study)
           return metadata as dmv.metadata.Study
         })
@@ -158,4 +160,4 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   }
 }
 
-export default withRouter(Worklist)
+export default withDataStore(withRouter(Worklist));

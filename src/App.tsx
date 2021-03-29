@@ -1,18 +1,26 @@
 import React from "react";
 import { BrowserRouter, Switch, RouteComponentProps } from "react-router-dom";
-import * as dwc from "dicomweb-client";
 import { Layout } from "antd";
-import { AuthProvider } from "oidc-react";
+import Modal from "react-modal";
 
 /** Providers */
-import AppProvider from "./providers/AppProvider";
+import {
+  AppProvider,
+  ServerProvider,
+  AuthProvider,
+  DataStoreProvider,
+} from "./providers";
 
 /** Components */
-import PrivateRoute from "./components/routes/PrivateRoute";
-import Header from "./components/Header";
-import Viewer from "./components/Viewer";
-import Worklist from "./components/Worklist";
+import {
+  PrivateRoute,
+  Header,
+  Viewer,
+  Worklist,
+  DICOMStorePickerModal,
+} from "./components";
 
+/** Utils */
 import { makeAbsoluteIfNecessary } from "./utils";
 
 /** Styles */
@@ -22,14 +30,14 @@ import "./App.less";
 import { version } from "../package.json";
 
 interface AppProps {
-  dicomwebUrl?: string;
-  dicomwebPath?: string;
-  qidoPathPrefix?: string;
-  wadoPathPrefix?: string;
+  config?: {
+    routerBasename?: string;
+    oidc?: Array<any>;
+    servers?: Array<any>;
+  };
 }
 
 interface AppState {
-  client: dwc.api.DICOMwebClient;
   user?: {
     name: string;
     username: string;
@@ -37,77 +45,16 @@ interface AppState {
   };
 }
 
+Modal.setAppElement("#root");
+
 /** React component for the main viewer application. */
 class App extends React.Component<AppProps, AppState> {
-  private readonly clientConfig: dwc.api.DICOMwebClientOptions;
-
-  private readonly tokenRefresher?: NodeJS.Timeout;
-
   constructor(props: AppProps) {
+    console.debug("Config:", props.config);
     super(props);
-
-    if (props.dicomwebUrl !== undefined) {
-      this.clientConfig = {
-        url: props.dicomwebUrl,
-        headers: {},
-      };
-    } else if (props.dicomwebPath !== undefined) {
-      this.clientConfig = {
-        url: `${window.location.origin}${props.dicomwebPath}`,
-        headers: {},
-      };
-    } else {
-      throw new Error("Either DICOMweb path or full URL needs to be provided.");
-    }
-
-    if (props.qidoPathPrefix !== undefined) {
-      this.clientConfig.qidoUrlPrefix = props.qidoPathPrefix;
-    }
-
-    if (props.wadoPathPrefix !== undefined) {
-      this.clientConfig.wadoUrlPrefix = props.wadoPathPrefix;
-    }
-
-    this.state = {
-      /** Sets token headers on login like ohif */
-      client: new dwc.api.DICOMwebClient(this.clientConfig),
-    };
-  }
-
-  componentWillUnmount(): void {
-    clearInterval(Number(this.tokenRefresher));
   }
 
   render(): React.ReactNode {
-    if (this.state.client === undefined) {
-      return null;
-    }
-
-    const appInfo = {
-      name: "Slide Microscopy Viewer",
-      version: version,
-      uid: "1.2.826.0.1.3680043.9.7433.1.5",
-    };
-
-    const ExtendedWorklist = (props: any) => {
-      return <Worklist client={this.state.client} {...props} />;
-    };
-
-    const ExtendedViewer = (match: RouteComponentProps) => {
-      const path = match.location.pathname;
-      const studyInstanceUID = path.split("/")[2];
-      return (
-        <>
-          <Viewer
-            client={this.state.client}
-            user={this.state.user}
-            app={appInfo}
-            studyInstanceUID={studyInstanceUID}
-          />
-        </>
-      );
-    };
-
     /** TODO: Move to public folder */
     const HARDCODED_CONFIG = {
       routerBasename: "/",
@@ -115,7 +62,20 @@ class App extends React.Component<AppProps, AppState> {
       healthcareApiEndpoint: "https://healthcare.googleapis.com/v1",
       servers: {
         /** This is an array, but we'll only use the first entry for now */
-        dicomWeb: [],
+        dicomWeb: [
+          {
+            name: "DCM4CHEE",
+            wadoUriRoot:
+              "https://server.dcmjs.org/dcm4chee-arc/aets/DCM4CHEE/wado",
+            qidoRoot: "https://server.dcmjs.org/dcm4chee-arc/aets/DCM4CHEE/rs",
+            wadoRoot: "https://server.dcmjs.org/dcm4chee-arc/aets/DCM4CHEE/rs",
+            qidoSupportsIncludeField: true,
+            imageRendering: "wadors",
+            thumbnailRendering: "wadors",
+            enableStudyLazyLoad: true,
+            supportsFuzzyMatching: true,
+          },
+        ],
       },
       /** This is an array, but we'll only use the first entry for now */
       oidc: [
@@ -123,7 +83,7 @@ class App extends React.Component<AppProps, AppState> {
           /** Required */
           authority: "https://accounts.google.com",
           client_id:
-            "723928408739-k9k9r3i44j32rhu69vlnibipmmk9i57p.apps.googleusercontent.com",
+            "",
           redirect_uri: "/callback",
           response_type: "id_token token",
           scope:
@@ -139,14 +99,34 @@ class App extends React.Component<AppProps, AppState> {
       studyListFunctionsEnabled: true,
     };
 
+    const WorklistRoute = (props: any) => {
+      return (
+        <>
+          {/* <DICOMStorePickerModal isOpen onClose={() => {}} /> */}
+          <Worklist {...props} />
+        </>
+      );
+    };
+
+    const ViewerRoute = (match: RouteComponentProps) => {
+      const path = match.location.pathname;
+      const studyInstanceUID = path.split("/")[2];
+      return (
+        <>
+          <Viewer studyInstanceUID={studyInstanceUID} />
+        </>
+      );
+    };
+
     const google = {
       onSignIn: async (user: any) => {
+        debugger;
         window.location.href = HARDCODED_CONFIG.routerBasename;
       },
       /** Required */
       authority: "https://accounts.google.com",
       clientId:
-        "723928408739-k9k9r3i44j32rhu69vlnibipmmk9i57p.apps.googleusercontent.com",
+        "",
       redirectUri: "/callback",
       responseType: "id_token token",
       scope:
@@ -159,7 +139,11 @@ class App extends React.Component<AppProps, AppState> {
       filterProtocolClaims: true /** Took from OHIF */,
     };
 
-    const { routerBasename } = HARDCODED_CONFIG;
+    const {
+      routerBasename,
+      servers,
+      enableGoogleCloudAdapter,
+    } = HARDCODED_CONFIG;
     const { protocol, host } = window.location;
     const baseUri = `${protocol}//${host}${routerBasename}`;
 
@@ -174,27 +158,58 @@ class App extends React.Component<AppProps, AppState> {
       );
     }
 
+    // let healthCareApiButtons = null;
+    // let healthCareApiWindows = null;
+    // const [activeModalId, setActiveModalId] = useState(null);
+    // if (enableGoogleCloudAdapter) {
+    //   const isModalOpen = activeModalId === "DicomStorePicker";
+    //   // updateURL(isModalOpen, appConfig, server, history);
+    //   healthCareApiWindows = (
+    //     <DICOMStorePicker
+    //       isOpen={activeModalId === "DicomStorePicker"}
+    //       onClose={() => setActiveModalId(null)}
+    //     />
+    //   );
+    //   healthCareApiButtons = (
+    //     <div
+    //       className="form-inline btn-group pull-right"
+    //       style={{ padding: "20px" }}
+    //     >
+    //       <button
+    //         className="btn btn-primary"
+    //         onClick={() => setActiveModalId("DicomStorePicker")}
+    //       >
+    //         {t("Change DICOM Store")}
+    //       </button>
+    //     </div>
+    //   );
+    // }
+
     return (
-      <AppProvider config={HARDCODED_CONFIG}>
-        <AuthProvider {...google}>
-          <BrowserRouter>
-            <Layout style={{ height: "100vh" }}>
-              <Header app={appInfo} user={this.state.user} />
-              <Layout.Content style={{ height: "100%" }}>
-                <Switch>
-                  <PrivateRoute
-                    exact
-                    path={routerBasename}
-                    component={ExtendedWorklist}
-                  />
-                  <PrivateRoute
-                    path="/studies/:StudyInstanceUID"
-                    component={ExtendedViewer}
-                  />
-                </Switch>
-              </Layout.Content>
-            </Layout>
-          </BrowserRouter>
+      <AppProvider config={HARDCODED_CONFIG} version={version}>
+        <AuthProvider oidc={google}>
+          <ServerProvider servers={servers}>
+            <DataStoreProvider>
+              <BrowserRouter>
+                <Layout style={{ height: "100vh" }}>
+                  <Header />
+                  <Layout.Content style={{ height: "100%" }}>
+                    <Switch>
+                      <PrivateRoute
+                        exact
+                        path={routerBasename}
+                        component={WorklistRoute}
+                      />
+                      <PrivateRoute
+                        path="/studies/:StudyInstanceUID"
+                        component={ViewerRoute}
+                      />
+                    </Switch>
+                  </Layout.Content>
+                </Layout>
+              </BrowserRouter>
+            </DataStoreProvider>
+          </ServerProvider>
         </AuthProvider>
       </AppProvider>
     );

@@ -1,11 +1,13 @@
 import React from "react";
 import { Route } from "react-router-dom";
-import { useAuth } from "oidc-react";
+
+/** Providers */
+import { useAuth } from "../../providers/AuthProvider";
 
 const PrivateRoute = ({ component, ...rest }) => {
   const auth = useAuth();
 
-  if (auth && auth.userData) {
+  if (auth && auth.user) {
     return <Route {...rest} component={component} />;
   }
 

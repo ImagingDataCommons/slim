@@ -1,13 +1,12 @@
 import React from 'react'
 import * as dmv from 'dicom-microscopy-viewer'
-import * as dwc from 'dicomweb-client'
 import { Menu } from 'antd'
 
 import SeriesItem from './SeriesItem'
 
 interface SeriesListProps {
   metadata: dmv.metadata.Series[]
-  client: dwc.api.DICOMwebClient
+  dataStore: any;
   onSeriesSelection: (
     { seriesInstanceUID }: { seriesInstanceUID: string }
   ) => void
@@ -37,7 +36,7 @@ class SeriesList extends React.Component<SeriesListProps, SeriesListState> {
         <SeriesItem
           key={series.SeriesInstanceUID}
           metadata={series}
-          client={this.props.client}
+          dataStore={this.props.dataStore}
         />
       )
     })

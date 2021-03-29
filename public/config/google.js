@@ -12,9 +12,8 @@ window.config = {
       /** Required */
       authority: "https://accounts.google.com",
       client_id:
-        "765360741916-s7bs8f9peg2mk5hs4cv444ljua4e72si.apps.googleusercontent.com",
+        "",
       redirect_uri: "/callback",
-      silent_redirect_uri: "/silent-renew",
       response_type: "id_token token",
       scope:
         "email profile openid https://www.googleapis.com/auth/cloudplatformprojects.readonly https://www.googleapis.com/auth/cloud-healthcare", // email profile openid

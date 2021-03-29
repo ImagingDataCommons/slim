@@ -1,3 +1,3 @@
-import isAbsoluteUrl from './isAbsoluteUrl';
-import makeAbsoluteIfNecessary from './makeAbsoluteIfNecessary';
-export { makeAbsoluteIfNecessary, isAbsoluteUrl };
+export { default as isAbsoluteUrl } from "./isAbsoluteUrl";
+export { default as makeAbsoluteIfNecessary } from "./makeAbsoluteIfNecessary";
+export { default as getAuthorizationHeader } from "./getAuthorizationHeader";

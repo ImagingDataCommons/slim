@@ -28,5 +28,8 @@
   "include": [
     "src",
     "types"
+  ],
+  "exclude": [
+    "src/**/*.js",
   ]
 }
