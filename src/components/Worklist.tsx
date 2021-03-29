@@ -42,7 +42,19 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     this.onCloseDICOMStoreModal = this.onCloseDICOMStoreModal.bind(this);
   }
 
+  componentDidUpdate(prevProps: WorklistProps): void {
+    if (prevProps.dataStore === this.props.dataStore) {
+      return;
+    }
+
+    this.retrieveStudies();
+  }
+
   componentDidMount(): void {
+    this.retrieveStudies();
+  }
+
+  retrieveStudies() {
     const searchOptions = {
       queryParams: {
         ModalitiesInStudy: "SM",

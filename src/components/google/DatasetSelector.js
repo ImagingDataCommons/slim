@@ -8,14 +8,12 @@ import LocationPicker from "./LocationPicker";
 import GoogleCloudApi from "../../google/api/GoogleCloudApi";
 
 /** Providers */
-import { useServer } from "../../providers/ServerProvider";
 import { useAuth } from "../../providers/AuthProvider";
 
 /** Styles */
 import "./googleCloud.less";
 
-const DatasetSelector = () => {
-  const { setServers } = useServer();
+const DatasetSelector = ({ onServerSelected }) => {
   const { user } = useAuth();
 
   const [state, setState] = useState({
@@ -50,7 +48,7 @@ const DatasetSelector = () => {
       dataset: parts[5],
       dicomStore: parts[7],
     };
-    setServers(result);
+    onServerSelected(result);
   };
 
   const accessToken = user.getAccessToken();

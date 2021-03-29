@@ -78,14 +78,14 @@ const ServerProvider = ({ children, appConfig }) => {
 
   return (
     <ServerContext.Provider
-      value={{ ...state, setServers, activateServer, addServer }}
+      value={{ ...state, servers: state.servers, setServers, activateServer, addServer }}
     >
       {children}
     </ServerContext.Provider>
   );
 };
 
-export const withApp = (Component) => {
+export const withServer = (Component) => {
   return function WrappedComponent(props) {
     const { servers, setServers, activateServer, addServer } = useServer();
     return (

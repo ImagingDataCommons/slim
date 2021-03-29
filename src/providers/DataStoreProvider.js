@@ -1,11 +1,12 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import * as dwc from "dicomweb-client";
 
 /** Utils */
 import { getAuthorizationHeader } from "../utils";
 
 /** Providers */
-import { useAuth } from './AuthProvider';
+import { useAuth } from "./AuthProvider";
+import { useServer } from "./ServerProvider";
 
 const DataStoreContext = React.createContext({});
 
@@ -13,55 +14,29 @@ export const useDataStore = () => useContext(DataStoreContext);
 
 const DataStoreProvider = ({ children, appConfig }) => {
   const { user } = useAuth();
+  const { servers } = useServer();
 
-  /** TODO: Consume server from useServer instead */
-  const server = appConfig.servers.dicomWeb[0];
-  const config = {
+  const server = servers.find((s) => !!s.active);
+
+  if (!server) return null;
+
+  const client = new dwc.api.DICOMwebClient({
     url: server.qidoRoot,
     headers: getAuthorizationHeader(server.qidoRoot, user),
-  };
-  const client = new dwc.api.DICOMwebClient(config);
+  });
 
-  const searchForInstances = (args) => {
-    return client.searchForInstances(args);
-  };
-
-  const searchForStudies = (args) => {
-    return client.searchForStudies(args);
-  };
-
-  const searchForSeries = (args) => {
-    return client.searchForSeries(args);
-  };
-
-  const retrieveInstanceMetadata = (args) => {
-    return client.retrieveInstanceMetadata(args);
-  };
-
-  const retrieveSeriesMetadata = (args) => {
-    return client.retrieveSeriesMetadata(args);
-  };
-
-  const retrieveInstanceFrames = (args) => {
-    return client.retrieveInstanceFrames(args);
-  };
-
-  const storeInstances = (args) => {
-    return client.storeInstances(args);
+  const api = {
+    searchForInstances: (args) => client.searchForInstances(args),
+    searchForStudies: (args) => client.searchForStudies(args),
+    searchForSeries: (args) => client.searchForSeries(args),
+    retrieveInstanceMetadata: (args) => client.retrieveInstanceMetadata(args),
+    retrieveSeriesMetadata: (args) => client.retrieveSeriesMetadata(args),
+    retrieveInstanceFrames: (args) => client.retrieveInstanceFrames(args),
+    storeInstances: (args) => client.storeInstances(args),
   };
 
   return (
-    <DataStoreContext.Provider
-      value={{
-        storeInstances,
-        retrieveInstanceMetadata,
-        retrieveSeriesMetadata,
-        retrieveInstanceFrames,
-        searchForInstances,
-        searchForStudies,
-        searchForSeries,
-      }}
-    >
+    <DataStoreContext.Provider value={api}>
       {children}
     </DataStoreContext.Provider>
   );

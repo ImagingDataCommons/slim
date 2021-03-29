@@ -15,11 +15,11 @@ import { useAuth } from "../../providers/AuthProvider";
 
 const DICOMStorePickerModal = ({ isOpen = false, onClose = () => {} }) => {
   const { servers, setServers } = useServer();
-  const activeServer = servers.find(s => !!s.active);
+  const activeServer = servers.find((s) => !!s.active);
   const { user } = useAuth();
   const url = activeServer.qidoRoot;
 
-  const handleEvent = (data) => {
+  const onServerSelectedHandler = (data) => {
     const servers = getServers(data, data.dicomstore);
     setServers(servers);
     onClose();
@@ -32,7 +32,11 @@ const DICOMStorePickerModal = ({ isOpen = false, onClose = () => {} }) => {
       onRequestClose={onClose}
       shouldCloseOnOverlayClick
     >
-      <DatasetSelector setServers={handleEvent} user={user} url={url} />
+      <DatasetSelector
+        onServerSelected={onServerSelectedHandler}
+        user={user}
+        url={url}
+      />
     </Modal>
   );
 };

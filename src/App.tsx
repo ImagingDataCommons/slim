@@ -11,13 +11,11 @@ import {
   DataStoreProvider,
 } from "./providers";
 
+/** Hooks */
+import useServerFromURL from "./hooks/useServerFromURL";
+
 /** Components */
-import {
-  PrivateRoute,
-  Header,
-  Viewer,
-  Worklist,
-} from "./components";
+import { PrivateRoute, Header, Viewer, Worklist } from "./components";
 
 /** Styles */
 import "antd/dist/antd.less";
@@ -96,6 +94,13 @@ class App extends React.Component<AppProps, AppState> {
     };
 
     const WorklistRoute = (props: any) => {
+      const { project, location, dataset, dicomStore } = props.match.params;
+      const server = useServerFromURL({
+        project,
+        location,
+        dataset,
+        dicomStore,
+      });
       return (
         <>
           <Worklist {...props} />
@@ -103,8 +108,15 @@ class App extends React.Component<AppProps, AppState> {
       );
     };
 
-    const ViewerRoute = (match: RouteComponentProps) => {
-      const path = match.location.pathname;
+    const ViewerRoute = (props: any) => {
+      const { project, location, dataset, dicomStore } = props.match.params;
+      const server = useServerFromURL({
+        project,
+        location,
+        dataset,
+        dicomStore,
+      });
+      const path = props.location.pathname;
       const studyInstanceUID = path.split("/")[2];
       return (
         <>
@@ -157,6 +169,15 @@ class App extends React.Component<AppProps, AppState> {
                       />
                       <PrivateRoute
                         path="/studies/:StudyInstanceUID"
+                        component={ViewerRoute}
+                      />
+                      <PrivateRoute
+                        path="/projects/:project/locations/:location/datasets/:dataset/dicomStores/:dicomStore"
+                        component={WorklistRoute}
+                      />
+
+                      <PrivateRoute
+                        path="/projects/:project/locations/:location/datasets/:dataset/dicomStores/:dicomStore/study/:studyInstanceUIDs"
                         component={ViewerRoute}
                       />
                     </Switch>
