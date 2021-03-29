@@ -46,7 +46,7 @@ class Header extends React.Component<HeaderProps, {}> {
                 <Button icon={<FaHome />} />
               </NavLink>
               <span style={{ fontWeight: 600, fontSize: "large" }}>
-                {this.props.app.info.name}
+                {this.props.app.info.name} ({this.props.app.info.version})
               </span>
             </Space>
           </Col>

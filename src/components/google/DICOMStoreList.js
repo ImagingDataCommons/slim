@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
 
-import "./googleCloud.css";
+/** Styles */
+import "./googleCloud.less";
 
-const Icon = () => <div>Mocked</div>;
+const Icon = () => <div>Mocked Icon Component</div>;
 
 const DICOMStoreList = ({ onSelect, loading, stores, filter, error }) => {
   const [state, setState] = useState({
@@ -53,7 +54,7 @@ const DICOMStoreList = ({ onSelect, loading, stores, filter, error }) => {
             store.name
               .split("/")[7]
               .toLowerCase()
-              .includes(filter.toLowerCase()) || filter == ""
+              .includes(filter.toLowerCase()) || filter === ""
         )
         .map(renderTableRow)}
     </tbody>

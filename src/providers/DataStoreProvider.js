@@ -1,51 +1,24 @@
 import React, { useContext } from "react";
 import * as dwc from "dicomweb-client";
 
-/** Providers */
-import { useApp } from "./AppProvider";
-
 /** Utils */
 import { getAuthorizationHeader } from "../utils";
+
+/** Providers */
+import { useAuth } from './AuthProvider';
 
 const DataStoreContext = React.createContext({});
 
 export const useDataStore = () => useContext(DataStoreContext);
 
-const DataStoreProvider = ({ children }) => {
-  const { config: appConfig } = useApp();
+const DataStoreProvider = ({ children, appConfig }) => {
+  const { user } = useAuth();
 
-  // if (props.dicomwebUrl !== undefined) {
-  //   this.clientConfig = {
-  //     url: props.dicomwebUrl,
-  //     headers: {},
-  //   };
-  // } else if (props.dicomwebPath !== undefined) {
-  //   this.clientConfig = {
-  //     url: `${window.location.origin}${props.dicomwebPath}`,
-  //     headers: {},
-  //   };
-  // } else {
-  //   throw new Error("Either DICOMweb path or full URL needs to be provided.");
-  // }
-
-  // if (props.qidoPathPrefix !== undefined) {
-  //   this.clientConfig.qidoUrlPrefix = props.qidoPathPrefix;
-  // }
-
-  // if (props.wadoPathPrefix !== undefined) {
-  //   this.clientConfig.wadoUrlPrefix = props.wadoPathPrefix;
-  // }
-
-  // this.state = {
-  //   /** Sets token headers on login like ohif */
-  //   client: new dwc.api.DICOMwebClient(this.clientConfig),
-  // };
-
-  const server = appConfig.servers.dicomWeb[0]; // use useServer
+  /** TODO: Consume server from useServer instead */
+  const server = appConfig.servers.dicomWeb[0];
   const config = {
     url: server.qidoRoot,
-    headers: getAuthorizationHeader(server.qidoRoot),
-    // errorInterceptor
+    headers: getAuthorizationHeader(server.qidoRoot, user),
   };
   const client = new dwc.api.DICOMwebClient(config);
 
@@ -86,7 +59,7 @@ const DataStoreProvider = ({ children }) => {
         retrieveInstanceFrames,
         searchForInstances,
         searchForStudies,
-        searchForSeries
+        searchForSeries,
       }}
     >
       {children}
@@ -103,7 +76,7 @@ export const withDataStore = (Component) => {
       retrieveInstanceFrames,
       searchForInstances,
       searchForStudies,
-      searchForSeries
+      searchForSeries,
     } = useDataStore();
     return (
       <Component
@@ -115,7 +88,7 @@ export const withDataStore = (Component) => {
           retrieveInstanceFrames,
           searchForInstances,
           searchForStudies,
-          searchForSeries
+          searchForSeries,
         }}
       />
     );

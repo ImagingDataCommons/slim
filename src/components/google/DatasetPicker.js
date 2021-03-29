@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 
+/** Components */
 import api from "../../google/api/GoogleCloudApi";
 import DatasetsList from "./DatasetsList";
-import "./googleCloud.css";
+
+/** Styles */
+import "./googleCloud.less";
 
 const DatasetPicker = ({ project, location, accessToken, onSelect }) => {
   const [state, setState] = useState({
@@ -13,29 +16,29 @@ const DatasetPicker = ({ project, location, accessToken, onSelect }) => {
     filterStr: "",
   });
 
-  const onFirstLoad = async () => {
-    api.setAccessToken(accessToken);
-
-    const response = await api.loadDatasets(
-      project.projectId,
-      location.locationId
-    );
-
-    if (response.isError) {
-      setState((state) => ({ ...state, error: response.message }));
-      return;
-    }
-
-    setState((state) => ({
-      ...state,
-      datasets: response.data.datasets || [],
-      loading: false,
-    }));
-  };
-
   useEffect(() => {
+    const onFirstLoad = async () => {
+      api.setAccessToken(accessToken);
+  
+      const response = await api.loadDatasets(
+        project.projectId,
+        location.locationId
+      );
+  
+      if (response.isError) {
+        setState((state) => ({ ...state, error: response.message }));
+        return;
+      }
+  
+      setState((state) => ({
+        ...state,
+        datasets: response.data.datasets || [],
+        loading: false,
+      }));
+    };
+    
     onFirstLoad();
-  }, []);
+  }, [accessToken, location.locationId, project.projectId]);
 
   const onFilterChange = (e) =>
     setState((state) => ({ ...state, filterStr: e.target.value }));
@@ -48,6 +51,7 @@ const DatasetPicker = ({ project, location, accessToken, onSelect }) => {
         type="text"
         value={filterStr}
         onChange={onFilterChange}
+        placeholder="Search..."
       />
       <DatasetsList
         datasets={datasets}

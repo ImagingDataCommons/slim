@@ -1,13 +1,18 @@
 import React, { useState } from "react";
 
+/** Components */
 import DicomStorePicker from "./DICOMStorePicker";
 import DatasetPicker from "./DatasetPicker";
 import ProjectPicker from "./ProjectPicker";
 import LocationPicker from "./LocationPicker";
 import GoogleCloudApi from "../../google/api/GoogleCloudApi";
+
+/** Providers */
 import { useServer } from "../../providers/ServerProvider";
 import { useAuth } from "../../providers/AuthProvider";
-import "./googleCloud.css";
+
+/** Styles */
+import "./googleCloud.less";
 
 const DatasetSelector = () => {
   const { setServers } = useServer();
@@ -48,7 +53,8 @@ const DatasetSelector = () => {
     setServers(result);
   };
 
-  const accessToken = user.access_token;
+  const accessToken = user.getAccessToken();
+
   const { project, location, dataset } = state;
 
   let projectBreadcrumbs = (

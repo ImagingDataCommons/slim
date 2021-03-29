@@ -1,7 +1,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import "./googleCloud.css";
+/** Styles */
+import "./googleCloud.less";
 
 const Icon = () => <div>Mocked</div>;
 
@@ -69,7 +70,7 @@ class LocationsList extends Component {
               location.name
                 .split("/")[3]
                 .toLowerCase()
-                .includes(filter.toLowerCase()) || filter == ""
+                .includes(filter.toLowerCase()) || filter === ""
           )
           .map(this.renderTableRow)}
       </tbody>

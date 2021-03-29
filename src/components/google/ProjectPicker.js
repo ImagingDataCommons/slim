@@ -1,9 +1,12 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
+/** Components */
 import api from "../../google/api/GoogleCloudApi";
 import ProjectsList from "./ProjectsList";
-import "./googleCloud.css";
+
+/** Styles */
+import "./googleCloud.less";
 
 export default class ProjectPicker extends Component {
   state = {
@@ -43,6 +46,7 @@ export default class ProjectPicker extends Component {
           type="text"
           value={filterStr}
           onChange={(e) => this.setState({ filterStr: e.target.value })}
+          placeholder="Search..."
         />
         <ProjectsList
           projects={projects}

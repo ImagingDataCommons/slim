@@ -28,47 +28,41 @@
 }
 .gcp-table > thead tr th {
   padding: 0;
-  border-bottom: 1px solid var(--ui-border-color-active);
   width: 100%;
   text-align: left;
   border-top: 0;
 }
 .gcp-table > tbody tr {
   padding: 5px;
-  background-color: var(--ui-gray-darker);
+  background-color: white;
 }
 .gcp-table > tbody tr:nth-child(even) {
-  background-color: var(--ui-gray-dark);
+  background-color: white;
 }
 
 .gcp-table > tbody tr td {
   padding: 8px;
-  height: $body-cell-height;
-  line-height: $body-cell-height;
-  color: var(--table-text-primary-color);
+  color: black;
   font-weight: 300;
-  border-top: 1px solid var(--ui-gray-lighter);
-  border-bottom: 1px solid var(--ui-gray-lighter);
   white-space: nowrap;
 }
 .gcp-table > tbody tr td.emptyCell {
-  color: #516873;
+  color: black;
 }
 .gcp-table > tbody tr td.emptyValue {
-  color: var(--ui-gray-light);
+  color: @primary-color;
 }
 .gcp-table > tbody tr:hover,
 .gcp-table > tbody tr:active,
 .gcp-table > tbody tr.active {
-  background-color: var(--table-hover-color);
-  color: var(--text-primary-color);
+  cursor: pointer;
+  background-color: @processing-color;
+  color: @primary-color;
 }
 .gcp-table > tbody tr:hover td,
 .gcp-table > tbody tr:active td,
 .gcp-table > tbody tr.active td {
-  border-top: 1px solid var(--ui-gray-lighter);
-  border-bottom: 1px solid var(--ui-gray-lighter);
-  background-color: var(--table-hover-color);
+  background-color: @processing-color;
 }
 
 .gcp-files-selector {
@@ -84,10 +78,10 @@
   margin: 0 !important;
 }
 .gcp-files-selector__btn-dir {
-  background-image: url('/assets/Button_Folder.svg');
+  background-image: url("/assets/Button_Folder.svg");
 }
 .gcp-files-selector__btn-file {
-  background-image: url('/assets/Button_File.svg');
+  background-image: url("/assets/Button_File.svg");
 }
 
 .gcp-window {
@@ -127,29 +121,33 @@
 }
 
 .gcp-picker--title {
-  color: #ffffff;
+  color: black;
   font-size: 24px;
   text-align: center;
   margin: 20px auto;
 }
 
 .gcp-picker--path {
-  color: #ffffff;
+  color: black;
   font-size: 16px;
   font-weight: 28px;
   text-align: left;
   margin: 20px auto;
 }
 
-.gcp-input{
+.gcp-input {
   height: 40px;
-  margin: 0 5px 20px 5px;
+  margin: 0 5px 20px 0;
   padding: 0 20px;
   cursor: pointer;
   border: none;
-  background-color: var(--input-background-color);
-  color: var(--input-placeholder-color);
+  background-color: @layout-header-background;
+  color: white;
   font-size: 10pt;
   font-weight: normal;
   border-radius: 4px;
+}
+
+.gcp-input::placeholder {
+  color: black;
 }

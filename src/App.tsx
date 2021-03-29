@@ -17,11 +17,7 @@ import {
   Header,
   Viewer,
   Worklist,
-  DICOMStorePickerModal,
 } from "./components";
-
-/** Utils */
-import { makeAbsoluteIfNecessary } from "./utils";
 
 /** Styles */
 import "antd/dist/antd.less";
@@ -83,7 +79,7 @@ class App extends React.Component<AppProps, AppState> {
           /** Required */
           authority: "https://accounts.google.com",
           client_id:
-            "",
+            "723928408739-k9k9r3i44j32rhu69vlnibipmmk9i57p.apps.googleusercontent.com",
           redirect_uri: "/callback",
           response_type: "id_token token",
           scope:
@@ -93,7 +89,7 @@ class App extends React.Component<AppProps, AppState> {
           revoke_uri: "https://accounts.google.com/o/oauth2/revoke?token=",
           automaticSilentRenew: true,
           revokeAccessTokenOnSignout: true,
-          filterProtocolClaims: true /** Took from OHIF */,
+          filterProtocolClaims: true,
         },
       ],
       studyListFunctionsEnabled: true,
@@ -102,7 +98,6 @@ class App extends React.Component<AppProps, AppState> {
     const WorklistRoute = (props: any) => {
       return (
         <>
-          {/* <DICOMStorePickerModal isOpen onClose={() => {}} /> */}
           <Worklist {...props} />
         </>
       );
@@ -117,46 +112,6 @@ class App extends React.Component<AppProps, AppState> {
         </>
       );
     };
-
-    const google = {
-      onSignIn: async (user: any) => {
-        debugger;
-        window.location.href = HARDCODED_CONFIG.routerBasename;
-      },
-      /** Required */
-      authority: "https://accounts.google.com",
-      clientId:
-        "",
-      redirectUri: "/callback",
-      responseType: "id_token token",
-      scope:
-        "email profile openid https://www.googleapis.com/auth/cloudplatformprojects.readonly https://www.googleapis.com/auth/cloud-healthcare", // email profile openid
-      /** Optional */
-      postLogoutRedirectUri: "/logout-redirect",
-      revokeUri: "https://accounts.google.com/o/oauth2/revoke?token=",
-      automaticSilentRenew: true,
-      revokeAccessTokenOnSignout: true,
-      filterProtocolClaims: true /** Took from OHIF */,
-    };
-
-    const {
-      routerBasename,
-      servers,
-      enableGoogleCloudAdapter,
-    } = HARDCODED_CONFIG;
-    const { protocol, host } = window.location;
-    const baseUri = `${protocol}//${host}${routerBasename}`;
-
-    if (google.redirectUri) {
-      google.redirectUri = makeAbsoluteIfNecessary(google.redirectUri, baseUri);
-    }
-
-    if (google.postLogoutRedirectUri) {
-      google.postLogoutRedirectUri = makeAbsoluteIfNecessary(
-        google.postLogoutRedirectUri,
-        baseUri
-      );
-    }
 
     // let healthCareApiButtons = null;
     // let healthCareApiWindows = null;
@@ -187,9 +142,9 @@ class App extends React.Component<AppProps, AppState> {
 
     return (
       <AppProvider config={HARDCODED_CONFIG} version={version}>
-        <AuthProvider oidc={google}>
-          <ServerProvider servers={servers}>
-            <DataStoreProvider>
+        <AuthProvider appConfig={HARDCODED_CONFIG}>
+          <ServerProvider appConfig={HARDCODED_CONFIG}>
+            <DataStoreProvider appConfig={HARDCODED_CONFIG}>
               <BrowserRouter>
                 <Layout style={{ height: "100vh" }}>
                   <Header />
@@ -197,7 +152,7 @@ class App extends React.Component<AppProps, AppState> {
                     <Switch>
                       <PrivateRoute
                         exact
-                        path={routerBasename}
+                        path={HARDCODED_CONFIG.routerBasename}
                         component={WorklistRoute}
                       />
                       <PrivateRoute

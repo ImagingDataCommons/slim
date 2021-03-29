@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
 
-import "./googleCloud.css";
+/** Styles */
+import "./googleCloud.less";
 
 const Icon = () => <div>Mocked</div>;
 
@@ -53,7 +54,7 @@ const DatasetsList = ({ loading, datasets, filter, error, onSelect }) => {
             dataset.name
               .split("/")[5]
               .toLowerCase()
-              .includes(filter.toLowerCase()) || filter == ""
+              .includes(filter.toLowerCase()) || filter === ""
         )
         .map(renderTableRow)}
     </tbody>

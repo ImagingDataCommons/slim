@@ -9,7 +9,9 @@ const defaultState = {
   servers: [],
 };
 
-const ServerProvider = ({ children, servers = {} }) => {
+const ServerProvider = ({ children, appConfig }) => {
+  const servers = appConfig.servers;
+
   const reducer = (state, action) => {
     switch (action.type) {
       case "ADD_SERVER":
@@ -37,24 +39,24 @@ const ServerProvider = ({ children, servers = {} }) => {
 
   const [state, dispatch] = useReducer(reducer, defaultState);
 
-  const init = (servers) => {
-    if (!servers) {
-      throw new Error("Servers must be defined");
-    }
-
-    Object.keys(servers).forEach((serverType) => {
-      const endpoints = servers[serverType];
-      endpoints.forEach((endpoint) => {
-        const server = Object.assign({}, endpoint);
-        server.type = serverType;
-        addServer(server);
-      });
-    });
-  };
-
   useEffect(() => {
+    const init = (servers) => {
+      if (!servers) {
+        throw new Error("Servers must be defined");
+      }
+
+      Object.keys(servers).forEach((serverType) => {
+        const endpoints = servers[serverType];
+        endpoints.forEach((endpoint) => {
+          const server = Object.assign({}, endpoint);
+          server.type = serverType;
+          addServer(server);
+        });
+      });
+    };
+
     init(servers);
-  }, []);
+  }, [servers]);
 
   const activateServer = (server) =>
     dispatch({

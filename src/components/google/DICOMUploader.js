@@ -1,9 +1,12 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
+/** Components */
 import { formatFileSize } from "../../google/utils/helpers";
 import CancellationToken from "../../google/utils/CancellationToken";
 import dicomUploaderService from "../../google/api/DICOMUploadService";
+
+/** Styles */
 import "./DICOMUploader.css";
 
 export default class DICOMUploader extends Component {

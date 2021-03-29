@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 
+/** Components */
 import api from "../../google/api/GoogleCloudApi";
 import DICOMStoreList from "./DICOMStoreList";
-import "./googleCloud.css";
+
+/** Styles */
+import "./googleCloud.less";
 
 const DICOMStorePicker = ({ dataset, accessToken, onSelect }) => {
   const [state, setState] = useState({
@@ -17,6 +20,8 @@ const DICOMStorePicker = ({ dataset, accessToken, onSelect }) => {
   const onFilterChangeHandler = (e) => {
     setState((state) => ({ ...state, filterStr: e.target.value }));
   };
+
+  useEffect(() => {
 
   const onFirstLoad = async () => {
     api.setAccessToken(accessToken);
@@ -33,10 +38,9 @@ const DICOMStorePicker = ({ dataset, accessToken, onSelect }) => {
       loading: false,
     }));
   };
-
-  useEffect(() => {
+  
     onFirstLoad();
-  }, []);
+  }, [accessToken, dataset.name]);
 
   return (
     <div>
@@ -45,6 +49,7 @@ const DICOMStorePicker = ({ dataset, accessToken, onSelect }) => {
         type="text"
         value={state.filterStr}
         onChange={onFilterChangeHandler}
+        placeholder="Search..."
       />
       <DICOMStoreList
         stores={state.stores}
