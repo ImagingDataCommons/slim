@@ -84,7 +84,7 @@ class App extends React.Component<AppProps, AppState> {
           redirect_uri: "/callback",
           response_type: "id_token token",
           scope:
-            "email profile openid https://www.googleapis.com/auth/cloudplatformprojects.readonly https://www.googleapis.com/auth/cloud-healthcare", // email profile openid
+            "email profile openid https://www.googleapis.com/auth/cloudplatformprojects.readonly https://www.googleapis.com/auth/cloud-healthcare",
           /** Optional */
           post_logout_redirect_uri: "/logout-redirect",
           revoke_uri: "https://accounts.google.com/o/oauth2/revoke?token=",
@@ -96,7 +96,7 @@ class App extends React.Component<AppProps, AppState> {
       studyListFunctionsEnabled: true,
     };
 
-    const WorklistRoute = (props: any) => {
+    const WorklistRoute = (props: RouteComponentProps | any) => {
       const { project, location, dataset, dicomStore } = props.match.params;
       const server = useServerFromURL({
         project,
@@ -105,18 +105,12 @@ class App extends React.Component<AppProps, AppState> {
         dicomStore,
       });
 
-      if (HARDCODED_CONFIG.enableGoogleCloudAdapter) {
-        routesUtils.updateWorklistURL(HARDCODED_CONFIG, server, props.history);
-      }
+      routesUtils.updateWorklistURL(HARDCODED_CONFIG, server, props.history);
 
-      return (
-        <>
-          <Worklist {...props} />
-        </>
-      );
+      return <Worklist {...props} />;
     };
 
-    const ViewerRoute = (props: any) => {
+    const ViewerRoute = (props: RouteComponentProps | any) => {
       const {
         project,
         location,
@@ -130,45 +124,14 @@ class App extends React.Component<AppProps, AppState> {
         dataset,
         dicomStore,
       });
-      return (
-        <>
-          <Viewer studyInstanceUID={studyInstanceUID} />
-        </>
-      );
+      return <Viewer studyInstanceUID={studyInstanceUID} />;
     };
-
-    // let healthCareApiButtons = null;
-    // let healthCareApiWindows = null;
-    // const [activeModalId, setActiveModalId] = useState(null);
-    // if (enableGoogleCloudAdapter) {
-    //   const isModalOpen = activeModalId === "DicomStorePicker";
-    //   // updateURL(isModalOpen, appConfig, server, history);
-    //   healthCareApiWindows = (
-    //     <DICOMStorePicker
-    //       isOpen={activeModalId === "DicomStorePicker"}
-    //       onClose={() => setActiveModalId(null)}
-    //     />
-    //   );
-    //   healthCareApiButtons = (
-    //     <div
-    //       className="form-inline btn-group pull-right"
-    //       style={{ padding: "20px" }}
-    //     >
-    //       <button
-    //         className="btn btn-primary"
-    //         onClick={() => setActiveModalId("DicomStorePicker")}
-    //       >
-    //         {t("Change DICOM Store")}
-    //       </button>
-    //     </div>
-    //   );
-    // }
 
     return (
       <AppProvider config={HARDCODED_CONFIG} version={version}>
         <AuthProvider appConfig={HARDCODED_CONFIG}>
           <ServerProvider appConfig={HARDCODED_CONFIG}>
-            <DataStoreProvider appConfig={HARDCODED_CONFIG}>
+            <DataStoreProvider>
               <BrowserRouter>
                 <Layout style={{ height: "100vh" }}>
                   <Header />

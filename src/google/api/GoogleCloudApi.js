@@ -1,21 +1,23 @@
 class GoogleCloudApi {
   setAccessToken(accessToken) {
-    if (!accessToken) console.error('Access token is empty');
+    if (!accessToken) console.error("Access token is empty");
     this.accessToken = accessToken;
   }
 
   get fetchConfig() {
-    if (!this.accessToken) throw new Error('OIDC access_token is not set');
+    if (!this.accessToken) throw new Error("OIDC access_token is not set");
     return {
-      method: 'GET',
+      method: "GET",
       headers: {
-        Authorization: 'Bearer ' + this.accessToken,
+        Authorization: "Bearer " + this.accessToken,
       },
     };
   }
 
   get urlBase() {
-    return this.healthcareApiEndpoint || 'https://healthcare.googleapis.com/v1beta1';
+    return (
+      this.healthcareApiEndpoint || "https://healthcare.googleapis.com/v1beta1"
+    );
   }
 
   set urlBase(url) {
@@ -31,6 +33,57 @@ class GoogleCloudApi {
       this.urlBase +
       `/projects/${project}/locations/${location}/datasets/${dataset}/dicomStores/${dicomStore}/dicomWeb`
     );
+  }
+
+  async getAllDICOMStores() {
+    const availableStores = [];
+
+    const { data } = await this.loadProjects();
+    if (!data.projects) {
+      return;
+    }
+
+    await Promise.all(
+      data.projects.map(async (project) => {
+        const { data } = await this.loadLocations(project.projectId);
+        if (!data || !data.locations) {
+          return;
+        }
+
+        return Promise.all(
+          data.locations.map(async (location) => {
+            const { data } = await this.loadDatasets(
+              project.projectId,
+              location.locationId
+            );
+            if (!data || !data.datasets) {
+              return;
+            }
+
+            return Promise.all(
+              data.datasets.map(async (dataset) => {
+                const { data } = await this.loadDicomStores(dataset.name);
+                if (!data || !data.dicomStores) {
+                  return;
+                }
+
+                return Promise.all(
+                  data.dicomStores.map(async (dicomStore) => {
+                    if (!dicomStore) {
+                      return;
+                    }
+
+                    availableStores.push(dicomStore);
+                  })
+                );
+              })
+            );
+          })
+        );
+      })
+    );
+
+    return availableStores;
   }
 
   getUrlPath(project, location, dataset, dicomStore) {
@@ -67,7 +120,7 @@ class GoogleCloudApi {
           isError: true,
           status: response.status,
           message:
-            (data && data.error && data.error.message) || 'Unknown error',
+            (data && data.error && data.error.message) || "Unknown error",
         };
       }
     } catch (err) {
@@ -75,19 +128,19 @@ class GoogleCloudApi {
         return {
           isError: true,
           status: err.status,
-          message: err.response.data.error.message || 'Unspecified error',
+          message: err.response.data.error.message || "Unspecified error",
         };
       }
       return {
         isError: true,
-        message: (err && err.message) || 'Oops! Something went wrong',
+        message: (err && err.message) || "Oops! Something went wrong",
       };
     }
   }
 
   async loadProjects() {
     return this.doRequest(
-      'https://cloudresourcemanager.googleapis.com/v1/projects'
+      "https://cloudresourcemanager.googleapis.com/v1/projects"
     );
   }
 

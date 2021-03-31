@@ -18,6 +18,7 @@ const DICOMStorePicker = ({ dataset, accessToken, onSelect }) => {
   });
 
   const onFilterChangeHandler = (e) => {
+    e.persist();
     setState((state) => ({ ...state, filterStr: e.target.value }));
   };
 

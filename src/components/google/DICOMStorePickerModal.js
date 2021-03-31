@@ -7,6 +7,8 @@ import "./googleCloud.less";
 
 /** Components */
 import DatasetSelector from "./DatasetSelector";
+
+/** Utils */
 import { getServers } from "../../google/utils";
 
 /** Providers */
@@ -20,7 +22,7 @@ const DICOMStorePickerModal = ({ isOpen = false, onClose = () => {} }) => {
   const url = activeServer.qidoRoot;
 
   const onServerSelectedHandler = (data) => {
-    const servers = getServers(data, data.dicomstore);
+    const servers = getServers(data);
     setServers(servers);
     onClose();
   };

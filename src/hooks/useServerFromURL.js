@@ -22,7 +22,13 @@ const getActiveServer = (servers) => {
   return servers && servers && servers.find(isActive);
 };
 
-const getServers = (appConfig, project, location, dataset, dicomStore) => {
+const getServersByParams = (
+  appConfig,
+  project,
+  location,
+  dataset,
+  dicomStore
+) => {
   let servers = [];
 
   if (appConfig.enableGoogleCloudAdapter) {
@@ -34,6 +40,7 @@ const getServers = (appConfig, project, location, dataset, dicomStore) => {
       dicomStore
     );
     const data = {
+      name: dicomStore,
       project,
       location,
       dataset,
@@ -42,7 +49,7 @@ const getServers = (appConfig, project, location, dataset, dicomStore) => {
       qidoRoot: pathUrl,
       wadoRoot: pathUrl,
     };
-    servers = getGoogleServers(data, dicomStore);
+    servers = getGoogleServers(data);
     if (!isValidServer(servers[0], appConfig)) {
       return;
     }
@@ -103,7 +110,8 @@ export default function useServerFromURL({
   useEffect(() => {
     const activeServer = getActiveServer(servers);
     const urlBasedServers =
-      getServers(appConfig, project, location, dataset, dicomStore) || [];
+      getServersByParams(appConfig, project, location, dataset, dicomStore) ||
+      [];
     const shouldUpdateServer = _useServerFromURL(
       servers,
       previousServers,

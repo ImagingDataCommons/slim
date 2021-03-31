@@ -1,6 +1,9 @@
 import React, { useContext, useEffect, useReducer } from "react";
 import uniqBy from "lodash/uniqBy";
 
+/** Providers */
+import { useAuth } from "./AuthProvider";
+
 const ServerContext = React.createContext({});
 
 export const useServer = () => useContext(ServerContext);
@@ -10,6 +13,8 @@ const defaultState = {
 };
 
 const ServerProvider = ({ children, appConfig }) => {
+  const { user } = useAuth();
+
   const servers = appConfig.servers;
 
   const reducer = (state, action) => {
@@ -40,7 +45,7 @@ const ServerProvider = ({ children, appConfig }) => {
   const [state, dispatch] = useReducer(reducer, defaultState);
 
   useEffect(() => {
-    const init = (servers) => {
+    const init = async (servers) => {
       if (!servers) {
         throw new Error("Servers must be defined");
       }
@@ -56,7 +61,7 @@ const ServerProvider = ({ children, appConfig }) => {
     };
 
     init(servers);
-  }, [servers]);
+  }, [servers, user]);
 
   const activateServer = (server) =>
     dispatch({
@@ -78,7 +83,13 @@ const ServerProvider = ({ children, appConfig }) => {
 
   return (
     <ServerContext.Provider
-      value={{ ...state, servers: state.servers, setServers, activateServer, addServer }}
+      value={{
+        ...state,
+        servers: state.servers,
+        setServers,
+        activateServer,
+        addServer,
+      }}
     >
       {children}
     </ServerContext.Provider>

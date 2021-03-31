@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext } from "react";
 import * as dwc from "dicomweb-client";
 
 /** Utils */
@@ -12,7 +12,7 @@ const DataStoreContext = React.createContext({});
 
 export const useDataStore = () => useContext(DataStoreContext);
 
-const DataStoreProvider = ({ children, appConfig }) => {
+const DataStoreProvider = ({ children }) => {
   const { user } = useAuth();
   const { servers } = useServer();
 

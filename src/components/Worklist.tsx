@@ -14,7 +14,7 @@ import { parseDate, parseName, parseSex, parseTime } from "../valueUtils";
 import { routes as routesUtils } from "../utils";
 
 /** Components */
-import { DICOMStorePickerModal } from "../components";
+import { DICOMStorePickerModal, DICOMStoreListModal } from "../components";
 
 interface WorklistProps extends RouteComponentProps {
   dataStore: any;
@@ -27,7 +27,8 @@ interface WorklistState {
   isLoading: boolean;
   numStudies: number;
   pageSize: number;
-  isDICOMStoreModalOpened: boolean;
+  isDICOMStorePickerModalOpened: boolean;
+  isDICOMStoreListModalOpened: boolean;
 }
 
 class Worklist extends React.Component<WorklistProps, WorklistState> {
@@ -36,7 +37,8 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     isLoading: false,
     numStudies: 0,
     pageSize: 10,
-    isDICOMStoreModalOpened: false,
+    isDICOMStorePickerModalOpened: false,
+    isDICOMStoreListModalOpened: false,
   };
 
   constructor(props: WorklistProps) {
@@ -44,7 +46,12 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     this.fetchData = this.fetchData.bind(this);
     this.handleClick = this.handleClick.bind(this);
     this.handleChange = this.handleChange.bind(this);
-    this.onCloseDICOMStoreModal = this.onCloseDICOMStoreModal.bind(this);
+    this.onCloseDICOMStorePickerModal = this.onCloseDICOMStorePickerModal.bind(
+      this
+    );
+    this.onCloseDICOMStoreListModal = this.onCloseDICOMStoreListModal.bind(
+      this
+    );
   }
 
   componentDidUpdate(prevProps: WorklistProps): void {
@@ -77,16 +84,13 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   }
 
   handleClick(event: React.SyntheticEvent, study: dmv.metadata.Study): void {
-    // this.props.history.push({
-    //   pathname: `/studies/${study.StudyInstanceUID}`,
-    //   state: { metadata: study },
-    // });
     const activeServer = this.props.servers.find((s: any) => !!s.active);
     routesUtils.updateViewerURL(
       this.props.app.config,
       activeServer,
       this.props.history,
-      study.StudyInstanceUID
+      { studyInstanceUID: study.StudyInstanceUID },
+      { metadata: study }
     );
   }
 
@@ -125,9 +129,15 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     this.setState((state) => ({ isLoading: false }));
   }
 
-  onCloseDICOMStoreModal() {
+  onCloseDICOMStorePickerModal() {
     this.setState({
-      isDICOMStoreModalOpened: !this.state.isDICOMStoreModalOpened,
+      isDICOMStorePickerModalOpened: !this.state.isDICOMStorePickerModalOpened,
+    });
+  }
+
+  onCloseDICOMStoreListModal() {
+    this.setState({
+      isDICOMStoreListModalOpened: !this.state.isDICOMStoreListModalOpened,
     });
   }
 
@@ -182,14 +192,25 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     return (
       <div>
         <div className="worklist-header" style={{ padding: "20px" }}>
-          <button onClick={this.onCloseDICOMStoreModal}>
-            Change DICOM Store
+          <button onClick={this.onCloseDICOMStoreListModal}>
+            Change DICOM store
+          </button>
+          <button onClick={this.onCloseDICOMStorePickerModal}>
+            Change project
           </button>
         </div>
-        <DICOMStorePickerModal
-          isOpen={this.state.isDICOMStoreModalOpened}
-          onClose={this.onCloseDICOMStoreModal}
-        />
+        {this.props.app.config.enableGoogleCloudAdapter && (
+          <>
+            <DICOMStorePickerModal
+              isOpen={this.state.isDICOMStorePickerModalOpened}
+              onClose={this.onCloseDICOMStorePickerModal}
+            />
+            <DICOMStoreListModal
+              isOpen={this.state.isDICOMStoreListModalOpened}
+              onClose={this.onCloseDICOMStoreListModal}
+            />
+          </>
+        )}
         <Table<dmv.metadata.Study>
           style={{ cursor: "pointer" }}
           columns={columns}

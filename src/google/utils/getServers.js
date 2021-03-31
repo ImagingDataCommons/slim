@@ -1,4 +1,4 @@
-const getServers = (data, name) => {
+const getServers = (data) => {
   const {
     wadoUriRoot,
     qidoRoot,
@@ -11,7 +11,7 @@ const getServers = (data, name) => {
 
   return [
     {
-      name: name,
+      name: data.name,
       dataset,
       dicomStore,
       location,

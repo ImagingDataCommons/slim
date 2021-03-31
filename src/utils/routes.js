@@ -11,7 +11,7 @@ const parsePath = (path, server, params) => {
   return _path;
 };
 
-const parseViewerPath = (appConfig = {}, server = {}, params) => {
+const updateViewerURL = (appConfig, server, history, params, state) => {
   let viewerPath = "/studies/:studyInstanceUID";
 
   if (appConfig.enableGoogleCloudAdapter) {
@@ -19,20 +19,14 @@ const parseViewerPath = (appConfig = {}, server = {}, params) => {
       "/projects/:project/locations/:location/datasets/:dataset/dicomStores/:dicomStore/study/:studyInstanceUID";
   }
 
-  return parsePath(viewerPath, server, params);
-};
-
-const updateViewerURL = (appConfig, server, history, studyInstanceUID) => {
-  const viewerPath = parseViewerPath(appConfig, server, {
-    studyInstanceUID
-  });
+  viewerPath = parsePath(viewerPath, server, params);
 
   if (URLUtils.paramString.isValidPath(viewerPath)) {
-    history.push(viewerPath);
+    history.push({ pathname: viewerPath, state });
   }
 };
 
-const parseWorklistPath = (appConfig, server) => {
+const updateWorklistURL = (appConfig, server, history, params) => {
   let worklistPath = appConfig.routerBasename;
 
   if (appConfig.enableGoogleCloudAdapter) {
@@ -41,16 +35,12 @@ const parseWorklistPath = (appConfig, server) => {
       worklistPath;
   }
 
-  return parsePath(worklistPath, server);
-};
+  worklistPath = parsePath(worklistPath, server, params);
 
-const updateWorklistURL = (appConfig, server, history) => {
-  const listPath = parseWorklistPath(appConfig, server);
-
-  if (URLUtils.paramString.isValidPath(listPath)) {
+  if (URLUtils.paramString.isValidPath(worklistPath)) {
     const { location = {} } = history;
-    if (location.pathname !== listPath) {
-      history.replace(listPath);
+    if (location.pathname !== worklistPath) {
+      history.replace(worklistPath);
     }
   }
 };
