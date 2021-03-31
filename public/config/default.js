@@ -4,19 +4,7 @@ window.config = {
   healthcareApiEndpoint: "https://healthcare.googleapis.com/v1",
   servers: {
     /** This is an array, but we'll only use the first entry for now */
-    dicomWeb: [
-      {
-        name: "DCM4CHEE",
-        wadoUriRoot: "https://server.dcmjs.org/dcm4chee-arc/aets/DCM4CHEE/wado",
-        qidoRoot: "https://server.dcmjs.org/dcm4chee-arc/aets/DCM4CHEE/rs",
-        wadoRoot: "https://server.dcmjs.org/dcm4chee-arc/aets/DCM4CHEE/rs",
-        qidoSupportsIncludeField: true,
-        imageRendering: "wadors",
-        thumbnailRendering: "wadors",
-        enableStudyLazyLoad: true,
-        supportsFuzzyMatching: true,
-      },
-    ],
+    dicomWeb: [],
   },
   /** This is an array, but we'll only use the first entry for now */
   oidc: [
@@ -24,7 +12,7 @@ window.config = {
       /** Required */
       authority: "https://accounts.google.com",
       client_id:
-        "723928408739-k9k9r3i44j32rhu69vlnibipmmk9i57p.apps.googleusercontent.com",
+        "",
       redirect_uri: "/callback",
       response_type: "id_token token",
       scope:
