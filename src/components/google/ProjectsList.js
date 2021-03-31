@@ -4,7 +4,8 @@ import PropTypes from "prop-types";
 /** Styles */
 import "./googleCloud.less";
 
-const Icon = () => <div>Mocked</div>;
+/** Components */
+import LoadingIndicator from "../LoadingIndicator";
 
 class ProjectsList extends Component {
   state = {
@@ -57,12 +58,8 @@ class ProjectsList extends Component {
       return <p>{error}</p>;
     }
 
-    const loadingIcon = (
-      <Icon name="circle-notch" className="loading-icon-spin loading-icon" />
-    );
-
     if (loading) {
-      return loadingIcon;
+      return <LoadingIndicator expand height="70px" width="70px" />;
     }
 
     const lowerCaseFilter = filter.toLowerCase();

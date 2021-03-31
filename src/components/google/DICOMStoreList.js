@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
 
+/** Components */
+import LoadingIndicator from "../LoadingIndicator";
+
 /** Styles */
 import "./googleCloud.less";
-
-const Icon = () => <div>Mocked Icon Component</div>;
 
 const DICOMStoreList = ({ onSelect, loading, stores, filter, error }) => {
   const [state, setState] = useState({
@@ -38,12 +39,8 @@ const DICOMStoreList = ({ onSelect, loading, stores, filter, error }) => {
     return <p>{error}</p>;
   }
 
-  const loadingIcon = (
-    <Icon name="circle-notch" className="loading-icon-spin loading-icon" />
-  );
-
   if (loading) {
-    return loadingIcon;
+    return <LoadingIndicator expand height="70px" width="70px" />;
   }
 
   const body = (

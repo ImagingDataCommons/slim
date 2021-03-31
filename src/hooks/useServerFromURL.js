@@ -122,7 +122,16 @@ export default function useServerFromURL({
     if (shouldUpdateServer) {
       setServers(urlBasedServers);
     }
-  }, [project, location, dataset, dicomStore]);
+  }, [
+    appConfig,
+    previousServers,
+    servers,
+    setServers,
+    project,
+    location,
+    dataset,
+    dicomStore,
+  ]);
 
   return getActiveServer(servers);
 }
@@ -136,7 +145,7 @@ export default function useServerFromURL({
 export const withServerFromURL = (Component) => {
   return function WrappedComponent(props) {
     const { project, location, dataset, dicomStore } = props.match.params;
-    const server = useServerFromURL({ project, location, dataset, dicomStore });
+    useServerFromURL({ project, location, dataset, dicomStore });
     return <Component {...props} />;
   };
 };

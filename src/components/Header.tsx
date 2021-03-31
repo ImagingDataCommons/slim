@@ -15,7 +15,8 @@ interface HeaderProps {
       version: string;
       uid: string;
       organization?: string;
-    }
+    },
+    config: any;
   };
   user?: {
     name: string;
@@ -42,7 +43,7 @@ class Header extends React.Component<HeaderProps, {}> {
         <Row>
           <Col>
             <Space align="center" direction="horizontal">
-              <NavLink to="/">
+              <NavLink to={this.props.app.config.routerBasename}>
                 <Button icon={<FaHome />} />
               </NavLink>
               <span style={{ fontWeight: 600, fontSize: "large" }}>

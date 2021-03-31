@@ -4,7 +4,8 @@ import PropTypes from "prop-types";
 /** Styles */
 import "./googleCloud.less";
 
-const Icon = () => <div>Mocked</div>;
+/** Components */
+import LoadingIndicator from "../LoadingIndicator";
 
 const DatasetsList = ({ loading, datasets, filter, error, onSelect }) => {
   const [state, setState] = useState({
@@ -38,12 +39,8 @@ const DatasetsList = ({ loading, datasets, filter, error, onSelect }) => {
     return <p>{error}</p>;
   }
 
-  const loadingIcon = (
-    <Icon name="circle-notch" className="loading-icon-spin loading-icon" />
-  );
-
   if (loading) {
-    return loadingIcon;
+    return <LoadingIndicator expand height="70px" width="70px" />;
   }
 
   const body = (

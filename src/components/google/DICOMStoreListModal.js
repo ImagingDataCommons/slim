@@ -25,22 +25,22 @@ const DICOMStoreListModal = ({ onClose = () => {}, isOpen = false }) => {
   const { user } = useAuth();
   const { config: appConfig } = useApp();
 
-  const loadStores = async () => {
-    try {
-      setState((state) => ({ ...state, isLoading: true }));
-      api.setAccessToken(user.getAccessToken());
-      const stores = await api.getAllDICOMStores();
-      setState((state) => ({ ...state, stores, isLoading: false }));
-    } catch (error) {
-      console.error("Failed to load default google dicom stores", error);
-    }
-  };
-
   useEffect(() => {
+    const loadStores = async () => {
+      try {
+        setState((state) => ({ ...state, isLoading: true }));
+        api.setAccessToken(user.getAccessToken());
+        const stores = await api.getAllDICOMStores();
+        setState((state) => ({ ...state, stores, isLoading: false }));
+      } catch (error) {
+        console.error("Failed to load default google dicom stores", error);
+      }
+    };
+
     if (user && appConfig.enableGoogleCloudAdapter) {
       loadStores();
     }
-  }, [user]);
+  }, [user, appConfig.enableGoogleCloudAdapter]);
 
   const onSelectHandler = (dicomStoreJson) => {
     const dicomStore = dicomStoreJson.name;
@@ -70,8 +70,9 @@ const DICOMStoreListModal = ({ onClose = () => {}, isOpen = false }) => {
       contentLabel="Google Cloud Healthcare API"
       onRequestClose={onClose}
       shouldCloseOnOverlayClick
-    >
+  >
       <div>
+        <h2>Google Cloud Healthcare API</h2>
         <input
           className="form-control gcp-input"
           type="text"

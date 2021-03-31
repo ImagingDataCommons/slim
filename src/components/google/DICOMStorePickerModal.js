@@ -34,6 +34,7 @@ const DICOMStorePickerModal = ({ isOpen = false, onClose = () => {} }) => {
       onRequestClose={onClose}
       shouldCloseOnOverlayClick
     >
+      <h2>Google Cloud Healthcare API</h2>
       <DatasetSelector
         onServerSelected={onServerSelectedHandler}
         user={user}

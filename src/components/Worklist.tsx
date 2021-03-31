@@ -32,15 +32,6 @@ interface WorklistState {
 }
 
 class Worklist extends React.Component<WorklistProps, WorklistState> {
-  state = {
-    studies: [],
-    isLoading: false,
-    numStudies: 0,
-    pageSize: 10,
-    isDICOMStorePickerModalOpened: false,
-    isDICOMStoreListModalOpened: false,
-  };
-
   constructor(props: WorklistProps) {
     super(props);
     this.fetchData = this.fetchData.bind(this);
@@ -52,6 +43,16 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     this.onCloseDICOMStoreListModal = this.onCloseDICOMStoreListModal.bind(
       this
     );
+
+    this.state = {
+      studies: [],
+      isLoading: false,
+      numStudies: 0,
+      pageSize: 10,
+      isDICOMStorePickerModalOpened: false,
+      isDICOMStoreListModalOpened: this.props.app.config
+        .enableGoogleCloudAdapter,
+    };
   }
 
   componentDidUpdate(prevProps: WorklistProps): void {
@@ -192,7 +193,10 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     return (
       <div>
         <div className="worklist-header" style={{ padding: "20px" }}>
-          <button onClick={this.onCloseDICOMStoreListModal}>
+          <button
+            onClick={this.onCloseDICOMStoreListModal}
+            style={{ marginRight: "5px" }}
+          >
             Change DICOM store
           </button>
           <button onClick={this.onCloseDICOMStorePickerModal}>
