@@ -55,8 +55,8 @@ RUN addgroup --system --gid 101 nginx && \
 RUN yarn run build && mkdir -p /var/www/html && cp -R build/* /var/www/html/
 
 RUN mkdir -p /var/run/nginx && \
-    chown -R nginx:nginx /var/www/html /var/run/nginx && \
-    chmod -R 0755 /var/www/html /var/run/nginx && \
+    chown -R nginx:nginx /var/www/html /var/run/nginx /var/lib/nginx /var/log/nginx && \
+    chmod -R 0755 /var/www/html /var/run/nginx /var/lib/nginx /var/log/nginx && \
     rm -r /etc/nginx/conf.d /etc/nginx/sites-available /etc/nginx/sites-enabled
 
 COPY etc/nginx/conf.d /etc/nginx/conf.d
