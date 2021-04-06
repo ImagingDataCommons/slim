@@ -24,6 +24,7 @@ class Annotation extends React.Component<AnnotationProps> {
         dcmjs.sr.valueTypes.CodeContentItem
       )
     ) => {
+      console.info('add qualitative evaluation: ', item)
       const nameMeaning = item.ConceptNameCodeSequence[0].CodeMeaning
       const name = `${nameMeaning}`
       if (item.ValueType === 'CODE') {
@@ -42,6 +43,7 @@ class Annotation extends React.Component<AnnotationProps> {
       }
     })
     this.props.roi.measurements.forEach(item => {
+      console.info('add measurement: ', item)
       const nameMeaning = item.ConceptNameCodeSequence[0].CodeMeaning
       const name = `${nameMeaning}`
       const seq = item.MeasuredValueSequence[0]

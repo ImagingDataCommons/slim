@@ -533,10 +533,11 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
         this.volumeViewer = new dmv.viewer.VolumeImageViewer({
           client: this.props.client,
           metadata: volumeMetadata,
-          retrieveRendered: false
+          retrieveRendered: true
         })
         this.volumeViewer.render({ container: this.volumeViewport.current })
         this.volumeViewer.activateSelectInteraction({})
+        this.volumeViewer.toggleOverviewMap()
       }
 
       const labelMetadata = retrievedMetadata.filter(item => {
@@ -617,14 +618,23 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
             // State update will also ensure that the component is re-rendered.
             this.setState(state => ({ isLoading: false }))
           }).catch(
-            () => message.error('An error occured. Annotation could not be loaded')
+            (error) => {
+              message.error('An error occured. Annotation could not be loaded')
+              console.error(error)
+            }
           )
         })
       }).catch(
-        () => message.error('An error occured. Annotations could not be loaded')
+        (error) => {
+          message.error('An error occured. Annotations could not be loaded')
+          console.error(error)
+        }
       )
     }).catch(
-      () => message.error('An error occured. Images could not be loaded')
+      (error) => {
+        message.error('An error occured. Images could not be loaded')
+        console.error(error)
+      }
     )
   }
 

@@ -18,14 +18,20 @@ declare module 'dicom-microscopy-viewer' {
       render (options: object): void
       get imageMetadata (): metadata.VLWholeSlideMicroscopyImage[]
       activateDrawInteraction (options: object)
-      deactivateDrawInteraction ()
+      deactivateDrawInteraction (): void
       get isDrawInteractionActive (): boolean
       activateSelectInteraction (options: object)
-      deactivateSelectInteraction ()
+      deactivateSelectInteraction (): void
       get isSelectInteractionActive (): boolean
       activateModifyInteraction (options: object)
-      deactivateModifyInteraction ()
+      deactivateModifyInteraction (): void
       get isModifyInteractionActive (): boolean
+      activateDragZoomInteraction (options: object): void
+      deactivateDragZoomInteraction (): void
+      activateSnapInteraction (options: object): void
+      deactivateSnapInteraction (): void
+      activateTranslateInteraction (options: object): void
+      deactivateTranslateInteraction (): void
       getAllROIs (): roi.ROI[]
       removeAllROIs (): void
       getROI (uid: string): roi.ROI
@@ -49,6 +55,9 @@ declare module 'dicom-microscopy-viewer' {
       showROIs (): void
       get areROIsVisible (): boolean
       resize (): void
+      collapseOverviewMap (): void
+      expandOverviewMap (): void
+      toggleOverviewMap (): void
     }
 
     export interface OverviewImageViewerOptions {
