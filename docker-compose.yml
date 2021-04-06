@@ -1,8 +1,66 @@
 version: '3.7'
+
+volumes:
+  db: {}
+  fs: {}
+
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
+      target: app
     ports:
       - "8008:8008"
+    user: nginx
+    depends_on:
+      - arc
+    volumes:
+      - ./etc/nginx/conf.d/local.conf:/etc/nginx/conf.d/local.conf:ro
+      - ./build/:/var/www/html/:ro
+
+  ldap:
+    image: dcm4che/slapd-dcm4chee:2.4.57-23.2
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+    expose:
+      - 389
+
+  db:
+    image: dcm4che/postgres-dcm4chee:13.1-23
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+    expose:
+      - 5432
+    env_file: docker-compose.env
+    volumes:
+      - db:/var/lib/postgresql/data
+
+  arc:
+    image: dcm4che/dcm4chee-arc-psql:5.23.2
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+    expose:
+      - 8080
+      - 8443
+      - 9990
+      - 9993
+      - 11112
+      - 2762
+      - 2575
+      - 12575
+    env_file: docker-compose.env
+    environment:
+      WILDFLY_CHOWN: /opt/wildfly/standalone /storage
+      WILDFLY_WAIT_FOR: ldap:389 db:5432
+    depends_on:
+      - ldap
+      - db
+    volumes:
+      - fs:/storage
