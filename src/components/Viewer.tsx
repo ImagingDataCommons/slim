@@ -2,6 +2,7 @@ import React from 'react'
 import {
   FaDrawPolygon,
   FaEye,
+  FaHandPaper,
   FaHandPointer,
   FaTrash,
   FaSave
@@ -98,6 +99,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     this.labelViewer = undefined
     this.handleSeriesSelection = this.handleSeriesSelection.bind(this)
     this.handleRoiDrawing = this.handleRoiDrawing.bind(this)
+    this.handleRoiTranslation = this.handleRoiTranslation.bind(this)
     this.handleRoiModification = this.handleRoiModification.bind(this)
     this.handleRoiVisibility = this.handleRoiVisibility.bind(this)
     this.handleRoiRemoval = this.handleRoiRemoval.bind(this)
@@ -445,11 +447,31 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       this.volumeViewer.activateSelectInteraction({})
     } else {
       console.info(`activate drawing of ROIs for geometry Type ${geometryType}`)
+      this.volumeViewer.deactivateTranslateInteraction()
       this.volumeViewer.deactivateSelectInteraction()
       this.volumeViewer.deactivateModifyInteraction()
-      this.volumeViewer.activateDrawInteraction({ geometryType })
+      this.volumeViewer.activateDrawInteraction({ geometryType, 
+                markup: "measurement",
+ })
     }
   }
+
+  handleRoiTranslation (): void {
+    if (this.volumeViewer === undefined) {
+      return
+    }
+    console.info('toggle translation of ROIs')
+    if (this.volumeViewer.isTranslateInteractionActive) {
+      this.volumeViewer.deactivateTranslateInteraction()
+      this.volumeViewer.activateSelectInteraction({})
+    } else {
+      this.volumeViewer.deactivateModifyInteraction()
+      this.volumeViewer.deactivateDrawInteraction()
+      this.volumeViewer.deactivateSelectInteraction()
+      this.volumeViewer.activateTranslateInteraction({})
+    }
+  }
+
 
   handleRoiModification (): void {
     if (this.volumeViewer === undefined) {
@@ -461,6 +483,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       this.volumeViewer.activateSelectInteraction({})
     } else {
       this.volumeViewer.deactivateDrawInteraction()
+      this.volumeViewer.deactivateTranslateInteraction()
       this.volumeViewer.deactivateSelectInteraction()
       this.volumeViewer.activateModifyInteraction({})
     }
@@ -490,6 +513,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     console.info('toggle visibility of ROIs')
     if (this.volumeViewer.areROIsVisible) {
       this.volumeViewer.deactivateDrawInteraction()
+      this.volumeViewer.deactivateTranslateInteraction()
       this.volumeViewer.deactivateSelectInteraction()
       this.volumeViewer.deactivateModifyInteraction()
       this.volumeViewer.hideROIs()
@@ -709,6 +733,12 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
             >
               <Button tooltip='Draw ROI' icon={FaDrawPolygon} />
             </Dropdown>
+            <Button
+              isToggle
+              tooltip='Shift ROIs'
+              icon={FaHandPaper}
+              onClick={this.handleRoiTranslation}
+            />
             <Button
               isToggle
               tooltip='Modify ROIs'

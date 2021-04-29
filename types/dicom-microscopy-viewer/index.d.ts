@@ -28,10 +28,13 @@ declare module 'dicom-microscopy-viewer' {
       get isModifyInteractionActive (): boolean
       activateDragZoomInteraction (options: object): void
       deactivateDragZoomInteraction (): void
+      get isDragZoomInteractionActive (): boolen
       activateSnapInteraction (options: object): void
       deactivateSnapInteraction (): void
+      get isSnapInteractionActive (): boolen
       activateTranslateInteraction (options: object): void
       deactivateTranslateInteraction (): void
+      get isTranslateInteractionActive (): boolen
       getAllROIs (): roi.ROI[]
       removeAllROIs (): void
       getROI (uid: string): roi.ROI
