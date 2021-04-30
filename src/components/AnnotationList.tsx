@@ -7,7 +7,7 @@ import Annotation from './Annotation'
 interface AnnotationListProps {
   rois: dmv.roi.ROI[]
   selectedRoiUID?: string
-  onRoiSelection: (
+  onSelection: (
     { roiUID }: { roiUID: string }
   ) => void
 }
@@ -15,7 +15,11 @@ interface AnnotationListProps {
 class AnnotationList extends React.Component<AnnotationListProps, {}> {
   render (): React.ReactNode {
     const items = this.props.rois.map((roi, index) => (
-      <Annotation key={roi.uid} roi={roi} index={index} />
+      <Annotation
+        key={roi.uid}
+        roi={roi}
+        index={index}
+      />
     ))
     const selectedItems = []
     if (this.props.selectedRoiUID !== undefined) {
@@ -25,10 +29,8 @@ class AnnotationList extends React.Component<AnnotationListProps, {}> {
     const handleMenuItemSelection = (
       object: any
     ): void => {
-      this.setState(state => ({
-        selectedRoiUID: object.key
-      }))
-      this.props.onRoiSelection({ roiUID: object.key })
+      this.setState(state => ({ selectedRoiUID: object.key }))
+      this.props.onSelection({ roiUID: object.key })
     }
 
     return (

@@ -93,6 +93,24 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
 
   private labelViewer?: dmv.viewer.LabelImageViewer
 
+  private defaultRoiStyle: {
+    stroke?: { color: number[], width: number }
+    fill?: { color: number[] }
+  } = {
+    stroke: { color: [38, 178, 255, 1], width: 1 },
+    fill: { color: [255, 255, 255, 0.2] }
+  }
+
+  private selectionColor: number[] = [140, 184, 198]
+
+  private selectedRoiStyle: {
+    stroke?: { color: number[], width: number }
+    fill?: { color: number[] }
+  } = {
+    stroke: { color: [...this.selectionColor, 1], width: 3 },
+    fill: { color: [...this.selectionColor, 0.2] }
+  }
+
   constructor (props: ViewerProps) {
     super(props)
     this.volumeViewer = undefined
@@ -102,6 +120,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     this.handleRoiTranslation = this.handleRoiTranslation.bind(this)
     this.handleRoiModification = this.handleRoiModification.bind(this)
     this.handleRoiVisibility = this.handleRoiVisibility.bind(this)
+    this.handleRoiActivation = this.handleRoiActivation.bind(this)
     this.handleRoiRemoval = this.handleRoiRemoval.bind(this)
     this.handleRoiSelection = this.handleRoiSelection.bind(this)
     this.handleReportGeneration = this.handleReportGeneration.bind(this)
@@ -207,22 +226,23 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     document.body.addEventListener(
       'dicommicroscopyviewer_roi_selected',
       (event: CustomEventInit) => {
-        const roi = event.detail.payload as dmv.roi.ROI
-        if (roi !== null) {
-          console.debug(`selected ROI "${roi.uid}"`)
-          if (this.volumeViewer !== undefined) {
-            const style: {
-              stroke?: { color: number[], width: number }
-              fill?: { color: number[] }
-            } = {}
-            const color = [140, 184, 198]
-            style.stroke = { color: [...color, 1], width: 3 }
-            style.fill = { color: [...color, 0.2] }
-            this.volumeViewer.setROIStyle(roi.uid, style)
+        const selectedRoi = event.detail.payload as dmv.roi.ROI
+        if (this.volumeViewer !== undefined) {
+          if (selectedRoi !== null) {
+            console.debug(`selected ROI "${selectedRoi.uid}"`)
+            const viewer = this.volumeViewer
+            if (viewer !== undefined) {
+              viewer.setROIStyle(selectedRoi.uid, this.selectedRoiStyle)
+              viewer.getAllROIs().forEach((roi) => {
+                if (roi.uid !== selectedRoi.uid) {
+                  viewer.setROIStyle(roi.uid, this.defaultRoiStyle)
+                }
+              })
+            }
+            this.setState(state => ({ selectedRoiUID: selectedRoi.uid }))
+          } else {
+            this.setState(state => ({ selectedRoiUID: undefined }))
           }
-          this.setState(state => ({ selectedRoiUID: roi.uid }))
-        } else {
-          this.setState(state => ({ selectedRoiUID: undefined }))
         }
       }
     )
@@ -433,8 +453,39 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     if (this.volumeViewer === undefined) {
       return
     }
-    // TODO: update ROI style
+    console.log(`selected ROI ${roiUID}`)
+    this.volumeViewer.getAllROIs().forEach((roi) => {
+      var style = this.defaultRoiStyle
+      if (roi.uid === roiUID) {
+        style = this.selectedRoiStyle
+      }
+      if (this.volumeViewer !== undefined) {
+        this.volumeViewer.setROIStyle(roi.uid, style)
+      }
+    })
     this.setState(state => ({ selectedRoiUID: roiUID }))
+  }
+
+  handleRoiActivation ({ roiUID }: { roiUID: string }): void {
+    const viewer = this.volumeViewer
+    if (viewer === undefined) {
+      return
+    }
+    if (this.state.selectedRoiUID === undefined) {
+      console.log(`show ROI ${roiUID}`)
+      this.setState(state => ({ selectedRoiUID: roiUID }))
+      viewer.setROIStyle(roiUID, this.selectedRoiStyle)
+      viewer.getAllROIs().forEach((roi) => {
+        if (roi.uid !== roiUID) {
+          viewer.setROIStyle(roi.uid, this.defaultRoiStyle)
+        }
+      })
+    } else {
+      console.log(`hide ROI ${roiUID}`)
+      this.setState(state => ({ selectedRoiUID: undefined }))
+      viewer.setROIStyle(roiUID, {})
+    }
+
   }
 
   handleRoiDrawing ({ geometryType }: { geometryType: string }): void {
@@ -450,9 +501,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       this.volumeViewer.deactivateTranslateInteraction()
       this.volumeViewer.deactivateSelectInteraction()
       this.volumeViewer.deactivateModifyInteraction()
-      this.volumeViewer.activateDrawInteraction({ geometryType, 
-                markup: "measurement",
- })
+      this.volumeViewer.activateDrawInteraction({ geometryType })
     }
   }
 
@@ -520,6 +569,10 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     } else {
       this.volumeViewer.showROIs()
       this.volumeViewer.activateSelectInteraction({})
+      const uid = this.state.selectedRoiUID
+      if (uid !== undefined) {
+        this.volumeViewer.setROIStyle(uid, this.selectedRoiStyle)
+      }
     }
   }
 
@@ -584,6 +637,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
             orientation: 'vertical'
           })
           this.labelViewer.render({ container: this.labelViewport.current })
+          console.log(this.labelViewer)
         }
       }
 
@@ -702,7 +756,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
           <AnnotationList
             rois={rois}
             selectedRoiUID={this.state.selectedRoiUID}
-            onRoiSelection={this.handleRoiSelection}
+            onSelection={this.handleRoiSelection}
           />
         </>
       )
