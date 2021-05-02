@@ -14,7 +14,7 @@ import {
 import * as dmv from 'dicom-microscopy-viewer'
 import * as dwc from 'dicomweb-client'
 
-import { AnnotationConfig } from '../AppConfig'
+import { AnnotationSettings } from '../AppConfig'
 import Patient from './Patient'
 import Study from './Study'
 import SeriesList from './SeriesList'
@@ -29,7 +29,7 @@ interface ViewerProps extends RouteComponentProps {
     version: string
     uid: string
   }
-  annotations: AnnotationConfig[]
+  annotations: AnnotationSettings[]
   user?: {
     name: string
     username: string
@@ -83,7 +83,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
   handleSeriesSelection (
     { seriesInstanceUID }: { seriesInstanceUID: string }
   ): void {
-    console.info(`selected series "${seriesInstanceUID}"`)
+    console.info(`switch to series "${seriesInstanceUID}"`)
     this.props.history.push(
       `/studies/${this.props.studyInstanceUID}/series/${seriesInstanceUID}`
     )
@@ -95,10 +95,12 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     }
     const studyMetadata = this.state.series[0] as dmv.metadata.Study
 
+    /* If a series is encoded in the path, route the viewer to this series.
+     * Otherwise select the first series contained in the study.
+     */
     let selectedSeriesInstanceUID
     if (this.props.location.pathname.includes('series/')) {
       const fragments = this.props.location.pathname.split('/')
-      console.log('LOCATION ', this.props.location, fragments)
       selectedSeriesInstanceUID = fragments[4]
     } else {
       const seriesMetadata = this.state.series[0] as dmv.metadata.Series

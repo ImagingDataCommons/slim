@@ -15,7 +15,15 @@ window.config = {
         schemeDesignator: 'SCT',
         meaning: 'Tumor'
       },
-      color: [255, 0, 0]
+      style: {
+        stroke: {
+          color: [255, 0, 0, 1],
+          width: 1
+        },
+        fill: {
+          color: [255, 255, 255, 0.2]
+        }
+      }
     },
     {
       finding: {
@@ -23,8 +31,15 @@ window.config = {
         schemeDesignator: 'SCT',
         meaning: 'Tissue'
       },
-      color: [0, 0, 255]
+      style: {
+        stroke: {
+          color: [0, 0, 255, 1],
+          width: 1
+        },
+        fill: {
+          color: [255, 255, 255, 0.2]
+        }
+      }
     }
-
   ]
 };

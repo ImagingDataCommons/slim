@@ -6,39 +6,16 @@ import { Divider } from 'antd'
 import Description from './Description'
 import Patient from './Patient'
 import Study from './Study'
+import { findContentItemsByName } from '../utils/sr'
 
-const hasName = (
-  item: dcmjs.sr.valueTypes.ContentItem,
-  name: dcmjs.sr.coding.CodedConcept
-): boolean => {
-  const concept = item.ConceptNameCodeSequence[0]
-  return (
-    concept.CodeValue === name.CodeValue &&
-    concept.CodingSchemeDesignator === name.CodingSchemeDesignator
-  )
-}
 
-const hasValueType = (
+export const hasValueType = (
   item: dcmjs.sr.valueTypes.ContentItem,
   valueType: string
 ): boolean => {
   return item.ValueType === valueType
 }
 
-const findItemsByName = (
-  { content, name }: {
-    content: dcmjs.sr.valueTypes.ContentItem[]
-    name: dcmjs.sr.coding.CodedConcept
-  }
-): dcmjs.sr.valueTypes.ContentItem[] => {
-  const items: dcmjs.sr.valueTypes.ContentItem[] = []
-  content.forEach(i => {
-    if (hasName(i, name)) {
-      items.push(i)
-    }
-  })
-  return items
-}
 
 const findMeasurementItems = (
   { content }: { content: dcmjs.sr.valueTypes.ContentItem[] }
@@ -68,7 +45,7 @@ const findEvaluationItems = (
 
 const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
   // TID 1500 Measurement Report
-  const matches = findItemsByName({
+  const matches = findContentItemsByName({
     content: report.ContentSequence,
     name: new dcmjs.sr.coding.CodedConcept({
       value: '126010',
@@ -85,7 +62,7 @@ const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
   }
   const measurementsItem = matches[0] as dcmjs.sr.valueTypes.ContainerContentItem
   // TID 1410 Planar ROI Measurements and Qualitative Evaluations
-  const measurementGroupItems = findItemsByName({
+  const measurementGroupItems = findContentItemsByName({
     content: measurementsItem.ContentSequence,
     name: new dcmjs.sr.coding.CodedConcept({
       value: '125007',
@@ -99,7 +76,7 @@ const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
     const evaluations = []
     var observerType: string
     const group = item as dcmjs.sr.valueTypes.ContainerContentItem
-    let items = findItemsByName({
+    let items = findContentItemsByName({
       content: group.ContentSequence,
       name: new dcmjs.sr.coding.CodedConcept({
         value: '112040',
@@ -112,7 +89,7 @@ const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
     }
     const trackingUIDItem = items[0] as dcmjs.sr.valueTypes.UIDRefContentItem
 
-    items = findItemsByName({
+    items = findContentItemsByName({
       content: group.ContentSequence,
       name: new dcmjs.sr.coding.CodedConcept({
         value: '121071',
@@ -124,7 +101,7 @@ const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
       throw new Error('Content item "Finding" not found.')
     }
 
-    items = findItemsByName({
+    items = findContentItemsByName({
       content: group.ContentSequence,
       name: new dcmjs.sr.coding.CodedConcept({
         value: '111001',
@@ -140,7 +117,7 @@ const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
       observerType = 'Person'
     }
 
-    items = findItemsByName({
+    items = findContentItemsByName({
       content: group.ContentSequence,
       name: new dcmjs.sr.coding.CodedConcept({
         value: '111003',
@@ -153,7 +130,7 @@ const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
       evaluations.push(algorithmVersionItem)
     }
 
-    items = findItemsByName({
+    items = findContentItemsByName({
       content: group.ContentSequence,
       name: new dcmjs.sr.coding.CodedConcept({
         value: '111030',
@@ -227,6 +204,7 @@ const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
   return rois
 }
 
+
 class MeasurementReport {
   public PersonObserverName?: string
 
@@ -245,7 +223,7 @@ class MeasurementReport {
   public ROIs: dmv.roi.ROI[] = []
 
   constructor (report: dmv.metadata.Comprehensive3DSR) {
-    let items = findItemsByName({
+    let items = findContentItemsByName({
       content: report.ContentSequence,
       name: new dcmjs.sr.coding.CodedConcept({
         value: '121039',
@@ -261,7 +239,7 @@ class MeasurementReport {
     )
     this.SpecimenUID = specimenUIDItem.UID
 
-    items = findItemsByName({
+    items = findContentItemsByName({
       content: report.ContentSequence,
       name: new dcmjs.sr.coding.CodedConcept({
         value: '121041',
@@ -277,7 +255,7 @@ class MeasurementReport {
     )
     this.SpecimenIdentifier = specimenIdItem.TextValue
 
-    items = findItemsByName({
+    items = findContentItemsByName({
       content: report.ContentSequence,
       name: new dcmjs.sr.coding.CodedConcept({
         value: '111700',
@@ -295,7 +273,7 @@ class MeasurementReport {
     )
     this.ContainerIdentifier = containerIdItem.TextValue
 
-    items = findItemsByName({
+    items = findContentItemsByName({
       content: report.ContentSequence,
       name: new dcmjs.sr.coding.CodedConcept({
         value: '121008',
@@ -310,7 +288,7 @@ class MeasurementReport {
       this.PersonObserverName = personNameItem.PersonName
     }
 
-    items = findItemsByName({
+    items = findContentItemsByName({
       content: report.ContentSequence,
       name: new dcmjs.sr.coding.CodedConcept({
         value: '128774',
@@ -325,7 +303,7 @@ class MeasurementReport {
       this.PersonObserverLoginName = personLoginNameItem.TextValue
     }
 
-    items = findItemsByName({
+    items = findContentItemsByName({
       content: report.ContentSequence,
       name: new dcmjs.sr.coding.CodedConcept({
         value: '121012',
@@ -341,7 +319,7 @@ class MeasurementReport {
     )
     this.DeviceObserverUID = deviceUIDItem.UID
 
-    items = findItemsByName({
+    items = findContentItemsByName({
       content: report.ContentSequence,
       name: new dcmjs.sr.coding.CodedConcept({
         value: '121013',

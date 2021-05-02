@@ -6,7 +6,6 @@ import {
 import {
   FaDrawPolygon,
   FaEye,
-  FaHandPaper,
   FaHandPointer,
   FaTrash,
   FaSave
@@ -30,7 +29,32 @@ import AnnotationList from './AnnotationList'
 import Button from './Button'
 import Report, { MeasurementReport } from './Report'
 import SpecimenList from './SpecimenList'
-import { AnnotationConfig } from '../AppConfig'
+import { AnnotationSettings } from '../AppConfig'
+import { findContentItemsByName } from '../utils/sr'
+
+
+const _buildKey = (concept: dcmjs.sr.coding.CodedConcept): string => {
+  const codingScheme = concept.CodingSchemeDesignator
+  const codeValue = concept.CodeValue
+  return `${codingScheme}-${codeValue}`
+}
+
+const _getRoiKey = (roi: dmv.roi.ROI): string => {
+  const matches = findContentItemsByName({
+    content: roi.evaluations,
+    name: new dcmjs.sr.coding.CodedConcept({
+      value: '121071',
+      meaning: 'Finding',
+      schemeDesignator: 'DCM'
+    })
+  })
+  if (matches.length === 0) {
+    throw Error(`No finding found for ROI ${roi.uid}`)
+  }
+  const finding = matches[0] as dcmjs.sr.valueTypes.CodeContentItem
+  const findingName = finding.ConceptCodeSequence[0]
+  return _buildKey(findingName)
+}
 
 
 interface SlideViewerProps extends RouteComponentProps {
@@ -42,7 +66,7 @@ interface SlideViewerProps extends RouteComponentProps {
     version: string
     uid: string
   }
-  annotations: AnnotationConfig[]
+  annotations: AnnotationSettings[]
   user?: {
     name: string
     username: string
@@ -97,51 +121,114 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   constructor (props: SlideViewerProps) {
     super(props)
-    props.annotations.forEach((annotation: AnnotationConfig) => {
+    props.annotations.forEach((annotation: AnnotationSettings) => {
       const findingType = new dcmjs.sr.coding.CodedConcept(annotation.finding)
       this.findingTypes.push(findingType)
-      const key = `${findingType.schemeDesignator}-${findingType.value}`
-      this.roiStyles[key] = {
-        stroke: {
-          color: annotation.color,
-          width: 1
-        },
-        fill: {
-          color: [255, 255, 255, 0.2]
-        }
-      }
+      const key = _buildKey(findingType)
+      this.roiStyles[key] = annotation.style
     })
 
     this.volumeViewer = undefined
     this.labelViewer = undefined
     this.handleRoiDrawing = this.handleRoiDrawing.bind(this)
-    this.handleRoiTranslation = this.handleRoiTranslation.bind(this)
     this.handleRoiModification = this.handleRoiModification.bind(this)
     this.handleRoiVisibility = this.handleRoiVisibility.bind(this)
-    this.handleRoiActivation = this.handleRoiActivation.bind(this)
+    this.handleAnnotationVisibility = this.handleAnnotationVisibility.bind(this)
     this.handleRoiRemoval = this.handleRoiRemoval.bind(this)
-    this.handleRoiSelection = this.handleRoiSelection.bind(this)
-    this.handleReportGeneration = this.handleReportGeneration.bind(this)
     this.handleAnnotationSelection = this.handleAnnotationSelection.bind(this)
+    this.handleReportGeneration = this.handleReportGeneration.bind(this)
+    this.handleAnnotationFindingSelection = this.handleAnnotationFindingSelection.bind(this)
     this.handleAnnotationCompletion = this.handleAnnotationCompletion.bind(this)
     this.handleAnnotationCancellation = this.handleAnnotationCancellation.bind(this)
     this.handleReportVerification = this.handleReportVerification.bind(this)
     this.handleReportCancellation = this.handleReportCancellation.bind(this)
   }
 
-  componentWillReceiveProps (nextProps: SlideViewerProps) {
-    if (this.props.location !== nextProps.location) {
-      console.log(`update viewer for series ${nextProps.seriesInstanceUID}`)
-      this.populateViewports(nextProps.seriesInstanceUID)
+  componentDidUpdate (previousProps: SlideViewerProps) {
+    /* Fetch data and update the viewports if the route has changed,
+     * i.e., if another series has been selected.
+     */
+    if (this.props.location !== previousProps.location) {
+      console.log(
+        'switch viewports from series ' +
+        previousProps.seriesInstanceUID +
+        ' to series' +
+        this.props.seriesInstanceUID
+      )
+      this.populateViewports()
     }
   }
 
-  populateViewports (seriesInstanceUID: string): void {
-    console.info(`retrieve metadata for series "${seriesInstanceUID}"`)
+  /* Retrieve structured report instances that contain regions of interests
+   * with 3D spatial coordinates defined in the same frame of reference as the
+   * currently selected series and adds them to the VOLUME image viewer.
+   */
+  addAnnotations (): void {
+    console.info('search for Comprehensive 3D SR instances')
+    this.setState(state => ({ isLoading: true }))
+    this.props.client.searchForInstances({
+      studyInstanceUID: this.props.studyInstanceUID,
+      queryParams: {
+        Modality: 'SR',
+        SOPClassUID: '1.2.840.10008.5.1.4.1.1.88.34'
+      }
+    }).then((matchedInstances): void => {
+      matchedInstances.forEach(i => {
+        const instance = dmv.metadata.formatMetadata(i) as dmv.metadata.Instance
+        console.info(`retrieve SR instance "${instance.SOPInstanceUID}"`)
+        this.props.client.retrieveInstance({
+          studyInstanceUID: instance.StudyInstanceUID,
+          seriesInstanceUID: instance.SeriesInstanceUID,
+          sopInstanceUID: instance.SOPInstanceUID
+        }).then((retrievedInstance): void => {
+          const data = dcmjs.data.DicomMessage.readFile(retrievedInstance)
+          const dataset = dmv.metadata.formatMetadata(data.dict)
+          const report = dataset as unknown as dmv.metadata.Comprehensive3DSR
+          const content = new MeasurementReport(report)
+          content.ROIs.forEach(roi => {
+            console.info(`add ROI "${roi.uid}"`)
+            const scoord3d = roi.scoord3d
+            const image = (
+              this.state.metadata[0] as
+              dmv.metadata.VLWholeSlideMicroscopyImage
+            )
+            if (scoord3d.frameOfReferenceUID === image.FrameOfReferenceUID) {
+              if (this.volumeViewer !== undefined) {
+                const key = _getRoiKey(roi)
+                const style = this.roiStyles[key]
+                this.volumeViewer.addROI(roi, style)
+              } else {
+                console.error(
+                  `could not add ROI "${roi.uid}" ` +
+                  'because viewer has not yet been instantiated'
+                )
+              }
+            }
+          })
+          // State update will also ensure that the component is re-rendered.
+          this.setState(state => ({ isLoading: false }))
+        }).catch((error) => {
+          message.error('An error occured. Annotation could not be loaded')
+          console.error(error)
+        })
+      })
+    }).catch((error) => {
+      message.error('An error occured. Annotations could not be loaded')
+      console.error(error)
+    })
+  }
+
+  /* Retrieve metadata for image instances in the currently selected series and
+   * instantiate the VOLUME and LABEL image viewers.
+   */
+  populateViewports (): void {
+    console.info(
+      `retrieve metadata for series "${this.props.seriesInstanceUID}"`
+    )
     this.setState(state => ({ isLoading: true }))
     this.props.client.retrieveSeriesMetadata({
       studyInstanceUID: this.props.studyInstanceUID,
-      seriesInstanceUID: seriesInstanceUID
+      seriesInstanceUID: this.props.seriesInstanceUID
     }).then((retrievedMetadata): void => {
       const series: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
       retrievedMetadata.forEach(item => {
@@ -169,7 +256,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         })
         this.volumeViewer.render({ container: this.volumeViewport.current })
         this.volumeViewer.activateSelectInteraction({})
-        this.volumeViewer.toggleOverviewMap()
       }
 
       const labelMetadata = retrievedMetadata.filter((item, index) => {
@@ -203,70 +289,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         console.error(error)
       }
     )
-
-    console.info('search for Comprehensive 3D SR instances')
-    this.setState(state => ({ isLoading: true }))
-    this.props.client.searchForInstances({
-      studyInstanceUID: this.props.studyInstanceUID,
-      queryParams: {
-        Modality: 'SR',
-        SOPClassUID: '1.2.840.10008.5.1.4.1.1.88.34'
-      }
-    }).then((matchedInstances): void => {
-      matchedInstances.forEach(i => {
-        const instance = dmv.metadata.formatMetadata(i) as dmv.metadata.Instance
-        console.info(`retrieve SR instance "${instance.SOPInstanceUID}"`)
-        this.props.client.retrieveInstance({
-          studyInstanceUID: instance.StudyInstanceUID,
-          seriesInstanceUID: instance.SeriesInstanceUID,
-          sopInstanceUID: instance.SOPInstanceUID
-        }).then((retrievedInstance): void => {
-          const data = dcmjs.data.DicomMessage.readFile(retrievedInstance)
-          const dataset = dmv.metadata.formatMetadata(data.dict)
-          const report = dataset as unknown as dmv.metadata.Comprehensive3DSR
-          const content = new MeasurementReport(report)
-          content.ROIs.forEach(roi => {
-            console.info(`add ROI "${roi.uid}"`)
-            const scoord3d = roi.scoord3d
-            const image = (
-              this.state.metadata[0] as
-              dmv.metadata.VLWholeSlideMicroscopyImage
-            )
-            if (scoord3d.frameOfReferenceUID === image.FrameOfReferenceUID) {
-              if (this.volumeViewer !== undefined) {
-                const style: {
-                  stroke?: { color: number[], width: number }
-                  fill?: { color: number[] }
-                } = {}
-                if (roi.properties.observerType === 'Device') {
-                  const color = [238, 175, 48]
-                  style.stroke = { color: [...color, 1], width: 2 }
-                  style.fill = { color: [...color, 0.2] }
-                } else {
-                  const color = [38, 178, 255]
-                  style.stroke = { color: [...color, 1], width: 1 }
-                  style.fill = { color: [...color, 0.2] }
-                }
-                this.volumeViewer.addROI(roi, style)
-              } else {
-                console.error(
-                  `could not add ROI "${roi.uid}" ` +
-                  'because viewer has not yet been instantiated'
-                )
-              }
-            }
-          })
-          // State update will also ensure that the component is re-rendered.
-          this.setState(state => ({ isLoading: false }))
-        }).catch((error) => {
-          message.error('An error occured. Annotation could not be loaded')
-          console.error(error)
-        })
-      })
-    }).catch((error) => {
-      message.error('An error occured. Annotations could not be loaded')
-      console.error(error)
-    })
+    this.addAnnotations()
   }
 
   componentDidMount (): void {
@@ -296,7 +319,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         if (this.volumeViewer !== undefined) {
           if (selectedRoi !== null) {
             console.debug(`selected ROI "${selectedRoi.uid}"`)
-            const key = 'SCT-108369006'  // FIXME
+            const key = _getRoiKey(selectedRoi)
             const viewer = this.volumeViewer
             if (viewer !== undefined) {
               viewer.setROIStyle(selectedRoi.uid, this.selectedRoiStyle)
@@ -322,10 +345,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       }
     )
 
-    this.populateViewports(this.props.seriesInstanceUID)
+    this.populateViewports()
   }
 
-  handleAnnotationSelection (value: string): void {
+  /* Handler that gets called when a finding has been selected for an
+   * annotation after the region of interest has been drawn.
+   */
+  handleAnnotationFindingSelection (value: string): void {
     const selected = this.findingTypes.find(code => code.CodeValue === value)
     if (selected === undefined) {
       throw new Error('Unknown finding type selected for annotation.')
@@ -334,6 +360,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.setState(state => ({ selectedFindingType: selected }))
   }
 
+  /* Handler that gets called when an annotation has been completed. */
   handleAnnotationCompletion (): void {
     const annotatedRoi = this.state.annotatedRoi
     const findingType = this.state.selectedFindingType
@@ -353,11 +380,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.setState(state => ({ annotatedRoi: roi }))
       if (this.volumeViewer !== undefined) {
         this.volumeViewer.addROIEvaluation(roi.uid, evaluation)
+        const key = _buildKey(findingType)
+        var style = this.roiStyles[key]
+        this.volumeViewer.setROIStyle(roi.uid, style)
       }
     }
     this.setState(state => ({ showAnnotationModal: false }))
   }
 
+  /* Handler that gets called when an annotation has been cancelled. */
   handleAnnotationCancellation (): void {
     console.info('cancel annotation')
     const annotatedRoi = this.state.annotatedRoi
@@ -371,6 +402,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }))
   }
 
+  /* Handler that gets called when a report should be generated for the current
+   * set of annotations.
+   */
   handleReportGeneration (): void {
     if (this.volumeViewer === undefined) {
       return
@@ -504,6 +538,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }))
   }
 
+  /* Handler that gets called when a report should be verified. The current
+   * list of annotations will be presented to the user together with other
+   * pertinent metadata about the patient, study, and specimen.
+   */
   handleReportVerification (): void {
     console.info('verfied report')
 
@@ -557,6 +595,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }))
   }
 
+  /* Handler that gets called when report generation has been cancelled. */
   handleReportCancellation (): void {
     this.setState(state => ({
       showReportModal: false,
@@ -564,13 +603,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }))
   }
 
-  handleRoiSelection ({ roiUID }: { roiUID: string }): void {
+  /* Handler that gets called when an annotation has been selected from the
+   * current list of annotations.
+   */
+  handleAnnotationSelection ({ roiUID }: { roiUID: string }): void {
     if (this.volumeViewer === undefined) {
       return
     }
     console.log(`selected ROI ${roiUID}`)
     this.volumeViewer.getAllROIs().forEach((roi) => {
-      const key = 'SCT-108369006'  // FIXME
+      const key = _getRoiKey(roi)
       var style = this.roiStyles[key]
       if (roi.uid === roiUID) {
         style = this.selectedRoiStyle
@@ -582,7 +624,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.setState(state => ({ selectedRoiUID: roiUID }))
   }
 
-  handleRoiActivation ({ roiUID }: { roiUID: string }): void {
+  /* Handle that gets called when the visibility of an annotation should be
+   * toggled, i.e., the annotation should be either displayed or hidden.
+   */
+  handleAnnotationVisibility ({ roiUID }: { roiUID: string }): void {
     const viewer = this.volumeViewer
     if (viewer === undefined) {
       return
@@ -593,7 +638,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       viewer.setROIStyle(roiUID, this.selectedRoiStyle)
       viewer.getAllROIs().forEach((roi) => {
         if (roi.uid !== roiUID) {
-          const key = 'SCT-108369006'  // FIXME
+          const key = _getRoiKey(roi)
           viewer.setROIStyle(roi.uid, this.roiStyles[key])
         }
       })
@@ -605,6 +650,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   }
 
+  /* Handler that will toggle the ROI drawing tool, i.e., either activate or
+   * de-activate it, depending on its current state.
+   */
   handleRoiDrawing ({ geometryType }: { geometryType: string }): void {
     if (this.volumeViewer === undefined) {
       return
@@ -615,29 +663,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.volumeViewer.activateSelectInteraction({})
     } else {
       console.info(`activate drawing of ROIs for geometry Type ${geometryType}`)
-      this.volumeViewer.deactivateTranslateInteraction()
       this.volumeViewer.deactivateSelectInteraction()
       this.volumeViewer.deactivateModifyInteraction()
       this.volumeViewer.activateDrawInteraction({ geometryType })
     }
   }
 
-  handleRoiTranslation (): void {
-    if (this.volumeViewer === undefined) {
-      return
-    }
-    console.info('toggle translation of ROIs')
-    if (this.volumeViewer.isTranslateInteractionActive) {
-      this.volumeViewer.deactivateTranslateInteraction()
-      this.volumeViewer.activateSelectInteraction({})
-    } else {
-      this.volumeViewer.deactivateModifyInteraction()
-      this.volumeViewer.deactivateDrawInteraction()
-      this.volumeViewer.deactivateSelectInteraction()
-      this.volumeViewer.activateTranslateInteraction({})
-    }
-  }
-
+  /* Handler that will toggle the ROI modification tool, i.e., either activate
+   * or de-activate it, depending on its current state.
+   */
   handleRoiModification (): void {
     if (this.volumeViewer === undefined) {
       return
@@ -648,12 +682,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.volumeViewer.activateSelectInteraction({})
     } else {
       this.volumeViewer.deactivateDrawInteraction()
-      this.volumeViewer.deactivateTranslateInteraction()
       this.volumeViewer.deactivateSelectInteraction()
       this.volumeViewer.activateModifyInteraction({})
     }
   }
 
+  /* Handler that will toggle the ROI removal tool, i.e., either activate
+   * or de-activate it, depending on its current state.
+   */
   handleRoiRemoval (): void {
     if (this.volumeViewer === undefined) {
       return
@@ -671,6 +707,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.setState(state => ({ selectedRoiUID: undefined }))
   }
 
+  /* Handler that will toggle the ROI visibility tool, i.e., either activate
+   * or de-activate it, depending on its current state.
+   */
   handleRoiVisibility (): void {
     if (this.volumeViewer === undefined) {
       return
@@ -678,7 +717,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     console.info('toggle visibility of ROIs')
     if (this.volumeViewer.areROIsVisible) {
       this.volumeViewer.deactivateDrawInteraction()
-      this.volumeViewer.deactivateTranslateInteraction()
       this.volumeViewer.deactivateSelectInteraction()
       this.volumeViewer.deactivateModifyInteraction()
       this.volumeViewer.hideROIs()
@@ -728,7 +766,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           <AnnotationList
             rois={rois}
             selectedRoiUID={this.state.selectedRoiUID}
-            onSelection={this.handleRoiSelection}
+            onSelection={this.handleAnnotationSelection}
           />
         </>
       )
@@ -746,12 +784,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             >
               <Button tooltip='Draw ROI' icon={FaDrawPolygon} />
             </Dropdown>
-            <Button
-              isToggle
-              tooltip='Shift ROIs'
-              icon={FaHandPaper}
-              onClick={this.handleRoiTranslation}
-            />
             <Button
               isToggle
               tooltip='Modify ROIs'
@@ -786,7 +818,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           >
             <Select
               style={{ minWidth: 130 }}
-              onSelect={this.handleAnnotationSelection}
+              onSelect={this.handleAnnotationFindingSelection}
               defaultActiveFirstOption
             >
               {this.findingTypes.map(code => {

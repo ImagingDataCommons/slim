@@ -1,12 +1,19 @@
 import * as dcmjs from 'dcmjs'
 
-
-export interface AnnotationConfig {
+export interface AnnotationSettings {
   finding: dcmjs.sr.coding.CodeOptions
-  color: number[]
+  style: {
+    stroke: {
+      color: number[]
+      width: number
+    }
+    fill: {
+      color: number[]
+    }
+  }
 }
 
-export interface ServerConfig {
+export interface ServerSettings {
   id: string
   url?: string
   path?: string
@@ -16,7 +23,7 @@ export interface ServerConfig {
   stowPathPrefix?: string
 }
 
-export interface OidcConfig {
+export interface OidcSettings {
   authority: string
   clientId: string
   redirectUri: string
@@ -25,9 +32,9 @@ export interface OidcConfig {
 }
 
 export default interface AppConfig {
-  servers: ServerConfig[]
+  servers: ServerSettings[]
   path: string
-  annotations: AnnotationConfig[]
+  annotations: AnnotationSettings[]
   organization?: string
-  oidc?: OidcConfig
+  oidc?: OidcSettings
 }

@@ -33,7 +33,7 @@ interface AppState {
 
 
 class App extends React.Component<AppProps, AppState> {
-  private readonly clientConfig: dwc.api.DICOMwebClientOptions
+  private readonly clientSettings: dwc.api.DICOMwebClientOptions
 
   private readonly tokenRefresher?: NodeJS.Timeout
 
@@ -47,12 +47,12 @@ class App extends React.Component<AppProps, AppState> {
     }
 
     if (server.url !== undefined) {
-      this.clientConfig = {
+      this.clientSettings = {
         url: server.url,
         headers: {}
       }
     } else if (server.path !== undefined) {
-      this.clientConfig = {
+      this.clientSettings = {
         url: `${window.location.origin}${server.path}`,
         headers: {}
       }
@@ -62,13 +62,13 @@ class App extends React.Component<AppProps, AppState> {
       )
     }
     if (server.qidoPathPrefix !== undefined) {
-      this.clientConfig.qidoUrlPrefix = server.qidoPathPrefix
+      this.clientSettings.qidoUrlPrefix = server.qidoPathPrefix
     }
     if (server.wadoPathPrefix !== undefined) {
-      this.clientConfig.wadoUrlPrefix = server.wadoPathPrefix
+      this.clientSettings.wadoUrlPrefix = server.wadoPathPrefix
     }
     if (server.stowPathPrefix !== undefined) {
-      this.clientConfig.stowUrlPrefix = server.stowPathPrefix
+      this.clientSettings.stowUrlPrefix = server.stowPathPrefix
     }
 
     // if (props.keycloak !== undefined) {
@@ -96,7 +96,7 @@ class App extends React.Component<AppProps, AppState> {
     //   ).catch(response => console.error(response))
 
     //   if (props.keycloak.token !== undefined) {
-    //     this.clientConfig.headers = {
+    //     this.clientSettings.headers = {
     //       Authorization: `Bearer ${props.keycloak.token}`
     //     }
     //   }
@@ -111,9 +111,9 @@ class App extends React.Component<AppProps, AppState> {
     //               console.debug('token refreshed')
     //               const token = props.keycloak.token
     //               if (token !== undefined) {
-    //                 this.clientConfig.headers.Authorization = `Bearer ${token}`
+    //                 this.clientSettings.headers.Authorization = `Bearer ${token}`
     //                 this.setState(state => ({
-    //                   client: new dwc.api.DICOMwebClient(this.clientConfig)
+    //                   client: new dwc.api.DICOMwebClient(this.clientSettings)
     //                 }))
     //               }
     //             } else {
@@ -130,7 +130,7 @@ class App extends React.Component<AppProps, AppState> {
     // }
 
     this.state = {
-      client: new dwc.api.DICOMwebClient(this.clientConfig)
+      client: new dwc.api.DICOMwebClient(this.clientSettings)
     }
   }
 
