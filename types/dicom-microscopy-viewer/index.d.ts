@@ -13,6 +13,16 @@ declare module 'dicom-microscopy-viewer' {
       useWebGL?: boolean
     }
 
+    export interface ROIStyleOptions {
+      stroke?: {
+        color: number[]
+        width?: number
+      }
+      fill?: {
+        color: number[]
+      }
+    }
+
     export class VolumeImageViewer {
       constructor (options: VolumeImageViewerOptions)
       render (options: object): void

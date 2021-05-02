@@ -8,6 +8,7 @@ import SeriesItem from './SeriesItem'
 interface SeriesListProps {
   metadata: dmv.metadata.Series[]
   client: dwc.api.DICOMwebClient
+  initiallySelectedSeriesInstanceUID: string
   onSeriesSelection: (
     { seriesInstanceUID }: { seriesInstanceUID: string }
   ) => void
@@ -21,7 +22,7 @@ class SeriesList extends React.Component<SeriesListProps, SeriesListState> {
   constructor (props: SeriesListProps) {
     super(props)
     this.state = {
-      selectedSeriesInstanceUID: this.props.metadata[0].SeriesInstanceUID
+      selectedSeriesInstanceUID: this.props.initiallySelectedSeriesInstanceUID
     }
   }
 
@@ -45,6 +46,7 @@ class SeriesList extends React.Component<SeriesListProps, SeriesListState> {
     const handleMenuItemSelection = (
       object: any
     ): void => {
+      console.info(`select series "${object.key}"`)
       this.setState(state => ({
         selectedSeriesInstanceUID: object.key
       }))
@@ -56,7 +58,6 @@ class SeriesList extends React.Component<SeriesListProps, SeriesListState> {
         style={{ width: '100%' }}
         selectedKeys={[this.state.selectedSeriesInstanceUID]}
         onSelect={handleMenuItemSelection}
-        onClick={handleMenuItemSelection}
         mode='inline'
         inlineIndent={0}
       >

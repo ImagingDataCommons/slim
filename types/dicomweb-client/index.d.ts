@@ -6,6 +6,7 @@ declare module 'dicomweb-client' {
       url: string
       qidoUrlPrefix?: string
       wadoUrlPrefix?: string
+      stowUrlPrefix?: string
       headers: {
         Authorization?: string
       }
@@ -97,32 +98,54 @@ declare module 'dicomweb-client' {
     export class DICOMwebClient {
       constructor (options: DICOMwebClientOptions)
 
+      // STOW-RS
+      storeInstances (options: StoreInstancesOptions): Promise<string>
+
       // QIDO-RS
-      searchForStudies (options: SearchForStudiesOptions): Promise<Study[]>
+      searchForStudies (
+        options: SearchForStudiesOptions
+      ): Promise<Study[]>
 
-      searchForSeries (options: SearchForSeriesOptions): Promise<Series[]>
+      searchForSeries (
+        options: SearchForSeriesOptions
+      ): Promise<Series[]>
 
-      searchForInstances (options: SearchForInstancesOptions): Promise<Instance[]>
+      searchForInstances (
+        options: SearchForInstancesOptions
+      ): Promise<Instance[]>
 
       // WADO-RS
-      retrieveStudyMetadata (options: RetrieveStudyMetadataOptions): Promise<Metadata[]>
+      retrieveStudyMetadata (
+        options: RetrieveStudyMetadataOptions
+      ): Promise<Metadata[]>
 
-      retrieveSeriesMetadata (options: RetrieveSeriesMetadataOptions): Promise<Metadata[]>
+      retrieveSeriesMetadata (
+        options: RetrieveSeriesMetadataOptions
+      ): Promise<Metadata[]>
 
-      retrieveInstanceMetadata (options: RetrieveInstanceMetadataOptions): Promise<Metadata[]>
+      retrieveInstanceMetadata (
+        options: RetrieveInstanceMetadataOptions
+      ): Promise<Metadata[]>
 
-      retrieveInstance (options: RetrieveInstanceOptions): Promise<Dataset>
+      retrieveInstance (
+        options: RetrieveInstanceOptions
+      ): Promise<Dataset>
 
-      retrieveInstanceFrames (options: RetrieveInstanceFramesOptions): Promise<Pixeldata[]>
+      retrieveInstanceFrames (
+        options: RetrieveInstanceFramesOptions
+      ): Promise<Pixeldata[]>
 
-      retrieveInstanceRendered (options: RetrieveInstanceRenderedOptions): Promise<Pixeldata>
+      retrieveInstanceRendered (
+        options: RetrieveInstanceRenderedOptions
+      ): Promise<Pixeldata>
 
-      retrieveInstanceFramesRendered (options: RetrieveInstanceFramesRenderedOptions): Promise<Pixeldata>
+      retrieveInstanceFramesRendered (
+        options: RetrieveInstanceFramesRenderedOptions
+      ): Promise<Pixeldata>
 
-      retrieveBulkData (options: RetrieveBulkDataOptions): Promise<Bulkdata>
-
-      // STOW-RS
-      storeInstances (options: StoreInstancesOptions): Promise<>
+      retrieveBulkData (
+        options: RetrieveBulkDataOptions
+      ): Promise<Bulkdata>
     }
 
     export interface MetadataElement {

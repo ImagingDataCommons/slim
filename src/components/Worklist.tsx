@@ -48,10 +48,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   }
 
   handleClick (event: React.SyntheticEvent, study: dmv.metadata.Study): void {
-    this.props.history.push({
-      pathname: `/studies/${study.StudyInstanceUID}`,
-      state: { metadata: study }
-    })
+    this.props.history.push(`/studies/${study.StudyInstanceUID}`)
   }
 
   fetchData (offset: number, limit: number): void {
