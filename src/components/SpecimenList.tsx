@@ -8,6 +8,9 @@ interface SpecimenListProps {
   metadata: dmv.metadata.VLWholeSlideMicroscopyImage[]
 }
 
+/**
+ * React component representing a list of DICOM Specimen Information Entities.
+ */
 class SpecimenList extends React.Component<SpecimenListProps, {}> {
   render (): React.ReactNode {
     if (this.props.metadata[0] === undefined) {

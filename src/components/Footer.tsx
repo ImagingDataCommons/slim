@@ -10,6 +10,9 @@ interface FooterProps {
   }
 }
 
+/**
+ * React component for the application footer.
+ */
 class Footer extends React.Component<FooterProps, {}> {
   render (): React.ReactNode {
     return (

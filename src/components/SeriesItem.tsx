@@ -1,7 +1,5 @@
 import React from 'react'
-import {
-  FaSpinner
-} from 'react-icons/fa'
+import { FaSpinner } from 'react-icons/fa'
 
 import * as dmv from 'dicom-microscopy-viewer'
 import * as dwc from 'dicomweb-client'
@@ -20,15 +18,12 @@ interface SeriesItemState {
   isLoading: boolean
 }
 
-/** React component representing a DICOM Series Information Entity.
- * If the series contains a VL Whole Slide Microscopy Image of type OVERVIEW,
- * a DICOM Microscopy Viewer will be instantiated and injected into a viewport
- * within the component.
- * When selected (clicked), a separate DICOM Microscopy Viewer will be
- * instantiated for interactive multi-scale visualization of the
- * VL Whole Slide Microscopy Image of type VOLUME contained in the series.
- * this.overviewViewer will be injected into a separate viewport outside of the
- * component.
+/**
+ * React component representing a DICOM Series Information Entity that displays
+ * common series-level attributes of contained DICOM Slide Microscopy images
+ * as well as the OVERVIEW image (if available).
+ * When selected a Slide Viewer instance is created for the display of the
+ * contained images.
  */
 class SeriesItem extends React.Component<SeriesItemProps, SeriesItemState> {
   state = {

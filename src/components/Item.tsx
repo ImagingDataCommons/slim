@@ -13,9 +13,10 @@ interface ItemProps {
   hasLongValues?: boolean
 }
 
-/** List item that consists of a header element containing an identifier and
- * a body element containing a description list of attributes rendered as
- * name-value pairs.
+/**
+ * React component representing a list item that consists of a header element
+ * containing an identifier and a body element containing a description list
+ * of attributes rendered as name-value pairs.
  */
 class Item extends React.Component<ItemProps, {}> {
   render (): React.ReactNode {

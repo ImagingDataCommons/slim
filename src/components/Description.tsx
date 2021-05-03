@@ -21,6 +21,10 @@ interface DescriptionProps {
   hasLongValues?: boolean
 }
 
+/**
+ * React component for a description consisting of a header containing a
+ * header and a body containing a list of name-value pairs.
+ */
 class Description extends React.Component<DescriptionProps, {}> {
   render (): React.ReactNode {
     const items = this.props.attributes.map((item: Attribute, index: number) => {

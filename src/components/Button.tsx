@@ -13,6 +13,9 @@ interface ButtonProps {
   isSelected?: boolean
 }
 
+/**
+ * React component for a button.
+ */
 class Button extends React.Component<ButtonProps, {}> {
   constructor (props: ButtonProps) {
     super(props)

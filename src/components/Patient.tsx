@@ -8,7 +8,11 @@ interface PatientProps {
   metadata: dmv.metadata.Study|dmv.metadata.SOPClass
 }
 
-/** React component representing a DICOM Patient Information Entity. */
+/**
+ * React component representing a DICOM Patient Information Entity that
+ * displays common study-level, patient-related attributes of contained
+ * DICOM Slide Microscopy images.
+ */
 class Patient extends React.Component<PatientProps, {}> {
   render (): React.ReactNode {
     const attributes = [

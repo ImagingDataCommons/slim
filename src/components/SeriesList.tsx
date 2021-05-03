@@ -18,6 +18,9 @@ interface SeriesListState {
   selectedSeriesInstanceUID: string
 }
 
+/**
+ * React component representing a list of DICOM Series Information Entities.
+ */
 class SeriesList extends React.Component<SeriesListProps, SeriesListState> {
   constructor (props: SeriesListProps) {
     super(props)

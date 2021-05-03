@@ -14,6 +14,9 @@ interface AnnotationProps {
   index: number
 }
 
+/**
+ * React component representing a Region of Interest (ROI) image annotation.
+ */
 class Annotation extends React.Component<AnnotationProps> {
   render (): React.ReactNode {
     const identifier = `Region ${this.props.index + 1}`

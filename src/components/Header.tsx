@@ -18,7 +18,9 @@ interface HeaderProps {
   }
 }
 
-/** React component for an application header. */
+/**
+ * React component for the application header.
+ */
 class Header extends React.Component<HeaderProps, {}> {
   render (): React.ReactNode {
     var user = null

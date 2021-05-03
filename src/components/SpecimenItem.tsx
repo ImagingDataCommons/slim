@@ -10,7 +10,10 @@ interface SpecimenItemProps {
   metadata: dmv.metadata.SOPClass
 }
 
-/** React component representing a DICOM Specimen Information Entity. */
+/**
+ * React component representing a DICOM Specimen Information Entity and
+ * displays specimen-related attributes of a DICOM Slide Microscopy image.
+ */
 class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
   render (): React.ReactNode {
     const specimenDescription = this.props.metadata.SpecimenDescriptionSequence[

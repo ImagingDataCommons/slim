@@ -85,6 +85,11 @@ interface SlideViewerState {
   isReportModalVisible: boolean
 }
 
+/**
+ * React component for interactive viewing of an individual digital slide,
+ * which corresponds to one DICOM Series of DICOM Slide Microscopy images and
+ * potentially one or more associated DICOM Series of DICOM SR documents.
+ */
 class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   state = {
     isLoading: false,
@@ -145,7 +150,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   componentDidUpdate (previousProps: SlideViewerProps) {
-    /* Fetch data and update the viewports if the route has changed,
+    /** Fetch data and update the viewports if the route has changed,
      * i.e., if another series has been selected.
      */
     if (this.props.location !== previousProps.location) {
@@ -159,7 +164,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-  /* Retrieve structured report instances that contain regions of interests
+  /**
+   * Retrieve structured report instances that contain regions of interests
    * with 3D spatial coordinates defined in the same frame of reference as the
    * currently selected series and adds them to the VOLUME image viewer.
    */
@@ -219,7 +225,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
   }
 
-  /* Retrieve metadata for image instances in the currently selected series and
+  /**
+   * Retrieve metadata for image instances in the currently selected series and
    * instantiate the VOLUME and LABEL image viewers.
    */
   populateViewports (): void {
@@ -349,8 +356,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.populateViewports()
   }
 
-  /* Handler that gets called when a finding has been selected for an
+  /**
+   * Handler that gets called when a finding has been selected for an
    * annotation after the region of interest has been drawn.
+   *
+   * @param value - Code value of the coded finding
    */
   handleAnnotationFindingSelection (value: string): void {
     const selected = this.findingTypes.find(code => code.CodeValue === value)
@@ -361,7 +371,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.setState(state => ({ selectedFindingType: selected }))
   }
 
-  /* Handler that gets called when an annotation has been completed. */
+  /**
+   * Handler that gets called when an annotation has been completed.
+   */
   handleAnnotationCompletion (): void {
     const annotatedRoi = this.state.annotatedRoi
     const findingType = this.state.selectedFindingType
@@ -389,7 +401,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.setState(state => ({ isAnnotationModalVisible: false }))
   }
 
-  /* Handler that gets called when an annotation has been cancelled. */
+  /**
+   * Handler that gets called when an annotation has been cancelled.
+   */
   handleAnnotationCancellation (): void {
     console.info('cancel annotation')
     const annotatedRoi = this.state.annotatedRoi
@@ -403,7 +417,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }))
   }
 
-  /* Handler that gets called when a report should be generated for the current
+  /**
+   * Handler that gets called when a report should be generated for the current
    * set of annotations.
    */
   handleReportGeneration (): void {
@@ -540,7 +555,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }))
   }
 
-  /* Handler that gets called when a report should be verified. The current
+  /**
+   * Handler that gets called when a report should be verified. The current
    * list of annotations will be presented to the user together with other
    * pertinent metadata about the patient, study, and specimen.
    */
@@ -597,7 +613,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }))
   }
 
-  /* Handler that gets called when report generation has been cancelled. */
+  /**
+   * Handler that gets called when report generation has been cancelled.
+   */
   handleReportCancellation (): void {
     this.setState(state => ({
       isReportModalVisible: false,
@@ -605,7 +623,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }))
   }
 
-  /* Handler that gets called when an annotation has been selected from the
+  /**
+   * Handler that gets called when an annotation has been selected from the
    * current list of annotations.
    */
   handleAnnotationSelection ({ roiUID }: { roiUID: string }): void {
@@ -626,7 +645,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.setState(state => ({ selectedRoiUID: roiUID }))
   }
 
-  /* Handle that gets called when the visibility of an annotation should be
+  /**
+   * Handle that gets called when the visibility of an annotation should be
    * toggled, i.e., the annotation should be either displayed or hidden.
    */
   handleAnnotationVisibility ({ roiUID }: { roiUID: string }): void {
@@ -652,7 +672,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   }
 
-  /* Handler that will toggle the ROI drawing tool, i.e., either activate or
+  /**
+   * Handler that will toggle the ROI drawing tool, i.e., either activate or
    * de-activate it, depending on its current state.
    */
   handleRoiDrawing ({ geometryType }: { geometryType: string }): void {
@@ -671,7 +692,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-  /* Handler that will toggle the ROI modification tool, i.e., either activate
+  /**
+   * Handler that will toggle the ROI modification tool, i.e., either activate
    * or de-activate it, depending on its current state.
    */
   handleRoiModification (): void {
@@ -689,7 +711,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-  /* Handler that will toggle the ROI removal tool, i.e., either activate
+  /**
+   * Handler that will toggle the ROI removal tool, i.e., either activate
    * or de-activate it, depending on its current state.
    */
   handleRoiRemoval (): void {
@@ -709,7 +732,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.setState(state => ({ selectedRoiUID: undefined }))
   }
 
-  /* Handler that will toggle the ROI visibility tool, i.e., either activate
+  /**
+   * Handler that will toggle the ROI visibility tool, i.e., either activate
    * or de-activate it, depending on its current state.
    */
   handleRoiVisibility (): void {

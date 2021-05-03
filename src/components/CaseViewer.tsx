@@ -21,7 +21,7 @@ import SeriesList from './SeriesList'
 import SlideViewer from './SlideViewer'
 
 
-interface CaseViewerProps extends RouteComponentProps {
+interface ViewerProps extends RouteComponentProps {
   client: dwc.api.DICOMwebClient
   studyInstanceUID: string
   app: {
@@ -37,23 +37,18 @@ interface CaseViewerProps extends RouteComponentProps {
   }
 }
 
-interface CaseViewerState {
+interface ViewerState {
   series: dmv.metadata.Series[]
   isLoading: boolean
 }
 
-/**
- * React component for interactive display of a case, which corresponds to one
- * DICOM Study containing a set of DICOM Series of DICOM Slide Microscopy
- * images.
- */
-class CaseViewer extends React.Component<CaseViewerProps, CaseViewerState> {
+class Viewer extends React.Component<ViewerProps, ViewerState> {
   state = {
     series: [],
     isLoading: false,
   }
 
-  constructor (props: CaseViewerProps) {
+  constructor (props: ViewerProps) {
     super(props)
     this.handleSeriesSelection = this.handleSeriesSelection.bind(this)
   }
@@ -149,4 +144,4 @@ class CaseViewer extends React.Component<CaseViewerProps, CaseViewerState> {
   }
 }
 
-export default withRouter(CaseViewer)
+export default withRouter(Viewer)

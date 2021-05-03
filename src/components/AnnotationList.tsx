@@ -12,6 +12,10 @@ interface AnnotationListProps {
   ) => void
 }
 
+/**
+ * React component representing a list of Region of Interest (ROI) image
+ * annotations.
+ */
 class AnnotationList extends React.Component<AnnotationListProps, {}> {
   render (): React.ReactNode {
     const items = this.props.rois.map((roi, index) => (

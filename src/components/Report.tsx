@@ -342,6 +342,10 @@ interface ReportProps {
   dataset: dmv.metadata.Comprehensive3DSR
 }
 
+/**
+ * React component representing a DICOM SR document that displays the
+ * document content (a selected subset of content items).
+ */
 class Report extends React.Component<ReportProps, {}> {
   render (): React.ReactNode {
     const report = new MeasurementReport(this.props.dataset)
