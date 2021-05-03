@@ -26,9 +26,8 @@ export interface ServerSettings {
 export interface OidcSettings {
   authority: string
   clientId: string
-  redirectPath: string
   scope: string
-  postLogoutRedirectPath?: string
+  grantType?: string
 }
 
 export default interface AppConfig {

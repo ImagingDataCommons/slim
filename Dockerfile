@@ -40,8 +40,7 @@ COPY src ./src
 
 FROM lib AS app
 
-ARG REACT_APP_DICOMWEB_PATH=/dicomweb
-ARG REACT_APP_REQUIRES_AUTH=true
+ARG REACT_APP_CONFIG=local
 
 RUN addgroup --system --gid 101 nginx && \
     adduser --system \

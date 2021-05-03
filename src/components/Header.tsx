@@ -1,8 +1,9 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { FaHome } from 'react-icons/fa'
+import { FaList } from 'react-icons/fa'
 import { Avatar, Button, Col, Layout, Row, Space } from 'antd'
 import { UserOutlined } from '@ant-design/icons'
+
 
 interface HeaderProps {
   app: {
@@ -13,7 +14,6 @@ interface HeaderProps {
   }
   user?: {
     name: string
-    username: string
     email: string
   }
 }
@@ -27,7 +27,7 @@ class Header extends React.Component<HeaderProps, {}> {
         <>
           <Avatar shape='square' icon={<UserOutlined />} />
           <span>
-            {this.props.user.name} ({this.props.user.username})
+            {this.props.user.name} ({this.props.user.email})
           </span>
         </>
       )
@@ -38,7 +38,7 @@ class Header extends React.Component<HeaderProps, {}> {
           <Col>
             <Space align='center' direction='horizontal'>
               <NavLink to='/'>
-                <Button icon={<FaHome />} />
+                <Button icon={<FaList />} />
               </NavLink>
               <span style={{ fontWeight: 600, fontSize: 'large' }}>
                 {this.props.app.name}

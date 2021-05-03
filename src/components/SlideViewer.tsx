@@ -65,11 +65,11 @@ interface SlideViewerProps extends RouteComponentProps {
     name: string
     version: string
     uid: string
+    organization?: string
   }
   annotations: AnnotationSettings[]
   user?: {
     name: string
-    username: string
     email: string
   }
 }
@@ -169,48 +169,49 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.props.client.searchForInstances({
       studyInstanceUID: this.props.studyInstanceUID,
       queryParams: {
-        Modality: 'SR',
-        SOPClassUID: '1.2.840.10008.5.1.4.1.1.88.34'
+        Modality: 'SR'
       }
     }).then((matchedInstances): void => {
       matchedInstances.forEach(i => {
         const instance = dmv.metadata.formatMetadata(i) as dmv.metadata.Instance
-        console.info(`retrieve SR instance "${instance.SOPInstanceUID}"`)
-        this.props.client.retrieveInstance({
-          studyInstanceUID: instance.StudyInstanceUID,
-          seriesInstanceUID: instance.SeriesInstanceUID,
-          sopInstanceUID: instance.SOPInstanceUID
-        }).then((retrievedInstance): void => {
-          const data = dcmjs.data.DicomMessage.readFile(retrievedInstance)
-          const dataset = dmv.metadata.formatMetadata(data.dict)
-          const report = dataset as unknown as dmv.metadata.Comprehensive3DSR
-          const content = new MeasurementReport(report)
-          content.ROIs.forEach(roi => {
-            console.info(`add ROI "${roi.uid}"`)
-            const scoord3d = roi.scoord3d
-            const image = (
-              this.state.metadata[0] as
-              dmv.metadata.VLWholeSlideMicroscopyImage
-            )
-            if (scoord3d.frameOfReferenceUID === image.FrameOfReferenceUID) {
-              if (this.volumeViewer !== undefined) {
-                const key = _getRoiKey(roi)
-                const style = this.roiStyles[key]
-                this.volumeViewer.addROI(roi, style)
-              } else {
-                console.error(
-                  `could not add ROI "${roi.uid}" ` +
-                  'because viewer has not yet been instantiated'
-                )
+        if (instance.SOPClassUID === '1.2.840.10008.5.1.4.1.1.88.34') {
+          console.info(`retrieve SR instance "${instance.SOPInstanceUID}"`)
+          this.props.client.retrieveInstance({
+            studyInstanceUID: instance.StudyInstanceUID,
+            seriesInstanceUID: instance.SeriesInstanceUID,
+            sopInstanceUID: instance.SOPInstanceUID
+          }).then((retrievedInstance): void => {
+            const data = dcmjs.data.DicomMessage.readFile(retrievedInstance)
+            const dataset = dmv.metadata.formatMetadata(data.dict)
+            const report = dataset as unknown as dmv.metadata.Comprehensive3DSR
+            const content = new MeasurementReport(report)
+            content.ROIs.forEach(roi => {
+              console.info(`add ROI "${roi.uid}"`)
+              const scoord3d = roi.scoord3d
+              const image = (
+                this.state.metadata[0] as
+                dmv.metadata.VLWholeSlideMicroscopyImage
+              )
+              if (scoord3d.frameOfReferenceUID === image.FrameOfReferenceUID) {
+                if (this.volumeViewer !== undefined) {
+                  const key = _getRoiKey(roi)
+                  const style = this.roiStyles[key]
+                  this.volumeViewer.addROI(roi, style)
+                } else {
+                  console.error(
+                    `could not add ROI "${roi.uid}" ` +
+                    'because viewer has not yet been instantiated'
+                  )
+                }
               }
-            }
-          })
+            })
           // State update will also ensure that the component is re-rendered.
           this.setState(state => ({ isLoading: false }))
-        }).catch((error) => {
-          message.error('An error occured. Annotation could not be loaded')
-          console.error(error)
-        })
+          }).catch((error) => {
+            message.error('An error occured. Annotation could not be loaded')
+            console.error(error)
+          })
+        }
       })
     }).catch((error) => {
       message.error('An error occured. Annotations could not be loaded')
@@ -430,9 +431,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (this.props.user !== undefined) {
       observer = new dcmjs.sr.templates.PersonObserverIdentifyingAttributes({
         name: this.props.user.name,
-        loginName: this.props.user.username
+        loginName: this.props.user.email
       })
     } else {
+      console.warn('no user information available')
       observer = new dcmjs.sr.templates.PersonObserverIdentifyingAttributes({
         name: 'ANONYMOUS'
       })

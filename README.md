@@ -22,64 +22,130 @@ It leverages the [dicom-microscopy-viewer](https://github.com/MGHComputationalPa
 
 ## Autentication and authorization
 
-Users can authenticate and authorize the application to access data via [OpenID Connect (OIDC)](https://openid.net/connect/) based on the [OAuth 2.0](https://oauth.net/2/) protocol using the [application code grant type](https://oauth.net/2/grant-types/authorization-code/).
-The application is considered a public client, which can obtain an [authorization code](https://oauth.net/2/grant-types/authorization-code/) using the [Proof Key for Code Exchange (PKCE)](https://oauth.net/2/pkce/) extension.
-
+Users can authenticate and authorize the application to access data via [OpenID Connect (OIDC)](https://openid.net/connect/) based on the [OAuth 2.0](https://oauth.net/2/) protocol with the [application code grant type](https://oauth.net/2/grant-types/authorization-code/) and [Proof Key for Code Exchange (PKCE)](https://oauth.net/2/pkce/) extension or the legacy [implicit grant type](https://oauth.net/2/grant-types/implicit/).
 
 ## Configuration
 
-```js
+The app can be configured via a `public/config/{name}.js` JavaScript configuration file.
+Please refer to the `AppConfig.tsx` for configuration options.
 
-```
+The configuration can be changed at build-time using the `REACT_APP_CONFIG` environment variable.
+To change the configuration at run time, one can update the content of `public/config/{name}.js`.
 
 ## Usage
 
 ### Local
 
-The repository provides a containerized [dcm4chee-arc-light]() server for local development and testing:
+The repository provides a [Docker compose file](https://docs.docker.com/compose/compose-file/) to locally deploy a web server and a [dcm4chee-arc-light](https://github.com/dcm4che/dcm4chee-arc-light) DICOMweb server for local app development and testing:
 
-    $ docker-compose up
+    $ docker-compose up -d
 
-Serves the app via an NGINX web server at [http://localhost:8008](http://localhost:8008).
-The app will access the DICOMweb service at the `/dicomweb` path.
-This is achieved via the `proxy_path` setting in the `etc/nginx/conf.d/local.conf` NGINX configuration file:
+Serves the app via an NGINX web server at `http://localhost:8008` and exposes the DICOMweb RESTful services at `http://localhost:8008/dicomweb`.
 
-```nginx
-server {
+The app will be configured using the default configuration `public/config/local.js`:
 
-    ...
-
-    location /dicomweb/ {
-        proxy_pass http://localhost:8080/dcm4chee-arc/aets/DCM4CHEE/rs;
+```js
+window.config = {
+  path: "/",
+  servers: [
+    {
+      id: "local",
+      url: "http://localhost:8008/dicomweb",
+      write: true
     }
-
-}
+  ],
+  annotations: [
+    {
+      finding: {
+        value: '108369006',
+        schemeDesignator: 'SCT',
+        meaning: 'Neoplasm'
+      },
+      style: {
+        stroke: {
+          color: [255, 0, 0, 1],
+          width: 1
+        },
+        fill: {
+          color: [255, 255, 255, 0.2]
+        }
+      }
+    }
+  ]
+};
 ```
 
-#### Development
+
+### Google Cloud Platform
+
+Here is an example configuration `public/config/gcp.js` for running the app with the [Google Healthcare API](https://cloud.google.com/healthcare) and OIDC authentication/authorization:
+
+```js
+const gcpProject = ""
+const gcpLocation = ""
+const gcpDataset = ""
+const gcpStore = ""
+const gcpClientID = ""
+window.config = {
+  path: "/",
+  servers: [
+    {
+      id: "gcp",
+      url: `https://healthcare.googleapis.com/v1/projects/${gcpProject}/locations/${gcpLocation}/datasets/${gcpDataset}/dicomStores/${gcpStore}/dicomWeb`,
+      write: true
+    }
+  ],
+  oidc: {
+    authority: "https://accounts.google.com",
+    clientId: gcpClientID,
+    scope: "email profile openid https://www.googleapis.com/auth/cloud-healthcare",
+    grantType: "implicit"
+  },
+  annotations: [
+    {
+      finding: {
+        value: '108369006',
+        schemeDesignator: 'SCT',
+        meaning: 'Neoplasm'
+      },
+      style: {
+        stroke: {
+          color: [255, 0, 0, 1],
+          width: 1
+        },
+        fill: {
+          color: [255, 255, 255, 0.2]
+        }
+      }
+    }
+  ]
+};
+```
+
+#### OAuth 2.0 configuration
+
+Create an [OIDC client ID for web application](https://developers.google.com/identity/sign-in/web/sign-in).
+
+Note that Google's OIDC implementation does currently not yet support the authorization code grant type with PKCE challenge.
+For the time being, the legacy implicit grand type has to be used.
+
+
+## Development
 
     $ yarn start
 
 Serves the app via a development server at [http://localhost:3000](http://localhost:3000).
 
+Will use the `local` configuration.
+A different configuration can be used by setting the `REACT_APP_CONFIG` environment variable in the `.env` file or via the command line:
 
-#### Testing
+    $ REACT_APP_CONFIG=gcp yarn start
+
+
+## Testing
 
     $ yarn test
 
 Launches the test runner in the interactive watch mode.
 See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
 
-
-### Google Cloud Platform
-
-#### DICOM store
-
-
-#### OAuth 2.0 configuration
-
-Create an [OIDC client ID for web application](https://developers.google.com/identity/sign-in/web/sign-in).
-
-```js
-
-```

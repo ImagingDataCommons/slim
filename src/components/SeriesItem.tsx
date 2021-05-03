@@ -54,13 +54,9 @@ class SeriesItem extends React.Component<SeriesItemProps, SeriesItemState> {
     this.setState({ isLoading: true })
     const searchOptions = {
       studyInstanceUID: this.props.metadata.StudyInstanceUID,
-      seriesInstanceUID: this.props.metadata.SeriesInstanceUID,
-      queryParams: {
-        Modality: 'SM',
-        includefield: 'ImageType'
-      }
+      seriesInstanceUID: this.props.metadata.SeriesInstanceUID
     }
-    this.props.client.searchForInstances(searchOptions).then(matchedInstances => {
+    this.props.client.searchForInstances(searchOptions).then((matchedInstances) => {
       matchedInstances.forEach(matchedItem => {
         const instance = dmv.metadata.formatMetadata(matchedItem) as dmv.metadata.Instance
         if (instance.SOPClassUID === '1.2.840.10008.5.1.4.1.1.77.1.6') {
@@ -82,8 +78,7 @@ class SeriesItem extends React.Component<SeriesItemProps, SeriesItemState> {
           if (instance.ImageType !== undefined) {
             isOverviewImage = instance.ImageType[2] === 'OVERVIEW'
           }
-          // @ts-expect-error - we can assume that NumberOfFrames is defined
-          if (isOverviewImage || instance.NumberOfFrames < 100) {
+          if (isOverviewImage || instance.NumberOfFrames === 1) {
             console.debug(
               'retrieve metadata for instance ' +
               `"${instance.SOPInstanceUID}"`

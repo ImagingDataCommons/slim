@@ -28,11 +28,11 @@ interface ViewerProps extends RouteComponentProps {
     name: string
     version: string
     uid: string
+    organization?: string
   }
   annotations: AnnotationSettings[]
   user?: {
     name: string
-    username: string
     email: string
   }
 }
