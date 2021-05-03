@@ -22,6 +22,7 @@
     "dicom-microscopy-viewer": "^0.22.1",
     "dicomweb-client": "^0.6.0",
     "keycloak-js": "^10.0.2",
+    "oidc-client": "^1.11.5",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "react-icons": "^3.11.0",

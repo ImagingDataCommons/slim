@@ -7,7 +7,7 @@ declare module 'dicomweb-client' {
       qidoUrlPrefix?: string
       wadoUrlPrefix?: string
       stowUrlPrefix?: string
-      headers: {
+      headers?: {
         Authorization?: string
       }
     }
@@ -97,6 +97,8 @@ declare module 'dicomweb-client' {
 
     export class DICOMwebClient {
       constructor (options: DICOMwebClientOptions)
+
+      headers: {[key: string]: string}
 
       // STOW-RS
       storeInstances (options: StoreInstancesOptions): Promise<string>

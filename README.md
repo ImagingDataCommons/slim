@@ -1,7 +1,6 @@
 # SliM: Slide microscopy image display and annotation system for thin clients
 
 A lightweight server-less single-page application for interactive visualization of digital slide microscopy (SM) images and associated image annotations in standard DICOM format.
-The application leverages the [dicom-microscopy-viewer](https://github.com/MGHComputationalPathology/dicom-microscopy-viewer) library.
 It can simply be placed in front of a [DICOMweb](https://www.dicomstandard.org/dicomweb/) compatible Image Management System (IMS), Picture Archiving and Communication (PACS) or Vendor Neutral Archive (VNA).
 
 ## Images
@@ -19,21 +18,31 @@ The app will also search the IMS for existing SR documents and visualize any ROI
 ## Implementation
 
 The app is implemented in [TypeScript](https://www.typescriptlang.org/) using the [React](https://reactjs.org/) framework.
+It leverages the [dicom-microscopy-viewer](https://github.com/MGHComputationalPathology/dicom-microscopy-viewer) library under the hood.
 
 ## Autentication and authorization
 
-Users can authenticate and authorize the application to access data via [OpenID Connect (OIDC)](https://openid.net/connect/) based on the [OAuth 2.0](https://oauth.net/2/) protocol.
-The application is considered as a public client, which can obtain an [authorization code](https://oauth.net/2/grant-types/authorization-code/) using [Proof Key for Code Exchange (PKCE)](https://oauth.net/2/pkce/) extension.
+Users can authenticate and authorize the application to access data via [OpenID Connect (OIDC)](https://openid.net/connect/) based on the [OAuth 2.0](https://oauth.net/2/) protocol using the [application code grant type](https://oauth.net/2/grant-types/authorization-code/).
+The application is considered a public client, which can obtain an [authorization code](https://oauth.net/2/grant-types/authorization-code/) using the [Proof Key for Code Exchange (PKCE)](https://oauth.net/2/pkce/) extension.
+
+
+## Configuration
+
+```js
+
+```
 
 ## Usage
 
-### Docker
+### Local
+
+The repository provides a containerized [dcm4chee-arc-light]() server for local development and testing:
 
     $ docker-compose up
 
 Serves the app via an NGINX web server at [http://localhost:8008](http://localhost:8008).
-The app will try to access the DICOMweb service at the `/dicomweb` path.
-You can simply add a `/dicomweb` location to `etc/nginx/conf.d/local.conf`:
+The app will access the DICOMweb service at the `/dicomweb` path.
+This is achieved via the `proxy_path` setting in the `etc/nginx/conf.d/local.conf` NGINX configuration file:
 
 ```nginx
 server {
@@ -47,17 +56,30 @@ server {
 }
 ```
 
-### Development
+#### Development
 
     $ yarn start
 
 Serves the app via a development server at [http://localhost:3000](http://localhost:3000).
 
-The URL of the DICOMweb service can be configured via the `REACT_APP_DICOMWEB_URL` environment variable, which can be specified in the `.env` file in the project directory.
 
-## Testing
+#### Testing
 
     $ yarn test
 
 Launches the test runner in the interactive watch mode.
 See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+
+
+### Google Cloud Platform
+
+#### DICOM store
+
+
+#### OAuth 2.0 configuration
+
+Create an [OIDC client ID for web application](https://developers.google.com/identity/sign-in/web/sign-in).
+
+```js
+
+```

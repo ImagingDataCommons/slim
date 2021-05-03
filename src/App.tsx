@@ -4,18 +4,22 @@ import {
   Switch,
   Route,
 } from 'react-router-dom'
-import { Layout } from 'antd'
+import { UserManager } from 'oidc-client';
+import { Layout, message } from 'antd'
 import * as dwc from 'dicomweb-client'
 
 import AppConfig from './AppConfig'
+import Callback from './components/Callback'
 import Header from './components/Header'
 import Viewer from './components/Viewer'
 import Worklist from './components/Worklist'
 
 import 'antd/dist/antd.less'
 import './App.less'
+import { joinUrl } from './utils/url'
 
 import { version } from '../package.json'
+
 
 interface AppProps {
   version: string
@@ -31,110 +35,78 @@ interface AppState {
   }
 }
 
-
 class App extends React.Component<AppProps, AppState> {
   private readonly clientSettings: dwc.api.DICOMwebClientOptions
 
-  private readonly tokenRefresher?: NodeJS.Timeout
+  private readonly userManager?: UserManager
 
   constructor (props: AppProps) {
     super(props)
 
+    const { protocol, host } = window.location
+    const baseUri = joinUrl(props.config.path, `${protocol}//${host}`)
+
+    const oidcSettings = props.config.oidc
+    if (oidcSettings !== undefined) {
+      this.userManager = new UserManager({
+        authority: oidcSettings.authority,
+        client_id: oidcSettings.clientId,
+        redirect_uri: joinUrl(oidcSettings.redirectPath, baseUri),
+        scope: oidcSettings.scope,
+        response_type: 'code',
+        loadUserInfo: true,
+        automaticSilentRenew: true
+      })
+    }
+
     // For now, we only select one server
-    const server = props.config.servers[0]
-    if (server === undefined) {
+    const serverSettings = props.config.servers[0]
+    if (serverSettings === undefined) {
       throw Error('At least one server needs to be configured.')
     }
 
-    if (server.url !== undefined) {
-      this.clientSettings = {
-        url: server.url,
-        headers: {}
-      }
-    } else if (server.path !== undefined) {
-      this.clientSettings = {
-        url: `${window.location.origin}${server.path}`,
-        headers: {}
-      }
+    if (serverSettings.url !== undefined) {
+      this.clientSettings = { url: serverSettings.url }
+    } else if (serverSettings.path !== undefined) {
+      this.clientSettings = { url: joinUrl(serverSettings.path, baseUri) }
     } else {
       throw new Error(
         'Either path or full URL needs to be configured for server.'
       )
     }
-    if (server.qidoPathPrefix !== undefined) {
-      this.clientSettings.qidoUrlPrefix = server.qidoPathPrefix
+    if (serverSettings.qidoPathPrefix !== undefined) {
+      this.clientSettings.qidoUrlPrefix = serverSettings.qidoPathPrefix
     }
-    if (server.wadoPathPrefix !== undefined) {
-      this.clientSettings.wadoUrlPrefix = server.wadoPathPrefix
+    if (serverSettings.wadoPathPrefix !== undefined) {
+      this.clientSettings.wadoUrlPrefix = serverSettings.wadoPathPrefix
     }
-    if (server.stowPathPrefix !== undefined) {
-      this.clientSettings.stowUrlPrefix = server.stowPathPrefix
+    if (serverSettings.stowPathPrefix !== undefined) {
+      this.clientSettings.stowUrlPrefix = serverSettings.stowPathPrefix
     }
-
-    // if (props.keycloak !== undefined) {
-    //   props.keycloak.loadUserProfile().then(
-    //     (profile: KeycloakProfile): void => {
-    //       if (profile.username !== undefined) {
-    //         console.debug(`authenticated user "${profile.username}"`)
-    //       }
-    //       let name = ''
-    //       if (profile.firstName !== undefined) {
-    //         name += profile.firstName
-    //       }
-    //       if (profile.lastName !== undefined) {
-    //         name += ` ${profile.lastName}`
-    //       }
-    //       // @ts-expect-error
-    //       this.setState(state => ({
-    //         user: {
-    //           name: name,
-    //           username: profile.username,
-    //           email: profile.email
-    //         }
-    //       }))
-    //     }
-    //   ).catch(response => console.error(response))
-
-    //   if (props.keycloak.token !== undefined) {
-    //     this.clientSettings.headers = {
-    //       Authorization: `Bearer ${props.keycloak.token}`
-    //     }
-    //   }
-
-    //   this.tokenRefresher = setInterval(
-    //     () => {
-    //       if (props.keycloak !== undefined) {
-    //         console.info('refresh token...')
-    //         props.keycloak.updateToken(70).then(
-    //           (refreshed: boolean) => {
-    //             if (refreshed !== undefined && props.keycloak !== undefined) {
-    //               console.debug('token refreshed')
-    //               const token = props.keycloak.token
-    //               if (token !== undefined) {
-    //                 this.clientSettings.headers.Authorization = `Bearer ${token}`
-    //                 this.setState(state => ({
-    //                   client: new dwc.api.DICOMwebClient(this.clientSettings)
-    //                 }))
-    //               }
-    //             } else {
-    //               console.warn('token not refreshed, still valid')
-    //             }
-    //           }
-    //         ).catch(
-    //           (): void => console.error('failed to refresh token')
-    //         )
-    //       }
-    //     },
-    //     10000
-    //   )
-    // }
 
     this.state = {
       client: new dwc.api.DICOMwebClient(this.clientSettings)
     }
   }
 
+  updateClientHeaders ({ token }: { token: string }): void {
+    const client = this.state.client
+    client.headers['Authorization'] = `Bearer ${token}`
+    this.setState((state) => ({ client: client }))
+  }
+
   componentDidMount (): void {
+    const manager = this.userManager
+    if (manager !== undefined) {
+      console.log('sign in')
+      manager.signinRedirect().then(() => {
+        console.log('successfully signed in')
+        // FIXME
+      }).catch((error) => {
+        message.error('Signin failed')
+        console.error('signin failed ', error)
+      })
+    }
   }
 
   render (): React.ReactNode {
@@ -155,6 +127,9 @@ class App extends React.Component<AppProps, AppState> {
           />
           <Layout.Content style={{ height: '100%' }}>
             <Switch>
+              <Route path='/callback'>
+                <Callback />
+              </Route>
               <Route exact path='/'>
                 <Worklist client={this.state.client} />
               </Route>
