@@ -75,25 +75,25 @@ interface SlideViewerProps extends RouteComponentProps {
 }
 
 interface SlideViewerState {
-  isLoading: boolean
   metadata: dmv.metadata.VLWholeSlideMicroscopyImage[]
-  showAnnotationModal: boolean
   annotatedRoi?: dmv.roi.ROI
   selectedRoiUID?: string
   selectedFindingType?: dcmjs.sr.coding.CodedConcept
-  showReportModal: boolean
   generatedReport?: dmv.metadata.Comprehensive3DSR
+  isLoading: boolean
+  isAnnotationModalVisible: boolean
+  isReportModalVisible: boolean
 }
 
 class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   state = {
     isLoading: false,
     metadata: [],
-    showAnnotationModal: false,
+    isAnnotationModalVisible: false,
     annotatedRoi: undefined,
     selectedRoiUID: undefined,
     selectedFindingType: undefined,
-    showReportModal: false,
+    isReportModalVisible: false,
     generatedReport: undefined
   }
 
@@ -300,7 +300,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         const roi = event.detail.payload as dmv.roi.ROI
         console.debug(`added ROI "${roi.uid}"`)
         this.setState(state => ({
-          showAnnotationModal: true,
+          isAnnotationModalVisible: true,
           annotatedRoi: roi
         }))
         if (this.volumeViewer !== undefined) {
@@ -386,7 +386,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         this.volumeViewer.setROIStyle(roi.uid, style)
       }
     }
-    this.setState(state => ({ showAnnotationModal: false }))
+    this.setState(state => ({ isAnnotationModalVisible: false }))
   }
 
   /* Handler that gets called when an annotation has been cancelled. */
@@ -398,7 +398,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.volumeViewer.removeROI(roi.uid)
     }
     this.setState(state => ({
-      showAnnotationModal: false,
+      isAnnotationModalVisible: false,
       annotatedRoi: undefined
     }))
   }
@@ -535,7 +535,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
 
     this.setState(state => ({
-      showReportModal: true,
+      isReportModalVisible: true,
       generatedReport: dataset as dmv.metadata.Comprehensive3DSR
     }))
   }
@@ -592,7 +592,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       )
     }
     this.setState(state => ({
-      showReportModal: false,
+      isReportModalVisible: false,
       generatedReport: undefined
     }))
   }
@@ -600,7 +600,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   /* Handler that gets called when report generation has been cancelled. */
   handleReportCancellation (): void {
     this.setState(state => ({
-      showReportModal: false,
+      isReportModalVisible: false,
       generatedReport: undefined
     }))
   }
@@ -812,7 +812,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           <div style={{ height: 'calc(100% - 50px)' }} ref={this.volumeViewport} />
 
           <Modal
-            visible={this.state.showAnnotationModal}
+            visible={this.state.isAnnotationModalVisible}
             title='Select finding type'
             onOk={this.handleAnnotationCompletion}
             onCancel={this.handleAnnotationCancellation}
@@ -833,7 +833,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             </Select>
           </Modal>
           <Modal
-            visible={this.state.showReportModal}
+            visible={this.state.isReportModalVisible}
             title='Verify and save report'
             onOk={this.handleReportVerification}
             onCancel={this.handleReportCancellation}
