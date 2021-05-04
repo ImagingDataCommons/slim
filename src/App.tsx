@@ -6,6 +6,7 @@ import {
 } from 'react-router-dom'
 import { UserManager, User as UserData } from 'oidc-client';
 import { Layout, message } from 'antd'
+import { FaSpinner } from 'react-icons/fa'
 import * as dwc from 'dicomweb-client'
 
 import AppConfig from './AppConfig'
@@ -15,7 +16,7 @@ import Worklist from './components/Worklist'
 
 import 'antd/dist/antd.less'
 import './App.less'
-import { joinUrl, hasCodeInUrl } from './utils/url'
+import { joinUrl, isAuthorizationCodeInUrl } from './utils/url'
 
 import { version } from '../package.json'
 
@@ -138,7 +139,7 @@ class App extends React.Component<AppProps, AppState> {
     const manager = this.userManager
     if (manager !== undefined) {
       this.setState((state) => ({ isLoading: true }))
-      if (hasCodeInUrl(window.location)) {
+      if (isAuthorizationCodeInUrl(window.location)) {
         /* Handle the callback from the authorization server: extract the code
          * from the callback URL, obtain user information and the access token
          * for the DICOMweb server.
@@ -151,6 +152,7 @@ class App extends React.Component<AppProps, AppState> {
         }).catch((error) => {
           message.error('Authorization failed')
           console.error('authorization failed ', error)
+          manager.stopSilentRenew()
         })
       } else {
         /* Redirect to the authorization server to authenticate the user
@@ -165,6 +167,7 @@ class App extends React.Component<AppProps, AppState> {
             }).catch((error) => {
               message.error('Signin failed')
               console.error('signin failed ', error)
+              manager.stopSilentRenew()
             })
           } else {
             this.setAuthorizationHeader(userData)
@@ -209,6 +212,31 @@ class App extends React.Component<AppProps, AppState> {
       uid: '1.2.826.0.1.3680043.9.7433.1.5',
       organization: this.props.config.organization
     }
+    let content
+    if (this.state.isLoading) {
+      content = <FaSpinner />
+    } else {
+      content = (
+        <Switch>
+          <Route
+            path='/studies/:StudyInstanceUID'
+            render={(routeProps) => (
+              <Viewer
+                client={this.state.client}
+                user={this.state.user}
+                annotations={this.props.config.annotations}
+                app={appInfo}
+                studyInstanceUID={routeProps.match.params.StudyInstanceUID}
+              />
+            )}
+          />
+          <Route exact path='/'>
+            <Worklist client={this.state.client} />
+          </Route>
+        </Switch>
+      )
+    }
+
     return (
       <BrowserRouter>
         <Layout style={{ height: '100vh' }}>
@@ -217,23 +245,7 @@ class App extends React.Component<AppProps, AppState> {
             user={this.state.user}
           />
           <Layout.Content style={{ height: '100%' }}>
-            <Switch>
-              <Route
-                path='/studies/:StudyInstanceUID'
-                render={(routeProps) => (
-                  <Viewer
-                    client={this.state.client}
-                    user={this.state.user}
-                    annotations={this.props.config.annotations}
-                    app={appInfo}
-                    studyInstanceUID={routeProps.match.params.StudyInstanceUID}
-                  />
-                )}
-              />
-              <Route exact path='/'>
-                <Worklist client={this.state.client} />
-              </Route>
-            </Switch>
+            {content}
           </Layout.Content>
         </Layout>
       </BrowserRouter>

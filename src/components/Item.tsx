@@ -14,7 +14,7 @@ interface ItemProps {
 }
 
 /**
- * React component representing a list item that consists of a header element
+ * React component for a list item that consists of a header element
  * containing an identifier and a body element containing a description list
  * of attributes rendered as name-value pairs.
  */
