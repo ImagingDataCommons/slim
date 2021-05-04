@@ -300,59 +300,78 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.addAnnotations()
   }
 
+  onRoiDrawn = (event: CustomEventInit) => {
+    const roi = event.detail.payload as dmv.roi.ROI
+    console.debug(`added ROI "${roi.uid}"`)
+    this.setState(state => ({
+      isAnnotationModalVisible: true,
+      annotatedRoi: roi
+    }))
+    if (this.volumeViewer !== undefined) {
+      if (this.volumeViewer.isDrawInteractionActive) {
+        console.info('deactivate drawing of ROIs')
+        this.volumeViewer.deactivateDrawInteraction()
+        this.volumeViewer.activateSelectInteraction({})
+      }
+    }
+  }
+
+
+  onRoiSelected = (event: CustomEventInit) => {
+    const selectedRoi = event.detail.payload as dmv.roi.ROI
+    if (this.volumeViewer !== undefined) {
+      if (selectedRoi !== null) {
+        console.debug(`selected ROI "${selectedRoi.uid}"`)
+        const key = _getRoiKey(selectedRoi)
+        const viewer = this.volumeViewer
+        if (viewer !== undefined) {
+          viewer.setROIStyle(selectedRoi.uid, this.selectedRoiStyle)
+          viewer.getAllROIs().forEach((roi) => {
+            if (roi.uid !== selectedRoi.uid) {
+              viewer.setROIStyle(roi.uid, this.roiStyles[key])
+            }
+          })
+        }
+        this.setState(state => ({ selectedRoiUID: selectedRoi.uid }))
+      } else {
+        this.setState(state => ({ selectedRoiUID: undefined }))
+      }
+    }
+  }
+
+  onRoiRemoved = (event: CustomEventInit) => {
+    const roi = event.detail.payload as dmv.roi.ROI
+    console.debug(`removed ROI "${roi.uid}"`)
+  }
+
+  componentWillUnmount (): void {
+    document.body.removeEventListener(
+      'dicommicroscopyviewer_roi_drawn',
+      this.onRoiDrawn
+    )
+    document.body.removeEventListener(
+      'dicommicroscopyviewer_roi_selected',
+      this.onRoiSelected
+    )
+    document.body.removeEventListener(
+      'dicommicroscopyviewer_roi_removed',
+      this.onRoiRemoved
+    )
+  }
+
   componentDidMount (): void {
     document.body.addEventListener(
       'dicommicroscopyviewer_roi_drawn',
-      (event: CustomEventInit) => {
-        const roi = event.detail.payload as dmv.roi.ROI
-        console.debug(`added ROI "${roi.uid}"`)
-        this.setState(state => ({
-          isAnnotationModalVisible: true,
-          annotatedRoi: roi
-        }))
-        if (this.volumeViewer !== undefined) {
-          if (this.volumeViewer.isDrawInteractionActive) {
-            console.info('deactivate drawing of ROIs')
-            this.volumeViewer.deactivateDrawInteraction()
-            this.volumeViewer.activateSelectInteraction({})
-          }
-        }
-      }
+      this.onRoiDrawn
     )
-
     document.body.addEventListener(
       'dicommicroscopyviewer_roi_selected',
-      (event: CustomEventInit) => {
-        const selectedRoi = event.detail.payload as dmv.roi.ROI
-        if (this.volumeViewer !== undefined) {
-          if (selectedRoi !== null) {
-            console.debug(`selected ROI "${selectedRoi.uid}"`)
-            const key = _getRoiKey(selectedRoi)
-            const viewer = this.volumeViewer
-            if (viewer !== undefined) {
-              viewer.setROIStyle(selectedRoi.uid, this.selectedRoiStyle)
-              viewer.getAllROIs().forEach((roi) => {
-                if (roi.uid !== selectedRoi.uid) {
-                  viewer.setROIStyle(roi.uid, this.roiStyles[key])
-                }
-              })
-            }
-            this.setState(state => ({ selectedRoiUID: selectedRoi.uid }))
-          } else {
-            this.setState(state => ({ selectedRoiUID: undefined }))
-          }
-        }
-      }
+      this.onRoiSelected
     )
-
     document.body.addEventListener(
       'dicommicroscopyviewer_roi_removed',
-      (event: CustomEventInit) => {
-        const roi = event.detail.payload as dmv.roi.ROI
-        console.debug(`removed ROI "${roi.uid}"`)
-      }
+      this.onRoiRemoved
     )
-
     this.populateViewports()
   }
 
