@@ -169,7 +169,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * with 3D spatial coordinates defined in the same frame of reference as the
    * currently selected series and adds them to the VOLUME image viewer.
    */
-  addAnnotations (): void {
+  addAnnotations = (): void => {
     console.info('search for Comprehensive 3D SR instances')
     this.setState(state => ({ isLoading: true }))
     this.props.client.searchForInstances({
@@ -229,7 +229,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Retrieve metadata for image instances in the currently selected series and
    * instantiate the VOLUME and LABEL image viewers.
    */
-  populateViewports (): void {
+  populateViewports = (): void => {
     console.info(
       `retrieve metadata for series "${this.props.seriesInstanceUID}"`
     )
@@ -322,10 +322,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (this.volumeViewer !== undefined) {
       if (selectedRoi !== null) {
         console.debug(`selected ROI "${selectedRoi.uid}"`)
-        const key = _getRoiKey(selectedRoi)
         const viewer = this.volumeViewer
         if (viewer !== undefined) {
           viewer.setROIStyle(selectedRoi.uid, this.selectedRoiStyle)
+          const key = _getRoiKey(selectedRoi)
           viewer.getAllROIs().forEach((roi) => {
             if (roi.uid !== selectedRoi.uid) {
               viewer.setROIStyle(roi.uid, this.roiStyles[key])
