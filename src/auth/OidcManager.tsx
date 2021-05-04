@@ -57,9 +57,9 @@ export default class OidcManager implements AuthManager {
       console.info('obtaining authorization')
       const userData = await this._oidc.signinCallback()
       const user = createUser(userData)
-      const accessToken = userData.access_token
+      const authorization = `${userData.token_type} ${userData.access_token}`
       if (onSignIn !== undefined) {
-        onSignIn({ user: user, accessToken: accessToken })
+        onSignIn({ user: user, authorization: authorization })
       }
       return
     } else {
@@ -73,9 +73,9 @@ export default class OidcManager implements AuthManager {
         this._oidc.signinRedirect()
       } else {
         const user = createUser(userData)
-        const accessToken = userData.access_token
+        const authorization = userData.access_token
         if (onSignIn !== undefined) {
-          onSignIn({ user: user, accessToken: accessToken })
+          onSignIn({ user: user, authorization: authorization })
         }
       }
       return
@@ -91,9 +91,9 @@ export default class OidcManager implements AuthManager {
   }
 
   /**
-   * Get access token. Requires prior sign-in.
+   * Get authorization. Requires prior sign-in.
    */
-  getAccessToken = (): Promise<string> => {
+  getAuthorization = (): Promise<string> => {
     return this._oidc.getUser().then((userData) => {
       if (userData !== null) {
         return userData.access_token

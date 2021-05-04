@@ -84,9 +84,12 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  onSignIn = ({ user, accessToken }: { user: User, accessToken: string}): void => {
+  onSignIn = ({ user, authorization }: {
+    user: User,
+    authorization: string
+  }): void => {
     const client = this.state.client
-    client.headers['Authorization'] = `Bearer ${accessToken}`
+    client.headers['Authorization'] = authorization
     this.setState(state => ({
       user: user,
       client: client,

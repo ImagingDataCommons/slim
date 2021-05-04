@@ -1,6 +1,6 @@
-export type SignInCallback = ({ user, accessToken }: {
+export type SignInCallback = ({ user, authorization }: {
   user: User,
-  accessToken: string
+  authorization: string
 }) => void
 
 export interface User {
@@ -11,6 +11,6 @@ export interface User {
 export interface AuthManager {
   signIn ({ onSignIn }: { onSignIn: SignInCallback }): Promise<void>
   signOut (): Promise<void>
-  getAccessToken (): Promise<string>
+  getAuthorization (): Promise<string>
   getUser (): Promise<User>
 }
