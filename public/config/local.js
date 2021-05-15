@@ -17,8 +17,8 @@ window.config = {
       },
       style: {
         stroke: {
-          color: [255, 0, 0, 1],
-          width: 1
+          color: [251, 134, 4, 1],
+          width: 2
         },
         fill: {
           color: [255, 255, 255, 0.2]
@@ -33,8 +33,8 @@ window.config = {
       },
       style: {
         stroke: {
-          color: [0, 0, 255, 1],
-          width: 1
+          color: [51, 204, 51, 1],
+          width: 2
         },
         fill: {
           color: [255, 255, 255, 0.2]

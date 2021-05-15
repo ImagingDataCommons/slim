@@ -923,8 +923,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
         <Layout.Sider width={300} theme='light' style={{
             borderLeft: 'solid',
-            borderLeftWidth: 0.5,
-            borderLeftColor: 'grey'
+            borderLeftWidth: 0.25
         }}>
           <Menu
             mode='inline'

@@ -1,6 +1,6 @@
-# SliM: Slide microscopy image display and annotation system for thin clients
+# Slim: Slide microscopy image display and annotation system for thin clients
 
-A lightweight server-less single-page application based for interactive visualization of digital slide microscopy (SM) images and associated image annotations in standard DICOM format.
+A lightweight server-less single-page application for interactive visualization of digital slide microscopy (SM) images and associated image annotations in standard DICOM format.
 The application is based on the [dicom-microscopy-viewer](https://github.com/MGHComputationalPathology/dicom-microscopy-viewer) library and can simply be placed in front of a [DICOMweb](https://www.dicomstandard.org/dicomweb/) compatible Image Management System (IMS), Picture Archiving and Communication (PACS), or Vendor Neutral Archive (VNA).
 
 ## Image display
@@ -10,33 +10,33 @@ The app will search the IMS for studies containing SM images and visualize image
 ## Image annotation
 
 The app allows users to create graphical image region of interest (ROI) annotations and store them as DICOM Comprehensive 3D SR documents using SR template [TID 1500 "Measurement Report"](http://dicom.nema.org/medical/dicom/current/output/chtml/part16/chapter_A.html#sect_TID_1500).
-ROIs are stored as 3D spatial coordinates (SCOORD3D) according to SR template [TID 1410 "Planar ROI Measurements and Qualitative Evaluations"](http://dicom.nema.org/medical/dicom/current/output/chtml/part16/chapter_A.html#sect_TID_1410) together with any measurements or qualitative evaluations derived thereof.
+ROIs are stored as 3D spatial coordinates (SCOORD3D) according to SR template [TID 1410 "Planar ROI Measurements and Qualitative Evaluations"](http://dicom.nema.org/medical/dicom/current/output/chtml/part16/chapter_A.html#sect_TID_1410) together with measurements and qualitative evaluations.
 Specifically, [Image Region](http://dicom.nema.org/medical/dicom/current/output/chtml/part16/chapter_A.html#para_b68aa0a9-d0b1-475c-9630-fbbd48dc581d) is used to store the vector graphic data and [Finding](http://dicom.nema.org/medical/dicom/current/output/chtml/part16/chapter_A.html#para_c4ac1cac-ee86-4a86-865a-8137ebe1bd95) is used to describe what has been annotated using a standard medical terminology such as SNOMED CT.
 
-The app will also search the IMS for existing SR documents and visualize any ROI annotations contained in DICOM Comprehensive 3D SR documents (image region, finding, and any measurement or qualitative evaluation stored according to TID 1410).
+The app will also search the IMS for existing SR documents and display any ROI annotations contained in DICOM Comprehensive 3D SR documents that are structured according to TID 1500.
 
 ## Autentication and authorization
 
-Users can authenticate and authorize the application to access data via [OpenID Connect (OIDC)](https://openid.net/connect/) based on the [OAuth 2.0](https://oauth.net/2/) protocol with the [application code grant type](https://oauth.net/2/grant-types/authorization-code/) and [Proof Key for Code Exchange (PKCE)](https://oauth.net/2/pkce/) extension or the legacy [implicit grant type](https://oauth.net/2/grant-types/implicit/).
+Users can authenticate and authorize the application to access data via [OpenID Connect (OIDC)](https://openid.net/connect/) based on the [OAuth 2.0](https://oauth.net/2/) protocol using either the [authorization code grant type](https://oauth.net/2/grant-types/authorization-code/) (with [Proof Key for Code Exchange (PKCE)](https://oauth.net/2/pkce/) extension) or the legacy [implicit grant type](https://oauth.net/2/grant-types/implicit/).
 
 ## Configuration
 
 The app can be configured via a `public/config/{name}.js` JavaScript configuration file.
 Please refer to the `AppConfig.d.ts` file for configuration options.
 
-The configuration can be changed at build-time using the `REACT_APP_CONFIG` environment variable or at run-time by update the content the configuration file.
+The configuration can be changed at build-time using the `REACT_APP_CONFIG` environment variable.
 
 ## Deployment
 
 ### Local
 
-The repository provides a [Docker compose file](https://docs.docker.com/compose/compose-file/) to locally deploy a web server and a [dcm4chee-arc-light](https://github.com/dcm4che/dcm4chee-arc-light) DICOMweb server for local app development and testing:
+The repository provides a [Docker compose file](https://docs.docker.com/compose/compose-file/) to deploy a web server and a [dcm4chee-arc-light](https://github.com/dcm4che/dcm4chee-arc-light) DICOMweb server on localhost for local app development and testing:
 
     $ docker-compose up -d
 
 Serves the app via an NGINX web server at `http://localhost:8008` and exposes the DICOMweb RESTful services at `http://localhost:8008/dicomweb`.
 
-The app will be configured using the default configuration `public/config/local.js`:
+Local deployment uses the default configuration `public/config/local.js`.
 
 ```js
 window.config = {
@@ -57,8 +57,8 @@ window.config = {
       },
       style: {
         stroke: {
-          color: [255, 0, 0, 1],
-          width: 1
+          color: [251, 134, 4, 1],
+          width: 2
         },
         fill: {
           color: [255, 255, 255, 0.2]
@@ -104,8 +104,8 @@ window.config = {
       },
       style: {
         stroke: {
-          color: [255, 0, 0, 1],
-          width: 1
+          color: [251, 134, 4, 1],
+          width: 2
         },
         fill: {
           color: [255, 255, 255, 0.2]
@@ -133,6 +133,6 @@ To install requirements and run the app for local development, run the following
 
 This will serve the app via a development server at [http://localhost:3000](http://localhost:3000) using the `local` configuration.
 
-A different configuration can be used by setting the `REACT_APP_CONFIG` environment variable in the `.env` file or via the command line:
+The configuration can be specified using the `REACT_APP_CONFIG` environment variable, which can be set either in the `.env` file or directly in the command line:
 
-    $ REACT_APP_CONFIG=gcp yarn start
+    $ REACT_APP_CONFIG=local yarn start

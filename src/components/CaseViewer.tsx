@@ -111,8 +111,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       <Layout style={{ height: '100%' }} hasSider>
         <Layout.Sider width={300} theme='light' style={{
           borderRight: 'solid',
-          borderRightWidth: 0.5,
-          borderRightColor: 'grey'
+          borderRightWidth: 0.25
         }}>
           <Menu
             mode='inline'
