@@ -2,13 +2,13 @@ import React from 'react'
 import { FaSpinner } from 'react-icons/fa'
 
 import * as dmv from 'dicom-microscopy-viewer'
-import * as dwc from 'dicomweb-client'
 import { Menu } from 'antd'
 
+import DicomWebManager from '../DicomWebManager'
 import Description from './Description'
 
 interface SeriesItemProps {
-  client: dwc.api.DICOMwebClient
+  client: DicomWebManager
   metadata: dmv.metadata.Series
 }
 

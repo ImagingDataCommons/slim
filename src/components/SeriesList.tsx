@@ -1,13 +1,13 @@
 import React from 'react'
-import * as dmv from 'dicom-microscopy-viewer'
-import * as dwc from 'dicomweb-client'
 import { Menu } from 'antd'
+import * as dmv from 'dicom-microscopy-viewer'
 
+import DicomWebManager from '../DicomWebManager'
 import SeriesItem from './SeriesItem'
 
 interface SeriesListProps {
   metadata: dmv.metadata.Series[]
-  client: dwc.api.DICOMwebClient
+  client: DicomWebManager
   initiallySelectedSeriesInstanceUID: string
   onSeriesSelection: (
     { seriesInstanceUID }: { seriesInstanceUID: string }

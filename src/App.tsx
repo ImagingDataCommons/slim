@@ -6,7 +6,6 @@ import {
 } from 'react-router-dom'
 import { Layout, message } from 'antd'
 import { FaSpinner } from 'react-icons/fa'
-import * as dwc from 'dicomweb-client'
 
 import AppConfig from './AppConfig'
 import Header from './components/Header'
@@ -18,6 +17,7 @@ import './App.less'
 import { joinUrl } from './utils/url'
 import { User, AuthManager } from './auth'
 import OidcManager from './auth/OidcManager'
+import DicomWebManager from './DicomWebManager'
 
 import { version } from '../package.json'
 
@@ -27,15 +27,13 @@ interface AppProps {
 }
 
 interface AppState {
-  client: dwc.api.DICOMwebClient
+  client: DicomWebManager
   user?: User
   isLoading: boolean
   wasAuthSuccessful: boolean
 }
 
 class App extends React.Component<AppProps, AppState> {
-  private readonly clientSettings: dwc.api.DICOMwebClientOptions
-
   private readonly auth?: AuthManager
 
   private readonly baseUri: string
@@ -51,35 +49,14 @@ class App extends React.Component<AppProps, AppState> {
       this.auth = new OidcManager(this.baseUri, oidcSettings)
     }
 
-    // For now, we only select one server
-    const serverSettings = props.config.servers[0]
-    if (serverSettings === undefined) {
+    if (props.config.servers.length === 0) {
       throw Error('At least one server needs to be configured.')
-    }
-
-    if (serverSettings.url !== undefined) {
-      this.clientSettings = { url: serverSettings.url }
-    } else if (serverSettings.path !== undefined) {
-      this.clientSettings = { url: joinUrl(serverSettings.path, this.baseUri) }
-    } else {
-      throw new Error(
-        'Either path or full URL needs to be configured for server.'
-      )
-    }
-    if (serverSettings.qidoPathPrefix !== undefined) {
-      this.clientSettings.qidoURLPrefix = serverSettings.qidoPathPrefix
-    }
-    if (serverSettings.wadoPathPrefix !== undefined) {
-      this.clientSettings.wadoURLPrefix = serverSettings.wadoPathPrefix
-    }
-    if (serverSettings.stowPathPrefix !== undefined) {
-      this.clientSettings.stowURLPrefix = serverSettings.stowPathPrefix
     }
 
     message.config({ duration: 5 })
 
     this.state = {
-      client: new dwc.api.DICOMwebClient(this.clientSettings),
+      client: new DicomWebManager(this.baseUri, props.config.servers),
       isLoading: true,
       wasAuthSuccessful: false
     }
@@ -90,7 +67,7 @@ class App extends React.Component<AppProps, AppState> {
     authorization: string
   }): void => {
     const client = this.state.client
-    client.headers.Authorization = authorization
+    client.updateHeaders({ 'Authorization': authorization})
     this.setState(state => ({
       user: user,
       client: client,

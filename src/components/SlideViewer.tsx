@@ -20,17 +20,17 @@ import {
   Row,
   Select,
 } from 'antd'
-
 import * as dmv from 'dicom-microscopy-viewer'
-import * as dwc from 'dicomweb-client'
 import * as dcmjs from 'dcmjs'
 
+import DicomWebManager from '../DicomWebManager'
 import AnnotationList from './AnnotationList'
 import Button from './Button'
 import Report, { MeasurementReport } from './Report'
 import SpecimenList from './SpecimenList'
 import { AnnotationSettings } from '../AppConfig'
 import { findContentItemsByName } from '../utils/sr'
+
 
 const _buildKey = (concept: dcmjs.sr.coding.CodedConcept): string => {
   const codingScheme = concept.CodingSchemeDesignator
@@ -56,7 +56,7 @@ const _getRoiKey = (roi: dmv.roi.ROI): string => {
 }
 
 interface SlideViewerProps extends RouteComponentProps {
-  client: dwc.api.DICOMwebClient
+  client: DicomWebManager
   studyInstanceUID: string
   seriesInstanceUID: string
   app: {

@@ -11,14 +11,14 @@ import {
 import { ColumnsType } from 'antd/es/table'
 import { FilterConfirmProps } from 'antd/es/table/interface'
 import { SearchOutlined } from '@ant-design/icons'
+import DicomWebManager from '../DicomWebManager'
 
 import * as dmv from 'dicom-microscopy-viewer'
-import * as dwc from 'dicomweb-client'
 
 import { parseDate, parseName, parseSex, parseTime } from '../valueUtils'
 
 interface WorklistProps extends RouteComponentProps {
-  client: dwc.api.DICOMwebClient
+  client: DicomWebManager
 }
 
 interface WorklistState {

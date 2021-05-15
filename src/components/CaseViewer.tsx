@@ -12,16 +12,16 @@ import {
 } from 'antd'
 
 import * as dmv from 'dicom-microscopy-viewer'
-import * as dwc from 'dicomweb-client'
 
 import { AnnotationSettings } from '../AppConfig'
+import DicomWebManager from '../DicomWebManager'
 import Patient from './Patient'
 import Study from './Study'
 import SeriesList from './SeriesList'
 import SlideViewer from './SlideViewer'
 
 interface ViewerProps extends RouteComponentProps {
-  client: dwc.api.DICOMwebClient
+  client: DicomWebManager
   studyInstanceUID: string
   app: {
     name: string
