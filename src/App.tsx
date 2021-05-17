@@ -56,7 +56,10 @@ class App extends React.Component<AppProps, AppState> {
     message.config({ duration: 5 })
 
     this.state = {
-      client: new DicomWebManager(this.baseUri, props.config.servers),
+      client: new DicomWebManager({
+        baseUri: this.baseUri,
+        settings: props.config.servers
+      }),
       isLoading: true,
       wasAuthSuccessful: false
     }
@@ -67,7 +70,7 @@ class App extends React.Component<AppProps, AppState> {
     authorization: string
   }): void => {
     const client = this.state.client
-    client.updateHeaders({ 'Authorization': authorization})
+    client.updateHeaders({ Authorization: authorization })
     this.setState(state => ({
       user: user,
       client: client,

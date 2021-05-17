@@ -18,7 +18,7 @@ import {
   Modal,
   Layout,
   Row,
-  Select,
+  Select
 } from 'antd'
 import * as dmv from 'dicom-microscopy-viewer'
 import * as dcmjs from 'dcmjs'
@@ -30,7 +30,6 @@ import Report, { MeasurementReport } from './Report'
 import SpecimenList from './SpecimenList'
 import { AnnotationSettings } from '../AppConfig'
 import { findContentItemsByName } from '../utils/sr'
-
 
 const _buildKey = (concept: dcmjs.sr.coding.CodedConcept): string => {
   const codingScheme = concept.CodingSchemeDesignator
@@ -703,7 +702,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * de-activate it, depending on its current state.
    */
   handleRoiDrawing ({ geometryType, markup }: {
-    geometryType: string,
+    geometryType: string
     markup?: string
   }): void {
     if (this.volumeViewer === undefined) {
@@ -921,24 +920,28 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           </Modal>
         </Layout.Content>
 
-        <Layout.Sider width={300} theme='light' style={{
+        <Layout.Sider
+          width={300}
+          theme='light'
+          reverseArrow style={{
             borderLeft: 'solid',
             borderLeftWidth: 0.25
-        }}>
+          }}
+        >
           <Menu
             mode='inline'
-            defaultOpenKeys={['labelImage', 'annotations']}
+            defaultOpenKeys={['annotations']}
             style={{ height: '100%' }}
             inlineIndent={14}
             theme='light'
           >
-            <Menu.SubMenu key="labelImage" title="Slide label">
+            <Menu.SubMenu key='labelImage' title='Slide label'>
               <div style={{ height: '220px' }} ref={this.labelViewport} />
             </Menu.SubMenu>
-            <Menu.SubMenu key="specimens" title="Specimens">
+            <Menu.SubMenu key='specimens' title='Specimens'>
               <SpecimenList metadata={this.state.metadata} />
             </Menu.SubMenu>
-            <Menu.SubMenu key="annotations" title="Annotations">
+            <Menu.SubMenu key='annotations' title='Annotations'>
               {annotations}
             </Menu.SubMenu>
           </Menu>

@@ -52,14 +52,14 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   }
 
   fetchData ({ offset, limit, searchCriteria }: {
-    offset: number,
-    limit: number,
+    offset: number
+    limit: number
     searchCriteria?: { [attribute: string]: string }
   }): void {
     const queryParams: { [key: string]: any } = {
       ModalitiesInStudy: 'SM',
       offset: offset,
-      limit: limit,
+      limit: limit
     }
     if (searchCriteria !== undefined) {
       for (const key in searchCriteria) {
@@ -198,9 +198,11 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     }) => (
       <div style={{ padding: 8 }}>
         <Input
-          placeholder={`Search`}
+          placeholder='Search'
           value={selectedKeys[0]}
-          onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+          onChange={e => setSelectedKeys(
+            e.target.value !== undefined ? [e.target.value] : []
+          )}
           onPressEnter={() => this.handleSearch(selectedKeys, confirm, dataIndex)}
           style={{ width: 188, marginBottom: 8, display: 'block' }}
         />
@@ -224,8 +226,10 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
         </Space>
       </div>
     ),
-    filterIcon: (filtered: string) => (
-      <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />
+    filterIcon: (filtered: boolean) => (
+      <SearchOutlined
+        style={{ color: filtered ? '#1890ff' : undefined }}
+      />
     )
   })
 }

@@ -109,10 +109,14 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
 
     return (
       <Layout style={{ height: '100%' }} hasSider>
-        <Layout.Sider width={300} theme='light' style={{
-          borderRight: 'solid',
-          borderRightWidth: 0.25
-        }}>
+        <Layout.Sider
+          width={300}
+          theme='light'
+          style={{
+            borderRight: 'solid',
+            borderRightWidth: 0.25
+          }}
+        >
           <Menu
             mode='inline'
             defaultOpenKeys={['patient', 'case', 'slides']}
@@ -120,13 +124,13 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
             inlineIndent={14}
             theme='light'
           >
-            <Menu.SubMenu key="patient" title="Patient">
+            <Menu.SubMenu key='patient' title='Patient'>
               <Patient metadata={studyMetadata} />
             </Menu.SubMenu>
-            <Menu.SubMenu key="case" title="Case">
+            <Menu.SubMenu key='case' title='Case'>
               <Study metadata={studyMetadata} />
             </Menu.SubMenu>
-            <Menu.SubMenu key="slides" title="Slides">
+            <Menu.SubMenu key='slides' title='Slides'>
               <SeriesList
                 client={this.props.client}
                 metadata={this.state.series}
