@@ -27,7 +27,6 @@ class Annotation extends React.Component<AnnotationProps> {
         dcmjs.sr.valueTypes.CodeContentItem
       )
     ) => {
-      console.info('add qualitative evaluation: ', item)
       const nameMeaning = item.ConceptNameCodeSequence[0].CodeMeaning
       const name = `${nameMeaning}`
       if (item.ValueType === 'CODE') {
