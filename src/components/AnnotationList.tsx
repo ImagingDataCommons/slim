@@ -22,6 +22,8 @@ class AnnotationList extends React.Component<AnnotationListProps, {}> {
     this.handleMenuItemSelection = this.handleMenuItemSelection.bind(this)
   }
 
+
+  
   handleMenuItemSelection (
     object: any
   ): void {
