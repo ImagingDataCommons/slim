@@ -47,7 +47,7 @@ const _getRoiKey = (roi: dmv.roi.ROI): string => {
     })
   })
   if (matches.length === 0) {
-    throw Error(`No finding found for ROI ${roi.uid}`)
+    throw new Error(`No finding found for ROI ${roi.uid}`)
   }
   const finding = matches[0] as dcmjs.sr.valueTypes.CodeContentItem
   const findingName = finding.ConceptCodeSequence[0]
@@ -74,7 +74,8 @@ interface SlideViewerProps extends RouteComponentProps {
 interface SlideViewerState {
   metadata: dmv.metadata.VLWholeSlideMicroscopyImage[]
   annotatedRoi?: dmv.roi.ROI
-  selectedRoiUID?: string
+  selectedRoiUIDs: string[]
+  visibleRoiUIDs: string[]
   selectedFindingType?: dcmjs.sr.coding.CodedConcept
   generatedReport?: dmv.metadata.Comprehensive3DSR
   isLoading: boolean
@@ -93,7 +94,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     metadata: [],
     isAnnotationModalVisible: false,
     annotatedRoi: undefined,
-    selectedRoiUID: undefined,
+    selectedRoiUIDs: [],
+    visibleRoiUIDs: [],
     selectedFindingType: undefined,
     isReportModalVisible: false,
     generatedReport: undefined
@@ -198,9 +200,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               )
               if (scoord3d.frameOfReferenceUID === image.FrameOfReferenceUID) {
                 if (this.volumeViewer !== undefined) {
-                  const key = _getRoiKey(roi)
-                  const style = this.roiStyles[key]
-                  this.volumeViewer.addROI(roi, style)
+                  try {
+                    // Add ROI without style such that it won't be visible.
+                    this.volumeViewer.addROI(roi, {})
+                  } catch {
+                    console.error(`could not add ROI "${roi.uid}"`)
+                  }
                 } else {
                   console.error(
                     `could not add ROI "${roi.uid}" ` +
@@ -333,9 +338,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             }
           })
         }
-        this.setState(state => ({ selectedRoiUID: selectedRoi.uid }))
+        this.setState(state => ({
+          selectedRoiUIDs: [...this.state.selectedRoiUIDs, selectedRoi.uid]
+        }))
       } else {
-        this.setState(state => ({ selectedRoiUID: undefined }))
+        this.setState(state => ({
+          selectedRoiUIDs: []
+        }))
       }
     }
   }
@@ -410,7 +419,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         relationshipType: 'CONTAINS'
       })
       roi.addEvaluation(evaluation)
-      this.setState(state => ({ annotatedRoi: roi }))
+      this.setState(state => ({
+        annotatedRoi: roi,
+        visibleRoiUIDs: [...this.state.visibleRoiUIDs, roi.uid]
+      }))
       if (this.volumeViewer !== undefined) {
         this.volumeViewer.addROIEvaluation(roi.uid, evaluation)
         const key = _buildKey(findingType)
@@ -654,46 +666,53 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * current list of annotations.
    */
   handleAnnotationSelection ({ roiUID }: { roiUID: string }): void {
-    if (this.volumeViewer === undefined) {
+    const viewer = this.volumeViewer
+    if (viewer === undefined) {
       return
     }
     console.log(`selected ROI ${roiUID}`)
-    this.volumeViewer.getAllROIs().forEach((roi) => {
-      const key = _getRoiKey(roi)
-      var style = this.roiStyles[key]
+    this.setState(state => ({ selectedRoiUIDs: [roiUID] }))
+    viewer.getAllROIs().forEach((roi) => {
+      var style = {}
       if (roi.uid === roiUID) {
         style = this.selectedRoiStyle
+        this.setState(state => ({
+          visibleRoiUIDs: [...this.state.visibleRoiUIDs, roiUID]
+        }))
+      } else {
+        if (this.state.visibleRoiUIDs.includes(roi.uid as never)) {
+          const key = _getRoiKey(roi)
+          style = this.roiStyles[key]
+        }
       }
-      if (this.volumeViewer !== undefined) {
-        this.volumeViewer.setROIStyle(roi.uid, style)
-      }
+      viewer.setROIStyle(roi.uid, style)
     })
-    this.setState(state => ({ selectedRoiUID: roiUID }))
   }
 
   /**
-   * Handle that gets called when the visibility of an annotation should be
-   * toggled, i.e., the annotation should be either displayed or hidden.
+   * Handle toggling of annotation visibility, i.e., whether a given
+   * annotation should be either displayed or hidden by the viewer.
    */
   handleAnnotationVisibility ({ roiUID }: { roiUID: string }): void {
     const viewer = this.volumeViewer
     if (viewer === undefined) {
       return
     }
-    if (this.state.selectedRoiUID === undefined) {
-      console.log(`show ROI ${roiUID}`)
-      this.setState(state => ({ selectedRoiUID: roiUID }))
-      viewer.setROIStyle(roiUID, this.selectedRoiStyle)
-      viewer.getAllROIs().forEach((roi) => {
-        if (roi.uid !== roiUID) {
-          const key = _getRoiKey(roi)
-          viewer.setROIStyle(roi.uid, this.roiStyles[key])
-        }
-      })
-    } else {
-      console.log(`hide ROI ${roiUID}`)
-      this.setState(state => ({ selectedRoiUID: undefined }))
+    if (this.state.visibleRoiUIDs.includes(roiUID as never)) {
+      console.info(`hide ROI ${roiUID}`)
+      this.setState(state => ({
+        visibleRoiUIDs: this.state.visibleRoiUIDs.filter(uid => uid !== roiUID),
+        selectedRoiUIDs: this.state.selectedRoiUIDs.filter(uid => uid !== roiUID)
+      }))
       viewer.setROIStyle(roiUID, {})
+    } else {
+      console.info(`show ROI ${roiUID}`)
+      const roi = viewer.getROI(roiUID)
+      const key = _getRoiKey(roi)
+      viewer.setROIStyle(roi.uid, this.roiStyles[key])
+      this.setState(state => ({
+        visibleRoiUIDs: [...this.state.visibleRoiUIDs, roiUID]
+      }))
     }
   }
 
@@ -765,20 +784,22 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * or de-activate it, depending on its current state.
    */
   handleRoiRemoval (): void {
-    if (this.volumeViewer === undefined) {
+    const viewer = this.volumeViewer
+    if (viewer === undefined) {
       return
     }
-    const uid = this.state.selectedRoiUID
-    if (uid === undefined) {
+    this.state.selectedRoiUIDs.forEach(uid => {
+      if (uid === undefined) {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        message.warning('No annotation was selected for removal')
+        return
+      }
+      console.info('remove ROI "{uid}"')
+      viewer.removeROI(uid)
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      message.warning('No annotation was selected for removal')
-      return
-    }
-    console.info('remove ROI "{uid}"')
-    this.volumeViewer.removeROI(uid)
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    message.info('Annotation was removed')
-    this.setState(state => ({ selectedRoiUID: undefined }))
+      message.info('Annotation was removed')
+    })
+    this.setState(state => ({ selectedRoiUIDs: [] }))
   }
 
   /**
@@ -786,23 +807,25 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * or de-activate it, depending on its current state.
    */
   handleRoiVisibility (): void {
-    if (this.volumeViewer === undefined) {
+    const viewer = this.volumeViewer
+    if (viewer === undefined) {
       return
     }
     console.info('toggle visibility of ROIs')
-    if (this.volumeViewer.areROIsVisible) {
-      this.volumeViewer.deactivateDrawInteraction()
-      this.volumeViewer.deactivateTranslateInteraction()
-      this.volumeViewer.deactivateSelectInteraction()
-      this.volumeViewer.deactivateModifyInteraction()
-      this.volumeViewer.hideROIs()
+    if (viewer.areROIsVisible) {
+      viewer.deactivateDrawInteraction()
+      viewer.deactivateTranslateInteraction()
+      viewer.deactivateSelectInteraction()
+      viewer.deactivateModifyInteraction()
+      viewer.hideROIs()
     } else {
-      this.volumeViewer.showROIs()
-      this.volumeViewer.activateSelectInteraction({})
-      const uid = this.state.selectedRoiUID
-      if (uid !== undefined) {
-        this.volumeViewer.setROIStyle(uid, this.selectedRoiStyle)
-      }
+      viewer.showROIs()
+      viewer.activateSelectInteraction({})
+      this.state.selectedRoiUIDs.forEach(uid => {
+        if (uid !== undefined) {
+          viewer.setROIStyle(uid, this.selectedRoiStyle)
+        }
+      })
     }
   }
 
@@ -835,8 +858,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       annotations = (
         <AnnotationList
           rois={rois}
-          selectedRoiUID={this.state.selectedRoiUID}
+          selectedRoiUIDs={this.state.selectedRoiUIDs}
+          visibleRoiUIDs={this.state.visibleRoiUIDs}
           onSelection={this.handleAnnotationSelection}
+          onToggleVisibility={this.handleAnnotationVisibility}
         />
       )
     }

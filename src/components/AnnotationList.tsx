@@ -6,42 +6,44 @@ import Annotation from './Annotation'
 
 interface AnnotationListProps {
   rois: dmv.roi.ROI[]
-  selectedRoiUID?: string
-  onSelection: (
-    { roiUID }: { roiUID: string }
-  ) => void
+  selectedRoiUIDs: string[]
+  visibleRoiUIDs: string[]
+  onToggleVisibility: ({ roiUID }: { roiUID: string }) => void
+  onSelection: ({ roiUID }: { roiUID: string }) => void
 }
 
 /**
- * React component representing a list of Region of Interest (ROI) image
+ * React component representing a list of Region of Interest (ROI)
  * annotations.
  */
 class AnnotationList extends React.Component<AnnotationListProps, {}> {
+  constructor (props: AnnotationListProps) {
+    super(props)
+    this.handleMenuItemSelection = this.handleMenuItemSelection.bind(this)
+  }
+
+  handleMenuItemSelection (
+    object: any
+  ): void {
+    this.props.onSelection({ roiUID: object.key })
+  }
+
   render (): React.ReactNode {
     const items = this.props.rois.map((roi, index) => (
       <Annotation
         key={roi.uid}
         roi={roi}
         index={index}
+        isVisible={this.props.visibleRoiUIDs.includes(roi.uid)}
+        onToggleVisibility={this.props.onToggleVisibility}
       />
     ))
-    const selectedItems = []
-    if (this.props.selectedRoiUID !== undefined) {
-      selectedItems.push(this.props.selectedRoiUID)
-    }
-
-    const handleMenuItemSelection = (
-      object: any
-    ): void => {
-      this.setState(state => ({ selectedRoiUID: object.key }))
-      this.props.onSelection({ roiUID: object.key })
-    }
 
     return (
       <Menu
-        selectedKeys={selectedItems}
-        onSelect={handleMenuItemSelection}
-        onClick={handleMenuItemSelection}
+        selectedKeys={this.props.selectedRoiUIDs}
+        onSelect={this.handleMenuItemSelection}
+        onClick={this.handleMenuItemSelection}
       >
         {items}
       </Menu>

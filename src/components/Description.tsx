@@ -19,6 +19,7 @@ interface DescriptionProps {
   attributes: Attribute[]
   selectable?: boolean
   hasLongValues?: boolean
+  methods?: React.ReactNode[]
 }
 
 /**
@@ -56,6 +57,7 @@ class Description extends React.Component<DescriptionProps, {}> {
         size='small'
         hoverable={this.props.selectable}
         bordered={this.props.header !== undefined}
+        actions={this.props.methods}
       >
         <Descriptions column={1} size='small' layout={layout} bordered={false}>
           {items}
