@@ -54,6 +54,43 @@ const _getRoiKey = (roi: dmv.roi.ROI): string => {
   return _buildKey(findingName)
 }
 
+const _areROIsEqual = (a: dmv.roi.ROI, b: dmv.roi.ROI): boolean => {
+  if (a.scoord3d.graphicType !== b.scoord3d.graphicType) {
+    return false
+  }
+  if (a.scoord3d.frameOfReferenceUID !== b.scoord3d.frameOfReferenceUID) {
+    return false
+  }
+  if (a.scoord3d.graphicData.length !== b.scoord3d.graphicData.length) {
+    return false
+  }
+
+  const decimals = 6
+  for (let i = 0; i < a.scoord3d.graphicData.length; ++i) {
+    if (a.scoord3d.graphicType === 'POINT') {
+      const s1 = a.scoord3d as dmv.scoord3d.Point
+      const s2 = b.scoord3d as dmv.scoord3d.Point
+      const c1 = s1.graphicData[i].toPrecision(decimals)
+      const c2 = s2.graphicData[i].toPrecision(decimals)
+      if (c1 !== c2) {
+        return false
+      }
+    } else {
+      const s1 = a.scoord3d as dmv.scoord3d.Polygon
+      const s2 = b.scoord3d as dmv.scoord3d.Polygon
+      for (let j = 0; j < s1.graphicData[i].length; ++j) {
+        const c1 = s1.graphicData[i][j].toPrecision(decimals)
+        const c2 = s2.graphicData[i][j].toPrecision(decimals)
+        if (c1 !== c2) {
+          return false
+        }
+      }
+    }
+  }
+  return true
+}
+
+
 interface SlideViewerProps extends RouteComponentProps {
   client: DicomWebManager
   studyInstanceUID: string
@@ -200,11 +237,27 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               )
               if (scoord3d.frameOfReferenceUID === image.FrameOfReferenceUID) {
                 if (this.volumeViewer !== undefined) {
-                  try {
-                    // Add ROI without style such that it won't be visible.
-                    this.volumeViewer.addROI(roi, {})
-                  } catch {
-                    console.error(`could not add ROI "${roi.uid}"`)
+                  /**
+                   * ROIs may get assigned new UIDs upon re-rendering of the
+                   * page and we need to ensure that we don't add them twice.
+                   * The same ROI may be stored in multiple SR documents and
+                   * we don't want them to show up twice.
+                   * TODO: We should probably either "merge" measurements and
+                   * quantitative evaluations or pick the ROI from the "best"
+                   * available report (COMPLETE and VERIFIED).
+                   */
+                  const doesROIExist = this.volumeViewer.getAllROIs().some(
+                    (otherROI: dmv.roi.ROI): boolean => {
+                      return _areROIsEqual(otherROI, roi)
+                    }
+                  )
+                  if (!doesROIExist) {
+                    try {
+                      // Add ROI without style such that it won't be visible.
+                      this.volumeViewer.addROI(roi, {})
+                    } catch {
+                      console.error(`could not add ROI "${roi.uid}"`)
+                    }
                   }
                 } else {
                   console.error(
@@ -538,8 +591,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       findingType = findingType as dcmjs.sr.valueTypes.CodeContentItem
       const group = new dcmjs.sr.templates.PlanarROIMeasurementsAndQualitativeEvaluations({
         trackingIdentifier: new dcmjs.sr.templates.TrackingIdentifier({
-          uid: roi.uid,
-          identifier: `Region #${i + 1}`
+          uid: roi.properties.trackingUID ?? roi.uid,
+          identifier: `ROI #${i + 1}`
         }),
         referencedRegion: new dcmjs.sr.contentItems.ImageRegion3D({
           graphicType: roi.scoord3d.graphicType,

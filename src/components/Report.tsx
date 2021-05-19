@@ -2,6 +2,7 @@ import React from 'react'
 import * as dmv from 'dicom-microscopy-viewer'
 import * as dcmjs from 'dcmjs'
 import { Divider } from 'antd'
+import { v4 as generateUUID } from 'uuid'
 
 import Description from './Description'
 import Patient from './Patient'
@@ -190,8 +191,9 @@ const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
 
     const roi = new dmv.roi.ROI({
       scoord3d: scoord3d,
-      uid: trackingUIDItem.UID,
+      uid: generateUUID(),
       properties: {
+        trackingUID: trackingUIDItem.UID,
         observerType: observerType,
         evaluations: evaluations,
         measurements: measurements

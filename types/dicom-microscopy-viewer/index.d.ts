@@ -108,7 +108,7 @@ declare module 'dicom-microscopy-viewer' {
 
     export class Scoord3D {
       get graphicType (): string
-      get graphicData (): number[]
+      get graphicData (): number[] | number[][]
       get frameOfReferenceUID (): string
       get fiducialUID (): string
     }
@@ -121,6 +121,7 @@ declare module 'dicom-microscopy-viewer' {
 
     export class Polygon extends Scoord3D {
       constructor (options: PolygonOptions)
+      get graphicData (): number[][]
     }
 
     export interface PointOptions {
@@ -131,6 +132,7 @@ declare module 'dicom-microscopy-viewer' {
 
     export class Point extends Scoord3D {
       constructor (options: PointOptions)
+      get graphicData (): number[]
     }
 
     export interface MultiPointOptions {
@@ -141,6 +143,7 @@ declare module 'dicom-microscopy-viewer' {
 
     export class MultiPoint extends Scoord3D {
       constructor (options: MultiPointOptions)
+      get graphicData (): number[][]
     }
 
     export interface EllipseOptions {
@@ -151,6 +154,7 @@ declare module 'dicom-microscopy-viewer' {
 
     export class Ellipse extends Scoord3D {
       constructor (options: EllipseOptions)
+      get graphicData (): number[][]
     }
 
     export interface EllipsoidOptions {
@@ -161,6 +165,7 @@ declare module 'dicom-microscopy-viewer' {
 
     export class Ellipsoid extends Scoord3D {
       constructor (options: EllipsoidOptions)
+      get graphicData (): number[][]
     }
 
     export interface PolylineOptions {
@@ -171,6 +176,7 @@ declare module 'dicom-microscopy-viewer' {
 
     export class Polyline extends Scoord3D {
       constructor (options: PolylineOptions)
+      get graphicData (): number[][]
     }
 
   }
@@ -181,6 +187,7 @@ declare module 'dicom-microscopy-viewer' {
       scoord3d: scoord3d.Scoord3D
       uid: string
       properties?: {
+        trackingUID?: string
         observerType?: string
         evaluations?: (
           dcmjs.sr.valueTypes.CodeContentItem |
@@ -195,6 +202,7 @@ declare module 'dicom-microscopy-viewer' {
       get scoord3d (): scoord3d.Scoord3D
       get uid (): string
       get properties (): {
+        trackingUID?: string
         observerType?: string
         evaluations: (
           dcmjs.sr.valueTypes.CodeContentItem |
