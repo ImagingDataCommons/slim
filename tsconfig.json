@@ -19,11 +19,12 @@
     "isolatedModules": true,
     "declaration": true,
     "noEmit": true,
-    "jsx": "react",
+    "jsx": "react-jsx",
     "typeRoots": [
       "types",
       "node_modules/@types"
-    ]
+    ],
+    "noFallthroughCasesInSwitch": true
   },
   "include": [
     "src",
