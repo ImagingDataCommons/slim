@@ -3,9 +3,9 @@ import { Menu } from 'antd'
 import * as dmv from 'dicom-microscopy-viewer'
 
 import DicomWebManager from '../DicomWebManager'
-import SeriesItem from './SeriesItem'
+import SlideItem from './SlideItem'
 
-interface SeriesListProps {
+interface SlideListProps {
   metadata: dmv.metadata.Series[]
   client: DicomWebManager
   initiallySelectedSeriesInstanceUID: string
@@ -14,15 +14,15 @@ interface SeriesListProps {
   ) => void
 }
 
-interface SeriesListState {
+interface SlideListState {
   selectedSeriesInstanceUID: string
 }
 
 /**
  * React component representing a list of DICOM Series Information Entities.
  */
-class SeriesList extends React.Component<SeriesListProps, SeriesListState> {
-  constructor (props: SeriesListProps) {
+class SlideList extends React.Component<SlideListProps, SlideListState> {
+  constructor (props: SlideListProps) {
     super(props)
     this.state = {
       selectedSeriesInstanceUID: this.props.initiallySelectedSeriesInstanceUID
@@ -38,7 +38,7 @@ class SeriesList extends React.Component<SeriesListProps, SeriesListState> {
   render (): React.ReactNode {
     const items = this.props.metadata.map((series, index: number) => {
       return (
-        <SeriesItem
+        <SlideItem
           key={series.SeriesInstanceUID}
           metadata={series}
           client={this.props.client}
@@ -73,4 +73,4 @@ class SeriesList extends React.Component<SeriesListProps, SeriesListState> {
   }
 }
 
-export default SeriesList
+export default SlideList

@@ -6,7 +6,7 @@ import { FaEye, FaEyeSlash, FaRobot, FaUser } from 'react-icons/fa'
 
 import Description from './Description'
 
-interface AnnotationProps {
+interface AnnotationItemProps {
   roi: dmv.roi.ROI
   index: number
   isVisible: boolean
@@ -16,8 +16,8 @@ interface AnnotationProps {
 /**
  * React component representing a Region of Interest (ROI) annotation.
  */
-class Annotation extends React.Component<AnnotationProps, {}> {
-  constructor (props: AnnotationProps) {
+class AnnotationItem extends React.Component<AnnotationItemProps, {}> {
+  constructor (props: AnnotationItemProps) {
     super(props)
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
   }
@@ -105,4 +105,4 @@ class Annotation extends React.Component<AnnotationProps, {}> {
   }
 }
 
-export default Annotation
+export default AnnotationItem

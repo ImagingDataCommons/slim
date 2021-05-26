@@ -7,12 +7,12 @@ import { Menu } from 'antd'
 import DicomWebManager from '../DicomWebManager'
 import Description from './Description'
 
-interface SeriesItemProps {
+interface SlideItemProps {
   client: DicomWebManager
   metadata: dmv.metadata.Series
 }
 
-interface SeriesItemState {
+interface SlideItemState {
   instances: dmv.metadata.Instance[]
   containerIdentifier: string
   isLoading: boolean
@@ -25,7 +25,7 @@ interface SeriesItemState {
  * When selected a Slide Viewer instance is created for the display of the
  * contained images.
  */
-class SeriesItem extends React.Component<SeriesItemProps, SeriesItemState> {
+class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
   state = {
     instances: [],
     containerIdentifier: '',
@@ -36,7 +36,7 @@ class SeriesItem extends React.Component<SeriesItemProps, SeriesItemState> {
 
   private overviewViewer?: dmv.viewer.OverviewImageViewer
 
-  constructor (props: SeriesItemProps) {
+  constructor (props: SlideItemProps) {
     super(props)
     this.overviewViewer = undefined
   }
@@ -161,4 +161,4 @@ class SeriesItem extends React.Component<SeriesItemProps, SeriesItemState> {
   }
 }
 
-export default SeriesItem
+export default SlideItem

@@ -2,7 +2,7 @@ import React from 'react'
 import * as dmv from 'dicom-microscopy-viewer'
 import { Menu } from 'antd'
 
-import Annotation from './Annotation'
+import AnnotationItem from './AnnotationItem'
 
 interface AnnotationListProps {
   rois: dmv.roi.ROI[]
@@ -30,7 +30,7 @@ class AnnotationList extends React.Component<AnnotationListProps, {}> {
 
   render (): React.ReactNode {
     const items = this.props.rois.map((roi, index) => (
-      <Annotation
+      <AnnotationItem
         key={roi.uid}
         roi={roi}
         index={index}

@@ -1,7 +1,13 @@
 import * as dcmjs from 'dcmjs'
 
+interface EvaluationValueSet {
+  name: dcmjs.sr.coding.CodeOptions
+  values: dcmjs.sr.coding.CodeOptions[]
+}
+
 export interface AnnotationSettings {
   finding: dcmjs.sr.coding.CodeOptions
+  evaluations?: EvaluationValueSet[]
   style: {
     stroke: {
       color: number[]

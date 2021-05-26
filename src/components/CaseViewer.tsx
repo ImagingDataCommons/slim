@@ -17,7 +17,7 @@ import { AnnotationSettings } from '../AppConfig'
 import DicomWebManager from '../DicomWebManager'
 import Patient from './Patient'
 import Study from './Study'
-import SeriesList from './SeriesList'
+import SlideList from './SlideList'
 import SlideViewer from './SlideViewer'
 
 interface ViewerProps extends RouteComponentProps {
@@ -131,7 +131,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
               <Study metadata={studyMetadata} />
             </Menu.SubMenu>
             <Menu.SubMenu key='slides' title='Slides'>
-              <SeriesList
+              <SlideList
                 client={this.props.client}
                 metadata={this.state.series}
                 initiallySelectedSeriesInstanceUID={selectedSeriesInstanceUID}
