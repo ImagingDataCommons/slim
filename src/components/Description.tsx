@@ -28,14 +28,27 @@ interface DescriptionProps {
  */
 class Description extends React.Component<DescriptionProps, {}> {
   render (): React.ReactNode {
+    let layout: 'horizontal' | 'vertical' = 'horizontal'
+    let labelLineHeight = '14px'
+    let contentLineHeight = '14px'
+    if (this.props.hasLongValues !== undefined && this.props.hasLongValues) {
+      layout = 'vertical'
+      labelLineHeight = '20px'
+    }
     const items = this.props.attributes.map((item: Attribute, index: number) => {
       const uid = generateUUID()
       return (
         <Descriptions.Item
           key={uid}
           label={item.name}
-          labelStyle={{ margin: '0 0 -10px 0' }}
-          contentStyle={{ fontWeight: 600 }}
+          labelStyle={{
+            lineHeight: labelLineHeight
+          }}
+          contentStyle={{
+            fontWeight: 600,
+            whiteSpace: 'pre-line',
+            lineHeight: contentLineHeight
+          }}
           span={1}
         >
           {item.value}
@@ -46,10 +59,6 @@ class Description extends React.Component<DescriptionProps, {}> {
     if (this.props.icon !== undefined) {
       icon = <this.props.icon />
     }
-    let layout: 'horizontal' | 'vertical' = 'horizontal'
-    if (this.props.hasLongValues !== undefined && this.props.hasLongValues) {
-      layout = 'vertical'
-    }
     return (
       <Card
         title={this.props.header}
@@ -59,7 +68,12 @@ class Description extends React.Component<DescriptionProps, {}> {
         bordered={this.props.header !== undefined}
         actions={this.props.methods}
       >
-        <Descriptions column={1} size='small' layout={layout} bordered={false}>
+        <Descriptions
+          column={1}
+          size='small'
+          layout={layout}
+          bordered={false}
+        >
           {items}
         </Descriptions>
         {this.props.children}

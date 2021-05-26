@@ -18,7 +18,8 @@ import {
   Modal,
   Layout,
   Row,
-  Select
+  Select,
+  Space
 } from 'antd'
 import * as dmv from 'dicom-microscopy-viewer'
 import * as dcmjs from 'dcmjs'
@@ -90,6 +91,16 @@ const _areROIsEqual = (a: dmv.roi.ROI, b: dmv.roi.ROI): boolean => {
   return true
 }
 
+interface EvaluationOptions {
+  name: dcmjs.sr.coding.CodedConcept
+  values: dcmjs.sr.coding.CodedConcept[]
+}
+
+interface Evaluation {
+  name: dcmjs.sr.coding.CodedConcept
+  value: dcmjs.sr.coding.CodedConcept
+}
+
 
 interface SlideViewerProps extends RouteComponentProps {
   client: DicomWebManager
@@ -113,7 +124,8 @@ interface SlideViewerState {
   annotatedRoi?: dmv.roi.ROI
   selectedRoiUIDs: string[]
   visibleRoiUIDs: string[]
-  selectedFindingType?: dcmjs.sr.coding.CodedConcept
+  selectedFinding?: dcmjs.sr.coding.CodedConcept
+  selectedEvaluations: Evaluation[]
   generatedReport?: dmv.metadata.Comprehensive3DSR
   isLoading: boolean
   isAnnotationModalVisible: boolean
@@ -133,12 +145,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     annotatedRoi: undefined,
     selectedRoiUIDs: [],
     visibleRoiUIDs: [],
-    selectedFindingType: undefined,
+    selectedFinding: undefined,
+    selectedEvaluations: [],
     isReportModalVisible: false,
     generatedReport: undefined
   }
 
-  private readonly findingTypes: dcmjs.sr.coding.CodedConcept[] = []
+  private readonly findingOptions: dcmjs.sr.coding.CodedConcept[] = []
+
+  private readonly evaluationOptions: { [key: string]: EvaluationOptions[] } = {}
 
   private readonly volumeViewport = React.createRef<HTMLDivElement>()
 
@@ -163,9 +178,20 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   constructor (props: SlideViewerProps) {
     super(props)
     props.annotations.forEach((annotation: AnnotationSettings) => {
-      const findingType = new dcmjs.sr.coding.CodedConcept(annotation.finding)
-      this.findingTypes.push(findingType)
-      const key = _buildKey(findingType)
+      const finding = new dcmjs.sr.coding.CodedConcept(annotation.finding)
+      this.findingOptions.push(finding)
+      const key = _buildKey(finding)
+      this.evaluationOptions[key] = []
+      if (annotation.evaluations !== undefined) {
+        annotation.evaluations.forEach(evaluation => {
+          this.evaluationOptions[key].push({
+            name: new dcmjs.sr.coding.CodedConcept(evaluation.name),
+            values: evaluation.values.map(value => {
+              return new dcmjs.sr.coding.CodedConcept(value)
+            })
+          })
+        })
+      }
       this.roiStyles[key] = annotation.style
     })
 
@@ -180,6 +206,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleAnnotationSelection = this.handleAnnotationSelection.bind(this)
     this.handleReportGeneration = this.handleReportGeneration.bind(this)
     this.handleAnnotationFindingSelection = this.handleAnnotationFindingSelection.bind(this)
+    this.handleAnnotationEvaluationSelection = this.handleAnnotationEvaluationSelection.bind(this)
     this.handleAnnotationCompletion = this.handleAnnotationCompletion.bind(this)
     this.handleAnnotationCancellation = this.handleAnnotationCancellation.bind(this)
     this.handleReportVerification = this.handleReportVerification.bind(this)
@@ -220,7 +247,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         if (instance.SOPClassUID === '1.2.840.10008.5.1.4.1.1.88.34') {
           console.info(`retrieve SR instance "${instance.SOPInstanceUID}"`)
           this.props.client.retrieveInstance({
-            studyInstanceUID: instance.StudyInstanceUID,
+            studyInstanceUID: instance.StudyInstanceUID ?? this.props.studyInstanceUID,
             seriesInstanceUID: instance.SeriesInstanceUID,
             sopInstanceUID: instance.SOPInstanceUID
           }).then((retrievedInstance): void => {
@@ -230,6 +257,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             const content = new MeasurementReport(report)
             content.ROIs.forEach(roi => {
               console.info(`add ROI "${roi.uid}"`)
+              console.log(roi)
               const scoord3d = roi.scoord3d
               const image = (
                 this.state.metadata[0] as
@@ -442,46 +470,101 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that gets called when a finding has been selected for an
    * annotation after the region of interest has been drawn.
    *
-   * @param value - Code value of the coded finding
+   * @param value - Code value of the coded finding that got selected
+   * @param option - Option that got selected
    */
-  handleAnnotationFindingSelection (value: string): void {
-    const selected = this.findingTypes.find(code => code.CodeValue === value)
-    if (selected === undefined) {
-      throw new Error('Unknown finding type selected for annotation.')
+  handleAnnotationFindingSelection (
+    value: string,
+    option: any
+  ): void {
+    this.findingOptions.forEach(finding => {
+      if (finding.CodeValue === value) {
+        console.info(`selected finding "${finding.CodeMeaning}"`)
+        this.setState(state => ({ selectedFinding: finding }))
+      }
+    })
+  }
+
+  /**
+   * Handler that gets called when an evaluation has been selected for an
+   * annotation after the region of interest has been drawn.
+   *
+   * @param value - Code value of the coded evaluation that got selected
+   * @param option - Option that got selected
+   */
+  handleAnnotationEvaluationSelection (
+    value: string,
+    option: any
+  ): void {
+    const selectedFinding = this.state.selectedFinding
+    if (selectedFinding !== undefined) {
+      const key = _buildKey(selectedFinding)
+      const name = option.label
+      this.evaluationOptions[key].forEach(evaluation => {
+        if (
+          evaluation.name.CodeValue === name.CodeValue &&
+          evaluation.name.CodingSchemeDesignator === name.CodingSchemeDesignator
+        ) {
+          evaluation.values.forEach(code => {
+            if (code.CodeValue === value) {
+              const filteredEvaluations = this.state.selectedEvaluations.filter(
+                (item: Evaluation) => item.name !== evaluation.name
+              )
+              this.setState(state => ({
+                selectedEvaluations: [
+                  ...filteredEvaluations,
+                  { name: name, value: code }
+                ]
+              }))
+            }
+          })
+        }
+      })
     }
-    console.info(`selected finding type "${selected.CodeMeaning}"`)
-    this.setState(state => ({ selectedFindingType: selected }))
   }
 
   /**
    * Handler that gets called when an annotation has been completed.
    */
   handleAnnotationCompletion (): void {
+    const viewer = this.volumeViewer
     const annotatedRoi = this.state.annotatedRoi
-    const findingType = this.state.selectedFindingType
-    if (annotatedRoi !== undefined && findingType !== undefined) {
+    const selectedFinding = this.state.selectedFinding
+    const selectedEvaluations = this.state.selectedEvaluations
+    if (
+      annotatedRoi !== undefined &&
+      selectedFinding !== undefined &&
+      viewer !== undefined
+    ) {
       const roi = annotatedRoi as dmv.roi.ROI
       console.info(`completed annotation of ROI "${roi.uid}"`)
-      const evaluation = new dcmjs.sr.valueTypes.CodeContentItem({
+      const findingItem = new dcmjs.sr.valueTypes.CodeContentItem({
         name: new dcmjs.sr.coding.CodedConcept({
           value: '121071',
           meaning: 'Finding',
           schemeDesignator: 'DCM'
         }),
-        value: findingType,
+        value: selectedFinding,
         relationshipType: 'CONTAINS'
       })
-      roi.addEvaluation(evaluation)
+      roi.addEvaluation(findingItem)
+      viewer.addROIEvaluation(roi.uid, findingItem)
+      selectedEvaluations.forEach((evaluation: Evaluation) => {
+        const item = new dcmjs.sr.valueTypes.CodeContentItem({
+          name: evaluation.name,
+          value: evaluation.value,
+          relationshipType: 'CONTAINS'
+        })
+        roi.addEvaluation(item)
+        viewer.addROIEvaluation(roi.uid, item)
+      })
       this.setState(state => ({
         annotatedRoi: roi,
         visibleRoiUIDs: [...this.state.visibleRoiUIDs, roi.uid]
       }))
-      if (this.volumeViewer !== undefined) {
-        this.volumeViewer.addROIEvaluation(roi.uid, evaluation)
-        const key = _buildKey(findingType)
-        var style = this.roiStyles[key]
-        this.volumeViewer.setROIStyle(roi.uid, style)
-      }
+      const key = _buildKey(selectedFinding)
+      var style = this.roiStyles[key]
+      viewer.setROIStyle(roi.uid, style)
     }
     this.setState(state => ({ isAnnotationModalVisible: false }))
   }
@@ -580,6 +663,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const imagingMeasurements: dcmjs.sr.valueTypes.ContainerContentItem[] = []
     for (let i = 0; i < rois.length; i++) {
       const roi = rois[i]
+      if (!this.state.visibleRoiUIDs.includes(roi.uid as never)) {
+        continue
+      }
       let findingType = roi.evaluations.find(
         (property: dcmjs.sr.valueTypes.ContentItem) => {
           return property.ConceptNameCodeSequence[0].CodeValue === '121071'
@@ -614,7 +700,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       imagingMeasurements.push(...measurements)
     }
 
-    console.debug('create Measurement Report')
+    console.debug('create Measurement Report document content')
     const measurementReport = new dcmjs.sr.templates.MeasurementReport({
       languageOfContentItemAndDescendants: new dcmjs.sr.templates.LanguageOfContentItemAndDescendants({}),
       observationContext: observationContext,
@@ -919,6 +1005,57 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       )
     }
 
+    const findingOptions = this.findingOptions.map(finding => {
+      return (
+        <Select.Option
+          key={finding.CodeValue}
+          value={finding.CodeValue}
+        >
+          {finding.CodeMeaning}
+        </Select.Option>
+      )
+    })
+    const selections: React.ReactNode[] = [
+      (
+        <Select
+          style={{ minWidth: 130 }}
+          onSelect={this.handleAnnotationFindingSelection}
+          defaultActiveFirstOption
+        >
+          {findingOptions}
+        </Select>
+      )
+    ]
+
+    const selectedFinding = this.state.selectedFinding
+    if (selectedFinding !== undefined) {
+      const key = _buildKey(selectedFinding)
+      this.evaluationOptions[key].forEach(evaluation => {
+        const evaluationOptions = evaluation.values.map(code => {
+          return (
+            <Select.Option
+              key={code.CodeValue}
+              value={code.CodeValue}
+              label={evaluation.name}
+            >
+              {code.CodeMeaning}
+            </Select.Option>
+          )
+        })
+        selections.push(
+          <>
+            {evaluation.name.CodeMeaning}
+            <Select
+              style={{ minWidth: 130 }}
+              onSelect={this.handleAnnotationEvaluationSelection}
+            >
+              {evaluationOptions}
+            </Select>
+          </>
+        )
+      })
+    }
+
     return (
       <Layout style={{ height: '100%' }} hasSider>
         <Layout.Content style={{ height: '100%' }}>
@@ -968,24 +1105,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
           <Modal
             visible={this.state.isAnnotationModalVisible}
-            title='Select finding type'
+            title='Select finding'
             onOk={this.handleAnnotationCompletion}
             onCancel={this.handleAnnotationCancellation}
             okText='Select'
           >
-            <Select
-              style={{ minWidth: 130 }}
-              onSelect={this.handleAnnotationFindingSelection}
-              defaultActiveFirstOption
-            >
-              {this.findingTypes.map(code => {
-                return (
-                  <Select.Option key={code.CodeValue} value={code.CodeValue}>
-                    {code.CodeMeaning}
-                  </Select.Option>
-                )
-              })}
-            </Select>
+            <Space align='start' direction='vertical'>
+              {selections}
+            </Space>
           </Modal>
           <Modal
             visible={this.state.isReportModalVisible}
@@ -1008,7 +1135,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         >
           <Menu
             mode='inline'
-            defaultOpenKeys={['annotations']}
+            defaultOpenKeys={['labelImage', 'annotations']}
             style={{ height: '100%' }}
             inlineIndent={14}
             theme='light'
