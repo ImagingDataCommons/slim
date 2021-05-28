@@ -1318,13 +1318,14 @@
     exec-sh "^0.3.2"
     minimist "^1.2.0"
 
-"@craco/craco@^5.8.0":
-  version "5.9.0"
-  resolved "https://registry.yarnpkg.com/@craco/craco/-/craco-5.9.0.tgz#dcd34330b558596a4841374743071b7fa041dce9"
-  integrity sha512-2Q8gIB4W0/nPiUxr9iAKUhGsFlXYN0/wngUdK1VWtfV2NtBv+yllNn2AjieaLbttgpQinuOYmDU65vocC0NMDg==
+"@craco/craco@^6.1.2":
+  version "6.1.2"
+  resolved "https://registry.yarnpkg.com/@craco/craco/-/craco-6.1.2.tgz#30e45288e4609ac6b8cf828085b34acebdc60e69"
+  integrity sha512-GlQZn+g+yNlaDvIL5m6mcCoBGyFDwO4kkNx3fNFf98wuldkdWyBFoQbtOFOIb4gvkTh4VntOOxtJEoZfKs7XXw==
   dependencies:
     cross-spawn "^7.0.0"
     lodash "^4.17.15"
+    semver "^7.3.2"
     webpack-merge "^4.2.2"
 
 "@csstools/convert-colors@^1.4.0":
@@ -3940,7 +3941,7 @@ cosmiconfig@^7.0.0:
     path-type "^4.0.0"
     yaml "^1.10.0"
 
-craco-less@^1.17.0:
+craco-less@^1.17.1:
   version "1.17.1"
   resolved "https://registry.yarnpkg.com/craco-less/-/craco-less-1.17.1.tgz#aa23cf10d09f0f99657bed977788cc9b501add70"
   integrity sha512-T6V1aF3+eQZ22gUigHInX/i+ExPbWrnmdAhtuEXc4mOyhneDifmEzZFseq/BdRy1aUEs9s4z26jTxP+1I6P//g==
@@ -10217,7 +10218,7 @@ react-router@5.2.0:
     tiny-invariant "^1.0.2"
     tiny-warning "^1.0.0"
 
-react-scripts@4.0.3:
+react-scripts@^4.0.3:
   version "4.0.3"
   resolved "https://registry.yarnpkg.com/react-scripts/-/react-scripts-4.0.3.tgz#b1cafed7c3fa603e7628ba0f187787964cb5d345"
   integrity sha512-S5eO4vjUzUisvkIPB7jVsKtuH2HhWcASREYWHAQ1FP5HyCv3xgn+wpILAEWkmy+A+tTNbSZClhxjT3qz6g4L1A==
