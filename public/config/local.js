@@ -4,7 +4,7 @@ window.config = {
   servers: [
     {
       id: "local",
-      url: "http://localhost:8008/dicomweb",
+      url: "http://34.68.90.36/",
       write: true
     }
   ],

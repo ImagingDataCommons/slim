@@ -267,11 +267,29 @@ declare module 'dicom-microscopy-viewer' {
       Columns?: number
       BitsAllocated?: number
       NumberOfFrames?: number
+      ContainerIdentifier?: string
       ImageType?: string[] // may be included
     }
 
     export class VLWholeSlideMicroscopyImage {
       constructor ({ metadata: Metadata }: object)
+    }
+
+    export interface SeriesState {
+      Series: Series
+      VolumeMetadata: object[]
+      LabelMetadata: object[]
+      OverviewMetadata: object[]
+    }
+
+    export interface SlideState {
+      Key: string
+      IsMultiChannel: boolean
+      MultiChannelsSeriesUIDs: string[]
+      Description: string
+      VolumeMetadata: object[]
+      LabelMetadata: object[]
+      OverviewMetadata: object[]
     }
 
     export interface SpecimenPreparation {
@@ -323,6 +341,7 @@ declare module 'dicom-microscopy-viewer' {
       // VL Whole Slide Microscopy Image module
       ImageType: string[]
       FrameOfReferenceUID: string
+      SamplesPerPixel: number
     }
 
     export interface Comprehensive3DSR extends SOPClass {

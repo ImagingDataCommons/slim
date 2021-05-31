@@ -31,6 +31,7 @@ import Report, { MeasurementReport } from './Report'
 import SpecimenList from './SpecimenList'
 import { AnnotationSettings } from '../AppConfig'
 import { findContentItemsByName } from '../utils/sr'
+import {fromSeriesListToSlideList} from '../utils/fromSeriesListToSlideList'
 
 const _buildKey = (concept: dcmjs.sr.coding.CodedConcept): string => {
   const codingScheme = concept.CodingSchemeDesignator
@@ -103,6 +104,7 @@ interface Evaluation {
 
 
 interface SlideViewerProps extends RouteComponentProps {
+  metadata: dmv.metadata.SeriesState[]
   client: DicomWebManager
   studyInstanceUID: string
   seriesInstanceUID: string
@@ -120,6 +122,7 @@ interface SlideViewerProps extends RouteComponentProps {
 }
 
 interface SlideViewerState {
+  slideList: dmv.metadata.SlideState[]
   metadata: dmv.metadata.VLWholeSlideMicroscopyImage[]
   annotatedRoi?: dmv.roi.ROI
   selectedRoiUIDs: string[]
@@ -141,6 +144,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   state = {
     isLoading: false,
     metadata: [],
+    slideList: [],
     isAnnotationModalVisible: false,
     annotatedRoi: undefined,
     selectedRoiUIDs: [],
@@ -217,7 +221,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     /** Fetch data and update the viewports if the route has changed,
      * i.e., if another series has been selected.
      */
-    if (this.props.location !== previousProps.location) {
+    if (this.props.location !== previousProps.location ||
+      this.props.metadata !== previousProps.metadata) {
       console.log(
         'switch viewports from series ' +
         previousProps.seriesInstanceUID +
@@ -316,27 +321,25 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * instantiate the VOLUME and LABEL image viewers.
    */
   populateViewports = (): void => {
-    console.info(
-      `retrieve metadata for series "${this.props.seriesInstanceUID}"`
-    )
-    this.setState(state => ({ isLoading: true }))
-    this.props.client.retrieveSeriesMetadata({
-      studyInstanceUID: this.props.studyInstanceUID,
-      seriesInstanceUID: this.props.seriesInstanceUID
-    }).then((retrievedMetadata): void => {
-      const series: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
-      retrievedMetadata.forEach(item => {
-        const instance = dmv.metadata.formatMetadata(item) as dmv.metadata.VLWholeSlideMicroscopyImage
-        series.push(instance)
-      })
-      this.setState((state) => ({ metadata: series }))
-
-      const volumeMetadata = retrievedMetadata.filter((item, index) => {
-        if (series[index].ImageType[2] === 'VOLUME') {
-          return true
-        }
-        return false
-      })
+    const seriesList = this.props.metadata
+    const slideList = fromSeriesListToSlideList(seriesList);
+    this.setState(state => ({
+      slideList: slideList
+    }))
+    const slides = this.state.slideList.filter(item => {
+      const slideItem = item as dmv.metadata.SlideState
+      if ((slideItem.IsMultiChannel && 
+          slideItem.MultiChannelsSeriesUIDs.findIndex
+            (uid => uid === this.props.seriesInstanceUID) !== -1) ||
+          slideItem.Key === this.props.seriesInstanceUID) {
+        return true
+      }
+      return false
+    })
+    
+    if (slides.length > 0) {
+      this.setState(state => ({ isLoading: true }))
+      const slide = slides[0] as dmv.metadata.SlideState;
       if (this.volumeViewport.current !== null) {
         console.info(
           'instantiate viewer for VOLUME images of series ' +
@@ -345,7 +348,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         this.volumeViewport.current.innerHTML = ''
         this.volumeViewer = new dmv.viewer.VolumeImageViewer({
           client: this.props.client,
-          metadata: volumeMetadata,
+          metadata: slide.VolumeMetadata,
           retrieveRendered: true
         })
         this.volumeViewer.render({ container: this.volumeViewport.current })
@@ -353,38 +356,27 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         this.volumeViewer.toggleOverviewMap()
       }
 
-      const labelMetadata = retrievedMetadata.filter((item, index) => {
-        if (series[index].ImageType[2] === 'LABEL') {
-          return true
-        }
-        return false
-      })
       if (this.labelViewport.current !== null) {
         this.labelViewport.current.innerHTML = ''
-        if (labelMetadata.length > 0) {
+        if (slide.LabelMetadata.length > 0) {
           console.info(
             'instantiate viewer for LABEL image of series ' +
             this.props.seriesInstanceUID
           )
           this.labelViewer = new dmv.viewer.LabelImageViewer({
             client: this.props.client,
-            metadata: labelMetadata[0],
+            metadata: slide.LabelMetadata[0],
             resizeFactor: 1,
             orientation: 'vertical'
           })
           this.labelViewer.render({ container: this.labelViewport.current })
         }
       }
-    }).catch(
-      (error) => {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        message.error(
-          'An error occured. Metadata could not be retrieved for series ' +
-          this.props.seriesInstanceUID
-        )
-        console.error(error)
-      }
-    )
+    }
+
+    // State update will also ensure that the component is re-rendered.
+    this.setState(state => ({ isLoading: false }))
+
     this.addAnnotations()
   }
 
@@ -463,6 +455,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       'dicommicroscopyviewer_roi_removed',
       this.onRoiRemoved
     )
+
     this.populateViewports()
   }
 

@@ -9,11 +9,10 @@ import Description from './Description'
 
 interface SlideItemProps {
   client: DicomWebManager
-  metadata: dmv.metadata.Series
+  slidestate: dmv.metadata.SlideState
 }
 
 interface SlideItemState {
-  instances: dmv.metadata.Instance[]
   containerIdentifier: string
   isLoading: boolean
 }
@@ -27,7 +26,6 @@ interface SlideItemState {
  */
 class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
   state = {
-    instances: [],
     containerIdentifier: '',
     isLoading: false
   }
@@ -42,84 +40,33 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
   }
 
   componentDidMount (): void {
-    console.info(
-      'search for instances in series ' +
-      `"${this.props.metadata.SeriesInstanceUID}"...`
-    )
     this.setState({ isLoading: true })
-    const searchOptions = {
-      studyInstanceUID: this.props.metadata.StudyInstanceUID,
-      seriesInstanceUID: this.props.metadata.SeriesInstanceUID
-    }
-    this.props.client.searchForInstances(searchOptions).then((matchedInstances) => {
-      matchedInstances.forEach(matchedItem => {
-        const instance = dmv.metadata.formatMetadata(matchedItem) as dmv.metadata.Instance
-        if (instance.SOPClassUID === '1.2.840.10008.5.1.4.1.1.77.1.6') {
-          this.setState(state => ({
-            instances: [
-              ...state.instances,
-              instance
-            ]
-          }))
-          /** At this point, we only need the metadata for OVERVIEW images.
-           * Unfortunately, the ImageType attribute may not be included in
-           * instance search results and we need to retrieve the metadata
-           * of images. To limit network communication and parsing overhead
-           * (the metadata can be quite large for VOLUME images with many
-           * frames), we only retrieve metadata of those images containing
-           * a limited number of frames.
-           */
-          var isOverviewImage = false
-          if (instance.ImageType !== undefined) {
-            isOverviewImage = instance.ImageType[2] === 'OVERVIEW'
-          }
-          if (isOverviewImage || instance.NumberOfFrames === 1) {
-            console.debug(
-              'retrieve metadata for instance ' +
-              `"${instance.SOPInstanceUID}"`
-            )
-            const retrieveOptions = {
-              studyInstanceUID: this.props.metadata.StudyInstanceUID,
-              seriesInstanceUID: this.props.metadata.SeriesInstanceUID,
-              sopInstanceUID: instance.SOPInstanceUID
-            }
-            this.props.client.retrieveInstanceMetadata(retrieveOptions).then(
-              retrievedMetadata => {
-                const metadata = dmv.metadata.formatMetadata(retrievedMetadata[0])
-                const dataset = metadata as dmv.metadata.VLWholeSlideMicroscopyImage
-                this.setState({
-                  containerIdentifier: dataset.ContainerIdentifier
-                })
-                if (dataset.ImageType[2] === 'OVERVIEW') {
-                  // Instantiate the viewer and inject it into the viewport
-                  console.info(
-                    'instantiate viewer for OVERVIEW image of series ' +
-                    this.props.metadata.SeriesInstanceUID +
-                    '...'
-                  )
-                  if (this.overviewViewport.current !== null) {
-                    this.overviewViewport.current.innerHTML = ''
-                    this.overviewViewer = new dmv.viewer.OverviewImageViewer({
-                      client: this.props.client,
-                      metadata: retrievedMetadata[0],
-                      resizeFactor: 1
-                    })
-                    this.overviewViewer.render({
-                      container: this.overviewViewport.current
-                    })
-                  }
-                }
-              }
-            ).catch(
-              () => console.error('retrieval of image instance metadata failed')
-            )
-          }
-        }
+    if (this.props.slidestate.OverviewMetadata.length > 0) {
+      const metadata = this.props.slidestate.OverviewMetadata[0]
+      const instance = dmv.metadata.formatMetadata(metadata) as dmv.metadata.VLWholeSlideMicroscopyImage
+      this.setState({
+        containerIdentifier: instance.ContainerIdentifier
       })
-      this.setState({ isLoading: false })
-    }).catch(
-      () => console.error('search for image instances failed')
-    )
+      // Instantiate the viewer and inject it into the viewport
+      console.info(
+      'instantiate viewer for OVERVIEW image of ' +
+      this.props.slidestate.Key +
+      '...'
+      )
+      if (this.overviewViewport.current !== null) {
+        this.overviewViewport.current.innerHTML = ''
+        this.overviewViewer = new dmv.viewer.OverviewImageViewer({
+          client: this.props.client,
+          metadata: metadata,
+          resizeFactor: 1
+        })
+        this.overviewViewer.render({
+          container: this.overviewViewport.current
+        })
+      }
+    }
+
+    this.setState({ isLoading: false })
   }
 
   render (): React.ReactNode {
@@ -130,10 +77,10 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
       this.overviewViewer.resize()
     }
     const attributes = []
-    if (this.props.metadata.SeriesDescription !== undefined) {
+    if (this.props.slidestate.Description) {
       attributes.push({
         name: 'Description',
-        value: this.props.metadata.SeriesDescription
+        value: this.props.slidestate.Description
       })
     }
     if (this.state.isLoading) {
@@ -146,7 +93,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
     return (
       <Menu.Item
         style={{ height: '100%' }}
-        key={this.props.metadata.SeriesInstanceUID}
+        key={this.props.slidestate.Key}
         {...this.props}
       >
         <Description

@@ -37,13 +37,13 @@ interface ViewerProps extends RouteComponentProps {
 }
 
 interface ViewerState {
-  series: dmv.metadata.Series[]
+  seriesList: dmv.metadata.SeriesState[]
   isLoading: boolean
 }
 
 class Viewer extends React.Component<ViewerProps, ViewerState> {
   state = {
-    series: [],
+    seriesList: [],
     isLoading: false
   }
 
@@ -52,32 +52,66 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     this.handleSeriesSelection = this.handleSeriesSelection.bind(this)
   }
 
-  componentDidMount (): void {
+  async componentDidMount () {
+    this.setState(state => ({ isLoading: true }))
+
+    const seriesList = await this.fetchSeriesList()
+
+    this.setState(state => ({
+      seriesList: seriesList,
+      isLoading: false
+    }))
+  }
+
+  async fetchSeriesList () {
+    const seriesList: dmv.metadata.SeriesState[] = []
     const studyInstanceUID = this.props.studyInstanceUID
     console.info(`search for series of study "${studyInstanceUID}"...`)
-    this.setState(state => ({ isLoading: true }))
-    this.props.client.searchForSeries({
+    const matchedSeries = await this.props.client.searchForSeries({
       queryParams: {
         Modality: 'SM',
         StudyInstanceUID: studyInstanceUID
       }
-    }).then((matchedSeries): void => {
-      matchedSeries.forEach(s => {
-        const series = dmv.metadata.formatMetadata(s) as dmv.metadata.Series
-        this.setState(state => ({
-          series: [
-            ...state.series,
-            series
-          ],
-          isLoading: true
-        }))
-      })
-      this.setState(state => ({ isLoading: false }))
-    }).catch((error): void => {
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      message.error('Image metadata could not be loaded')
-      console.error('search for image series failed: ', error)
     })
+    
+    await Promise.all(matchedSeries.map(async (s) => {
+      const loadingSeries = dmv.metadata.formatMetadata(s) as dmv.metadata.Series
+      console.info(
+        'search for instances in series ' +
+        `"${loadingSeries.SeriesInstanceUID}"...`
+      )
+      const retrievedMetadata = await this.props.client.retrieveSeriesMetadata({
+          studyInstanceUID: this.props.studyInstanceUID,
+          seriesInstanceUID: loadingSeries.SeriesInstanceUID
+        })
+          
+      const volumeMetadata: object[] = []
+      const labelMetadata: object[] = []
+      const overviewMetadata: object[] = []
+      retrievedMetadata.forEach(item => {
+        const instance = dmv.metadata.formatMetadata(item) as dmv.metadata.Instance
+        if (instance.ImageType !== undefined && 
+            instance.SOPClassUID === '1.2.840.10008.5.1.4.1.1.77.1.6') {
+          if (instance.ImageType[2] === 'VOLUME') {
+            volumeMetadata.push(item)
+          } else if (instance.ImageType[2] === 'LABEL') {
+            labelMetadata.push(item)
+          } else if (instance.ImageType[2] === 'OVERVIEW') {
+            overviewMetadata.push(item)
+          }
+        }
+      })
+
+      const series: dmv.metadata.SeriesState = {
+        Series: loadingSeries,
+        VolumeMetadata: volumeMetadata,
+        LabelMetadata: labelMetadata,
+        OverviewMetadata: overviewMetadata
+      }
+      seriesList.push(series)   
+    }));
+
+    return seriesList
   }
 
   handleSeriesSelection (
@@ -90,10 +124,11 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
   }
 
   render (): React.ReactNode {
-    if (this.state.series.length === 0) {
+    if (this.state.seriesList.length === 0) {
       return null
     }
-    const studyMetadata = this.state.series[0] as dmv.metadata.Study
+    const firstSeriesState = this.state.seriesList[0] as dmv.metadata.SeriesState
+    const studyMetadata = firstSeriesState.Series as dmv.metadata.Study
 
     /* If a series is encoded in the path, route the viewer to this series.
      * Otherwise select the first series contained in the study.
@@ -103,7 +138,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       const fragments = this.props.location.pathname.split('/')
       selectedSeriesInstanceUID = fragments[4]
     } else {
-      const seriesMetadata = this.state.series[0] as dmv.metadata.Series
+      const seriesMetadata = firstSeriesState.Series as dmv.metadata.Series
       selectedSeriesInstanceUID = seriesMetadata.SeriesInstanceUID
     }
 
@@ -133,7 +168,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
             <Menu.SubMenu key='slides' title='Slides'>
               <SlideList
                 client={this.props.client}
-                metadata={this.state.series}
+                metadata={this.state.seriesList}
                 initiallySelectedSeriesInstanceUID={selectedSeriesInstanceUID}
                 onSeriesSelection={this.handleSeriesSelection}
               />
@@ -150,6 +185,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
                 client={this.props.client}
                 studyInstanceUID={this.props.studyInstanceUID}
                 seriesInstanceUID={routeProps.match.params.SeriesInstanceUID}
+                metadata={this.state.seriesList}
                 annotations={this.props.annotations}
                 app={this.props.app}
                 user={this.props.user}
