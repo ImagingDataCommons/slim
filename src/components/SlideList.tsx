@@ -30,10 +30,6 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
     slideList: []
   }
 
-  constructor (props: SlideListProps) {
-    super(props)
-  }
-
   componentDidMount (): void {
     const seriesList = this.props.metadata
     const slideList = fromSeriesListToSlideList(seriesList, this.props.initiallySelectedSeriesInstanceUID);

@@ -23,6 +23,14 @@ declare module 'dicom-microscopy-viewer' {
       }
     }
 
+    export interface BlendingInformation {
+      opticalPathIdentifier: string
+      color: number[]
+      opacity: number
+      thresholdValues: number[]
+      visible: boolean
+    }
+
     export class VolumeImageViewer {
       constructor (options: VolumeImageViewerOptions)
       render (options: object): void
@@ -71,6 +79,10 @@ declare module 'dicom-microscopy-viewer' {
       collapseOverviewMap (): void
       expandOverviewMap (): void
       toggleOverviewMap (): void
+      isOpticalPathActive (string): boolean
+      getBlendingInformation (string): BlendingInformation
+      showOpticalPath (string): void
+      hideOpticalPath (string): void
     }
 
     export interface OverviewImageViewerOptions {
@@ -312,6 +324,11 @@ declare module 'dicom-microscopy-viewer' {
       PrimaryAnatomicStructureSequence: dcmjs.sr.valueTypes.CodedConcept[]
     }
 
+    export interface OpticalPathDescription {
+      OpticalPathIdentifier: string
+      OpticalPathDescription: string
+    }
+
     export interface SOPClass {
       // Patient module
       PatientID: string
@@ -335,6 +352,7 @@ declare module 'dicom-microscopy-viewer' {
       ContainerIdentifier: string
       ContainerTypeCodeSequence: dcmjs.sr.valueTypes.CodedConcept[]
       SpecimenDescriptionSequence: SpecimenDescription[]
+      OpticalPathSequence: OpticalPathDescription[]
     }
 
     export interface VLWholeSlideMicroscopyImage extends SOPClass {

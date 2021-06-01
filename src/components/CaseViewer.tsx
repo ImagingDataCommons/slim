@@ -7,7 +7,6 @@ import {
 } from 'react-router-dom'
 import {
   Layout,
-  message,
   Menu
 } from 'antd'
 

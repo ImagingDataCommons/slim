@@ -29,6 +29,7 @@ import AnnotationList from './AnnotationList'
 import Button from './Button'
 import Report, { MeasurementReport } from './Report'
 import SpecimenList from './SpecimenList'
+import ChannelsList from './ChannelsList'
 import { AnnotationSettings } from '../AppConfig'
 import { findContentItemsByName } from '../utils/sr'
 import {fromSeriesListToSlideList} from '../utils/fromSeriesListToSlideList'
@@ -122,7 +123,7 @@ interface SlideViewerProps extends RouteComponentProps {
 }
 
 interface SlideViewerState {
-  slideList: dmv.metadata.SlideState[]
+  activeSlide: dmv.metadata.SlideState
   metadata: dmv.metadata.VLWholeSlideMicroscopyImage[]
   annotatedRoi?: dmv.roi.ROI
   selectedRoiUIDs: string[]
@@ -141,10 +142,20 @@ interface SlideViewerState {
  * potentially one or more associated DICOM Series of DICOM SR documents.
  */
 class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
+  slide: dmv.metadata.SlideState = {
+    Key: '',
+    VolumeMetadata: [],
+    LabelMetadata: [],
+    OverviewMetadata: [],
+    IsMultiChannel: false,
+    MultiChannelsSeriesUIDs: [],
+    Description: ''
+  };
+  
   state = {
     isLoading: false,
     metadata: [],
-    slideList: [],
+    activeSlide: this.slide,
     isAnnotationModalVisible: false,
     annotatedRoi: undefined,
     selectedRoiUIDs: [],
@@ -323,10 +334,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   populateViewports = (): void => {
     const seriesList = this.props.metadata
     const slideList = fromSeriesListToSlideList(seriesList);
-    this.setState(state => ({
-      slideList: slideList
-    }))
-    const slides = this.state.slideList.filter(item => {
+   
+    const slides = slideList.filter(item => {
       const slideItem = item as dmv.metadata.SlideState
       if ((slideItem.IsMultiChannel && 
           slideItem.MultiChannelsSeriesUIDs.findIndex
@@ -336,11 +345,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       }
       return false
     })
-    
-    if (slides.length > 0) {
-      this.setState(state => ({ isLoading: true }))
-      const slide = slides[0] as dmv.metadata.SlideState;
 
+    // at this point only 1 slide is selected
+    if (slides.length === 1) {
+      const slide = slides[0] as dmv.metadata.SlideState
+
+      this.setState(state => ({
+        activeSlide: slide,
+        isLoading: true
+      }))
+      
       const series: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
       slide.VolumeMetadata.forEach(item => {
         const instance = dmv.metadata.formatMetadata(item) as dmv.metadata.VLWholeSlideMicroscopyImage
@@ -1057,6 +1071,26 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       })
     }
 
+    const slide = this.state.activeSlide as dmv.metadata.SlideState
+    let specimenMenu 
+    let channelMenu 
+    if (slide !== undefined) {
+      if (slide.IsMultiChannel === false) {
+        specimenMenu = 
+          <Menu.SubMenu key='specimens' title='Specimens'>
+            <SpecimenList metadata={this.state.metadata} />
+          </Menu.SubMenu>
+      } else {
+        const volumeViewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
+        if (volumeViewer !== undefined) {
+          channelMenu =
+            <Menu.SubMenu key='channels' title='Channels'>
+              <ChannelsList metadata={this.state.metadata} viewer={volumeViewer} />
+            </Menu.SubMenu>
+        }
+      }
+    }       
+    
     return (
       <Layout style={{ height: '100%' }} hasSider>
         <Layout.Content style={{ height: '100%' }}>
@@ -1144,9 +1178,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             <Menu.SubMenu key='labelImage' title='Slide label'>
               <div style={{ height: '220px' }} ref={this.labelViewport} />
             </Menu.SubMenu>
-            <Menu.SubMenu key='specimens' title='Specimens'>
-              <SpecimenList metadata={this.state.metadata} />
-            </Menu.SubMenu>
+            {specimenMenu}
+            {channelMenu}
             <Menu.SubMenu key='annotations' title='Annotations'>
               {annotations}
             </Menu.SubMenu>
