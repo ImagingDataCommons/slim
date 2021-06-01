@@ -35,6 +35,12 @@ class ChannelItem extends React.Component<ChannelItemProps, ChannelItemState> {
     event: Event
   ): void {
     if (checked) {
+      // To Do: remove this if and allocate only the active one
+      // then add widgets to add/remove channel
+      if (this.props.viewer.isOpticalPathActive(this.props.identifier) === false) {
+        this.props.viewer.activateOpticalPath(this.props.identifier)
+      }
+
       this.props.viewer.showOpticalPath(this.props.identifier)
       this.setState(state => ({ visible: true }))
     } else {
@@ -57,6 +63,9 @@ class ChannelItem extends React.Component<ChannelItemProps, ChannelItemState> {
     })
 
     const content = (
+      // To Do: implement opacity input, color picker, clipping double slider
+      // To Do: implement min/max color function double sliders 
+      // (we need to update the viewer API and the offscreen render as well for this)
       <div style={{ width: "100%", height: "100%" }}>
         <Slider />
       </div>

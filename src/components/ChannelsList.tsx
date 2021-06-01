@@ -33,14 +33,14 @@ class ChannelsList extends React.Component<ChannelsListProps, {}> {
       }
     )
 
-    // get from this.volumeViewer which are active
+    /* To Do: filter the list for only the active channel
     const filteredOpticalPaths: dmv.metadata.VLWholeSlideMicroscopyImage[] =
       opticalPaths.filter((item: dmv.metadata.VLWholeSlideMicroscopyImage) => {
         return this.props.viewer.isOpticalPathActive(item.OpticalPathSequence[0].OpticalPathIdentifier)
-      });
+      });*/
     
-    var sortedOpticalPaths: dmv.metadata.VLWholeSlideMicroscopyImage[] = 
-      filteredOpticalPaths.sort((n1: dmv.metadata.VLWholeSlideMicroscopyImage, 
+    const sortedOpticalPaths: dmv.metadata.VLWholeSlideMicroscopyImage[] = 
+      opticalPaths.sort((n1: dmv.metadata.VLWholeSlideMicroscopyImage, 
                                  n2: dmv.metadata.VLWholeSlideMicroscopyImage) => {
         const id1 = parseInt(n1.OpticalPathSequence[0].OpticalPathIdentifier)
         const id2 = parseInt(n2.OpticalPathSequence[0].OpticalPathIdentifier)
@@ -54,6 +54,7 @@ class ChannelsList extends React.Component<ChannelsListProps, {}> {
   
         return 0;
       });
+
     const items = sortedOpticalPaths.map(
       (item: dmv.metadata.VLWholeSlideMicroscopyImage) => {
         return (
@@ -71,6 +72,7 @@ class ChannelsList extends React.Component<ChannelsListProps, {}> {
       <Menu selectable={false}>
         {items}
       </Menu>
+      // To Do: add widgets to add/remove channel
     )
   }
 }

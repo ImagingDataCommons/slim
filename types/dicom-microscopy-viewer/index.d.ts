@@ -83,6 +83,8 @@ declare module 'dicom-microscopy-viewer' {
       getBlendingInformation (string): BlendingInformation
       showOpticalPath (string): void
       hideOpticalPath (string): void
+      activateOpticalPath (string): void
+      deactivateOpticalPath (string): void
     }
 
     export interface OverviewImageViewerOptions {
