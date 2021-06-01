@@ -340,6 +340,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (slides.length > 0) {
       this.setState(state => ({ isLoading: true }))
       const slide = slides[0] as dmv.metadata.SlideState;
+
+      const series: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
+      slide.VolumeMetadata.forEach(item => {
+        const instance = dmv.metadata.formatMetadata(item) as dmv.metadata.VLWholeSlideMicroscopyImage
+        series.push(instance)
+      })
+      this.setState((state) => ({ metadata: series }))
+
       if (this.volumeViewport.current !== null) {
         console.info(
           'instantiate viewer for VOLUME images of series ' +
