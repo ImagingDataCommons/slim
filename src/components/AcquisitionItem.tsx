@@ -6,25 +6,26 @@ import { Menu } from 'antd'
 
 import DicomWebManager from '../DicomWebManager'
 import Description from './Description'
+import {Acquisition} from '../utils/types'
 
-interface SlideItemProps {
+interface AcquisitionItemProps {
   client: DicomWebManager
-  slidestate: dmv.metadata.SlideState
+  acquisition: Acquisition
 }
 
-interface SlideItemState {
+interface AcquisitionItemState {
   containerIdentifier: string
   isLoading: boolean
 }
 
 /**
  * React component representing a DICOM Series Information Entity that displays
- * common series-level attributes of contained DICOM Slide Microscopy images
+ * common series-level attributes of contained DICOM Acquisition Microscopy images
  * as well as the OVERVIEW image (if available).
- * When selected a Slide Viewer instance is created for the display of the
+ * When selected a Acquisition Viewer instance is created for the display of the
  * contained images.
  */
-class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
+class AcquisitionItem extends React.Component<AcquisitionItemProps, AcquisitionItemState> {
   state = {
     containerIdentifier: '',
     isLoading: false
@@ -34,15 +35,15 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
 
   private overviewViewer?: dmv.viewer.OverviewImageViewer
 
-  constructor (props: SlideItemProps) {
+  constructor (props: AcquisitionItemProps) {
     super(props)
     this.overviewViewer = undefined
   }
 
   componentDidMount (): void {
     this.setState({ isLoading: true })
-    if (this.props.slidestate.OverviewMetadata.length > 0) {
-      const metadata = this.props.slidestate.OverviewMetadata[0]
+    if (this.props.acquisition.overviewMetadata.length > 0) {
+      const metadata = this.props.acquisition.overviewMetadata[0]
       const instance = dmv.metadata.formatMetadata(metadata) as dmv.metadata.VLWholeSlideMicroscopyImage
       this.setState({
         containerIdentifier: instance.ContainerIdentifier
@@ -50,7 +51,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
       // Instantiate the viewer and inject it into the viewport
       console.info(
       'instantiate viewer for OVERVIEW image of ' +
-      this.props.slidestate.Key +
+      this.props.acquisition.key +
       '...'
       )
       if (this.overviewViewport.current !== null) {
@@ -77,10 +78,10 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
       this.overviewViewer.resize()
     }
     const attributes = []
-    if (this.props.slidestate.Description) {
+    if (this.props.acquisition.description) {
       attributes.push({
         name: 'Description',
-        value: this.props.slidestate.Description
+        value: this.props.acquisition.description
       })
     }
     if (this.state.isLoading) {
@@ -93,7 +94,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
     return (
       <Menu.Item
         style={{ height: '100%' }}
-        key={this.props.slidestate.Key}
+        key={this.props.acquisition.key}
         {...this.props}
       >
         <Description
@@ -108,4 +109,4 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
   }
 }
 
-export default SlideItem
+export default AcquisitionItem

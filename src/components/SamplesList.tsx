@@ -2,17 +2,17 @@ import React from 'react'
 import * as dmv from 'dicom-microscopy-viewer'
 import { Menu } from 'antd'
 
-import ChannelItem from './ChannelItem'
+import SampleItem from './SampleItem'
 
-interface ChannelsListProps {
+interface SamplesListProps {
   metadata: dmv.metadata.VLWholeSlideMicroscopyImage[]
   viewer: dmv.viewer.VolumeImageViewer
 }
 
 /**
- * React component representing a list of DICOM Channels Information Entities.
+ * React component representing a list of DICOM Samples Information Entities.
  */
-class ChannelsList extends React.Component<ChannelsListProps, {}> {
+class SamplesList extends React.Component<SamplesListProps, {}> {
   render (): React.ReactNode {
     
     const opticalPaths: dmv.metadata.VLWholeSlideMicroscopyImage[] = [] 
@@ -33,7 +33,7 @@ class ChannelsList extends React.Component<ChannelsListProps, {}> {
       }
     )
 
-    /* To Do: filter the list for only the active channel
+    /* To Do: filter the list for only the active Sample
     const filteredOpticalPaths: dmv.metadata.VLWholeSlideMicroscopyImage[] =
       opticalPaths.filter((item: dmv.metadata.VLWholeSlideMicroscopyImage) => {
         return this.props.viewer.isOpticalPathActive(item.OpticalPathSequence[0].OpticalPathIdentifier)
@@ -58,11 +58,11 @@ class ChannelsList extends React.Component<ChannelsListProps, {}> {
     const items = sortedOpticalPaths.map(
       (item: dmv.metadata.VLWholeSlideMicroscopyImage) => {
         return (
-          <ChannelItem
+          <SampleItem
             key={item.OpticalPathSequence[0].OpticalPathIdentifier}
             viewer={this.props.viewer}
-            identifier={item.OpticalPathSequence[0].OpticalPathIdentifier}
-            description={item.OpticalPathSequence[0].OpticalPathDescription}
+            opticalPathSequence={item.OpticalPathSequence[0]}
+            specimenDescriptionSequence={item.SpecimenDescriptionSequence[0]}
           />
         )
       }
@@ -72,9 +72,9 @@ class ChannelsList extends React.Component<ChannelsListProps, {}> {
       <Menu selectable={false}>
         {items}
       </Menu>
-      // To Do: add widgets to add/remove channel
+      // To Do: add widgets to add/remove Sample
     )
   }
 }
 
-export default ChannelsList
+export default SamplesList

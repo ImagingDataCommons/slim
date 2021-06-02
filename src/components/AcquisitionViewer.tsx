@@ -29,10 +29,11 @@ import AnnotationList from './AnnotationList'
 import Button from './Button'
 import Report, { MeasurementReport } from './Report'
 import SpecimenList from './SpecimenList'
-import ChannelsList from './ChannelsList'
+import SamplesList from './SamplesList'
 import { AnnotationSettings } from '../AppConfig'
 import { findContentItemsByName } from '../utils/sr'
-import {fromSeriesListToSlideList} from '../utils/fromSeriesListToSlideList'
+import { Acquisition } from '../utils/types'
+
 
 const _buildKey = (concept: dcmjs.sr.coding.CodedConcept): string => {
   const codingScheme = concept.CodingSchemeDesignator
@@ -104,8 +105,8 @@ interface Evaluation {
 }
 
 
-interface SlideViewerProps extends RouteComponentProps {
-  metadata: dmv.metadata.SeriesState[]
+interface AcquisitionViewerProps extends RouteComponentProps {
+  metadata: Acquisition[]
   client: DicomWebManager
   studyInstanceUID: string
   seriesInstanceUID: string
@@ -122,8 +123,8 @@ interface SlideViewerProps extends RouteComponentProps {
   }
 }
 
-interface SlideViewerState {
-  activeSlide: dmv.metadata.SlideState
+interface AcquisitionViewerState {
+  activeAcquisition: Acquisition
   metadata: dmv.metadata.VLWholeSlideMicroscopyImage[]
   annotatedRoi?: dmv.roi.ROI
   selectedRoiUIDs: string[]
@@ -137,25 +138,25 @@ interface SlideViewerState {
 }
 
 /**
- * React component for interactive viewing of an individual digital slide,
- * which corresponds to one DICOM Series of DICOM Slide Microscopy images and
+ * React component for interactive viewing of an individual digital acquisition,
+ * which corresponds to one DICOM Series of DICOM Acquisition Microscopy images and
  * potentially one or more associated DICOM Series of DICOM SR documents.
  */
-class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
-  slide: dmv.metadata.SlideState = {
-    Key: '',
-    VolumeMetadata: [],
-    LabelMetadata: [],
-    OverviewMetadata: [],
-    IsMultiChannel: false,
-    MultiChannelsSeriesUIDs: [],
-    Description: ''
+class AcquisitionViewer extends React.Component<AcquisitionViewerProps, AcquisitionViewerState> {
+  acquisition: Acquisition = {
+    key: '',
+    volumeMetadata: [],
+    labelMetadata: [],
+    overviewMetadata: [],
+    isMultiSample: false,
+    multiSamplesSeriesUIDs: [],
+    description: ''
   };
   
   state = {
     isLoading: false,
     metadata: [],
-    activeSlide: this.slide,
+    activeAcquisition: this.acquisition,
     isAnnotationModalVisible: false,
     annotatedRoi: undefined,
     selectedRoiUIDs: [],
@@ -190,7 +191,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     fill: { color: [...this.selectionColor, 0.2] }
   }
 
-  constructor (props: SlideViewerProps) {
+  constructor (props: AcquisitionViewerProps) {
     super(props)
     props.annotations.forEach((annotation: AnnotationSettings) => {
       const finding = new dcmjs.sr.coding.CodedConcept(annotation.finding)
@@ -228,7 +229,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleReportCancellation = this.handleReportCancellation.bind(this)
   }
 
-  componentDidUpdate (previousProps: SlideViewerProps): void {
+  componentDidUpdate (previousProps: AcquisitionViewerProps): void {
     /** Fetch data and update the viewports if the route has changed,
      * i.e., if another series has been selected.
      */
@@ -332,31 +333,30 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * instantiate the VOLUME and LABEL image viewers.
    */
   populateViewports = (): void => {
-    const seriesList = this.props.metadata
-    const slideList = fromSeriesListToSlideList(seriesList);
+    const acquisitionList = this.props.metadata
    
-    const slides = slideList.filter(item => {
-      const slideItem = item as dmv.metadata.SlideState
-      if ((slideItem.IsMultiChannel && 
-          slideItem.MultiChannelsSeriesUIDs.findIndex
-            (uid => uid === this.props.seriesInstanceUID) !== -1) ||
-          slideItem.Key === this.props.seriesInstanceUID) {
+    const acquisitions = acquisitionList.filter(item => {
+      const acquisitionItem = item as Acquisition
+      if ((acquisitionItem.isMultiSample && 
+            acquisitionItem.multiSamplesSeriesUIDs.findIndex
+              (uid => uid === this.props.seriesInstanceUID) !== -1) ||
+          acquisitionItem.key === this.props.seriesInstanceUID) {
         return true
       }
       return false
     })
 
     // at this point only 1 slide is selected
-    if (slides.length === 1) {
-      const slide = slides[0] as dmv.metadata.SlideState
+    if (acquisitions.length === 1) {
+      const acquisition = acquisitions[0] as Acquisition
 
       this.setState(state => ({
-        activeSlide: slide,
+        activeAcquisition: acquisition,
         isLoading: true
       }))
       
       const series: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
-      slide.VolumeMetadata.forEach(item => {
+      acquisition.volumeMetadata.forEach(item => {
         const instance = dmv.metadata.formatMetadata(item) as dmv.metadata.VLWholeSlideMicroscopyImage
         series.push(instance)
       })
@@ -370,7 +370,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         this.volumeViewport.current.innerHTML = ''
         this.volumeViewer = new dmv.viewer.VolumeImageViewer({
           client: this.props.client,
-          metadata: slide.VolumeMetadata,
+          metadata: acquisition.volumeMetadata,
           retrieveRendered: true
         })
         this.volumeViewer.render({ container: this.volumeViewport.current })
@@ -380,14 +380,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
       if (this.labelViewport.current !== null) {
         this.labelViewport.current.innerHTML = ''
-        if (slide.LabelMetadata.length > 0) {
+        if (acquisition.labelMetadata.length > 0) {
           console.info(
             'instantiate viewer for LABEL image of series ' +
             this.props.seriesInstanceUID
           )
           this.labelViewer = new dmv.viewer.LabelImageViewer({
             client: this.props.client,
-            metadata: slide.LabelMetadata[0],
+            metadata: acquisition.labelMetadata[0],
             resizeFactor: 1,
             orientation: 'vertical'
           })
@@ -1071,11 +1071,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       })
     }
 
-    const slide = this.state.activeSlide as dmv.metadata.SlideState
+    const acquisition = this.state.activeAcquisition as Acquisition
     let specimenMenu 
-    let channelMenu 
-    if (slide !== undefined) {
-      if (slide.IsMultiChannel === false) {
+    let sampleMenu 
+    if (acquisition !== undefined) {
+      if (acquisition.isMultiSample === false) {
         specimenMenu = 
           <Menu.SubMenu key='specimens' title='Specimens'>
             <SpecimenList metadata={this.state.metadata} />
@@ -1083,9 +1083,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       } else {
         const volumeViewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
         if (volumeViewer !== undefined) {
-          channelMenu =
-            <Menu.SubMenu key='channels' title='Channels'>
-              <ChannelsList metadata={this.state.metadata} viewer={volumeViewer} />
+          sampleMenu =
+            <Menu.SubMenu key='samples' title='Samples'>
+              <SamplesList metadata={this.state.metadata} viewer={volumeViewer} />
             </Menu.SubMenu>
         }
       }
@@ -1170,16 +1170,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         >
           <Menu
             mode='inline'
-            defaultOpenKeys={['labelImage', 'annotations']}
+            defaultOpenKeys={['acquisitionImage', 'annotations']}
             style={{ height: '100%' }}
             inlineIndent={14}
             theme='light'
           >
-            <Menu.SubMenu key='labelImage' title='Slide label'>
+            <Menu.SubMenu key='acquisitionImage' title='Acquisition label'>
               <div style={{ height: '220px' }} ref={this.labelViewport} />
             </Menu.SubMenu>
             {specimenMenu}
-            {channelMenu}
+            {sampleMenu}
             <Menu.SubMenu key='annotations' title='Annotations'>
               {annotations}
             </Menu.SubMenu>
@@ -1190,4 +1190,4 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 }
 
-export default withRouter(SlideViewer)
+export default withRouter(AcquisitionViewer)

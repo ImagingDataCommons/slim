@@ -289,23 +289,6 @@ declare module 'dicom-microscopy-viewer' {
       constructor ({ metadata: Metadata }: object)
     }
 
-    export interface SeriesState {
-      Series: Series
-      VolumeMetadata: object[]
-      LabelMetadata: object[]
-      OverviewMetadata: object[]
-    }
-
-    export interface SlideState {
-      Key: string
-      IsMultiChannel: boolean
-      MultiChannelsSeriesUIDs: string[]
-      Description: string
-      VolumeMetadata: object[]
-      LabelMetadata: object[]
-      OverviewMetadata: object[]
-    }
-
     export interface SpecimenPreparation {
       SpecimenPreparationStepContentItemSequence: (
         dcmjs.sr.valueTypes.CodeContentItem |

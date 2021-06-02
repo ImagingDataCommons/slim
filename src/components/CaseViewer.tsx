@@ -16,8 +16,11 @@ import { AnnotationSettings } from '../AppConfig'
 import DicomWebManager from '../DicomWebManager'
 import Patient from './Patient'
 import Study from './Study'
-import SlideList from './SlideList'
-import SlideViewer from './SlideViewer'
+import AcquisitionList from './AcquisitionList'
+import AcquisitionViewer from './AcquisitionViewer'
+
+import {fromSeriesListToAcquisitionList} from '../utils/fromSeriesListToAcquisitionList'
+import {SeriesState, Acquisition} from '../utils/types'
 
 interface ViewerProps extends RouteComponentProps {
   client: DicomWebManager
@@ -36,13 +39,15 @@ interface ViewerProps extends RouteComponentProps {
 }
 
 interface ViewerState {
-  seriesList: dmv.metadata.SeriesState[]
+  seriesList: SeriesState[]
+  acquisitionList: Acquisition[]
   isLoading: boolean
 }
 
 class Viewer extends React.Component<ViewerProps, ViewerState> {
   state = {
     seriesList: [],
+    acquisitionList: [],
     isLoading: false
   }
 
@@ -55,15 +60,17 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     this.setState(state => ({ isLoading: true }))
 
     const seriesList = await this.fetchSeriesList()
+    const acquisitionList = fromSeriesListToAcquisitionList(seriesList);
 
     this.setState(state => ({
+      acquisitionList: acquisitionList,
       seriesList: seriesList,
       isLoading: false
     }))
   }
 
   async fetchSeriesList () {
-    const seriesList: dmv.metadata.SeriesState[] = []
+    const seriesList: SeriesState[] = []
     const studyInstanceUID = this.props.studyInstanceUID
     console.info(`search for series of study "${studyInstanceUID}"...`)
     const matchedSeries = await this.props.client.searchForSeries({
@@ -101,11 +108,11 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
         }
       })
 
-      const series: dmv.metadata.SeriesState = {
+      const series: SeriesState = {
         Series: loadingSeries,
-        VolumeMetadata: volumeMetadata,
-        LabelMetadata: labelMetadata,
-        OverviewMetadata: overviewMetadata
+        volumeMetadata: volumeMetadata,
+        labelMetadata: labelMetadata,
+        overviewMetadata: overviewMetadata
       }
       seriesList.push(series)   
     }));
@@ -126,7 +133,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     if (this.state.seriesList.length === 0) {
       return null
     }
-    const firstSeriesState = this.state.seriesList[0] as dmv.metadata.SeriesState
+    const firstSeriesState = this.state.seriesList[0] as SeriesState
     const studyMetadata = firstSeriesState.Series as dmv.metadata.Study
 
     /* If a series is encoded in the path, route the viewer to this series.
@@ -153,7 +160,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
         >
           <Menu
             mode='inline'
-            defaultOpenKeys={['patient', 'case', 'slides']}
+            defaultOpenKeys={['patient', 'case', 'acquisitions']}
             style={{ height: '100%' }}
             inlineIndent={14}
             theme='light'
@@ -164,10 +171,10 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
             <Menu.SubMenu key='case' title='Case'>
               <Study metadata={studyMetadata} />
             </Menu.SubMenu>
-            <Menu.SubMenu key='slides' title='Slides'>
-              <SlideList
+            <Menu.SubMenu key='acquisitions' title='Acquisitions'>
+              <AcquisitionList
                 client={this.props.client}
-                metadata={this.state.seriesList}
+                metadata={this.state.acquisitionList}
                 initiallySelectedSeriesInstanceUID={selectedSeriesInstanceUID}
                 onSeriesSelection={this.handleSeriesSelection}
               />
@@ -180,11 +187,11 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
             exact
             path='/studies/:StudyInstanceUID/series/:SeriesInstanceUID'
             render={(routeProps) => (
-              <SlideViewer
+              <AcquisitionViewer
                 client={this.props.client}
                 studyInstanceUID={this.props.studyInstanceUID}
                 seriesInstanceUID={routeProps.match.params.SeriesInstanceUID}
-                metadata={this.state.seriesList}
+                metadata={this.state.acquisitionList}
                 annotations={this.props.annotations}
                 app={this.props.app}
                 user={this.props.user}
