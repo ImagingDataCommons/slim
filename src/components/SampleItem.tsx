@@ -1,19 +1,26 @@
 import React from 'react'
-import { Button, Popover, Slider, Space, Switch } from 'antd'
-import { SettingOutlined } from '@ant-design/icons';
+import { Button, Col, Popover, Row, Slider, Space, Switch } from 'antd'
+import { CloseSquareFilled, SettingOutlined } from '@ant-design/icons';
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
 import Description from './Description'
 import * as dmv from 'dicom-microscopy-viewer'
 import * as dcmjs from 'dcmjs'
 
+import SamplesList from './SamplesList'
+
 interface SampleItemProps {
   opticalPathSequence: dmv.metadata.OpticalPathDescription,
   specimenDescriptionSequence: dmv.metadata.SpecimenDescription,
-  viewer: dmv.viewer.VolumeImageViewer
+  viewer: dmv.viewer.VolumeImageViewer,
+  itemRemoveHandler: SamplesList["handleItemRemoveSample"]
 }
 
 interface SampleItemState {
-  visible: boolean
+  visible: boolean,
+  opacity: number,
+  thresholdValues: number[],
+  color: number[],
+  limitValues: number[]
 }
 
 /**
@@ -22,12 +29,23 @@ interface SampleItemState {
  */
 class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
   state = {
-    visible: false
+    visible: false,
+    opacity: 1,
+    thresholdValues: [0, 255],
+    color: [255, 255, 255],
+    limitValues: [0, 255]
   }
 
   constructor (props: SampleItemProps) {
     super(props)
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
+    this.handleOpacityChange = this.handleOpacityChange.bind(this)
+    this.handleClippingChange = this.handleClippingChange.bind(this)
+    this.handleLimitChange = this.handleLimitChange.bind(this)
+    this.handleColorRChange = this.handleColorRChange.bind(this)
+    this.handleColorGChange = this.handleColorGChange.bind(this)
+    this.handleColorBChange = this.handleColorBChange.bind(this)
+    this.handleRemoveSample = this.handleRemoveSample.bind(this)
   }
 
   handleVisibilityChange (
@@ -36,18 +54,102 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
   ): void {
     const identifier = this.props.opticalPathSequence.OpticalPathIdentifier
     if (checked) {
-      // To Do: remove this if and allocate only the active one
-      // then add widgets to add/remove channel
-      if (this.props.viewer.isOpticalPathActive(identifier) === false) {
-        this.props.viewer.activateOpticalPath(identifier)
-      }
-
       this.props.viewer.showOpticalPath(identifier)
       this.setState(state => ({ visible: true }))
     } else {
       this.props.viewer.hideOpticalPath(identifier)
       this.setState(state => ({ visible: false }))
     }
+  }
+
+  handleOpacityChange (
+    value: number,
+  ): void {
+    const identifier = this.props.opticalPathSequence.OpticalPathIdentifier
+    const blendingInformation = {
+      opacity : value,
+      opticalPathIdentifier : identifier,
+    };
+    this.setState(state => ({ opacity: value }))
+    this.props.viewer.setBlendingInformation(blendingInformation);
+  }
+
+  handleColorRChange (
+    value: number,
+  ): void {
+    const identifier = this.props.opticalPathSequence.OpticalPathIdentifier
+    const blendInfo = this.props.viewer.getBlendingInformation
+      (identifier) as dmv.viewer.BlendingInformation
+    let color = [...blendInfo.color]
+    color[0] = value / 255.
+    const blendingInformation = {
+      color : color,
+      opticalPathIdentifier : identifier,
+    };
+    this.setState(state => ({ color: color }))
+    this.props.viewer.setBlendingInformation(blendingInformation);
+  }
+
+  handleColorGChange (
+    value: number,
+  ): void {
+    const identifier = this.props.opticalPathSequence.OpticalPathIdentifier
+    const blendInfo = this.props.viewer.getBlendingInformation
+      (identifier) as dmv.viewer.BlendingInformation
+    let color = [...blendInfo.color]
+    color[1] = value / 255.
+    const blendingInformation = {
+      color : color,
+      opticalPathIdentifier : identifier,
+    };
+    this.setState(state => ({ color: color }))
+    this.props.viewer.setBlendingInformation(blendingInformation);
+  }
+
+  handleColorBChange (
+    value: number,
+  ): void {
+    const identifier = this.props.opticalPathSequence.OpticalPathIdentifier
+    const blendInfo = this.props.viewer.getBlendingInformation
+      (identifier) as dmv.viewer.BlendingInformation
+    let color = [...blendInfo.color] 
+    color[2] = value / 255.
+    const blendingInformation = {
+      color : color,
+      opticalPathIdentifier : identifier,
+    };
+    this.setState(state => ({ color: color }))
+    this.props.viewer.setBlendingInformation(blendingInformation);
+  }
+
+  handleClippingChange (
+    value: number[],
+  ): void {
+    const identifier = this.props.opticalPathSequence.OpticalPathIdentifier
+    const blendingInformation = {
+      thresholdValues : value,
+      opticalPathIdentifier : identifier,
+    };
+    this.setState(state => ({ thresholdValues: value }))
+    this.props.viewer.setBlendingInformation(blendingInformation);
+  }
+
+  handleLimitChange (
+    value: number[],
+  ): void {
+    const identifier = this.props.opticalPathSequence.OpticalPathIdentifier
+    const blendingInformation = {
+      limitValues : value,
+      opticalPathIdentifier : identifier,
+    };
+    this.setState(state => ({ limitValues: value }))
+    this.props.viewer.setBlendingInformation(blendingInformation);
+  }
+
+  handleRemoveSample (): void {
+    const identifier = this.props.opticalPathSequence.OpticalPathIdentifier
+    this.props.viewer.deactivateOpticalPath(identifier)
+    this.props.itemRemoveHandler()
   }
 
   componentDidMount (): void {
@@ -151,31 +253,130 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
       }
     )
 
+    const blendInfo = this.props.viewer.getBlendingInformation
+      (identifier) as dmv.viewer.BlendingInformation
+
     const content = (
-      // To Do: implement opacity input, color picker, clipping double slider
-      // To Do: implement min/max color function double sliders 
-      // (we need to update the viewer API and the offscreen render as well for this)
-      <div style={{ width: "100%", height: "100%" }}>
-        <Slider />
+      <div>
+        <Row justify="center" align="middle">
+          <Col span={6}>
+            <Button type="primary" shape="round">
+              R
+            </Button>
+          </Col>
+          <Col span={18}>
+            <Slider
+              min={0}
+              max={255}
+              step={1}
+              defaultValue={blendInfo.color[0] * 255}
+              onAfterChange={this.handleColorRChange}
+            />
+          </Col>
+
+          <Col span={6}>
+            <Button type="primary" shape="round">
+              G
+            </Button>
+          </Col>
+          <Col span={18}>
+            <Slider
+              min={0}
+              max={255}
+              step={1}
+              defaultValue={blendInfo.color[1] * 255}
+              onAfterChange={this.handleColorGChange}
+            />
+          </Col>
+        
+          <Col span={6}>
+            <Button type="primary" shape="round">
+              B
+            </Button>
+          </Col>
+          <Col span={18}>
+            <Slider
+              min={0}
+              max={255}
+              step={1}
+              defaultValue={blendInfo.color[2] * 255}
+              onAfterChange={this.handleColorBChange}
+            />
+          </Col>
+
+          <Col span={6}>
+            <Button type="primary" shape="round">
+              Min/Max
+            </Button>
+          </Col>
+          <Col span={18}>
+            <Slider
+              range
+              min={0}
+              max={255}
+              step={1}
+              defaultValue={[blendInfo.limitValues[0], 
+                blendInfo.limitValues[1]]}
+              onAfterChange={this.handleLimitChange}
+            />
+          </Col>
+ 
+          <Col span={6}>
+            <Button type="primary" shape="round">
+              Clipping
+            </Button>
+          </Col>
+          <Col span={18}>
+            <Slider
+              range
+              min={0}
+              max={255}
+              step={1}
+              defaultValue={[blendInfo.thresholdValues[0], 
+                blendInfo.thresholdValues[1]]}
+              onAfterChange={this.handleClippingChange}
+            />
+          </Col>
+
+          <Col span={6}>
+            <Button type="primary" shape="round">
+              Opacity
+            </Button>
+          </Col>
+          <Col span={18}>
+            <Slider
+              min={0}
+              max={1}
+              step={0.01}
+              defaultValue={blendInfo.opacity}
+              onAfterChange={this.handleOpacityChange}
+            />
+          </Col>
+        </Row>
       </div>
-    );
+    );     
 
     return (
       <Space align='start'>
         <div style={{ paddingLeft: '14px', paddingTop: '10px' }}>
-          <Space direction="vertical">
-            <Switch
-              size='small'
-              checked={this.state.visible}
-              onChange={this.handleVisibilityChange}
-              checkedChildren={<FaEye />}
-              unCheckedChildren={<FaEyeSlash />}
-            />
-            
-            <Popover placement="left" content={content} title={"Blending"}>
-              <Button type="primary" shape="circle" icon={<SettingOutlined />}>
-              </Button>
-            </Popover>
+          <Space direction="vertical" align='end' size = {100}> 
+            <Space direction="vertical" align='end'>
+              <Switch
+                size='small'
+                checked={this.state.visible}
+                onChange={this.handleVisibilityChange}
+                checkedChildren={<FaEye />}
+                unCheckedChildren={<FaEyeSlash />}
+              />
+              
+              <Popover placement="left" content={content} title={"Blending Parameters"}>
+                <Button type="primary" shape="circle" icon={<SettingOutlined />}>
+                </Button>
+              </Popover>
+            </Space>
+        
+            <Button type="primary" danger icon={<CloseSquareFilled />} onClick={this.handleRemoveSample}>
+            </Button>
           </Space>
         </div>
         <Description

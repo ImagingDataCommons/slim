@@ -60,7 +60,14 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     this.setState(state => ({ isLoading: true }))
 
     const seriesList = await this.fetchSeriesList()
-    const acquisitionList = fromSeriesListToAcquisitionList(seriesList);
+
+    let selectedSeriesInstanceUID = ''
+    if (this.props.location.pathname.includes('series/')) {
+      const fragments = this.props.location.pathname.split('/')
+      selectedSeriesInstanceUID = fragments[4]
+    }
+    const acquisitionList = fromSeriesListToAcquisitionList(seriesList, 
+      selectedSeriesInstanceUID);
 
     this.setState(state => ({
       acquisitionList: acquisitionList,

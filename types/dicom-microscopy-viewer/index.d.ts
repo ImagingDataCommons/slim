@@ -5,9 +5,19 @@ declare module 'dicom-microscopy-viewer' {
 
   declare namespace viewer {
 
+    export interface BlendingInformation {
+      opticalPathIdentifier: string
+      color: number[]
+      opacity: number
+      thresholdValues: number[]
+      limitValues: number[]
+      visible: boolean
+    }
+
     export interface VolumeImageViewerOptions {
       client: dwc.api.DICOMwebClient
       metadata: object[]
+      blendingInformation?: BlendingInformation[]
       controls?: string[]
       retrieveRendered?: boolean
       useWebGL?: boolean
@@ -21,14 +31,6 @@ declare module 'dicom-microscopy-viewer' {
       fill?: {
         color: number[]
       }
-    }
-
-    export interface BlendingInformation {
-      opticalPathIdentifier: string
-      color: number[]
-      opacity: number
-      thresholdValues: number[]
-      visible: boolean
     }
 
     export class VolumeImageViewer {
@@ -81,6 +83,7 @@ declare module 'dicom-microscopy-viewer' {
       toggleOverviewMap (): void
       isOpticalPathActive (string): boolean
       getBlendingInformation (string): BlendingInformation
+      setBlendingInformation (BlendingInformation): void
       showOpticalPath (string): void
       hideOpticalPath (string): void
       activateOpticalPath (string): void

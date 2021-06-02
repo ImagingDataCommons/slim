@@ -1,20 +1,62 @@
 import React from 'react'
 import * as dmv from 'dicom-microscopy-viewer'
-import { Menu } from 'antd'
+import { Button, Menu, Select, Space } from 'antd'
+import { AppstoreAddOutlined } from '@ant-design/icons';
 
 import SampleItem from './SampleItem'
+
+const { Option } = Select;
 
 interface SamplesListProps {
   metadata: dmv.metadata.VLWholeSlideMicroscopyImage[]
   viewer: dmv.viewer.VolumeImageViewer
 }
 
+interface SampleListState {
+  rerender: boolean,
+  opticalPathIdentifierToAdd: string
+}
+
 /**
  * React component representing a list of DICOM Samples Information Entities.
  */
-class SamplesList extends React.Component<SamplesListProps, {}> {
+class SamplesList extends React.Component<SamplesListProps, SampleListState> {
+  state = {
+    rerender: false,
+    opticalPathIdentifierToAdd: ''
+  }
+
+  constructor (props: SamplesListProps) {
+    super(props)
+    this.handleAddSample = this.handleAddSample.bind(this)
+    this.handleItemRemoveSample = this.handleItemRemoveSample.bind(this)
+    this.handleSelectChange = this.handleSelectChange.bind(this)
+  }
+
+  handleItemRemoveSample() {
+    this.setState({
+      rerender: true
+    })
+  }
+
+  handleSelectChange (
+    value: string
+  ): void {
+    this.setState({
+      opticalPathIdentifierToAdd: value
+    })
+  }
+
+  handleAddSample (): void {
+    const identifier = this.state.opticalPathIdentifierToAdd
+    this.props.viewer.activateOpticalPath(identifier)
+    this.props.viewer.showOpticalPath(identifier)
+    this.setState({
+      rerender: true
+    })
+  }
+
   render (): React.ReactNode {
-    
     const opticalPaths: dmv.metadata.VLWholeSlideMicroscopyImage[] = [] 
     this.props.metadata.forEach(
       (item: dmv.metadata.VLWholeSlideMicroscopyImage) => {
@@ -33,14 +75,15 @@ class SamplesList extends React.Component<SamplesListProps, {}> {
       }
     )
 
-    /* To Do: filter the list for only the active Sample
+    // filter the list for only the active samples
     const filteredOpticalPaths: dmv.metadata.VLWholeSlideMicroscopyImage[] =
       opticalPaths.filter((item: dmv.metadata.VLWholeSlideMicroscopyImage) => {
         return this.props.viewer.isOpticalPathActive(item.OpticalPathSequence[0].OpticalPathIdentifier)
-      });*/
-    
+      });
+  
+    // order items with the Optical Path ID
     const sortedOpticalPaths: dmv.metadata.VLWholeSlideMicroscopyImage[] = 
-      opticalPaths.sort((n1: dmv.metadata.VLWholeSlideMicroscopyImage, 
+      filteredOpticalPaths.sort((n1: dmv.metadata.VLWholeSlideMicroscopyImage, 
                                  n2: dmv.metadata.VLWholeSlideMicroscopyImage) => {
         const id1 = parseInt(n1.OpticalPathSequence[0].OpticalPathIdentifier)
         const id2 = parseInt(n2.OpticalPathSequence[0].OpticalPathIdentifier)
@@ -55,7 +98,7 @@ class SamplesList extends React.Component<SamplesListProps, {}> {
         return 0;
       });
 
-    const items = sortedOpticalPaths.map(
+    const sampleItems = sortedOpticalPaths.map(
       (item: dmv.metadata.VLWholeSlideMicroscopyImage) => {
         return (
           <SampleItem
@@ -63,16 +106,59 @@ class SamplesList extends React.Component<SamplesListProps, {}> {
             viewer={this.props.viewer}
             opticalPathSequence={item.OpticalPathSequence[0]}
             specimenDescriptionSequence={item.SpecimenDescriptionSequence[0]}
+            itemRemoveHandler = {this.handleItemRemoveSample}
           />
         )
       }
     )
 
+    // get currently deactivated paths
+    const deactivatedOpticalPaths: dmv.metadata.VLWholeSlideMicroscopyImage[] =
+    opticalPaths.filter((item: dmv.metadata.VLWholeSlideMicroscopyImage) => {
+      return !this.props.viewer.isOpticalPathActive(item.OpticalPathSequence[0].OpticalPathIdentifier)
+    }); 
+    
+    // order items with the Optical Path ID
+    const sortedDeactivatedOpticalPaths: dmv.metadata.VLWholeSlideMicroscopyImage[] = 
+      deactivatedOpticalPaths.sort((n1: dmv.metadata.VLWholeSlideMicroscopyImage, 
+                                 n2: dmv.metadata.VLWholeSlideMicroscopyImage) => {
+        const id1 = parseInt(n1.OpticalPathSequence[0].OpticalPathIdentifier)
+        const id2 = parseInt(n2.OpticalPathSequence[0].OpticalPathIdentifier)
+        if ( id1 > id2) {
+            return 1;
+        }
+  
+        if (id1 < id2) {
+            return -1;
+        }
+  
+        return 0;
+      });
+
+    const deactivatedOptionItems = sortedDeactivatedOpticalPaths.map(
+      (item: dmv.metadata.VLWholeSlideMicroscopyImage) => {
+        const id = item.OpticalPathSequence[0].OpticalPathIdentifier
+        const description = item.OpticalPathSequence[0].OpticalPathDescription
+        return (
+          <Option value={id}> ID: {id}, {description} </Option>
+        )
+      }
+    )
+
     return (
-      <Menu selectable={false}>
-        {items}
-      </Menu>
-      // To Do: add widgets to add/remove Sample
+      <Space align='center' direction="vertical" size = {20}>
+        <Menu selectable={false}>
+          {sampleItems}
+        </Menu>
+        <Space align='center' size = {20}>
+          <Select defaultValue="" style={{ width: 200 }} onChange={this.handleSelectChange} allowClear>
+            {deactivatedOptionItems}
+          </Select>
+          <Button type="primary" icon={<AppstoreAddOutlined />} onClick={this.handleAddSample}>
+          </Button>
+        </Space>
+        <h4></h4>
+      </Space>
     )
   }
 }

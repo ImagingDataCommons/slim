@@ -58,6 +58,7 @@ class AcquisitionList extends React.Component<AcquisitionListProps, AcquisitionL
         overviewMetadata: [],
         isMultiSample: false,
         multiSamplesSeriesUIDs: [],
+        multiSamplesKeyOpticalPathIdentifier: '',
         description: ''
       };
       const acquisitionItem = 

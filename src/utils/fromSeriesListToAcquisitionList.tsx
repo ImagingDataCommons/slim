@@ -47,6 +47,7 @@ export const fromSeriesListToAcquisitionList = (
       labelMetadata: seriesList[i].labelMetadata,
       overviewMetadata: seriesList[i].overviewMetadata,
       multiSamplesSeriesUIDs: [],
+      multiSamplesKeyOpticalPathIdentifier: '',
       isMultiSample: false,
       description: seriesList[i].Series.SeriesDescription
     };
@@ -56,6 +57,7 @@ export const fromSeriesListToAcquisitionList = (
 
   // Monochorme images
   let multiSampleKey = ''
+  let keyOpticalPathIdentifier = ''
   const volumeMetadata: object[] = []
   const labelMetadata: object[] = []
   const overviewMetadata: object[] = []
@@ -77,10 +79,9 @@ export const fromSeriesListToAcquisitionList = (
       if (multiSamplesSeriesUIDs.findIndex(uid => uid === seriesList[i].Series.SeriesInstanceUID) === -1) {
         multiSamplesSeriesUIDs.push(seriesList[i].Series.SeriesInstanceUID)
       }
-      if (acquisitionList.length === 0 && 
-        initiallySelectedSeriesInstanceUID !== '' &&
-        initiallySelectedSeriesInstanceUID === seriesList[i].Series.SeriesInstanceUID) {
+      if (initiallySelectedSeriesInstanceUID === seriesList[i].Series.SeriesInstanceUID) {
         multiSampleKey = initiallySelectedSeriesInstanceUID
+        keyOpticalPathIdentifier = instance.OpticalPathSequence[0].OpticalPathIdentifier
       }
       if (multiSampleKey === '') {
         multiSampleKey = seriesList[i].Series.SeriesInstanceUID
@@ -120,6 +121,7 @@ export const fromSeriesListToAcquisitionList = (
       overviewMetadata: overviewMetadata,
       isMultiSample: true,
       multiSamplesSeriesUIDs: multiSamplesSeriesUIDs,
+      multiSamplesKeyOpticalPathIdentifier: keyOpticalPathIdentifier,
       description: 'Multiplexed-Samples'
     };
     

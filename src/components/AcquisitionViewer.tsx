@@ -150,6 +150,7 @@ class AcquisitionViewer extends React.Component<AcquisitionViewerProps, Acquisit
     overviewMetadata: [],
     isMultiSample: false,
     multiSamplesSeriesUIDs: [],
+    multiSamplesKeyOpticalPathIdentifier: '',
     description: ''
   };
   
@@ -368,11 +369,31 @@ class AcquisitionViewer extends React.Component<AcquisitionViewerProps, Acquisit
           this.props.seriesInstanceUID
         )
         this.volumeViewport.current.innerHTML = ''
-        this.volumeViewer = new dmv.viewer.VolumeImageViewer({
-          client: this.props.client,
-          metadata: acquisition.volumeMetadata,
-          retrieveRendered: true
-        })
+
+        if (acquisition.isMultiSample) {
+          const blendInfo : dmv.viewer.BlendingInformation = {
+            opticalPathIdentifier: acquisition.multiSamplesKeyOpticalPathIdentifier,
+            color: [0, 0.9, 0.9],
+            opacity: 1.0,
+            thresholdValues: [0., 255.],
+            limitValues:[0, 255.],
+            visible: true,
+          };
+  
+          this.volumeViewer = new dmv.viewer.VolumeImageViewer({
+            client: this.props.client,
+            metadata: acquisition.volumeMetadata,
+            blendingInformation: [blendInfo],
+            retrieveRendered: true
+          })
+        } else {
+          this.volumeViewer = new dmv.viewer.VolumeImageViewer({
+            client: this.props.client,
+            metadata: acquisition.volumeMetadata,
+            retrieveRendered: true
+          })
+        }
+
         this.volumeViewer.render({ container: this.volumeViewport.current })
         this.volumeViewer.activateSelectInteraction({})
         this.volumeViewer.toggleOverviewMap()

@@ -11,6 +11,7 @@ export interface Acquisition {
   key: string
   isMultiSample: boolean
   multiSamplesSeriesUIDs: string[]
+  multiSamplesKeyOpticalPathIdentifier: string
   description: string
   volumeMetadata: object[]
   labelMetadata: object[]
