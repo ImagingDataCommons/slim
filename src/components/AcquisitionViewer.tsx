@@ -384,7 +384,7 @@ class AcquisitionViewer extends React.Component<AcquisitionViewerProps, Acquisit
             client: this.props.client,
             metadata: acquisition.volumeMetadata,
             blendingInformation: [blendInfo],
-            retrieveRendered: true
+            retrieveRendered: true,
           })
         } else {
           this.volumeViewer = new dmv.viewer.VolumeImageViewer({

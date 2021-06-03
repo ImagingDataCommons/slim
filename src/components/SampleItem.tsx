@@ -345,7 +345,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
           </Col>
           <Col span={18}>
             <Slider
-              min={0}
+              min={0.01}
               max={1}
               step={0.01}
               defaultValue={blendInfo.opacity}
