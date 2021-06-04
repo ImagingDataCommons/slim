@@ -101,7 +101,6 @@ interface Evaluation {
   value: dcmjs.sr.coding.CodedConcept
 }
 
-
 interface SlideViewerProps extends RouteComponentProps {
   client: DicomWebManager
   studyInstanceUID: string
@@ -257,7 +256,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             const content = new MeasurementReport(report)
             content.ROIs.forEach(roi => {
               console.info(`add ROI "${roi.uid}"`)
-              console.log(roi)
               const scoord3d = roi.scoord3d
               const image = (
                 this.state.metadata[0] as
@@ -1020,6 +1018,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         <Select
           style={{ minWidth: 130 }}
           onSelect={this.handleAnnotationFindingSelection}
+          key='annotation-finding'
           defaultActiveFirstOption
         >
           {findingOptions}
