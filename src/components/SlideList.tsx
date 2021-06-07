@@ -53,12 +53,15 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
     if (slideItemList.length === 0) {
       const slide: Slide = {
         key: '',
+        frameofReferenceUID: '',
+        containerIdentifier: '',
         volumeMetadata: [],
         labelMetadata: [],
         overviewMetadata: [],
-        isMultiSample: false,
-        multiSamplesSeriesUIDs: [],
-        multiSamplesKeyOpticalPathIdentifier: '',
+        areImagesMonochrome: false,
+        seriesUIDs: [],
+        opticalPathIdentifiersList: [],
+        keyOpticalPathIdentifier: '',
         description: ''
       };
       const slideItem = 

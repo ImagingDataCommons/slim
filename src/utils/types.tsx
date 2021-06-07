@@ -9,9 +9,12 @@ export interface SeriesState {
 
 export interface Slide {
   key: string
-  isMultiSample: boolean
-  multiSamplesSeriesUIDs: string[]
-  multiSamplesKeyOpticalPathIdentifier: string
+  frameofReferenceUID: string
+  containerIdentifier: string
+  areImagesMonochrome: boolean
+  seriesUIDs: string[]
+  keyOpticalPathIdentifier: string
+  opticalPathIdentifiersList: string[]
   description: string
   volumeMetadata: object[]
   labelMetadata: object[]

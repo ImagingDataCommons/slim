@@ -4,7 +4,7 @@ window.config = {
   servers: [
     {
       id: "local",
-      url: "http://localhost:8080/dcm4chee-arc/aets/DCM4CHEE/rs",
+      url: "http://localhost:8008/dicomweb",
       write: true
     }
   ],

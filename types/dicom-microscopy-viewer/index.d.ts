@@ -270,10 +270,10 @@ declare module 'dicom-microscopy-viewer' {
 
     export interface Series extends Study {
       Modality: string
+      NumberOfSeriesRelatedInstances: number
       SeriesInstanceUID: string
       SeriesDescription: string
       SeriesNumber: number
-      NumberOfSeriesRelatedInstances: number
     }
 
     export interface Instance extends Series {
@@ -348,6 +348,7 @@ declare module 'dicom-microscopy-viewer' {
       ImageType: string[]
       FrameOfReferenceUID: string
       SamplesPerPixel: number
+      PhotometricInterpretation: string
     }
 
     export interface Comprehensive3DSR extends SOPClass {

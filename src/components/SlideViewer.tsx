@@ -145,12 +145,15 @@ interface SlideViewerState {
 class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   slide: Slide = {
     key: '',
+    frameofReferenceUID: '',
+    containerIdentifier: '',
     volumeMetadata: [],
     labelMetadata: [],
     overviewMetadata: [],
-    isMultiSample: false,
-    multiSamplesSeriesUIDs: [],
-    multiSamplesKeyOpticalPathIdentifier: '',
+    areImagesMonochrome: false,
+    seriesUIDs: [],
+    opticalPathIdentifiersList: [],
+    keyOpticalPathIdentifier: '',
     description: ''
   };
   
@@ -338,10 +341,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    
     const slides = slideList.filter(item => {
       const slideItem = item as Slide
-      if ((slideItem.isMultiSample && 
-            slideItem.multiSamplesSeriesUIDs.findIndex
-              (uid => uid === this.props.seriesInstanceUID) !== -1) ||
-          slideItem.key === this.props.seriesInstanceUID) {
+      if (slideItem.seriesUIDs.findIndex
+            (uid => uid === this.props.seriesInstanceUID) !== -1) {
         return true
       }
       return false
@@ -370,9 +371,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         )
         this.volumeViewport.current.innerHTML = ''
 
-        if (slide.isMultiSample) {
+        if (slide.areImagesMonochrome) {
           const blendInfo : dmv.viewer.BlendingInformation = {
-            opticalPathIdentifier: slide.multiSamplesKeyOpticalPathIdentifier,
+            opticalPathIdentifier: slide.keyOpticalPathIdentifier,
             color: [0, 0.9, 0.9],
             opacity: 1.0,
             thresholdValues: [0., 255.],
@@ -1096,7 +1097,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     let specimenMenu 
     let sampleMenu 
     if (slide !== undefined) {
-      if (slide.isMultiSample === false) {
+      if (slide.areImagesMonochrome === false) {
         specimenMenu = 
           <Menu.SubMenu key='specimens' title='Specimens'>
             <SpecimenList metadata={this.state.metadata} />
