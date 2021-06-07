@@ -7,7 +7,7 @@ export interface SeriesState {
   overviewMetadata: object[]
 }
 
-export interface Acquisition {
+export interface Slide {
   key: string
   isMultiSample: boolean
   multiSamplesSeriesUIDs: string[]

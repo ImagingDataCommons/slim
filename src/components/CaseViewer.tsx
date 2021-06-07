@@ -16,11 +16,11 @@ import { AnnotationSettings } from '../AppConfig'
 import DicomWebManager from '../DicomWebManager'
 import Patient from './Patient'
 import Study from './Study'
-import AcquisitionList from './AcquisitionList'
-import AcquisitionViewer from './AcquisitionViewer'
+import SlideList from './SlideList'
+import SlideViewer from './SlideViewer'
 
-import {fromSeriesListToAcquisitionList} from '../utils/fromSeriesListToAcquisitionList'
-import {SeriesState, Acquisition} from '../utils/types'
+import {fromSeriesListToSlideList} from '../utils/fromSeriesListToSlideList'
+import {SeriesState, Slide} from '../utils/types'
 
 interface ViewerProps extends RouteComponentProps {
   client: DicomWebManager
@@ -40,14 +40,14 @@ interface ViewerProps extends RouteComponentProps {
 
 interface ViewerState {
   seriesList: SeriesState[]
-  acquisitionList: Acquisition[]
+  slideList: Slide[]
   isLoading: boolean
 }
 
 class Viewer extends React.Component<ViewerProps, ViewerState> {
   state = {
     seriesList: [],
-    acquisitionList: [],
+    slideList: [],
     isLoading: false
   }
 
@@ -66,11 +66,11 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       const fragments = this.props.location.pathname.split('/')
       selectedSeriesInstanceUID = fragments[4]
     }
-    const acquisitionList = fromSeriesListToAcquisitionList(seriesList, 
+    const slideList = fromSeriesListToSlideList(seriesList, 
       selectedSeriesInstanceUID);
 
     this.setState(state => ({
-      acquisitionList: acquisitionList,
+      slideList: slideList,
       seriesList: seriesList,
       isLoading: false
     }))
@@ -167,7 +167,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
         >
           <Menu
             mode='inline'
-            defaultOpenKeys={['patient', 'case', 'acquisitions']}
+            defaultOpenKeys={['patient', 'case', 'slides']}
             style={{ height: '100%' }}
             inlineIndent={14}
             theme='light'
@@ -178,10 +178,10 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
             <Menu.SubMenu key='case' title='Case'>
               <Study metadata={studyMetadata} />
             </Menu.SubMenu>
-            <Menu.SubMenu key='acquisitions' title='Acquisitions'>
-              <AcquisitionList
+            <Menu.SubMenu key='slides' title='Slides'>
+              <SlideList
                 client={this.props.client}
-                metadata={this.state.acquisitionList}
+                metadata={this.state.slideList}
                 initiallySelectedSeriesInstanceUID={selectedSeriesInstanceUID}
                 onSeriesSelection={this.handleSeriesSelection}
               />
@@ -194,11 +194,11 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
             exact
             path='/studies/:StudyInstanceUID/series/:SeriesInstanceUID'
             render={(routeProps) => (
-              <AcquisitionViewer
+              <SlideViewer
                 client={this.props.client}
                 studyInstanceUID={this.props.studyInstanceUID}
                 seriesInstanceUID={routeProps.match.params.SeriesInstanceUID}
-                metadata={this.state.acquisitionList}
+                metadata={this.state.slideList}
                 annotations={this.props.annotations}
                 app={this.props.app}
                 user={this.props.user}

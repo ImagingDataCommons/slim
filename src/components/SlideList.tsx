@@ -2,11 +2,11 @@ import React from 'react'
 import { Menu } from 'antd'
 
 import DicomWebManager from '../DicomWebManager'
-import AcquisitionItem from './AcquisitionItem'
-import { Acquisition } from '../utils/types'
+import SlideItem from './SlideItem'
+import { Slide } from '../utils/types'
 
-interface AcquisitionListProps {
-  metadata: Acquisition[]
+interface SlideListProps {
+  metadata: Slide[]
   client: DicomWebManager
   initiallySelectedSeriesInstanceUID: string
   onSeriesSelection: (
@@ -14,14 +14,14 @@ interface AcquisitionListProps {
   ) => void
 }
 
-interface AcquisitionListState {
+interface SlideListState {
   selectedSeriesInstanceUID: string
 }
 
 /**
  * React component representing a list of DICOM Series Information Entities.
  */
-class AcquisitionList extends React.Component<AcquisitionListProps, AcquisitionListState> {
+class SlideList extends React.Component<SlideListProps, SlideListState> {
   state = {
     selectedSeriesInstanceUID: '',
   }
@@ -36,22 +36,22 @@ class AcquisitionList extends React.Component<AcquisitionListProps, AcquisitionL
   }
 
   render (): React.ReactNode {
-    const acquisitionList = this.props.metadata
-    const acquisitionItemList = []
-    for (let i = 0; i < acquisitionList.length; ++i) {
-      const acquisition = acquisitionList[i] as Acquisition
-      const acquisitionItem = 
-      <AcquisitionItem
-        key={acquisition.key}
-        acquisition={acquisition}
+    const slideList = this.props.metadata
+    const slideItemList = []
+    for (let i = 0; i < slideList.length; ++i) {
+      const slide = slideList[i] as Slide
+      const slideItem = 
+      <SlideItem
+        key={slide.key}
+        slide={slide}
         client={this.props.client}
       />
   
-      acquisitionItemList.push(acquisitionItem)  
+      slideItemList.push(slideItem)  
     }
 
-    if (acquisitionItemList.length === 0) {
-      const acquisition: Acquisition = {
+    if (slideItemList.length === 0) {
+      const slide: Slide = {
         key: '',
         volumeMetadata: [],
         labelMetadata: [],
@@ -61,14 +61,14 @@ class AcquisitionList extends React.Component<AcquisitionListProps, AcquisitionL
         multiSamplesKeyOpticalPathIdentifier: '',
         description: ''
       };
-      const acquisitionItem = 
-        <AcquisitionItem
-          key={acquisition.key}
-          acquisition={acquisition}
+      const slideItem = 
+        <SlideItem
+          key={slide.key}
+          slide={slide}
           client={this.props.client}
         />
     
-      acquisitionItemList.push(acquisitionItem)  
+      slideItemList.push(slideItem)  
     }
 
     const handleMenuItemSelection = ({ key, keyPath, domEvent, selectedKeys }: {
@@ -77,7 +77,7 @@ class AcquisitionList extends React.Component<AcquisitionListProps, AcquisitionL
       domEvent: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>
       selectedKeys?: React.ReactText[]
     }): void => {
-      console.info(`select acquisition "${key}"`)
+      console.info(`select slide "${key}"`)
       this.setState(state => ({
         selectedSeriesInstanceUID: key.toString()
       }))
@@ -92,10 +92,10 @@ class AcquisitionList extends React.Component<AcquisitionListProps, AcquisitionL
         mode='inline'
         inlineIndent={0}
       >
-        {acquisitionItemList}
+        {slideItemList}
       </Menu>
     )
   }
 }
 
-export default AcquisitionList
+export default SlideList
