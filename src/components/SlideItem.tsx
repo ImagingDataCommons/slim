@@ -6,7 +6,7 @@ import { Menu } from 'antd'
 
 import DicomWebManager from '../DicomWebManager'
 import Description from './Description'
-import {Slide} from '../utils/types'
+import {Slide} from '../data/slides'
 
 interface SlideItemProps {
   client: DicomWebManager

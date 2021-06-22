@@ -6,13 +6,11 @@ import Description from './Description'
 import * as dmv from 'dicom-microscopy-viewer'
 import * as dcmjs from 'dcmjs'
 
-import SamplesList from './SamplesList'
-
 interface SampleItemProps {
-  opticalPathSequence: dmv.metadata.OpticalPathDescription,
-  specimenDescriptionSequence: dmv.metadata.SpecimenDescription,
+  opticalPathDescription: dmv.metadata.OpticalPathDescription,
+  specimenDescription: dmv.metadata.SpecimenDescription,
   viewer: dmv.viewer.VolumeImageViewer,
-  itemRemoveHandler: SamplesList["handleItemRemoveSample"]
+  itemRemoveHandler: (opticalPathIdentifier: string) => void
 }
 
 interface SampleItemState {
@@ -52,7 +50,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
     checked: boolean,
     event: Event
   ): void {
-    const identifier = this.props.opticalPathSequence.OpticalPathIdentifier
+    const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
     if (checked) {
       this.props.viewer.showOpticalPath(identifier)
       this.setState(state => ({ visible: true }))
@@ -65,7 +63,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
   handleOpacityChange (
     value: number,
   ): void {
-    const identifier = this.props.opticalPathSequence.OpticalPathIdentifier
+    const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
     const blendingInformation = {
       opacity : value,
       opticalPathIdentifier : identifier,
@@ -77,9 +75,9 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
   handleColorRChange (
     value: number,
   ): void {
-    const identifier = this.props.opticalPathSequence.OpticalPathIdentifier
+    const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
     const blendInfo = this.props.viewer.getBlendingInformation
-      (identifier) as dmv.viewer.BlendingInformation
+      (identifier) as dmv.channel.BlendingInformation
     let color = [...blendInfo.color]
     color[0] = value / 255.
     const blendingInformation = {
@@ -93,9 +91,9 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
   handleColorGChange (
     value: number,
   ): void {
-    const identifier = this.props.opticalPathSequence.OpticalPathIdentifier
+    const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
     const blendInfo = this.props.viewer.getBlendingInformation
-      (identifier) as dmv.viewer.BlendingInformation
+      (identifier) as dmv.channel.BlendingInformation
     let color = [...blendInfo.color]
     color[1] = value / 255.
     const blendingInformation = {
@@ -109,9 +107,9 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
   handleColorBChange (
     value: number,
   ): void {
-    const identifier = this.props.opticalPathSequence.OpticalPathIdentifier
+    const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
     const blendInfo = this.props.viewer.getBlendingInformation
-      (identifier) as dmv.viewer.BlendingInformation
+      (identifier) as dmv.channel.BlendingInformation
     let color = [...blendInfo.color] 
     color[2] = value / 255.
     const blendingInformation = {
@@ -123,62 +121,54 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
   }
 
   handleClippingChange (
-    value: number[],
+    values: number[],
   ): void {
-    const identifier = this.props.opticalPathSequence.OpticalPathIdentifier
+    const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
     const blendingInformation = {
-      thresholdValues : value,
+      thresholdValues : values,
       opticalPathIdentifier : identifier,
     };
-    this.setState(state => ({ thresholdValues: value }))
+    this.setState(state => ({ thresholdValues: values }))
     this.props.viewer.setBlendingInformation(blendingInformation);
   }
 
   handleLimitChange (
-    value: number[],
+    values: number[],
   ): void {
-    const identifier = this.props.opticalPathSequence.OpticalPathIdentifier
+    const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
     const blendingInformation = {
-      limitValues : value,
+      limitValues : values,
       opticalPathIdentifier : identifier,
     };
-    this.setState(state => ({ limitValues: value }))
+    this.setState(state => ({ limitValues: values }))
     this.props.viewer.setBlendingInformation(blendingInformation);
   }
 
   handleRemoveSample (): void {
-    const identifier = this.props.opticalPathSequence.OpticalPathIdentifier
-    this.props.viewer.deactivateOpticalPath(identifier)
-    this.props.itemRemoveHandler()
+    const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
+    this.props.itemRemoveHandler(identifier)
   }
 
   componentDidMount (): void {
-    const identifier = this.props.opticalPathSequence.OpticalPathIdentifier
+    const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
     const blendInfo = this.props.viewer.getBlendingInformation
-      (identifier) as dmv.viewer.BlendingInformation
+      (identifier) as dmv.channel.BlendingInformation
     this.setState(state => ({ visible: blendInfo.visible }))
   }
 
   render (): React.ReactNode {
-    const identifier = this.props.opticalPathSequence.OpticalPathIdentifier
+    const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
     const attributes: Array<{ name: string, value: string }> = []
 
-    const specimenDescription = this.props.specimenDescriptionSequence
+    const specimenDescription = this.props.specimenDescription
     if ('SpecimenShortDescription' in specimenDescription) {
       const description = specimenDescription.SpecimenShortDescription
       if (description) {
         attributes.push({
-          name: 'Description',
+          name: 'Specimen Description',
           value: description
         })
       }
-    }
-    if ('PrimaryAnatomicStructureSequence' in specimenDescription) {
-      const structures = specimenDescription.PrimaryAnatomicStructureSequence
-      attributes.push({
-        name: 'Anatomic Structure',
-        value: structures[0].CodeMeaning
-      })
     }
 
     function doesCodeMatch (
@@ -193,7 +183,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
     }
 
     // TID 8001 "Specimen Preparation"
-    this.props.specimenDescriptionSequence.SpecimenPreparationSequence.forEach(
+    this.props.specimenDescription.SpecimenPreparationSequence.forEach(
       (step: dmv.metadata.SpecimenPreparation, index: number): void => {
         step.SpecimenPreparationStepContentItemSequence.forEach((
           item: (
@@ -216,22 +206,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
                 `parse specimen preparation step "${processingType}"`
               )
             } else {
-              if (doesCodeMatch(name, 'SCT', '17636008')) {
-                attributes.push({
-                  name: 'Surgical collection',
-                  value: value.CodeMeaning
-                })
-              } else if (doesCodeMatch(name, 'SCT', '430864009')) {
-                attributes.push({
-                  name: 'Fixative',
-                  value: value.CodeMeaning
-                })
-              } else if (doesCodeMatch(name, 'SCT', '430863003')) {
-                attributes.push({
-                  name: 'Embedding medium',
-                  value: value.CodeMeaning
-                })
-              } else if (doesCodeMatch(name, 'SCT', '424361007')) {
+              if (doesCodeMatch(name, 'SCT', '424361007')) {
                 attributes.push({
                   name: 'Stain',
                   value: value.CodeMeaning
@@ -254,7 +229,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
     )
 
     const blendInfo = this.props.viewer.getBlendingInformation
-      (identifier) as dmv.viewer.BlendingInformation
+      (identifier) as dmv.channel.BlendingInformation
 
     const content = (
       <div>

@@ -19,8 +19,8 @@ import Study from './Study'
 import SlideList from './SlideList'
 import SlideViewer from './SlideViewer'
 
-import {fromSeriesListToSlideList} from '../utils/fromSeriesListToSlideList'
-import {SeriesState, Slide} from '../utils/types'
+import {SeriesState} from '../utils/types'
+import {Slide, Slides} from '../data/slides'
 
 interface ViewerProps extends RouteComponentProps {
   client: DicomWebManager
@@ -39,15 +39,15 @@ interface ViewerProps extends RouteComponentProps {
 }
 
 interface ViewerState {
-  seriesList: SeriesState[]
-  slideList: Slide[]
+  seriesArray: SeriesState[]
+  slideArray: Slide[]
   isLoading: boolean
 }
 
 class Viewer extends React.Component<ViewerProps, ViewerState> {
   state = {
-    seriesList: [],
-    slideList: [],
+    seriesArray: [],
+    slideArray: [],
     isLoading: false
   }
 
@@ -59,25 +59,26 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
   async componentDidMount () {
     this.setState(state => ({ isLoading: true }))
 
-    const seriesList = await this.fetchSeriesList()
+    const seriesArray = await this.fetchSeriesArray()
 
     let selectedSeriesInstanceUID = ''
     if (this.props.location.pathname.includes('series/')) {
       const fragments = this.props.location.pathname.split('/')
       selectedSeriesInstanceUID = fragments[4]
     }
-    const slideList = fromSeriesListToSlideList(seriesList, 
-      selectedSeriesInstanceUID);
+
+    const slides = new Slides(seriesArray, selectedSeriesInstanceUID);
+    const slideArray = slides.getSlideArray()
 
     this.setState(state => ({
-      slideList: slideList,
-      seriesList: seriesList,
+      slideArray: slideArray,
+      seriesArray: seriesArray,
       isLoading: false
     }))
   }
 
-  async fetchSeriesList () {
-    const seriesList: SeriesState[] = []
+  async fetchSeriesArray () {
+    const seriesArray: SeriesState[] = []
     const studyInstanceUID = this.props.studyInstanceUID
     console.info(`search for series of study "${studyInstanceUID}"...`)
     const matchedSeries = await this.props.client.searchForSeries({
@@ -121,10 +122,10 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
         labelMetadata: labelMetadata,
         overviewMetadata: overviewMetadata
       }
-      seriesList.push(series)   
+      seriesArray.push(series)   
     }));
 
-    return seriesList
+    return seriesArray
   }
 
   handleSeriesSelection (
@@ -137,10 +138,10 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
   }
 
   render (): React.ReactNode {
-    if (this.state.seriesList.length === 0) {
+    if (this.state.seriesArray.length === 0) {
       return null
     }
-    const firstSeriesState = this.state.seriesList[0] as SeriesState
+    const firstSeriesState = this.state.seriesArray[0] as SeriesState
     const studyMetadata = firstSeriesState.Series as dmv.metadata.Study
 
     /* If a series is encoded in the path, route the viewer to this series.
@@ -181,7 +182,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
             <Menu.SubMenu key='slides' title='Slides'>
               <SlideList
                 client={this.props.client}
-                metadata={this.state.slideList}
+                metadata={this.state.slideArray}
                 initiallySelectedSeriesInstanceUID={selectedSeriesInstanceUID}
                 onSeriesSelection={this.handleSeriesSelection}
               />
@@ -198,7 +199,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
                 client={this.props.client}
                 studyInstanceUID={this.props.studyInstanceUID}
                 seriesInstanceUID={routeProps.match.params.SeriesInstanceUID}
-                metadata={this.state.slideList}
+                metadata={this.state.slideArray}
                 annotations={this.props.annotations}
                 app={this.props.app}
                 user={this.props.user}

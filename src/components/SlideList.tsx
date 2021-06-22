@@ -3,7 +3,7 @@ import { Menu } from 'antd'
 
 import DicomWebManager from '../DicomWebManager'
 import SlideItem from './SlideItem'
-import { Slide } from '../utils/types'
+import { Slide } from '../data/slides'
 
 interface SlideListProps {
   metadata: Slide[]
@@ -59,6 +59,7 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
         labelMetadata: [],
         overviewMetadata: [],
         areImagesMonochrome: false,
+        isMultiplexedSamples: false,
         seriesUIDs: [],
         opticalPathIdentifiersList: [],
         keyOpticalPathIdentifier: '',

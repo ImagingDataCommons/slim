@@ -32,7 +32,7 @@ import SpecimenList from './SpecimenList'
 import SamplesList from './SamplesList'
 import { AnnotationSettings } from '../AppConfig'
 import { findContentItemsByName } from '../utils/sr'
-import { Slide } from '../utils/types'
+import { Slide } from '../data/slides'
 
 
 const _buildKey = (concept: dcmjs.sr.coding.CodedConcept): string => {
@@ -151,6 +151,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     labelMetadata: [],
     overviewMetadata: [],
     areImagesMonochrome: false,
+    isMultiplexedSamples: false,
     seriesUIDs: [],
     opticalPathIdentifiersList: [],
     keyOpticalPathIdentifier: '',
@@ -337,9 +338,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * instantiate the VOLUME and LABEL image viewers.
    */
   populateViewports = (): void => {
-    const slideList = this.props.metadata
+    const slideArray = this.props.metadata
    
-    const slides = slideList.filter(item => {
+    const slides = slideArray.filter(item => {
       const slideItem = item as Slide
       if (slideItem.seriesUIDs.findIndex
             (uid => uid === this.props.seriesInstanceUID) !== -1) {
@@ -372,7 +373,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         this.volumeViewport.current.innerHTML = ''
 
         if (slide.areImagesMonochrome) {
-          const blendInfo : dmv.viewer.BlendingInformation = {
+          const blendInfo : dmv.channel.BlendingInformation = {
             opticalPathIdentifier: slide.keyOpticalPathIdentifier,
             color: [0, 0.9, 0.9],
             opacity: 1.0,
@@ -1097,12 +1098,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     let specimenMenu 
     let sampleMenu 
     if (slide !== undefined) {
-      if (slide.areImagesMonochrome === false) {
+      if (slide.isMultiplexedSamples === false) {
         specimenMenu = 
           <Menu.SubMenu key='specimens' title='Specimens'>
-            <SpecimenList metadata={this.state.metadata} />
+            <SpecimenList metadata={this.state.metadata} showstain = {true}/>
           </Menu.SubMenu>
       } else {
+        specimenMenu = 
+          <Menu.SubMenu key='specimens' title='Specimens'>
+            <SpecimenList metadata={this.state.metadata} showstain = {false}/>
+          </Menu.SubMenu>
         const volumeViewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
         if (volumeViewer !== undefined) {
           sampleMenu =

@@ -8,6 +8,7 @@ import { Attribute } from './Description'
 interface SpecimenItemProps {
   index: number
   metadata: dmv.metadata.SOPClass
+  showstain: boolean
 }
 
 /**
@@ -84,7 +85,7 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
                   name: 'Embedding medium',
                   value: value.CodeMeaning
                 })
-              } else if (doesCodeMatch(name, 'SCT', '424361007')) {
+              } else if (doesCodeMatch(name, 'SCT', '424361007') && this.props.showstain) {
                 attributes.push({
                   name: 'Stain',
                   value: value.CodeMeaning
@@ -93,7 +94,7 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
             }
           } else if (item.ValueType === 'TEXT') {
             item = item as dcmjs.sr.valueTypes.TextContentItem
-            if (doesCodeMatch(name, 'SCT', '424361007')) {
+            if (doesCodeMatch(name, 'SCT', '424361007') && this.props.showstain) {
               attributes.push({
                 name: 'Stain',
                 value: item.TextValue

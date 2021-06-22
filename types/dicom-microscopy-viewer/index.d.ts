@@ -5,15 +5,6 @@ declare module 'dicom-microscopy-viewer' {
 
   declare namespace viewer {
 
-    export interface BlendingInformation {
-      opticalPathIdentifier: string
-      color: number[]
-      opacity: number
-      thresholdValues: number[]
-      limitValues: number[]
-      visible: boolean
-    }
-
     export interface VolumeImageViewerOptions {
       client: dwc.api.DICOMwebClient
       metadata: object[]
@@ -359,6 +350,19 @@ declare module 'dicom-microscopy-viewer' {
 
     export function formatMetadata (metadata: object): Metadata
 
+  }
+
+  declare namespace channel {
+
+    export interface BlendingInformation {
+      opticalPathIdentifier: string
+      color: number[]
+      opacity: number
+      thresholdValues: number[]
+      limitValues: number[]
+      visible: boolean
+    }
+    
   }
 
 }

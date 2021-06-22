@@ -6,6 +6,7 @@ import SpecimenItem from './SpecimenItem'
 
 interface SpecimenListProps {
   metadata: dmv.metadata.VLWholeSlideMicroscopyImage[]
+  showstain: boolean
 }
 
 /**
@@ -23,6 +24,7 @@ class SpecimenList extends React.Component<SpecimenListProps, {}> {
             index={index}
             key={item.SpecimenUID}
             metadata={this.props.metadata[0]}
+            showstain={this.props.showstain}
           />
         )
       }

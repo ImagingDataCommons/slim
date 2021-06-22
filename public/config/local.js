@@ -4,7 +4,9 @@ window.config = {
   servers: [
     {
       id: "local",
-      url: "http://localhost:8008/dicomweb",
+      url: "http://34.68.90.36/",
+      //url: "https://idc-external-006.uc.r.appspot.com",
+      //url: "http://localhost:8080/dcm4chee-arc/aets/DCM4CHEE/rs",
       write: true
     }
   ],

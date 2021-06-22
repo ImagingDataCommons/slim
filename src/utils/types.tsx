@@ -6,17 +6,3 @@ export interface SeriesState {
   labelMetadata: object[]
   overviewMetadata: object[]
 }
-
-export interface Slide {
-  key: string
-  frameofReferenceUID: string
-  containerIdentifier: string
-  areImagesMonochrome: boolean
-  seriesUIDs: string[]
-  keyOpticalPathIdentifier: string
-  opticalPathIdentifiersList: string[]
-  description: string
-  volumeMetadata: object[]
-  labelMetadata: object[]
-  overviewMetadata: object[]
-}
