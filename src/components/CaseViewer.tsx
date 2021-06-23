@@ -19,8 +19,8 @@ import Study from './Study'
 import SlideList from './SlideList'
 import SlideViewer from './SlideViewer'
 
-import {SeriesState} from '../utils/types'
-import {Slide, Slides} from '../data/slides'
+import { SeriesState } from '../utils/types'
+import { Slide, Slides } from '../data/slides'
 
 interface ViewerProps extends RouteComponentProps {
   client: DicomWebManager
@@ -56,7 +56,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     this.handleSeriesSelection = this.handleSeriesSelection.bind(this)
   }
 
-  async componentDidMount () {
+  async componentDidMount (): Promise<void> {
     this.setState(state => ({ isLoading: true }))
 
     const seriesArray = await this.fetchSeriesArray()
@@ -67,7 +67,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       selectedSeriesInstanceUID = fragments[4]
     }
 
-    const slides = new Slides(seriesArray, selectedSeriesInstanceUID);
+    const slides = new Slides(seriesArray, selectedSeriesInstanceUID)
     const slideArray = slides.getSlideArray()
 
     this.setState(state => ({
@@ -77,7 +77,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     }))
   }
 
-  async fetchSeriesArray () {
+  async fetchSeriesArray (): Promise<SeriesState[]> {
     const seriesArray: SeriesState[] = []
     const studyInstanceUID = this.props.studyInstanceUID
     console.info(`search for series of study "${studyInstanceUID}"...`)
@@ -87,7 +87,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
         StudyInstanceUID: studyInstanceUID
       }
     })
-    
+
     await Promise.all(matchedSeries.map(async (s) => {
       const loadingSeries = dmv.metadata.formatMetadata(s) as dmv.metadata.Series
       console.info(
@@ -95,16 +95,16 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
         `"${loadingSeries.SeriesInstanceUID}"...`
       )
       const retrievedMetadata = await this.props.client.retrieveSeriesMetadata({
-          studyInstanceUID: this.props.studyInstanceUID,
-          seriesInstanceUID: loadingSeries.SeriesInstanceUID
-        })
-          
+        studyInstanceUID: this.props.studyInstanceUID,
+        seriesInstanceUID: loadingSeries.SeriesInstanceUID
+      })
+
       const volumeMetadata: object[] = []
       const labelMetadata: object[] = []
       const overviewMetadata: object[] = []
       retrievedMetadata.forEach(item => {
         const instance = dmv.metadata.formatMetadata(item) as dmv.metadata.Instance
-        if (instance.ImageType !== undefined && 
+        if (instance.ImageType !== undefined &&
             instance.SOPClassUID === '1.2.840.10008.5.1.4.1.1.77.1.6') {
           if (instance.ImageType[2] === 'VOLUME') {
             volumeMetadata.push(item)
@@ -122,8 +122,8 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
         labelMetadata: labelMetadata,
         overviewMetadata: overviewMetadata
       }
-      seriesArray.push(series)   
-    }));
+      seriesArray.push(series)
+    }))
 
     return seriesArray
   }
@@ -152,7 +152,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       const fragments = this.props.location.pathname.split('/')
       selectedSeriesInstanceUID = fragments[4]
     } else {
-      const seriesMetadata = firstSeriesState.Series as dmv.metadata.Series
+      const seriesMetadata = firstSeriesState.Series
       selectedSeriesInstanceUID = seriesMetadata.SeriesInstanceUID
     }
 

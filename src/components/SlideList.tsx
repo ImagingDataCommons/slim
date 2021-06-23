@@ -23,12 +23,12 @@ interface SlideListState {
  */
 class SlideList extends React.Component<SlideListProps, SlideListState> {
   state = {
-    selectedSeriesInstanceUID: '',
+    selectedSeriesInstanceUID: ''
   }
 
   componentDidMount (): void {
     this.setState(state => ({
-      selectedSeriesInstanceUID: this.props.initiallySelectedSeriesInstanceUID,
+      selectedSeriesInstanceUID: this.props.initiallySelectedSeriesInstanceUID
     }))
     this.props.onSeriesSelection({
       seriesInstanceUID: this.props.initiallySelectedSeriesInstanceUID
@@ -39,15 +39,16 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
     const slideList = this.props.metadata
     const slideItemList = []
     for (let i = 0; i < slideList.length; ++i) {
-      const slide = slideList[i] as Slide
-      const slideItem = 
-      <SlideItem
-        key={slide.key}
-        slide={slide}
-        client={this.props.client}
-      />
-  
-      slideItemList.push(slideItem)  
+      const slide = slideList[i]
+      const slideItem = (
+        <SlideItem
+          key={slide.key}
+          slide={slide}
+          client={this.props.client}
+        />
+      )
+
+      slideItemList.push(slideItem)
     }
 
     if (slideItemList.length === 0) {
@@ -64,15 +65,16 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
         opticalPathIdentifiersList: [],
         keyOpticalPathIdentifier: '',
         description: ''
-      };
-      const slideItem = 
+      }
+      const slideItem = (
         <SlideItem
           key={slide.key}
           slide={slide}
           client={this.props.client}
         />
-    
-      slideItemList.push(slideItem)  
+      )
+
+      slideItemList.push(slideItem)
     }
 
     const handleMenuItemSelection = ({ key, keyPath, domEvent, selectedKeys }: {

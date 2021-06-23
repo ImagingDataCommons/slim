@@ -30,7 +30,7 @@ class Description extends React.Component<DescriptionProps, {}> {
   render (): React.ReactNode {
     let layout: 'horizontal' | 'vertical' = 'horizontal'
     let labelLineHeight = '14px'
-    let contentLineHeight = '14px'
+    const contentLineHeight = '14px'
     if (this.props.hasLongValues !== undefined && this.props.hasLongValues) {
       layout = 'vertical'
       labelLineHeight = '20px'

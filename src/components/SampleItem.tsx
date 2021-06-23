@@ -1,23 +1,23 @@
 import React from 'react'
 import { Button, Col, Popover, Row, Slider, Space, Switch } from 'antd'
-import { CloseSquareFilled, SettingOutlined } from '@ant-design/icons';
+import { CloseSquareFilled, SettingOutlined } from '@ant-design/icons'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
 import Description from './Description'
 import * as dmv from 'dicom-microscopy-viewer'
 import * as dcmjs from 'dcmjs'
 
 interface SampleItemProps {
-  opticalPathDescription: dmv.metadata.OpticalPathDescription,
-  specimenDescription: dmv.metadata.SpecimenDescription,
-  viewer: dmv.viewer.VolumeImageViewer,
+  opticalPathDescription: dmv.metadata.OpticalPathDescription
+  specimenDescription: dmv.metadata.SpecimenDescription
+  viewer: dmv.viewer.VolumeImageViewer
   itemRemoveHandler: (opticalPathIdentifier: string) => void
 }
 
 interface SampleItemState {
-  visible: boolean,
-  opacity: number,
-  thresholdValues: number[],
-  color: number[],
+  visible: boolean
+  opacity: number
+  thresholdValues: number[]
+  color: number[]
   limitValues: number[]
 }
 
@@ -61,87 +61,87 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
   }
 
   handleOpacityChange (
-    value: number,
+    value: number
   ): void {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
     const blendingInformation = {
-      opacity : value,
-      opticalPathIdentifier : identifier,
-    };
+      opacity: value,
+      opticalPathIdentifier: identifier
+    }
     this.setState(state => ({ opacity: value }))
-    this.props.viewer.setBlendingInformation(blendingInformation);
+    this.props.viewer.setBlendingInformation(blendingInformation)
   }
 
   handleColorRChange (
-    value: number,
+    value: number
   ): void {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
-    const blendInfo = this.props.viewer.getBlendingInformation
-      (identifier) as dmv.channel.BlendingInformation
-    let color = [...blendInfo.color]
-    color[0] = value / 255.
+    const blendInfo =
+      this.props.viewer.getBlendingInformation(identifier) as dmv.channel.BlendingInformation
+    const color = [...blendInfo.color]
+    color[0] = value / 255
     const blendingInformation = {
-      color : color,
-      opticalPathIdentifier : identifier,
-    };
+      color: color,
+      opticalPathIdentifier: identifier
+    }
     this.setState(state => ({ color: color }))
-    this.props.viewer.setBlendingInformation(blendingInformation);
+    this.props.viewer.setBlendingInformation(blendingInformation)
   }
 
   handleColorGChange (
-    value: number,
+    value: number
   ): void {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
-    const blendInfo = this.props.viewer.getBlendingInformation
-      (identifier) as dmv.channel.BlendingInformation
-    let color = [...blendInfo.color]
-    color[1] = value / 255.
+    const blendInfo =
+      this.props.viewer.getBlendingInformation(identifier) as dmv.channel.BlendingInformation
+    const color = [...blendInfo.color]
+    color[1] = value / 255
     const blendingInformation = {
-      color : color,
-      opticalPathIdentifier : identifier,
-    };
+      color: color,
+      opticalPathIdentifier: identifier
+    }
     this.setState(state => ({ color: color }))
-    this.props.viewer.setBlendingInformation(blendingInformation);
+    this.props.viewer.setBlendingInformation(blendingInformation)
   }
 
   handleColorBChange (
-    value: number,
+    value: number
   ): void {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
-    const blendInfo = this.props.viewer.getBlendingInformation
-      (identifier) as dmv.channel.BlendingInformation
-    let color = [...blendInfo.color] 
-    color[2] = value / 255.
+    const blendInfo =
+      this.props.viewer.getBlendingInformation(identifier) as dmv.channel.BlendingInformation
+    const color = [...blendInfo.color]
+    color[2] = value / 255
     const blendingInformation = {
-      color : color,
-      opticalPathIdentifier : identifier,
-    };
+      color: color,
+      opticalPathIdentifier: identifier
+    }
     this.setState(state => ({ color: color }))
-    this.props.viewer.setBlendingInformation(blendingInformation);
+    this.props.viewer.setBlendingInformation(blendingInformation)
   }
 
   handleClippingChange (
-    values: number[],
+    values: number[]
   ): void {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
     const blendingInformation = {
-      thresholdValues : values,
-      opticalPathIdentifier : identifier,
-    };
+      thresholdValues: values,
+      opticalPathIdentifier: identifier
+    }
     this.setState(state => ({ thresholdValues: values }))
-    this.props.viewer.setBlendingInformation(blendingInformation);
+    this.props.viewer.setBlendingInformation(blendingInformation)
   }
 
   handleLimitChange (
-    values: number[],
+    values: number[]
   ): void {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
     const blendingInformation = {
-      limitValues : values,
-      opticalPathIdentifier : identifier,
-    };
+      limitValues: values,
+      opticalPathIdentifier: identifier
+    }
     this.setState(state => ({ limitValues: values }))
-    this.props.viewer.setBlendingInformation(blendingInformation);
+    this.props.viewer.setBlendingInformation(blendingInformation)
   }
 
   handleRemoveSample (): void {
@@ -151,8 +151,8 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
 
   componentDidMount (): void {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
-    const blendInfo = this.props.viewer.getBlendingInformation
-      (identifier) as dmv.channel.BlendingInformation
+    const blendInfo =
+      this.props.viewer.getBlendingInformation(identifier) as dmv.channel.BlendingInformation
     this.setState(state => ({ visible: blendInfo.visible }))
   }
 
@@ -163,7 +163,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
     const specimenDescription = this.props.specimenDescription
     if ('SpecimenShortDescription' in specimenDescription) {
       const description = specimenDescription.SpecimenShortDescription
-      if (description) {
+      if (description !== null && description !== undefined) {
         attributes.push({
           name: 'Specimen Description',
           value: description
@@ -228,14 +228,14 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
       }
     )
 
-    const blendInfo = this.props.viewer.getBlendingInformation
-      (identifier) as dmv.channel.BlendingInformation
+    const blendInfo =
+      this.props.viewer.getBlendingInformation(identifier) as dmv.channel.BlendingInformation
 
     const content = (
       <div>
-        <Row justify="center" align="middle">
+        <Row justify='center' align='middle'>
           <Col span={6}>
-            <Button type="primary" shape="round">
+            <Button type='primary' shape='round'>
               R
             </Button>
           </Col>
@@ -250,7 +250,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
           </Col>
 
           <Col span={6}>
-            <Button type="primary" shape="round">
+            <Button type='primary' shape='round'>
               G
             </Button>
           </Col>
@@ -263,9 +263,9 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
               onAfterChange={this.handleColorGChange}
             />
           </Col>
-        
+
           <Col span={6}>
-            <Button type="primary" shape="round">
+            <Button type='primary' shape='round'>
               B
             </Button>
           </Col>
@@ -280,7 +280,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
           </Col>
 
           <Col span={6}>
-            <Button type="primary" shape="round">
+            <Button type='primary' shape='round'>
               Min/Max
             </Button>
           </Col>
@@ -290,14 +290,13 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
               min={0}
               max={255}
               step={1}
-              defaultValue={[blendInfo.limitValues[0], 
-                blendInfo.limitValues[1]]}
+              defaultValue={[blendInfo.limitValues[0], blendInfo.limitValues[1]]}
               onAfterChange={this.handleLimitChange}
             />
           </Col>
- 
+
           <Col span={6}>
-            <Button type="primary" shape="round">
+            <Button type='primary' shape='round'>
               Clipping
             </Button>
           </Col>
@@ -307,14 +306,13 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
               min={0}
               max={255}
               step={1}
-              defaultValue={[blendInfo.thresholdValues[0], 
-                blendInfo.thresholdValues[1]]}
+              defaultValue={[blendInfo.thresholdValues[0], blendInfo.thresholdValues[1]]}
               onAfterChange={this.handleClippingChange}
             />
           </Col>
 
           <Col span={6}>
-            <Button type="primary" shape="round">
+            <Button type='primary' shape='round'>
               Opacity
             </Button>
           </Col>
@@ -329,13 +327,13 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
           </Col>
         </Row>
       </div>
-    );     
+    )
 
     return (
       <Space align='start'>
         <div style={{ paddingLeft: '14px', paddingTop: '10px' }}>
-          <Space direction="vertical" align='end' size = {100}> 
-            <Space direction="vertical" align='end'>
+          <Space direction='vertical' align='end' size={100}>
+            <Space direction='vertical' align='end'>
               <Switch
                 size='small'
                 checked={this.state.visible}
@@ -343,15 +341,13 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
                 checkedChildren={<FaEye />}
                 unCheckedChildren={<FaEyeSlash />}
               />
-              
-              <Popover placement="left" content={content} title={"Blending Parameters"}>
-                <Button type="primary" shape="circle" icon={<SettingOutlined />}>
-                </Button>
+
+              <Popover placement='left' content={content} title='Blending Parameters'>
+                <Button type='primary' shape='circle' icon={<SettingOutlined />} />
               </Popover>
             </Space>
-        
-            <Button type="primary" danger icon={<CloseSquareFilled />} onClick={this.handleRemoveSample}>
-            </Button>
+
+            <Button type='primary' danger icon={<CloseSquareFilled />} onClick={this.handleRemoveSample} />
           </Space>
         </div>
         <Description

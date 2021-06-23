@@ -6,7 +6,7 @@ import { Menu } from 'antd'
 
 import DicomWebManager from '../DicomWebManager'
 import Description from './Description'
-import {Slide} from '../data/slides'
+import { Slide } from '../data/slides'
 
 interface SlideItemProps {
   client: DicomWebManager
@@ -50,9 +50,9 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
       })
       // Instantiate the viewer and inject it into the viewport
       console.info(
-      'instantiate viewer for OVERVIEW image of ' +
-      this.props.slide.key +
-      '...'
+        'instantiate viewer for OVERVIEW image of ' +
+        this.props.slide.key +
+        '...'
       )
       if (this.overviewViewport.current !== null) {
         this.overviewViewport.current.innerHTML = ''
@@ -78,7 +78,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
       this.overviewViewer.resize()
     }
     const attributes = []
-    if (this.props.slide.description) {
+    if (this.props.slide.description !== null && this.props.slide.description !== undefined) {
       attributes.push({
         name: 'Description',
         value: this.props.slide.description
