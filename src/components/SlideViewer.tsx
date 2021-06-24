@@ -150,7 +150,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     overviewMetadata: [],
     areImagesMonochrome: false,
     isMultiplexedSamples: false,
-    seriesUIDs: [],
+    seriesUIDsList: [],
     opticalPathIdentifiersList: [],
     keyOpticalPathIdentifier: '',
     description: ''
@@ -340,7 +340,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     const slides = slideArray.filter(item => {
       const slideItem = item
-      if (slideItem.seriesUIDs.findIndex(uid => uid === this.props.seriesInstanceUID) !== -1) {
+      if (slideItem.seriesUIDsList.findIndex(uid => uid === this.props.seriesInstanceUID) !== -1) {
         return true
       }
       return false

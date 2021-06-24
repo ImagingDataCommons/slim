@@ -20,7 +20,7 @@ import SlideList from './SlideList'
 import SlideViewer from './SlideViewer'
 
 import { SeriesState } from '../utils/types'
-import { Slide, Slides } from '../data/slides'
+import { Slide, createSlides } from '../data/slides'
 
 interface ViewerProps extends RouteComponentProps {
   client: DicomWebManager
@@ -40,14 +40,14 @@ interface ViewerProps extends RouteComponentProps {
 
 interface ViewerState {
   seriesArray: SeriesState[]
-  slideArray: Slide[]
+  slides: Slide[]
   isLoading: boolean
 }
 
 class Viewer extends React.Component<ViewerProps, ViewerState> {
   state = {
     seriesArray: [],
-    slideArray: [],
+    slides: [],
     isLoading: false
   }
 
@@ -67,11 +67,10 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       selectedSeriesInstanceUID = fragments[4]
     }
 
-    const slides = new Slides(seriesArray, selectedSeriesInstanceUID)
-    const slideArray = slides.getSlideArray()
+    const slides = createSlides(seriesArray, selectedSeriesInstanceUID)
 
     this.setState(state => ({
-      slideArray: slideArray,
+      slides: slides,
       seriesArray: seriesArray,
       isLoading: false
     }))
@@ -181,7 +180,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
             <Menu.SubMenu key='slides' title='Slides'>
               <SlideList
                 client={this.props.client}
-                metadata={this.state.slideArray}
+                metadata={this.state.slides}
                 initiallySelectedSeriesInstanceUID={selectedSeriesInstanceUID}
                 onSeriesSelection={this.handleSeriesSelection}
               />
@@ -198,7 +197,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
                 client={this.props.client}
                 studyInstanceUID={this.props.studyInstanceUID}
                 seriesInstanceUID={routeProps.match.params.SeriesInstanceUID}
-                metadata={this.state.slideArray}
+                metadata={this.state.slides}
                 annotations={this.props.annotations}
                 app={this.props.app}
                 user={this.props.user}
