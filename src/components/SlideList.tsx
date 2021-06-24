@@ -51,32 +51,6 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
       slideItemList.push(slideItem)
     }
 
-    if (slideItemList.length === 0) {
-      const slide: Slide = {
-        key: '',
-        frameofReferenceUID: '',
-        containerIdentifier: '',
-        volumeMetadata: [],
-        labelMetadata: [],
-        overviewMetadata: [],
-        areImagesMonochrome: false,
-        isMultiplexedSamples: false,
-        seriesUIDs: [],
-        opticalPathIdentifiersList: [],
-        keyOpticalPathIdentifier: '',
-        description: ''
-      }
-      const slideItem = (
-        <SlideItem
-          key={slide.key}
-          slide={slide}
-          client={this.props.client}
-        />
-      )
-
-      slideItemList.push(slideItem)
-    }
-
     const handleMenuItemSelection = ({ key, keyPath, domEvent, selectedKeys }: {
       key: React.ReactText
       keyPath: React.ReactText[]
