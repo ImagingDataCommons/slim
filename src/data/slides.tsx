@@ -1,6 +1,6 @@
 import * as dmv from 'dicom-microscopy-viewer'
 
-import { SeriesState } from '../utils/types'
+import { InstancesMetadata } from '../utils/types'
 
 /**
  * Slide state
@@ -12,7 +12,7 @@ import { SeriesState } from '../utils/types'
  * @params seriesUIDsList - array of series UIDs connected to the slide
  * @params keyOpticalPathIdentifier - key optical path indentifier
  * @params opticalPathIdentifiersList - array of all optical path identifiers
- * @params description - slide description, i.e., 
+ * @params description - slide description, i.e.,
  *                       Multiplexed-Samples, Monochrome Slide, RGB Slide
  * @params volumeMetadata - array of volume metadata
  * @params labelMetadata - array of label metadata
@@ -52,47 +52,49 @@ class Slide {
  *      and PhotometricInterpretation === RGB or YBR_*,
  *      then the observation is a RGB single image sample.
  *
- * @params seriesArray - array of series states
+ * @params instancesMetadataArray - array of instances from series, each element
+ *         of the array corresponds to a series
  * @params initiallySelectedSeriesInstanceUID - to visualize
  *         at first loading data coming from a specific series.
  * @returns slides - array of slide states
  */
 function createSlides (
-  seriesArray: SeriesState[],
+  instancesMetadataArray: InstancesMetadata[],
   initiallySelectedSeriesInstanceUID: string = ''
 ): Slide[] {
   const slides: Slide[] = []
-  for (let i = 0; i < seriesArray.length; ++i) {
-    const series = seriesArray[i]
-    if (series.volumeMetadata.length === 0) {
+  for (let i = 0; i < instancesMetadataArray.length; ++i) {
+    const instancesMetadata = instancesMetadataArray[i]
+    if (instancesMetadata.volumeMetadata.length === 0) {
       console.warn('Series has zero volume instance. ' +
                    'The series will be discarded.')
       continue
     }
     const firstVolumeSeriesIstance =
-      dmv.metadata.formatMetadata(series.volumeMetadata[0]) as dmv.metadata.VLWholeSlideMicroscopyImage
+      dmv.metadata.formatMetadata(instancesMetadata.volumeMetadata[0]) as dmv.metadata.VLWholeSlideMicroscopyImage
     const seriesFrameofReferenceUID = firstVolumeSeriesIstance.FrameOfReferenceUID
     const slideIndex = slides.findIndex((slide) =>
       slide.frameofReferenceUID === seriesFrameofReferenceUID)
+    const seriesUID = firstVolumeSeriesIstance.SeriesInstanceUID
     if (slideIndex === -1) {
       // create new slide
       const slide: Slide = {
-        key: series.Series.SeriesInstanceUID,
+        key: seriesUID,
         frameofReferenceUID: '',
         containerIdentifier: '',
         volumeMetadata: [],
         labelMetadata: [],
         overviewMetadata: [],
-        seriesUIDsList: [series.Series.SeriesInstanceUID],
+        seriesUIDsList: [seriesUID],
         keyOpticalPathIdentifier: '',
         opticalPathIdentifiersList: [],
         areImagesMonochrome: false,
         isMultiplexedSamples: false,
         description: ''
       }
-      parseVolumeMetadataFromListToSlide(series.volumeMetadata, slide)
-      parseLabelMetadataFromListToSlide(series.labelMetadata, slide)
-      parseOverviewMetadataFromListToSlide(series.overviewMetadata, slide)
+      parseVolumeMetadataFromListToSlide(instancesMetadata.volumeMetadata, slide)
+      parseLabelMetadataFromListToSlide(instancesMetadata.labelMetadata, slide)
+      parseOverviewMetadataFromListToSlide(instancesMetadata.overviewMetadata, slide)
       if (slide.opticalPathIdentifiersList.length > 1) {
         slide.description = 'Multiplexed-Samples'
         slide.isMultiplexedSamples = true
@@ -106,12 +108,12 @@ function createSlides (
       // add info to already created slide
       const slide = slides[slideIndex]
       const volumeInstanceReference =
-        parseVolumeMetadataFromListToSlide(series.volumeMetadata, slide)
-      parseLabelMetadataFromListToSlide(series.labelMetadata, slide)
-      parseOverviewMetadataFromListToSlide(series.overviewMetadata, slide)
+        parseVolumeMetadataFromListToSlide(instancesMetadata.volumeMetadata, slide)
+      parseLabelMetadataFromListToSlide(instancesMetadata.labelMetadata, slide)
+      parseOverviewMetadataFromListToSlide(instancesMetadata.overviewMetadata, slide)
       // store series uid
-      slide.seriesUIDsList.push(series.Series.SeriesInstanceUID)
-      if (initiallySelectedSeriesInstanceUID === series.Series.SeriesInstanceUID) {
+      slide.seriesUIDsList.push(seriesUID)
+      if (initiallySelectedSeriesInstanceUID === seriesUID) {
         slide.key = initiallySelectedSeriesInstanceUID
         if (volumeInstanceReference !== null && volumeInstanceReference !== undefined) {
           slide.keyOpticalPathIdentifier =
