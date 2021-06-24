@@ -104,8 +104,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       const overviewMetadata: object[] = []
       retrievedMetadata.forEach(item => {
         const instance = dmv.metadata.formatMetadata(item) as dmv.metadata.Instance
-        if (instance.ImageType !== undefined &&
-            instance.SOPClassUID === '1.2.840.10008.5.1.4.1.1.77.1.6') {
+        if (instance.SOPClassUID === '1.2.840.10008.5.1.4.1.1.77.1.6') {
           if (instance.ImageType[2] === 'VOLUME') {
             volumeMetadata.push(item)
           } else if (instance.ImageType[2] === 'LABEL') {

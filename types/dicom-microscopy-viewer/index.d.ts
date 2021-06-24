@@ -271,12 +271,12 @@ declare module 'dicom-microscopy-viewer' {
       SOPClassUID: string
       SOPInstanceUID: string
       InstanceNumber: number
+      ImageType: string[]
       Rows?: number
       Columns?: number
       BitsAllocated?: number
       NumberOfFrames?: number
       ContainerIdentifier?: string
-      ImageType?: string[] // may be included
     }
 
     export class VLWholeSlideMicroscopyImage {
