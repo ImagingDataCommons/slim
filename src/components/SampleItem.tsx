@@ -1,6 +1,6 @@
 import React from 'react'
-import { Button, Col, Popover, Row, Slider, Space, Switch } from 'antd'
-import { CloseSquareFilled, SettingOutlined } from '@ant-design/icons'
+import { Badge, Button, Col, Popover, Row, Slider, Space, Switch } from 'antd'
+import { CloseCircleOutlined, SettingOutlined } from '@ant-design/icons'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
 import Description from './Description'
 import * as dmv from 'dicom-microscopy-viewer'
@@ -346,16 +346,21 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
                 <Button type='primary' shape='circle' icon={<SettingOutlined />} />
               </Popover>
             </Space>
-
-            <Button type='primary' danger icon={<CloseSquareFilled />} onClick={this.handleRemoveSample} />
           </Space>
         </div>
-        <Description
-          header={'ID: ' + identifier}
-          attributes={attributes}
-          selectable
-          hasLongValues
-        />
+        <Space direction='horizontal' align='start'>
+          <Description
+            header={'ID: ' + identifier}
+            attributes={attributes}
+            selectable
+            hasLongValues
+          />
+          <a onClick={this.handleRemoveSample}>
+            <Badge>
+              <CloseCircleOutlined style={{ color: '#FF0000' }} />
+            </Badge>
+          </a>
+        </Space>
       </Space>
     )
   }

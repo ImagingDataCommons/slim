@@ -14,7 +14,7 @@ interface SamplesListProps {
 
 interface SampleListState {
   rerender: boolean
-  opticalPathIdentifierToAdd: string
+  selectedOpticalPathIdentifier: string
 }
 
 /**
@@ -23,7 +23,7 @@ interface SampleListState {
 class SamplesList extends React.Component<SamplesListProps, SampleListState> {
   state = {
     rerender: false,
-    opticalPathIdentifierToAdd: ''
+    selectedOpticalPathIdentifier: ''
   }
 
   constructor (props: SamplesListProps) {
@@ -45,16 +45,16 @@ class SamplesList extends React.Component<SamplesListProps, SampleListState> {
     value: string
   ): void {
     this.setState({
-      opticalPathIdentifierToAdd: value
+      selectedOpticalPathIdentifier: value
     })
   }
 
   handleAddSample (): void {
-    const identifier = this.state.opticalPathIdentifierToAdd
+    const identifier = this.state.selectedOpticalPathIdentifier
     this.props.viewer.activateOpticalPath(identifier)
     this.props.viewer.showOpticalPath(identifier)
     this.setState({
-      rerender: true
+      selectedOpticalPathIdentifier: ''
     })
   }
 
@@ -155,7 +155,10 @@ class SamplesList extends React.Component<SamplesListProps, SampleListState> {
           {sampleItems}
         </Menu>
         <Space align='center' size={20}>
-          <Select defaultValue='' style={{ width: 200 }} onChange={this.handleSelectChange} allowClear>
+          <Select
+            defaultValue='' style={{ width: 200 }} onChange={this.handleSelectChange}
+            value={this.state.selectedOpticalPathIdentifier} allowClear
+          >
             {deactivatedOptionItems}
           </Select>
           <Button type='primary' icon={<AppstoreAddOutlined />} onClick={this.handleAddSample} />
