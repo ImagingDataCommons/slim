@@ -14,7 +14,7 @@ interface SamplesListProps {
 
 interface SampleListState {
   rerender: boolean
-  selectedOpticalPathIdentifier: string
+  selectedOpticalPathIdentifier: string | undefined
 }
 
 /**
@@ -23,7 +23,7 @@ interface SampleListState {
 class SamplesList extends React.Component<SamplesListProps, SampleListState> {
   state = {
     rerender: false,
-    selectedOpticalPathIdentifier: ''
+    selectedOpticalPathIdentifier: undefined
   }
 
   constructor (props: SamplesListProps) {
@@ -54,7 +54,7 @@ class SamplesList extends React.Component<SamplesListProps, SampleListState> {
     this.props.viewer.activateOpticalPath(identifier)
     this.props.viewer.showOpticalPath(identifier)
     this.setState({
-      selectedOpticalPathIdentifier: ''
+      selectedOpticalPathIdentifier: undefined
     })
   }
 
@@ -156,8 +156,11 @@ class SamplesList extends React.Component<SamplesListProps, SampleListState> {
         </Menu>
         <Space align='center' size={20}>
           <Select
-            defaultValue='' style={{ width: 200 }} onChange={this.handleSelectChange}
-            value={this.state.selectedOpticalPathIdentifier} allowClear
+            defaultValue=''
+            style={{ width: 200 }}
+            onChange={this.handleSelectChange}
+            value={this.state.selectedOpticalPathIdentifier}
+            allowClear
           >
             {deactivatedOptionItems}
           </Select>
