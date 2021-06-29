@@ -31,6 +31,33 @@ class Slide {
   volumeMetadata: object[] = []
   labelMetadata: object[] = []
   overviewMetadata: object[] = []
+
+/**
+ * Gets the first volume instance stored in the volumeMetadata array
+ * @returns volume instance 
+ */
+  getFirstVolumeInstance (): dmv.metadata.VLWholeSlideMicroscopyImage | undefined {
+    if (this.volumeMetadata.length === 0) {
+      console.warn('Slide has zero volume instance. ')
+      return undefined
+    }
+
+    return dmv.metadata.formatMetadata(this.volumeMetadata[0]) as dmv.metadata.VLWholeSlideMicroscopyImage
+  }
+
+/**
+ * Gets the container identifier for the Slide
+ * @returns Container Identifier
+ */
+  getContainerIdentifier (): string | undefined { 
+    const firstVolumeInstance = this.getFirstVolumeInstance()
+
+    if (!firstVolumeInstance) {
+      return undefined
+    }
+    
+    return firstVolumeInstance.ContainerIdentifier
+  }
 }
 
 /**
@@ -78,20 +105,7 @@ function createSlides (
     const seriesUID = firstVolumeSeriesIstance.SeriesInstanceUID
     if (slideIndex === -1) {
       // create new slide
-      const slide: Slide = {
-        key: seriesUID,
-        frameofReferenceUID: '',
-        containerIdentifier: '',
-        volumeMetadata: [],
-        labelMetadata: [],
-        overviewMetadata: [],
-        seriesUIDsList: [seriesUID],
-        keyOpticalPathIdentifier: '',
-        opticalPathIdentifiersList: [],
-        areImagesMonochrome: false,
-        isMultiplexedSamples: false,
-        description: ''
-      }
+      const slide = new Slide()
       parseVolumeMetadataFromListToSlide(instancesMetadata.volumeMetadata, slide)
       parseLabelMetadataFromListToSlide(instancesMetadata.labelMetadata, slide)
       parseOverviewMetadataFromListToSlide(instancesMetadata.overviewMetadata, slide)

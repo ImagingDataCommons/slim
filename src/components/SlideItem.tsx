@@ -14,7 +14,6 @@ interface SlideItemProps {
 }
 
 interface SlideItemState {
-  containerIdentifier: string
   isLoading: boolean
 }
 
@@ -27,7 +26,6 @@ interface SlideItemState {
  */
 class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
   state = {
-    containerIdentifier: '',
     isLoading: false
   }
 
@@ -44,10 +42,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
     this.setState({ isLoading: true })
     if (this.props.slide.overviewMetadata.length > 0) {
       const metadata = this.props.slide.overviewMetadata[0]
-      const instance = dmv.metadata.formatMetadata(metadata) as dmv.metadata.VLWholeSlideMicroscopyImage
-      this.setState({
-        containerIdentifier: instance.ContainerIdentifier
-      })
+      
       // Instantiate the viewer and inject it into the viewport
       console.info(
         'instantiate viewer for OVERVIEW image of ' +
@@ -87,7 +82,8 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
     if (this.state.isLoading) {
       return (<FaSpinner />)
     }
-    const title = this.state.containerIdentifier
+
+    const title = this.props.slide.getContainerIdentifier()
     /* Properties need to be propagated down to Menu.Item:
      * https://github.com/react-component/menu/issues/142
      */
