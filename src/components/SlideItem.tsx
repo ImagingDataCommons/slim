@@ -42,13 +42,15 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
     this.setState({ isLoading: true })
     if (this.props.slide.overviewMetadata.length > 0) {
       const metadata = this.props.slide.overviewMetadata[0]
-      
+
       // Instantiate the viewer and inject it into the viewport
-      console.info(
-        'instantiate viewer for OVERVIEW image of ' +
-        this.props.slide.key +
-        '...'
-      )
+      if (this.props.slide.key !== undefined) {
+        console.info(
+          'instantiate viewer for OVERVIEW image of ' +
+          this.props.slide.key +
+          '...'
+        )
+      }
       if (this.overviewViewport.current !== null) {
         this.overviewViewport.current.innerHTML = ''
         this.overviewViewer = new dmv.viewer.OverviewImageViewer({
@@ -83,7 +85,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
       return (<FaSpinner />)
     }
 
-    const title = this.props.slide.getContainerIdentifier()
+    const title = this.props.slide.containerIdentifier
     /* Properties need to be propagated down to Menu.Item:
      * https://github.com/react-component/menu/issues/142
      */

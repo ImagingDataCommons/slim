@@ -226,7 +226,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (slides.length !== 0) {
       const slide = slides[0]
       this.setState(state => ({
-        activeSlide: slide,
+        activeSlide: slide
       }))
     }
   }
@@ -282,7 +282,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               if (activeSlide !== undefined) {
                 const slide = activeSlide as Slide
                 const image = (
-                  slide.getFirstVolumeInstance() as 
+                  slide.getFirstVolumeInstance() as
                   dmv.metadata.VLWholeSlideMicroscopyImage
                 )
                 if (scoord3d.frameOfReferenceUID === image.FrameOfReferenceUID) {
@@ -362,7 +362,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         )
         this.volumeViewport.current.innerHTML = ''
 
-        if (slide.areImagesMonochrome) {
+        if (slide.areImagesMonochrome !== undefined &&
+          slide.areImagesMonochrome &&
+          slide.keyOpticalPathIdentifier !== undefined
+        ) {
           const blendInfo: dmv.channel.BlendingInformation = {
             opticalPathIdentifier: slide.keyOpticalPathIdentifier,
             color: [0, 0.9, 0.9],
@@ -1090,34 +1093,36 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const activeSlide = this.state.activeSlide
     if (activeSlide !== undefined) {
       const slide = activeSlide as Slide
-      if (!slide.isMultiplexedSamples) {
-        specimenMenu = (
-          <Menu.SubMenu key='specimens' title='Specimens'>
-            <SpecimenList 
-              metadata={slide.getFirstVolumeInstance()}
-              showstain
-            />
-          </Menu.SubMenu>
-        )
-      } else {
-        specimenMenu = (
-          <Menu.SubMenu key='specimens' title='Specimens'>
-            <SpecimenList 
-              metadata={slide.getFirstVolumeInstance()}
-              showstain={false}
-            />
-          </Menu.SubMenu>
-        )
-        const volumeViewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
-        if (volumeViewer !== undefined) {
-          sampleMenu = (
-            <Menu.SubMenu key='samples' title='Samples'>
-              <SamplesList 
-                metadata={slide.getVolumeInstances()}
-                viewer={volumeViewer}
+      if (slide.isMultiplexedSamples !== undefined) {
+        if (!slide.isMultiplexedSamples) {
+          specimenMenu = (
+            <Menu.SubMenu key='specimens' title='Specimens'>
+              <SpecimenList
+                metadata={slide.getFirstVolumeInstance()}
+                showstain
               />
             </Menu.SubMenu>
           )
+        } else {
+          specimenMenu = (
+            <Menu.SubMenu key='specimens' title='Specimens'>
+              <SpecimenList
+                metadata={slide.getFirstVolumeInstance()}
+                showstain={false}
+              />
+            </Menu.SubMenu>
+          )
+          const volumeViewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
+          if (volumeViewer !== undefined) {
+            sampleMenu = (
+              <Menu.SubMenu key='samples' title='Samples'>
+                <SamplesList
+                  metadata={slide.getVolumeInstances()}
+                  viewer={volumeViewer}
+                />
+              </Menu.SubMenu>
+            )
+          }
         }
       }
     }

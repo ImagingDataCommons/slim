@@ -19,8 +19,7 @@ import Study from './Study'
 import SlideList from './SlideList'
 import SlideViewer from './SlideViewer'
 
-import { InstancesMetadata } from '../utils/types'
-import { Slide, createSlides } from '../data/slides'
+import { InstancesMetadata, Slide, createSlides } from '../data/slides'
 
 interface ViewerProps extends RouteComponentProps {
   client: DicomWebManager
@@ -136,6 +135,9 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       return null
     }
     const firstSlide = this.state.slides[0] as Slide
+    if (firstSlide.volumeMetadata.length === 0) {
+      return null
+    }
     const studyMetadata =
       dmv.metadata.formatMetadata(firstSlide.volumeMetadata[0]) as dmv.metadata.Study
 
