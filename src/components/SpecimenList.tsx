@@ -5,7 +5,7 @@ import { List } from 'antd'
 import SpecimenItem from './SpecimenItem'
 
 interface SpecimenListProps {
-  metadata: dmv.metadata.VLWholeSlideMicroscopyImage | undefined
+  metadata?: dmv.metadata.VLWholeSlideMicroscopyImage
   showstain: boolean
 }
 

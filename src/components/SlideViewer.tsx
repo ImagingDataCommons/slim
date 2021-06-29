@@ -104,7 +104,7 @@ interface Evaluation {
 }
 
 interface SlideViewerProps extends RouteComponentProps {
-  metadata: Slide[]
+  slides: Slide[]
   client: DicomWebManager
   studyInstanceUID: string
   seriesInstanceUID: string
@@ -122,7 +122,7 @@ interface SlideViewerProps extends RouteComponentProps {
 }
 
 interface SlideViewerState {
-  activeSlide: Slide
+  activeSlide?: Slide
   annotatedRoi?: dmv.roi.ROI
   selectedRoiUIDs: string[]
   visibleRoiUIDs: string[]
@@ -142,7 +142,7 @@ interface SlideViewerState {
 class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   state = {
     isLoading: false,
-    activeSlide: new Slide(),
+    activeSlide: undefined,
     isAnnotationModalVisible: false,
     annotatedRoi: undefined,
     selectedRoiUIDs: [],
@@ -213,6 +213,22 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleAnnotationCancellation = this.handleAnnotationCancellation.bind(this)
     this.handleReportVerification = this.handleReportVerification.bind(this)
     this.handleReportCancellation = this.handleReportCancellation.bind(this)
+
+    const slideArray = this.props.slides
+    const slides = slideArray.filter(item => {
+      const slideItem = item
+      if (slideItem.seriesUIDsList.findIndex(uid => uid === this.props.seriesInstanceUID) !== -1) {
+        return true
+      }
+      return false
+    })
+
+    if (slides.length !== 0) {
+      const slide = slides[0]
+      this.setState(state => ({
+        activeSlide: slide,
+      }))
+    }
   }
 
   componentDidUpdate (previousProps: SlideViewerProps): void {
@@ -220,7 +236,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
      * i.e., if another series has been selected.
      */
     if (this.props.location !== previousProps.location ||
-      this.props.metadata !== previousProps.metadata) {
+      this.props.slides !== previousProps.slides) {
       console.log(
         'switch viewports from series ' +
         previousProps.seriesInstanceUID +
@@ -262,39 +278,43 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               console.info(`add ROI "${roi.uid}"`)
               console.log(roi)
               const scoord3d = roi.scoord3d
-              const image = (
-                this.state.activeSlide.getFirstVolumeInstance() as 
-                dmv.metadata.VLWholeSlideMicroscopyImage
-              )
-              if (scoord3d.frameOfReferenceUID === image.FrameOfReferenceUID) {
-                if (this.volumeViewer !== undefined) {
-                  /**
-                   * ROIs may get assigned new UIDs upon re-rendering of the
-                   * page and we need to ensure that we don't add them twice.
-                   * The same ROI may be stored in multiple SR documents and
-                   * we don't want them to show up twice.
-                   * TODO: We should probably either "merge" measurements and
-                   * quantitative evaluations or pick the ROI from the "best"
-                   * available report (COMPLETE and VERIFIED).
-                   */
-                  const doesROIExist = this.volumeViewer.getAllROIs().some(
-                    (otherROI: dmv.roi.ROI): boolean => {
-                      return _areROIsEqual(otherROI, roi)
+              const activeSlide = this.state.activeSlide
+              if (activeSlide !== undefined) {
+                const slide = activeSlide as Slide
+                const image = (
+                  slide.getFirstVolumeInstance() as 
+                  dmv.metadata.VLWholeSlideMicroscopyImage
+                )
+                if (scoord3d.frameOfReferenceUID === image.FrameOfReferenceUID) {
+                  if (this.volumeViewer !== undefined) {
+                    /**
+                     * ROIs may get assigned new UIDs upon re-rendering of the
+                     * page and we need to ensure that we don't add them twice.
+                     * The same ROI may be stored in multiple SR documents and
+                     * we don't want them to show up twice.
+                     * TODO: We should probably either "merge" measurements and
+                     * quantitative evaluations or pick the ROI from the "best"
+                     * available report (COMPLETE and VERIFIED).
+                     */
+                    const doesROIExist = this.volumeViewer.getAllROIs().some(
+                      (otherROI: dmv.roi.ROI): boolean => {
+                        return _areROIsEqual(otherROI, roi)
+                      }
+                    )
+                    if (!doesROIExist) {
+                      try {
+                        // Add ROI without style such that it won't be visible.
+                        this.volumeViewer.addROI(roi, {})
+                      } catch {
+                        console.error(`could not add ROI "${roi.uid}"`)
+                      }
                     }
-                  )
-                  if (!doesROIExist) {
-                    try {
-                      // Add ROI without style such that it won't be visible.
-                      this.volumeViewer.addROI(roi, {})
-                    } catch {
-                      console.error(`could not add ROI "${roi.uid}"`)
-                    }
+                  } else {
+                    console.error(
+                      `could not add ROI "${roi.uid}" ` +
+                      'because viewer has not yet been instantiated'
+                    )
                   }
-                } else {
-                  console.error(
-                    `could not add ROI "${roi.uid}" ` +
-                    'because viewer has not yet been instantiated'
-                  )
                 }
               }
             })
@@ -319,7 +339,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * instantiate the VOLUME and LABEL image viewers.
    */
   populateViewports = (): void => {
-    const slideArray = this.props.metadata
+    const slideArray = this.props.slides
     const slides = slideArray.filter(item => {
       const slideItem = item
       if (slideItem.seriesUIDsList.findIndex(uid => uid === this.props.seriesInstanceUID) !== -1) {
@@ -328,10 +348,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       return false
     })
 
-    // at this point only 1 slide is selected
-    if (slides.length === 1) {
+    if (slides.length !== 0) {
       const slide = slides[0]
-
       this.setState(state => ({
         activeSlide: slide,
         isLoading: true
@@ -1067,10 +1085,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       })
     }
 
-    const slide = this.state.activeSlide
     let specimenMenu
     let sampleMenu
-    if (slide !== undefined) {
+    const activeSlide = this.state.activeSlide
+    if (activeSlide !== undefined) {
+      const slide = activeSlide as Slide
       if (!slide.isMultiplexedSamples) {
         specimenMenu = (
           <Menu.SubMenu key='specimens' title='Specimens'>

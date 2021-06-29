@@ -7,7 +7,7 @@ import { Attribute } from './Description'
 
 interface SpecimenItemProps {
   index: number
-  metadata: dmv.metadata.SOPClass | undefined
+  metadata?: dmv.metadata.SOPClass
   showstain: boolean
 }
 

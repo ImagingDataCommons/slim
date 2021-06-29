@@ -195,7 +195,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
                 client={this.props.client}
                 studyInstanceUID={this.props.studyInstanceUID}
                 seriesInstanceUID={routeProps.match.params.SeriesInstanceUID}
-                metadata={this.state.slides}
+                slides={this.state.slides}
                 annotations={this.props.annotations}
                 app={this.props.app}
                 user={this.props.user}
