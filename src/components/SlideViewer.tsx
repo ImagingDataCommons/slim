@@ -123,7 +123,6 @@ interface SlideViewerProps extends RouteComponentProps {
 
 interface SlideViewerState {
   activeSlide: Slide
-  metadata: dmv.metadata.VLWholeSlideMicroscopyImage[]
   annotatedRoi?: dmv.roi.ROI
   selectedRoiUIDs: string[]
   visibleRoiUIDs: string[]
@@ -145,7 +144,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   state = {
     isLoading: false,
-    metadata: [],
     activeSlide: this.slide,
     isAnnotationModalVisible: false,
     annotatedRoi: undefined,
@@ -267,7 +265,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               console.log(roi)
               const scoord3d = roi.scoord3d
               const image = (
-                this.state.metadata[0] as
+                this.state.activeSlide.getFirstVolumeInstance() as 
                 dmv.metadata.VLWholeSlideMicroscopyImage
               )
               if (scoord3d.frameOfReferenceUID === image.FrameOfReferenceUID) {
@@ -324,7 +322,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    */
   populateViewports = (): void => {
     const slideArray = this.props.metadata
-
     const slides = slideArray.filter(item => {
       const slideItem = item
       if (slideItem.seriesUIDsList.findIndex(uid => uid === this.props.seriesInstanceUID) !== -1) {
@@ -332,7 +329,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       }
       return false
     })
-
+    
     // at this point only 1 slide is selected
     if (slides.length === 1) {
       const slide = slides[0]
@@ -341,13 +338,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         activeSlide: slide,
         isLoading: true
       }))
-
-      const series: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
-      slide.volumeMetadata.forEach(item => {
-        const instance = dmv.metadata.formatMetadata(item) as dmv.metadata.VLWholeSlideMicroscopyImage
-        series.push(instance)
-      })
-      this.setState((state) => ({ metadata: series }))
 
       if (this.volumeViewport.current !== null) {
         console.info(
@@ -1086,20 +1076,29 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       if (!slide.isMultiplexedSamples) {
         specimenMenu = (
           <Menu.SubMenu key='specimens' title='Specimens'>
-            <SpecimenList metadata={this.state.metadata} showstain />
+            <SpecimenList 
+              metadata={slide.getFirstVolumeInstance()}
+              showstain
+            />
           </Menu.SubMenu>
         )
       } else {
         specimenMenu = (
           <Menu.SubMenu key='specimens' title='Specimens'>
-            <SpecimenList metadata={this.state.metadata} showstain={false} />
+            <SpecimenList 
+              metadata={slide.getFirstVolumeInstance()}
+              showstain={false}
+            />
           </Menu.SubMenu>
         )
         const volumeViewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
         if (volumeViewer !== undefined) {
           sampleMenu = (
             <Menu.SubMenu key='samples' title='Samples'>
-              <SamplesList metadata={this.state.metadata} viewer={volumeViewer} />
+              <SamplesList 
+                metadata={slide.getVolumeInstances()}
+                viewer={volumeViewer}
+              />
             </Menu.SubMenu>
           )
         }

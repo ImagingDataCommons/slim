@@ -7,7 +7,7 @@ import { Attribute } from './Description'
 
 interface SpecimenItemProps {
   index: number
-  metadata: dmv.metadata.SOPClass
+  metadata: dmv.metadata.SOPClass | undefined
   showstain: boolean
 }
 
@@ -17,6 +17,9 @@ interface SpecimenItemProps {
  */
 class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
   render (): React.ReactNode {
+    if (this.props.metadata === undefined) {
+      return null
+    }
     const specimenDescription = this.props.metadata.SpecimenDescriptionSequence[
       this.props.index
     ]

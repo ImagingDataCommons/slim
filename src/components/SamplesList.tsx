@@ -8,7 +8,7 @@ import SampleItem from './SampleItem'
 const { Option } = Select
 
 interface SamplesListProps {
-  metadata: dmv.metadata.VLWholeSlideMicroscopyImage[]
+  metadata: dmv.metadata.VLWholeSlideMicroscopyImage[] | undefined
   viewer: dmv.viewer.VolumeImageViewer
 }
 
@@ -60,6 +60,9 @@ class SamplesList extends React.Component<SamplesListProps, SampleListState> {
 
   render (): React.ReactNode {
     const opticalPaths: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
+    if (this.props.metadata === undefined) {
+      return
+    }
     this.props.metadata.forEach(
       (item: dmv.metadata.VLWholeSlideMicroscopyImage) => {
         if (item.OpticalPathSequence.length > 0) {

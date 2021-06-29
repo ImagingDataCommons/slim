@@ -32,23 +32,43 @@ class Slide {
   labelMetadata: object[] = []
   overviewMetadata: object[] = []
 
-/**
- * Gets the first volume instance stored in the volumeMetadata array
- * @returns volume instance 
- */
+
+  /**
+   * Gets the all formatted metadata of volume instance 
+   * @returns volume instance 
+   */
+  getVolumeInstances (): dmv.metadata.VLWholeSlideMicroscopyImage[] | undefined {
+    if (this.volumeMetadata.length === 0) {
+      console.warn('getVolumeInstances: slide has zero volume instances. ')
+      return undefined
+    }
+
+    const volumeFormattedMetadata = [] as dmv.metadata.VLWholeSlideMicroscopyImage[]
+    this.volumeMetadata.forEach( (metadata) => {
+      const image = dmv.metadata.formatMetadata(metadata) as dmv.metadata.VLWholeSlideMicroscopyImage
+      volumeFormattedMetadata.push(image)
+    })
+  
+    return volumeFormattedMetadata
+  }
+
+  /**
+   * Gets the formatted metadata of the first volume instance stored in the volumeMetadata array
+   * @returns volume instance 
+   */
   getFirstVolumeInstance (): dmv.metadata.VLWholeSlideMicroscopyImage | undefined {
     if (this.volumeMetadata.length === 0) {
-      console.warn('Slide has zero volume instance. ')
+      console.warn('getFirstVolumeInstance: slide has zero volume instances. ')
       return undefined
     }
 
     return dmv.metadata.formatMetadata(this.volumeMetadata[0]) as dmv.metadata.VLWholeSlideMicroscopyImage
   }
 
-/**
- * Gets the container identifier for the Slide
- * @returns Container Identifier
- */
+  /**
+   * Gets the container identifier for the Slide
+   * @returns Container Identifier
+   */
   getContainerIdentifier (): string | undefined { 
     const firstVolumeInstance = this.getFirstVolumeInstance()
 
@@ -103,45 +123,36 @@ function createSlides (
     const slideIndex = slides.findIndex((slide) =>
       slide.frameofReferenceUID === seriesFrameofReferenceUID)
     const seriesUID = firstVolumeSeriesIstance.SeriesInstanceUID
+    let slide
     if (slideIndex === -1) {
       // create new slide
-      const slide = new Slide()
-      parseVolumeMetadataFromListToSlide(instancesMetadata.volumeMetadata, slide)
-      parseLabelMetadataFromListToSlide(instancesMetadata.labelMetadata, slide)
-      parseOverviewMetadataFromListToSlide(instancesMetadata.overviewMetadata, slide)
-      if (slide.opticalPathIdentifiersList.length > 1) {
-        slide.description = 'Multiplexed-Samples'
-        slide.isMultiplexedSamples = true
-      } else if (slide.areImagesMonochrome) {
-        slide.description = 'Monochrome Slide'
-      } else {
-        slide.description = 'RGB Slide'
-      }
+      slide = new Slide()
       slides.push(slide)
     } else {
       // add info to already created slide
-      const slide = slides[slideIndex]
-      const volumeInstanceReference =
-        parseVolumeMetadataFromListToSlide(instancesMetadata.volumeMetadata, slide)
-      parseLabelMetadataFromListToSlide(instancesMetadata.labelMetadata, slide)
-      parseOverviewMetadataFromListToSlide(instancesMetadata.overviewMetadata, slide)
-      // store series uid
-      slide.seriesUIDsList.push(seriesUID)
-      if (initiallySelectedSeriesInstanceUID === seriesUID) {
-        slide.key = initiallySelectedSeriesInstanceUID
-        if (volumeInstanceReference !== null && volumeInstanceReference !== undefined) {
-          slide.keyOpticalPathIdentifier =
-            volumeInstanceReference.OpticalPathSequence[0].OpticalPathIdentifier
-        }
+      slide = slides[slideIndex]
+    }
+
+    const volumeInstanceReference =
+      parseVolumeMetadataFromListToSlide(instancesMetadata.volumeMetadata, slide)
+    parseLabelMetadataFromListToSlide(instancesMetadata.labelMetadata, slide)
+    parseOverviewMetadataFromListToSlide(instancesMetadata.overviewMetadata, slide)
+    // store series uid
+    slide.seriesUIDsList.push(seriesUID)
+    if (initiallySelectedSeriesInstanceUID === seriesUID) {
+      slide.key = initiallySelectedSeriesInstanceUID
+      if (volumeInstanceReference !== null && volumeInstanceReference !== undefined) {
+        slide.keyOpticalPathIdentifier =
+          volumeInstanceReference.OpticalPathSequence[0].OpticalPathIdentifier
       }
-      if (slide.opticalPathIdentifiersList.length > 1) {
-        slide.description = 'Multiplexed-Samples'
-        slide.isMultiplexedSamples = true
-      } else if (slide.areImagesMonochrome) {
-        slide.description = 'Monochrome Slide'
-      } else {
-        slide.description = 'RGB Slide'
-      }
+    }
+    if (slide.opticalPathIdentifiersList.length > 1) {
+      slide.description = 'Multiplexed-Samples'
+      slide.isMultiplexedSamples = true
+    } else if (slide.areImagesMonochrome) {
+      slide.description = 'Monochrome Slide'
+    } else {
+      slide.description = 'RGB Slide'
     }
   }
   return slides

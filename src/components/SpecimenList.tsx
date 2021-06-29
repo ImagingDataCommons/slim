@@ -5,7 +5,7 @@ import { List } from 'antd'
 import SpecimenItem from './SpecimenItem'
 
 interface SpecimenListProps {
-  metadata: dmv.metadata.VLWholeSlideMicroscopyImage[]
+  metadata: dmv.metadata.VLWholeSlideMicroscopyImage | undefined
   showstain: boolean
 }
 
@@ -14,16 +14,16 @@ interface SpecimenListProps {
  */
 class SpecimenList extends React.Component<SpecimenListProps, {}> {
   render (): React.ReactNode {
-    if (this.props.metadata[0] === undefined) {
+    if (this.props.metadata === undefined) {
       return null
     }
-    const items = this.props.metadata[0].SpecimenDescriptionSequence.map(
+    const items = this.props.metadata.SpecimenDescriptionSequence.map(
       (item: dmv.metadata.SpecimenDescription, index: number) => {
         return (
           <SpecimenItem
             index={index}
             key={item.SpecimenUID}
-            metadata={this.props.metadata[0]}
+            metadata={this.props.metadata}
             showstain={this.props.showstain}
           />
         )
