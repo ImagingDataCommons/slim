@@ -39,7 +39,6 @@ class Slide {
    */
   getVolumeInstances (): dmv.metadata.VLWholeSlideMicroscopyImage[] | undefined {
     if (this.volumeMetadata.length === 0) {
-      console.warn('getVolumeInstances: slide has zero volume instances. ')
       return undefined
     }
 
@@ -58,7 +57,6 @@ class Slide {
    */
   getFirstVolumeInstance (): dmv.metadata.VLWholeSlideMicroscopyImage | undefined {
     if (this.volumeMetadata.length === 0) {
-      console.warn('getFirstVolumeInstance: slide has zero volume instances. ')
       return undefined
     }
 

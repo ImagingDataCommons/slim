@@ -140,11 +140,9 @@ interface SlideViewerState {
  * potentially one or more associated DICOM Series of DICOM SR documents.
  */
 class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
-  slide = new Slide()
-
   state = {
     isLoading: false,
-    activeSlide: this.slide,
+    activeSlide: new Slide(),
     isAnnotationModalVisible: false,
     annotatedRoi: undefined,
     selectedRoiUIDs: [],
@@ -329,7 +327,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       }
       return false
     })
-    
+
     // at this point only 1 slide is selected
     if (slides.length === 1) {
       const slide = slides[0]
