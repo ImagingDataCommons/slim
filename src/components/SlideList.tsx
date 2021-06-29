@@ -23,13 +23,10 @@ interface SlideListState {
  */
 class SlideList extends React.Component<SlideListProps, SlideListState> {
   state = {
-    selectedSeriesInstanceUID: ''
+    selectedSeriesInstanceUID: this.props.initiallySelectedSeriesInstanceUID
   }
 
   componentDidMount (): void {
-    this.setState(state => ({
-      selectedSeriesInstanceUID: this.props.initiallySelectedSeriesInstanceUID
-    }))
     this.props.onSeriesSelection({
       seriesInstanceUID: this.props.initiallySelectedSeriesInstanceUID
     })

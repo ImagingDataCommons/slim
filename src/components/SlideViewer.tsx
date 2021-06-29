@@ -141,20 +141,7 @@ interface SlideViewerState {
  * potentially one or more associated DICOM Series of DICOM SR documents.
  */
 class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
-  slide: Slide = {
-    key: '',
-    frameofReferenceUID: '',
-    containerIdentifier: '',
-    volumeMetadata: [],
-    labelMetadata: [],
-    overviewMetadata: [],
-    areImagesMonochrome: false,
-    isMultiplexedSamples: false,
-    seriesUIDsList: [],
-    opticalPathIdentifiersList: [],
-    keyOpticalPathIdentifier: '',
-    description: ''
-  }
+  slide = new Slide()
 
   state = {
     isLoading: false,
