@@ -124,6 +124,14 @@ Create an [OIDC client ID for web application](https://developers.google.com/ide
 Note that Google's OIDC implementation does currently not yet support the authorization code grant type with PKCE challenge.
 For the time being, the legacy implicit grand type has to be used.
 
+## Production
+
+To install requirements and run the app for production deployment, run the following commands:
+
+    $ yarn install
+    $ yarn build
+
+For further information about installation of system dependencies and configuration, see `Dockerfile`.
 
 ## Development
 
