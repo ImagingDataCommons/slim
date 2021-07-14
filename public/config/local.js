@@ -1,6 +1,6 @@
 window.config = {
   path: "/",
-  /** This is an array,  but we'll only use the first entry for now */
+  /** This is an array, but we'll only use the first entry for now */
   servers: [
     {
       id: "local",
