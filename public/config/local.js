@@ -1,10 +1,10 @@
 window.config = {
   path: "/",
-  /** This is an array, but we'll only use the first entry for now */
+  /** This is an array,  but we'll only use the first entry for now */
   servers: [
     {
       id: "local",
-      url: "http://localhost:8008/dicomweb",
+      url: "https://idc-external-006.uc.r.appspot.com",
       write: true
     }
   ],

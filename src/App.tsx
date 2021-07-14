@@ -49,6 +49,7 @@ class App extends React.Component<AppProps, AppState> {
       this.auth = new OidcManager(this.baseUri, oidcSettings)
     }
 
+//
     if (props.config.servers.length === 0) {
       throw Error('At least one server needs to be configured.')
     }
