@@ -122,12 +122,14 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
   }
 
   handleSeriesSelection (
-    { seriesInstanceUID }: { seriesInstanceUID: string }
+    { seriesInstanceUID }: { seriesInstanceUID?: string }
   ): void {
-    console.info(`switch to series "${seriesInstanceUID}"`)
-    this.props.history.push(
-      `/studies/${this.props.studyInstanceUID}/series/${seriesInstanceUID}`
-    )
+    if (seriesInstanceUID) {
+      console.info(`switch to series "${seriesInstanceUID}"`)
+      this.props.history.push(
+        `/studies/${this.props.studyInstanceUID}/series/${seriesInstanceUID}`
+      )
+    }
   }
 
   render (): React.ReactNode {

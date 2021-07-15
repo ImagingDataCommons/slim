@@ -8,14 +8,14 @@ import { Slide } from '../data/slides'
 interface SlideListProps {
   metadata: Slide[]
   client: DicomWebManager
-  initiallySelectedSeriesInstanceUID: string
+  initiallySelectedSeriesInstanceUID?: string
   onSeriesSelection: (
-    { seriesInstanceUID }: { seriesInstanceUID: string }
+    { seriesInstanceUID }: { seriesInstanceUID?: string }
   ) => void
 }
 
 interface SlideListState {
-  selectedSeriesInstanceUID: string
+  selectedSeriesInstanceUID?: string
 }
 
 /**
@@ -61,10 +61,15 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
       this.props.onSeriesSelection({ seriesInstanceUID: key.toString() })
     }
 
+    let selectedKeys
+    if (this.state.selectedSeriesInstanceUID) {
+      selectedKeys = [this.state.selectedSeriesInstanceUID]
+    }
+     
     return (
       <Menu
         style={{ width: '100%' }}
-        selectedKeys={[this.state.selectedSeriesInstanceUID]}
+        selectedKeys={selectedKeys}
         onSelect={handleMenuItemSelection}
         mode='inline'
         inlineIndent={0}
