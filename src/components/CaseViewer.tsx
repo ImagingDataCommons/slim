@@ -58,7 +58,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
 
     const instancesMetadataArray = await this.fetchInstancesMetadataArray()
 
-    let selectedSeriesInstanceUID = ''
+    let selectedSeriesInstanceUID = undefined
     if (this.props.location.pathname.includes('series/')) {
       const fragments = this.props.location.pathname.split('/')
       selectedSeriesInstanceUID = fragments[4]
