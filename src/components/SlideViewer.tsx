@@ -1048,7 +1048,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const selections: React.ReactNode[] = [
       (
         <Select
-          key={1}
           style={{ minWidth: 130 }}
           onSelect={this.handleAnnotationFindingSelection}
           key='annotation-finding'

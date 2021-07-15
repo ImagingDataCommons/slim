@@ -62,10 +62,11 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
     }
 
     let selectedKeys
-    if (this.state.selectedSeriesInstanceUID) {
+    if (this.state.selectedSeriesInstanceUID !== undefined &&
+      this.state.selectedSeriesInstanceUID !== null) {
       selectedKeys = [this.state.selectedSeriesInstanceUID]
     }
-     
+
     return (
       <Menu
         style={{ width: '100%' }}

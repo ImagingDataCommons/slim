@@ -58,7 +58,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
 
     const instancesMetadataArray = await this.fetchInstancesMetadataArray()
 
-    let selectedSeriesInstanceUID = undefined
+    let selectedSeriesInstanceUID
     if (this.props.location.pathname.includes('series/')) {
       const fragments = this.props.location.pathname.split('/')
       selectedSeriesInstanceUID = fragments[4]
@@ -124,7 +124,9 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
   handleSeriesSelection (
     { seriesInstanceUID }: { seriesInstanceUID?: string }
   ): void {
-    if (seriesInstanceUID) {
+    if (seriesInstanceUID === undefined || seriesInstanceUID === null) {
+      console.warn('switching series: seriesInstanceUID not found.')
+    } else {
       console.info(`switch to series "${seriesInstanceUID}"`)
       this.props.history.push(
         `/studies/${this.props.studyInstanceUID}/series/${seriesInstanceUID}`
