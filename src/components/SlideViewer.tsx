@@ -276,7 +276,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             const content = new MeasurementReport(report)
             content.ROIs.forEach(roi => {
               console.info(`add ROI "${roi.uid}"`)
-              console.log(roi)
               const scoord3d = roi.scoord3d
               const activeSlide = this.state.activeSlide
               if (activeSlide !== undefined) {
@@ -1052,6 +1051,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           key={1}
           style={{ minWidth: 130 }}
           onSelect={this.handleAnnotationFindingSelection}
+          key='annotation-finding'
           defaultActiveFirstOption
         >
           {findingOptions}
