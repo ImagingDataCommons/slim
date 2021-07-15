@@ -13,9 +13,9 @@ export interface InstancesMetadata {
  * @params containerIdentifier - container identifier
  * @params areImagesMonochrome - type of images
  * @params isMultiplexedSamples - is multi channel datasets
- * @params key - key series connected to the slide
+ * @params selectedSeriesUID - selected series connected to the slide
  * @params seriesUIDsList - array of series UIDs connected to the slide
- * @params keyOpticalPathIdentifier - key optical path indentifier
+ * @params selectedOpticalPathidentifier - selected optical path indentifier
  * @params opticalPathIdentifiersList - array of all optical path identifiers
  * @params description - slide description, i.e.,
  *                       Multiplexed-Samples, Monochrome Slide, RGB Slide
@@ -28,9 +28,9 @@ class Slide {
   containerIdentifier?: string
   areImagesMonochrome?: boolean
   isMultiplexedSamples?: boolean
-  key?: string
+  selectedSeriesUID?: string
   seriesUIDsList: string[] = []
-  keyOpticalPathIdentifier?: string
+  selectedOpticalPathidentifier?: string
   opticalPathIdentifiersList: string[] = []
   description?: string
   volumeMetadata: object[] = []
@@ -115,8 +115,8 @@ class Slide {
       const seriesUID = volumeInstanceReference.SeriesInstanceUID
       this.seriesUIDsList.push(seriesUID)
       if (initiallySelectedSeriesInstanceUID === seriesUID) {
-        this.key = initiallySelectedSeriesInstanceUID
-        this.keyOpticalPathIdentifier =
+        this.selectedSeriesUID = initiallySelectedSeriesInstanceUID
+        this.selectedOpticalPathidentifier =
           volumeInstanceReference.OpticalPathSequence[0].OpticalPathIdentifier
       }
     }
@@ -162,9 +162,9 @@ class Slide {
         instance.OpticalPathSequence[0].OpticalPathIdentifier
       const instanceIsMonochorme = instance.SamplesPerPixel === 1 &&
         instance.PhotometricInterpretation === 'MONOCHROME2'
-      if (this.keyOpticalPathIdentifier === undefined) {
+      if (this.selectedOpticalPathidentifier === undefined) {
         this.areImagesMonochrome = instanceIsMonochorme
-        this.keyOpticalPathIdentifier = instanceOpticalPathIdentifier
+        this.selectedOpticalPathidentifier = instanceOpticalPathIdentifier
       } else if (instanceIsMonochorme !== this.areImagesMonochrome) {
         console.warn('Volume instance' +
                      instance.SOPInstanceUID +

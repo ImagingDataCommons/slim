@@ -44,10 +44,10 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
       const metadata = this.props.slide.overviewMetadata[0]
 
       // Instantiate the viewer and inject it into the viewport
-      if (this.props.slide.key !== undefined) {
+      if (this.props.slide.selectedSeriesUID !== undefined) {
         console.info(
           'instantiate viewer for OVERVIEW image of ' +
-          this.props.slide.key +
+          this.props.slide.selectedSeriesUID +
           '...'
         )
       }
@@ -92,7 +92,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
     return (
       <Menu.Item
         style={{ height: '100%' }}
-        key={this.props.slide.key}
+        key={this.props.slide.selectedSeriesUID}
         {...this.props}
       >
         <Description

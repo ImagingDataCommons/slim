@@ -364,10 +364,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
         if (slide.areImagesMonochrome !== undefined &&
           slide.areImagesMonochrome &&
-          slide.keyOpticalPathIdentifier !== undefined
+          slide.selectedOpticalPathidentifier !== undefined
         ) {
           const blendInfo: dmv.channel.BlendingInformation = {
-            opticalPathIdentifier: slide.keyOpticalPathIdentifier,
+            opticalPathIdentifier: slide.selectedOpticalPathidentifier,
             color: [0, 0.9, 0.9],
             opacity: 1.0,
             thresholdValues: [0, 255],

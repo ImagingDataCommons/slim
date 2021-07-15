@@ -39,7 +39,7 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
       const slide = slideList[i]
       const slideItem = (
         <SlideItem
-          key={slide.key}
+          key={slide.selectedSeriesUID}
           slide={slide}
           client={this.props.client}
         />
