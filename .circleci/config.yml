@@ -1,0 +1,165 @@
+version: 2.1
+## Force for config
+commands:
+  deployment_setup:
+    steps:
+      - run:
+          name: 'Set the Tier'
+          command: |
+            TIER=DEV
+            if [[ ${CIRCLE_BRANCH} =~ slim-viewer-(prod|test).* ]]; then
+              TIER=$(awk -F- '{print toupper($3)}' \<<< ${CIRCLE_BRANCH})
+            fi
+            echo "export TIER=${TIER}" >> $BASH_ENV
+            echo "Tier was identified as ${TIER} for branch ${CIRCLE_BRANCH}"
+      - run:
+          name: 'Assign Project-level vars'
+          command: |
+            if [ ! -f deployment.key.json ]; then
+              echo "Deployment JSON keyfile not found - loading from CircleCI."
+              KEY=${DEPLOYMENT_KEY_IDC_DEV}
+            else
+              echo "Deployment JSON keyfile found."
+              KEY="NA"
+            fi
+            CLIENT_EMAIL=${DEPLOYMENT_CLIENT_EMAIL_IDC_DEV}
+            PROJECT_ID=${DEPLOYMENT_PROJECT_ID_IDC_DEV}
+            BUCKET=${DEPLOYMENT_BUCKET_IDC_DEV}
+            if [[ ${TIER} == "PROD" ]]; then
+              KEY=${DEPLOYMENT_KEY_IDC_PROD}
+              CLIENT_EMAIL=${DEPLOYMENT_CLIENT_EMAIL_IDC_PROD}
+              PROJECT_ID=${DEPLOYMENT_PROJECT_ID_IDC_PROD}
+              BUCKET=${DEPLOYMENT_BUCKET_IDC_PROD}
+              echo "Using production project and related deployment SA and bucket."
+            elif [[ ${TIER} == "TEST" ]]; then
+              KEY=${DEPLOYMENT_KEY_IDC_TEST}
+              CLIENT_EMAIL=${DEPLOYMENT_CLIENT_EMAIL_IDC_TEST}
+              PROJECT_ID=${DEPLOYMENT_PROJECT_ID_IDC_TEST}
+              BUCKET=${DEPLOYMENT_BUCKET_IDC_TEST}
+              echo "Using test project and related deployment SA and bucket."
+            elif [[ ${TIER} == "DEV" ]]; then
+              echo "Using development/default project and related deployment SA and bucket."
+            else
+              echo "[ERROR] - Unrecognized tier: ${TIER} - exiting."
+              exit 1
+            fi
+            echo "export DEPLOYMENT_KEY=\"${KEY}\"" >> $BASH_ENV
+            echo "export DEPLOYMENT_CLIENT_EMAIL=${CLIENT_EMAIL}" >> $BASH_ENV
+            echo "export DEPLOYMENT_PROJECT_ID=${PROJECT_ID}" >> $BASH_ENV
+            echo "export DEPLOYMENT_BUCKET=${BUCKET}" >> $BASH_ENV
+
+            echo "Project settings assigned:"
+            echo "Deployment client: ${CLIENT_EMAIL}"
+            echo "Deployment project: ${PROJECT_ID}"
+            echo "Deployment bucket: gs://${BUCKET}"
+
+  deployment_config:
+    steps:
+      - run:
+          name: 'Set tier-specific configuration file'
+          command: |
+            sudo -E /bin/bash ./idc-deploy-shell/pull_config.sh
+            xargs -a viewer_deployment_config.txt -I{} echo "export {}" >> $BASH_ENV
+
+  auth:
+    steps:
+      - run:
+          name: 'Service Account Auth and Project Settings'
+          command: |
+            sudo -E /bin/bash ./idc-deploy-shell/gcloud_authenticate.sh
+
+  install_cloud_sdk:
+    steps:
+      - run:
+          name: 'Install CloudSDK'
+          command: |
+            echo "export CLOUDSDK_CORE_DISABLE_PROMPTS=1" >> $BASH_ENV
+            sudo apt-get install ca-certificates
+            echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+            curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
+            sudo apt-get update -qq
+            sudo apt-get -y install google-cloud-sdk
+
+jobs:
+  build_job:
+    environment:
+      TZ: '/usr/share/zoneinfo/America/Los_Angeles'
+    working_directory: ~/Viewers
+    docker:
+      - image: circleci/python:3.7.0-stretch
+    steps:
+      - checkout
+      - install_cloud_sdk
+      - deployment_setup
+      - auth
+      - deployment_config
+      - run:
+          name: Install Dependencies
+          command: |
+            sudo -E /bin/bash ./idc-deploy-shell/install-deps.sh
+      - run:
+          name: Copy in IDC favicons
+          command: |
+            cp ~/Viewers/idc-assets/favicon-nci.ico ~/Viewers/platform/viewer/public/assets/favicon.ico
+            cp ~/Viewers/idc-assets/favicon-nci-16x16.png ~/Viewers/platform/viewer/public/assets/favicon-16x16.png
+            cp ~/Viewers/idc-assets/favicon-nci-32x32.png ~/Viewers/platform/viewer/public/assets/favicon-32x32.png
+      - run:
+          name: Build Viewer
+          command: |
+            # Send output while viewer is building....
+            chmod u+x ./idc-deploy-shell/pingJob.sh ./idc-deploy-shell/killPing.sh
+            ./idc-deploy-shell/pingJob.sh &
+            /bin/bash ./idc-deploy-shell/buildViewer.sh
+            ./idc-deploy-shell/killPing.sh
+
+      - save_cache:
+          key: idc-viewer-{{ epoch }}
+          paths:
+            - ./platform/viewer/dist
+            - ./idc-deploy-shell
+            - ./idc-assets
+
+  deploy_job:
+    environment:
+      TZ: '/usr/share/zoneinfo/America/Los_Angeles'
+    docker:
+      - image: circleci/python:3.7.0-stretch
+    working_directory: ~/Viewers
+    steps:
+      - restore_cache:
+          keys:
+            - idc-viewer-
+      - install_cloud_sdk
+      - deployment_setup
+      - auth
+      - deployment_config
+      - run:
+          name: Customize Config
+          command: |
+            /bin/bash ./idc-deploy-shell/prepare_config.sh > platform/viewer/dist/app-config.js
+            cp ~/Viewers/idc-assets/IDC-Logo-WHITE.svg platform/viewer/dist/IDC-Logo-WHITE.svg
+      - run:
+          name: Copy to cloud
+          command: |
+            /bin/bash ./idc-deploy-shell/cloudCopy.sh
+
+workflows:
+  version: 2
+  build_and_deploy:
+    jobs:
+      - build_job:
+          filters:
+            branches:
+              only:
+                - master-foo
+                - idc-viewer-prod
+                - idc-viewer-test
+      - deploy_job:
+          requires:
+            - build_job
+          filters:
+            branches:
+              only:
+                - master-foo
+                - idc-viewer-prod
+                - idc-viewer-test
