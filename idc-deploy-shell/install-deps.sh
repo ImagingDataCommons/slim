@@ -29,10 +29,11 @@ apt-get upgrade -y
 apt-get install -y --no-install-suggests --no-install-recommends build-essential
 apt-get install -y --no-install-suggests --no-install-recommends ca-certificates
 apt-get install -y --no-install-suggests --no-install-recommends curl
-#apt-get install -y --no-install-suggests --no-install-recommends dumb-init
+apt-get install -y --no-install-suggests --no-install-recommends dumb-init
 apt-get install -y --no-install-suggests --no-install-recommends gnupg
 apt-get install -y --no-install-suggests --no-install-recommends git
 apt-get install -y --no-install-suggests --no-install-recommends nodejs
+apt-get install -y --no-install-suggests --no-install-recommends apt-transport-https
 
 apt-get clean
 
