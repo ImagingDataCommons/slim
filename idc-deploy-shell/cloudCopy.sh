@@ -20,9 +20,6 @@ cd ~/slim/build/
 sudo chown -R circleci /home/circleci/.gsutil
 sudo chgrp -R circleci /home/circleci/.gsutil
 
-CONFIG_ONLY=False
-WBUCKET=
-
 if [ "${CONFIG_ONLY}" != "True" ]; then
   gsutil web set -m index.html -e index.html gs://${WBUCKET}
   gsutil -h "Cache-Control:no-cache, max-age=0" rsync -d -r . gs://${WBUCKET}
