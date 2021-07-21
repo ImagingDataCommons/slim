@@ -36,6 +36,10 @@ apt-get install -y --no-install-suggests --no-install-recommends nodejs
 
 apt-get clean
 
+# See https://github.com/Joystream/helpdesk/issues/16
+sudo apt remove cmdtest
+sudo apt remove yarn
+
 curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
 echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
 apt-get update
