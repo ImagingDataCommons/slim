@@ -32,14 +32,17 @@ apt-get install -y --no-install-suggests --no-install-recommends curl
 apt-get install -y --no-install-suggests --no-install-recommends dumb-init
 apt-get install -y --no-install-suggests --no-install-recommends gnupg
 apt-get install -y --no-install-suggests --no-install-recommends git
-apt-get install -y --no-install-suggests --no-install-recommends nodejs
+#apt-get install -y --no-install-suggests --no-install-recommends nodejs
 apt-get install -y --no-install-suggests --no-install-recommends apt-transport-https
 
 apt-get clean
 
+curl -sL https://deb.nodesource.com/setup_14.x | bash -
+apt-get install -y nodejs
+
 # See https://github.com/Joystream/helpdesk/issues/16
-sudo apt remove cmdtest
-sudo apt remove yarn
+#sudo apt remove cmdtest
+#sudo apt remove yarn
 
 curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
 echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
