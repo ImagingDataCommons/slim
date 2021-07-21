@@ -15,7 +15,7 @@
 # limitations under the License.
 
 
-cat idc-assets/proxy-template.js | sed "s#_X___IDC__Z__DICOM___URL___Y_#${STORE_ROOT}#"
+cat idc-assets/proxy_template.js | sed "s#_X___IDC__Z__DICOM___URL___Y_#${STORE_ROOT}#"
 
 
 
