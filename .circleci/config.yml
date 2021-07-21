@@ -135,7 +135,7 @@ jobs:
       - run:
           name: Customize Config
           command: |
-            /bin/bash ./idc-deploy-shell/prepare_config.sh > slim/build/config/proxy.js
+            /bin/bash ./idc-deploy-shell/prepare_config.sh > ~/slim/build/config/proxy.js
       - run:
           name: Copy to cloud
           command: |
