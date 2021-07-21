@@ -98,11 +98,6 @@ jobs:
           command: |
             sudo -E /bin/bash ./idc-deploy-shell/install-deps.sh
       - run:
-          name: Copy in IDC favicons
-          command: |
-            mkdir -p ~/slim/build
-            cp ~/slim/idc-assets/favicon-nci.ico ~/slim/build/favicon.ico
-      - run:
           name: Build Viewer
           command: |
             # Send output while viewer is building....
@@ -110,7 +105,11 @@ jobs:
             ./idc-deploy-shell/pingJob.sh &
             /bin/bash ./idc-deploy-shell/buildViewer.sh
             ./idc-deploy-shell/killPing.sh
-
+      - run:
+          name: Copy in IDC favicons
+          command: |
+            mkdir -p ~/slim/build
+            cp ~/slim/idc-assets/favicon-nci.ico ~/slim/build/favicon.ico
       - save_cache:
           key: slim-viewer-{{ epoch }}
           paths:
