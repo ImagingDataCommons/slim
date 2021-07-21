@@ -27,5 +27,5 @@ else
   cd config
   gsutil cp proxy.js gs://${WBUCKET}/config
   CACHE_SETTING="Cache-Control:no-cache, max-age=0"
-  gsutil setmeta -h "${CACHE_SETTING}" gs://${WBUCKET}/config/proxy.js
+  gsutil setmeta -h "${CACHE_SETTING}" gs://${WBUCKET}/config/local.js
 fi
