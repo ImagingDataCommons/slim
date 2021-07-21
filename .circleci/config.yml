@@ -59,7 +59,7 @@ commands:
           name: 'Set tier-specific configuration file'
           command: |
             sudo -E /bin/bash ./idc-deploy-shell/pull_config.sh
-            xargs -a viewer_deployment_config.txt -I{} echo "export {}" >> $BASH_ENV
+            xargs -a slim_viewer_deployment_config.txt -I{} echo "export {}" >> $BASH_ENV
 
   auth:
     steps:
@@ -84,7 +84,7 @@ jobs:
   build_job:
     environment:
       TZ: '/usr/share/zoneinfo/America/Los_Angeles'
-    working_directory: ~/Viewers
+    working_directory: ~/slim
     docker:
       - image: circleci/python:3.7.0-stretch
     steps:
@@ -100,9 +100,7 @@ jobs:
       - run:
           name: Copy in IDC favicons
           command: |
-            cp ~/Viewers/idc-assets/favicon-nci.ico ~/Viewers/platform/viewer/public/assets/favicon.ico
-            cp ~/Viewers/idc-assets/favicon-nci-16x16.png ~/Viewers/platform/viewer/public/assets/favicon-16x16.png
-            cp ~/Viewers/idc-assets/favicon-nci-32x32.png ~/Viewers/platform/viewer/public/assets/favicon-32x32.png
+            cp ~/slim/idc-assets/favicon-nci.ico ~/slim/build/favicon.ico
       - run:
           name: Build Viewer
           command: |
@@ -113,9 +111,9 @@ jobs:
             ./idc-deploy-shell/killPing.sh
 
       - save_cache:
-          key: idc-viewer-{{ epoch }}
+          key: slim-viewer-{{ epoch }}
           paths:
-            - ./platform/viewer/dist
+            - ./build
             - ./idc-deploy-shell
             - ./idc-assets
 
@@ -124,11 +122,11 @@ jobs:
       TZ: '/usr/share/zoneinfo/America/Los_Angeles'
     docker:
       - image: circleci/python:3.7.0-stretch
-    working_directory: ~/Viewers
+    working_directory: ~/slim
     steps:
       - restore_cache:
           keys:
-            - idc-viewer-
+            - slim-viewer-
       - install_cloud_sdk
       - deployment_setup
       - auth
@@ -136,8 +134,7 @@ jobs:
       - run:
           name: Customize Config
           command: |
-            /bin/bash ./idc-deploy-shell/prepare_config.sh > platform/viewer/dist/app-config.js
-            cp ~/Viewers/idc-assets/IDC-Logo-WHITE.svg platform/viewer/dist/IDC-Logo-WHITE.svg
+            /bin/bash ./idc-deploy-shell/prepare_config.sh > slim/build/config/proxy.js
       - run:
           name: Copy to cloud
           command: |
@@ -151,15 +148,15 @@ workflows:
           filters:
             branches:
               only:
-                - master-foo
-                - idc-viewer-prod
-                - idc-viewer-test
+                - master
+                - slim-viewer-prod
+                - slim-viewer-test
       - deploy_job:
           requires:
             - build_job
           filters:
             branches:
               only:
-                - master-foo
-                - idc-viewer-prod
-                - idc-viewer-test
+                - master
+                - slim-viewer-prod
+                - slim-viewer-test
