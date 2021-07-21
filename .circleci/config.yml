@@ -100,6 +100,7 @@ jobs:
       - run:
           name: Copy in IDC favicons
           command: |
+            mkdir -p ~/slim/build
             cp ~/slim/idc-assets/favicon-nci.ico ~/slim/build/favicon.ico
       - run:
           name: Build Viewer
