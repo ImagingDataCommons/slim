@@ -4,7 +4,7 @@ window.config = {
   servers: [
     {
       id: "local",
-      url: "https://idc-external-006.uc.r.appspot.com",
+      url: "http://localhost:8008/dicomweb",
       write: true
     }
   ],
