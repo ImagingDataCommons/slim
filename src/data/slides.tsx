@@ -122,6 +122,10 @@ class Slide {
         this.selectedOpticalPathidentifier =
           volumeInstanceReference.OpticalPathSequence[0].OpticalPathIdentifier
       }
+
+      if (initiallySelectedSeriesInstanceUID === undefined) {
+        this.selectedSeriesUID = seriesUID
+      }
     }
 
     // set description (slide type)
@@ -263,7 +267,7 @@ class Slide {
  *      and PhotometricInterpretation === MONOCHROME2, then the observation is a
  *      simple single monochorme image sample;
  *   C) If the number of opticalPathIdentifier === 1 and SamplesPerPixel !== 1
- *      and PhotometricInterpretation === RGB or YBR_*,
+ *      and PhotometricInterpretation === RGB or YBR,
  *      then the observation is a RGB single image sample.
  *
  * @params instancesMetadataArray - array of instances from series, each element

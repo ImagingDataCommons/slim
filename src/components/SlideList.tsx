@@ -15,7 +15,7 @@ interface SlideListProps {
 }
 
 interface SlideListState {
-  selectedSeriesInstanceUID?: string
+  selectedSeriesInstanceUID: string
 }
 
 /**
