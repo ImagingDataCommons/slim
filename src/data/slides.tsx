@@ -59,7 +59,7 @@ class Slide {
     this.frameofReferenceUID = firstVolumeSeriesIstance.FrameOfReferenceUID
     this.containerIdentifier = firstVolumeSeriesIstance.ContainerIdentifier
 
-    this.parseInstanceMetadataFromListToSlide(
+    this.addInstanceMetadata(
       instancesMetadata,
       initiallySelectedSeriesInstanceUID
     )
@@ -96,19 +96,21 @@ class Slide {
   }
 
   /**
-   * Parses volume, overview and label instances into the slide.
+   * Adds input instances to the slide object. Specifically, it parses volume, overview and
+   * label instances into three arrays. Additionally, it sets object attribute which 
+   * describe the type of the slide (Multiplexed-Samples, Monochrome Slide and RGB Slide).
    *
    * @params instancesMetadata - array of volume, label and overview instances
    * @params initiallySelectedSeriesInstanceUID - selected series UID
    */
-  parseInstanceMetadataFromListToSlide (
+  addInstanceMetadata (
     instancesMetadata: InstancesMetadata,
     initiallySelectedSeriesInstanceUID?: string
   ): void {
     const volumeInstanceReference =
-      this.parseVolumeMetadataFromListToSlide(instancesMetadata.volumeMetadata)
-    this.parseLabelMetadataFromListToSlide(instancesMetadata.labelMetadata)
-    this.parseOverviewMetadataFromListToSlide(instancesMetadata.overviewMetadata)
+      this.addVolumeInstanceMetadata(instancesMetadata.volumeMetadata)
+    this.addLabelInstanceMetadata(instancesMetadata.labelMetadata)
+    this.addOverviewInstanceMetadata(instancesMetadata.overviewMetadata)
 
     // store series uid
     if (volumeInstanceReference !== undefined) {
@@ -141,18 +143,18 @@ class Slide {
   }
 
   /**
-   * Parses volume instances.
+   * Adds instances to the volumeMetadata array attribute of the slide.
    *
    * @params volumeMetadataList - array of volume instances
    * @returns volumeInstanceReference - first volume instance of the list
    */
-  private parseVolumeMetadataFromListToSlide (
+  private addVolumeInstanceMetadata (
     volumeMetadataList: object[]
   ): dmv.metadata.VLWholeSlideMicroscopyImage | undefined {
     let volumeInstanceReference
     for (let j = 0; j < volumeMetadataList.length; ++j) {
       const metadata = volumeMetadataList[j]
-      if (!this.instanceBelongToSlide(metadata)) {
+      if (!this.doesInstanceBelongToSlide(metadata)) {
         continue
       }
 
@@ -186,30 +188,30 @@ class Slide {
   }
 
   /**
-   * Parses label instances.
+   * Adds instances to the labelMetadata array attribute of the slide.
    *
    * @params labelMetadataList - array of label instances
    */
-  private parseLabelMetadataFromListToSlide (
+  private addLabelInstanceMetadata (
     labelMetadataList: object[]
   ): void {
     labelMetadataList.forEach((metadata) => {
-      if (this.instanceBelongToSlide(metadata)) {
-        this.overviewMetadata.push(metadata)
+      if (this.doesInstanceBelongToSlide(metadata)) {
+        this.labelMetadata.push(metadata)
       }
     })
   }
 
   /**
-   * Parses overview instances.
+   * Adds instances to the overviewMetadata array attribute of the slide.
    *
    * @params overviewMetadataList - array of overview instances
    */
-  private parseOverviewMetadataFromListToSlide (
+  private addOverviewInstanceMetadata (
     overviewMetadataList: object[]
   ): void {
     overviewMetadataList.forEach((metadata) => {
-      if (this.instanceBelongToSlide(metadata)) {
+      if (this.doesInstanceBelongToSlide(metadata)) {
         this.overviewMetadata.push(metadata)
       }
     })
@@ -221,7 +223,7 @@ class Slide {
    *
    * @params metadata - volume, label or overview instance
    */
-  private instanceBelongToSlide (
+  private doesInstanceBelongToSlide (
     metadata: object
   ): boolean {
     const instance =
@@ -302,7 +304,7 @@ function createSlides (
     } else {
       // add info to already created slide
       slide = slides[slideIndex]
-      slide.parseInstanceMetadataFromListToSlide(
+      slide.addInstanceMetadata(
         instancesMetadata,
         initiallySelectedSeriesInstanceUID
       )
