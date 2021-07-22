@@ -53,11 +53,12 @@ class Slide {
       return
     }
 
-    const firstVolumeSeriesIstance =
-      dmv.metadata.formatMetadata(instancesMetadata.volumeMetadata[0]) as dmv.metadata.VLWholeSlideMicroscopyImage
+    const instance = dmv.metadata.formatMetadata(
+      instancesMetadata.volumeMetadata[0]
+    ) as dmv.metadata.VLWholeSlideMicroscopyImage
 
-    this.frameofReferenceUID = firstVolumeSeriesIstance.FrameOfReferenceUID
-    this.containerIdentifier = firstVolumeSeriesIstance.ContainerIdentifier
+    this.frameofReferenceUID = instance.FrameOfReferenceUID
+    this.containerIdentifier = instance.ContainerIdentifier
 
     this.addInstanceMetadata(
       instancesMetadata,
@@ -97,7 +98,7 @@ class Slide {
 
   /**
    * Adds input instances to the slide object. Specifically, it parses volume, overview and
-   * label instances into three arrays. Additionally, it sets object attribute which 
+   * label instances into three arrays. Additionally, it sets the attributes of the object which
    * describe the type of the slide (Multiplexed-Samples, Monochrome Slide and RGB Slide).
    *
    * @params instancesMetadata - array of volume, label and overview instances

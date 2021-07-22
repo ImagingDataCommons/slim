@@ -129,7 +129,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     )
   }
 
-  private getSelectedSeriesInstanceUIDFromUrl () : string {
+  private getSelectedSeriesInstanceUIDFromUrl (): string {
     const fragments = this.props.location.pathname.split('/')
     return fragments[4]
   }
@@ -142,19 +142,22 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     if (firstSlide.volumeMetadata.length === 0) {
       return null
     }
-    const studyMetadata =
-      dmv.metadata.formatMetadata(firstSlide.volumeMetadata[0]) as dmv.metadata.Study
+    const studyMetadata = dmv.metadata.formatMetadata(
+      firstSlide.volumeMetadata[0]
+    ) as dmv.metadata.Study
 
     /* If a series is encoded in the path, route the viewer to this series.
-     * Otherwise select the first series correspondent to the first slide contained in the study.
+     * Otherwise select the first series correspondent to
+     * the first slide contained in the study.
      */
     let selectedSeriesInstanceUID
     if (this.props.location.pathname.includes('series/')) {
       selectedSeriesInstanceUID = this.getSelectedSeriesInstanceUIDFromUrl()
     } else {
-      const firstVolumeSeriesIstance =
-        dmv.metadata.formatMetadata(firstSlide.volumeMetadata[0]) as dmv.metadata.VLWholeSlideMicroscopyImage
-      selectedSeriesInstanceUID = firstVolumeSeriesIstance.SeriesInstanceUID
+      const instance = dmv.metadata.formatMetadata(
+        firstSlide.volumeMetadata[0]
+      ) as dmv.metadata.VLWholeSlideMicroscopyImage
+      selectedSeriesInstanceUID = instance.SeriesInstanceUID
     }
 
     return (
