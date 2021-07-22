@@ -77,7 +77,9 @@ class Slide {
 
     const volumeFormattedMetadata = [] as dmv.metadata.VLWholeSlideMicroscopyImage[]
     this.volumeMetadata.forEach((metadata) => {
-      const image = dmv.metadata.formatMetadata(metadata) as dmv.metadata.VLWholeSlideMicroscopyImage
+      const image = dmv.metadata.formatMetadata(
+        metadata
+      ) as dmv.metadata.VLWholeSlideMicroscopyImage
       volumeFormattedMetadata.push(image)
     })
 
@@ -163,8 +165,9 @@ class Slide {
         continue
       }
 
-      const instance =
-        dmv.metadata.formatMetadata(metadata) as dmv.metadata.VLWholeSlideMicroscopyImage
+      const instance = dmv.metadata.formatMetadata(
+        metadata
+      ) as dmv.metadata.VLWholeSlideMicroscopyImage
       const instanceOpticalPathIdentifier =
         instance.OpticalPathSequence[0].OpticalPathIdentifier
       const instanceIsMonochorme = instance.SamplesPerPixel === 1 &&
@@ -231,8 +234,9 @@ class Slide {
   private doesInstanceBelongToSlide (
     metadata: object
   ): boolean {
-    const instance =
-      dmv.metadata.formatMetadata(metadata) as dmv.metadata.VLWholeSlideMicroscopyImage
+    const instance = dmv.metadata.formatMetadata(
+      metadata
+    ) as dmv.metadata.VLWholeSlideMicroscopyImage
     if (this.frameofReferenceUID !== instance.FrameOfReferenceUID) {
       console.warn('FrameOfReferenceUID of instance' +
                    instance.SOPInstanceUID +
@@ -288,10 +292,11 @@ function createSlides (
                    'The series will be discarded.')
       continue
     }
-    const firstVolumeSeriesIstance =
-      dmv.metadata.formatMetadata(instancesMetadata.volumeMetadata[0]) as dmv.metadata.VLWholeSlideMicroscopyImage
-    const seriesFrameofReferenceUID = firstVolumeSeriesIstance.FrameOfReferenceUID
-    const seriesContainerIdentifier = firstVolumeSeriesIstance.ContainerIdentifier
+    const instance = dmv.metadata.formatMetadata(
+      instancesMetadata.volumeMetadata[0]
+    ) as dmv.metadata.VLWholeSlideMicroscopyImage
+    const seriesFrameofReferenceUID = instance.FrameOfReferenceUID
+    const seriesContainerIdentifier = instance.ContainerIdentifier
 
     const slideIndex = slides.findIndex((slide) =>
       slide.frameofReferenceUID === seriesFrameofReferenceUID &&
