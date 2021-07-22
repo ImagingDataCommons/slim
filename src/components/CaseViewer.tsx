@@ -60,8 +60,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
 
     let selectedSeriesInstanceUID
     if (this.props.location.pathname.includes('series/')) {
-      const fragments = this.props.location.pathname.split('/')
-      selectedSeriesInstanceUID = fragments[4]
+      selectedSeriesInstanceUID = this.getSelectedSeriesInstanceUIDFromUrl()
     }
 
     const slides = createSlides(instancesMetadataArray, selectedSeriesInstanceUID)
@@ -122,16 +121,17 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
   }
 
   handleSeriesSelection (
-    { seriesInstanceUID }: { seriesInstanceUID?: string }
+    { seriesInstanceUID }: { seriesInstanceUID: string }
   ): void {
-    if (seriesInstanceUID === undefined || seriesInstanceUID === null) {
-      console.warn('switching series: seriesInstanceUID not found.')
-    } else {
-      console.info(`switch to series "${seriesInstanceUID}"`)
-      this.props.history.push(
-        `/studies/${this.props.studyInstanceUID}/series/${seriesInstanceUID}`
-      )
-    }
+    console.info(`switch to series "${seriesInstanceUID}"`)
+    this.props.history.push(
+      `/studies/${this.props.studyInstanceUID}/series/${seriesInstanceUID}`
+    )
+  }
+
+  private getSelectedSeriesInstanceUIDFromUrl () : string {
+    const fragments = this.props.location.pathname.split('/')
+    return fragments[4]
   }
 
   render (): React.ReactNode {
@@ -150,8 +150,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
      */
     let selectedSeriesInstanceUID
     if (this.props.location.pathname.includes('series/')) {
-      const fragments = this.props.location.pathname.split('/')
-      selectedSeriesInstanceUID = fragments[4]
+      selectedSeriesInstanceUID = this.getSelectedSeriesInstanceUIDFromUrl()
     } else {
       const firstVolumeSeriesIstance =
         dmv.metadata.formatMetadata(firstSlide.volumeMetadata[0]) as dmv.metadata.VLWholeSlideMicroscopyImage

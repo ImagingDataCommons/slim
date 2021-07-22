@@ -8,9 +8,9 @@ import { Slide } from '../data/slides'
 interface SlideListProps {
   metadata: Slide[]
   client: DicomWebManager
-  initiallySelectedSeriesInstanceUID?: string
+  initiallySelectedSeriesInstanceUID: string
   onSeriesSelection: (
-    { seriesInstanceUID }: { seriesInstanceUID?: string }
+    { seriesInstanceUID }: { seriesInstanceUID: string }
   ) => void
 }
 
