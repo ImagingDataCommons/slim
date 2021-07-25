@@ -7,8 +7,8 @@ commands:
           name: 'Set the Tier'
           command: |
             TIER=DEV
-            if [[ ${CIRCLE_BRANCH} =~ slim-viewer-(prod|test).* ]]; then
-              TIER=$(awk -F- '{print toupper($3)}' \<<< ${CIRCLE_BRANCH})
+            if [[ ${CIRCLE_BRANCH} =~ idc-slim-viewer-(prod|test).* ]]; then
+              TIER=$(awk -F- '{print toupper($4)}' \<<< ${CIRCLE_BRANCH})
             fi
             echo "export TIER=${TIER}" >> $BASH_ENV
             echo "Tier was identified as ${TIER} for branch ${CIRCLE_BRANCH}"
