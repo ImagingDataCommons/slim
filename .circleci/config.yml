@@ -149,8 +149,8 @@ workflows:
             branches:
               only:
                 - master
-                - slim-viewer-prod
-                - slim-viewer-test
+                - idc-slim-viewer-prod
+                - idc-slim-viewer-test
       - deploy_job:
           requires:
             - build_job
@@ -158,5 +158,5 @@ workflows:
             branches:
               only:
                 - master
-                - slim-viewer-prod
-                - slim-viewer-test
+                - idc-slim-viewer-prod
+                - idc-slim-viewer-test
