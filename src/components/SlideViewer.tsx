@@ -217,7 +217,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const slideArray = this.props.slides
     const slides = slideArray.filter(item => {
       const slideItem = item
-      if (slideItem.seriesUIDsList.findIndex(uid => uid === this.props.seriesInstanceUID) !== -1) {
+      if (slideItem.getSeriesInstanceUIDs().findIndex(uid => uid === this.props.seriesInstanceUID) !== -1) {
         return true
       }
       return false
@@ -281,7 +281,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               if (activeSlide !== undefined) {
                 const slide = activeSlide as Slide
                 const image = (
-                  slide.getFirstVolumeInstance() as
+                  slide.getFirstFormattedVolumeInstance() as
                   dmv.metadata.VLWholeSlideMicroscopyImage
                 )
                 if (scoord3d.frameOfReferenceUID === image.FrameOfReferenceUID) {
@@ -341,7 +341,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const slideArray = this.props.slides
     const slides = slideArray.filter(item => {
       const slideItem = item
-      if (slideItem.seriesUIDsList.findIndex(uid => uid === this.props.seriesInstanceUID) !== -1) {
+      if (slideItem.slideOptions.seriesInstanceUIDs.findIndex(uid => uid === this.props.seriesInstanceUID) !== -1) {
         return true
       }
       return false
@@ -361,12 +361,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         )
         this.volumeViewport.current.innerHTML = ''
 
-        if (slide.areImagesMonochrome !== undefined &&
-          slide.areImagesMonochrome &&
-          slide.selectedOpticalPathidentifier !== undefined
+        if (slide.areImagesMonochrome() &&
+          slide.getSelectedOpticalPathidentifier() !== undefined
         ) {
           const blendInfo: dmv.channel.BlendingInformation = {
-            opticalPathIdentifier: slide.selectedOpticalPathidentifier,
+            opticalPathIdentifier: slide.getSelectedOpticalPathidentifier(),
             color: [0, 0.9, 0.9],
             opacity: 1.0,
             thresholdValues: [0, 255],
@@ -376,14 +375,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
           this.volumeViewer = new dmv.viewer.VolumeImageViewer({
             client: this.props.client,
-            metadata: slide.volumeMetadata,
+            metadata: slide.getVolumeInstances(),
             blendingInformation: [blendInfo],
             retrieveRendered: true
           })
         } else {
           this.volumeViewer = new dmv.viewer.VolumeImageViewer({
             client: this.props.client,
-            metadata: slide.volumeMetadata,
+            metadata: slide.getVolumeInstances(),
             retrieveRendered: true
           })
         }
@@ -395,14 +394,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
       if (this.labelViewport.current !== null) {
         this.labelViewport.current.innerHTML = ''
-        if (slide.labelMetadata.length > 0) {
+        if (slide.getLabelInstances().length > 0) {
           console.info(
             'instantiate viewer for LABEL image of series ' +
             this.props.seriesInstanceUID
           )
           this.labelViewer = new dmv.viewer.LabelImageViewer({
             client: this.props.client,
-            metadata: slide.labelMetadata[0],
+            metadata: slide.getLabelInstances()[0],
             resizeFactor: 1,
             orientation: 'vertical'
           })
@@ -1092,36 +1091,34 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const activeSlide = this.state.activeSlide
     if (activeSlide !== undefined) {
       const slide = activeSlide as Slide
-      if (slide.isMultiplexedSamples !== undefined) {
-        if (!slide.isMultiplexedSamples) {
-          specimenMenu = (
-            <Menu.SubMenu key='specimens' title='Specimens'>
-              <SpecimenList
-                metadata={slide.getFirstVolumeInstance()}
-                showstain
+      if (!slide.isMultiplexedSamples()) {
+        specimenMenu = (
+          <Menu.SubMenu key='specimens' title='Specimens'>
+            <SpecimenList
+              metadata={slide.getFirstFormattedVolumeInstance()}
+              showstain
+            />
+          </Menu.SubMenu>
+        )
+      } else {
+        specimenMenu = (
+          <Menu.SubMenu key='specimens' title='Specimens'>
+            <SpecimenList
+              metadata={slide.getFirstFormattedVolumeInstance()}
+              showstain={false}
+            />
+          </Menu.SubMenu>
+        )
+        const volumeViewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
+        if (volumeViewer !== undefined) {
+          sampleMenu = (
+            <Menu.SubMenu key='samples' title='Samples'>
+              <SamplesList
+                metadata={slide.getFormattedVolumeInstances()}
+                viewer={volumeViewer}
               />
             </Menu.SubMenu>
           )
-        } else {
-          specimenMenu = (
-            <Menu.SubMenu key='specimens' title='Specimens'>
-              <SpecimenList
-                metadata={slide.getFirstVolumeInstance()}
-                showstain={false}
-              />
-            </Menu.SubMenu>
-          )
-          const volumeViewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
-          if (volumeViewer !== undefined) {
-            sampleMenu = (
-              <Menu.SubMenu key='samples' title='Samples'>
-                <SamplesList
-                  metadata={slide.getVolumeInstances()}
-                  viewer={volumeViewer}
-                />
-              </Menu.SubMenu>
-            )
-          }
         }
       }
     }

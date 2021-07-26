@@ -40,14 +40,15 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
 
   componentDidMount (): void {
     this.setState({ isLoading: true })
-    if (this.props.slide.overviewMetadata.length > 0) {
-      const metadata = this.props.slide.overviewMetadata[0]
+    if (this.props.slide.getOverviewInstances().length > 0) {
+      const metadata = this.props.slide.getOverviewInstances()[0]
 
       // Instantiate the viewer and inject it into the viewport
-      if (this.props.slide.selectedSeriesUID !== undefined) {
+      const selectedSeriesInstanceUID = this.props.slide.getSelectedSeriesInstanceUID()
+      if (selectedSeriesInstanceUID !== undefined) {
         console.info(
           'instantiate viewer for OVERVIEW image of ' +
-          this.props.slide.selectedSeriesUID +
+          selectedSeriesInstanceUID +
           '...'
         )
       }
@@ -75,24 +76,25 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
       this.overviewViewer.resize()
     }
     const attributes = []
-    if (this.props.slide.description !== null && this.props.slide.description !== undefined) {
+    const description = this.props.slide.getDescription()
+    if (description !== null && description !== undefined) {
       attributes.push({
         name: 'Description',
-        value: this.props.slide.description
+        value: description
       })
     }
     if (this.state.isLoading) {
       return (<FaSpinner />)
     }
 
-    const title = this.props.slide.containerIdentifier
+    const title = this.props.slide.getContainerIdentifier()
     /* Properties need to be propagated down to Menu.Item:
      * https://github.com/react-component/menu/issues/142
      */
     return (
       <Menu.Item
         style={{ height: '100%' }}
-        key={this.props.slide.selectedSeriesUID}
+        key={this.props.slide.getSelectedSeriesInstanceUID()}
         {...this.props}
       >
         <Description

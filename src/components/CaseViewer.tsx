@@ -97,7 +97,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       const labelMetadata: object[] = []
       const overviewMetadata: object[] = []
       retrievedMetadata.forEach(item => {
-        const instance = dmv.metadata.formatMetadata(item) as dmv.metadata.Instance
+        const instance = dmv.metadata.formatMetadata(item) as dmv.metadata.VLWholeSlideMicroscopyImage
         if (instance.SOPClassUID === '1.2.840.10008.5.1.4.1.1.77.1.6') {
           if (instance.ImageType[2] === 'VOLUME') {
             volumeMetadata.push(item)
@@ -139,11 +139,12 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       return null
     }
     const firstSlide = this.state.slides[0] as Slide
-    if (firstSlide.volumeMetadata.length === 0) {
+    const volumeInstances = firstSlide.getVolumeInstances()
+    if (volumeInstances.length === 0) {
       return null
     }
     const studyMetadata = dmv.metadata.formatMetadata(
-      firstSlide.volumeMetadata[0]
+      volumeInstances[0]
     ) as dmv.metadata.Study
 
     /* If a series is encoded in the path, route the viewer to this series.
@@ -155,7 +156,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       selectedSeriesInstanceUID = this.getSelectedSeriesInstanceUIDFromUrl()
     } else {
       const instance = dmv.metadata.formatMetadata(
-        firstSlide.volumeMetadata[0]
+        volumeInstances[0]
       ) as dmv.metadata.VLWholeSlideMicroscopyImage
       selectedSeriesInstanceUID = instance.SeriesInstanceUID
     }

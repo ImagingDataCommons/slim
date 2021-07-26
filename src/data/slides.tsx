@@ -6,77 +6,194 @@ export interface InstancesMetadata {
   overviewMetadata: object[]
 }
 
+export interface SlideOptions {
+  frameofReferenceUID: string
+  containerIdentifier: string
+  areImagesMonochrome: boolean
+  isMultiplexedSamples: boolean
+  selectedSeriesInstanceUID: string
+  seriesInstanceUIDs: string[]
+  selectedOpticalPathidentifier: string
+  opticalPathIdentifiers: string[]
+  description?: string
+  volumeMetadata: object[]
+  labelMetadata: object[]
+  overviewMetadata: object[]
+}
+
 /**
- * Slide - handles grouping of instances that share the same frame of reference.
- *
- * @params frameofReferenceUID - reference frame
- * @params containerIdentifier - container identifier
- * @params areImagesMonochrome - type of images
- * @params isMultiplexedSamples - is multi channel datasets
- * @params selectedSeriesUID - selected series connected to the slide
- * @params seriesUIDsList - array of series UIDs connected to the slide
- * @params selectedOpticalPathidentifier - selected optical path indentifier
- * @params opticalPathIdentifiersList - array of all optical path identifiers
- * @params description - slide description, i.e.,
- *                       Multiplexed-Samples, Monochrome Slide, RGB Slide
- * @params volumeMetadata - array of volume metadata
- * @params labelMetadata - array of label metadata
- * @params overviewMetadata - array of overview metadata
+ * Slide - handles grouping of instances. 
+ * A Slide is identified by two parameters:
+ * frameofReferenceUID and the containerIdentifier. 
  */
 class Slide {
-  frameofReferenceUID?: string
-  containerIdentifier?: string
-  areImagesMonochrome?: boolean
-  isMultiplexedSamples?: boolean
-  selectedSeriesUID?: string
-  seriesUIDsList: string[] = []
-  selectedOpticalPathidentifier?: string
-  opticalPathIdentifiersList: string[] = []
-  description?: string
-  volumeMetadata: object[] = []
-  labelMetadata: object[] = []
-  overviewMetadata: object[] = []
-
+  slideOptions: SlideOptions
+  
   /**
-   * A Slide is identified by two parameters:
-   * frameofReferenceUID and the containerIdentifier.
-   *
-   * @params instancesMetadata - array of volume, label and overview instances
-   * @params initiallySelectedSeriesInstanceUID - selected series UID
+   * @param SlideOptions 
+   * @param SlideOptions.frameofReferenceUID - reference frame
+   * @param SlideOptions.containerIdentifier - container identifier
+   * @param SlideOptions.areImagesMonochrome - type of images
+   * @param SlideOptions.isMultiplexedSamples - is multi channel datasets
+   * @param SlideOptions.selectedSeriesInstanceUID - selected series connected to the slide
+   * @param SlideOptions.seriesInstanceUIDs - array of series UIDs connected to the slide
+   * @param SlideOptions.selectedOpticalPathidentifier - selected optical path indentifier
+   * @param SlideOptions.opticalPathIdentifiers - array of all optical path identifiers
+   * @param SlideOptions.description - slide description, i.e.,
+   *                                   Multiplexed-Samples, Monochrome Slide, RGB Slide
+   * @param SlideOptions.volumeMetadata - array of volume metadata
+   * @param SlideOptions.labelMetadata - array of label metadata
+   * @param SlideOptions.overviewMetadata - array of overview metadata
    */
   constructor (
-    instancesMetadata: InstancesMetadata,
-    initiallySelectedSeriesInstanceUID?: string
+    slideOptionsItem: SlideOptions
   ) {
-    if (instancesMetadata.volumeMetadata.length === 0) {
-      console.warn('No volume instance found while creating a Slide. ')
-      return
+    if (
+      slideOptionsItem.frameofReferenceUID === '' || 
+      !slideOptionsItem.frameofReferenceUID
+    ) {
+      throw new Error(`Unvalid frameofReferenceUID value parsed to slide.`) 
     }
 
-    const instance = dmv.metadata.formatMetadata(
-      instancesMetadata.volumeMetadata[0]
-    ) as dmv.metadata.VLWholeSlideMicroscopyImage
+    if (
+      slideOptionsItem.containerIdentifier === '' || 
+      !slideOptionsItem.containerIdentifier
+    ) {
+      throw new Error(`Unvalid containerIdentifier value parsed to slide.`) 
+    }
 
-    this.frameofReferenceUID = instance.FrameOfReferenceUID
-    this.containerIdentifier = instance.ContainerIdentifier
+    if (
+      slideOptionsItem.selectedSeriesInstanceUID === '' || 
+      !slideOptionsItem.selectedSeriesInstanceUID
+    ) {
+      throw new Error(`Unvalid selectedSeriesInstanceUID value parsed to slide.`) 
+    }
 
-    this.addInstanceMetadata(
-      instancesMetadata,
-      initiallySelectedSeriesInstanceUID
-    )
+    if (
+      slideOptionsItem.selectedOpticalPathidentifier === '' || 
+      !slideOptionsItem.selectedOpticalPathidentifier
+    ) {
+      throw new Error(`Unvalid selectedOpticalPathidentifier value parsed to slide.`) 
+    }
+
+    if (slideOptionsItem.seriesInstanceUIDs.length === 0) {
+      throw new Error(`No seriesInstanceUIDs have been parsed to slide.`) 
+    }
+
+    if (slideOptionsItem.opticalPathIdentifiers.length === 0) {
+      throw new Error(`No opticalPathIdentifiers have been parsed to slide.`) 
+    }
+
+    if (slideOptionsItem.volumeMetadata.length === 0) {
+      throw new Error(`No volumeMetadata have been parsed to slide.`) 
+    }
+
+    this.slideOptions = slideOptionsItem
   }
 
   /**
-   * Gets the all formatted metadata of volume instance
-   * @returns volume instance
+   * Gets the frame of reference UID of the slide
+   * @returns frameofReferenceUID
    */
-  getVolumeInstances (): dmv.metadata.VLWholeSlideMicroscopyImage[] | undefined {
-    if (this.volumeMetadata.length === 0) {
-      return undefined
-    }
+  getFrameofReferenceUID (): string {
+    return this.slideOptions.frameofReferenceUID
+  }
 
+  /**
+   * Gets the container identifier parameter of the slide
+   * @returns containerIdentifier
+   */
+  getContainerIdentifier (): string {
+    return this.slideOptions.containerIdentifier
+  }
+
+  /**
+   * Gets if the images of the slide are monochrome
+   * @returns areImagesMonochrome
+   */
+  areImagesMonochrome (): boolean {
+    return this.slideOptions.areImagesMonochrome
+  }
+
+  /**
+   * Gets if slide is a multiplexed samples
+   * @returns isMultiplexedSamples
+   */
+  isMultiplexedSamples (): boolean {
+    return this.slideOptions.isMultiplexedSamples
+  }
+
+  /**
+   * Gets the selected series instance UID
+   * @returns selectedSeriesInstanceUID
+   */
+  getSelectedSeriesInstanceUID (): string {
+    return this.slideOptions.selectedSeriesInstanceUID
+  }
+
+  /**
+   * Gets the series instance UIDs array 
+   * @returns seriesInstanceUIDs
+   */
+  getSeriesInstanceUIDs (): string[] {
+    return this.slideOptions.seriesInstanceUIDs
+  }
+
+  /**
+   * Gets the selected optical path identifier
+   * @returns selectedOpticalPathidentifier
+   */
+  getSelectedOpticalPathidentifier (): string {
+    return this.slideOptions.selectedOpticalPathidentifier
+  }
+
+  /**
+   * Gets the optical path identifiers array
+   * @returns opticalPathIdentifiers
+   */
+  getOpticalPathIdentifiers (): string[] {
+    return this.slideOptions.opticalPathIdentifiers
+  }
+
+  /**
+   * Gets the slide description 
+   * @returns description
+   */
+  getDescription (): string {
+    return this.slideOptions.description ? this.slideOptions.description : ''
+  }
+
+  /**
+   * Gets the all metadata of volume instances
+   * @returns volumeMetadata
+   */
+  getVolumeInstances (): object[] {
+    return this.slideOptions.volumeMetadata
+  }
+
+  /**
+   * Gets the all metadata of label instances
+   * @returns labelMetadata
+   */
+   getLabelInstances (): object[] {
+    return this.slideOptions.labelMetadata
+  }
+
+  /**
+   * Gets the all metadata of overview instances
+   * @returns overviewMetadata
+   */
+   getOverviewInstances (): object[] {
+    return this.slideOptions.overviewMetadata
+  }
+
+  /**
+   * Gets the all formatted metadata of volume instances
+   * @returns volumeMetadata
+   */
+  getFormattedVolumeInstances (): dmv.metadata.VLWholeSlideMicroscopyImage[] {
     const volumeFormattedMetadata = [] as dmv.metadata.VLWholeSlideMicroscopyImage[]
-    this.volumeMetadata.forEach((metadata) => {
+    this.slideOptions.volumeMetadata.forEach((metadata) => {
       const image = dmv.metadata.formatMetadata(
         metadata
       ) as dmv.metadata.VLWholeSlideMicroscopyImage
@@ -88,170 +205,16 @@ class Slide {
 
   /**
    * Gets the formatted metadata of the first volume instance stored in the volumeMetadata array
-   * @returns volume instance
+   * @returns volumeMetadata
    */
-  getFirstVolumeInstance (): dmv.metadata.VLWholeSlideMicroscopyImage | undefined {
-    if (this.volumeMetadata.length === 0) {
-      return undefined
+  getFirstFormattedVolumeInstance (): dmv.metadata.VLWholeSlideMicroscopyImage {
+    if (this.slideOptions.volumeMetadata.length === 0) {
+      throw new Error(`the volume metadata array has zero elements.`) 
     }
 
-    return dmv.metadata.formatMetadata(this.volumeMetadata[0]) as dmv.metadata.VLWholeSlideMicroscopyImage
-  }
-
-  /**
-   * Adds input instances to the slide object. Specifically, it parses volume, overview and
-   * label instances into three arrays. Additionally, it sets the attributes of the object which
-   * describe the type of the slide (Multiplexed-Samples, Monochrome Slide and RGB Slide).
-   *
-   * @params instancesMetadata - array of volume, label and overview instances
-   * @params initiallySelectedSeriesInstanceUID - selected series UID
-   */
-  addInstanceMetadata (
-    instancesMetadata: InstancesMetadata,
-    initiallySelectedSeriesInstanceUID?: string
-  ): void {
-    const volumeInstanceReference =
-      this.addVolumeInstanceMetadata(instancesMetadata.volumeMetadata)
-    this.addLabelInstanceMetadata(instancesMetadata.labelMetadata)
-    this.addOverviewInstanceMetadata(instancesMetadata.overviewMetadata)
-
-    // store series uid
-    if (volumeInstanceReference !== undefined) {
-      const seriesUID = volumeInstanceReference.SeriesInstanceUID
-      this.seriesUIDsList.push(seriesUID)
-      if (initiallySelectedSeriesInstanceUID === seriesUID) {
-        this.selectedSeriesUID = initiallySelectedSeriesInstanceUID
-        this.selectedOpticalPathidentifier =
-          volumeInstanceReference.OpticalPathSequence[0].OpticalPathIdentifier
-      }
-
-      if (initiallySelectedSeriesInstanceUID === undefined) {
-        this.selectedSeriesUID = seriesUID
-      }
-    }
-
-    // set description (slide type)
-    if (this.opticalPathIdentifiersList.length > 1) {
-      this.description = 'Multiplexed-Samples'
-      this.isMultiplexedSamples = true
-    } else if (
-      this.areImagesMonochrome !== undefined &&
-      this.areImagesMonochrome
-    ) {
-      this.description = 'Monochrome Slide'
-      this.isMultiplexedSamples = false
-    } else if (
-      this.areImagesMonochrome !== undefined &&
-      !this.areImagesMonochrome
-    ) {
-      this.description = 'RGB Slide'
-      this.isMultiplexedSamples = false
-    }
-  }
-
-  /**
-   * Adds instances to the volumeMetadata array attribute of the slide.
-   *
-   * @params volumeMetadataList - array of volume instances
-   * @returns volumeInstanceReference - first volume instance of the list
-   */
-  private addVolumeInstanceMetadata (
-    volumeMetadataList: object[]
-  ): dmv.metadata.VLWholeSlideMicroscopyImage | undefined {
-    let volumeInstanceReference
-    for (let j = 0; j < volumeMetadataList.length; ++j) {
-      const metadata = volumeMetadataList[j]
-      if (!this.doesInstanceBelongToSlide(metadata)) {
-        continue
-      }
-
-      const instance = dmv.metadata.formatMetadata(
-        metadata
-      ) as dmv.metadata.VLWholeSlideMicroscopyImage
-      const instanceOpticalPathIdentifier =
-        instance.OpticalPathSequence[0].OpticalPathIdentifier
-      const instanceIsMonochorme = instance.SamplesPerPixel === 1 &&
-        instance.PhotometricInterpretation === 'MONOCHROME2'
-      if (this.selectedOpticalPathidentifier === undefined) {
-        this.areImagesMonochrome = instanceIsMonochorme
-        this.selectedOpticalPathidentifier = instanceOpticalPathIdentifier
-      } else if (instanceIsMonochorme !== this.areImagesMonochrome) {
-        console.warn('Volume instance' +
-                     instance.SOPInstanceUID +
-                     ' of the slide has different image type. ' +
-                     'The instance will be discarded.')
-        continue
-      }
-      if (volumeInstanceReference === undefined) {
-        volumeInstanceReference = instance
-      }
-      if (this.opticalPathIdentifiersList.findIndex(
-        (opi) => opi === instanceOpticalPathIdentifier) === -1
-      ) {
-        this.opticalPathIdentifiersList.push(instanceOpticalPathIdentifier)
-      }
-      this.volumeMetadata.push(metadata)
-    }
-    return volumeInstanceReference
-  }
-
-  /**
-   * Adds instances to the labelMetadata array attribute of the slide.
-   *
-   * @params labelMetadataList - array of label instances
-   */
-  private addLabelInstanceMetadata (
-    labelMetadataList: object[]
-  ): void {
-    labelMetadataList.forEach((metadata) => {
-      if (this.doesInstanceBelongToSlide(metadata)) {
-        this.labelMetadata.push(metadata)
-      }
-    })
-  }
-
-  /**
-   * Adds instances to the overviewMetadata array attribute of the slide.
-   *
-   * @params overviewMetadataList - array of overview instances
-   */
-  private addOverviewInstanceMetadata (
-    overviewMetadataList: object[]
-  ): void {
-    overviewMetadataList.forEach((metadata) => {
-      if (this.doesInstanceBelongToSlide(metadata)) {
-        this.overviewMetadata.push(metadata)
-      }
-    })
-  }
-
-  /**
-   * Checks if instance belongs to the slide (i.e., cross checks
-   * the FrameOfReferenceUID and ContainerIdentifier strings).
-   *
-   * @params metadata - volume, label or overview instance
-   */
-  private doesInstanceBelongToSlide (
-    metadata: object
-  ): boolean {
-    const instance = dmv.metadata.formatMetadata(
-      metadata
+    return dmv.metadata.formatMetadata(
+      this.slideOptions.volumeMetadata[0]
     ) as dmv.metadata.VLWholeSlideMicroscopyImage
-    if (this.frameofReferenceUID !== instance.FrameOfReferenceUID) {
-      console.warn('FrameOfReferenceUID of instance' +
-                   instance.SOPInstanceUID +
-                   ' does not correspond to slide FrameOfReferenceUID. ' +
-                   'The instance will be discarded.')
-      return false
-    }
-    if (this.containerIdentifier !== instance.ContainerIdentifier) {
-      console.warn('ContainerIdentifier of instance' +
-                   instance.SOPInstanceUID +
-                   ' does not correspond to slide ContainerIdentifier. ' +
-                   'The instance will be discarded.')
-      return false
-    }
-    return true
   }
 }
 
@@ -274,17 +237,17 @@ class Slide {
  *      and PhotometricInterpretation === RGB or YBR,
  *      then the observation is a RGB single image sample.
  *
- * @params instancesMetadataArray - array of instances from series, each element
- *         of the array corresponds to a series
- * @params initiallySelectedSeriesInstanceUID - to visualize
- *         at first loading data coming from a specific series.
+ * @param instancesMetadataArray - array of instances from series, each element
+ *        of the array corresponds to a series
+ * @param initiallySelectedSeriesInstanceUID - to visualize
+ *        at first loading data coming from a specific series.
  * @returns slides - array of slide states
  */
 function createSlides (
   instancesMetadataArray: InstancesMetadata[],
   initiallySelectedSeriesInstanceUID?: string
 ): Slide[] {
-  const slides: Slide[] = []
+  const slideOptionsArray: SlideOptions[] = []
   for (let i = 0; i < instancesMetadataArray.length; ++i) {
     const instancesMetadata = instancesMetadataArray[i]
     if (instancesMetadata.volumeMetadata.length === 0) {
@@ -298,29 +261,212 @@ function createSlides (
     const seriesFrameofReferenceUID = instance.FrameOfReferenceUID
     const seriesContainerIdentifier = instance.ContainerIdentifier
 
-    const slideIndex = slides.findIndex((slide) =>
-      slide.frameofReferenceUID === seriesFrameofReferenceUID &&
-      slide.containerIdentifier === seriesContainerIdentifier
+    const slideOptionIndex = slideOptionsArray.findIndex((slideOptions) =>
+      slideOptions.frameofReferenceUID === seriesFrameofReferenceUID &&
+      slideOptions.containerIdentifier === seriesContainerIdentifier
     )
 
-    let slide
-    if (slideIndex === -1) {
-      // create new slide
-      slide = new Slide(
-        instancesMetadata,
+    if (slideOptionIndex === -1) {
+      // create new slideOptionsItem
+      const slideOptionsItem: SlideOptions = {
+        frameofReferenceUID: seriesFrameofReferenceUID,
+        containerIdentifier: seriesContainerIdentifier,
+        areImagesMonochrome: false,
+        isMultiplexedSamples: false,
+        selectedSeriesInstanceUID: '',
+        seriesInstanceUIDs: [],
+        selectedOpticalPathidentifier: '',
+        opticalPathIdentifiers: [],
+        volumeMetadata: [],
+        labelMetadata: [],
+        overviewMetadata: [],
+      };
+      
+      _addInstanceMetadata(
+        instancesMetadata, 
+        slideOptionsItem, 
         initiallySelectedSeriesInstanceUID
       )
-      slides.push(slide)
+      slideOptionsArray.push(slideOptionsItem)
     } else {
       // add info to already created slide
-      slide = slides[slideIndex]
-      slide.addInstanceMetadata(
-        instancesMetadata,
+      const slideOptionsItem = slideOptionsArray[slideOptionIndex]
+      _addInstanceMetadata(
+        instancesMetadata, 
+        slideOptionsItem, 
         initiallySelectedSeriesInstanceUID
       )
     }
   }
+
+  const slides: Slide[] = []
+  slideOptionsArray.forEach((slideOptionsItem) => {
+    const slide = new Slide(slideOptionsItem)
+    slides.push(slide)
+  })
+
+
   return slides
+}
+
+/**
+ * Adds input instances to the slideOptions object. Specifically, it parses volume, overview and
+ * label instances into three arrays. Additionally, it sets the attributes of the object which
+ * describe the type of the slide (Multiplexed-Samples, Monochrome Slide and RGB Slide).
+ *
+ * @param instancesMetadata - array of volume, label and overview instances
+ * @param slideOptionsItem - slide options object
+ * @param initiallySelectedSeriesInstanceUID - selected series UID
+ */
+function _addInstanceMetadata (
+  instancesMetadata: InstancesMetadata,
+  slideOptionsItem: SlideOptions,
+  initiallySelectedSeriesInstanceUID?: string
+): void {
+  const volumeInstanceReference =
+    _addVolumeInstanceMetadata(slideOptionsItem, instancesMetadata.volumeMetadata)
+  _addLabelInstanceMetadata(slideOptionsItem, instancesMetadata.labelMetadata)
+  _addOverviewInstanceMetadata(slideOptionsItem, instancesMetadata.overviewMetadata)
+
+  // store series uid
+  if (volumeInstanceReference !== undefined) {
+    const seriesUID = volumeInstanceReference.SeriesInstanceUID
+    slideOptionsItem.seriesInstanceUIDs.push(seriesUID)
+    if (initiallySelectedSeriesInstanceUID === seriesUID) {
+      slideOptionsItem.selectedSeriesInstanceUID = initiallySelectedSeriesInstanceUID
+      slideOptionsItem.selectedOpticalPathidentifier =
+        volumeInstanceReference.OpticalPathSequence[0].OpticalPathIdentifier
+    }
+
+    if (initiallySelectedSeriesInstanceUID === undefined) {
+      slideOptionsItem.selectedSeriesInstanceUID = seriesUID
+    }
+  }
+
+  // set description (slide type)
+  if (slideOptionsItem.opticalPathIdentifiers.length > 1) {
+    slideOptionsItem.description = 'Multiplexed-Samples'
+    slideOptionsItem.isMultiplexedSamples = true
+  } else if (slideOptionsItem.areImagesMonochrome === true) {
+    slideOptionsItem.description = 'Monochrome Slide'
+    slideOptionsItem.isMultiplexedSamples = false
+  } else if (slideOptionsItem.areImagesMonochrome === false) {
+    slideOptionsItem.description = 'RGB Slide'
+    slideOptionsItem.isMultiplexedSamples = false
+  }
+}
+
+/**
+ * Adds instances to the volumeMetadata array attribute of the slide options object.
+ *
+ * @param slideOptionsItem - slide options object
+ * @param volumeMetadataList - array of volume instances
+ * @returns volumeInstanceReference - first volume instance of the list
+ */
+function _addVolumeInstanceMetadata (
+  slideOptionsItem: SlideOptions,
+  volumeMetadataList: object[]
+): dmv.metadata.VLWholeSlideMicroscopyImage | undefined {
+  let volumeInstanceReference
+  for (let j = 0; j < volumeMetadataList.length; ++j) {
+    const metadata = volumeMetadataList[j]
+    if (!_doesInstanceBelongToSlide(slideOptionsItem, metadata)) {
+      continue
+    }
+
+    const instance = dmv.metadata.formatMetadata(
+      metadata
+    ) as dmv.metadata.VLWholeSlideMicroscopyImage
+    const instanceOpticalPathIdentifier =
+      instance.OpticalPathSequence[0].OpticalPathIdentifier
+    const instanceIsMonochorme = instance.SamplesPerPixel === 1 &&
+      instance.PhotometricInterpretation === 'MONOCHROME2'
+    if (slideOptionsItem.selectedOpticalPathidentifier === '') {
+      slideOptionsItem.areImagesMonochrome = instanceIsMonochorme
+      slideOptionsItem.selectedOpticalPathidentifier = instanceOpticalPathIdentifier
+    } else if (instanceIsMonochorme !== slideOptionsItem.areImagesMonochrome) {
+      console.warn('Volume instance' +
+                   instance.SOPInstanceUID +
+                   ' of the slide has different image type. ' +
+                   'The instance will be discarded.')
+      continue
+    }
+    if (volumeInstanceReference === undefined) {
+      volumeInstanceReference = instance
+    }
+    if (slideOptionsItem.opticalPathIdentifiers.findIndex(
+      (opi) => opi === instanceOpticalPathIdentifier) === -1
+    ) {
+      slideOptionsItem.opticalPathIdentifiers.push(instanceOpticalPathIdentifier)
+    }
+    slideOptionsItem.volumeMetadata.push(metadata)
+  }
+  return volumeInstanceReference
+}
+
+/**
+ * Adds instances to the labelMetadata array attribute of the slide options object.
+ *
+ * @param slideOptionsItem - slide options object
+ * @param labelMetadataList - array of label instances
+ */
+function _addLabelInstanceMetadata (
+  slideOptionsItem: SlideOptions,
+  labelMetadataList: object[]
+): void {
+  labelMetadataList.forEach((metadata) => {
+    if (_doesInstanceBelongToSlide(slideOptionsItem, metadata)) {
+      slideOptionsItem.labelMetadata.push(metadata)
+    }
+  })
+}
+
+/**
+ * Adds instances to the overviewMetadata array attribute of the slide options object.
+ *
+ * @param slideOptionsItem - slide options object
+ * @param overviewMetadataList - array of overview instances
+ */
+function _addOverviewInstanceMetadata (
+  slideOptionsItem: SlideOptions,
+  overviewMetadataList: object[]
+): void {
+  overviewMetadataList.forEach((metadata) => {
+    if (_doesInstanceBelongToSlide(slideOptionsItem, metadata)) {
+      slideOptionsItem.overviewMetadata.push(metadata)
+    }
+  })
+}
+
+/**
+ * Checks if instance belongs to the slide (i.e., cross checks
+ * the FrameOfReferenceUID and ContainerIdentifier strings).
+ *
+ * @param slideOptionsItem - slide options object
+ * @param metadata - volume, label or overview instance
+ */
+function _doesInstanceBelongToSlide (
+  slideOptionsItem: SlideOptions,
+  metadata: object
+): boolean {
+  const instance = dmv.metadata.formatMetadata(
+    metadata
+  ) as dmv.metadata.VLWholeSlideMicroscopyImage
+  if (slideOptionsItem.frameofReferenceUID !== instance.FrameOfReferenceUID) {
+    console.warn('FrameOfReferenceUID of instance' +
+                 instance.SOPInstanceUID +
+                 ' does not correspond to slide FrameOfReferenceUID. ' +
+                 'The instance will be discarded.')
+    return false
+  }
+  if (slideOptionsItem.containerIdentifier !== instance.ContainerIdentifier) {
+    console.warn('ContainerIdentifier of instance' +
+                 instance.SOPInstanceUID +
+                 ' does not correspond to slide ContainerIdentifier. ' +
+                 'The instance will be discarded.')
+    return false
+  }
+  return true
 }
 
 export { Slide, createSlides }
