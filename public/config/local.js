@@ -8,6 +8,10 @@ window.config = {
       write: true
     }
   ],
+  renderer:
+  {
+    retrieveRendered: true
+  },
   annotations: [
     {
       finding: {

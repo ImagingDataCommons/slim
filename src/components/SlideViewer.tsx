@@ -30,7 +30,7 @@ import Button from './Button'
 import Report, { MeasurementReport } from './Report'
 import SpecimenList from './SpecimenList'
 import SamplesList from './SamplesList'
-import { AnnotationSettings } from '../AppConfig'
+import { AnnotationSettings, RendererSettings } from '../AppConfig'
 import { findContentItemsByName } from '../utils/sr'
 import { Slide } from '../data/slides'
 
@@ -114,6 +114,7 @@ interface SlideViewerProps extends RouteComponentProps {
     uid: string
     organization?: string
   }
+  renderer: RendererSettings
   annotations: AnnotationSettings[]
   user?: {
     name: string
@@ -377,13 +378,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             client: this.props.client,
             metadata: slide.getVolumeInstances(),
             blendingInformation: [blendInfo],
-            retrieveRendered: true
+            retrieveRendered: this.props.renderer.retrieveRendered
           })
         } else {
           this.volumeViewer = new dmv.viewer.VolumeImageViewer({
             client: this.props.client,
             metadata: slide.getVolumeInstances(),
-            retrieveRendered: true
+            retrieveRendered: this.props.renderer.retrieveRendered
           })
         }
 
