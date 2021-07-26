@@ -281,10 +281,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               const activeSlide = this.state.activeSlide
               if (activeSlide !== undefined) {
                 const slide = activeSlide as Slide
-                const image = (
-                  slide.getFirstFormattedVolumeInstance() as
-                  dmv.metadata.VLWholeSlideMicroscopyImage
-                )
+                const image = slide.getFirstFormattedVolumeInstance()
                 if (scoord3d.frameOfReferenceUID === image.FrameOfReferenceUID) {
                   if (this.volumeViewer !== undefined) {
                     /**

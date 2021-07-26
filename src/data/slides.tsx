@@ -22,15 +22,15 @@ export interface SlideOptions {
 }
 
 /**
- * Slide - handles grouping of instances. 
+ * Slide - handles grouping of instances.
  * A Slide is identified by two parameters:
- * frameofReferenceUID and the containerIdentifier. 
+ * frameofReferenceUID and the containerIdentifier.
  */
 class Slide {
   slideOptions: SlideOptions
-  
+
   /**
-   * @param SlideOptions 
+   * @param SlideOptions
    * @param SlideOptions.frameofReferenceUID - reference frame
    * @param SlideOptions.containerIdentifier - container identifier
    * @param SlideOptions.areImagesMonochrome - type of images
@@ -49,43 +49,43 @@ class Slide {
     slideOptionsItem: SlideOptions
   ) {
     if (
-      slideOptionsItem.frameofReferenceUID === '' || 
-      !slideOptionsItem.frameofReferenceUID
+      slideOptionsItem.frameofReferenceUID === '' ||
+      slideOptionsItem.frameofReferenceUID === undefined
     ) {
-      throw new Error(`Unvalid frameofReferenceUID value parsed to slide.`) 
+      throw new Error('Unvalid frameofReferenceUID value parsed to slide.')
     }
 
     if (
-      slideOptionsItem.containerIdentifier === '' || 
-      !slideOptionsItem.containerIdentifier
+      slideOptionsItem.containerIdentifier === '' ||
+      slideOptionsItem.containerIdentifier === undefined
     ) {
-      throw new Error(`Unvalid containerIdentifier value parsed to slide.`) 
+      throw new Error('Unvalid containerIdentifier value parsed to slide.')
     }
 
     if (
-      slideOptionsItem.selectedSeriesInstanceUID === '' || 
-      !slideOptionsItem.selectedSeriesInstanceUID
+      slideOptionsItem.selectedSeriesInstanceUID === '' ||
+      slideOptionsItem.selectedSeriesInstanceUID === undefined
     ) {
-      throw new Error(`Unvalid selectedSeriesInstanceUID value parsed to slide.`) 
+      throw new Error('Unvalid selectedSeriesInstanceUID value parsed to slide.')
     }
 
     if (
-      slideOptionsItem.selectedOpticalPathidentifier === '' || 
-      !slideOptionsItem.selectedOpticalPathidentifier
+      slideOptionsItem.selectedOpticalPathidentifier === '' ||
+      slideOptionsItem.selectedOpticalPathidentifier === undefined
     ) {
-      throw new Error(`Unvalid selectedOpticalPathidentifier value parsed to slide.`) 
+      throw new Error('Unvalid selectedOpticalPathidentifier value parsed to slide.')
     }
 
     if (slideOptionsItem.seriesInstanceUIDs.length === 0) {
-      throw new Error(`No seriesInstanceUIDs have been parsed to slide.`) 
+      throw new Error('No seriesInstanceUIDs have been parsed to slide.')
     }
 
     if (slideOptionsItem.opticalPathIdentifiers.length === 0) {
-      throw new Error(`No opticalPathIdentifiers have been parsed to slide.`) 
+      throw new Error('No opticalPathIdentifiers have been parsed to slide.')
     }
 
     if (slideOptionsItem.volumeMetadata.length === 0) {
-      throw new Error(`No volumeMetadata have been parsed to slide.`) 
+      throw new Error('No volumeMetadata have been parsed to slide.')
     }
 
     this.slideOptions = slideOptionsItem
@@ -132,7 +132,7 @@ class Slide {
   }
 
   /**
-   * Gets the series instance UIDs array 
+   * Gets the series instance UIDs array
    * @returns seriesInstanceUIDs
    */
   getSeriesInstanceUIDs (): string[] {
@@ -156,11 +156,11 @@ class Slide {
   }
 
   /**
-   * Gets the slide description 
+   * Gets the slide description
    * @returns description
    */
   getDescription (): string {
-    return this.slideOptions.description ? this.slideOptions.description : ''
+    return this.slideOptions.description !== undefined ? this.slideOptions.description : ''
   }
 
   /**
@@ -175,7 +175,7 @@ class Slide {
    * Gets the all metadata of label instances
    * @returns labelMetadata
    */
-   getLabelInstances (): object[] {
+  getLabelInstances (): object[] {
     return this.slideOptions.labelMetadata
   }
 
@@ -183,7 +183,7 @@ class Slide {
    * Gets the all metadata of overview instances
    * @returns overviewMetadata
    */
-   getOverviewInstances (): object[] {
+  getOverviewInstances (): object[] {
     return this.slideOptions.overviewMetadata
   }
 
@@ -209,7 +209,7 @@ class Slide {
    */
   getFirstFormattedVolumeInstance (): dmv.metadata.VLWholeSlideMicroscopyImage {
     if (this.slideOptions.volumeMetadata.length === 0) {
-      throw new Error(`the volume metadata array has zero elements.`) 
+      throw new Error('the volume metadata array has zero elements.')
     }
 
     return dmv.metadata.formatMetadata(
@@ -279,12 +279,12 @@ function createSlides (
         opticalPathIdentifiers: [],
         volumeMetadata: [],
         labelMetadata: [],
-        overviewMetadata: [],
-      };
-      
+        overviewMetadata: []
+      }
+
       _addInstanceMetadata(
-        instancesMetadata, 
-        slideOptionsItem, 
+        instancesMetadata,
+        slideOptionsItem,
         initiallySelectedSeriesInstanceUID
       )
       slideOptionsArray.push(slideOptionsItem)
@@ -292,8 +292,8 @@ function createSlides (
       // add info to already created slide
       const slideOptionsItem = slideOptionsArray[slideOptionIndex]
       _addInstanceMetadata(
-        instancesMetadata, 
-        slideOptionsItem, 
+        instancesMetadata,
+        slideOptionsItem,
         initiallySelectedSeriesInstanceUID
       )
     }
@@ -304,7 +304,6 @@ function createSlides (
     const slide = new Slide(slideOptionsItem)
     slides.push(slide)
   })
-
 
   return slides
 }
@@ -347,10 +346,10 @@ function _addInstanceMetadata (
   if (slideOptionsItem.opticalPathIdentifiers.length > 1) {
     slideOptionsItem.description = 'Multiplexed-Samples'
     slideOptionsItem.isMultiplexedSamples = true
-  } else if (slideOptionsItem.areImagesMonochrome === true) {
+  } else if (slideOptionsItem.areImagesMonochrome) {
     slideOptionsItem.description = 'Monochrome Slide'
     slideOptionsItem.isMultiplexedSamples = false
-  } else if (slideOptionsItem.areImagesMonochrome === false) {
+  } else if (!slideOptionsItem.areImagesMonochrome) {
     slideOptionsItem.description = 'RGB Slide'
     slideOptionsItem.isMultiplexedSamples = false
   }
