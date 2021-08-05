@@ -378,17 +378,19 @@ function _addVolumeInstanceMetadata (
 
     const instanceOpticalPathIdentifier =
       instance.OpticalPathSequence[0].OpticalPathIdentifier
-    const instanceIsMonochorme = instance.SamplesPerPixel === 1 &&
+    const isMonochrome = (
+      instance.SamplesPerPixel === 1 &&
       instance.PhotometricInterpretation === 'MONOCHROME2'
+    )
     if (slideOptionsItem.selectedOpticalPathidentifier === '') {
-      slideOptionsItem.areImagesMonochrome = instanceIsMonochorme
+      slideOptionsItem.areImagesMonochrome = isMonochrome
       slideOptionsItem.selectedOpticalPathidentifier = instanceOpticalPathIdentifier
-    } else if (instanceIsMonochorme !== slideOptionsItem.areImagesMonochrome) {
-      console.warn('Volume instance' +
-                   instance.SOPInstanceUID +
-                   ' of the slide has different image type. ' +
-                   'The instance will be discarded.')
-      continue
+    } else if (isMonochrome !== slideOptionsItem.areImagesMonochrome) {
+    console.warn('Volume instance' +
+                 instance.SOPInstanceUID +
+                 ' of the slide has different image type. ' +
+                 'The instance will be discarded.')
+    continue
     }
     if (volumeInstanceReference === undefined) {
       volumeInstanceReference = instance
