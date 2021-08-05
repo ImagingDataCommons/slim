@@ -316,7 +316,7 @@ function createSlides (
       const slideSeriesInstanceUIDs = []
       const slideOpticalPathIdentifiers = []
       let slideSelectedSeriesInstanceUID = referenceInstance.SeriesInstanceUID
-      for (let i = 0; i < metadata.volumeMetadata.length; ++i){
+      for (let i = 0; i < metadata.volumeMetadata.length; ++i) {
         const instance = dmv.metadata.formatMetadata(
           metadata.volumeMetadata[i]
         ) as dmv.metadata.VLWholeSlideMicroscopyImage
@@ -340,7 +340,7 @@ function createSlides (
           slideSeriesInstanceUIDs.push(instanceSeriesInstanceUID)
         }
 
-        const instanceOpticalPathIdentifier = 
+        const instanceOpticalPathIdentifier =
           instance.OpticalPathSequence[0].OpticalPathIdentifier
         const opticalIdIndex = slideOpticalPathIdentifiers.findIndex(
           opticalId => opticalId === instanceOpticalPathIdentifier
@@ -349,10 +349,8 @@ function createSlides (
           slideOpticalPathIdentifiers.push(instanceOpticalPathIdentifier)
         }
 
-        if (
-          initiallySelectedSeriesInstanceUID !== undefined && 
-          initiallySelectedSeriesInstanceUID === instanceSeriesInstanceUID
-          ) {
+        if (initiallySelectedSeriesInstanceUID !== undefined &&
+            initiallySelectedSeriesInstanceUID === instanceSeriesInstanceUID) {
           slideInstanceOpticalPathIdentifier = instanceOpticalPathIdentifier
           slideSelectedSeriesInstanceUID = instanceSeriesInstanceUID
         }
