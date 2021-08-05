@@ -369,13 +369,13 @@ function _addVolumeInstanceMetadata (
   let volumeInstanceReference
   for (let j = 0; j < volumeMetadataList.length; ++j) {
     const metadata = volumeMetadataList[j]
-    if (!_doesInstanceBelongToSlide(slideOptionsItem, metadata)) {
-      continue
-    }
-
     const instance = dmv.metadata.formatMetadata(
       metadata
     ) as dmv.metadata.VLWholeSlideMicroscopyImage
+    if (!_doesInstanceBelongToSlide(slideOptionsItem, instance)) {
+      continue
+    }
+
     const instanceOpticalPathIdentifier =
       instance.OpticalPathSequence[0].OpticalPathIdentifier
     const instanceIsMonochorme = instance.SamplesPerPixel === 1 &&
@@ -414,7 +414,10 @@ function _addLabelInstanceMetadata (
   labelMetadataList: object[]
 ): void {
   labelMetadataList.forEach((metadata) => {
-    if (_doesInstanceBelongToSlide(slideOptionsItem, metadata)) {
+    const instance = dmv.metadata.formatMetadata(
+      metadata
+    ) as dmv.metadata.VLWholeSlideMicroscopyImage
+    if (_doesInstanceBelongToSlide(slideOptionsItem, instance)) {
       slideOptionsItem.labelMetadata.push(metadata)
     }
   })
@@ -431,7 +434,10 @@ function _addOverviewInstanceMetadata (
   overviewMetadataList: object[]
 ): void {
   overviewMetadataList.forEach((metadata) => {
-    if (_doesInstanceBelongToSlide(slideOptionsItem, metadata)) {
+    const instance = dmv.metadata.formatMetadata(
+      metadata
+    ) as dmv.metadata.VLWholeSlideMicroscopyImage
+    if (_doesInstanceBelongToSlide(slideOptionsItem, instance)) {
       slideOptionsItem.overviewMetadata.push(metadata)
     }
   })
@@ -442,15 +448,12 @@ function _addOverviewInstanceMetadata (
  * the FrameOfReferenceUID and ContainerIdentifier strings).
  *
  * @param slideOptionsItem - slide options object
- * @param metadata - volume, label or overview instance
+ * @param instance - volume, label or overview instance
  */
 function _doesInstanceBelongToSlide (
   slideOptionsItem: SlideOptions,
-  metadata: object
+  instance: dmv.metadata.VLWholeSlideMicroscopyImage
 ): boolean {
-  const instance = dmv.metadata.formatMetadata(
-    metadata
-  ) as dmv.metadata.VLWholeSlideMicroscopyImage
   if (slideOptionsItem.frameofReferenceUID !== instance.FrameOfReferenceUID) {
     console.warn('FrameOfReferenceUID of instance' +
                  instance.SOPInstanceUID +
