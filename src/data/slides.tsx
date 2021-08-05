@@ -386,11 +386,11 @@ function _addVolumeInstanceMetadata (
       slideOptionsItem.areImagesMonochrome = isMonochrome
       slideOptionsItem.selectedOpticalPathidentifier = instanceOpticalPathIdentifier
     } else if (isMonochrome !== slideOptionsItem.areImagesMonochrome) {
-    console.warn('Volume instance' +
-                 instance.SOPInstanceUID +
-                 ' of the slide has different image type. ' +
-                 'The instance will be discarded.')
-    continue
+      console.warn('Volume instance' +
+                   instance.SOPInstanceUID +
+                   ' of the slide has different image type. ' +
+                   'The instance will be discarded.')
+      continue
     }
     if (volumeInstanceReference === undefined) {
       volumeInstanceReference = instance

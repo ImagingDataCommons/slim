@@ -331,8 +331,8 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
 
     const removeSampleButton = (
       <CloseCircleOutlined
-          style={{ color: '#FF0000' }}
-          onClick={this.handleRemoveSample}
+        style={{ color: '#FF0000' }}
+        onClick={this.handleRemoveSample}
       />
     )
 
