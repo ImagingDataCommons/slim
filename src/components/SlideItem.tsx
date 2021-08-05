@@ -40,11 +40,11 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
 
   componentDidMount (): void {
     this.setState({ isLoading: true })
-    if (this.props.slide.getOverviewInstances().length > 0) {
-      const metadata = this.props.slide.getOverviewInstances()[0]
+    if (this.props.slide.overviewInstances.length > 0) {
+      const metadata = this.props.slide.overviewInstances[0]
 
       // Instantiate the viewer and inject it into the viewport
-      const selectedSeriesInstanceUID = this.props.slide.getSelectedSeriesInstanceUID()
+      const selectedSeriesInstanceUID = this.props.slide.selectedSeriesInstanceUID
       if (selectedSeriesInstanceUID !== undefined) {
         console.info(
           'instantiate viewer for OVERVIEW image of ' +
@@ -76,7 +76,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
       this.overviewViewer.resize()
     }
     const attributes = []
-    const description = this.props.slide.getDescription()
+    const description = this.props.slide.description
     if (description !== null && description !== undefined) {
       attributes.push({
         name: 'Description',
@@ -87,14 +87,14 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
       return (<FaSpinner />)
     }
 
-    const title = this.props.slide.getContainerIdentifier()
+    const title = this.props.slide.containerIdentifier
     /* Properties need to be propagated down to Menu.Item:
      * https://github.com/react-component/menu/issues/142
      */
     return (
       <Menu.Item
         style={{ height: '100%' }}
-        key={this.props.slide.getSelectedSeriesInstanceUID()}
+        key={this.props.slide.selectedSeriesInstanceUID}
         {...this.props}
       >
         <Description

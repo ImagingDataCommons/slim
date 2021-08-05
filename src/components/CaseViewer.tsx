@@ -140,7 +140,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       return null
     }
     const firstSlide = this.state.slides[0] as Slide
-    const volumeInstances = firstSlide.getVolumeInstances()
+    const volumeInstances = firstSlide.volumeInstances
     if (volumeInstances.length === 0) {
       return null
     }

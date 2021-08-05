@@ -95,7 +95,7 @@ class Slide {
    * Gets the frame of reference UID of the slide
    * @returns frameofReferenceUID
    */
-  getFrameofReferenceUID (): string {
+  get frameofReferenceUID (): string {
     return this.slideOptions.frameofReferenceUID
   }
 
@@ -103,7 +103,7 @@ class Slide {
    * Gets the container identifier parameter of the slide
    * @returns containerIdentifier
    */
-  getContainerIdentifier (): string {
+  get containerIdentifier (): string {
     return this.slideOptions.containerIdentifier
   }
 
@@ -127,7 +127,7 @@ class Slide {
    * Gets the selected series instance UID
    * @returns selectedSeriesInstanceUID
    */
-  getSelectedSeriesInstanceUID (): string {
+  get selectedSeriesInstanceUID (): string {
     return this.slideOptions.selectedSeriesInstanceUID
   }
 
@@ -135,7 +135,7 @@ class Slide {
    * Gets the series instance UIDs array
    * @returns seriesInstanceUIDs
    */
-  getSeriesInstanceUIDs (): string[] {
+  get seriesInstanceUIDs (): string[] {
     return this.slideOptions.seriesInstanceUIDs
   }
 
@@ -143,7 +143,7 @@ class Slide {
    * Gets the selected optical path identifier
    * @returns selectedOpticalPathidentifier
    */
-  getSelectedOpticalPathidentifier (): string {
+  get selectedOpticalPathidentifier (): string {
     return this.slideOptions.selectedOpticalPathidentifier
   }
 
@@ -151,7 +151,7 @@ class Slide {
    * Gets the optical path identifiers array
    * @returns opticalPathIdentifiers
    */
-  getOpticalPathIdentifiers (): string[] {
+  get opticalPathIdentifiers (): string[] {
     return this.slideOptions.opticalPathIdentifiers
   }
 
@@ -159,7 +159,7 @@ class Slide {
    * Gets the slide description
    * @returns description
    */
-  getDescription (): string {
+  get description (): string {
     return this.slideOptions.description !== undefined ? this.slideOptions.description : ''
   }
 
@@ -167,7 +167,7 @@ class Slide {
    * Gets the all metadata of volume instances
    * @returns volumeMetadata
    */
-  getVolumeInstances (): object[] {
+  get volumeInstances (): object[] {
     return this.slideOptions.volumeMetadata
   }
 
@@ -175,7 +175,7 @@ class Slide {
    * Gets the all metadata of label instances
    * @returns labelMetadata
    */
-  getLabelInstances (): object[] {
+  get labelInstances (): object[] {
     return this.slideOptions.labelMetadata
   }
 
@@ -183,7 +183,7 @@ class Slide {
    * Gets the all metadata of overview instances
    * @returns overviewMetadata
    */
-  getOverviewInstances (): object[] {
+  get overviewInstances (): object[] {
     return this.slideOptions.overviewMetadata
   }
 
@@ -191,23 +191,23 @@ class Slide {
    * Gets the all formatted metadata of volume instances
    * @returns volumeMetadata
    */
-  getFormattedVolumeInstances (): dmv.metadata.VLWholeSlideMicroscopyImage[] {
-    const volumeFormattedMetadata = [] as dmv.metadata.VLWholeSlideMicroscopyImage[]
+  get formattedVolumeInstances (): dmv.metadata.VLWholeSlideMicroscopyImage[] {
+    const formattedVolumeMetadata = [] as dmv.metadata.VLWholeSlideMicroscopyImage[]
     this.slideOptions.volumeMetadata.forEach((metadata) => {
       const image = dmv.metadata.formatMetadata(
         metadata
       ) as dmv.metadata.VLWholeSlideMicroscopyImage
-      volumeFormattedMetadata.push(image)
+      formattedVolumeMetadata.push(image)
     })
 
-    return volumeFormattedMetadata
+    return formattedVolumeMetadata
   }
 
   /**
    * Gets the formatted metadata of the first volume instance stored in the volumeMetadata array
    * @returns volumeMetadata
    */
-  getFirstFormattedVolumeInstance (): dmv.metadata.VLWholeSlideMicroscopyImage {
+  get firstFormattedVolumeInstance (): dmv.metadata.VLWholeSlideMicroscopyImage {
     if (this.slideOptions.volumeMetadata.length === 0) {
       throw new Error('the volume metadata array has zero elements.')
     }
