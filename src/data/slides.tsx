@@ -359,16 +359,16 @@ function _addInstanceMetadata (
  * Adds instances to the volumeMetadata array attribute of the slide options object.
  *
  * @param slideOptionsItem - slide options object
- * @param volumeMetadataList - array of volume instances
+ * @param volumeMetadata - array of volume instances
  * @returns volumeInstanceReference - first volume instance of the list
  */
 function _addVolumeInstanceMetadata (
   slideOptionsItem: SlideOptions,
-  volumeMetadataList: object[]
+  volumeMetadata: object[]
 ): dmv.metadata.VLWholeSlideMicroscopyImage | undefined {
   let volumeInstanceReference
-  for (let j = 0; j < volumeMetadataList.length; ++j) {
-    const metadata = volumeMetadataList[j]
+  for (let j = 0; j < volumeMetadata.length; ++j) {
+    const metadata = volumeMetadata[j]
     const instance = dmv.metadata.formatMetadata(
       metadata
     ) as dmv.metadata.VLWholeSlideMicroscopyImage
