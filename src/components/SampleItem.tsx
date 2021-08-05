@@ -329,6 +329,13 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
       </div>
     )
 
+    const removeSampleButton = (
+      <CloseCircleOutlined
+          style={{ color: '#FF0000' }}
+          onClick={this.handleRemoveSample}
+      />
+    )
+
     return (
       <Space align='start'>
         <div style={{ paddingLeft: '14px', paddingTop: '10px' }}>
@@ -341,7 +348,6 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
                 checkedChildren={<FaEye />}
                 unCheckedChildren={<FaEyeSlash />}
               />
-
               <Popover placement='left' content={content} title='Blending Parameters'>
                 <Button type='primary' shape='circle' icon={<SettingOutlined />} />
               </Popover>
@@ -349,17 +355,14 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
           </Space>
         </div>
         <Space direction='horizontal' align='start'>
-          <Description
-            header={'ID: ' + identifier}
-            attributes={attributes}
-            selectable
-            hasLongValues
-          />
-          <a onClick={this.handleRemoveSample}>
-            <Badge>
-              <CloseCircleOutlined style={{ color: '#FF0000' }} />
-            </Badge>
-          </a>
+          <Badge count={removeSampleButton} offset={[-15, 17]} title='Remove sample'>
+            <Description
+              header={'ID: ' + identifier}
+              attributes={attributes}
+              selectable
+              hasLongValues
+            />
+          </Badge>
         </Space>
       </Space>
     )

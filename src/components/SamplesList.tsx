@@ -51,11 +51,13 @@ class SamplesList extends React.Component<SamplesListProps, SampleListState> {
 
   handleAddSample (): void {
     const identifier = this.state.selectedOpticalPathIdentifier
-    this.props.viewer.activateOpticalPath(identifier)
-    this.props.viewer.showOpticalPath(identifier)
-    this.setState({
-      selectedOpticalPathIdentifier: undefined
-    })
+    if (identifier !== undefined) {
+      this.props.viewer.activateOpticalPath(identifier)
+      this.props.viewer.showOpticalPath(identifier)
+      this.setState({
+        selectedOpticalPathIdentifier: undefined
+      })
+    }
   }
 
   render (): React.ReactNode {
@@ -169,7 +171,6 @@ class SamplesList extends React.Component<SamplesListProps, SampleListState> {
           </Select>
           <Button type='primary' icon={<AppstoreAddOutlined />} onClick={this.handleAddSample} />
         </Space>
-        <h4 />
       </Space>
     )
   }
