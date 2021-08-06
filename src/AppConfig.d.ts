@@ -41,5 +41,6 @@ export default interface AppConfig {
   path: string
   annotations: AnnotationSettings[]
   organization?: string
-  oidc?: OidcSettings
+  oidc?: OidcSettings,
+  routerBasename?: string
 }
