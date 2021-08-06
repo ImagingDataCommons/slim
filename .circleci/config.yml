@@ -98,6 +98,11 @@ jobs:
           command: |
             sudo -E /bin/bash ./idc-deploy-shell/install-deps.sh
       - run:
+          name: Tweak the homepage location
+          command: |
+            cat package.json | awk '/^  "private": true,/{print;print "  \"homepage\":\"/slim\",";next}1' > ~/package.json
+            mv ~/package.json > package.json
+      - run:
           name: Build Viewer
           command: |
             # Send output while viewer is building....

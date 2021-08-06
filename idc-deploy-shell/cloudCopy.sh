@@ -15,17 +15,17 @@
 # limitations under the License.
 
 
-cd ~/slim/build/
+cd ~/slim/build/slim
 # Don't want to have to run whole script as sudo, so need to fix ownership here:
 sudo chown -R circleci /home/circleci/.gsutil
 sudo chgrp -R circleci /home/circleci/.gsutil
 
 if [ "${CONFIG_ONLY}" != "True" ]; then
-  gsutil web set -m index.html -e index.html gs://${WBUCKET}
-  gsutil -h "Cache-Control:no-cache, max-age=0" rsync -d -r . gs://${WBUCKET}
+  gsutil web set -m /slim/index.html -e /slim/index.html gs://${WBUCKET}
+  gsutil -h "Cache-Control:no-cache, max-age=0" rsync -d -r . gs://${WBUCKET}/slim
 else
   cd config
-  gsutil cp proxy.js gs://${WBUCKET}/config
+  gsutil cp proxy.js gs://${WBUCKET}/slim/config
   CACHE_SETTING="Cache-Control:no-cache, max-age=0"
-  gsutil setmeta -h "${CACHE_SETTING}" gs://${WBUCKET}/config/local.js
+  gsutil setmeta -h "${CACHE_SETTING}" gs://${WBUCKET}/slim/config/local.js
 fi
