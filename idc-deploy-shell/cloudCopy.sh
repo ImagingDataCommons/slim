@@ -14,14 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+rm ~/deployment.key.json
 
-cd ~/slim/build/slim
+cd ~/slim/build
 # Don't want to have to run whole script as sudo, so need to fix ownership here:
 sudo chown -R circleci /home/circleci/.gsutil
 sudo chgrp -R circleci /home/circleci/.gsutil
 
 if [ "${CONFIG_ONLY}" != "True" ]; then
-  gsutil web set -m /slim/index.html -e /slim/index.html gs://${WBUCKET}
+  gsutil web set -m slim/index.html -e slim/index.html gs://${WBUCKET}
   gsutil -h "Cache-Control:no-cache, max-age=0" rsync -d -r . gs://${WBUCKET}/slim
 else
   cd config
