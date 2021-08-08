@@ -42,7 +42,7 @@ class App extends React.Component<AppProps, AppState> {
     super(props)
 
     const { protocol, host } = window.location
-    this.baseUri = joinUrl(props.config.path, `${protocol}//${host}`)
+    this.baseUri = joinUrl(props.config.path, `${protocol}//${host}//${props.config.routerBasename}`)
 
     const oidcSettings = props.config.oidc
     if (oidcSettings !== undefined) {
@@ -108,7 +108,7 @@ class App extends React.Component<AppProps, AppState> {
 
     if (this.state.isLoading) {
       return (
-        <BrowserRouter>
+        <BrowserRouter basename={this.props.config.routerBasename}>
           <Layout style={{ height: '100vh' }}>
             <Header app={appInfo} />
             <Layout.Content style={{ height: '100%' }}>
@@ -119,7 +119,7 @@ class App extends React.Component<AppProps, AppState> {
       )
     } else if (!this.state.wasAuthSuccessful) {
       return (
-        <BrowserRouter>
+        <BrowserRouter basename={this.props.config.routerBasename}>
           <Layout style={{ height: '100vh' }}>
             <Header app={appInfo} />
             <Layout.Content style={{ height: '100%' }}>
@@ -130,7 +130,7 @@ class App extends React.Component<AppProps, AppState> {
       )
     } else {
       return (
-        <BrowserRouter>
+        <BrowserRouter basename={this.props.config.routerBasename}>
           <Layout style={{ height: '100vh' }}>
             <Header
               app={appInfo}
