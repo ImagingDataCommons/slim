@@ -1,6 +1,7 @@
 
 window.config = {
-  path: "/slim",
+  path: "/",
+  routerBasename: "/slim",
   /** This is an array, but we'll only use the first entry for now */
   servers: [
     {

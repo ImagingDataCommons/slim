@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-rm ~/deployment.key.json
-
 cd ~/slim/build
 # Don't want to have to run whole script as sudo, so need to fix ownership here:
 sudo chown -R circleci /home/circleci/.gsutil
