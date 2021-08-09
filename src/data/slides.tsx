@@ -18,16 +18,16 @@ interface SlideOptions {
  * Container Identifier.
  */
 class Slide {
-  private readonly _description?: string
-  private readonly _frameOfReferenceUID: string
-  private readonly _containerIdentifier: string
-  private readonly _seriesInstanceUIDs: string[]
-  private readonly _opticalPathIdentifiers: string[]
-  private readonly _isMultiplexed: boolean
-  private readonly _areImagesMonochrome: boolean
-  private readonly _volumeImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
-  private readonly _labelImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
-  private readonly _overviewImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
+  readonly description: string
+  readonly frameOfReferenceUID: string
+  readonly containerIdentifier: string
+  readonly seriesInstanceUIDs: string[]
+  readonly opticalPathIdentifiers: string[]
+  readonly isMultiplexed: boolean
+  readonly areVolumeImagesMonochrome: boolean
+  readonly volumeImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
+  readonly labelImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
+  readonly overviewImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
 
   /**
    * @param options
@@ -45,6 +45,9 @@ class Slide {
     const opticalPathIdentifiers = new Set([] as string[])
     const containerIdentifiers = new Set([] as string[])
     const frameOfReferenceUIDs = new Set([] as string[])
+    const volumeImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
+    const labelImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
+    const overviewImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
     options.images.forEach((image) => {
       frameOfReferenceUIDs.add(image.FrameOfReferenceUID)
       containerIdentifiers.add(image.ContainerIdentifier)
@@ -53,21 +56,20 @@ class Slide {
         image.OpticalPathSequence[0].OpticalPathIdentifier
       )
       if (image.ImageType[2] === 'VOLUME') {
-        this._volumeImages.push(image)
+        volumeImages.push(image)
       } else if (image.ImageType[2] === 'LABEL') {
-        this._labelImages.push(image)
+        labelImages.push(image)
       } else if (image.ImageType[2] === 'OVERVIEW') {
-        this._overviewImages.push(image)
+        overviewImages.push(image)
       }
     })
-
-    if (this._volumeImages.length === 0) {
+    if (volumeImages.length === 0) {
       throw new Error(
         'At least one volume image must be provided for a slide.'
       )
     } else {
       const photometricInterpretations = new Set([] as string[])
-      this._volumeImages.forEach((image) => {
+      volumeImages.forEach((image) => {
         photometricInterpretations.add(image.PhotometricInterpretation)
       })
       if (photometricInterpretations.size > 1) {
@@ -77,106 +79,41 @@ class Slide {
         )
       }
     }
+    this.volumeImages = volumeImages
+    this.labelImages = labelImages
+    this.overviewImages = overviewImages
 
-    this._seriesInstanceUIDs = [...seriesInstanceUIDs]
-    this._opticalPathIdentifiers = [...opticalPathIdentifiers]
+    this.seriesInstanceUIDs = [...seriesInstanceUIDs]
+    this.opticalPathIdentifiers = [...opticalPathIdentifiers]
     if (containerIdentifiers.size === 1) {
-      this._containerIdentifier = [...containerIdentifiers][0]
+      this.containerIdentifier = [...containerIdentifiers][0]
     } else {
       throw new Error(
         'All images of a slide must have the same Container Identifier.'
       )
     }
     if (frameOfReferenceUIDs.size === 1) {
-      this._frameOfReferenceUID = [...frameOfReferenceUIDs][0]
+      this.frameOfReferenceUID = [...frameOfReferenceUIDs][0]
     } else {
       throw new Error(
         'All images of a slide must have the same Frame of Reference UID.'
       )
     }
 
-    this._areImagesMonochrome = (
-      this._volumeImages[0].SamplesPerPixel === 1 &&
-      this._volumeImages[0].PhotometricInterpretation === 'MONOCHROME2'
+    this.areVolumeImagesMonochrome = (
+      this.volumeImages[0].SamplesPerPixel === 1 &&
+      this.volumeImages[0].PhotometricInterpretation === 'MONOCHROME2'
     )
 
     if (opticalPathIdentifiers.size > 1) {
-      this._isMultiplexed = true
+      this.isMultiplexed = true
     } else {
-      this._isMultiplexed = false
+      this.isMultiplexed = false
     }
 
-    this._description = options.description
-  }
-
-  /**
-   * Frame of Reference UID shared by all images of the slide.
-   */
-  get frameOfReferenceUID (): string {
-    return this._frameOfReferenceUID
-  }
-
-  /**
-   * Container Identifier shared by all images of the slide.
-   */
-  get containerIdentifier (): string {
-    return this._containerIdentifier
-  }
-
-  /**
-   * Whether volume images are monochrome.
-   */
-  get areVolumeImagesMonochrome (): boolean {
-    return this._areImagesMonochrome
-  }
-
-  /**
-   * Whether slide is multiplexed, i.e., has more than one monochrome sample.
-   */
-  get isMultiplexed (): boolean {
-    return this._isMultiplexed
-  }
-
-  /**
-   * Unique set of Series Instance UIDs of images of the slide.
-   */
-  get seriesInstanceUIDs (): string[] {
-    return this._seriesInstanceUIDs
-  }
-
-  /**
-   * Optical Path Identifiers of images of the slide.
-   */
-  get opticalPathIdentifiers (): string[] {
-    return this._opticalPathIdentifiers
-  }
-
-  /**
-   * Description of the slide.
-   */
-  get description (): string {
-    return this._description !== undefined ? this._description : ''
-  }
-
-  /**
-   * Metadata of volume images.
-   */
-  get volumeImages (): dmv.metadata.VLWholeSlideMicroscopyImage[] {
-    return this._volumeImages
-  }
-
-  /**
-   * Metadata of label images.
-   */
-  get labelImages (): dmv.metadata.VLWholeSlideMicroscopyImage[] {
-    return this._labelImages
-  }
-
-  /**
-   * Metadata of overview images.
-   */
-  get overviewImages (): dmv.metadata.VLWholeSlideMicroscopyImage[] {
-    return this._overviewImages
+    this.description = (
+      options.description !== undefined ? options.description : ''
+    )
   }
 }
 
