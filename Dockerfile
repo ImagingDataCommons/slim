@@ -1,4 +1,4 @@
-FROM debian:buster AS lib
+FROM debian:bullseye AS lib
 
 ENV DEBIAN_FRONTEND=noninteractive \
     DEBCONF_NONINTERACTIVE_SEEN=true
@@ -51,7 +51,9 @@ RUN addgroup --system --gid 101 nginx && \
             --shell /bin/false \
             nginx
 
-RUN NODE_OPTIONS=--max_old_space_size=8192 yarn run build && mkdir -p /var/www/html && cp -R build/* /var/www/html/
+RUN NODE_OPTIONS=--max_old_space_size=8192 yarn run build && \
+        mkdir -p /var/www/html && \
+        cp -R build/* /var/www/html/
 
 RUN mkdir -p /var/run/nginx && \
     chown -R nginx:nginx /var/www/html /var/run/nginx /var/lib/nginx /var/log/nginx && \
