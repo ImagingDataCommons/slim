@@ -8,7 +8,7 @@ import { Slide } from '../data/slides'
 interface SlideListProps {
   metadata: Slide[]
   client: DicomWebManager
-  initiallySelectedSeriesInstanceUID: string
+  selectedSeriesInstanceUID: string
   onSeriesSelection: (
     { seriesInstanceUID }: { seriesInstanceUID: string }
   ) => void
@@ -23,12 +23,12 @@ interface SlideListState {
  */
 class SlideList extends React.Component<SlideListProps, SlideListState> {
   state = {
-    selectedSeriesInstanceUID: this.props.initiallySelectedSeriesInstanceUID
+    selectedSeriesInstanceUID: this.props.selectedSeriesInstanceUID
   }
 
   componentDidMount (): void {
     this.props.onSeriesSelection({
-      seriesInstanceUID: this.props.initiallySelectedSeriesInstanceUID
+      seriesInstanceUID: this.state.selectedSeriesInstanceUID
     })
   }
 
@@ -39,7 +39,7 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
       const slide = slideList[i]
       const slideItem = (
         <SlideItem
-          key={slide.selectedSeriesInstanceUID}
+          key={slide.seriesInstanceUIDs[0]}
           slide={slide}
           client={this.props.client}
         />

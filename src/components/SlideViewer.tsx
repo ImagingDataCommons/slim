@@ -281,7 +281,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               const activeSlide = this.state.activeSlide
               if (activeSlide !== undefined) {
                 const slide = activeSlide as Slide
-                const image = slide.firstFormattedVolumeInstance
+                const image = slide.volumeImages[0]
                 if (scoord3d.frameOfReferenceUID === image.FrameOfReferenceUID) {
                   if (this.volumeViewer !== undefined) {
                     /**
@@ -338,8 +338,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   populateViewports = (): void => {
     const slideArray = this.props.slides
     const slides = slideArray.filter(item => {
-      const slideItem = item
-      if (slideItem.slideOptions.seriesInstanceUIDs.findIndex(uid => uid === this.props.seriesInstanceUID) !== -1) {
+      const slideIndex = item.seriesInstanceUIDs.findIndex((uid) => {
+        return uid === this.props.seriesInstanceUID
+      })
+      if (slideIndex !== -1) {
         return true
       }
       return false
@@ -359,11 +361,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         )
         this.volumeViewport.current.innerHTML = ''
 
-        if (slide.areImagesMonochrome() &&
-          slide.selectedOpticalPathIdentifier !== undefined
-        ) {
+        if (slide.areVolumeImagesMonochrome) {
           const blendInfo: dmv.channel.BlendingInformation = {
-            opticalPathIdentifier: slide.selectedOpticalPathIdentifier,
+            opticalPathIdentifier: slide.opticalPathIdentifiers[0],
             color: [0, 0.9, 0.9],
             opacity: 1.0,
             thresholdValues: [0, 255],
@@ -373,14 +373,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
           this.volumeViewer = new dmv.viewer.VolumeImageViewer({
             client: this.props.client,
-            metadata: slide.volumeInstances,
+            metadata: slide.volumeImages,
             blendingInformation: [blendInfo],
             retrieveRendered: this.props.renderer.retrieveRendered
           })
         } else {
           this.volumeViewer = new dmv.viewer.VolumeImageViewer({
             client: this.props.client,
-            metadata: slide.volumeInstances,
+            metadata: slide.volumeImages,
             retrieveRendered: this.props.renderer.retrieveRendered
           })
         }
@@ -392,14 +392,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
       if (this.labelViewport.current !== null) {
         this.labelViewport.current.innerHTML = ''
-        if (slide.labelInstances.length > 0) {
+        if (slide.labelImages.length > 0) {
           console.info(
             'instantiate viewer for LABEL image of series ' +
             this.props.seriesInstanceUID
           )
           this.labelViewer = new dmv.viewer.LabelImageViewer({
             client: this.props.client,
-            metadata: slide.labelInstances[0],
+            metadata: slide.labelImages[0],
             resizeFactor: 1,
             orientation: 'vertical'
           })
@@ -1089,11 +1089,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const activeSlide = this.state.activeSlide
     if (activeSlide !== undefined) {
       const slide = activeSlide as Slide
-      if (!slide.isMultiplexedSamples()) {
+      if (!slide.isMultiplexed) {
         specimenMenu = (
           <Menu.SubMenu key='specimens' title='Specimens'>
             <SpecimenList
-              metadata={slide.firstFormattedVolumeInstance}
+              metadata={slide.volumeImages[0]}
               showstain
             />
           </Menu.SubMenu>
@@ -1102,7 +1102,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         specimenMenu = (
           <Menu.SubMenu key='specimens' title='Specimens'>
             <SpecimenList
-              metadata={slide.firstFormattedVolumeInstance}
+              metadata={slide.volumeImages[0]}
               showstain={false}
             />
           </Menu.SubMenu>
@@ -1112,7 +1112,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           sampleMenu = (
             <Menu.SubMenu key='samples' title='Samples'>
               <SamplesList
-                metadata={slide.formattedVolumeInstances}
+                metadata={slide.volumeImages}
                 viewer={volumeViewer}
               />
             </Menu.SubMenu>

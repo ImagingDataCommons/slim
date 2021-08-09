@@ -40,18 +40,8 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
 
   componentDidMount (): void {
     this.setState({ isLoading: true })
-    if (this.props.slide.overviewInstances.length > 0) {
-      const metadata = this.props.slide.overviewInstances[0]
-
-      // Instantiate the viewer and inject it into the viewport
-      const selectedSeriesInstanceUID = this.props.slide.selectedSeriesInstanceUID
-      if (selectedSeriesInstanceUID !== undefined) {
-        console.info(
-          'instantiate viewer for OVERVIEW image of ' +
-          selectedSeriesInstanceUID +
-          '...'
-        )
-      }
+    if (this.props.slide.overviewImages.length > 0) {
+      const metadata = this.props.slide.overviewImages[0]
       if (this.overviewViewport.current !== null) {
         this.overviewViewport.current.innerHTML = ''
         this.overviewViewer = new dmv.viewer.OverviewImageViewer({
@@ -94,7 +84,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
     return (
       <Menu.Item
         style={{ height: '100%' }}
-        key={this.props.slide.selectedSeriesInstanceUID}
+        key={this.props.slide.seriesInstanceUIDs[0]}
         {...this.props}
       >
         <Description
