@@ -8,6 +8,7 @@ declare module 'dicom-microscopy-viewer' {
     export interface VolumeImageViewerOptions {
       client: dwc.api.DICOMwebClient
       metadata: object[]
+      blendingInformation?: BlendingInformation[]
       controls?: string[]
       retrieveRendered?: boolean
       useWebGL?: boolean
@@ -71,6 +72,13 @@ declare module 'dicom-microscopy-viewer' {
       collapseOverviewMap (): void
       expandOverviewMap (): void
       toggleOverviewMap (): void
+      isOpticalPathActive (string): boolean
+      getBlendingInformation (string): BlendingInformation
+      setBlendingInformation (BlendingInformation): void
+      showOpticalPath (string): void
+      hideOpticalPath (string): void
+      activateOpticalPath (string): void
+      deactivateOpticalPath (string): void
     }
 
     export interface OverviewImageViewerOptions {
@@ -253,21 +261,22 @@ declare module 'dicom-microscopy-viewer' {
 
     export interface Series extends Study {
       Modality: string
+      NumberOfSeriesRelatedInstances: number
       SeriesInstanceUID: string
       SeriesDescription: string
       SeriesNumber: number
-      NumberOfSeriesRelatedInstances: number
     }
 
     export interface Instance extends Series {
       SOPClassUID: string
       SOPInstanceUID: string
       InstanceNumber: number
+      ImageType: string[]
       Rows?: number
       Columns?: number
       BitsAllocated?: number
       NumberOfFrames?: number
-      ImageType?: string[] // may be included
+      ContainerIdentifier?: string
     }
 
     export class VLWholeSlideMicroscopyImage {
@@ -294,6 +303,11 @@ declare module 'dicom-microscopy-viewer' {
       PrimaryAnatomicStructureSequence: dcmjs.sr.valueTypes.CodedConcept[]
     }
 
+    export interface OpticalPathDescription {
+      OpticalPathIdentifier: string
+      OpticalPathDescription: string
+    }
+
     export interface SOPClass {
       // Patient module
       PatientID: string
@@ -317,12 +331,15 @@ declare module 'dicom-microscopy-viewer' {
       ContainerIdentifier: string
       ContainerTypeCodeSequence: dcmjs.sr.valueTypes.CodedConcept[]
       SpecimenDescriptionSequence: SpecimenDescription[]
+      OpticalPathSequence: OpticalPathDescription[]
     }
 
     export interface VLWholeSlideMicroscopyImage extends SOPClass {
       // VL Whole Slide Microscopy Image module
       ImageType: string[]
       FrameOfReferenceUID: string
+      SamplesPerPixel: number
+      PhotometricInterpretation: string
     }
 
     export interface Comprehensive3DSR extends SOPClass {
@@ -333,6 +350,19 @@ declare module 'dicom-microscopy-viewer' {
 
     export function formatMetadata (metadata: object): Metadata
 
+  }
+
+  declare namespace channel {
+
+    export interface BlendingInformation {
+      opticalPathIdentifier: string
+      color: number[]
+      opacity: number
+      thresholdValues: number[]
+      limitValues: number[]
+      visible: boolean
+    }
+    
   }
 
 }

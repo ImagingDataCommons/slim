@@ -144,6 +144,7 @@ class App extends React.Component<AppProps, AppState> {
                     <CaseViewer
                       client={this.state.client}
                       user={this.state.user}
+                      renderer={this.props.config.renderer}
                       annotations={this.props.config.annotations}
                       app={appInfo}
                       studyInstanceUID={routeProps.match.params.StudyInstanceUID}

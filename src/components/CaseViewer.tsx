@@ -7,18 +7,19 @@ import {
 } from 'react-router-dom'
 import {
   Layout,
-  message,
   Menu
 } from 'antd'
 
 import * as dmv from 'dicom-microscopy-viewer'
 
-import { AnnotationSettings } from '../AppConfig'
+import { AnnotationSettings, RendererSettings } from '../AppConfig'
 import DicomWebManager from '../DicomWebManager'
 import Patient from './Patient'
 import Study from './Study'
 import SlideList from './SlideList'
 import SlideViewer from './SlideViewer'
+
+import { InstancesMetadata, Slide, createSlides } from '../data/slides'
 
 interface ViewerProps extends RouteComponentProps {
   client: DicomWebManager
@@ -29,6 +30,7 @@ interface ViewerProps extends RouteComponentProps {
     uid: string
     organization?: string
   }
+  renderer: RendererSettings
   annotations: AnnotationSettings[]
   user?: {
     name: string
@@ -37,13 +39,13 @@ interface ViewerProps extends RouteComponentProps {
 }
 
 interface ViewerState {
-  series: dmv.metadata.Series[]
+  slides: Slide[]
   isLoading: boolean
 }
 
 class Viewer extends React.Component<ViewerProps, ViewerState> {
   state = {
-    series: [],
+    slides: [],
     isLoading: false
   }
 
@@ -52,32 +54,71 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     this.handleSeriesSelection = this.handleSeriesSelection.bind(this)
   }
 
-  componentDidMount (): void {
+  async componentDidMount (): Promise<void> {
+    this.setState(state => ({ isLoading: true }))
+
+    const instancesMetadataArray = await this.fetchInstancesMetadataArray()
+
+    let selectedSeriesInstanceUID
+    if (this.props.location.pathname.includes('series/')) {
+      selectedSeriesInstanceUID = this.getSelectedSeriesInstanceUIDFromUrl()
+    }
+
+    const slides = createSlides(instancesMetadataArray, selectedSeriesInstanceUID)
+
+    this.setState(state => ({
+      slides: slides,
+      isLoading: false
+    }))
+  }
+
+  async fetchInstancesMetadataArray (): Promise<InstancesMetadata[]> {
+    const instancesMetadataArray: InstancesMetadata[] = []
     const studyInstanceUID = this.props.studyInstanceUID
     console.info(`search for series of study "${studyInstanceUID}"...`)
-    this.setState(state => ({ isLoading: true }))
-    this.props.client.searchForSeries({
+    const matchedSeries = await this.props.client.searchForSeries({
       queryParams: {
         Modality: 'SM',
         StudyInstanceUID: studyInstanceUID
       }
-    }).then((matchedSeries): void => {
-      matchedSeries.forEach(s => {
-        const series = dmv.metadata.formatMetadata(s) as dmv.metadata.Series
-        this.setState(state => ({
-          series: [
-            ...state.series,
-            series
-          ],
-          isLoading: true
-        }))
-      })
-      this.setState(state => ({ isLoading: false }))
-    }).catch((error): void => {
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      message.error('Image metadata could not be loaded')
-      console.error('search for image series failed: ', error)
     })
+
+    await Promise.all(matchedSeries.map(async (s) => {
+      const loadingSeries = dmv.metadata.formatMetadata(s) as dmv.metadata.Series
+      console.info(
+        'search for instances in series ' +
+        `"${loadingSeries.SeriesInstanceUID}"...`
+      )
+      const retrievedMetadata = await this.props.client.retrieveSeriesMetadata({
+        studyInstanceUID: this.props.studyInstanceUID,
+        seriesInstanceUID: loadingSeries.SeriesInstanceUID
+      })
+
+      const volumeMetadata: object[] = []
+      const labelMetadata: object[] = []
+      const overviewMetadata: object[] = []
+      retrievedMetadata.forEach(item => {
+        const instance = dmv.metadata.formatMetadata(item) as dmv.metadata.VLWholeSlideMicroscopyImage
+        if (instance.SOPClassUID === '1.2.840.10008.5.1.4.1.1.77.1.6') {
+          if (instance.ImageType[2] === 'VOLUME') {
+            volumeMetadata.push(item)
+          } else if (instance.ImageType[2] === 'LABEL') {
+            labelMetadata.push(item)
+          } else if (instance.ImageType[2] === 'OVERVIEW') {
+            overviewMetadata.push(item)
+          }
+        }
+      })
+
+      const instancesMetadata: InstancesMetadata = {
+        volumeMetadata: volumeMetadata,
+        labelMetadata: labelMetadata,
+        overviewMetadata: overviewMetadata
+      }
+      instancesMetadataArray.push(instancesMetadata)
+    }))
+
+    return instancesMetadataArray
   }
 
   handleSeriesSelection (
@@ -89,22 +130,36 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     )
   }
 
+  private getSelectedSeriesInstanceUIDFromUrl (): string {
+    const fragments = this.props.location.pathname.split('/')
+    return fragments[4]
+  }
+
   render (): React.ReactNode {
-    if (this.state.series.length === 0) {
+    if (this.state.slides.length === 0) {
       return null
     }
-    const studyMetadata = this.state.series[0] as dmv.metadata.Study
+    const firstSlide = this.state.slides[0] as Slide
+    const volumeInstances = firstSlide.volumeInstances
+    if (volumeInstances.length === 0) {
+      return null
+    }
+    const studyMetadata = dmv.metadata.formatMetadata(
+      volumeInstances[0]
+    ) as dmv.metadata.Study
 
     /* If a series is encoded in the path, route the viewer to this series.
-     * Otherwise select the first series contained in the study.
+     * Otherwise select the first series correspondent to
+     * the first slide contained in the study.
      */
     let selectedSeriesInstanceUID
     if (this.props.location.pathname.includes('series/')) {
-      const fragments = this.props.location.pathname.split('/')
-      selectedSeriesInstanceUID = fragments[4]
+      selectedSeriesInstanceUID = this.getSelectedSeriesInstanceUIDFromUrl()
     } else {
-      const seriesMetadata = this.state.series[0] as dmv.metadata.Series
-      selectedSeriesInstanceUID = seriesMetadata.SeriesInstanceUID
+      const instance = dmv.metadata.formatMetadata(
+        volumeInstances[0]
+      ) as dmv.metadata.VLWholeSlideMicroscopyImage
+      selectedSeriesInstanceUID = instance.SeriesInstanceUID
     }
 
     return (
@@ -133,7 +188,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
             <Menu.SubMenu key='slides' title='Slides'>
               <SlideList
                 client={this.props.client}
-                metadata={this.state.series}
+                metadata={this.state.slides}
                 initiallySelectedSeriesInstanceUID={selectedSeriesInstanceUID}
                 onSeriesSelection={this.handleSeriesSelection}
               />
@@ -148,8 +203,10 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
             render={(routeProps) => (
               <SlideViewer
                 client={this.props.client}
+                renderer={this.props.renderer}
                 studyInstanceUID={this.props.studyInstanceUID}
                 seriesInstanceUID={routeProps.match.params.SeriesInstanceUID}
+                slides={this.state.slides}
                 annotations={this.props.annotations}
                 app={this.props.app}
                 user={this.props.user}

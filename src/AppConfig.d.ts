@@ -29,6 +29,10 @@ export interface ServerSettings {
   stowPathPrefix?: string
 }
 
+export interface RendererSettings {
+  retrieveRendered: boolean
+}
+
 export interface OidcSettings {
   authority: string
   clientId: string
@@ -39,6 +43,7 @@ export interface OidcSettings {
 export default interface AppConfig {
   servers: ServerSettings[]
   path: string
+  renderer: RendererSettings
   annotations: AnnotationSettings[]
   organization?: string
   oidc?: OidcSettings
