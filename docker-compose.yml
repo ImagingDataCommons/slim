@@ -1,8 +1,10 @@
 version: '3.7'
 
 volumes:
-  db: {}
-  fs: {}
+  db_data: {}
+  arc_data: {}
+  ldap_data: {}
+  ldap_config: {}
 
 services:
   app:
@@ -27,6 +29,10 @@ services:
         max-size: "10m"
     expose:
       - 389
+    env_file: docker-compose.env
+    volumes:
+      - ldap_data:/var/lib/openldap/openldap-data
+      - ldap_config:/etc/openldap/slapd.d
 
   db:
     image: dcm4che/postgres-dcm4chee:13.1-23
@@ -38,7 +44,7 @@ services:
       - 5432
     env_file: docker-compose.env
     volumes:
-      - db:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
 
   arc:
     image: dcm4che/dcm4chee-arc-psql:5.23.2
@@ -63,4 +69,4 @@ services:
       - ldap
       - db
     volumes:
-      - fs:/storage
+      - arc_data:/storage
