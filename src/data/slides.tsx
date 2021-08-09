@@ -18,16 +18,16 @@ interface SlideOptions {
  * Container Identifier.
  */
 class Slide {
-  private _description?: string
-  private _frameOfReferenceUID: string
-  private _containerIdentifier: string
-  private _seriesInstanceUIDs: string[]
-  private _opticalPathIdentifiers: string[]
-  private _isMultiplexed: boolean
-  private _areImagesMonochrome: boolean
-  private _volumeImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
-  private _labelImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
-  private _overviewImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
+  private readonly _description?: string
+  private readonly _frameOfReferenceUID: string
+  private readonly _containerIdentifier: string
+  private readonly _seriesInstanceUIDs: string[]
+  private readonly _opticalPathIdentifiers: string[]
+  private readonly _isMultiplexed: boolean
+  private readonly _areImagesMonochrome: boolean
+  private readonly _volumeImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
+  private readonly _labelImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
+  private readonly _overviewImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
 
   /**
    * @param options
@@ -62,9 +62,9 @@ class Slide {
     })
 
     if (this._volumeImages.length === 0) {
-        throw new Error(
-          'At least one volume image must be provided for a slide.'
-        )
+      throw new Error(
+        'At least one volume image must be provided for a slide.'
+      )
     } else {
       const photometricInterpretations = new Set([] as string[])
       this._volumeImages.forEach((image) => {
@@ -155,7 +155,7 @@ class Slide {
    * Description of the slide.
    */
   get description (): string {
-    return this._description !== undefined ?  this._description : ''
+    return this._description !== undefined ? this._description : ''
   }
 
   /**
@@ -251,7 +251,6 @@ function createSlides (
 
   return slides
 }
-
 
 /**
  * Check if instance belongs to the slide.
