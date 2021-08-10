@@ -1,5 +1,19 @@
 import * as dmv from 'dicom-microscopy-viewer'
 
+
+enum ImageFlavors {
+  VOLUME = 'VOLUME',
+  LABEL = 'LABEL',
+  OVERVIEW = 'OVERVIEW'
+}
+
+const hasImageFlavor = (
+  image: dmv.metadata.VLWholeSlideMicroscopyImage,
+  imageFlavor: ImageFlavors
+): boolean => {
+  return image.ImageType[2] === imageFlavor
+}
+
 interface SlideImageCollection {
   frameOfReferenceUID: string
   containerIdentifier: string
@@ -55,11 +69,11 @@ class Slide {
       opticalPathIdentifiers.add(
         image.OpticalPathSequence[0].OpticalPathIdentifier
       )
-      if (image.ImageType[2] === 'VOLUME') {
+      if (hasImageFlavor(image, ImageFlavors.VOLUME)) {
         volumeImages.push(image)
-      } else if (image.ImageType[2] === 'LABEL') {
+      } else if (hasImageFlavor(image, ImageFlavors.LABEL)) {
         labelImages.push(image)
-      } else if (image.ImageType[2] === 'OVERVIEW') {
+      } else if (hasImageFlavor(image, ImageFlavors.OVERVIEW)) {
         overviewImages.push(image)
       }
     })
@@ -124,20 +138,20 @@ class Slide {
  * @param referenceSeriesInstanceUID - Unique identifier of the series that serves as a reference for the slide
  * @returns Slides
  */
-function createSlides (
+const createSlides = (
   images: dmv.metadata.VLWholeSlideMicroscopyImage[][]
-): Slide[] {
+): Slide[] => {
   const slideMetadata: SlideImageCollection[] = []
   images.forEach((series) => {
     if (series.length > 0) {
       const volumeImages = series.filter((image) => {
-        return image.ImageType[2] === 'VOLUME'
+        return hasImageFlavor(image, ImageFlavors.VOLUME)
       })
       const labelImages = series.filter((image) => {
-        return image.ImageType[2] === 'LABEL'
+        return hasImageFlavor(image, ImageFlavors.LABEL)
       })
       const overviewImages = series.filter((image) => {
-        return image.ImageType[2] === 'OVERVIEW'
+        return hasImageFlavor(image, ImageFlavors.OVERVIEW)
       })
 
       if (volumeImages.length > 0) {

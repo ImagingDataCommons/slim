@@ -33,6 +33,7 @@ import SamplesList from './SamplesList'
 import { AnnotationSettings, RendererSettings } from '../AppConfig'
 import { findContentItemsByName } from '../utils/sr'
 import { Slide } from '../data/slides'
+import { SOPClassUIDs } from '../data/uids'
 
 const _buildKey = (concept: dcmjs.sr.coding.CodedConcept): string => {
   const codingScheme = concept.CodingSchemeDesignator
@@ -265,7 +266,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }).then((matchedInstances): void => {
       matchedInstances.forEach(i => {
         const instance = dmv.metadata.formatMetadata(i) as dmv.metadata.Instance
-        if (instance.SOPClassUID === '1.2.840.10008.5.1.4.1.1.88.34') {
+        if (instance.SOPClassUID === SOPClassUIDs.COMPREHENSIVE_3D_SR) {
           console.info(`retrieve SR instance "${instance.SOPInstanceUID}"`)
           this.props.client.retrieveInstance({
             studyInstanceUID: instance.StudyInstanceUID ?? this.props.studyInstanceUID,

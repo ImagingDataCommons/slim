@@ -20,6 +20,7 @@ import SlideList from './SlideList'
 import SlideViewer from './SlideViewer'
 
 import { Slide, createSlides } from '../data/slides'
+import { SOPClassUIDs } from '../data/uids'
 
 interface ViewerProps extends RouteComponentProps {
   client: DicomWebManager
@@ -96,7 +97,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       const seriesImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
       retrievedMetadata.forEach(item => {
         const image = dmv.metadata.formatMetadata(item) as dmv.metadata.VLWholeSlideMicroscopyImage
-        if (image.SOPClassUID === '1.2.840.10008.5.1.4.1.1.77.1.6') {
+        if (image.SOPClassUID === SOPClassUIDs.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE) {
           seriesImages.push(image)
         }
       })
