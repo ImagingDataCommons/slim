@@ -10,6 +10,14 @@ declare module 'dicomweb-client' {
       headers?: {
         Authorization?: string
       }
+      requestHooks?: function[],
+      errorInterceptor?: function
+    }
+
+    export interface DICOMwebClientError {
+      request: object
+      response: object
+      status: number
     }
 
     export interface SearchForStudiesOptions {

@@ -1,4 +1,5 @@
 import * as dcmjs from 'dcmjs'
+import { RetryOptions } from './utils/xhrRetryHook';
 
 interface EvaluationValueSet {
   name: dcmjs.sr.coding.CodeOptions
@@ -19,6 +20,12 @@ export interface AnnotationSettings {
   }
 }
 
+export interface ServerErrorMessage {
+  status: number
+  message: string,
+  redirect?: string
+}
+
 export interface ServerSettings {
   id: string
   url?: string
@@ -27,6 +34,8 @@ export interface ServerSettings {
   qidoPathPrefix?: string
   wadoPathPrefix?: string
   stowPathPrefix?: string
+  retryOptions: RetryOptions
+  errorMessages: ServerErrorMessage[]
 }
 
 export interface OidcSettings {
