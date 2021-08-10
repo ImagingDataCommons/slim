@@ -54,15 +54,23 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     this.handleSeriesSelection = this.handleSeriesSelection.bind(this)
   }
 
-  async componentDidMount (): Promise<void> {
+  componentDidMount (): void {
     this.setState({ isLoading: true })
-    const imageMetadataPerSeries = await this.fetchImageMetadata()
-    this.setState({
-      slides: createSlides(imageMetadataPerSeries),
-      isLoading: false
-    })
+    this.fetchImageMetadata().then(
+      (metadata: dmv.metadata.VLWholeSlideMicroscopyImage[][]) => {
+        this.setState({
+          slides: createSlides(metadata),
+          isLoading: false
+        })
+      }
+    )
   }
 
+  /**
+   * Fetch metadata for VL Whole Slide Microscopy Image instances of the study.
+   *
+   * @returns Metadata of image instances of the study grouped per series
+   */
   async fetchImageMetadata (): Promise<dmv.metadata.VLWholeSlideMicroscopyImage[][]> {
     const images: dmv.metadata.VLWholeSlideMicroscopyImage[][] = []
     const studyInstanceUID = this.props.studyInstanceUID

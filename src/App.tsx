@@ -65,7 +65,16 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  onSignIn = ({ user, authorization }: {
+  /**
+   * Handler that gets called when a user successfully authenticated.
+   *
+   * Authorizes the DICOMweb client to access the DICOMweb server and directs
+   * the user back to the App.
+   *
+   * @param user - Information about the user
+   * @param authorization - Value of the "Authorization" HTTP header field
+   */
+  handleSignIn = ({ user, authorization }: {
     user: User
     authorization: string
   }): void => {
@@ -82,7 +91,7 @@ class App extends React.Component<AppProps, AppState> {
 
   componentDidMount (): void {
     if (this.auth !== undefined) {
-      this.auth.signIn({ onSignIn: this.onSignIn }).then(() => {
+      this.auth.signIn({ onSignIn: this.handleSignIn }).then(() => {
         console.info('sign-in successful')
       }).catch((error) => {
         console.error('sign-in failed ', error)
