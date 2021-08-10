@@ -12,6 +12,8 @@ window.config = {
   {
     retrieveRendered: false
   },
+  disableWorklist: false,
+  disableAnnotationTools: false,
   annotations: [
     {
       finding: {

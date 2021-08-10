@@ -117,6 +117,7 @@ interface SlideViewerProps extends RouteComponentProps {
   }
   renderer: RendererSettings
   annotations: AnnotationSettings[]
+  enableAnnotationTools: boolean
   user?: {
     name: string
     email: string
@@ -1119,52 +1120,64 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       }
     }
 
+    let toolbar
+    let toolbarHeight = '0px'
+    if (this.props.enableAnnotationTools) {
+      toolbar = (
+        <Row>
+          <Button
+            isToggle
+            tooltip='Draw ROI'
+            icon={FaDrawPolygon}
+            onClick={handlePolygonRoiDrawing}
+          />
+          <Button
+            isToggle
+            tooltip='Measure'
+            icon={FaRuler}
+            onClick={handleLineRoiDrawing}
+          />
+          <Button
+            isToggle
+            tooltip='Modify ROIs'
+            icon={FaHandPointer}
+            onClick={this.handleRoiModification}
+          />
+          <Button
+            isToggle
+            tooltip='Shift ROIs'
+            icon={FaHandPaper}
+            onClick={this.handleRoiTranslation}
+          />
+          <Button
+            tooltip='Remove selected ROI'
+            onClick={this.handleRoiRemoval}
+            icon={FaTrash}
+          />
+          <Button
+            isToggle
+            tooltip='Show/Hide ROIs'
+            icon={FaEye}
+            onClick={this.handleRoiVisibility}
+          />
+          <Button
+            tooltip='Save ROIs'
+            icon={FaSave}
+            onClick={this.handleReportGeneration}
+          />
+        </Row>
+      )
+      toolbarHeight = '50px'
+    }
+
     return (
       <Layout style={{ height: '100%' }} hasSider>
         <Layout.Content style={{ height: '100%' }}>
-          <Row>
-            <Button
-              isToggle
-              tooltip='Draw ROI'
-              icon={FaDrawPolygon}
-              onClick={handlePolygonRoiDrawing}
-            />
-            <Button
-              isToggle
-              tooltip='Measure'
-              icon={FaRuler}
-              onClick={handleLineRoiDrawing}
-            />
-            <Button
-              isToggle
-              tooltip='Modify ROIs'
-              icon={FaHandPointer}
-              onClick={this.handleRoiModification}
-            />
-            <Button
-              isToggle
-              tooltip='Shift ROIs'
-              icon={FaHandPaper}
-              onClick={this.handleRoiTranslation}
-            />
-            <Button
-              tooltip='Remove selected ROI'
-              onClick={this.handleRoiRemoval}
-              icon={FaTrash}
-            />
-            <Button
-              isToggle
-              tooltip='Show/Hide ROIs'
-              icon={FaEye}
-              onClick={this.handleRoiVisibility}
-            />
-            <Button
-              tooltip='Save ROIs'
-              icon={FaSave}
-              onClick={this.handleReportGeneration}
-            />
-          </Row>
-          <div style={{ height: 'calc(100% - 50px)' }} ref={this.volumeViewport} />
+          {toolbar}
+          <div
+            style={{ height: `calc(100% - ${toolbarHeight})` }}
+            ref={this.volumeViewport}
+          />
 
           <Modal
             visible={this.state.isAnnotationModalVisible}

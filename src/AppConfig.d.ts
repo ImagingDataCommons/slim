@@ -53,4 +53,6 @@ export default interface AppConfig {
   annotations: AnnotationSettings[]
   organization?: string
   oidc?: OidcSettings
+  disableWorklist?: boolean
+  disableAnnotationTools?: boolean
 }

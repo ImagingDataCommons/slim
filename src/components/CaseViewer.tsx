@@ -34,6 +34,7 @@ interface ViewerProps extends RouteComponentProps {
   }
   renderer: RendererSettings
   annotations: AnnotationSettings[]
+  enableAnnotationTools: boolean
   user?: {
     name: string
     email: string
@@ -193,6 +194,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
                 seriesInstanceUID={routeProps.match.params.SeriesInstanceUID}
                 slides={this.state.slides}
                 annotations={this.props.annotations}
+                enableAnnotationTools={this.props.enableAnnotationTools}
                 app={this.props.app}
                 user={this.props.user}
               />
