@@ -1001,7 +1001,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.labelViewer.resize()
     }
 
-    const visibleMenues = ['specimens']
+    const visibleSubMenuItems = ['specimens']
 
     const handlePolygonRoiDrawing = (): void => {
       this.handleRoiDrawing({ geometryType: 'freehandpolygon' })
@@ -1086,7 +1086,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     let sampleMenu
     const slide = this.state.activeSlide
     if (slide.labelImages.length > 0) {
-      visibleMenues.push('label')
+      visibleSubMenuItems.push('label')
     }
     if (!slide.isMultiplexed) {
       specimenMenu = (
@@ -1098,7 +1098,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         </Menu.SubMenu>
       )
     } else {
-      visibleMenues.push('samples')
+      visibleSubMenuItems.push('samples')
       specimenMenu = (
         <Menu.SubMenu key='specimens' title='Specimens'>
           <SpecimenList
@@ -1199,7 +1199,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         >
           <Menu
             mode='inline'
-            defaultOpenKeys={visibleMenues}
+            defaultOpenKeys={visibleSubMenuItems}
             style={{ height: '100%' }}
             inlineIndent={14}
             theme='light'
