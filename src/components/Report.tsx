@@ -21,7 +21,7 @@ const findMeasurementItems = (
 ): dcmjs.sr.valueTypes.NumContentItem[] => {
   const items: dcmjs.sr.valueTypes.NumContentItem[] = []
   content.forEach(i => {
-    if (hasValueType(i, 'NUM')) {
+    if (hasValueType(i, dcmjs.sr.valueTypes.ValueTypes.NUM)) {
       const measurement = i as dcmjs.sr.valueTypes.NumContentItem
       items.push(measurement)
     }
@@ -34,7 +34,7 @@ const findEvaluationItems = (
 ): dcmjs.sr.valueTypes.CodeContentItem[] => {
   const items: dcmjs.sr.valueTypes.CodeContentItem[] = []
   content.forEach(i => {
-    if (hasValueType(i, 'CODE')) {
+    if (hasValueType(i, dcmjs.sr.valueTypes.ValueTypes.CODE)) {
       const evaluation = i as dcmjs.sr.valueTypes.CodeContentItem
       items.push(evaluation)
     }
@@ -376,13 +376,13 @@ class Report extends React.Component<ReportProps, {}> {
             dcmjs.sr.valueTypes.TextContentItem
           )
         ) => {
-          if (item.ValueType === 'CODE') {
+          if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.CODE) {
             item = item as dcmjs.sr.valueTypes.CodeContentItem
             attrs.push({
               name: item.ConceptNameCodeSequence[0].CodeMeaning,
               value: item.ConceptCodeSequence[0].CodeMeaning
             })
-          } else if (item.ValueType === 'TEXT') {
+          } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
             item = item as dcmjs.sr.valueTypes.TextContentItem
             attrs.push({
               name: item.ConceptNameCodeSequence[0].CodeMeaning,

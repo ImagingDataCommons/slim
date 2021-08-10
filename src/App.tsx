@@ -39,17 +39,16 @@ interface AppState {
 class App extends React.Component<AppProps, AppState> {
   private readonly auth?: AuthManager
 
-  private readonly baseUri: string
-
   constructor (props: AppProps) {
     super(props)
 
     const { protocol, host } = window.location
-    this.baseUri = joinUrl(props.config.path, `${protocol}//${host}`)
+    const baseUri = `${protocol}//${host}`
+    const appUri = joinUrl(props.config.path, baseUri)
 
     const oidcSettings = props.config.oidc
     if (oidcSettings !== undefined) {
-      this.auth = new OidcManager(this.baseUri, oidcSettings)
+      this.auth = new OidcManager(appUri, oidcSettings)
     }
 
     if (props.config.servers.length === 0) {
@@ -77,7 +76,7 @@ class App extends React.Component<AppProps, AppState> {
 
     this.state = {
       client: new DicomWebManager({
-        baseUri: this.baseUri,
+        baseUri: baseUri,
         settings: props.config.servers,
         onError: onError.bind(this)
       }),
@@ -86,36 +85,45 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  onSignIn = ({ user, authorization }: {
+  /**
+   * Handle successful authentication event.
+   *
+   * Authorizes the DICOMweb client to access the DICOMweb server and directs
+   * the user back to the App.
+   *
+   * @param user - Information about the user
+   * @param authorization - Value of the "Authorization" HTTP header field
+   */
+  handleSignIn = ({ user, authorization }: {
     user: User
     authorization: string
   }): void => {
     const client = this.state.client
     client.updateHeaders({ Authorization: authorization })
-    this.setState(state => ({
+    this.setState({
       user: user,
       client: client,
       wasAuthSuccessful: true,
       isLoading: false
-    }))
+    })
     window.location.hash = ''
   }
 
   componentDidMount (): void {
     if (this.auth !== undefined) {
-      this.auth.signIn({ onSignIn: this.onSignIn }).then(() => {
+      this.auth.signIn({ onSignIn: this.handleSignIn }).then(() => {
         console.info('sign-in successful')
       }).catch((error) => {
         console.error('sign-in failed ', error)
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         message.error('Could not sign-in user')
-        this.setState(state => ({ isLoading: false }))
+        this.setState({ isLoading: false })
       })
     } else {
-      this.setState(state => ({
+      this.setState({
         isLoading: false,
         wasAuthSuccessful: true
-      }))
+      })
     }
   }
 
@@ -127,12 +135,25 @@ class App extends React.Component<AppProps, AppState> {
       organization: this.props.config.organization
     }
 
+    let worklist
+    if (!this.props.config.disableWorklist) {
+      worklist = <Worklist client={this.state.client} />
+    } else {
+      worklist = <div>Worklist has been disabled.</div>
+    }
+
+    const layoutStyle = { height: '100vh' }
+    const layoutContentStyle = { height: '100%' }
+
     if (this.state.isLoading) {
       return (
-        <BrowserRouter>
-          <Layout style={{ height: '100vh' }}>
-            <Header app={appInfo} />
-            <Layout.Content style={{ height: '100%' }}>
+        <BrowserRouter basename={this.props.config.path}>
+          <Layout style={layoutStyle}>
+            <Header
+              app={appInfo}
+              showWorklistButton={false}
+            />
+            <Layout.Content style={layoutContentStyle}>
               <FaSpinner />
             </Layout.Content>
           </Layout>
@@ -140,11 +161,14 @@ class App extends React.Component<AppProps, AppState> {
       )
     } else if (!this.state.wasAuthSuccessful) {
       return (
-        <BrowserRouter>
-          <Layout style={{ height: '100vh' }}>
-            <Header app={appInfo} />
-            <Layout.Content style={{ height: '100%' }}>
-              <div>Error. Sign-in failed.</div>
+        <BrowserRouter basename={this.props.config.path}>
+          <Layout style={layoutStyle}>
+            <Header
+              app={appInfo}
+              showWorklistButton={false}
+            />
+            <Layout.Content style={layoutContentStyle}>
+              <div>Sign-in failed.</div>
             </Layout.Content>
           </Layout>
         </BrowserRouter>
@@ -155,32 +179,44 @@ class App extends React.Component<AppProps, AppState> {
       )
     } else {
       return (
-        <BrowserRouter>
-          <Layout style={{ height: '100vh' }}>
-            <Header
-              app={appInfo}
-              user={this.state.user}
-            />
-            <Layout.Content style={{ height: '100%' }}>
-              <Switch>
-                <Route
-                  path='/studies/:StudyInstanceUID'
-                  render={(routeProps) => (
+        <BrowserRouter basename={this.props.config.path}>
+          <Switch>
+            <Route
+              path='/studies/:StudyInstanceUID'
+              render={(routeProps) => (
+                <Layout style={layoutStyle}>
+                  <Header
+                    app={appInfo}
+                    user={this.state.user}
+                    showWorklistButton={!this.props.config.disableWorklist}
+                  />
+                  <Layout.Content style={layoutContentStyle}>
                     <CaseViewer
                       client={this.state.client}
                       user={this.state.user}
+                      renderer={this.props.config.renderer}
                       annotations={this.props.config.annotations}
                       app={appInfo}
+                      enableAnnotationTools={!this.props.config.disableAnnotationTools}
                       studyInstanceUID={routeProps.match.params.StudyInstanceUID}
                     />
-                  )}
+                  </Layout.Content>
+                </Layout>
+              )}
+            />
+            <Route exact path='/'>
+              <Layout style={layoutStyle}>
+                <Header
+                  app={appInfo}
+                  user={this.state.user}
+                  showWorklistButton={false}
                 />
-                <Route exact path='/'>
-                  <Worklist client={this.state.client} />
-                </Route>
+                <Layout.Content style={layoutContentStyle}>
+                  {worklist}
+                </Layout.Content>
+              </Layout>
+            </Route>
               </Switch>
-            </Layout.Content>
-          </Layout>
         </BrowserRouter>
       )
     }

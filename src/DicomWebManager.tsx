@@ -25,15 +25,18 @@ export default class DicomWebManager {
         throw Error('At least one server needs to be configured.')
       }
 
-      const clientSettings: dwc.api.DICOMwebClientOptions = { url: '' }
+      let serviceUrl
       if (serverSettings.url !== undefined) {
-        clientSettings.url = serverSettings.url
+        serviceUrl = serverSettings.url
       } else if (serverSettings.path !== undefined) {
-        clientSettings.url = joinUrl(serverSettings.path, baseUri)
+        serviceUrl = joinUrl(serverSettings.path, baseUri)
       } else {
         throw new Error(
           'Either path or full URL needs to be configured for server.'
         )
+      }
+      const clientSettings: dwc.api.DICOMwebClientOptions = {
+        url: serviceUrl
       }
       if (serverSettings.qidoPathPrefix !== undefined) {
         clientSettings.qidoURLPrefix = serverSettings.qidoPathPrefix

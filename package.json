@@ -1,6 +1,6 @@
 {
   "name": "slim",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "dependencies": {
     "@craco/craco": "^5.8.0",
@@ -20,8 +20,8 @@
     "classnames": "^2.2.6",
     "craco-less": "^1.17.0",
     "dcmjs": "^0.16.7",
-    "dicom-microscopy-viewer": "^0.31.0",
     "dicomweb-client": "^0.8.2",
+    "dicom-microscopy-viewer": "^0.32.1",
     "oidc-client": "^1.11.5",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",

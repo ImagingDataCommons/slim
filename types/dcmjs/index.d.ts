@@ -499,6 +499,24 @@ declare module 'dcmjs' {
 
     declare namespace valueTypes {
 
+      export class ValueTypes {
+        public static readonly CODE: string
+        public static readonly COMPOSITE: string
+        public static readonly CONTAINER: string
+        public static readonly DATE: string
+        public static readonly DATETIME: string
+        public static readonly IMAGE: string
+        public static readonly NUM: string
+        public static readonly PNAME: string
+        public static readonly SCOORD: string
+        public static readonly SCOORD3D: string
+        public static readonly TCOORD: string
+        public static readonly TEXT: string
+        public static readonly TIME: string
+        public static readonly UIDREF: string
+        public static readonly WAVEFORM: string
+      }
+
       export interface MeasuredValue {
         MeasurementUnitsCodeSequence: sr.coding.CodedConcept[]
         NumericValue: number

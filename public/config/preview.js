@@ -1,20 +1,16 @@
 window.config = {
-  // This must match the location configured for web server
-  path: "/viewer",
+  path: "/",
   servers: [
     {
-      id: "local",
-      // This must match the proxy location configured for the web server
-      url: "http://localhost:8008/dicomweb",
-      write: true
+      id: "preview",
+      url: "https://idc-external-006.uc.r.appspot.com",
+      write: false
     }
   ],
   renderer:
   {
     retrieveRendered: false
   },
-  disableWorklist: false,
-  disableAnnotationTools: false,
   annotations: [
     {
       finding: {

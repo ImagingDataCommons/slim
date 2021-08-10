@@ -42,7 +42,9 @@ Use the following command to identify potential coding style and type annotation
     $ yarn lint
 
 
-Docstrings are written in [JSDoc](https://jsdoc.app/) format:
+### Documentation
+
+Every function and method (with the exception of standard `React.Component` methods such as `render()` and `componentDidMount()`) shall have a docstring in [JSDoc](https://jsdoc.app/) format:
 
 ```js
 /**
@@ -51,6 +53,7 @@ Docstrings are written in [JSDoc](https://jsdoc.app/) format:
  * @param options - Options
  * @param options.foo - One option
  * @param options.bar - Another option
+ *
  * @returns The return value
  */
 const checkValues = ({ foo, bar }: { foo: string, bar: number }): boolean => {}

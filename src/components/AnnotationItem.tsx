@@ -45,14 +45,14 @@ class AnnotationItem extends React.Component<AnnotationItemProps, {}> {
     ) => {
       const nameMeaning = item.ConceptNameCodeSequence[0].CodeMeaning
       const name = `${nameMeaning}`
-      if (item.ValueType === 'CODE') {
+      if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.CODE) {
         const codeConetentItem = item as dcmjs.sr.valueTypes.CodeContentItem
         const valueMeaning = codeConetentItem.ConceptCodeSequence[0].CodeMeaning
         attributes.push({
           name: name,
           value: `${valueMeaning}`
         })
-      } else if (item.ValueType === 'TEXT') {
+      } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
         const textContentItem = item as dcmjs.sr.valueTypes.TextContentItem
         attributes.push({
           name: name,

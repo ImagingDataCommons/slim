@@ -15,6 +15,7 @@ interface HeaderProps {
     name: string
     email: string
   }
+  showWorklistButton: boolean
 }
 
 /**
@@ -33,14 +34,22 @@ class Header extends React.Component<HeaderProps, {}> {
         </>
       )
     }
+
+    let worklistButton
+    if (this.props.showWorklistButton) {
+      worklistButton = (
+        <NavLink to='/'>
+          <Button icon={<FaList />} />
+        </NavLink>
+      )
+    }
+
     return (
       <Layout.Header style={{ width: '100%', padding: '0 14px' }}>
         <Row>
           <Col>
             <Space align='center' direction='horizontal'>
-              <NavLink to='/'>
-                <Button icon={<FaList />} />
-              </NavLink>
+              {worklistButton}
             </Space>
           </Col>
           <Col flex='auto' />
