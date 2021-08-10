@@ -118,11 +118,6 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     )
   }
 
-  private getSelectedSeriesInstanceUIDFromUrl (): string {
-    const fragments = this.props.location.pathname.split('/')
-    return fragments[4]
-  }
-
   render (): React.ReactNode {
     if (this.state.slides.length === 0) {
       return null
@@ -155,7 +150,8 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
      */
     let selectedSeriesInstanceUID: string
     if (this.props.location.pathname.includes('series/')) {
-      selectedSeriesInstanceUID = this.getSelectedSeriesInstanceUIDFromUrl()
+      const fragments = this.props.location.pathname.split('/')
+      selectedSeriesInstanceUID = fragments[4]
     } else {
       selectedSeriesInstanceUID = volumeInstances[0].SeriesInstanceUID
     }
