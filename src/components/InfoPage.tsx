@@ -1,5 +1,5 @@
 import React from 'react'
-import { Result, Button } from 'antd';
+import { Result } from 'antd';
 
 interface InfoPageProps {
   type: string
@@ -8,7 +8,6 @@ interface InfoPageProps {
 }
 
 const InfoPage = ({ title, message }: InfoPageProps) => {
-  const onClickHandler = () => window.location.href = '/';
   return  (
     <div style={{ 
       height: '100vh', 
@@ -19,11 +18,6 @@ const InfoPage = ({ title, message }: InfoPageProps) => {
       <Result
         title={title}
         subTitle={message}
-        extra={
-          <Button type="primary" key="console" onClick={onClickHandler}>
-            Back Home
-          </Button>
-        }
       />
     </div>
   );

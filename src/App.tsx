@@ -4,6 +4,7 @@ import {
   Route,
   Switch
 } from 'react-router-dom'
+import * as dwc from 'dicomweb-client'
 import { Layout, message } from 'antd'
 import { FaSpinner } from 'react-icons/fa'
 
@@ -14,7 +15,7 @@ import Worklist from './components/Worklist'
 
 import 'antd/dist/antd.less'
 import './App.less'
-import { ServerErrorMessage } from './AppConfig'
+import { ErrorMessageSettings } from './AppConfig'
 import { joinUrl } from './utils/url'
 import { User, AuthManager } from './auth'
 import OidcManager from './auth/OidcManager'
@@ -33,7 +34,7 @@ interface AppState {
   user?: User
   isLoading: boolean
   wasAuthSuccessful: boolean
-  error?: ServerErrorMessage
+  error?: ErrorMessageSettings
 }
 
 class App extends React.Component<AppProps, AppState> {
@@ -57,13 +58,9 @@ class App extends React.Component<AppProps, AppState> {
 
     message.config({ duration: 5 })
 
-    const onError = (error: ServerErrorMessage, serverSettings: ServerSettings) => {
+    const handleError = (error: dwc.api.DICOMwebClientError, serverSettings: ServerSettings) => {
       if (serverSettings.errorMessages !== undefined) {
-        serverSettings.errorMessages.forEach(({ status, message, redirect }: ServerErrorMessage) => {
-          if (redirect !== undefined) {
-            window.location.href = redirect
-            return;
-          }
+        serverSettings.errorMessages.forEach(({ status, message }: ErrorMessageSettings) => {
           if (error.status === status) {
             this.setState({ error: {
               status: error.status,
@@ -78,7 +75,7 @@ class App extends React.Component<AppProps, AppState> {
       client: new DicomWebManager({
         baseUri: baseUri,
         settings: props.config.servers,
-        onError: onError.bind(this)
+        onError: handleError
       }),
       isLoading: true,
       wasAuthSuccessful: false,

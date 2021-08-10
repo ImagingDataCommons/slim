@@ -10,15 +10,18 @@ export default class DicomWebManager {
     client: dwc.api.DICOMwebClient
   }>
 
-  private onError: Function
+  private onError: (error: dwc.api.DICOMwebClientError, serverSettings: ServerSettings) => void
 
   constructor ({ baseUri, settings, onError }: {
     baseUri: string
     settings: ServerSettings[]
-    onError?: Function
+    onError?: (error: dwc.api.DICOMwebClientError, serverSettings: ServerSettings) => void
   }) {
-    const noop = () => {};
-    this.onError = onError || noop;
+    this.onError = () => {}
+    if (onError) {
+      this.onError = onError;
+    }
+    
     this.datastores = []
     settings.forEach(serverSettings => {
       if (serverSettings === undefined) {
@@ -52,7 +55,7 @@ export default class DicomWebManager {
       }
       if (serverSettings.errorMessages !== undefined) {
         clientSettings.errorInterceptor = (error: dwc.api.DICOMwebClientError) => {
-          this.onError(error, serverSettings);
+          this.onError(error, serverSettings)
         }
       }
       this.datastores.push({

@@ -28,11 +28,11 @@ let retryOptions = { ...defaultRetryOptions }
 /**
  * Request hook used to add retry functionality to XHR requests.
  *
- * @param {XMLHttpRequest} request XHR request instance
- * @param {object} metadata Metadata about the request
- * @param {object} metadata.url URL
- * @param {object} metadata.method HTTP method
- * @returns {XMLHttpRequest} request instance optionally modified
+ * @param request - XHR request instance
+ * @param metadata - Metadata about the request
+ * @param metadata.url - URL
+ * @param metadata.method - HTTP method
+ * @returns - XHR request instance (potentially modified)
  */
 const xhrRetryHook = (request: XMLHttpRequest, metadata: DWCRequestHookMetadata) => {
   const { url, method } = metadata
@@ -83,14 +83,14 @@ const xhrRetryHook = (request: XMLHttpRequest, metadata: DWCRequestHookMetadata)
  *   maxTimeout: 60 * 1000
  *   randomize: true
  *
- * @param {object} options
- * @param {number} options.retires number of retries
- * @param {number} options.factor factor
- * @param {number} options.minTimeout the min timeout
- * @param {number} options.maxTimeout the max timeout
- * @param {boolean} options.randomize randomize
- * @param {array} options.retryableStatusCodes status codes that can trigger retry
- * @returns {function} the configured retry request function
+ * @param options
+ * @param options.retires - Number of retries
+ * @param options.factor - Factor
+ * @param options.minTimeout - Min number of seconds to wait before next retry
+ * @param options.maxTimeout - Max number of seconds to wait before next retry
+ * @param options.randomize - Whether randomization should be applied
+ * @param options.retryableStatusCodes HTTP status codes that can trigger a retry
+ * @returns Configured retry request function
  */
 export const getXHRRetryHook = (options: RetryOptions = defaultRetryOptions) => {
   if ("retries" in options) {

@@ -26,10 +26,9 @@ export interface AnnotationSettings {
   }
 }
 
-export interface ServerErrorMessage {
+export interface ErrorMessageSettings {
   status: number
-  message: string,
-  redirect?: string
+  message: string
 }
 
 export interface ServerSettings {
@@ -41,7 +40,7 @@ export interface ServerSettings {
   wadoPathPrefix?: string
   stowPathPrefix?: string
   retryOptions: RetryOptions
-  errorMessages: ServerErrorMessage[]
+  errorMessages: ErrorMessageSettings[]
 }
 
 export interface RendererSettings {
