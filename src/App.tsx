@@ -71,12 +71,12 @@ class App extends React.Component<AppProps, AppState> {
   }): void => {
     const client = this.state.client
     client.updateHeaders({ Authorization: authorization })
-    this.setState(state => ({
+    this.setState({
       user: user,
       client: client,
       wasAuthSuccessful: true,
       isLoading: false
-    }))
+    })
     window.location.hash = ''
   }
 
@@ -88,13 +88,13 @@ class App extends React.Component<AppProps, AppState> {
         console.error('sign-in failed ', error)
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         message.error('Could not sign-in user')
-        this.setState(state => ({ isLoading: false }))
+        this.setState({ isLoading: false })
       })
     } else {
-      this.setState(state => ({
+      this.setState({
         isLoading: false,
         wasAuthSuccessful: true
-      }))
+      })
     }
   }
 

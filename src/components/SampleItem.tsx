@@ -53,10 +53,10 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
     if (checked) {
       this.props.viewer.showOpticalPath(identifier)
-      this.setState(state => ({ visible: true }))
+      this.setState({ visible: true })
     } else {
       this.props.viewer.hideOpticalPath(identifier)
-      this.setState(state => ({ visible: false }))
+      this.setState({ visible: false })
     }
   }
 
@@ -68,7 +68,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
       opacity: value,
       opticalPathIdentifier: identifier
     }
-    this.setState(state => ({ opacity: value }))
+    this.setState({ opacity: value })
     this.props.viewer.setBlendingInformation(blendingInformation)
   }
 
@@ -84,7 +84,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
       color: color,
       opticalPathIdentifier: identifier
     }
-    this.setState(state => ({ color: color }))
+    this.setState({ color: color })
     this.props.viewer.setBlendingInformation(blendingInformation)
   }
 
@@ -100,7 +100,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
       color: color,
       opticalPathIdentifier: identifier
     }
-    this.setState(state => ({ color: color }))
+    this.setState({ color: color })
     this.props.viewer.setBlendingInformation(blendingInformation)
   }
 
@@ -116,7 +116,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
       color: color,
       opticalPathIdentifier: identifier
     }
-    this.setState(state => ({ color: color }))
+    this.setState({ color: color })
     this.props.viewer.setBlendingInformation(blendingInformation)
   }
 
@@ -128,7 +128,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
       thresholdValues: values,
       opticalPathIdentifier: identifier
     }
-    this.setState(state => ({ thresholdValues: values }))
+    this.setState({ thresholdValues: values })
     this.props.viewer.setBlendingInformation(blendingInformation)
   }
 
@@ -140,7 +140,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
       limitValues: values,
       opticalPathIdentifier: identifier
     }
-    this.setState(state => ({ limitValues: values }))
+    this.setState({ limitValues: values })
     this.props.viewer.setBlendingInformation(blendingInformation)
   }
 
@@ -153,7 +153,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
     const blendInfo =
       this.props.viewer.getBlendingInformation(identifier) as dmv.channel.BlendingInformation
-    this.setState(state => ({ visible: blendInfo.visible }))
+    this.setState({ visible: blendInfo.visible })
   }
 
   render (): React.ReactNode {

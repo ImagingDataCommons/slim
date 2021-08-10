@@ -55,9 +55,7 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
       selectedKeys?: React.ReactText[]
     }): void => {
       console.info(`select slide "${key}"`)
-      this.setState(state => ({
-        selectedSeriesInstanceUID: key.toString()
-      }))
+      this.setState({ selectedSeriesInstanceUID: key.toString() })
       this.props.onSeriesSelection({ seriesInstanceUID: key.toString() })
     }
 

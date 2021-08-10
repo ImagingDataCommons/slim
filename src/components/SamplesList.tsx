@@ -35,18 +35,13 @@ class SamplesList extends React.Component<SamplesListProps, SampleListState> {
 
   onItemRemoveSample (opticalPathIdentifier: string): void {
     this.props.viewer.deactivateOpticalPath(opticalPathIdentifier)
-
-    this.setState({
-      rerender: true
-    })
+    this.setState({ rerender: true })
   }
 
   handleSelectChange (
     value: string
   ): void {
-    this.setState({
-      selectedOpticalPathIdentifier: value
-    })
+    this.setState({ selectedOpticalPathIdentifier: value })
   }
 
   handleAddSample (): void {
@@ -54,9 +49,7 @@ class SamplesList extends React.Component<SamplesListProps, SampleListState> {
     if (identifier !== undefined) {
       this.props.viewer.activateOpticalPath(identifier)
       this.props.viewer.showOpticalPath(identifier)
-      this.setState({
-        selectedOpticalPathIdentifier: undefined
-      })
+      this.setState({ selectedOpticalPathIdentifier: undefined })
     }
   }
 

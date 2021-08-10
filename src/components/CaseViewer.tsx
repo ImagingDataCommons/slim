@@ -55,12 +55,12 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
   }
 
   async componentDidMount (): Promise<void> {
-    this.setState(state => ({ isLoading: true }))
+    this.setState({ isLoading: true })
     const imageMetadataPerSeries = await this.fetchImageMetadata()
-    this.setState(state => ({
+    this.setState({
       slides: createSlides(imageMetadataPerSeries),
       isLoading: false
-    }))
+    })
   }
 
   async fetchImageMetadata (): Promise<dmv.metadata.VLWholeSlideMicroscopyImage[][]> {

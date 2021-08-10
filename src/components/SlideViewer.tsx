@@ -256,7 +256,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    */
   addAnnotations = (): void => {
     console.info('search for Comprehensive 3D SR instances')
-    this.setState(state => ({ isLoading: true }))
+    this.setState({ isLoading: true })
     this.props.client.searchForInstances({
       studyInstanceUID: this.props.studyInstanceUID,
       queryParams: {
@@ -314,7 +314,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               }
             })
             // State update will also ensure that the component is re-rendered.
-            this.setState(state => ({ isLoading: false }))
+            this.setState({ isLoading: false })
           }).catch((error) => {
             // eslint-disable-next-line @typescript-eslint/no-floating-promises
             message.error('An error occured. Annotation could not be loaded')
@@ -347,10 +347,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     if (slides.length !== 0) {
       const slide = slides[0]
-      this.setState(state => ({
+      this.setState({
         activeSlide: slide,
         isLoading: true
-      }))
+      })
 
       if (this.volumeViewport.current !== null) {
         console.info(
@@ -407,7 +407,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
 
     // State update will also ensure that the component is re-rendered.
-    this.setState(state => ({ isLoading: false }))
+    this.setState({ isLoading: false })
 
     this.addAnnotations()
   }
@@ -415,10 +415,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   onRoiDrawn = (event: CustomEventInit): void => {
     const roi = event.detail.payload as dmv.roi.ROI
     console.debug(`added ROI "${roi.uid}"`)
-    this.setState(state => ({
+    this.setState({
       isAnnotationModalVisible: true,
       annotatedRoi: roi
-    }))
+    })
     if (this.volumeViewer !== undefined) {
       if (this.volumeViewer.isDrawInteractionActive) {
         console.info('deactivate drawing of ROIs')
@@ -443,13 +443,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             }
           })
         }
-        this.setState(state => ({
+        this.setState({
           selectedRoiUIDs: [...this.state.selectedRoiUIDs, selectedRoi.uid]
-        }))
+        })
       } else {
-        this.setState(state => ({
-          selectedRoiUIDs: []
-        }))
+        this.setState({ selectedRoiUIDs: [] })
       }
     }
   }
@@ -505,7 +503,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.findingOptions.forEach(finding => {
       if (finding.CodeValue === value) {
         console.info(`selected finding "${finding.CodeMeaning}"`)
-        this.setState(state => ({ selectedFinding: finding }))
+        this.setState({ selectedFinding: finding })
       }
     })
   }
@@ -535,12 +533,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               const filteredEvaluations = this.state.selectedEvaluations.filter(
                 (item: Evaluation) => item.name !== evaluation.name
               )
-              this.setState(state => ({
+              this.setState({
                 selectedEvaluations: [
                   ...filteredEvaluations,
                   { name: name, value: code }
                 ]
-              }))
+              })
             }
           })
         }
@@ -585,13 +583,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       })
       this.setState(state => ({
         annotatedRoi: roi,
-        visibleRoiUIDs: [...this.state.visibleRoiUIDs, roi.uid]
+        visibleRoiUIDs: [...state.visibleRoiUIDs, roi.uid]
       }))
       const key = _buildKey(selectedFinding)
       var style = this.roiStyles[key]
       viewer.setROIStyle(roi.uid, style)
     }
-    this.setState(state => ({ isAnnotationModalVisible: false }))
+    this.setState({ isAnnotationModalVisible: false })
   }
 
   /**
@@ -604,10 +602,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const roi = annotatedRoi as dmv.roi.ROI
       this.volumeViewer.removeROI(roi.uid)
     }
-    this.setState(state => ({
+    this.setState({
       isAnnotationModalVisible: false,
       annotatedRoi: undefined
-    }))
+    })
   }
 
   /**
@@ -749,10 +747,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       manufacturer: 'MGH Computational Pathology'
     })
 
-    this.setState(state => ({
+    this.setState({
       isReportModalVisible: true,
       generatedReport: dataset as dmv.metadata.Comprehensive3DSR
-    }))
+    })
   }
 
   /**
@@ -809,20 +807,20 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         console.error(error)
       })
     }
-    this.setState(state => ({
+    this.setState({
       isReportModalVisible: false,
       generatedReport: undefined
-    }))
+    })
   }
 
   /**
    * Handler that gets called when report generation has been cancelled.
    */
   handleReportCancellation (): void {
-    this.setState(state => ({
+    this.setState({
       isReportModalVisible: false,
       generatedReport: undefined
-    }))
+    })
   }
 
   /**
@@ -835,13 +833,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       return
     }
     console.log(`selected ROI ${roiUID}`)
-    this.setState(state => ({ selectedRoiUIDs: [roiUID] }))
+    this.setState({ selectedRoiUIDs: [roiUID] })
     viewer.getAllROIs().forEach((roi) => {
       var style = {}
       if (roi.uid === roiUID) {
         style = this.selectedRoiStyle
         this.setState(state => ({
-          visibleRoiUIDs: [...this.state.visibleRoiUIDs, roiUID]
+          visibleRoiUIDs: [...state.visibleRoiUIDs, roiUID]
         }))
       } else {
         if (this.state.visibleRoiUIDs.includes(roi.uid as never)) {
@@ -865,8 +863,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (this.state.visibleRoiUIDs.includes(roiUID as never)) {
       console.info(`hide ROI ${roiUID}`)
       this.setState(state => ({
-        visibleRoiUIDs: this.state.visibleRoiUIDs.filter(uid => uid !== roiUID),
-        selectedRoiUIDs: this.state.selectedRoiUIDs.filter(uid => uid !== roiUID)
+        visibleRoiUIDs: state.visibleRoiUIDs.filter(uid => uid !== roiUID),
+        selectedRoiUIDs: state.selectedRoiUIDs.filter(uid => uid !== roiUID)
       }))
       viewer.setROIStyle(roiUID, {})
     } else {
@@ -875,7 +873,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const key = _getRoiKey(roi)
       viewer.setROIStyle(roi.uid, this.roiStyles[key])
       this.setState(state => ({
-        visibleRoiUIDs: [...this.state.visibleRoiUIDs, roiUID]
+        visibleRoiUIDs: [...state.visibleRoiUIDs, roiUID]
       }))
     }
   }
@@ -963,7 +961,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       message.info('Annotation was removed')
     })
-    this.setState(state => ({ selectedRoiUIDs: [] }))
+    this.setState({ selectedRoiUIDs: [] })
   }
 
   /**
