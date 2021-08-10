@@ -63,7 +63,7 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
           index: number
         ) => {
           const name = item.ConceptNameCodeSequence[0]
-          if (item.ValueType === 'CODE') {
+          if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.CODE) {
             item = item as dcmjs.sr.valueTypes.CodeContentItem
             const value = item.ConceptCodeSequence[0]
             if (doesCodeMatch(name, 'DCM', '111701')) {
@@ -95,7 +95,7 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
                 })
               }
             }
-          } else if (item.ValueType === 'TEXT') {
+          } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
             item = item as dcmjs.sr.valueTypes.TextContentItem
             if (doesCodeMatch(name, 'SCT', '424361007') && this.props.showstain) {
               attributes.push({
