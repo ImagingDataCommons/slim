@@ -128,21 +128,6 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       return null
     }
     const refImage = volumeInstances[0]
-    const studyMetadata: dmv.metadata.Study = {
-      ModalitiesInStudy: ['SM'],
-      ReferringPhysicianName: refImage.ReferringPhysicianName,
-      PatientName: refImage.PatientName,
-      PatientID: refImage.PatientID,
-      PatientSex: refImage.PatientSex,
-      PatientBirthDate: refImage.PatientBirthDate,
-      StudyInstanceUID: refImage.StudyInstanceUID,
-      StudyID: refImage.StudyID,
-      StudyDate: refImage.StudyDate,
-      StudyTime: refImage.StudyTime,
-      AccessionNumber: refImage.AccessionNumber,
-      NumberOfStudyRelatedSeries: 0,  // FIXME
-      NumberOfStudyRelatedInstances: 0  // FIXME
-    }
 
     /* If a series is encoded in the path, route the viewer to this series.
      * Otherwise select the first series correspondent to
@@ -174,10 +159,10 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
             theme='light'
           >
             <Menu.SubMenu key='patient' title='Patient'>
-              <Patient metadata={studyMetadata} />
+              <Patient metadata={refImage} />
             </Menu.SubMenu>
             <Menu.SubMenu key='case' title='Case'>
-              <Study metadata={studyMetadata} />
+              <Study metadata={refImage} />
             </Menu.SubMenu>
             <Menu.SubMenu key='slides' title='Slides'>
               <SlideList

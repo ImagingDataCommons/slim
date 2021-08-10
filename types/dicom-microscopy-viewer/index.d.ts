@@ -327,11 +327,6 @@ declare module 'dicom-microscopy-viewer' {
       // SOP Common module
       SOPClassUID: string
       SOPInstanceUID: string
-      // Specimen module
-      ContainerIdentifier: string
-      ContainerTypeCodeSequence: dcmjs.sr.valueTypes.CodedConcept[]
-      SpecimenDescriptionSequence: SpecimenDescription[]
-      OpticalPathSequence: OpticalPathDescription[]
     }
 
     export interface VLWholeSlideMicroscopyImage extends SOPClass {
@@ -340,6 +335,11 @@ declare module 'dicom-microscopy-viewer' {
       FrameOfReferenceUID: string
       SamplesPerPixel: number
       PhotometricInterpretation: string
+      // Specimen module
+      ContainerIdentifier: string
+      ContainerTypeCodeSequence: dcmjs.sr.valueTypes.CodedConcept[]
+      SpecimenDescriptionSequence: SpecimenDescription[]
+      OpticalPathSequence: OpticalPathDescription[]
     }
 
     export interface Comprehensive3DSR extends SOPClass {
