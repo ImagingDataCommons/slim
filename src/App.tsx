@@ -66,7 +66,7 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   /**
-   * Handler that gets called when a user successfully authenticated.
+   * Handle successful authentication event.
    *
    * Authorizes the DICOMweb client to access the DICOMweb server and directs
    * the user back to the App.
@@ -74,7 +74,7 @@ class App extends React.Component<AppProps, AppState> {
    * @param user - Information about the user
    * @param authorization - Value of the "Authorization" HTTP header field
    */
-  onSignIn = ({ user, authorization }: {
+  handleSignIn = ({ user, authorization }: {
     user: User
     authorization: string
   }): void => {
@@ -91,7 +91,7 @@ class App extends React.Component<AppProps, AppState> {
 
   componentDidMount (): void {
     if (this.auth !== undefined) {
-      this.auth.signIn({ onSignIn: this.onSignIn }).then(() => {
+      this.auth.signIn({ onSignIn: this.handleSignIn }).then(() => {
         console.info('sign-in successful')
       }).catch((error) => {
         console.error('sign-in failed ', error)
@@ -127,7 +127,7 @@ class App extends React.Component<AppProps, AppState> {
 
     if (this.state.isLoading) {
       return (
-        <BrowserRouter>
+        <BrowserRouter basename={this.props.config.path}>
           <Layout style={layoutStyle}>
             <Header
               app={appInfo}
@@ -141,7 +141,7 @@ class App extends React.Component<AppProps, AppState> {
       )
     } else if (!this.state.wasAuthSuccessful) {
       return (
-        <BrowserRouter>
+        <BrowserRouter basename={this.props.config.path}>
           <Layout style={layoutStyle}>
             <Header
               app={appInfo}
@@ -155,7 +155,7 @@ class App extends React.Component<AppProps, AppState> {
       )
     } else {
       return (
-        <BrowserRouter>
+        <BrowserRouter basename={this.props.config.path}>
           <Switch>
             <Route
               path='/studies/:StudyInstanceUID'
