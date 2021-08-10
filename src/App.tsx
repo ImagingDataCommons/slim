@@ -36,17 +36,16 @@ interface AppState {
 class App extends React.Component<AppProps, AppState> {
   private readonly auth?: AuthManager
 
-  private readonly baseUri: string
-
   constructor (props: AppProps) {
     super(props)
 
     const { protocol, host } = window.location
-    this.baseUri = joinUrl(props.config.path, `${protocol}//${host}`)
+    const baseUri = `${protocol}//${host}`
+    const appUri = joinUrl(props.config.path, baseUri)
 
     const oidcSettings = props.config.oidc
     if (oidcSettings !== undefined) {
-      this.auth = new OidcManager(this.baseUri, oidcSettings)
+      this.auth = new OidcManager(appUri, oidcSettings)
     }
 
     if (props.config.servers.length === 0) {
@@ -57,7 +56,7 @@ class App extends React.Component<AppProps, AppState> {
 
     this.state = {
       client: new DicomWebManager({
-        baseUri: this.baseUri,
+        baseUri: baseUri,
         settings: props.config.servers
       }),
       isLoading: true,
