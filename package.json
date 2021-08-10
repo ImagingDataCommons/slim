@@ -19,7 +19,7 @@
     "classnames": "^2.2.6",
     "craco-less": "^1.17.0",
     "dcmjs": "^0.16.7",
-    "dicom-microscopy-viewer": "^0.32.0",
+    "dicom-microscopy-viewer": "^0.32.1",
     "dicomweb-client": "^0.6.0",
     "oidc-client": "^1.11.5",
     "react": "^16.13.1",
