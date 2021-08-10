@@ -552,15 +552,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    */
   handleAnnotationCompletion (): void {
     const viewer = this.volumeViewer
-    const annotatedRoi = this.state.annotatedRoi
+    const roi = this.state.annotatedRoi
     const selectedFinding = this.state.selectedFinding
     const selectedEvaluations = this.state.selectedEvaluations
     if (
-      annotatedRoi !== undefined &&
+      roi !== undefined &&
       selectedFinding !== undefined &&
       viewer !== undefined
     ) {
-      const roi = annotatedRoi as dmv.roi.ROI
       console.info(`completed annotation of ROI "${roi.uid}"`)
       const findingItem = new dcmjs.sr.valueTypes.CodeContentItem({
         name: new dcmjs.sr.coding.CodedConcept({
@@ -598,9 +597,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    */
   handleAnnotationCancellation (): void {
     console.info('cancel annotation')
-    const annotatedRoi = this.state.annotatedRoi
-    if (this.volumeViewer !== undefined && annotatedRoi !== undefined) {
-      const roi = annotatedRoi as dmv.roi.ROI
+    const roi = this.state.annotatedRoi
+    if (this.volumeViewer !== undefined && roi !== undefined) {
       this.volumeViewer.removeROI(roi.uid)
     }
     this.setState({

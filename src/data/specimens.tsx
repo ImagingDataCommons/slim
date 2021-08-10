@@ -80,5 +80,3 @@ export const SpecimenPreparationStepItems: {
   }),
   ...SpecimenPreparationAdditives
 }
-
-

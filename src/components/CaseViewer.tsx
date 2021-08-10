@@ -7,6 +7,7 @@ import {
 } from 'react-router-dom'
 import {
   Layout,
+  message,
   Menu
 } from 'antd'
 
@@ -64,7 +65,11 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
           isLoading: false
         })
       }
-    )
+    ).catch((error) => {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      message.error('An error occured. Image metadata could not be retrieved.')
+      console.error(error)
+    })
   }
 
   /**

@@ -8,7 +8,6 @@ import * as dcmjs from 'dcmjs'
 
 import { SpecimenPreparationStepItems } from '../data/specimens'
 
-
 interface SampleItemProps {
   opticalPathDescription: dmv.metadata.OpticalPathDescription
   specimenDescription: dmv.metadata.SpecimenDescription

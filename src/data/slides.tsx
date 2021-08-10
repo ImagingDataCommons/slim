@@ -1,6 +1,5 @@
 import * as dmv from 'dicom-microscopy-viewer'
 
-
 enum ImageFlavors {
   VOLUME = 'VOLUME',
   LABEL = 'LABEL',
