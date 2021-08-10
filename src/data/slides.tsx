@@ -203,7 +203,7 @@ function _doesImageBelongToSlide (
 ): boolean {
   if (
     slide.frameOfReferenceUID === image.FrameOfReferenceUID &&
-    slide.containerIdentifier !== image.ContainerIdentifier
+    slide.containerIdentifier === image.ContainerIdentifier
   ) {
     return true
   }

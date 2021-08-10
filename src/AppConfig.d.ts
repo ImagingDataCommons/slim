@@ -1,13 +1,19 @@
 import * as dcmjs from 'dcmjs'
 
-interface EvaluationValueSet {
+interface EvaluationSetting {
   name: dcmjs.sr.coding.CodeOptions
   values: dcmjs.sr.coding.CodeOptions[]
 }
 
+interface MeasurementSetting {
+  name: dcmjs.sr.coding.CodeOptions
+  unit: dcmjs.sr.coding.CodeOptions
+}
+
 export interface AnnotationSettings {
   finding: dcmjs.sr.coding.CodeOptions
-  evaluations?: EvaluationValueSet[]
+  evaluations?: EvaluationSetting[]
+  measurements?: MeasurementSetting[]
   style: {
     stroke: {
       color: number[]

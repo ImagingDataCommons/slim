@@ -124,9 +124,22 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     if (volumeInstances.length === 0) {
       return null
     }
-    const studyMetadata = dmv.metadata.formatMetadata(
-      volumeInstances[0]
-    ) as dmv.metadata.Study
+    const refImage = volumeInstances[0]
+    const studyMetadata: dmv.metadata.Study = {
+      ModalitiesInStudy: ['SM'],
+      ReferringPhysicianName: refImage.ReferringPhysicianName,
+      PatientName: refImage.PatientName,
+      PatientID: refImage.PatientID,
+      PatientSex: refImage.PatientSex,
+      PatientBirthDate: refImage.PatientBirthDate,
+      StudyInstanceUID: refImage.StudyInstanceUID,
+      StudyID: refImage.StudyID,
+      StudyDate: refImage.StudyDate,
+      StudyTime: refImage.StudyTime,
+      AccessionNumber: refImage.AccessionNumber,
+      NumberOfStudyRelatedSeries: 0,  // FIXME
+      NumberOfStudyRelatedInstances: 0  // FIXME
+    }
 
     /* If a series is encoded in the path, route the viewer to this series.
      * Otherwise select the first series correspondent to

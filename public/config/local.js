@@ -10,7 +10,7 @@ window.config = {
   ],
   renderer:
   {
-    retrieveRendered: true
+    retrieveRendered: false
   },
   annotations: [
     {

@@ -4383,10 +4383,10 @@ detect-port-alt@1.1.6:
     address "^1.0.1"
     debug "^2.6.0"
 
-dicom-microscopy-viewer@^0.31.0:
-  version "0.31.0"
-  resolved "https://registry.yarnpkg.com/dicom-microscopy-viewer/-/dicom-microscopy-viewer-0.31.0.tgz#569cb48c23bfb2ce431aa9c2dbf0728baf41a978"
-  integrity sha512-X44sYWCoUSdRoS6FidGg5vXjUjB9yZiUSwCBoqVydNmaBLFTL4UlPGUvZhJS0M9UOCmjMOyYJ57AeA1VSAc98Q==
+dicom-microscopy-viewer@^0.32.0:
+  version "0.32.0"
+  resolved "https://registry.yarnpkg.com/dicom-microscopy-viewer/-/dicom-microscopy-viewer-0.32.0.tgz#604cd44bc15de2b54347cc2b477ad096304f80a6"
+  integrity sha512-q9Ps/BKJxvEs2leVF6UEaRYxCsCDhhNRdROfnYQPhfkkMCUPuwAi5DSAeNGmERmm1e4Hbibz1otza0U5RCgabQ==
   dependencies:
     dcmjs "^0.18.2"
     dicomweb-client "^0.5.2"

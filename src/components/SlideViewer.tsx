@@ -123,7 +123,7 @@ interface SlideViewerProps extends RouteComponentProps {
 }
 
 interface SlideViewerState {
-  activeSlide?: Slide
+  activeSlide: Slide
   annotatedRoi?: dmv.roi.ROI
   selectedRoiUIDs: string[]
   visibleRoiUIDs: string[]
@@ -141,19 +141,6 @@ interface SlideViewerState {
  * potentially one or more associated DICOM Series of DICOM SR documents.
  */
 class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
-  state = {
-    isLoading: false,
-    activeSlide: undefined,
-    isAnnotationModalVisible: false,
-    annotatedRoi: undefined,
-    selectedRoiUIDs: [],
-    visibleRoiUIDs: [],
-    selectedFinding: undefined,
-    selectedEvaluations: [],
-    isReportModalVisible: false,
-    generatedReport: undefined
-  }
-
   private readonly findingOptions: dcmjs.sr.coding.CodedConcept[] = []
 
   private readonly evaluationOptions: { [key: string]: EvaluationOptions[] } = {}
@@ -215,20 +202,34 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleReportVerification = this.handleReportVerification.bind(this)
     this.handleReportCancellation = this.handleReportCancellation.bind(this)
 
-    const slideArray = this.props.slides
-    const slides = slideArray.filter(item => {
-      const slideItem = item
-      if (slideItem.seriesInstanceUIDs.findIndex(uid => uid === this.props.seriesInstanceUID) !== -1) {
+    const slides = this.props.slides.filter(item => {
+      const slideIndex = item.seriesInstanceUIDs.findIndex((uid) => {
+        return uid === this.props.seriesInstanceUID
+      })
+      if (slideIndex !== -1) {
         return true
       }
       return false
     })
 
-    if (slides.length !== 0) {
-      const slide = slides[0]
-      this.setState(state => ({
-        activeSlide: slide
-      }))
+    if (slides.length === 0) {
+      throw new Error(
+        'No matching slide was found for selected series ' +
+        `"${this.props.seriesInstanceUID}"`
+      )
+    }
+
+    this.state = {
+      isLoading: false,
+      activeSlide: slides[0],
+      isAnnotationModalVisible: false,
+      annotatedRoi: undefined,
+      selectedRoiUIDs: [],
+      visibleRoiUIDs: [],
+      selectedFinding: undefined,
+      selectedEvaluations: [],
+      isReportModalVisible: false,
+      generatedReport: undefined
     }
   }
 
@@ -278,40 +279,37 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             content.ROIs.forEach(roi => {
               console.info(`add ROI "${roi.uid}"`)
               const scoord3d = roi.scoord3d
-              const activeSlide = this.state.activeSlide
-              if (activeSlide !== undefined) {
-                const slide = activeSlide as Slide
-                const image = slide.volumeImages[0]
-                if (scoord3d.frameOfReferenceUID === image.FrameOfReferenceUID) {
-                  if (this.volumeViewer !== undefined) {
-                    /**
-                     * ROIs may get assigned new UIDs upon re-rendering of the
-                     * page and we need to ensure that we don't add them twice.
-                     * The same ROI may be stored in multiple SR documents and
-                     * we don't want them to show up twice.
-                     * TODO: We should probably either "merge" measurements and
-                     * quantitative evaluations or pick the ROI from the "best"
-                     * available report (COMPLETE and VERIFIED).
-                     */
-                    const doesROIExist = this.volumeViewer.getAllROIs().some(
-                      (otherROI: dmv.roi.ROI): boolean => {
-                        return _areROIsEqual(otherROI, roi)
-                      }
-                    )
-                    if (!doesROIExist) {
-                      try {
-                        // Add ROI without style such that it won't be visible.
-                        this.volumeViewer.addROI(roi, {})
-                      } catch {
-                        console.error(`could not add ROI "${roi.uid}"`)
-                      }
+              const slide = this.state.activeSlide
+              const image = slide.volumeImages[0]
+              if (scoord3d.frameOfReferenceUID === image.FrameOfReferenceUID) {
+                if (this.volumeViewer !== undefined) {
+                  /**
+                   * ROIs may get assigned new UIDs upon re-rendering of the
+                   * page and we need to ensure that we don't add them twice.
+                   * The same ROI may be stored in multiple SR documents and
+                   * we don't want them to show up twice.
+                   * TODO: We should probably either "merge" measurements and
+                   * quantitative evaluations or pick the ROI from the "best"
+                   * available report (COMPLETE and VERIFIED).
+                   */
+                  const doesROIExist = this.volumeViewer.getAllROIs().some(
+                    (otherROI: dmv.roi.ROI): boolean => {
+                      return _areROIsEqual(otherROI, roi)
                     }
-                  } else {
-                    console.error(
-                      `could not add ROI "${roi.uid}" ` +
-                      'because viewer has not yet been instantiated'
-                    )
+                  )
+                  if (!doesROIExist) {
+                    try {
+                      // Add ROI without style such that it won't be visible.
+                      this.volumeViewer.addROI(roi, {})
+                    } catch {
+                      console.error(`could not add ROI "${roi.uid}"`)
+                    }
                   }
+                } else {
+                  console.error(
+                    `could not add ROI "${roi.uid}" ` +
+                    'because viewer has not yet been instantiated'
+                  )
                 }
               }
             })
@@ -1005,6 +1003,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.labelViewer.resize()
     }
 
+    const visibleMenues = ['specimens']
+
     const handlePolygonRoiDrawing = (): void => {
       this.handleRoiDrawing({ geometryType: 'freehandpolygon' })
     }
@@ -1086,38 +1086,39 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     let specimenMenu
     let sampleMenu
-    const activeSlide = this.state.activeSlide
-    if (activeSlide !== undefined) {
-      const slide = activeSlide as Slide
-      if (!slide.isMultiplexed) {
-        specimenMenu = (
-          <Menu.SubMenu key='specimens' title='Specimens'>
-            <SpecimenList
-              metadata={slide.volumeImages[0]}
-              showstain
+    const slide = this.state.activeSlide
+    if (slide.labelImages.length > 0) {
+      visibleMenues.push('label')
+    }
+    if (!slide.isMultiplexed) {
+      specimenMenu = (
+        <Menu.SubMenu key='specimens' title='Specimens'>
+          <SpecimenList
+            metadata={slide.volumeImages[0]}
+            showstain
+          />
+        </Menu.SubMenu>
+      )
+    } else {
+      visibleMenues.push('samples')
+      specimenMenu = (
+        <Menu.SubMenu key='specimens' title='Specimens'>
+          <SpecimenList
+            metadata={slide.volumeImages[0]}
+            showstain={false}
+          />
+        </Menu.SubMenu>
+      )
+      const volumeViewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
+      if (volumeViewer !== undefined) {
+        sampleMenu = (
+          <Menu.SubMenu key='samples' title='Samples'>
+            <SamplesList
+              metadata={slide.volumeImages}
+              viewer={volumeViewer}
             />
           </Menu.SubMenu>
         )
-      } else {
-        specimenMenu = (
-          <Menu.SubMenu key='specimens' title='Specimens'>
-            <SpecimenList
-              metadata={slide.volumeImages[0]}
-              showstain={false}
-            />
-          </Menu.SubMenu>
-        )
-        const volumeViewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
-        if (volumeViewer !== undefined) {
-          sampleMenu = (
-            <Menu.SubMenu key='samples' title='Samples'>
-              <SamplesList
-                metadata={slide.volumeImages}
-                viewer={volumeViewer}
-              />
-            </Menu.SubMenu>
-          )
-        }
       }
     }
 
@@ -1200,12 +1201,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         >
           <Menu
             mode='inline'
-            defaultOpenKeys={['slideImage', 'annotations']}
+            defaultOpenKeys={visibleMenues}
             style={{ height: '100%' }}
             inlineIndent={14}
             theme='light'
           >
-            <Menu.SubMenu key='slideImage' title='Slide label'>
+            <Menu.SubMenu key='label' title='Slide label'>
               <div style={{ height: '220px' }} ref={this.labelViewport} />
             </Menu.SubMenu>
             {specimenMenu}
