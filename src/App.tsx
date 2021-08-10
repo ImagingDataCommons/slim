@@ -65,36 +65,45 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  onSignIn = ({ user, authorization }: {
+  /**
+   * Handler that gets called when a user successfully authenticated.
+   *
+   * Authorizes the DICOMweb client to access the DICOMweb server and directs
+   * the user back to the App.
+   *
+   * @param user - Information about the user
+   * @param authorization - Value of the "Authorization" HTTP header field
+   */
+  handleSignIn = ({ user, authorization }: {
     user: User
     authorization: string
   }): void => {
     const client = this.state.client
     client.updateHeaders({ Authorization: authorization })
-    this.setState(state => ({
+    this.setState({
       user: user,
       client: client,
       wasAuthSuccessful: true,
       isLoading: false
-    }))
+    })
     window.location.hash = ''
   }
 
   componentDidMount (): void {
     if (this.auth !== undefined) {
-      this.auth.signIn({ onSignIn: this.onSignIn }).then(() => {
+      this.auth.signIn({ onSignIn: this.handleSignIn }).then(() => {
         console.info('sign-in successful')
       }).catch((error) => {
         console.error('sign-in failed ', error)
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         message.error('Could not sign-in user')
-        this.setState(state => ({ isLoading: false }))
+        this.setState({ isLoading: false })
       })
     } else {
-      this.setState(state => ({
+      this.setState({
         isLoading: false,
         wasAuthSuccessful: true
-      }))
+      })
     }
   }
 
@@ -144,6 +153,7 @@ class App extends React.Component<AppProps, AppState> {
                     <CaseViewer
                       client={this.state.client}
                       user={this.state.user}
+                      renderer={this.props.config.renderer}
                       annotations={this.props.config.annotations}
                       app={appInfo}
                       studyInstanceUID={routeProps.match.params.StudyInstanceUID}
