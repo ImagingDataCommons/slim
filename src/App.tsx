@@ -3,24 +3,27 @@ import {
   BrowserRouter,
   Redirect,
   Route,
-  Switch
+  Switch,
 } from 'react-router-dom'
+import * as dwc from 'dicomweb-client'
 import { Layout, message } from 'antd'
 import { FaSpinner } from 'react-icons/fa'
 
-import AppConfig from './AppConfig'
+import AppConfig, { ServerSettings } from './AppConfig'
 import Header from './components/Header'
 import CaseViewer from './components/CaseViewer'
 import Worklist from './components/Worklist'
 
 import 'antd/dist/antd.less'
 import './App.less'
+import { ErrorMessageSettings } from './AppConfig'
 import { joinUrl } from './utils/url'
 import { User, AuthManager } from './auth'
 import OidcManager from './auth/OidcManager'
 import DicomWebManager from './DicomWebManager'
 
 import { version } from '../package.json'
+import InfoPage from './components/InfoPage'
 
 interface AppProps {
   version: string
@@ -33,6 +36,7 @@ interface AppState {
   isLoading: boolean
   redirectTo?: string
   wasAuthSuccessful: boolean
+  error?: ErrorMessageSettings
 }
 
 class App extends React.Component<AppProps, AppState> {
@@ -56,13 +60,27 @@ class App extends React.Component<AppProps, AppState> {
 
     message.config({ duration: 5 })
 
+    const handleError = (error: dwc.api.DICOMwebClientError, serverSettings: ServerSettings) => {
+      if (serverSettings.errorMessages !== undefined) {
+        serverSettings.errorMessages.forEach(({ status, message }: ErrorMessageSettings) => {
+          if (error.status === status) {
+            this.setState({ error: {
+              status: error.status,
+              message
+            } });
+          }
+        })
+      }
+    };
+
     this.state = {
       client: new DicomWebManager({
         baseUri: baseUri,
-        settings: props.config.servers
+        settings: props.config.servers,
+        onError: handleError
       }),
       isLoading: true,
-      wasAuthSuccessful: false
+      wasAuthSuccessful: false,
     }
   }
 
@@ -172,6 +190,10 @@ class App extends React.Component<AppProps, AppState> {
             </Layout.Content>
           </Layout>
         </BrowserRouter>
+      )
+    } else if (this.state.error) {
+      return (
+        <InfoPage type="error" message={this.state.error.message} />
       )
     } else {
       return (

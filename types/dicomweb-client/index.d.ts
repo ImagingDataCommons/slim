@@ -2,6 +2,15 @@ declare module 'dicomweb-client' {
 
   declare namespace api {
 
+    export interface DICOMwebClientRequestHookMetadata {
+      url: string
+      method: string
+    }
+
+    export interface DICOMwebClientRequestHook { 
+      (request: XMLHttpRequest, metadata: DICOMwebClientRequestHookMetadata): XMLHttpRequest
+    }
+
     export interface DICOMwebClientOptions {
       url: string
       qidoURLPrefix?: string
@@ -10,6 +19,14 @@ declare module 'dicomweb-client' {
       headers?: {
         Authorization?: string
       }
+      requestHooks?: DICOMwebClientRequestHook[]
+      errorInterceptor?: (request: DICOMwebClientError) => void
+    }
+
+    export interface DICOMwebClientError {
+      request: XMLHttpRequest
+      response: XMLHttpRequestResponseType
+      status: number
     }
 
     export interface SearchForStudiesOptions {
