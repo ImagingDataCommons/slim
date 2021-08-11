@@ -1,18 +1,6 @@
 import retry from "retry"
 
-export interface RetryRequestSettings {
-  retries?: number
-  factor?: number
-  minTimeout?: number
-  maxTimeout?: number
-  randomize?: boolean
-  retryableStatusCodes: number[]
-}
-
-export interface DWCRequestHookMetadata {
-  url: string
-  method: string
-}
+import { RetryRequestSettings, DICOMwebClientRequestHookMetadata } from '../AppConfig'
 
 /**
  * Returns a configured retry request hook function
@@ -77,7 +65,7 @@ export const getXHRRetryHook = (options: RetryRequestSettings = {
    * @param metadata.method - HTTP method
    * @returns - XHR request instance (potentially modified)
    */
-   const xhrRetryHook = (request: XMLHttpRequest, metadata: DWCRequestHookMetadata) => {
+   const xhrRetryHook = (request: XMLHttpRequest, metadata: DICOMwebClientRequestHookMetadata): XMLHttpRequest => {
     const { url, method } = metadata
 
     function faultTolerantRequestSend(...args: any) {

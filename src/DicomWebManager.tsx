@@ -1,6 +1,6 @@
 import * as dwc from 'dicomweb-client'
 
-import { ServerSettings } from './AppConfig'
+import { ServerSettings, DicomWebManagerErrorHandler } from './AppConfig'
 import { joinUrl } from './utils/url'
 import getXHRRetryHook from './utils/xhrRetryHook'
 
@@ -10,12 +10,12 @@ export default class DicomWebManager {
     client: dwc.api.DICOMwebClient
   }>
 
-  private handleError: (error: dwc.api.DICOMwebClientError, serverSettings: ServerSettings) => void
+  private handleError: DicomWebManagerErrorHandler
 
   constructor ({ baseUri, settings, onError }: {
     baseUri: string
     settings: ServerSettings[]
-    onError?: (error: dwc.api.DICOMwebClientError, serverSettings: ServerSettings) => void
+    onError?: DicomWebManagerErrorHandler
   }) {
     this.handleError = () => {}
     if (onError) {

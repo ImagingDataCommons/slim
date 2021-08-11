@@ -1,12 +1,38 @@
 import * as dcmjs from 'dcmjs'
-import { RetryRequestSettings } from './utils/xhrRetryHook';
 
-interface EvaluationSetting {
+export interface DicomWebManagerErrorHandler {
+  (error: dwc.api.DICOMwebClientError, serverSettings: ServerSettings): void
+}
+
+export interface RetryRequestSettings {
+  retries?: number
+  factor?: number
+  minTimeout?: number
+  maxTimeout?: number
+  randomize?: boolean
+  retryableStatusCodes: number[]
+}
+
+export interface DICOMwebClientRequestHookMetadata {
+  url: string
+  method: string
+}
+
+export interface RetryRequestSettings {
+  retries?: number
+  factor?: number
+  minTimeout?: number
+  maxTimeout?: number
+  randomize?: boolean
+  retryableStatusCodes: number[]
+}
+
+export interface EvaluationSetting {
   name: dcmjs.sr.coding.CodeOptions
   values: dcmjs.sr.coding.CodeOptions[]
 }
 
-interface MeasurementSetting {
+export interface MeasurementSetting {
   name: dcmjs.sr.coding.CodeOptions
   unit: dcmjs.sr.coding.CodeOptions
 }
