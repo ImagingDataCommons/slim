@@ -1,6 +1,7 @@
 import React from 'react'
 import {
   BrowserRouter,
+  Redirect,
   Route,
   Switch
 } from 'react-router-dom'
@@ -30,6 +31,7 @@ interface AppState {
   client: DicomWebManager
   user?: User
   isLoading: boolean
+  redirectTo?: string
   wasAuthSuccessful: boolean
 }
 
@@ -83,24 +85,34 @@ class App extends React.Component<AppProps, AppState> {
       user: user,
       client: client,
       wasAuthSuccessful: true,
-      isLoading: false
+      isLoading: false,
+      redirectTo: '/'
     })
-    window.location.hash = ''
   }
 
   componentDidMount (): void {
     if (this.auth !== undefined) {
       this.auth.signIn({ onSignIn: this.handleSignIn }).then(() => {
         console.info('sign-in successful')
+        this.setState({
+          isLoading: false,
+          redirectTo: undefined,
+          wasAuthSuccessful: true
+        })
       }).catch((error) => {
         console.error('sign-in failed ', error)
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         message.error('Could not sign-in user')
-        this.setState({ isLoading: false })
+        this.setState({
+          isLoading: false,
+          redirectTo: undefined,
+          wasAuthSuccessful: false
+        })
       })
     } else {
       this.setState({
         isLoading: false,
+        redirectTo: undefined,
         wasAuthSuccessful: true
       })
     }
@@ -114,8 +126,11 @@ class App extends React.Component<AppProps, AppState> {
       organization: this.props.config.organization
     }
 
+    const enableWorklist = !this.props.config.disableWorklist
+    const enableAnnotationTools = !this.props.config.disableAnnotationTools
+
     let worklist
-    if (!this.props.config.disableWorklist) {
+    if (enableWorklist) {
       worklist = <Worklist client={this.state.client} />
     } else {
       worklist = <div>Worklist has been disabled.</div>
@@ -124,7 +139,13 @@ class App extends React.Component<AppProps, AppState> {
     const layoutStyle = { height: '100vh' }
     const layoutContentStyle = { height: '100%' }
 
-    if (this.state.isLoading) {
+    if (this.state.redirectTo !== undefined) {
+      return (
+        <BrowserRouter basename={this.props.config.path}>
+          <Redirect push to={this.state.redirectTo}/>
+        </BrowserRouter>
+      )
+    } else if (this.state.isLoading) {
       return (
         <BrowserRouter basename={this.props.config.path}>
           <Layout style={layoutStyle}>
@@ -172,7 +193,7 @@ class App extends React.Component<AppProps, AppState> {
                       renderer={this.props.config.renderer}
                       annotations={this.props.config.annotations}
                       app={appInfo}
-                      enableAnnotationTools={!this.props.config.disableAnnotationTools}
+                      enableAnnotationTools={enableAnnotationTools}
                       studyInstanceUID={routeProps.match.params.StudyInstanceUID}
                     />
                   </Layout.Content>
