@@ -1,11 +1,11 @@
 import retry from "retry"
 
-export interface RetryOptions {
-  retries: number
-  factor: number
-  minTimeout: number
-  maxTimeout: number
-  randomize: boolean
+export interface RetryRequestSettings {
+  retries?: number
+  factor?: number
+  minTimeout?: number
+  maxTimeout?: number
+  randomize?: boolean
   retryableStatusCodes: number[]
 }
 
@@ -13,64 +13,6 @@ export interface DWCRequestHookMetadata {
   url: string
   method: string
 }
-
-const defaultRetryOptions = {
-  retries: 5,
-  factor: 3,
-  minTimeout: 1 * 1000,
-  maxTimeout: 60 * 1000,
-  randomize: true,
-  retryableStatusCodes: [429, 500],
-};
-
-let retryOptions = { ...defaultRetryOptions }
-
-/**
- * Request hook used to add retry functionality to XHR requests.
- *
- * @param request - XHR request instance
- * @param metadata - Metadata about the request
- * @param metadata.url - URL
- * @param metadata.method - HTTP method
- * @returns - XHR request instance (potentially modified)
- */
-const xhrRetryHook = (request: XMLHttpRequest, metadata: DWCRequestHookMetadata) => {
-  const { url, method } = metadata
-
-  function faultTolerantRequestSend(...args: any) {
-    const operation = retry.operation(retryOptions)
-
-    operation.attempt(function operationAttempt(currentAttempt) {
-      const noop = () => {}
-      const originalOnReadyStateChange = request.onreadystatechange || noop
-
-      /** Overriding/extending XHR function */
-      request.onreadystatechange = function onReadyStateChange(...args: any) {
-        originalOnReadyStateChange.apply(request, args);
-
-        if (retryOptions.retryableStatusCodes.includes(request.status)) {
-          const errorMessage = `Attempt to request ${url} failed.`
-          const attemptFailedError = new Error(errorMessage)
-          operation.retry(attemptFailedError)
-        }
-      }
-
-      /** Call open only on retry (after headers and other things were set in the xhr instance) */
-      if (currentAttempt > 1) {
-        console.warn(`Requesting ${url}... (attempt: ${currentAttempt})`)
-        request.open(method, url, true)
-      }
-    })
-
-    originalRequestSend.apply(request, args)
-  }
-
-  /** Overriding/extending XHR function */
-  const originalRequestSend = request.send;
-  request.send = faultTolerantRequestSend;
-
-  return request;
-};
 
 /**
  * Returns a configured retry request hook function
@@ -92,30 +34,86 @@ const xhrRetryHook = (request: XMLHttpRequest, metadata: DWCRequestHookMetadata)
  * @param options.retryableStatusCodes HTTP status codes that can trigger a retry
  * @returns Configured retry request function
  */
-export const getXHRRetryHook = (options: RetryOptions = defaultRetryOptions) => {
-  if ("retries" in options) {
+export const getXHRRetryHook = (options: RetryRequestSettings = {
+  retries: 5,
+  factor: 3,
+  minTimeout: 1 * 1000,
+  maxTimeout: 60 * 1000,
+  randomize: true,
+  retryableStatusCodes: [429, 500],
+}) => {
+  let retryOptions = options;
+
+  if (options.retries != null) {
     retryOptions.retries = options.retries
   }
 
-  if ("factor" in options) {
+  if (options.factor != null) {
     retryOptions.factor = options.factor
   }
 
-  if ("minTimeout" in options) {
+  if (options.minTimeout != null) {
     retryOptions.minTimeout = options.minTimeout
   }
 
-  if ("maxTimeout" in options) {
+  if (options.maxTimeout != null) {
     retryOptions.maxTimeout = options.maxTimeout
   }
 
-  if ("randomize" in options) {
+  if (options.randomize != null) {
     retryOptions.randomize = options.randomize
   }
 
-  if ("retryableStatusCodes" in options) {
+  if (options.retryableStatusCodes != null) {
     retryOptions.retryableStatusCodes = options.retryableStatusCodes
   }
+
+  /**
+   * Request hook used to add retry functionality to XHR requests.
+   *
+   * @param request - XHR request instance
+   * @param metadata - Metadata about the request
+   * @param metadata.url - URL
+   * @param metadata.method - HTTP method
+   * @returns - XHR request instance (potentially modified)
+   */
+   const xhrRetryHook = (request: XMLHttpRequest, metadata: DWCRequestHookMetadata) => {
+    const { url, method } = metadata
+
+    function faultTolerantRequestSend(...args: any) {
+      const operation = retry.operation(retryOptions)
+
+      operation.attempt(function operationAttempt(currentAttempt) {
+        const noop = () => {}
+        const originalOnReadyStateChange = request.onreadystatechange || noop
+
+        /** Overriding/extending XHR function */
+        request.onreadystatechange = function onReadyStateChange(...args: any) {
+          originalOnReadyStateChange.apply(request, args);
+
+          if (retryOptions.retryableStatusCodes.includes(request.status)) {
+            const errorMessage = `Attempt to request ${url} failed.`
+            const attemptFailedError = new Error(errorMessage)
+            operation.retry(attemptFailedError)
+          }
+        }
+
+        /** Call open only on retry (after headers and other things were set in the xhr instance) */
+        if (currentAttempt > 1) {
+          console.warn(`Requesting ${url}... (attempt: ${currentAttempt})`)
+          request.open(method, url, true)
+        }
+      })
+
+      originalRequestSend.apply(request, args)
+    }
+
+    /** Overriding/extending XHR function */
+    const originalRequestSend = request.send;
+    request.send = faultTolerantRequestSend;
+
+    return request;
+  };
 
   return xhrRetryHook
 };

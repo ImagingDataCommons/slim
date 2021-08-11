@@ -10,16 +10,16 @@ export default class DicomWebManager {
     client: dwc.api.DICOMwebClient
   }>
 
-  private onError: (error: dwc.api.DICOMwebClientError, serverSettings: ServerSettings) => void
+  private handleError: (error: dwc.api.DICOMwebClientError, serverSettings: ServerSettings) => void
 
   constructor ({ baseUri, settings, onError }: {
     baseUri: string
     settings: ServerSettings[]
     onError?: (error: dwc.api.DICOMwebClientError, serverSettings: ServerSettings) => void
   }) {
-    this.onError = () => {}
+    this.handleError = () => {}
     if (onError) {
-      this.onError = onError;
+      this.handleError = onError;
     }
     
     this.datastores = []
@@ -50,12 +50,12 @@ export default class DicomWebManager {
       if (serverSettings.stowPathPrefix !== undefined) {
         clientSettings.stowURLPrefix = serverSettings.stowPathPrefix
       }
-      if (serverSettings.retryOptions !== undefined) {
-        clientSettings.requestHooks = [getXHRRetryHook(serverSettings.retryOptions)]
+      if (serverSettings.retry !== undefined) {
+        clientSettings.requestHooks = [getXHRRetryHook(serverSettings.retry)]
       }
       if (serverSettings.errorMessages !== undefined) {
         clientSettings.errorInterceptor = (error: dwc.api.DICOMwebClientError) => {
-          this.onError(error, serverSettings)
+          this.handleError(error, serverSettings)
         }
       }
       this.datastores.push({

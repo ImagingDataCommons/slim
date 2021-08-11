@@ -15,8 +15,8 @@ declare module 'dicomweb-client' {
     }
 
     export interface DICOMwebClientError {
-      request: object
-      response: object
+      request: XMLHttpRequest
+      response: XMLHttpRequestResponseType
       status: number
     }
 

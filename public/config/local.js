@@ -1,20 +1,25 @@
 window.config = {
-  // This must match the location configured for web server
-  path: "/viewer",
+  path: "/",
+  /** This is an array, but we'll only use the first entry for now */
   servers: [
     {
       id: "local",
-      // This must match the proxy location configured for the web server
-      url: "http://localhost:8008/dicomweb",
-      write: true
+      url: "https://idc-external-006.uc.r.appspot.com",
+      write: true,
+      retry: {
+        retries: 5,
+        factor: 3,
+        minTimeout: 1 * 1000,
+        maxTimeout: 60 * 1000,
+        randomize: true,
+        retryableStatusCodes: [429, 500, 404],
+      },
+      errorMessages: [
+        { status: 429, message: 'Failed 429!' },
+        { status: 404, message: 'Failed 404!' },
+      ]
     }
   ],
-  renderer:
-  {
-    retrieveRendered: false
-  },
-  disableWorklist: false,
-  disableAnnotationTools: false,
   annotations: [
     {
       finding: {

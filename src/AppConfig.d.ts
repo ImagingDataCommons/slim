@@ -1,5 +1,5 @@
 import * as dcmjs from 'dcmjs'
-import { RetryOptions } from './utils/xhrRetryHook';
+import { RetryRequestSettings } from './utils/xhrRetryHook';
 
 interface EvaluationSetting {
   name: dcmjs.sr.coding.CodeOptions
@@ -39,8 +39,8 @@ export interface ServerSettings {
   qidoPathPrefix?: string
   wadoPathPrefix?: string
   stowPathPrefix?: string
-  retryOptions: RetryOptions
-  errorMessages: ErrorMessageSettings[]
+  retry?: RetryRequestSettings
+  errorMessages?: ErrorMessageSettings[]
 }
 
 export interface RendererSettings {

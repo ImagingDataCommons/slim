@@ -2,7 +2,7 @@ import React from 'react'
 import {
   BrowserRouter,
   Route,
-  Switch
+  Switch,
 } from 'react-router-dom'
 import * as dwc from 'dicomweb-client'
 import { Layout, message } from 'antd'
