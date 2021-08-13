@@ -295,7 +295,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleRoiTranslation = this.handleRoiTranslation.bind(this)
     this.handleRoiModification = this.handleRoiModification.bind(this)
     this.handleRoiVisibility = this.handleRoiVisibility.bind(this)
-    this.handleAnnotationVisibility = this.handleAnnotationVisibility.bind(this)
+    this.handleAnnotationVisibilityChange = this.handleAnnotationVisibilityChange.bind(this)
     this.handleRoiRemoval = this.handleRoiRemoval.bind(this)
     this.handleAnnotationSelection = this.handleAnnotationSelection.bind(this)
     this.handleReportGeneration = this.handleReportGeneration.bind(this)
@@ -987,7 +987,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handle toggling of annotation visibility, i.e., whether a given
    * annotation should be either displayed or hidden by the viewer.
    */
-  handleAnnotationVisibility ({ roiUID }: { roiUID: string }): void {
+  handleAnnotationVisibilityChange ({ roiUID }: { roiUID: string }): void {
     const viewer = this.volumeViewer
     if (viewer === undefined) {
       return
@@ -1133,7 +1133,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.labelViewer.resize()
     }
 
-    const visibleSubMenuItems = ['specimens']
+    let openSubMenuItems = ['specimens', 'annotations']
 
     const handlePolygonRoiDrawing = (): void => {
       this.handleRoiDrawing({ geometryType: 'freehandpolygon' })
@@ -1157,7 +1157,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           selectedRoiUIDs={this.state.selectedRoiUIDs}
           visibleRoiUIDs={this.state.visibleRoiUIDs}
           onSelection={this.handleAnnotationSelection}
-          onToggleVisibility={this.handleAnnotationVisibility}
+          onChangeVisibility={this.handleAnnotationVisibilityChange}
         />
       )
     }
@@ -1218,7 +1218,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     let sampleMenu
     const slide = this.state.activeSlide
     if (slide.labelImages.length > 0) {
-      visibleSubMenuItems.push('label')
+      openSubMenuItems.push('label')
     }
     if (!slide.isMultiplexed) {
       specimenMenu = (
@@ -1230,7 +1230,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         </Menu.SubMenu>
       )
     } else {
-      visibleSubMenuItems.push('samples')
+      openSubMenuItems.push('samples')
       specimenMenu = (
         <Menu.SubMenu key='specimens' title='Specimens'>
           <SpecimenList
@@ -1343,7 +1343,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         >
           <Menu
             mode='inline'
-            defaultOpenKeys={visibleSubMenuItems}
+            defaultOpenKeys={openSubMenuItems}
             style={{ height: '100%' }}
             inlineIndent={14}
             theme='light'
