@@ -10,7 +10,7 @@ window.config = {
       write: false
     }
   ],
-  annotations: [
-  ]
+  annotations: [ ],
+  disableWorklist: true,
+  disableAnnotationTools: true
 };
-
