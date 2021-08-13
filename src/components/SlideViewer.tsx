@@ -94,6 +94,108 @@ const _areROIsEqual = (a: dmv.roi.ROI, b: dmv.roi.ROI): boolean => {
   return true
 }
 
+/*
+ * Check whether the report is structured according to template
+ * TID 1500 "MeasurementReport".
+ */
+const _implementsTID1500 = (
+  report: dmv.metadata.Comprehensive3DSR
+): boolean => {
+  const templateSeq = report.ContentTemplateSequence
+  if (templateSeq.length > 0) {
+    const tid = templateSeq[0].TemplateIdentifier
+    if (tid === '1500') {
+      return true
+    }
+  }
+  return false
+}
+
+/*
+ * Check whether the subject described in the report is a specimen as compared
+ * to a patient, fetus, or device.
+ */
+const _describesSpecimenSubject = (
+  report: dmv.metadata.Comprehensive3DSR
+): boolean => {
+    const items = findContentItemsByName({
+      content: report.ContentSequence,
+      name: new dcmjs.sr.coding.CodedConcept({
+        value: '121024',
+        schemeDesignator: 'DCM',
+        meaning: 'Subject Class'
+      })
+    })
+    if (items.length === 0) {
+      return false
+    }
+    const subjectClassItem = items[0] as dcmjs.sr.valueTypes.CodeContentItem
+    const subjectClassValue = subjectClassItem.ConceptCodeSequence[0]
+    const retrievedConcept = new dcmjs.sr.coding.CodedConcept({
+      value: subjectClassValue.CodeValue,
+      meaning: subjectClassValue.CodeMeaning,
+      schemeDesignator: subjectClassValue.CodingSchemeDesignator,
+    })
+    const expectedConcept = new dcmjs.sr.coding.CodedConcept({
+      value: '121027',
+      meaning: 'Specimen',
+      schemeDesignator: 'DCM'
+    })
+    if (retrievedConcept.equals(expectedConcept)) {
+      return true
+    }
+    return false
+}
+
+/*
+ * Check whether the report contains appropriate graphic ROI annotations.
+ */
+const _containsROIAnnotations = (
+  report: dmv.metadata.Comprehensive3DSR
+): boolean => {
+  const measurements = findContentItemsByName({
+    content: report.ContentSequence,
+    name: new dcmjs.sr.coding.CodedConcept({
+      value: '126010',
+      schemeDesignator: 'DCM',
+      meaning: 'Imaging Measurements'
+    })
+  })
+  if (measurements.length === 0) {
+    return false
+  }
+  const container = measurements[0] as dcmjs.sr.valueTypes.ContainerContentItem
+  const measurementGroups = findContentItemsByName({
+    content: container.ContentSequence,
+    name: new dcmjs.sr.coding.CodedConcept({
+      value: '125007',
+      schemeDesignator: 'DCM',
+      meaning: 'Measurement Group'
+    })
+  })
+
+  let foundRegion = false
+  measurementGroups.forEach((group) => {
+    const container = group as dcmjs.sr.valueTypes.ContainerContentItem
+    const regions = findContentItemsByName({
+      content: container.ContentSequence,
+      name: new dcmjs.sr.coding.CodedConcept({
+        value: '111030',
+        schemeDesignator: 'DCM',
+        meaning: 'Image Region'
+      })
+    })
+    if (regions.length > 0) {
+      if (regions[0].ValueType === dcmjs.sr.valueTypes.ValueTypes.SCOORD3D) {
+        foundRegion = true
+      }
+    }
+  })
+
+  return foundRegion
+}
+
+
 interface EvaluationOptions {
   name: dcmjs.sr.coding.CodedConcept
   values: dcmjs.sr.coding.CodedConcept[]
@@ -254,9 +356,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   /**
    * Retrieve structured report instances that contain regions of interests
    * with 3D spatial coordinates defined in the same frame of reference as the
-   * currently selected series and adds them to the VOLUME image viewer.
+   * currently selected series and add them to the VOLUME image viewer.
    */
   addAnnotations = (): void => {
+    const viewer = this.volumeViewer
+    if (viewer === undefined) {
+      return
+    }
     console.info('search for Comprehensive 3D SR instances')
     this.setState({ isLoading: true })
     this.props.client.searchForInstances({
@@ -270,13 +376,40 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         if (instance.SOPClassUID === SOPClassUIDs.COMPREHENSIVE_3D_SR) {
           console.info(`retrieve SR instance "${instance.SOPInstanceUID}"`)
           this.props.client.retrieveInstance({
-            studyInstanceUID: instance.StudyInstanceUID ?? this.props.studyInstanceUID,
+            studyInstanceUID: this.props.studyInstanceUID,
             seriesInstanceUID: instance.SeriesInstanceUID,
             sopInstanceUID: instance.SOPInstanceUID
           }).then((retrievedInstance): void => {
             const data = dcmjs.data.DicomMessage.readFile(retrievedInstance)
             const dataset = dmv.metadata.formatMetadata(data.dict)
             const report = dataset as unknown as dmv.metadata.Comprehensive3DSR
+            /*
+             * Perform a couple of checks to ensure the document content of the
+             * report fullfils the requirements of the application.
+             */
+            if (!_implementsTID1500(report)) {
+              console.debug(
+                `ignore SR document "${report.SOPInstanceUID}" ` +
+                'because it is not structured according to template ' +
+                'TID 1500 "MeasurementReport"'
+              )
+              return
+            }
+            if (!_describesSpecimenSubject(report)) {
+              console.debug(
+                `ignore SR document "${report.SOPInstanceUID}" ` +
+                'because it does not describe a specimen subject'
+              )
+              return
+            }
+            if (!_containsROIAnnotations(report)) {
+              console.debug(
+                `ignore SR document "${report.SOPInstanceUID}" ` +
+                'because it does not contain any suitable ROI annotations'
+              )
+              return
+            }
+
             const content = new MeasurementReport(report)
             content.ROIs.forEach(roi => {
               console.info(`add ROI "${roi.uid}"`)
@@ -284,35 +417,34 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               const slide = this.state.activeSlide
               const image = slide.volumeImages[0]
               if (scoord3d.frameOfReferenceUID === image.FrameOfReferenceUID) {
-                if (this.volumeViewer !== undefined) {
-                  /**
-                   * ROIs may get assigned new UIDs upon re-rendering of the
-                   * page and we need to ensure that we don't add them twice.
-                   * The same ROI may be stored in multiple SR documents and
-                   * we don't want them to show up twice.
-                   * TODO: We should probably either "merge" measurements and
-                   * quantitative evaluations or pick the ROI from the "best"
-                   * available report (COMPLETE and VERIFIED).
-                   */
-                  const doesROIExist = this.volumeViewer.getAllROIs().some(
-                    (otherROI: dmv.roi.ROI): boolean => {
-                      return _areROIsEqual(otherROI, roi)
-                    }
-                  )
-                  if (!doesROIExist) {
-                    try {
-                      // Add ROI without style such that it won't be visible.
-                      this.volumeViewer.addROI(roi, {})
-                    } catch {
-                      console.error(`could not add ROI "${roi.uid}"`)
-                    }
+                /*
+                 * ROIs may get assigned new UIDs upon re-rendering of the
+                 * page and we need to ensure that we don't add them twice.
+                 * The same ROI may be stored in multiple SR documents and
+                 * we don't want them to show up twice.
+                 * TODO: We should probably either "merge" measurements and
+                 * quantitative evaluations or pick the ROI from the "best"
+                 * available report (COMPLETE and VERIFIED).
+                 */
+                const doesROIExist = viewer.getAllROIs().some(
+                  (otherROI: dmv.roi.ROI): boolean => {
+                    return _areROIsEqual(otherROI, roi)
                   }
-                } else {
-                  console.error(
-                    `could not add ROI "${roi.uid}" ` +
-                    'because viewer has not yet been instantiated'
-                  )
+                )
+                if (!doesROIExist) {
+                  try {
+                    // Add ROI without style such that it won't be visible.
+                    viewer.addROI(roi, {})
+                  } catch {
+                    console.error(`could not add ROI "${roi.uid}"`)
+                  }
                 }
+              } else {
+                console.debug(
+                  `skip ROI "${roi.uid}" ` +
+                  `of SR document "${report.SOPInstanceUID}"` +
+                  'because it is defined in another frame of reference'
+                )
               }
             })
             // State update will also ensure that the component is re-rendered.

@@ -19,7 +19,22 @@ const hasName = (
 }
 
 /**
- * Find content items in a DICOM SR document by their given name.
+ * Check whether a DICOM SR content item has a given value type.
+ *
+ * @param item - Content item
+ * @param valueType - Value Type
+ * @returns Whether the content item has the given value type
+ */
+const hasValueType = (
+  item: dcmjs.sr.valueTypes.ContentItem,
+  valueType: dcmjs.sr.valueTypes.ValueTypes
+): boolean => {
+  console.log(item.ValueType, valueType)
+  return item.ValueType === valueType
+}
+
+/**
+ * Find content items in a DICOM SR document given their name.
  *
  * Only finds content items at the root level, but not any nested content items.
  *
@@ -36,6 +51,30 @@ export const findContentItemsByName = (
   const items: dcmjs.sr.valueTypes.ContentItem[] = []
   content.forEach(i => {
     if (hasName(i, name)) {
+      items.push(i)
+    }
+  })
+  return items
+}
+
+/**
+ * Find content items in a DICOM SR document given their value type.
+ *
+ * Only finds content items at the root level, but not any nested content items.
+ *
+ * @param content - Document content, i.e., sequence of content items
+ * @param valueType - Value Type
+ * @returns Matched content items
+ */
+export const findContentItemsByValueType = (
+  { content, valueType }: {
+    content: dcmjs.sr.valueTypes.ContentItem[]
+    valueType: dcmjs.sr.valueTypes.ValueTypes
+  }
+): dcmjs.sr.valueTypes.ContentItem[] => {
+  const items: dcmjs.sr.valueTypes.ContentItem[] = []
+  content.forEach(i => {
+    if (hasValueType(i, valueType)) {
       items.push(i)
     }
   })

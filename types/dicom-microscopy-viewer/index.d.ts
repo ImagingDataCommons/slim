@@ -344,6 +344,10 @@ declare module 'dicom-microscopy-viewer' {
 
     export interface Comprehensive3DSR extends SOPClass {
       ContentSequence: dcmjs.sr.valueTypes.ContentItem[]
+      ContentTemplateSequence: {
+        MappingResource: string
+        TemplateIdentifier: string
+      }[]
     }
 
     type Metadata = Study|Series|Instance|VLWholeSlideMicroscopyImage
