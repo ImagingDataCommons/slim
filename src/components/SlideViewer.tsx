@@ -451,7 +451,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             this.setState({ isLoading: false })
           }).catch((error) => {
             // eslint-disable-next-line @typescript-eslint/no-floating-promises
-            message.error('An error occured. Annotation could not be loaded')
+            message.error('An error occured. Annotations could not be loaded')
             console.error(error)
           })
         }
