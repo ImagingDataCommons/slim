@@ -1,7 +1,8 @@
 import * as dwc from 'dicomweb-client'
 
-import { ServerSettings } from './AppConfig'
+import { ServerSettings, DicomWebManagerErrorHandler } from './AppConfig'
 import { joinUrl } from './utils/url'
+import getXHRRetryHook from './utils/xhrRetryHook'
 
 export default class DicomWebManager {
   private readonly datastores: Array<{
@@ -9,25 +10,36 @@ export default class DicomWebManager {
     client: dwc.api.DICOMwebClient
   }>
 
-  constructor ({ baseUri, settings }: {
+  private handleError: DicomWebManagerErrorHandler
+
+  constructor ({ baseUri, settings, onError }: {
     baseUri: string
     settings: ServerSettings[]
+    onError?: DicomWebManagerErrorHandler
   }) {
+    this.handleError = () => {}
+    if (onError) {
+      this.handleError = onError;
+    }
+    
     this.datastores = []
     settings.forEach(serverSettings => {
       if (serverSettings === undefined) {
         throw Error('At least one server needs to be configured.')
       }
 
-      const clientSettings: dwc.api.DICOMwebClientOptions = { url: '' }
+      let serviceUrl
       if (serverSettings.url !== undefined) {
-        clientSettings.url = serverSettings.url
+        serviceUrl = serverSettings.url
       } else if (serverSettings.path !== undefined) {
-        clientSettings.url = joinUrl(serverSettings.path, baseUri)
+        serviceUrl = joinUrl(serverSettings.path, baseUri)
       } else {
         throw new Error(
           'Either path or full URL needs to be configured for server.'
         )
+      }
+      const clientSettings: dwc.api.DICOMwebClientOptions = {
+        url: serviceUrl
       }
       if (serverSettings.qidoPathPrefix !== undefined) {
         clientSettings.qidoURLPrefix = serverSettings.qidoPathPrefix
@@ -37,6 +49,14 @@ export default class DicomWebManager {
       }
       if (serverSettings.stowPathPrefix !== undefined) {
         clientSettings.stowURLPrefix = serverSettings.stowPathPrefix
+      }
+      if (serverSettings.retry !== undefined) {
+        clientSettings.requestHooks = [getXHRRetryHook(serverSettings.retry)]
+      }
+      if (serverSettings.errorMessages !== undefined) {
+        clientSettings.errorInterceptor = (error: dwc.api.DICOMwebClientError) => {
+          this.handleError(error, serverSettings)
+        }
       }
       this.datastores.push({
         isStoragePermitted: serverSettings.write,

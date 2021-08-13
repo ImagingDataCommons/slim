@@ -4,10 +4,12 @@ import * as dcmjs from 'dcmjs'
 
 import Item from './Item'
 import { Attribute } from './Description'
+import { SpecimenPreparationStepItems } from '../data/specimens'
 
 interface SpecimenItemProps {
   index: number
-  metadata: dmv.metadata.SOPClass
+  metadata?: dmv.metadata.VLWholeSlideMicroscopyImage
+  showstain: boolean
 }
 
 /**
@@ -16,6 +18,9 @@ interface SpecimenItemProps {
  */
 class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
   render (): React.ReactNode {
+    if (this.props.metadata === undefined) {
+      return null
+    }
     const specimenDescription = this.props.metadata.SpecimenDescriptionSequence[
       this.props.index
     ]
@@ -34,17 +39,6 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
       })
     }
 
-    function doesCodeMatch (
-      code: dcmjs.sr.coding.CodedConcept,
-      scheme: string,
-      value: string
-    ): boolean {
-      if (code.CodingSchemeDesignator === scheme && code.CodeValue === value) {
-        return true
-      }
-      return false
-    }
-
     // TID 8001 "Specimen Preparation"
     specimenDescription.SpecimenPreparationSequence.forEach(
       (step: dmv.metadata.SpecimenPreparation, index: number): void => {
@@ -58,42 +52,62 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
           ),
           index: number
         ) => {
-          const name = item.ConceptNameCodeSequence[0]
-          if (item.ValueType === 'CODE') {
+          const name = new dcmjs.sr.coding.CodedConcept({
+            value: item.ConceptNameCodeSequence[0].CodeValue,
+            schemeDesignator:
+              item.ConceptNameCodeSequence[0].CodingSchemeDesignator,
+            meaning: item.ConceptNameCodeSequence[0].CodeMeaning
+          })
+          if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.CODE) {
             item = item as dcmjs.sr.valueTypes.CodeContentItem
-            const value = item.ConceptCodeSequence[0]
-            if (doesCodeMatch(name, 'DCM', '111701')) {
-              // Processing Type
-              const processingType = value.CodeMeaning
+            const value = new dcmjs.sr.coding.CodedConcept({
+              value: item.ConceptCodeSequence[0].CodeValue,
+              schemeDesignator:
+                item.ConceptCodeSequence[0].CodingSchemeDesignator,
+              meaning: item.ConceptCodeSequence[0].CodeMeaning
+            })
+            if (name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
               console.debug(
-                `parse specimen preparation step "${processingType}"`
+                `parse specimen preparation step "${value.CodeMeaning}"`
               )
             } else {
-              if (doesCodeMatch(name, 'SCT', '17636008')) {
+              if (
+                name.equals(SpecimenPreparationStepItems.COLLECTION_METHOD)
+              ) {
                 attributes.push({
                   name: 'Surgical collection',
                   value: value.CodeMeaning
                 })
-              } else if (doesCodeMatch(name, 'SCT', '430864009')) {
+              } else if (
+                name.equals(SpecimenPreparationStepItems.FIXATIVE)
+              ) {
                 attributes.push({
                   name: 'Fixative',
                   value: value.CodeMeaning
                 })
-              } else if (doesCodeMatch(name, 'SCT', '430863003')) {
+              } else if (
+                name.equals(SpecimenPreparationStepItems.EMBEDDING_MEDIUM)
+              ) {
                 attributes.push({
                   name: 'Embedding medium',
                   value: value.CodeMeaning
                 })
-              } else if (doesCodeMatch(name, 'SCT', '424361007')) {
+              } else if (
+                name.equals(SpecimenPreparationStepItems.STAIN) &&
+                this.props.showstain
+              ) {
                 attributes.push({
                   name: 'Stain',
                   value: value.CodeMeaning
                 })
               }
             }
-          } else if (item.ValueType === 'TEXT') {
+          } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
             item = item as dcmjs.sr.valueTypes.TextContentItem
-            if (doesCodeMatch(name, 'SCT', '424361007')) {
+            if (
+              name.equals(SpecimenPreparationStepItems.STAIN) &&
+              this.props.showstain
+            ) {
               attributes.push({
                 name: 'Stain',
                 value: item.TextValue

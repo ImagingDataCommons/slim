@@ -1,13 +1,46 @@
 import * as dcmjs from 'dcmjs'
 
-interface EvaluationValueSet {
+export interface DicomWebManagerErrorHandler {
+  (error: dwc.api.DICOMwebClientError, serverSettings: ServerSettings): void
+}
+
+export interface RetryRequestSettings {
+  retries?: number
+  factor?: number
+  minTimeout?: number
+  maxTimeout?: number
+  randomize?: boolean
+  retryableStatusCodes: number[]
+}
+
+export interface DICOMwebClientRequestHookMetadata {
+  url: string
+  method: string
+}
+
+export interface RetryRequestSettings {
+  retries?: number
+  factor?: number
+  minTimeout?: number
+  maxTimeout?: number
+  randomize?: boolean
+  retryableStatusCodes: number[]
+}
+
+export interface EvaluationSetting {
   name: dcmjs.sr.coding.CodeOptions
   values: dcmjs.sr.coding.CodeOptions[]
 }
 
+export interface MeasurementSetting {
+  name: dcmjs.sr.coding.CodeOptions
+  unit: dcmjs.sr.coding.CodeOptions
+}
+
 export interface AnnotationSettings {
   finding: dcmjs.sr.coding.CodeOptions
-  evaluations?: EvaluationValueSet[]
+  evaluations?: EvaluationSetting[]
+  measurements?: MeasurementSetting[]
   style: {
     stroke: {
       color: number[]
@@ -19,6 +52,11 @@ export interface AnnotationSettings {
   }
 }
 
+export interface ErrorMessageSettings {
+  status: number
+  message: string
+}
+
 export interface ServerSettings {
   id: string
   url?: string
@@ -27,6 +65,12 @@ export interface ServerSettings {
   qidoPathPrefix?: string
   wadoPathPrefix?: string
   stowPathPrefix?: string
+  retry?: RetryRequestSettings
+  errorMessages?: ErrorMessageSettings[]
+}
+
+export interface RendererSettings {
+  retrieveRendered: boolean
 }
 
 export interface OidcSettings {
@@ -39,8 +83,10 @@ export interface OidcSettings {
 export default interface AppConfig {
   servers: ServerSettings[]
   path: string
+  renderer: RendererSettings
   annotations: AnnotationSettings[]
   organization?: string
-  oidc?: OidcSettings,
-  routerBasename?: string
+  oidc?: OidcSettings
+  disableWorklist?: boolean
+  disableAnnotationTools?: boolean
 }

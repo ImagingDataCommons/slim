@@ -1,25 +1,29 @@
 import React from 'react'
 import {
   BrowserRouter,
+  Redirect,
   Route,
-  Switch
+  Switch,
 } from 'react-router-dom'
+import * as dwc from 'dicomweb-client'
 import { Layout, message } from 'antd'
 import { FaSpinner } from 'react-icons/fa'
 
-import AppConfig from './AppConfig'
+import AppConfig, { ServerSettings } from './AppConfig'
 import Header from './components/Header'
 import CaseViewer from './components/CaseViewer'
 import Worklist from './components/Worklist'
 
 import 'antd/dist/antd.less'
 import './App.less'
+import { ErrorMessageSettings } from './AppConfig'
 import { joinUrl } from './utils/url'
 import { User, AuthManager } from './auth'
 import OidcManager from './auth/OidcManager'
 import DicomWebManager from './DicomWebManager'
 
 import { version } from '../package.json'
+import InfoPage from './components/InfoPage'
 
 interface AppProps {
   version: string
@@ -30,23 +34,24 @@ interface AppState {
   client: DicomWebManager
   user?: User
   isLoading: boolean
+  redirectTo?: string
   wasAuthSuccessful: boolean
+  error?: ErrorMessageSettings
 }
 
 class App extends React.Component<AppProps, AppState> {
   private readonly auth?: AuthManager
 
-  private readonly baseUri: string
-
   constructor (props: AppProps) {
     super(props)
 
     const { protocol, host } = window.location
-    this.baseUri = joinUrl(props.config.path, `${protocol}//${host}//${props.config.routerBasename}`)
+    const baseUri = `${protocol}//${host}`
+    const appUri = joinUrl(props.config.path, baseUri)
 
     const oidcSettings = props.config.oidc
     if (oidcSettings !== undefined) {
-      this.auth = new OidcManager(this.baseUri, oidcSettings)
+      this.auth = new OidcManager(appUri, oidcSettings)
     }
 
     if (props.config.servers.length === 0) {
@@ -55,46 +60,79 @@ class App extends React.Component<AppProps, AppState> {
 
     message.config({ duration: 5 })
 
+    const handleError = (error: dwc.api.DICOMwebClientError, serverSettings: ServerSettings) => {
+      if (serverSettings.errorMessages !== undefined) {
+        serverSettings.errorMessages.forEach(({ status, message }: ErrorMessageSettings) => {
+          if (error.status === status) {
+            this.setState({ error: {
+              status: error.status,
+              message
+            } });
+          }
+        })
+      }
+    };
+
     this.state = {
       client: new DicomWebManager({
-        baseUri: this.baseUri,
-        settings: props.config.servers
+        baseUri: baseUri,
+        settings: props.config.servers,
+        onError: handleError
       }),
       isLoading: true,
-      wasAuthSuccessful: false
+      wasAuthSuccessful: false,
     }
   }
 
-  onSignIn = ({ user, authorization }: {
+  /**
+   * Handle successful authentication event.
+   *
+   * Authorizes the DICOMweb client to access the DICOMweb server and directs
+   * the user back to the App.
+   *
+   * @param user - Information about the user
+   * @param authorization - Value of the "Authorization" HTTP header field
+   */
+  handleSignIn = ({ user, authorization }: {
     user: User
     authorization: string
   }): void => {
     const client = this.state.client
     client.updateHeaders({ Authorization: authorization })
-    this.setState(state => ({
+    this.setState({
       user: user,
       client: client,
       wasAuthSuccessful: true,
-      isLoading: false
-    }))
-    window.location.hash = ''
+      isLoading: false,
+      redirectTo: '/'
+    })
   }
 
   componentDidMount (): void {
     if (this.auth !== undefined) {
-      this.auth.signIn({ onSignIn: this.onSignIn }).then(() => {
+      this.auth.signIn({ onSignIn: this.handleSignIn }).then(() => {
         console.info('sign-in successful')
+        this.setState({
+          isLoading: false,
+          redirectTo: undefined,
+          wasAuthSuccessful: true
+        })
       }).catch((error) => {
         console.error('sign-in failed ', error)
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         message.error('Could not sign-in user')
-        this.setState(state => ({ isLoading: false }))
+        this.setState({
+          isLoading: false,
+          redirectTo: undefined,
+          wasAuthSuccessful: false
+        })
       })
     } else {
-      this.setState(state => ({
+      this.setState({
         isLoading: false,
+        redirectTo: undefined,
         wasAuthSuccessful: true
-      }))
+      })
     }
   }
 
@@ -106,12 +144,34 @@ class App extends React.Component<AppProps, AppState> {
       organization: this.props.config.organization
     }
 
-    if (this.state.isLoading) {
+    const enableWorklist = !this.props.config.disableWorklist
+    const enableAnnotationTools = !this.props.config.disableAnnotationTools
+
+    let worklist
+    if (enableWorklist) {
+      worklist = <Worklist client={this.state.client} />
+    } else {
+      worklist = <div>Worklist has been disabled.</div>
+    }
+
+    const layoutStyle = { height: '100vh' }
+    const layoutContentStyle = { height: '100%' }
+
+    if (this.state.redirectTo !== undefined) {
       return (
-        <BrowserRouter basename={this.props.config.routerBasename}>
-          <Layout style={{ height: '100vh' }}>
-            <Header app={appInfo} />
-            <Layout.Content style={{ height: '100%' }}>
+        <BrowserRouter basename={this.props.config.path}>
+          <Redirect push to={this.state.redirectTo}/>
+        </BrowserRouter>
+      )
+    } else if (this.state.isLoading) {
+      return (
+        <BrowserRouter basename={this.props.config.path}>
+          <Layout style={layoutStyle}>
+            <Header
+              app={appInfo}
+              showWorklistButton={false}
+            />
+            <Layout.Content style={layoutContentStyle}>
               <FaSpinner />
             </Layout.Content>
           </Layout>
@@ -119,43 +179,62 @@ class App extends React.Component<AppProps, AppState> {
       )
     } else if (!this.state.wasAuthSuccessful) {
       return (
-        <BrowserRouter basename={this.props.config.routerBasename}>
-          <Layout style={{ height: '100vh' }}>
-            <Header app={appInfo} />
-            <Layout.Content style={{ height: '100%' }}>
-              <div>Error. Sign-in failed.</div>
+        <BrowserRouter basename={this.props.config.path}>
+          <Layout style={layoutStyle}>
+            <Header
+              app={appInfo}
+              showWorklistButton={false}
+            />
+            <Layout.Content style={layoutContentStyle}>
+              <div>Sign-in failed.</div>
             </Layout.Content>
           </Layout>
         </BrowserRouter>
       )
+    } else if (this.state.error) {
+      return (
+        <InfoPage type="error" message={this.state.error.message} />
+      )
     } else {
       return (
-        <BrowserRouter basename={this.props.config.routerBasename}>
-          <Layout style={{ height: '100vh' }}>
-            <Header
-              app={appInfo}
-              user={this.state.user}
-            />
-            <Layout.Content style={{ height: '100%' }}>
-              <Switch>
-                <Route
-                  path='/studies/:StudyInstanceUID'
-                  render={(routeProps) => (
+        <BrowserRouter basename={this.props.config.path}>
+          <Switch>
+            <Route
+              path='/studies/:StudyInstanceUID'
+              render={(routeProps) => (
+                <Layout style={layoutStyle}>
+                  <Header
+                    app={appInfo}
+                    user={this.state.user}
+                    showWorklistButton={!this.props.config.disableWorklist}
+                  />
+                  <Layout.Content style={layoutContentStyle}>
                     <CaseViewer
                       client={this.state.client}
                       user={this.state.user}
+                      renderer={this.props.config.renderer}
                       annotations={this.props.config.annotations}
                       app={appInfo}
+                      enableAnnotationTools={enableAnnotationTools}
                       studyInstanceUID={routeProps.match.params.StudyInstanceUID}
                     />
-                  )}
+                  </Layout.Content>
+                </Layout>
+              )}
+            />
+            <Route exact path='/'>
+              <Layout style={layoutStyle}>
+                <Header
+                  app={appInfo}
+                  user={this.state.user}
+                  showWorklistButton={false}
                 />
-                <Route exact path='/'>
-                  <Worklist client={this.state.client} />
-                </Route>
+                <Layout.Content style={layoutContentStyle}>
+                  {worklist}
+                </Layout.Content>
+              </Layout>
+            </Route>
               </Switch>
-            </Layout.Content>
-          </Layout>
         </BrowserRouter>
       )
     }
