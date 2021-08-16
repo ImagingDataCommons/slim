@@ -44,7 +44,16 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   }
 
   componentDidMount (): void {
-    this.fetchData({ offset: 0, limit: this.state.pageSize })
+    const queryParams: { [key: string]: any } = { ModalitiesInStudy: 'SM' }
+    this.props.client.searchForStudies(queryParams).then((studies) => {
+      this.setState({
+        numStudies: studies.length,
+        studies: studies.slice(0, this.state.pageSize).map((study) => {
+          const metadata = dmv.metadata.formatMetadata(study)
+          return metadata as dmv.metadata.Study
+        })
+      })
+    })
   }
 
   handleClick (event: React.SyntheticEvent, study: dmv.metadata.Study): void {
