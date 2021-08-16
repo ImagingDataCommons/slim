@@ -49,6 +49,9 @@ window.config = {
       write: true
     }
   ],
+  renderer: {
+   retrieveRendered: true
+  },
   annotations: [
     {
       finding: {
@@ -95,6 +98,9 @@ window.config = {
     clientId: gcpClientID,
     scope: "email profile openid https://www.googleapis.com/auth/cloud-healthcare",
     grantType: "implicit"
+  },
+  renderer: {
+   retrieveRendered: false
   },
   annotations: [
     {
