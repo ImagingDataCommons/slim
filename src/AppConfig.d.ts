@@ -1,8 +1,8 @@
 import * as dcmjs from 'dcmjs'
 
-export interface DicomWebManagerErrorHandler {
-  (error: dwc.api.DICOMwebClientError, serverSettings: ServerSettings): void
-}
+export type DicomWebManagerErrorHandler = (
+  error: dwc.api.DICOMwebClientError, serverSettings: ServerSettings
+) => void
 
 export interface RetryRequestSettings {
   retries?: number

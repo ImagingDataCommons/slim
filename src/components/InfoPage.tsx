@@ -7,7 +7,7 @@ interface InfoPageProps {
   message?: string
 }
 
-const InfoPage = ({ title, message }: InfoPageProps): React.ReactNode => {
+const InfoPage = ({ title, message }: InfoPageProps): JSX.Element => {
   return (
     <div style={{
       height: '100vh',

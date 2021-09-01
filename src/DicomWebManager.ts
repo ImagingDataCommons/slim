@@ -10,7 +10,7 @@ export default class DicomWebManager {
     client: dwc.api.DICOMwebClient
   }>
 
-  private handleError: DicomWebManagerErrorHandler
+  private readonly handleError: DicomWebManagerErrorHandler
 
   constructor ({ baseUri, settings, onError }: {
     baseUri: string
@@ -18,10 +18,10 @@ export default class DicomWebManager {
     onError?: DicomWebManagerErrorHandler
   }) {
     this.handleError = () => {}
-    if (onError) {
-      this.handleError = onError;
+    if (onError != null) {
+      this.handleError = onError
     }
-    
+
     this.datastores = []
     settings.forEach(serverSettings => {
       if (serverSettings === undefined) {

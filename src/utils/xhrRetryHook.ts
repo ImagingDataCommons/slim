@@ -1,4 +1,4 @@
-import retry from "retry"
+import retry from 'retry'
 
 import { RetryRequestSettings, DICOMwebClientRequestHookMetadata } from '../AppConfig'
 
@@ -28,9 +28,9 @@ export const getXHRRetryHook = (options: RetryRequestSettings = {
   minTimeout: 1 * 1000,
   maxTimeout: 60 * 1000,
   randomize: true,
-  retryableStatusCodes: [429, 500],
+  retryableStatusCodes: [429, 500]
 }) => {
-  let retryOptions = options;
+  const retryOptions = options
 
   if (options.retries != null) {
     retryOptions.retries = options.retries
@@ -65,19 +65,19 @@ export const getXHRRetryHook = (options: RetryRequestSettings = {
    * @param metadata.method - HTTP method
    * @returns - XHR request instance (potentially modified)
    */
-   const xhrRetryHook = (request: XMLHttpRequest, metadata: DICOMwebClientRequestHookMetadata): XMLHttpRequest => {
+  const xhrRetryHook = (request: XMLHttpRequest, metadata: DICOMwebClientRequestHookMetadata): XMLHttpRequest => {
     const { url, method } = metadata
 
-    function faultTolerantRequestSend(...args: any) {
+    function faultTolerantRequestSend (...args: any) {
       const operation = retry.operation(retryOptions)
 
-      operation.attempt(function operationAttempt(currentAttempt) {
+      operation.attempt(function operationAttempt (currentAttempt) {
         const noop = () => {}
-        const originalOnReadyStateChange = request.onreadystatechange || noop
+        const originalOnReadyStateChange = (request.onreadystatechange != null) || noop
 
         /** Overriding/extending XHR function */
-        request.onreadystatechange = function onReadyStateChange(...args: any) {
-          originalOnReadyStateChange.apply(request, args);
+        request.onreadystatechange = function onReadyStateChange (...args: any) {
+          originalOnReadyStateChange.apply(request, args)
 
           if (retryOptions.retryableStatusCodes.includes(request.status)) {
             const errorMessage = `Attempt to request ${url} failed.`
@@ -97,13 +97,13 @@ export const getXHRRetryHook = (options: RetryRequestSettings = {
     }
 
     /** Overriding/extending XHR function */
-    const originalRequestSend = request.send;
-    request.send = faultTolerantRequestSend;
+    const originalRequestSend = request.send
+    request.send = faultTolerantRequestSend
 
-    return request;
-  };
+    return request
+  }
 
   return xhrRetryHook
-};
+}
 
 export default getXHRRetryHook
