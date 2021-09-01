@@ -4,15 +4,6 @@ export type DicomWebManagerErrorHandler = (
   error: dwc.api.DICOMwebClientError, serverSettings: ServerSettings
 ) => void
 
-export interface RetryRequestSettings {
-  retries?: number
-  factor?: number
-  minTimeout?: number
-  maxTimeout?: number
-  randomize?: boolean
-  retryableStatusCodes: number[]
-}
-
 export interface DICOMwebClientRequestHookMetadata {
   url: string
   method: string

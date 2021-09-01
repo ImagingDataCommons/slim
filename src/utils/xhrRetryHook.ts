@@ -1,6 +1,14 @@
 import retry from 'retry'
 
-import { RetryRequestSettings, DICOMwebClientRequestHookMetadata } from '../AppConfig'
+import {
+  RetryRequestSettings,
+  DICOMwebClientRequestHookMetadata
+} from '../AppConfig'
+
+type RequestHook = (
+  request: XMLHttpRequest,
+  metadata: DICOMwebClientRequestHookMetadata
+) => XMLHttpRequest
 
 /**
  * Returns a configured retry request hook function
@@ -29,7 +37,7 @@ export const getXHRRetryHook = (options: RetryRequestSettings = {
   maxTimeout: 60 * 1000,
   randomize: true,
   retryableStatusCodes: [429, 500]
-}) => {
+}): RequestHook => {
   const retryOptions = options
 
   if (options.retries != null) {
@@ -65,18 +73,21 @@ export const getXHRRetryHook = (options: RetryRequestSettings = {
    * @param metadata.method - HTTP method
    * @returns - XHR request instance (potentially modified)
    */
-  const xhrRetryHook = (request: XMLHttpRequest, metadata: DICOMwebClientRequestHookMetadata): XMLHttpRequest => {
+  const xhrRetryHook = (
+    request: XMLHttpRequest,
+    metadata: DICOMwebClientRequestHookMetadata
+  ): XMLHttpRequest => {
     const { url, method } = metadata
 
-    function faultTolerantRequestSend (...args: any) {
+    function faultTolerantRequestSend (...args: any): void {
       const operation = retry.operation(retryOptions)
 
       operation.attempt(function operationAttempt (currentAttempt) {
-        const noop = () => {}
+        const noop = (): void => {}
         const originalOnReadyStateChange = (request.onreadystatechange != null) || noop
 
         /** Overriding/extending XHR function */
-        request.onreadystatechange = function onReadyStateChange (...args: any) {
+        request.onreadystatechange = function onReadyStateChange (...args: any): void {
           originalOnReadyStateChange.apply(request, args)
 
           if (retryOptions.retryableStatusCodes.includes(request.status)) {
