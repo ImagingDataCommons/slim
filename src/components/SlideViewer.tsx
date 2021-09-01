@@ -118,33 +118,33 @@ const _implementsTID1500 = (
 const _describesSpecimenSubject = (
   report: dmv.metadata.Comprehensive3DSR
 ): boolean => {
-    const items = findContentItemsByName({
-      content: report.ContentSequence,
-      name: new dcmjs.sr.coding.CodedConcept({
-        value: '121024',
-        schemeDesignator: 'DCM',
-        meaning: 'Subject Class'
-      })
+  const items = findContentItemsByName({
+    content: report.ContentSequence,
+    name: new dcmjs.sr.coding.CodedConcept({
+      value: '121024',
+      schemeDesignator: 'DCM',
+      meaning: 'Subject Class'
     })
-    if (items.length === 0) {
-      return false
-    }
-    const subjectClassItem = items[0] as dcmjs.sr.valueTypes.CodeContentItem
-    const subjectClassValue = subjectClassItem.ConceptCodeSequence[0]
-    const retrievedConcept = new dcmjs.sr.coding.CodedConcept({
-      value: subjectClassValue.CodeValue,
-      meaning: subjectClassValue.CodeMeaning,
-      schemeDesignator: subjectClassValue.CodingSchemeDesignator,
-    })
-    const expectedConcept = new dcmjs.sr.coding.CodedConcept({
-      value: '121027',
-      meaning: 'Specimen',
-      schemeDesignator: 'DCM'
-    })
-    if (retrievedConcept.equals(expectedConcept)) {
-      return true
-    }
+  })
+  if (items.length === 0) {
     return false
+  }
+  const subjectClassItem = items[0] as dcmjs.sr.valueTypes.CodeContentItem
+  const subjectClassValue = subjectClassItem.ConceptCodeSequence[0]
+  const retrievedConcept = new dcmjs.sr.coding.CodedConcept({
+    value: subjectClassValue.CodeValue,
+    meaning: subjectClassValue.CodeMeaning,
+    schemeDesignator: subjectClassValue.CodingSchemeDesignator
+  })
+  const expectedConcept = new dcmjs.sr.coding.CodedConcept({
+    value: '121027',
+    meaning: 'Specimen',
+    schemeDesignator: 'DCM'
+  })
+  if (retrievedConcept.equals(expectedConcept)) {
+    return true
+  }
+  return false
 }
 
 /*
@@ -194,7 +194,6 @@ const _containsROIAnnotations = (
 
   return foundRegion
 }
-
 
 interface EvaluationOptions {
   name: dcmjs.sr.coding.CodedConcept
@@ -1133,7 +1132,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.labelViewer.resize()
     }
 
-    let openSubMenuItems = ['specimens', 'annotations']
+    const openSubMenuItems = ['specimens', 'annotations']
 
     const handlePolygonRoiDrawing = (): void => {
       this.handleRoiDrawing({ geometryType: 'freehandpolygon' })

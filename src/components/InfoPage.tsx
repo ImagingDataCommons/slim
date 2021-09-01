@@ -1,5 +1,5 @@
 import React from 'react'
-import { Result } from 'antd';
+import { Result } from 'antd'
 
 interface InfoPageProps {
   type: string
@@ -7,20 +7,21 @@ interface InfoPageProps {
   message?: string
 }
 
-const InfoPage = ({ title, message }: InfoPageProps) => {
-  return  (
-    <div style={{ 
-      height: '100vh', 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center' 
-    }}>
+const InfoPage = ({ title, message }: InfoPageProps): React.ReactNode => {
+  return (
+    <div style={{
+      height: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}
+    >
       <Result
         title={title}
         subTitle={message}
       />
     </div>
-  );
-};
+  )
+}
 
-export default InfoPage;
+export default InfoPage

@@ -53,6 +53,10 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
           return metadata as dmv.metadata.Study
         })
       })
+    }).catch((error) => {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      message.error('An error occured. Search for studies failed.')
+      console.error(error)
     })
   }
 
