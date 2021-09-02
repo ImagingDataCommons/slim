@@ -41,7 +41,7 @@
     "build": "craco build",
     "lint": "ts-standard --env jest 'src/**/*.{tsx,ts}'",
     "fmt": "ts-standard --env jest 'src/**/*.{tsx,ts}' --fix",
-    "test": "ts-standard --env jest 'src/**/*.{tsx,ts}' && react-scripts test --setupFiles ./src/setupTests.ts",
+    "test": "ts-standard --env jest 'src/**/*.{tsx,ts}' && react-scripts test --setupFiles ./src/setupTests.tsx --watchAll=false",
     "eject": "craco eject"
   },
   "eslintConfig": {
