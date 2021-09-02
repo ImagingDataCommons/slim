@@ -83,12 +83,13 @@ export const getXHRRetryHook = (options: RetryRequestSettings = {
       const operation = retry.operation(retryOptions)
 
       operation.attempt(function operationAttempt (currentAttempt) {
-        const noop = (): void => {}
-        const originalOnReadyStateChange = (request.onreadystatechange != null) || noop
+        const originalOnReadyStateChange = request.onreadystatechange
 
         /** Overriding/extending XHR function */
         request.onreadystatechange = function onReadyStateChange (...args: any): void {
-          originalOnReadyStateChange.apply(request, args)
+          if (originalOnReadyStateChange != null) {
+            originalOnReadyStateChange.apply(request, args)
+          }
 
           if (retryOptions.retryableStatusCodes.includes(request.status)) {
             const errorMessage = `Attempt to request ${url} failed.`
