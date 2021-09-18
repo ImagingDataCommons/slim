@@ -12,6 +12,7 @@ import {
 } from 'antd'
 import { UserOutlined } from '@ant-design/icons'
 import { detect } from 'detect-browser'
+
 import Button from './Button'
 
 interface HeaderProps {
@@ -122,17 +123,24 @@ class Header extends React.Component<HeaderProps, {}> {
       />
     )
 
+    const logoUrl = process.env.PUBLIC_URL + '/logo.svg'
+
     return (
       <Layout.Header style={{ width: '100%', padding: '0 14px' }}>
         <Row>
           <Col>
             <Space align='center' direction='horizontal'>
-              {worklistButton}
+              <img
+                src={logoUrl}
+                alt=''
+                style={{ height: '64px', margin: '-14px' }}
+              />
             </Space>
           </Col>
           <Col flex='auto' />
           <Col>
             <Space align='center' direction='horizontal'>
+              {worklistButton}
               {infoButton}
               {user}
             </Space>
