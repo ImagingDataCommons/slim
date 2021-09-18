@@ -150,7 +150,7 @@ class App extends React.Component<AppProps, AppState> {
       version: this.props.version,
       homepage: this.props.homepage,
       uid: '1.2.826.0.1.3680043.9.7433.1.5',
-      organization: this.props.config.organization,
+      organization: this.props.config.organization
     }
 
     const enableWorklist = !(

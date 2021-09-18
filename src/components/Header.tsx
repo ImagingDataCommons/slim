@@ -33,13 +33,13 @@ interface HeaderProps {
  * React component for the application header.
  */
 class Header extends React.Component<HeaderProps, {}> {
-  showInfo = () => {
+  handleInfoClick = (): void => {
     const browser = detect()
     const environment: {
       browser: {
         name?: string
         version?: string
-      },
+      }
       os: {
         name?: string
       }
@@ -62,38 +62,34 @@ class Header extends React.Component<HeaderProps, {}> {
       width: 600,
       content: (
         <>
-          <Descriptions title="Application" column={1}>
-            <Descriptions.Item label="Name">
+          <Descriptions title='Application' column={1}>
+            <Descriptions.Item label='Name'>
               {this.props.app.name}
             </Descriptions.Item>
-            <Descriptions.Item label="Version">
+            <Descriptions.Item label='Version'>
               {this.props.app.version}
             </Descriptions.Item>
-            <Descriptions.Item label="Homepage">
+            <Descriptions.Item label='Homepage'>
               {this.props.app.homepage}
             </Descriptions.Item>
           </Descriptions>
-          <Descriptions title="Browser" column={1}>
-            <Descriptions.Item label="Name">
+          <Descriptions title='Browser' column={1}>
+            <Descriptions.Item label='Name'>
               {environment.browser.name}
             </Descriptions.Item>
-            <Descriptions.Item label="Version">
+            <Descriptions.Item label='Version'>
               {environment.browser.version}
             </Descriptions.Item>
           </Descriptions>
-          <Descriptions title="Operating System" column={1}>
-            <Descriptions.Item label="Name">
+          <Descriptions title='Operating System' column={1}>
+            <Descriptions.Item label='Name'>
               {environment.os.name}
             </Descriptions.Item>
           </Descriptions>
         </>
       ),
-      onOk() {}
+      onOk (): void {}
     })
-  }
-
-  handleInfoShown () {
-    this.setState({ isInfoModalVisible: false })
   }
 
   render (): React.ReactNode {
@@ -118,11 +114,13 @@ class Header extends React.Component<HeaderProps, {}> {
       )
     }
 
-    const infoButton = <Button
-      icon={FaInfo}
-      tooltip='About'
-      onClick={this.showInfo}
-    />
+    const infoButton = (
+      <Button
+        icon={FaInfo}
+        tooltip='About'
+        onClick={this.handleInfoClick}
+      />
+    )
 
     return (
       <Layout.Header style={{ width: '100%', padding: '0 14px' }}>
