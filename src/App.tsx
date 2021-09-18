@@ -3,29 +3,30 @@ import {
   BrowserRouter,
   Redirect,
   Route,
-  Switch,
+  Switch
 } from 'react-router-dom'
 import * as dwc from 'dicomweb-client'
 import { Layout, message } from 'antd'
 import { FaSpinner } from 'react-icons/fa'
 
-import AppConfig, { ServerSettings } from './AppConfig'
+import AppConfig, { ServerSettings, ErrorMessageSettings } from './AppConfig'
 import Header from './components/Header'
 import CaseViewer from './components/CaseViewer'
 import Worklist from './components/Worklist'
 
 import 'antd/dist/antd.less'
 import './App.less'
-import { ErrorMessageSettings } from './AppConfig'
+
 import { joinUrl } from './utils/url'
 import { User, AuthManager } from './auth'
 import OidcManager from './auth/OidcManager'
 import DicomWebManager from './DicomWebManager'
 
-import { version } from '../package.json'
 import InfoPage from './components/InfoPage'
 
 interface AppProps {
+  name: string
+  homepage: string
   version: string
   config: AppConfig
 }
@@ -60,18 +61,25 @@ class App extends React.Component<AppProps, AppState> {
 
     message.config({ duration: 5 })
 
-    const handleError = (error: dwc.api.DICOMwebClientError, serverSettings: ServerSettings) => {
+    const handleError = (
+      error: dwc.api.DICOMwebClientError,
+      serverSettings: ServerSettings
+    ): void => {
       if (serverSettings.errorMessages !== undefined) {
-        serverSettings.errorMessages.forEach(({ status, message }: ErrorMessageSettings) => {
-          if (error.status === status) {
-            this.setState({ error: {
-              status: error.status,
-              message
-            } });
+        serverSettings.errorMessages.forEach(
+          ({ status, message }: ErrorMessageSettings) => {
+            if (error.status === status) {
+              this.setState({
+                error: {
+                  status: error.status,
+                  message
+                }
+              })
+            }
           }
-        })
+        )
       }
-    };
+    }
 
     this.state = {
       client: new DicomWebManager({
@@ -80,7 +88,7 @@ class App extends React.Component<AppProps, AppState> {
         onError: handleError
       }),
       isLoading: true,
-      wasAuthSuccessful: false,
+      wasAuthSuccessful: false
     }
   }
 
@@ -138,14 +146,19 @@ class App extends React.Component<AppProps, AppState> {
 
   render (): React.ReactNode {
     const appInfo = {
-      name: 'Slim',
-      version: version,
+      name: this.props.name,
+      version: this.props.version,
+      homepage: this.props.homepage,
       uid: '1.2.826.0.1.3680043.9.7433.1.5',
       organization: this.props.config.organization
     }
 
-    const enableWorklist = !this.props.config.disableWorklist
-    const enableAnnotationTools = !this.props.config.disableAnnotationTools
+    const enableWorklist = !(
+      this.props.config.disableWorklist ?? false
+    )
+    const enableAnnotationTools = !(
+      this.props.config.disableAnnotationTools ?? false
+    )
 
     let worklist
     if (enableWorklist) {
@@ -160,7 +173,7 @@ class App extends React.Component<AppProps, AppState> {
     if (this.state.redirectTo !== undefined) {
       return (
         <BrowserRouter basename={this.props.config.path}>
-          <Redirect push to={this.state.redirectTo}/>
+          <Redirect push to={this.state.redirectTo} />
         </BrowserRouter>
       )
     } else if (this.state.isLoading) {
@@ -191,9 +204,9 @@ class App extends React.Component<AppProps, AppState> {
           </Layout>
         </BrowserRouter>
       )
-    } else if (this.state.error) {
+    } else if (this.state.error != null) {
       return (
-        <InfoPage type="error" message={this.state.error.message} />
+        <InfoPage type='error' message={this.state.error.message} />
       )
     } else {
       return (
@@ -206,7 +219,7 @@ class App extends React.Component<AppProps, AppState> {
                   <Header
                     app={appInfo}
                     user={this.state.user}
-                    showWorklistButton={!this.props.config.disableWorklist}
+                    showWorklistButton={enableWorklist}
                   />
                   <Layout.Content style={layoutContentStyle}>
                     <CaseViewer
@@ -234,7 +247,7 @@ class App extends React.Component<AppProps, AppState> {
                 </Layout.Content>
               </Layout>
             </Route>
-              </Switch>
+          </Switch>
         </BrowserRouter>
       )
     }

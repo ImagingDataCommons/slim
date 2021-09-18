@@ -45,7 +45,8 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
 
   componentDidMount (): void {
     const queryParams: { [key: string]: any } = { ModalitiesInStudy: 'SM' }
-    this.props.client.searchForStudies(queryParams).then((studies) => {
+    const searchOptions = { queryParams }
+    this.props.client.searchForStudies(searchOptions).then((studies) => {
       this.setState({
         numStudies: studies.length,
         studies: studies.slice(0, this.state.pageSize).map((study) => {
@@ -53,6 +54,10 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
           return metadata as dmv.metadata.Study
         })
       })
+    }).catch((error) => {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      message.error('An error occured. Search for studies failed.')
+      console.error(error)
     })
   }
 
