@@ -5,7 +5,7 @@ import './index.css'
 import AppConfig from './AppConfig'
 import App from './App'
 
-import { version } from '../package.json'
+import { name, homepage, version } from '../package.json'
 
 declare global {
   interface Window {
@@ -21,7 +21,12 @@ if (config === undefined) {
 
 ReactDOM.render(
   <React.StrictMode>
-    <App config={config} version={version} />
+    <App
+      config={config}
+      version={version}
+      name={name}
+      homepage={homepage}
+    />
   </React.StrictMode>,
   document.getElementById('root')
 )

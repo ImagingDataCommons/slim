@@ -22,10 +22,11 @@ import { User, AuthManager } from './auth'
 import OidcManager from './auth/OidcManager'
 import DicomWebManager from './DicomWebManager'
 
-import { version } from '../package.json'
 import InfoPage from './components/InfoPage'
 
 interface AppProps {
+  name: string
+  homepage: string
   version: string
   config: AppConfig
 }
@@ -145,10 +146,11 @@ class App extends React.Component<AppProps, AppState> {
 
   render (): React.ReactNode {
     const appInfo = {
-      name: 'Slim',
-      version: version,
+      name: this.props.name,
+      version: this.props.version,
+      homepage: this.props.homepage,
       uid: '1.2.826.0.1.3680043.9.7433.1.5',
-      organization: this.props.config.organization
+      organization: this.props.config.organization,
     }
 
     const enableWorklist = !(

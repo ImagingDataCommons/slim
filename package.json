@@ -1,6 +1,7 @@
 {
   "name": "slim",
   "version": "0.3.0rc",
+  "homepage": "https://github.com/mghcomputationalpathology/slim",
   "private": true,
   "dependencies": {
     "@babel/preset-env": "^7.15.0",
@@ -23,8 +24,9 @@
     "classnames": "^2.2.6",
     "craco-less": "^1.17.0",
     "dcmjs": "^0.16.7",
-    "dicomweb-client": "^0.8.2",
+    "detect-browser": "^5.2.1",
     "dicom-microscopy-viewer": "^0.33.0",
+    "dicomweb-client": "^0.8.2",
     "oidc-client": "^1.11.5",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
