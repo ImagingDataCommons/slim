@@ -1,6 +1,6 @@
 {
   "name": "slim",
-  "version": "0.3.0rc",
+  "version": "0.3.0",
   "homepage": "https://github.com/mghcomputationalpathology/slim",
   "private": true,
   "dependencies": {

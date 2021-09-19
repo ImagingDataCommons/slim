@@ -5,12 +5,11 @@
  * @param uri - Base URI to which the path component should be added
  */
 export const joinUrl = (path: string, uri: string): string => {
-
-  let base = uri
-  if (!uri.endsWith('/')) {
-    base += '/'
+  let baseUri = uri
+  if (!baseUri.endsWith('/')) {
+    baseUri += '/'
   }
-  const url = new URL(path, base)
+  const url = new URL(path, baseUri)
   return url.toString()
 }
 
