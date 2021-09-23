@@ -41,6 +41,7 @@ COPY src ./src
 FROM lib AS app
 
 ARG REACT_APP_CONFIG=local
+ENV PUBLIC_URL=/
 
 RUN addgroup --system --gid 101 nginx && \
     adduser --system \
