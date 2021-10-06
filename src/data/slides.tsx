@@ -3,7 +3,8 @@ import * as dmv from 'dicom-microscopy-viewer'
 enum ImageFlavors {
   VOLUME = 'VOLUME',
   LABEL = 'LABEL',
-  OVERVIEW = 'OVERVIEW'
+  OVERVIEW = 'OVERVIEW',
+  THUMBNAIL = 'THUMBNAIL'
 }
 
 const hasImageFlavor = (
@@ -69,6 +70,8 @@ class Slide {
         image.OpticalPathSequence[0].OpticalPathIdentifier
       )
       if (hasImageFlavor(image, ImageFlavors.VOLUME)) {
+        volumeImages.push(image)
+      } else if (hasImageFlavor(image, ImageFlavors.THUMBNAIL)) {
         volumeImages.push(image)
       } else if (hasImageFlavor(image, ImageFlavors.LABEL)) {
         labelImages.push(image)
@@ -144,7 +147,10 @@ const createSlides = (
   images.forEach((series) => {
     if (series.length > 0) {
       const volumeImages = series.filter((image) => {
-        return hasImageFlavor(image, ImageFlavors.VOLUME)
+        return (
+          hasImageFlavor(image, ImageFlavors.VOLUME) ||
+          hasImageFlavor(image, ImageFlavors.THUMBNAIL)
+        )
       })
       const labelImages = series.filter((image) => {
         return hasImageFlavor(image, ImageFlavors.LABEL)
