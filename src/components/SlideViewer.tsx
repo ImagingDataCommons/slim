@@ -362,6 +362,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (viewer === undefined) {
       return
     }
+
     console.info('search for Comprehensive 3D SR instances')
     this.setState({ isLoading: true })
     this.props.client.searchForInstances({
@@ -460,6 +461,33 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       message.error('An error occured. Annotations could not be loaded')
       console.error(error)
     })
+
+    console.info('search for Segmentation instances')
+    this.setState({ isLoading: true })
+    this.props.client.searchForInstances({
+      studyInstanceUID: this.props.studyInstanceUID,
+      queryParams: {
+        Modality: 'SEG'
+      }
+    }).then((matchedInstances): void => {
+      matchedInstances.forEach(i => {
+        const instance = dmv.metadata.formatMetadata(i) as dmv.metadata.Instance
+        if (instance.SOPClassUID === SOPClassUIDs.SEGMENTATION) {
+          console.info(
+            `retrieve metadata of SEG instance "${instance.SOPInstanceUID}"`
+          )
+          this.props.client.retrieveInstanceMetadata({
+            studyInstanceUID: this.props.studyInstanceUID,
+            seriesInstanceUID: instance.SeriesInstanceUID,
+            sopInstanceUID: instance.SOPInstanceUID
+          }).then((retrievedMetadata): void => {
+            const metadata = dmv.metadata.formatMetadata(retrievedMetadata[0])
+            console.log('SEG: ', metadata)
+          })
+        }
+      })
+    })
+
   }
 
   /**
@@ -521,9 +549,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         this.volumeViewer.toggleOverviewMap()
       }
 
-      if (this.labelViewport.current !== null) {
-        this.labelViewport.current.innerHTML = ''
-        if (slide.labelImages.length > 0) {
+      if (slide.labelImages.length > 0) {
+        if (this.labelViewport.current !== null) {
+          this.labelViewport.current.innerHTML = ''
           console.info(
             'instantiate viewer for LABEL image of series ' +
             this.props.seriesInstanceUID
@@ -534,7 +562,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             resizeFactor: 1,
             orientation: 'vertical'
           })
-          this.labelViewer.render({ container: this.labelViewport.current })
+          this.labelViewer.render({
+            container: this.labelViewport.current
+          })
         }
       }
     }
@@ -1346,9 +1376,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             style={{ height: '100%' }}
             inlineIndent={14}
             theme='light'
+            forceSubMenuRender
           >
             <Menu.SubMenu key='label' title='Slide label'>
-              <div style={{ height: '220px' }} ref={this.labelViewport} />
+              <Menu.Item style={{ height: '100%' }} >
+                <div style={{ height: '220px' }} ref={this.labelViewport} />
+              </Menu.Item>
             </Menu.SubMenu>
             {specimenMenu}
             {sampleMenu}
