@@ -2,7 +2,7 @@ import React from 'react'
 import * as dmv from 'dicom-microscopy-viewer'
 import * as dcmjs from 'dcmjs'
 import { Menu, Space, Switch } from 'antd'
-import { FaEye, FaEyeSlash, FaRobot, FaUser } from 'react-icons/fa'
+import { FaEye, FaEyeSlash } from 'react-icons/fa'
 
 import Description from './Description'
 
@@ -72,10 +72,6 @@ class AnnotationItem extends React.Component<AnnotationItemProps, {}> {
         value: `${value} ${unit}`
       })
     })
-    let icon = FaUser
-    if (this.props.roi.properties.observerType === 'Device') {
-      icon = FaRobot
-    }
     return (
       <Space align='start'>
         <div style={{ paddingLeft: '14px' }}>
@@ -93,7 +89,6 @@ class AnnotationItem extends React.Component<AnnotationItemProps, {}> {
           {...otherProps}
         >
           <Description
-            icon={icon}
             header={identifier}
             attributes={attributes}
             selectable
