@@ -463,7 +463,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       message.error('An error occured. Annotations could not be loaded')
       console.error(error)
     })
-
   }
 
   /**
@@ -1355,7 +1354,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             forceSubMenuRender
           >
             <Menu.SubMenu key='label' title='Slide label'>
-              <Menu.Item style={{ height: '100%' }} >
+              <Menu.Item style={{ height: '100%' }}>
                 <div style={{ height: '220px' }} ref={this.labelViewport} />
               </Menu.Item>
             </Menu.SubMenu>
