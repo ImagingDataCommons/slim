@@ -412,7 +412,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
             const content = new MeasurementReport(report)
             content.ROIs.forEach(roi => {
-              console.info(`add ROI "${roi.uid}"`)
+              console.info(`add ROI "${roi.uid}"`, roi)
               const scoord3d = roi.scoord3d
               const slide = this.state.activeSlide
               const image = slide.volumeImages[0]
@@ -438,6 +438,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                   } catch {
                     console.error(`could not add ROI "${roi.uid}"`)
                   }
+                } else {
+                  console.debug(`skip already existing ROI "${roi.uid}"`)
                 }
               } else {
                 console.debug(
@@ -460,32 +462,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       message.error('An error occured. Annotations could not be loaded')
       console.error(error)
-    })
-
-    console.info('search for Segmentation instances')
-    this.setState({ isLoading: true })
-    this.props.client.searchForInstances({
-      studyInstanceUID: this.props.studyInstanceUID,
-      queryParams: {
-        Modality: 'SEG'
-      }
-    }).then((matchedInstances): void => {
-      matchedInstances.forEach(i => {
-        const instance = dmv.metadata.formatMetadata(i) as dmv.metadata.Instance
-        if (instance.SOPClassUID === SOPClassUIDs.SEGMENTATION) {
-          console.info(
-            `retrieve metadata of SEG instance "${instance.SOPInstanceUID}"`
-          )
-          this.props.client.retrieveInstanceMetadata({
-            studyInstanceUID: this.props.studyInstanceUID,
-            seriesInstanceUID: instance.SeriesInstanceUID,
-            sopInstanceUID: instance.SOPInstanceUID
-          }).then((retrievedMetadata): void => {
-            const metadata = dmv.metadata.formatMetadata(retrievedMetadata[0])
-            console.log('SEG: ', metadata)
-          })
-        }
-      })
     })
 
   }
