@@ -44,6 +44,10 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
       const metadata = this.props.slide.overviewImages[0]
       if (this.overviewViewport.current !== null) {
         this.overviewViewport.current.innerHTML = ''
+          console.info(
+            'instantiate viewer for OVERVIEW image of series ' +
+            metadata.SeriesInstanceUID
+          )
         this.overviewViewer = new dmv.viewer.OverviewImageViewer({
           client: this.props.client,
           metadata: metadata,
