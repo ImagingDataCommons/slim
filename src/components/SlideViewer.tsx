@@ -30,6 +30,7 @@ import Button from './Button'
 import Report, { MeasurementReport } from './Report'
 import SpecimenList from './SpecimenList'
 import SamplesList from './SamplesList'
+import SegmentList from './SegmentList'
 import { AnnotationSettings, RendererSettings } from '../AppConfig'
 import { findContentItemsByName } from '../utils/sr'
 import { Slide } from '../data/slides'
@@ -230,6 +231,7 @@ interface SlideViewerState {
   annotatedRoi?: dmv.roi.ROI
   selectedRoiUIDs: string[]
   visibleRoiUIDs: string[]
+  visibleSegmentUIDs: string[]
   selectedFinding?: dcmjs.sr.coding.CodedConcept
   selectedEvaluations: Evaluation[]
   generatedReport?: dmv.metadata.Comprehensive3DSR
@@ -294,14 +296,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleRoiTranslation = this.handleRoiTranslation.bind(this)
     this.handleRoiModification = this.handleRoiModification.bind(this)
     this.handleRoiVisibility = this.handleRoiVisibility.bind(this)
-    this.handleAnnotationVisibilityChange = this.handleAnnotationVisibilityChange.bind(this)
     this.handleRoiRemoval = this.handleRoiRemoval.bind(this)
-    this.handleAnnotationSelection = this.handleAnnotationSelection.bind(this)
-    this.handleReportGeneration = this.handleReportGeneration.bind(this)
-    this.handleAnnotationFindingSelection = this.handleAnnotationFindingSelection.bind(this)
-    this.handleAnnotationEvaluationSelection = this.handleAnnotationEvaluationSelection.bind(this)
     this.handleAnnotationCompletion = this.handleAnnotationCompletion.bind(this)
     this.handleAnnotationCancellation = this.handleAnnotationCancellation.bind(this)
+    this.handleAnnotationFindingSelection = this.handleAnnotationFindingSelection.bind(this)
+    this.handleAnnotationEvaluationSelection = this.handleAnnotationEvaluationSelection.bind(this)
+    this.handleAnnotationSelection = this.handleAnnotationSelection.bind(this)
+    this.handleAnnotationVisibilityChange = this.handleAnnotationVisibilityChange.bind(this)
+    this.handleSegmentVisibilityChange = this.handleSegmentVisibilityChange.bind(this)
+    this.handleReportGeneration = this.handleReportGeneration.bind(this)
     this.handleReportVerification = this.handleReportVerification.bind(this)
     this.handleReportCancellation = this.handleReportCancellation.bind(this)
 
@@ -329,6 +332,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       annotatedRoi: undefined,
       selectedRoiUIDs: [],
       visibleRoiUIDs: [],
+      visibleSegmentUIDs: [],
       selectedFinding: undefined,
       selectedEvaluations: [],
       isReportModalVisible: false,
@@ -353,7 +357,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   /**
-   * Retrieve structured report instances that contain regions of interests
+   * Retrieve Structured Report instances that contain regions of interests
    * with 3D spatial coordinates defined in the same frame of reference as the
    * currently selected series and add them to the VOLUME image viewer.
    */
@@ -466,6 +470,47 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   /**
+   * Retrieve Segmentation instances that contain segments defined in the same
+   * frame of reference as the currently selected series and add them to the
+   * VOLUME image viewer.
+   */
+  addSegmentations = (): void => {
+    const viewer = this.volumeViewer
+    if (viewer === undefined) {
+      return
+    }
+
+    console.info('search for Segmentation instances')
+    this.setState({ isLoading: true })
+    this.props.client.searchForSeries({
+      studyInstanceUID: this.props.studyInstanceUID,
+      queryParams: {
+        Modality: 'SEG'
+      }
+    }).then((matchedSeries): void => {
+      matchedSeries.forEach(s => {
+        const series = dmv.metadata.formatMetadata(s) as dmv.metadata.Series
+        this.props.client.retrieveSeriesMetadata({
+          studyInstanceUID: this.props.studyInstanceUID,
+          seriesInstanceUID: series.SeriesInstanceUID
+        }).then((retrievedMetadata): void => {
+          let segmentations: dmv.metadata.Segmentation[] = retrievedMetadata.map(
+            metadata => new dmv.metadata.Segmentation({ metadata })
+          )
+          segmentations = segmentations.filter(seg => {
+            const refImage = this.props.slides[0].volumeImages[0]
+            return (
+              seg.FrameOfReferenceUID === refImage.FrameOfReferenceUID &&
+              seg.ContainerIdentifier === refImage.ContainerIdentifier
+            )
+          })
+          viewer.addSegments({ metadata: segmentations })
+        })
+      })
+    })
+  }
+
+  /**
    * Retrieve metadata for image instances in the currently selected series and
    * instantiate the VOLUME and LABEL image viewers.
    */
@@ -548,6 +593,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.setState({ isLoading: false })
 
     this.addAnnotations()
+    this.addSegmentations()
   }
 
   onRoiDrawn = (event: CustomEventInit): void => {
@@ -1015,6 +1061,32 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   /**
+   * Handle toggling of segment visibility, i.e., whether a given
+   * segment should be either displayed or hidden by the viewer.
+   */
+  handleSegmentVisibilityChange ({ segmentUID }: { segmentUID: string }): void {
+    const viewer = this.volumeViewer
+    if (viewer === undefined) {
+      return
+    }
+    console.log(`change visibility of segment ${segmentUID}`)
+    if (this.state.visibleSegmentUIDs.includes(segmentUID as never)) {
+      console.info(`hide ROI ${segmentUID}`)
+      viewer.hideSegment(segmentUID)
+      this.setState(state => ({
+        visibleSegmentUIDs: state.visibleSegmentUIDs.filter(uid => {
+          return uid !== segmentUID
+        })
+      }))
+    } else {
+      viewer.showSegment(segmentUID)
+      this.setState(state => ({
+        visibleSegmentUIDs: state.visibleSegmentUIDs.concat(segmentUID)
+      }))
+    }
+  }
+
+  /**
    * Handler that will toggle the ROI drawing tool, i.e., either activate or
    * de-activate it, depending on its current state.
    */
@@ -1129,9 +1201,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   render (): React.ReactNode {
     const rois: dmv.roi.ROI[] = []
+    const segments: dmv.segment.Segment[] = []
     if (this.volumeViewer !== undefined) {
       this.volumeViewer.resize()
       rois.push(...this.volumeViewer.getAllROIs())
+      segments.push(...this.volumeViewer.getAllSegments())
     }
     if (this.labelViewer !== undefined) {
       this.labelViewer.resize()
@@ -1153,9 +1227,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       report = <Report dataset={dataset} />
     }
 
-    let annotations: React.ReactNode
+    let annotationItems: React.ReactNode
     if (rois.length > 0) {
-      annotations = (
+      annotationItems = (
         <AnnotationList
           rois={rois}
           selectedRoiUIDs={this.state.selectedRoiUIDs}
@@ -1255,6 +1329,21 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         )
       }
     }
+
+    let segmentationMenu
+    if (segments.length > 0) {
+      segmentationMenu = (
+        <Menu.SubMenu key='segmentations' title='Segmentations'>
+          <SegmentList
+            segments={segments}
+            visibleSegmentUIDs={this.state.visibleSegmentUIDs}
+            onChangeVisibility={this.handleSegmentVisibilityChange}
+          />
+        </Menu.SubMenu>
+      )
+      openSubMenuItems.push('segmentations')
+    }
+
 
     let toolbar
     let toolbarHeight = '0px'
@@ -1361,8 +1450,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             {specimenMenu}
             {sampleMenu}
             <Menu.SubMenu key='annotations' title='Annotations'>
-              {annotations}
+              {annotationItems}
             </Menu.SubMenu>
+            {segmentationMenu}
           </Menu>
         </Layout.Sider>
       </Layout>

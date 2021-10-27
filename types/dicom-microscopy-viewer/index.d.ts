@@ -79,6 +79,12 @@ declare module 'dicom-microscopy-viewer' {
       hideOpticalPath (string): void
       activateOpticalPath (string): void
       deactivateOpticalPath (string): void
+      addSegments ({ metadata: Segmentation }): void
+      removeSegment (segmentUID: string): void
+      showSegment (segmentUID: string): void
+      hideSegment (segmentUID: string): void
+      isSegmentVisible (segmentUID: string): boolean
+      getAllSegments (): dwc.segment.Segment[]
     }
 
     export interface OverviewImageViewerOptions {
@@ -234,6 +240,32 @@ declare module 'dicom-microscopy-viewer' {
 
   }
 
+  declare namespace segment {
+
+    export interface SegmentOptions {
+      number: number
+      label: label
+      studyInstanceUID: string
+      seriesInstanceUID: string
+      sopInstanceUIDs: string[]
+    }
+
+    export class Segment {
+      constructor (options: SegmentOptions)
+      get uid (): string
+      get number (): number
+      get label (): string
+      get algorithmType (): string
+      get algorithmName (): string
+      get propertyCategory (): dcmjs.sr.valueTypes.CodedConcept
+      get propertyType (): dcmjs.sr.valueTypes.CodedConcept
+      get studyInstanceUID (): string
+      get seriesInstanceUID (): string
+      get sopInstanceUIDs (): string[]
+    }
+
+  }
+
   declare namespace metadata {
 
     export interface PersonName {
@@ -277,6 +309,18 @@ declare module 'dicom-microscopy-viewer' {
       BitsAllocated?: number
       NumberOfFrames?: number
       ContainerIdentifier?: string
+    }
+
+    export class MicroscopyBulkSimpleAnnotations {
+      constructor ({ metadata: Metadata }: object)
+    }
+
+    export class ParametricMap {
+      constructor ({ metadata: Metadata }: object)
+    }
+
+    export class Segmentation {
+      constructor ({ metadata: Metadata }: object)
     }
 
     export class VLWholeSlideMicroscopyImage {
@@ -332,13 +376,15 @@ declare module 'dicom-microscopy-viewer' {
     export interface VLWholeSlideMicroscopyImage extends SOPClass {
       // VL Whole Slide Microscopy Image module
       ImageType: string[]
-      FrameOfReferenceUID: string
       SamplesPerPixel: number
       PhotometricInterpretation: string
+      // Frame of Reference module
+      FrameOfReferenceUID: string
       // Specimen module
       ContainerIdentifier: string
       ContainerTypeCodeSequence: dcmjs.sr.valueTypes.CodedConcept[]
       SpecimenDescriptionSequence: SpecimenDescription[]
+      // Optical Path module
       OpticalPathSequence: OpticalPathDescription[]
     }
 
@@ -349,6 +395,80 @@ declare module 'dicom-microscopy-viewer' {
         TemplateIdentifier: string
       }[]
     }
+
+    export interface MicroscopyBulkSimpleAnnotations extends SOPClass {
+      // Frame of Reference module
+      FrameOfReferenceUID: string
+      // Specimen module
+      ContainerIdentifier: string
+      ContainerTypeCodeSequence: dcmjs.sr.valueTypes.CodedConcept[]
+      SpecimenDescriptionSequence: SpecimenDescription[]
+      // Annotation
+      ContainerIdentifier: string
+      ContainerTypeCodeSequence: dcmjs.sr.valueTypes.CodedConcept[]
+      SpecimenDescriptionSequence: SpecimenDescription[]
+      OpticalPathSequence: OpticalPathDescription[]
+      AnnotationGroupSequence: {
+        AnnotationGroupNumber: number
+        AnnotationGroupUID: string
+        AnnotationGroupLabel: string
+        AnnotationGroupDescription?: string
+        AnnotationPropertyCategoryCodeSequence: {
+          CodeValue: string
+          CodeMeaning: string
+          CodingSchemeDesignator: string
+          CodingSchemeVersion?: string
+        }[]
+        AnnotationPropertyTypeCodeSequence: {
+          CodeValue: string
+          CodeMeaning: string
+          CodingSchemeDesignator: string
+          CodingSchemeVersion?: string
+        }[]
+        GraphicType: string
+        NumberOfAnnotations: number
+        CommonZCoordinateValue?: number
+        DoublePointCoordinatesData?: string  // FIXME: bytes
+        PointCoordinatesData?: string  // FIXME: bytes
+      }[]
+    }
+
+    export interface ParametricMap extends SOPClass {
+      // Frame of Reference module
+      FrameOfReferenceUID: string
+      // Specimen module
+      ContainerIdentifier: string
+      ContainerTypeCodeSequence: dcmjs.sr.valueTypes.CodedConcept[]
+      SpecimenDescriptionSequence: SpecimenDescription[]
+    }
+
+    export interface Segmentation extends SOPClass {
+      // Frame of Reference module
+      FrameOfReferenceUID: string
+      // Specimen module
+      ContainerIdentifier: string
+      ContainerTypeCodeSequence: dcmjs.sr.valueTypes.CodedConcept[]
+      SpecimenDescriptionSequence: SpecimenDescription[]
+      // Segmentation Image module
+      SegmentSequence: {
+        SegmentNumber: number
+        SegmentLabel: string
+        SegmentDescription?: string
+        SegmentedPropertyCategoryCodeSequence: {
+          CodeValue: string
+          CodeMeaning: string
+          CodingSchemeDesignator: string
+          CodingSchemeVersion?: string
+        }[]
+        SegmentedPropertyTypeCodeSequence: {
+          CodeValue: string
+          CodeMeaning: string
+          CodingSchemeDesignator: string
+          CodingSchemeVersion?: string
+        }[]
+      }[]
+    }
+
 
     type Metadata = Study|Series|Instance|VLWholeSlideMicroscopyImage
 
