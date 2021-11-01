@@ -66,11 +66,7 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
                 item.ConceptCodeSequence[0].CodingSchemeDesignator,
               meaning: item.ConceptCodeSequence[0].CodeMeaning
             })
-            if (name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
-              console.debug(
-                `parse specimen preparation step "${value.CodeMeaning}"`
-              )
-            } else {
+            if (!name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
               if (
                 name.equals(SpecimenPreparationStepItems.COLLECTION_METHOD)
               ) {

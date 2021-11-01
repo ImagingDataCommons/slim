@@ -8,15 +8,15 @@ import * as dcmjs from 'dcmjs'
 
 import { SpecimenPreparationStepItems } from '../data/specimens'
 
-interface SampleItemProps {
+interface OpticalPathItemProps {
   opticalPathDescription: dmv.metadata.OpticalPathDescription
   specimenDescription: dmv.metadata.SpecimenDescription
   viewer: dmv.viewer.VolumeImageViewer
-  itemRemoveHandler: (opticalPathIdentifier: string) => void
+  onRemoval: (opticalPathIdentifier: string) => void
 }
 
-interface SampleItemState {
-  visible: boolean
+interface OpticalPathItemState {
+  isVisible: boolean
   opacity: number
   thresholdValues: number[]
   color: number[]
@@ -24,19 +24,19 @@ interface SampleItemState {
 }
 
 /**
- * React component representing a DICOM Optical Path for multichannel acquistions and
- * give controls on visualization parameters
+ * React component representing an optical path of a
+ * multi-channel acquistion with control of visualization parameters.
  */
-class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
+class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathItemState> {
   state = {
-    visible: false,
+    isVisible: false,
     opacity: 1,
     thresholdValues: [0, 255],
     color: [255, 255, 255],
     limitValues: [0, 255]
   }
 
-  constructor (props: SampleItemProps) {
+  constructor (props: OpticalPathItemProps) {
     super(props)
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
     this.handleOpacityChange = this.handleOpacityChange.bind(this)
@@ -45,7 +45,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
     this.handleColorRChange = this.handleColorRChange.bind(this)
     this.handleColorGChange = this.handleColorGChange.bind(this)
     this.handleColorBChange = this.handleColorBChange.bind(this)
-    this.handleRemoveSample = this.handleRemoveSample.bind(this)
+    this.handleRemoval = this.handleRemoval.bind(this)
   }
 
   handleVisibilityChange (
@@ -55,10 +55,10 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
     if (checked) {
       this.props.viewer.showOpticalPath(identifier)
-      this.setState({ visible: true })
+      this.setState({ isVisible: true })
     } else {
       this.props.viewer.hideOpticalPath(identifier)
-      this.setState({ visible: false })
+      this.setState({ isVisible: false })
     }
   }
 
@@ -71,7 +71,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
       opticalPathIdentifier: identifier
     }
     this.setState({ opacity: value })
-    this.props.viewer.setBlendingInformation(blendingInformation)
+    this.props.viewer.setOpticalPathStyle(blendingInformation)
   }
 
   handleColorRChange (
@@ -79,7 +79,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
   ): void {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
     const blendInfo =
-      this.props.viewer.getBlendingInformation(identifier) as dmv.channel.BlendingInformation
+      this.props.viewer.getOpticalPathStyle(identifier) as dmv.channel.BlendingInformation
     const color = [...blendInfo.color]
     color[0] = value / 255
     const blendingInformation = {
@@ -87,7 +87,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
       opticalPathIdentifier: identifier
     }
     this.setState({ color: color })
-    this.props.viewer.setBlendingInformation(blendingInformation)
+    this.props.viewer.setOpticalPathStyle(blendingInformation)
   }
 
   handleColorGChange (
@@ -95,7 +95,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
   ): void {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
     const blendInfo =
-      this.props.viewer.getBlendingInformation(identifier) as dmv.channel.BlendingInformation
+      this.props.viewer.getOpticalPathStyle(identifier) as dmv.channel.BlendingInformation
     const color = [...blendInfo.color]
     color[1] = value / 255
     const blendingInformation = {
@@ -103,7 +103,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
       opticalPathIdentifier: identifier
     }
     this.setState({ color: color })
-    this.props.viewer.setBlendingInformation(blendingInformation)
+    this.props.viewer.setOpticalPathStyle(blendingInformation)
   }
 
   handleColorBChange (
@@ -111,7 +111,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
   ): void {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
     const blendInfo =
-      this.props.viewer.getBlendingInformation(identifier) as dmv.channel.BlendingInformation
+      this.props.viewer.getOpticalPathStyle(identifier) as dmv.channel.BlendingInformation
     const color = [...blendInfo.color]
     color[2] = value / 255
     const blendingInformation = {
@@ -119,7 +119,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
       opticalPathIdentifier: identifier
     }
     this.setState({ color: color })
-    this.props.viewer.setBlendingInformation(blendingInformation)
+    this.props.viewer.setOpticalPathStyle(blendingInformation)
   }
 
   handleClippingChange (
@@ -131,7 +131,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
       opticalPathIdentifier: identifier
     }
     this.setState({ thresholdValues: values })
-    this.props.viewer.setBlendingInformation(blendingInformation)
+    this.props.viewer.setOpticalPathStyle(blendingInformation)
   }
 
   handleLimitChange (
@@ -143,19 +143,19 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
       opticalPathIdentifier: identifier
     }
     this.setState({ limitValues: values })
-    this.props.viewer.setBlendingInformation(blendingInformation)
+    this.props.viewer.setOpticalPathStyle(blendingInformation)
   }
 
-  handleRemoveSample (): void {
+  handleRemoval (): void {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
-    this.props.itemRemoveHandler(identifier)
+    this.props.onRemoval(identifier)
   }
 
   componentDidMount (): void {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
     const blendInfo =
-      this.props.viewer.getBlendingInformation(identifier) as dmv.channel.BlendingInformation
-    this.setState({ visible: blendInfo.visible })
+      this.props.viewer.getOpticalPathStyle(identifier) as dmv.channel.BlendingInformation
+    this.setState({ isVisible: blendInfo.visible })
   }
 
   render (): React.ReactNode {
@@ -200,11 +200,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
                 item.ConceptCodeSequence[0].CodingSchemeDesignator,
               meaning: item.ConceptCodeSequence[0].CodeMeaning
             })
-            if (name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
-              console.debug(
-                `parse specimen preparation step "${value.CodeMeaning}"`
-              )
-            } else {
+            if (!name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
               if (name.equals(SpecimenPreparationStepItems.STAIN)) {
                 attributes.push({
                   name: 'Stain',
@@ -228,7 +224,7 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
     )
 
     const blendInfo =
-      this.props.viewer.getBlendingInformation(identifier) as dmv.channel.BlendingInformation
+      this.props.viewer.getOpticalPathStyle(identifier) as dmv.channel.BlendingInformation
 
     const content = (
       <div>
@@ -328,10 +324,10 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
       </div>
     )
 
-    const removeSampleButton = (
+    const removeButton = (
       <CloseCircleOutlined
         style={{ color: '#FF0000' }}
-        onClick={this.handleRemoveSample}
+        onClick={this.handleRemoval}
       />
     )
 
@@ -342,19 +338,31 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
             <Space direction='vertical' align='end'>
               <Switch
                 size='small'
-                checked={this.state.visible}
+                checked={this.state.isVisible}
                 onChange={this.handleVisibilityChange}
                 checkedChildren={<FaEye />}
                 unCheckedChildren={<FaEyeSlash />}
               />
-              <Popover placement='left' content={content} title='Blending Parameters'>
-                <Button type='primary' shape='circle' icon={<SettingOutlined />} />
+              <Popover
+                 placement='left'
+                 content={content}
+                 title='Blending Parameters'
+              >
+                <Button
+                  type='primary'
+                  shape='circle'
+                  icon={<SettingOutlined />}
+                />
               </Popover>
             </Space>
           </Space>
         </div>
         <Space direction='horizontal' align='start'>
-          <Badge count={removeSampleButton} offset={[-15, 17]} title='Remove sample'>
+          <Badge
+             count={removeButton}
+             offset={[-15, 17]}
+             title='Remove optical path'
+            >
             <Description
               header={'ID: ' + identifier}
               attributes={attributes}
@@ -368,4 +376,4 @@ class SampleItem extends React.Component<SampleItemProps, SampleItemState> {
   }
 }
 
-export default SampleItem
+export default OpticalPathItem

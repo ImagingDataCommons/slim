@@ -3,48 +3,57 @@ import * as dmv from 'dicom-microscopy-viewer'
 import { Button, Menu, Select, Space } from 'antd'
 import { AppstoreAddOutlined } from '@ant-design/icons'
 
-import SampleItem from './SampleItem'
+import OpticalPathItem from './OpticalPathItem'
 
 const { Option } = Select
 
-interface SamplesListProps {
+interface OpticalPathsListProps {
   metadata?: dmv.metadata.VLWholeSlideMicroscopyImage[]
   viewer: dmv.viewer.VolumeImageViewer
 }
 
-interface SampleListState {
+interface OpticalPathListState {
   rerender: boolean
   selectedOpticalPathIdentifier?: string
 }
 
 /**
- * React component representing a list of DICOM Samples Information Entities.
+ * React component representing a list of optical paths (i.e., channels).
  */
-class SamplesList extends React.Component<SamplesListProps, SampleListState> {
+class OpticalPathsList extends React.Component<OpticalPathsListProps, OpticalPathListState> {
   state = {
     rerender: false,
     selectedOpticalPathIdentifier: undefined
   }
 
-  constructor (props: SamplesListProps) {
+  constructor (props: OpticalPathsListProps) {
     super(props)
-    this.handleAddSample = this.handleAddSample.bind(this)
-    this.onItemRemoveSample = this.onItemRemoveSample.bind(this)
-    this.handleSelectChange = this.handleSelectChange.bind(this)
+    this.handleAddition = this.handleAddition.bind(this)
+    this.handleRemoval = this.handleRemoval.bind(this)
+    this.handleSelectionChange = this.handleSelectionChange.bind(this)
   }
 
-  onItemRemoveSample (opticalPathIdentifier: string): void {
+  /**
+   * Handler that gets called when an optical path should be removed.
+   */
+  handleRemoval (opticalPathIdentifier: string): void {
     this.props.viewer.deactivateOpticalPath(opticalPathIdentifier)
     this.setState({ rerender: true })
   }
 
-  handleSelectChange (
+  /**
+   * Handler that gets called when the selection of an optical path should change.
+   */
+  handleSelectionChange (
     value: string
   ): void {
     this.setState({ selectedOpticalPathIdentifier: value })
   }
 
-  handleAddSample (): void {
+  /**
+   * Handler that gets called when an optical path should be added.
+   */
+  handleAddition (): void {
     const identifier = this.state.selectedOpticalPathIdentifier
     if (identifier !== undefined) {
       this.props.viewer.activateOpticalPath(identifier)
@@ -63,8 +72,10 @@ class SamplesList extends React.Component<SamplesListProps, SampleListState> {
         if (item.OpticalPathSequence.length > 0) {
           const index = opticalPaths.findIndex(
             (property: dmv.metadata.VLWholeSlideMicroscopyImage) => {
-              return property.OpticalPathSequence[0].OpticalPathIdentifier ===
-                      item.OpticalPathSequence[0].OpticalPathIdentifier
+              return (
+                property.OpticalPathSequence[0].OpticalPathIdentifier ===
+                item.OpticalPathSequence[0].OpticalPathIdentifier
+              )
             }
           )
 
@@ -78,7 +89,9 @@ class SamplesList extends React.Component<SamplesListProps, SampleListState> {
     // filter the list for only the active samples
     const filteredOpticalPaths: dmv.metadata.VLWholeSlideMicroscopyImage[] =
       opticalPaths.filter((item: dmv.metadata.VLWholeSlideMicroscopyImage) => {
-        return this.props.viewer.isOpticalPathActive(item.OpticalPathSequence[0].OpticalPathIdentifier)
+        return this.props.viewer.isOpticalPathActive(
+          item.OpticalPathSequence[0].OpticalPathIdentifier
+        )
       })
 
     // order items with the Optical Path ID
@@ -102,12 +115,12 @@ class SamplesList extends React.Component<SamplesListProps, SampleListState> {
     const sampleItems = sortedOpticalPaths.map(
       (item: dmv.metadata.VLWholeSlideMicroscopyImage) => {
         return (
-          <SampleItem
+          <OpticalPathItem
             key={item.OpticalPathSequence[0].OpticalPathIdentifier}
             viewer={this.props.viewer}
             opticalPathDescription={item.OpticalPathSequence[0]}
             specimenDescription={item.SpecimenDescriptionSequence[0]}
-            itemRemoveHandler={this.onItemRemoveSample}
+            onRemoval={this.handleRemoval}
           />
         )
       }
@@ -116,12 +129,15 @@ class SamplesList extends React.Component<SamplesListProps, SampleListState> {
     // get currently deactivated paths
     const deactivatedOpticalPaths: dmv.metadata.VLWholeSlideMicroscopyImage[] =
     opticalPaths.filter((item: dmv.metadata.VLWholeSlideMicroscopyImage) => {
-      return !this.props.viewer.isOpticalPathActive(item.OpticalPathSequence[0].OpticalPathIdentifier)
+      return !this.props.viewer.isOpticalPathActive(
+        item.OpticalPathSequence[0].OpticalPathIdentifier
+      )
     })
 
     // order items with the Optical Path ID
     const sortedDeactivatedOpticalPaths: dmv.metadata.VLWholeSlideMicroscopyImage[] =
-      deactivatedOpticalPaths.sort((n1: dmv.metadata.VLWholeSlideMicroscopyImage,
+      deactivatedOpticalPaths.sort((
+        n1: dmv.metadata.VLWholeSlideMicroscopyImage,
         n2: dmv.metadata.VLWholeSlideMicroscopyImage
       ) => {
         const id1 = parseInt(n1.OpticalPathSequence[0].OpticalPathIdentifier)
@@ -129,11 +145,9 @@ class SamplesList extends React.Component<SamplesListProps, SampleListState> {
         if (id1 > id2) {
           return 1
         }
-
         if (id1 < id2) {
           return -1
         }
-
         return 0
       })
 
@@ -156,17 +170,17 @@ class SamplesList extends React.Component<SamplesListProps, SampleListState> {
           <Select
             defaultValue=''
             style={{ width: 200 }}
-            onChange={this.handleSelectChange}
+            onChange={this.handleSelectionChange}
             value={this.state.selectedOpticalPathIdentifier}
             allowClear
           >
             {deactivatedOptionItems}
           </Select>
-          <Button type='primary' icon={<AppstoreAddOutlined />} onClick={this.handleAddSample} />
+          <Button type='primary' icon={<AppstoreAddOutlined />} onClick={this.handleAddition} />
         </Space>
       </Space>
     )
   }
 }
 
-export default SamplesList
+export default OpticalPathsList

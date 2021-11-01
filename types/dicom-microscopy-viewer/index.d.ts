@@ -73,8 +73,8 @@ declare module 'dicom-microscopy-viewer' {
       expandOverviewMap (): void
       toggleOverviewMap (): void
       isOpticalPathActive (string): boolean
-      getBlendingInformation (string): BlendingInformation
-      setBlendingInformation (BlendingInformation): void
+      getOpticalPathStyle (string): BlendingInformation
+      setOpticalPathStyle (BlendingInformation): void
       showOpticalPath (string): void
       hideOpticalPath (string): void
       activateOpticalPath (string): void
@@ -486,7 +486,6 @@ declare module 'dicom-microscopy-viewer' {
       limitValues: number[]
       visible: boolean
     }
-    
   }
 
 }

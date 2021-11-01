@@ -117,6 +117,8 @@ declare module 'dicomweb-client' {
 
       headers: {[key: string]: string}
 
+      baseURL: string
+
       // STOW-RS
       storeInstances (options: StoreInstancesOptions): Promise<string>
 

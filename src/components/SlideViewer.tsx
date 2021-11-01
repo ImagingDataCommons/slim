@@ -29,7 +29,7 @@ import AnnotationList from './AnnotationList'
 import Button from './Button'
 import Report, { MeasurementReport } from './Report'
 import SpecimenList from './SpecimenList'
-import SamplesList from './SamplesList'
+import OpticalPathList from './OpticalPathList'
 import SegmentList from './SegmentList'
 import { AnnotationSettings, RendererSettings } from '../AppConfig'
 import { findContentItemsByName } from '../utils/sr'
@@ -416,7 +416,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
             const content = new MeasurementReport(report)
             content.ROIs.forEach(roi => {
-              console.info(`add ROI "${roi.uid}"`, roi)
+              console.info(`add ROI "${roi.uid}"`)
               const scoord3d = roi.scoord3d
               const slide = this.state.activeSlide
               const image = slide.volumeImages[0]
@@ -1295,9 +1295,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     let specimenMenu
     let sampleMenu
     const slide = this.state.activeSlide
-    if (slide.labelImages.length > 0) {
-      openSubMenuItems.push('label')
-    }
     if (!slide.isMultiplexed) {
       specimenMenu = (
         <Menu.SubMenu key='specimens' title='Specimens'>
@@ -1308,7 +1305,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         </Menu.SubMenu>
       )
     } else {
-      openSubMenuItems.push('samples')
+      openSubMenuItems.push('opticalpaths')
       specimenMenu = (
         <Menu.SubMenu key='specimens' title='Specimens'>
           <SpecimenList
@@ -1320,8 +1317,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const volumeViewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
       if (volumeViewer !== undefined) {
         sampleMenu = (
-          <Menu.SubMenu key='samples' title='Samples'>
-            <SamplesList
+          <Menu.SubMenu key='opticalpaths' title='Optical Paths'>
+            <OpticalPathList
               metadata={slide.volumeImages}
               viewer={volumeViewer}
             />
