@@ -8,7 +8,7 @@ interface AnnotationListProps {
   rois: dmv.roi.ROI[]
   selectedRoiUIDs: string[]
   visibleRoiUIDs: string[]
-  onChangeVisibility: ({ roiUID }: { roiUID: string }) => void
+  onVisibilityChange: ({ roiUID }: { roiUID: string }) => void
   onSelection: ({ roiUID }: { roiUID: string }) => void
 }
 
@@ -35,7 +35,7 @@ class AnnotationList extends React.Component<AnnotationListProps, {}> {
         roi={roi}
         index={index}
         isVisible={this.props.visibleRoiUIDs.includes(roi.uid)}
-        onChangeVisibility={this.props.onChangeVisibility}
+        onVisibilityChange={this.props.onVisibilityChange}
       />
     ))
 

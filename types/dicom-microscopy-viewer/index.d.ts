@@ -83,6 +83,10 @@ declare module 'dicom-microscopy-viewer' {
       removeSegment (segmentUID: string): void
       showSegment (segmentUID: string): void
       hideSegment (segmentUID: string): void
+      setSegmentStyle (
+        segmentUID: string,
+        styleOptions: { colormap?: string, opacity?: number }
+      ): void
       isSegmentVisible (segmentUID: string): boolean
       getAllSegments (): dwc.segment.Segment[]
     }

@@ -226,15 +226,13 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     const blendInfo =
       this.props.viewer.getOpticalPathStyle(identifier) as dmv.channel.BlendingInformation
 
-    const content = (
+    const settings = (
       <div>
         <Row justify='center' align='middle'>
-          <Col span={6}>
-            <Button type='primary' shape='round'>
-              R
-            </Button>
+          <Col span={9}>
+            R
           </Col>
-          <Col span={18}>
+          <Col span={15}>
             <Slider
               min={0}
               max={255}
@@ -244,12 +242,10 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
             />
           </Col>
 
-          <Col span={6}>
-            <Button type='primary' shape='round'>
-              G
-            </Button>
+          <Col span={9}>
+            G
           </Col>
-          <Col span={18}>
+          <Col span={15}>
             <Slider
               min={0}
               max={255}
@@ -259,12 +255,10 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
             />
           </Col>
 
-          <Col span={6}>
-            <Button type='primary' shape='round'>
-              B
-            </Button>
+          <Col span={9}>
+            B
           </Col>
-          <Col span={18}>
+          <Col span={15}>
             <Slider
               min={0}
               max={255}
@@ -274,12 +268,10 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
             />
           </Col>
 
-          <Col span={6}>
-            <Button type='primary' shape='round'>
-              Min/Max
-            </Button>
+          <Col span={9}>
+            Min/Max
           </Col>
-          <Col span={18}>
+          <Col span={15}>
             <Slider
               range
               min={0}
@@ -290,12 +282,10 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
             />
           </Col>
 
-          <Col span={6}>
-            <Button type='primary' shape='round'>
-              Clipping
-            </Button>
+          <Col span={9}>
+            Clipping
           </Col>
-          <Col span={18}>
+          <Col span={15}>
             <Slider
               range
               min={0}
@@ -306,12 +296,10 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
             />
           </Col>
 
-          <Col span={6}>
-            <Button type='primary' shape='round'>
-              Opacity
-            </Button>
+          <Col span={9}>
+            Opacity
           </Col>
-          <Col span={18}>
+          <Col span={15}>
             <Slider
               min={0.01}
               max={1}
@@ -345,8 +333,8 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
               />
               <Popover
                  placement='left'
-                 content={content}
-                 title='Blending Parameters'
+                 content={settings}
+                 title='Display Settings'
               >
                 <Button
                   type='primary'

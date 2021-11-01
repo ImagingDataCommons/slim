@@ -7,7 +7,13 @@ import SegmentItem from './SegmentItem'
 interface SegmentListProps {
   segments: dmv.segment.Segment[]
   visibleSegmentUIDs: string[]
-  onChangeVisibility: ({ segmentUID }: { segmentUID: string }) => void
+  onVisibilityChange: ({ segmentUID }: {
+    segmentUID: string
+  }) => void
+  onOpacityChange: ({ segmentUID, value }: {
+    segmentUID: string,
+    value: number
+  }) => void
 }
 
 /**
@@ -21,8 +27,10 @@ class SegmentList extends React.Component<SegmentListProps, {}> {
         key={segment.uid}
         segment={segment}
         index={index}
+        styleOptions={{ opacity: 0.5 }}
         isVisible={this.props.visibleSegmentUIDs.includes(segment.uid)}
-        onChangeVisibility={this.props.onChangeVisibility}
+        onVisibilityChange={this.props.onVisibilityChange}
+        onOpacityChange={this.props.onOpacityChange}
       />
     ))
 

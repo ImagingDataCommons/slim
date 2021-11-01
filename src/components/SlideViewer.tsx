@@ -304,6 +304,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleAnnotationSelection = this.handleAnnotationSelection.bind(this)
     this.handleAnnotationVisibilityChange = this.handleAnnotationVisibilityChange.bind(this)
     this.handleSegmentVisibilityChange = this.handleSegmentVisibilityChange.bind(this)
+    this.handleSegmentOpacityChange = this.handleSegmentOpacityChange.bind(this)
     this.handleReportGeneration = this.handleReportGeneration.bind(this)
     this.handleReportVerification = this.handleReportVerification.bind(this)
     this.handleReportCancellation = this.handleReportCancellation.bind(this)
@@ -1087,6 +1088,21 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   /**
+   * Handle change of segment opacity.
+   */
+  handleSegmentOpacityChange ({ segmentUID, value }: {
+    segmentUID: string
+    value: number
+  }): void {
+    const viewer = this.volumeViewer
+    if (viewer === undefined) {
+      return
+    }
+    console.log(`change opacity of segment ${segmentUID}`)
+    viewer.setSegmentStyle(segmentUID, { opacity: value })
+  }
+
+  /**
    * Handler that will toggle the ROI drawing tool, i.e., either activate or
    * de-activate it, depending on its current state.
    */
@@ -1235,7 +1251,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           selectedRoiUIDs={this.state.selectedRoiUIDs}
           visibleRoiUIDs={this.state.visibleRoiUIDs}
           onSelection={this.handleAnnotationSelection}
-          onChangeVisibility={this.handleAnnotationVisibilityChange}
+          onVisibilityChange={this.handleAnnotationVisibilityChange}
         />
       )
     }
@@ -1334,7 +1350,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           <SegmentList
             segments={segments}
             visibleSegmentUIDs={this.state.visibleSegmentUIDs}
-            onChangeVisibility={this.handleSegmentVisibilityChange}
+            onVisibilityChange={this.handleSegmentVisibilityChange}
+            onOpacityChange={this.handleSegmentOpacityChange}
           />
         </Menu.SubMenu>
       )

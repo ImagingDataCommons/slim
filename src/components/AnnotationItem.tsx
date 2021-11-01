@@ -10,7 +10,7 @@ interface AnnotationItemProps {
   roi: dmv.roi.ROI
   index: number
   isVisible: boolean
-  onChangeVisibility: ({ roiUID }: { roiUID: string }) => void
+  onVisibilityChange: ({ roiUID }: { roiUID: string }) => void
 }
 
 /**
@@ -26,7 +26,7 @@ class AnnotationItem extends React.Component<AnnotationItemProps, {}> {
     checked: boolean,
     event: Event
   ): void {
-    this.props.onChangeVisibility({ roiUID: this.props.roi.uid })
+    this.props.onVisibilityChange({ roiUID: this.props.roi.uid })
   }
 
   render (): React.ReactNode {
@@ -36,7 +36,7 @@ class AnnotationItem extends React.Component<AnnotationItemProps, {}> {
      * This hack is required for Menu.Item to work properly:
      * https://github.com/react-component/menu/issues/142
      */
-    const { isVisible, onChangeVisibility, ...otherProps } = this.props
+    const { isVisible, onVisibilityChange, ...otherProps } = this.props
     this.props.roi.evaluations.forEach((
       item: (
         dcmjs.sr.valueTypes.TextContentItem |
