@@ -53,6 +53,7 @@ export interface ServerSettings {
   url?: string
   path?: string
   write: boolean
+  read?: boolean
   qidoPathPrefix?: string
   wadoPathPrefix?: string
   stowPathPrefix?: string
