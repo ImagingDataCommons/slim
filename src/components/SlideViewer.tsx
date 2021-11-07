@@ -505,7 +505,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               seg.ContainerIdentifier === refImage.ContainerIdentifier
             )
           })
-          viewer.addSegments({ metadata: segmentations })
+          viewer.addSegments(segmentations)
         })
       })
     })

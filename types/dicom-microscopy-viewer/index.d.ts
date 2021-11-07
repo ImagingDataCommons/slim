@@ -79,13 +79,13 @@ declare module 'dicom-microscopy-viewer' {
       hideOpticalPath (string): void
       activateOpticalPath (string): void
       deactivateOpticalPath (string): void
-      addSegments ({ metadata: Segmentation }): void
+      addSegments (metadata: Segmentation): void
       removeSegment (segmentUID: string): void
       showSegment (segmentUID: string): void
       hideSegment (segmentUID: string): void
       setSegmentStyle (
         segmentUID: string,
-        styleOptions: { colormap?: string, opacity?: number }
+        styleOptions: { opacity?: number }
       ): void
       isSegmentVisible (segmentUID: string): boolean
       getAllSegments (): dwc.segment.Segment[]

@@ -223,8 +223,9 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       }
     )
 
-    const blendInfo =
-      this.props.viewer.getOpticalPathStyle(identifier) as dmv.channel.BlendingInformation
+    const blendInfo = this.props.viewer.getOpticalPathStyle(
+      identifier
+    ) as dmv.channel.BlendingInformation
 
     const settings = (
       <div>

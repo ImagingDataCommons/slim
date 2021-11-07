@@ -27,7 +27,6 @@ class SegmentList extends React.Component<SegmentListProps, {}> {
         key={segment.uid}
         segment={segment}
         index={index}
-        styleOptions={{ opacity: 0.5 }}
         isVisible={this.props.visibleSegmentUIDs.includes(segment.uid)}
         onVisibilityChange={this.props.onVisibilityChange}
         onOpacityChange={this.props.onOpacityChange}

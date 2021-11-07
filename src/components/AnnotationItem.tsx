@@ -61,7 +61,6 @@ class AnnotationItem extends React.Component<AnnotationItemProps, {}> {
       }
     })
     this.props.roi.measurements.forEach(item => {
-      console.info('add measurement: ', item)
       const nameMeaning = item.ConceptNameCodeSequence[0].CodeMeaning
       const name = `${nameMeaning}`
       const seq = item.MeasuredValueSequence[0]

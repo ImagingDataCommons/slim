@@ -10,9 +10,6 @@ interface SegmentItemProps {
   segment: dmv.segment.Segment
   index: number
   isVisible: boolean
-  styleOptions: {
-    opacity: number
-  }
   onVisibilityChange: ({ segmentUID }: {
     segmentUID: string
   }) => void
@@ -37,7 +34,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
     this.handleOpacityChange = this.handleOpacityChange.bind(this)
     this.state = {
-      styleOptions: this.props.styleOptions
+      styleOptions: { opacity: 0.75 }
     }
   }
 
@@ -104,7 +101,6 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
       isVisible,
       onVisibilityChange,
       onOpacityChange,
-      styleOptions,
       ...otherProps
     } = this.props
     return (
