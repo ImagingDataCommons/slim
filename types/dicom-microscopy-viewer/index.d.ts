@@ -72,21 +72,51 @@ declare module 'dicom-microscopy-viewer' {
       collapseOverviewMap (): void
       expandOverviewMap (): void
       toggleOverviewMap (): void
-      isOpticalPathActive (string): boolean
-      getOpticalPathStyle (string): BlendingInformation
-      setOpticalPathStyle (BlendingInformation): void
-      showOpticalPath (string): void
-      hideOpticalPath (string): void
-      activateOpticalPath (string): void
-      deactivateOpticalPath (string): void
+      isOpticalPathActive (opticalPathIdentifier: string): boolean
+      getOpticalPathStyle (opticalPathIdentifier: string): {
+        color: number[]
+        opacity: number,
+        thresholdValues: number[],
+        limitValues: number[],
+      }
+      setOpticalPathStyle (
+        opticalPathIdentifier: string,
+        styleOptions: {
+          color?: number[]
+          opacity?: number,
+          thresholdValues?: number[],
+          limitValues?: number[],
+        }
+      ): void
+      showOpticalPath (
+        opticalPathIdentifier: string,
+        styleOptions?: {
+          color?: number[]
+          opacity?: number,
+          thresholdValues?: number[],
+          limitValues?: number[],
+        }
+      ): void
+      hideOpticalPath (opticalPathIdentifier: string): void
+      isOpticalPathVisible (opticalPathIdentifier: string): boolean
+      activateOpticalPath (opticalPathIdentifier: string): void
+      deactivateOpticalPath (opticalPathIdentifier: string): void
       addSegments (metadata: Segmentation): void
       removeSegment (segmentUID: string): void
-      showSegment (segmentUID: string): void
+      showSegment (
+        segmentUID: string,
+        styleOptions?: {
+          opacity?: number
+        }
+      ): void
       hideSegment (segmentUID: string): void
       setSegmentStyle (
         segmentUID: string,
-        styleOptions: { opacity?: number }
+        styleOptions: {
+          opacity?: number
+        }
       ): void
+      getSegmentStyle (segmentUID: string): { opacity: number }
       isSegmentVisible (segmentUID: string): boolean
       getAllSegments (): dwc.segment.Segment[]
     }

@@ -544,7 +544,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         if (slide.areVolumeImagesMonochrome) {
           const blendInfo: dmv.channel.BlendingInformation = {
             opticalPathIdentifier: slide.opticalPathIdentifiers[0],
-            color: [0, 0.9, 0.9],
+            color: [255, 255, 255],
             opacity: 1.0,
             thresholdValues: [0, 255],
             limitValues: [0, 255],

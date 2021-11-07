@@ -66,84 +66,72 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     value: number
   ): void {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
-    const blendingInformation = {
+    const styleOptions = {
       opacity: value,
-      opticalPathIdentifier: identifier
     }
     this.setState({ opacity: value })
-    this.props.viewer.setOpticalPathStyle(blendingInformation)
+    this.props.viewer.setOpticalPathStyle(identifier, styleOptions)
   }
 
   handleColorRChange (
     value: number
   ): void {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
-    const blendInfo =
-      this.props.viewer.getOpticalPathStyle(identifier) as dmv.channel.BlendingInformation
-    const color = [...blendInfo.color]
-    color[0] = value / 255
-    const blendingInformation = {
-      color: color,
-      opticalPathIdentifier: identifier
+    const styleCurrent = this.props.viewer.getOpticalPathStyle(identifier)
+    const styleOptions = {
+      color: styleCurrent.color
     }
-    this.setState({ color: color })
-    this.props.viewer.setOpticalPathStyle(blendingInformation)
+    styleOptions.color[0] = value
+    this.setState({ color: styleOptions.color })
+    this.props.viewer.setOpticalPathStyle(identifier, styleOptions)
   }
 
   handleColorGChange (
     value: number
   ): void {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
-    const blendInfo =
-      this.props.viewer.getOpticalPathStyle(identifier) as dmv.channel.BlendingInformation
-    const color = [...blendInfo.color]
-    color[1] = value / 255
-    const blendingInformation = {
-      color: color,
-      opticalPathIdentifier: identifier
+    const styleCurrent = this.props.viewer.getOpticalPathStyle(identifier)
+    const styleOptions = {
+      color: styleCurrent.color
     }
-    this.setState({ color: color })
-    this.props.viewer.setOpticalPathStyle(blendingInformation)
+    styleOptions.color[1] = value
+    this.setState({ color: styleOptions.color })
+    this.props.viewer.setOpticalPathStyle(identifier, styleOptions)
   }
 
   handleColorBChange (
     value: number
   ): void {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
-    const blendInfo =
-      this.props.viewer.getOpticalPathStyle(identifier) as dmv.channel.BlendingInformation
-    const color = [...blendInfo.color]
-    color[2] = value / 255
-    const blendingInformation = {
-      color: color,
-      opticalPathIdentifier: identifier
+    const styleCurrent = this.props.viewer.getOpticalPathStyle(identifier)
+    const styleOptions = {
+      color: styleCurrent.color
     }
-    this.setState({ color: color })
-    this.props.viewer.setOpticalPathStyle(blendingInformation)
+    styleOptions.color[2] = value
+    this.setState({ color: styleOptions.color })
+    this.props.viewer.setOpticalPathStyle(identifier, styleOptions)
   }
 
   handleClippingChange (
     values: number[]
   ): void {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
-    const blendingInformation = {
-      thresholdValues: values,
-      opticalPathIdentifier: identifier
+    const styleOptions = {
+      thresholdValues: values
     }
     this.setState({ thresholdValues: values })
-    this.props.viewer.setOpticalPathStyle(blendingInformation)
+    this.props.viewer.setOpticalPathStyle(identifier, styleOptions)
   }
 
   handleLimitChange (
     values: number[]
   ): void {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
-    const blendingInformation = {
+    const styleOptions = {
       limitValues: values,
-      opticalPathIdentifier: identifier
     }
     this.setState({ limitValues: values })
-    this.props.viewer.setOpticalPathStyle(blendingInformation)
+    this.props.viewer.setOpticalPathStyle(identifier, styleOptions)
   }
 
   handleRemoval (): void {
@@ -153,9 +141,8 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
 
   componentDidMount (): void {
     const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
-    const blendInfo =
-      this.props.viewer.getOpticalPathStyle(identifier) as dmv.channel.BlendingInformation
-    this.setState({ isVisible: blendInfo.visible })
+    const isVisible = this.props.viewer.isOpticalPathVisible(identifier)
+    this.setState({ isVisible: isVisible })
   }
 
   render (): React.ReactNode {
