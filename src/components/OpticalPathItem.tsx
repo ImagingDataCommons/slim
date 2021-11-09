@@ -257,7 +257,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
           </Col>
 
           <Col span={9}>
-            Min/Max
+            Limit (min/max)
           </Col>
           <Col span={15}>
             <Slider
@@ -271,7 +271,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
           </Col>
 
           <Col span={9}>
-            Clipping
+            Threshold (clipping)
           </Col>
           <Col span={15}>
             <Slider
