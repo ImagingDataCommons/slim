@@ -225,7 +225,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
               min={0}
               max={255}
               step={1}
-              defaultValue={blendInfo.color[0] * 255}
+              defaultValue={blendInfo.color[0]}
               onAfterChange={this.handleColorRChange}
             />
           </Col>
@@ -238,7 +238,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
               min={0}
               max={255}
               step={1}
-              defaultValue={blendInfo.color[1] * 255}
+              defaultValue={blendInfo.color[1]}
               onAfterChange={this.handleColorGChange}
             />
           </Col>
@@ -251,7 +251,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
               min={0}
               max={255}
               step={1}
-              defaultValue={blendInfo.color[2] * 255}
+              defaultValue={blendInfo.color[2]}
               onAfterChange={this.handleColorBChange}
             />
           </Col>

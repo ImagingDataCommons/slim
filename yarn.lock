@@ -4425,10 +4425,10 @@ detect-port-alt@1.1.6:
     address "^1.0.1"
     debug "^2.6.0"
 
-dicom-microscopy-viewer@^0.35.1:
-  version "0.35.1"
-  resolved "https://registry.yarnpkg.com/dicom-microscopy-viewer/-/dicom-microscopy-viewer-0.35.1.tgz#7ee9dfb6045fe9803fbe1474dfbb01f0ba0915cc"
-  integrity sha512-fu8vNtINXx2dCzTshS5OjJde22Lu+v4bkDX0quRst0XLA0zKQE/f4IwWmaun8tlJviHxQZssxiUM6wZYxce0uw==
+dicom-microscopy-viewer@^0.36.0:
+  version "0.35.2"
+  resolved "https://registry.yarnpkg.com/dicom-microscopy-viewer/-/dicom-microscopy-viewer-0.35.2.tgz#437a5a5b28e0c886931adfc29a296e4eb5d400f4"
+  integrity sha512-v+OTaOwG8oB+fMBmJqUSuhjYsHftmKZY8W06MGR5loLjb0xUZSS1fnTsMY6FcP+er9MgDamSG5MwKBid0OFkEA==
   dependencies:
     dcmjs "^0.18"
     dicomweb-client "^0.8"
@@ -4436,10 +4436,15 @@ dicom-microscopy-viewer@^0.35.1:
     mathjs "^9.4"
     ol "^6.9"
 
-dicomweb-client@^0.8, dicomweb-client@^0.8.2:
+dicomweb-client@^0.8:
   version "0.8.2"
   resolved "https://registry.yarnpkg.com/dicomweb-client/-/dicomweb-client-0.8.2.tgz#7bed89356af86e504d658f2a5687aaa17c7cf019"
   integrity sha512-sMK/rFuinLZyT6gImII7pc2YjRCNFeMN12AVQola2izrSZiZt4Qj6QYIxWhcCkTI43TJKAtNwzGxa9XzMnGG3Q==
+
+dicomweb-client@^0.8.3:
+  version "0.8.3"
+  resolved "https://registry.yarnpkg.com/dicomweb-client/-/dicomweb-client-0.8.3.tgz#4a5ad49c76415ccc894bec57f9267197432e534b"
+  integrity sha512-24l6ZnU3y6QIb6LUOmT2wJaptvM+oxQQa1btcViwmIok0pi7jjZf8tGSSclOvTKuwX408/qlpg3uWcKU0Y/uDw==
 
 diff-sequences@^24.9.0:
   version "24.9.0"
