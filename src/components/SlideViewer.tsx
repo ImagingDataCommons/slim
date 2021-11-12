@@ -232,6 +232,8 @@ interface SlideViewerState {
   selectedRoiUIDs: string[]
   visibleRoiUIDs: string[]
   visibleSegmentUIDs: string[]
+  visibleOpticalPathIdentifiers: string[]
+  activeOpticalPathIdentifiers: string[]
   selectedFinding?: dcmjs.sr.coding.CodedConcept
   selectedEvaluations: Evaluation[]
   generatedReport?: dmv.metadata.Comprehensive3DSR
@@ -303,11 +305,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleAnnotationEvaluationSelection = this.handleAnnotationEvaluationSelection.bind(this)
     this.handleAnnotationSelection = this.handleAnnotationSelection.bind(this)
     this.handleAnnotationVisibilityChange = this.handleAnnotationVisibilityChange.bind(this)
-    this.handleSegmentVisibilityChange = this.handleSegmentVisibilityChange.bind(this)
-    this.handleSegmentOpacityChange = this.handleSegmentOpacityChange.bind(this)
     this.handleReportGeneration = this.handleReportGeneration.bind(this)
     this.handleReportVerification = this.handleReportVerification.bind(this)
     this.handleReportCancellation = this.handleReportCancellation.bind(this)
+    this.handleSegmentVisibilityChange = this.handleSegmentVisibilityChange.bind(this)
+    this.handleSegmentStyleChange = this.handleSegmentStyleChange.bind(this)
+    this.handleOpticalPathVisibilityChange = this.handleOpticalPathVisibilityChange.bind(this)
+    this.handleOpticalPathStyleChange = this.handleOpticalPathStyleChange.bind(this)
+    this.handleOpticalPathActivityChange = this.handleOpticalPathActivityChange.bind(this)
 
     const slides = this.props.slides.filter(item => {
       const slideIndex = item.seriesInstanceUIDs.findIndex((uid) => {
@@ -334,6 +339,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       selectedRoiUIDs: [],
       visibleRoiUIDs: [],
       visibleSegmentUIDs: [],
+      visibleOpticalPathIdentifiers: [],
+      activeOpticalPathIdentifiers: [],
       selectedFinding: undefined,
       selectedEvaluations: [],
       isReportModalVisible: false,
@@ -542,21 +549,27 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         this.volumeViewport.current.innerHTML = ''
 
         if (slide.areVolumeImagesMonochrome) {
-          const blendInfo: dmv.channel.BlendingInformation = {
-            opticalPathIdentifier: slide.opticalPathIdentifiers[0],
+          const opticalPathIdentifier = slide.opticalPathIdentifiers[0]
+          const blendingInformation = {
+            opticalPathIdentifier,
             color: [255, 255, 255],
-            opacity: 1.0,
-            thresholdValues: [0, 255],
+            opacity: 1,
             limitValues: [0, 255],
+            thresholdValues: [0, 1],
             visible: true
           }
-
           this.volumeViewer = new dmv.viewer.VolumeImageViewer({
             client: this.props.client,
             metadata: slide.volumeImages,
-            blendingInformation: [blendInfo],
-            retrieveRendered: this.props.renderer.retrieveRendered
+            retrieveRendered: this.props.renderer.retrieveRendered,
+            blendingInformation: [blendingInformation]
           })
+          this.setState(state => ({
+            activeOpticalPathIdentifiers:
+              state.activeOpticalPathIdentifiers.concat(opticalPathIdentifier),
+            visibleOpticalPathIdentifiers:
+              state.visibleOpticalPathIdentifiers.concat(opticalPathIdentifier)
+          }))
         } else {
           this.volumeViewer = new dmv.viewer.VolumeImageViewer({
             client: this.props.client,
@@ -1065,42 +1078,133 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handle toggling of segment visibility, i.e., whether a given
    * segment should be either displayed or hidden by the viewer.
    */
-  handleSegmentVisibilityChange ({ segmentUID }: { segmentUID: string }): void {
+  handleSegmentVisibilityChange ({ segmentUID, isVisible }: {
+    segmentUID: string
+    isVisible: boolean
+  }): void {
     const viewer = this.volumeViewer
     if (viewer === undefined) {
       return
     }
     console.log(`change visibility of segment ${segmentUID}`)
-    if (this.state.visibleSegmentUIDs.includes(segmentUID as never)) {
-      console.info(`hide ROI ${segmentUID}`)
+    if (isVisible) {
+      console.info(`show segment ${segmentUID}`)
+      viewer.showSegment(segmentUID)
+      this.setState(state => ({
+        visibleSegmentUIDs: state.visibleSegmentUIDs.concat(segmentUID)
+      }))
+    } else {
+      console.info(`hide segment ${segmentUID}`)
       viewer.hideSegment(segmentUID)
       this.setState(state => ({
         visibleSegmentUIDs: state.visibleSegmentUIDs.filter(uid => {
           return uid !== segmentUID
         })
       }))
-    } else {
-      viewer.showSegment(segmentUID)
-      this.setState(state => ({
-        visibleSegmentUIDs: state.visibleSegmentUIDs.concat(segmentUID)
-      }))
     }
   }
 
   /**
-   * Handle change of segment opacity.
+   * Handle change of segment style.
    */
-  handleSegmentOpacityChange ({ segmentUID, value }: {
+  handleSegmentStyleChange ({ segmentUID, styleOptions }: {
     segmentUID: string
-    value: number
+    styleOptions: {
+      opacity?: number
+    }
   }): void {
     const viewer = this.volumeViewer
     if (viewer === undefined) {
       return
     }
-    console.log(`change opacity of segment ${segmentUID}`)
-    viewer.setSegmentStyle(segmentUID, { opacity: value })
+    console.log(`change style of segment ${segmentUID}`)
+    viewer.setSegmentStyle(segmentUID, styleOptions)
   }
+
+  /**
+   * Handle toggling of optical path visibility, i.e., whether a given
+   * optical path should be either displayed or hidden by the viewer.
+   */
+  handleOpticalPathVisibilityChange ({ opticalPathIdentifier, isVisible }: {
+    opticalPathIdentifier: string,
+    isVisible: boolean
+  }): void {
+    const viewer = this.volumeViewer
+    if (viewer === undefined) {
+      return
+    }
+    console.log(`change visibility of optical path ${opticalPathIdentifier}`)
+    if (isVisible) {
+      console.info(`show optical path ${opticalPathIdentifier}`)
+      viewer.showOpticalPath(opticalPathIdentifier)
+      this.setState(state => ({
+        visibleOpticalPathIdentifiers:
+          state.visibleOpticalPathIdentifiers.concat(opticalPathIdentifier)
+      }))
+    } else {
+      console.info(`hide optical path ${opticalPathIdentifier}`)
+      viewer.hideOpticalPath(opticalPathIdentifier)
+      this.setState(state => ({
+        visibleOpticalPathIdentifiers:
+          state.visibleOpticalPathIdentifiers.filter(
+            identifier => identifier !== opticalPathIdentifier
+          )
+      }))
+    }
+  }
+
+  /**
+   * Handle change of optical path style.
+   */
+  handleOpticalPathStyleChange ({ opticalPathIdentifier, styleOptions }: {
+    opticalPathIdentifier: string
+    styleOptions: {
+      opacity?: number
+      color?: number[]
+      thresholdValues?: number[]
+      limitValues?: number[]
+    }
+  }): void {
+    const viewer = this.volumeViewer
+    if (viewer === undefined) {
+      return
+    }
+    console.log(`change style of optical path ${opticalPathIdentifier}`)
+    viewer.setOpticalPathStyle(opticalPathIdentifier, styleOptions)
+  }
+
+  /**
+   * Handle toggling of optical path activity, i.e., whether a given
+   * optical path should be either added or removed from the viewport.
+   */
+  handleOpticalPathActivityChange ({ opticalPathIdentifier, isActive }: {
+    opticalPathIdentifier: string,
+    isActive: boolean
+  }): void {
+    const viewer = this.volumeViewer
+    if (viewer === undefined) {
+      return
+    }
+    console.log(`change activity of optical path ${opticalPathIdentifier}`)
+    if (isActive) {
+      console.info(`activate optical path ${opticalPathIdentifier}`)
+      viewer.activateOpticalPath(opticalPathIdentifier)
+      this.setState(state => ({
+        activeOpticalPathIdentifiers:
+          state.activeOpticalPathIdentifiers.concat(opticalPathIdentifier)
+      }))
+    } else {
+      console.info(`deactivate optical path ${opticalPathIdentifier}`)
+      viewer.deactivateOpticalPath(opticalPathIdentifier)
+      this.setState(state => ({
+        activeOpticalPathIdentifiers:
+          state.activeOpticalPathIdentifiers.filter(
+            identifier => identifier !== opticalPathIdentifier
+          )
+      }))
+    }
+  }
+
 
   /**
    * Handler that will toggle the ROI drawing tool, i.e., either activate or
@@ -1243,9 +1347,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       report = <Report dataset={dataset} />
     }
 
-    let annotationItems: React.ReactNode
+    let annotationList: React.ReactNode
     if (rois.length > 0) {
-      annotationItems = (
+      annotationList = (
         <AnnotationList
           rois={rois}
           selectedRoiUIDs={this.state.selectedRoiUIDs}
@@ -1309,7 +1413,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
 
     let specimenMenu
-    let sampleMenu
+    let opticalPathMenu
     const slide = this.state.activeSlide
     if (!slide.isMultiplexed) {
       specimenMenu = (
@@ -1332,11 +1436,41 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       )
       const volumeViewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
       if (volumeViewer !== undefined) {
-        sampleMenu = (
+        const defaultOpticalPathStyles: {
+          [key: string]: {
+            opacity: number
+            color: number[]
+            limitValues: number[]
+            thresholdValues: number[]
+          }
+        } = {}
+        const opticalPathMetadata: {
+          [key: string]: dmv.metadata.VLWholeSlideMicroscopyImage[]
+        } = {}
+        const opticalPaths = volumeViewer.getAllOpticalPaths()
+        slide.volumeImages.forEach(image => {
+          image.OpticalPathSequence.forEach(opticalPathItem => {
+            const identifier = opticalPathItem.OpticalPathIdentifier
+            const style = volumeViewer.getOpticalPathStyle(identifier)
+            defaultOpticalPathStyles[identifier] = style
+            if (identifier in opticalPathMetadata) {
+              opticalPathMetadata[identifier].push(image)
+            } else {
+              opticalPathMetadata[identifier] = [image]
+            }
+          })
+        })
+        opticalPathMenu = (
           <Menu.SubMenu key='opticalpaths' title='Optical Paths'>
             <OpticalPathList
-              metadata={slide.volumeImages}
-              viewer={volumeViewer}
+              metadata={opticalPathMetadata}
+              opticalPaths={opticalPaths}
+              defaultOpticalPathStyles={defaultOpticalPathStyles}
+              visibleOpticalPathIdentifiers={this.state.visibleOpticalPathIdentifiers}
+              activeOpticalPathIdentifiers={this.state.activeOpticalPathIdentifiers}
+              onOpticalPathVisibilityChange={this.handleOpticalPathVisibilityChange}
+              onOpticalPathStyleChange={this.handleOpticalPathStyleChange}
+              onOpticalPathActivityChange={this.handleOpticalPathActivityChange}
             />
           </Menu.SubMenu>
         )
@@ -1350,8 +1484,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           <SegmentList
             segments={segments}
             visibleSegmentUIDs={this.state.visibleSegmentUIDs}
-            onVisibilityChange={this.handleSegmentVisibilityChange}
-            onOpacityChange={this.handleSegmentOpacityChange}
+            onSegmentVisibilityChange={this.handleSegmentVisibilityChange}
+            onSegmentStyleChange={this.handleSegmentStyleChange}
           />
         </Menu.SubMenu>
       )
@@ -1462,9 +1596,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               </Menu.Item>
             </Menu.SubMenu>
             {specimenMenu}
-            {sampleMenu}
+            {opticalPathMenu}
             <Menu.SubMenu key='annotations' title='Annotations'>
-              {annotationItems}
+              {annotationList}
             </Menu.SubMenu>
             {segmentationMenu}
           </Menu>

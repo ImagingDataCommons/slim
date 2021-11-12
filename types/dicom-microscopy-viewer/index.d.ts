@@ -101,6 +101,7 @@ declare module 'dicom-microscopy-viewer' {
       isOpticalPathVisible (opticalPathIdentifier: string): boolean
       activateOpticalPath (opticalPathIdentifier: string): void
       deactivateOpticalPath (opticalPathIdentifier: string): void
+      getAllOpticalPaths (): dwc.opticalPath.OpticalPath[]
       addSegments (metadata: Segmentation): void
       removeSegment (segmentUID: string): void
       showSegment (
@@ -381,7 +382,7 @@ declare module 'dicom-microscopy-viewer' {
       PrimaryAnatomicStructureSequence: dcmjs.sr.valueTypes.CodedConcept[]
     }
 
-    export interface OpticalPathDescription {
+    export interface OpticalPath {
       OpticalPathIdentifier: string
       OpticalPathDescription: string
     }
@@ -419,7 +420,7 @@ declare module 'dicom-microscopy-viewer' {
       ContainerTypeCodeSequence: dcmjs.sr.valueTypes.CodedConcept[]
       SpecimenDescriptionSequence: SpecimenDescription[]
       // Optical Path module
-      OpticalPathSequence: OpticalPathDescription[]
+      OpticalPathSequence: OpticalPath[]
     }
 
     export interface Comprehensive3DSR extends SOPClass {
@@ -441,7 +442,7 @@ declare module 'dicom-microscopy-viewer' {
       ContainerIdentifier: string
       ContainerTypeCodeSequence: dcmjs.sr.valueTypes.CodedConcept[]
       SpecimenDescriptionSequence: SpecimenDescription[]
-      OpticalPathSequence: OpticalPathDescription[]
+      OpticalPathSequence: OpticalPath[]
       AnnotationGroupSequence: {
         AnnotationGroupNumber: number
         AnnotationGroupUID: string
@@ -510,7 +511,7 @@ declare module 'dicom-microscopy-viewer' {
 
   }
 
-  declare namespace channel {
+  declare namespace opticalPath {
 
     export interface BlendingInformation {
       opticalPathIdentifier: string
@@ -519,6 +520,21 @@ declare module 'dicom-microscopy-viewer' {
       thresholdValues: number[]
       limitValues: number[]
       visible: boolean
+    }
+
+    export interface OpticalPathOptions {
+      identifier: number
+      studyInstanceUID: string
+      seriesInstanceUID: string
+      sopInstanceUIDs: string[]
+    }
+
+    export class OpticalPath {
+      constructor (options: OpticalPathOptions)
+      get identifier (): string
+      get studyInstanceUID (): string
+      get seriesInstanceUID (): string
+      get sopInstanceUIDs (): string[]
     }
   }
 

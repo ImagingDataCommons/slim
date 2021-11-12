@@ -7,44 +7,73 @@ import OpticalPathItem from './OpticalPathItem'
 
 const { Option } = Select
 
-interface OpticalPathsListProps {
-  metadata?: dmv.metadata.VLWholeSlideMicroscopyImage[]
-  viewer: dmv.viewer.VolumeImageViewer
+interface OpticalPathListProps {
+  opticalPaths: dmv.opticalPath.OpticalPath[]
+  metadata: {
+    [opticalPathIdentifier: string]: dmv.metadata.VLWholeSlideMicroscopyImage[]
+  }
+  visibleOpticalPathIdentifiers: string[]
+  activeOpticalPathIdentifiers: string[]
+  defaultOpticalPathStyles: {
+    [opticalPathIdentifier: string]: {
+      opacity: number
+      color: number[]
+      limitValues: number[]
+      thresholdValues: number[]
+    }
+  }
+  onOpticalPathVisibilityChange: ({ opticalPathIdentifier, isVisible }: {
+    opticalPathIdentifier: string
+    isVisible: boolean
+  }) => void
+  onOpticalPathStyleChange: ({ opticalPathIdentifier, styleOptions }: {
+    opticalPathIdentifier: string,
+    styleOptions: {
+      opacity?: number
+      color?: number[]
+      limitValues?: number[]
+      thresholdValues?: number[]
+    }
+  }) => void
+  onOpticalPathActivityChange: ({ opticalPathIdentifier, isActive }: {
+    opticalPathIdentifier: string
+    isActive: boolean
+  }) => void
 }
 
 interface OpticalPathListState {
-  rerender: boolean
   selectedOpticalPathIdentifier?: string
 }
 
 /**
- * React component representing a list of optical paths (i.e., channels).
+ * React component representing a list of optical paths.
  */
-class OpticalPathsList extends React.Component<OpticalPathsListProps, OpticalPathListState> {
+class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathListState> {
   state = {
-    rerender: false,
-    selectedOpticalPathIdentifier: undefined
+    selectedOpticalPathIdentifier: undefined,
   }
 
-  constructor (props: OpticalPathsListProps) {
+  constructor (props: OpticalPathListProps) {
     super(props)
-    this.handleAddition = this.handleAddition.bind(this)
-    this.handleRemoval = this.handleRemoval.bind(this)
-    this.handleSelectionChange = this.handleSelectionChange.bind(this)
+    this.handleItemAddition = this.handleItemAddition.bind(this)
+    this.handleItemRemoval = this.handleItemRemoval.bind(this)
+    this.handleItemSelectionChange = this.handleItemSelectionChange.bind(this)
   }
 
   /**
    * Handler that gets called when an optical path should be removed.
    */
-  handleRemoval (opticalPathIdentifier: string): void {
-    this.props.viewer.deactivateOpticalPath(opticalPathIdentifier)
-    this.setState({ rerender: true })
+  handleItemRemoval (opticalPathIdentifier: string): void {
+    this.props.onOpticalPathActivityChange({
+      opticalPathIdentifier,
+      isActive: false
+    })
   }
 
   /**
    * Handler that gets called when the selection of an optical path should change.
    */
-  handleSelectionChange (
+  handleItemSelectionChange (
     value: string
   ): void {
     this.setState({ selectedOpticalPathIdentifier: value })
@@ -53,134 +82,75 @@ class OpticalPathsList extends React.Component<OpticalPathsListProps, OpticalPat
   /**
    * Handler that gets called when an optical path should be added.
    */
-  handleAddition (): void {
+  handleItemAddition (): void {
     const identifier = this.state.selectedOpticalPathIdentifier
     if (identifier !== undefined) {
-      this.props.viewer.activateOpticalPath(identifier)
-      this.props.viewer.showOpticalPath(identifier)
+      this.props.onOpticalPathActivityChange({
+        opticalPathIdentifier: identifier,
+        isActive: true
+      })
       this.setState({ selectedOpticalPathIdentifier: undefined })
     }
   }
 
   render (): React.ReactNode {
-    const opticalPaths: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
     if (this.props.metadata === undefined) {
       return null
     }
-    this.props.metadata.forEach(
-      (item: dmv.metadata.VLWholeSlideMicroscopyImage) => {
-        if (item.OpticalPathSequence.length > 0) {
-          const index = opticalPaths.findIndex(
-            (property: dmv.metadata.VLWholeSlideMicroscopyImage) => {
-              return (
-                property.OpticalPathSequence[0].OpticalPathIdentifier ===
-                item.OpticalPathSequence[0].OpticalPathIdentifier
-              )
-            }
+
+    const opticalPathItems: React.ReactNode[] = []
+    const optionItems: React.ReactNode[] = []
+    this.props.opticalPaths.forEach(opticalPath => {
+      const opticalPathIdentifier = opticalPath.identifier
+      const image = this.props.metadata[opticalPathIdentifier][0]
+      image.OpticalPathSequence.forEach(opticalPathItem => {
+        const id = opticalPathItem.OpticalPathIdentifier
+        const description = opticalPathItem.OpticalPathDescription
+        if (this.props.activeOpticalPathIdentifiers.includes(id)) {
+          opticalPathItems.push(
+            <OpticalPathItem
+              key={id}
+              defaultStyle={this.props.defaultOpticalPathStyles[id]}
+              isVisible={this.props.visibleOpticalPathIdentifiers.includes(id)}
+              opticalPath={opticalPath}
+              specimenDescription={image.SpecimenDescriptionSequence[0]}
+              onVisibilityChange={this.props.onOpticalPathVisibilityChange}
+              onStyleChange={this.props.onOpticalPathStyleChange}
+              onRemoval={this.handleItemRemoval}
+            />
           )
-
-          if (index === -1) {
-            opticalPaths.push(item)
-          }
+        } else {
+          optionItems.push(
+            <Option key={id} value={id}> {description} ({id}) </Option>
+          )
         }
-      }
-    )
-
-    // filter the list for only the active samples
-    const filteredOpticalPaths: dmv.metadata.VLWholeSlideMicroscopyImage[] =
-      opticalPaths.filter((item: dmv.metadata.VLWholeSlideMicroscopyImage) => {
-        return this.props.viewer.isOpticalPathActive(
-          item.OpticalPathSequence[0].OpticalPathIdentifier
-        )
       })
-
-    // order items with the Optical Path ID
-    const sortedOpticalPaths: dmv.metadata.VLWholeSlideMicroscopyImage[] =
-      filteredOpticalPaths.sort((n1: dmv.metadata.VLWholeSlideMicroscopyImage,
-        n2: dmv.metadata.VLWholeSlideMicroscopyImage
-      ) => {
-        const id1 = parseInt(n1.OpticalPathSequence[0].OpticalPathIdentifier)
-        const id2 = parseInt(n2.OpticalPathSequence[0].OpticalPathIdentifier)
-        if (id1 > id2) {
-          return 1
-        }
-
-        if (id1 < id2) {
-          return -1
-        }
-
-        return 0
-      })
-
-    const sampleItems = sortedOpticalPaths.map(
-      (item: dmv.metadata.VLWholeSlideMicroscopyImage) => {
-        return (
-          <OpticalPathItem
-            key={item.OpticalPathSequence[0].OpticalPathIdentifier}
-            viewer={this.props.viewer}
-            opticalPathDescription={item.OpticalPathSequence[0]}
-            specimenDescription={item.SpecimenDescriptionSequence[0]}
-            onRemoval={this.handleRemoval}
-          />
-        )
-      }
-    )
-
-    // get currently deactivated paths
-    const deactivatedOpticalPaths: dmv.metadata.VLWholeSlideMicroscopyImage[] =
-    opticalPaths.filter((item: dmv.metadata.VLWholeSlideMicroscopyImage) => {
-      return !this.props.viewer.isOpticalPathActive(
-        item.OpticalPathSequence[0].OpticalPathIdentifier
-      )
     })
-
-    // order items with the Optical Path ID
-    const sortedDeactivatedOpticalPaths: dmv.metadata.VLWholeSlideMicroscopyImage[] =
-      deactivatedOpticalPaths.sort((
-        n1: dmv.metadata.VLWholeSlideMicroscopyImage,
-        n2: dmv.metadata.VLWholeSlideMicroscopyImage
-      ) => {
-        const id1 = parseInt(n1.OpticalPathSequence[0].OpticalPathIdentifier)
-        const id2 = parseInt(n2.OpticalPathSequence[0].OpticalPathIdentifier)
-        if (id1 > id2) {
-          return 1
-        }
-        if (id1 < id2) {
-          return -1
-        }
-        return 0
-      })
-
-    const deactivatedOptionItems = sortedDeactivatedOpticalPaths.map(
-      (item: dmv.metadata.VLWholeSlideMicroscopyImage) => {
-        const id = item.OpticalPathSequence[0].OpticalPathIdentifier
-        const description = item.OpticalPathSequence[0].OpticalPathDescription
-        return (
-          <Option key={id} value={id}> ID: {id}, {description} </Option>
-        )
-      }
-    )
 
     return (
       <Space align='center' direction='vertical' size={20}>
         <Menu selectable={false}>
-          {sampleItems}
+          {opticalPathItems}
         </Menu>
         <Space align='center' size={20}>
           <Select
             defaultValue=''
             style={{ width: 200 }}
-            onChange={this.handleSelectionChange}
+            onChange={this.handleItemSelectionChange}
             value={this.state.selectedOpticalPathIdentifier}
             allowClear
           >
-            {deactivatedOptionItems}
+            {optionItems}
           </Select>
-          <Button type='primary' icon={<AppstoreAddOutlined />} onClick={this.handleAddition} />
+          <Button
+            type='primary'
+            icon={<AppstoreAddOutlined />}
+            onClick={this.handleItemAddition}
+          />
         </Space>
       </Space>
     )
   }
 }
 
-export default OpticalPathsList
+export default OpticalPathList

@@ -10,17 +10,21 @@ interface SegmentItemProps {
   segment: dmv.segment.Segment
   index: number
   isVisible: boolean
-  onVisibilityChange: ({ segmentUID }: {
+  onVisibilityChange: ({ segmentUID, isVisible }: {
     segmentUID: string
+    isVisible: boolean
   }) => void
-  onOpacityChange: ({ segmentUID, value }: {
+  onStyleChange: ({ segmentUID, styleOptions }: {
     segmentUID: string,
-    value: number
+    styleOptions: {
+      opacity: number
+    }
   }) => void
 }
 
 interface SegmentItemState {
-  styleOptions: {
+  isVisible: boolean
+  currentStyle: {
     opacity: number
   }
 }
@@ -34,7 +38,8 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
     this.handleOpacityChange = this.handleOpacityChange.bind(this)
     this.state = {
-      styleOptions: { opacity: 0.75 }
+      isVisible: this.props.isVisible,
+      currentStyle: { opacity: 0.75 }
     }
   }
 
@@ -42,15 +47,21 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
     checked: boolean,
     event: Event
   ): void {
-    this.props.onVisibilityChange({ segmentUID: this.props.segment.uid })
+    this.props.onVisibilityChange({
+      segmentUID: this.props.segment.uid,
+      isVisible: checked
+    })
+    this.setState({ isVisible: checked })
   }
 
   handleOpacityChange (value: number): void {
-    this.props.onOpacityChange({
+    this.props.onStyleChange({
       segmentUID: this.props.segment.uid,
-      value: value
+      styleOptions: {
+        opacity: value
+      }
     })
-    this.setState({ styleOptions: { opacity: value }})
+    this.setState({ currentStyle: { opacity: value }})
   }
 
   render (): React.ReactNode {
@@ -85,7 +96,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
               min={0.01}
               max={1}
               step={0.01}
-              defaultValue={this.state.styleOptions.opacity}
+              defaultValue={this.state.currentStyle.opacity}
               onAfterChange={this.handleOpacityChange}
             />
           </Col>
@@ -100,7 +111,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
     const {
       isVisible,
       onVisibilityChange,
-      onOpacityChange,
+      onStyleChange,
       ...otherProps
     } = this.props
     return (

@@ -9,18 +9,39 @@ import * as dcmjs from 'dcmjs'
 import { SpecimenPreparationStepItems } from '../data/specimens'
 
 interface OpticalPathItemProps {
-  opticalPathDescription: dmv.metadata.OpticalPathDescription
+  opticalPath: dmv.opticalPath.OpticalPath
   specimenDescription: dmv.metadata.SpecimenDescription
-  viewer: dmv.viewer.VolumeImageViewer
+  isVisible: boolean
+  defaultStyle: {
+    opacity: number
+    color: number[]
+    limitValues: number[]
+    thresholdValues: number[]
+  }
+  onVisibilityChange: ({ opticalPathIdentifier, isVisible }: {
+    opticalPathIdentifier: string,
+    isVisible: boolean
+  }) => void
+  onStyleChange: ({ opticalPathIdentifier, styleOptions }: {
+    opticalPathIdentifier: string,
+    styleOptions: {
+      opacity?: number
+      color?: number[]
+      limitValues?: number[]
+      thresholdValues?: number[]
+    }
+  }) => void
   onRemoval: (opticalPathIdentifier: string) => void
 }
 
 interface OpticalPathItemState {
   isVisible: boolean
-  opacity: number
-  thresholdValues: number[]
-  color: number[]
-  limitValues: number[]
+  currentStyle: {
+    opacity: number
+    color: number[]
+    thresholdValues: number[]
+    limitValues: number[]
+  }
 }
 
 /**
@@ -28,137 +49,171 @@ interface OpticalPathItemState {
  * multi-channel acquistion with control of visualization parameters.
  */
 class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathItemState> {
-  state = {
-    isVisible: false,
-    opacity: 1,
-    thresholdValues: [0, 255],
-    color: [255, 255, 255],
-    limitValues: [0, 255]
-  }
 
   constructor (props: OpticalPathItemProps) {
     super(props)
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
     this.handleOpacityChange = this.handleOpacityChange.bind(this)
-    this.handleClippingChange = this.handleClippingChange.bind(this)
+    this.handleThresholdChange = this.handleThresholdChange.bind(this)
     this.handleLimitChange = this.handleLimitChange.bind(this)
     this.handleColorRChange = this.handleColorRChange.bind(this)
     this.handleColorGChange = this.handleColorGChange.bind(this)
     this.handleColorBChange = this.handleColorBChange.bind(this)
     this.handleRemoval = this.handleRemoval.bind(this)
+    this.state = {
+      isVisible: this.props.isVisible,
+      currentStyle: {
+        opacity: this.props.defaultStyle.opacity,
+        color: this.props.defaultStyle.color,
+        limitValues: this.props.defaultStyle.limitValues,
+        thresholdValues: this.props.defaultStyle.thresholdValues,
+      }
+    }
   }
 
   handleVisibilityChange (
     checked: boolean,
     event: Event
   ): void {
-    const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
-    if (checked) {
-      this.props.viewer.showOpticalPath(identifier)
-      this.setState({ isVisible: true })
-    } else {
-      this.props.viewer.hideOpticalPath(identifier)
-      this.setState({ isVisible: false })
-    }
+    const identifier = this.props.opticalPath.identifier
+    this.setState({
+      isVisible: checked
+    })
+    this.props.onVisibilityChange({
+      opticalPathIdentifier: identifier,
+      isVisible: checked
+    })
   }
 
   handleOpacityChange (
     value: number
   ): void {
-    const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
-    const styleOptions = {
-      opacity: value,
-    }
-    this.setState({ opacity: value })
-    this.props.viewer.setOpticalPathStyle(identifier, styleOptions)
+    const identifier = this.props.opticalPath.identifier
+    this.props.onStyleChange({
+      opticalPathIdentifier: identifier,
+      styleOptions: {
+        opacity: value
+      }
+    })
   }
 
   handleColorRChange (
     value: number
   ): void {
-    const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
-    const styleCurrent = this.props.viewer.getOpticalPathStyle(identifier)
-    const styleOptions = {
-      color: styleCurrent.color
-    }
-    styleOptions.color[0] = value
-    this.setState({ color: styleOptions.color })
-    this.props.viewer.setOpticalPathStyle(identifier, styleOptions)
+    const identifier = this.props.opticalPath.identifier
+    const color = [
+      value,
+      this.state.currentStyle.color[1],
+      this.state.currentStyle.color[2]
+    ]
+    this.setState(state => ({
+      currentStyle: {
+        color: color,
+        opacity: state.currentStyle.opacity,
+        limitValues: state.currentStyle.limitValues,
+        thresholdValues: state.currentStyle.thresholdValues,
+      }
+    }))
+    this.props.onStyleChange({
+      opticalPathIdentifier: identifier,
+      styleOptions: { color: color }
+    })
   }
 
   handleColorGChange (
     value: number
   ): void {
-    const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
-    const styleCurrent = this.props.viewer.getOpticalPathStyle(identifier)
-    const styleOptions = {
-      color: styleCurrent.color
-    }
-    styleOptions.color[1] = value
-    this.setState({ color: styleOptions.color })
-    this.props.viewer.setOpticalPathStyle(identifier, styleOptions)
+    const identifier = this.props.opticalPath.identifier
+    const color = [
+      this.state.currentStyle.color[0],
+      value,
+      this.state.currentStyle.color[2]
+    ]
+    this.setState(state => ({
+      currentStyle: {
+        color: color,
+        opacity: state.currentStyle.opacity,
+        limitValues: state.currentStyle.limitValues,
+        thresholdValues: state.currentStyle.thresholdValues,
+      }
+    }))
+    this.props.onStyleChange({
+      opticalPathIdentifier: identifier,
+      styleOptions: { color: color }
+    })
   }
 
   handleColorBChange (
     value: number
   ): void {
-    const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
-    const styleCurrent = this.props.viewer.getOpticalPathStyle(identifier)
-    const styleOptions = {
-      color: styleCurrent.color
-    }
-    styleOptions.color[2] = value
-    this.setState({ color: styleOptions.color })
-    this.props.viewer.setOpticalPathStyle(identifier, styleOptions)
+    const identifier = this.props.opticalPath.identifier
+    const color = [
+      this.state.currentStyle.color[0],
+      this.state.currentStyle.color[1],
+      value
+    ]
+    this.setState(state => ({
+      currentStyle: {
+        color: color,
+        opacity: state.currentStyle.opacity,
+        limitValues: state.currentStyle.limitValues,
+        thresholdValues: state.currentStyle.thresholdValues,
+      }
+    }))
+    this.props.onStyleChange({
+      opticalPathIdentifier: identifier,
+      styleOptions: { color: color }
+    })
   }
 
-  handleClippingChange (
+  handleThresholdChange (
     values: number[]
   ): void {
-    const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
-    const styleOptions = {
-      thresholdValues: values
-    }
-    this.setState({ thresholdValues: values })
-    this.props.viewer.setOpticalPathStyle(identifier, styleOptions)
+    const identifier = this.props.opticalPath.identifier
+    this.setState(state => ({
+      currentStyle: {
+        color: state.currentStyle.color,
+        opacity: state.currentStyle.opacity,
+        limitValues: state.currentStyle.limitValues,
+        thresholdValues: values,
+      }
+    }))
+    this.props.onStyleChange({
+      opticalPathIdentifier: identifier,
+      styleOptions: {
+        thresholdValues: values
+      }
+    })
   }
 
   handleLimitChange (
     values: number[]
   ): void {
-    const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
-    const styleOptions = {
-      limitValues: values,
-    }
-    this.setState({ limitValues: values })
-    this.props.viewer.setOpticalPathStyle(identifier, styleOptions)
+    const identifier = this.props.opticalPath.identifier
+    this.setState(state => ({
+      currentStyle: {
+        color: state.currentStyle.color,
+        opacity: state.currentStyle.opacity,
+        limitValues: values,
+        thresholdValues: state.currentStyle.thresholdValues,
+      }
+    }))
+    this.props.onStyleChange({
+      opticalPathIdentifier: identifier,
+      styleOptions: {
+        limitValues: values
+      }
+    })
   }
 
   handleRemoval (): void {
-    const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
+    const identifier = this.props.opticalPath.identifier
     this.props.onRemoval(identifier)
   }
 
-  componentDidMount (): void {
-    const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
-    const isVisible = this.props.viewer.isOpticalPathVisible(identifier)
-    this.setState({ isVisible: isVisible })
-  }
-
   render (): React.ReactNode {
-    const identifier = this.props.opticalPathDescription.OpticalPathIdentifier
+    const identifier = this.props.opticalPath.identifier
     const attributes: Array<{ name: string, value: string }> = []
-
-    const specimenDescription = this.props.specimenDescription
-    if ('SpecimenShortDescription' in specimenDescription) {
-      const description = specimenDescription.SpecimenShortDescription
-      if (description !== null && description !== undefined) {
-        attributes.push({
-          name: 'Specimen Description',
-          value: description
-        })
-      }
-    }
 
     // TID 8001 "Specimen Preparation"
     this.props.specimenDescription.SpecimenPreparationSequence.forEach(
@@ -210,10 +265,6 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       }
     )
 
-    const blendInfo = this.props.viewer.getOpticalPathStyle(
-      identifier
-    ) as dmv.channel.BlendingInformation
-
     const settings = (
       <div>
         <Row justify='center' align='middle'>
@@ -225,7 +276,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
               min={0}
               max={255}
               step={1}
-              defaultValue={blendInfo.color[0] * 255}
+              defaultValue={this.props.defaultStyle.color[0]}
               onAfterChange={this.handleColorRChange}
             />
           </Col>
@@ -238,7 +289,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
               min={0}
               max={255}
               step={1}
-              defaultValue={blendInfo.color[1] * 255}
+              defaultValue={this.props.defaultStyle.color[1]}
               onAfterChange={this.handleColorGChange}
             />
           </Col>
@@ -251,7 +302,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
               min={0}
               max={255}
               step={1}
-              defaultValue={blendInfo.color[2] * 255}
+              defaultValue={this.props.defaultStyle.color[2]}
               onAfterChange={this.handleColorBChange}
             />
           </Col>
@@ -265,7 +316,10 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
               min={0}
               max={255}
               step={1}
-              defaultValue={[blendInfo.limitValues[0], blendInfo.limitValues[1]]}
+              defaultValue={[
+                this.props.defaultStyle.limitValues[0],
+                this.props.defaultStyle.limitValues[1]
+              ]}
               onAfterChange={this.handleLimitChange}
             />
           </Col>
@@ -277,10 +331,13 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
             <Slider
               range
               min={0}
-              max={255}
-              step={1}
-              defaultValue={[blendInfo.thresholdValues[0], blendInfo.thresholdValues[1]]}
-              onAfterChange={this.handleClippingChange}
+              max={1}
+              step={0.01}
+              defaultValue={[
+                this.props.defaultStyle.thresholdValues[0],
+                this.props.defaultStyle.thresholdValues[1]
+              ]}
+              onAfterChange={this.handleThresholdChange}
             />
           </Col>
 
@@ -292,7 +349,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
               min={0.01}
               max={1}
               step={0.01}
-              defaultValue={blendInfo.opacity}
+              defaultValue={this.props.defaultStyle.opacity}
               onAfterChange={this.handleOpacityChange}
             />
           </Col>
@@ -340,7 +397,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
              title='Remove optical path'
             >
             <Description
-              header={'ID: ' + identifier}
+              header={identifier}
               attributes={attributes}
               selectable
               hasLongValues
