@@ -20,8 +20,7 @@ interface SegmentListProps {
 }
 
 /**
- * React component representing a list of Region of Interest (ROI)
- * annotations.
+ * React component representing a list of Segments.
  */
 class SegmentList extends React.Component<SegmentListProps, {}> {
   render (): React.ReactNode {

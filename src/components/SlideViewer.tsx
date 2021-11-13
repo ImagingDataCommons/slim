@@ -232,6 +232,7 @@ interface SlideViewerState {
   selectedRoiUIDs: string[]
   visibleRoiUIDs: string[]
   visibleSegmentUIDs: string[]
+  visibleMappingUIDs: string[]
   visibleOpticalPathIdentifiers: string[]
   activeOpticalPathIdentifiers: string[]
   selectedFinding?: dcmjs.sr.coding.CodedConcept
@@ -310,6 +311,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleReportCancellation = this.handleReportCancellation.bind(this)
     this.handleSegmentVisibilityChange = this.handleSegmentVisibilityChange.bind(this)
     this.handleSegmentStyleChange = this.handleSegmentStyleChange.bind(this)
+    this.handleMappingVisibilityChange = this.handleMappingVisibilityChange.bind(this)
+    this.handleMappingStyleChange = this.handleMappingStyleChange.bind(this)
     this.handleOpticalPathVisibilityChange = this.handleOpticalPathVisibilityChange.bind(this)
     this.handleOpticalPathStyleChange = this.handleOpticalPathStyleChange.bind(this)
     this.handleOpticalPathActivityChange = this.handleOpticalPathActivityChange.bind(this)
@@ -339,6 +342,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       selectedRoiUIDs: [],
       visibleRoiUIDs: [],
       visibleSegmentUIDs: [],
+      visibleMappingUIDs: [],
       visibleOpticalPathIdentifiers: [],
       activeOpticalPathIdentifiers: [],
       selectedFinding: undefined,
@@ -383,6 +387,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         Modality: 'SR'
       }
     }).then((matchedInstances): void => {
+      if (matchedInstances == null) {
+        matchedInstances = []
+      }
       matchedInstances.forEach(i => {
         const instance = dmv.metadata.formatMetadata(i) as dmv.metadata.Instance
         if (instance.SOPClassUID === SOPClassUIDs.COMPREHENSIVE_3D_SR) {
@@ -496,6 +503,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         Modality: 'SEG'
       }
     }).then((matchedSeries): void => {
+      if (matchedSeries == null) {
+        matchedSeries = []
+      }
       matchedSeries.forEach(s => {
         const series = dmv.metadata.formatMetadata(s) as dmv.metadata.Series
         this.props.client.retrieveSeriesMetadata({
@@ -512,7 +522,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               seg.ContainerIdentifier === refImage.ContainerIdentifier
             )
           })
-          viewer.addSegments(segmentations)
+          try {
+            viewer.addSegments(segmentations)
+          } catch (error) {
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
+            message.error('An error occured. Segmentations cannot be displayed.')
+            console.error(`failed to add segments: ${error}`)
+          }
+          this.forceUpdate()
         })
       })
     })
@@ -683,7 +700,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       'dicommicroscopyviewer_roi_removed',
       this.onRoiRemoved
     )
-
     this.populateViewports()
   }
 
@@ -1122,6 +1138,53 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   /**
+   * Handle toggling of mapping visibility, i.e., whether a given
+   * mapping should be either displayed or hidden by the viewer.
+   */
+  handleMappingVisibilityChange ({ mappingUID, isVisible }: {
+    mappingUID: string
+    isVisible: boolean
+  }): void {
+    const viewer = this.volumeViewer
+    if (viewer === undefined) {
+      return
+    }
+    console.log(`change visibility of mapping ${mappingUID}`)
+    if (isVisible) {
+      console.info(`show mapping ${mappingUID}`)
+      viewer.showMapping(mappingUID)
+      this.setState(state => ({
+        visibleMappingUIDs: state.visibleMappingUIDs.concat(mappingUID)
+      }))
+    } else {
+      console.info(`hide mapping ${mappingUID}`)
+      viewer.hideMapping(mappingUID)
+      this.setState(state => ({
+        visibleMappingUIDs: state.visibleMappingUIDs.filter(uid => {
+          return uid !== mappingUID
+        })
+      }))
+    }
+  }
+
+  /**
+   * Handle change of mapping style.
+   */
+  handleMappingStyleChange ({ mappingUID, styleOptions }: {
+    mappingUID: string
+    styleOptions: {
+      opacity?: number
+    }
+  }): void {
+    const viewer = this.volumeViewer
+    if (viewer === undefined) {
+      return
+    }
+    console.log(`change style of mapping ${mappingUID}`)
+    viewer.setMappingStyle(mappingUID, styleOptions)
+  }
+
+  /**
    * Handle toggling of optical path visibility, i.e., whether a given
    * optical path should be either displayed or hidden by the viewer.
    */
@@ -1323,12 +1386,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const rois: dmv.roi.ROI[] = []
     const segments: dmv.segment.Segment[] = []
     if (this.volumeViewer !== undefined) {
-      this.volumeViewer.resize()
       rois.push(...this.volumeViewer.getAllROIs())
       segments.push(...this.volumeViewer.getAllSegments())
-    }
-    if (this.labelViewer !== undefined) {
-      this.labelViewer.resize()
     }
 
     const openSubMenuItems = ['specimens', 'annotations']
@@ -1434,8 +1493,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           />
         </Menu.SubMenu>
       )
-      const volumeViewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
-      if (volumeViewer !== undefined) {
+      if (this.volumeViewer !== undefined) {
         const defaultOpticalPathStyles: {
           [key: string]: {
             opacity: number
@@ -1444,14 +1502,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             thresholdValues: number[]
           }
         } = {}
+        const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
         const opticalPathMetadata: {
           [key: string]: dmv.metadata.VLWholeSlideMicroscopyImage[]
         } = {}
-        const opticalPaths = volumeViewer.getAllOpticalPaths()
+        const opticalPaths = viewer.getAllOpticalPaths()
         slide.volumeImages.forEach(image => {
           image.OpticalPathSequence.forEach(opticalPathItem => {
             const identifier = opticalPathItem.OpticalPathIdentifier
-            const style = volumeViewer.getOpticalPathStyle(identifier)
+            const style = viewer.getOpticalPathStyle(identifier)
             defaultOpticalPathStyles[identifier] = style
             if (identifier in opticalPathMetadata) {
               opticalPathMetadata[identifier].push(image)

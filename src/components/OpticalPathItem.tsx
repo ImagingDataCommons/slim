@@ -397,7 +397,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
              title='Remove optical path'
             >
             <Description
-              header={identifier}
+              header={`Optical Path ${identifier}`}
               attributes={attributes}
               selectable
               hasLongValues
