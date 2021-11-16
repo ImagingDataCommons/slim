@@ -1597,13 +1597,21 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         }
       } = {}
       const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
+      const segmentMetadata: {
+        [segmentUID: string]: dmv.metadata.Segmentation[]
+      } = {}
+      const segments = viewer.getAllSegments()
       segments.forEach(segment => {
         defaultSegmentStyles[segment.uid] = viewer.getSegmentStyle(segment.uid)
+        segmentMetadata[segment.uid] = viewer.getSegmentImageMetadata(
+          segment.uid
+        )
       })
       segmentationMenu = (
         <Menu.SubMenu key='segmentations' title='Segmentations'>
           <SegmentList
             segments={segments}
+            metadata={segmentMetadata}
             defaultSegmentStyles={defaultSegmentStyles}
             visibleSegmentUIDs={this.state.visibleSegmentUIDs}
             onSegmentVisibilityChange={this.handleSegmentVisibilityChange}
@@ -1619,16 +1627,24 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const defaultMappingStyles: {
         [mappingUID: string]: {
           opacity: number
+          limitValues: number[]
         }
+      } = {}
+      const mappingMetadata: {
+        [mappingUID: string]: dmv.metadata.ParametricMap[]
       } = {}
       const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
       mappings.forEach(mapping => {
         defaultMappingStyles[mapping.uid] = viewer.getMappingStyle(mapping.uid)
+        mappingMetadata[mapping.uid] = viewer.getMappingImageMetadata(
+          mapping.uid
+        )
       })
       parametricMapMenu = (
         <Menu.SubMenu key='parmetricmaps' title='Parametric Maps'>
           <MappingList
             mappings={mappings}
+            metadata={mappingMetadata}
             defaultMappingStyles={defaultMappingStyles}
             visibleMappingUIDs={this.state.visibleMappingUIDs}
             onMappingVisibilityChange={this.handleMappingVisibilityChange}

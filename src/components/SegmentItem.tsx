@@ -8,8 +8,8 @@ import Description from './Description'
 
 interface SegmentItemProps {
   segment: dmv.segment.Segment
-  index: number
   isVisible: boolean
+  metadata: dmv.metadata.Segmentation[]
   defaultStyle: {
     opacity: number
   }

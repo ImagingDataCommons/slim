@@ -100,6 +100,9 @@ declare module 'dicom-microscopy-viewer' {
       isOpticalPathVisible (opticalPathIdentifier: string): boolean
       activateOpticalPath (opticalPathIdentifier: string): void
       deactivateOpticalPath (opticalPathIdentifier: string): void
+      getOpticalPathImageMetadata (
+        opticalPathIdentifier: string
+      ): metadata.VLWholeSlideMicroscopyImage[]
       getAllOpticalPaths (): dwc.opticalPath.OpticalPath[]
       addSegments (metadata: Segmentation): void
       removeSegment (segmentUID: string): void
@@ -118,6 +121,7 @@ declare module 'dicom-microscopy-viewer' {
       ): void
       getSegmentStyle (segmentUID: string): { opacity: number }
       isSegmentVisible (segmentUID: string): boolean
+      getSegmentImageMetadata (segmentUID: string): metadata.Segmentation[]
       getAllSegments (): dwc.segment.Segment[]
       addMappings (metadata: ParametricMap): void
       removeMapping (mappingUID: string): void
@@ -134,8 +138,12 @@ declare module 'dicom-microscopy-viewer' {
           opacity?: number
         }
       ): void
-      getMappingStyle (mappingUID: string): { opacity: number }
+      getMappingStyle (mappingUID: string): {
+        opacity: number
+        limitValues: number[]
+      }
       isMappingVisible (mappingUID: string): boolean
+      getMappingImageMetadata (mappingUID: string): metadata.ParametricMap[]
       getAllMappings (): dwc.mapping.Mapping[]
     }
 
@@ -488,6 +496,8 @@ declare module 'dicom-microscopy-viewer' {
     }
 
     export interface ParametricMap extends SOPClass {
+      // Floating Point Image Pixel or Double Floating Point Image Pixel module
+      BitsAllocated: number
       // Frame of Reference module
       FrameOfReferenceUID: string
       // Specimen module
@@ -497,6 +507,8 @@ declare module 'dicom-microscopy-viewer' {
     }
 
     export interface Segmentation extends SOPClass {
+      // Image Pixel module
+      BitsAllocated: number
       // Frame of Reference module
       FrameOfReferenceUID: string
       // Specimen module

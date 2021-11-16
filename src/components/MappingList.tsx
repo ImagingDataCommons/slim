@@ -6,10 +6,14 @@ import MappingItem from './MappingItem'
 
 interface MappingListProps {
   mappings: dmv.mapping.Mapping[]
+  metadata: {
+    [mappingUID: string]: dmv.metadata.ParametricMap[]
+  }
   visibleMappingUIDs: string[]
   defaultMappingStyles: {
     [mappingUID: string]: {
       opacity: number
+      limitValues: number[]
     }
   }
   onMappingVisibilityChange: ({ mappingUID, isVisible }: {
@@ -19,7 +23,8 @@ interface MappingListProps {
   onMappingStyleChange: ({ mappingUID, styleOptions }: {
     mappingUID: string,
     styleOptions: {
-      opacity: number
+      opacity?: number
+      limitValues?: number[]
     }
   }) => void
 }
@@ -35,7 +40,7 @@ class MappingList extends React.Component<MappingListProps, {}> {
         <MappingItem
           key={mapping.uid}
           mapping={mapping}
-          index={index}
+          metadata={this.props.metadata[uid]}
           isVisible={this.props.visibleMappingUIDs.includes(uid)}
           defaultStyle={this.props.defaultMappingStyles[uid]}
           onVisibilityChange={this.props.onMappingVisibilityChange}
