@@ -7,6 +7,11 @@ import SegmentItem from './SegmentItem'
 interface SegmentListProps {
   segments: dmv.segment.Segment[]
   visibleSegmentUIDs: string[]
+  defaultSegmentStyles: {
+    [segmentUID: string]: {
+      opacity: number
+    }
+  }
   onSegmentVisibilityChange: ({ segmentUID, isVisible }: {
     segmentUID: string
     isVisible: boolean
@@ -24,16 +29,20 @@ interface SegmentListProps {
  */
 class SegmentList extends React.Component<SegmentListProps, {}> {
   render (): React.ReactNode {
-    const items = this.props.segments.map((segment, index) => (
-      <SegmentItem
-        key={segment.uid}
-        segment={segment}
-        index={index}
-        isVisible={this.props.visibleSegmentUIDs.includes(segment.uid)}
-        onVisibilityChange={this.props.onSegmentVisibilityChange}
-        onStyleChange={this.props.onSegmentStyleChange}
-      />
-    ))
+    const items = this.props.segments.map((segment, index) => {
+      const uid = segment.uid
+      return (
+        <SegmentItem
+          key={segment.uid}
+          segment={segment}
+          index={index}
+          isVisible={this.props.visibleSegmentUIDs.includes(uid)}
+          defaultStyle={this.props.defaultSegmentStyles[uid]}
+          onVisibilityChange={this.props.onSegmentVisibilityChange}
+          onStyleChange={this.props.onSegmentStyleChange}
+        />
+       )
+    })
 
     return (
       <Menu selectable={false}>

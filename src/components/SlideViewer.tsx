@@ -30,6 +30,7 @@ import Button from './Button'
 import Report, { MeasurementReport } from './Report'
 import SpecimenList from './SpecimenList'
 import OpticalPathList from './OpticalPathList'
+import MappingList from './MappingList'
 import SegmentList from './SegmentList'
 import { AnnotationSettings, RendererSettings } from '../AppConfig'
 import { findContentItemsByName } from '../utils/sr'
@@ -536,6 +537,57 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   /**
+   * Retrieve Parametric Map instances that contain mappings defined in the same
+   * frame of reference as the currently selected series and add them to the
+   * VOLUME image viewer.
+   */
+  addParametricMaps = (): void => {
+    const viewer = this.volumeViewer
+    if (viewer === undefined) {
+      return
+    }
+
+    console.info('search for Parametric Map instances')
+    this.setState({ isLoading: true })
+    this.props.client.searchForSeries({
+      studyInstanceUID: this.props.studyInstanceUID,
+      queryParams: {
+        Modality: 'OT'
+      }
+    }).then((matchedSeries): void => {
+      if (matchedSeries == null) {
+        matchedSeries = []
+      }
+      matchedSeries.forEach(s => {
+        const series = dmv.metadata.formatMetadata(s) as dmv.metadata.Series
+        this.props.client.retrieveSeriesMetadata({
+          studyInstanceUID: this.props.studyInstanceUID,
+          seriesInstanceUID: series.SeriesInstanceUID
+        }).then((retrievedMetadata): void => {
+          let maps: dmv.metadata.ParametricMap[] = retrievedMetadata.map(
+            metadata => new dmv.metadata.ParametricMap({ metadata })
+          )
+          maps = maps.filter(seg => {
+            const refImage = this.props.slides[0].volumeImages[0]
+            return (
+              seg.FrameOfReferenceUID === refImage.FrameOfReferenceUID &&
+              seg.ContainerIdentifier === refImage.ContainerIdentifier
+            )
+          })
+          try {
+            viewer.addMappings(maps)
+          } catch (error) {
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
+            message.error('An error occured. Parametric Map cannot be displayed.')
+            console.error(`failed to add mappings: ${error}`)
+          }
+          this.forceUpdate()
+        })
+      })
+    })
+  }
+
+  /**
    * Retrieve metadata for image instances in the currently selected series and
    * instantiate the VOLUME and LABEL image viewers.
    */
@@ -566,27 +618,27 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         this.volumeViewport.current.innerHTML = ''
 
         if (slide.areVolumeImagesMonochrome) {
-          const opticalPathIdentifier = slide.opticalPathIdentifiers[0]
-          const blendingInformation = {
-            opticalPathIdentifier,
-            color: [255, 255, 255],
-            opacity: 1,
-            limitValues: [0, 255],
-            thresholdValues: [0, 1],
-            visible: true
-          }
-          this.volumeViewer = new dmv.viewer.VolumeImageViewer({
+          const volumeViewer = new dmv.viewer.VolumeImageViewer({
             client: this.props.client,
             metadata: slide.volumeImages,
-            retrieveRendered: this.props.renderer.retrieveRendered,
-            blendingInformation: [blendingInformation]
+            retrieveRendered: this.props.renderer.retrieveRendered
           })
-          this.setState(state => ({
-            activeOpticalPathIdentifiers:
-              state.activeOpticalPathIdentifiers.concat(opticalPathIdentifier),
-            visibleOpticalPathIdentifiers:
-              state.visibleOpticalPathIdentifiers.concat(opticalPathIdentifier)
-          }))
+          const activeOpticalPathIdentifiers: string[] = []
+          const visibleOpticalPathIdentifiers: string[] = []
+          volumeViewer.getAllOpticalPaths().forEach(opticalPath => {
+            const identifier = opticalPath.identifier
+            if (volumeViewer.isOpticalPathVisible(identifier)) {
+              visibleOpticalPathIdentifiers.push(identifier)
+            }
+            if (volumeViewer.isOpticalPathActive(identifier)) {
+              activeOpticalPathIdentifiers.push(identifier)
+            }
+          })
+          this.setState({
+            activeOpticalPathIdentifiers: activeOpticalPathIdentifiers,
+            visibleOpticalPathIdentifiers: visibleOpticalPathIdentifiers
+          })
+          this.volumeViewer = volumeViewer
         } else {
           this.volumeViewer = new dmv.viewer.VolumeImageViewer({
             client: this.props.client,
@@ -625,6 +677,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     this.addAnnotations()
     this.addSegmentations()
+    this.addParametricMaps()
   }
 
   onRoiDrawn = (event: CustomEventInit): void => {
@@ -1224,7 +1277,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     styleOptions: {
       opacity?: number
       color?: number[]
-      thresholdValues?: number[]
       limitValues?: number[]
     }
   }): void {
@@ -1385,9 +1437,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   render (): React.ReactNode {
     const rois: dmv.roi.ROI[] = []
     const segments: dmv.segment.Segment[] = []
+    const mappings: dmv.mapping.Mapping[] = []
     if (this.volumeViewer !== undefined) {
       rois.push(...this.volumeViewer.getAllROIs())
       segments.push(...this.volumeViewer.getAllSegments())
+      mappings.push(...this.volumeViewer.getAllMappings())
     }
 
     const openSubMenuItems = ['specimens', 'annotations']
@@ -1499,7 +1553,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             opacity: number
             color: number[]
             limitValues: number[]
-            thresholdValues: number[]
           }
         } = {}
         const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
@@ -1538,10 +1591,20 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     let segmentationMenu
     if (segments.length > 0) {
+      const defaultSegmentStyles: {
+        [segmentUID: string]: {
+          opacity: number
+        }
+      } = {}
+      const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
+      segments.forEach(segment => {
+        defaultSegmentStyles[segment.uid] = viewer.getSegmentStyle(segment.uid)
+      })
       segmentationMenu = (
         <Menu.SubMenu key='segmentations' title='Segmentations'>
           <SegmentList
             segments={segments}
+            defaultSegmentStyles={defaultSegmentStyles}
             visibleSegmentUIDs={this.state.visibleSegmentUIDs}
             onSegmentVisibilityChange={this.handleSegmentVisibilityChange}
             onSegmentStyleChange={this.handleSegmentStyleChange}
@@ -1551,6 +1614,30 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       openSubMenuItems.push('segmentations')
     }
 
+    let parametricMapMenu
+    if (mappings.length > 0) {
+      const defaultMappingStyles: {
+        [mappingUID: string]: {
+          opacity: number
+        }
+      } = {}
+      const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
+      mappings.forEach(mapping => {
+        defaultMappingStyles[mapping.uid] = viewer.getMappingStyle(mapping.uid)
+      })
+      parametricMapMenu = (
+        <Menu.SubMenu key='parmetricmaps' title='Parametric Maps'>
+          <MappingList
+            mappings={mappings}
+            defaultMappingStyles={defaultMappingStyles}
+            visibleMappingUIDs={this.state.visibleMappingUIDs}
+            onMappingVisibilityChange={this.handleMappingVisibilityChange}
+            onMappingStyleChange={this.handleMappingStyleChange}
+          />
+        </Menu.SubMenu>
+      )
+      openSubMenuItems.push('parametricmaps')
+    }
 
     let toolbar
     let toolbarHeight = '0px'
@@ -1660,6 +1747,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               {annotationList}
             </Menu.SubMenu>
             {segmentationMenu}
+            {parametricMapMenu}
           </Menu>
         </Layout.Sider>
       </Layout>

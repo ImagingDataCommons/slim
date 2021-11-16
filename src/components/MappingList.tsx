@@ -7,6 +7,11 @@ import MappingItem from './MappingItem'
 interface MappingListProps {
   mappings: dmv.mapping.Mapping[]
   visibleMappingUIDs: string[]
+  defaultMappingStyles: {
+    [mappingUID: string]: {
+      opacity: number
+    }
+  }
   onMappingVisibilityChange: ({ mappingUID, isVisible }: {
     mappingUID: string
     isVisible: boolean
@@ -24,16 +29,20 @@ interface MappingListProps {
  */
 class MappingList extends React.Component<MappingListProps, {}> {
   render (): React.ReactNode {
-    const items = this.props.mappings.map((mapping, index) => (
-      <MappingItem
-        key={mapping.uid}
-        mapping={mapping}
-        index={index}
-        isVisible={this.props.visibleMappingUIDs.includes(mapping.uid)}
-        onVisibilityChange={this.props.onMappingVisibilityChange}
-        onStyleChange={this.props.onMappingStyleChange}
-      />
-    ))
+    const items = this.props.mappings.map((mapping, index) => {
+      const uid = mapping.uid
+      return (
+        <MappingItem
+          key={mapping.uid}
+          mapping={mapping}
+          index={index}
+          isVisible={this.props.visibleMappingUIDs.includes(uid)}
+          defaultStyle={this.props.defaultMappingStyles[uid]}
+          onVisibilityChange={this.props.onMappingVisibilityChange}
+          onStyleChange={this.props.onMappingStyleChange}
+        />
+      )
+    })
 
     return (
       <Menu selectable={false}>

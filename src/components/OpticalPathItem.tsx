@@ -10,13 +10,12 @@ import { SpecimenPreparationStepItems } from '../data/specimens'
 
 interface OpticalPathItemProps {
   opticalPath: dmv.opticalPath.OpticalPath
-  specimenDescription: dmv.metadata.SpecimenDescription
+  metadata: dmv.metadata.VLWholeSlideMicroscopyImage[]
   isVisible: boolean
   defaultStyle: {
     opacity: number
     color: number[]
     limitValues: number[]
-    thresholdValues: number[]
   }
   onVisibilityChange: ({ opticalPathIdentifier, isVisible }: {
     opticalPathIdentifier: string,
@@ -28,7 +27,6 @@ interface OpticalPathItemProps {
       opacity?: number
       color?: number[]
       limitValues?: number[]
-      thresholdValues?: number[]
     }
   }) => void
   onRemoval: (opticalPathIdentifier: string) => void
@@ -39,7 +37,6 @@ interface OpticalPathItemState {
   currentStyle: {
     opacity: number
     color: number[]
-    thresholdValues: number[]
     limitValues: number[]
   }
 }
@@ -54,7 +51,6 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     super(props)
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
     this.handleOpacityChange = this.handleOpacityChange.bind(this)
-    this.handleThresholdChange = this.handleThresholdChange.bind(this)
     this.handleLimitChange = this.handleLimitChange.bind(this)
     this.handleColorRChange = this.handleColorRChange.bind(this)
     this.handleColorGChange = this.handleColorGChange.bind(this)
@@ -65,8 +61,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       currentStyle: {
         opacity: this.props.defaultStyle.opacity,
         color: this.props.defaultStyle.color,
-        limitValues: this.props.defaultStyle.limitValues,
-        thresholdValues: this.props.defaultStyle.thresholdValues,
+        limitValues: this.props.defaultStyle.limitValues
       }
     }
   }
@@ -110,8 +105,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       currentStyle: {
         color: color,
         opacity: state.currentStyle.opacity,
-        limitValues: state.currentStyle.limitValues,
-        thresholdValues: state.currentStyle.thresholdValues,
+        limitValues: state.currentStyle.limitValues
       }
     }))
     this.props.onStyleChange({
@@ -133,8 +127,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       currentStyle: {
         color: color,
         opacity: state.currentStyle.opacity,
-        limitValues: state.currentStyle.limitValues,
-        thresholdValues: state.currentStyle.thresholdValues,
+        limitValues: state.currentStyle.limitValues
       }
     }))
     this.props.onStyleChange({
@@ -156,33 +149,12 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       currentStyle: {
         color: color,
         opacity: state.currentStyle.opacity,
-        limitValues: state.currentStyle.limitValues,
-        thresholdValues: state.currentStyle.thresholdValues,
+        limitValues: state.currentStyle.limitValues
       }
     }))
     this.props.onStyleChange({
       opticalPathIdentifier: identifier,
       styleOptions: { color: color }
-    })
-  }
-
-  handleThresholdChange (
-    values: number[]
-  ): void {
-    const identifier = this.props.opticalPath.identifier
-    this.setState(state => ({
-      currentStyle: {
-        color: state.currentStyle.color,
-        opacity: state.currentStyle.opacity,
-        limitValues: state.currentStyle.limitValues,
-        thresholdValues: values,
-      }
-    }))
-    this.props.onStyleChange({
-      opticalPathIdentifier: identifier,
-      styleOptions: {
-        thresholdValues: values
-      }
     })
   }
 
@@ -194,8 +166,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       currentStyle: {
         color: state.currentStyle.color,
         opacity: state.currentStyle.opacity,
-        limitValues: values,
-        thresholdValues: state.currentStyle.thresholdValues,
+        limitValues: values
       }
     }))
     this.props.onStyleChange({
@@ -216,7 +187,8 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     const attributes: Array<{ name: string, value: string }> = []
 
     // TID 8001 "Specimen Preparation"
-    this.props.specimenDescription.SpecimenPreparationSequence.forEach(
+    const specimen = this.props.metadata[0].SpecimenDescriptionSequence[0]
+    specimen.SpecimenPreparationSequence.forEach(
       (step: dmv.metadata.SpecimenPreparation, index: number): void => {
         step.SpecimenPreparationStepContentItemSequence.forEach((
           item: (
@@ -265,6 +237,8 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       }
     )
 
+    const maxValue = Math.pow(2, this.props.metadata[0].BitsAllocated) - 1
+
     const settings = (
       <div>
         <Row justify='center' align='middle'>
@@ -308,36 +282,19 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
           </Col>
 
           <Col span={9}>
-            Windowing limit
+            Window
           </Col>
           <Col span={15}>
             <Slider
               range
               min={0}
-              max={255}
+              max={maxValue}
               step={1}
               defaultValue={[
                 this.props.defaultStyle.limitValues[0],
                 this.props.defaultStyle.limitValues[1]
               ]}
               onAfterChange={this.handleLimitChange}
-            />
-          </Col>
-
-          <Col span={9}>
-            Clipping threshold
-          </Col>
-          <Col span={15}>
-            <Slider
-              range
-              min={0}
-              max={1}
-              step={0.01}
-              defaultValue={[
-                this.props.defaultStyle.thresholdValues[0],
-                this.props.defaultStyle.thresholdValues[1]
-              ]}
-              onAfterChange={this.handleThresholdChange}
             />
           </Col>
 

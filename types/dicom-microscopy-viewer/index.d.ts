@@ -8,7 +8,6 @@ declare module 'dicom-microscopy-viewer' {
     export interface VolumeImageViewerOptions {
       client: dwc.api.DICOMwebClient
       metadata: object[]
-      blendingInformation?: BlendingInformation[]
       controls?: string[]
       retrieveRendered?: boolean
       useWebGL?: boolean
@@ -120,6 +119,24 @@ declare module 'dicom-microscopy-viewer' {
       getSegmentStyle (segmentUID: string): { opacity: number }
       isSegmentVisible (segmentUID: string): boolean
       getAllSegments (): dwc.segment.Segment[]
+      addMappings (metadata: ParametricMap): void
+      removeMapping (mappingUID: string): void
+      showMapping (
+        mappingUID: string,
+        styleOptions?: {
+          opacity?: number
+        }
+      ): void
+      hideMapping (mappingUID: string): void
+      setMappingStyle (
+        mappingUID: string,
+        styleOptions: {
+          opacity?: number
+        }
+      ): void
+      getMappingStyle (mappingUID: string): { opacity: number }
+      isMappingVisible (mappingUID: string): boolean
+      getAllMappings (): dwc.mapping.Mapping[]
     }
 
     export interface OverviewImageViewerOptions {
@@ -278,6 +295,7 @@ declare module 'dicom-microscopy-viewer' {
   declare namespace segment {
 
     export interface SegmentOptions {
+      uid: string
       number: number
       label: label
       studyInstanceUID: string
@@ -410,6 +428,7 @@ declare module 'dicom-microscopy-viewer' {
 
     export interface VLWholeSlideMicroscopyImage extends SOPClass {
       // VL Whole Slide Microscopy Image module
+      BitsAllocated: number
       ImageType: string[]
       SamplesPerPixel: number
       PhotometricInterpretation: string
@@ -511,16 +530,30 @@ declare module 'dicom-microscopy-viewer' {
 
   }
 
-  declare namespace opticalPath {
+  declare namespace mapping {
 
-    export interface BlendingInformation {
-      opticalPathIdentifier: string
-      color: number[]
-      opacity: number
-      thresholdValues: number[]
-      limitValues: number[]
-      visible: boolean
+    export interface MappingOptions {
+      uid: string
+      number: number
+      label: label
+      studyInstanceUID: string
+      seriesInstanceUID: string
+      sopInstanceUIDs: string[]
     }
+
+    export class Mapping {
+      constructor (options: MappingOptions)
+      get uid (): string
+      get number (): number
+      get label (): string
+      get studyInstanceUID (): string
+      get seriesInstanceUID (): string
+      get sopInstanceUIDs (): string[]
+    }
+
+  }
+
+  declare namespace opticalPath {
 
     export interface OpticalPathOptions {
       identifier: number

@@ -10,6 +10,9 @@ interface MappingItemProps {
   mapping: dmv.mapping.Mapping
   index: number
   isVisible: boolean
+  defaultStyle: {
+    opacity: number
+  }
   onVisibilityChange: ({ mappingUID, isVisible }: {
     mappingUID: string
     isVisible: boolean
@@ -39,7 +42,7 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
     this.handleOpacityChange = this.handleOpacityChange.bind(this)
     this.state = {
       isVisible: this.props.isVisible,
-      currentStyle: { opacity: 0.75 }
+      currentStyle: { opacity: this.props.defaultStyle.opacity }
     }
   }
 

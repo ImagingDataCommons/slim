@@ -19,7 +19,6 @@ interface OpticalPathListProps {
       opacity: number
       color: number[]
       limitValues: number[]
-      thresholdValues: number[]
     }
   }
   onOpticalPathVisibilityChange: ({ opticalPathIdentifier, isVisible }: {
@@ -32,7 +31,6 @@ interface OpticalPathListProps {
       opacity?: number
       color?: number[]
       limitValues?: number[]
-      thresholdValues?: number[]
     }
   }) => void
   onOpticalPathActivityChange: ({ opticalPathIdentifier, isActive }: {
@@ -102,18 +100,18 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
     const optionItems: React.ReactNode[] = []
     this.props.opticalPaths.forEach(opticalPath => {
       const opticalPathIdentifier = opticalPath.identifier
-      const image = this.props.metadata[opticalPathIdentifier][0]
-      image.OpticalPathSequence.forEach(opticalPathItem => {
+      const images = this.props.metadata[opticalPathIdentifier]
+      images[0].OpticalPathSequence.forEach(opticalPathItem => {
         const id = opticalPathItem.OpticalPathIdentifier
         const description = opticalPathItem.OpticalPathDescription
         if (this.props.activeOpticalPathIdentifiers.includes(id)) {
           opticalPathItems.push(
             <OpticalPathItem
               key={id}
-              defaultStyle={this.props.defaultOpticalPathStyles[id]}
-              isVisible={this.props.visibleOpticalPathIdentifiers.includes(id)}
               opticalPath={opticalPath}
-              specimenDescription={image.SpecimenDescriptionSequence[0]}
+              metadata={images}
+              isVisible={this.props.visibleOpticalPathIdentifiers.includes(id)}
+              defaultStyle={this.props.defaultOpticalPathStyles[id]}
               onVisibilityChange={this.props.onOpticalPathVisibilityChange}
               onStyleChange={this.props.onOpticalPathStyleChange}
               onRemoval={this.handleItemRemoval}
