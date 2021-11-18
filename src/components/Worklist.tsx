@@ -106,8 +106,12 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     if (index === undefined) {
       index = 1
     }
-    const offset = this.state.pageSize * (index - 1)
-    const limit = this.state.pageSize
+    let pageSize = pagination.pageSize
+    if (pageSize === undefined) {
+      pageSize = this.state.pageSize
+    }
+    const offset = pageSize * (index - 1)
+    const limit = pageSize
     console.debug(`search for studies of page #${index}...`)
     const searchCriteria: { [attribute: string]: string } = {}
     for (const dataIndex in filters) {
@@ -116,7 +120,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       }
     }
     this.fetchData({ offset, limit, searchCriteria })
-    this.setState({ isLoading: false })
+    this.setState({ isLoading: false, pageSize: pageSize })
   }
 
   handleSearch = (
@@ -173,6 +177,21 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
         title: "Referring Physician's Name",
         dataIndex: 'ReferringPhysicianName',
         render: (value: dmv.metadata.PersonName): string => parseName(value)
+      },
+      {
+        title: 'Modalities in Study',
+        dataIndex: 'ModalitiesInStudy',
+        render: (value: string[]): string => {
+          if (value === undefined) {
+            /*
+             * This should not happen, since the attribute is required.
+             * However, some origin servers don't include it.
+             */
+            return ''
+          } else {
+            return value.join(', ')
+          }
+        }
       }
     ]
 
