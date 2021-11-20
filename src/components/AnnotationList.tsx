@@ -8,7 +8,10 @@ interface AnnotationListProps {
   rois: dmv.roi.ROI[]
   selectedRoiUIDs: string[]
   visibleRoiUIDs: string[]
-  onVisibilityChange: ({ roiUID }: { roiUID: string }) => void
+  onVisibilityChange: ({ roiUID, isVisible }: {
+    roiUID: string
+    isVisible: boolean
+  }) => void
   onSelection: ({ roiUID }: { roiUID: string }) => void
 }
 

@@ -181,7 +181,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       {
         title: 'Modalities in Study',
         dataIndex: 'ModalitiesInStudy',
-        render: (value: string[]): string => {
+        render: (value: string[] | string): string => {
           if (value === undefined) {
             /*
              * This should not happen, since the attribute is required.
@@ -189,7 +189,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
              */
             return ''
           } else {
-            return value.join(', ')
+            return String(value)
           }
         }
       }

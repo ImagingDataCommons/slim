@@ -209,7 +209,7 @@ class MeasurementReport {
 
   public PersonObserverLoginName?: string
 
-  public DeviceObserverUID: string
+  public DeviceObserverUID?: string
 
   public DeviceObserverName?: string
 
@@ -310,13 +310,12 @@ class MeasurementReport {
         meaning: 'Device Observer UID'
       })
     })
-    if (items.length === 0) {
-      throw new Error('Content item "Device Observer UID" not found.')
+    if (items.length > 0) {
+      const deviceUIDItem = (
+        items[0] as unknown as dcmjs.sr.valueTypes.UIDRefContentItem
+      )
+      this.DeviceObserverUID = deviceUIDItem.UID
     }
-    const deviceUIDItem = (
-      items[0] as unknown as dcmjs.sr.valueTypes.UIDRefContentItem
-    )
-    this.DeviceObserverUID = deviceUIDItem.UID
 
     items = findContentItemsByName({
       content: report.ContentSequence,

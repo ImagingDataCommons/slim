@@ -10,7 +10,10 @@ interface AnnotationItemProps {
   roi: dmv.roi.ROI
   index: number
   isVisible: boolean
-  onVisibilityChange: ({ roiUID }: { roiUID: string }) => void
+  onVisibilityChange: ({ roiUID, isVisible }: {
+    roiUID: string
+    isVisible: boolean
+  }) => void
 }
 
 /**
@@ -26,7 +29,10 @@ class AnnotationItem extends React.Component<AnnotationItemProps, {}> {
     checked: boolean,
     event: Event
   ): void {
-    this.props.onVisibilityChange({ roiUID: this.props.roi.uid })
+    this.props.onVisibilityChange({
+      roiUID: this.props.roi.uid,
+      isVisible: checked
+    })
   }
 
   render (): React.ReactNode {
@@ -43,15 +49,34 @@ class AnnotationItem extends React.Component<AnnotationItemProps, {}> {
         dcmjs.sr.valueTypes.CodeContentItem
       )
     ) => {
+      const nameValue = item.ConceptNameCodeSequence[0].CodeValue
       const nameMeaning = item.ConceptNameCodeSequence[0].CodeMeaning
       const name = `${nameMeaning}`
       if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.CODE) {
-        const codeConetentItem = item as dcmjs.sr.valueTypes.CodeContentItem
-        const valueMeaning = codeConetentItem.ConceptCodeSequence[0].CodeMeaning
-        attributes.push({
-          name: name,
-          value: `${valueMeaning}`
-        })
+        const codeContentItem = item as dcmjs.sr.valueTypes.CodeContentItem
+        const valueMeaning = codeContentItem.ConceptCodeSequence[0].CodeMeaning
+        // For consistency with Segment and Annotation Group
+        if (nameValue === '276214006') {
+          attributes.push({
+            name: 'Property category',
+            value: `${valueMeaning}`
+          })
+        } else if (nameValue === '121071') {
+          attributes.push({
+            name: 'Property type',
+            value: `${valueMeaning}`
+          })
+        } else if (nameValue === '111001') {
+          attributes.push({
+            name: 'Algorithm Name',
+            value: `${valueMeaning}`
+          })
+        } else {
+          attributes.push({
+            name: name,
+            value: `${valueMeaning}`
+          })
+        }
       } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
         const textContentItem = item as dcmjs.sr.valueTypes.TextContentItem
         attributes.push({

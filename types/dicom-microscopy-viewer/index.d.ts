@@ -100,7 +100,7 @@ declare module 'dicom-microscopy-viewer' {
       isOpticalPathVisible (opticalPathIdentifier: string): boolean
       activateOpticalPath (opticalPathIdentifier: string): void
       deactivateOpticalPath (opticalPathIdentifier: string): void
-      getOpticalPathImageMetadata (
+      getOpticalPathMetadata (
         opticalPathIdentifier: string
       ): metadata.VLWholeSlideMicroscopyImage[]
       getAllOpticalPaths (): dwc.opticalPath.OpticalPath[]
@@ -121,7 +121,7 @@ declare module 'dicom-microscopy-viewer' {
       ): void
       getSegmentStyle (segmentUID: string): { opacity: number }
       isSegmentVisible (segmentUID: string): boolean
-      getSegmentImageMetadata (segmentUID: string): metadata.Segmentation[]
+      getSegmentMetadata (segmentUID: string): metadata.Segmentation[]
       getAllSegments (): dwc.segment.Segment[]
       addMappings (metadata: ParametricMap): void
       removeMapping (mappingUID: string): void
@@ -143,8 +143,29 @@ declare module 'dicom-microscopy-viewer' {
         limitValues: number[]
       }
       isMappingVisible (mappingUID: string): boolean
-      getMappingImageMetadata (mappingUID: string): metadata.ParametricMap[]
+      getMappingMetadata (mappingUID: string): metadata.ParametricMap[]
       getAllMappings (): dwc.mapping.Mapping[]
+      addAnnotationGroups (metadata: MicroscopyBulkSimpleAnnotations): void
+      removeAnnotationGroup (annotationGroupUID: string): void
+      showAnnotationGroup (
+        annotationGroupUID: string,
+        styleOptions?: {
+          opacity?: number
+        }
+      ): void
+      hideAnnotationGroup (annotationGroupUID: string): void
+      setAnnotationGroupStyle (
+        annotationGroupUID: string,
+        styleOptions: {
+          opacity?: number
+        }
+      ): void
+      getAnnotationGroupStyle (annotationGroupUID: string): { opacity: number }
+      isAnnotationGroupVisible (annotationGroupUID: string): boolean
+      getAllAnnotationGroups (): dwc.annotation.AnnotationGroup[]
+      getAnnotationGroupMetadata (
+        annotationGroupUID: string
+      ): metadata.MicroscopyBulkSimpleAnnotations[]
     }
 
     export interface OverviewImageViewerOptions {
@@ -306,6 +327,10 @@ declare module 'dicom-microscopy-viewer' {
       uid: string
       number: number
       label: label
+      algorithmType: string
+      algorithmName: string
+      propertyCategory: dcmjs.sr.valueTypes.CodedConcept
+      propertyType: dcmjs.sr.valueTypes.CodedConcept
       studyInstanceUID: string
       seriesInstanceUID: string
       sopInstanceUIDs: string[]
@@ -539,6 +564,37 @@ declare module 'dicom-microscopy-viewer' {
     type Metadata = Study|Series|Instance|VLWholeSlideMicroscopyImage
 
     export function formatMetadata (metadata: object): Metadata
+
+  }
+
+  declare namespace annotation {
+
+    export interface AnnotationGroupOptions {
+      uid: string
+      number: number
+      label: label
+      algorithmType: string
+      algorithmName: string
+      propertyCategory: dcmjs.sr.valueTypes.CodedConcept
+      propertyType: dcmjs.sr.valueTypes.CodedConcept
+      studyInstanceUID: string
+      seriesInstanceUID: string
+      sopInstanceUIDs: string[]
+    }
+
+    export class AnnotationGroup {
+      constructor (options: AnnotationGroupOptions)
+      get uid (): string
+      get number (): number
+      get label (): string
+      get algorithmType (): string
+      get algorithmName (): string
+      get propertyCategory (): dcmjs.sr.valueTypes.CodedConcept
+      get propertyType (): dcmjs.sr.valueTypes.CodedConcept
+      get studyInstanceUID (): string
+      get seriesInstanceUID (): string
+      get sopInstanceUIDs (): string[]
+    }
 
   }
 

@@ -26,6 +26,7 @@ import * as dcmjs from 'dcmjs'
 
 import DicomWebManager from '../DicomWebManager'
 import AnnotationList from './AnnotationList'
+import AnnotationGroupList from './AnnotationGroupList'
 import Button from './Button'
 import Report, { MeasurementReport } from './Report'
 import SpecimenList from './SpecimenList'
@@ -234,6 +235,7 @@ interface SlideViewerState {
   visibleRoiUIDs: string[]
   visibleSegmentUIDs: string[]
   visibleMappingUIDs: string[]
+  visibleAnnotationGroupUIDs: string[]
   visibleOpticalPathIdentifiers: string[]
   activeOpticalPathIdentifiers: string[]
   selectedFinding?: dcmjs.sr.coding.CodedConcept
@@ -299,7 +301,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleRoiDrawing = this.handleRoiDrawing.bind(this)
     this.handleRoiTranslation = this.handleRoiTranslation.bind(this)
     this.handleRoiModification = this.handleRoiModification.bind(this)
-    this.handleRoiVisibility = this.handleRoiVisibility.bind(this)
+    this.handleRoiVisibilityChange = this.handleRoiVisibilityChange.bind(this)
     this.handleRoiRemoval = this.handleRoiRemoval.bind(this)
     this.handleAnnotationCompletion = this.handleAnnotationCompletion.bind(this)
     this.handleAnnotationCancellation = this.handleAnnotationCancellation.bind(this)
@@ -307,6 +309,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleAnnotationEvaluationSelection = this.handleAnnotationEvaluationSelection.bind(this)
     this.handleAnnotationSelection = this.handleAnnotationSelection.bind(this)
     this.handleAnnotationVisibilityChange = this.handleAnnotationVisibilityChange.bind(this)
+    this.handleAnnotationGroupVisibilityChange = this.handleAnnotationGroupVisibilityChange.bind(this)
+    this.handleAnnotationGroupStyleChange = this.handleAnnotationGroupStyleChange.bind(this)
     this.handleReportGeneration = this.handleReportGeneration.bind(this)
     this.handleReportVerification = this.handleReportVerification.bind(this)
     this.handleReportCancellation = this.handleReportCancellation.bind(this)
@@ -344,6 +348,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       visibleRoiUIDs: [],
       visibleSegmentUIDs: [],
       visibleMappingUIDs: [],
+      visibleAnnotationGroupUIDs: [],
       visibleOpticalPathIdentifiers: [],
       activeOpticalPathIdentifiers: [],
       selectedFinding: undefined,
@@ -388,9 +393,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         Modality: 'SR'
       }
     }).then((matchedInstances): void => {
-      if (matchedInstances == null) {
-        matchedInstances = []
-      }
+      // if (matchedInstances == null) {
+      //   matchedInstances = []
+      // }
       matchedInstances.forEach(i => {
         const instance = dmv.metadata.formatMetadata(i) as dmv.metadata.Instance
         if (instance.SOPClassUID === SOPClassUIDs.COMPREHENSIVE_3D_SR) {
@@ -482,6 +487,55 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       message.error('An error occured. Annotations could not be loaded')
       console.error(error)
+    })
+  }
+
+  /**
+   * Retrieve Microscopy Bulk Simple Annotations instances that contain
+   * annotation groups defined in the same frame of reference as the currently
+   * selected series and add them to the VOLUME image viewer.
+   */
+  addAnnotationGroups = (): void => {
+    const viewer = this.volumeViewer
+    if (viewer === undefined) {
+      return
+    }
+    console.info('search for Microscopy Bulk Simple Annotations instances')
+    this.setState({ isLoading: true })
+    this.props.client.searchForSeries({
+      studyInstanceUID: this.props.studyInstanceUID,
+      queryParams: {
+        Modality: 'ANN'
+      }
+    }).then((matchedSeries): void => {
+      if (matchedSeries == null) {
+        matchedSeries = []
+      }
+      matchedSeries.forEach(s => {
+        const series = dmv.metadata.formatMetadata(s) as dmv.metadata.Series
+        this.props.client.retrieveSeriesMetadata({
+          studyInstanceUID: this.props.studyInstanceUID,
+          seriesInstanceUID: series.SeriesInstanceUID
+        }).then((retrievedMetadata): void => {
+          let annotations: dmv.metadata.MicroscopyBulkSimpleAnnotations[] =
+            retrievedMetadata.map( metadata => {
+              return new dmv.metadata.MicroscopyBulkSimpleAnnotations({
+                  metadata
+              })
+            })
+          try {
+            viewer.addAnnotationGroups(annotations)
+          } catch (error) {
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
+            message.error(
+              'An error occured. ' +
+              'Microscopy Bulk Simple Annotations cannot be displayed.'
+            )
+            console.error(`failed to add annotation groups: ${error}`)
+          }
+          this.forceUpdate()
+        })
+      })
     })
   }
 
@@ -676,6 +730,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.setState({ isLoading: false })
 
     this.addAnnotations()
+    this.addAnnotationGroups()
     this.addSegmentations()
     this.addParametricMaps()
   }
@@ -1120,19 +1175,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handle toggling of annotation visibility, i.e., whether a given
    * annotation should be either displayed or hidden by the viewer.
    */
-  handleAnnotationVisibilityChange ({ roiUID }: { roiUID: string }): void {
+  handleAnnotationVisibilityChange ({ roiUID, isVisible }: {
+    roiUID: string
+    isVisible: boolean
+  }): void {
     const viewer = this.volumeViewer
     if (viewer === undefined) {
       return
     }
-    if (this.state.visibleRoiUIDs.includes(roiUID as never)) {
-      console.info(`hide ROI ${roiUID}`)
-      this.setState(state => ({
-        visibleRoiUIDs: state.visibleRoiUIDs.filter(uid => uid !== roiUID),
-        selectedRoiUIDs: state.selectedRoiUIDs.filter(uid => uid !== roiUID)
-      }))
-      viewer.setROIStyle(roiUID, {})
-    } else {
+    if (isVisible) {
       console.info(`show ROI ${roiUID}`)
       const roi = viewer.getROI(roiUID)
       const key = _getRoiKey(roi)
@@ -1140,7 +1191,63 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.setState(state => ({
         visibleRoiUIDs: [...state.visibleRoiUIDs, roiUID]
       }))
+    } else {
+      console.info(`hide ROI ${roiUID}`)
+      this.setState(state => ({
+        visibleRoiUIDs: state.visibleRoiUIDs.filter(uid => uid !== roiUID),
+        selectedRoiUIDs: state.selectedRoiUIDs.filter(uid => uid !== roiUID)
+      }))
+      viewer.setROIStyle(roiUID, {})
     }
+  }
+
+  /**
+   * Handle toggling of annotation group visibility, i.e., whether a given
+   * annotation group should be either displayed or hidden by the viewer.
+   */
+  handleAnnotationGroupVisibilityChange ({ annotationGroupUID, isVisible }: {
+    annotationGroupUID: string
+    isVisible: boolean
+  }): void {
+    const viewer = this.volumeViewer
+    if (viewer === undefined) {
+      return
+    }
+    console.log(`change visibility of annotation group ${annotationGroupUID}`)
+    if (isVisible) {
+      console.info(`show annotation group ${annotationGroupUID}`)
+      viewer.showAnnotationGroup(annotationGroupUID)
+      this.setState(state => ({
+        visibleAnnotationGroupUIDs: state.visibleAnnotationGroupUIDs.concat(
+          annotationGroupUID
+        )
+      }))
+    } else {
+      console.info(`hide annotation group ${annotationGroupUID}`)
+      viewer.hideAnnotationGroup(annotationGroupUID)
+      this.setState(state => ({
+        visibleAnnotationGroupUIDs: state.visibleAnnotationGroupUIDs.filter(
+          uid => uid !== annotationGroupUID
+        )
+      }))
+    }
+  }
+
+  /**
+   * Handle change of annotation group style.
+   */
+  handleAnnotationGroupStyleChange ({ annotationGroupUID, styleOptions }: {
+    annotationGroupUID: string
+    styleOptions: {
+      opacity?: number
+    }
+  }): void {
+    const viewer = this.volumeViewer
+    if (viewer === undefined) {
+      return
+    }
+    console.log(`change style of annotation group ${annotationGroupUID}`)
+    viewer.setAnnotationGroupStyle(annotationGroupUID, styleOptions)
   }
 
   /**
@@ -1411,7 +1518,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that will toggle the ROI visibility tool, i.e., either activate
    * or de-activate it, depending on its current state.
    */
-  handleRoiVisibility (): void {
+  handleRoiVisibilityChange (): void {
     const viewer = this.volumeViewer
     if (viewer === undefined) {
       return
@@ -1438,10 +1545,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const rois: dmv.roi.ROI[] = []
     const segments: dmv.segment.Segment[] = []
     const mappings: dmv.mapping.Mapping[] = []
+    const annotationGroups: dmv.annotation.AnnotationGroup[] = []
     if (this.volumeViewer !== undefined) {
       rois.push(...this.volumeViewer.getAllROIs())
       segments.push(...this.volumeViewer.getAllSegments())
       mappings.push(...this.volumeViewer.getAllMappings())
+      annotationGroups.push(...this.volumeViewer.getAllAnnotationGroups())
     }
 
     const openSubMenuItems = ['specimens', 'annotations']
@@ -1460,9 +1569,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       report = <Report dataset={dataset} />
     }
 
-    let annotationList: React.ReactNode
+    let annotationMenu: React.ReactNode
     if (rois.length > 0) {
-      annotationList = (
+      annotationMenu = (
         <AnnotationList
           rois={rois}
           selectedRoiUIDs={this.state.selectedRoiUIDs}
@@ -1548,29 +1657,25 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         </Menu.SubMenu>
       )
       if (this.volumeViewer !== undefined) {
+        const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
         const defaultOpticalPathStyles: {
-          [key: string]: {
+          [opticalPathIdentifier: string]: {
             opacity: number
             color: number[]
             limitValues: number[]
           }
         } = {}
-        const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
         const opticalPathMetadata: {
-          [key: string]: dmv.metadata.VLWholeSlideMicroscopyImage[]
+          [opticalPathIdentifier: string]: dmv.metadata.VLWholeSlideMicroscopyImage[]
         } = {}
         const opticalPaths = viewer.getAllOpticalPaths()
-        slide.volumeImages.forEach(image => {
-          image.OpticalPathSequence.forEach(opticalPathItem => {
-            const identifier = opticalPathItem.OpticalPathIdentifier
-            const style = viewer.getOpticalPathStyle(identifier)
-            defaultOpticalPathStyles[identifier] = style
-            if (identifier in opticalPathMetadata) {
-              opticalPathMetadata[identifier].push(image)
-            } else {
-              opticalPathMetadata[identifier] = [image]
-            }
-          })
+        opticalPaths.forEach(opticalPath => {
+          const identifier = opticalPath.identifier
+          const style = viewer.getOpticalPathStyle(identifier)
+          defaultOpticalPathStyles[identifier] = style
+          opticalPathMetadata[identifier] = viewer.getOpticalPathMetadata(
+            identifier
+          )
         })
         opticalPathMenu = (
           <Menu.SubMenu key='opticalpaths' title='Optical Paths'>
@@ -1603,7 +1708,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const segments = viewer.getAllSegments()
       segments.forEach(segment => {
         defaultSegmentStyles[segment.uid] = viewer.getSegmentStyle(segment.uid)
-        segmentMetadata[segment.uid] = viewer.getSegmentImageMetadata(
+        segmentMetadata[segment.uid] = viewer.getSegmentMetadata(
           segment.uid
         )
       })
@@ -1636,7 +1741,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
       mappings.forEach(mapping => {
         defaultMappingStyles[mapping.uid] = viewer.getMappingStyle(mapping.uid)
-        mappingMetadata[mapping.uid] = viewer.getMappingImageMetadata(
+        mappingMetadata[mapping.uid] = viewer.getMappingMetadata(
           mapping.uid
         )
       })
@@ -1653,6 +1758,39 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         </Menu.SubMenu>
       )
       openSubMenuItems.push('parametricmaps')
+    }
+
+    let annotationGroupMenu
+    if (annotationGroups.length > 0) {
+      const defaultAnnotationGroupStyles: {
+        [annotationGroupUID: string]: {
+          opacity: number
+        }
+      } = {}
+      const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
+      const annotationGroupMetadata: {
+        [annotationGroupUID: string]: dmv.metadata.MicroscopyBulkSimpleAnnotations[]
+      } = {}
+      const annotationGroups = viewer.getAllAnnotationGroups()
+      annotationGroups.forEach(annotationGroup => {
+        defaultAnnotationGroupStyles[annotationGroup.uid] = viewer.getAnnotationGroupStyle(annotationGroup.uid)
+        annotationGroupMetadata[annotationGroup.uid] = viewer.getAnnotationGroupMetadata(
+          annotationGroup.uid
+        )
+      })
+      annotationGroupMenu = (
+        <Menu.SubMenu key='annotationGroups' title='Annotation Groups'>
+          <AnnotationGroupList
+            annotationGroups={annotationGroups}
+            metadata={annotationGroupMetadata}
+            defaultAnnotationGroupStyles={defaultAnnotationGroupStyles}
+            visibleAnnotationGroupUIDs={this.state.visibleAnnotationGroupUIDs}
+            onAnnotationGroupVisibilityChange={this.handleAnnotationGroupVisibilityChange}
+            onAnnotationGroupStyleChange={this.handleAnnotationGroupStyleChange}
+          />
+        </Menu.SubMenu>
+      )
+      openSubMenuItems.push('annotationGroups')
     }
 
     let toolbar
@@ -1693,7 +1831,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             isToggle
             tooltip='Show/Hide ROIs'
             icon={FaEye}
-            onClick={this.handleRoiVisibility}
+            onClick={this.handleRoiVisibilityChange}
           />
           <Button
             tooltip='Save ROIs'
@@ -1760,8 +1898,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             {specimenMenu}
             {opticalPathMenu}
             <Menu.SubMenu key='annotations' title='Annotations'>
-              {annotationList}
+              {annotationMenu}
             </Menu.SubMenu>
+            {annotationGroupMenu}
             {segmentationMenu}
             {parametricMapMenu}
           </Menu>
