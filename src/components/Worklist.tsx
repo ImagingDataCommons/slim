@@ -103,10 +103,9 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   ): void {
     this.setState({ isLoading: true })
     let index = pagination.current
-    if (index === undefined) {
-      index = 1
-    }
-    const pageSize = pagination.pageSize ? pagination.pageSize : this.state.pageSize
+    index = index ? index : 1
+    let pageSize = pagination.pageSize
+    pageSize = pageSize ? pageSize : this.state.pageSize
     const offset = pageSize * (index - 1)
     const limit = pageSize
     console.debug(`search for studies of page #${index}...`)
@@ -183,7 +182,17 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       {
         title: 'Modalities in Study',
         dataIndex: 'ModalitiesInStudy',
-        render: (value: string[]): string => String(value)
+        render: (value: string[] | string): string => {
+          if (value === undefined) {
+            /*
+             * This should not happen, since the attribute is required.
+             * However, some origin servers don't include it.
+             */
+            return 'SM,?'
+          } else {
+            return String(value)
+          }
+        }
       }
     ]
 
