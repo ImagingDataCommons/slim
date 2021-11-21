@@ -71,7 +71,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
     }
     const attributes = []
     const description = this.props.slide.description
-    if (description !== null && description !== undefined) {
+    if (description != null && description !== '') {
       attributes.push({
         name: 'Description',
         value: description
