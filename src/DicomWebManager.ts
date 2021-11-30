@@ -4,10 +4,15 @@ import { ServerSettings, DicomWebManagerErrorHandler } from './AppConfig'
 import { joinUrl } from './utils/url'
 import getXHRRetryHook from './utils/xhrRetryHook'
 
-export default class DicomWebManager {
-  private readonly readClient: dwc.api.DICOMwebClient
+interface Store {
+  id: string
+  read: boolean
+  write: boolean
+  client: dwc.api.DICOMwebClient
+}
 
-  private readonly writeClient?: dwc.api.DICOMwebClient
+export default class DicomWebManager {
+  private readonly stores: Store[] = []
 
   private readonly handleError: DicomWebManagerErrorHandler
 
@@ -21,11 +26,6 @@ export default class DicomWebManager {
       this.handleError = onError
     }
 
-    const datastores: {
-      read?: boolean
-      write: boolean
-      client: dwc.api.DICOMwebClient
-    }[] = []
     settings.forEach(serverSettings => {
       if (serverSettings === undefined) {
         throw Error('At least one server needs to be configured.')
@@ -61,82 +61,41 @@ export default class DicomWebManager {
           this.handleError(error, serverSettings)
         }
       }
-      datastores.push({
-        write: serverSettings.write,
-        read: serverSettings.read,
+      this.stores.push({
+        id: serverSettings.id,
+        write: serverSettings.write ? serverSettings.write: false,
+        read: serverSettings.read ? serverSettings.read : true,
         client: new dwc.api.DICOMwebClient(clientSettings)
       })
     })
 
-    if (datastores.length === 1) {
-      /**
-       * If only one store is configured, we use it for reading and
-       * (if permitted) also for writing
-       */
-      const store = datastores[0]
-      if (store.read === false) {
-        throw new Error('No readable store found. Check server settings.')
-      }
-      this.readClient = store.client
-      if (store.write) {
-        this.writeClient = store.client
-      }
-    } else {
-      const writableStores = datastores.filter(store => store.write)
-      if (writableStores.length > 0) {
-        this.writeClient = writableStores[0].client
-        if (writableStores.length > 1) {
-          console.warn(
-            'more than one store configured for writing, using ' +
-            this.writeClient.baseURL
-          )
-        }
-      }
-      /**
-       * If more than one store is configured, it must be explicitly specified
-       * which store should be used for reading.
-       */
-      const readableStores = datastores.filter(store => store.read)
-      if (readableStores.length === 0) {
-        throw new Error('No readable store found. Check server settings.')
-      } else {
-        this.readClient = readableStores[0].client
-        if (readableStores.length > 1) {
-          console.warn(
-            'more than one store configured for reading, using ' +
-            this.readClient.baseURL
-          )
-        }
-      }
-      this.readClient = readableStores[0].client
+    if (this.stores.length > 1) {
+      throw new Error('Only one store is supported for now.')
     }
   }
 
   get baseURL (): string {
-    return this.readClient.baseURL
+    return this.stores[0].client.baseURL
   }
 
   updateHeaders = (fields: { [name: string]: string }): void => {
     for (const f in fields) {
-      this.readClient.headers[f] = fields[f]
-      if (this.writeClient) {
-        this.writeClient.headers[f] = fields[f]
-      }
+      this.stores[0].client.headers[f] = fields[f]
     }
   }
 
   get headers (): { [name: string]: string } {
-    return this.readClient.headers
+    return this.stores[0].client.headers
   }
 
   storeInstances = async (
     options: dwc.api.StoreInstancesOptions
   ): Promise<string> => {
-    if (this.writeClient) {
-      return await this.writeClient.storeInstances(options)
+    if (this.stores[0].write) {
+      return await this.stores[0].client.storeInstances(options)
     } else {
       return await Promise.reject(
-        new Error('None of the configured servers permits storage of instances.')
+        new Error('Store is not writable.')
       )
     }
   }
@@ -144,66 +103,66 @@ export default class DicomWebManager {
   searchForStudies = async (
     options: dwc.api.SearchForStudiesOptions
   ): Promise<dwc.api.Study[]> => {
-    return await this.readClient.searchForStudies(options)
+    return await this.stores[0].client.searchForStudies(options)
   }
 
   searchForSeries = async (
     options: dwc.api.SearchForSeriesOptions
   ): Promise<dwc.api.Series[]> => {
-    return await this.readClient.searchForSeries(options)
+    return await this.stores[0].client.searchForSeries(options)
   }
 
   searchForInstances = async (
     options: dwc.api.SearchForInstancesOptions
   ): Promise<dwc.api.Instance[]> => {
-    return await this.readClient.searchForInstances(options)
+    return await this.stores[0].client.searchForInstances(options)
   }
 
   retrieveStudyMetadata = async (
     options: dwc.api.RetrieveStudyMetadataOptions
   ): Promise<dwc.api.Metadata[]> => {
-    return await this.readClient.retrieveStudyMetadata(options)
+    return await this.stores[0].client.retrieveStudyMetadata(options)
   }
 
   retrieveSeriesMetadata = async (
     options: dwc.api.RetrieveSeriesMetadataOptions
   ): Promise<dwc.api.Metadata[]> => {
-    return await this.readClient.retrieveSeriesMetadata(options)
+    return await this.stores[0].client.retrieveSeriesMetadata(options)
   }
 
   retrieveInstanceMetadata = async (
     options: dwc.api.RetrieveInstanceMetadataOptions
   ): Promise<dwc.api.Metadata[]> => {
-    return await this.readClient.retrieveInstanceMetadata(options)
+    return await this.stores[0].client.retrieveInstanceMetadata(options)
   }
 
   retrieveInstance = async (
     options: dwc.api.RetrieveInstanceOptions
   ): Promise<dwc.api.Dataset> => {
-    return await this.readClient.retrieveInstance(options)
+    return await this.stores[0].client.retrieveInstance(options)
   }
 
   retrieveInstanceFrames = async (
     options: dwc.api.RetrieveInstanceFramesOptions
   ): Promise<dwc.api.Pixeldata[]> => {
-    return await this.readClient.retrieveInstanceFrames(options)
+    return await this.stores[0].client.retrieveInstanceFrames(options)
   }
 
   retrieveInstanceRendered = async (
     options: dwc.api.RetrieveInstanceRenderedOptions
   ): Promise<dwc.api.Pixeldata> => {
-    return await this.readClient.retrieveInstanceRendered(options)
+    return await this.stores[0].client.retrieveInstanceRendered(options)
   }
 
   retrieveInstanceFramesRendered = async (
     options: dwc.api.RetrieveInstanceFramesRenderedOptions
   ): Promise<dwc.api.Pixeldata> => {
-    return await this.readClient.retrieveInstanceFramesRendered(options)
+    return await this.stores[0].client.retrieveInstanceFramesRendered(options)
   }
 
   retrieveBulkData = async (
     options: dwc.api.RetrieveBulkDataOptions
   ): Promise<dwc.api.Bulkdata> => {
-    return await this.readClient.retrieveBulkData(options)
+    return await this.stores[0].client.retrieveBulkData(options)
   }
 }

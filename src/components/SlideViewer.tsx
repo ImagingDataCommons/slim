@@ -307,6 +307,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleAnnotationCancellation = this.handleAnnotationCancellation.bind(this)
     this.handleAnnotationFindingSelection = this.handleAnnotationFindingSelection.bind(this)
     this.handleAnnotationEvaluationSelection = this.handleAnnotationEvaluationSelection.bind(this)
+    this.handleAnnotationEvaluationClearance = this.handleAnnotationEvaluationClearance.bind(this)
     this.handleAnnotationSelection = this.handleAnnotationSelection.bind(this)
     this.handleAnnotationVisibilityChange = this.handleAnnotationVisibilityChange.bind(this)
     this.handleAnnotationGroupVisibilityChange = this.handleAnnotationGroupVisibilityChange.bind(this)
@@ -825,7 +826,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.findingOptions.forEach(finding => {
       if (finding.CodeValue === value) {
         console.info(`selected finding "${finding.CodeMeaning}"`)
-        this.setState({ selectedFinding: finding })
+        this.setState({
+          selectedFinding: finding,
+          selectedEvaluations: []
+        })
       }
     })
   }
@@ -842,6 +846,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     option: any
   ): void {
     const selectedFinding = this.state.selectedFinding
+    console.log('DEBUG: ', value, option)
     if (selectedFinding !== undefined) {
       const key = _buildKey(selectedFinding)
       const name = option.label
@@ -866,6 +871,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         }
       })
     }
+  }
+
+  /**
+   * Handler that gets called when an evaluation has been cleared for an
+   * annotation after the region of interest has been drawn.
+   */
+  handleAnnotationEvaluationClearance (): void {
+    this.setState({
+      selectedEvaluations: []
+    })
   }
 
   /**
@@ -939,7 +954,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     console.info('save ROIs')
 
     const rois = this.volumeViewer.getAllROIs()
-    const metadata = this.volumeViewer.imageMetadata
+    const opticalPaths = this.volumeViewer.getAllOpticalPaths()
+    const metadata = this.volumeViewer.getOpticalPathMetadata(
+      opticalPaths[0].identifier
+    )
     // Metadata should be sorted such that the image with the highest
     // resolution is the last item in the array.
     const refImage = metadata[metadata.length - 1]
@@ -1010,8 +1028,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         continue
       }
       let findingType = roi.evaluations.find(
-        (property: dcmjs.sr.valueTypes.ContentItem) => {
-          return property.ConceptNameCodeSequence[0].CodeValue === '121071'
+        (item: dcmjs.sr.valueTypes.ContentItem) => {
+          return item.ConceptNameCodeSequence[0].CodeValue === '121071'
         }
       )
       if (findingType === undefined) {
@@ -1033,7 +1051,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           schemeDesignator:
             findingType.ConceptCodeSequence[0].CodingSchemeDesignator,
           meaning: findingType.ConceptCodeSequence[0].CodeMeaning
-        })
+        }),
+        qualitativeEvaluations: roi.evaluations.filter(
+          (item: dcmjs.sr.valueTypes.ContentItem) => {
+            return item.ConceptNameCodeSequence[0].CodeValue !== '121071'
+          }
+        ),
+        measurements: roi.measurements
       })
       const measurements = group as dcmjs.sr.valueTypes.ContainerContentItem[]
       measurements[0].ContentTemplateSequence = [{
@@ -1061,10 +1085,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       evidence: [refImage],
       seriesInstanceUID: dcmjs.data.DicomMetaDictionary.uid(),
       seriesNumber: 1,
-      seriesDescription: 'Whole slide image annotation',
+      seriesDescription: 'Annotation',
       sopInstanceUID: dcmjs.data.DicomMetaDictionary.uid(),
       instanceNumber: 1,
-      manufacturer: 'MGH Computational Pathology'
+      manufacturer: 'MGH Computational Pathology',
+      previousVersions: undefined // TODO
     })
 
     this.setState({
@@ -1446,6 +1471,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     } else {
       console.info(`activate drawing of ROIs for geometry Type ${geometryType}`)
       this.volumeViewer.deactivateSelectInteraction()
+      this.volumeViewer.deactivateSnapInteraction()
       this.volumeViewer.deactivateTranslateInteraction()
       this.volumeViewer.deactivateModifyInteraction()
       this.volumeViewer.activateDrawInteraction({ geometryType, markup })
@@ -1463,11 +1489,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     console.info('toggle modification of ROIs')
     if (this.volumeViewer.isModifyInteractionActive) {
       this.volumeViewer.deactivateModifyInteraction()
+      this.volumeViewer.deactivateSnapInteraction()
       this.volumeViewer.activateSelectInteraction({})
     } else {
       this.volumeViewer.deactivateDrawInteraction()
       this.volumeViewer.deactivateTranslateInteraction()
       this.volumeViewer.deactivateSelectInteraction()
+      this.volumeViewer.activateSnapInteraction({})
       this.volumeViewer.activateModifyInteraction({})
     }
   }
@@ -1485,6 +1513,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.volumeViewer.deactivateTranslateInteraction()
     } else {
       this.volumeViewer.deactivateModifyInteraction()
+      this.volumeViewer.deactivateSnapInteraction()
       this.volumeViewer.deactivateDrawInteraction()
       this.volumeViewer.deactivateSelectInteraction()
       this.volumeViewer.activateTranslateInteraction({})
@@ -1526,6 +1555,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     console.info('toggle visibility of ROIs')
     if (viewer.areROIsVisible) {
       viewer.deactivateDrawInteraction()
+      viewer.deactivateSnapInteraction()
       viewer.deactivateTranslateInteraction()
       viewer.deactivateSelectInteraction()
       viewer.deactivateModifyInteraction()
@@ -1626,6 +1656,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             <Select
               style={{ minWidth: 130 }}
               onSelect={this.handleAnnotationEvaluationSelection}
+              allowClear={true}
+              onClear={this.handleAnnotationEvaluationClearance}
+              defaultActiveFirstOption={false}
             >
               {evaluationOptions}
             </Select>

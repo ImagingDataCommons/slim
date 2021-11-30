@@ -403,7 +403,7 @@ declare module 'dcmjs' {
         referencedRealWorldValueMap?: sr.contentItems.ReferencedRealWorldValueMap
         timePointContext?: TimePointContext
         measurements?: sr.valueTypes.NumContentItem[]
-        qualitativeEvaluations?: sr.valueTypes.CodeContentItem[]
+        qualitativeEvaluations?: (sr.valueTypes.CodeContentItem|sr.valueTypes.TextContentItem)[]
       }
 
       export class PlanarROIMeasurementsAndQualitativeEvaluations extends Template {

@@ -105,8 +105,14 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
       }
     ]
 
-    const minValue = -Math.pow(2, this.props.metadata[0].BitsAllocated) / 2 + 1
-    const maxValue = Math.pow(2, this.props.metadata[0].BitsAllocated) / 2 - 1
+    const refInstance = this.props.metadata[0]
+    const isFloatPixelData = refInstance.BitsAllocated > 16
+    let minValue = 0
+    let maxValue = Math.pow(2, refInstance.BitsAllocated) - 1
+    if (isFloatPixelData) {
+      minValue = -Math.pow(2, refInstance.BitsAllocated) / 2 + 1
+      maxValue = Math.pow(2, refInstance.BitsAllocated) / 2 - 1
+    }
 
     const settings = (
       <div>

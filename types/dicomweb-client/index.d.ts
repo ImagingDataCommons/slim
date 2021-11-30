@@ -100,11 +100,33 @@ declare module 'dicomweb-client' {
       datasets: arraybuffer[]
     }
 
-    export type Study = object
+    export type Study = {
+      StudyInstanceUID: string
+      StudyID: string
+      StudyDate: string
+      StudyTime: string
+      AccessionNumber: string
+      PatientID: string
+      PatientBirthDate: string
+      PatientSex: string
+      PatientName: string
+      ModalitiesInStudy: string[]
+      NumberOfStudyRelatedSeries: number
+      NumberOfStudyRelatedInstances: number
+    }
 
-    export type Series = object
+    export type Series = {
+      SeriesInstanceUID: string
+      SeriesNumber: string
+      Modality: string
+      NumberOfSeriesRelatedInstances: number
+    }
 
-    export type Instance = object
+    export type Instance = {
+      SOPClassUID: string
+      SOPInstanceUID: string
+      InstanceNumber: string
+    }
 
     export type Pixeldata = arraybuffer
 
@@ -120,7 +142,7 @@ declare module 'dicomweb-client' {
       baseURL: string
 
       // STOW-RS
-      storeInstances (options: StoreInstancesOptions): Promise<string>
+      storeInstances (options: StoreInstancesOptions): Primise<void>
 
       // QIDO-RS
       searchForStudies (

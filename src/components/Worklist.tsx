@@ -138,9 +138,14 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   render (): React.ReactNode {
     const columns: ColumnsType<dmv.metadata.Study> = [
       {
-        title: 'Study ID',
+        title: 'Accession Number',
         dataIndex: 'AccessionNumber',
         ...this.getColumnSearchProps('AccessionNumber')
+      },
+      {
+        title: 'Study ID',
+        dataIndex: 'StudyID',
+        ...this.getColumnSearchProps('StudyID')
       },
       {
         title: 'Study Date',

@@ -56,7 +56,7 @@ class App extends React.Component<AppProps, AppState> {
     }
 
     if (props.config.servers.length === 0) {
-      throw Error('At least one server needs to be configured.')
+      throw Error('One server needs to be configured.')
     }
 
     message.config({ duration: 5 })
@@ -107,12 +107,16 @@ class App extends React.Component<AppProps, AppState> {
   }): void => {
     const client = this.state.client
     client.updateHeaders({ Authorization: authorization })
+    const fullPath = window.location.pathname
+    const basePath = this.props.config.path
+    const path = fullPath.substring(basePath.length)
+    console.log(path)
     this.setState({
       user: user,
       client: client,
       wasAuthSuccessful: true,
       isLoading: false,
-      redirectTo: '/'
+      redirectTo: undefined
     })
   }
 
