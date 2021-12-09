@@ -118,8 +118,14 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
             />
           )
         } else {
+          let title
+          if (description) {
+            title = `${id} - ${description}`
+          } else {
+            title = `${id}`
+          }
           optionItems.push(
-            <Option key={id} value={id}> {description} ({id}) </Option>
+            <Option key={id} value={id}>{title}</Option>
           )
         }
       })

@@ -75,7 +75,6 @@ declare module 'dicom-microscopy-viewer' {
       getOpticalPathStyle (opticalPathIdentifier: string): {
         color: number[]
         opacity: number,
-        thresholdValues: number[],
         limitValues: number[],
       }
       setOpticalPathStyle (
@@ -83,7 +82,6 @@ declare module 'dicom-microscopy-viewer' {
         styleOptions: {
           color?: number[]
           opacity?: number,
-          thresholdValues?: number[],
           limitValues?: number[],
         }
       ): void
@@ -92,7 +90,6 @@ declare module 'dicom-microscopy-viewer' {
         styleOptions?: {
           color?: number[]
           opacity?: number,
-          thresholdValues?: number[],
           limitValues?: number[],
         }
       ): void

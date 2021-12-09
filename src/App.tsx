@@ -109,14 +109,13 @@ class App extends React.Component<AppProps, AppState> {
     client.updateHeaders({ Authorization: authorization })
     const fullPath = window.location.pathname
     const basePath = this.props.config.path
-    const path = fullPath.substring(basePath.length)
-    console.log(path)
+    const path = fullPath.substring(basePath.length - 1)
     this.setState({
       user: user,
       client: client,
       wasAuthSuccessful: true,
       isLoading: false,
-      redirectTo: undefined
+      redirectTo: path
     })
   }
 
@@ -229,7 +228,6 @@ class App extends React.Component<AppProps, AppState> {
                     <CaseViewer
                       client={this.state.client}
                       user={this.state.user}
-                      renderer={this.props.config.renderer}
                       annotations={this.props.config.annotations}
                       app={appInfo}
                       enableAnnotationTools={enableAnnotationTools}

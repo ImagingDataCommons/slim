@@ -33,7 +33,7 @@ import SpecimenList from './SpecimenList'
 import OpticalPathList from './OpticalPathList'
 import MappingList from './MappingList'
 import SegmentList from './SegmentList'
-import { AnnotationSettings, RendererSettings } from '../AppConfig'
+import { AnnotationSettings } from '../AppConfig'
 import { findContentItemsByName } from '../utils/sr'
 import { Slide } from '../data/slides'
 import { SOPClassUIDs } from '../data/uids'
@@ -219,7 +219,6 @@ interface SlideViewerProps extends RouteComponentProps {
     uid: string
     organization?: string
   }
-  renderer: RendererSettings
   annotations: AnnotationSettings[]
   enableAnnotationTools: boolean
   user?: {
@@ -562,7 +561,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       if (matchedSeries == null) {
         matchedSeries = []
       }
-      matchedSeries.forEach(s => {
+      matchedSeries.forEach((s, i) => {
         const series = dmv.metadata.formatMetadata(s) as dmv.metadata.Series
         this.props.client.retrieveSeriesMetadata({
           studyInstanceUID: this.props.studyInstanceUID,
@@ -675,8 +674,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         if (slide.areVolumeImagesMonochrome) {
           const volumeViewer = new dmv.viewer.VolumeImageViewer({
             client: this.props.client,
-            metadata: slide.volumeImages,
-            retrieveRendered: this.props.renderer.retrieveRendered
+            metadata: slide.volumeImages
           })
           const activeOpticalPathIdentifiers: string[] = []
           const visibleOpticalPathIdentifiers: string[] = []
@@ -697,8 +695,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         } else {
           this.volumeViewer = new dmv.viewer.VolumeImageViewer({
             client: this.props.client,
-            metadata: slide.volumeImages,
-            retrieveRendered: this.props.renderer.retrieveRendered
+            metadata: slide.volumeImages
           })
         }
 
@@ -1670,16 +1667,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     let specimenMenu
     let opticalPathMenu
     const slide = this.state.activeSlide
-    if (!slide.isMultiplexed) {
-      specimenMenu = (
-        <Menu.SubMenu key='specimens' title='Specimens'>
-          <SpecimenList
-            metadata={slide.volumeImages[0]}
-            showstain
-          />
-        </Menu.SubMenu>
-      )
-    } else {
+    if (slide.areVolumeImagesMonochrome) {
       openSubMenuItems.push('opticalpaths')
       specimenMenu = (
         <Menu.SubMenu key='specimens' title='Specimens'>
@@ -1725,6 +1713,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           </Menu.SubMenu>
         )
       }
+    } else {
+      specimenMenu = (
+        <Menu.SubMenu key='specimens' title='Specimens'>
+          <SpecimenList
+            metadata={slide.volumeImages[0]}
+            showstain
+          />
+        </Menu.SubMenu>
+      )
     }
 
     let segmentationMenu

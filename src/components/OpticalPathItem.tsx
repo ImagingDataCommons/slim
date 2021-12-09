@@ -1,7 +1,21 @@
 import React from 'react'
-import { Badge, Button, Col, Popover, Row, Slider, Space, Switch } from 'antd'
-import { CloseCircleOutlined, SettingOutlined } from '@ant-design/icons'
-import { FaEye, FaEyeSlash } from 'react-icons/fa'
+import {
+  Badge,
+  Button,
+  Col,
+  Popover,
+  Row,
+  Slider,
+  Space,
+  Switch,
+  Tooltip
+} from 'antd'
+import {
+  DeleteOutlined,
+  EyeOutlined,
+  EyeInvisibleOutlined,
+  SettingOutlined
+} from '@ant-design/icons';
 import Description from './Description'
 import * as dmv from 'dicom-microscopy-viewer'
 import * as dcmjs from 'dcmjs'
@@ -56,12 +70,13 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     this.handleColorGChange = this.handleColorGChange.bind(this)
     this.handleColorBChange = this.handleColorBChange.bind(this)
     this.handleRemoval = this.handleRemoval.bind(this)
+    this.getCurrentColor = this.getCurrentColor.bind(this)
     this.state = {
       isVisible: this.props.isVisible,
       currentStyle: {
         opacity: this.props.defaultStyle.opacity,
         color: this.props.defaultStyle.color,
-        limitValues: this.props.defaultStyle.limitValues
+        limitValues: this.props.defaultStyle.limitValues,
       }
     }
   }
@@ -105,7 +120,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       currentStyle: {
         color: color,
         opacity: state.currentStyle.opacity,
-        limitValues: state.currentStyle.limitValues
+        limitValues: state.currentStyle.limitValues,
       }
     }))
     this.props.onStyleChange({
@@ -127,7 +142,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       currentStyle: {
         color: color,
         opacity: state.currentStyle.opacity,
-        limitValues: state.currentStyle.limitValues
+        limitValues: state.currentStyle.limitValues,
       }
     }))
     this.props.onStyleChange({
@@ -149,13 +164,21 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       currentStyle: {
         color: color,
         opacity: state.currentStyle.opacity,
-        limitValues: state.currentStyle.limitValues
+        limitValues: state.currentStyle.limitValues,
       }
     }))
     this.props.onStyleChange({
       opticalPathIdentifier: identifier,
       styleOptions: { color: color }
     })
+  }
+
+  getCurrentColor (): string {
+    const color = this.state.currentStyle.color
+    const r = color[0]
+    const g = color[1]
+    const b = color[2]
+    return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)
   }
 
   handleLimitChange (
@@ -166,7 +189,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       currentStyle: {
         color: state.currentStyle.color,
         opacity: state.currentStyle.opacity,
-        limitValues: values
+        limitValues: values,
       }
     }))
     this.props.onStyleChange({
@@ -314,13 +337,6 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       </div>
     )
 
-    const removeButton = (
-      <CloseCircleOutlined
-        style={{ color: '#FF0000' }}
-        onClick={this.handleRemoval}
-      />
-    )
-
     return (
       <Space align='start'>
         <div style={{ paddingLeft: '14px', paddingTop: '10px' }}>
@@ -330,8 +346,8 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
                 size='small'
                 checked={this.state.isVisible}
                 onChange={this.handleVisibilityChange}
-                checkedChildren={<FaEye />}
-                unCheckedChildren={<FaEyeSlash />}
+                checkedChildren={<EyeOutlined />}
+                unCheckedChildren={<EyeInvisibleOutlined />}
               />
               <Popover
                  placement='left'
@@ -344,22 +360,32 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
                   icon={<SettingOutlined />}
                 />
               </Popover>
+              <Tooltip title='Remove Optical Path'>
+                <Button
+                  type='default'
+                  shape='circle'
+                  icon={<DeleteOutlined />}
+                  onClick={this.handleRemoval}
+                />
+              </Tooltip>
             </Space>
           </Space>
         </div>
         <Space direction='horizontal' align='start'>
-          <Badge
-             count={removeButton}
-             offset={[-15, 17]}
-             title='Remove optical path'
-            >
+          <Badge.Ribbon
+            style={{
+              borderStyle: 'solid',
+              borderWidth: '1px', borderColor: 'gray'
+            }}
+            color={this.getCurrentColor()}
+          >
             <Description
-              header={`Optical Path ${identifier}`}
+              header={identifier}
               attributes={attributes}
               selectable
               hasLongValues
             />
-          </Badge>
+          </Badge.Ribbon>
         </Space>
       </Space>
     )

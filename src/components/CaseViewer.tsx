@@ -13,7 +13,7 @@ import {
 
 import * as dmv from 'dicom-microscopy-viewer'
 
-import { AnnotationSettings, RendererSettings } from '../AppConfig'
+import { AnnotationSettings } from '../AppConfig'
 import DicomWebManager from '../DicomWebManager'
 import Patient from './Patient'
 import Study from './Study'
@@ -32,7 +32,6 @@ interface ViewerProps extends RouteComponentProps {
     uid: string
     organization?: string
   }
-  renderer: RendererSettings
   annotations: AnnotationSettings[]
   enableAnnotationTools: boolean
   user?: {
@@ -189,7 +188,6 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
             render={(routeProps) => (
               <SlideViewer
                 client={this.props.client}
-                renderer={this.props.renderer}
                 studyInstanceUID={this.props.studyInstanceUID}
                 seriesInstanceUID={routeProps.match.params.SeriesInstanceUID}
                 slides={this.state.slides}

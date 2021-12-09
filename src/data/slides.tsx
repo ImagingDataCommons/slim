@@ -37,7 +37,6 @@ class Slide {
   readonly containerIdentifier: string
   readonly seriesInstanceUIDs: string[]
   readonly opticalPathIdentifiers: string[]
-  readonly isMultiplexed: boolean
   readonly areVolumeImagesMonochrome: boolean
   readonly volumeImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
   readonly labelImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
@@ -120,12 +119,6 @@ class Slide {
       this.volumeImages[0].SamplesPerPixel === 1 &&
       this.volumeImages[0].PhotometricInterpretation === 'MONOCHROME2'
     )
-
-    if (opticalPathIdentifiers.size > 1) {
-      this.isMultiplexed = true
-    } else {
-      this.isMultiplexed = false
-    }
 
     this.description = (
       options.description !== undefined ? options.description : ''
