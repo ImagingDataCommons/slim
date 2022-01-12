@@ -50,8 +50,8 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       this.setState({
         numStudies: studies.length,
         studies: studies.slice(0, this.state.pageSize).map((study) => {
-          const metadata = dmv.metadata.formatMetadata(study)
-          return metadata as dmv.metadata.Study
+          const { dataset } = dmv.metadata.formatMetadata(study)
+          return dataset as dmv.metadata.Study
         })
       })
     }).catch((error) => {
@@ -90,8 +90,8 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     this.props.client.searchForStudies(searchOptions).then((studies) => {
       this.setState({
         studies: studies.map((study) => {
-          const metadata = dmv.metadata.formatMetadata(study)
-          return metadata as dmv.metadata.Study
+          const { dataset } = dmv.metadata.formatMetadata(study)
+          return dataset as dmv.metadata.Study
         })
       })
     }).catch(() => message.error('Request to search for studies failed.'))

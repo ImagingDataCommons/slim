@@ -11,7 +11,7 @@ interface Store {
   client: dwc.api.DICOMwebClient
 }
 
-export default class DicomWebManager {
+export default class DicomWebManager implements dwc.api.DICOMwebClient {
   private readonly stores: Store[] = []
 
   private readonly handleError: DicomWebManagerErrorHandler
@@ -90,7 +90,7 @@ export default class DicomWebManager {
 
   storeInstances = async (
     options: dwc.api.StoreInstancesOptions
-  ): Promise<string> => {
+  ): Promise<void> => {
     if (this.stores[0].write) {
       return await this.stores[0].client.storeInstances(options)
     } else {
@@ -162,7 +162,7 @@ export default class DicomWebManager {
 
   retrieveBulkData = async (
     options: dwc.api.RetrieveBulkDataOptions
-  ): Promise<dwc.api.Bulkdata> => {
+  ): Promise<dwc.api.Bulkdata[]> => {
     return await this.stores[0].client.retrieveBulkData(options)
   }
 }

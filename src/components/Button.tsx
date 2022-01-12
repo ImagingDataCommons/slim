@@ -2,10 +2,8 @@ import React from 'react'
 import classNames from 'classnames'
 import { Button as Btn, Tooltip } from 'antd'
 
-import { IconType } from 'react-icons'
-
 interface ButtonProps {
-  icon: IconType
+  icon: any
   tooltip?: string
   label?: string
   onClick?: (options: any) => void

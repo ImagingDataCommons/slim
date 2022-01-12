@@ -18,7 +18,7 @@ declare module 'dcmjs' {
     export class DicomDict {
       constructor (meta: object)
       dict: object
-      write (writeOptions?: object): string
+      write (writeOptions?: object): ArrayBuffer
     }
 
     export class DicomMessage {

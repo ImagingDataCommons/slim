@@ -142,7 +142,10 @@ declare module 'dicom-microscopy-viewer' {
       isMappingVisible (mappingUID: string): boolean
       getMappingMetadata (mappingUID: string): metadata.ParametricMap[]
       getAllMappings (): dwc.mapping.Mapping[]
-      addAnnotationGroups (metadata: MicroscopyBulkSimpleAnnotations): void
+      addAnnotationGroups (
+        metadata: MicroscopyBulkSimpleAnnotations,
+        bulkdata: { [keyword: string]: { vr: string, BulkDataURI: string }}
+      ): void
       removeAnnotationGroup (annotationGroupUID: string): void
       showAnnotationGroup (
         annotationGroupUID: string,
@@ -355,7 +358,7 @@ declare module 'dicom-microscopy-viewer' {
       Alphabetic: string
     }
 
-    export interface Study {
+    export interface Study extends Dataset {
       ModalitiesInStudy: string[]
       ReferringPhysicianName: PersonName
       PatientName: PersonName
@@ -395,19 +398,19 @@ declare module 'dicom-microscopy-viewer' {
     }
 
     export class MicroscopyBulkSimpleAnnotations {
-      constructor ({ metadata: Metadata }: object)
+      constructor ({ metadata: Dataset }: object)
     }
 
     export class ParametricMap {
-      constructor ({ metadata: Metadata }: object)
+      constructor ({ metadata: Dataset }: object)
     }
 
     export class Segmentation {
-      constructor ({ metadata: Metadata }: object)
+      constructor ({ metadata: Dataset }: object)
     }
 
     export class VLWholeSlideMicroscopyImage {
-      constructor ({ metadata: Metadata }: object)
+      constructor ({ metadata: Dataset }: object)
     }
 
     export interface SpecimenPreparation {
@@ -435,7 +438,9 @@ declare module 'dicom-microscopy-viewer' {
       OpticalPathDescription: string
     }
 
-    export interface SOPClass {
+    export interface Dataset {}
+
+    export interface SOPClass extends Dataset {
       // Patient module
       PatientID: string
       PatientName: PersonName
@@ -557,10 +562,10 @@ declare module 'dicom-microscopy-viewer' {
       }[]
     }
 
-
-    type Metadata = Study|Series|Instance|VLWholeSlideMicroscopyImage
-
-    export function formatMetadata (metadata: object): Metadata
+    export function formatMetadata (metadata: object): {
+      dataset: Dataset,
+      bulkDataMapping: { [keyword: string]: { vr: string, BulkDataURI: string }}
+    }
 
   }
 

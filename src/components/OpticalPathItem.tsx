@@ -375,7 +375,9 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
           <Badge.Ribbon
             style={{
               borderStyle: 'solid',
-              borderWidth: '1px', borderColor: 'gray'
+              borderWidth: '1px',
+              borderColor: 'gray',
+              visibility: this.state.isVisible ? 'visible' : 'hidden'
             }}
             color={this.getCurrentColor()}
           >

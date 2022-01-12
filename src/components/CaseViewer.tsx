@@ -89,7 +89,8 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     })
 
     await Promise.all(matchedSeries.map(async (s) => {
-      const loadingSeries = dmv.metadata.formatMetadata(s) as dmv.metadata.Series
+      const { dataset } = dmv.metadata.formatMetadata(s)
+      const loadingSeries = dataset as dmv.metadata.Series
       console.info(
         'search for instances in series ' +
         `"${loadingSeries.SeriesInstanceUID}"...`
@@ -101,7 +102,8 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
 
       const seriesImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
       retrievedMetadata.forEach(item => {
-        const image = dmv.metadata.formatMetadata(item) as dmv.metadata.VLWholeSlideMicroscopyImage
+        const { dataset } = dmv.metadata.formatMetadata(item)
+        const image = dataset as dmv.metadata.VLWholeSlideMicroscopyImage
         if (image.SOPClassUID === SOPClassUIDs.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE) {
           seriesImages.push(image)
         }

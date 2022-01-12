@@ -97,7 +97,7 @@ declare module 'dicomweb-client' {
     }
 
     export interface StoreInstancesOptions {
-      datasets: arraybuffer[]
+      datasets: ArrayBuffer[]
     }
 
     export type Study = {
@@ -128,67 +128,56 @@ declare module 'dicomweb-client' {
       InstanceNumber: string
     }
 
-    export type Pixeldata = arraybuffer
+    export type Pixeldata = ArrayBuffer
 
-    export type Bulkdata = arraybuffer
+    export type Bulkdata = ArrayBuffer
 
-    export type Dataset = arraybuffer
+    export type Dataset = ArrayBuffer
 
-    export class DICOMwebClient {
-      constructor (options: DICOMwebClientOptions)
-
+    export interface DICOMwebClient {
       headers: {[key: string]: string}
-
       baseURL: string
-
       // STOW-RS
-      storeInstances (options: StoreInstancesOptions): Primise<void>
-
+      storeInstances (options: StoreInstancesOptions): Promise<void>
       // QIDO-RS
       searchForStudies (
         options: SearchForStudiesOptions
       ): Promise<Study[]>
-
       searchForSeries (
         options: SearchForSeriesOptions
       ): Promise<Series[]>
-
       searchForInstances (
         options: SearchForInstancesOptions
       ): Promise<Instance[]>
-
       // WADO-RS
       retrieveStudyMetadata (
         options: RetrieveStudyMetadataOptions
       ): Promise<Metadata[]>
-
       retrieveSeriesMetadata (
         options: RetrieveSeriesMetadataOptions
       ): Promise<Metadata[]>
-
       retrieveInstanceMetadata (
         options: RetrieveInstanceMetadataOptions
       ): Promise<Metadata[]>
-
       retrieveInstance (
         options: RetrieveInstanceOptions
       ): Promise<Dataset>
-
       retrieveInstanceFrames (
         options: RetrieveInstanceFramesOptions
       ): Promise<Pixeldata[]>
-
       retrieveInstanceRendered (
         options: RetrieveInstanceRenderedOptions
       ): Promise<Pixeldata>
-
       retrieveInstanceFramesRendered (
         options: RetrieveInstanceFramesRenderedOptions
       ): Promise<Pixeldata>
-
       retrieveBulkData (
         options: RetrieveBulkDataOptions
-      ): Promise<Bulkdata>
+      ): Promise<Bulkdata[]>
+    }
+
+    export class DICOMwebClient implements DICOMwebClient {
+      constructor (options: DICOMwebClientOptions)
     }
 
     export interface MetadataElement {

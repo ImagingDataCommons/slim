@@ -397,7 +397,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       //   matchedInstances = []
       // }
       matchedInstances.forEach(i => {
-        const instance = dmv.metadata.formatMetadata(i) as dmv.metadata.Instance
+        const { dataset } = dmv.metadata.formatMetadata(i)
+        const instance = dataset as dmv.metadata.Instance
         if (instance.SOPClassUID === SOPClassUIDs.COMPREHENSIVE_3D_SR) {
           console.info(`retrieve SR instance "${instance.SOPInstanceUID}"`)
           this.props.client.retrieveInstance({
@@ -406,7 +407,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             sopInstanceUID: instance.SOPInstanceUID
           }).then((retrievedInstance): void => {
             const data = dcmjs.data.DicomMessage.readFile(retrievedInstance)
-            const dataset = dmv.metadata.formatMetadata(data.dict)
+            const { dataset } = dmv.metadata.formatMetadata(data.dict)
             const report = dataset as unknown as dmv.metadata.Comprehensive3DSR
             /*
              * Perform a couple of checks to ensure the document content of the
@@ -512,27 +513,30 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         matchedSeries = []
       }
       matchedSeries.forEach(s => {
-        const series = dmv.metadata.formatMetadata(s) as dmv.metadata.Series
+        const { dataset } = dmv.metadata.formatMetadata(s)
+        const series = dataset as dmv.metadata.Series
         this.props.client.retrieveSeriesMetadata({
           studyInstanceUID: this.props.studyInstanceUID,
           seriesInstanceUID: series.SeriesInstanceUID
         }).then((retrievedMetadata): void => {
-          let annotations: dmv.metadata.MicroscopyBulkSimpleAnnotations[] =
-            retrievedMetadata.map( metadata => {
-              return new dmv.metadata.MicroscopyBulkSimpleAnnotations({
-                  metadata
-              })
-            })
-          try {
-            viewer.addAnnotationGroups(annotations)
-          } catch (error) {
-            // eslint-disable-next-line @typescript-eslint/no-floating-promises
-            message.error(
-              'An error occured. ' +
-              'Microscopy Bulk Simple Annotations cannot be displayed.'
+          retrievedMetadata.forEach(metadata => {
+            const { dataset, bulkDataMapping }  = dmv.metadata.formatMetadata(
+              metadata
             )
-            console.error(`failed to add annotation groups: ${error}`)
-          }
+            const annotation = new dmv.metadata.MicroscopyBulkSimpleAnnotations({
+                metadata: dataset
+            })
+            try {
+              viewer.addAnnotationGroups(annotation, bulkDataMapping)
+            } catch (error) {
+              // eslint-disable-next-line @typescript-eslint/no-floating-promises
+              message.error(
+                'An error occured. ' +
+                'Microscopy Bulk Simple Annotations cannot be displayed.'
+              )
+              console.error(`failed to add annotation groups: ${error}`)
+            }
+          })
           this.forceUpdate()
         })
       })
@@ -562,7 +566,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         matchedSeries = []
       }
       matchedSeries.forEach((s, i) => {
-        const series = dmv.metadata.formatMetadata(s) as dmv.metadata.Series
+        const { dataset } = dmv.metadata.formatMetadata(s)
+        const series = dataset as dmv.metadata.Series
         this.props.client.retrieveSeriesMetadata({
           studyInstanceUID: this.props.studyInstanceUID,
           seriesInstanceUID: series.SeriesInstanceUID
@@ -571,20 +576,25 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             metadata => new dmv.metadata.Segmentation({ metadata })
           )
           segmentations = segmentations.filter(seg => {
-            const refImage = this.props.slides[0].volumeImages[0]
+            const refImage = this.state.activeSlide.volumeImages[0]
             return (
               seg.FrameOfReferenceUID === refImage.FrameOfReferenceUID &&
               seg.ContainerIdentifier === refImage.ContainerIdentifier
             )
           })
-          try {
-            viewer.addSegments(segmentations)
-          } catch (error) {
-            // eslint-disable-next-line @typescript-eslint/no-floating-promises
-            message.error('An error occured. Segmentations cannot be displayed.')
-            console.error(`failed to add segments: ${error}`)
+          if (segmentations.length > 0) {
+            try {
+              viewer.addSegments(segmentations)
+            } catch (error) {
+              // eslint-disable-next-line @typescript-eslint/no-floating-promises
+              message.error(
+                'An error occured. ' +
+                'Segmentations cannot be displayed.'
+              )
+              console.error(`failed to add segments: ${error}`)
+            }
+            this.forceUpdate()
           }
-          this.forceUpdate()
         })
       })
     })
@@ -613,7 +623,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         matchedSeries = []
       }
       matchedSeries.forEach(s => {
-        const series = dmv.metadata.formatMetadata(s) as dmv.metadata.Series
+        const { dataset } = dmv.metadata.formatMetadata(s)
+        const series = dataset as dmv.metadata.Series
         this.props.client.retrieveSeriesMetadata({
           studyInstanceUID: this.props.studyInstanceUID,
           seriesInstanceUID: series.SeriesInstanceUID
@@ -622,20 +633,25 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             metadata => new dmv.metadata.ParametricMap({ metadata })
           )
           maps = maps.filter(seg => {
-            const refImage = this.props.slides[0].volumeImages[0]
+            const refImage = this.state.activeSlide.volumeImages[0]
             return (
               seg.FrameOfReferenceUID === refImage.FrameOfReferenceUID &&
               seg.ContainerIdentifier === refImage.ContainerIdentifier
             )
           })
-          try {
-            viewer.addMappings(maps)
-          } catch (error) {
-            // eslint-disable-next-line @typescript-eslint/no-floating-promises
-            message.error('An error occured. Parametric Map cannot be displayed.')
-            console.error(`failed to add mappings: ${error}`)
+          if (maps.length > 0) {
+            try {
+              viewer.addMappings(maps)
+            } catch (error) {
+              // eslint-disable-next-line @typescript-eslint/no-floating-promises
+              message.error(
+                'An error occured. ' +
+                'Parametric Map cannot be displayed.'
+              )
+              console.error(`failed to add mappings: ${error}`)
+            }
+            this.forceUpdate()
           }
-          this.forceUpdate()
         })
       })
     })
@@ -1142,7 +1158,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       writer.dict = dcmjs.data.DicomMetaDictionary.denaturalizeDataset(dataset)
       const buffer = writer.write()
       this.props.client.storeInstances({ datasets: [buffer] }).then(
-        (response: string) => message.info('Annotations were saved.')
+        (response: void) => message.info('Annotations were saved.')
       ).catch((error) => {
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         message.error('An error occured. Annotations were not saved.')

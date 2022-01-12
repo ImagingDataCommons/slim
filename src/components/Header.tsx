@@ -1,6 +1,5 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { FaInfo, FaList } from 'react-icons/fa'
 import {
   Avatar,
   Col,
@@ -10,7 +9,11 @@ import {
   Row,
   Space
 } from 'antd'
-import { UserOutlined } from '@ant-design/icons'
+import {
+  InfoOutlined,
+  UnorderedListOutlined,
+  UserOutlined
+} from '@ant-design/icons'
 import { detect } from 'detect-browser'
 
 import Button from './Button'
@@ -110,14 +113,14 @@ class Header extends React.Component<HeaderProps, {}> {
     if (this.props.showWorklistButton) {
       worklistButton = (
         <NavLink to='/'>
-          <Button icon={FaList} tooltip='Worklist' />
+          <Button icon={UnorderedListOutlined} tooltip='Worklist' />
         </NavLink>
       )
     }
 
     const infoButton = (
       <Button
-        icon={FaInfo}
+        icon={InfoOutlined}
         tooltip='About'
         onClick={this.handleInfoClick}
       />

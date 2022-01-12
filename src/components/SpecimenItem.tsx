@@ -120,6 +120,7 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
     return (
       <Item
         uid={uid}
+        key={uid}
         identifier={identifier}
         attributes={attributes}
         hasLongValues
