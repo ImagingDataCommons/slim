@@ -386,16 +386,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
 
     console.info('search for Comprehensive 3D SR instances')
-    this.setState({ isLoading: true })
     this.props.client.searchForInstances({
       studyInstanceUID: this.props.studyInstanceUID,
       queryParams: {
         Modality: 'SR'
       }
     }).then((matchedInstances): void => {
-      // if (matchedInstances == null) {
-      //   matchedInstances = []
-      // }
       matchedInstances.forEach(i => {
         const { dataset } = dmv.metadata.formatMetadata(i)
         const instance = dataset as dmv.metadata.Instance
@@ -476,7 +472,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               }
             })
             // State update will also ensure that the component is re-rendered.
-            this.setState({ isLoading: false })
           }).catch((error) => {
             // eslint-disable-next-line @typescript-eslint/no-floating-promises
             message.error('An error occured. Annotations could not be loaded')
@@ -502,7 +497,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       return
     }
     console.info('search for Microscopy Bulk Simple Annotations instances')
-    this.setState({ isLoading: true })
     this.props.client.searchForSeries({
       studyInstanceUID: this.props.studyInstanceUID,
       queryParams: {
@@ -555,7 +549,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
 
     console.info('search for Segmentation instances')
-    this.setState({ isLoading: true })
     this.props.client.searchForSeries({
       studyInstanceUID: this.props.studyInstanceUID,
       queryParams: {
@@ -612,7 +605,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
 
     console.info('search for Parametric Map instances')
-    this.setState({ isLoading: true })
     this.props.client.searchForSeries({
       studyInstanceUID: this.props.studyInstanceUID,
       queryParams: {
@@ -789,6 +781,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
+  onLoadingStarted = (event: CustomEventInit): void => {
+    this.setState({ isLoading: true })
+  }
+
+  onLoadingEnded = (event: CustomEventInit): void => {
+    this.setState({ isLoading: false })
+  }
+
   onRoiRemoved = (event: CustomEventInit): void => {
     const roi = event.detail.payload as dmv.roi.ROI
     console.debug(`removed ROI "${roi.uid}"`)
@@ -807,6 +807,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       'dicommicroscopyviewer_roi_removed',
       this.onRoiRemoved
     )
+    document.body.removeEventListener(
+      'dicommicroscopyviewer_loading_started',
+      this.onLoadingStarted
+    )
+    document.body.removeEventListener(
+      'dicommicroscopyviewer_loading_ended',
+      this.onLoadingEnded
+    )
   }
 
   componentDidMount (): void {
@@ -821,6 +829,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     document.body.addEventListener(
       'dicommicroscopyviewer_roi_removed',
       this.onRoiRemoved
+    )
+    document.body.addEventListener(
+      'dicommicroscopyviewer_loading_started',
+      this.onLoadingStarted
+    )
+    document.body.addEventListener(
+      'dicommicroscopyviewer_loading_ended',
+      this.onLoadingEnded
     )
     this.populateViewports()
   }
@@ -859,7 +875,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     option: any
   ): void {
     const selectedFinding = this.state.selectedFinding
-    console.log('DEBUG: ', value, option)
     if (selectedFinding !== undefined) {
       const key = _buildKey(selectedFinding)
       const name = option.label
@@ -1889,10 +1904,21 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       toolbarHeight = '50px'
     }
 
+    /* It would be nicer to use the ant Spin component, but that causes issues
+     * with the positioning of the viewport.
+     */
+    let loadingDisplay = "none"
+    if (this.state.isLoading) {
+      loadingDisplay = "block"
+    }
+
     return (
       <Layout style={{ height: '100%' }} hasSider>
         <Layout.Content style={{ height: '100%' }}>
           {toolbar}
+
+          <div className="dimmer" style={{ display: loadingDisplay }} />
+          <div className="spinner" style={{ display: loadingDisplay }} />
           <div
             style={{ height: `calc(100% - ${toolbarHeight})` }}
             ref={this.volumeViewport}
