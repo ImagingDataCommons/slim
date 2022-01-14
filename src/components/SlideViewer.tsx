@@ -477,6 +477,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             message.error('An error occured. Annotations could not be loaded')
             console.error(error)
           })
+          this.forceUpdate()
         }
       })
     }).catch((error) => {
