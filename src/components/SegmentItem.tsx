@@ -144,7 +144,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
           </Space>
         </div>
         <Menu.Item
-          style={{ height: '100%' }}
+          style={{ height: '100%', paddingLeft: '3px' }}
           key={this.props.segment.uid}
           {...otherProps}
         >

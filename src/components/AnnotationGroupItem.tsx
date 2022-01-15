@@ -98,7 +98,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
           />
         </div>
         <Menu.Item
-          style={{ height: '100%' }}
+          style={{ height: '100%', paddingLeft: '3px' }}
           key={this.props.annotationGroup.uid}
           {...otherProps}
         >

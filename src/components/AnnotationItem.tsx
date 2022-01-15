@@ -25,10 +25,7 @@ class AnnotationItem extends React.Component<AnnotationItemProps, {}> {
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
   }
 
-  handleVisibilityChange (
-    checked: boolean,
-    event: Event
-  ): void {
+  handleVisibilityChange (checked: boolean, event: Event): void {
     this.props.onVisibilityChange({
       roiUID: this.props.roi.uid,
       isVisible: checked
@@ -108,7 +105,7 @@ class AnnotationItem extends React.Component<AnnotationItemProps, {}> {
           />
         </div>
         <Menu.Item
-          style={{ height: '100%' }}
+          style={{ height: '100%', paddingLeft: '3px' }}
           key={this.props.roi.uid}
           {...otherProps}
         >

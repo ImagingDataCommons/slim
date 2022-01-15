@@ -187,7 +187,7 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
           </Space>
         </div>
         <Menu.Item
-          style={{ height: '100%' }}
+          style={{ height: '100%', paddingLeft: '3px' }}
           key={this.props.mapping.uid}
           {...otherProps}
         >

@@ -1,6 +1,7 @@
 import React from 'react'
 import * as dmv from 'dicom-microscopy-viewer'
-import { Menu } from 'antd'
+import { Menu, Switch } from 'antd'
+import { FaEye, FaEyeSlash } from 'react-icons/fa'
 
 import AnnotationItem from './AnnotationItem'
 
@@ -23,6 +24,19 @@ class AnnotationList extends React.Component<AnnotationListProps, {}> {
   constructor (props: AnnotationListProps) {
     super(props)
     this.handleMenuItemSelection = this.handleMenuItemSelection.bind(this)
+    this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
+  }
+
+  handleVisibilityChange (checked: boolean, event: Event): void {
+    if (checked) {
+      this.props.rois.forEach(roi => {
+        this.props.onVisibilityChange({ roiUID: roi.uid, isVisible: checked })
+      })
+    } else {
+      this.props.visibleRoiUIDs.forEach(roiUID => {
+        this.props.onVisibilityChange({ roiUID, isVisible: checked })
+      })
+    }
   }
 
   handleMenuItemSelection (object: any): void {
@@ -41,6 +55,16 @@ class AnnotationList extends React.Component<AnnotationListProps, {}> {
     ))
 
     return (
+      <>
+      <div style={{ paddingLeft: '14px', paddingTop: '7px', paddingBottom: '7px' }}>
+        <Switch
+          size='small'
+          onChange={this.handleVisibilityChange}
+          checked={this.props.visibleRoiUIDs.length > 0}
+          checkedChildren={<FaEye />}
+          unCheckedChildren={<FaEyeSlash />}
+        />
+      </div>
       <Menu
         selectedKeys={this.props.selectedRoiUIDs}
         onSelect={this.handleMenuItemSelection}
@@ -48,6 +72,7 @@ class AnnotationList extends React.Component<AnnotationListProps, {}> {
       >
         {items}
       </Menu>
+      </>
     )
   }
 }
