@@ -14,15 +14,13 @@ import Header from './components/Header'
 import CaseViewer from './components/CaseViewer'
 import Worklist from './components/Worklist'
 
-import 'antd/dist/antd.less'
-import './App.less'
-
 import { joinUrl } from './utils/url'
 import { User, AuthManager } from './auth'
 import OidcManager from './auth/OidcManager'
 import DicomWebManager from './DicomWebManager'
 
 import InfoPage from './components/InfoPage'
+
 
 interface AppProps {
   name: string

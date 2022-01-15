@@ -2063,7 +2063,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
         <Layout.Sider
           width={300}
-          theme='light'
           reverseArrow style={{
             borderLeft: 'solid',
             borderLeftWidth: 0.25
@@ -2074,7 +2073,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             defaultOpenKeys={openSubMenuItems}
             style={{ height: '100%' }}
             inlineIndent={14}
-            theme='light'
             forceSubMenuRender
           >
             <Menu.SubMenu key='label' title='Slide label'>

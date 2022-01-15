@@ -76,4 +76,5 @@ export default interface AppConfig {
   oidc?: OidcSettings
   disableWorklist?: boolean
   disableAnnotationTools?: boolean
+  mode?: string
 }
