@@ -1,5 +1,4 @@
 import React from 'react'
-import classNames from 'classnames'
 import { Button as Btn, Tooltip } from 'antd'
 
 interface ButtonProps {
@@ -7,7 +6,6 @@ interface ButtonProps {
   tooltip?: string
   label?: string
   onClick?: (options: any) => void
-  isToggle?: boolean
   isSelected?: boolean
 }
 
@@ -31,19 +29,28 @@ class Button extends React.Component<ButtonProps, {}> {
     if (Icon === undefined) {
       return null
     }
-    const cssClasses = classNames({
-      active: this.props.isSelected
-    })
-
-    const button = (
-      <Btn
-        className={cssClasses}
-        onClick={this.handleClick}
-        icon={<Icon />}
-      >
-        {this.props.label}
-      </Btn>
-    )
+    let button
+    if (this.props.isSelected) {
+      button = (
+        <Btn
+          onClick={this.handleClick}
+          icon={<Icon />}
+          type='primary'
+        >
+          {this.props.label}
+        </Btn>
+      )
+    } else {
+      button = (
+        <Btn
+          onClick={this.handleClick}
+          icon={<Icon />}
+          type='default'
+        >
+          {this.props.label}
+        </Btn>
+      )
+    }
 
     if (this.props.tooltip !== undefined) {
       return (

@@ -6,13 +6,14 @@ import {
 import {
   FaDrawPolygon,
   FaEye,
+  FaEyeSlash,
   FaHandPaper,
   FaHandPointer,
-  FaRuler,
   FaTrash,
   FaSave
 } from 'react-icons/fa'
 import {
+  Checkbox,
   message,
   Menu,
   Modal,
@@ -229,7 +230,6 @@ interface SlideViewerProps extends RouteComponentProps {
 
 interface SlideViewerState {
   activeSlide: Slide
-  annotatedRoi?: dmv.roi.ROI
   selectedRoiUIDs: string[]
   visibleRoiUIDs: string[]
   visibleSegmentUIDs: string[]
@@ -239,10 +239,16 @@ interface SlideViewerState {
   activeOpticalPathIdentifiers: string[]
   selectedFinding?: dcmjs.sr.coding.CodedConcept
   selectedEvaluations: Evaluation[]
+  selectedGeometryType?: string
+  selectedMarkup?: string
   generatedReport?: dmv.metadata.Comprehensive3DSR
   isLoading: boolean
   isAnnotationModalVisible: boolean
   isReportModalVisible: boolean
+  isRoiDrawingActive: boolean
+  isRoiModificationActive: boolean
+  isRoiTranslationActive: boolean
+  areRoisHidden: boolean
 }
 
 /**
@@ -302,11 +308,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleRoiModification = this.handleRoiModification.bind(this)
     this.handleRoiVisibilityChange = this.handleRoiVisibilityChange.bind(this)
     this.handleRoiRemoval = this.handleRoiRemoval.bind(this)
-    this.handleAnnotationCompletion = this.handleAnnotationCompletion.bind(this)
-    this.handleAnnotationCancellation = this.handleAnnotationCancellation.bind(this)
+    this.handleAnnotationConfigurationCancellation = this.handleAnnotationConfigurationCancellation.bind(this)
+    this.handleAnnotationGeometryTypeSelection = this.handleAnnotationGeometryTypeSelection.bind(this)
+    this.handleAnnotationMeasurementActivation = this.handleAnnotationMeasurementActivation.bind(this)
     this.handleAnnotationFindingSelection = this.handleAnnotationFindingSelection.bind(this)
     this.handleAnnotationEvaluationSelection = this.handleAnnotationEvaluationSelection.bind(this)
     this.handleAnnotationEvaluationClearance = this.handleAnnotationEvaluationClearance.bind(this)
+    this.handleAnnotationConfigurationCompletion = this.handleAnnotationConfigurationCompletion.bind(this)
     this.handleAnnotationSelection = this.handleAnnotationSelection.bind(this)
     this.handleAnnotationVisibilityChange = this.handleAnnotationVisibilityChange.bind(this)
     this.handleAnnotationGroupVisibilityChange = this.handleAnnotationGroupVisibilityChange.bind(this)
@@ -340,10 +348,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
 
     this.state = {
-      isLoading: false,
       activeSlide: slides[0],
-      isAnnotationModalVisible: false,
-      annotatedRoi: undefined,
       selectedRoiUIDs: [],
       visibleRoiUIDs: [],
       visibleSegmentUIDs: [],
@@ -353,8 +358,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       activeOpticalPathIdentifiers: [],
       selectedFinding: undefined,
       selectedEvaluations: [],
+      generatedReport: undefined,
+      isLoading: false,
+      isAnnotationModalVisible: false,
       isReportModalVisible: false,
-      generatedReport: undefined
+      isRoiDrawingActive: false,
+      isRoiTranslationActive: false,
+      isRoiModificationActive: false,
+      areRoisHidden: false
     }
   }
 
@@ -744,38 +755,58 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   onRoiDrawn = (event: CustomEventInit): void => {
     const roi = event.detail.payload as dmv.roi.ROI
-    console.debug(`added ROI "${roi.uid}"`)
-    this.setState({
-      isAnnotationModalVisible: true,
-      annotatedRoi: roi
-    })
-    if (this.volumeViewer !== undefined) {
-      if (this.volumeViewer.isDrawInteractionActive) {
-        console.info('deactivate drawing of ROIs')
-        this.volumeViewer.deactivateDrawInteraction()
-        this.volumeViewer.activateSelectInteraction({})
-      }
+    const viewer = this.volumeViewer
+    const selectedFinding = this.state.selectedFinding
+    const selectedEvaluations = this.state.selectedEvaluations
+    if (
+      roi !== undefined &&
+      selectedFinding !== undefined &&
+      viewer !== undefined
+    ) {
+      console.debug(`add ROI "${roi.uid}"`)
+      const findingItem = new dcmjs.sr.valueTypes.CodeContentItem({
+        name: new dcmjs.sr.coding.CodedConcept({
+          value: '121071',
+          meaning: 'Finding',
+          schemeDesignator: 'DCM'
+        }),
+        value: selectedFinding,
+        relationshipType: 'CONTAINS'
+      })
+      roi.addEvaluation(findingItem)
+      selectedEvaluations.forEach((evaluation: Evaluation) => {
+        const item = new dcmjs.sr.valueTypes.CodeContentItem({
+          name: evaluation.name,
+          value: evaluation.value,
+          relationshipType: 'CONTAINS'
+        })
+        roi.addEvaluation(item)
+      })
+      const key = _buildKey(selectedFinding)
+      var style = this.roiStyles[key]
+      viewer.addROI(roi, style)
+      this.setState(state => ({
+        visibleRoiUIDs: [...state.visibleRoiUIDs, roi.uid]
+      }))
+    } else {
+      console.debug(`could not add ROI "${roi.uid}"`)
     }
   }
 
   onRoiSelected = (event: CustomEventInit): void => {
     const selectedRoi = event.detail.payload as dmv.roi.ROI
-    if (this.volumeViewer !== undefined) {
+    const viewer = this.volumeViewer
+    if (viewer !== undefined) {
       if (selectedRoi !== null) {
         console.debug(`selected ROI "${selectedRoi.uid}"`)
-        const viewer = this.volumeViewer
-        if (viewer !== undefined) {
-          viewer.setROIStyle(selectedRoi.uid, this.selectedRoiStyle)
-          const key = _getRoiKey(selectedRoi)
-          viewer.getAllROIs().forEach((roi) => {
-            if (roi.uid !== selectedRoi.uid) {
-              viewer.setROIStyle(roi.uid, this.roiStyles[key])
-            }
-          })
-        }
-        this.setState({
-          selectedRoiUIDs: [...this.state.selectedRoiUIDs, selectedRoi.uid]
+        viewer.setROIStyle(selectedRoi.uid, this.selectedRoiStyle)
+        const key = _getRoiKey(selectedRoi)
+        viewer.getAllROIs().forEach((roi) => {
+          if (roi.uid !== selectedRoi.uid) {
+            viewer.setROIStyle(roi.uid, this.roiStyles[key])
+          }
         })
+        this.setState({ selectedRoiUIDs: [selectedRoi.uid] })
       } else {
         this.setState({ selectedRoiUIDs: [] })
       }
@@ -843,8 +874,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   /**
-   * Handler that gets called when a finding has been selected for an
-   * annotation after the region of interest has been drawn.
+   * Handler that gets called when a finding has been selected for annotation.
    *
    * @param value - Code value of the coded finding that got selected
    * @param option - Option that got selected
@@ -865,8 +895,35 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   /**
+   * Handler that gets called when a geometry type has been selected for
+   * annotation.
+   *
+   * @param value - Code value of the coded finding that got selected
+   * @param option - Option that got selected
+   */
+  handleAnnotationGeometryTypeSelection (
+    value: string,
+    option: any
+  ): void {
+    this.setState({ selectedGeometryType: value })
+  }
+
+  /**
+   * Handler that gets called when measurements have been selected for
+   * annotation.
+   */
+  handleAnnotationMeasurementActivation (event: any): void {
+    const active = event.target.checked
+    if (active) {
+      this.setState({ selectedMarkup: 'measurement' })
+    } else {
+      this.setState({ selectedMarkup: undefined })
+    }
+  }
+
+  /**
    * Handler that gets called when an evaluation has been selected for an
-   * annotation after the region of interest has been drawn.
+   * annotation.
    *
    * @param value - Code value of the coded evaluation that got selected
    * @param option - Option that got selected
@@ -904,7 +961,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   /**
    * Handler that gets called when an evaluation has been cleared for an
-   * annotation after the region of interest has been drawn.
+   * annotation.
    */
   handleAnnotationEvaluationClearance (): void {
     this.setState({
@@ -913,63 +970,32 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   /**
-   * Handler that gets called when an annotation has been completed.
+   * Handler that gets called when annotation configuration has been completed.
    */
-  handleAnnotationCompletion (): void {
+  handleAnnotationConfigurationCompletion (): void {
+    console.debug('complete annotation configuration')
     const viewer = this.volumeViewer
-    const roi = this.state.annotatedRoi
-    const selectedFinding = this.state.selectedFinding
-    const selectedEvaluations = this.state.selectedEvaluations
+    const finding = this.state.selectedFinding
+    const geometryType = this.state.selectedGeometryType
+    const markup = this.state.selectedMarkup
     if (
-      roi !== undefined &&
-      selectedFinding !== undefined &&
-      viewer !== undefined
+      viewer !== undefined &&
+      geometryType !== undefined &&
+      finding !== undefined
     ) {
-      console.info(`completed annotation of ROI "${roi.uid}"`)
-      const findingItem = new dcmjs.sr.valueTypes.CodeContentItem({
-        name: new dcmjs.sr.coding.CodedConcept({
-          value: '121071',
-          meaning: 'Finding',
-          schemeDesignator: 'DCM'
-        }),
-        value: selectedFinding,
-        relationshipType: 'CONTAINS'
-      })
-      roi.addEvaluation(findingItem)
-      viewer.addROIEvaluation(roi.uid, findingItem)
-      selectedEvaluations.forEach((evaluation: Evaluation) => {
-        const item = new dcmjs.sr.valueTypes.CodeContentItem({
-          name: evaluation.name,
-          value: evaluation.value,
-          relationshipType: 'CONTAINS'
-        })
-        roi.addEvaluation(item)
-        viewer.addROIEvaluation(roi.uid, item)
-      })
-      this.setState(state => ({
-        annotatedRoi: roi,
-        visibleRoiUIDs: [...state.visibleRoiUIDs, roi.uid]
-      }))
-      const key = _buildKey(selectedFinding)
-      var style = this.roiStyles[key]
-      viewer.setROIStyle(roi.uid, style)
+      viewer.activateDrawInteraction({ geometryType, markup })
+      this.setState({ isAnnotationModalVisible: false })
+    } else {
+      console.error('could not complete annotation configuration')
     }
-    this.setState({ isAnnotationModalVisible: false })
   }
 
   /**
-   * Handler that gets called when an annotation has been cancelled.
+   * Handler that gets called when annotation configuration has been cancelled.
    */
-  handleAnnotationCancellation (): void {
-    console.info('cancel annotation')
-    const roi = this.state.annotatedRoi
-    if (this.volumeViewer !== undefined && roi !== undefined) {
-      this.volumeViewer.removeROI(roi.uid)
-    }
-    this.setState({
-      isAnnotationModalVisible: false,
-      annotatedRoi: undefined
-    })
+  handleAnnotationConfigurationCancellation (): void {
+    console.debug('cancel annotation configuration')
+    this.setState({ isAnnotationModalVisible: false })
   }
 
   /**
@@ -1224,7 +1250,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       viewer.setROIStyle(roi.uid, style)
     })
   }
-
   /**
    * Handle toggling of annotation visibility, i.e., whether a given
    * annotation should be either displayed or hidden by the viewer.
@@ -1242,9 +1267,18 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const roi = viewer.getROI(roiUID)
       const key = _getRoiKey(roi)
       viewer.setROIStyle(roi.uid, this.roiStyles[key])
-      this.setState(state => ({
-        visibleRoiUIDs: [...state.visibleRoiUIDs, roiUID]
-      }))
+      console.log('DEBUG: ', this.state.visibleRoiUIDs, roiUID)
+      this.setState(state => {
+        if (state.visibleRoiUIDs.indexOf(roiUID) < 0) {
+          return {
+            visibleRoiUIDs: [...state.visibleRoiUIDs, roiUID]
+          }
+        } else {
+          return {
+            visibleRoiUIDs: state.visibleRoiUIDs
+          }
+        }
+      })
     } else {
       console.info(`hide ROI ${roiUID}`)
       this.setState(state => ({
@@ -1481,29 +1515,37 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-
   /**
    * Handler that will toggle the ROI drawing tool, i.e., either activate or
    * de-activate it, depending on its current state.
    */
-  handleRoiDrawing ({ geometryType, markup }: {
-    geometryType: string
-    markup?: string
-  }): void {
-    if (this.volumeViewer === undefined) {
+  handleRoiDrawing (): void {
+    const viewer = this.volumeViewer
+    if (viewer === undefined) {
       return
     }
-    if (this.volumeViewer.isDrawInteractionActive) {
+    if (viewer.isDrawInteractionActive) {
       console.info('deactivate drawing of ROIs')
-      this.volumeViewer.deactivateDrawInteraction()
-      this.volumeViewer.activateSelectInteraction({})
+      viewer.deactivateDrawInteraction()
+      viewer.activateSelectInteraction({})
+      this.setState({
+        isAnnotationModalVisible: false,
+        isRoiTranslationActive: false,
+        isRoiDrawingActive: false,
+        isRoiModificationActive: false
+      })
     } else {
-      console.info(`activate drawing of ROIs for geometry Type ${geometryType}`)
-      this.volumeViewer.deactivateSelectInteraction()
-      this.volumeViewer.deactivateSnapInteraction()
-      this.volumeViewer.deactivateTranslateInteraction()
-      this.volumeViewer.deactivateModifyInteraction()
-      this.volumeViewer.activateDrawInteraction({ geometryType, markup })
+      console.info('activate drawing of ROIs')
+      this.setState({
+        isAnnotationModalVisible: true,
+        isRoiDrawingActive: true,
+        isRoiModificationActive: false,
+        isRoiTranslationActive: false
+      })
+      viewer.deactivateSelectInteraction()
+      viewer.deactivateSnapInteraction()
+      viewer.deactivateTranslateInteraction()
+      viewer.deactivateModifyInteraction()
     }
   }
 
@@ -1512,20 +1554,31 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * or de-activate it, depending on its current state.
    */
   handleRoiModification (): void {
-    if (this.volumeViewer === undefined) {
+    const viewer = this.volumeViewer
+    if (viewer === undefined) {
       return
     }
     console.info('toggle modification of ROIs')
-    if (this.volumeViewer.isModifyInteractionActive) {
-      this.volumeViewer.deactivateModifyInteraction()
-      this.volumeViewer.deactivateSnapInteraction()
-      this.volumeViewer.activateSelectInteraction({})
+    if (viewer.isModifyInteractionActive) {
+      viewer.deactivateModifyInteraction()
+      viewer.deactivateSnapInteraction()
+      viewer.activateSelectInteraction({})
+      this.setState({
+        isRoiTranslationActive: false,
+        isRoiDrawingActive: false,
+        isRoiModificationActive: false
+      })
     } else {
-      this.volumeViewer.deactivateDrawInteraction()
-      this.volumeViewer.deactivateTranslateInteraction()
-      this.volumeViewer.deactivateSelectInteraction()
-      this.volumeViewer.activateSnapInteraction({})
-      this.volumeViewer.activateModifyInteraction({})
+      this.setState({
+        isRoiModificationActive: true,
+        isRoiDrawingActive: false,
+        isRoiTranslationActive: false
+      })
+      viewer.deactivateDrawInteraction()
+      viewer.deactivateTranslateInteraction()
+      viewer.deactivateSelectInteraction()
+      viewer.activateSnapInteraction({})
+      viewer.activateModifyInteraction({})
     }
   }
 
@@ -1534,18 +1587,29 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * or de-activate it, depending on its current state.
    */
   handleRoiTranslation (): void {
-    if (this.volumeViewer === undefined) {
+    const viewer = this.volumeViewer
+    if (viewer === undefined) {
       return
     }
     console.info('toggle translation of ROIs')
-    if (this.volumeViewer.isTranslateInteractionActive) {
-      this.volumeViewer.deactivateTranslateInteraction()
+    if (viewer.isTranslateInteractionActive) {
+      viewer.deactivateTranslateInteraction()
+      this.setState({
+        isRoiTranslationActive: false,
+        isRoiDrawingActive: false,
+        isRoiModificationActive: false
+      })
     } else {
-      this.volumeViewer.deactivateModifyInteraction()
-      this.volumeViewer.deactivateSnapInteraction()
-      this.volumeViewer.deactivateDrawInteraction()
-      this.volumeViewer.deactivateSelectInteraction()
-      this.volumeViewer.activateTranslateInteraction({})
+      this.setState({
+        isRoiTranslationActive: true,
+        isRoiDrawingActive: false,
+        isRoiModificationActive: false
+      })
+      viewer.deactivateModifyInteraction()
+      viewer.deactivateSnapInteraction()
+      viewer.deactivateDrawInteraction()
+      viewer.deactivateSelectInteraction()
+      viewer.activateTranslateInteraction({})
     }
   }
 
@@ -1558,18 +1622,41 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (viewer === undefined) {
       return
     }
-    this.state.selectedRoiUIDs.forEach(uid => {
-      if (uid === undefined) {
+    viewer.deactivateDrawInteraction()
+    viewer.deactivateSnapInteraction()
+    viewer.deactivateTranslateInteraction()
+    viewer.deactivateModifyInteraction()
+    if (this.state.selectedRoiUIDs.length > 0) {
+      this.state.selectedRoiUIDs.forEach(uid => {
+        if (uid === undefined) {
+          // eslint-disable-next-line @typescript-eslint/no-floating-promises
+          message.warning('No annotation was selected for removal')
+          return
+        }
+        console.info(`remove ROI "${uid}"`)
+        viewer.removeROI(uid)
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        message.warning('No annotation was selected for removal')
-        return
-      }
-      console.info('remove ROI "{uid}"')
-      viewer.removeROI(uid)
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      message.info('Annotation was removed')
-    })
-    this.setState({ selectedRoiUIDs: [] })
+        message.info('Annotation was removed')
+      })
+      this.setState({
+        selectedRoiUIDs: [],
+        isRoiTranslationActive: false,
+        isRoiDrawingActive: false,
+        isRoiModificationActive: false
+      })
+    } else {
+      this.state.visibleRoiUIDs.forEach(uid => {
+        console.info(`remove ROI "${uid}"`)
+        viewer.removeROI(uid)
+      })
+      this.setState({
+        visibleRoiUIDs: [],
+        isRoiTranslationActive: false,
+        isRoiDrawingActive: false,
+        isRoiModificationActive: false
+      })
+    }
+    viewer.activateSelectInteraction({})
   }
 
   /**
@@ -1589,6 +1676,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       viewer.deactivateSelectInteraction()
       viewer.deactivateModifyInteraction()
       viewer.hideROIs()
+      this.setState({
+        areRoisHidden: true,
+        isRoiDrawingActive: false,
+        isRoiModificationActive: false,
+        isRoiTranslationActive: false
+      })
     } else {
       viewer.showROIs()
       viewer.activateSelectInteraction({})
@@ -1597,6 +1690,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           viewer.setROIStyle(uid, this.selectedRoiStyle)
         }
       })
+      this.setState({ areRoisHidden: false })
     }
   }
 
@@ -1613,14 +1707,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
 
     const openSubMenuItems = ['specimens', 'annotations']
-
-    const handlePolygonRoiDrawing = (): void => {
-      this.handleRoiDrawing({ geometryType: 'freehandpolygon' })
-    }
-
-    const handleLineRoiDrawing = (): void => {
-      this.handleRoiDrawing({ geometryType: 'line', markup: 'measurement' })
-    }
 
     let report: React.ReactNode
     const dataset = this.state.generatedReport
@@ -1651,7 +1737,40 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         </Select.Option>
       )
     })
+
+    const geometryTypeOptions = [
+      <Select.Option key='point' value='point'>Point</Select.Option>,
+      <Select.Option key='circle' value='circle'>Circle</Select.Option>,
+      <Select.Option key='box' value='box'>Rectangle</Select.Option>,
+      <Select.Option key='polygon' value='polygon'>Polygon</Select.Option>,
+      <Select.Option key='line' value='line'>Line</Select.Option>,
+      (
+        <Select.Option key='freehandpolygon' value='freehandpolygon'>
+          Polygon (freehand)
+        </Select.Option>
+      ),
+      (
+        <Select.Option key='freehandline' value='freehandline'>
+          Line (freehand)
+        </Select.Option>
+      ),
+    ]
+
     const selections: React.ReactNode[] = [
+      (
+        <Select
+          style={{ minWidth: 130 }}
+          onSelect={this.handleAnnotationGeometryTypeSelection}
+          key='annotation-geometry-type'
+        >
+          {geometryTypeOptions}
+        </Select>
+      ),
+      (
+        <Checkbox onChange={this.handleAnnotationMeasurementActivation}>
+          measure
+        </Checkbox>
+      ),
       (
         <Select
           style={{ minWidth: 130 }}
@@ -1661,7 +1780,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         >
           {findingOptions}
         </Select>
-      )
+      ),
     ]
 
     const selectedFinding = this.state.selectedFinding
@@ -1861,28 +1980,22 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       toolbar = (
         <Row>
           <Button
-            isToggle
             tooltip='Draw ROI'
             icon={FaDrawPolygon}
-            onClick={handlePolygonRoiDrawing}
+            onClick={this.handleRoiDrawing}
+            isSelected={this.state.isRoiDrawingActive}
           />
           <Button
-            isToggle
-            tooltip='Measure'
-            icon={FaRuler}
-            onClick={handleLineRoiDrawing}
-          />
-          <Button
-            isToggle
             tooltip='Modify ROIs'
             icon={FaHandPointer}
             onClick={this.handleRoiModification}
+            isSelected={this.state.isRoiModificationActive}
           />
           <Button
-            isToggle
             tooltip='Shift ROIs'
             icon={FaHandPaper}
             onClick={this.handleRoiTranslation}
+            isSelected={this.state.isRoiTranslationActive}
           />
           <Button
             tooltip='Remove selected ROI'
@@ -1890,10 +2003,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             icon={FaTrash}
           />
           <Button
-            isToggle
             tooltip='Show/Hide ROIs'
-            icon={FaEye}
+            icon={this.state.areRoisHidden ? FaEye : FaEyeSlash}
             onClick={this.handleRoiVisibilityChange}
+            isSelected={this.state.areRoisHidden}
           />
           <Button
             tooltip='Save ROIs'
@@ -1927,15 +2040,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
           <Modal
             visible={this.state.isAnnotationModalVisible}
-            title='Select finding'
-            onOk={this.handleAnnotationCompletion}
-            onCancel={this.handleAnnotationCancellation}
+            title='Configure annotations'
+            onOk={this.handleAnnotationConfigurationCompletion}
+            onCancel={this.handleAnnotationConfigurationCancellation}
             okText='Select'
           >
             <Space align='start' direction='vertical'>
               {selections}
             </Space>
           </Modal>
+
           <Modal
             visible={this.state.isReportModalVisible}
             title='Verify and save report'

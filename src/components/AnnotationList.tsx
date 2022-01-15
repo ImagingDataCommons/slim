@@ -25,9 +25,7 @@ class AnnotationList extends React.Component<AnnotationListProps, {}> {
     this.handleMenuItemSelection = this.handleMenuItemSelection.bind(this)
   }
 
-  handleMenuItemSelection (
-    object: any
-  ): void {
+  handleMenuItemSelection (object: any): void {
     this.props.onSelection({ roiUID: object.key })
   }
 
