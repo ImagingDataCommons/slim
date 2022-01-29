@@ -83,14 +83,14 @@ class Slide {
         'At least one volume image must be provided for a slide.'
       )
     } else {
-      const photometricInterpretations = new Set([] as string[])
+      const samplesPerPixel = new Set([] as number[])
       volumeImages.forEach((image) => {
-        photometricInterpretations.add(image.PhotometricInterpretation)
+        samplesPerPixel.add(image.SamplesPerPixel)
       })
-      if (photometricInterpretations.size > 1) {
+      if (samplesPerPixel.size > 1) {
         throw new Error(
-          'All volume images of a slide must have the same ' +
-          'Photometric Interpretation.'
+          'All volume images of a slide must have the same number of ' +
+          'Samples per Pixel.'
         )
       }
     }
@@ -155,16 +155,10 @@ const createSlides = (
       if (volumeImages.length > 0) {
         const refImage = volumeImages[0]
         const filteredVolumeImages = volumeImages.filter((image) => {
-          return (
-            refImage.SamplesPerPixel === image.SamplesPerPixel &&
-            refImage.PhotometricInterpretation === image.PhotometricInterpretation
-          )
+          return refImage.SamplesPerPixel === image.SamplesPerPixel
         })
         const filteredOverviewImages = overviewImages.filter((image) => {
-          return (
-            refImage.SamplesPerPixel === image.SamplesPerPixel &&
-            refImage.PhotometricInterpretation === image.PhotometricInterpretation
-          )
+          return refImage.SamplesPerPixel === image.SamplesPerPixel
         })
         const slideMetadataIndex = slideMetadata.findIndex((slide) => {
           return _doesImageBelongToSlide(slide, refImage)
