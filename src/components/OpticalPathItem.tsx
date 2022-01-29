@@ -3,6 +3,7 @@ import {
   Badge,
   Button,
   Col,
+  Menu,
   Popover,
   Row,
   Slider,
@@ -26,10 +27,11 @@ interface OpticalPathItemProps {
   opticalPath: dmv.opticalPath.OpticalPath
   metadata: dmv.metadata.VLWholeSlideMicroscopyImage[]
   isVisible: boolean
+  isRemovable: boolean
   defaultStyle: {
     opacity: number
-    color: number[]
-    limitValues: number[]
+    color?: number[]
+    limitValues?: number[]
   }
   onVisibilityChange: ({ opticalPathIdentifier, isVisible }: {
     opticalPathIdentifier: string,
@@ -50,8 +52,8 @@ interface OpticalPathItemState {
   isVisible: boolean
   currentStyle: {
     opacity: number
-    color: number[]
-    limitValues: number[]
+    color?: number[]
+    limitValues?: number[]
   }
 }
 
@@ -111,74 +113,83 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     value: number
   ): void {
     const identifier = this.props.opticalPath.identifier
-    const color = [
-      value,
-      this.state.currentStyle.color[1],
-      this.state.currentStyle.color[2]
-    ]
-    this.setState(state => ({
-      currentStyle: {
-        color: color,
-        opacity: state.currentStyle.opacity,
-        limitValues: state.currentStyle.limitValues,
-      }
-    }))
-    this.props.onStyleChange({
-      opticalPathIdentifier: identifier,
-      styleOptions: { color: color }
-    })
+    if (this.state.currentStyle.color !== undefined) {
+      const color = [
+        value,
+        this.state.currentStyle.color[1],
+        this.state.currentStyle.color[2]
+      ]
+      this.setState(state => ({
+        currentStyle: {
+          color: color,
+          opacity: state.currentStyle.opacity,
+          limitValues: state.currentStyle.limitValues,
+        }
+      }))
+      this.props.onStyleChange({
+        opticalPathIdentifier: identifier,
+        styleOptions: { color: color }
+      })
+    }
   }
 
   handleColorGChange (
     value: number
   ): void {
     const identifier = this.props.opticalPath.identifier
-    const color = [
-      this.state.currentStyle.color[0],
-      value,
-      this.state.currentStyle.color[2]
-    ]
-    this.setState(state => ({
-      currentStyle: {
-        color: color,
-        opacity: state.currentStyle.opacity,
-        limitValues: state.currentStyle.limitValues,
-      }
-    }))
-    this.props.onStyleChange({
-      opticalPathIdentifier: identifier,
-      styleOptions: { color: color }
-    })
+    if (this.state.currentStyle.color !== undefined) {
+      const color = [
+        this.state.currentStyle.color[0],
+        value,
+        this.state.currentStyle.color[2]
+      ]
+      this.setState(state => ({
+        currentStyle: {
+          color: color,
+          opacity: state.currentStyle.opacity,
+          limitValues: state.currentStyle.limitValues,
+        }
+      }))
+      this.props.onStyleChange({
+        opticalPathIdentifier: identifier,
+        styleOptions: { color: color }
+      })
+    }
   }
 
   handleColorBChange (
     value: number
   ): void {
     const identifier = this.props.opticalPath.identifier
-    const color = [
-      this.state.currentStyle.color[0],
-      this.state.currentStyle.color[1],
-      value
-    ]
-    this.setState(state => ({
-      currentStyle: {
-        color: color,
-        opacity: state.currentStyle.opacity,
-        limitValues: state.currentStyle.limitValues,
-      }
-    }))
-    this.props.onStyleChange({
-      opticalPathIdentifier: identifier,
-      styleOptions: { color: color }
-    })
+    if (this.state.currentStyle.color !== undefined) {
+      const color = [
+        this.state.currentStyle.color[0],
+        this.state.currentStyle.color[1],
+        value
+      ]
+      this.setState(state => ({
+        currentStyle: {
+          color: color,
+          opacity: state.currentStyle.opacity,
+          limitValues: state.currentStyle.limitValues,
+        }
+      }))
+      this.props.onStyleChange({
+        opticalPathIdentifier: identifier,
+        styleOptions: { color: color }
+      })
+    }
   }
 
   getCurrentColor (): string {
-    const color = this.state.currentStyle.color
-    const r = color[0]
-    const g = color[1]
-    const b = color[2]
-    return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)
+    if (this.state.currentStyle.color !== undefined) {
+      const r = this.state.currentStyle.color[0]
+      const g = this.state.currentStyle.color[1]
+      const b = this.state.currentStyle.color[2]
+      return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)
+    } else {
+      return 'none'
+    }
   }
 
   handleLimitChange (
@@ -208,6 +219,22 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
   render (): React.ReactNode {
     const identifier = this.props.opticalPath.identifier
     const attributes: Array<{ name: string, value: string }> = []
+    if (this.props.opticalPath.illuminationWaveLength !== undefined) {
+      attributes.push(
+        {
+          name: 'Illumination Wave Length',
+          value: `${this.props.opticalPath.illuminationWaveLength} nm`
+        }
+      )
+    }
+    if (this.props.opticalPath.illuminationColor !== undefined) {
+      attributes.push(
+        {
+          name: 'Illumination Color',
+          value: this.props.opticalPath.illuminationColor.CodeMeaning
+        }
+      )
+    }
 
     // TID 8001 "Specimen Preparation"
     const specimen = this.props.metadata[0].SpecimenDescriptionSequence[0]
@@ -245,14 +272,6 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
                 })
               }
             }
-          } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
-            item = item as dcmjs.sr.valueTypes.TextContentItem
-            if (name.equals(SpecimenPreparationStepItems.STAIN)) {
-              attributes.push({
-                name: 'Stain',
-                value: item.TextValue
-              })
-            }
           } else {
             console.debug(`specimen preparation step #${index} not rendered`)
           }
@@ -262,85 +281,170 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
 
     const maxValue = Math.pow(2, this.props.metadata[0].BitsAllocated) - 1
 
-    const settings = (
-      <div>
-        <Row justify='center' align='middle'>
-          <Col span={9}>
-            R
-          </Col>
-          <Col span={15}>
-            <Slider
-              min={0}
-              max={255}
-              step={1}
-              defaultValue={this.props.defaultStyle.color[0]}
-              onAfterChange={this.handleColorRChange}
-            />
-          </Col>
+    let settings
+    let description
+    if (
+      this.props.defaultStyle.color !== undefined &&
+      this.props.defaultStyle.limitValues !== undefined
+    ) {
+      // monochrome images that can be pseudo-colored
+      settings = (
+        <div>
+          <Row justify='center' align='middle'>
+            <Col span={9}>
+              R
+            </Col>
+            <Col span={15}>
+              <Slider
+                min={0}
+                max={255}
+                step={1}
+                defaultValue={this.props.defaultStyle.color[0]}
+                onAfterChange={this.handleColorRChange}
+              />
+            </Col>
 
-          <Col span={9}>
-            G
-          </Col>
-          <Col span={15}>
-            <Slider
-              min={0}
-              max={255}
-              step={1}
-              defaultValue={this.props.defaultStyle.color[1]}
-              onAfterChange={this.handleColorGChange}
-            />
-          </Col>
+            <Col span={9}>
+              G
+            </Col>
+            <Col span={15}>
+              <Slider
+                min={0}
+                max={255}
+                step={1}
+                defaultValue={this.props.defaultStyle.color[1]}
+                onAfterChange={this.handleColorGChange}
+              />
+            </Col>
 
-          <Col span={9}>
-            B
-          </Col>
-          <Col span={15}>
-            <Slider
-              min={0}
-              max={255}
-              step={1}
-              defaultValue={this.props.defaultStyle.color[2]}
-              onAfterChange={this.handleColorBChange}
-            />
-          </Col>
+            <Col span={9}>
+              B
+            </Col>
+            <Col span={15}>
+              <Slider
+                min={0}
+                max={255}
+                step={1}
+                defaultValue={this.props.defaultStyle.color[2]}
+                onAfterChange={this.handleColorBChange}
+              />
+            </Col>
 
-          <Col span={9}>
-            Window
-          </Col>
-          <Col span={15}>
-            <Slider
-              range
-              min={0}
-              max={maxValue}
-              step={1}
-              defaultValue={[
-                this.props.defaultStyle.limitValues[0],
-                this.props.defaultStyle.limitValues[1]
-              ]}
-              onAfterChange={this.handleLimitChange}
-            />
-          </Col>
+            <Col span={9}>
+              Window
+            </Col>
+            <Col span={15}>
+              <Slider
+                range
+                min={0}
+                max={maxValue}
+                step={1}
+                defaultValue={[
+                  this.props.defaultStyle.limitValues[0],
+                  this.props.defaultStyle.limitValues[1]
+                ]}
+                onAfterChange={this.handleLimitChange}
+              />
+            </Col>
 
-          <Col span={9}>
-            Opacity
-          </Col>
-          <Col span={15}>
-            <Slider
-              min={0.01}
-              max={1}
-              step={0.01}
-              defaultValue={this.props.defaultStyle.opacity}
-              onAfterChange={this.handleOpacityChange}
-            />
-          </Col>
-        </Row>
-      </div>
-    )
+            <Col span={9}>
+              Opacity
+            </Col>
+            <Col span={15}>
+              <Slider
+                min={0.01}
+                max={1}
+                step={0.01}
+                defaultValue={this.props.defaultStyle.opacity}
+                onAfterChange={this.handleOpacityChange}
+              />
+            </Col>
+          </Row>
+        </div>
+      )
+      description = (
+        <Badge
+          offset={[-20, 20]}
+          count={' '}
+          style={{
+            borderStyle: 'solid',
+            borderWidth: '1px',
+            borderColor: 'gray',
+            visibility: this.state.isVisible ? 'visible' : 'hidden'
+          }}
+          color={this.getCurrentColor()}
+        >
+          <Description
+            header={identifier}
+            attributes={attributes}
+            selectable
+            hasLongValues
+          />
+        </Badge>
+      )
+    } else {
+      // color images
+      settings = (
+        <div>
+          <Row justify='center' align='middle'>
+            <Col span={9}>
+              Opacity
+            </Col>
+            <Col span={15}>
+              <Slider
+                min={0.01}
+                max={1}
+                step={0.01}
+                defaultValue={this.props.defaultStyle.opacity}
+                onAfterChange={this.handleOpacityChange}
+              />
+            </Col>
+          </Row>
+        </div>
+      )
+      description = (
+        <Description
+          header={identifier}
+          attributes={attributes}
+          selectable
+          hasLongValues
+        />
+      )
+    }
 
+    const buttons = []
+    if (this.props.isRemovable) {
+      buttons.push(
+        <Tooltip title='Remove Optical Path'>
+          <Button
+            type='default'
+            shape='circle'
+            icon={<DeleteOutlined />}
+            onClick={this.handleRemoval}
+          />
+        </Tooltip>
+      )
+    }
+
+    const {
+      defaultStyle,
+      isRemovable,
+      isVisible,
+      metadata,
+      onVisibilityChange,
+      onStyleChange,
+      onRemoval,
+      opticalPath,
+      ...otherProps
+    } = this.props
     return (
-      <Space align='start'>
-        <div style={{ paddingLeft: '14px', paddingTop: '10px' }}>
-          <Space direction='vertical' align='end' size={100}>
+      <Menu.Item
+        style={{ height: '100%', paddingLeft: '3px' }}
+        key={this.props.opticalPath.identifier}
+        {...otherProps}
+      >
+        <Space align='start'>
+          <div style={{ paddingLeft: '14px' }}>
             <Space direction='vertical' align='end'>
               <Switch
                 size='small'
@@ -360,36 +464,12 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
                   icon={<SettingOutlined />}
                 />
               </Popover>
-              <Tooltip title='Remove Optical Path'>
-                <Button
-                  type='default'
-                  shape='circle'
-                  icon={<DeleteOutlined />}
-                  onClick={this.handleRemoval}
-                />
-              </Tooltip>
+              {buttons}
             </Space>
-          </Space>
-        </div>
-        <Space direction='horizontal' align='start'>
-          <Badge.Ribbon
-            style={{
-              borderStyle: 'solid',
-              borderWidth: '1px',
-              borderColor: 'gray',
-              visibility: this.state.isVisible ? 'visible' : 'hidden'
-            }}
-            color={this.getCurrentColor()}
-          >
-            <Description
-              header={identifier}
-              attributes={attributes}
-              selectable
-              hasLongValues
-            />
-          </Badge.Ribbon>
+          </div>
+          {description}
         </Space>
-      </Space>
+      </Menu.Item>
     )
   }
 }

@@ -18,7 +18,7 @@ import * as dmv from 'dicom-microscopy-viewer'
 import { parseDate, parseName, parseSex, parseTime } from '../valueUtils'
 
 interface WorklistProps extends RouteComponentProps {
-  client: DicomWebManager
+  client: DicomWebManager,
 }
 
 interface WorklistState {
@@ -46,6 +46,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   componentDidMount (): void {
     const queryParams: { [key: string]: any } = { ModalitiesInStudy: 'SM' }
     const searchOptions = { queryParams }
+    // TODO: retrieve remaining results
     this.props.client.searchForStudies(searchOptions).then((studies) => {
       this.setState({
         numStudies: studies.length,

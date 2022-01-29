@@ -691,33 +691,26 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         )
         this.volumeViewport.current.innerHTML = ''
 
-        if (slide.areVolumeImagesMonochrome) {
-          const volumeViewer = new dmv.viewer.VolumeImageViewer({
-            client: this.props.client,
-            metadata: slide.volumeImages
-          })
-          const activeOpticalPathIdentifiers: string[] = []
-          const visibleOpticalPathIdentifiers: string[] = []
-          volumeViewer.getAllOpticalPaths().forEach(opticalPath => {
-            const identifier = opticalPath.identifier
-            if (volumeViewer.isOpticalPathVisible(identifier)) {
-              visibleOpticalPathIdentifiers.push(identifier)
-            }
-            if (volumeViewer.isOpticalPathActive(identifier)) {
-              activeOpticalPathIdentifiers.push(identifier)
-            }
-          })
-          this.setState({
-            activeOpticalPathIdentifiers: activeOpticalPathIdentifiers,
-            visibleOpticalPathIdentifiers: visibleOpticalPathIdentifiers
-          })
-          this.volumeViewer = volumeViewer
-        } else {
-          this.volumeViewer = new dmv.viewer.VolumeImageViewer({
-            client: this.props.client,
-            metadata: slide.volumeImages
-          })
-        }
+        const volumeViewer = new dmv.viewer.VolumeImageViewer({
+          client: this.props.client,
+          metadata: slide.volumeImages
+        })
+        const activeOpticalPathIdentifiers: string[] = []
+        const visibleOpticalPathIdentifiers: string[] = []
+        volumeViewer.getAllOpticalPaths().forEach(opticalPath => {
+          const identifier = opticalPath.identifier
+          if (volumeViewer.isOpticalPathVisible(identifier)) {
+            visibleOpticalPathIdentifiers.push(identifier)
+          }
+          if (volumeViewer.isOpticalPathActive(identifier)) {
+            activeOpticalPathIdentifiers.push(identifier)
+          }
+        })
+        this.setState({
+          activeOpticalPathIdentifiers: activeOpticalPathIdentifiers,
+          visibleOpticalPathIdentifiers: visibleOpticalPathIdentifiers
+        })
+        this.volumeViewer = volumeViewer
 
         this.volumeViewer.render({ container: this.volumeViewport.current })
         this.volumeViewer.activateSelectInteraction({})
@@ -901,10 +894,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * @param value - Code value of the coded finding that got selected
    * @param option - Option that got selected
    */
-  handleAnnotationGeometryTypeSelection (
-    value: string,
-    option: any
-  ): void {
+  handleAnnotationGeometryTypeSelection (value: string, option: any): void {
     this.setState({ selectedGeometryType: value })
   }
 
@@ -1706,7 +1696,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       annotationGroups.push(...this.volumeViewer.getAllAnnotationGroups())
     }
 
-    const openSubMenuItems = ['specimens', 'annotations']
+    const openSubMenuItems = ['specimens', 'opticalpaths', 'annotations']
 
     let report: React.ReactNode
     const dataset = this.state.generatedReport
@@ -1767,7 +1757,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         </Select>
       ),
       (
-        <Checkbox onChange={this.handleAnnotationMeasurementActivation}>
+        <Checkbox
+          onChange={this.handleAnnotationMeasurementActivation}
+          key='annotation-measurement'
+        >
           measure
         </Checkbox>
       ),
@@ -1815,61 +1808,49 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       })
     }
 
-    let specimenMenu
-    let opticalPathMenu
     const slide = this.state.activeSlide
-    if (slide.areVolumeImagesMonochrome) {
-      openSubMenuItems.push('opticalpaths')
-      specimenMenu = (
-        <Menu.SubMenu key='specimens' title='Specimens'>
-          <SpecimenList
-            metadata={slide.volumeImages[0]}
-            showstain={false}
-          />
-        </Menu.SubMenu>
-      )
-      if (this.volumeViewer !== undefined) {
-        const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
-        const defaultOpticalPathStyles: {
-          [opticalPathIdentifier: string]: {
-            opacity: number
-            color: number[]
-            limitValues: number[]
-          }
-        } = {}
-        const opticalPathMetadata: {
-          [opticalPathIdentifier: string]: dmv.metadata.VLWholeSlideMicroscopyImage[]
-        } = {}
-        const opticalPaths = viewer.getAllOpticalPaths()
-        opticalPaths.forEach(opticalPath => {
-          const identifier = opticalPath.identifier
-          const style = viewer.getOpticalPathStyle(identifier)
-          defaultOpticalPathStyles[identifier] = style
-          opticalPathMetadata[identifier] = viewer.getOpticalPathMetadata(
-            identifier
-          )
-        })
-        opticalPathMenu = (
-          <Menu.SubMenu key='opticalpaths' title='Optical Paths'>
-            <OpticalPathList
-              metadata={opticalPathMetadata}
-              opticalPaths={opticalPaths}
-              defaultOpticalPathStyles={defaultOpticalPathStyles}
-              visibleOpticalPathIdentifiers={this.state.visibleOpticalPathIdentifiers}
-              activeOpticalPathIdentifiers={this.state.activeOpticalPathIdentifiers}
-              onOpticalPathVisibilityChange={this.handleOpticalPathVisibilityChange}
-              onOpticalPathStyleChange={this.handleOpticalPathStyleChange}
-              onOpticalPathActivityChange={this.handleOpticalPathActivityChange}
-            />
-          </Menu.SubMenu>
+    const specimenMenu = (
+      <Menu.SubMenu key='specimens' title='Specimens'>
+        <SpecimenList
+          metadata={slide.volumeImages[0]}
+          showstain={false}
+        />
+      </Menu.SubMenu>
+    )
+
+    let opticalPathMenu
+    if (this.volumeViewer !== undefined) {
+      const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
+      const defaultOpticalPathStyles: {
+        [identifier: string]: {
+          opacity: number
+          color?: number[]
+          limitValues?: number[]
+        }
+      } = {}
+      const opticalPathMetadata: {
+        [identifier: string]: dmv.metadata.VLWholeSlideMicroscopyImage[]
+      } = {}
+      const opticalPaths = viewer.getAllOpticalPaths()
+      opticalPaths.forEach(opticalPath => {
+        const identifier = opticalPath.identifier
+        const style = viewer.getOpticalPathStyle(identifier)
+        defaultOpticalPathStyles[identifier] = style
+        opticalPathMetadata[identifier] = viewer.getOpticalPathMetadata(
+          identifier
         )
-      }
-    } else {
-      specimenMenu = (
-        <Menu.SubMenu key='specimens' title='Specimens'>
-          <SpecimenList
-            metadata={slide.volumeImages[0]}
-            showstain
+      })
+      opticalPathMenu = (
+        <Menu.SubMenu key='opticalpaths' title='Optical Paths'>
+          <OpticalPathList
+            metadata={opticalPathMetadata}
+            opticalPaths={opticalPaths}
+            defaultOpticalPathStyles={defaultOpticalPathStyles}
+            visibleOpticalPathIdentifiers={this.state.visibleOpticalPathIdentifiers}
+            activeOpticalPathIdentifiers={this.state.activeOpticalPathIdentifiers}
+            onOpticalPathVisibilityChange={this.handleOpticalPathVisibilityChange}
+            onOpticalPathStyleChange={this.handleOpticalPathStyleChange}
+            onOpticalPathActivityChange={this.handleOpticalPathActivityChange}
           />
         </Menu.SubMenu>
       )
@@ -1950,7 +1931,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       } = {}
       const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
       const annotationGroupMetadata: {
-        [annotationGroupUID: string]: dmv.metadata.MicroscopyBulkSimpleAnnotations[]
+        [annotationGroupUID: string]: dmv.metadata.MicroscopyBulkSimpleAnnotations
       } = {}
       const annotationGroups = viewer.getAllAnnotationGroups()
       annotationGroups.forEach(annotationGroup => {

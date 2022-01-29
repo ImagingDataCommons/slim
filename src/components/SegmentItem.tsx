@@ -118,9 +118,13 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
       ...otherProps
     } = this.props
     return (
-      <Space align='start'>
-        <div style={{ paddingLeft: '14px' }}>
-          <Space direction='vertical' align='end' size={100}>
+      <Menu.Item
+        style={{ height: '100%', paddingLeft: '3px' }}
+        key={this.props.segment.uid}
+        {...otherProps}
+      >
+        <Space align='start'>
+          <div style={{ paddingLeft: '14px' }}>
             <Space direction='vertical' align='end'>
               <Switch
                 size='small'
@@ -141,21 +145,15 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
                 />
               </Popover>
             </Space>
-          </Space>
-        </div>
-        <Menu.Item
-          style={{ height: '100%', paddingLeft: '3px' }}
-          key={this.props.segment.uid}
-          {...otherProps}
-        >
+          </div>
           <Description
             header={identifier}
             attributes={attributes}
             selectable
             hasLongValues
           />
-        </Menu.Item>
-      </Space>
+        </Space>
+      </Menu.Item>
     )
   }
 }

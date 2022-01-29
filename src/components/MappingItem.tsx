@@ -155,50 +155,53 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
      * https://github.com/react-component/menu/issues/142
      */
     const {
+      defaultStyle,
       isVisible,
+      mapping,
+      metadata,
       onVisibilityChange,
       onStyleChange,
       ...otherProps
     } = this.props
     return (
-      <Space align='start'>
-        <div style={{ paddingLeft: '14px' }}>
-          <Space direction='vertical' align='end' size={100}>
-            <Space direction='vertical' align='end'>
-              <Switch
-                size='small'
-                onChange={this.handleVisibilityChange}
-                checked={this.props.isVisible}
-                checkedChildren={<FaEye />}
-                unCheckedChildren={<FaEyeSlash />}
-              />
-              <Popover
-                 placement='left'
-                 content={settings}
-                 title='Display Settings'
-              >
-                <Button
-                  type='primary'
-                  shape='circle'
-                  icon={<SettingOutlined />}
+      <Menu.Item
+        style={{ height: '100%', paddingLeft: '3px' }}
+        key={this.props.mapping.uid}
+        {...otherProps}
+      >
+        <Space align='start'>
+          <div style={{ paddingLeft: '14px' }}>
+            <Space direction='vertical' align='end' size={100}>
+              <Space direction='vertical' align='end'>
+                <Switch
+                  size='small'
+                  onChange={this.handleVisibilityChange}
+                  checked={this.props.isVisible}
+                  checkedChildren={<FaEye />}
+                  unCheckedChildren={<FaEyeSlash />}
                 />
-              </Popover>
+                <Popover
+                   placement='left'
+                   content={settings}
+                   title='Display Settings'
+                >
+                  <Button
+                    type='primary'
+                    shape='circle'
+                    icon={<SettingOutlined />}
+                  />
+                </Popover>
+              </Space>
             </Space>
-          </Space>
-        </div>
-        <Menu.Item
-          style={{ height: '100%', paddingLeft: '3px' }}
-          key={this.props.mapping.uid}
-          {...otherProps}
-        >
+          </div>
           <Description
             header={identifier}
             attributes={attributes}
             selectable
             hasLongValues
           />
-        </Menu.Item>
-      </Space>
+        </Space>
+      </Menu.Item>
     )
   }
 }

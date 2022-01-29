@@ -69,6 +69,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       message.error('An error occured. Image metadata could not be retrieved.')
       console.error(error)
+      this.setState({ isLoading: false })
     })
   }
 
@@ -153,7 +154,6 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       <Layout style={{ height: '100%' }} hasSider>
         <Layout.Sider
           width={300}
-          theme='light'
           style={{
             borderRight: 'solid',
             borderRightWidth: 0.25
@@ -164,7 +164,6 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
             defaultOpenKeys={['patient', 'case', 'slides']}
             style={{ height: '100%' }}
             inlineIndent={14}
-            theme='light'
           >
             <Menu.SubMenu key='patient' title='Patient'>
               <Patient metadata={refImage} />

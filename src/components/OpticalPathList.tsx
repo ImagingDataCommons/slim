@@ -17,8 +17,8 @@ interface OpticalPathListProps {
   defaultOpticalPathStyles: {
     [opticalPathIdentifier: string]: {
       opacity: number
-      color: number[]
-      limitValues: number[]
+      color?: number[]
+      limitValues?: number[]
     }
   }
   onOpticalPathVisibilityChange: ({ opticalPathIdentifier, isVisible }: {
@@ -96,6 +96,7 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
       return null
     }
 
+    const isSelectable = this.props.opticalPaths.length > 1
     const opticalPathItems: React.ReactNode[] = []
     const optionItems: React.ReactNode[] = []
     this.props.opticalPaths.forEach(opticalPath => {
@@ -115,6 +116,7 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
               onVisibilityChange={this.props.onOpticalPathVisibilityChange}
               onStyleChange={this.props.onOpticalPathStyleChange}
               onRemoval={this.handleItemRemoval}
+              isRemovable={isSelectable}
             />
           )
         } else {
@@ -131,11 +133,9 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
       })
     })
 
-    return (
-      <Space align='center' direction='vertical' size={20}>
-        <Menu selectable={false}>
-          {opticalPathItems}
-        </Menu>
+    let opticalPathSelector
+    if (isSelectable) {
+      opticalPathSelector = (
         <Space align='center' size={20}>
           <Select
             defaultValue=''
@@ -152,6 +152,15 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
             onClick={this.handleItemAddition}
           />
         </Space>
+      )
+    }
+
+    return (
+      <Space align='center' direction='vertical' size={20}>
+        <Menu selectable={false}>
+          {opticalPathItems}
+        </Menu>
+        {opticalPathSelector}
       </Space>
     )
   }

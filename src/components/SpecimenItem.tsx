@@ -25,18 +25,20 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
       this.props.index
     ]
     const attributes: Attribute[] = []
-    if ('SpecimenShortDescription' in specimenDescription) {
+    if (specimenDescription.SpecimenShortDescription !== undefined) {
       attributes.push({
         name: 'Description',
         value: specimenDescription.SpecimenShortDescription
       })
     }
-    if ('PrimaryAnatomicStructureSequence' in specimenDescription) {
-      const structures = specimenDescription.PrimaryAnatomicStructureSequence
-      attributes.push({
-        name: 'Anatomic Structure',
-        value: structures[0].CodeMeaning
-      })
+    if (specimenDescription.PrimaryAnatomicStructureSequence !== undefined) {
+      if (specimenDescription.PrimaryAnatomicStructureSequence.length > 0) {
+        const structures = specimenDescription.PrimaryAnatomicStructureSequence
+        attributes.push({
+          name: 'Anatomic Structure',
+          value: structures[0].CodeMeaning
+        })
+      }
     }
 
     // TID 8001 "Specimen Preparation"

@@ -1,6 +1,7 @@
 import React from 'react'
-import * as dmv from 'dicom-microscopy-viewer'
 import { Menu } from 'antd'
+import * as dmv from 'dicom-microscopy-viewer'
+import * as dcmjs from 'dcmjs'
 
 import AnnotationGroupItem from './AnnotationGroupItem'
 
@@ -8,7 +9,7 @@ interface AnnotationGroupListProps {
   annotationGroups: dmv.annotation.AnnotationGroup[]
   visibleAnnotationGroupUIDs: string[]
   metadata: {
-    [annotationGroupUID: string]: dmv.metadata.MicroscopyBulkSimpleAnnotations[]
+    [annotationGroupUID: string]: dmv.metadata.MicroscopyBulkSimpleAnnotations
   }
   defaultAnnotationGroupStyles: {
     [annotationGroupUID: string]: {
@@ -22,7 +23,8 @@ interface AnnotationGroupListProps {
   onAnnotationGroupStyleChange: ({ annotationGroupUID, styleOptions }: {
     annotationGroupUID: string,
     styleOptions: {
-      opacity: number
+      opacity?: number,
+      measurement?: dcmjs.sr.coding.CodedConcept
     }
   }) => void
 }
