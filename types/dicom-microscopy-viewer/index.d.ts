@@ -151,6 +151,7 @@ declare module 'dicom-microscopy-viewer' {
         annotationGroupUID: string,
         styleOptions?: {
           opacity?: number
+          measurement?: dcmjs.sr.coding.CodedConcept
         }
       ): void
       hideAnnotationGroup (annotationGroupUID: string): void
@@ -165,7 +166,7 @@ declare module 'dicom-microscopy-viewer' {
       getAllAnnotationGroups (): dwc.annotation.AnnotationGroup[]
       getAnnotationGroupMetadata (
         annotationGroupUID: string
-      ): metadata.MicroscopyBulkSimpleAnnotations[]
+      ): metadata.MicroscopyBulkSimpleAnnotations
     }
 
     export interface OverviewImageViewerOptions {
@@ -329,8 +330,8 @@ declare module 'dicom-microscopy-viewer' {
       label: label
       algorithmType: string
       algorithmName: string
-      propertyCategory: dcmjs.sr.valueTypes.CodedConcept
-      propertyType: dcmjs.sr.valueTypes.CodedConcept
+      propertyCategory: dcmjs.sr.coding.CodedConcept
+      propertyType: dcmjs.sr.coding.CodedConcept
       studyInstanceUID: string
       seriesInstanceUID: string
       sopInstanceUIDs: string[]
@@ -343,8 +344,8 @@ declare module 'dicom-microscopy-viewer' {
       get label (): string
       get algorithmType (): string
       get algorithmName (): string
-      get propertyCategory (): dcmjs.sr.valueTypes.CodedConcept
-      get propertyType (): dcmjs.sr.valueTypes.CodedConcept
+      get propertyCategory (): dcmjs.sr.coding.CodedConcept
+      get propertyType (): dcmjs.sr.coding.CodedConcept
       get studyInstanceUID (): string
       get seriesInstanceUID (): string
       get sopInstanceUIDs (): string[]
@@ -426,11 +427,11 @@ declare module 'dicom-microscopy-viewer' {
     export interface SpecimenDescription {
       SpecimenUID: string
       SpecimenIdentifier: string
-      SpecimenTypeCodeSequence: dcmjs.sr.valueTypes.CodedConcept[]
+      SpecimenTypeCodeSequence: dcmjs.sr.coding.CodedConcept[]
       SpecimenDetailedDescription?: string
       SpecimenShortDescription?: string
       SpecimenPreparationSequence: SpecimenPreparation[]
-      PrimaryAnatomicStructureSequence: dcmjs.sr.valueTypes.CodedConcept[]
+      PrimaryAnatomicStructureSequence: dcmjs.sr.coding.CodedConcept[]
     }
 
     export interface OpticalPath {
@@ -471,7 +472,7 @@ declare module 'dicom-microscopy-viewer' {
       FrameOfReferenceUID: string
       // Specimen module
       ContainerIdentifier: string
-      ContainerTypeCodeSequence: dcmjs.sr.valueTypes.CodedConcept[]
+      ContainerTypeCodeSequence: dcmjs.sr.coding.CodedConcept[]
       SpecimenDescriptionSequence: SpecimenDescription[]
       // Optical Path module
       OpticalPathSequence: OpticalPath[]
@@ -490,11 +491,11 @@ declare module 'dicom-microscopy-viewer' {
       FrameOfReferenceUID: string
       // Specimen module
       ContainerIdentifier: string
-      ContainerTypeCodeSequence: dcmjs.sr.valueTypes.CodedConcept[]
+      ContainerTypeCodeSequence: dcmjs.sr.coding.CodedConcept[]
       SpecimenDescriptionSequence: SpecimenDescription[]
       // Annotation
       ContainerIdentifier: string
-      ContainerTypeCodeSequence: dcmjs.sr.valueTypes.CodedConcept[]
+      ContainerTypeCodeSequence: dcmjs.sr.coding.CodedConcept[]
       SpecimenDescriptionSequence: SpecimenDescription[]
       OpticalPathSequence: OpticalPath[]
       AnnotationGroupSequence: {
@@ -519,6 +520,24 @@ declare module 'dicom-microscopy-viewer' {
         CommonZCoordinateValue?: number
         DoublePointCoordinatesData?: string  // FIXME: bytes
         PointCoordinatesData?: string  // FIXME: bytes
+        MeasurementsSequence: {
+          ConceptNameCodeSequence: {
+            CodeValue: string
+            CodeMeaning: string
+            CodingSchemeDesignator: string
+            CodingSchemeVersion?: string
+          }[]
+          MeasurementUnitsCodeSequence: {
+            CodeValue: string
+            CodeMeaning: string
+            CodingSchemeDesignator: string
+            CodingSchemeVersion?: string
+          }[]
+          MeasurementValuesSequence: {
+            FloatingPointValues?: string  // FIXME: bytes
+            AnnotationIndexList?: string  // FIXME: bytes
+          }[]
+        }[]
       }[]
     }
 
@@ -529,7 +548,7 @@ declare module 'dicom-microscopy-viewer' {
       FrameOfReferenceUID: string
       // Specimen module
       ContainerIdentifier: string
-      ContainerTypeCodeSequence: dcmjs.sr.valueTypes.CodedConcept[]
+      ContainerTypeCodeSequence: dcmjs.sr.coding.CodedConcept[]
       SpecimenDescriptionSequence: SpecimenDescription[]
     }
 
@@ -540,7 +559,7 @@ declare module 'dicom-microscopy-viewer' {
       FrameOfReferenceUID: string
       // Specimen module
       ContainerIdentifier: string
-      ContainerTypeCodeSequence: dcmjs.sr.valueTypes.CodedConcept[]
+      ContainerTypeCodeSequence: dcmjs.sr.coding.CodedConcept[]
       SpecimenDescriptionSequence: SpecimenDescription[]
       // Segmentation Image module
       SegmentSequence: {
@@ -577,8 +596,8 @@ declare module 'dicom-microscopy-viewer' {
       label: label
       algorithmType: string
       algorithmName: string
-      propertyCategory: dcmjs.sr.valueTypes.CodedConcept
-      propertyType: dcmjs.sr.valueTypes.CodedConcept
+      propertyCategory: dcmjs.sr.coding.CodedConcept
+      propertyType: dcmjs.sr.coding.CodedConcept
       studyInstanceUID: string
       seriesInstanceUID: string
       sopInstanceUIDs: string[]
@@ -591,8 +610,8 @@ declare module 'dicom-microscopy-viewer' {
       get label (): string
       get algorithmType (): string
       get algorithmName (): string
-      get propertyCategory (): dcmjs.sr.valueTypes.CodedConcept
-      get propertyType (): dcmjs.sr.valueTypes.CodedConcept
+      get propertyCategory (): dcmjs.sr.coding.CodedConcept
+      get propertyType (): dcmjs.sr.coding.CodedConcept
       get studyInstanceUID (): string
       get seriesInstanceUID (): string
       get sopInstanceUIDs (): string[]
@@ -627,6 +646,9 @@ declare module 'dicom-microscopy-viewer' {
 
     export interface OpticalPathOptions {
       identifier: number
+      illuminationType: object
+      illuminationColor?: object
+      illuminationWaveLength?: string
       studyInstanceUID: string
       seriesInstanceUID: string
       sopInstanceUIDs: string[]
@@ -635,6 +657,9 @@ declare module 'dicom-microscopy-viewer' {
     export class OpticalPath {
       constructor (options: OpticalPathOptions)
       get identifier (): string
+      get illuminationType (): dcmjs.sr.coding.CodedConcept
+      get illuminationColor (): dcmjs.sr.coding.CodedConcept | undefined
+      get illuminationWaveLength (): string | undefined
       get studyInstanceUID (): string
       get seriesInstanceUID (): string
       get sopInstanceUIDs (): string[]
