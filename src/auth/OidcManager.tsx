@@ -53,7 +53,6 @@ export default class OidcManager implements AuthManager {
        * from the callback URL, obtain user information and the access token
        * for the DICOMweb server.
        */
-      console.log('DEBUG: ', window.location)
       console.info('obtaining authorization')
       const userData = await this._oidc.signinCallback()
       const user = createUser(userData)
