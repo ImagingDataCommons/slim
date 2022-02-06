@@ -4,13 +4,17 @@ import {
   Avatar,
   Col,
   Descriptions,
+  Input,
   Layout,
   Modal,
   Row,
   Space
 } from 'antd'
 import {
+  ApiOutlined,
+  CheckOutlined,
   InfoOutlined,
+  StopOutlined,
   UnorderedListOutlined,
   UserOutlined
 } from '@ant-design/icons'
@@ -31,13 +35,29 @@ interface HeaderProps {
     email: string
   }
   showWorklistButton: boolean
+  onServerSelection: ({ url }: { url: string }) => void
+  showServerSelectionButton: boolean
+}
+
+interface HeaderState {
+  selectedServerUrl?: string
+  isServerSelectionModalVisible: boolean
+  isServerSelectionDisabled: boolean
 }
 
 /**
  * React component for the application header.
  */
-class Header extends React.Component<HeaderProps, {}> {
-  handleInfoClick = (): void => {
+class Header extends React.Component<HeaderProps, HeaderState> {
+  constructor (props: HeaderProps) {
+    super(props)
+    this.state = {
+      isServerSelectionModalVisible: false,
+      isServerSelectionDisabled: true
+    }
+  }
+
+  handleInfoButtonClick = (): void => {
     const browser = detect()
     const environment: {
       browser: {
@@ -96,6 +116,10 @@ class Header extends React.Component<HeaderProps, {}> {
     })
   }
 
+  handleServerSelectionButtonClick = (): void => {
+    this.setState({ isServerSelectionModalVisible: true })
+  }
+
   render (): React.ReactNode {
     var user = null
     if (this.props.user !== undefined) {
@@ -113,7 +137,7 @@ class Header extends React.Component<HeaderProps, {}> {
     if (this.props.showWorklistButton) {
       worklistButton = (
         <NavLink to='/'>
-          <Button icon={UnorderedListOutlined} tooltip='Worklist' />
+          <Button icon={UnorderedListOutlined} tooltip='Go to worklist' />
         </NavLink>
       )
     }
@@ -121,35 +145,108 @@ class Header extends React.Component<HeaderProps, {}> {
     const infoButton = (
       <Button
         icon={InfoOutlined}
-        tooltip='About'
-        onClick={this.handleInfoClick}
+        tooltip='Get app info'
+        onClick={this.handleInfoButtonClick}
       />
     )
+
+    let serverSelectionButton
+    if (this.props.showServerSelectionButton) {
+      serverSelectionButton = (
+        <Button
+          icon={ApiOutlined}
+          tooltip='Select server'
+          onClick={this.handleServerSelectionButtonClick}
+        />
+      )
+    }
+
+    const handleServerSelectionInput = (event: any) => {
+      const value = event.target.value
+      let isDisabled = true
+      if (value) {
+        try {
+          const url = new URL(value)
+          if (url.protocol.startsWith('http') && url.pathname.length > 0) {
+            isDisabled = false
+          }
+        } catch (TypeError) {}
+      }
+      this.setState({
+        selectedServerUrl: value,
+        isServerSelectionDisabled: isDisabled
+      })
+    }
+
+    const handleServerSelectionCancellation = (event: any) => {
+      this.setState({
+        selectedServerUrl: undefined,
+        isServerSelectionModalVisible: false,
+        isServerSelectionDisabled: true
+      })
+    }
+
+    const handleServerSelection = (event: any) => {
+      const url = this.state.selectedServerUrl
+      let closeModal = false
+      if (url) {
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+          this.props.onServerSelection({ url })
+          closeModal = true
+        }
+      }
+      this.setState({
+        selectedServerUrl: undefined,
+        isServerSelectionModalVisible: !closeModal,
+        isServerSelectionDisabled: true
+      })
+    }
 
     const logoUrl = process.env.PUBLIC_URL + '/logo.svg'
 
     return (
-      <Layout.Header style={{ width: '100%', padding: '0 14px' }}>
-        <Row>
-          <Col>
-            <Space align='center' direction='horizontal'>
-              <img
-                src={logoUrl}
-                alt=''
-                style={{ height: '64px', margin: '-14px' }}
-              />
-            </Space>
-          </Col>
-          <Col flex='auto' />
-          <Col>
-            <Space align='center' direction='horizontal'>
-              {worklistButton}
-              {infoButton}
-              {user}
-            </Space>
-          </Col>
-        </Row>
-      </Layout.Header>
+      <>
+        <Layout.Header style={{ width: '100%', padding: '0 14px' }}>
+          <Row>
+            <Col>
+              <Space align='center' direction='horizontal'>
+                <img
+                  src={logoUrl}
+                  alt=''
+                  style={{ height: '64px', margin: '-14px' }}
+                />
+              </Space>
+            </Col>
+            <Col flex='auto' />
+            <Col>
+              <Space align='center' direction='horizontal'>
+                {worklistButton}
+                {infoButton}
+                {serverSelectionButton}
+                {user}
+              </Space>
+            </Col>
+          </Row>
+        </Layout.Header>
+
+        <Modal
+          visible={this.state.isServerSelectionModalVisible}
+          title='Select DICOMweb server'
+          onOk={handleServerSelection}
+          onCancel={handleServerSelectionCancellation}
+        >
+          <Input
+            placeholder='Enter base URL of DICOMweb Study Service'
+            onChange={handleServerSelectionInput}
+            onPressEnter={handleServerSelection}
+            addonAfter={
+              this.state.isServerSelectionDisabled
+              ? <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+              : <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+            }
+           />
+        </Modal>
+      </>
     )
   }
 }

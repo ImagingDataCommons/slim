@@ -21,9 +21,12 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
     settings: ServerSettings[]
     onError?: DicomWebManagerErrorHandler
   }) {
-    this.handleError = () => {}
     if (onError != null) {
       this.handleError = onError
+    } else {
+      this.handleError = (error, serverSettings) => {
+        console.error(error, serverSettings)
+      }
     }
 
     settings.forEach(serverSettings => {
@@ -56,11 +59,11 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       if (serverSettings.retry !== undefined) {
         clientSettings.requestHooks = [getXHRRetryHook(serverSettings.retry)]
       }
-      if (serverSettings.errorMessages !== undefined) {
-        clientSettings.errorInterceptor = (error: dwc.api.DICOMwebClientError) => {
-          this.handleError(error, serverSettings)
-        }
+
+      clientSettings.errorInterceptor = (error: dwc.api.DICOMwebClientError) => {
+        this.handleError(error, serverSettings)
       }
+
       this.stores.push({
         id: serverSettings.id,
         write: serverSettings.write ? serverSettings.write: false,

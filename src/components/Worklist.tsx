@@ -43,7 +43,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     this.handleChange = this.handleChange.bind(this)
   }
 
-  componentDidMount (): void {
+  searchForStudies (): void {
     const queryParams: { [key: string]: any } = { ModalitiesInStudy: 'SM' }
     const searchOptions = { queryParams }
     // TODO: retrieve remaining results
@@ -60,6 +60,16 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       message.error('An error occured. Search for studies failed.')
       console.error(error)
     })
+  }
+
+  componentDidMount (): void {
+    this.searchForStudies()
+  }
+
+  componentDidUpdate (previousProps: WorklistProps): void {
+    if (this.props.client !== previousProps.client) {
+      this.searchForStudies()
+    }
   }
 
   handleClick (event: React.SyntheticEvent, study: dmv.metadata.Study): void {

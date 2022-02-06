@@ -41,6 +41,26 @@ interface AppState {
 class App extends React.Component<AppProps, AppState> {
   private readonly auth?: AuthManager
 
+  private readonly handleDICOMwebError = (
+    error: dwc.api.DICOMwebClientError,
+    serverSettings: ServerSettings
+  ): void => {
+    if (serverSettings.errorMessages !== undefined) {
+      serverSettings.errorMessages.forEach(
+        ({ status, message }: ErrorMessageSettings) => {
+          if (error.status === status) {
+            this.setState({
+              error: {
+                status: error.status,
+                message
+              }
+            })
+          }
+        }
+      )
+    }
+  }
+
   constructor (props: AppProps) {
     super(props)
 
@@ -57,37 +77,35 @@ class App extends React.Component<AppProps, AppState> {
       throw Error('One server needs to be configured.')
     }
 
-    message.config({ duration: 5 })
+    this.handleServerSelection = this.handleServerSelection.bind(this)
 
-    const handleError = (
-      error: dwc.api.DICOMwebClientError,
-      serverSettings: ServerSettings
-    ): void => {
-      if (serverSettings.errorMessages !== undefined) {
-        serverSettings.errorMessages.forEach(
-          ({ status, message }: ErrorMessageSettings) => {
-            if (error.status === status) {
-              this.setState({
-                error: {
-                  status: error.status,
-                  message
-                }
-              })
-            }
-          }
-        )
-      }
-    }
+    message.config({ duration: 5 })
 
     this.state = {
       client: new DicomWebManager({
         baseUri: baseUri,
         settings: props.config.servers,
-        onError: handleError
+        onError: this.handleDICOMwebError
       }),
       isLoading: true,
       wasAuthSuccessful: false
     }
+  }
+
+  handleServerSelection ({ url }: { url: string }) {
+    console.info('select DICOMweb server: ', url)
+    const client = new DicomWebManager({
+      baseUri: '',
+      settings: [{
+        id: 'tmp',
+        url,
+        read: true,
+        write: false
+      }],
+      onError: this.handleDICOMwebError
+    })
+    client.updateHeaders(this.state.client.headers)
+    this.setState({ client })
   }
 
   /**
@@ -160,7 +178,11 @@ class App extends React.Component<AppProps, AppState> {
     const enableAnnotationTools = !(
       this.props.config.disableAnnotationTools ?? false
     )
+    const enableServerSelection = (
+      this.props.config.enableServerSelection ?? false
+    )
 
+    console.log(this.state.client)
     let worklist
     if (enableWorklist) {
       worklist = <Worklist client={this.state.client} />
@@ -184,6 +206,8 @@ class App extends React.Component<AppProps, AppState> {
             <Header
               app={appInfo}
               showWorklistButton={false}
+              onServerSelection={this.handleServerSelection}
+              showServerSelectionButton={false}
             />
             <Layout.Content style={layoutContentStyle}>
               <FaSpinner />
@@ -198,6 +222,8 @@ class App extends React.Component<AppProps, AppState> {
             <Header
               app={appInfo}
               showWorklistButton={false}
+              onServerSelection={this.handleServerSelection}
+              showServerSelectionButton={enableServerSelection}
             />
             <Layout.Content style={layoutContentStyle}>
               <div>Sign-in failed.</div>
@@ -221,6 +247,8 @@ class App extends React.Component<AppProps, AppState> {
                     app={appInfo}
                     user={this.state.user}
                     showWorklistButton={enableWorklist}
+                    onServerSelection={this.handleServerSelection}
+                    showServerSelectionButton={enableServerSelection}
                   />
                   <Layout.Content style={layoutContentStyle}>
                     <CaseViewer
@@ -241,6 +269,8 @@ class App extends React.Component<AppProps, AppState> {
                   app={appInfo}
                   user={this.state.user}
                   showWorklistButton={false}
+                  onServerSelection={this.handleServerSelection}
+                  showServerSelectionButton={enableServerSelection}
                 />
                 <Layout.Content style={layoutContentStyle}>
                   {worklist}

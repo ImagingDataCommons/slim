@@ -370,17 +370,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   componentDidUpdate (previousProps: SlideViewerProps): void {
-    /** Fetch data and update the viewports if the route has changed,
-     * i.e., if another series has been selected.
+    /** Fetch data and update the viewports if the route has changed (
+     * i.e., if another series has been selected) or if the client has changed.
      */
-    if (this.props.location !== previousProps.location ||
-      this.props.slides !== previousProps.slides) {
-      console.log(
-        'switch viewports from series ' +
-        previousProps.seriesInstanceUID +
-        ' to series' +
-        this.props.seriesInstanceUID
-      )
+    if (
+      this.props.location !== previousProps.location ||
+      this.props.slides !== previousProps.slides ||
+      this.props.client !== previousProps.client
+    ) {
       this.populateViewports()
     }
   }

@@ -1,7 +1,8 @@
 import * as dcmjs from 'dcmjs'
 
 export type DicomWebManagerErrorHandler = (
-  error: dwc.api.DICOMwebClientError, serverSettings: ServerSettings
+  error: dwc.api.DICOMwebClientError,
+  serverSettings: ServerSettings
 ) => void
 
 export interface DICOMwebClientRequestHookMetadata {
@@ -76,5 +77,6 @@ export default interface AppConfig {
   oidc?: OidcSettings
   disableWorklist?: boolean
   disableAnnotationTools?: boolean
+  enableServerSelection?: boolean
   mode?: string
 }
