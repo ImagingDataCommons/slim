@@ -21,5 +21,21 @@ module.exports = {
         }
       }
     }
-  ]
+  ],
+  webpack: {
+    configure: (webpackConfig, { env, paths }) => {
+      webpackConfig.resolve = {
+        fallback: {
+          fs: false,
+          path: false
+        },
+        extensions: ['.tsx', '.ts', '.js', '.wasm', '.json']
+      }
+      webpackConfig.experiments = {
+        asyncWebAssembly: true,
+        syncWebAssembly: true
+      }
+      return webpackConfig
+    }
+  }
 }
