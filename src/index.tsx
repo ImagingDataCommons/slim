@@ -4,7 +4,7 @@ import ReactDOM from 'react-dom'
 import './index.css'
 import AppConfig from './AppConfig'
 
-import { name, version } from '../package.json'
+import packageInfo from '../package.json'
 
 declare global {
   interface Window {
@@ -29,8 +29,8 @@ ReactDOM.render(
     <React.Suspense fallback={<div>Loading application...</div>}>
     <App
       config={config}
-      version={version}
-      name={name}
+      version={packageInfo.version}
+      name={packageInfo.name}
       homepage='https://github.com/MGHComputationalPathology/slim'
     />
     </React.Suspense>
