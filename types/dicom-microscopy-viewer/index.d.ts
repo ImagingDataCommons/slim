@@ -7,7 +7,7 @@ declare module 'dicom-microscopy-viewer' {
 
     export interface VolumeImageViewerOptions {
       client: dwc.api.DICOMwebClient
-      metadata: object[]
+      metadata: metadata.VLWholeSlideMicroscopyImage[]
       controls?: string[]
       retrieveRendered?: boolean
       useWebGL?: boolean
@@ -26,6 +26,7 @@ declare module 'dicom-microscopy-viewer' {
     export class VolumeImageViewer {
       constructor (options: VolumeImageViewerOptions)
       render (options: object): void
+      cleanup (): void
       get imageMetadata (): metadata.VLWholeSlideMicroscopyImage[]
       activateDrawInteraction (options: object)
       deactivateDrawInteraction (): void
@@ -101,7 +102,7 @@ declare module 'dicom-microscopy-viewer' {
         opticalPathIdentifier: string
       ): metadata.VLWholeSlideMicroscopyImage[]
       getAllOpticalPaths (): dwc.opticalPath.OpticalPath[]
-      addSegments (metadata: Segmentation): void
+      addSegments (metadata: metadata.Segmentation[]): void
       removeSegment (segmentUID: string): void
       showSegment (
         segmentUID: string,
@@ -120,7 +121,7 @@ declare module 'dicom-microscopy-viewer' {
       isSegmentVisible (segmentUID: string): boolean
       getSegmentMetadata (segmentUID: string): metadata.Segmentation[]
       getAllSegments (): dwc.segment.Segment[]
-      addMappings (metadata: ParametricMap): void
+      addMappings (metadata: metadata.ParametricMap[]): void
       removeMapping (mappingUID: string): void
       showMapping (
         mappingUID: string,
@@ -143,8 +144,7 @@ declare module 'dicom-microscopy-viewer' {
       getMappingMetadata (mappingUID: string): metadata.ParametricMap[]
       getAllMappings (): dwc.mapping.Mapping[]
       addAnnotationGroups (
-        metadata: MicroscopyBulkSimpleAnnotations,
-        bulkdata: { [keyword: string]: { vr: string, BulkDataURI: string }}
+        metadata: metadata.MicroscopyBulkSimpleAnnotations
       ): void
       removeAnnotationGroup (annotationGroupUID: string): void
       showAnnotationGroup (
@@ -180,6 +180,7 @@ declare module 'dicom-microscopy-viewer' {
     export class OverviewImageViewer {
       constructor (options: OverviewImageViewerOptions)
       render (options: object): void
+      cleanup (): void
       get imageMetadata (): metadata.VLWholeSlideMicroscopyImage[]
       resize (): void
     }
@@ -195,6 +196,7 @@ declare module 'dicom-microscopy-viewer' {
     export class LabelImageViewer {
       constructor (options: OverviewImageViewerOptions)
       render (options: object): void
+      cleanup (): void
       get imageMetadata (): metadata.VLWholeSlideMicroscopyImage[]
       resize (): void
     }
@@ -460,6 +462,8 @@ declare module 'dicom-microscopy-viewer' {
       // SOP Common module
       SOPClassUID: string
       SOPInstanceUID: string
+      get json (): object
+      get bulkdataReferences (): object
     }
 
     export interface VLWholeSlideMicroscopyImage extends SOPClass {

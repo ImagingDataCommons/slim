@@ -182,7 +182,6 @@ class App extends React.Component<AppProps, AppState> {
       this.props.config.enableServerSelection ?? false
     )
 
-    console.log(this.state.client)
     let worklist
     if (enableWorklist) {
       worklist = <Worklist client={this.state.client} />

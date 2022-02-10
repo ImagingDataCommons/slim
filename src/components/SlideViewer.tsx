@@ -522,15 +522,22 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           studyInstanceUID: this.props.studyInstanceUID,
           seriesInstanceUID: series.SeriesInstanceUID
         }).then((retrievedMetadata): void => {
-          retrievedMetadata.forEach(metadata => {
-            const { dataset, bulkDataMapping }  = dmv.metadata.formatMetadata(
-              metadata
-            )
-            const annotation = new dmv.metadata.MicroscopyBulkSimpleAnnotations({
-                metadata: dataset
+          let annotations: dmv.metadata.MicroscopyBulkSimpleAnnotations[]
+          annotations = retrievedMetadata.map(metadata => {
+              return new dmv.metadata.MicroscopyBulkSimpleAnnotations({
+                metadata
+              })
             })
+          annotations = annotations.filter(ann => {
+            const refImage = this.state.activeSlide.volumeImages[0]
+            return (
+              ann.FrameOfReferenceUID === refImage.FrameOfReferenceUID &&
+              ann.ContainerIdentifier === refImage.ContainerIdentifier
+            )
+          })
+          annotations.forEach(ann => {
             try {
-              viewer.addAnnotationGroups(annotation, bulkDataMapping)
+              viewer.addAnnotationGroups(ann)
             } catch (error) {
               // eslint-disable-next-line @typescript-eslint/no-floating-promises
               message.error(
@@ -633,11 +640,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           let maps: dmv.metadata.ParametricMap[] = retrievedMetadata.map(
             metadata => new dmv.metadata.ParametricMap({ metadata })
           )
-          maps = maps.filter(seg => {
+          maps = maps.filter(image => {
             const refImage = this.state.activeSlide.volumeImages[0]
             return (
-              seg.FrameOfReferenceUID === refImage.FrameOfReferenceUID &&
-              seg.ContainerIdentifier === refImage.ContainerIdentifier
+              image.FrameOfReferenceUID === refImage.FrameOfReferenceUID &&
+              image.ContainerIdentifier === refImage.ContainerIdentifier
             )
           })
           if (maps.length > 0) {
@@ -708,10 +715,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           visibleOpticalPathIdentifiers: visibleOpticalPathIdentifiers
         })
         this.volumeViewer = volumeViewer
-
         this.volumeViewer.render({ container: this.volumeViewport.current })
-        this.volumeViewer.activateSelectInteraction({})
         this.volumeViewer.toggleOverviewMap()
+        this.volumeViewer.activateSelectInteraction({})
       }
 
       if (slide.labelImages.length > 0) {
@@ -837,6 +843,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       'dicommicroscopyviewer_loading_ended',
       this.onLoadingEnded
     )
+    if (this.volumeViewer) {
+      this.volumeViewer.cleanup()
+    }
+    if (this.labelViewer) {
+      this.labelViewer.cleanup()
+    }
   }
 
   componentDidMount (): void {
@@ -1254,7 +1266,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const roi = viewer.getROI(roiUID)
       const key = _getRoiKey(roi)
       viewer.setROIStyle(roi.uid, this.roiStyles[key])
-      console.log('DEBUG: ', this.state.visibleRoiUIDs, roiUID)
       this.setState(state => {
         if (state.visibleRoiUIDs.indexOf(roiUID) < 0) {
           return {
@@ -2012,7 +2023,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           <div className="dimmer" style={{ display: loadingDisplay }} />
           <div className="spinner" style={{ display: loadingDisplay }} />
           <div
-            style={{ height: `calc(100% - ${toolbarHeight})` }}
+            style={{
+              height: `calc(100% - ${toolbarHeight})`,
+              overflow: 'hidden'
+            }}
             ref={this.volumeViewport}
           />
 
