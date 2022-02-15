@@ -261,9 +261,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private readonly evaluationOptions: { [key: string]: EvaluationOptions[] } = {}
 
-  private readonly volumeViewport = React.createRef<HTMLDivElement>()
+  private volumeViewport: React.RefObject<HTMLDivElement>
 
-  private readonly labelViewport = React.createRef<HTMLDivElement>()
+  private labelViewport: React.RefObject<HTMLDivElement>
 
   private volumeViewer?: dmv.viewer.VolumeImageViewer
 
@@ -329,6 +329,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleOpticalPathVisibilityChange = this.handleOpticalPathVisibilityChange.bind(this)
     this.handleOpticalPathStyleChange = this.handleOpticalPathStyleChange.bind(this)
     this.handleOpticalPathActivityChange = this.handleOpticalPathActivityChange.bind(this)
+    this.volumeViewport = React.createRef<HTMLDivElement>()
+    this.labelViewport = React.createRef<HTMLDivElement>()
 
     const slides = this.props.slides.filter(item => {
       const slideIndex = item.seriesInstanceUIDs.findIndex((uid) => {
@@ -688,7 +690,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         isLoading: true
       })
 
-      if (this.volumeViewport.current !== null) {
+      if (this.volumeViewport.current != null) {
         console.info(
           'instantiate viewer for VOLUME images of series ' +
           this.props.seriesInstanceUID
@@ -872,6 +874,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       'dicommicroscopyviewer_loading_ended',
       this.onLoadingEnded
     )
+    this.volumeViewport = React.createRef<HTMLDivElement>()
+    this.labelViewport = React.createRef<HTMLDivElement>()
     this.populateViewports()
   }
 
