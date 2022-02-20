@@ -73,7 +73,7 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
                 name.equals(SpecimenPreparationStepItems.COLLECTION_METHOD)
               ) {
                 attributes.push({
-                  name: 'Surgical collection',
+                  name: 'Collection',
                   value: value.CodeMeaning
                 })
               } else if (
@@ -125,7 +125,6 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
         key={uid}
         identifier={identifier}
         attributes={attributes}
-        hasLongValues
       />
     )
   }
