@@ -261,9 +261,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private readonly evaluationOptions: { [key: string]: EvaluationOptions[] } = {}
 
-  private volumeViewport: React.RefObject<HTMLDivElement>
+  private readonly volumeViewportRef = React.createRef<HTMLDivElement>()
 
-  private labelViewport: React.RefObject<HTMLDivElement>
+  private readonly labelViewportRef = React.createRef<HTMLDivElement>()
 
   private volumeViewer?: dmv.viewer.VolumeImageViewer
 
@@ -329,8 +329,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleOpticalPathVisibilityChange = this.handleOpticalPathVisibilityChange.bind(this)
     this.handleOpticalPathStyleChange = this.handleOpticalPathStyleChange.bind(this)
     this.handleOpticalPathActivityChange = this.handleOpticalPathActivityChange.bind(this)
-    this.volumeViewport = React.createRef<HTMLDivElement>()
-    this.labelViewport = React.createRef<HTMLDivElement>()
 
     const slides = this.props.slides.filter(item => {
       const slideIndex = item.seriesInstanceUIDs.findIndex((uid) => {
@@ -371,7 +369,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-  componentDidUpdate (previousProps: SlideViewerProps): void {
+  componentDidUpdate (
+    previousProps: SlideViewerProps,
+    previousState: SlideViewerState
+  ): void {
     /** Fetch data and update the viewports if the route has changed (
      * i.e., if another series has been selected) or if the client has changed.
      */
@@ -683,19 +684,19 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       return false
     })
 
-    if (slides.length !== 0) {
+    if (slides.length > 0) {
       const slide = slides[0]
       this.setState({
         activeSlide: slide,
         isLoading: true
       })
 
-      if (this.volumeViewport.current != null) {
+      if (this.volumeViewportRef.current != null) {
         console.info(
           'instantiate viewer for VOLUME images of series ' +
           this.props.seriesInstanceUID
         )
-        this.volumeViewport.current.innerHTML = ''
+        this.volumeViewportRef.current.innerHTML = ''
 
         const volumeViewer = new dmv.viewer.VolumeImageViewer({
           client: this.props.client,
@@ -717,14 +718,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           visibleOpticalPathIdentifiers: visibleOpticalPathIdentifiers
         })
         this.volumeViewer = volumeViewer
-        this.volumeViewer.render({ container: this.volumeViewport.current })
+        this.volumeViewer.render({ container: this.volumeViewportRef.current })
         this.volumeViewer.toggleOverviewMap()
         this.volumeViewer.activateSelectInteraction({})
       }
 
       if (slide.labelImages.length > 0) {
-        if (this.labelViewport.current !== null) {
-          this.labelViewport.current.innerHTML = ''
+        if (this.labelViewportRef.current !== null) {
+          this.labelViewportRef.current.innerHTML = ''
           console.info(
             'instantiate viewer for LABEL image of series ' +
             this.props.seriesInstanceUID
@@ -736,7 +737,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             orientation: 'vertical'
           })
           this.labelViewer.render({
-            container: this.labelViewport.current
+            container: this.labelViewportRef.current
           })
         }
       }
@@ -874,8 +875,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       'dicommicroscopyviewer_loading_ended',
       this.onLoadingEnded
     )
-    this.volumeViewport = React.createRef<HTMLDivElement>()
-    this.labelViewport = React.createRef<HTMLDivElement>()
     this.populateViewports()
   }
 
@@ -2031,7 +2030,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               height: `calc(100% - ${toolbarHeight})`,
               overflow: 'hidden'
             }}
-            ref={this.volumeViewport}
+            ref={this.volumeViewportRef}
           />
 
           <Modal
@@ -2073,7 +2072,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           >
             <Menu.SubMenu key='label' title='Slide label'>
               <Menu.Item style={{ height: '100%' }}>
-                <div style={{ height: '220px' }} ref={this.labelViewport} />
+                <div style={{ height: '220px' }} ref={this.labelViewportRef} />
               </Menu.Item>
             </Menu.SubMenu>
             {specimenMenu}
