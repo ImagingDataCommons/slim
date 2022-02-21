@@ -289,9 +289,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private readonly evaluationOptions: { [key: string]: EvaluationOptions[] } = {}
 
-  private readonly volumeViewportRef = React.createRef<HTMLDivElement>()
+  private volumeViewportRef: React.RefObject<HTMLDivElement>
 
-  private readonly labelViewportRef = React.createRef<HTMLDivElement>()
+  private labelViewportRef: React.RefObject<HTMLDivElement>
 
   private volumeViewer: dmv.viewer.VolumeImageViewer
 
@@ -328,6 +328,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       }
       this.roiStyles[key] = annotation.style
     })
+
+    this.componentSetup = this.componentSetup.bind(this)
+    this.componentCleanup = this.componentCleanup.bind(this)
 
     this.handleRoiDrawing = this.handleRoiDrawing.bind(this)
     this.handleRoiTranslation = this.handleRoiTranslation.bind(this)
@@ -366,6 +369,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
     this.volumeViewer = volumeViewer
     this.labelViewer = labelViewer
+    this.volumeViewportRef = React.createRef<HTMLDivElement>()
+    this.labelViewportRef = React.createRef<HTMLDivElement>()
 
     const activeOpticalPathIdentifiers: string[] = []
     const visibleOpticalPathIdentifiers: string[] = []
@@ -407,12 +412,21 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     /** Fetch data and update the viewports if the route has changed (
      * i.e., if another series has been selected) or if the client has changed.
      */
-    console.log('DEBUG [UPDATE]')
     if (
       this.props.location !== previousProps.location ||
       this.props.slide !== previousProps.slide ||
       this.props.client !== previousProps.client
     ) {
+      this.volumeViewer.cleanup()
+      if (this.labelViewer) {
+        this.labelViewer.cleanup()
+      }
+      const { volumeViewer, labelViewer } = _constructViewers({
+        client: this.props.client,
+        slide: this.props.slide
+      })
+      this.volumeViewer = volumeViewer
+      this.labelViewer = labelViewer
       this.populateViewports()
     }
   }
@@ -709,24 +723,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     console.info('populate viewports...')
     this.setState({ isLoading: true })
 
-    if (
-      this.volumeViewportRef.current != null &&
-      this.labelViewportRef.current !== null
-    ) {
-      const { volumeViewer, labelViewer } = _constructViewers({
-        client: this.props.client,
-        slide: this.props.slide
-      })
-      this.volumeViewer = volumeViewer
-      this.labelViewer = labelViewer
-
+    if (this.volumeViewportRef.current != null) {
       this.volumeViewportRef.current.innerHTML = ''
       this.volumeViewer.render({ container: this.volumeViewportRef.current })
-
-      if (this.labelViewer !== undefined) {
-        this.labelViewportRef.current.innerHTML = ''
-        this.labelViewer.render({ container: this.labelViewportRef.current })
-      }
+    }
+    if (
+      this.labelViewportRef.current != null &&
+      this.labelViewer != null
+    ) {
+      this.labelViewportRef.current.innerHTML = ''
+      this.labelViewer.render({ container: this.labelViewportRef.current })
     }
 
     // State update will also ensure that the component is re-rendered.
@@ -803,7 +809,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     console.debug(`removed ROI "${roi.uid}"`)
   }
 
-  componentWillUnmount (): void {
+  componentCleanup (): void {
     document.body.removeEventListener(
       'dicommicroscopyviewer_roi_drawn',
       this.onRoiDrawn
@@ -828,9 +834,22 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (this.labelViewer) {
       this.labelViewer.cleanup()
     }
+    /*
+     * FIXME: React appears to not clean the content of referenced
+     * HTMLDivElement objects when the page is reloaded. As a consequence,
+     * optical paths and other display items cannot be toggled or updated after
+     * a manual page reload. I have tried using ref callbacks and passing the
+     * ref objects from the parent component via the props. Both didn't work
+     * either.
+     */
   }
 
-  componentDidMount (): void {
+  componentWillUnmount (): void {
+    window.removeEventListener('beforeunload', this.componentCleanup)
+    this.componentCleanup()
+  }
+
+  componentSetup (): void {
     document.body.addEventListener(
       'dicommicroscopyviewer_roi_drawn',
       this.onRoiDrawn
@@ -852,6 +871,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.onLoadingEnded
     )
     this.populateViewports()
+  }
+
+  componentDidMount (): void {
+    window.addEventListener('beforeunload', this.componentCleanup)
+    this.componentSetup()
   }
 
   /**
@@ -1729,7 +1753,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       </Menu.SubMenu>
     )
 
-    const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
     const defaultOpticalPathStyles: {
       [identifier: string]: {
         opacity: number
@@ -1740,12 +1763,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const opticalPathMetadata: {
       [identifier: string]: dmv.metadata.VLWholeSlideMicroscopyImage[]
     } = {}
-    const opticalPaths = viewer.getAllOpticalPaths()
+    const opticalPaths = this.volumeViewer.getAllOpticalPaths()
     opticalPaths.forEach(opticalPath => {
       const identifier = opticalPath.identifier
-      const style = viewer.getOpticalPathStyle(identifier)
+      const style = this.volumeViewer.getOpticalPathStyle(identifier)
       defaultOpticalPathStyles[identifier] = style
-      opticalPathMetadata[identifier] = viewer.getOpticalPathMetadata(
+      opticalPathMetadata[identifier] = this.volumeViewer.getOpticalPathMetadata(
         identifier
       )
     })
@@ -1972,7 +1995,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           >
             <Menu.SubMenu key='label' title='Slide label'>
               <Menu.Item style={{ height: '100%' }}>
-                <div style={{ height: '220px' }} ref={this.labelViewportRef} />
+                <div
+                  style={{ height: '220px' }}
+                  ref={this.labelViewportRef}
+                />
               </Menu.Item>
             </Menu.SubMenu>
             {specimenMenu}

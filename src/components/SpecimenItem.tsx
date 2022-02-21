@@ -35,8 +35,8 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
       if (specimenDescription.PrimaryAnatomicStructureSequence.length > 0) {
         const structures = specimenDescription.PrimaryAnatomicStructureSequence
         attributes.push({
-          name: 'Anatomic Structure',
-          value: structures[0].CodeMeaning
+          name: 'Anatomical structure',
+          value: structures.map(item => item.CodeMeaning).join(', ')
         })
       }
     }
@@ -73,21 +73,21 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
                 name.equals(SpecimenPreparationStepItems.COLLECTION_METHOD)
               ) {
                 attributes.push({
-                  name: 'Collection',
+                  name: 'Collection method',
                   value: value.CodeMeaning
                 })
               } else if (
                 name.equals(SpecimenPreparationStepItems.FIXATIVE)
               ) {
                 attributes.push({
-                  name: 'Fixative',
+                  name: 'Tissue fixative',
                   value: value.CodeMeaning
                 })
               } else if (
                 name.equals(SpecimenPreparationStepItems.EMBEDDING_MEDIUM)
               ) {
                 attributes.push({
-                  name: 'Embedding medium',
+                  name: 'Tissue embedding medium',
                   value: value.CodeMeaning
                 })
               } else if (
@@ -95,7 +95,7 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
                 this.props.showstain
               ) {
                 attributes.push({
-                  name: 'Stain',
+                  name: 'Tissue stain',
                   value: value.CodeMeaning
                 })
               }
@@ -107,9 +107,16 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
               this.props.showstain
             ) {
               attributes.push({
-                name: 'Stain',
+                name: 'Tissue stain',
                 value: item.TextValue
               })
+            // } else if (
+            //   name.equals(SpecimenPreparationStepItems.PARENT_SPECIMEN_IDENTIFIER)
+            // ) {
+            //   attributes.push({
+            //     name: 'Parent specimen',
+            //     value: item.TextValue
+            //   })
             }
           } else {
             console.debug(`specimen preparation step #${index} not rendered`)
@@ -125,6 +132,7 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
         key={uid}
         identifier={identifier}
         attributes={attributes}
+        hasLongValues
       />
     )
   }

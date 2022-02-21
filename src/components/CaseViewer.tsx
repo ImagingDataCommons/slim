@@ -192,9 +192,9 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
                   return uid === routeProps.match.params.SeriesInstanceUID
                 })
               })
-              let result = null
+              let viewer = null
               if (selectedSlide) {
-                result = (
+                viewer = (
                   <SlideViewer
                     client={this.props.client}
                     studyInstanceUID={this.props.studyInstanceUID}
@@ -207,7 +207,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
                   />
                 )
               }
-              return result
+              return viewer
             }}
           />
         </Switch>

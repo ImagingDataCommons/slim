@@ -220,18 +220,18 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     const identifier = this.props.opticalPath.identifier
     const description = this.props.opticalPath.description
     const attributes: Array<{ name: string, value: string }> = []
-    // if (this.props.opticalPath.illuminationWaveLength !== undefined) {
-    //   attributes.push(
-    //     {
-    //       name: 'Illumination Wave Length',
-    //       value: `${this.props.opticalPath.illuminationWaveLength} nm`
-    //     }
-    //   )
-    // }
+    if (this.props.opticalPath.illuminationWaveLength !== undefined) {
+      attributes.push(
+        {
+          name: 'Illumination wavelength',
+          value: `${this.props.opticalPath.illuminationWaveLength} nm`
+        }
+      )
+    }
     if (this.props.opticalPath.illuminationColor !== undefined) {
       attributes.push(
         {
-          name: 'Illumination Color',
+          name: 'Illumination color',
           value: this.props.opticalPath.illuminationColor.CodeMeaning
         }
       )
@@ -268,7 +268,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
             if (!name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
               if (name.equals(SpecimenPreparationStepItems.STAIN)) {
                 attributes.push({
-                  name: 'Stain',
+                  name: 'Tissue stain',
                   value: value.CodeMeaning
                 })
               }
@@ -278,7 +278,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
             if (!name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
               if (name.equals(SpecimenPreparationStepItems.STAIN)) {
                 attributes.push({
-                  name: 'Stain',
+                  name: 'Tissue stain',
                   value: item.TextValue
                 })
               }
@@ -390,6 +390,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
             header={title}
             attributes={attributes}
             selectable
+            hasLongValues
           />
         </Badge>
       )

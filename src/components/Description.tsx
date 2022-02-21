@@ -46,7 +46,7 @@ class Description extends React.Component<DescriptionProps, {}> {
           }}
           contentStyle={{
             fontWeight: 600,
-            whiteSpace: 'pre-line',
+            whiteSpace: 'normal',
             lineHeight: contentLineHeight
           }}
           span={1}
