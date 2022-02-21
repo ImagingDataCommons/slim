@@ -5,7 +5,7 @@ import { Menu } from 'antd'
 import MappingItem from './MappingItem'
 
 interface MappingListProps {
-  mappings: dmv.mapping.Mapping[]
+  mappings: dmv.mapping.ParameterMapping[]
   metadata: {
     [mappingUID: string]: dmv.metadata.ParametricMap[]
   }

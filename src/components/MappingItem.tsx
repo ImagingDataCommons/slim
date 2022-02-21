@@ -7,7 +7,7 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa'
 import Description from './Description'
 
 interface MappingItemProps {
-  mapping: dmv.mapping.Mapping
+  mapping: dmv.mapping.ParameterMapping
   metadata: dmv.metadata.ParametricMap[]
   isVisible: boolean
   defaultStyle: {

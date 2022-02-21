@@ -24,6 +24,7 @@ import {
 } from 'antd'
 import * as dmv from 'dicom-microscopy-viewer'
 import * as dcmjs from 'dcmjs'
+import * as dwc from 'dicomweb-client'
 
 import DicomWebManager from '../DicomWebManager'
 import AnnotationList from './AnnotationList'
@@ -97,6 +98,34 @@ const _areROIsEqual = (a: dmv.roi.ROI, b: dmv.roi.ROI): boolean => {
   }
   return true
 }
+
+const _constructViewers = ({ client, slide }: {
+  client: dwc.api.DICOMwebClient
+  slide: Slide
+}): {
+  volumeViewer: dmv.viewer.VolumeImageViewer
+  labelViewer?: dmv.viewer.LabelImageViewer
+} => {
+  const volumeViewer = new dmv.viewer.VolumeImageViewer({
+    client: client,
+    metadata: slide.volumeImages
+  })
+  volumeViewer.toggleOverviewMap()
+  volumeViewer.activateSelectInteraction({})
+
+  let labelViewer
+  if (slide.labelImages.length > 0) {
+    labelViewer = new dmv.viewer.LabelImageViewer({
+      client: client,
+      metadata: slide.labelImages[0],
+      resizeFactor: 1,
+      orientation: 'vertical'
+    })
+  }
+
+  return { volumeViewer, labelViewer }
+}
+
 
 /*
  * Check whether the report is structured according to template
@@ -210,7 +239,7 @@ interface Evaluation {
 }
 
 interface SlideViewerProps extends RouteComponentProps {
-  slides: Slide[]
+  slide: Slide
   client: DicomWebManager
   studyInstanceUID: string
   seriesInstanceUID: string
@@ -229,7 +258,6 @@ interface SlideViewerProps extends RouteComponentProps {
 }
 
 interface SlideViewerState {
-  activeSlide: Slide
   selectedRoiUIDs: string[]
   visibleRoiUIDs: string[]
   visibleSegmentUIDs: string[]
@@ -265,7 +293,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private readonly labelViewportRef = React.createRef<HTMLDivElement>()
 
-  private volumeViewer?: dmv.viewer.VolumeImageViewer
+  private volumeViewer: dmv.viewer.VolumeImageViewer
 
   private labelViewer?: dmv.viewer.LabelImageViewer
 
@@ -301,8 +329,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.roiStyles[key] = annotation.style
     })
 
-    this.volumeViewer = undefined
-    this.labelViewer = undefined
     this.handleRoiDrawing = this.handleRoiDrawing.bind(this)
     this.handleRoiTranslation = this.handleRoiTranslation.bind(this)
     this.handleRoiModification = this.handleRoiModification.bind(this)
@@ -330,32 +356,37 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleOpticalPathStyleChange = this.handleOpticalPathStyleChange.bind(this)
     this.handleOpticalPathActivityChange = this.handleOpticalPathActivityChange.bind(this)
 
-    const slides = this.props.slides.filter(item => {
-      const slideIndex = item.seriesInstanceUIDs.findIndex((uid) => {
-        return uid === this.props.seriesInstanceUID
-      })
-      if (slideIndex !== -1) {
-        return true
+    console.info(
+      'instantiate viewers for slide of series ' +
+      this.props.seriesInstanceUID
+    )
+    const { volumeViewer, labelViewer } = _constructViewers({
+      client: this.props.client,
+      slide: this.props.slide
+    })
+    this.volumeViewer = volumeViewer
+    this.labelViewer = labelViewer
+
+    const activeOpticalPathIdentifiers: string[] = []
+    const visibleOpticalPathIdentifiers: string[] = []
+    this.volumeViewer.getAllOpticalPaths().forEach(opticalPath => {
+      const identifier = opticalPath.identifier
+      if (this.volumeViewer.isOpticalPathVisible(identifier)) {
+        visibleOpticalPathIdentifiers.push(identifier)
       }
-      return false
+      if (this.volumeViewer.isOpticalPathActive(identifier)) {
+        activeOpticalPathIdentifiers.push(identifier)
+      }
     })
 
-    if (slides.length === 0) {
-      throw new Error(
-        'No matching slide was found for selected series ' +
-        `"${this.props.seriesInstanceUID}"`
-      )
-    }
-
     this.state = {
-      activeSlide: slides[0],
       selectedRoiUIDs: [],
       visibleRoiUIDs: [],
       visibleSegmentUIDs: [],
       visibleMappingUIDs: [],
       visibleAnnotationGroupUIDs: [],
-      visibleOpticalPathIdentifiers: [],
-      activeOpticalPathIdentifiers: [],
+      visibleOpticalPathIdentifiers: visibleOpticalPathIdentifiers,
+      activeOpticalPathIdentifiers: activeOpticalPathIdentifiers,
       selectedFinding: undefined,
       selectedEvaluations: [],
       generatedReport: undefined,
@@ -376,9 +407,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     /** Fetch data and update the viewports if the route has changed (
      * i.e., if another series has been selected) or if the client has changed.
      */
+    console.log('DEBUG [UPDATE]')
     if (
       this.props.location !== previousProps.location ||
-      this.props.slides !== previousProps.slides ||
+      this.props.slide !== previousProps.slide ||
       this.props.client !== previousProps.client
     ) {
       this.populateViewports()
@@ -391,11 +423,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * currently selected series and add them to the VOLUME image viewer.
    */
   addAnnotations = (): void => {
-    const viewer = this.volumeViewer
-    if (viewer === undefined) {
-      return
-    }
-
     console.info('search for Comprehensive 3D SR instances')
     this.props.client.searchForInstances({
       studyInstanceUID: this.props.studyInstanceUID,
@@ -447,8 +474,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             content.ROIs.forEach(roi => {
               console.info(`add ROI "${roi.uid}"`)
               const scoord3d = roi.scoord3d
-              const slide = this.state.activeSlide
-              const image = slide.volumeImages[0]
+              const image = this.props.slide.volumeImages[0]
               if (scoord3d.frameOfReferenceUID === image.FrameOfReferenceUID) {
                 /*
                  * ROIs may get assigned new UIDs upon re-rendering of the
@@ -459,7 +485,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                  * quantitative evaluations or pick the ROI from the "best"
                  * available report (COMPLETE and VERIFIED).
                  */
-                const doesROIExist = viewer.getAllROIs().some(
+                const doesROIExist = this.volumeViewer.getAllROIs().some(
                   (otherROI: dmv.roi.ROI): boolean => {
                     return _areROIsEqual(otherROI, roi)
                   }
@@ -467,7 +493,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 if (!doesROIExist) {
                   try {
                     // Add ROI without style such that it won't be visible.
-                    viewer.addROI(roi, {})
+                    this.volumeViewer.addROI(roi, {})
                   } catch {
                     console.error(`could not add ROI "${roi.uid}"`)
                   }
@@ -482,12 +508,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 )
               }
             })
-            // State update will also ensure that the component is re-rendered.
           }).catch((error) => {
             // eslint-disable-next-line @typescript-eslint/no-floating-promises
             message.error('An error occured. Annotations could not be loaded')
             console.error(error)
           })
+          /*
+           * React is not aware of the fact that ROIs have been added via the
+           * viewer (the viewport is a ref object) and won't show the
+           * annotations in the user interface unless an update is forced.
+           */
           this.forceUpdate()
         }
       })
@@ -504,10 +534,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * selected series and add them to the VOLUME image viewer.
    */
   addAnnotationGroups = (): void => {
-    const viewer = this.volumeViewer
-    if (viewer === undefined) {
-      return
-    }
     console.info('search for Microscopy Bulk Simple Annotations instances')
     this.props.client.searchForSeries({
       studyInstanceUID: this.props.studyInstanceUID,
@@ -532,7 +558,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               })
             })
           annotations = annotations.filter(ann => {
-            const refImage = this.state.activeSlide.volumeImages[0]
+            const refImage = this.props.slide.volumeImages[0]
             return (
               ann.FrameOfReferenceUID === refImage.FrameOfReferenceUID &&
               ann.ContainerIdentifier === refImage.ContainerIdentifier
@@ -540,7 +566,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           })
           annotations.forEach(ann => {
             try {
-              viewer.addAnnotationGroups(ann)
+              this.volumeViewer.addAnnotationGroups(ann)
             } catch (error) {
               // eslint-disable-next-line @typescript-eslint/no-floating-promises
               message.error(
@@ -550,6 +576,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               console.error(`failed to add annotation groups: ${error}`)
             }
           })
+          /*
+           * React is not aware of the fact that annotation groups have been
+           * added via the viewer (the underlying HTML viewport element is a
+           * ref object) and won't show the annotation groups in the user
+           * interface unless an update is forced.
+           */
           this.forceUpdate()
         })
       })
@@ -562,11 +594,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * VOLUME image viewer.
    */
   addSegmentations = (): void => {
-    const viewer = this.volumeViewer
-    if (viewer === undefined) {
-      return
-    }
-
     console.info('search for Segmentation instances')
     this.props.client.searchForSeries({
       studyInstanceUID: this.props.studyInstanceUID,
@@ -588,7 +615,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             metadata => new dmv.metadata.Segmentation({ metadata })
           )
           segmentations = segmentations.filter(seg => {
-            const refImage = this.state.activeSlide.volumeImages[0]
+            const refImage = this.props.slide.volumeImages[0]
             return (
               seg.FrameOfReferenceUID === refImage.FrameOfReferenceUID &&
               seg.ContainerIdentifier === refImage.ContainerIdentifier
@@ -596,7 +623,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           })
           if (segmentations.length > 0) {
             try {
-              viewer.addSegments(segmentations)
+              this.volumeViewer.addSegments(segmentations)
             } catch (error) {
               // eslint-disable-next-line @typescript-eslint/no-floating-promises
               message.error(
@@ -605,6 +632,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               )
               console.error(`failed to add segments: ${error}`)
             }
+          /*
+           * React is not aware of the fact that segments have been added via
+           * the viewer (the underlying HTML viewport element is a ref object)
+           * and won't show the segments in the user interface unless an update
+           * is forced.
+           */
             this.forceUpdate()
           }
         })
@@ -618,11 +651,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * VOLUME image viewer.
    */
   addParametricMaps = (): void => {
-    const viewer = this.volumeViewer
-    if (viewer === undefined) {
-      return
-    }
-
     console.info('search for Parametric Map instances')
     this.props.client.searchForSeries({
       studyInstanceUID: this.props.studyInstanceUID,
@@ -644,7 +672,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             metadata => new dmv.metadata.ParametricMap({ metadata })
           )
           maps = maps.filter(image => {
-            const refImage = this.state.activeSlide.volumeImages[0]
+            const refImage = this.props.slide.volumeImages[0]
             return (
               image.FrameOfReferenceUID === refImage.FrameOfReferenceUID &&
               image.ContainerIdentifier === refImage.ContainerIdentifier
@@ -652,7 +680,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           })
           if (maps.length > 0) {
             try {
-              viewer.addMappings(maps)
+              this.volumeViewer.addParameterMappings(maps)
             } catch (error) {
               // eslint-disable-next-line @typescript-eslint/no-floating-promises
               message.error(
@@ -661,6 +689,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               )
               console.error(`failed to add mappings: ${error}`)
             }
+          /*
+           * React is not aware of the fact that mappings have been added via
+           * the viewer (the underlying HTML viewport element is a ref object)
+           * and won't show the mappings in the user interface unless an update
+           * is forced.
+           */
             this.forceUpdate()
           }
         })
@@ -669,77 +703,29 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   /**
-   * Retrieve metadata for image instances in the currently selected series and
-   * instantiate the VOLUME and LABEL image viewers.
+   * Populate viewports of the VOLUME and LABEL image viewers.
    */
   populateViewports = (): void => {
-    const slideArray = this.props.slides
-    const slides = slideArray.filter(item => {
-      const slideIndex = item.seriesInstanceUIDs.findIndex((uid) => {
-        return uid === this.props.seriesInstanceUID
+    console.info('populate viewports...')
+    this.setState({ isLoading: true })
+
+    if (
+      this.volumeViewportRef.current != null &&
+      this.labelViewportRef.current !== null
+    ) {
+      const { volumeViewer, labelViewer } = _constructViewers({
+        client: this.props.client,
+        slide: this.props.slide
       })
-      if (slideIndex !== -1) {
-        return true
-      }
-      return false
-    })
+      this.volumeViewer = volumeViewer
+      this.labelViewer = labelViewer
 
-    if (slides.length > 0) {
-      const slide = slides[0]
-      this.setState({
-        activeSlide: slide,
-        isLoading: true
-      })
+      this.volumeViewportRef.current.innerHTML = ''
+      this.volumeViewer.render({ container: this.volumeViewportRef.current })
 
-      if (this.volumeViewportRef.current != null) {
-        console.info(
-          'instantiate viewer for VOLUME images of series ' +
-          this.props.seriesInstanceUID
-        )
-        this.volumeViewportRef.current.innerHTML = ''
-
-        const volumeViewer = new dmv.viewer.VolumeImageViewer({
-          client: this.props.client,
-          metadata: slide.volumeImages
-        })
-        const activeOpticalPathIdentifiers: string[] = []
-        const visibleOpticalPathIdentifiers: string[] = []
-        volumeViewer.getAllOpticalPaths().forEach(opticalPath => {
-          const identifier = opticalPath.identifier
-          if (volumeViewer.isOpticalPathVisible(identifier)) {
-            visibleOpticalPathIdentifiers.push(identifier)
-          }
-          if (volumeViewer.isOpticalPathActive(identifier)) {
-            activeOpticalPathIdentifiers.push(identifier)
-          }
-        })
-        this.setState({
-          activeOpticalPathIdentifiers: activeOpticalPathIdentifiers,
-          visibleOpticalPathIdentifiers: visibleOpticalPathIdentifiers
-        })
-        this.volumeViewer = volumeViewer
-        this.volumeViewer.render({ container: this.volumeViewportRef.current })
-        this.volumeViewer.toggleOverviewMap()
-        this.volumeViewer.activateSelectInteraction({})
-      }
-
-      if (slide.labelImages.length > 0) {
-        if (this.labelViewportRef.current !== null) {
-          this.labelViewportRef.current.innerHTML = ''
-          console.info(
-            'instantiate viewer for LABEL image of series ' +
-            this.props.seriesInstanceUID
-          )
-          this.labelViewer = new dmv.viewer.LabelImageViewer({
-            client: this.props.client,
-            metadata: slide.labelImages[0],
-            resizeFactor: 1,
-            orientation: 'vertical'
-          })
-          this.labelViewer.render({
-            container: this.labelViewportRef.current
-          })
-        }
+      if (this.labelViewer !== undefined) {
+        this.labelViewportRef.current.innerHTML = ''
+        this.labelViewer.render({ container: this.labelViewportRef.current })
       }
     }
 
@@ -754,14 +740,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   onRoiDrawn = (event: CustomEventInit): void => {
     const roi = event.detail.payload as dmv.roi.ROI
-    const viewer = this.volumeViewer
     const selectedFinding = this.state.selectedFinding
     const selectedEvaluations = this.state.selectedEvaluations
-    if (
-      roi !== undefined &&
-      selectedFinding !== undefined &&
-      viewer !== undefined
-    ) {
+    if (roi !== undefined && selectedFinding !== undefined) {
       console.debug(`add ROI "${roi.uid}"`)
       const findingItem = new dcmjs.sr.valueTypes.CodeContentItem({
         name: new dcmjs.sr.coding.CodedConcept({
@@ -783,7 +764,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       })
       const key = _buildKey(selectedFinding)
       var style = this.roiStyles[key]
-      viewer.addROI(roi, style)
+      this.volumeViewer.addROI(roi, style)
       this.setState(state => ({
         visibleRoiUIDs: [...state.visibleRoiUIDs, roi.uid]
       }))
@@ -794,21 +775,18 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   onRoiSelected = (event: CustomEventInit): void => {
     const selectedRoi = event.detail.payload as dmv.roi.ROI
-    const viewer = this.volumeViewer
-    if (viewer !== undefined) {
-      if (selectedRoi !== null) {
-        console.debug(`selected ROI "${selectedRoi.uid}"`)
-        viewer.setROIStyle(selectedRoi.uid, this.selectedRoiStyle)
-        const key = _getRoiKey(selectedRoi)
-        viewer.getAllROIs().forEach((roi) => {
-          if (roi.uid !== selectedRoi.uid) {
-            viewer.setROIStyle(roi.uid, this.roiStyles[key])
-          }
-        })
-        this.setState({ selectedRoiUIDs: [selectedRoi.uid] })
-      } else {
-        this.setState({ selectedRoiUIDs: [] })
-      }
+    if (selectedRoi !== null) {
+      console.debug(`selected ROI "${selectedRoi.uid}"`)
+      this.volumeViewer.setROIStyle(selectedRoi.uid, this.selectedRoiStyle)
+      const key = _getRoiKey(selectedRoi)
+      this.volumeViewer.getAllROIs().forEach((roi) => {
+        if (roi.uid !== selectedRoi.uid) {
+          this.volumeViewer.setROIStyle(roi.uid, this.roiStyles[key])
+        }
+      })
+      this.setState({ selectedRoiUIDs: [selectedRoi.uid] })
+    } else {
+      this.setState({ selectedRoiUIDs: [] })
     }
   }
 
@@ -846,9 +824,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       'dicommicroscopyviewer_loading_ended',
       this.onLoadingEnded
     )
-    if (this.volumeViewer) {
-      this.volumeViewer.cleanup()
-    }
+    this.volumeViewer.cleanup()
     if (this.labelViewer) {
       this.labelViewer.cleanup()
     }
@@ -976,16 +952,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    */
   handleAnnotationConfigurationCompletion (): void {
     console.debug('complete annotation configuration')
-    const viewer = this.volumeViewer
     const finding = this.state.selectedFinding
     const geometryType = this.state.selectedGeometryType
     const markup = this.state.selectedMarkup
-    if (
-      viewer !== undefined &&
-      geometryType !== undefined &&
-      finding !== undefined
-    ) {
-      viewer.activateDrawInteraction({ geometryType, markup })
+    if (geometryType !== undefined && finding !== undefined) {
+      this.volumeViewer.activateDrawInteraction({ geometryType, markup })
       this.setState({ isAnnotationModalVisible: false })
     } else {
       console.error('could not complete annotation configuration')
@@ -1005,11 +976,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * set of annotations.
    */
   handleReportGeneration (): void {
-    if (this.volumeViewer === undefined) {
-      return
-    }
     console.info('save ROIs')
-
     const rois = this.volumeViewer.getAllROIs()
     const opticalPaths = this.volumeViewer.getAllOpticalPaths()
     const metadata = this.volumeViewer.getOpticalPathMetadata(
@@ -1230,13 +1197,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * current list of annotations.
    */
   handleAnnotationSelection ({ roiUID }: { roiUID: string }): void {
-    const viewer = this.volumeViewer
-    if (viewer === undefined) {
-      return
-    }
     console.log(`selected ROI ${roiUID}`)
     this.setState({ selectedRoiUIDs: [roiUID] })
-    viewer.getAllROIs().forEach((roi) => {
+    this.volumeViewer.getAllROIs().forEach((roi) => {
       var style = {}
       if (roi.uid === roiUID) {
         style = this.selectedRoiStyle
@@ -1249,7 +1212,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           style = this.roiStyles[key]
         }
       }
-      viewer.setROIStyle(roi.uid, style)
+      this.volumeViewer.setROIStyle(roi.uid, style)
     })
   }
   /**
@@ -1260,15 +1223,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     roiUID: string
     isVisible: boolean
   }): void {
-    const viewer = this.volumeViewer
-    if (viewer === undefined) {
-      return
-    }
     if (isVisible) {
       console.info(`show ROI ${roiUID}`)
-      const roi = viewer.getROI(roiUID)
+      const roi = this.volumeViewer.getROI(roiUID)
       const key = _getRoiKey(roi)
-      viewer.setROIStyle(roi.uid, this.roiStyles[key])
+      this.volumeViewer.setROIStyle(roi.uid, this.roiStyles[key])
       this.setState(state => {
         if (state.visibleRoiUIDs.indexOf(roiUID) < 0) {
           return {
@@ -1286,7 +1245,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         visibleRoiUIDs: state.visibleRoiUIDs.filter(uid => uid !== roiUID),
         selectedRoiUIDs: state.selectedRoiUIDs.filter(uid => uid !== roiUID)
       }))
-      viewer.setROIStyle(roiUID, {})
+      this.volumeViewer.setROIStyle(roiUID, {})
     }
   }
 
@@ -1298,14 +1257,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     annotationGroupUID: string
     isVisible: boolean
   }): void {
-    const viewer = this.volumeViewer
-    if (viewer === undefined) {
-      return
-    }
     console.log(`change visibility of annotation group ${annotationGroupUID}`)
     if (isVisible) {
       console.info(`show annotation group ${annotationGroupUID}`)
-      viewer.showAnnotationGroup(annotationGroupUID)
+      this.volumeViewer.showAnnotationGroup(annotationGroupUID)
       this.setState(state => ({
         visibleAnnotationGroupUIDs: state.visibleAnnotationGroupUIDs.concat(
           annotationGroupUID
@@ -1313,7 +1268,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       }))
     } else {
       console.info(`hide annotation group ${annotationGroupUID}`)
-      viewer.hideAnnotationGroup(annotationGroupUID)
+      this.volumeViewer.hideAnnotationGroup(annotationGroupUID)
       this.setState(state => ({
         visibleAnnotationGroupUIDs: state.visibleAnnotationGroupUIDs.filter(
           uid => uid !== annotationGroupUID
@@ -1331,12 +1286,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       opacity?: number
     }
   }): void {
-    const viewer = this.volumeViewer
-    if (viewer === undefined) {
-      return
-    }
     console.log(`change style of annotation group ${annotationGroupUID}`)
-    viewer.setAnnotationGroupStyle(annotationGroupUID, styleOptions)
+    this.volumeViewer.setAnnotationGroupStyle(annotationGroupUID, styleOptions)
   }
 
   /**
@@ -1347,20 +1298,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     segmentUID: string
     isVisible: boolean
   }): void {
-    const viewer = this.volumeViewer
-    if (viewer === undefined) {
-      return
-    }
     console.log(`change visibility of segment ${segmentUID}`)
     if (isVisible) {
       console.info(`show segment ${segmentUID}`)
-      viewer.showSegment(segmentUID)
+      this.volumeViewer.showSegment(segmentUID)
       this.setState(state => ({
         visibleSegmentUIDs: state.visibleSegmentUIDs.concat(segmentUID)
       }))
     } else {
       console.info(`hide segment ${segmentUID}`)
-      viewer.hideSegment(segmentUID)
+      this.volumeViewer.hideSegment(segmentUID)
       this.setState(state => ({
         visibleSegmentUIDs: state.visibleSegmentUIDs.filter(uid => {
           return uid !== segmentUID
@@ -1378,12 +1325,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       opacity?: number
     }
   }): void {
-    const viewer = this.volumeViewer
-    if (viewer === undefined) {
-      return
-    }
     console.log(`change style of segment ${segmentUID}`)
-    viewer.setSegmentStyle(segmentUID, styleOptions)
+    this.volumeViewer.setSegmentStyle(segmentUID, styleOptions)
   }
 
   /**
@@ -1394,20 +1337,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     mappingUID: string
     isVisible: boolean
   }): void {
-    const viewer = this.volumeViewer
-    if (viewer === undefined) {
-      return
-    }
     console.log(`change visibility of mapping ${mappingUID}`)
     if (isVisible) {
       console.info(`show mapping ${mappingUID}`)
-      viewer.showMapping(mappingUID)
+      this.volumeViewer.showParameterMapping(mappingUID)
       this.setState(state => ({
         visibleMappingUIDs: state.visibleMappingUIDs.concat(mappingUID)
       }))
     } else {
       console.info(`hide mapping ${mappingUID}`)
-      viewer.hideMapping(mappingUID)
+      this.volumeViewer.hideParameterMapping(mappingUID)
       this.setState(state => ({
         visibleMappingUIDs: state.visibleMappingUIDs.filter(uid => {
           return uid !== mappingUID
@@ -1425,12 +1364,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       opacity?: number
     }
   }): void {
-    const viewer = this.volumeViewer
-    if (viewer === undefined) {
-      return
-    }
     console.log(`change style of mapping ${mappingUID}`)
-    viewer.setMappingStyle(mappingUID, styleOptions)
+    this.volumeViewer.setParameterMappingStyle(mappingUID, styleOptions)
   }
 
   /**
@@ -1441,21 +1376,17 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     opticalPathIdentifier: string,
     isVisible: boolean
   }): void {
-    const viewer = this.volumeViewer
-    if (viewer === undefined) {
-      return
-    }
     console.log(`change visibility of optical path ${opticalPathIdentifier}`)
     if (isVisible) {
       console.info(`show optical path ${opticalPathIdentifier}`)
-      viewer.showOpticalPath(opticalPathIdentifier)
+      this.volumeViewer.showOpticalPath(opticalPathIdentifier)
       this.setState(state => ({
         visibleOpticalPathIdentifiers:
           state.visibleOpticalPathIdentifiers.concat(opticalPathIdentifier)
       }))
     } else {
       console.info(`hide optical path ${opticalPathIdentifier}`)
-      viewer.hideOpticalPath(opticalPathIdentifier)
+      this.volumeViewer.hideOpticalPath(opticalPathIdentifier)
       this.setState(state => ({
         visibleOpticalPathIdentifiers:
           state.visibleOpticalPathIdentifiers.filter(
@@ -1476,12 +1407,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       limitValues?: number[]
     }
   }): void {
-    const viewer = this.volumeViewer
-    if (viewer === undefined) {
-      return
-    }
     console.log(`change style of optical path ${opticalPathIdentifier}`)
-    viewer.setOpticalPathStyle(opticalPathIdentifier, styleOptions)
+    this.volumeViewer.setOpticalPathStyle(opticalPathIdentifier, styleOptions)
   }
 
   /**
@@ -1492,21 +1419,17 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     opticalPathIdentifier: string,
     isActive: boolean
   }): void {
-    const viewer = this.volumeViewer
-    if (viewer === undefined) {
-      return
-    }
     console.log(`change activity of optical path ${opticalPathIdentifier}`)
     if (isActive) {
       console.info(`activate optical path ${opticalPathIdentifier}`)
-      viewer.activateOpticalPath(opticalPathIdentifier)
+      this.volumeViewer.activateOpticalPath(opticalPathIdentifier)
       this.setState(state => ({
         activeOpticalPathIdentifiers:
           state.activeOpticalPathIdentifiers.concat(opticalPathIdentifier)
       }))
     } else {
       console.info(`deactivate optical path ${opticalPathIdentifier}`)
-      viewer.deactivateOpticalPath(opticalPathIdentifier)
+      this.volumeViewer.deactivateOpticalPath(opticalPathIdentifier)
       this.setState(state => ({
         activeOpticalPathIdentifiers:
           state.activeOpticalPathIdentifiers.filter(
@@ -1521,14 +1444,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * de-activate it, depending on its current state.
    */
   handleRoiDrawing (): void {
-    const viewer = this.volumeViewer
-    if (viewer === undefined) {
-      return
-    }
-    if (viewer.isDrawInteractionActive) {
+    if (this.volumeViewer.isDrawInteractionActive) {
       console.info('deactivate drawing of ROIs')
-      viewer.deactivateDrawInteraction()
-      viewer.activateSelectInteraction({})
+      this.volumeViewer.deactivateDrawInteraction()
+      this.volumeViewer.activateSelectInteraction({})
       this.setState({
         isAnnotationModalVisible: false,
         isRoiTranslationActive: false,
@@ -1543,10 +1462,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         isRoiModificationActive: false,
         isRoiTranslationActive: false
       })
-      viewer.deactivateSelectInteraction()
-      viewer.deactivateSnapInteraction()
-      viewer.deactivateTranslateInteraction()
-      viewer.deactivateModifyInteraction()
+      this.volumeViewer.deactivateSelectInteraction()
+      this.volumeViewer.deactivateSnapInteraction()
+      this.volumeViewer.deactivateTranslateInteraction()
+      this.volumeViewer.deactivateModifyInteraction()
     }
   }
 
@@ -1555,15 +1474,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * or de-activate it, depending on its current state.
    */
   handleRoiModification (): void {
-    const viewer = this.volumeViewer
-    if (viewer === undefined) {
-      return
-    }
     console.info('toggle modification of ROIs')
-    if (viewer.isModifyInteractionActive) {
-      viewer.deactivateModifyInteraction()
-      viewer.deactivateSnapInteraction()
-      viewer.activateSelectInteraction({})
+    if (this.volumeViewer.isModifyInteractionActive) {
+      this.volumeViewer.deactivateModifyInteraction()
+      this.volumeViewer.deactivateSnapInteraction()
+      this.volumeViewer.activateSelectInteraction({})
       this.setState({
         isRoiTranslationActive: false,
         isRoiDrawingActive: false,
@@ -1575,11 +1490,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         isRoiDrawingActive: false,
         isRoiTranslationActive: false
       })
-      viewer.deactivateDrawInteraction()
-      viewer.deactivateTranslateInteraction()
-      viewer.deactivateSelectInteraction()
-      viewer.activateSnapInteraction({})
-      viewer.activateModifyInteraction({})
+      this.volumeViewer.deactivateDrawInteraction()
+      this.volumeViewer.deactivateTranslateInteraction()
+      this.volumeViewer.deactivateSelectInteraction()
+      this.volumeViewer.activateSnapInteraction({})
+      this.volumeViewer.activateModifyInteraction({})
     }
   }
 
@@ -1588,13 +1503,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * or de-activate it, depending on its current state.
    */
   handleRoiTranslation (): void {
-    const viewer = this.volumeViewer
-    if (viewer === undefined) {
-      return
-    }
     console.info('toggle translation of ROIs')
-    if (viewer.isTranslateInteractionActive) {
-      viewer.deactivateTranslateInteraction()
+    if (this.volumeViewer.isTranslateInteractionActive) {
+      this.volumeViewer.deactivateTranslateInteraction()
       this.setState({
         isRoiTranslationActive: false,
         isRoiDrawingActive: false,
@@ -1606,11 +1517,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         isRoiDrawingActive: false,
         isRoiModificationActive: false
       })
-      viewer.deactivateModifyInteraction()
-      viewer.deactivateSnapInteraction()
-      viewer.deactivateDrawInteraction()
-      viewer.deactivateSelectInteraction()
-      viewer.activateTranslateInteraction({})
+      this.volumeViewer.deactivateModifyInteraction()
+      this.volumeViewer.deactivateSnapInteraction()
+      this.volumeViewer.deactivateDrawInteraction()
+      this.volumeViewer.deactivateSelectInteraction()
+      this.volumeViewer.activateTranslateInteraction({})
     }
   }
 
@@ -1619,14 +1530,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * or de-activate it, depending on its current state.
    */
   handleRoiRemoval (): void {
-    const viewer = this.volumeViewer
-    if (viewer === undefined) {
-      return
-    }
-    viewer.deactivateDrawInteraction()
-    viewer.deactivateSnapInteraction()
-    viewer.deactivateTranslateInteraction()
-    viewer.deactivateModifyInteraction()
+    this.volumeViewer.deactivateDrawInteraction()
+    this.volumeViewer.deactivateSnapInteraction()
+    this.volumeViewer.deactivateTranslateInteraction()
+    this.volumeViewer.deactivateModifyInteraction()
     if (this.state.selectedRoiUIDs.length > 0) {
       this.state.selectedRoiUIDs.forEach(uid => {
         if (uid === undefined) {
@@ -1635,7 +1542,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           return
         }
         console.info(`remove ROI "${uid}"`)
-        viewer.removeROI(uid)
+        this.volumeViewer.removeROI(uid)
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         message.info('Annotation was removed')
       })
@@ -1648,7 +1555,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     } else {
       this.state.visibleRoiUIDs.forEach(uid => {
         console.info(`remove ROI "${uid}"`)
-        viewer.removeROI(uid)
+        this.volumeViewer.removeROI(uid)
       })
       this.setState({
         visibleRoiUIDs: [],
@@ -1657,7 +1564,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         isRoiModificationActive: false
       })
     }
-    viewer.activateSelectInteraction({})
+    this.volumeViewer.activateSelectInteraction({})
   }
 
   /**
@@ -1665,18 +1572,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * or de-activate it, depending on its current state.
    */
   handleRoiVisibilityChange (): void {
-    const viewer = this.volumeViewer
-    if (viewer === undefined) {
-      return
-    }
     console.info('toggle visibility of ROIs')
-    if (viewer.areROIsVisible) {
-      viewer.deactivateDrawInteraction()
-      viewer.deactivateSnapInteraction()
-      viewer.deactivateTranslateInteraction()
-      viewer.deactivateSelectInteraction()
-      viewer.deactivateModifyInteraction()
-      viewer.hideROIs()
+    if (this.volumeViewer.areROIsVisible) {
+      this.volumeViewer.deactivateDrawInteraction()
+      this.volumeViewer.deactivateSnapInteraction()
+      this.volumeViewer.deactivateTranslateInteraction()
+      this.volumeViewer.deactivateSelectInteraction()
+      this.volumeViewer.deactivateModifyInteraction()
+      this.volumeViewer.hideROIs()
       this.setState({
         areRoisHidden: true,
         isRoiDrawingActive: false,
@@ -1684,11 +1587,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         isRoiTranslationActive: false
       })
     } else {
-      viewer.showROIs()
-      viewer.activateSelectInteraction({})
+      this.volumeViewer.showROIs()
+      this.volumeViewer.activateSelectInteraction({})
       this.state.selectedRoiUIDs.forEach(uid => {
         if (uid !== undefined) {
-          viewer.setROIStyle(uid, this.selectedRoiStyle)
+          this.volumeViewer.setROIStyle(uid, this.selectedRoiStyle)
         }
       })
       this.setState({ areRoisHidden: false })
@@ -1698,14 +1601,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   render (): React.ReactNode {
     const rois: dmv.roi.ROI[] = []
     const segments: dmv.segment.Segment[] = []
-    const mappings: dmv.mapping.Mapping[] = []
+    const mappings: dmv.mapping.ParameterMapping[] = []
     const annotationGroups: dmv.annotation.AnnotationGroup[] = []
-    if (this.volumeViewer !== undefined) {
-      rois.push(...this.volumeViewer.getAllROIs())
-      segments.push(...this.volumeViewer.getAllSegments())
-      mappings.push(...this.volumeViewer.getAllMappings())
-      annotationGroups.push(...this.volumeViewer.getAllAnnotationGroups())
-    }
+    rois.push(...this.volumeViewer.getAllROIs())
+    segments.push(...this.volumeViewer.getAllSegments())
+    mappings.push(...this.volumeViewer.getAllParameterMappings())
+    annotationGroups.push(...this.volumeViewer.getAllAnnotationGroups())
 
     const openSubMenuItems = ['specimens', 'opticalpaths', 'annotations']
 
@@ -1819,53 +1720,49 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       })
     }
 
-    const slide = this.state.activeSlide
     const specimenMenu = (
       <Menu.SubMenu key='specimens' title='Specimens'>
         <SpecimenList
-          metadata={slide.volumeImages[0]}
+          metadata={this.props.slide.volumeImages[0]}
           showstain={false}
         />
       </Menu.SubMenu>
     )
 
-    let opticalPathMenu
-    if (this.volumeViewer !== undefined) {
-      const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
-      const defaultOpticalPathStyles: {
-        [identifier: string]: {
-          opacity: number
-          color?: number[]
-          limitValues?: number[]
-        }
-      } = {}
-      const opticalPathMetadata: {
-        [identifier: string]: dmv.metadata.VLWholeSlideMicroscopyImage[]
-      } = {}
-      const opticalPaths = viewer.getAllOpticalPaths()
-      opticalPaths.forEach(opticalPath => {
-        const identifier = opticalPath.identifier
-        const style = viewer.getOpticalPathStyle(identifier)
-        defaultOpticalPathStyles[identifier] = style
-        opticalPathMetadata[identifier] = viewer.getOpticalPathMetadata(
-          identifier
-        )
-      })
-      opticalPathMenu = (
-        <Menu.SubMenu key='opticalpaths' title='Optical Paths'>
-          <OpticalPathList
-            metadata={opticalPathMetadata}
-            opticalPaths={opticalPaths}
-            defaultOpticalPathStyles={defaultOpticalPathStyles}
-            visibleOpticalPathIdentifiers={this.state.visibleOpticalPathIdentifiers}
-            activeOpticalPathIdentifiers={this.state.activeOpticalPathIdentifiers}
-            onOpticalPathVisibilityChange={this.handleOpticalPathVisibilityChange}
-            onOpticalPathStyleChange={this.handleOpticalPathStyleChange}
-            onOpticalPathActivityChange={this.handleOpticalPathActivityChange}
-          />
-        </Menu.SubMenu>
+    const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
+    const defaultOpticalPathStyles: {
+      [identifier: string]: {
+        opacity: number
+        color?: number[]
+        limitValues?: number[]
+      }
+    } = {}
+    const opticalPathMetadata: {
+      [identifier: string]: dmv.metadata.VLWholeSlideMicroscopyImage[]
+    } = {}
+    const opticalPaths = viewer.getAllOpticalPaths()
+    opticalPaths.forEach(opticalPath => {
+      const identifier = opticalPath.identifier
+      const style = viewer.getOpticalPathStyle(identifier)
+      defaultOpticalPathStyles[identifier] = style
+      opticalPathMetadata[identifier] = viewer.getOpticalPathMetadata(
+        identifier
       )
-    }
+    })
+    const opticalPathMenu = (
+      <Menu.SubMenu key='opticalpaths' title='Optical Paths'>
+        <OpticalPathList
+          metadata={opticalPathMetadata}
+          opticalPaths={opticalPaths}
+          defaultOpticalPathStyles={defaultOpticalPathStyles}
+          visibleOpticalPathIdentifiers={this.state.visibleOpticalPathIdentifiers}
+          activeOpticalPathIdentifiers={this.state.activeOpticalPathIdentifiers}
+          onOpticalPathVisibilityChange={this.handleOpticalPathVisibilityChange}
+          onOpticalPathStyleChange={this.handleOpticalPathStyleChange}
+          onOpticalPathActivityChange={this.handleOpticalPathActivityChange}
+        />
+      </Menu.SubMenu>
+    )
 
     let segmentationMenu
     if (segments.length > 0) {
@@ -1874,14 +1771,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           opacity: number
         }
       } = {}
-      const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
       const segmentMetadata: {
         [segmentUID: string]: dmv.metadata.Segmentation[]
       } = {}
-      const segments = viewer.getAllSegments()
+      const segments = this.volumeViewer.getAllSegments()
       segments.forEach(segment => {
-        defaultSegmentStyles[segment.uid] = viewer.getSegmentStyle(segment.uid)
-        segmentMetadata[segment.uid] = viewer.getSegmentMetadata(
+        defaultSegmentStyles[segment.uid] = this.volumeViewer.getSegmentStyle(
+          segment.uid
+        )
+        segmentMetadata[segment.uid] = this.volumeViewer.getSegmentMetadata(
           segment.uid
         )
       })
@@ -1911,10 +1809,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const mappingMetadata: {
         [mappingUID: string]: dmv.metadata.ParametricMap[]
       } = {}
-      const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
       mappings.forEach(mapping => {
-        defaultMappingStyles[mapping.uid] = viewer.getMappingStyle(mapping.uid)
-        mappingMetadata[mapping.uid] = viewer.getMappingMetadata(
+        defaultMappingStyles[mapping.uid] = this.volumeViewer.getParameterMappingStyle(
+          mapping.uid
+        )
+        mappingMetadata[mapping.uid] = this.volumeViewer.getParameterMappingMetadata(
           mapping.uid
         )
       })
@@ -1940,14 +1839,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           opacity: number
         }
       } = {}
-      const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer
       const annotationGroupMetadata: {
         [annotationGroupUID: string]: dmv.metadata.MicroscopyBulkSimpleAnnotations
       } = {}
-      const annotationGroups = viewer.getAllAnnotationGroups()
+      const annotationGroups = this.volumeViewer.getAllAnnotationGroups()
       annotationGroups.forEach(annotationGroup => {
-        defaultAnnotationGroupStyles[annotationGroup.uid] = viewer.getAnnotationGroupStyle(annotationGroup.uid)
-        annotationGroupMetadata[annotationGroup.uid] = viewer.getAnnotationGroupMetadata(
+        defaultAnnotationGroupStyles[annotationGroup.uid] = this.volumeViewer.getAnnotationGroupStyle(
+          annotationGroup.uid
+        )
+        annotationGroupMetadata[annotationGroup.uid] = this.volumeViewer.getAnnotationGroupMetadata(
           annotationGroup.uid
         )
       })

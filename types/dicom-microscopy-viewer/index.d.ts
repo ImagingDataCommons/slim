@@ -121,28 +121,28 @@ declare module 'dicom-microscopy-viewer' {
       isSegmentVisible (segmentUID: string): boolean
       getSegmentMetadata (segmentUID: string): metadata.Segmentation[]
       getAllSegments (): dwc.segment.Segment[]
-      addMappings (metadata: metadata.ParametricMap[]): void
-      removeMapping (mappingUID: string): void
-      showMapping (
+      addParameterMappings (metadata: metadata.ParametricMap[]): void
+      removeParameterMapping (mappingUID: string): void
+      showParameterMapping (
         mappingUID: string,
         styleOptions?: {
           opacity?: number
         }
       ): void
-      hideMapping (mappingUID: string): void
-      setMappingStyle (
+      hideParameterMapping (mappingUID: string): void
+      setParameterMappingStyle (
         mappingUID: string,
         styleOptions: {
           opacity?: number
         }
       ): void
-      getMappingStyle (mappingUID: string): {
+      getParameterMappingStyle (mappingUID: string): {
         opacity: number
         limitValues: number[]
       }
-      isMappingVisible (mappingUID: string): boolean
-      getMappingMetadata (mappingUID: string): metadata.ParametricMap[]
-      getAllMappings (): dwc.mapping.Mapping[]
+      isParameterMappingVisible (mappingUID: string): boolean
+      getParameterMappingMetadata (mappingUID: string): metadata.ParametricMap[]
+      getAllParameterMappings (): dwc.mapping.ParameterMapping[]
       addAnnotationGroups (
         metadata: metadata.MicroscopyBulkSimpleAnnotations
       ): void
@@ -625,7 +625,7 @@ declare module 'dicom-microscopy-viewer' {
 
   declare namespace mapping {
 
-    export interface MappingOptions {
+    export interface ParameterMappingOptions {
       uid: string
       number: number
       label: label
@@ -634,8 +634,8 @@ declare module 'dicom-microscopy-viewer' {
       sopInstanceUIDs: string[]
     }
 
-    export class Mapping {
-      constructor (options: MappingOptions)
+    export class ParameterMapping {
+      constructor (options: ParameterMappingOptions)
       get uid (): string
       get number (): number
       get label (): string
@@ -649,7 +649,8 @@ declare module 'dicom-microscopy-viewer' {
   declare namespace opticalPath {
 
     export interface OpticalPathOptions {
-      identifier: number
+      identifier: string
+      description?: string
       illuminationType: object
       illuminationColor?: object
       illuminationWaveLength?: string
@@ -661,6 +662,7 @@ declare module 'dicom-microscopy-viewer' {
     export class OpticalPath {
       constructor (options: OpticalPathOptions)
       get identifier (): string
+      get description (): string | undefined
       get illuminationType (): dcmjs.sr.coding.CodedConcept
       get illuminationColor (): dcmjs.sr.coding.CodedConcept | undefined
       get illuminationWaveLength (): string | undefined

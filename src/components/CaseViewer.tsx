@@ -186,18 +186,29 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
           <Route
             exact
             path='/studies/:StudyInstanceUID/series/:SeriesInstanceUID'
-            render={(routeProps) => (
-              <SlideViewer
-                client={this.props.client}
-                studyInstanceUID={this.props.studyInstanceUID}
-                seriesInstanceUID={routeProps.match.params.SeriesInstanceUID}
-                slides={this.state.slides}
-                annotations={this.props.annotations}
-                enableAnnotationTools={this.props.enableAnnotationTools}
-                app={this.props.app}
-                user={this.props.user}
-              />
-            )}
+            render={(routeProps) => {
+              const selectedSlide = this.state.slides.find((slide: Slide) => {
+                return slide.seriesInstanceUIDs.find((uid: string) => {
+                  return uid === routeProps.match.params.SeriesInstanceUID
+                })
+              })
+              let result = null
+              if (selectedSlide) {
+                result = (
+                  <SlideViewer
+                    client={this.props.client}
+                    studyInstanceUID={this.props.studyInstanceUID}
+                    seriesInstanceUID={routeProps.match.params.SeriesInstanceUID}
+                    slide={selectedSlide}
+                    annotations={this.props.annotations}
+                    enableAnnotationTools={this.props.enableAnnotationTools}
+                    app={this.props.app}
+                    user={this.props.user}
+                  />
+                )
+              }
+              return result
+            }}
           />
         </Switch>
       </Layout>

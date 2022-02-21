@@ -218,15 +218,16 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
 
   render (): React.ReactNode {
     const identifier = this.props.opticalPath.identifier
+    const description = this.props.opticalPath.description
     const attributes: Array<{ name: string, value: string }> = []
-    if (this.props.opticalPath.illuminationWaveLength !== undefined) {
-      attributes.push(
-        {
-          name: 'Illumination Wave Length',
-          value: `${this.props.opticalPath.illuminationWaveLength} nm`
-        }
-      )
-    }
+    // if (this.props.opticalPath.illuminationWaveLength !== undefined) {
+    //   attributes.push(
+    //     {
+    //       name: 'Illumination Wave Length',
+    //       value: `${this.props.opticalPath.illuminationWaveLength} nm`
+    //     }
+    //   )
+    // }
     if (this.props.opticalPath.illuminationColor !== undefined) {
       attributes.push(
         {
@@ -272,6 +273,16 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
                 })
               }
             }
+          } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
+            item = item as dcmjs.sr.valueTypes.TextContentItem
+            if (!name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
+              if (name.equals(SpecimenPreparationStepItems.STAIN)) {
+                attributes.push({
+                  name: 'Stain',
+                  value: item.TextValue
+                })
+              }
+            }
           } else {
             console.debug(`specimen preparation step #${index} not rendered`)
           }
@@ -281,8 +292,9 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
 
     const maxValue = Math.pow(2, this.props.metadata[0].BitsAllocated) - 1
 
+    const title = description ? `${identifier}: ${description}` : identifier
     let settings
-    let description
+    let item
     if (
       this.props.defaultStyle.color !== undefined &&
       this.props.defaultStyle.limitValues !== undefined
@@ -362,7 +374,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
           </Row>
         </div>
       )
-      description = (
+      item = (
         <Badge
           offset={[-20, 20]}
           count={' '}
@@ -375,10 +387,9 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
           color={this.getCurrentColor()}
         >
           <Description
-            header={identifier}
+            header={title}
             attributes={attributes}
             selectable
-            hasLongValues
           />
         </Badge>
       )
@@ -402,9 +413,9 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
           </Row>
         </div>
       )
-      description = (
+      item = (
         <Description
-          header={identifier}
+          header={title}
           attributes={attributes}
           selectable
           hasLongValues
@@ -467,7 +478,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
               {buttons}
             </Space>
           </div>
-          {description}
+          {item}
         </Space>
       </Menu.Item>
     )
