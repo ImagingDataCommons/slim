@@ -155,8 +155,11 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
         <Layout.Sider
           width={300}
           style={{
+            height: '100%',
             borderRight: 'solid',
-            borderRightWidth: 0.25
+            borderRightWidth: 0.25,
+            overflow: 'hidden',
+            background: 'none'
           }}
         >
           <Menu

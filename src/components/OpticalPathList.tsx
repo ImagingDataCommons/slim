@@ -136,7 +136,7 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
     let opticalPathSelector
     if (isSelectable) {
       opticalPathSelector = (
-        <Space align='center' size={20}>
+        <Space align='center' size={20} style={{ padding: '14px' }}>
           <Select
             defaultValue=''
             style={{ width: 200 }}
@@ -155,12 +155,10 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
     }
 
     return (
-      <Space align='center' direction='vertical' size={20}>
         <Menu selectable={false}>
           {opticalPathItems}
+          {opticalPathSelector}
         </Menu>
-        {opticalPathSelector}
-      </Space>
     )
   }
 }

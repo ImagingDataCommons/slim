@@ -1640,9 +1640,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       report = <Report dataset={dataset} />
     }
 
-    let annotationMenu: React.ReactNode
+    let annotationMenuItems: React.ReactNode
     if (rois.length > 0) {
-      annotationMenu = (
+      annotationMenuItems = (
         <AnnotationList
           rois={rois}
           selectedRoiUIDs={this.state.selectedRoiUIDs}
@@ -1981,9 +1981,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
         <Layout.Sider
           width={300}
-          reverseArrow style={{
+          reverseArrow
+          style={{
             borderLeft: 'solid',
-            borderLeftWidth: 0.25
+            borderLeftWidth: 0.25,
+            overflow: 'hidden',
+            background: 'none'
           }}
         >
           <Menu
@@ -2004,7 +2007,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             {specimenMenu}
             {opticalPathMenu}
             <Menu.SubMenu key='annotations' title='Annotations'>
-              {annotationMenu}
+              {annotationMenuItems}
             </Menu.SubMenu>
             {annotationGroupMenu}
             {segmentationMenu}
