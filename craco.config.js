@@ -23,19 +23,29 @@ module.exports = {
     }
   ],
   webpack: {
-    configure: (webpackConfig, { env, paths }) => {
-      webpackConfig.resolve = {
+    configure: (config, { env, paths }) => {
+      config.resolve = {
         fallback: {
           fs: false,
           path: false
         },
         extensions: ['.tsx', '.ts', '.js', '.wasm', '.json']
       }
-      webpackConfig.experiments = {
-        asyncWebAssembly: true,
-        syncWebAssembly: true
+
+      config.experiments = {
+        asyncWebAssembly: true
       }
-      return webpackConfig
+
+      // config.module.noParse = [/(codec)/]
+
+      // config.module.rules.push(
+      //   {
+      //     test: /\.wasm$/,
+      //     type: 'webassembly/async'
+      //   }
+      // )
+
+      return config
     }
   }
 }
