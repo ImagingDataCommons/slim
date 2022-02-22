@@ -42,7 +42,10 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
     }
 
     // TID 8001 "Specimen Preparation"
-    specimenDescription.SpecimenPreparationSequence.forEach(
+    const preparationSteps: dmv.metadata.SpecimenPreparation[] = (
+      specimenDescription.SpecimenPreparationSequence || []
+    )
+    preparationSteps.forEach(
       (step: dmv.metadata.SpecimenPreparation, index: number): void => {
         step.SpecimenPreparationStepContentItemSequence.forEach((
           item: (
@@ -110,13 +113,13 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
                 name: 'Tissue stain',
                 value: item.TextValue
               })
-            // } else if (
-            //   name.equals(SpecimenPreparationStepItems.PARENT_SPECIMEN_IDENTIFIER)
-            // ) {
-            //   attributes.push({
-            //     name: 'Parent specimen',
-            //     value: item.TextValue
-            //   })
+            } else if (
+              name.equals(SpecimenPreparationStepItems.PARENT_SPECIMEN_IDENTIFIER)
+            ) {
+              attributes.push({
+                name: 'Parent specimen',
+                value: item.TextValue
+              })
             }
           } else {
             console.debug(`specimen preparation step #${index} not rendered`)

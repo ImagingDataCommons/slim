@@ -60,6 +60,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     this.setState({ isLoading: true })
     this.fetchImageMetadata().then(
       (metadata: dmv.metadata.VLWholeSlideMicroscopyImage[][]) => {
+        console.log('retrieve image metadata: ', metadata)
         this.setState({
           slides: createSlides(metadata),
           isLoading: false
@@ -67,7 +68,10 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       }
     ).catch((error) => {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      message.error('An error occured. Image metadata could not be retrieved.')
+      message.error(
+        'An error occured. ' +
+          'Image metadata could not be retrieved or decoded.'
+      )
       console.error(error)
       this.setState({ isLoading: false })
     })

@@ -238,8 +238,13 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     }
 
     // TID 8001 "Specimen Preparation"
-    const specimen = this.props.metadata[0].SpecimenDescriptionSequence[0]
-    specimen.SpecimenPreparationSequence.forEach(
+    const specimenDescription = (
+      this.props.metadata[0].SpecimenDescriptionSequence[0]
+    )
+    const preparationSteps: dmv.metadata.SpecimenPreparation[] = (
+      specimenDescription.SpecimenPreparationSequence || []
+    )
+    preparationSteps.forEach(
       (step: dmv.metadata.SpecimenPreparation, index: number): void => {
         step.SpecimenPreparationStepContentItemSequence.forEach((
           item: (

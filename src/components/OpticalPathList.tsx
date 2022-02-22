@@ -148,6 +148,7 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
           </Select>
           <Button
             icon={<AppstoreAddOutlined />}
+            type='primary'
             onClick={this.handleItemAddition}
           />
         </Space>
@@ -155,10 +156,10 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
     }
 
     return (
-        <Menu selectable={false}>
-          {opticalPathItems}
-          {opticalPathSelector}
-        </Menu>
+      <Menu selectable={false}>
+        {opticalPathItems}
+        {opticalPathSelector}
+      </Menu>
     )
   }
 }

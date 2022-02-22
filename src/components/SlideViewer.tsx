@@ -363,14 +363,18 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       'instantiate viewers for slide of series ' +
       this.props.seriesInstanceUID
     )
-    const { volumeViewer, labelViewer } = _constructViewers({
-      client: this.props.client,
-      slide: this.props.slide
-    })
-    this.volumeViewer = volumeViewer
-    this.labelViewer = labelViewer
-    this.volumeViewportRef = React.createRef<HTMLDivElement>()
-    this.labelViewportRef = React.createRef<HTMLDivElement>()
+    try {
+      const { volumeViewer, labelViewer } = _constructViewers({
+        client: this.props.client,
+        slide: this.props.slide
+      })
+      this.volumeViewer = volumeViewer
+      this.labelViewer = labelViewer
+      this.volumeViewportRef = React.createRef<HTMLDivElement>()
+      this.labelViewportRef = React.createRef<HTMLDivElement>()
+    } catch (error) {
+      throw new Error(`Failed to instantiate viewers: ${error}`)
+    }
 
     const activeOpticalPathIdentifiers: string[] = []
     const visibleOpticalPathIdentifiers: string[] = []
