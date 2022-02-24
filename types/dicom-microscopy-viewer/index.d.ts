@@ -138,7 +138,6 @@ declare module 'dicom-microscopy-viewer' {
       ): void
       getParameterMappingStyle (mappingUID: string): {
         opacity: number
-        limitValues: number[]
       }
       isParameterMappingVisible (mappingUID: string): boolean
       getParameterMappingMetadata (mappingUID: string): metadata.ParametricMap[]

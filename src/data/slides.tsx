@@ -65,9 +65,9 @@ class Slide {
       frameOfReferenceUIDs.add(image.FrameOfReferenceUID)
       containerIdentifiers.add(image.ContainerIdentifier)
       seriesInstanceUIDs.add(image.SeriesInstanceUID)
-      opticalPathIdentifiers.add(
-        image.OpticalPathSequence[0].OpticalPathIdentifier
-      )
+      image.OpticalPathSequence.forEach(item => {
+        opticalPathIdentifiers.add(item.OpticalPathIdentifier)
+      })
       if (hasImageFlavor(image, ImageFlavors.VOLUME)) {
         volumeImages.push(image)
       } else if (hasImageFlavor(image, ImageFlavors.THUMBNAIL)) {
@@ -100,20 +100,18 @@ class Slide {
 
     this.seriesInstanceUIDs = [...seriesInstanceUIDs]
     this.opticalPathIdentifiers = [...opticalPathIdentifiers]
-    if (containerIdentifiers.size === 1) {
-      this.containerIdentifier = [...containerIdentifiers][0]
-    } else {
+    if (containerIdentifiers.size !== 1) {
       throw new Error(
         'All images of a slide must have the same Container Identifier.'
       )
     }
-    if (frameOfReferenceUIDs.size === 1) {
-      this.frameOfReferenceUID = [...frameOfReferenceUIDs][0]
-    } else {
+    this.containerIdentifier = [...containerIdentifiers][0]
+    if (frameOfReferenceUIDs.size !== 1) {
       throw new Error(
         'All images of a slide must have the same Frame of Reference UID.'
       )
     }
+    this.frameOfReferenceUID = [...frameOfReferenceUIDs][0]
 
     this.areVolumeImagesMonochrome = (
       this.volumeImages[0].SamplesPerPixel === 1 &&

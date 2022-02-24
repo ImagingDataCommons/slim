@@ -363,18 +363,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       'instantiate viewers for slide of series ' +
       this.props.seriesInstanceUID
     )
-    try {
-      const { volumeViewer, labelViewer } = _constructViewers({
-        client: this.props.client,
-        slide: this.props.slide
-      })
-      this.volumeViewer = volumeViewer
-      this.labelViewer = labelViewer
-      this.volumeViewportRef = React.createRef<HTMLDivElement>()
-      this.labelViewportRef = React.createRef<HTMLDivElement>()
-    } catch (error) {
-      throw new Error(`Failed to instantiate viewers: ${error}`)
-    }
+    const { volumeViewer, labelViewer } = _constructViewers({
+      client: this.props.client,
+      slide: this.props.slide
+    })
+    this.volumeViewer = volumeViewer
+    this.labelViewer = labelViewer
+    this.volumeViewportRef = React.createRef<HTMLDivElement>()
+    this.labelViewportRef = React.createRef<HTMLDivElement>()
 
     const activeOpticalPathIdentifiers: string[] = []
     const visibleOpticalPathIdentifiers: string[] = []
@@ -417,7 +413,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
      * i.e., if another series has been selected) or if the client has changed.
      */
     if (
-      this.props.location !== previousProps.location ||
+      this.props.location.pathname !== previousProps.location.pathname ||
       this.props.slide !== previousProps.slide ||
       this.props.client !== previousProps.client
     ) {
@@ -1830,7 +1826,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const defaultMappingStyles: {
         [mappingUID: string]: {
           opacity: number
-          limitValues: number[]
         }
       } = {}
       const mappingMetadata: {

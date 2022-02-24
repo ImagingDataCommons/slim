@@ -31,7 +31,7 @@ ReactDOM.render(
       config={config}
       version={packageInfo.version}
       name={packageInfo.name}
-      homepage='https://github.com/MGHComputationalPathology/slim'
+      homepage='https://github.com/herrmannlab/slim'
     />
     </React.Suspense>
   </React.StrictMode>,

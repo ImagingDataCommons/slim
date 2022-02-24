@@ -5,21 +5,20 @@ import {
   Route,
   Switch
 } from 'react-router-dom'
-import * as dwc from 'dicomweb-client'
 import { Layout, message } from 'antd'
 import { FaSpinner } from 'react-icons/fa'
+import * as dwc from 'dicomweb-client'
 
 import AppConfig, { ServerSettings, ErrorMessageSettings } from './AppConfig'
-import Header from './components/Header'
 import CaseViewer from './components/CaseViewer'
+import Header from './components/Header'
+import InfoPage from './components/InfoPage'
 import Worklist from './components/Worklist'
 
 import { joinUrl } from './utils/url'
 import { User, AuthManager } from './auth'
 import OidcManager from './auth/OidcManager'
 import DicomWebManager from './DicomWebManager'
-
-import InfoPage from './components/InfoPage'
 
 
 interface AppProps {

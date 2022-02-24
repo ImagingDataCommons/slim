@@ -12,7 +12,6 @@ interface MappingItemProps {
   isVisible: boolean
   defaultStyle: {
     opacity: number
-    limitValues: number[]
   }
   onVisibilityChange: ({ mappingUID, isVisible }: {
     mappingUID: string
@@ -22,7 +21,6 @@ interface MappingItemProps {
     mappingUID: string,
     styleOptions: {
       opacity?: number
-      limitValues?: number[]
     }
   }) => void
 }
@@ -31,7 +29,6 @@ interface MappingItemState {
   isVisible: boolean
   currentStyle: {
     opacity: number
-    limitValues: number[]
   }
 }
 
@@ -43,12 +40,10 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
     super(props)
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
     this.handleOpacityChange = this.handleOpacityChange.bind(this)
-    this.handleLimitChange = this.handleLimitChange.bind(this)
     this.state = {
       isVisible: this.props.isVisible,
       currentStyle: {
-        opacity: this.props.defaultStyle.opacity,
-        limitValues: this.props.defaultStyle.limitValues
+        opacity: this.props.defaultStyle.opacity
       }
     }
   }
@@ -73,27 +68,9 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
     })
     this.setState(state => ({
       currentStyle: {
-        opacity: value,
-        limitValues: state.currentStyle.limitValues
+        opacity: value
       }
     }))
-  }
-
-  handleLimitChange (
-    values: number[]
-  ): void {
-    this.setState(state => ({
-      currentStyle: {
-        opacity: state.currentStyle.opacity,
-        limitValues: values
-      }
-    }))
-    this.props.onStyleChange({
-      mappingUID: this.props.mapping.uid,
-      styleOptions: {
-        limitValues: values
-      }
-    })
   }
 
   render (): React.ReactNode {
@@ -104,15 +81,6 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
         value: this.props.mapping.label
       }
     ]
-
-    const refInstance = this.props.metadata[0]
-    const isFloatPixelData = refInstance.BitsAllocated > 16
-    let minValue = 0
-    let maxValue = Math.pow(2, refInstance.BitsAllocated) - 1
-    if (isFloatPixelData) {
-      minValue = -Math.pow(2, refInstance.BitsAllocated) / 2 + 1
-      maxValue = Math.pow(2, refInstance.BitsAllocated) / 2 - 1
-    }
 
     const settings = (
       <div>
@@ -127,23 +95,6 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
               step={0.01}
               defaultValue={this.state.currentStyle.opacity}
               onAfterChange={this.handleOpacityChange}
-            />
-          </Col>
-
-          <Col span={9}>
-            Window
-          </Col>
-          <Col span={15}>
-            <Slider
-              range
-              min={minValue}
-              max={maxValue}
-              step={1}
-              defaultValue={[
-                this.props.defaultStyle.limitValues[0],
-                this.props.defaultStyle.limitValues[1]
-              ]}
-              onAfterChange={this.handleLimitChange}
             />
           </Col>
         </Row>

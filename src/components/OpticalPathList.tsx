@@ -105,30 +105,32 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
       images[0].OpticalPathSequence.forEach(opticalPathItem => {
         const id = opticalPathItem.OpticalPathIdentifier
         const description = opticalPathItem.OpticalPathDescription
-        if (this.props.activeOpticalPathIdentifiers.includes(id)) {
-          opticalPathItems.push(
-            <OpticalPathItem
-              key={id}
-              opticalPath={opticalPath}
-              metadata={images}
-              isVisible={this.props.visibleOpticalPathIdentifiers.includes(id)}
-              defaultStyle={this.props.defaultOpticalPathStyles[id]}
-              onVisibilityChange={this.props.onOpticalPathVisibilityChange}
-              onStyleChange={this.props.onOpticalPathStyleChange}
-              onRemoval={this.handleItemRemoval}
-              isRemovable={isSelectable}
-            />
-          )
-        } else {
-          let title
-          if (description) {
-            title = `${id} - ${description}`
+        if (opticalPath.identifier === id) {
+          if (this.props.activeOpticalPathIdentifiers.includes(id)) {
+            opticalPathItems.push(
+              <OpticalPathItem
+                key={id}
+                opticalPath={opticalPath}
+                metadata={images}
+                isVisible={this.props.visibleOpticalPathIdentifiers.includes(id)}
+                defaultStyle={this.props.defaultOpticalPathStyles[id]}
+                onVisibilityChange={this.props.onOpticalPathVisibilityChange}
+                onStyleChange={this.props.onOpticalPathStyleChange}
+                onRemoval={this.handleItemRemoval}
+                isRemovable={isSelectable}
+              />
+            )
           } else {
-            title = `${id}`
+            let title
+            if (description) {
+              title = `${id} - ${description}`
+            } else {
+              title = `${id}`
+            }
+            optionItems.push(
+              <Option key={id} value={id}>{title}</Option>
+            )
           }
-          optionItems.push(
-            <Option key={id} value={id}>{title}</Option>
-          )
         }
       })
     })

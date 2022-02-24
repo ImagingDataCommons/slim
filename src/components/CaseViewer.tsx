@@ -60,7 +60,6 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     this.setState({ isLoading: true })
     this.fetchImageMetadata().then(
       (metadata: dmv.metadata.VLWholeSlideMicroscopyImage[][]) => {
-        console.log('retrieve image metadata: ', metadata)
         this.setState({
           slides: createSlides(metadata),
           isLoading: false
@@ -97,8 +96,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       const { dataset } = dmv.metadata.formatMetadata(s)
       const loadingSeries = dataset as dmv.metadata.Series
       console.info(
-        'search for instances in series ' +
-        `"${loadingSeries.SeriesInstanceUID}"...`
+        `retrieve metadata of series "${loadingSeries.SeriesInstanceUID}"`
       )
       const retrievedMetadata = await this.props.client.retrieveSeriesMetadata({
         studyInstanceUID: this.props.studyInstanceUID,
@@ -106,9 +104,10 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       })
 
       const seriesImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
-      retrievedMetadata.forEach(item => {
-        const { dataset } = dmv.metadata.formatMetadata(item)
-        const image = dataset as dmv.metadata.VLWholeSlideMicroscopyImage
+      retrievedMetadata.forEach((item, index) => {
+        const image = new dmv.metadata.VLWholeSlideMicroscopyImage({
+          metadata: item
+        })
         if (image.SOPClassUID === SOPClassUIDs.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE) {
           seriesImages.push(image)
         }

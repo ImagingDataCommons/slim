@@ -11,10 +11,7 @@ interface MappingListProps {
   }
   visibleMappingUIDs: string[]
   defaultMappingStyles: {
-    [mappingUID: string]: {
-      opacity: number
-      limitValues: number[]
-    }
+    [mappingUID: string]: { opacity: number }
   }
   onMappingVisibilityChange: ({ mappingUID, isVisible }: {
     mappingUID: string
@@ -24,7 +21,6 @@ interface MappingListProps {
     mappingUID: string,
     styleOptions: {
       opacity?: number
-      limitValues?: number[]
     }
   }) => void
 }

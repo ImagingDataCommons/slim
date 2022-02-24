@@ -112,7 +112,10 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
      * https://github.com/react-component/menu/issues/142
      */
     const {
+      defaultStyle,
       isVisible,
+      segment,
+      metadata,
       onVisibilityChange,
       onStyleChange,
       ...otherProps
