@@ -73,10 +73,13 @@ declare module 'dicom-microscopy-viewer' {
       expandOverviewMap (): void
       toggleOverviewMap (): void
       isOpticalPathActive (opticalPathIdentifier: string): boolean
+      isOpticalPathColorable (opticalPathIdentifier: string): boolean
+      isOpticalPathMonochromatic (opticalPathIdentifier: string): boolean
       getOpticalPathStyle (opticalPathIdentifier: string): {
-        color: number[]
+        color?: number[]
+        paletteColorLookupTable?: color.PaletteColorLookupTableOptions
         opacity: number,
-        limitValues: number[],
+        limitValues?: number[],
       }
       setOpticalPathStyle (
         opticalPathIdentifier: string,
@@ -645,12 +648,35 @@ declare module 'dicom-microscopy-viewer' {
 
   }
 
+  declare namespace color {
+    export interface PaletteColorLookupTableOptions {
+      uid: string
+      redDescriptor: number[],
+      greenDescriptor: number[],
+      blueDescriptor: number[],
+      redData: number[],
+      greenData: number[],
+      blueData: number[],
+      redSegmentedData: number[],
+      greenSegmentedData: number[],
+      blueSegmentedDat: number[]
+    }
+
+    export class PaletteColorLookupTable {
+      constructor (options: PaletteColorLookupTableOptions)
+      get uid (): string
+      get data (): number[][]
+      get firstValueMapped (): number
+    }
+  }
+
   declare namespace opticalPath {
 
     export interface OpticalPathOptions {
       identifier: string
       description?: string
       illuminationType: object
+      isMonochromatic: boolean
       illuminationColor?: object
       illuminationWaveLength?: string
       studyInstanceUID: string
@@ -668,6 +694,8 @@ declare module 'dicom-microscopy-viewer' {
       get studyInstanceUID (): string
       get seriesInstanceUID (): string
       get sopInstanceUIDs (): string[]
+      get isMonochromatic (): boolean
+      get isColorable (): boolean
     }
   }
 

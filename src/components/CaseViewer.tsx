@@ -105,11 +105,14 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
 
       const seriesImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
       retrievedMetadata.forEach((item, index) => {
-        const image = new dmv.metadata.VLWholeSlideMicroscopyImage({
-          metadata: item
-        })
-        if (image.SOPClassUID === SOPClassUIDs.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE) {
-          seriesImages.push(image)
+        if (item['00080016'] !== undefined) {
+          const sopClassUID = item['00080016'].Value[0]
+          if (sopClassUID === SOPClassUIDs.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE) {
+            const image = new dmv.metadata.VLWholeSlideMicroscopyImage({
+              metadata: item
+            })
+            seriesImages.push(image)
+          }
         }
       })
 

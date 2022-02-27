@@ -31,6 +31,7 @@ interface OpticalPathItemProps {
   defaultStyle: {
     opacity: number
     color?: number[]
+    paletteColorLookupTable?: dmv.color.PaletteColorLookupTable
     limitValues?: number[]
   }
   onVisibilityChange: ({ opticalPathIdentifier, isVisible }: {
@@ -72,7 +73,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     this.handleColorGChange = this.handleColorGChange.bind(this)
     this.handleColorBChange = this.handleColorBChange.bind(this)
     this.handleRemoval = this.handleRemoval.bind(this)
-    this.getCurrentColor = this.getCurrentColor.bind(this)
+    this.getCurrentColors = this.getCurrentColors.bind(this)
     this.state = {
       isVisible: this.props.isVisible,
       currentStyle: {
@@ -181,14 +182,24 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     }
   }
 
-  getCurrentColor (): string {
-    if (this.state.currentStyle.color !== undefined) {
-      const r = this.state.currentStyle.color[0]
-      const g = this.state.currentStyle.color[1]
-      const b = this.state.currentStyle.color[2]
+  getCurrentColors (): string[] {
+    const rgb2hex = (values: number[]) => {
+      const r = values[0]
+      const g = values[1]
+      const b = values[2]
       return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)
+    }
+
+    if (this.state.currentStyle.color !== undefined) {
+      return [
+        '#000000',
+        rgb2hex(this.state.currentStyle.color)
+      ]
+    } else if (this.props.defaultStyle.paletteColorLookupTable !== undefined) {
+      const colormap = this.props.defaultStyle.paletteColorLookupTable.data
+      return colormap.map(values => rgb2hex(values))
     } else {
-      return 'none'
+      return ['white', 'white']
     }
   }
 
@@ -300,14 +311,12 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     const title = description ? `${identifier}: ${description}` : identifier
     let settings
     let item
-    if (
-      this.props.defaultStyle.color !== undefined &&
-      this.props.defaultStyle.limitValues !== undefined
-    ) {
+    if (this.props.opticalPath.isMonochromatic) {
       // monochrome images that can be pseudo-colored
-      settings = (
-        <div>
-          <Row justify='center' align='middle'>
+      let colorSettings
+      if (this.props.defaultStyle.color !== undefined) {
+        colorSettings = (
+          <>
             <Col span={9}>
               R
             </Col>
@@ -346,7 +355,14 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
                 onAfterChange={this.handleColorBChange}
               />
             </Col>
+          </>
+        )
+      }
 
+      let windowSettings
+      if (this.props.defaultStyle.limitValues !== undefined) {
+        windowSettings = (
+          <>
             <Col span={9}>
               Window
             </Col>
@@ -363,7 +379,14 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
                 onAfterChange={this.handleLimitChange}
               />
             </Col>
-
+          </>
+        )
+      }
+      settings = (
+        <div>
+          <Row justify='center' align='middle'>
+            {colorSettings}
+            {windowSettings}
             <Col span={9}>
               Opacity
             </Col>
@@ -379,6 +402,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
           </Row>
         </div>
       )
+      const colors = this.getCurrentColors()
       item = (
         <Badge
           offset={[-20, 20]}
@@ -387,9 +411,9 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
             borderStyle: 'solid',
             borderWidth: '1px',
             borderColor: 'gray',
-            visibility: this.state.isVisible ? 'visible' : 'hidden'
+            visibility: this.state.isVisible ? 'visible' : 'hidden',
+            backgroundImage: `linear-gradient(to right, ${colors})`
           }}
-          color={this.getCurrentColor()}
         >
           <Description
             header={title}
