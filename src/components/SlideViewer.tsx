@@ -126,7 +126,6 @@ const _constructViewers = ({ client, slide }: {
   return { volumeViewer, labelViewer }
 }
 
-
 /*
  * Check whether the report is structured according to template
  * TID 1500 "MeasurementReport".
@@ -297,6 +296,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private labelViewer?: dmv.viewer.LabelImageViewer
 
+  private defaultRoiStyle: dmv.viewer.ROIStyleOptions = {
+    stroke: {
+      color: [0, 126, 163],
+      width: 2
+    },
+    fill: {
+      color: [0, 126, 163, 0.1]
+    }
+  }
+
   private roiStyles: {[key: string]: dmv.viewer.ROIStyleOptions} = {}
 
   private readonly selectionColor: number[] = [140, 184, 198]
@@ -326,7 +335,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           })
         })
       }
-      this.roiStyles[key] = annotation.style
+      if (annotation.style != null) {
+        this.roiStyles[key] = annotation.style
+      } else {
+        this.roiStyles[key] = this.defaultRoiStyle
+      }
     })
 
     this.componentSetup = this.componentSetup.bind(this)
@@ -431,6 +444,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
+  getRoiStyle = (key: string): dmv.viewer.ROIStyleOptions => {
+    if (this.roiStyles[key] !== undefined) {
+      return this.roiStyles[key]
+    }
+    return this.defaultRoiStyle
+  }
+
   /**
    * Retrieve Structured Report instances that contain regions of interests
    * with 3D spatial coordinates defined in the same frame of reference as the
@@ -524,8 +544,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             })
           }).catch((error) => {
             // eslint-disable-next-line @typescript-eslint/no-floating-promises
-            message.error('An error occured. Annotations could not be loaded')
-            console.error(error)
+            message.error('Annotations could not be loaded')
+            console.error(
+              'failed to load ROIs ' +
+              `of SOP instance "${instance.SOPInstanceUID}" ` +
+              `of series "${instance.SeriesInstanceUID}" ` +
+              `of study "${this.props.studyInstanceUID}": `,
+              error
+            )
           })
           /*
            * React is not aware of the fact that ROIs have been added via the
@@ -537,7 +563,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       })
     }).catch((error) => {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      message.error('An error occured. Annotations could not be loaded')
+      message.error('Annotations could not be loaded')
       console.error(error)
     })
   }
@@ -584,7 +610,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             } catch (error) {
               // eslint-disable-next-line @typescript-eslint/no-floating-promises
               message.error(
-                'An error occured. ' +
                 'Microscopy Bulk Simple Annotations cannot be displayed.'
               )
               console.error(`failed to add annotation groups: ${error}`)
@@ -625,25 +650,23 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           studyInstanceUID: this.props.studyInstanceUID,
           seriesInstanceUID: series.SeriesInstanceUID
         }).then((retrievedMetadata): void => {
-          let segmentations: dmv.metadata.Segmentation[] = retrievedMetadata.map(
-            metadata => new dmv.metadata.Segmentation({ metadata })
-          )
-          segmentations = segmentations.filter(seg => {
+          const segmentations: dmv.metadata.Segmentation[] = []
+          retrievedMetadata.forEach(metadata => {
+            const seg = new dmv.metadata.Segmentation({ metadata })
             const refImage = this.props.slide.volumeImages[0]
-            return (
+            if (
               seg.FrameOfReferenceUID === refImage.FrameOfReferenceUID &&
               seg.ContainerIdentifier === refImage.ContainerIdentifier
-            )
+            ) {
+              segmentations.push(seg)
+            }
           })
           if (segmentations.length > 0) {
             try {
               this.volumeViewer.addSegments(segmentations)
             } catch (error) {
               // eslint-disable-next-line @typescript-eslint/no-floating-promises
-              message.error(
-                'An error occured. ' +
-                'Segmentations cannot be displayed.'
-              )
+              message.error('Segmentations cannot be displayed')
               console.error(`failed to add segments: ${error}`)
             }
           /*
@@ -682,25 +705,23 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           studyInstanceUID: this.props.studyInstanceUID,
           seriesInstanceUID: series.SeriesInstanceUID
         }).then((retrievedMetadata): void => {
-          let maps: dmv.metadata.ParametricMap[] = retrievedMetadata.map(
-            metadata => new dmv.metadata.ParametricMap({ metadata })
-          )
-          maps = maps.filter(image => {
+          const parametricMaps: dmv.metadata.ParametricMap[] = []
+          retrievedMetadata.forEach(metadata => {
+            const pm = new dmv.metadata.ParametricMap({ metadata })
             const refImage = this.props.slide.volumeImages[0]
-            return (
-              image.FrameOfReferenceUID === refImage.FrameOfReferenceUID &&
-              image.ContainerIdentifier === refImage.ContainerIdentifier
-            )
+            if (
+              pm.FrameOfReferenceUID === refImage.FrameOfReferenceUID &&
+              pm.ContainerIdentifier === refImage.ContainerIdentifier
+            ) {
+              parametricMaps.push(pm)
+            }
           })
-          if (maps.length > 0) {
+          if (parametricMaps.length > 0) {
             try {
-              this.volumeViewer.addParameterMappings(maps)
+              this.volumeViewer.addParameterMappings(parametricMaps)
             } catch (error) {
               // eslint-disable-next-line @typescript-eslint/no-floating-promises
-              message.error(
-                'An error occured. ' +
-                'Parametric Map cannot be displayed.'
-              )
+              message.error('Parametric Map cannot be displayed')
               console.error(`failed to add mappings: ${error}`)
             }
           /*
@@ -744,6 +765,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.addParametricMaps()
   }
 
+  onRoiModified = (event: CustomEventInit): void => {
+    // Update state to trigger rendering
+    this.setState(state => ({
+      visibleRoiUIDs: [...state.visibleRoiUIDs]
+    }))
+  }
+
   onRoiDrawn = (event: CustomEventInit): void => {
     const roi = event.detail.payload as dmv.roi.ROI
     const selectedFinding = this.state.selectedFinding
@@ -769,7 +797,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         roi.addEvaluation(item)
       })
       const key = _buildKey(selectedFinding)
-      var style = this.roiStyles[key]
+      const style = this.getRoiStyle(key)
       this.volumeViewer.addROI(roi, style)
       this.setState(state => ({
         visibleRoiUIDs: [...state.visibleRoiUIDs, roi.uid]
@@ -787,7 +815,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const key = _getRoiKey(selectedRoi)
       this.volumeViewer.getAllROIs().forEach((roi) => {
         if (roi.uid !== selectedRoi.uid) {
-          this.volumeViewer.setROIStyle(roi.uid, this.roiStyles[key])
+          this.volumeViewer.setROIStyle(roi.uid, this.getRoiStyle(key))
         }
       })
       this.setState({ selectedRoiUIDs: [selectedRoi.uid] })
@@ -821,6 +849,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     document.body.removeEventListener(
       'dicommicroscopyviewer_roi_removed',
       this.onRoiRemoved
+    )
+    document.body.removeEventListener(
+      'dicommicroscopyviewer_roi_modified',
+      this.onRoiModified
     )
     document.body.removeEventListener(
       'dicommicroscopyviewer_loading_started',
@@ -863,6 +895,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.onRoiRemoved
     )
     document.body.addEventListener(
+      'dicommicroscopyviewer_roi_modified',
+      this.onRoiModified
+    )
+    document.body.addEventListener(
       'dicommicroscopyviewer_loading_started',
       this.onLoadingStarted
     )
@@ -876,6 +912,28 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   componentDidMount (): void {
     window.addEventListener('beforeunload', this.componentCleanup)
     this.componentSetup()
+
+    if (!this.props.slide.areVolumeImagesMonochrome) {
+      let hasICCProfile = false
+      const image = this.props.slide.volumeImages[0]
+      const metadataItem = image.OpticalPathSequence[0]
+      if (metadataItem.ICCProfile == null) {
+        if ('OpticalPathSequence' in image.bulkdataReferences) {
+          // @ts-ignore
+          const bulkdataItem = image.bulkdataReferences.OpticalPathSequence[0]
+          if ('ICCProfile' in bulkdataItem) {
+            hasICCProfile = true
+          }
+        }
+      } else {
+        hasICCProfile = true
+      }
+      if (!hasICCProfile) {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        message.warning('No ICC Profile was found for color images')
+      }
+    }
+
   }
 
   /**
@@ -1196,7 +1254,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         (response: void) => message.info('Annotations were saved.')
       ).catch((error) => {
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        message.error('An error occured. Annotations were not saved.')
+        message.error('Annotations could not be saved')
         console.error(error)
       })
     }
@@ -1233,7 +1291,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       } else {
         if (this.state.visibleRoiUIDs.includes(roi.uid as never)) {
           const key = _getRoiKey(roi)
-          style = this.roiStyles[key]
+          style = this.getRoiStyle(key)
         }
       }
       this.volumeViewer.setROIStyle(roi.uid, style)
@@ -1251,7 +1309,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       console.info(`show ROI ${roiUID}`)
       const roi = this.volumeViewer.getROI(roiUID)
       const key = _getRoiKey(roi)
-      this.volumeViewer.setROIStyle(roi.uid, this.roiStyles[key])
+      this.volumeViewer.setROIStyle(roi.uid, this.getRoiStyle(key))
       this.setState(state => {
         if (state.visibleRoiUIDs.indexOf(roiUID) < 0) {
           return {

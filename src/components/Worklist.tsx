@@ -29,18 +29,19 @@ interface WorklistState {
 }
 
 class Worklist extends React.Component<WorklistProps, WorklistState> {
-  state = {
-    studies: [],
-    isLoading: false,
-    numStudies: 0,
-    pageSize: 10
-  }
+  private readonly defaultPageSize = 20
 
   constructor (props: WorklistProps) {
     super(props)
     this.fetchData = this.fetchData.bind(this)
     this.handleClick = this.handleClick.bind(this)
     this.handleChange = this.handleChange.bind(this)
+    this.state = {
+      studies: [],
+      isLoading: false,
+      numStudies: 0,
+      pageSize: this.defaultPageSize
+    }
   }
 
   searchForStudies (): void {
@@ -212,8 +213,14 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     ]
 
     const pagination = {
+      defaultPageSize: this.defaultPageSize,
       pageSize: this.state.pageSize,
       hideOnSinglePage: true,
+      showSizeChanger: true,
+      showQuickJumper: true,
+      showTotal: (total: number, range: number[]) => {
+        return `${range[0]}-${range[1]} of ${total} studies`
+      },
       total: this.state.numStudies
     }
 

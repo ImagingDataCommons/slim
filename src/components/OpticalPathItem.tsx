@@ -120,6 +120,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
         this.state.currentStyle.color[1],
         this.state.currentStyle.color[2]
       ]
+      console.log('DEBUG [RED]: ', value, color)
       this.setState(state => ({
         currentStyle: {
           color: color,
@@ -144,6 +145,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
         value,
         this.state.currentStyle.color[2]
       ]
+      console.log('DEBUG [GREEN]: ', value, color)
       this.setState(state => ({
         currentStyle: {
           color: color,
@@ -168,6 +170,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
         this.state.currentStyle.color[1],
         value
       ]
+      console.log('DEBUG [BLUE]: ', value, color)
       this.setState(state => ({
         currentStyle: {
           color: color,
@@ -217,7 +220,9 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     this.props.onStyleChange({
       opticalPathIdentifier: identifier,
       styleOptions: {
-        limitValues: values
+        limitValues: values,
+        color: this.state.currentStyle.color,
+        opacity: this.state.currentStyle.opacity
       }
     })
   }
@@ -249,62 +254,64 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     }
 
     // TID 8001 "Specimen Preparation"
-    const specimenDescription = (
-      this.props.metadata[0].SpecimenDescriptionSequence[0]
+    const specimenDescriptions: dmv.metadata.SpecimenDescription[] = (
+      this.props.metadata[0].SpecimenDescriptionSequence || []
     )
-    const preparationSteps: dmv.metadata.SpecimenPreparation[] = (
-      specimenDescription.SpecimenPreparationSequence || []
-    )
-    preparationSteps.forEach(
-      (step: dmv.metadata.SpecimenPreparation, index: number): void => {
-        step.SpecimenPreparationStepContentItemSequence.forEach((
-          item: (
-            dcmjs.sr.valueTypes.CodeContentItem |
-            dcmjs.sr.valueTypes.TextContentItem |
-            dcmjs.sr.valueTypes.UIDRefContentItem |
-            dcmjs.sr.valueTypes.PNameContentItem |
-            dcmjs.sr.valueTypes.DateTimeContentItem
-          ),
-          index: number
-        ) => {
-          const name = new dcmjs.sr.coding.CodedConcept({
-            value: item.ConceptNameCodeSequence[0].CodeValue,
-            schemeDesignator:
-              item.ConceptNameCodeSequence[0].CodingSchemeDesignator,
-            meaning: item.ConceptNameCodeSequence[0].CodeMeaning
-          })
-          if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.CODE) {
-            item = item as dcmjs.sr.valueTypes.CodeContentItem
-            const value = new dcmjs.sr.coding.CodedConcept({
-              value: item.ConceptCodeSequence[0].CodeValue,
+    specimenDescriptions.forEach(description => {
+      const specimenPreparationSteps: dmv.metadata.SpecimenPreparation[] = (
+        description.SpecimenPreparationSequence || []
+      )
+      specimenPreparationSteps.forEach(
+        (step: dmv.metadata.SpecimenPreparation, index: number): void => {
+          step.SpecimenPreparationStepContentItemSequence.forEach((
+            item: (
+              dcmjs.sr.valueTypes.CodeContentItem |
+              dcmjs.sr.valueTypes.TextContentItem |
+              dcmjs.sr.valueTypes.UIDRefContentItem |
+              dcmjs.sr.valueTypes.PNameContentItem |
+              dcmjs.sr.valueTypes.DateTimeContentItem
+            ),
+            index: number
+          ) => {
+            const name = new dcmjs.sr.coding.CodedConcept({
+              value: item.ConceptNameCodeSequence[0].CodeValue,
               schemeDesignator:
-                item.ConceptCodeSequence[0].CodingSchemeDesignator,
-              meaning: item.ConceptCodeSequence[0].CodeMeaning
+                item.ConceptNameCodeSequence[0].CodingSchemeDesignator,
+              meaning: item.ConceptNameCodeSequence[0].CodeMeaning
             })
-            if (!name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
-              if (name.equals(SpecimenPreparationStepItems.STAIN)) {
-                attributes.push({
-                  name: 'Tissue stain',
-                  value: value.CodeMeaning
-                })
+            if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.CODE) {
+              item = item as dcmjs.sr.valueTypes.CodeContentItem
+              const value = new dcmjs.sr.coding.CodedConcept({
+                value: item.ConceptCodeSequence[0].CodeValue,
+                schemeDesignator:
+                  item.ConceptCodeSequence[0].CodingSchemeDesignator,
+                meaning: item.ConceptCodeSequence[0].CodeMeaning
+              })
+              if (!name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
+                if (name.equals(SpecimenPreparationStepItems.STAIN)) {
+                  attributes.push({
+                    name: 'Tissue stain',
+                    value: value.CodeMeaning
+                  })
+                }
               }
-            }
-          } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
-            item = item as dcmjs.sr.valueTypes.TextContentItem
-            if (!name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
-              if (name.equals(SpecimenPreparationStepItems.STAIN)) {
-                attributes.push({
-                  name: 'Tissue stain',
-                  value: item.TextValue
-                })
+            } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
+              item = item as dcmjs.sr.valueTypes.TextContentItem
+              if (!name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
+                if (name.equals(SpecimenPreparationStepItems.STAIN)) {
+                  attributes.push({
+                    name: 'Tissue stain',
+                    value: item.TextValue
+                  })
+                }
               }
+            } else {
+              console.debug(`specimen preparation step #${index} not rendered`)
             }
-          } else {
-            console.debug(`specimen preparation step #${index} not rendered`)
-          }
-        })
-      }
-    )
+          })
+        }
+      )
+    })
 
     const maxValue = Math.pow(2, this.props.metadata[0].BitsAllocated) - 1
 
@@ -322,6 +329,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
             </Col>
             <Col span={15}>
               <Slider
+                range={false}
                 min={0}
                 max={255}
                 step={1}
@@ -335,6 +343,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
             </Col>
             <Col span={15}>
               <Slider
+                range={false}
                 min={0}
                 max={255}
                 step={1}
@@ -348,6 +357,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
             </Col>
             <Col span={15}>
               <Slider
+                range={false}
                 min={0}
                 max={255}
                 step={1}
