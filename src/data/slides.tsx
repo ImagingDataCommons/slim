@@ -180,7 +180,7 @@ const createSlides = (
     }
   })
 
-  const slides: Slide[] = slideMetadata.map((item) => {
+  let slides: Slide[] = slideMetadata.map((item) => {
     return new Slide({
       images: [
         ...item.volumeImages,
@@ -188,6 +188,15 @@ const createSlides = (
         ...item.overviewImages
       ]
     })
+  })
+  slides = slides.sort((a, b) => {
+    const imageA = a.volumeImages[0]
+    const imageB = b.volumeImages[0]
+    if (imageA.SeriesNumber != null && imageB.SeriesNumber != null) {
+      return Number(imageA.SeriesNumber) - Number(imageB.SeriesNumber)
+    } else {
+      return 0
+    }
   })
 
   return slides
