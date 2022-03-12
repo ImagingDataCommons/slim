@@ -17,12 +17,11 @@ services:
     user: nginx
     depends_on:
       - arc
-    volumes:
-      - ./etc/nginx/conf.d/local.conf:/etc/nginx/conf.d/local.conf:ro
-      # - ./build/:/var/www/html/:ro
+    # volumes:
+    #   - ./build/:/var/www/html/:ro
 
   ldap:
-    image: dcm4che/slapd-dcm4chee:2.4.57-23.2
+    image: dcm4che/slapd-dcm4chee:2.6.0-25.1
     logging:
       driver: json-file
       options:
@@ -35,7 +34,7 @@ services:
       - ldap_config:/etc/openldap/slapd.d
 
   db:
-    image: dcm4che/postgres-dcm4chee:13.1-23
+    image: dcm4che/postgres-dcm4chee:14.1-25
     logging:
       driver: json-file
       options:
@@ -47,7 +46,7 @@ services:
       - db_data:/var/lib/postgresql/data
 
   arc:
-    image: dcm4che/dcm4chee-arc-psql:5.23.2
+    image: dcm4che/dcm4chee-arc-psql:5.25.1
     logging:
       driver: json-file
       options:
@@ -65,6 +64,8 @@ services:
     environment:
       WILDFLY_CHOWN: /opt/wildfly/standalone /storage
       WILDFLY_WAIT_FOR: ldap:389 db:5432
+      HTTP_PROXY_ADDRESS_FORWARDING: 'true'
+      ARCHIVE_HOST: localhost
     depends_on:
       - ldap
       - db
