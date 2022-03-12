@@ -8,9 +8,7 @@ declare module 'dicom-microscopy-viewer' {
     export interface VolumeImageViewerOptions {
       client: dwc.api.DICOMwebClient
       metadata: metadata.VLWholeSlideMicroscopyImage[]
-      controls?: string[]
-      retrieveRendered?: boolean
-      useWebGL?: boolean
+      debug?: boolean
     }
 
     export interface ROIStyleOptions {
@@ -51,6 +49,7 @@ declare module 'dicom-microscopy-viewer' {
       getROI (uid: string): roi.ROI
       popROI (): roi.ROI
       addROI (item: roi.ROI, styleOptions?: object)
+      getROIStyle (uid: string): object
       setROIStyle (uid: string, styleOptions?: object): void
       addROIMeasurement (
         uid: string,
@@ -441,6 +440,7 @@ declare module 'dicom-microscopy-viewer' {
     export interface OpticalPath {
       OpticalPathIdentifier: string
       OpticalPathDescription: string
+      ICCProfile?: Uint8Array
     }
 
     export interface Dataset {}
