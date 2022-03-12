@@ -460,10 +460,12 @@ declare module 'dicom-microscopy-viewer' {
       StudyTime: string
       // General Series module
       SeriesInstanceUID: string
+      SeriesNumber: number | null | undefined
       Modality: string
       // SOP Common module
       SOPClassUID: string
       SOPInstanceUID: string
+      InstanceNumber: number | null | undefined
       get json (): object
       get bulkdataReferences (): object
     }
