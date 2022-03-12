@@ -36,15 +36,6 @@ module.exports = {
         asyncWebAssembly: true
       }
 
-      // config.module.noParse = [/(codec)/]
-
-      // config.module.rules.push(
-      //   {
-      //     test: /\.wasm$/,
-      //     type: 'webassembly/async'
-      //   }
-      // )
-
       return config
     }
   }
