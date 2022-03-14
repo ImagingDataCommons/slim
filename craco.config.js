@@ -32,6 +32,7 @@ module.exports = {
         extensions: ['.tsx', '.ts', '.js', '.wasm', '.json']
       }
 
+      config.target = 'web'
       config.experiments = {
         asyncWebAssembly: true
       }
