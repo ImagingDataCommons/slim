@@ -241,10 +241,10 @@ class Header extends React.Component<HeaderProps, HeaderState> {
             onPressEnter={handleServerSelection}
             addonAfter={
               this.state.isServerSelectionDisabled
-              ? <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-              : <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                ? <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                : <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
             }
-           />
+          />
         </Modal>
       </>
     )

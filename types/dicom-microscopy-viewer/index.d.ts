@@ -1,7 +1,7 @@
 declare module 'dicom-microscopy-viewer' {
 
-  import * as dwc from 'dicomweb-client';
-  import * as dcmjs from 'dcmjs';
+  import * as dwc from 'dicomweb-client'
+  import * as dcmjs from 'dcmjs'
 
   declare namespace viewer {
 
@@ -77,23 +77,23 @@ declare module 'dicom-microscopy-viewer' {
       getOpticalPathStyle (opticalPathIdentifier: string): {
         color?: number[]
         paletteColorLookupTable?: color.PaletteColorLookupTableOptions
-        opacity: number,
-        limitValues?: number[],
+        opacity: number
+        limitValues?: number[]
       }
       setOpticalPathStyle (
         opticalPathIdentifier: string,
         styleOptions: {
           color?: number[]
-          opacity?: number,
-          limitValues?: number[],
+          opacity?: number
+          limitValues?: number[]
         }
       ): void
       showOpticalPath (
         opticalPathIdentifier: string,
         styleOptions?: {
           color?: number[]
-          opacity?: number,
-          limitValues?: number[],
+          opacity?: number
+          limitValues?: number[]
         }
       ): void
       hideOpticalPath (opticalPathIdentifier: string): void
@@ -288,10 +288,8 @@ declare module 'dicom-microscopy-viewer' {
       properties?: {
         trackingUID?: string
         observerType?: string
-        evaluations?: (
-          dcmjs.sr.valueTypes.CodeContentItem |
-          dcmjs.sr.valueTypes.TextContentItem
-        )[]
+        evaluations?: Array<dcmjs.sr.valueTypes.CodeContentItem |
+        dcmjs.sr.valueTypes.TextContentItem>
         measurements?: dcmjs.sr.valueTypes.NumContentItem[]
       }
     }
@@ -303,16 +301,12 @@ declare module 'dicom-microscopy-viewer' {
       get properties (): {
         trackingUID?: string
         observerType?: string
-        evaluations: (
-          dcmjs.sr.valueTypes.CodeContentItem |
-          dcmjs.sr.valueTypes.TextContentItem
-        )[]
+        evaluations: Array<dcmjs.sr.valueTypes.CodeContentItem |
+        dcmjs.sr.valueTypes.TextContentItem>
         measurements: dcmjs.sr.valueTypes.NumContentItem[]
       }
-      get evaluations (): (
-          dcmjs.sr.valueTypes.CodeContentItem |
-          dcmjs.sr.valueTypes.TextContentItem
-      )[]
+      get evaluations (): Array<dcmjs.sr.valueTypes.CodeContentItem |
+      dcmjs.sr.valueTypes.TextContentItem>
       get measurements (): dcmjs.sr.valueTypes.NumContentItem[]
       addEvaluation (
         item: (
@@ -418,13 +412,11 @@ declare module 'dicom-microscopy-viewer' {
     }
 
     export interface SpecimenPreparation {
-      SpecimenPreparationStepContentItemSequence: (
-        dcmjs.sr.valueTypes.CodeContentItem |
-        dcmjs.sr.valueTypes.TextContentItem |
-        dcmjs.sr.valueTypes.UIDRefContentItem |
-        dcmjs.sr.valueTypes.PNameContentItem |
-        dcmjs.sr.valueTypes.DateTimeContentItem
-      )[]
+      SpecimenPreparationStepContentItemSequence: Array<dcmjs.sr.valueTypes.CodeContentItem |
+      dcmjs.sr.valueTypes.TextContentItem |
+      dcmjs.sr.valueTypes.UIDRefContentItem |
+      dcmjs.sr.valueTypes.PNameContentItem |
+      dcmjs.sr.valueTypes.DateTimeContentItem>
     }
 
     export interface SpecimenDescription {
@@ -488,10 +480,10 @@ declare module 'dicom-microscopy-viewer' {
 
     export interface Comprehensive3DSR extends SOPClass {
       ContentSequence: dcmjs.sr.valueTypes.ContentItem[]
-      ContentTemplateSequence: {
+      ContentTemplateSequence: Array<{
         MappingResource: string
         TemplateIdentifier: string
-      }[]
+      }>
     }
 
     export interface MicroscopyBulkSimpleAnnotations extends SOPClass {
@@ -506,47 +498,47 @@ declare module 'dicom-microscopy-viewer' {
       ContainerTypeCodeSequence: dcmjs.sr.coding.CodedConcept[]
       SpecimenDescriptionSequence: SpecimenDescription[]
       OpticalPathSequence: OpticalPath[]
-      AnnotationGroupSequence: {
+      AnnotationGroupSequence: Array<{
         AnnotationGroupNumber: number
         AnnotationGroupUID: string
         AnnotationGroupLabel: string
         AnnotationGroupDescription?: string
-        AnnotationPropertyCategoryCodeSequence: {
+        AnnotationPropertyCategoryCodeSequence: Array<{
           CodeValue: string
           CodeMeaning: string
           CodingSchemeDesignator: string
           CodingSchemeVersion?: string
-        }[]
-        AnnotationPropertyTypeCodeSequence: {
+        }>
+        AnnotationPropertyTypeCodeSequence: Array<{
           CodeValue: string
           CodeMeaning: string
           CodingSchemeDesignator: string
           CodingSchemeVersion?: string
-        }[]
+        }>
         GraphicType: string
         NumberOfAnnotations: number
         CommonZCoordinateValue?: number
-        DoublePointCoordinatesData?: string  // FIXME: bytes
-        PointCoordinatesData?: string  // FIXME: bytes
-        MeasurementsSequence: {
-          ConceptNameCodeSequence: {
+        DoublePointCoordinatesData?: string // FIXME: bytes
+        PointCoordinatesData?: string // FIXME: bytes
+        MeasurementsSequence: Array<{
+          ConceptNameCodeSequence: Array<{
             CodeValue: string
             CodeMeaning: string
             CodingSchemeDesignator: string
             CodingSchemeVersion?: string
-          }[]
-          MeasurementUnitsCodeSequence: {
+          }>
+          MeasurementUnitsCodeSequence: Array<{
             CodeValue: string
             CodeMeaning: string
             CodingSchemeDesignator: string
             CodingSchemeVersion?: string
-          }[]
-          MeasurementValuesSequence: {
-            FloatingPointValues?: string  // FIXME: bytes
-            AnnotationIndexList?: string  // FIXME: bytes
-          }[]
-        }[]
-      }[]
+          }>
+          MeasurementValuesSequence: Array<{
+            FloatingPointValues?: string // FIXME: bytes
+            AnnotationIndexList?: string // FIXME: bytes
+          }>
+        }>
+      }>
     }
 
     export interface ParametricMap extends SOPClass {
@@ -570,27 +562,27 @@ declare module 'dicom-microscopy-viewer' {
       ContainerTypeCodeSequence: dcmjs.sr.coding.CodedConcept[]
       SpecimenDescriptionSequence: SpecimenDescription[]
       // Segmentation Image module
-      SegmentSequence: {
+      SegmentSequence: Array<{
         SegmentNumber: number
         SegmentLabel: string
         SegmentDescription?: string
-        SegmentedPropertyCategoryCodeSequence: {
+        SegmentedPropertyCategoryCodeSequence: Array<{
           CodeValue: string
           CodeMeaning: string
           CodingSchemeDesignator: string
           CodingSchemeVersion?: string
-        }[]
-        SegmentedPropertyTypeCodeSequence: {
+        }>
+        SegmentedPropertyTypeCodeSequence: Array<{
           CodeValue: string
           CodeMeaning: string
           CodingSchemeDesignator: string
           CodingSchemeVersion?: string
-        }[]
-      }[]
+        }>
+      }>
     }
 
     export function formatMetadata (metadata: object): {
-      dataset: Dataset,
+      dataset: Dataset
       bulkDataMapping: { [keyword: string]: { vr: string, BulkDataURI: string }}
     }
 
@@ -653,14 +645,14 @@ declare module 'dicom-microscopy-viewer' {
   declare namespace color {
     export interface PaletteColorLookupTableOptions {
       uid: string
-      redDescriptor: number[],
-      greenDescriptor: number[],
-      blueDescriptor: number[],
-      redData: number[],
-      greenData: number[],
-      blueData: number[],
-      redSegmentedData: number[],
-      greenSegmentedData: number[],
+      redDescriptor: number[]
+      greenDescriptor: number[]
+      blueDescriptor: number[]
+      redData: number[]
+      greenData: number[]
+      blueData: number[]
+      redSegmentedData: number[]
+      greenSegmentedData: number[]
       blueSegmentedDat: number[]
     }
 

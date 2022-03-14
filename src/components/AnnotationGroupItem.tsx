@@ -29,9 +29,9 @@ interface AnnotationGroupItemProps {
     isVisible: boolean
   }) => void
   onStyleChange: ({ annotationGroupUID, styleOptions }: {
-    annotationGroupUID: string,
+    annotationGroupUID: string
     styleOptions: {
-      opacity?: number,
+      opacity?: number
       measurement?: dcmjs.sr.coding.CodedConcept
     }
   }) => void
@@ -40,7 +40,7 @@ interface AnnotationGroupItemProps {
 interface AnnotationGroupItemState {
   isVisible: boolean
   currentStyle: {
-    opacity: number,
+    opacity: number
     measurement?: dcmjs.sr.coding.CodedConcept
   }
 }
@@ -77,7 +77,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
         opacity: value
       }
     })
-    this.setState({ currentStyle: { opacity: value }})
+    this.setState({ currentStyle: { opacity: value } })
   }
 
   handleMeasurementSelection (value?: string, option?: any): void {
@@ -133,9 +133,9 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
     )
     const item = this.props.metadata.AnnotationGroupSequence[index]
     const measurementsSequence = (
-      item.MeasurementsSequence ?
-      item.MeasurementsSequence :
-      []
+      item.MeasurementsSequence
+        ? item.MeasurementsSequence
+        : []
     )
     const measurementOptions = measurementsSequence.map(measurementItem => {
       const name = measurementItem.ConceptNameCodeSequence[0]
@@ -213,9 +213,9 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
                 unCheckedChildren={<FaEyeSlash />}
               />
               <Popover
-                 placement='left'
-                 content={settings}
-                 title='Display Settings'
+                placement='left'
+                content={settings}
+                title='Display Settings'
               >
                 <Button
                   type='primary'

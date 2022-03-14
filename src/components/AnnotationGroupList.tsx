@@ -21,9 +21,9 @@ interface AnnotationGroupListProps {
     isVisible: boolean
   }) => void
   onAnnotationGroupStyleChange: ({ annotationGroupUID, styleOptions }: {
-    annotationGroupUID: string,
+    annotationGroupUID: string
     styleOptions: {
-      opacity?: number,
+      opacity?: number
       measurement?: dcmjs.sr.coding.CodedConcept
     }
   }) => void
@@ -46,7 +46,7 @@ class AnnotationGroupList extends React.Component<AnnotationGroupListProps, {}> 
           onVisibilityChange={this.props.onAnnotationGroupVisibilityChange}
           onStyleChange={this.props.onAnnotationGroupStyleChange}
         />
-       )
+      )
     })
 
     return (

@@ -16,7 +16,7 @@ import {
   EyeOutlined,
   EyeInvisibleOutlined,
   SettingOutlined
-} from '@ant-design/icons';
+} from '@ant-design/icons'
 import Description from './Description'
 import * as dmv from 'dicom-microscopy-viewer'
 import * as dcmjs from 'dcmjs'
@@ -35,11 +35,11 @@ interface OpticalPathItemProps {
     limitValues?: number[]
   }
   onVisibilityChange: ({ opticalPathIdentifier, isVisible }: {
-    opticalPathIdentifier: string,
+    opticalPathIdentifier: string
     isVisible: boolean
   }) => void
   onStyleChange: ({ opticalPathIdentifier, styleOptions }: {
-    opticalPathIdentifier: string,
+    opticalPathIdentifier: string
     styleOptions: {
       opacity?: number
       color?: number[]
@@ -63,7 +63,6 @@ interface OpticalPathItemState {
  * multi-channel acquistion with control of visualization parameters.
  */
 class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathItemState> {
-
   constructor (props: OpticalPathItemProps) {
     super(props)
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
@@ -79,7 +78,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       currentStyle: {
         opacity: this.props.defaultStyle.opacity,
         color: this.props.defaultStyle.color,
-        limitValues: this.props.defaultStyle.limitValues,
+        limitValues: this.props.defaultStyle.limitValues
       }
     }
   }
@@ -125,7 +124,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
         currentStyle: {
           color: color,
           opacity: state.currentStyle.opacity,
-          limitValues: state.currentStyle.limitValues,
+          limitValues: state.currentStyle.limitValues
         }
       }))
       this.props.onStyleChange({
@@ -150,7 +149,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
         currentStyle: {
           color: color,
           opacity: state.currentStyle.opacity,
-          limitValues: state.currentStyle.limitValues,
+          limitValues: state.currentStyle.limitValues
         }
       }))
       this.props.onStyleChange({
@@ -175,7 +174,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
         currentStyle: {
           color: color,
           opacity: state.currentStyle.opacity,
-          limitValues: state.currentStyle.limitValues,
+          limitValues: state.currentStyle.limitValues
         }
       }))
       this.props.onStyleChange({
@@ -214,7 +213,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       currentStyle: {
         color: state.currentStyle.color,
         opacity: state.currentStyle.opacity,
-        limitValues: values,
+        limitValues: values
       }
     }))
     this.props.onStyleChange({
@@ -505,9 +504,9 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
                 unCheckedChildren={<EyeInvisibleOutlined />}
               />
               <Popover
-                 placement='left'
-                 content={settings}
-                 title='Display Settings'
+                placement='left'
+                content={settings}
+                title='Display Settings'
               >
                 <Button
                   type='primary'

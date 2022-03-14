@@ -7,9 +7,7 @@ declare module 'dicomweb-client' {
       method: string
     }
 
-    export interface DICOMwebClientRequestHook { 
-      (request: XMLHttpRequest, metadata: DICOMwebClientRequestHookMetadata): XMLHttpRequest
-    }
+    export type DICOMwebClientRequestHook = (request: XMLHttpRequest, metadata: DICOMwebClientRequestHookMetadata) => XMLHttpRequest
 
     export interface DICOMwebClientOptions {
       url: string
@@ -100,7 +98,7 @@ declare module 'dicomweb-client' {
       datasets: ArrayBuffer[]
     }
 
-    export type Study = {
+    export interface Study {
       StudyInstanceUID: string
       StudyID: string
       StudyDate: string
@@ -115,14 +113,14 @@ declare module 'dicomweb-client' {
       NumberOfStudyRelatedInstances: number
     }
 
-    export type Series = {
+    export interface Series {
       SeriesInstanceUID: string
       SeriesNumber: string
       Modality: string
       NumberOfSeriesRelatedInstances: number
     }
 
-    export type Instance = {
+    export interface Instance {
       SOPClassUID: string
       SOPInstanceUID: string
       InstanceNumber: string

@@ -26,7 +26,7 @@ interface OpticalPathListProps {
     isVisible: boolean
   }) => void
   onOpticalPathStyleChange: ({ opticalPathIdentifier, styleOptions }: {
-    opticalPathIdentifier: string,
+    opticalPathIdentifier: string
     styleOptions: {
       opacity?: number
       color?: number[]
@@ -48,7 +48,7 @@ interface OpticalPathListState {
  */
 class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathListState> {
   state = {
-    selectedOpticalPathIdentifier: undefined,
+    selectedOpticalPathIdentifier: undefined
   }
 
   constructor (props: OpticalPathListProps) {

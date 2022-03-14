@@ -66,7 +66,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
 
       this.stores.push({
         id: serverSettings.id,
-        write: serverSettings.write ? serverSettings.write: false,
+        write: serverSettings.write ? serverSettings.write : false,
         read: serverSettings.read ? serverSettings.read : true,
         client: new dwc.api.DICOMwebClient(clientSettings)
       })

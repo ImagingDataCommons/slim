@@ -18,7 +18,7 @@ import * as dmv from 'dicom-microscopy-viewer'
 import { parseDate, parseName, parseSex, parseTime } from '../valueUtils'
 
 interface WorklistProps extends RouteComponentProps {
-  client: DicomWebManager,
+  client: DicomWebManager
 }
 
 interface WorklistState {

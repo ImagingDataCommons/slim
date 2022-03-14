@@ -288,15 +288,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private readonly evaluationOptions: { [key: string]: EvaluationOptions[] } = {}
 
-  private volumeViewportRef: React.RefObject<HTMLDivElement>
+  private readonly volumeViewportRef: React.RefObject<HTMLDivElement>
 
-  private labelViewportRef: React.RefObject<HTMLDivElement>
+  private readonly labelViewportRef: React.RefObject<HTMLDivElement>
 
   private volumeViewer: dmv.viewer.VolumeImageViewer
 
   private labelViewer?: dmv.viewer.LabelImageViewer
 
-  private defaultRoiStyle: dmv.viewer.ROIStyleOptions = {
+  private readonly defaultRoiStyle: dmv.viewer.ROIStyleOptions = {
     stroke: {
       color: [0, 126, 163],
       width: 2
@@ -431,7 +431,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.props.client !== previousProps.client
     ) {
       this.volumeViewer.cleanup()
-      if (this.labelViewer) {
+      if (this.labelViewer != null) {
         this.labelViewer.cleanup()
       }
       const { volumeViewer, labelViewer } = _constructViewers({
@@ -596,10 +596,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         }).then((retrievedMetadata): void => {
           let annotations: dmv.metadata.MicroscopyBulkSimpleAnnotations[]
           annotations = retrievedMetadata.map(metadata => {
-              return new dmv.metadata.MicroscopyBulkSimpleAnnotations({
-                metadata
-              })
+            return new dmv.metadata.MicroscopyBulkSimpleAnnotations({
+              metadata
             })
+          })
           annotations = annotations.filter(ann => {
             const refImage = this.props.slide.volumeImages[0]
             return (
@@ -672,7 +672,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               message.error('Segmentations cannot be displayed')
               console.error(`failed to add segments: ${error}`)
             }
-          /*
+            /*
            * React is not aware of the fact that segments have been added via
            * the viewer (the underlying HTML viewport element is a ref object)
            * and won't show the segments in the user interface unless an update
@@ -727,7 +727,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               message.error('Parametric Map cannot be displayed')
               console.error(`failed to add mappings: ${error}`)
             }
-          /*
+            /*
            * React is not aware of the fact that mappings have been added via
            * the viewer (the underlying HTML viewport element is a ref object)
            * and won't show the mappings in the user interface unless an update
@@ -866,7 +866,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.onLoadingEnded
     )
     this.volumeViewer.cleanup()
-    if (this.labelViewer) {
+    if (this.labelViewer != null) {
       this.labelViewer.cleanup()
     }
     /*
@@ -922,7 +922,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const metadataItem = image.OpticalPathSequence[0]
       if (metadataItem.ICCProfile == null) {
         if ('OpticalPathSequence' in image.bulkdataReferences) {
-          // @ts-ignore
+          // @ts-expect-error
           const bulkdataItem = image.bulkdataReferences.OpticalPathSequence[0]
           if ('ICCProfile' in bulkdataItem) {
             hasICCProfile = true
@@ -936,7 +936,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         message.warning('No ICC Profile was found for color images')
       }
     }
-
   }
 
   /**
@@ -1300,6 +1299,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.volumeViewer.setROIStyle(roi.uid, style)
     })
   }
+
   /**
    * Handle toggling of annotation visibility, i.e., whether a given
    * annotation should be either displayed or hidden by the viewer.
@@ -1314,7 +1314,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const key = _getRoiKey(roi)
       this.volumeViewer.setROIStyle(roi.uid, this.getRoiStyle(key))
       this.setState(state => {
-        if (state.visibleRoiUIDs.indexOf(roiUID) < 0) {
+        if (!state.visibleRoiUIDs.includes(roiUID)) {
           return {
             visibleRoiUIDs: [...state.visibleRoiUIDs, roiUID]
           }
@@ -1458,7 +1458,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * optical path should be either displayed or hidden by the viewer.
    */
   handleOpticalPathVisibilityChange ({ opticalPathIdentifier, isVisible }: {
-    opticalPathIdentifier: string,
+    opticalPathIdentifier: string
     isVisible: boolean
   }): void {
     console.log(`change visibility of optical path ${opticalPathIdentifier}`)
@@ -1501,7 +1501,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * optical path should be either added or removed from the viewport.
    */
   handleOpticalPathActivityChange ({ opticalPathIdentifier, isActive }: {
-    opticalPathIdentifier: string,
+    opticalPathIdentifier: string
     isActive: boolean
   }): void {
     console.log(`change activity of optical path ${opticalPathIdentifier}`)
@@ -1740,7 +1740,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         <Select.Option key='freehandline' value='freehandline'>
           Line (freehand)
         </Select.Option>
-      ),
+      )
     ]
 
     const selections: React.ReactNode[] = [
@@ -1770,7 +1770,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         >
           {findingOptions}
         </Select>
-      ),
+      )
     ]
 
     const selectedFinding = this.state.selectedFinding
@@ -1794,7 +1794,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             <Select
               style={{ minWidth: 130 }}
               onSelect={this.handleAnnotationEvaluationSelection}
-              allowClear={true}
+              allowClear
               onClear={this.handleAnnotationEvaluationClearance}
               defaultActiveFirstOption={false}
             >
@@ -1996,9 +1996,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     /* It would be nicer to use the ant Spin component, but that causes issues
      * with the positioning of the viewport.
      */
-    let loadingDisplay = "none"
+    let loadingDisplay = 'none'
     if (this.state.isLoading) {
-      loadingDisplay = "block"
+      loadingDisplay = 'block'
     }
 
     return (
@@ -2006,8 +2006,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         <Layout.Content style={{ height: '100%' }}>
           {toolbar}
 
-          <div className="dimmer" style={{ display: loadingDisplay }} />
-          <div className="spinner" style={{ display: loadingDisplay }} />
+          <div className='dimmer' style={{ display: loadingDisplay }} />
+          <div className='spinner' style={{ display: loadingDisplay }} />
           <div
             style={{
               height: `calc(100% - ${toolbarHeight})`,

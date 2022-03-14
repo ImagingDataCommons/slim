@@ -56,22 +56,22 @@ class AnnotationList extends React.Component<AnnotationListProps, {}> {
 
     return (
       <>
-      <div style={{ paddingLeft: '14px', paddingTop: '7px', paddingBottom: '7px' }}>
-        <Switch
-          size='small'
-          onChange={this.handleVisibilityChange}
-          checked={this.props.visibleRoiUIDs.length > 0}
-          checkedChildren={<FaEye />}
-          unCheckedChildren={<FaEyeSlash />}
-        />
-      </div>
-      <Menu
-        selectedKeys={this.props.selectedRoiUIDs}
-        onSelect={this.handleMenuItemSelection}
-        onClick={this.handleMenuItemSelection}
-      >
-        {items}
-      </Menu>
+        <div style={{ paddingLeft: '14px', paddingTop: '7px', paddingBottom: '7px' }}>
+          <Switch
+            size='small'
+            onChange={this.handleVisibilityChange}
+            checked={this.props.visibleRoiUIDs.length > 0}
+            checkedChildren={<FaEye />}
+            unCheckedChildren={<FaEyeSlash />}
+          />
+        </div>
+        <Menu
+          selectedKeys={this.props.selectedRoiUIDs}
+          onSelect={this.handleMenuItemSelection}
+          onClick={this.handleMenuItemSelection}
+        >
+          {items}
+        </Menu>
       </>
     )
   }

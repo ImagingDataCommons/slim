@@ -14,7 +14,7 @@ module.exports = {
               '@success-color': '#3f9c35',
               '@warning-color': '#eeaf30',
               '@error-color': '#96172e',
-              '@font-size-base': '14px',
+              '@font-size-base': '14px'
             },
             javascriptEnabled: true
           }

@@ -27,7 +27,6 @@ declare module 'dcmjs' {
 
   }
 
-
   declare namespace sr {
 
     declare namespace coding {
@@ -41,10 +40,10 @@ declare module 'dcmjs' {
 
       export class Code {
         constructor (options: CodeOptions)
-        public get value(): string
-        public get meaning(): string
-        public get schemeDesignator(): string
-        public get schemeVersion(): string | null
+        public get value (): string
+        public get meaning (): string
+        public get schemeDesignator (): string
+        public get schemeVersion (): string | null
       }
 
       export interface CodedConceptOptions {
@@ -56,11 +55,11 @@ declare module 'dcmjs' {
 
       export class CodedConcept {
         constructor (options: CodedConceptOptions)
-        equals(other: CodedConcept): boolean
-        get value(): string
-        get meaning(): string
-        get schemeDesignator(): string
-        get schemeVersion(): string | null
+        equals (other: CodedConcept): boolean
+        get value (): string
+        get meaning (): string
+        get schemeDesignator (): string
+        get schemeVersion (): string | null
         CodeValue: string
         CodeMeaning: string
         CodingSchemeDesignator: string
@@ -403,7 +402,7 @@ declare module 'dcmjs' {
         referencedRealWorldValueMap?: sr.contentItems.ReferencedRealWorldValueMap
         timePointContext?: TimePointContext
         measurements?: sr.valueTypes.NumContentItem[]
-        qualitativeEvaluations?: (sr.valueTypes.CodeContentItem|sr.valueTypes.TextContentItem)[]
+        qualitativeEvaluations?: Array<sr.valueTypes.CodeContentItem|sr.valueTypes.TextContentItem>
       }
 
       export class PlanarROIMeasurementsAndQualitativeEvaluations extends Template {
@@ -553,10 +552,10 @@ declare module 'dcmjs' {
       export class ContainerContentItem extends ContentItem {
         constructor (options: ContainerContentItemOptions)
         ContentSequence: ContentItem[]
-        ContentTemplateSequence?: {
+        ContentTemplateSequence?: Array<{
           MappingResource: string
           TemplateIdentifier: string
-        }[]
+        }>
       }
 
       export interface UIDRefContentItemOptions {

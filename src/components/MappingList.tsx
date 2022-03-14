@@ -18,7 +18,7 @@ interface MappingListProps {
     isVisible: boolean
   }) => void
   onMappingStyleChange: ({ mappingUID, styleOptions }: {
-    mappingUID: string,
+    mappingUID: string
     styleOptions: {
       opacity?: number
     }

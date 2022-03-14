@@ -18,7 +18,7 @@ interface SegmentItemProps {
     isVisible: boolean
   }) => void
   onStyleChange: ({ segmentUID, styleOptions }: {
-    segmentUID: string,
+    segmentUID: string
     styleOptions: {
       opacity: number
     }
@@ -64,7 +64,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
         opacity: value
       }
     })
-    this.setState({ currentStyle: { opacity: value }})
+    this.setState({ currentStyle: { opacity: value } })
   }
 
   render (): React.ReactNode {
@@ -85,7 +85,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
       {
         name: 'Property Type',
         value: this.props.segment.propertyType.CodeMeaning
-      },
+      }
     ]
 
     const settings = (
@@ -137,9 +137,9 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
                 unCheckedChildren={<FaEyeSlash />}
               />
               <Popover
-                 placement='left'
-                 content={settings}
-                 title='Display Settings'
+                placement='left'
+                content={settings}
+                title='Display Settings'
               >
                 <Button
                   type='primary'

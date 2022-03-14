@@ -20,7 +20,6 @@ import { User, AuthManager } from './auth'
 import OidcManager from './auth/OidcManager'
 import DicomWebManager from './DicomWebManager'
 
-
 interface AppProps {
   name: string
   homepage: string

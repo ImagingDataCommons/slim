@@ -18,7 +18,7 @@ interface MappingItemProps {
     isVisible: boolean
   }) => void
   onStyleChange: ({ mappingUID, styleOptions }: {
-    mappingUID: string,
+    mappingUID: string
     styleOptions: {
       opacity?: number
     }
@@ -132,9 +132,9 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
                   unCheckedChildren={<FaEyeSlash />}
                 />
                 <Popover
-                   placement='left'
-                   content={settings}
-                   title='Display Settings'
+                  placement='left'
+                  content={settings}
+                  title='Display Settings'
                 >
                   <Button
                     type='primary'

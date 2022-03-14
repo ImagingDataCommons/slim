@@ -20,7 +20,7 @@ interface SegmentListProps {
     isVisible: boolean
   }) => void
   onSegmentStyleChange: ({ segmentUID, styleOptions }: {
-    segmentUID: string,
+    segmentUID: string
     styleOptions: {
       opacity: number
     }
@@ -44,7 +44,7 @@ class SegmentList extends React.Component<SegmentListProps, {}> {
           onVisibilityChange={this.props.onSegmentVisibilityChange}
           onStyleChange={this.props.onSegmentStyleChange}
         />
-       )
+      )
     })
 
     return (
