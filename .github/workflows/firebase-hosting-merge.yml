@@ -1,5 +1,5 @@
 name: Deploy to Firebase Hosting on merge
-'on':
+on:
   push:
     branches:
       - master
@@ -8,8 +8,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: sudo npm i -g yarn && yarn install && REACT_APP_CONFIG=preview yarn build
-      - uses: FirebaseExtended/action-hosting-deploy@v0
+      - run: sudo npm i -g yarn
+      - name: Install dependencies
+        run: yarn install
+      - name: Build
+        run: REACT_APP_CONFIG=preview yarn build
+      - name: Deploy
+        uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_SLIM }}'
