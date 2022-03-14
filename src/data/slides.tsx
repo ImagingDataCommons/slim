@@ -79,9 +79,7 @@ class Slide {
       }
     })
     if (volumeImages.length === 0) {
-      throw new Error(
-        'At least one volume image must be provided for a slide.'
-      )
+      throw new Error('At least one volume image must be provided for a slide.')
     } else {
       const samplesPerPixel = new Set([] as number[])
       volumeImages.forEach((image) => {
