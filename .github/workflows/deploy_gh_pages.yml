@@ -20,6 +20,6 @@ jobs:
       - name: Build and deploy with gh-pages
         run: |
           git remote set-url origin https://git:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
-          yarn deploy -- -u "github-actions-bot <support+actions@github.com>"
+          NODE_DEBUG=gh-pages yarn deploy -- -u "github-actions-bot <support+actions@github.com>"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

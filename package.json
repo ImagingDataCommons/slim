@@ -1,7 +1,7 @@
 {
   "name": "slim",
   "version": "0.5.0",
-  "homepage": "https://herrmannlab.github.com/slim",
+  "homepage": "https://github.com/herrmannlab/slim",
   "private": true,
   "scripts": {
     "start": "craco start",
