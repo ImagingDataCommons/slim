@@ -464,6 +464,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         Modality: 'SR'
       }
     }).then((matchedInstances): void => {
+      if (matchedInstances == null) {
+        matchedInstances = []
+      }
       matchedInstances.forEach(i => {
         const { dataset } = dmv.metadata.formatMetadata(i)
         const instance = dataset as dmv.metadata.Instance
