@@ -1,5 +1,5 @@
 window.config = {
-  path: "/demo",
+  path: "/",
   servers: [
     {
       id: "demo",
