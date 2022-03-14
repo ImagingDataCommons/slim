@@ -12,7 +12,7 @@ jobs:
       - name: Install dependencies
         run: yarn install
       - name: Build
-        run: REACT_APP_CONFIG=preview yarn build
+        run: REACT_APP_CONFIG=preview PUBLIC_URL=/ yarn build
       - name: Deploy
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
