@@ -12,6 +12,7 @@
 /build
 
 public/config/*
+!public/config/demo.js
 !public/config/local.js
 !public/config/preview.js
 
