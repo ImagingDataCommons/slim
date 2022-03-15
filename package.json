@@ -1,7 +1,7 @@
 {
   "name": "slim",
   "version": "0.5.0",
-  "homepage": "https://github.com/herrmannlab/slim",
+  "homepage": "https://herrmannlab.github.io/slim",
   "private": true,
   "scripts": {
     "start": "craco start",
@@ -9,7 +9,7 @@
     "lint": "ts-standard --env jest 'src/**/*.{tsx,ts}'",
     "fmt": "ts-standard --env jest 'src/**/*.{tsx,ts}' --fix",
     "test": "ts-standard --env jest 'src/**/*.{tsx,ts}' && craco test --setupFiles ./src/setupTests.tsx --watchAll=false",
-    "predeploy": "REACT_APP_CONFIG=demo PUBLIC_URL='https://herrmannlab.github.io/slim' craco build",
+    "predeploy": "REACT_APP_CONFIG=demo craco build",
     "deploy": "gh-pages -d build",
     "clean": "rm -rf ./build ./node_modules"
   },
