@@ -31,12 +31,24 @@ module.exports = {
         },
         extensions: ['.tsx', '.ts', '.js', '.wasm', '.json']
       }
-
       config.target = 'web'
       config.experiments = {
         asyncWebAssembly: true
       }
-
+      return config
+    }
+  },
+  jest: {
+    configure: (config, { env, paths }) => {
+      config.transform = {
+        '^.+wasm.*\\.js$': '<rootDir>/src/__mocks__/emscriptenMock.js',
+        '\\.(wasm)$': '<rootDir>/src/__mocks__/wasmMock.js',
+        '\\.(css|less|sass|scss)$': '<rootDir>/src/__mocks__/styleMock.js',
+        '^.+\\.[t|j]sx?$': 'babel-jest'
+      }
+      config.transformIgnorePatterns = [
+        'node_modules/(?!(ol|React|dicom-microscopy-viewer|dicomweb-client|@cornerstonejs|dicomicc)/)' // <- transform libraries
+      ]
       return config
     }
   }
