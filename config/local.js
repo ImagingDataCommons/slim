@@ -1,11 +1,11 @@
 window.config = {
   // This must match the location configured for web server
-  path: "/viewer",
+  path: '/viewer',
   servers: [
     {
-      id: "local",
+      id: 'local',
       // This must match the proxy location configured for the web server
-      url: "http://localhost:8008/dicomweb",
+      url: 'http://localhost:8008/dicomweb',
       write: true
     }
   ],
@@ -45,4 +45,4 @@ window.config = {
       }
     }
   ]
-};
+}
