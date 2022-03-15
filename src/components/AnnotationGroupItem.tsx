@@ -132,11 +132,8 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
       item => (item.AnnotationGroupUID === this.props.annotationGroup.uid)
     )
     const item = this.props.metadata.AnnotationGroupSequence[index]
-    const measurementsSequence = (
-      item.MeasurementsSequence
-        ? item.MeasurementsSequence
-        : []
-    )
+    const measurementsSequence = item.MeasurementsSequence ?? []
+
     const measurementOptions = measurementsSequence.map(measurementItem => {
       const name = measurementItem.ConceptNameCodeSequence[0]
       const key = `${name.CodingSchemeDesignator}-${name.CodeValue}`

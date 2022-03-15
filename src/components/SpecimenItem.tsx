@@ -43,7 +43,7 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
 
     // TID 8001 "Specimen Preparation"
     const preparationSteps: dmv.metadata.SpecimenPreparation[] = (
-      specimenDescription.SpecimenPreparationSequence || []
+      specimenDescription.SpecimenPreparationSequence ?? []
     )
     preparationSteps.forEach(
       (step: dmv.metadata.SpecimenPreparation, index: number): void => {

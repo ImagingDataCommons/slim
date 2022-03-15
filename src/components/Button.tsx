@@ -30,7 +30,7 @@ class Button extends React.Component<ButtonProps, {}> {
       return null
     }
     let button
-    if (this.props.isSelected) {
+    if (this.props.isSelected ?? false) {
       button = (
         <Btn
           onClick={this.handleClick}

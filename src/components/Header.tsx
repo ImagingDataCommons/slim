@@ -161,10 +161,10 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       )
     }
 
-    const handleServerSelectionInput = (event: any) => {
+    const handleServerSelectionInput = (event: any): void => {
       const value = event.target.value
       let isDisabled = true
-      if (value) {
+      if (value != null) {
         try {
           const url = new URL(value)
           if (url.protocol.startsWith('http') && url.pathname.length > 0) {
@@ -178,7 +178,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       })
     }
 
-    const handleServerSelectionCancellation = (event: any) => {
+    const handleServerSelectionCancellation = (event: any): void => {
       this.setState({
         selectedServerUrl: undefined,
         isServerSelectionModalVisible: false,
@@ -186,10 +186,10 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       })
     }
 
-    const handleServerSelection = (event: any) => {
+    const handleServerSelection = (event: any): void => {
       const url = this.state.selectedServerUrl
       let closeModal = false
-      if (url) {
+      if (url != null && url !== '') {
         if (url.startsWith('http://') || url.startsWith('https://')) {
           this.props.onServerSelection({ url })
           closeModal = true

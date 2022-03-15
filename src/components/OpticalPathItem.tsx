@@ -185,7 +185,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
   }
 
   getCurrentColors (): string[] {
-    const rgb2hex = (values: number[]) => {
+    const rgb2hex = (values: number[]): string => {
       const r = values[0]
       const g = values[1]
       const b = values[2]
@@ -254,11 +254,11 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
 
     // TID 8001 "Specimen Preparation"
     const specimenDescriptions: dmv.metadata.SpecimenDescription[] = (
-      this.props.metadata[0].SpecimenDescriptionSequence || []
+      this.props.metadata[0].SpecimenDescriptionSequence ?? []
     )
     specimenDescriptions.forEach(description => {
       const specimenPreparationSteps: dmv.metadata.SpecimenPreparation[] = (
-        description.SpecimenPreparationSequence || []
+        description.SpecimenPreparationSequence ?? []
       )
       specimenPreparationSteps.forEach(
         (step: dmv.metadata.SpecimenPreparation, index: number): void => {
@@ -314,7 +314,9 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
 
     const maxValue = Math.pow(2, this.props.metadata[0].BitsAllocated) - 1
 
-    const title = description ? `${identifier}: ${description}` : identifier
+    const title = (
+      description != null ? `${identifier}: ${description}` : identifier
+    )
     let settings
     let item
     if (this.props.opticalPath.isMonochromatic) {
@@ -421,7 +423,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
             borderWidth: '1px',
             borderColor: 'gray',
             visibility: this.state.isVisible ? 'visible' : 'hidden',
-            backgroundImage: `linear-gradient(to right, ${colors})`
+            backgroundImage: `linear-gradient(to right, ${colors.toString()})`
           }}
         >
           <Description

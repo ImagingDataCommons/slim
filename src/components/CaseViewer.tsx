@@ -202,7 +202,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
                 })
               })
               let viewer = null
-              if (selectedSlide) {
+              if (selectedSlide != null) {
                 viewer = (
                   <SlideViewer
                     client={this.props.client}

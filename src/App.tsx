@@ -90,7 +90,7 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  handleServerSelection ({ url }: { url: string }) {
+  handleServerSelection ({ url }: { url: string }): void {
     console.info('select DICOMweb server: ', url)
     const client = new DicomWebManager({
       baseUri: '',

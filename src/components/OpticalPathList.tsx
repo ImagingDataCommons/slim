@@ -122,7 +122,7 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
             )
           } else {
             let title
-            if (description) {
+            if (description !== '') {
               title = `${id} - ${description}`
             } else {
               title = `${id}`

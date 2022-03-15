@@ -22,7 +22,7 @@ class SpecimenList extends React.Component<SpecimenListProps, {}> {
      * nevertheless missing in some data sets. This is a violation of the
      * standard, but it may be better to facilitate display of the data.
      */
-    const descriptions = this.props.metadata.SpecimenDescriptionSequence || []
+    const descriptions = this.props.metadata.SpecimenDescriptionSequence ?? []
     const items = descriptions.map(
       (item: dmv.metadata.SpecimenDescription, index: number) => {
         return (
