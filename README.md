@@ -14,11 +14,6 @@ It relies on [DICOMweb](https://www.dicomstandard.org/dicomweb/) RESTful service
 
 Use *Slim* to visually explore public IDC cancer imaging data collections by visiting the IDC web portal: [portal.imaging.datacommons.cancer.gov](https://portal.imaging.datacommons.cancer.gov/).
 
-### Demo
-
-An interactive live demo of *Slim* is available at [herrmannlab.github.io/slim](https://herrmannlab.github.io/slim).
-Annotations can be drawn and modified as part of the demo, but they cannot be saved.
-
 ## Features
 
 ### Display of images
