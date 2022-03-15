@@ -610,12 +610,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           annotations.forEach(ann => {
             try {
               this.volumeViewer.addAnnotationGroups(ann)
-            } catch (error) {
+            } catch (error: any) {
               // eslint-disable-next-line @typescript-eslint/no-floating-promises
               message.error(
                 'Microscopy Bulk Simple Annotations cannot be displayed.'
               )
-              console.error(`failed to add annotation groups: ${error}`)
+              // eslint-disable-next-line @typescript-eslint/no-floating-promises
+              console.error('failed to add annotation groups: ', error)
             }
           })
           /*
@@ -625,8 +626,28 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
            * interface unless an update is forced.
            */
           this.forceUpdate()
+        }).catch((error: any) => {
+          // eslint-disable-next-line @typescript-eslint/no-floating-promises
+          message.error(
+            'Retrieval of metadata of Microscopy Bulk Simple Annotations ' +
+            'instances failed.'
+          )
+          console.error(
+            'failed to retrieve metadata of ' +
+            'Microscopy Bulk Simple Annotations instances: ',
+            error
+          )
         })
       })
+    }).catch((error: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      message.error(
+        'Search for Microscopy Bulk Simple Annotations instances failed.'
+      )
+      console.error(
+        'failed to search for Microscopy Bulk Simple Annotations instances: ',
+        error
+      )
     })
   }
 
@@ -667,10 +688,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           if (segmentations.length > 0) {
             try {
               this.volumeViewer.addSegments(segmentations)
-            } catch (error) {
+            } catch (error: any) {
               // eslint-disable-next-line @typescript-eslint/no-floating-promises
               message.error('Segmentations cannot be displayed')
-              console.error(`failed to add segments: ${error}`)
+              console.error('failed to add segments: ', error)
             }
             /*
            * React is not aware of the fact that segments have been added via
@@ -680,8 +701,21 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
            */
             this.forceUpdate()
           }
+        }).catch((error: any) => {
+          // eslint-disable-next-line @typescript-eslint/no-floating-promises
+          message.error(
+            'Retrieval of metadata of Segmentation instances failed.'
+          )
+          console.error(
+            'failed to retrieve metadata of Segmentation instances: ',
+            error
+          )
         })
       })
+    }).catch((error: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      message.error('Search for Segmentation instances failed.')
+      console.error('failed to search for Segmentation instances: ', error)
     })
   }
 
@@ -722,10 +756,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           if (parametricMaps.length > 0) {
             try {
               this.volumeViewer.addParameterMappings(parametricMaps)
-            } catch (error) {
+            } catch (error: any) {
               // eslint-disable-next-line @typescript-eslint/no-floating-promises
               message.error('Parametric Map cannot be displayed')
-              console.error(`failed to add mappings: ${error}`)
+              console.error('failed to add mappings: ', error)
             }
             /*
            * React is not aware of the fact that mappings have been added via
@@ -735,8 +769,20 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
            */
             this.forceUpdate()
           }
+        }).catch((error: any) => {
+          // eslint-disable-next-line @typescript-eslint/no-floating-promises
+          message.error(
+            'Retrieval of metadata of Parametric Map instances failed.'
+          )
+          console.error(
+            'failed to retrieve metadata of Parametric Map instances: ', error
+          )
         })
       })
+    }).catch((error: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      message.error('Search for Parametric Map instances failed.')
+      console.error('failed to search for Parametric Map instances: ', error)
     })
   }
 
@@ -975,7 +1021,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * annotation.
    */
   handleAnnotationMeasurementActivation (event: any): void {
-    const active = event.target.checked
+    const active: boolean = event.target.checked
     if (active) {
       this.setState({ selectedMarkup: 'measurement' })
     } else {
@@ -1253,8 +1299,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       writer.dict = dcmjs.data.DicomMetaDictionary.denaturalizeDataset(dataset)
       const buffer = writer.write()
       this.props.client.storeInstances({ datasets: [buffer] }).then(
-        (response: void) => message.info('Annotations were saved.')
-      ).catch((error) => {
+        (response: any) => message.info('Annotations were saved.')
+      ).catch((error: any) => {
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         message.error('Annotations could not be saved')
         console.error(error)
