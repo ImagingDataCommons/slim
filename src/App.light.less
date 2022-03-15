@@ -1,0 +1,63 @@
+@import 'antd/lib/style/themes/default.less';
+@import 'antd/dist/antd.less';
+@import 'antd/dist/antd.compact.less';
+
+@card-background: transparent;
+
+.ant-layout-header {
+  color: white
+}
+
+.ant-layout-sider-children {
+  overflow-y: auto;
+}
+
+.ant-menu-submenu-title {
+  font-size: 'medium';
+}
+
+.ol-overviewmap-box {
+  border: 2px solid @primary-color !important;
+}
+
+img {
+  object-fit: contain;
+  max-height: 100%;
+}
+
+.dimmer {
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  position: fixed;
+  display: none;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 2;
+}
+
+.spinner {
+  border: 8px solid rgba(0, 0, 0, 0);
+  border-top: 8px solid @primary-color;
+  border-radius: 50%;
+  width: 120px;
+  height: 120px;
+  top: 45%;
+  left: 45%;
+  animation: spin 2s linear infinite;
+  display: none;
+  position: fixed;
+  z-index: 3;
+}
+
+@-webkit-keyframes spin {
+  0% { -webkit-transform: rotate(0deg); }
+  100% { -webkit-transform: rotate(360deg); }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

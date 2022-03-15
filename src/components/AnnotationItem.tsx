@@ -10,7 +10,10 @@ interface AnnotationItemProps {
   roi: dmv.roi.ROI
   index: number
   isVisible: boolean
-  onChangeVisibility: ({ roiUID }: { roiUID: string }) => void
+  onVisibilityChange: ({ roiUID, isVisible }: {
+    roiUID: string
+    isVisible: boolean
+  }) => void
 }
 
 /**
@@ -22,11 +25,11 @@ class AnnotationItem extends React.Component<AnnotationItemProps, {}> {
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
   }
 
-  handleVisibilityChange (
-    checked: boolean,
-    event: Event
-  ): void {
-    this.props.onChangeVisibility({ roiUID: this.props.roi.uid })
+  handleVisibilityChange (checked: boolean, event: Event): void {
+    this.props.onVisibilityChange({
+      roiUID: this.props.roi.uid,
+      isVisible: checked
+    })
   }
 
   render (): React.ReactNode {
@@ -36,22 +39,41 @@ class AnnotationItem extends React.Component<AnnotationItemProps, {}> {
      * This hack is required for Menu.Item to work properly:
      * https://github.com/react-component/menu/issues/142
      */
-    const { isVisible, onChangeVisibility, ...otherProps } = this.props
+    const { isVisible, onVisibilityChange, ...otherProps } = this.props
     this.props.roi.evaluations.forEach((
       item: (
         dcmjs.sr.valueTypes.TextContentItem |
         dcmjs.sr.valueTypes.CodeContentItem
       )
     ) => {
+      const nameValue = item.ConceptNameCodeSequence[0].CodeValue
       const nameMeaning = item.ConceptNameCodeSequence[0].CodeMeaning
       const name = `${nameMeaning}`
       if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.CODE) {
-        const codeConetentItem = item as dcmjs.sr.valueTypes.CodeContentItem
-        const valueMeaning = codeConetentItem.ConceptCodeSequence[0].CodeMeaning
-        attributes.push({
-          name: name,
-          value: `${valueMeaning}`
-        })
+        const codeContentItem = item as dcmjs.sr.valueTypes.CodeContentItem
+        const valueMeaning = codeContentItem.ConceptCodeSequence[0].CodeMeaning
+        // For consistency with Segment and Annotation Group
+        if (nameValue === '276214006') {
+          attributes.push({
+            name: 'Property category',
+            value: `${valueMeaning}`
+          })
+        } else if (nameValue === '121071') {
+          attributes.push({
+            name: 'Property type',
+            value: `${valueMeaning}`
+          })
+        } else if (nameValue === '111001') {
+          attributes.push({
+            name: 'Algorithm Name',
+            value: `${valueMeaning}`
+          })
+        } else {
+          attributes.push({
+            name: name,
+            value: `${valueMeaning}`
+          })
+        }
       } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
         const textContentItem = item as dcmjs.sr.valueTypes.TextContentItem
         attributes.push({
@@ -61,7 +83,6 @@ class AnnotationItem extends React.Component<AnnotationItemProps, {}> {
       }
     })
     this.props.roi.measurements.forEach(item => {
-      console.info('add measurement: ', item)
       const nameMeaning = item.ConceptNameCodeSequence[0].CodeMeaning
       const name = `${nameMeaning}`
       const seq = item.MeasuredValueSequence[0]
@@ -84,7 +105,7 @@ class AnnotationItem extends React.Component<AnnotationItemProps, {}> {
           />
         </div>
         <Menu.Item
-          style={{ height: '100%' }}
+          style={{ height: '100%', paddingLeft: '3px' }}
           key={this.props.roi.uid}
           {...otherProps}
         >

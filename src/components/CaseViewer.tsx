@@ -13,7 +13,7 @@ import {
 
 import * as dmv from 'dicom-microscopy-viewer'
 
-import { AnnotationSettings, RendererSettings } from '../AppConfig'
+import { AnnotationSettings } from '../AppConfig'
 import DicomWebManager from '../DicomWebManager'
 import Patient from './Patient'
 import Study from './Study'
@@ -32,7 +32,6 @@ interface ViewerProps extends RouteComponentProps {
     uid: string
     organization?: string
   }
-  renderer: RendererSettings
   annotations: AnnotationSettings[]
   enableAnnotationTools: boolean
   user?: {
@@ -68,8 +67,12 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       }
     ).catch((error) => {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      message.error('An error occured. Image metadata could not be retrieved.')
+      message.error(
+        'An error occured. ' +
+          'Image metadata could not be retrieved or decoded.'
+      )
       console.error(error)
+      this.setState({ isLoading: false })
     })
   }
 
@@ -90,10 +93,10 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     })
 
     await Promise.all(matchedSeries.map(async (s) => {
-      const loadingSeries = dmv.metadata.formatMetadata(s) as dmv.metadata.Series
+      const { dataset } = dmv.metadata.formatMetadata(s)
+      const loadingSeries = dataset as dmv.metadata.Series
       console.info(
-        'search for instances in series ' +
-        `"${loadingSeries.SeriesInstanceUID}"...`
+        `retrieve metadata of series "${loadingSeries.SeriesInstanceUID}"`
       )
       const retrievedMetadata = await this.props.client.retrieveSeriesMetadata({
         studyInstanceUID: this.props.studyInstanceUID,
@@ -101,10 +104,15 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       })
 
       const seriesImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
-      retrievedMetadata.forEach(item => {
-        const image = dmv.metadata.formatMetadata(item) as dmv.metadata.VLWholeSlideMicroscopyImage
-        if (image.SOPClassUID === SOPClassUIDs.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE) {
-          seriesImages.push(image)
+      retrievedMetadata.forEach((item, index) => {
+        if (item['00080016'] !== undefined) {
+          const sopClassUID = item['00080016'].Value[0]
+          if (sopClassUID === SOPClassUIDs.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE) {
+            const image = new dmv.metadata.VLWholeSlideMicroscopyImage({
+              metadata: item
+            })
+            seriesImages.push(image)
+          }
         }
       })
 
@@ -152,10 +160,12 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       <Layout style={{ height: '100%' }} hasSider>
         <Layout.Sider
           width={300}
-          theme='light'
           style={{
+            height: '100%',
             borderRight: 'solid',
-            borderRightWidth: 0.25
+            borderRightWidth: 0.25,
+            overflow: 'hidden',
+            background: 'none'
           }}
         >
           <Menu
@@ -163,7 +173,6 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
             defaultOpenKeys={['patient', 'case', 'slides']}
             style={{ height: '100%' }}
             inlineIndent={14}
-            theme='light'
           >
             <Menu.SubMenu key='patient' title='Patient'>
               <Patient metadata={refImage} />
@@ -186,19 +195,29 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
           <Route
             exact
             path='/studies/:StudyInstanceUID/series/:SeriesInstanceUID'
-            render={(routeProps) => (
-              <SlideViewer
-                client={this.props.client}
-                renderer={this.props.renderer}
-                studyInstanceUID={this.props.studyInstanceUID}
-                seriesInstanceUID={routeProps.match.params.SeriesInstanceUID}
-                slides={this.state.slides}
-                annotations={this.props.annotations}
-                enableAnnotationTools={this.props.enableAnnotationTools}
-                app={this.props.app}
-                user={this.props.user}
-              />
-            )}
+            render={(routeProps) => {
+              const selectedSlide = this.state.slides.find((slide: Slide) => {
+                return slide.seriesInstanceUIDs.find((uid: string) => {
+                  return uid === routeProps.match.params.SeriesInstanceUID
+                })
+              })
+              let viewer = null
+              if (selectedSlide != null) {
+                viewer = (
+                  <SlideViewer
+                    client={this.props.client}
+                    studyInstanceUID={this.props.studyInstanceUID}
+                    seriesInstanceUID={routeProps.match.params.SeriesInstanceUID}
+                    slide={selectedSlide}
+                    annotations={this.props.annotations}
+                    enableAnnotationTools={this.props.enableAnnotationTools}
+                    app={this.props.app}
+                    user={this.props.user}
+                  />
+                )
+              }
+              return viewer
+            }}
           />
         </Switch>
       </Layout>

@@ -48,6 +48,11 @@ export const SpecimenPreparationStepItems: {
     schemeDesignator: 'DCM',
     meaning: 'Specimen identifier'
   }),
+  PARENT_SPECIMEN_IDENTIFIER: new dcmjs.sr.coding.CodedConcept({
+    value: '111705',
+    schemeDesignator: 'DCM',
+    meaning: 'Parent specimen identifier'
+  }),
   PROCESSING_TYPE: new dcmjs.sr.coding.CodedConcept({
     value: '111701',
     schemeDesignator: 'DCM',
@@ -56,7 +61,7 @@ export const SpecimenPreparationStepItems: {
   DATETIME_OF_PROCESSING: new dcmjs.sr.coding.CodedConcept({
     value: '111702',
     schemeDesignator: 'DCM',
-    meaning: 'DateTime of processing'
+    meaning: 'Datetime of processing'
   }),
   PROCESSING_STEP_DESCRIPTION: new dcmjs.sr.coding.CodedConcept({
     value: '111703',

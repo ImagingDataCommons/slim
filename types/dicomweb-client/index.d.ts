@@ -7,9 +7,7 @@ declare module 'dicomweb-client' {
       method: string
     }
 
-    export interface DICOMwebClientRequestHook { 
-      (request: XMLHttpRequest, metadata: DICOMwebClientRequestHookMetadata): XMLHttpRequest
-    }
+    export type DICOMwebClientRequestHook = (request: XMLHttpRequest, metadata: DICOMwebClientRequestHookMetadata) => XMLHttpRequest
 
     export interface DICOMwebClientOptions {
       url: string
@@ -97,74 +95,87 @@ declare module 'dicomweb-client' {
     }
 
     export interface StoreInstancesOptions {
-      datasets: arraybuffer[]
+      datasets: ArrayBuffer[]
     }
 
-    export type Study = object
+    export interface Study {
+      StudyInstanceUID: string
+      StudyID: string
+      StudyDate: string
+      StudyTime: string
+      AccessionNumber: string
+      PatientID: string
+      PatientBirthDate: string
+      PatientSex: string
+      PatientName: string
+      ModalitiesInStudy: string[]
+      NumberOfStudyRelatedSeries: number
+      NumberOfStudyRelatedInstances: number
+    }
 
-    export type Series = object
+    export interface Series {
+      SeriesInstanceUID: string
+      SeriesNumber: string
+      Modality: string
+      NumberOfSeriesRelatedInstances: number
+    }
 
-    export type Instance = object
+    export interface Instance {
+      SOPClassUID: string
+      SOPInstanceUID: string
+      InstanceNumber: string
+    }
 
-    export type Pixeldata = arraybuffer
+    export type Pixeldata = ArrayBuffer
 
-    export type Bulkdata = arraybuffer
+    export type Bulkdata = ArrayBuffer
 
-    export type Dataset = arraybuffer
+    export type Dataset = ArrayBuffer
 
-    export class DICOMwebClient {
-      constructor (options: DICOMwebClientOptions)
-
+    export interface DICOMwebClient {
       headers: {[key: string]: string}
-
+      baseURL: string
       // STOW-RS
-      storeInstances (options: StoreInstancesOptions): Promise<string>
-
+      storeInstances (options: StoreInstancesOptions): Promise<void>
       // QIDO-RS
       searchForStudies (
         options: SearchForStudiesOptions
       ): Promise<Study[]>
-
       searchForSeries (
         options: SearchForSeriesOptions
       ): Promise<Series[]>
-
       searchForInstances (
         options: SearchForInstancesOptions
       ): Promise<Instance[]>
-
       // WADO-RS
       retrieveStudyMetadata (
         options: RetrieveStudyMetadataOptions
       ): Promise<Metadata[]>
-
       retrieveSeriesMetadata (
         options: RetrieveSeriesMetadataOptions
       ): Promise<Metadata[]>
-
       retrieveInstanceMetadata (
         options: RetrieveInstanceMetadataOptions
       ): Promise<Metadata[]>
-
       retrieveInstance (
         options: RetrieveInstanceOptions
       ): Promise<Dataset>
-
       retrieveInstanceFrames (
         options: RetrieveInstanceFramesOptions
       ): Promise<Pixeldata[]>
-
       retrieveInstanceRendered (
         options: RetrieveInstanceRenderedOptions
       ): Promise<Pixeldata>
-
       retrieveInstanceFramesRendered (
         options: RetrieveInstanceFramesRenderedOptions
       ): Promise<Pixeldata>
-
       retrieveBulkData (
         options: RetrieveBulkDataOptions
-      ): Promise<Bulkdata>
+      ): Promise<Bulkdata[]>
+    }
+
+    export class DICOMwebClient implements DICOMwebClient {
+      constructor (options: DICOMwebClientOptions)
     }
 
     export interface MetadataElement {
@@ -229,6 +240,16 @@ declare module 'dicomweb-client' {
       '00020016'?: MetadataElement
       '00020017'?: MetadataElement
       '00020018'?: MetadataElement
+      '00020026'?: MetadataElement
+      '00020027'?: MetadataElement
+      '00020028'?: MetadataElement
+      '00020031'?: MetadataElement
+      '00020032'?: MetadataElement
+      '00020033'?: MetadataElement
+      '00020035'?: MetadataElement
+      '00020036'?: MetadataElement
+      '00020037'?: MetadataElement
+      '00020038'?: MetadataElement
       '00020100'?: MetadataElement
       '00020102'?: MetadataElement
       '00041130'?: MetadataElement
@@ -333,6 +354,7 @@ declare module 'dicomweb-client' {
       '00080123'?: MetadataElement
       '00080124'?: MetadataElement
       '00080201'?: MetadataElement
+      '00080202'?: MetadataElement
       '00080220'?: MetadataElement
       '00080221'?: MetadataElement
       '00080222'?: MetadataElement
@@ -360,6 +382,7 @@ declare module 'dicomweb-client' {
       '0008103E'?: MetadataElement
       '0008103F'?: MetadataElement
       '00081040'?: MetadataElement
+      '00081041'?: MetadataElement
       '00081048'?: MetadataElement
       '00081049'?: MetadataElement
       '00081050'?: MetadataElement
@@ -443,6 +466,7 @@ declare module 'dicomweb-client' {
       '0008225A'?: MetadataElement
       '0008225C'?: MetadataElement
       '00083001'?: MetadataElement
+      '00083002'?: MetadataElement
       '00083010'?: MetadataElement
       '00083011'?: MetadataElement
       '00083012'?: MetadataElement
@@ -639,6 +663,8 @@ declare module 'dicomweb-client' {
       '00143077'?: MetadataElement
       '00143080'?: MetadataElement
       '00143099'?: MetadataElement
+      '00143100'?: MetadataElement
+      '00143101'?: MetadataElement
       '00144002'?: MetadataElement
       '00144004'?: MetadataElement
       '00144006'?: MetadataElement
@@ -756,6 +782,116 @@ declare module 'dicomweb-client' {
       '0014511D'?: MetadataElement
       '0014511E'?: MetadataElement
       '0014511F'?: MetadataElement
+      '00160001'?: MetadataElement
+      '00160002'?: MetadataElement
+      '00160003'?: MetadataElement
+      '00160004'?: MetadataElement
+      '00160005'?: MetadataElement
+      '00160006'?: MetadataElement
+      '00160007'?: MetadataElement
+      '00160008'?: MetadataElement
+      '00160009'?: MetadataElement
+      '0016000A'?: MetadataElement
+      '0016000B'?: MetadataElement
+      '0016000C'?: MetadataElement
+      '0016000D'?: MetadataElement
+      '0016000E'?: MetadataElement
+      '0016000F'?: MetadataElement
+      '00160010'?: MetadataElement
+      '00160011'?: MetadataElement
+      '00160012'?: MetadataElement
+      '00160013'?: MetadataElement
+      '00160014'?: MetadataElement
+      '00160015'?: MetadataElement
+      '00160016'?: MetadataElement
+      '00160017'?: MetadataElement
+      '00160018'?: MetadataElement
+      '00160019'?: MetadataElement
+      '0016001A'?: MetadataElement
+      '0016001B'?: MetadataElement
+      '0016001C'?: MetadataElement
+      '0016001D'?: MetadataElement
+      '0016001E'?: MetadataElement
+      '0016001F'?: MetadataElement
+      '00160020'?: MetadataElement
+      '00160021'?: MetadataElement
+      '00160022'?: MetadataElement
+      '00160023'?: MetadataElement
+      '00160024'?: MetadataElement
+      '00160025'?: MetadataElement
+      '00160026'?: MetadataElement
+      '00160027'?: MetadataElement
+      '00160028'?: MetadataElement
+      '00160029'?: MetadataElement
+      '0016002A'?: MetadataElement
+      '0016002B'?: MetadataElement
+      '00160030'?: MetadataElement
+      '00160031'?: MetadataElement
+      '00160032'?: MetadataElement
+      '00160033'?: MetadataElement
+      '00160034'?: MetadataElement
+      '00160035'?: MetadataElement
+      '00160036'?: MetadataElement
+      '00160037'?: MetadataElement
+      '00160038'?: MetadataElement
+      '00160039'?: MetadataElement
+      '0016003A'?: MetadataElement
+      '0016003B'?: MetadataElement
+      '00160041'?: MetadataElement
+      '00160042'?: MetadataElement
+      '00160043'?: MetadataElement
+      '00160044'?: MetadataElement
+      '00160045'?: MetadataElement
+      '00160046'?: MetadataElement
+      '00160047'?: MetadataElement
+      '00160048'?: MetadataElement
+      '00160049'?: MetadataElement
+      '0016004A'?: MetadataElement
+      '0016004B'?: MetadataElement
+      '0016004C'?: MetadataElement
+      '0016004D'?: MetadataElement
+      '0016004E'?: MetadataElement
+      '0016004F'?: MetadataElement
+      '00160050'?: MetadataElement
+      '00160051'?: MetadataElement
+      '00160061'?: MetadataElement
+      '00160062'?: MetadataElement
+      '00160070'?: MetadataElement
+      '00160071'?: MetadataElement
+      '00160072'?: MetadataElement
+      '00160073'?: MetadataElement
+      '00160074'?: MetadataElement
+      '00160075'?: MetadataElement
+      '00160076'?: MetadataElement
+      '00160077'?: MetadataElement
+      '00160078'?: MetadataElement
+      '00160079'?: MetadataElement
+      '0016007A'?: MetadataElement
+      '0016007B'?: MetadataElement
+      '0016007C'?: MetadataElement
+      '0016007D'?: MetadataElement
+      '0016007E'?: MetadataElement
+      '0016007F'?: MetadataElement
+      '00160080'?: MetadataElement
+      '00160081'?: MetadataElement
+      '00160082'?: MetadataElement
+      '00160083'?: MetadataElement
+      '00160084'?: MetadataElement
+      '00160085'?: MetadataElement
+      '00160086'?: MetadataElement
+      '00160087'?: MetadataElement
+      '00160088'?: MetadataElement
+      '00160089'?: MetadataElement
+      '0016008A'?: MetadataElement
+      '0016008B'?: MetadataElement
+      '0016008C'?: MetadataElement
+      '0016008D'?: MetadataElement
+      '0016008E'?: MetadataElement
+      '00161001'?: MetadataElement
+      '00161002'?: MetadataElement
+      '00161003'?: MetadataElement
+      '00161004'?: MetadataElement
+      '00161005'?: MetadataElement
       '00180010'?: MetadataElement
       '00180012'?: MetadataElement
       '00180013'?: MetadataElement
@@ -819,6 +955,7 @@ declare module 'dicomweb-client' {
       '00181008'?: MetadataElement
       '00181009'?: MetadataElement
       '0018100A'?: MetadataElement
+      '0018100B'?: MetadataElement
       '00181010'?: MetadataElement
       '00181011'?: MetadataElement
       '00181012'?: MetadataElement
@@ -927,6 +1064,24 @@ declare module 'dicomweb-client' {
       '001811A3'?: MetadataElement
       '001811A4'?: MetadataElement
       '001811A5'?: MetadataElement
+      '001811B0'?: MetadataElement
+      '001811B1'?: MetadataElement
+      '001811B2'?: MetadataElement
+      '001811B3'?: MetadataElement
+      '001811B4'?: MetadataElement
+      '001811B5'?: MetadataElement
+      '001811B6'?: MetadataElement
+      '001811B7'?: MetadataElement
+      '001811B8'?: MetadataElement
+      '001811B9'?: MetadataElement
+      '001811BA'?: MetadataElement
+      '001811BB'?: MetadataElement
+      '001811BC'?: MetadataElement
+      '001811BD'?: MetadataElement
+      '001811BE'?: MetadataElement
+      '001811BF'?: MetadataElement
+      '001811C0'?: MetadataElement
+      '001811C1'?: MetadataElement
       '00181200'?: MetadataElement
       '00181201'?: MetadataElement
       '00181202'?: MetadataElement
@@ -986,6 +1141,15 @@ declare module 'dicomweb-client' {
       '00181622'?: MetadataElement
       '00181623'?: MetadataElement
       '00181624'?: MetadataElement
+      '00181630'?: MetadataElement
+      '00181631'?: MetadataElement
+      '00181632'?: MetadataElement
+      '00181633'?: MetadataElement
+      '00181634'?: MetadataElement
+      '00181635'?: MetadataElement
+      '00181636'?: MetadataElement
+      '00181637'?: MetadataElement
+      '00181638'?: MetadataElement
       '00181700'?: MetadataElement
       '00181702'?: MetadataElement
       '00181704'?: MetadataElement
@@ -1022,6 +1186,7 @@ declare module 'dicomweb-client' {
       '00184000'?: MetadataElement
       '00185000'?: MetadataElement
       '00185010'?: MetadataElement
+      '00185011'?: MetadataElement
       '00185012'?: MetadataElement
       '00185020'?: MetadataElement
       '00185021'?: MetadataElement
@@ -1086,6 +1251,7 @@ declare module 'dicomweb-client' {
       '00186058'?: MetadataElement
       '0018605A'?: MetadataElement
       '00186060'?: MetadataElement
+      '00186070'?: MetadataElement
       '00187000'?: MetadataElement
       '00187001'?: MetadataElement
       '00187004'?: MetadataElement
@@ -1339,6 +1505,42 @@ declare module 'dicomweb-client' {
       '00189352'?: MetadataElement
       '00189353'?: MetadataElement
       '00189360'?: MetadataElement
+      '00189361'?: MetadataElement
+      '00189362'?: MetadataElement
+      '00189363'?: MetadataElement
+      '00189364'?: MetadataElement
+      '00189365'?: MetadataElement
+      '00189366'?: MetadataElement
+      '00189367'?: MetadataElement
+      '00189368'?: MetadataElement
+      '00189369'?: MetadataElement
+      '0018936A'?: MetadataElement
+      '0018936B'?: MetadataElement
+      '0018936C'?: MetadataElement
+      '0018936D'?: MetadataElement
+      '0018936E'?: MetadataElement
+      '0018936F'?: MetadataElement
+      '00189370'?: MetadataElement
+      '00189371'?: MetadataElement
+      '00189372'?: MetadataElement
+      '00189373'?: MetadataElement
+      '00189374'?: MetadataElement
+      '00189375'?: MetadataElement
+      '00189376'?: MetadataElement
+      '00189377'?: MetadataElement
+      '00189378'?: MetadataElement
+      '00189379'?: MetadataElement
+      '0018937A'?: MetadataElement
+      '0018937B'?: MetadataElement
+      '0018937C'?: MetadataElement
+      '0018937D'?: MetadataElement
+      '0018937E'?: MetadataElement
+      '0018937F'?: MetadataElement
+      '00189380'?: MetadataElement
+      '00189381'?: MetadataElement
+      '00189382'?: MetadataElement
+      '00189383'?: MetadataElement
+      '00189384'?: MetadataElement
       '00189401'?: MetadataElement
       '00189402'?: MetadataElement
       '00189403'?: MetadataElement
@@ -1746,10 +1948,18 @@ declare module 'dicomweb-client' {
       '00221029'?: MetadataElement
       '00221033'?: MetadataElement
       '00221035'?: MetadataElement
+      '00221036'?: MetadataElement
       '00221037'?: MetadataElement
       '00221039'?: MetadataElement
       '00221040'?: MetadataElement
       '00221044'?: MetadataElement
+      '00221045'?: MetadataElement
+      '00221046'?: MetadataElement
+      '00221047'?: MetadataElement
+      '00221048'?: MetadataElement
+      '00221049'?: MetadataElement
+      '0022104A'?: MetadataElement
+      '0022104B'?: MetadataElement
       '00221050'?: MetadataElement
       '00221053'?: MetadataElement
       '00221054'?: MetadataElement
@@ -1771,6 +1981,9 @@ declare module 'dicomweb-client' {
       '00221125'?: MetadataElement
       '00221127'?: MetadataElement
       '00221128'?: MetadataElement
+      '0022112A'?: MetadataElement
+      '0022112B'?: MetadataElement
+      '0022112C'?: MetadataElement
       '00221130'?: MetadataElement
       '00221131'?: MetadataElement
       '00221132'?: MetadataElement
@@ -2211,8 +2424,22 @@ declare module 'dicomweb-client' {
       '00321055'?: MetadataElement
       '00321060'?: MetadataElement
       '00321064'?: MetadataElement
+      '00321066'?: MetadataElement
+      '00321067'?: MetadataElement
       '00321070'?: MetadataElement
       '00324000'?: MetadataElement
+      '00340001'?: MetadataElement
+      '00340002'?: MetadataElement
+      '00340003'?: MetadataElement
+      '00340004'?: MetadataElement
+      '00340005'?: MetadataElement
+      '00340007'?: MetadataElement
+      '00340008'?: MetadataElement
+      '00340009'?: MetadataElement
+      '0034000A'?: MetadataElement
+      '0034000B'?: MetadataElement
+      '0034000C'?: MetadataElement
+      '0034000D'?: MetadataElement
       '00380004'?: MetadataElement
       '00380008'?: MetadataElement
       '00380010'?: MetadataElement
@@ -2281,6 +2508,13 @@ declare module 'dicomweb-client' {
       '003A0300'?: MetadataElement
       '003A0301'?: MetadataElement
       '003A0302'?: MetadataElement
+      '003A0310'?: MetadataElement
+      '003A0311'?: MetadataElement
+      '003A0312'?: MetadataElement
+      '003A0313'?: MetadataElement
+      '003A0314'?: MetadataElement
+      '003A0315'?: MetadataElement
+      '003A0316'?: MetadataElement
       '00400001'?: MetadataElement
       '00400002'?: MetadataElement
       '00400003'?: MetadataElement
@@ -2482,6 +2716,7 @@ declare module 'dicomweb-client' {
       '0040A028'?: MetadataElement
       '0040A030'?: MetadataElement
       '0040A032'?: MetadataElement
+      '0040A033'?: MetadataElement
       '0040A040'?: MetadataElement
       '0040A043'?: MetadataElement
       '0040A047'?: MetadataElement
@@ -2577,6 +2812,14 @@ declare module 'dicomweb-client' {
       '0040A731'?: MetadataElement
       '0040A732'?: MetadataElement
       '0040A744'?: MetadataElement
+      '0040A801'?: MetadataElement
+      '0040A802'?: MetadataElement
+      '0040A803'?: MetadataElement
+      '0040A804'?: MetadataElement
+      '0040A805'?: MetadataElement
+      '0040A806'?: MetadataElement
+      '0040A807'?: MetadataElement
+      '0040A808'?: MetadataElement
       '0040A992'?: MetadataElement
       '0040B020'?: MetadataElement
       '0040DB00'?: MetadataElement
@@ -2605,6 +2848,7 @@ declare module 'dicomweb-client' {
       '00420012'?: MetadataElement
       '00420013'?: MetadataElement
       '00420014'?: MetadataElement
+      '00420015'?: MetadataElement
       '00440001'?: MetadataElement
       '00440002'?: MetadataElement
       '00440003'?: MetadataElement
@@ -2645,6 +2889,7 @@ declare module 'dicomweb-client' {
       '00460042'?: MetadataElement
       '00460044'?: MetadataElement
       '00460046'?: MetadataElement
+      '00460047'?: MetadataElement
       '00460050'?: MetadataElement
       '00460052'?: MetadataElement
       '00460060'?: MetadataElement
@@ -2668,6 +2913,15 @@ declare module 'dicomweb-client' {
       '00460102'?: MetadataElement
       '00460104'?: MetadataElement
       '00460106'?: MetadataElement
+      '00460110'?: MetadataElement
+      '00460111'?: MetadataElement
+      '00460112'?: MetadataElement
+      '00460113'?: MetadataElement
+      '00460114'?: MetadataElement
+      '00460115'?: MetadataElement
+      '00460116'?: MetadataElement
+      '00460117'?: MetadataElement
+      '00460118'?: MetadataElement
       '00460121'?: MetadataElement
       '00460122'?: MetadataElement
       '00460123'?: MetadataElement
@@ -2758,6 +3012,7 @@ declare module 'dicomweb-client' {
       '0050001D'?: MetadataElement
       '0050001E'?: MetadataElement
       '00500020'?: MetadataElement
+      '00500021'?: MetadataElement
       '00520001'?: MetadataElement
       '00520002'?: MetadataElement
       '00520003'?: MetadataElement
@@ -2890,6 +3145,7 @@ declare module 'dicomweb-client' {
       '00620010'?: MetadataElement
       '00620011'?: MetadataElement
       '00620012'?: MetadataElement
+      '00620013'?: MetadataElement
       '00620020'?: MetadataElement
       '00620021'?: MetadataElement
       '00640002'?: MetadataElement
@@ -2926,6 +3182,7 @@ declare module 'dicomweb-client' {
       '0066001F'?: MetadataElement
       '00660020'?: MetadataElement
       '00660021'?: MetadataElement
+      '00660022'?: MetadataElement
       '00660023'?: MetadataElement
       '00660024'?: MetadataElement
       '00660025'?: MetadataElement
@@ -3040,6 +3297,24 @@ declare module 'dicomweb-client' {
       '00687001'?: MetadataElement
       '00687002'?: MetadataElement
       '00687003'?: MetadataElement
+      '00687004'?: MetadataElement
+      '00687005'?: MetadataElement
+      '006A0001'?: MetadataElement
+      '006A0002'?: MetadataElement
+      '006A0003'?: MetadataElement
+      '006A0005'?: MetadataElement
+      '006A0006'?: MetadataElement
+      '006A0007'?: MetadataElement
+      '006A0008'?: MetadataElement
+      '006A0009'?: MetadataElement
+      '006A000A'?: MetadataElement
+      '006A000B'?: MetadataElement
+      '006A000C'?: MetadataElement
+      '006A000D'?: MetadataElement
+      '006A000E'?: MetadataElement
+      '006A000F'?: MetadataElement
+      '006A0010'?: MetadataElement
+      '006A0011'?: MetadataElement
       '00700001'?: MetadataElement
       '00700002'?: MetadataElement
       '00700003'?: MetadataElement
@@ -3285,6 +3560,9 @@ declare module 'dicomweb-client' {
       '0072007E'?: MetadataElement
       '0072007F'?: MetadataElement
       '00720080'?: MetadataElement
+      '00720081'?: MetadataElement
+      '00720082'?: MetadataElement
+      '00720083'?: MetadataElement
       '00720100'?: MetadataElement
       '00720102'?: MetadataElement
       '00720104'?: MetadataElement
@@ -3531,6 +3809,8 @@ declare module 'dicomweb-client' {
       '04000510'?: MetadataElement
       '04000520'?: MetadataElement
       '04000550'?: MetadataElement
+      '04000551'?: MetadataElement
+      '04000552'?: MetadataElement
       '04000561'?: MetadataElement
       '04000562'?: MetadataElement
       '04000563'?: MetadataElement
@@ -3723,6 +4003,7 @@ declare module 'dicomweb-client' {
       '30060030'?: MetadataElement
       '30060033'?: MetadataElement
       '30060036'?: MetadataElement
+      '30060037'?: MetadataElement
       '30060038'?: MetadataElement
       '30060039'?: MetadataElement
       '30060040'?: MetadataElement
@@ -3732,6 +4013,7 @@ declare module 'dicomweb-client' {
       '30060046'?: MetadataElement
       '30060048'?: MetadataElement
       '30060049'?: MetadataElement
+      '3006004A'?: MetadataElement
       '30060050'?: MetadataElement
       '30060080'?: MetadataElement
       '30060082'?: MetadataElement
@@ -3754,6 +4036,9 @@ declare module 'dicomweb-client' {
       '300600C4'?: MetadataElement
       '300600C6'?: MetadataElement
       '300600C8'?: MetadataElement
+      '300600C9'?: MetadataElement
+      '300600CA'?: MetadataElement
+      '300600CB'?: MetadataElement
       '30080010'?: MetadataElement
       '30080012'?: MetadataElement
       '30080014'?: MetadataElement
@@ -4123,6 +4408,7 @@ declare module 'dicomweb-client' {
       '300A029C'?: MetadataElement
       '300A029E'?: MetadataElement
       '300A02A0'?: MetadataElement
+      '300A02A1'?: MetadataElement
       '300A02A2'?: MetadataElement
       '300A02A4'?: MetadataElement
       '300A02B0'?: MetadataElement
@@ -4205,6 +4491,7 @@ declare module 'dicomweb-client' {
       '300A0395'?: MetadataElement
       '300A0396'?: MetadataElement
       '300A0398'?: MetadataElement
+      '300A0399'?: MetadataElement
       '300A039A'?: MetadataElement
       '300A03A0'?: MetadataElement
       '300A03A2'?: MetadataElement
@@ -4223,6 +4510,7 @@ declare module 'dicomweb-client' {
       '300A0423'?: MetadataElement
       '300A0424'?: MetadataElement
       '300A0425'?: MetadataElement
+      '300A0426'?: MetadataElement
       '300A0431'?: MetadataElement
       '300A0432'?: MetadataElement
       '300A0433'?: MetadataElement
@@ -4249,6 +4537,213 @@ declare module 'dicomweb-client' {
       '300A0510'?: MetadataElement
       '300A0511'?: MetadataElement
       '300A0512'?: MetadataElement
+      '300A0600'?: MetadataElement
+      '300A0601'?: MetadataElement
+      '300A0602'?: MetadataElement
+      '300A0603'?: MetadataElement
+      '300A0604'?: MetadataElement
+      '300A0605'?: MetadataElement
+      '300A0606'?: MetadataElement
+      '300A0607'?: MetadataElement
+      '300A0608'?: MetadataElement
+      '300A0609'?: MetadataElement
+      '300A060A'?: MetadataElement
+      '300A060B'?: MetadataElement
+      '300A060C'?: MetadataElement
+      '300A060D'?: MetadataElement
+      '300A060E'?: MetadataElement
+      '300A060F'?: MetadataElement
+      '300A0610'?: MetadataElement
+      '300A0611'?: MetadataElement
+      '300A0612'?: MetadataElement
+      '300A0613'?: MetadataElement
+      '300A0614'?: MetadataElement
+      '300A0615'?: MetadataElement
+      '300A0616'?: MetadataElement
+      '300A0617'?: MetadataElement
+      '300A0618'?: MetadataElement
+      '300A0619'?: MetadataElement
+      '300A061A'?: MetadataElement
+      '300A061B'?: MetadataElement
+      '300A061C'?: MetadataElement
+      '300A061D'?: MetadataElement
+      '300A061E'?: MetadataElement
+      '300A061F'?: MetadataElement
+      '300A0620'?: MetadataElement
+      '300A0621'?: MetadataElement
+      '300A0622'?: MetadataElement
+      '300A0623'?: MetadataElement
+      '300A0624'?: MetadataElement
+      '300A0625'?: MetadataElement
+      '300A0626'?: MetadataElement
+      '300A0627'?: MetadataElement
+      '300A0628'?: MetadataElement
+      '300A0629'?: MetadataElement
+      '300A062A'?: MetadataElement
+      '300A062B'?: MetadataElement
+      '300A062C'?: MetadataElement
+      '300A062D'?: MetadataElement
+      '300A062E'?: MetadataElement
+      '300A062F'?: MetadataElement
+      '300A0630'?: MetadataElement
+      '300A0631'?: MetadataElement
+      '300A0632'?: MetadataElement
+      '300A0634'?: MetadataElement
+      '300A0635'?: MetadataElement
+      '300A0636'?: MetadataElement
+      '300A0637'?: MetadataElement
+      '300A0638'?: MetadataElement
+      '300A0639'?: MetadataElement
+      '300A063A'?: MetadataElement
+      '300A063B'?: MetadataElement
+      '300A063C'?: MetadataElement
+      '300A063D'?: MetadataElement
+      '300A063E'?: MetadataElement
+      '300A063F'?: MetadataElement
+      '300A0640'?: MetadataElement
+      '300A0641'?: MetadataElement
+      '300A0642'?: MetadataElement
+      '300A0643'?: MetadataElement
+      '300A0644'?: MetadataElement
+      '300A0645'?: MetadataElement
+      '300A0646'?: MetadataElement
+      '300A0647'?: MetadataElement
+      '300A0648'?: MetadataElement
+      '300A0649'?: MetadataElement
+      '300A064A'?: MetadataElement
+      '300A064B'?: MetadataElement
+      '300A064C'?: MetadataElement
+      '300A064D'?: MetadataElement
+      '300A064E'?: MetadataElement
+      '300A064F'?: MetadataElement
+      '300A0650'?: MetadataElement
+      '300A0651'?: MetadataElement
+      '300A0652'?: MetadataElement
+      '300A0653'?: MetadataElement
+      '300A0654'?: MetadataElement
+      '300A0655'?: MetadataElement
+      '300A0656'?: MetadataElement
+      '300A0657'?: MetadataElement
+      '300A0658'?: MetadataElement
+      '300A0659'?: MetadataElement
+      '300A065A'?: MetadataElement
+      '300A065B'?: MetadataElement
+      '300A065C'?: MetadataElement
+      '300A065D'?: MetadataElement
+      '300A065E'?: MetadataElement
+      '300A065F'?: MetadataElement
+      '300A0660'?: MetadataElement
+      '300A0661'?: MetadataElement
+      '300A0662'?: MetadataElement
+      '300A0663'?: MetadataElement
+      '300A0664'?: MetadataElement
+      '300A0665'?: MetadataElement
+      '300A0666'?: MetadataElement
+      '300A0667'?: MetadataElement
+      '300A0668'?: MetadataElement
+      '300A0669'?: MetadataElement
+      '300A066A'?: MetadataElement
+      '300A066B'?: MetadataElement
+      '300A066C'?: MetadataElement
+      '300A066D'?: MetadataElement
+      '300A066E'?: MetadataElement
+      '300A066F'?: MetadataElement
+      '300A0670'?: MetadataElement
+      '300A0671'?: MetadataElement
+      '300A0672'?: MetadataElement
+      '300A0673'?: MetadataElement
+      '300A0674'?: MetadataElement
+      '300A0675'?: MetadataElement
+      '300A0676'?: MetadataElement
+      '300A0677'?: MetadataElement
+      '300A0678'?: MetadataElement
+      '300A0679'?: MetadataElement
+      '300A067A'?: MetadataElement
+      '300A067B'?: MetadataElement
+      '300A067C'?: MetadataElement
+      '300A067D'?: MetadataElement
+      '300A067E'?: MetadataElement
+      '300A067F'?: MetadataElement
+      '300A0680'?: MetadataElement
+      '300A0681'?: MetadataElement
+      '300A0682'?: MetadataElement
+      '300A0683'?: MetadataElement
+      '300A0684'?: MetadataElement
+      '300A0685'?: MetadataElement
+      '300A0686'?: MetadataElement
+      '300A0687'?: MetadataElement
+      '300A0688'?: MetadataElement
+      '300A0689'?: MetadataElement
+      '300A068A'?: MetadataElement
+      '300A0700'?: MetadataElement
+      '300A0701'?: MetadataElement
+      '300A0702'?: MetadataElement
+      '300A0703'?: MetadataElement
+      '300A0704'?: MetadataElement
+      '300A0705'?: MetadataElement
+      '300A0706'?: MetadataElement
+      '300A0707'?: MetadataElement
+      '300A0708'?: MetadataElement
+      '300A0709'?: MetadataElement
+      '300A0714'?: MetadataElement
+      '300A0715'?: MetadataElement
+      '300A0716'?: MetadataElement
+      '300A0722'?: MetadataElement
+      '300A0723'?: MetadataElement
+      '300A0730'?: MetadataElement
+      '300A0731'?: MetadataElement
+      '300A0732'?: MetadataElement
+      '300A0733'?: MetadataElement
+      '300A0734'?: MetadataElement
+      '300A0735'?: MetadataElement
+      '300A0736'?: MetadataElement
+      '300A073A'?: MetadataElement
+      '300A073B'?: MetadataElement
+      '300A073E'?: MetadataElement
+      '300A073F'?: MetadataElement
+      '300A0740'?: MetadataElement
+      '300A0741'?: MetadataElement
+      '300A0742'?: MetadataElement
+      '300A0743'?: MetadataElement
+      '300A0744'?: MetadataElement
+      '300A0745'?: MetadataElement
+      '300A0746'?: MetadataElement
+      '300A0760'?: MetadataElement
+      '300A0761'?: MetadataElement
+      '300A0762'?: MetadataElement
+      '300A0772'?: MetadataElement
+      '300A0773'?: MetadataElement
+      '300A0774'?: MetadataElement
+      '300A0780'?: MetadataElement
+      '300A0782'?: MetadataElement
+      '300A0783'?: MetadataElement
+      '300A0784'?: MetadataElement
+      '300A0785'?: MetadataElement
+      '300A0786'?: MetadataElement
+      '300A0787'?: MetadataElement
+      '300A0788'?: MetadataElement
+      '300A0789'?: MetadataElement
+      '300A078A'?: MetadataElement
+      '300A078B'?: MetadataElement
+      '300A078C'?: MetadataElement
+      '300A078D'?: MetadataElement
+      '300A078E'?: MetadataElement
+      '300A078F'?: MetadataElement
+      '300A0790'?: MetadataElement
+      '300A0791'?: MetadataElement
+      '300A0792'?: MetadataElement
+      '300A0793'?: MetadataElement
+      '300A0794'?: MetadataElement
+      '300A0795'?: MetadataElement
+      '300A0796'?: MetadataElement
+      '300A0797'?: MetadataElement
+      '300A0798'?: MetadataElement
+      '300A0799'?: MetadataElement
+      '300A079A'?: MetadataElement
+      '300A079B'?: MetadataElement
+      '300A079C'?: MetadataElement
+      '300A079D'?: MetadataElement
+      '300A079E'?: MetadataElement
       '300C0002'?: MetadataElement
       '300C0004'?: MetadataElement
       '300C0006'?: MetadataElement
@@ -4287,6 +4782,153 @@ declare module 'dicomweb-client' {
       '300E0004'?: MetadataElement
       '300E0005'?: MetadataElement
       '300E0008'?: MetadataElement
+      '30100001'?: MetadataElement
+      '30100002'?: MetadataElement
+      '30100003'?: MetadataElement
+      '30100004'?: MetadataElement
+      '30100005'?: MetadataElement
+      '30100006'?: MetadataElement
+      '30100007'?: MetadataElement
+      '30100008'?: MetadataElement
+      '30100009'?: MetadataElement
+      '3010000A'?: MetadataElement
+      '3010000B'?: MetadataElement
+      '3010000C'?: MetadataElement
+      '3010000D'?: MetadataElement
+      '3010000E'?: MetadataElement
+      '3010000F'?: MetadataElement
+      '30100010'?: MetadataElement
+      '30100011'?: MetadataElement
+      '30100012'?: MetadataElement
+      '30100013'?: MetadataElement
+      '30100014'?: MetadataElement
+      '30100015'?: MetadataElement
+      '30100016'?: MetadataElement
+      '30100017'?: MetadataElement
+      '30100018'?: MetadataElement
+      '30100019'?: MetadataElement
+      '3010001A'?: MetadataElement
+      '3010001B'?: MetadataElement
+      '3010001C'?: MetadataElement
+      '3010001D'?: MetadataElement
+      '3010001E'?: MetadataElement
+      '3010001F'?: MetadataElement
+      '30100020'?: MetadataElement
+      '30100021'?: MetadataElement
+      '30100022'?: MetadataElement
+      '30100023'?: MetadataElement
+      '30100024'?: MetadataElement
+      '30100025'?: MetadataElement
+      '30100026'?: MetadataElement
+      '30100027'?: MetadataElement
+      '30100028'?: MetadataElement
+      '30100029'?: MetadataElement
+      '3010002A'?: MetadataElement
+      '3010002B'?: MetadataElement
+      '3010002C'?: MetadataElement
+      '3010002D'?: MetadataElement
+      '3010002E'?: MetadataElement
+      '3010002F'?: MetadataElement
+      '30100030'?: MetadataElement
+      '30100031'?: MetadataElement
+      '30100032'?: MetadataElement
+      '30100033'?: MetadataElement
+      '30100034'?: MetadataElement
+      '30100035'?: MetadataElement
+      '30100036'?: MetadataElement
+      '30100037'?: MetadataElement
+      '30100038'?: MetadataElement
+      '30100039'?: MetadataElement
+      '3010003A'?: MetadataElement
+      '3010003B'?: MetadataElement
+      '3010003C'?: MetadataElement
+      '3010003D'?: MetadataElement
+      '3010003E'?: MetadataElement
+      '3010003F'?: MetadataElement
+      '30100040'?: MetadataElement
+      '30100041'?: MetadataElement
+      '30100042'?: MetadataElement
+      '30100043'?: MetadataElement
+      '30100044'?: MetadataElement
+      '30100045'?: MetadataElement
+      '30100046'?: MetadataElement
+      '30100047'?: MetadataElement
+      '30100048'?: MetadataElement
+      '30100049'?: MetadataElement
+      '3010004A'?: MetadataElement
+      '3010004B'?: MetadataElement
+      '3010004C'?: MetadataElement
+      '3010004D'?: MetadataElement
+      '3010004E'?: MetadataElement
+      '3010004F'?: MetadataElement
+      '30100050'?: MetadataElement
+      '30100051'?: MetadataElement
+      '30100052'?: MetadataElement
+      '30100053'?: MetadataElement
+      '30100054'?: MetadataElement
+      '30100055'?: MetadataElement
+      '30100056'?: MetadataElement
+      '30100057'?: MetadataElement
+      '30100058'?: MetadataElement
+      '30100059'?: MetadataElement
+      '3010005A'?: MetadataElement
+      '3010005B'?: MetadataElement
+      '3010005C'?: MetadataElement
+      '3010005D'?: MetadataElement
+      '3010005E'?: MetadataElement
+      '3010005F'?: MetadataElement
+      '30100060'?: MetadataElement
+      '30100061'?: MetadataElement
+      '30100062'?: MetadataElement
+      '30100063'?: MetadataElement
+      '30100064'?: MetadataElement
+      '30100065'?: MetadataElement
+      '30100066'?: MetadataElement
+      '30100067'?: MetadataElement
+      '30100068'?: MetadataElement
+      '30100069'?: MetadataElement
+      '3010006A'?: MetadataElement
+      '3010006B'?: MetadataElement
+      '3010006C'?: MetadataElement
+      '3010006D'?: MetadataElement
+      '3010006E'?: MetadataElement
+      '3010006F'?: MetadataElement
+      '30100070'?: MetadataElement
+      '30100071'?: MetadataElement
+      '30100073'?: MetadataElement
+      '30100074'?: MetadataElement
+      '30100075'?: MetadataElement
+      '30100076'?: MetadataElement
+      '30100077'?: MetadataElement
+      '30100078'?: MetadataElement
+      '30100079'?: MetadataElement
+      '3010007A'?: MetadataElement
+      '3010007B'?: MetadataElement
+      '3010007C'?: MetadataElement
+      '3010007D'?: MetadataElement
+      '3010007E'?: MetadataElement
+      '3010007F'?: MetadataElement
+      '30100080'?: MetadataElement
+      '30100081'?: MetadataElement
+      '30100082'?: MetadataElement
+      '30100083'?: MetadataElement
+      '30100084'?: MetadataElement
+      '30100085'?: MetadataElement
+      '30100086'?: MetadataElement
+      '30100087'?: MetadataElement
+      '30100088'?: MetadataElement
+      '30100089'?: MetadataElement
+      '30100090'?: MetadataElement
+      '30100091'?: MetadataElement
+      '30100092'?: MetadataElement
+      '30100093'?: MetadataElement
+      '30100094'?: MetadataElement
+      '30100095'?: MetadataElement
+      '30100096'?: MetadataElement
+      '30100097'?: MetadataElement
+      '30100098'?: MetadataElement
+      '30100099'?: MetadataElement
+      '3010009A'?: MetadataElement
       '40000010'?: MetadataElement
       '40004000'?: MetadataElement
       '40080040'?: MetadataElement
@@ -4415,6 +5057,8 @@ declare module 'dicomweb-client' {
       '54001010'?: MetadataElement
       '56000010'?: MetadataElement
       '56000020'?: MetadataElement
+      '7FE00001'?: MetadataElement
+      '7FE00002'?: MetadataElement
       '7FE00008'?: MetadataElement
       '7FE00009'?: MetadataElement
       '7FE00010'?: MetadataElement

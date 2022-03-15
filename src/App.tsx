@@ -5,24 +5,20 @@ import {
   Route,
   Switch
 } from 'react-router-dom'
-import * as dwc from 'dicomweb-client'
 import { Layout, message } from 'antd'
 import { FaSpinner } from 'react-icons/fa'
+import * as dwc from 'dicomweb-client'
 
 import AppConfig, { ServerSettings, ErrorMessageSettings } from './AppConfig'
-import Header from './components/Header'
 import CaseViewer from './components/CaseViewer'
+import Header from './components/Header'
+import InfoPage from './components/InfoPage'
 import Worklist from './components/Worklist'
-
-import 'antd/dist/antd.less'
-import './App.less'
 
 import { joinUrl } from './utils/url'
 import { User, AuthManager } from './auth'
 import OidcManager from './auth/OidcManager'
 import DicomWebManager from './DicomWebManager'
-
-import InfoPage from './components/InfoPage'
 
 interface AppProps {
   name: string
@@ -43,53 +39,81 @@ interface AppState {
 class App extends React.Component<AppProps, AppState> {
   private readonly auth?: AuthManager
 
+  private readonly handleDICOMwebError = (
+    error: dwc.api.DICOMwebClientError,
+    serverSettings: ServerSettings
+  ): void => {
+    if (serverSettings.errorMessages !== undefined) {
+      serverSettings.errorMessages.forEach(
+        ({ status, message }: ErrorMessageSettings) => {
+          if (error.status === status) {
+            this.setState({
+              error: {
+                status: error.status,
+                message
+              }
+            })
+          }
+        }
+      )
+    }
+  }
+
   constructor (props: AppProps) {
     super(props)
 
+    console.info('instatiate app')
+    console.info(`app is located at "${props.config.path}"`)
     const { protocol, host } = window.location
     const baseUri = `${protocol}//${host}`
     const appUri = joinUrl(props.config.path, baseUri)
 
     const oidcSettings = props.config.oidc
     if (oidcSettings !== undefined) {
+      console.info(
+        'app uses the following OIDC configuration: ',
+        props.config.oidc
+      )
       this.auth = new OidcManager(appUri, oidcSettings)
     }
 
     if (props.config.servers.length === 0) {
-      throw Error('At least one server needs to be configured.')
+      throw Error('One server needs to be configured.')
     }
+    console.info(
+      'app uses the following DICOMweb server configuration: ',
+      props.config.servers
+    )
+
+    this.handleServerSelection = this.handleServerSelection.bind(this)
 
     message.config({ duration: 5 })
-
-    const handleError = (
-      error: dwc.api.DICOMwebClientError,
-      serverSettings: ServerSettings
-    ): void => {
-      if (serverSettings.errorMessages !== undefined) {
-        serverSettings.errorMessages.forEach(
-          ({ status, message }: ErrorMessageSettings) => {
-            if (error.status === status) {
-              this.setState({
-                error: {
-                  status: error.status,
-                  message
-                }
-              })
-            }
-          }
-        )
-      }
-    }
 
     this.state = {
       client: new DicomWebManager({
         baseUri: baseUri,
         settings: props.config.servers,
-        onError: handleError
+        onError: this.handleDICOMwebError
       }),
       isLoading: true,
       wasAuthSuccessful: false
     }
+  }
+
+  handleServerSelection ({ url }: { url: string }): void {
+    console.info('select DICOMweb server: ', url)
+    const client = new DicomWebManager({
+      baseUri: '',
+      settings: [{
+        id: 'tmp',
+        url,
+        read: true,
+        write: false
+      }],
+      onError: this.handleDICOMwebError
+    })
+    client.updateHeaders(this.state.client.headers)
+    this.setState({ client })
   }
 
   /**
@@ -107,12 +131,15 @@ class App extends React.Component<AppProps, AppState> {
   }): void => {
     const client = this.state.client
     client.updateHeaders({ Authorization: authorization })
+    const fullPath = window.location.pathname
+    const basePath = this.props.config.path
+    const path = fullPath.substring(basePath.length - 1)
     this.setState({
       user: user,
       client: client,
       wasAuthSuccessful: true,
       isLoading: false,
-      redirectTo: '/'
+      redirectTo: path
     })
   }
 
@@ -159,6 +186,9 @@ class App extends React.Component<AppProps, AppState> {
     const enableAnnotationTools = !(
       this.props.config.disableAnnotationTools ?? false
     )
+    const enableServerSelection = (
+      this.props.config.enableServerSelection ?? false
+    )
 
     let worklist
     if (enableWorklist) {
@@ -183,6 +213,8 @@ class App extends React.Component<AppProps, AppState> {
             <Header
               app={appInfo}
               showWorklistButton={false}
+              onServerSelection={this.handleServerSelection}
+              showServerSelectionButton={false}
             />
             <Layout.Content style={layoutContentStyle}>
               <FaSpinner />
@@ -197,6 +229,8 @@ class App extends React.Component<AppProps, AppState> {
             <Header
               app={appInfo}
               showWorklistButton={false}
+              onServerSelection={this.handleServerSelection}
+              showServerSelectionButton={enableServerSelection}
             />
             <Layout.Content style={layoutContentStyle}>
               <div>Sign-in failed.</div>
@@ -220,12 +254,13 @@ class App extends React.Component<AppProps, AppState> {
                     app={appInfo}
                     user={this.state.user}
                     showWorklistButton={enableWorklist}
+                    onServerSelection={this.handleServerSelection}
+                    showServerSelectionButton={enableServerSelection}
                   />
                   <Layout.Content style={layoutContentStyle}>
                     <CaseViewer
                       client={this.state.client}
                       user={this.state.user}
-                      renderer={this.props.config.renderer}
                       annotations={this.props.config.annotations}
                       app={appInfo}
                       enableAnnotationTools={enableAnnotationTools}
@@ -241,6 +276,8 @@ class App extends React.Component<AppProps, AppState> {
                   app={appInfo}
                   user={this.state.user}
                   showWorklistButton={false}
+                  onServerSelection={this.handleServerSelection}
+                  showServerSelectionButton={enableServerSelection}
                 />
                 <Layout.Content style={layoutContentStyle}>
                   {worklist}

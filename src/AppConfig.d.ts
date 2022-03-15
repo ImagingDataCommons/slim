@@ -1,7 +1,8 @@
 import * as dcmjs from 'dcmjs'
 
 export type DicomWebManagerErrorHandler = (
-  error: dwc.api.DICOMwebClientError, serverSettings: ServerSettings
+  error: dwc.api.DICOMwebClientError,
+  serverSettings: ServerSettings
 ) => void
 
 export interface DICOMwebClientRequestHookMetadata {
@@ -32,7 +33,7 @@ export interface AnnotationSettings {
   finding: dcmjs.sr.coding.CodeOptions
   evaluations?: EvaluationSetting[]
   measurements?: MeasurementSetting[]
-  style: {
+  style?: {
     stroke: {
       color: number[]
       width: number
@@ -53,15 +54,12 @@ export interface ServerSettings {
   url?: string
   path?: string
   write: boolean
+  read?: boolean
   qidoPathPrefix?: string
   wadoPathPrefix?: string
   stowPathPrefix?: string
   retry?: RetryRequestSettings
   errorMessages?: ErrorMessageSettings[]
-}
-
-export interface RendererSettings {
-  retrieveRendered: boolean
 }
 
 export interface OidcSettings {
@@ -72,12 +70,20 @@ export interface OidcSettings {
 }
 
 export default interface AppConfig {
+  /**
+   * Currently, only one server is supported. However, support for multiple
+   * servers is planned and the "server" parameter therefore expects an array.
+   * Authentication and authorization for any of the servers is expected to go
+   * through the same identity provider and authorization server using the OIDC
+   * and OAuth 2.0 protocols (see "oidc" parameter).
+   */
   servers: ServerSettings[]
   path: string
-  renderer: RendererSettings
   annotations: AnnotationSettings[]
   organization?: string
   oidc?: OidcSettings
   disableWorklist?: boolean
   disableAnnotationTools?: boolean
+  enableServerSelection?: boolean
+  mode?: string
 }

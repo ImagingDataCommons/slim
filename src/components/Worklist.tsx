@@ -29,29 +29,31 @@ interface WorklistState {
 }
 
 class Worklist extends React.Component<WorklistProps, WorklistState> {
-  state = {
-    studies: [],
-    isLoading: false,
-    numStudies: 0,
-    pageSize: 10
-  }
+  private readonly defaultPageSize = 20
 
   constructor (props: WorklistProps) {
     super(props)
     this.fetchData = this.fetchData.bind(this)
     this.handleClick = this.handleClick.bind(this)
     this.handleChange = this.handleChange.bind(this)
+    this.state = {
+      studies: [],
+      isLoading: false,
+      numStudies: 0,
+      pageSize: this.defaultPageSize
+    }
   }
 
-  componentDidMount (): void {
+  searchForStudies (): void {
     const queryParams: { [key: string]: any } = { ModalitiesInStudy: 'SM' }
     const searchOptions = { queryParams }
+    // TODO: retrieve remaining results
     this.props.client.searchForStudies(searchOptions).then((studies) => {
       this.setState({
         numStudies: studies.length,
         studies: studies.slice(0, this.state.pageSize).map((study) => {
-          const metadata = dmv.metadata.formatMetadata(study)
-          return metadata as dmv.metadata.Study
+          const { dataset } = dmv.metadata.formatMetadata(study)
+          return dataset as dmv.metadata.Study
         })
       })
     }).catch((error) => {
@@ -59,6 +61,16 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       message.error('An error occured. Search for studies failed.')
       console.error(error)
     })
+  }
+
+  componentDidMount (): void {
+    this.searchForStudies()
+  }
+
+  componentDidUpdate (previousProps: WorklistProps): void {
+    if (this.props.client !== previousProps.client) {
+      this.searchForStudies()
+    }
   }
 
   handleClick (event: React.SyntheticEvent, study: dmv.metadata.Study): void {
@@ -90,8 +102,8 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     this.props.client.searchForStudies(searchOptions).then((studies) => {
       this.setState({
         studies: studies.map((study) => {
-          const metadata = dmv.metadata.formatMetadata(study)
-          return metadata as dmv.metadata.Study
+          const { dataset } = dmv.metadata.formatMetadata(study)
+          return dataset as dmv.metadata.Study
         })
       })
     }).catch(() => message.error('Request to search for studies failed.'))
@@ -103,9 +115,13 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   ): void {
     this.setState({ isLoading: true })
     let index = pagination.current
-    index = index ? index : 1
+    if (index === undefined) {
+      index = 1
+    }
     let pageSize = pagination.pageSize
-    pageSize = pageSize ? pageSize : this.state.pageSize
+    if (pageSize === undefined) {
+      pageSize = this.state.pageSize
+    }
     const offset = pageSize * (index - 1)
     const limit = pageSize
     console.debug(`search for studies of page #${index}...`)
@@ -188,7 +204,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
              * This should not happen, since the attribute is required.
              * However, some origin servers don't include it.
              */
-            return 'SM,?'
+            return ''
           } else {
             return String(value)
           }
@@ -197,8 +213,14 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     ]
 
     const pagination = {
+      defaultPageSize: this.defaultPageSize,
       pageSize: this.state.pageSize,
       hideOnSinglePage: true,
+      showSizeChanger: true,
+      showQuickJumper: true,
+      showTotal: (total: number, range: number[]) => {
+        return `${range[0]}-${range[1]} of ${total} studies`
+      },
       total: this.state.numStudies
     }
 

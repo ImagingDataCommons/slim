@@ -17,7 +17,13 @@ class SpecimenList extends React.Component<SpecimenListProps, {}> {
     if (this.props.metadata === undefined) {
       return null
     }
-    const items = this.props.metadata.SpecimenDescriptionSequence.map(
+    /*
+     * Specimen Description Sequence is a type 1 attribute. However, it is
+     * nevertheless missing in some data sets. This is a violation of the
+     * standard, but it may be better to facilitate display of the data.
+     */
+    const descriptions = this.props.metadata.SpecimenDescriptionSequence ?? []
+    const items = descriptions.map(
       (item: dmv.metadata.SpecimenDescription, index: number) => {
         return (
           <SpecimenItem

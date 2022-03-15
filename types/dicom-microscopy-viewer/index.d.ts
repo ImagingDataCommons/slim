@@ -1,17 +1,14 @@
 declare module 'dicom-microscopy-viewer' {
 
-  import * as dwc from 'dicomweb-client';
-  import * as dcmjs from 'dcmjs';
+  import * as dwc from 'dicomweb-client'
+  import * as dcmjs from 'dcmjs'
 
   declare namespace viewer {
 
     export interface VolumeImageViewerOptions {
       client: dwc.api.DICOMwebClient
-      metadata: object[]
-      blendingInformation?: BlendingInformation[]
-      controls?: string[]
-      retrieveRendered?: boolean
-      useWebGL?: boolean
+      metadata: metadata.VLWholeSlideMicroscopyImage[]
+      debug?: boolean
     }
 
     export interface ROIStyleOptions {
@@ -27,6 +24,7 @@ declare module 'dicom-microscopy-viewer' {
     export class VolumeImageViewer {
       constructor (options: VolumeImageViewerOptions)
       render (options: object): void
+      cleanup (): void
       get imageMetadata (): metadata.VLWholeSlideMicroscopyImage[]
       activateDrawInteraction (options: object)
       deactivateDrawInteraction (): void
@@ -51,6 +49,7 @@ declare module 'dicom-microscopy-viewer' {
       getROI (uid: string): roi.ROI
       popROI (): roi.ROI
       addROI (item: roi.ROI, styleOptions?: object)
+      getROIStyle (uid: string): object
       setROIStyle (uid: string, styleOptions?: object): void
       addROIMeasurement (
         uid: string,
@@ -72,13 +71,103 @@ declare module 'dicom-microscopy-viewer' {
       collapseOverviewMap (): void
       expandOverviewMap (): void
       toggleOverviewMap (): void
-      isOpticalPathActive (string): boolean
-      getBlendingInformation (string): BlendingInformation
-      setBlendingInformation (BlendingInformation): void
-      showOpticalPath (string): void
-      hideOpticalPath (string): void
-      activateOpticalPath (string): void
-      deactivateOpticalPath (string): void
+      isOpticalPathActive (opticalPathIdentifier: string): boolean
+      isOpticalPathColorable (opticalPathIdentifier: string): boolean
+      isOpticalPathMonochromatic (opticalPathIdentifier: string): boolean
+      getOpticalPathStyle (opticalPathIdentifier: string): {
+        color?: number[]
+        paletteColorLookupTable?: color.PaletteColorLookupTableOptions
+        opacity: number
+        limitValues?: number[]
+      }
+      setOpticalPathStyle (
+        opticalPathIdentifier: string,
+        styleOptions: {
+          color?: number[]
+          opacity?: number
+          limitValues?: number[]
+        }
+      ): void
+      showOpticalPath (
+        opticalPathIdentifier: string,
+        styleOptions?: {
+          color?: number[]
+          opacity?: number
+          limitValues?: number[]
+        }
+      ): void
+      hideOpticalPath (opticalPathIdentifier: string): void
+      isOpticalPathVisible (opticalPathIdentifier: string): boolean
+      activateOpticalPath (opticalPathIdentifier: string): void
+      deactivateOpticalPath (opticalPathIdentifier: string): void
+      getOpticalPathMetadata (
+        opticalPathIdentifier: string
+      ): metadata.VLWholeSlideMicroscopyImage[]
+      getAllOpticalPaths (): dwc.opticalPath.OpticalPath[]
+      addSegments (metadata: metadata.Segmentation[]): void
+      removeSegment (segmentUID: string): void
+      showSegment (
+        segmentUID: string,
+        styleOptions?: {
+          opacity?: number
+        }
+      ): void
+      hideSegment (segmentUID: string): void
+      setSegmentStyle (
+        segmentUID: string,
+        styleOptions: {
+          opacity?: number
+        }
+      ): void
+      getSegmentStyle (segmentUID: string): { opacity: number }
+      isSegmentVisible (segmentUID: string): boolean
+      getSegmentMetadata (segmentUID: string): metadata.Segmentation[]
+      getAllSegments (): dwc.segment.Segment[]
+      addParameterMappings (metadata: metadata.ParametricMap[]): void
+      removeParameterMapping (mappingUID: string): void
+      showParameterMapping (
+        mappingUID: string,
+        styleOptions?: {
+          opacity?: number
+        }
+      ): void
+      hideParameterMapping (mappingUID: string): void
+      setParameterMappingStyle (
+        mappingUID: string,
+        styleOptions: {
+          opacity?: number
+        }
+      ): void
+      getParameterMappingStyle (mappingUID: string): {
+        opacity: number
+      }
+      isParameterMappingVisible (mappingUID: string): boolean
+      getParameterMappingMetadata (mappingUID: string): metadata.ParametricMap[]
+      getAllParameterMappings (): dwc.mapping.ParameterMapping[]
+      addAnnotationGroups (
+        metadata: metadata.MicroscopyBulkSimpleAnnotations
+      ): void
+      removeAnnotationGroup (annotationGroupUID: string): void
+      showAnnotationGroup (
+        annotationGroupUID: string,
+        styleOptions?: {
+          opacity?: number
+          measurement?: dcmjs.sr.coding.CodedConcept
+        }
+      ): void
+      hideAnnotationGroup (annotationGroupUID: string): void
+      setAnnotationGroupStyle (
+        annotationGroupUID: string,
+        styleOptions: {
+          opacity?: number
+        }
+      ): void
+      getAnnotationGroupStyle (annotationGroupUID: string): { opacity: number }
+      isAnnotationGroupVisible (annotationGroupUID: string): boolean
+      getAllAnnotationGroups (): dwc.annotation.AnnotationGroup[]
+      getAnnotationGroupMetadata (
+        annotationGroupUID: string
+      ): metadata.MicroscopyBulkSimpleAnnotations
     }
 
     export interface OverviewImageViewerOptions {
@@ -92,6 +181,7 @@ declare module 'dicom-microscopy-viewer' {
     export class OverviewImageViewer {
       constructor (options: OverviewImageViewerOptions)
       render (options: object): void
+      cleanup (): void
       get imageMetadata (): metadata.VLWholeSlideMicroscopyImage[]
       resize (): void
     }
@@ -107,6 +197,7 @@ declare module 'dicom-microscopy-viewer' {
     export class LabelImageViewer {
       constructor (options: OverviewImageViewerOptions)
       render (options: object): void
+      cleanup (): void
       get imageMetadata (): metadata.VLWholeSlideMicroscopyImage[]
       resize (): void
     }
@@ -197,10 +288,8 @@ declare module 'dicom-microscopy-viewer' {
       properties?: {
         trackingUID?: string
         observerType?: string
-        evaluations?: (
-          dcmjs.sr.valueTypes.CodeContentItem |
-          dcmjs.sr.valueTypes.TextContentItem
-        )[]
+        evaluations?: Array<dcmjs.sr.valueTypes.CodeContentItem |
+        dcmjs.sr.valueTypes.TextContentItem>
         measurements?: dcmjs.sr.valueTypes.NumContentItem[]
       }
     }
@@ -212,16 +301,12 @@ declare module 'dicom-microscopy-viewer' {
       get properties (): {
         trackingUID?: string
         observerType?: string
-        evaluations: (
-          dcmjs.sr.valueTypes.CodeContentItem |
-          dcmjs.sr.valueTypes.TextContentItem
-        )[]
+        evaluations: Array<dcmjs.sr.valueTypes.CodeContentItem |
+        dcmjs.sr.valueTypes.TextContentItem>
         measurements: dcmjs.sr.valueTypes.NumContentItem[]
       }
-      get evaluations (): (
-          dcmjs.sr.valueTypes.CodeContentItem |
-          dcmjs.sr.valueTypes.TextContentItem
-      )[]
+      get evaluations (): Array<dcmjs.sr.valueTypes.CodeContentItem |
+      dcmjs.sr.valueTypes.TextContentItem>
       get measurements (): dcmjs.sr.valueTypes.NumContentItem[]
       addEvaluation (
         item: (
@@ -234,13 +319,44 @@ declare module 'dicom-microscopy-viewer' {
 
   }
 
+  declare namespace segment {
+
+    export interface SegmentOptions {
+      uid: string
+      number: number
+      label: label
+      algorithmType: string
+      algorithmName: string
+      propertyCategory: dcmjs.sr.coding.CodedConcept
+      propertyType: dcmjs.sr.coding.CodedConcept
+      studyInstanceUID: string
+      seriesInstanceUID: string
+      sopInstanceUIDs: string[]
+    }
+
+    export class Segment {
+      constructor (options: SegmentOptions)
+      get uid (): string
+      get number (): number
+      get label (): string
+      get algorithmType (): string
+      get algorithmName (): string
+      get propertyCategory (): dcmjs.sr.coding.CodedConcept
+      get propertyType (): dcmjs.sr.coding.CodedConcept
+      get studyInstanceUID (): string
+      get seriesInstanceUID (): string
+      get sopInstanceUIDs (): string[]
+    }
+
+  }
+
   declare namespace metadata {
 
     export interface PersonName {
       Alphabetic: string
     }
 
-    export interface Study {
+    export interface Study extends Dataset {
       ModalitiesInStudy: string[]
       ReferringPhysicianName: PersonName
       PatientName: PersonName
@@ -279,36 +395,49 @@ declare module 'dicom-microscopy-viewer' {
       ContainerIdentifier?: string
     }
 
+    export class MicroscopyBulkSimpleAnnotations {
+      constructor ({ metadata: Dataset }: object)
+    }
+
+    export class ParametricMap {
+      constructor ({ metadata: Dataset }: object)
+    }
+
+    export class Segmentation {
+      constructor ({ metadata: Dataset }: object)
+    }
+
     export class VLWholeSlideMicroscopyImage {
-      constructor ({ metadata: Metadata }: object)
+      constructor ({ metadata: Dataset }: object)
     }
 
     export interface SpecimenPreparation {
-      SpecimenPreparationStepContentItemSequence: (
-        dcmjs.sr.valueTypes.CodeContentItem |
-        dcmjs.sr.valueTypes.TextContentItem |
-        dcmjs.sr.valueTypes.UIDRefContentItem |
-        dcmjs.sr.valueTypes.PNameContentItem |
-        dcmjs.sr.valueTypes.DateTimeContentItem
-      )[]
+      SpecimenPreparationStepContentItemSequence: Array<dcmjs.sr.valueTypes.CodeContentItem |
+      dcmjs.sr.valueTypes.TextContentItem |
+      dcmjs.sr.valueTypes.UIDRefContentItem |
+      dcmjs.sr.valueTypes.PNameContentItem |
+      dcmjs.sr.valueTypes.DateTimeContentItem>
     }
 
     export interface SpecimenDescription {
       SpecimenUID: string
       SpecimenIdentifier: string
-      SpecimenTypeCodeSequence: dcmjs.sr.valueTypes.CodedConcept[]
+      SpecimenTypeCodeSequence: dcmjs.sr.coding.CodedConcept[]
       SpecimenDetailedDescription?: string
       SpecimenShortDescription?: string
       SpecimenPreparationSequence: SpecimenPreparation[]
-      PrimaryAnatomicStructureSequence: dcmjs.sr.valueTypes.CodedConcept[]
+      PrimaryAnatomicStructureSequence: dcmjs.sr.coding.CodedConcept[]
     }
 
-    export interface OpticalPathDescription {
+    export interface OpticalPath {
       OpticalPathIdentifier: string
       OpticalPathDescription: string
+      ICCProfile?: Uint8Array
     }
 
-    export interface SOPClass {
+    export interface Dataset {}
+
+    export interface SOPClass extends Dataset {
       // Patient module
       PatientID: string
       PatientName: PersonName
@@ -323,50 +452,245 @@ declare module 'dicom-microscopy-viewer' {
       StudyTime: string
       // General Series module
       SeriesInstanceUID: string
+      SeriesNumber: number | null | undefined
       Modality: string
       // SOP Common module
       SOPClassUID: string
       SOPInstanceUID: string
+      InstanceNumber: number | null | undefined
+      get json (): object
+      get bulkdataReferences (): object
     }
 
     export interface VLWholeSlideMicroscopyImage extends SOPClass {
       // VL Whole Slide Microscopy Image module
+      BitsAllocated: number
       ImageType: string[]
-      FrameOfReferenceUID: string
       SamplesPerPixel: number
       PhotometricInterpretation: string
+      // Frame of Reference module
+      FrameOfReferenceUID: string
       // Specimen module
       ContainerIdentifier: string
-      ContainerTypeCodeSequence: dcmjs.sr.valueTypes.CodedConcept[]
+      ContainerTypeCodeSequence: dcmjs.sr.coding.CodedConcept[]
       SpecimenDescriptionSequence: SpecimenDescription[]
-      OpticalPathSequence: OpticalPathDescription[]
+      // Optical Path module
+      OpticalPathSequence: OpticalPath[]
     }
 
     export interface Comprehensive3DSR extends SOPClass {
       ContentSequence: dcmjs.sr.valueTypes.ContentItem[]
-      ContentTemplateSequence: {
+      ContentTemplateSequence: Array<{
         MappingResource: string
         TemplateIdentifier: string
-      }[]
+      }>
     }
 
-    type Metadata = Study|Series|Instance|VLWholeSlideMicroscopyImage
+    export interface MicroscopyBulkSimpleAnnotations extends SOPClass {
+      // Frame of Reference module
+      FrameOfReferenceUID: string
+      // Specimen module
+      ContainerIdentifier: string
+      ContainerTypeCodeSequence: dcmjs.sr.coding.CodedConcept[]
+      SpecimenDescriptionSequence: SpecimenDescription[]
+      // Annotation
+      ContainerIdentifier: string
+      ContainerTypeCodeSequence: dcmjs.sr.coding.CodedConcept[]
+      SpecimenDescriptionSequence: SpecimenDescription[]
+      OpticalPathSequence: OpticalPath[]
+      AnnotationGroupSequence: Array<{
+        AnnotationGroupNumber: number
+        AnnotationGroupUID: string
+        AnnotationGroupLabel: string
+        AnnotationGroupDescription?: string
+        AnnotationPropertyCategoryCodeSequence: Array<{
+          CodeValue: string
+          CodeMeaning: string
+          CodingSchemeDesignator: string
+          CodingSchemeVersion?: string
+        }>
+        AnnotationPropertyTypeCodeSequence: Array<{
+          CodeValue: string
+          CodeMeaning: string
+          CodingSchemeDesignator: string
+          CodingSchemeVersion?: string
+        }>
+        GraphicType: string
+        NumberOfAnnotations: number
+        CommonZCoordinateValue?: number
+        DoublePointCoordinatesData?: string // FIXME: bytes
+        PointCoordinatesData?: string // FIXME: bytes
+        MeasurementsSequence: Array<{
+          ConceptNameCodeSequence: Array<{
+            CodeValue: string
+            CodeMeaning: string
+            CodingSchemeDesignator: string
+            CodingSchemeVersion?: string
+          }>
+          MeasurementUnitsCodeSequence: Array<{
+            CodeValue: string
+            CodeMeaning: string
+            CodingSchemeDesignator: string
+            CodingSchemeVersion?: string
+          }>
+          MeasurementValuesSequence: Array<{
+            FloatingPointValues?: string // FIXME: bytes
+            AnnotationIndexList?: string // FIXME: bytes
+          }>
+        }>
+      }>
+    }
 
-    export function formatMetadata (metadata: object): Metadata
+    export interface ParametricMap extends SOPClass {
+      // Floating Point Image Pixel or Double Floating Point Image Pixel module
+      BitsAllocated: number
+      // Frame of Reference module
+      FrameOfReferenceUID: string
+      // Specimen module
+      ContainerIdentifier: string
+      ContainerTypeCodeSequence: dcmjs.sr.coding.CodedConcept[]
+      SpecimenDescriptionSequence: SpecimenDescription[]
+    }
+
+    export interface Segmentation extends SOPClass {
+      // Image Pixel module
+      BitsAllocated: number
+      // Frame of Reference module
+      FrameOfReferenceUID: string
+      // Specimen module
+      ContainerIdentifier: string
+      ContainerTypeCodeSequence: dcmjs.sr.coding.CodedConcept[]
+      SpecimenDescriptionSequence: SpecimenDescription[]
+      // Segmentation Image module
+      SegmentSequence: Array<{
+        SegmentNumber: number
+        SegmentLabel: string
+        SegmentDescription?: string
+        SegmentedPropertyCategoryCodeSequence: Array<{
+          CodeValue: string
+          CodeMeaning: string
+          CodingSchemeDesignator: string
+          CodingSchemeVersion?: string
+        }>
+        SegmentedPropertyTypeCodeSequence: Array<{
+          CodeValue: string
+          CodeMeaning: string
+          CodingSchemeDesignator: string
+          CodingSchemeVersion?: string
+        }>
+      }>
+    }
+
+    export function formatMetadata (metadata: object): {
+      dataset: Dataset
+      bulkDataMapping: { [keyword: string]: { vr: string, BulkDataURI: string }}
+    }
 
   }
 
-  declare namespace channel {
+  declare namespace annotation {
 
-    export interface BlendingInformation {
-      opticalPathIdentifier: string
-      color: number[]
-      opacity: number
-      thresholdValues: number[]
-      limitValues: number[]
-      visible: boolean
+    export interface AnnotationGroupOptions {
+      uid: string
+      number: number
+      label: label
+      algorithmType: string
+      algorithmName: string
+      propertyCategory: dcmjs.sr.coding.CodedConcept
+      propertyType: dcmjs.sr.coding.CodedConcept
+      studyInstanceUID: string
+      seriesInstanceUID: string
+      sopInstanceUIDs: string[]
     }
-    
+
+    export class AnnotationGroup {
+      constructor (options: AnnotationGroupOptions)
+      get uid (): string
+      get number (): number
+      get label (): string
+      get algorithmType (): string
+      get algorithmName (): string
+      get propertyCategory (): dcmjs.sr.coding.CodedConcept
+      get propertyType (): dcmjs.sr.coding.CodedConcept
+      get studyInstanceUID (): string
+      get seriesInstanceUID (): string
+      get sopInstanceUIDs (): string[]
+    }
+
+  }
+
+  declare namespace mapping {
+
+    export interface ParameterMappingOptions {
+      uid: string
+      number: number
+      label: label
+      studyInstanceUID: string
+      seriesInstanceUID: string
+      sopInstanceUIDs: string[]
+    }
+
+    export class ParameterMapping {
+      constructor (options: ParameterMappingOptions)
+      get uid (): string
+      get number (): number
+      get label (): string
+      get studyInstanceUID (): string
+      get seriesInstanceUID (): string
+      get sopInstanceUIDs (): string[]
+    }
+
+  }
+
+  declare namespace color {
+    export interface PaletteColorLookupTableOptions {
+      uid: string
+      redDescriptor: number[]
+      greenDescriptor: number[]
+      blueDescriptor: number[]
+      redData: number[]
+      greenData: number[]
+      blueData: number[]
+      redSegmentedData: number[]
+      greenSegmentedData: number[]
+      blueSegmentedDat: number[]
+    }
+
+    export class PaletteColorLookupTable {
+      constructor (options: PaletteColorLookupTableOptions)
+      get uid (): string
+      get data (): number[][]
+      get firstValueMapped (): number
+    }
+  }
+
+  declare namespace opticalPath {
+
+    export interface OpticalPathOptions {
+      identifier: string
+      description?: string
+      illuminationType: object
+      isMonochromatic: boolean
+      illuminationColor?: object
+      illuminationWaveLength?: string
+      studyInstanceUID: string
+      seriesInstanceUID: string
+      sopInstanceUIDs: string[]
+    }
+
+    export class OpticalPath {
+      constructor (options: OpticalPathOptions)
+      get identifier (): string
+      get description (): string | undefined
+      get illuminationType (): dcmjs.sr.coding.CodedConcept
+      get illuminationColor (): dcmjs.sr.coding.CodedConcept | undefined
+      get illuminationWaveLength (): string | undefined
+      get studyInstanceUID (): string
+      get seriesInstanceUID (): string
+      get sopInstanceUIDs (): string[]
+      get isMonochromatic (): boolean
+      get isColorable (): boolean
+    }
   }
 
 }

@@ -1,6 +1,7 @@
 import React from 'react'
 import * as dmv from 'dicom-microscopy-viewer'
-import { Menu } from 'antd'
+import { Menu, Switch } from 'antd'
+import { FaEye, FaEyeSlash } from 'react-icons/fa'
 
 import AnnotationItem from './AnnotationItem'
 
@@ -8,7 +9,10 @@ interface AnnotationListProps {
   rois: dmv.roi.ROI[]
   selectedRoiUIDs: string[]
   visibleRoiUIDs: string[]
-  onChangeVisibility: ({ roiUID }: { roiUID: string }) => void
+  onVisibilityChange: ({ roiUID, isVisible }: {
+    roiUID: string
+    isVisible: boolean
+  }) => void
   onSelection: ({ roiUID }: { roiUID: string }) => void
 }
 
@@ -20,11 +24,22 @@ class AnnotationList extends React.Component<AnnotationListProps, {}> {
   constructor (props: AnnotationListProps) {
     super(props)
     this.handleMenuItemSelection = this.handleMenuItemSelection.bind(this)
+    this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
   }
 
-  handleMenuItemSelection (
-    object: any
-  ): void {
+  handleVisibilityChange (checked: boolean, event: Event): void {
+    if (checked) {
+      this.props.rois.forEach(roi => {
+        this.props.onVisibilityChange({ roiUID: roi.uid, isVisible: checked })
+      })
+    } else {
+      this.props.visibleRoiUIDs.forEach(roiUID => {
+        this.props.onVisibilityChange({ roiUID, isVisible: checked })
+      })
+    }
+  }
+
+  handleMenuItemSelection (object: any): void {
     this.props.onSelection({ roiUID: object.key })
   }
 
@@ -35,18 +50,29 @@ class AnnotationList extends React.Component<AnnotationListProps, {}> {
         roi={roi}
         index={index}
         isVisible={this.props.visibleRoiUIDs.includes(roi.uid)}
-        onChangeVisibility={this.props.onChangeVisibility}
+        onVisibilityChange={this.props.onVisibilityChange}
       />
     ))
 
     return (
-      <Menu
-        selectedKeys={this.props.selectedRoiUIDs}
-        onSelect={this.handleMenuItemSelection}
-        onClick={this.handleMenuItemSelection}
-      >
-        {items}
-      </Menu>
+      <>
+        <div style={{ paddingLeft: '14px', paddingTop: '7px', paddingBottom: '7px' }}>
+          <Switch
+            size='small'
+            onChange={this.handleVisibilityChange}
+            checked={this.props.visibleRoiUIDs.length > 0}
+            checkedChildren={<FaEye />}
+            unCheckedChildren={<FaEyeSlash />}
+          />
+        </div>
+        <Menu
+          selectedKeys={this.props.selectedRoiUIDs}
+          onSelect={this.handleMenuItemSelection}
+          onClick={this.handleMenuItemSelection}
+        >
+          {items}
+        </Menu>
+      </>
     )
   }
 }

@@ -59,7 +59,8 @@ RUN NODE_OPTIONS=--max_old_space_size=8192 yarn run build && \
 RUN mkdir -p /var/run/nginx && \
     chown -R nginx:nginx /var/www/html /var/run/nginx /var/lib/nginx /var/log/nginx && \
     chmod -R 0755 /var/www/html /var/run/nginx /var/lib/nginx /var/log/nginx && \
-    rm -r /etc/nginx/conf.d /etc/nginx/sites-available /etc/nginx/sites-enabled
+    rm -r /etc/nginx/conf.d /etc/nginx/sites-available /etc/nginx/sites-enabled && \
+    rm -r /var/www/html/*
 
 COPY etc/nginx/conf.d /etc/nginx/conf.d
 COPY etc/nginx/nginx.conf /etc/nginx/

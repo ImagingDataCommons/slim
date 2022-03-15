@@ -37,7 +37,6 @@ class Slide {
   readonly containerIdentifier: string
   readonly seriesInstanceUIDs: string[]
   readonly opticalPathIdentifiers: string[]
-  readonly isMultiplexed: boolean
   readonly areVolumeImagesMonochrome: boolean
   readonly volumeImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
   readonly labelImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
@@ -66,9 +65,9 @@ class Slide {
       frameOfReferenceUIDs.add(image.FrameOfReferenceUID)
       containerIdentifiers.add(image.ContainerIdentifier)
       seriesInstanceUIDs.add(image.SeriesInstanceUID)
-      opticalPathIdentifiers.add(
-        image.OpticalPathSequence[0].OpticalPathIdentifier
-      )
+      image.OpticalPathSequence.forEach(item => {
+        opticalPathIdentifiers.add(item.OpticalPathIdentifier)
+      })
       if (hasImageFlavor(image, ImageFlavors.VOLUME)) {
         volumeImages.push(image)
       } else if (hasImageFlavor(image, ImageFlavors.THUMBNAIL)) {
@@ -83,7 +82,9 @@ class Slide {
       throw new Error('At least one volume image must be provided for a slide.')
     } else {
       const samplesPerPixel = new Set([] as number[])
-      volumeImages.forEach(image => samplesPerPixel.add(image.SamplesPerPixel))
+      volumeImages.forEach((image) => {
+        samplesPerPixel.add(image.SamplesPerPixel)
+      })
       if (samplesPerPixel.size > 1) {
         throw new Error(
           'All volume images of a slide must have the same number of ' +
@@ -97,31 +98,23 @@ class Slide {
 
     this.seriesInstanceUIDs = [...seriesInstanceUIDs]
     this.opticalPathIdentifiers = [...opticalPathIdentifiers]
-    if (containerIdentifiers.size === 1) {
-      this.containerIdentifier = [...containerIdentifiers][0]
-    } else {
+    if (containerIdentifiers.size !== 1) {
       throw new Error(
         'All images of a slide must have the same Container Identifier.'
       )
     }
-    if (frameOfReferenceUIDs.size === 1) {
-      this.frameOfReferenceUID = [...frameOfReferenceUIDs][0]
-    } else {
+    this.containerIdentifier = [...containerIdentifiers][0]
+    if (frameOfReferenceUIDs.size !== 1) {
       throw new Error(
         'All images of a slide must have the same Frame of Reference UID.'
       )
     }
+    this.frameOfReferenceUID = [...frameOfReferenceUIDs][0]
 
     this.areVolumeImagesMonochrome = (
       this.volumeImages[0].SamplesPerPixel === 1 &&
       this.volumeImages[0].PhotometricInterpretation === 'MONOCHROME2'
     )
-
-    if (opticalPathIdentifiers.size > 1) {
-      this.isMultiplexed = true
-    } else {
-      this.isMultiplexed = false
-    }
 
     this.description = (
       options.description !== undefined ? options.description : ''
@@ -185,7 +178,7 @@ const createSlides = (
     }
   })
 
-  const slides: Slide[] = slideMetadata.map((item) => {
+  let slides: Slide[] = slideMetadata.map((item) => {
     return new Slide({
       images: [
         ...item.volumeImages,
@@ -193,6 +186,15 @@ const createSlides = (
         ...item.overviewImages
       ]
     })
+  })
+  slides = slides.sort((a, b) => {
+    const imageA = a.volumeImages[0]
+    const imageB = b.volumeImages[0]
+    if (imageA.SeriesNumber != null && imageB.SeriesNumber != null) {
+      return Number(imageA.SeriesNumber) - Number(imageB.SeriesNumber)
+    } else {
+      return 0
+    }
   })
 
   return slides

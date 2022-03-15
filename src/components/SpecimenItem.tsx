@@ -25,22 +25,27 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
       this.props.index
     ]
     const attributes: Attribute[] = []
-    if ('SpecimenShortDescription' in specimenDescription) {
+    if (specimenDescription.SpecimenShortDescription !== undefined) {
       attributes.push({
         name: 'Description',
         value: specimenDescription.SpecimenShortDescription
       })
     }
-    if ('PrimaryAnatomicStructureSequence' in specimenDescription) {
-      const structures = specimenDescription.PrimaryAnatomicStructureSequence
-      attributes.push({
-        name: 'Anatomic Structure',
-        value: structures[0].CodeMeaning
-      })
+    if (specimenDescription.PrimaryAnatomicStructureSequence !== undefined) {
+      if (specimenDescription.PrimaryAnatomicStructureSequence.length > 0) {
+        const structures = specimenDescription.PrimaryAnatomicStructureSequence
+        attributes.push({
+          name: 'Anatomical structure',
+          value: structures.map(item => item.CodeMeaning).join(', ')
+        })
+      }
     }
 
     // TID 8001 "Specimen Preparation"
-    specimenDescription.SpecimenPreparationSequence.forEach(
+    const preparationSteps: dmv.metadata.SpecimenPreparation[] = (
+      specimenDescription.SpecimenPreparationSequence ?? []
+    )
+    preparationSteps.forEach(
       (step: dmv.metadata.SpecimenPreparation, index: number): void => {
         step.SpecimenPreparationStepContentItemSequence.forEach((
           item: (
@@ -66,30 +71,26 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
                 item.ConceptCodeSequence[0].CodingSchemeDesignator,
               meaning: item.ConceptCodeSequence[0].CodeMeaning
             })
-            if (name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
-              console.debug(
-                `parse specimen preparation step "${value.CodeMeaning}"`
-              )
-            } else {
+            if (!name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
               if (
                 name.equals(SpecimenPreparationStepItems.COLLECTION_METHOD)
               ) {
                 attributes.push({
-                  name: 'Surgical collection',
+                  name: 'Collection method',
                   value: value.CodeMeaning
                 })
               } else if (
                 name.equals(SpecimenPreparationStepItems.FIXATIVE)
               ) {
                 attributes.push({
-                  name: 'Fixative',
+                  name: 'Tissue fixative',
                   value: value.CodeMeaning
                 })
               } else if (
                 name.equals(SpecimenPreparationStepItems.EMBEDDING_MEDIUM)
               ) {
                 attributes.push({
-                  name: 'Embedding medium',
+                  name: 'Tissue embedding medium',
                   value: value.CodeMeaning
                 })
               } else if (
@@ -97,7 +98,7 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
                 this.props.showstain
               ) {
                 attributes.push({
-                  name: 'Stain',
+                  name: 'Tissue stain',
                   value: value.CodeMeaning
                 })
               }
@@ -109,7 +110,14 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
               this.props.showstain
             ) {
               attributes.push({
-                name: 'Stain',
+                name: 'Tissue stain',
+                value: item.TextValue
+              })
+            } else if (
+              name.equals(SpecimenPreparationStepItems.PARENT_SPECIMEN_IDENTIFIER)
+            ) {
+              attributes.push({
+                name: 'Parent specimen',
                 value: item.TextValue
               })
             }
@@ -124,6 +132,7 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
     return (
       <Item
         uid={uid}
+        key={uid}
         identifier={identifier}
         attributes={attributes}
         hasLongValues
