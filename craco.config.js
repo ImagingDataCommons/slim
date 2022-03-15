@@ -47,7 +47,7 @@ module.exports = {
         '^.+\\.[t|j]sx?$': 'babel-jest'
       }
       config.transformIgnorePatterns = [
-        'node_modules/(?!(ol|React|dicom-microscopy-viewer|dicomweb-client|@cornerstonejs|dicomicc)/)' // <- transform libraries
+        'node_modules/(?!(ol|dicom-microscopy-viewer|dicomweb-client|@cornerstonejs|dicomicc)/)'
       ]
       return config
     }

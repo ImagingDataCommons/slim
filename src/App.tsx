@@ -62,18 +62,28 @@ class App extends React.Component<AppProps, AppState> {
   constructor (props: AppProps) {
     super(props)
 
+    console.info('instatiate app')
+    console.info(`app is located at "${props.config.path}"`)
     const { protocol, host } = window.location
     const baseUri = `${protocol}//${host}`
     const appUri = joinUrl(props.config.path, baseUri)
 
     const oidcSettings = props.config.oidc
     if (oidcSettings !== undefined) {
+      console.info(
+        'app uses the following OIDC configuration: ',
+        props.config.oidc
+      )
       this.auth = new OidcManager(appUri, oidcSettings)
     }
 
     if (props.config.servers.length === 0) {
       throw Error('One server needs to be configured.')
     }
+    console.info(
+      'app uses the following DICOMweb server configuration: ',
+      props.config.servers
+    )
 
     this.handleServerSelection = this.handleServerSelection.bind(this)
 
