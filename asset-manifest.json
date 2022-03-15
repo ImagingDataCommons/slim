@@ -1,29 +1,29 @@
 {
   "files": {
     "main.css": "https://herrmannlab.github.io/slim/static/css/main.e6c13ad2.css",
-    "main.js": "https://herrmannlab.github.io/slim/static/js/main.59ac9746.js",
+    "main.js": "https://herrmannlab.github.io/slim/static/js/main.3feb7d69.js",
     "static/css/16.fcc6be2f.chunk.css": "https://herrmannlab.github.io/slim/static/css/16.fcc6be2f.chunk.css",
     "static/js/16.fb3afd52.chunk.js": "https://herrmannlab.github.io/slim/static/js/16.fb3afd52.chunk.js",
     "static/css/279.0e207cc1.chunk.css": "https://herrmannlab.github.io/slim/static/css/279.0e207cc1.chunk.css",
     "static/js/279.c3c2ee58.chunk.js": "https://herrmannlab.github.io/slim/static/js/279.c3c2ee58.chunk.js",
     "static/js/29.bd0d951c.chunk.js": "https://herrmannlab.github.io/slim/static/js/29.bd0d951c.chunk.js",
-    "static/js/45.541654f5.chunk.js": "https://herrmannlab.github.io/slim/static/js/45.541654f5.chunk.js",
+    "static/js/45.00f7f7cb.chunk.js": "https://herrmannlab.github.io/slim/static/js/45.00f7f7cb.chunk.js",
     "static/media/openjpegwasm_decode.wasm": "https://herrmannlab.github.io/slim/static/media/openjpegwasm_decode.36785fbd89b0e17f6099.wasm",
     "static/media/dicomiccwasm.wasm": "https://herrmannlab.github.io/slim/static/media/dicomiccwasm.b6b803111e2d06a825bd.wasm",
     "static/media/libjpegturbowasm_decode.wasm": "https://herrmannlab.github.io/slim/static/media/libjpegturbowasm_decode.75a0c2dfe07b824c7d21.wasm",
     "static/media/charlswasm_decode.wasm": "https://herrmannlab.github.io/slim/static/media/charlswasm_decode.62ab5d58a2bea7b5a1dc.wasm",
     "index.html": "https://herrmannlab.github.io/slim/index.html",
     "main.e6c13ad2.css.map": "https://herrmannlab.github.io/slim/static/css/main.e6c13ad2.css.map",
-    "main.59ac9746.js.map": "https://herrmannlab.github.io/slim/static/js/main.59ac9746.js.map",
+    "main.3feb7d69.js.map": "https://herrmannlab.github.io/slim/static/js/main.3feb7d69.js.map",
     "16.fcc6be2f.chunk.css.map": "https://herrmannlab.github.io/slim/static/css/16.fcc6be2f.chunk.css.map",
     "16.fb3afd52.chunk.js.map": "https://herrmannlab.github.io/slim/static/js/16.fb3afd52.chunk.js.map",
     "279.0e207cc1.chunk.css.map": "https://herrmannlab.github.io/slim/static/css/279.0e207cc1.chunk.css.map",
     "279.c3c2ee58.chunk.js.map": "https://herrmannlab.github.io/slim/static/js/279.c3c2ee58.chunk.js.map",
     "29.bd0d951c.chunk.js.map": "https://herrmannlab.github.io/slim/static/js/29.bd0d951c.chunk.js.map",
-    "45.541654f5.chunk.js.map": "https://herrmannlab.github.io/slim/static/js/45.541654f5.chunk.js.map"
+    "45.00f7f7cb.chunk.js.map": "https://herrmannlab.github.io/slim/static/js/45.00f7f7cb.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.e6c13ad2.css",
-    "static/js/main.59ac9746.js"
+    "static/js/main.3feb7d69.js"
   ]
 }
