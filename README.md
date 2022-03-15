@@ -10,13 +10,13 @@ It relies on [DICOMweb](https://www.dicomstandard.org/dicomweb/) RESTful service
 
 *Slim* serves as the slide microscopy viewer of the [National Cancer Institute's Imaging Data Commons (IDC)](https://datacommons.cancer.gov/repository/imaging-data-commons).
 
-<img src="docs/screenshots/IDC_CPTAC_C3L-00965-26.png" alt="IDC CPTAC C3L-00965-26" width="75%">
+<img src="docs/screenshots/IDC_CPTAC_C3L-00965-26.png" alt="IDC CPTAC C3L-00965-26" width="100%">
 
 Use *Slim* to visually explore public IDC cancer imaging data collections by visiting the IDC web portal: [portal.imaging.datacommons.cancer.gov](https://portal.imaging.datacommons.cancer.gov/).
 
 ### Demo
 
-An interactive live demo of *Slim* is available at [herrmannlab.github.com/slim/demo](https://herrmannlab.github.com/slim/demo).
+An interactive live demo of *Slim* is available at [herrmannlab.github.io/slim](https://herrmannlab.github.io/slim).
 Annotations can be drawn and modified as part of the demo, but they cannot be saved.
 
 ## Features
