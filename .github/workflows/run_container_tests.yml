@@ -20,6 +20,4 @@ jobs:
           curl -sI http://localhost:8008/ | grep -o '200 OK'
           curl -s http://localhost:8008/ | grep -o '<title>Slim</title>'
       - name: Test DICOMweb service
-        run: |
-          curl -sI http://localhost:8008/dicomweb/studies
-          curl -sI http://localhost:8008/dicomweb/studies | grep -o '202 Accepted'
+        run: curl -sI http://localhost:8008/dicomweb/studies | grep -o '204 No Content'
