@@ -6,7 +6,7 @@ on:
       - master
 
 jobs:
-  gh-pages-deploy:
+  deploy-gh-pages:
     name: Deploying to gh-pages
     runs-on: ubuntu-latest
     steps:
