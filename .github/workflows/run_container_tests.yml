@@ -1,0 +1,23 @@
+name: container tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-and-test-containers:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build and run containers using docker compose
+        run: docker-compose up -d
+      - name: Test web page
+        run: |
+          curl -sI http://localhost:8008/ | grep -o '200 OK'
+          curl -s http://localhost:8008/ | grep -o '<title>Slim</title>'
+      - name: Test DICOMweb service
+        run: curl -sI http://localhost:8008/dicomweb/studies | grep -o '202 OK'
