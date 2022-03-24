@@ -110,12 +110,12 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
   }
 
   handleColorRChange (
-    value: number
+    value: number | number[]
   ): void {
     const identifier = this.props.opticalPath.identifier
     if (this.state.currentStyle.color !== undefined) {
       const color = [
-        value,
+        Array.isArray(value) ? value[0]: value,
         this.state.currentStyle.color[1],
         this.state.currentStyle.color[2]
       ]
@@ -135,13 +135,13 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
   }
 
   handleColorGChange (
-    value: number
+    value: number | number[]
   ): void {
     const identifier = this.props.opticalPath.identifier
     if (this.state.currentStyle.color !== undefined) {
       const color = [
         this.state.currentStyle.color[0],
-        value,
+        Array.isArray(value) ? value[0]: value,
         this.state.currentStyle.color[2]
       ]
       console.log('DEBUG [GREEN]: ', value, color)
@@ -160,14 +160,14 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
   }
 
   handleColorBChange (
-    value: number
+    value: number | number[]
   ): void {
     const identifier = this.props.opticalPath.identifier
     if (this.state.currentStyle.color !== undefined) {
       const color = [
         this.state.currentStyle.color[0],
         this.state.currentStyle.color[1],
-        value
+        Array.isArray(value) ? value[0]: value,
       ]
       console.log('DEBUG [BLUE]: ', value, color)
       this.setState(state => ({
