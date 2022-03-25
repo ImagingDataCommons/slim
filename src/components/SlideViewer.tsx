@@ -403,8 +403,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       visibleSegmentUIDs: [],
       visibleMappingUIDs: [],
       visibleAnnotationGroupUIDs: [],
-      visibleOpticalPathIdentifiers: visibleOpticalPathIdentifiers,
-      activeOpticalPathIdentifiers: activeOpticalPathIdentifiers,
+      visibleOpticalPathIdentifiers,
+      activeOpticalPathIdentifiers,
       selectedFinding: undefined,
       selectedEvaluations: [],
       generatedReport: undefined,
@@ -427,6 +427,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
      */
     if (
       this.props.location.pathname !== previousProps.location.pathname ||
+      this.props.studyInstanceUID !== previousProps.studyInstanceUID ||
+      this.props.seriesInstanceUID !== previousProps.seriesInstanceUID ||
       this.props.slide !== previousProps.slide ||
       this.props.client !== previousProps.client
     ) {
@@ -440,6 +442,26 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       })
       this.volumeViewer = volumeViewer
       this.labelViewer = labelViewer
+
+      const activeOpticalPathIdentifiers: string[] = []
+      const visibleOpticalPathIdentifiers: string[] = []
+      this.volumeViewer.getAllOpticalPaths().forEach(opticalPath => {
+        const identifier = opticalPath.identifier
+        if (this.volumeViewer.isOpticalPathVisible(identifier)) {
+          visibleOpticalPathIdentifiers.push(identifier)
+        }
+        if (this.volumeViewer.isOpticalPathActive(identifier)) {
+          activeOpticalPathIdentifiers.push(identifier)
+        }
+      })
+      this.setState({
+        visibleRoiUIDs: [],
+        visibleSegmentUIDs: [],
+        visibleMappingUIDs: [],
+        visibleAnnotationGroupUIDs: [],
+        visibleOpticalPathIdentifiers,
+        activeOpticalPathIdentifiers
+      })
       this.populateViewports()
     }
   }
@@ -955,12 +977,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       'dicommicroscopyviewer_loading_ended',
       this.onLoadingEnded
     )
-    this.populateViewports()
   }
 
   componentDidMount (): void {
     window.addEventListener('beforeunload', this.componentCleanup)
     this.componentSetup()
+    this.populateViewports()
 
     if (!this.props.slide.areVolumeImagesMonochrome) {
       let hasICCProfile = false

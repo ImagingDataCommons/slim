@@ -119,7 +119,6 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
         this.state.currentStyle.color[1],
         this.state.currentStyle.color[2]
       ]
-      console.log('DEBUG [RED]: ', value, color)
       this.setState(state => ({
         currentStyle: {
           color: color,
@@ -144,7 +143,6 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
         Array.isArray(value) ? value[0]: value,
         this.state.currentStyle.color[2]
       ]
-      console.log('DEBUG [GREEN]: ', value, color)
       this.setState(state => ({
         currentStyle: {
           color: color,
@@ -169,7 +167,6 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
         this.state.currentStyle.color[1],
         Array.isArray(value) ? value[0]: value,
       ]
-      console.log('DEBUG [BLUE]: ', value, color)
       this.setState(state => ({
         currentStyle: {
           color: color,
