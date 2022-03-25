@@ -115,7 +115,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     const identifier = this.props.opticalPath.identifier
     if (this.state.currentStyle.color !== undefined) {
       const color = [
-        Array.isArray(value) ? value[0]: value,
+        Array.isArray(value) ? value[0] : value,
         this.state.currentStyle.color[1],
         this.state.currentStyle.color[2]
       ]
@@ -140,7 +140,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     if (this.state.currentStyle.color !== undefined) {
       const color = [
         this.state.currentStyle.color[0],
-        Array.isArray(value) ? value[0]: value,
+        Array.isArray(value) ? value[0] : value,
         this.state.currentStyle.color[2]
       ]
       this.setState(state => ({
@@ -165,7 +165,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       const color = [
         this.state.currentStyle.color[0],
         this.state.currentStyle.color[1],
-        Array.isArray(value) ? value[0]: value,
+        Array.isArray(value) ? value[0] : value
       ]
       this.setState(state => ({
         currentStyle: {
