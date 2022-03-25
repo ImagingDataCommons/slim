@@ -102,6 +102,7 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
     this.props.opticalPaths.forEach(opticalPath => {
       const opticalPathIdentifier = opticalPath.identifier
       const images = this.props.metadata[opticalPathIdentifier]
+      const seriesInstanceUID = images[0].SeriesInstanceUID
       images[0].OpticalPathSequence.forEach(opticalPathItem => {
         const id = opticalPathItem.OpticalPathIdentifier
         const description = opticalPathItem.OpticalPathDescription
@@ -109,7 +110,7 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
           if (this.props.activeOpticalPathIdentifiers.includes(id)) {
             opticalPathItems.push(
               <OpticalPathItem
-                key={id}
+                key={`${seriesInstanceUID}-${id}`}
                 opticalPath={opticalPath}
                 metadata={images}
                 isVisible={this.props.visibleOpticalPathIdentifiers.includes(id)}
