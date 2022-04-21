@@ -1,4 +1,6 @@
 const CracoLessPlugin = require('craco-less')
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   plugins: [
@@ -29,8 +31,25 @@ module.exports = {
           fs: false,
           path: false
         },
-        extensions: ['.tsx', '.ts', '.js', '.wasm', '.json']
+        extensions: ['.tsx', '.ts', '.js', '.wasm', '.json'],
+        // We use this alias and the CopyPlugin below to support using the dynamic-import version
+        // of Dicom Microscopy Viewer, but only when building a PWA. When we build a package, we must use the
+        // bundled version of Dicom Microscopy Viewer so we can produce a single file for the viewer.
+        alias: {
+          'dicom-microscopy-viewer':
+            'dicom-microscopy-viewer/dist/dynamic-import/dicomMicroscopyViewer.min.js',
+        },
       }
+      config.plugins.push(
+        // Clean output.path
+        new CleanWebpackPlugin(),
+        // TO DO: remove hard coded path
+        new CopyWebpackPlugin({
+          patterns: [
+            { from: './node_modules/dicom-microscopy-viewer/dist/dynamic-import', to: './static/js'},
+          ],
+        }),
+      )
       config.target = 'web'
       config.experiments = {
         asyncWebAssembly: true
