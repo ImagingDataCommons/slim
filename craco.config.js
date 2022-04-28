@@ -1,6 +1,6 @@
 const CracoLessPlugin = require('craco-less')
-const { CleanWebpackPlugin } = require('clean-webpack-plugin');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
+const { CleanWebpackPlugin } = require('clean-webpack-plugin')
+const CopyWebpackPlugin = require('copy-webpack-plugin')
 
 module.exports = {
   plugins: [
@@ -37,8 +37,8 @@ module.exports = {
         // bundled version of Dicom Microscopy Viewer so we can produce a single file for the viewer.
         alias: {
           'dicom-microscopy-viewer':
-            'dicom-microscopy-viewer/dist/dynamic-import/dicomMicroscopyViewer.min.js',
-        },
+            'dicom-microscopy-viewer/dist/dynamic-import/dicomMicroscopyViewer.min.js'
+        }
       }
       config.plugins.push(
         // Clean output.path
@@ -46,9 +46,9 @@ module.exports = {
         // TO DO: remove hard coded path
         new CopyWebpackPlugin({
           patterns: [
-            { from: './node_modules/dicom-microscopy-viewer/dist/dynamic-import', to: './static/js'},
-          ],
-        }),
+            { from: './node_modules/dicom-microscopy-viewer/dist/dynamic-import', to: './static/js' }
+          ]
+        })
       )
       config.target = 'web'
       config.experiments = {
