@@ -288,6 +288,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private readonly evaluationOptions: { [key: string]: EvaluationOptions[] } = {}
 
+  private readonly geometryTypeOptions: { [key: string]: string[] } = {}
+
   private readonly volumeViewportRef: React.RefObject<HTMLDivElement>
 
   private readonly labelViewportRef: React.RefObject<HTMLDivElement>
@@ -320,10 +322,24 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   constructor (props: SlideViewerProps) {
     super(props)
+    const geometryTypeOptions = [
+      'point',
+      'circle',
+      'box',
+      'polygon',
+      'line',
+      'freehandpolygon',
+      'freehandline',
+    ]
     props.annotations.forEach((annotation: AnnotationSettings) => {
       const finding = new dcmjs.sr.coding.CodedConcept(annotation.finding)
       this.findingOptions.push(finding)
       const key = _buildKey(finding)
+      if (annotation.geometryTypes !== undefined) {
+        this.geometryTypeOptions[key] = annotation.geometryTypes
+      } else {
+        this.geometryTypeOptions[key] = geometryTypeOptions
+      }
       this.evaluationOptions[key] = []
       if (annotation.evaluations !== undefined) {
         annotation.evaluations.forEach(evaluation => {
@@ -1793,42 +1809,25 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       )
     })
 
-    const geometryTypeOptions = [
-      <Select.Option key='point' value='point'>Point</Select.Option>,
-      <Select.Option key='circle' value='circle'>Circle</Select.Option>,
-      <Select.Option key='box' value='box'>Rectangle</Select.Option>,
-      <Select.Option key='polygon' value='polygon'>Polygon</Select.Option>,
-      <Select.Option key='line' value='line'>Line</Select.Option>,
-      (
+    const geometryTypeOptionsMapping: { [key: string]: React.ReactNode } = {
+      point: <Select.Option key='point' value='point'>Point</Select.Option>,
+      circle: <Select.Option key='circle' value='circle'>Circle</Select.Option>,
+      box: <Select.Option key='box' value='box'>Box</Select.Option>,
+      polygon: <Select.Option key='polygon' value='polygon'>Polygon</Select.Option>,
+      line: <Select.Option key='line' value='line'>Line</Select.Option>,
+      freehandpolygon: (
         <Select.Option key='freehandpolygon' value='freehandpolygon'>
           Polygon (freehand)
         </Select.Option>
       ),
-      (
+      freehandline: (
         <Select.Option key='freehandline' value='freehandline'>
           Line (freehand)
         </Select.Option>
       )
-    ]
+    }
 
     const selections: React.ReactNode[] = [
-      (
-        <Select
-          style={{ minWidth: 130 }}
-          onSelect={this.handleAnnotationGeometryTypeSelection}
-          key='annotation-geometry-type'
-        >
-          {geometryTypeOptions}
-        </Select>
-      ),
-      (
-        <Checkbox
-          onChange={this.handleAnnotationMeasurementActivation}
-          key='annotation-measurement'
-        >
-          measure
-        </Checkbox>
-      ),
       (
         <Select
           style={{ minWidth: 130 }}
@@ -1871,6 +1870,26 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           </>
         )
       })
+      const geometryTypeOptions = this.geometryTypeOptions[key].map(name => {
+        return geometryTypeOptionsMapping[name]
+      })
+      selections.push(
+        <Select
+          style={{ minWidth: 130 }}
+          onSelect={this.handleAnnotationGeometryTypeSelection}
+          key='annotation-geometry-type'
+        >
+          {geometryTypeOptions}
+        </Select>
+      )
+      selections.push(
+        <Checkbox
+          onChange={this.handleAnnotationMeasurementActivation}
+          key='annotation-measurement'
+        >
+          measure
+        </Checkbox>
+      )
     }
 
     const specimenMenu = (

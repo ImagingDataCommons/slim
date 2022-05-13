@@ -31,8 +31,10 @@ export interface MeasurementSetting {
 
 export interface AnnotationSettings {
   finding: dcmjs.sr.coding.CodeOptions
+  findingCategory?: dcmjs.sr.coding.CodeOptions
   evaluations?: EvaluationSetting[]
   measurements?: MeasurementSetting[]
+  geometryTypes?: string[]
   style?: {
     stroke: {
       color: number[]
