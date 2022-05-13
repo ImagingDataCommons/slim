@@ -43,6 +43,9 @@ class App extends React.Component<AppProps, AppState> {
     error: dwc.api.DICOMwebClientError,
     serverSettings: ServerSettings
   ): void => {
+    if (error.status === 401) {
+      this.signIn()
+    }
     if (serverSettings.errorMessages !== undefined) {
       serverSettings.errorMessages.forEach(
         ({ status, message }: ErrorMessageSettings) => {
@@ -129,6 +132,10 @@ class App extends React.Component<AppProps, AppState> {
     user: User
     authorization: string
   }): void => {
+    console.info(
+      `handle sign in of user "${user.name}" and ` +
+      `update authorization token "${authorization}"`
+    )
     const client = this.state.client
     client.updateHeaders({ Authorization: authorization })
     const fullPath = window.location.pathname
@@ -143,10 +150,11 @@ class App extends React.Component<AppProps, AppState> {
     })
   }
 
-  componentDidMount (): void {
+  signIn (): void {
     if (this.auth !== undefined) {
+      console.info('try to sign in user')
       this.auth.signIn({ onSignIn: this.handleSignIn }).then(() => {
-        console.info('sign-in successful')
+        console.info('sign-in was successful')
         this.setState({
           isLoading: false,
           redirectTo: undefined,
@@ -155,7 +163,7 @@ class App extends React.Component<AppProps, AppState> {
       }).catch((error) => {
         console.error('sign-in failed ', error)
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        message.error('Could not sign-in user')
+        message.error('Could not sign-in user.')
         this.setState({
           isLoading: false,
           redirectTo: undefined,
@@ -169,6 +177,10 @@ class App extends React.Component<AppProps, AppState> {
         wasAuthSuccessful: true
       })
     }
+  }
+
+  componentDidMount (): void {
+    this.signIn()
   }
 
   render (): React.ReactNode {

@@ -48,6 +48,17 @@ export default class OidcManager implements AuthManager {
   signIn = async ({ onSignIn }: {
     onSignIn?: SignInCallback
   }): Promise<void> => {
+    const handleSignIn = (userData: UserData) => {
+      const user = createUser(userData)
+      const authorization = `${userData.token_type} ${userData.access_token}`
+      if (onSignIn != null) {
+        console.info('handling sign-in using provided callback function')
+        onSignIn({ user: user, authorization: authorization })
+      } else {
+        console.warn('no callback function was provided to handle sign-in')
+      }
+    }
+
     if (isAuthorizationCodeInUrl(window.location)) {
       /* Handle the callback from the authorization server: extract the code
        * from the callback URL, obtain user information and the access token
@@ -55,10 +66,9 @@ export default class OidcManager implements AuthManager {
        */
       console.info('obtaining authorization')
       const userData = await this._oidc.signinCallback()
-      const user = createUser(userData)
-      const authorization = `${userData.token_type} ${userData.access_token}`
-      if (onSignIn !== undefined) {
-        onSignIn({ user: user, authorization: authorization })
+      if (userData != null) {
+        console.info('obtained user data: ', userData)
+        handleSignIn(userData)
       }
     } else {
       /* Redirect to the authorization server to authenticate the user
@@ -70,11 +80,8 @@ export default class OidcManager implements AuthManager {
         console.info('authenticating user')
         await this._oidc.signinRedirect()
       } else {
-        const user = createUser(userData)
-        const authorization = `${userData.token_type} ${userData.access_token}`
-        if (onSignIn !== undefined) {
-          onSignIn({ user: user, authorization: authorization })
-        }
+        console.info('user has already been authenticated')
+        handleSignIn(userData)
       }
     }
   }
