@@ -209,6 +209,20 @@ class App extends React.Component<AppProps, AppState> {
       worklist = <div>Worklist has been disabled.</div>
     }
 
+    let isLogoutPossible = false
+    let onLogout: () => void
+    if (this.props.config.oidc && this.props.config.oidc.endSessionEndpoint) {
+      onLogout = (): void => {
+        if (this.auth != null) {
+          this.auth.signOut()
+        }
+      }
+      isLogoutPossible = true
+    } else {
+      onLogout = () => {}
+      isLogoutPossible = false
+    }
+
     const layoutStyle = { height: '100vh' }
     const layoutContentStyle = { height: '100%' }
 
@@ -224,6 +238,7 @@ class App extends React.Component<AppProps, AppState> {
           <Layout style={layoutStyle}>
             <Header
               app={appInfo}
+              user={this.state.user}
               showWorklistButton={false}
               onServerSelection={this.handleServerSelection}
               showServerSelectionButton={false}
@@ -236,19 +251,7 @@ class App extends React.Component<AppProps, AppState> {
       )
     } else if (!this.state.wasAuthSuccessful) {
       return (
-        <BrowserRouter basename={this.props.config.path}>
-          <Layout style={layoutStyle}>
-            <Header
-              app={appInfo}
-              showWorklistButton={false}
-              onServerSelection={this.handleServerSelection}
-              showServerSelectionButton={enableServerSelection}
-            />
-            <Layout.Content style={layoutContentStyle}>
-              <div>Sign-in failed.</div>
-            </Layout.Content>
-          </Layout>
-        </BrowserRouter>
+        <InfoPage type='error' message='Sign-in failed.' />
       )
     } else if (this.state.error != null) {
       return (
@@ -267,6 +270,7 @@ class App extends React.Component<AppProps, AppState> {
                     user={this.state.user}
                     showWorklistButton={enableWorklist}
                     onServerSelection={this.handleServerSelection}
+                    onUserLogout={isLogoutPossible ? onLogout : undefined}
                     showServerSelectionButton={enableServerSelection}
                   />
                   <Layout.Content style={layoutContentStyle}>
@@ -282,6 +286,19 @@ class App extends React.Component<AppProps, AppState> {
                 </Layout>
               )}
             />
+            <Route exact path='/logout'>
+              <Layout style={layoutStyle}>
+                <Header
+                  app={appInfo}
+                  user={this.state.user}
+                  showWorklistButton={false}
+                  onServerSelection={this.handleServerSelection}
+                  onUserLogout={isLogoutPossible ? onLogout : undefined}
+                  showServerSelectionButton={enableServerSelection}
+                />
+                Logged out
+              </Layout>
+            </Route>
             <Route exact path='/'>
               <Layout style={layoutStyle}>
                 <Header
@@ -289,6 +306,7 @@ class App extends React.Component<AppProps, AppState> {
                   user={this.state.user}
                   showWorklistButton={false}
                   onServerSelection={this.handleServerSelection}
+                  onUserLogout={isLogoutPossible ? onLogout : undefined}
                   showServerSelectionButton={enableServerSelection}
                 />
                 <Layout.Content style={layoutContentStyle}>

@@ -21,7 +21,7 @@ const createUser = (userData: UserData): User => {
 }
 
 export default class OidcManager implements AuthManager {
-  private readonly _oidc: UserManager
+  private _oidc: UserManager
 
   constructor (baseUri: string, settings: OidcSettings) {
     let responseType = 'code'
@@ -38,8 +38,37 @@ export default class OidcManager implements AuthManager {
       response_type: responseType,
       loadUserInfo: true,
       automaticSilentRenew: true,
-      revokeAccessTokenOnSignout: true
+      revokeAccessTokenOnSignout: true,
+      post_logout_redirect_uri: `${baseUri}/logout`
     })
+    if (settings.endSessionEndpoint) {
+      /*
+       * Unfortunately, the end session endpoint alone cannot be provided to
+       * the construction of UserManager and the other metadata parameters
+       * would need to be provided as well. However, configuring all of them
+       * individually would not be desirable and they will be automatically
+       * determined anyways. Therefore, we first construct an object, get the
+       * metadata, update the metadata, and then reconstruct an object with the
+       * updated metadata.
+       */
+      this._oidc.metadataService.getMetadata().then(metadata => {
+        if (settings.endSessionEndpoint) {
+          metadata.end_session_endpoint = settings.endSessionEndpoint
+          this._oidc = new UserManager({
+            authority: settings.authority,
+            client_id: settings.clientId,
+            redirect_uri: baseUri,
+            scope: settings.scope,
+            response_type: responseType,
+            loadUserInfo: true,
+            automaticSilentRenew: true,
+            revokeAccessTokenOnSignout: true,
+            post_logout_redirect_uri: `${baseUri}/logout`,
+            metadata
+          })
+        }
+      })
+    }
   }
 
   /**
@@ -90,8 +119,8 @@ export default class OidcManager implements AuthManager {
    * Sign-out to revoke authorization.
    */
   signOut = async (): Promise<void> => {
-    console.log('revoking authorization')
-    return await this._oidc.removeUser()
+    console.log('signing out user and revoking authorization')
+    return await this._oidc.signoutRedirect()
   }
 
   /**

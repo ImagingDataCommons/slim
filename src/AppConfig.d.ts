@@ -69,6 +69,8 @@ export interface OidcSettings {
   clientId: string
   scope: string
   grantType?: string
+  authorizationEndpoint?: string
+  endSessionEndpoint?: string
 }
 
 export default interface AppConfig {
