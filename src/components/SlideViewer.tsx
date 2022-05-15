@@ -322,6 +322,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   constructor (props: SlideViewerProps) {
     super(props)
+    console.info(
+      `view slide "${this.props.slide.containerIdentifier}": `,
+      this.props.slide
+    )
     const geometryTypeOptions = [
       'point',
       'circle',
@@ -993,6 +997,56 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       'dicommicroscopyviewer_loading_ended',
       this.onLoadingEnded
     )
+
+    const onKeyUp = (
+      event: KeyboardEvent
+    ): void => {
+      if (event.key === 'Escape') {
+        if (this.state.isRoiDrawingActive) {
+          console.info('deactivate drawing of ROIs')
+          this.volumeViewer.deactivateDrawInteraction()
+          this.volumeViewer.activateSelectInteraction({})
+          this.setState({ isRoiDrawingActive: false })
+        } else if (this.state.isRoiModificationActive) {
+          console.info('deactivate modification of ROIs')
+          this.volumeViewer.deactivateModifyInteraction()
+          this.volumeViewer.activateSelectInteraction({})
+          this.setState({ isRoiModificationActive: false })
+        } else if (this.state.isRoiTranslationActive) {
+          console.info('deactivate modification of ROIs')
+          this.volumeViewer.deactivateTranslateInteraction()
+          this.volumeViewer.activateSelectInteraction({})
+          this.setState({ isRoiTranslationActive: false })
+        }
+      } else if (event.key === 'd') {
+        this.handleRoiDrawing()
+        console.info('activate drawing of ROIs')
+        this.setState({
+          isAnnotationModalVisible: true,
+          isRoiDrawingActive: true,
+          isRoiModificationActive: false,
+          isRoiTranslationActive: false
+        })
+        this.volumeViewer.deactivateSelectInteraction()
+        this.volumeViewer.deactivateSnapInteraction()
+        this.volumeViewer.deactivateTranslateInteraction()
+        this.volumeViewer.deactivateModifyInteraction()
+      } else if (event.key === 'm') {
+        this.handleRoiModification()
+      } else if (event.key === 't') {
+        this.handleRoiTranslation()
+      } else if (event.key === 'r') {
+        this.handleRoiRemoval()
+      } else if (event.key === 'v') {
+        this.handleRoiVisibilityChange()
+      } else if (event.key === 's') {
+        this.handleReportGeneration()
+      }
+    }
+    document.body.addEventListener(
+      'keyup',
+      onKeyUp
+    )
   }
 
   componentDidMount (): void {
@@ -1125,7 +1179,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const markup = this.state.selectedMarkup
     if (geometryType !== undefined && finding !== undefined) {
       this.volumeViewer.activateDrawInteraction({ geometryType, markup })
-      this.setState({ isAnnotationModalVisible: false })
+      this.setState({
+        isAnnotationModalVisible: false,
+        isRoiDrawingActive: true
+      })
     } else {
       console.error('could not complete annotation configuration')
     }
@@ -1136,7 +1193,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    */
   handleAnnotationConfigurationCancellation (): void {
     console.debug('cancel annotation configuration')
-    this.setState({ isAnnotationModalVisible: false })
+    this.setState({
+      isAnnotationModalVisible: false,
+      isRoiDrawingActive: false
+    })
   }
 
   /**
@@ -2042,36 +2102,36 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       toolbar = (
         <Row>
           <Button
-            tooltip='Draw ROI'
+            tooltip='Draw ROI [d]'
             icon={FaDrawPolygon}
             onClick={this.handleRoiDrawing}
             isSelected={this.state.isRoiDrawingActive}
           />
           <Button
-            tooltip='Modify ROIs'
+            tooltip='Modify ROIs [m]'
             icon={FaHandPointer}
             onClick={this.handleRoiModification}
             isSelected={this.state.isRoiModificationActive}
           />
           <Button
-            tooltip='Shift ROIs'
+            tooltip='Translate ROIs [t]'
             icon={FaHandPaper}
             onClick={this.handleRoiTranslation}
             isSelected={this.state.isRoiTranslationActive}
           />
           <Button
-            tooltip='Remove selected ROI'
+            tooltip='Remove selected ROI [r]'
             onClick={this.handleRoiRemoval}
             icon={FaTrash}
           />
           <Button
-            tooltip='Show/Hide ROIs'
+            tooltip='Show/Hide ROIs [v]'
             icon={this.state.areRoisHidden ? FaEye : FaEyeSlash}
             onClick={this.handleRoiVisibilityChange}
             isSelected={this.state.areRoisHidden}
           />
           <Button
-            tooltip='Save ROIs'
+            tooltip='Save ROIs [s]'
             icon={FaSave}
             onClick={this.handleReportGeneration}
           />
