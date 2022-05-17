@@ -45,6 +45,7 @@ interface OpticalPathItemProps {
     styleOptions: {
       opacity?: number
       color?: number[]
+      paletteColorLookupTable?: dmv.color.PaletteColorLookupTable
       limitValues?: number[]
     }
   }) => void
@@ -56,6 +57,7 @@ interface OpticalPathItemState {
   currentStyle: {
     opacity: number
     color?: number[]
+    paletteColorLookupTable?: dmv.color.PaletteColorLookupTable
     limitValues?: number[]
   }
 }
@@ -82,8 +84,20 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       currentStyle: {
         opacity: this.props.defaultStyle.opacity,
         color: this.props.defaultStyle.color,
+        paletteColorLookupTable: this.props.defaultStyle.paletteColorLookupTable,
         limitValues: this.props.defaultStyle.limitValues
       }
+    }
+  }
+
+  componentDidUpdate (
+    previousProps: OpticalPathItemProps,
+    previousState: OpticalPathItemState
+  ): void {
+    if (this.props.defaultStyle !== previousProps.defaultStyle) {
+      this.setState({
+        currentStyle: this.props.defaultStyle
+      })
     }
   }
 
@@ -107,13 +121,12 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     const identifier = this.props.opticalPath.identifier
     this.props.onStyleChange({
       opticalPathIdentifier: identifier,
-      styleOptions: {
-        opacity: value
-      }
+      styleOptions: { opacity: value }
     })
     this.setState(state => ({
       currentStyle: {
         color: state.currentStyle.color,
+        paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
         opacity: value,
         limitValues: state.currentStyle.limitValues
       }
@@ -133,6 +146,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       this.setState(state => ({
         currentStyle: {
           color: color,
+          paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
           opacity: state.currentStyle.opacity,
           limitValues: state.currentStyle.limitValues
         }
@@ -157,6 +171,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       this.setState(state => ({
         currentStyle: {
           color: color,
+          paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
           opacity: state.currentStyle.opacity,
           limitValues: state.currentStyle.limitValues
         }
@@ -181,6 +196,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       this.setState(state => ({
         currentStyle: {
           color: color,
+          paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
           opacity: state.currentStyle.opacity,
           limitValues: state.currentStyle.limitValues
         }
@@ -223,6 +239,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
           return {
             currentStyle: {
               color: state.currentStyle.color,
+              paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
               opacity: state.currentStyle.opacity,
               limitValues: [value, state.currentStyle.limitValues[1]]
             }
@@ -231,6 +248,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
           return {
             currentStyle: {
               color: state.currentStyle.color,
+              paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
               opacity: state.currentStyle.opacity,
               limitValues: state.currentStyle.limitValues,
             }
@@ -243,9 +261,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
           limitValues: [
             value,
             this.state.currentStyle.limitValues[1],
-          ],
-          color: this.state.currentStyle.color,
-          opacity: this.state.currentStyle.opacity
+          ]
         }
       })
     }
@@ -261,6 +277,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
           return {
             currentStyle: {
               color: state.currentStyle.color,
+              paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
               opacity: state.currentStyle.opacity,
               limitValues: [state.currentStyle.limitValues[0], value]
             }
@@ -269,6 +286,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
           return {
             currentStyle: {
               color: state.currentStyle.color,
+              paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
               opacity: state.currentStyle.opacity,
               limitValues: state.currentStyle.limitValues,
             }
@@ -281,9 +299,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
           limitValues: [
             this.state.currentStyle.limitValues[0],
             value
-          ],
-          color: this.state.currentStyle.color,
-          opacity: this.state.currentStyle.opacity
+          ]
         }
       })
     }
@@ -296,17 +312,14 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     this.setState(state => ({
       currentStyle: {
         color: state.currentStyle.color,
+        paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
         opacity: state.currentStyle.opacity,
         limitValues: values
       }
     }))
     this.props.onStyleChange({
       opticalPathIdentifier: identifier,
-      styleOptions: {
-        limitValues: values,
-        color: this.state.currentStyle.color,
-        opacity: this.state.currentStyle.opacity
-      }
+      styleOptions: { limitValues: values }
     })
   }
 
@@ -404,31 +417,32 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     if (this.props.opticalPath.isMonochromatic) {
       // monochrome images that can be pseudo-colored
       let colorSettings
-      if (this.props.defaultStyle.color && this.state.currentStyle.color) {
+      if (this.state.currentStyle.color) {
         colorSettings = (
           <>
+            <Divider plain>
+              Color
+            </Divider>
             <Row justify='center' align='middle'>
-              <Col span={3}>
+              <Col span={5}>
                 Red
               </Col>
-              <Col span={18}>
+              <Col span={14}>
                 <Slider
                   range={false}
                   min={0}
                   max={255}
                   step={1}
-                  defaultValue={this.props.defaultStyle.color[0]}
                   value={this.state.currentStyle.color[0]}
                   onChange={this.handleColorRChange}
                 />
               </Col>
-              <Col span={3}>
+              <Col span={5}>
                 <InputNumber
                   min={0}
                   max={255}
                   size='small'
-                  style={{ width: '60px' }}
-                  defaultValue={this.props.defaultStyle.color[0]}
+                  style={{ width: '65px' }}
                   value={this.state.currentStyle.color[0]}
                   onChange={this.handleColorRChange}
                 />
@@ -436,27 +450,25 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
             </Row>
 
             <Row justify='center' align='middle'>
-              <Col span={3}>
+              <Col span={5}>
                 Green
               </Col>
-              <Col span={18}>
+              <Col span={14}>
                 <Slider
                   range={false}
                   min={0}
                   max={255}
                   step={1}
-                  defaultValue={this.props.defaultStyle.color[1]}
                   value={this.state.currentStyle.color[1]}
                   onChange={this.handleColorGChange}
                 />
               </Col>
-              <Col span={3}>
+              <Col span={5}>
                 <InputNumber
                   min={0}
                   max={255}
                   size='small'
-                  style={{ width: '60px' }}
-                  defaultValue={this.props.defaultStyle.color[1]}
+                  style={{ width: '65px' }}
                   value={this.state.currentStyle.color[1]}
                   onChange={this.handleColorGChange}
                 />
@@ -464,27 +476,25 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
             </Row>
 
             <Row justify='center' align='middle'>
-              <Col span={3}>
+              <Col span={5}>
                 Blue
               </Col>
-              <Col span={18}>
+              <Col span={14}>
                 <Slider
                   range={false}
                   min={0}
                   max={255}
                   step={1}
-                  defaultValue={this.props.defaultStyle.color[2]}
                   value={this.state.currentStyle.color[2]}
                   onChange={this.handleColorBChange}
                 />
               </Col>
-              <Col span={3}>
+              <Col span={5}>
                 <InputNumber
                   min={0}
                   max={255}
                   size='small'
-                  style={{ width: '60px' }}
-                  defaultValue={this.props.defaultStyle.color[2]}
+                  style={{ width: '65px' }}
                   value={this.state.currentStyle.color[2]}
                   onChange={this.handleColorBChange}
                 />
@@ -495,88 +505,76 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       }
 
       let windowSettings
-      if (
-        this.props.defaultStyle.limitValues &&
-        this.state.currentStyle.limitValues
-      ) {
+      if (this.state.currentStyle.limitValues) {
         windowSettings = (
-          <Row>
-            <Col span={3}>
-              <InputNumber
-                min={0}
-                max={this.state.currentStyle.limitValues[1]}
-                size='small'
-                style={{ width: '60px' }}
-                defaultValue={this.props.defaultStyle.limitValues[0]}
-                value={this.state.currentStyle.limitValues[0]}
-                onChange={this.handleLowerLimitChange}
-              />
-            </Col>
-            <Col span={18}>
-              <Slider
-                range
-                min={0}
-                max={maxValue}
-                step={1}
-                defaultValue={[
-                  this.props.defaultStyle.limitValues[0],
-                  this.props.defaultStyle.limitValues[1]
-                ]}
-                value={[
-                  this.state.currentStyle.limitValues[0],
-                  this.state.currentStyle.limitValues[1]
-                ]}
-                onChange={this.handleLimitChange}
-              />
-            </Col>
-            <Col span={3}>
-              <InputNumber
-                min={this.state.currentStyle.limitValues[0]}
-                max={maxValue}
-                size='small'
-                style={{ width: '60px' }}
-                defaultValue={this.props.defaultStyle.limitValues[1]}
-                value={this.state.currentStyle.limitValues[1]}
-                onChange={this.handleUpperLimitChange}
-              />
-            </Col>
-          </Row>
+          <>
+            <Divider plain>
+              Values of interest
+            </Divider>
+            <Row justify='center' align='middle'>
+              <Col span={6}>
+                <InputNumber
+                  min={0}
+                  max={this.state.currentStyle.limitValues[1]}
+                  size='small'
+                  style={{ width: '75px' }}
+                  value={this.state.currentStyle.limitValues[0]}
+                  onChange={this.handleLowerLimitChange}
+                />
+              </Col>
+              <Col span={12}>
+                <Slider
+                  range
+                  min={0}
+                  max={maxValue}
+                  step={1}
+                  value={[
+                    this.state.currentStyle.limitValues[0],
+                    this.state.currentStyle.limitValues[1]
+                  ]}
+                  onChange={this.handleLimitChange}
+                />
+              </Col>
+              <Col span={6}>
+                <InputNumber
+                  min={this.state.currentStyle.limitValues[0]}
+                  max={maxValue}
+                  size='small'
+                  style={{ width: '75px' }}
+                  value={this.state.currentStyle.limitValues[1]}
+                  onChange={this.handleUpperLimitChange}
+                />
+              </Col>
+            </Row>
+          </>
         )
       }
       settings = (
         <div>
-          <Divider plain>
-            Values of interest
-          </Divider>
           {windowSettings}
-          <Divider plain>
-            Color
-          </Divider>
           {colorSettings}
           <Divider plain></Divider>
           <Row justify='center' align='middle'>
-            <Col span={3}>
+            <Col span={6}>
               Opacity
             </Col>
-            <Col span={18}>
+            <Col span={12}>
               <Slider
                 range={false}
                 min={0}
                 max={1}
                 step={0.01}
-                defaultValue={this.props.defaultStyle.opacity}
                 value={this.state.currentStyle.opacity}
                 onChange={this.handleOpacityChange}
               />
             </Col>
-            <Col span={3}>
+            <Col span={6}>
               <InputNumber
                 min={0}
                 max={1}
                 size='small'
                 step={0.1}
-                style={{ width: '60px' }}
-                defaultValue={this.props.defaultStyle.opacity}
+                style={{ width: '65px' }}
                 value={this.state.currentStyle.opacity}
                 onChange={this.handleOpacityChange}
               />
@@ -610,28 +608,26 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       settings = (
         <div>
           <Row justify='center' align='middle'>
-            <Col span={3}>
+            <Col span={6}>
               Opacity
             </Col>
-            <Col span={18}>
+            <Col span={12}>
               <Slider
                 range={false}
                 min={0}
                 max={1}
                 step={0.01}
-                defaultValue={this.props.defaultStyle.opacity}
                 value={this.state.currentStyle.opacity}
                 onChange={this.handleOpacityChange}
               />
             </Col>
-            <Col span={3}>
+            <Col span={6}>
               <InputNumber
                 min={0}
                 max={1}
                 size='small'
                 step={0.1}
                 style={{ width: '60px' }}
-                defaultValue={this.props.defaultStyle.opacity}
                 value={this.state.currentStyle.opacity}
                 onChange={this.handleOpacityChange}
               />
@@ -693,7 +689,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
               <Popover
                 placement='left'
                 content={settings}
-                overlayStyle={{ width: '500px' }}
+                overlayStyle={{ width: '350px' }}
                 title='Display Settings'
               >
                 <Button

@@ -68,16 +68,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
   }
 
   render (): React.ReactNode {
-    const identifier = `Segment ${this.props.segment.number}`
     const attributes: Array<{ name: string, value: string }> = [
-      {
-        name: 'Label',
-        value: this.props.segment.label
-      },
-      {
-        name: 'Algorithm Name',
-        value: this.props.segment.algorithmName
-      },
       {
         name: 'Property Category',
         value: this.props.segment.propertyCategory.CodeMeaning
@@ -85,7 +76,11 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
       {
         name: 'Property Type',
         value: this.props.segment.propertyType.CodeMeaning
-      }
+      },
+      {
+        name: 'Algorithm Name',
+        value: this.props.segment.algorithmName
+      },
     ]
 
     const settings = (
@@ -150,7 +145,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
             </Space>
           </div>
           <Description
-            header={identifier}
+            header={this.props.segment.label}
             attributes={attributes}
             selectable
             hasLongValues

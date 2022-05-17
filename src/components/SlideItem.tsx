@@ -1,6 +1,5 @@
 import React from 'react'
 import { FaSpinner } from 'react-icons/fa'
-
 import * as dmv from 'dicom-microscopy-viewer'
 import { Menu } from 'antd'
 
@@ -81,7 +80,6 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
       return (<FaSpinner />)
     }
 
-    const title = this.props.slide.containerIdentifier
     /* Properties need to be propagated down to Menu.Item:
      * https://github.com/react-component/menu/issues/142
      */
@@ -92,7 +90,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
         {...this.props}
       >
         <Description
-          header={title}
+          header={this.props.slide.containerIdentifier}
           attributes={attributes}
           selectable
         >
