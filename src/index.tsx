@@ -25,10 +25,7 @@ if (config.mode === 'dark') {
 }
 
 // @ts-ignore
-const root = ReactDOM.createRoot(
-  document.getElementById('root')
-)
-const element = (
+ReactDOM.render(
   <React.StrictMode>
     <React.Suspense fallback={<div>Loading application...</div>}>
       <App
@@ -38,7 +35,7 @@ const element = (
         homepage='https://github.com/herrmannlab/slim'
       />
     </React.Suspense>
-  </React.StrictMode>
+  </React.StrictMode>,
+  document.getElementById('root')
 )
-root.render(element)
 
