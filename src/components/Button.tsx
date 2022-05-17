@@ -7,6 +7,10 @@ interface ButtonProps {
   label?: string
   onClick?: (options: any) => void
   isSelected?: boolean
+  /* TODO: That is only needed for @types/react==18.0.9. Remove it when it is no
+   * longer needed.
+   */
+  children?: React.ReactNode
 }
 
 /**

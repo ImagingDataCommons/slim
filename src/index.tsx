@@ -24,7 +24,11 @@ if (config.mode === 'dark') {
   App = React.lazy(async () => await import('./AppLight'))
 }
 
-ReactDOM.render(
+// @ts-ignore
+const root = ReactDOM.createRoot(
+  document.getElementById('root')
+)
+const element = (
   <React.StrictMode>
     <React.Suspense fallback={<div>Loading application...</div>}>
       <App
@@ -34,6 +38,7 @@ ReactDOM.render(
         homepage='https://github.com/herrmannlab/slim'
       />
     </React.Suspense>
-  </React.StrictMode>,
-  document.getElementById('root')
+  </React.StrictMode>
 )
+root.render(element)
+

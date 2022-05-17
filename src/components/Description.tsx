@@ -20,6 +20,7 @@ interface DescriptionProps {
   selectable?: boolean
   hasLongValues?: boolean
   methods?: React.ReactNode[]
+  children?: React.ReactNode
 }
 
 /**
