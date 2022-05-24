@@ -139,8 +139,12 @@ class App extends React.Component<AppProps, AppState> {
     const client = this.state.client
     client.updateHeaders({ Authorization: authorization })
     const fullPath = window.location.pathname
+    console.log('DEBUG: ', fullPath)
     const basePath = this.props.config.path
-    const path = fullPath.substring(basePath.length - 1)
+    let path = fullPath.substring(basePath.length)
+    if (basePath === '/' || basePath === '') {
+      path = fullPath
+    }
     this.setState({
       user: user,
       client: client,
