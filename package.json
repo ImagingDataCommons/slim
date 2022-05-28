@@ -4,7 +4,7 @@
   "homepage": "https://github.com/herrmannlab/slim",
   "private": true,
   "scripts": {
-    "start": "craco start",
+    "start": "rm -rf ./node_modules/.cache/default-development && craco start",
     "build": "craco build",
     "lint": "ts-standard --env jest 'src/**/*.{tsx,ts}'",
     "fmt": "ts-standard --env jest 'src/**/*.{tsx,ts}' --fix",
@@ -47,6 +47,8 @@
     "antd": "^4.20.5",
     "classnames": "^2.2.6",
     "craco-less": "^2.0.0",
+    "clean-webpack-plugin": "^4.0.0",
+    "copy-webpack-plugin": "^10.2.4",
     "dcmjs": "^0.19.1",
     "detect-browser": "^5.2.1",
     "dicom-microscopy-viewer": "^0.37.1",
