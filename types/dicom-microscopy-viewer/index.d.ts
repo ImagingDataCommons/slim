@@ -8,7 +8,8 @@ declare module 'dicom-microscopy-viewer' {
     export interface VolumeImageViewerOptions {
       client: dwc.api.DICOMwebClient
       metadata: metadata.VLWholeSlideMicroscopyImage[]
-      debug?: boolean
+      debug?: boolean,
+      controls: string[]
     }
 
     export interface ROIStyleOptions {

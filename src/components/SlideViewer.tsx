@@ -110,9 +110,9 @@ const _constructViewers = ({ client, slide }: {
 } => {
   const volumeViewer = new dmv.viewer.VolumeImageViewer({
     client: client,
-    metadata: slide.volumeImages
+    metadata: slide.volumeImages,
+    controls: ['overview']
   })
-  volumeViewer.toggleOverviewMap()
   volumeViewer.activateSelectInteraction({})
 
   let labelViewer
@@ -281,6 +281,13 @@ interface SlideViewerState {
   isRoiModificationActive: boolean
   isRoiTranslationActive: boolean
   areRoisHidden: boolean
+  pixelDataStatistics: {
+    [opticalPathIdentifier: string]: {
+      min: number
+      max: number
+      numFramesSampled: number
+    }
+  }
 }
 
 /**
@@ -440,7 +447,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       isRoiDrawingActive: false,
       isRoiTranslationActive: false,
       isRoiModificationActive: false,
-      areRoisHidden: false
+      areRoisHidden: false,
+      pixelDataStatistics: {}
     }
   }
 
@@ -1125,6 +1133,34 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.setState({ isLoading: false })
   }
 
+  onFrameLoadingEnded = (event: CustomEventInit): void => {
+    const frameInfo = event.detail.payload
+    if (frameInfo.sopClassUID === SOPClassUIDs.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE) {
+      const opticalPathIdentifier = frameInfo.channelIdentifier
+      if (!(opticalPathIdentifier in this.state.pixelDataStatistics)) {
+        const min = Math.min(...frameInfo.pixelArray)
+        const max = Math.max(...frameInfo.pixelArray)
+        this.setState(state => {
+          const stats = state.pixelDataStatistics
+          if (stats[opticalPathIdentifier]) {
+            stats[opticalPathIdentifier] = {
+              min: Math.min(stats[opticalPathIdentifier].min, min),
+              max: Math.max(stats[opticalPathIdentifier].max, max),
+              numFramesSampled: stats[opticalPathIdentifier].numFramesSampled + 1
+            }
+          } else {
+            stats[opticalPathIdentifier] = {
+              min: min,
+              max: max,
+              numFramesSampled: 1
+            }
+          }
+          return state
+        })
+      }
+    }
+  }
+
   onRoiRemoved = (event: CustomEventInit): void => {
     const roi = event.detail.payload as dmv.roi.ROI
     console.debug(`removed ROI "${roi.uid}"`)
@@ -1155,6 +1191,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       'dicommicroscopyviewer_loading_ended',
       this.onLoadingEnded
     )
+    document.body.removeEventListener(
+      'dicommicroscopyviewer_frame_loading_ended',
+      this.onFrameLoadingEnded
+    )
+
     this.volumeViewer.cleanup()
     if (this.labelViewer != null) {
       this.labelViewer.cleanup()
@@ -1198,6 +1239,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     document.body.addEventListener(
       'dicommicroscopyviewer_loading_ended',
       this.onLoadingEnded
+    )
+    document.body.addEventListener(
+      'dicommicroscopyviewer_frame_loading_ended',
+      this.onFrameLoadingEnded
     )
 
     const onKeyUp = (
@@ -1873,30 +1918,56 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   setDefaultPresentationState (): void {
     const opticalPaths = this.volumeViewer.getAllOpticalPaths()
     /*
-     * If no presentation state has been selected, activate first optical
-     * path. It will be displayed with its default style.
+     * If no presentation state has been selected, activate first 3 optical
+     * paths and set a default style.
      */
-    const identifier = opticalPaths[0].identifier
-    this.setState(state => ({
-      activeOpticalPathIdentifiers: [identifier],
-      visibleOpticalPathIdentifiers: [identifier]
-    }))
+    const allOpticalPathIdentifiers = opticalPaths.map(item => item.identifier)
+    allOpticalPathIdentifiers.sort()
+    const selectedColors = [
+      [0, 0, 255],
+      [0, 255, 0],
+      [255, 0, 0]
+    ]
+    const selectedOpticalPathIdentifiers = allOpticalPathIdentifiers.slice(
+      0,
+      selectedColors.length
+    )
     this.volumeViewer.getAllOpticalPaths().forEach(opticalPath => {
+      const index = selectedOpticalPathIdentifiers.indexOf(
+        opticalPath.identifier
+      )
+      const style: {
+        opacity: number,
+        color?: number[]
+        limitValues?: number[]
+      } = { opacity: 1 }
       if (opticalPath.isMonochromatic) {
-        const style = { color: [255, 255, 255] }
+        if (index >= 0) {
+          style.color = selectedColors[index]
+        } else {
+          style.color = [255, 255, 255]
+        }
+        const stats = this.state.pixelDataStatistics[opticalPath.identifier]
+        if (stats) {
+          style.limitValues = [stats.min, stats.max]
+        }
         this.volumeViewer.setOpticalPathStyle(opticalPath.identifier, style)
       } else {
-        const style = { opacity: 1 }
         this.volumeViewer.setOpticalPathStyle(opticalPath.identifier, style)
       }
-      if (opticalPath.identifier !== identifier) {
-        this.volumeViewer.deactivateOpticalPath(opticalPath.identifier)
-      } else {
+
+      if (index >= 0) {
         if (!this.volumeViewer.isOpticalPathActive(opticalPath.identifier)) {
           this.volumeViewer.showOpticalPath(opticalPath.identifier)
         }
+      } else {
+        this.volumeViewer.deactivateOpticalPath(opticalPath.identifier)
       }
     })
+    this.setState(state => ({
+      activeOpticalPathIdentifiers: selectedOpticalPathIdentifiers,
+      visibleOpticalPathIdentifiers: selectedOpticalPathIdentifiers
+    }))
   }
 
   /**
@@ -2246,6 +2317,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       [identifier: string]: dmv.metadata.VLWholeSlideMicroscopyImage[]
     } = {}
     const opticalPaths = this.volumeViewer.getAllOpticalPaths()
+    opticalPaths.sort((a, b) => {
+      if (a.identifier < b.identifier) {
+        return -1
+      } else if (a.identifier > b.identifier) {
+        return 1
+      }
+      return 0
+    })
     opticalPaths.forEach(opticalPath => {
       const identifier = opticalPath.identifier
       const metadata = this.volumeViewer.getOpticalPathMetadata(identifier)
