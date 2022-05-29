@@ -10,14 +10,15 @@ RUN apt-get update && \
     curl \
     dumb-init \
     gnupg \
-    nginx \
-    nodejs && \
+    nginx && \
     apt-get clean
 
 RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
     echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
+    curl -sS https://deb.nodesource.com/setup_16.x | bash - && \
     apt-get update && \
     apt-get install -y --no-install-suggests --no-install-recommends \
+    nodejs \
     yarn && \
     apt-get clean
 
