@@ -1140,11 +1140,27 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   onFrameLoadingEnded = (event: CustomEventInit): void => {
     const frameInfo = event.detail.payload
-    if (frameInfo.sopClassUID === SOPClassUIDs.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE) {
+    if (
+      frameInfo.sopClassUID === SOPClassUIDs.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE &&
+      this.props.slide.areVolumeImagesMonochrome
+    ) {
       const opticalPathIdentifier = frameInfo.channelIdentifier
       if (!(opticalPathIdentifier in this.state.pixelDataStatistics)) {
-        const min = Math.min(...frameInfo.pixelArray)
-        const max = Math.max(...frameInfo.pixelArray)
+        /*
+         * There are limits on the number of arguments Math.min and Math.max
+         * functions can accept. Therefore, we compute values in smaller chunks.
+         */
+        const size = 2**16
+        const chunks = Math.ceil(frameInfo.pixelArray.length / size)
+        let offset = 0
+        let min = 0
+        let max = 0
+        for (let i = 0; i < chunks; i++) {
+          offset = i * size
+          const pixels = frameInfo.pixelArray.slice(offset, size)
+          min = Math.min(min, ...pixels)
+          max = Math.max(max, ...pixels)
+        }
         this.setState(state => {
           const stats = state.pixelDataStatistics
           if (stats[opticalPathIdentifier]) {
