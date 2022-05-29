@@ -17,11 +17,9 @@ services:
     user: nginx
     depends_on:
       - arc
-    # volumes:
-    #   - ./build/:/var/www/html/:ro
 
   ldap:
-    image: dcm4che/slapd-dcm4chee:2.6.0-25.1
+    image: dcm4che/slapd-dcm4chee:2.6.0-26.0
     logging:
       driver: json-file
       options:
@@ -32,9 +30,11 @@ services:
     volumes:
       - ldap_data:/var/lib/openldap/openldap-data
       - ldap_config:/etc/openldap/slapd.d
+      - ./etc/openldap/data/modify-dcmRemapRetrieveURL.ldif:/etc/openldap/data/modify-dcmRemapRetrieveURL.ldif:ro
+      - ./etc/openldap/data/modify-dcmWebServicePath.ldif:/etc/openldap/data/modify-dcmWebServicePath.ldif:ro
 
   db:
-    image: dcm4che/postgres-dcm4chee:14.1-25
+    image: dcm4che/postgres-dcm4chee:14.2-26
     logging:
       driver: json-file
       options:
@@ -46,7 +46,7 @@ services:
       - db_data:/var/lib/postgresql/data
 
   arc:
-    image: dcm4che/dcm4chee-arc-psql:5.25.1
+    image: dcm4che/dcm4chee-arc-psql:5.26.0
     logging:
       driver: json-file
       options:
