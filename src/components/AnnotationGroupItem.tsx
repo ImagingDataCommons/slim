@@ -2,6 +2,8 @@ import React from 'react'
 import {
   Button,
   Col,
+  Divider,
+  InputNumber,
   Menu,
   Popover,
   Row,
@@ -152,27 +154,42 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
 
     const settings = (
       <div>
-        <Row justify='center' align='middle'>
-          <Col span={9}>
+        <Row justify='start' align='middle' gutter={[ 8, 8 ]}>
+          <Col span={6}>
             Opacity
           </Col>
-          <Col span={15}>
+          <Col span={12}>
             <Slider
-              min={0.01}
+              range={false}
+              min={0}
               max={1}
               step={0.01}
-              defaultValue={this.state.currentStyle.opacity}
-              onAfterChange={this.handleOpacityChange}
+              value={this.state.currentStyle.opacity}
+              onChange={this.handleOpacityChange}
+            />
+          </Col>
+          <Col span={6}>
+            <InputNumber
+              min={0}
+              max={1}
+              size='small'
+              step={0.1}
+              style={{ width: '65px' }}
+              value={this.state.currentStyle.opacity}
+              onChange={this.handleOpacityChange}
             />
           </Col>
         </Row>
-        <Row justify='center' align='middle'>
-          <Col span={15}>
+        <Divider plain>
+          Exploration
+        </Divider>
+        <Row justify='start' align='middle' gutter={[ 8, 8 ]}>
+          <Col span={8}>
             Measurement
           </Col>
-          <Col span={9}>
+          <Col span={16}>
             <Select
-              style={{ minWidth: 30 }}
+              style={{ minWidth: '65px', width: '90%' }}
               onSelect={this.handleMeasurementSelection}
               key='annotation-group-measurements'
               defaultValue={undefined}
@@ -212,6 +229,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
               <Popover
                 placement='left'
                 content={settings}
+                overlayStyle={{ width: '350px' }}
                 title='Display Settings'
               >
                 <Button
