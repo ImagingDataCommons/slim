@@ -12,6 +12,7 @@ window.config = {
   disableWorklist: false,
   disableAnnotationTools: false,
   mode: 'light',
+  preload: true,
   annotations: [
     {
       finding: {

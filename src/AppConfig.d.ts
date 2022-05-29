@@ -90,4 +90,5 @@ export default interface AppConfig {
   disableAnnotationTools?: boolean
   enableServerSelection?: boolean
   mode?: string
+  preload?: boolean
 }

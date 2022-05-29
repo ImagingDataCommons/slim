@@ -281,6 +281,7 @@ class App extends React.Component<AppProps, AppState> {
                       client={this.state.client}
                       user={this.state.user}
                       annotations={this.props.config.annotations}
+                      preload={this.props.config.preload}
                       app={appInfo}
                       enableAnnotationTools={enableAnnotationTools}
                       studyInstanceUID={routeProps.match.params.StudyInstanceUID}

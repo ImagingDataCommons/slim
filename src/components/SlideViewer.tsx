@@ -101,9 +101,10 @@ const _areROIsEqual = (a: dmv.roi.ROI, b: dmv.roi.ROI): boolean => {
   return true
 }
 
-const _constructViewers = ({ client, slide }: {
+const _constructViewers = ({ client, slide, preload }: {
   client: dwc.api.DICOMwebClient
   slide: Slide
+  preload?: boolean
 }): {
   volumeViewer: dmv.viewer.VolumeImageViewer
   labelViewer?: dmv.viewer.LabelImageViewer
@@ -111,7 +112,8 @@ const _constructViewers = ({ client, slide }: {
   const volumeViewer = new dmv.viewer.VolumeImageViewer({
     client: client,
     metadata: slide.volumeImages,
-    controls: ['overview']
+    controls: ['overview'],
+    preload: preload
   })
   volumeViewer.activateSelectInteraction({})
 
@@ -250,6 +252,7 @@ interface SlideViewerProps extends RouteComponentProps {
     uid: string
     organization?: string
   }
+  preload?: boolean
   annotations: AnnotationSettings[]
   enableAnnotationTools: boolean
   user?: {
@@ -412,7 +415,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     )
     const { volumeViewer, labelViewer } = _constructViewers({
       client: this.props.client,
-      slide: this.props.slide
+      slide: this.props.slide,
+      preload: this.props.preload
     })
     this.volumeViewer = volumeViewer
     this.labelViewer = labelViewer
@@ -472,7 +476,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       }
       const { volumeViewer, labelViewer } = _constructViewers({
         client: this.props.client,
-        slide: this.props.slide
+        slide: this.props.slide,
+        preload: this.props.preload
       })
       this.volumeViewer = volumeViewer
       this.labelViewer = labelViewer

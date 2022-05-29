@@ -34,6 +34,7 @@ interface ViewerProps extends RouteComponentProps {
   }
   annotations: AnnotationSettings[]
   enableAnnotationTools: boolean
+  preload?: boolean
   user?: {
     name: string
     email: string
@@ -225,6 +226,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
                     seriesInstanceUID={routeProps.match.params.SeriesInstanceUID}
                     selectedPresentationStateUID={presentationStateUID}
                     slide={selectedSlide}
+                    preload={this.props.preload}
                     annotations={this.props.annotations}
                     enableAnnotationTools={this.props.enableAnnotationTools}
                     app={this.props.app}
