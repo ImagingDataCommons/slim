@@ -1980,9 +1980,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       opticalPaths.forEach(item => {
         if (item.isMonochromatic) {
           const numVisible = visibleOpticalPathIdentifiers.length
-          if (numVisible <= 3) {
+          if (numVisible < 3) {
             const style = this.volumeViewer.getOpticalPathStyle(item.identifier)
-            const index = numVisible - 1
+            const index = numVisible
             style.color = defaultColors[index]
             const stats = this.state.pixelDataStatistics[item.identifier]
             if (stats) {
