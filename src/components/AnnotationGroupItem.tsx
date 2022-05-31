@@ -154,7 +154,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
 
     const settings = (
       <div>
-        <Row justify='start' align='middle' gutter={[ 8, 8 ]}>
+        <Row justify='start' align='middle' gutter={[8, 8]}>
           <Col span={6}>
             Opacity
           </Col>
@@ -183,7 +183,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
         <Divider plain>
           Exploration
         </Divider>
-        <Row justify='start' align='middle' gutter={[ 8, 8 ]}>
+        <Row justify='start' align='middle' gutter={[8, 8]}>
           <Col span={8}>
             Measurement
           </Col>

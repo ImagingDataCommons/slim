@@ -348,7 +348,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       'polygon',
       'line',
       'freehandpolygon',
-      'freehandline',
+      'freehandline'
     ]
     props.annotations.forEach((annotation: AnnotationSettings) => {
       const finding = new dcmjs.sr.coding.CodedConcept(annotation.finding)
@@ -539,13 +539,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             )
             let doesMatch = false
             presentationState.AdvancedBlendingSequence.forEach(blendingItem => {
-                const index = this.props.slide.seriesInstanceUIDs.indexOf(
-                  blendingItem.SeriesInstanceUID
-                )
-                if (index >= 0) {
-                  doesMatch = true
-                }
+              const index = this.props.slide.seriesInstanceUIDs.indexOf(
+                blendingItem.SeriesInstanceUID
+              )
+              if (index >= 0) {
+                doesMatch = true
               }
+            }
             )
             if (doesMatch) {
               console.info(
@@ -615,9 +615,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           if (index >= 0) {
             const paletteColorLUT = new dmv.color.PaletteColorLookupTable({
               uid: (
-                blendingItem.PaletteColorLookupTableUID ?
-                blendingItem.PaletteColorLookupTableUID :
-                ''
+                blendingItem.PaletteColorLookupTableUID != null
+                  ? blendingItem.PaletteColorLookupTableUID
+                  : ''
               ),
               redDescriptor:
                 blendingItem.RedPaletteColorLookupTableDescriptor,
@@ -626,57 +626,57 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               blueDescriptor:
                 blendingItem.BluePaletteColorLookupTableDescriptor,
               redData: (
-                blendingItem.RedPaletteColorLookupTableData ?
-                new Uint16Array(
-                  blendingItem.RedPaletteColorLookupTableData
-                ) :
-                undefined
+                (blendingItem.RedPaletteColorLookupTableData != null)
+                  ? new Uint16Array(
+                    blendingItem.RedPaletteColorLookupTableData
+                  )
+                  : undefined
               ),
               greenData: (
-                blendingItem.GreenPaletteColorLookupTableData ?
-                new Uint16Array(
-                  blendingItem.GreenPaletteColorLookupTableData
-                ) :
-                undefined
+                (blendingItem.GreenPaletteColorLookupTableData != null)
+                  ? new Uint16Array(
+                    blendingItem.GreenPaletteColorLookupTableData
+                  )
+                  : undefined
               ),
               blueData: (
-                blendingItem.BluePaletteColorLookupTableData ?
-                new Uint16Array(
-                  blendingItem.BluePaletteColorLookupTableData
-                ) :
-                undefined
+                (blendingItem.BluePaletteColorLookupTableData != null)
+                  ? new Uint16Array(
+                    blendingItem.BluePaletteColorLookupTableData
+                  )
+                  : undefined
               ),
               redSegmentedData: (
-                blendingItem.SegmentedRedPaletteColorLookupTableData ?
-                new Uint16Array(
-                  blendingItem.SegmentedRedPaletteColorLookupTableData
-                ) :
-                undefined
+                (blendingItem.SegmentedRedPaletteColorLookupTableData != null)
+                  ? new Uint16Array(
+                    blendingItem.SegmentedRedPaletteColorLookupTableData
+                  )
+                  : undefined
               ),
               greenSegmentedData: (
-                blendingItem.SegmentedGreenPaletteColorLookupTableData ?
-                new Uint16Array(
-                  blendingItem.SegmentedGreenPaletteColorLookupTableData
-                ) :
-                undefined
+                (blendingItem.SegmentedGreenPaletteColorLookupTableData != null)
+                  ? new Uint16Array(
+                    blendingItem.SegmentedGreenPaletteColorLookupTableData
+                  )
+                  : undefined
               ),
               blueSegmentedData: (
-                blendingItem.SegmentedBluePaletteColorLookupTableData ?
-                new Uint16Array(
-                  blendingItem.SegmentedBluePaletteColorLookupTableData
-                ) :
-                undefined
+                (blendingItem.SegmentedBluePaletteColorLookupTableData != null)
+                  ? new Uint16Array(
+                    blendingItem.SegmentedBluePaletteColorLookupTableData
+                  )
+                  : undefined
               )
             })
 
             let limitValues
-            if (blendingItem.SoftcopyVOILUTSequence) {
+            if (blendingItem.SoftcopyVOILUTSequence != null) {
               const voiLUTItem = blendingItem.SoftcopyVOILUTSequence[0]
               const windowCenter = voiLUTItem.WindowCenter
               const windowWidth = voiLUTItem.WindowWidth
               limitValues = [
                 windowCenter - windowWidth * 0.5,
-                windowCenter + windowWidth * 0.5,
+                windowCenter + windowWidth * 0.5
               ]
             }
 
@@ -706,7 +706,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     console.log('DEBUG: ', opticalPathStyles, selectedOpticalPathIdentifiers)
     this.setState(state => ({
       activeOpticalPathIdentifiers: selectedOpticalPathIdentifiers,
-      visibleOpticalPathIdentifiers: selectedOpticalPathIdentifiers,
+      visibleOpticalPathIdentifiers: selectedOpticalPathIdentifiers
     }))
   }
 
@@ -1162,7 +1162,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
          * There are limits on the number of arguments Math.min and Math.max
          * functions can accept. Therefore, we compute values in smaller chunks.
          */
-        const size = 2**16
+        const size = 2 ** 16
         const chunks = Math.ceil(frameInfo.pixelArray.length / size)
         let offset = 0
         let min = 0
@@ -1175,7 +1175,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         }
         this.setState(state => {
           const stats = state.pixelDataStatistics
-          if (stats[opticalPathIdentifier]) {
+          if (stats[opticalPathIdentifier] != null) {
             stats[opticalPathIdentifier] = {
               min: Math.min(stats[opticalPathIdentifier].min, min),
               max: Math.max(stats[opticalPathIdentifier].max, max),
@@ -1953,12 +1953,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     opticalPaths.sort((a, b) => a.identifier - b.identifier)
 
     const visibleOpticalPathIdentifiers: string[] = []
-    opticalPaths.forEach(item => {
+    opticalPaths.forEach((item: dmv.opticalPath.OpticalPath) => {
       // First, hide all optical paths.
       this.volumeViewer.hideOpticalPath(item.identifier)
       this.volumeViewer.deactivateOpticalPath(item.identifier)
       if (item.isMonochromatic) {
-        if (item.paletteColorLookupTableUID) {
+        if (item.paletteColorLookupTableUID != null) {
           visibleOpticalPathIdentifiers.push(item.identifier)
         }
       } else {
@@ -1977,7 +1977,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         [0, 255, 0],
         [255, 0, 0]
       ]
-      opticalPaths.forEach(item => {
+      opticalPaths.forEach((item: dmv.opticalPath.OpticalPath) => {
         if (item.isMonochromatic) {
           const numVisible = visibleOpticalPathIdentifiers.length
           if (numVisible < 3) {
@@ -1985,7 +1985,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             const index = numVisible
             style.color = defaultColors[index]
             const stats = this.state.pixelDataStatistics[item.identifier]
-            if (stats) {
+            if (stats != null) {
               style.limitValues = [stats.min, stats.max]
             }
             this.volumeViewer.setOpticalPathStyle(item.identifier, style)
@@ -2027,12 +2027,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     value?: string,
     option?: any
   ): void {
-    if (value) {
+    if (value != null) {
       console.info(`select Presentation State instance "${value}"`)
       const presentationState = this.state.presentationStates.find(item => {
         return item.SOPInstanceUID === value
       })
-      if (presentationState) {
+      if (presentationState != null) {
         this.setPresentationState(presentationState)
         let urlPath = this.props.location.pathname
         urlPath += `?state=${presentationState.SOPInstanceUID}`

@@ -135,7 +135,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     )
     if (
       this.props.location.pathname.includes('/series/') &&
-      this.props.location.search
+      this.props.location.search != null
     ) {
       urlPath += this.props.location.search
     }

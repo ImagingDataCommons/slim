@@ -150,8 +150,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
             icon={UserOutlined}
             onClick={e => e.preventDefault()}
             label={`${this.props.user.name} (${this.props.user.email})`}
-          >
-          </Button>
+          />
         </Dropdown>
       )
     }

@@ -90,7 +90,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
       {
         name: 'Algorithm Name',
         value: this.props.segment.algorithmName
-      },
+      }
     ]
 
     const settings = (

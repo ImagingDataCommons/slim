@@ -250,7 +250,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
               color: state.currentStyle.color,
               paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
               opacity: state.currentStyle.opacity,
-              limitValues: state.currentStyle.limitValues,
+              limitValues: state.currentStyle.limitValues
             }
           }
         }
@@ -260,7 +260,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
         styleOptions: {
           limitValues: [
             value,
-            this.state.currentStyle.limitValues[1],
+            this.state.currentStyle.limitValues[1]
           ]
         }
       })
@@ -288,7 +288,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
               color: state.currentStyle.color,
               paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
               opacity: state.currentStyle.opacity,
-              limitValues: state.currentStyle.limitValues,
+              limitValues: state.currentStyle.limitValues
             }
           }
         }
@@ -417,13 +417,13 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     if (this.props.opticalPath.isMonochromatic) {
       // monochrome images that can be pseudo-colored
       let colorSettings
-      if (this.state.currentStyle.color) {
+      if (this.state.currentStyle.color != null) {
         colorSettings = (
           <>
             <Divider plain>
               Color
             </Divider>
-            <Row justify='center' align='middle' gutter={[ 8, 8 ]}>
+            <Row justify='center' align='middle' gutter={[8, 8]}>
               <Col span={5}>
                 Red
               </Col>
@@ -449,7 +449,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
               </Col>
             </Row>
 
-            <Row justify='center' align='middle' gutter={[ 8, 8 ]}>
+            <Row justify='center' align='middle' gutter={[8, 8]}>
               <Col span={5}>
                 Green
               </Col>
@@ -475,7 +475,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
               </Col>
             </Row>
 
-            <Row justify='center' align='middle' gutter={[ 8, 8 ]}>
+            <Row justify='center' align='middle' gutter={[8, 8]}>
               <Col span={5}>
                 Blue
               </Col>
@@ -505,13 +505,13 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       }
 
       let windowSettings
-      if (this.state.currentStyle.limitValues) {
+      if (this.state.currentStyle.limitValues != null) {
         windowSettings = (
           <>
             <Divider plain>
               Values of interest
             </Divider>
-            <Row justify='center' align='middle' gutter={[ 8, 8 ]}>
+            <Row justify='center' align='middle' gutter={[8, 8]}>
               <Col span={6}>
                 <InputNumber
                   min={0}
@@ -553,8 +553,8 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
         <div>
           {windowSettings}
           {colorSettings}
-          <Divider plain></Divider>
-          <Row justify='center' align='middle' gutter={[ 8, 8 ]}>
+          <Divider plain />
+          <Row justify='center' align='middle' gutter={[8, 8]}>
             <Col span={6}>
               Opacity
             </Col>
@@ -607,7 +607,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       // color images
       settings = (
         <div>
-          <Row justify='center' align='middle' gutter={[ 8, 8 ]}>
+          <Row justify='center' align='middle' gutter={[8, 8]}>
             <Col span={6}>
               Opacity
             </Col>

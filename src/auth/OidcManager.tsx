@@ -41,7 +41,7 @@ export default class OidcManager implements AuthManager {
       revokeAccessTokenOnSignout: true,
       post_logout_redirect_uri: `${baseUri}/logout`
     })
-    if (settings.endSessionEndpoint) {
+    if (settings.endSessionEndpoint != null) {
       /*
        * Unfortunately, the end session endpoint alone cannot be provided to
        * the construction of UserManager and the other metadata parameters
@@ -52,7 +52,7 @@ export default class OidcManager implements AuthManager {
        * updated metadata.
        */
       this._oidc.metadataService.getMetadata().then(metadata => {
-        if (settings.endSessionEndpoint) {
+        if (settings.endSessionEndpoint != null) {
           metadata.end_session_endpoint = settings.endSessionEndpoint
           this._oidc = new UserManager({
             authority: settings.authority,
@@ -67,6 +67,11 @@ export default class OidcManager implements AuthManager {
             metadata
           })
         }
+      }).catch((error) => {
+        console.error(
+          'failed to get metadata from authorization server: ',
+          error
+        )
       })
     }
   }
@@ -77,7 +82,7 @@ export default class OidcManager implements AuthManager {
   signIn = async ({ onSignIn }: {
     onSignIn?: SignInCallback
   }): Promise<void> => {
-    const handleSignIn = (userData: UserData) => {
+    const handleSignIn = (userData: UserData): void => {
       const user = createUser(userData)
       const authorization = `${userData.token_type} ${userData.access_token}`
       if (onSignIn != null) {

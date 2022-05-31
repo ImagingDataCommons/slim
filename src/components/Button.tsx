@@ -31,11 +31,11 @@ class Button extends React.Component<ButtonProps, {}> {
     }
 
     let text
-    if (this.props.label) {
+    if (this.props.label != null) {
       text = (
         <>
-        <Divider type='vertical' />
-        {this.props.label}
+          <Divider type='vertical' />
+          {this.props.label}
         </>
       )
     }

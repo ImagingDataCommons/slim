@@ -736,6 +736,7 @@ declare module 'dicom-microscopy-viewer' {
       get sopInstanceUIDs (): string[]
       get isMonochromatic (): boolean
       get isColorable (): boolean
+      get paletteColorLookupTableUID (): string
     }
   }
 

@@ -214,9 +214,14 @@ class App extends React.Component<AppProps, AppState> {
 
     let isLogoutPossible = false
     let onLogout: () => void
-    if (this.props.config.oidc && this.props.config.oidc.endSessionEndpoint) {
+    if (
+      // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
+      this.props.config.oidc != null &&
+      this.props.config.oidc.endSessionEndpoint != null
+    ) {
       onLogout = (): void => {
         if (this.auth != null) {
+          // eslint-disable-next-line @typescript-eslint/no-floating-promises
           this.auth.signOut()
         }
       }
