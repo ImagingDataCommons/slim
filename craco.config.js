@@ -1,5 +1,4 @@
 const CracoLessPlugin = require('craco-less')
-const { CleanWebpackPlugin } = require('clean-webpack-plugin')
 const CopyWebpackPlugin = require('copy-webpack-plugin')
 
 module.exports = {
@@ -44,12 +43,13 @@ module.exports = {
         }
       }
       config.plugins.push(
-        // Clean output.path
-        new CleanWebpackPlugin(),
         // TO DO: remove hard coded path
         new CopyWebpackPlugin({
           patterns: [
-            { from: './node_modules/dicom-microscopy-viewer/dist/dynamic-import', to: './static/js' }
+            {
+              from: './node_modules/dicom-microscopy-viewer/dist/dynamic-import',
+              to: './static/js'
+            }
           ]
         })
       )
