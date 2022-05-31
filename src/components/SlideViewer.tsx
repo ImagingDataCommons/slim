@@ -598,6 +598,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     console.info(
       `apply Presentation State instance "${presentationState.SOPInstanceUID}"`
     )
+    const opticalPathStyles: {
+      [opticalPathIdentifier: string]: {
+        opacity: number
+        paletteColorLookupTable: dmv.color.PaletteColorLookupTable
+        limitValues?: number[]
+      } | null
+    } = {}
     opticalPaths.forEach(opticalPath => {
       presentationState.AdvancedBlendingSequence.forEach(blendingItem => {
         blendingItem.ReferencedImageSequence.forEach(imageItem => {
@@ -673,29 +680,34 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               ]
             }
 
-            const styleOptions = {
+            opticalPathStyles[identifier] = {
               opacity: 1,
               paletteColorLookupTable: paletteColorLUT,
               limitValues: limitValues
             }
-            this.volumeViewer.setOpticalPathStyle(identifier, styleOptions)
-            this.volumeViewer.activateOpticalPath(identifier)
-            this.volumeViewer.showOpticalPath(identifier)
-
-            this.setState(state => ({
-              activeOpticalPathIdentifiers: [
-                ...state.activeOpticalPathIdentifiers,
-                identifier
-              ],
-              visibleOpticalPathIdentifiers: [
-                ...state.visibleOpticalPathIdentifiers,
-                identifier
-              ]
-            }))
           }
         })
       })
     })
+
+    const selectedOpticalPathIdentifiers: string[] = []
+    Object.keys(opticalPathStyles).forEach(identifier => {
+      const styleOptions = opticalPathStyles[identifier]
+      if (styleOptions != null) {
+        this.volumeViewer.setOpticalPathStyle(identifier, styleOptions)
+        this.volumeViewer.activateOpticalPath(identifier)
+        this.volumeViewer.showOpticalPath(identifier)
+        selectedOpticalPathIdentifiers.push(identifier)
+      } else {
+        this.volumeViewer.hideOpticalPath(identifier)
+        this.volumeViewer.deactivateOpticalPath(identifier)
+      }
+    })
+    console.log('DEBUG: ', opticalPathStyles, selectedOpticalPathIdentifiers)
+    this.setState(state => ({
+      activeOpticalPathIdentifiers: selectedOpticalPathIdentifiers,
+      visibleOpticalPathIdentifiers: selectedOpticalPathIdentifiers,
+    }))
   }
 
   getRoiStyle = (key: string): dmv.viewer.ROIStyleOptions => {
@@ -1938,56 +1950,61 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   setDefaultPresentationState (): void {
     const opticalPaths = this.volumeViewer.getAllOpticalPaths()
-    /*
-     * If no presentation state has been selected, activate first 3 optical
-     * paths and set a default style.
-     */
-    const allOpticalPathIdentifiers = opticalPaths.map(item => item.identifier)
-    allOpticalPathIdentifiers.sort()
-    const selectedColors = [
-      [0, 0, 255],
-      [0, 255, 0],
-      [255, 0, 0]
-    ]
-    const selectedOpticalPathIdentifiers = allOpticalPathIdentifiers.slice(
-      0,
-      selectedColors.length
-    )
-    this.volumeViewer.getAllOpticalPaths().forEach(opticalPath => {
-      const index = selectedOpticalPathIdentifiers.indexOf(
-        opticalPath.identifier
-      )
-      const style: {
-        opacity: number,
-        color?: number[]
-        limitValues?: number[]
-      } = { opacity: 1 }
-      if (opticalPath.isMonochromatic) {
-        if (index >= 0) {
-          style.color = selectedColors[index]
-        } else {
-          style.color = [255, 255, 255]
-        }
-        const stats = this.state.pixelDataStatistics[opticalPath.identifier]
-        if (stats) {
-          style.limitValues = [stats.min, stats.max]
-        }
-        this.volumeViewer.setOpticalPathStyle(opticalPath.identifier, style)
-      } else {
-        this.volumeViewer.setOpticalPathStyle(opticalPath.identifier, style)
-      }
+    opticalPaths.sort((a, b) => a.identifier - b.identifier)
 
-      if (index >= 0) {
-        if (!this.volumeViewer.isOpticalPathActive(opticalPath.identifier)) {
-          this.volumeViewer.showOpticalPath(opticalPath.identifier)
+    const visibleOpticalPathIdentifiers: string[] = []
+    opticalPaths.forEach(item => {
+      // First, hide all optical paths.
+      this.volumeViewer.hideOpticalPath(item.identifier)
+      this.volumeViewer.deactivateOpticalPath(item.identifier)
+      if (item.isMonochromatic) {
+        if (item.paletteColorLookupTableUID) {
+          visibleOpticalPathIdentifiers.push(item.identifier)
         }
       } else {
-        this.volumeViewer.deactivateOpticalPath(opticalPath.identifier)
+        visibleOpticalPathIdentifiers.push(item.identifier)
       }
     })
+
+    /*
+     * If no optical paths have been selected for visualization so far, select
+     * first 3 optical paths and set a default value of interest (VOI) window
+     * and a default color.
+     */
+    if (visibleOpticalPathIdentifiers.length === 0) {
+      const defaultColors = [
+        [0, 0, 255],
+        [0, 255, 0],
+        [255, 0, 0]
+      ]
+      opticalPaths.forEach(item => {
+        if (item.isMonochromatic) {
+          const numVisible = visibleOpticalPathIdentifiers.length
+          if (numVisible <= 3) {
+            const style = this.volumeViewer.getOpticalPathStyle(item.identifier)
+            const index = numVisible - 1
+            style.color = defaultColors[index]
+            const stats = this.state.pixelDataStatistics[item.identifier]
+            if (stats) {
+              style.limitValues = [stats.min, stats.max]
+            }
+            this.volumeViewer.setOpticalPathStyle(item.identifier, style)
+            visibleOpticalPathIdentifiers.push(item.identifier)
+          }
+        }
+      })
+    }
+
+    console.info(
+      `selected n=${visibleOpticalPathIdentifiers.length} optical paths ` +
+      'for visualization'
+    )
+    visibleOpticalPathIdentifiers.forEach(identifier => {
+      this.volumeViewer.showOpticalPath(identifier)
+    })
     this.setState(state => ({
-      activeOpticalPathIdentifiers: selectedOpticalPathIdentifiers,
-      visibleOpticalPathIdentifiers: selectedOpticalPathIdentifiers
+      activeOpticalPathIdentifiers: visibleOpticalPathIdentifiers,
+      visibleOpticalPathIdentifiers: visibleOpticalPathIdentifiers
     }))
   }
 
