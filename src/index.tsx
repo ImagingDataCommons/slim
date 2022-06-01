@@ -24,7 +24,6 @@ if (config.mode === 'dark') {
   App = React.lazy(async () => await import('./AppLight'))
 }
 
-// @ts-expect-error
 ReactDOM.render(
   <React.StrictMode>
     <React.Suspense fallback={<div>Loading application...</div>}>
