@@ -12,7 +12,16 @@ It relies on [DICOMweb](https://www.dicomstandard.org/dicomweb/) RESTful service
 
 <img src="docs/screenshots/IDC_CPTAC_C3L-00965-26.png" alt="IDC CPTAC C3L-00965-26" width="100%">
 
-Use *Slim* to visually explore public IDC cancer imaging data collections by visiting the IDC web portal: [portal.imaging.datacommons.cancer.gov](https://portal.imaging.datacommons.cancer.gov/).
+Explore public IDC cancer imaging data collections by visiting the IDC web portal: [portal.imaging.datacommons.cancer.gov](https://portal.imaging.datacommons.cancer.gov/).
+
+The IDC viewer uses the [Google Cloud Healthcare API](https://cloud.google.com/healthcare-api/) as DICOMweb server.
+
+### Demo
+
+Explore additional slide microscopy imaging data sets and advanced viewer features at [herrmannlab.github.io/slim](https://herrmannlab.github.io/slim/).
+
+The demo viewer uses an instance of the open-source [DCM4CHEE Archive](https://github.com/dcm4che/dcm4chee-arc-light) as DICOMweb server.
+
 
 The IDC viewer uses the [Google Cloud Healthcare API](https://cloud.google.com/healthcare-api/) as DICOMweb server.
 
