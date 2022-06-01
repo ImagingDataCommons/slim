@@ -5,7 +5,7 @@ on:
   push:
     branches: [ master ]
 jobs:
-  build_and_preview:
+  deploy-firebase:
     if: '${{ github.event.pull_request.head.repo.full_name == github.repository }}'
     runs-on: ubuntu-latest
     steps:

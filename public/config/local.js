@@ -1,6 +1,6 @@
 window.config = {
   // This must match the location configured for web server
-  path: '/viewer',
+  path: '/',
   servers: [
     {
       id: 'local',

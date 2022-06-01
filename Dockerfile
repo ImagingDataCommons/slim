@@ -1,4 +1,4 @@
-FROM debian:bullseye AS lib
+FROM debian:bookworm AS lib
 
 ENV DEBIAN_FRONTEND=noninteractive \
     DEBCONF_NONINTERACTIVE_SEEN=true
@@ -13,7 +13,8 @@ RUN apt-get update && \
     nginx && \
     apt-get clean
 
-RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
+RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && \
+    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
     echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
     curl -sS https://deb.nodesource.com/setup_16.x | bash - && \
     apt-get update && \
@@ -60,8 +61,7 @@ RUN NODE_OPTIONS=--max_old_space_size=8192 yarn run build && \
 RUN mkdir -p /var/run/nginx && \
     chown -R nginx:nginx /var/www/html /var/run/nginx /var/lib/nginx /var/log/nginx && \
     chmod -R 0755 /var/www/html /var/run/nginx /var/lib/nginx /var/log/nginx && \
-    rm -r /etc/nginx/conf.d /etc/nginx/sites-available /etc/nginx/sites-enabled && \
-    rm -r /var/www/html/*
+    rm -r /etc/nginx/conf.d /etc/nginx/sites-available /etc/nginx/sites-enabled
 
 COPY etc/nginx/conf.d /etc/nginx/conf.d
 COPY etc/nginx/nginx.conf /etc/nginx/
