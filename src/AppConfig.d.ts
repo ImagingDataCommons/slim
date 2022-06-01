@@ -31,8 +31,10 @@ export interface MeasurementSetting {
 
 export interface AnnotationSettings {
   finding: dcmjs.sr.coding.CodeOptions
+  findingCategory?: dcmjs.sr.coding.CodeOptions
   evaluations?: EvaluationSetting[]
   measurements?: MeasurementSetting[]
+  geometryTypes?: string[]
   style?: {
     stroke: {
       color: number[]
@@ -67,6 +69,8 @@ export interface OidcSettings {
   clientId: string
   scope: string
   grantType?: string
+  authorizationEndpoint?: string
+  endSessionEndpoint?: string
 }
 
 export default interface AppConfig {
@@ -86,4 +90,5 @@ export default interface AppConfig {
   disableAnnotationTools?: boolean
   enableServerSelection?: boolean
   mode?: string
+  preload?: boolean
 }

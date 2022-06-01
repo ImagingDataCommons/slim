@@ -121,8 +121,6 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
                 value: item.TextValue
               })
             }
-          } else {
-            console.debug(`specimen preparation step #${index} not rendered`)
           }
         })
       }

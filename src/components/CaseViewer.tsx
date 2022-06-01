@@ -34,6 +34,7 @@ interface ViewerProps extends RouteComponentProps {
   }
   annotations: AnnotationSettings[]
   enableAnnotationTools: boolean
+  preload?: boolean
   user?: {
     name: string
     email: string
@@ -128,9 +129,17 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     { seriesInstanceUID }: { seriesInstanceUID: string }
   ): void {
     console.info(`switch to series "${seriesInstanceUID}"`)
-    this.props.history.push(
-      `/studies/${this.props.studyInstanceUID}/series/${seriesInstanceUID}`
+    let urlPath = (
+      `/studies/${this.props.studyInstanceUID}` +
+      `/series/${seriesInstanceUID}`
     )
+    if (
+      this.props.location.pathname.includes('/series/') &&
+      this.props.location.search != null
+    ) {
+      urlPath += this.props.location.search
+    }
+    this.props.history.push(urlPath)
   }
 
   render (): React.ReactNode {
@@ -201,6 +210,13 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
                   return uid === routeProps.match.params.SeriesInstanceUID
                 })
               })
+              const params = new URLSearchParams(routeProps.location.search)
+              let presentationStateUID: string|null|undefined = params.get(
+                'state'
+              )
+              if (presentationStateUID === null) {
+                presentationStateUID = undefined
+              }
               let viewer = null
               if (selectedSlide != null) {
                 viewer = (
@@ -208,7 +224,9 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
                     client={this.props.client}
                     studyInstanceUID={this.props.studyInstanceUID}
                     seriesInstanceUID={routeProps.match.params.SeriesInstanceUID}
+                    selectedPresentationStateUID={presentationStateUID}
                     slide={selectedSlide}
+                    preload={this.props.preload}
                     annotations={this.props.annotations}
                     enableAnnotationTools={this.props.enableAnnotationTools}
                     app={this.props.app}

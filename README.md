@@ -23,13 +23,21 @@ Explore additional slide microscopy imaging data sets and advanced viewer featur
 The demo viewer uses an instance of the open-source [DCM4CHEE Archive](https://github.com/dcm4che/dcm4chee-arc-light) as DICOMweb server.
 
 
+The IDC viewer uses the [Google Cloud Healthcare API](https://cloud.google.com/healthcare-api/) as DICOMweb server.
+
+### Demo
+
+To check out additional viewer features (multiplexed immunofluorescence, segmentations, annotations, etc.) on a variety of imaging data sets visit the live demo at [herrmannlab.github.io/slim](https://herrmannlab.github.io/slim/).
+
+The demo viewer uses an instance of the open-source [DCM4CHEE Archive](https://github.com/dcm4che/dcm4chee-arc-light) as DICOMweb server.
+
 ## Features
 
 ### Display of images
 
-*Slim* enables interactive visualization of DICOM VL Whole Slide Microscopy Image instances in a vendor-neutral and device-independent manner.
+*Slim* enables interactive visualization of [DICOM VL Whole Slide Microscopy Image](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_A.32.8.html) instances in a vendor-neutral and device-independent manner.
 
-Interoperability with various image acquisition and management systems was successfully demonstrated interoperability at the [DICOM WG-26 Connectathon at Path Visions 2020](https://digitalpathologyassociation.org/past-presentations#PV20) and the [DICOM WG-26 Hackathon at Path Visions 2021](https://digitalpathologyassociation.org/past-presentations#PV21).
+Interoperability with various image acquisition and management systems was successfully demonstrated at the [DICOM WG-26 Connectathon at Path Visions 2020](https://digitalpathologyassociation.org/past-presentations#PV20) and the [DICOM WG-26 Hackathon at Path Visions 2021](https://digitalpathologyassociation.org/past-presentations#PV21).
 Shown below are screenshots of examples images that are publicly available on the NEMA FTP server at [medical.nema.org](ftp://medical.nema.org).
 
 |     | Vendor | Illumination | Stain |
@@ -78,7 +86,7 @@ Users can authenticate and authorize the application to access data via [OpenID 
 
 ## Configuration
 
-The app can be configured via a `public/config/{name}.js` JavaScript configuration file.
+The app can be configured via a `public/config/{name}.js` JavaScript configuration file (see for example the default `public/config/local.js`).
 Please refer to the [AppConfig.d.ts](src/AppConfig.d.ts) file for configuration options.
 
 The configuration can be changed at build-time using the `REACT_APP_CONFIG` environment variable.
@@ -92,7 +100,8 @@ yarn install
 PUBLIC_URL=/ yarn build
 ```
 
-Once the app has been built, the content of the `build` folder can be directly served by a static web server at `/`.
+Once the app has been built, the content of the `build` folder can be directly served by a static web server at the location specified by `PUBLIC_URL` (in this case at `/`).
+The `PUBLIC_URL` must be either a full URL or a relative path to the location at which the viewer application will get deployed (e.g., `PUBLIC_URL=https://herrmannlab.github.io/slim` or `PUBLIC_URL='/slim'`).
 
 
 ### Local
@@ -171,7 +180,8 @@ window.config = {
     authority: "https://accounts.google.com",
     clientId: gcpClientID,
     scope: "email profile openid https://www.googleapis.com/auth/cloud-healthcare",
-    grantType: "implicit"
+    grantType: "implicit",
+    endSessionEndpoint: "https://www.google.com/accounts/Logout"
   },
   annotations: [
     {
@@ -214,7 +224,7 @@ window.config = {
 
 Create an [OIDC client ID for web application](https://developers.google.com/identity/sign-in/web/sign-in).
 
-Note that Google's OIDC implementation does currently not yet support the authorization code grant type with PKCE challenge.
+Note that Google's OIDC implementation does currently not yet support the authorization code grant type with PKCE challenge for private clients.
 For the time being, the legacy implicit grand type has to be used.
 
 

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Button as Btn, Tooltip } from 'antd'
+import { Button as Btn, Divider, Tooltip } from 'antd'
 
 interface ButtonProps {
   icon: any
@@ -29,6 +29,17 @@ class Button extends React.Component<ButtonProps, {}> {
     if (Icon === undefined) {
       return null
     }
+
+    let text
+    if (this.props.label != null) {
+      text = (
+        <>
+          <Divider type='vertical' />
+          {this.props.label}
+        </>
+      )
+    }
+
     let button
     if (this.props.isSelected ?? false) {
       button = (
@@ -36,8 +47,9 @@ class Button extends React.Component<ButtonProps, {}> {
           onClick={this.handleClick}
           icon={<Icon />}
           type='primary'
+          style={{ lineHeight: '1.0' }}
         >
-          {this.props.label}
+          {text}
         </Btn>
       )
     } else {
@@ -46,8 +58,9 @@ class Button extends React.Component<ButtonProps, {}> {
           onClick={this.handleClick}
           icon={<Icon />}
           type='default'
+          style={{ lineHeight: '1.0' }}
         >
-          {this.props.label}
+          {text}
         </Btn>
       )
     }

@@ -1,6 +1,16 @@
 import React from 'react'
 import * as dmv from 'dicom-microscopy-viewer'
-import { Button, Col, Menu, Popover, Row, Slider, Space, Switch } from 'antd'
+import {
+  Button,
+  Col,
+  InputNumber,
+  Menu,
+  Popover,
+  Row,
+  Slider,
+  Space,
+  Switch
+} from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
 
@@ -68,16 +78,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
   }
 
   render (): React.ReactNode {
-    const identifier = `Segment ${this.props.segment.number}`
     const attributes: Array<{ name: string, value: string }> = [
-      {
-        name: 'Label',
-        value: this.props.segment.label
-      },
-      {
-        name: 'Algorithm Name',
-        value: this.props.segment.algorithmName
-      },
       {
         name: 'Property Category',
         value: this.props.segment.propertyCategory.CodeMeaning
@@ -85,22 +86,38 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
       {
         name: 'Property Type',
         value: this.props.segment.propertyType.CodeMeaning
+      },
+      {
+        name: 'Algorithm Name',
+        value: this.props.segment.algorithmName
       }
     ]
 
     const settings = (
       <div>
         <Row justify='center' align='middle'>
-          <Col span={9}>
+          <Col span={6}>
             Opacity
           </Col>
-          <Col span={15}>
+          <Col span={12}>
             <Slider
-              min={0.01}
+              range={false}
+              min={0}
               max={1}
               step={0.01}
-              defaultValue={this.state.currentStyle.opacity}
-              onAfterChange={this.handleOpacityChange}
+              value={this.state.currentStyle.opacity}
+              onChange={this.handleOpacityChange}
+            />
+          </Col>
+          <Col span={6}>
+            <InputNumber
+              min={0}
+              max={1}
+              size='small'
+              step={0.1}
+              style={{ width: '65px' }}
+              value={this.state.currentStyle.opacity}
+              onChange={this.handleOpacityChange}
             />
           </Col>
         </Row>
@@ -139,6 +156,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
               <Popover
                 placement='left'
                 content={settings}
+                overlayStyle={{ width: '350px' }}
                 title='Display Settings'
               >
                 <Button
@@ -150,7 +168,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
             </Space>
           </div>
           <Description
-            header={identifier}
+            header={this.props.segment.label}
             attributes={attributes}
             selectable
             hasLongValues

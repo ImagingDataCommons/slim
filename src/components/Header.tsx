@@ -1,11 +1,16 @@
 import React from 'react'
-import { NavLink } from 'react-router-dom'
 import {
-  Avatar,
+  NavLink,
+  RouteComponentProps,
+  withRouter
+} from 'react-router-dom'
+import {
   Col,
   Descriptions,
+  Dropdown,
   Input,
   Layout,
+  Menu,
   Modal,
   Row,
   Space
@@ -22,7 +27,7 @@ import { detect } from 'detect-browser'
 
 import Button from './Button'
 
-interface HeaderProps {
+interface HeaderProps extends RouteComponentProps {
   app: {
     name: string
     version: string
@@ -36,6 +41,7 @@ interface HeaderProps {
   }
   showWorklistButton: boolean
   onServerSelection: ({ url }: { url: string }) => void
+  onUserLogout?: () => void
   showServerSelectionButton: boolean
 }
 
@@ -123,13 +129,29 @@ class Header extends React.Component<HeaderProps, HeaderState> {
   render (): React.ReactNode {
     var user = null
     if (this.props.user !== undefined) {
+      const userMenuItems = []
+      if (this.props.onUserLogout !== undefined) {
+        userMenuItems.push(
+          {
+            label: 'Logout',
+            key: 'user-logout',
+            onClick: () => {
+              if (this.props.onUserLogout !== undefined) {
+                this.props.onUserLogout()
+              }
+            }
+          }
+        )
+      }
+      const userMenu = <Menu items={userMenuItems} />
       user = (
-        <>
-          <Avatar shape='square' icon={<UserOutlined />} />
-          <span>
-            {this.props.user.name} ({this.props.user.email})
-          </span>
-        </>
+        <Dropdown overlay={userMenu} trigger={['click']}>
+          <Button
+            icon={UserOutlined}
+            onClick={e => e.preventDefault()}
+            label={`${this.props.user.name} (${this.props.user.email})`}
+          />
+        </Dropdown>
       )
     }
 
@@ -219,7 +241,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
             </Col>
             <Col flex='auto' />
             <Col>
-              <Space align='center' direction='horizontal'>
+              <Space direction='horizontal'>
                 {worklistButton}
                 {infoButton}
                 {serverSelectionButton}
@@ -251,4 +273,4 @@ class Header extends React.Component<HeaderProps, HeaderState> {
   }
 }
 
-export default Header
+export default withRouter(Header)

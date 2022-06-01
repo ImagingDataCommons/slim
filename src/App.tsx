@@ -43,6 +43,9 @@ class App extends React.Component<AppProps, AppState> {
     error: dwc.api.DICOMwebClientError,
     serverSettings: ServerSettings
   ): void => {
+    if (error.status === 401) {
+      this.signIn()
+    }
     if (serverSettings.errorMessages !== undefined) {
       serverSettings.errorMessages.forEach(
         ({ status, message }: ErrorMessageSettings) => {
@@ -129,11 +132,18 @@ class App extends React.Component<AppProps, AppState> {
     user: User
     authorization: string
   }): void => {
+    console.info(
+      `handle sign in of user "${user.name}" and ` +
+      `update authorization token "${authorization}"`
+    )
     const client = this.state.client
     client.updateHeaders({ Authorization: authorization })
     const fullPath = window.location.pathname
     const basePath = this.props.config.path
-    const path = fullPath.substring(basePath.length - 1)
+    let path = fullPath.substring(basePath.length)
+    if (basePath === '/' || basePath === '') {
+      path = fullPath
+    }
     this.setState({
       user: user,
       client: client,
@@ -143,10 +153,11 @@ class App extends React.Component<AppProps, AppState> {
     })
   }
 
-  componentDidMount (): void {
+  signIn (): void {
     if (this.auth !== undefined) {
+      console.info('try to sign in user')
       this.auth.signIn({ onSignIn: this.handleSignIn }).then(() => {
-        console.info('sign-in successful')
+        console.info('sign-in was successful')
         this.setState({
           isLoading: false,
           redirectTo: undefined,
@@ -155,7 +166,7 @@ class App extends React.Component<AppProps, AppState> {
       }).catch((error) => {
         console.error('sign-in failed ', error)
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        message.error('Could not sign-in user')
+        message.error('Could not sign-in user.')
         this.setState({
           isLoading: false,
           redirectTo: undefined,
@@ -169,6 +180,10 @@ class App extends React.Component<AppProps, AppState> {
         wasAuthSuccessful: true
       })
     }
+  }
+
+  componentDidMount (): void {
+    this.signIn()
   }
 
   render (): React.ReactNode {
@@ -197,6 +212,25 @@ class App extends React.Component<AppProps, AppState> {
       worklist = <div>Worklist has been disabled.</div>
     }
 
+    let isLogoutPossible = false
+    let onLogout: () => void
+    if (
+      // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
+      this.props.config.oidc != null &&
+      this.props.config.oidc.endSessionEndpoint != null
+    ) {
+      onLogout = (): void => {
+        if (this.auth != null) {
+          // eslint-disable-next-line @typescript-eslint/no-floating-promises
+          this.auth.signOut()
+        }
+      }
+      isLogoutPossible = true
+    } else {
+      onLogout = () => {}
+      isLogoutPossible = false
+    }
+
     const layoutStyle = { height: '100vh' }
     const layoutContentStyle = { height: '100%' }
 
@@ -212,6 +246,7 @@ class App extends React.Component<AppProps, AppState> {
           <Layout style={layoutStyle}>
             <Header
               app={appInfo}
+              user={this.state.user}
               showWorklistButton={false}
               onServerSelection={this.handleServerSelection}
               showServerSelectionButton={false}
@@ -224,19 +259,7 @@ class App extends React.Component<AppProps, AppState> {
       )
     } else if (!this.state.wasAuthSuccessful) {
       return (
-        <BrowserRouter basename={this.props.config.path}>
-          <Layout style={layoutStyle}>
-            <Header
-              app={appInfo}
-              showWorklistButton={false}
-              onServerSelection={this.handleServerSelection}
-              showServerSelectionButton={enableServerSelection}
-            />
-            <Layout.Content style={layoutContentStyle}>
-              <div>Sign-in failed.</div>
-            </Layout.Content>
-          </Layout>
-        </BrowserRouter>
+        <InfoPage type='error' message='Sign-in failed.' />
       )
     } else if (this.state.error != null) {
       return (
@@ -255,6 +278,7 @@ class App extends React.Component<AppProps, AppState> {
                     user={this.state.user}
                     showWorklistButton={enableWorklist}
                     onServerSelection={this.handleServerSelection}
+                    onUserLogout={isLogoutPossible ? onLogout : undefined}
                     showServerSelectionButton={enableServerSelection}
                   />
                   <Layout.Content style={layoutContentStyle}>
@@ -262,6 +286,7 @@ class App extends React.Component<AppProps, AppState> {
                       client={this.state.client}
                       user={this.state.user}
                       annotations={this.props.config.annotations}
+                      preload={this.props.config.preload}
                       app={appInfo}
                       enableAnnotationTools={enableAnnotationTools}
                       studyInstanceUID={routeProps.match.params.StudyInstanceUID}
@@ -270,6 +295,19 @@ class App extends React.Component<AppProps, AppState> {
                 </Layout>
               )}
             />
+            <Route exact path='/logout'>
+              <Layout style={layoutStyle}>
+                <Header
+                  app={appInfo}
+                  user={this.state.user}
+                  showWorklistButton={false}
+                  onServerSelection={this.handleServerSelection}
+                  onUserLogout={isLogoutPossible ? onLogout : undefined}
+                  showServerSelectionButton={enableServerSelection}
+                />
+                Logged out
+              </Layout>
+            </Route>
             <Route exact path='/'>
               <Layout style={layoutStyle}>
                 <Header
@@ -277,6 +315,7 @@ class App extends React.Component<AppProps, AppState> {
                   user={this.state.user}
                   showWorklistButton={false}
                   onServerSelection={this.handleServerSelection}
+                  onUserLogout={isLogoutPossible ? onLogout : undefined}
                   showServerSelectionButton={enableServerSelection}
                 />
                 <Layout.Content style={layoutContentStyle}>

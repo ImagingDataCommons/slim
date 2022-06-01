@@ -1,7 +1,6 @@
 import React from 'react'
 import { v4 as generateUUID } from 'uuid'
 import { Card, Descriptions } from 'antd'
-import { IconType } from 'react-icons'
 
 export interface Attribute {
   name: string
@@ -15,11 +14,12 @@ export interface AttributeGroup {
 
 interface DescriptionProps {
   header?: string
-  icon?: IconType
+  icon?: any
   attributes: Attribute[]
   selectable?: boolean
   hasLongValues?: boolean
   methods?: React.ReactNode[]
+  children?: React.ReactNode
 }
 
 /**
