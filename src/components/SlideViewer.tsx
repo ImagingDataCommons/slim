@@ -539,12 +539,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             )
             let doesMatch = false
             presentationState.AdvancedBlendingSequence.forEach(blendingItem => {
-              const index = this.props.slide.seriesInstanceUIDs.indexOf(
+              doesMatch = this.props.slide.seriesInstanceUIDs.includes(
                 blendingItem.SeriesInstanceUID
               )
-              if (index >= 0) {
-                doesMatch = true
-              }
             }
             )
             if (doesMatch) {
@@ -552,17 +549,28 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 'include Advanced Blending Presentation State instance ' +
                 `"${presentationState.SOPInstanceUID}"`
               )
-              this.setState(state => ({
-                presentationStates: [
-                  ...state.presentationStates,
-                  presentationState
-                ]
-              }))
               if (
                 presentationState.SOPInstanceUID ===
-                this.props.selectedPresentationStateUID
+                this.props.selectedPresentationStateUID || (
+                  this.props.selectedPresentationStateUID === undefined &&
+                  this.state.presentationStates.length === 0
+                )
               ) {
                 this.setPresentationState(presentationState)
+                this.setState(state => ({
+                  presentationStates: [
+                    ...state.presentationStates,
+                    presentationState
+                  ],
+                  selectedPresentationStateUID: presentationState.SOPInstanceUID
+                }))
+              } else {
+                this.setState(state => ({
+                  presentationStates: [
+                    ...state.presentationStates,
+                    presentationState
+                  ]
+                }))
               }
             }
           } else {
