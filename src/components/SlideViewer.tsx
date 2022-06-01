@@ -614,9 +614,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       } | null
     } = {}
     opticalPaths.forEach(opticalPath => {
+      // First, deactivate and hide all optical paths
+      const identifier = opticalPath.identifier
+      this.volumeViewer.hideOpticalPath(identifier)
+      this.volumeViewer.deactivateOpticalPath(identifier)
+
       presentationState.AdvancedBlendingSequence.forEach(blendingItem => {
         blendingItem.ReferencedImageSequence.forEach(imageItem => {
-          const identifier = opticalPath.identifier
           const index = opticalPath.sopInstanceUIDs.indexOf(
             imageItem.ReferencedSOPInstanceUID
           )
