@@ -480,6 +480,12 @@ declare module 'dicom-microscopy-viewer' {
       SpecimenDescriptionSequence: SpecimenDescription[]
       // Optical Path module
       OpticalPathSequence: OpticalPath[]
+      // Equipment
+      Manufacturer: string
+      ManufacturerModelName: string
+      DeviceSerialNumber: string
+      SoftwareVersions: string | string[]
+      InstitutionName?: string
     }
 
     export interface Comprehensive3DSR extends SOPClass {

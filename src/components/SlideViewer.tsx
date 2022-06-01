@@ -33,6 +33,7 @@ import DicomWebManager from '../DicomWebManager'
 import AnnotationList from './AnnotationList'
 import AnnotationGroupList from './AnnotationGroupList'
 import Button from './Button'
+import Equipment from './Equipment'
 import Report, { MeasurementReport } from './Report'
 import SpecimenList from './SpecimenList'
 import OpticalPathList from './OpticalPathList'
@@ -2394,6 +2395,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       </Menu.SubMenu>
     )
 
+    const equipmentMenu = (
+      <Menu.SubMenu key='equipment' title='Equipment'>
+        <Equipment metadata={this.props.slide.volumeImages[0]} />
+      </Menu.SubMenu>
+    )
+
     const defaultOpticalPathStyles: {
       [identifier: string]: {
         opacity: number
@@ -2693,6 +2700,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               </Menu.Item>
             </Menu.SubMenu>
             {specimenMenu}
+            {equipmentMenu}
             {opticalPathMenu}
             {presentationStateMenu}
             <Menu.SubMenu key='annotations' title='Annotations'>
