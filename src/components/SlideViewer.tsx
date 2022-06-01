@@ -1987,25 +1987,36 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.volumeViewer.hideOpticalPath(identifier)
       this.volumeViewer.deactivateOpticalPath(identifier)
 
-      // Reset the style of the optical path to its default (if available).
+      /*
+       * Reset the style of the optical path to its default if it has
+       * previously been changed.
+       */
       const stats = this.state.pixelDataStatistics[item.identifier]
       let limitValues
       if (stats != null) {
         limitValues = [stats.min, stats.max]
       }
-      this.volumeViewer.setOpticalPathStyle(
-        identifier,
-        {
-          color: [255, 255, 255],
-          limitValues,
-          opacity: 1
-        }
-      )
+      if (identifier in defaultOpticalPathStyles) {
+        this.volumeViewer.setOpticalPathStyle(
+          identifier,
+          {
+            color: [255, 255, 255],
+            limitValues,
+            opacity: 1
+          }
+        )
+      }
+
       if (item.isMonochromatic) {
+        /*
+         * If the image metadata contains a palette color lookup table for the
+         * optical path, then it will be displayed by default.
+         */
         if (item.paletteColorLookupTableUID != null) {
           visibleOpticalPathIdentifiers.push(identifier)
         }
       } else {
+        /* Color images will always be displayed by default. */
         visibleOpticalPathIdentifiers.push(identifier)
       }
     })
@@ -2013,7 +2024,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     /*
      * If no optical paths have been selected for visualization so far, select
      * first 3 optical paths and set a default value of interest (VOI) window
-     * and a default color.
+     * (using pre-computed pixel data statistics) and a default color.
      */
     if (visibleOpticalPathIdentifiers.length === 0) {
       const defaultColors = [
