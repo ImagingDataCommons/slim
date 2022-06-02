@@ -30,6 +30,7 @@ interface AppProps {
 interface AppState {
   client: DicomWebManager
   user?: User
+  url: string
   isLoading: boolean
   redirectTo?: string
   wasAuthSuccessful: boolean
@@ -98,6 +99,7 @@ class App extends React.Component<AppProps, AppState> {
         settings: props.config.servers,
         onError: this.handleDICOMwebError
       }),
+      url: appUri,
       isLoading: true,
       wasAuthSuccessful: false
     }
@@ -236,13 +238,13 @@ class App extends React.Component<AppProps, AppState> {
 
     if (this.state.redirectTo !== undefined) {
       return (
-        <BrowserRouter basename={this.props.config.path}>
+        <BrowserRouter basename={this.state.url}>
           <Redirect push to={this.state.redirectTo} />
         </BrowserRouter>
       )
     } else if (this.state.isLoading) {
       return (
-        <BrowserRouter basename={this.props.config.path}>
+        <BrowserRouter basename={this.state.url}>
           <Layout style={layoutStyle}>
             <Header
               app={appInfo}
@@ -267,7 +269,7 @@ class App extends React.Component<AppProps, AppState> {
       )
     } else {
       return (
-        <BrowserRouter basename={this.props.config.path}>
+        <BrowserRouter basename={this.state.url}>
           <Switch>
             <Route
               path='/studies/:StudyInstanceUID'
