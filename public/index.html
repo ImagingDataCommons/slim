@@ -27,6 +27,27 @@
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
     <title>Slim</title>
+
+    <script type="text/javascript">
+      /*
+       * Hack for GitHub Pages (https://github.com/rafgraph/spa-github-pages)
+       * This script checks whether a redirect is present in the query string,
+       * converts it back into the correct URL and adds it to the browser's
+       * history without causing a page reload.
+       * When Slim is subsequently loaded, the correct URL will be available in
+       * the browser's history for the app to route accordingly.
+       */
+      (function(l) {
+        if (l.search[1] === '/' && window.location.includes('github.io')) {
+          var decoded = l.search.slice(1).split('&').map(function(s) {
+            return s.replace(/~and~/g, '&')
+          }).join('?');
+          window.history.replaceState(null, null,
+              l.pathname.slice(0, -1) + decoded + l.hash
+          );
+        }
+      }(window.location))
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
