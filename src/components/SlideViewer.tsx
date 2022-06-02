@@ -568,6 +568,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 )
               ) {
                 this.setPresentationState(presentationState)
+                this.setState(state => ({
+                  presentationStates: [
+                    ...state.presentationStates,
+                    presentationState
+                  ]
+                }))
               } else {
                 this.setState(state => ({
                   presentationStates: [
@@ -719,14 +725,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         this.volumeViewer.deactivateOpticalPath(identifier)
       }
     })
-    console.log('DEBUG: ', opticalPathStyles, selectedOpticalPathIdentifiers)
     this.setState(state => ({
       activeOpticalPathIdentifiers: selectedOpticalPathIdentifiers,
       visibleOpticalPathIdentifiers: selectedOpticalPathIdentifiers,
-      presentationStates: [
-        ...state.presentationStates,
-        presentationState
-      ],
       selectedPresentationStateUID: presentationState.SOPInstanceUID
     }))
   }
@@ -2455,6 +2456,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     )
 
     let presentationStateMenu
+    console.log('DEBUG: ', this.state.presentationStates)
     if (this.state.presentationStates.length > 0) {
       const presentationStateOptions = this.state.presentationStates.map(
         presentationState => {
