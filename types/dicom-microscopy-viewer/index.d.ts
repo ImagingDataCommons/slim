@@ -598,16 +598,18 @@ declare module 'dicom-microscopy-viewer' {
           ReferencedSOPClassUID: string
           ReferencedSOPInstanceUID: string
         }>
-        RedPaletteColorLookupTableDescriptor: number[]
-        GreenPaletteColorLookupTableDescriptor: number[]
-        BluePaletteColorLookupTableDescriptor: number[]
-        RedPaletteColorLookupTableData?: Uint16Array
-        GreenPaletteColorLookupTableData?: Uint16Array
-        BluePaletteColorLookupTableData?: Uint16Array
-        SegmentedRedPaletteColorLookupTableData?: Uint16Array
-        SegmentedGreenPaletteColorLookupTableData?: Uint16Array
-        SegmentedBluePaletteColorLookupTableData?: Uint16Array
-        PaletteColorLookupTableUID?: string
+        PaletteColorLookupTableSequence: Array<{
+          RedPaletteColorLookupTableDescriptor: number[]
+          GreenPaletteColorLookupTableDescriptor: number[]
+          BluePaletteColorLookupTableDescriptor: number[]
+          RedPaletteColorLookupTableData?: Uint16Array
+          GreenPaletteColorLookupTableData?: Uint16Array
+          BluePaletteColorLookupTableData?: Uint16Array
+          SegmentedRedPaletteColorLookupTableData?: Uint16Array
+          SegmentedGreenPaletteColorLookupTableData?: Uint16Array
+          SegmentedBluePaletteColorLookupTableData?: Uint16Array
+          PaletteColorLookupTableUID?: string
+        }>
         SoftcopyVOILUTSequence: Array<{
           WindowCenter: number
           WindowWidth: number

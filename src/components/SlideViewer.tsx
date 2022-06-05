@@ -619,7 +619,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const opticalPathStyles: {
       [opticalPathIdentifier: string]: {
         opacity: number
-        paletteColorLookupTable: dmv.color.PaletteColorLookupTable
+        paletteColorLookupTable?: dmv.color.PaletteColorLookupTable
         limitValues?: number[]
       } | null
     } = {}
@@ -635,61 +635,65 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             imageItem.ReferencedSOPInstanceUID
           )
           if (index >= 0) {
-            const paletteColorLUT = new dmv.color.PaletteColorLookupTable({
-              uid: (
-                blendingItem.PaletteColorLookupTableUID != null
-                  ? blendingItem.PaletteColorLookupTableUID
-                  : ''
-              ),
-              redDescriptor:
-                blendingItem.RedPaletteColorLookupTableDescriptor,
-              greenDescriptor:
-                blendingItem.GreenPaletteColorLookupTableDescriptor,
-              blueDescriptor:
-                blendingItem.BluePaletteColorLookupTableDescriptor,
-              redData: (
-                (blendingItem.RedPaletteColorLookupTableData != null)
-                  ? new Uint16Array(
-                    blendingItem.RedPaletteColorLookupTableData
-                  )
-                  : undefined
-              ),
-              greenData: (
-                (blendingItem.GreenPaletteColorLookupTableData != null)
-                  ? new Uint16Array(
-                    blendingItem.GreenPaletteColorLookupTableData
-                  )
-                  : undefined
-              ),
-              blueData: (
-                (blendingItem.BluePaletteColorLookupTableData != null)
-                  ? new Uint16Array(
-                    blendingItem.BluePaletteColorLookupTableData
-                  )
-                  : undefined
-              ),
-              redSegmentedData: (
-                (blendingItem.SegmentedRedPaletteColorLookupTableData != null)
-                  ? new Uint16Array(
-                    blendingItem.SegmentedRedPaletteColorLookupTableData
-                  )
-                  : undefined
-              ),
-              greenSegmentedData: (
-                (blendingItem.SegmentedGreenPaletteColorLookupTableData != null)
-                  ? new Uint16Array(
-                    blendingItem.SegmentedGreenPaletteColorLookupTableData
-                  )
-                  : undefined
-              ),
-              blueSegmentedData: (
-                (blendingItem.SegmentedBluePaletteColorLookupTableData != null)
-                  ? new Uint16Array(
-                    blendingItem.SegmentedBluePaletteColorLookupTableData
-                  )
-                  : undefined
-              )
-            })
+            let paletteColorLUT
+            if (blendingItem.PaletteColorLookupTableSequence != null) {
+              const cpLUTItem = blendingItem.PaletteColorLookupTableSequence[0]
+              paletteColorLUT = new dmv.color.PaletteColorLookupTable({
+                uid: (
+                  cpLUTItem.PaletteColorLookupTableUID != null
+                    ? cpLUTItem.PaletteColorLookupTableUID
+                    : ''
+                ),
+                redDescriptor:
+                  cpLUTItem.RedPaletteColorLookupTableDescriptor,
+                greenDescriptor:
+                  cpLUTItem.GreenPaletteColorLookupTableDescriptor,
+                blueDescriptor:
+                  cpLUTItem.BluePaletteColorLookupTableDescriptor,
+                redData: (
+                  (cpLUTItem.RedPaletteColorLookupTableData != null)
+                    ? new Uint16Array(
+                      cpLUTItem.RedPaletteColorLookupTableData
+                    )
+                    : undefined
+                ),
+                greenData: (
+                  (cpLUTItem.GreenPaletteColorLookupTableData != null)
+                    ? new Uint16Array(
+                      cpLUTItem.GreenPaletteColorLookupTableData
+                    )
+                    : undefined
+                ),
+                blueData: (
+                  (cpLUTItem.BluePaletteColorLookupTableData != null)
+                    ? new Uint16Array(
+                      cpLUTItem.BluePaletteColorLookupTableData
+                    )
+                    : undefined
+                ),
+                redSegmentedData: (
+                  (cpLUTItem.SegmentedRedPaletteColorLookupTableData != null)
+                    ? new Uint16Array(
+                      cpLUTItem.SegmentedRedPaletteColorLookupTableData
+                    )
+                    : undefined
+                ),
+                greenSegmentedData: (
+                  (cpLUTItem.SegmentedGreenPaletteColorLookupTableData != null)
+                    ? new Uint16Array(
+                      cpLUTItem.SegmentedGreenPaletteColorLookupTableData
+                    )
+                    : undefined
+                ),
+                blueSegmentedData: (
+                  (cpLUTItem.SegmentedBluePaletteColorLookupTableData != null)
+                    ? new Uint16Array(
+                      cpLUTItem.SegmentedBluePaletteColorLookupTableData
+                    )
+                    : undefined
+                )
+              })
+            }
 
             let limitValues
             if (blendingItem.SoftcopyVOILUTSequence != null) {
