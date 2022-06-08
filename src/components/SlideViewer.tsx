@@ -1214,14 +1214,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         const size = 2 ** 16
         const chunks = Math.ceil(frameInfo.pixelArray.length / size)
         let offset = 0
-        let min = 0
-        let max = 0
+        const minValues = []
+        const maxValues = []
         for (let i = 0; i < chunks; i++) {
           offset = i * size
-          const pixels = frameInfo.pixelArray.slice(offset, size)
-          min = Math.min(min, ...pixels)
-          max = Math.max(max, ...pixels)
+          const pixels = frameInfo.pixelArray.slice(offset, offset + size)
+          minValues.push(Math.min(...pixels))
+          maxValues.push(Math.max(...pixels))
         }
+        const min = Math.min(...minValues)
+        const max = Math.max(...maxValues)
         this.setState(state => {
           const stats = state.pixelDataStatistics
           if (stats[opticalPathIdentifier] != null) {
@@ -2019,7 +2021,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
        * Reset the style of the optical path to its default if it has
        * previously been changed.
        */
-      const stats = this.state.pixelDataStatistics[item.identifier]
+      const stats = this.state.pixelDataStatistics[identifier]
       let limitValues
       if (stats != null) {
         limitValues = [stats.min, stats.max]
@@ -2103,10 +2105,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * the current list of available presentation states.
    */
   handlePresentationStateReset (): void {
-    this.setDefaultPresentationState()
     this.setState({ selectedPresentationStateUID: undefined })
     const urlPath = this.props.location.pathname
     this.props.history.push(urlPath)
+    this.setDefaultPresentationState()
   }
 
   /**
@@ -2136,7 +2138,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         )
       }
     } else {
-      this.setDefaultPresentationState()
+      this.handlePresentationStateReset()
     }
     this.setState({ selectedPresentationStateUID: value })
   }
@@ -2310,7 +2312,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     mappings.push(...this.volumeViewer.getAllParameterMappings())
     annotationGroups.push(...this.volumeViewer.getAllAnnotationGroups())
 
-    const openSubMenuItems = ['specimens', 'opticalpaths', 'annotations']
+    const openSubMenuItems = [
+      'specimens', 'optical-paths', 'annotations', 'presentation-states'
+    ]
 
     let report: React.ReactNode
     const dataset = this.state.generatedReport
@@ -2467,10 +2471,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const metadata = this.volumeViewer.getOpticalPathMetadata(identifier)
       opticalPathMetadata[identifier] = metadata
       const style = this.volumeViewer.getOpticalPathStyle(identifier)
+      if (this.state.selectedPresentationStateUID == null) {
+        const stats = this.state.pixelDataStatistics[identifier]
+        if (stats != null) {
+          style.limitValues = [stats.min, stats.max]
+        }
+      }
       defaultOpticalPathStyles[identifier] = style
     })
     const opticalPathMenu = (
-      <Menu.SubMenu key='opticalpaths' title='Optical Paths'>
+      <Menu.SubMenu key='optical-paths' title='Optical Paths'>
         <OpticalPathList
           metadata={opticalPathMetadata}
           opticalPaths={opticalPaths}
@@ -2501,8 +2511,17 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           )
         }
       )
+      presentationStateOptions.push(
+        <Select.Option
+          key='default-presentation-state'
+          value={null}
+          dropdownMatchSelectWidth={false}
+          size='small'
+        >
+        </Select.Option>
+      )
       presentationStateMenu = (
-        <Menu.SubMenu key='presentationStates' title='Presentation States'>
+        <Menu.SubMenu key='presentation-states' title='Presentation States'>
           <Space align='center' size={20} style={{ padding: '14px' }}>
             <Select
               style={{ minWidth: 200, maxWidth: 200 }}
@@ -2578,7 +2597,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         )
       })
       parametricMapMenu = (
-        <Menu.SubMenu key='parmetricmaps' title='Parametric Maps'>
+        <Menu.SubMenu key='parmetric-maps' title='Parametric Maps'>
           <MappingList
             mappings={mappings}
             metadata={mappingMetadata}
@@ -2589,7 +2608,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           />
         </Menu.SubMenu>
       )
-      openSubMenuItems.push('parametricmaps')
+      openSubMenuItems.push('parametric-maps')
     }
 
     let annotationGroupMenu
@@ -2612,7 +2631,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         )
       })
       annotationGroupMenu = (
-        <Menu.SubMenu key='annotationGroups' title='Annotation Groups'>
+        <Menu.SubMenu key='annotation-groups' title='Annotation Groups'>
           <AnnotationGroupList
             annotationGroups={annotationGroups}
             metadata={annotationGroupMetadata}
