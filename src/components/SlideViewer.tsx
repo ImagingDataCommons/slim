@@ -243,6 +243,12 @@ interface Evaluation {
   value: dcmjs.sr.coding.CodedConcept
 }
 
+interface Measurement {
+  name: dcmjs.sr.coding.CodedConcept
+  value?: number
+  unit: dcmjs.sr.coding.CodedConcept
+}
+
 interface SlideViewerProps extends RouteComponentProps {
   slide: Slide
   client: DicomWebManager
@@ -313,6 +319,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private readonly evaluationOptions: { [key: string]: EvaluationOptions[] } = {}
 
+  private readonly measurements: Measurement[] = []
+
   private readonly geometryTypeOptions: { [key: string]: string[] } = {}
 
   private readonly volumeViewportRef: React.RefObject<HTMLDivElement>
@@ -377,6 +385,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             values: evaluation.values.map(value => {
               return new dcmjs.sr.coding.CodedConcept(value)
             })
+          })
+        })
+      }
+      if (annotation.measurements !== undefined) {
+        annotation.measurements.forEach(measurement => {
+          this.measurements.push({
+            name: new dcmjs.sr.coding.CodedConcept(measurement.name),
+            value: undefined,
+            unit: new dcmjs.sr.coding.CodedConcept(measurement.unit)
           })
         })
       }
@@ -463,7 +480,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       isRoiModificationActive: false,
       areRoisHidden: false,
       pixelDataStatistics: {},
-      defaultOpticalPathStyles: {}
+      defaultOpticalPathStyles: {},
+      selectedPresentationStateUID: this.props.selectedPresentationStateUID
     }
   }
 
@@ -562,10 +580,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               )
               if (
                 presentationState.SOPInstanceUID ===
-                this.props.selectedPresentationStateUID || (
-                  this.props.selectedPresentationStateUID === undefined &&
-                  this.state.presentationStates.length === 0
-                )
+                this.props.selectedPresentationStateUID
               ) {
                 this.setPresentationState(presentationState)
                 this.setState(state => ({
@@ -630,7 +645,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.volumeViewer.deactivateOpticalPath(identifier)
 
       presentationState.AdvancedBlendingSequence.forEach(blendingItem => {
-        blendingItem.ReferencedImageSequence.forEach(imageItem => {
+        // FIXME
+        let refInstanceItems = blendingItem.ReferencedInstanceSequence
+        if (refInstanceItems === undefined) {
+          refInstanceItems = blendingItem.ReferencedImageSequence
+        }
+        if (refInstanceItems === undefined) {
+          return
+        }
+        refInstanceItems.forEach(imageItem => {
           const index = opticalPath.sopInstanceUIDs.indexOf(
             imageItem.ReferencedSOPInstanceUID
           )
@@ -2100,10 +2123,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         return item.SOPInstanceUID === value
       })
       if (presentationState != null) {
-        this.setPresentationState(presentationState)
         let urlPath = this.props.location.pathname
         urlPath += `?state=${presentationState.SOPInstanceUID}`
         this.props.history.push(urlPath)
+        this.setPresentationState(presentationState)
       } else {
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         message.error('Presentation State could not be found')
@@ -2384,13 +2407,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         return geometryTypeOptionsMapping[name]
       })
       selections.push(
-        <Select
-          style={{ minWidth: 130 }}
-          onSelect={this.handleAnnotationGeometryTypeSelection}
-          key='annotation-geometry-type'
-        >
-          {geometryTypeOptions}
-        </Select>
+        <>
+          ROI geometry type
+          <Select
+            style={{ minWidth: 130 }}
+            onSelect={this.handleAnnotationGeometryTypeSelection}
+            key='annotation-geometry-type'
+          >
+            {geometryTypeOptions}
+          </Select>
+        </>
       )
       selections.push(
         <Checkbox
@@ -2460,7 +2486,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     )
 
     let presentationStateMenu
-    console.log('DEBUG: ', this.state.presentationStates)
     if (this.state.presentationStates.length > 0) {
       const presentationStateOptions = this.state.presentationStates.map(
         presentationState => {

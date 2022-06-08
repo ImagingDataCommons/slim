@@ -502,6 +502,16 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
             </Row>
           </>
         )
+      } else {
+        colorSettings = (
+          <>
+            <Divider plain>
+              Color
+            </Divider>
+            Custom pseudo-coloring is disabled because pixels are colorized via
+            a provided palette color lookup table.
+          </>
+        )
       }
 
       let windowSettings

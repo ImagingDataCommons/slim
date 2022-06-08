@@ -138,7 +138,7 @@ class App extends React.Component<AppProps, AppState> {
     )
     const client = this.state.client
     client.updateHeaders({ Authorization: authorization })
-    const fullPath = window.location.pathname
+    const fullPath = window.location.pathname + window.location.search
     const basePath = this.props.config.path
     let path = fullPath.substring(basePath.length)
     if (basePath === '/' || basePath === '') {

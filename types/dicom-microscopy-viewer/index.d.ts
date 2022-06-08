@@ -594,7 +594,12 @@ declare module 'dicom-microscopy-viewer' {
     export interface AdvancedBlendingPresentationState extends SOPClass {
       AdvancedBlendingSequence: Array<{
         BlendingInputNumber: number
-        ReferencedImageSequence: Array<{
+        // FIXME
+        ReferencedImageSequence?: Array<{
+          ReferencedSOPClassUID: string
+          ReferencedSOPInstanceUID: string
+        }>
+        ReferencedInstanceSequence?: Array<{
           ReferencedSOPClassUID: string
           ReferencedSOPInstanceUID: string
         }>

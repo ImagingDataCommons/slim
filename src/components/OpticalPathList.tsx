@@ -97,10 +97,7 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
       return null
     }
 
-    const isSelectable = (
-      this.props.opticalPaths.length > 1 &&
-      this.props.selectedPresentationStateUID == null
-    )
+    const isSelectable = this.props.opticalPaths.length > 1
     const opticalPathItems: React.ReactNode[] = []
     const optionItems: React.ReactNode[] = []
     this.props.opticalPaths.forEach(opticalPath => {
