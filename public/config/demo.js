@@ -8,6 +8,7 @@ window.config = {
     }
   ],
   preload: true,
+  disableAnnotationTools: true,
   annotations: [
     {
       finding: { value: '85756007', schemeDesignator: 'SCT', meaning: 'Tissue' }
