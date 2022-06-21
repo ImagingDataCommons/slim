@@ -2517,8 +2517,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           value={null}
           dropdownMatchSelectWidth={false}
           size='small'
-        >
-        </Select.Option>
+        />
       )
       presentationStateMenu = (
         <Menu.SubMenu key='presentation-states' title='Presentation States'>
