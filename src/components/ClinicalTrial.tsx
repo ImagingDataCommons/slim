@@ -46,7 +46,7 @@ class ClinicalTrial extends React.Component<ClinicalTrialProps> {
         }
       )
     }
-      // Attributes of Clinical Trial Subject module
+    // Attributes of Clinical Trial Subject module
     return <Description attributes={attributes} />
   }
 }
