@@ -188,10 +188,10 @@ const createSlides = (
     })
   })
   slides = slides.sort((a, b) => {
-    const imageA = a.volumeImages[0]
-    const imageB = b.volumeImages[0]
-    if (imageA.SeriesNumber != null && imageB.SeriesNumber != null) {
-      return Number(imageA.SeriesNumber) - Number(imageB.SeriesNumber)
+    const imgA = a.volumeImages[0]
+    const imgB = b.volumeImages[0]
+    if (imgA.ContainerIdentifier != null && imgB.ContainerIdentifier != null) {
+      return Number(imgA.ContainerIdentifier) - Number(imgB.ContainerIdentifier)
     } else {
       return 0
     }
