@@ -110,13 +110,13 @@ The repository provides a [Docker compose file](https://docs.docker.com/compose/
 docker-compose up -d
 ```
 
-The local deployment serves the app via an NGINX web server at `http://localhost:8008` and exposes the DICOMweb services at `http://localhost:8008/dicomweb`.
+The local deployment serves the app via an NGINX web server at `http://localhost:8008` and exposes the DICOMweb services at `http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs`.
 Once the serives are up, one can store DICOM objects in the archive using the [Store transaction of the DICOMweb Studies Service](http://dicom.nema.org/medical/dicom/current/output/chtml/part18/sect_10.5.html).
 
 The command line interface of the [dicomweb-client Python package](https://dicomweb-client.readthedocs.io/en/latest/usage.html#command-line-interface-cli) makes storing DICOM files in the archive straight forward:
 
 ```none
-dicomweb_client -vv --url http://localhost:8008/dicomweb store instances -h
+dicomweb_client -vv --url http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs store instances -h
 ```
 
 The local deployment uses the default configuration file `public/config/local.js`:
@@ -127,7 +127,7 @@ window.config = {
   servers: [
     {
       id: "local",
-      url: "http://localhost:8008/dicomweb",
+      url: "http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs",
       write: true
     }
   ],
