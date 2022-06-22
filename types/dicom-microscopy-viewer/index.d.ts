@@ -76,6 +76,12 @@ declare module 'dicom-microscopy-viewer' {
       isOpticalPathActive (opticalPathIdentifier: string): boolean
       isOpticalPathColorable (opticalPathIdentifier: string): boolean
       isOpticalPathMonochromatic (opticalPathIdentifier: string): boolean
+      getOpticalPathDefaultStyle (opticalPathIdentifier: string): {
+        color?: number[]
+        paletteColorLookupTable?: color.PaletteColorLookupTable
+        opacity: number
+        limitValues?: number[]
+      }
       getOpticalPathStyle (opticalPathIdentifier: string): {
         color?: number[]
         paletteColorLookupTable?: color.PaletteColorLookupTable
@@ -121,9 +127,17 @@ declare module 'dicom-microscopy-viewer' {
         segmentUID: string,
         styleOptions: {
           opacity?: number
+          paletteColorLookupTable?: color.PaletteColorLookupTable
         }
       ): void
-      getSegmentStyle (segmentUID: string): { opacity: number }
+      getSegmentDefaultStyle (segmentUID: string): {
+        opacity: number
+        paletteColorLookupTable: color.PaletteColorLookupTable
+      }
+      getSegmentStyle (segmentUID: string): {
+        opacity: number
+        paletteColorLookupTable: color.PaletteColorLookupTable
+      }
       isSegmentVisible (segmentUID: string): boolean
       getSegmentMetadata (segmentUID: string): metadata.Segmentation[]
       getAllSegments (): dwc.segment.Segment[]
@@ -140,10 +154,16 @@ declare module 'dicom-microscopy-viewer' {
         mappingUID: string,
         styleOptions: {
           opacity?: number
+          paletteColorLookupTable?: color.PaletteColorLookupTable
         }
       ): void
+      getParameterMappingDefaultStyle (mappingUID: string): {
+        opacity: number
+        paletteColorLookupTable: color.PaletteColorLookupTable
+      }
       getParameterMappingStyle (mappingUID: string): {
         opacity: number
+        paletteColorLookupTable: color.PaletteColorLookupTable
       }
       isParameterMappingVisible (mappingUID: string): boolean
       getParameterMappingMetadata (mappingUID: string): metadata.ParametricMap[]

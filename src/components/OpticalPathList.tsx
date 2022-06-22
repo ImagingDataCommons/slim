@@ -19,6 +19,7 @@ interface OpticalPathListProps {
       opacity: number
       color?: number[]
       limitValues?: number[]
+      paletteColorLookupTable?: dmv.color.PaletteColorLookupTable
     }
   }
   onOpticalPathVisibilityChange: ({ opticalPathIdentifier, isVisible }: {
