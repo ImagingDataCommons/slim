@@ -448,8 +448,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.labelViewportRef = React.createRef<HTMLDivElement>()
 
     /**
-     * Deactivate all optical paths. Visibility will later, potentially using
-     * available presentation state instances.
+     * Deactivate all optical paths. Visibility will be set later, potentially
+     * using based on available presentation state instances.
      */
     this.volumeViewer.getAllOpticalPaths().forEach(opticalPath => {
       this.volumeViewer.deactivateOpticalPath(opticalPath.identifier)
@@ -1811,7 +1811,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       console.info(`show annotation group ${annotationGroupUID}`)
       this.volumeViewer.showAnnotationGroup(annotationGroupUID)
       this.setState(state => {
-        const visibleAnnotationGroupUIDs = state.visibleAnnotationGroupUIDs
+        const visibleAnnotationGroupUIDs = new Set(
+          state.visibleAnnotationGroupUIDs
+        )
         visibleAnnotationGroupUIDs.add(annotationGroupUID)
         return { visibleAnnotationGroupUIDs }
       })
@@ -1819,7 +1821,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       console.info(`hide annotation group ${annotationGroupUID}`)
       this.volumeViewer.hideAnnotationGroup(annotationGroupUID)
       this.setState(state => {
-        const visibleAnnotationGroupUIDs = state.visibleAnnotationGroupUIDs
+        const visibleAnnotationGroupUIDs = new Set(
+          state.visibleAnnotationGroupUIDs
+        )
         visibleAnnotationGroupUIDs.delete(annotationGroupUID)
         return { visibleAnnotationGroupUIDs }
       })
@@ -1852,7 +1856,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       console.info(`show segment ${segmentUID}`)
       this.volumeViewer.showSegment(segmentUID)
       this.setState(state => {
-        const visibleSegmentUIDs = state.visibleSegmentUIDs
+        const visibleSegmentUIDs = new Set(state.visibleSegmentUIDs)
         visibleSegmentUIDs.add(segmentUID)
         return { visibleSegmentUIDs }
       })
@@ -1860,7 +1864,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       console.info(`hide segment ${segmentUID}`)
       this.volumeViewer.hideSegment(segmentUID)
       this.setState(state => {
-        const visibleSegmentUIDs = state.visibleSegmentUIDs
+        const visibleSegmentUIDs = new Set(state.visibleSegmentUIDs)
         visibleSegmentUIDs.delete(segmentUID)
         return { visibleSegmentUIDs }
       })
@@ -1893,7 +1897,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       console.info(`show mapping ${mappingUID}`)
       this.volumeViewer.showParameterMapping(mappingUID)
       this.setState(state => {
-        const visibleMappingUIDs = state.visibleMappingUIDs
+        const visibleMappingUIDs = new Set(state.visibleMappingUIDs)
         visibleMappingUIDs.add(mappingUID)
         return { visibleMappingUIDs }
       })
@@ -1901,7 +1905,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       console.info(`hide mapping ${mappingUID}`)
       this.volumeViewer.hideParameterMapping(mappingUID)
       this.setState(state => {
-        const visibleMappingUIDs = state.visibleMappingUIDs
+        const visibleMappingUIDs = new Set(state.visibleMappingUIDs)
         visibleMappingUIDs.delete(mappingUID)
         return { visibleMappingUIDs }
       })
@@ -1934,7 +1938,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       console.info(`show optical path ${opticalPathIdentifier}`)
       this.volumeViewer.showOpticalPath(opticalPathIdentifier)
       this.setState(state => {
-        const visibleOpticalPathIdentifiers = state.visibleOpticalPathIdentifiers
+        const visibleOpticalPathIdentifiers = new Set(
+          state.visibleOpticalPathIdentifiers
+        )
         visibleOpticalPathIdentifiers.add(opticalPathIdentifier)
         return { visibleOpticalPathIdentifiers }
       })
@@ -1942,7 +1948,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       console.info(`hide optical path ${opticalPathIdentifier}`)
       this.volumeViewer.hideOpticalPath(opticalPathIdentifier)
       this.setState(state => {
-        const visibleOpticalPathIdentifiers = state.visibleOpticalPathIdentifiers
+        const visibleOpticalPathIdentifiers = new Set(
+          state.visibleOpticalPathIdentifiers
+        )
         visibleOpticalPathIdentifiers.delete(opticalPathIdentifier)
         return { visibleOpticalPathIdentifiers }
       })
@@ -1977,7 +1985,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       console.info(`activate optical path ${opticalPathIdentifier}`)
       this.volumeViewer.activateOpticalPath(opticalPathIdentifier)
       this.setState(state => {
-        const activeOpticalPathIdentifiers = state.activeOpticalPathIdentifiers
+        const activeOpticalPathIdentifiers = new Set(
+          state.activeOpticalPathIdentifiers
+        )
         activeOpticalPathIdentifiers.add(opticalPathIdentifier)
         return { activeOpticalPathIdentifiers }
       })
@@ -1985,7 +1995,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       console.info(`deactivate optical path ${opticalPathIdentifier}`)
       this.volumeViewer.deactivateOpticalPath(opticalPathIdentifier)
       this.setState(state => {
-        const activeOpticalPathIdentifiers = state.activeOpticalPathIdentifiers
+        const activeOpticalPathIdentifiers = new Set(
+          state.activeOpticalPathIdentifiers
+        )
         activeOpticalPathIdentifiers.delete(opticalPathIdentifier)
         return { activeOpticalPathIdentifiers }
       })
@@ -2087,8 +2099,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.volumeViewer.showOpticalPath(identifier)
     })
     this.setState(state => ({
-      activeOpticalPathIdentifiers: visibleOpticalPathIdentifiers,
-      visibleOpticalPathIdentifiers: visibleOpticalPathIdentifiers,
+      activeOpticalPathIdentifiers: new Set(visibleOpticalPathIdentifiers),
+      visibleOpticalPathIdentifiers: new Set(visibleOpticalPathIdentifiers),
       defaultOpticalPathStyles: defaultOpticalPathStyles
     }))
   }
