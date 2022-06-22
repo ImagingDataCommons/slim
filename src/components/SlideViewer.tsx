@@ -644,7 +644,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         refInstanceItems.forEach(imageItem => {
           const isReferenced = opticalPath.sopInstanceUIDs.includes(
             imageItem.ReferencedSOPInstanceUID
-          )
+          ) as boolean
           if (isReferenced) {
             let paletteColorLUT
             if (blendingItem.PaletteColorLookupTableSequence != null) {

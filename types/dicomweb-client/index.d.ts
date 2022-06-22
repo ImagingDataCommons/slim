@@ -99,31 +99,31 @@ declare module 'dicomweb-client' {
     }
 
     export interface Study {
-      StudyInstanceUID: string
-      StudyID: string
-      StudyDate: string
-      StudyTime: string
-      AccessionNumber: string
-      PatientID: string
-      PatientBirthDate: string
-      PatientSex: string
-      PatientName: string
-      ModalitiesInStudy: string[]
-      NumberOfStudyRelatedSeries: number
-      NumberOfStudyRelatedInstances: number
+      '0020000D': MetadataElement, // StudyInstanceUID
+      '00200010': MetadataElement, // StudyID
+      '00080020': MetadataElement, // StudyDate
+      '00080030': MetadataElement, // StudyTime
+      '00080050': MetadataElement, // AccessionNumber
+      '00100020': MetadataElement, // PatientID
+      '00100030': MetadataElement, // PatientBirthDate
+      '00100040': MetadataElement, // PatientSex
+      '00100010': MetadataElement, // PatientName
+      '00080061': MetadataElement, // ModalitiesInStudy
+      '00201206': MetadataElement, // NumberOfStudyRelatedSeries
+      '00201208': MetadataElement // NumberOfStudyRelatedInstances
     }
 
     export interface Series {
-      SeriesInstanceUID: string
-      SeriesNumber: string
-      Modality: string
-      NumberOfSeriesRelatedInstances: number
+      '0020000E': MetadataElement, // SeriesInstanceUID
+      '00200011': MetadataElement, // SeriesNumber
+      '00080060': MetadataElement, // Modality
+      '00201209': MetadataElement // NumberOfSeriesRelatedInstances
     }
 
     export interface Instance {
-      SOPClassUID: string
-      SOPInstanceUID: string
-      InstanceNumber: string
+      '00080016': MetadataElement, // SOPClassUID
+      '00080018': MetadataElement, // SOPInstanceUID
+      '00200013': MetadataElement // InstanceNumber
     }
 
     export type Pixeldata = ArrayBuffer
@@ -180,7 +180,9 @@ declare module 'dicomweb-client' {
 
     export interface MetadataElement {
       vr: string
-      Value: string[] | number[] | object[]
+      Value?: string[] | number[] | object[]
+      BulkDataURI?: string
+      InlineBinary?: string
     }
 
     export interface Metadata {
