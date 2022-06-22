@@ -7,7 +7,7 @@ import AnnotationGroupItem from './AnnotationGroupItem'
 
 interface AnnotationGroupListProps {
   annotationGroups: dmv.annotation.AnnotationGroup[]
-  visibleAnnotationGroupUIDs: string[]
+  visibleAnnotationGroupUIDs: Set<string>
   metadata: {
     [annotationGroupUID: string]: dmv.metadata.MicroscopyBulkSimpleAnnotations
   }
@@ -41,7 +41,7 @@ class AnnotationGroupList extends React.Component<AnnotationGroupListProps, {}> 
           key={annotationGroup.uid}
           annotationGroup={annotationGroup}
           metadata={this.props.metadata[uid]}
-          isVisible={this.props.visibleAnnotationGroupUIDs.includes(uid)}
+          isVisible={this.props.visibleAnnotationGroupUIDs.has(uid)}
           defaultStyle={this.props.defaultAnnotationGroupStyles[uid]}
           onVisibilityChange={this.props.onAnnotationGroupVisibilityChange}
           onStyleChange={this.props.onAnnotationGroupStyleChange}

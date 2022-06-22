@@ -1,9 +1,5 @@
 import React from 'react'
 import {
-  RouteComponentProps,
-  withRouter
-} from 'react-router-dom'
-import {
   FaDrawPolygon,
   FaEye,
   FaEyeSlash,
@@ -40,9 +36,10 @@ import OpticalPathList from './OpticalPathList'
 import MappingList from './MappingList'
 import SegmentList from './SegmentList'
 import { AnnotationSettings } from '../AppConfig'
-import { findContentItemsByName } from '../utils/sr'
 import { Slide } from '../data/slides'
 import { SOPClassUIDs } from '../data/uids'
+import { findContentItemsByName } from '../utils/sr'
+import { RouteComponentProps, withRouter } from '../utils/router'
 
 const _buildKey = (concept: dcmjs.sr.coding.CodedConcept): string => {
   const codingScheme = concept.CodingSchemeDesignator
@@ -271,13 +268,13 @@ interface SlideViewerProps extends RouteComponentProps {
 }
 
 interface SlideViewerState {
-  selectedRoiUIDs: string[]
-  visibleRoiUIDs: string[]
-  visibleSegmentUIDs: string[]
-  visibleMappingUIDs: string[]
-  visibleAnnotationGroupUIDs: string[]
-  visibleOpticalPathIdentifiers: string[]
-  activeOpticalPathIdentifiers: string[]
+  selectedRoiUIDs: Set<string>
+  visibleRoiUIDs: Set<string>
+  visibleSegmentUIDs: Set<string>
+  visibleMappingUIDs: Set<string>
+  visibleAnnotationGroupUIDs: Set<string>
+  visibleOpticalPathIdentifiers: Set<string>
+  activeOpticalPathIdentifiers: Set<string>
   presentationStates: dmv.metadata.AdvancedBlendingPresentationState[]
   selectedPresentationStateUID?: string
   selectedFinding?: dcmjs.sr.coding.CodedConcept
@@ -454,20 +451,18 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
      * Deactivate all optical paths. Visibility will later, potentially using
      * available presentation state instances.
      */
-    const activeOpticalPathIdentifiers: string[] = []
-    const visibleOpticalPathIdentifiers: string[] = []
     this.volumeViewer.getAllOpticalPaths().forEach(opticalPath => {
       this.volumeViewer.deactivateOpticalPath(opticalPath.identifier)
     })
 
     this.state = {
-      selectedRoiUIDs: [],
-      visibleRoiUIDs: [],
-      visibleSegmentUIDs: [],
-      visibleMappingUIDs: [],
-      visibleAnnotationGroupUIDs: [],
-      visibleOpticalPathIdentifiers,
-      activeOpticalPathIdentifiers,
+      selectedRoiUIDs: new Set(),
+      visibleRoiUIDs: new Set(),
+      visibleSegmentUIDs: new Set(),
+      visibleMappingUIDs: new Set(),
+      visibleAnnotationGroupUIDs: new Set(),
+      visibleOpticalPathIdentifiers: new Set(),
+      activeOpticalPathIdentifiers: new Set(),
       presentationStates: [],
       selectedFinding: undefined,
       selectedEvaluations: [],
@@ -511,24 +506,25 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.volumeViewer = volumeViewer
       this.labelViewer = labelViewer
 
-      const activeOpticalPathIdentifiers: string[] = []
-      const visibleOpticalPathIdentifiers: string[] = []
+      const activeOpticalPathIdentifiers: Set<string> = new Set()
+      const visibleOpticalPathIdentifiers: Set<string> = new Set()
       this.volumeViewer.getAllOpticalPaths().forEach(opticalPath => {
         const identifier = opticalPath.identifier
         if (this.volumeViewer.isOpticalPathVisible(identifier)) {
-          visibleOpticalPathIdentifiers.push(identifier)
+          visibleOpticalPathIdentifiers.add(identifier)
         }
         if (this.volumeViewer.isOpticalPathActive(identifier)) {
-          activeOpticalPathIdentifiers.push(identifier)
+          activeOpticalPathIdentifiers.add(identifier)
         }
       })
       this.setState({
-        visibleRoiUIDs: [],
-        visibleSegmentUIDs: [],
-        visibleMappingUIDs: [],
-        visibleAnnotationGroupUIDs: [],
+        visibleRoiUIDs: new Set(),
+        visibleSegmentUIDs: new Set(),
+        visibleMappingUIDs: new Set(),
+        visibleAnnotationGroupUIDs: new Set(),
         visibleOpticalPathIdentifiers,
-        activeOpticalPathIdentifiers
+        activeOpticalPathIdentifiers,
+        presentationStates: []
       })
       this.populateViewports()
     }
@@ -583,20 +579,18 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 this.props.selectedPresentationStateUID
               ) {
                 this.setPresentationState(presentationState)
-                this.setState(state => ({
-                  presentationStates: [
-                    ...state.presentationStates,
-                    presentationState
-                  ]
-                }))
-              } else {
-                this.setState(state => ({
-                  presentationStates: [
-                    ...state.presentationStates,
-                    presentationState
-                  ]
-                }))
               }
+              this.setState(state => {
+                const mapping: {
+                  [sopInstanceUID: string]:
+                    dmv.metadata.AdvancedBlendingPresentationState
+                } = {}
+                state.presentationStates.forEach(instance => {
+                  mapping[instance.SOPInstanceUID] = instance
+                })
+                mapping[presentationState.SOPInstanceUID] = presentationState
+                return { presentationStates: Object.values(mapping) }
+              })
             }
           } else {
             console.info(
@@ -739,14 +733,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       })
     })
 
-    const selectedOpticalPathIdentifiers: string[] = []
+    const selectedOpticalPathIdentifiers: Set<string> = new Set()
     Object.keys(opticalPathStyles).forEach(identifier => {
       const styleOptions = opticalPathStyles[identifier]
       if (styleOptions != null) {
         this.volumeViewer.setOpticalPathStyle(identifier, styleOptions)
         this.volumeViewer.activateOpticalPath(identifier)
         this.volumeViewer.showOpticalPath(identifier)
-        selectedOpticalPathIdentifiers.push(identifier)
+        selectedOpticalPathIdentifiers.add(identifier)
       } else {
         this.volumeViewer.hideOpticalPath(identifier)
         this.volumeViewer.deactivateOpticalPath(identifier)
@@ -1106,7 +1100,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    */
   populateViewports = (): void => {
     console.info('populate viewports...')
-    this.setState({ isLoading: true })
+    this.setState({
+      isLoading: true,
+      presentationStates: []
+    })
 
     if (this.volumeViewportRef.current != null) {
       this.volumeViewportRef.current.innerHTML = ''
@@ -1135,7 +1132,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   onRoiModified = (event: CustomEventInit): void => {
     // Update state to trigger rendering
     this.setState(state => ({
-      visibleRoiUIDs: [...state.visibleRoiUIDs]
+      visibleRoiUIDs: new Set(state.visibleRoiUIDs)
     }))
   }
 
@@ -1166,9 +1163,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const key = _buildKey(selectedFinding)
       const style = this.getRoiStyle(key)
       this.volumeViewer.addROI(roi, style)
-      this.setState(state => ({
-        visibleRoiUIDs: [...state.visibleRoiUIDs, roi.uid]
-      }))
+      this.setState(state => {
+        const visibleRoiUIDs = state.visibleRoiUIDs
+        visibleRoiUIDs.add(roi.uid)
+        return { visibleRoiUIDs }
+      })
     } else {
       console.debug(`could not add ROI "${roi.uid}"`)
     }
@@ -1185,9 +1184,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           this.volumeViewer.setROIStyle(roi.uid, this.getRoiStyle(key))
         }
       })
-      this.setState({ selectedRoiUIDs: [selectedRoi.uid] })
+      this.setState({ selectedRoiUIDs: new Set([selectedRoi.uid]) })
     } else {
-      this.setState({ selectedRoiUIDs: [] })
+      this.setState({ selectedRoiUIDs: new Set() })
     }
   }
 
@@ -1296,7 +1295,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   componentWillUnmount (): void {
     window.removeEventListener('beforeunload', this.componentCleanup)
-    this.componentCleanup()
   }
 
   componentSetup (): void {
@@ -1337,31 +1335,23 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           console.info('deactivate drawing of ROIs')
           this.volumeViewer.deactivateDrawInteraction()
           this.volumeViewer.activateSelectInteraction({})
-          this.setState({ isRoiDrawingActive: false })
         } else if (this.state.isRoiModificationActive) {
           console.info('deactivate modification of ROIs')
           this.volumeViewer.deactivateModifyInteraction()
           this.volumeViewer.activateSelectInteraction({})
-          this.setState({ isRoiModificationActive: false })
         } else if (this.state.isRoiTranslationActive) {
           console.info('deactivate modification of ROIs')
           this.volumeViewer.deactivateTranslateInteraction()
           this.volumeViewer.activateSelectInteraction({})
-          this.setState({ isRoiTranslationActive: false })
         }
+        this.setState({
+          isAnnotationModalVisible: false,
+          isRoiTranslationActive: false,
+          isRoiDrawingActive: false,
+          isRoiModificationActive: false
+        })
       } else if (event.key === 'd') {
         this.handleRoiDrawing()
-        console.info('activate drawing of ROIs')
-        this.setState({
-          isAnnotationModalVisible: true,
-          isRoiDrawingActive: true,
-          isRoiModificationActive: false,
-          isRoiTranslationActive: false
-        })
-        this.volumeViewer.deactivateSelectInteraction()
-        this.volumeViewer.deactivateSnapInteraction()
-        this.volumeViewer.deactivateTranslateInteraction()
-        this.volumeViewer.deactivateModifyInteraction()
       } else if (event.key === 'm') {
         this.handleRoiModification()
       } else if (event.key === 't') {
@@ -1607,7 +1597,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const imagingMeasurements: dcmjs.sr.valueTypes.ContainerContentItem[] = []
     for (let i = 0; i < rois.length; i++) {
       const roi = rois[i]
-      if (!this.state.visibleRoiUIDs.includes(roi.uid as never)) {
+      if (!this.state.visibleRoiUIDs.has(roi.uid)) {
         continue
       }
       let findingType = roi.evaluations.find(
@@ -1757,16 +1747,18 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    */
   handleAnnotationSelection ({ roiUID }: { roiUID: string }): void {
     console.log(`selected ROI ${roiUID}`)
-    this.setState({ selectedRoiUIDs: [roiUID] })
+    this.setState({ selectedRoiUIDs: new Set([roiUID]) })
     this.volumeViewer.getAllROIs().forEach((roi) => {
       var style = {}
       if (roi.uid === roiUID) {
         style = this.selectedRoiStyle
-        this.setState(state => ({
-          visibleRoiUIDs: [...state.visibleRoiUIDs, roiUID]
-        }))
+        this.setState(state => {
+          const visibleRoiUIDs = state.visibleRoiUIDs
+          visibleRoiUIDs.add(roi.uid)
+          return { visibleRoiUIDs }
+        })
       } else {
-        if (this.state.visibleRoiUIDs.includes(roi.uid as never)) {
+        if (this.state.visibleRoiUIDs.has(roi.uid)) {
           const key = _getRoiKey(roi)
           style = this.getRoiStyle(key)
         }
@@ -1789,22 +1781,19 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const key = _getRoiKey(roi)
       this.volumeViewer.setROIStyle(roi.uid, this.getRoiStyle(key))
       this.setState(state => {
-        if (!state.visibleRoiUIDs.includes(roiUID)) {
-          return {
-            visibleRoiUIDs: [...state.visibleRoiUIDs, roiUID]
-          }
-        } else {
-          return {
-            visibleRoiUIDs: state.visibleRoiUIDs
-          }
-        }
+        const visibleRoiUIDs = state.visibleRoiUIDs
+        visibleRoiUIDs.add(roi.uid)
+        return { visibleRoiUIDs }
       })
     } else {
       console.info(`hide ROI ${roiUID}`)
-      this.setState(state => ({
-        visibleRoiUIDs: state.visibleRoiUIDs.filter(uid => uid !== roiUID),
-        selectedRoiUIDs: state.selectedRoiUIDs.filter(uid => uid !== roiUID)
-      }))
+      this.setState(state => {
+        const selectedRoiUIDs = state.selectedRoiUIDs
+        selectedRoiUIDs.delete(roiUID)
+        const visibleRoiUIDs = state.visibleRoiUIDs
+        visibleRoiUIDs.delete(roiUID)
+        return { visibleRoiUIDs, selectedRoiUIDs }
+      })
       this.volumeViewer.setROIStyle(roiUID, {})
     }
   }
@@ -1821,19 +1810,19 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (isVisible) {
       console.info(`show annotation group ${annotationGroupUID}`)
       this.volumeViewer.showAnnotationGroup(annotationGroupUID)
-      this.setState(state => ({
-        visibleAnnotationGroupUIDs: state.visibleAnnotationGroupUIDs.concat(
-          annotationGroupUID
-        )
-      }))
+      this.setState(state => {
+        const visibleAnnotationGroupUIDs = state.visibleAnnotationGroupUIDs
+        visibleAnnotationGroupUIDs.add(annotationGroupUID)
+        return { visibleAnnotationGroupUIDs }
+      })
     } else {
       console.info(`hide annotation group ${annotationGroupUID}`)
       this.volumeViewer.hideAnnotationGroup(annotationGroupUID)
-      this.setState(state => ({
-        visibleAnnotationGroupUIDs: state.visibleAnnotationGroupUIDs.filter(
-          uid => uid !== annotationGroupUID
-        )
-      }))
+      this.setState(state => {
+        const visibleAnnotationGroupUIDs = state.visibleAnnotationGroupUIDs
+        visibleAnnotationGroupUIDs.delete(annotationGroupUID)
+        return { visibleAnnotationGroupUIDs }
+      })
     }
   }
 
@@ -1862,17 +1851,19 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (isVisible) {
       console.info(`show segment ${segmentUID}`)
       this.volumeViewer.showSegment(segmentUID)
-      this.setState(state => ({
-        visibleSegmentUIDs: state.visibleSegmentUIDs.concat(segmentUID)
-      }))
+      this.setState(state => {
+        const visibleSegmentUIDs = state.visibleSegmentUIDs
+        visibleSegmentUIDs.add(segmentUID)
+        return { visibleSegmentUIDs }
+      })
     } else {
       console.info(`hide segment ${segmentUID}`)
       this.volumeViewer.hideSegment(segmentUID)
-      this.setState(state => ({
-        visibleSegmentUIDs: state.visibleSegmentUIDs.filter(uid => {
-          return uid !== segmentUID
-        })
-      }))
+      this.setState(state => {
+        const visibleSegmentUIDs = state.visibleSegmentUIDs
+        visibleSegmentUIDs.delete(segmentUID)
+        return { visibleSegmentUIDs }
+      })
     }
   }
 
@@ -1901,17 +1892,19 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (isVisible) {
       console.info(`show mapping ${mappingUID}`)
       this.volumeViewer.showParameterMapping(mappingUID)
-      this.setState(state => ({
-        visibleMappingUIDs: state.visibleMappingUIDs.concat(mappingUID)
-      }))
+      this.setState(state => {
+        const visibleMappingUIDs = state.visibleMappingUIDs
+        visibleMappingUIDs.add(mappingUID)
+        return { visibleMappingUIDs }
+      })
     } else {
       console.info(`hide mapping ${mappingUID}`)
       this.volumeViewer.hideParameterMapping(mappingUID)
-      this.setState(state => ({
-        visibleMappingUIDs: state.visibleMappingUIDs.filter(uid => {
-          return uid !== mappingUID
-        })
-      }))
+      this.setState(state => {
+        const visibleMappingUIDs = state.visibleMappingUIDs
+        visibleMappingUIDs.delete(mappingUID)
+        return { visibleMappingUIDs }
+      })
     }
   }
 
@@ -1940,19 +1933,19 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (isVisible) {
       console.info(`show optical path ${opticalPathIdentifier}`)
       this.volumeViewer.showOpticalPath(opticalPathIdentifier)
-      this.setState(state => ({
-        visibleOpticalPathIdentifiers:
-          state.visibleOpticalPathIdentifiers.concat(opticalPathIdentifier)
-      }))
+      this.setState(state => {
+        const visibleOpticalPathIdentifiers = state.visibleOpticalPathIdentifiers
+        visibleOpticalPathIdentifiers.add(opticalPathIdentifier)
+        return { visibleOpticalPathIdentifiers }
+      })
     } else {
       console.info(`hide optical path ${opticalPathIdentifier}`)
       this.volumeViewer.hideOpticalPath(opticalPathIdentifier)
-      this.setState(state => ({
-        visibleOpticalPathIdentifiers:
-          state.visibleOpticalPathIdentifiers.filter(
-            identifier => identifier !== opticalPathIdentifier
-          )
-      }))
+      this.setState(state => {
+        const visibleOpticalPathIdentifiers = state.visibleOpticalPathIdentifiers
+        visibleOpticalPathIdentifiers.delete(opticalPathIdentifier)
+        return { visibleOpticalPathIdentifiers }
+      })
     }
   }
 
@@ -1983,19 +1976,19 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (isActive) {
       console.info(`activate optical path ${opticalPathIdentifier}`)
       this.volumeViewer.activateOpticalPath(opticalPathIdentifier)
-      this.setState(state => ({
-        activeOpticalPathIdentifiers:
-          state.activeOpticalPathIdentifiers.concat(opticalPathIdentifier)
-      }))
+      this.setState(state => {
+        const activeOpticalPathIdentifiers = state.activeOpticalPathIdentifiers
+        activeOpticalPathIdentifiers.add(opticalPathIdentifier)
+        return { activeOpticalPathIdentifiers }
+      })
     } else {
       console.info(`deactivate optical path ${opticalPathIdentifier}`)
       this.volumeViewer.deactivateOpticalPath(opticalPathIdentifier)
-      this.setState(state => ({
-        activeOpticalPathIdentifiers:
-          state.activeOpticalPathIdentifiers.filter(
-            identifier => identifier !== opticalPathIdentifier
-          )
-      }))
+      this.setState(state => {
+        const activeOpticalPathIdentifiers = state.activeOpticalPathIdentifiers
+        activeOpticalPathIdentifiers.delete(opticalPathIdentifier)
+        return { activeOpticalPathIdentifiers }
+      })
     }
   }
 
@@ -2003,7 +1996,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const opticalPaths = this.volumeViewer.getAllOpticalPaths()
     opticalPaths.sort((a, b) => a.identifier - b.identifier)
 
-    const visibleOpticalPathIdentifiers: string[] = []
+    const visibleOpticalPathIdentifiers: Set<string> = new Set()
     const defaultOpticalPathStyles: {
       [opticalPathIdentifier: string]: {
         color?: number[]
@@ -2043,11 +2036,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
          * optical path, then it will be displayed by default.
          */
         if (item.paletteColorLookupTableUID != null) {
-          visibleOpticalPathIdentifiers.push(identifier)
+          visibleOpticalPathIdentifiers.add(identifier)
         }
       } else {
         /* Color images will always be displayed by default. */
-        visibleOpticalPathIdentifiers.push(identifier)
+        visibleOpticalPathIdentifiers.add(identifier)
       }
     })
 
@@ -2056,7 +2049,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
      * first 3 optical paths and set a default value of interest (VOI) window
      * (using pre-computed pixel data statistics) and a default color.
      */
-    if (visibleOpticalPathIdentifiers.length === 0) {
+    if (visibleOpticalPathIdentifiers.size === 0) {
       const defaultColors = [
         [0, 0, 255],
         [0, 255, 0],
@@ -2065,7 +2058,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       opticalPaths.forEach((item: dmv.opticalPath.OpticalPath) => {
         const identifier = item.identifier
         if (item.isMonochromatic) {
-          const numVisible = visibleOpticalPathIdentifiers.length
+          const numVisible = visibleOpticalPathIdentifiers.size
           if (numVisible < 3) {
             const style = {
               ...this.volumeViewer.getOpticalPathStyle(identifier) // copy!
@@ -2080,14 +2073,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               style.limitValues = [stats.min, stats.max]
             }
             this.volumeViewer.setOpticalPathStyle(item.identifier, style)
-            visibleOpticalPathIdentifiers.push(item.identifier)
+            visibleOpticalPathIdentifiers.add(item.identifier)
           }
         }
       })
     }
 
     console.info(
-      `selected n=${visibleOpticalPathIdentifiers.length} optical paths ` +
+      `selected n=${visibleOpticalPathIdentifiers.size} optical paths ` +
       'for visualization'
     )
     visibleOpticalPathIdentifiers.forEach(identifier => {
@@ -2107,7 +2100,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   handlePresentationStateReset (): void {
     this.setState({ selectedPresentationStateUID: undefined })
     const urlPath = this.props.location.pathname
-    this.props.history.push(urlPath)
+    this.props.navigate(urlPath)
     this.setDefaultPresentationState()
   }
 
@@ -2121,13 +2114,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   ): void {
     if (value != null) {
       console.info(`select Presentation State instance "${value}"`)
-      const presentationState = this.state.presentationStates.find(item => {
-        return item.SOPInstanceUID === value
+      let presentationState
+      this.state.presentationStates.forEach(instance => {
+        if (instance.SOPInstanceUID === value) {
+          presentationState = instance
+        }
       })
       if (presentationState != null) {
         let urlPath = this.props.location.pathname
-        urlPath += `?state=${presentationState.SOPInstanceUID}`
-        this.props.history.push(urlPath)
+        urlPath += `?state=${value}`
+        this.props.navigate(urlPath)
         this.setPresentationState(presentationState)
       } else {
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -2148,7 +2144,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * de-activate it, depending on its current state.
    */
   handleRoiDrawing (): void {
-    if (this.volumeViewer.isDrawInteractionActive) {
+    if (this.state.isRoiDrawingActive) {
       console.info('deactivate drawing of ROIs')
       this.volumeViewer.deactivateDrawInteraction()
       this.volumeViewer.activateSelectInteraction({})
@@ -2238,7 +2234,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.volumeViewer.deactivateSnapInteraction()
     this.volumeViewer.deactivateTranslateInteraction()
     this.volumeViewer.deactivateModifyInteraction()
-    if (this.state.selectedRoiUIDs.length > 0) {
+    if (this.state.selectedRoiUIDs.size > 0) {
       this.state.selectedRoiUIDs.forEach(uid => {
         if (uid === undefined) {
           // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -2251,7 +2247,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         message.info('Annotation was removed')
       })
       this.setState({
-        selectedRoiUIDs: [],
+        selectedRoiUIDs: new Set(),
         isRoiTranslationActive: false,
         isRoiDrawingActive: false,
         isRoiModificationActive: false
@@ -2262,7 +2258,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         this.volumeViewer.removeROI(uid)
       })
       this.setState({
-        visibleRoiUIDs: [],
+        visibleRoiUIDs: new Set(),
         isRoiTranslationActive: false,
         isRoiDrawingActive: false,
         isRoiModificationActive: false
@@ -2497,20 +2493,19 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     let presentationStateMenu
     if (this.state.presentationStates.length > 0) {
-      const presentationStateOptions = this.state.presentationStates.map(
-        presentationState => {
-          return (
-            <Select.Option
-              key={presentationState.SOPInstanceUID}
-              value={presentationState.SOPInstanceUID}
-              dropdownMatchSelectWidth={false}
-              size='small'
-            >
-              {presentationState.ContentDescription}
-            </Select.Option>
-          )
-        }
-      )
+      const presentationStateOptions = []
+      this.state.presentationStates.forEach(instance => {
+        presentationStateOptions.push(
+          <Select.Option
+            key={instance.SOPInstanceUID}
+            value={instance.SOPInstanceUID}
+            dropdownMatchSelectWidth={false}
+            size='small'
+          >
+            {instance.ContentDescription}
+          </Select.Option>
+        )
+      })
       presentationStateOptions.push(
         <Select.Option
           key='default-presentation-state'

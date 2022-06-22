@@ -1,5 +1,4 @@
 import React from 'react'
-import { withRouter, RouteComponentProps } from 'react-router-dom'
 import {
   Button,
   Input,
@@ -15,7 +14,8 @@ import DicomWebManager from '../DicomWebManager'
 
 import * as dmv from 'dicom-microscopy-viewer'
 
-import { parseDate, parseName, parseSex, parseTime } from '../valueUtils'
+import { withRouter, RouteComponentProps } from '../utils/router'
+import { parseDate, parseName, parseSex, parseTime } from '../utils/values'
 
 interface WorklistProps extends RouteComponentProps {
   client: DicomWebManager
@@ -74,7 +74,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   }
 
   handleClick (event: React.SyntheticEvent, study: dmv.metadata.Study): void {
-    this.props.history.push(`/studies/${study.StudyInstanceUID}`)
+    this.props.navigate(`/studies/${study.StudyInstanceUID}`)
   }
 
   fetchData ({ offset, limit, searchCriteria }: {

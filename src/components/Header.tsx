@@ -1,8 +1,6 @@
 import React from 'react'
 import {
   NavLink,
-  RouteComponentProps,
-  withRouter
 } from 'react-router-dom'
 import {
   Col,
@@ -26,6 +24,7 @@ import {
 import { detect } from 'detect-browser'
 
 import Button from './Button'
+import { RouteComponentProps, withRouter } from '../utils/router'
 
 interface HeaderProps extends RouteComponentProps {
   app: {

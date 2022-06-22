@@ -12,8 +12,8 @@ interface OpticalPathListProps {
   metadata: {
     [opticalPathIdentifier: string]: dmv.metadata.VLWholeSlideMicroscopyImage[]
   }
-  visibleOpticalPathIdentifiers: string[]
-  activeOpticalPathIdentifiers: string[]
+  visibleOpticalPathIdentifiers: Set<string>
+  activeOpticalPathIdentifiers: Set<string>
   defaultOpticalPathStyles: {
     [opticalPathIdentifier: string]: {
       opacity: number
@@ -108,13 +108,13 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
         const id = opticalPathItem.OpticalPathIdentifier
         const description = opticalPathItem.OpticalPathDescription
         if (opticalPath.identifier === id) {
-          if (this.props.activeOpticalPathIdentifiers.includes(id)) {
+          if (this.props.activeOpticalPathIdentifiers.has(id)) {
             opticalPathItems.push(
               <OpticalPathItem
                 key={`${seriesInstanceUID}-${id}`}
                 opticalPath={opticalPath}
                 metadata={images}
-                isVisible={this.props.visibleOpticalPathIdentifiers.includes(id)}
+                isVisible={this.props.visibleOpticalPathIdentifiers.has(id)}
                 defaultStyle={this.props.defaultOpticalPathStyles[id]}
                 onVisibilityChange={this.props.onOpticalPathVisibilityChange}
                 onStyleChange={this.props.onOpticalPathStyleChange}

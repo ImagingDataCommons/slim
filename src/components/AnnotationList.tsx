@@ -7,8 +7,8 @@ import AnnotationItem from './AnnotationItem'
 
 interface AnnotationListProps {
   rois: dmv.roi.ROI[]
-  selectedRoiUIDs: string[]
-  visibleRoiUIDs: string[]
+  selectedRoiUIDs: Set<string>
+  visibleRoiUIDs: Set<string>
   onVisibilityChange: ({ roiUID, isVisible }: {
     roiUID: string
     isVisible: boolean
@@ -49,7 +49,7 @@ class AnnotationList extends React.Component<AnnotationListProps, {}> {
         key={roi.uid}
         roi={roi}
         index={index}
-        isVisible={this.props.visibleRoiUIDs.includes(roi.uid)}
+        isVisible={this.props.visibleRoiUIDs.has(roi.uid)}
         onVisibilityChange={this.props.onVisibilityChange}
       />
     ))
@@ -60,13 +60,13 @@ class AnnotationList extends React.Component<AnnotationListProps, {}> {
           <Switch
             size='small'
             onChange={this.handleVisibilityChange}
-            checked={this.props.visibleRoiUIDs.length > 0}
+            checked={this.props.visibleRoiUIDs.size > 0}
             checkedChildren={<FaEye />}
             unCheckedChildren={<FaEyeSlash />}
           />
         </div>
         <Menu
-          selectedKeys={this.props.selectedRoiUIDs}
+          selectedKeys={[...this.props.selectedRoiUIDs.values()]}
           onSelect={this.handleMenuItemSelection}
           onClick={this.handleMenuItemSelection}
         >

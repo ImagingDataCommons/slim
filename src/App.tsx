@@ -1,9 +1,10 @@
 import React from 'react'
 import {
   BrowserRouter,
-  Redirect,
+  Navigate,
   Route,
-  Switch
+  Routes,
+  useParams
 } from 'react-router-dom'
 import { Layout, message } from 'antd'
 import { FaSpinner } from 'react-icons/fa'
@@ -20,6 +21,34 @@ import { User, AuthManager } from './auth'
 import OidcManager from './auth/OidcManager'
 import DicomWebManager from './DicomWebManager'
 
+function ParametrizedCaseViewer({ client, user, app, config }: {
+  client: DicomWebManager
+  user?: User
+  app: {
+    name: string
+    version: string
+    uid: string
+    organization?: string
+  }
+  config: AppConfig
+}) {
+  const { studyInstanceUID } = useParams()
+
+  const enableAnnotationTools = !(config.disableAnnotationTools ?? false)
+  const preload = config.preload ?? false
+  return (
+    <CaseViewer
+      client={client}
+      user={user}
+      annotations={config.annotations}
+      preload={preload}
+      app={app}
+      enableAnnotationTools={enableAnnotationTools}
+      studyInstanceUID={studyInstanceUID}
+    />
+  )
+}
+
 interface AppProps {
   name: string
   homepage: string
@@ -35,6 +64,7 @@ interface AppState {
   wasAuthSuccessful: boolean
   error?: ErrorMessageSettings
 }
+
 
 class App extends React.Component<AppProps, AppState> {
   private readonly auth?: AuthManager
@@ -198,9 +228,6 @@ class App extends React.Component<AppProps, AppState> {
     const enableWorklist = !(
       this.props.config.disableWorklist ?? false
     )
-    const enableAnnotationTools = !(
-      this.props.config.disableAnnotationTools ?? false
-    )
     const enableServerSelection = (
       this.props.config.enableServerSelection ?? false
     )
@@ -237,7 +264,7 @@ class App extends React.Component<AppProps, AppState> {
     if (this.state.redirectTo !== undefined) {
       return (
         <BrowserRouter basename={this.props.config.path}>
-          <Redirect push to={this.state.redirectTo} />
+          <Navigate to={this.state.redirectTo} replace />
         </BrowserRouter>
       )
     } else if (this.state.isLoading) {
@@ -268,10 +295,10 @@ class App extends React.Component<AppProps, AppState> {
     } else {
       return (
         <BrowserRouter basename={this.props.config.path}>
-          <Switch>
+          <Routes>
             <Route
-              path='/studies/:StudyInstanceUID'
-              render={(routeProps) => (
+              path='/studies/:studyInstanceUID/*'
+              element={
                 <Layout style={layoutStyle}>
                   <Header
                     app={appInfo}
@@ -282,48 +309,51 @@ class App extends React.Component<AppProps, AppState> {
                     showServerSelectionButton={enableServerSelection}
                   />
                   <Layout.Content style={layoutContentStyle}>
-                    <CaseViewer
+                    <ParametrizedCaseViewer
                       client={this.state.client}
                       user={this.state.user}
-                      annotations={this.props.config.annotations}
-                      preload={this.props.config.preload}
+                      config={this.props.config}
                       app={appInfo}
-                      enableAnnotationTools={enableAnnotationTools}
-                      studyInstanceUID={routeProps.match.params.StudyInstanceUID}
                     />
                   </Layout.Content>
                 </Layout>
-              )}
+              }
             />
-            <Route exact path='/logout'>
-              <Layout style={layoutStyle}>
-                <Header
-                  app={appInfo}
-                  user={this.state.user}
-                  showWorklistButton={false}
-                  onServerSelection={this.handleServerSelection}
-                  onUserLogout={isLogoutPossible ? onLogout : undefined}
-                  showServerSelectionButton={enableServerSelection}
-                />
-                Logged out
-              </Layout>
-            </Route>
-            <Route exact path='/'>
-              <Layout style={layoutStyle}>
-                <Header
-                  app={appInfo}
-                  user={this.state.user}
-                  showWorklistButton={false}
-                  onServerSelection={this.handleServerSelection}
-                  onUserLogout={isLogoutPossible ? onLogout : undefined}
-                  showServerSelectionButton={enableServerSelection}
-                />
-                <Layout.Content style={layoutContentStyle}>
-                  {worklist}
-                </Layout.Content>
-              </Layout>
-            </Route>
-          </Switch>
+            <Route
+              path='/logout'
+              element={
+                <Layout style={layoutStyle}>
+                  <Header
+                    app={appInfo}
+                    user={this.state.user}
+                    showWorklistButton={false}
+                    onServerSelection={this.handleServerSelection}
+                    onUserLogout={isLogoutPossible ? onLogout : undefined}
+                    showServerSelectionButton={enableServerSelection}
+                  />
+                  Logged out
+                </Layout>
+              }
+            />
+            <Route
+              path='/'
+              element={
+                <Layout style={layoutStyle}>
+                  <Header
+                    app={appInfo}
+                    user={this.state.user}
+                    showWorklistButton={false}
+                    onServerSelection={this.handleServerSelection}
+                    onUserLogout={isLogoutPossible ? onLogout : undefined}
+                    showServerSelectionButton={enableServerSelection}
+                  />
+                  <Layout.Content style={layoutContentStyle}>
+                    {worklist}
+                  </Layout.Content>
+                </Layout>
+              }
+            />
+          </Routes>
         </BrowserRouter>
       )
     }
