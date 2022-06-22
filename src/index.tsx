@@ -1,5 +1,5 @@
 import React from 'react'
-import ReactDOM from 'react-dom'
+import { createRoot } from 'react-dom/client'
 
 import './index.css'
 import AppConfig from './AppConfig'
@@ -24,7 +24,10 @@ if (config.mode === 'dark') {
   App = React.lazy(async () => await import('./AppLight'))
 }
 
-ReactDOM.render(
+const container = document.getElementById('root')
+// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+const root = createRoot(container!)
+root.render(
   <React.StrictMode>
     <React.Suspense fallback={<div>Loading application...</div>}>
       <App
@@ -34,6 +37,5 @@ ReactDOM.render(
         homepage='https://github.com/herrmannlab/slim'
       />
     </React.Suspense>
-  </React.StrictMode>,
-  document.getElementById('root')
+  </React.StrictMode>
 )

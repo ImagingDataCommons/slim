@@ -20,7 +20,7 @@ interface ItemProps {
  */
 class Item extends React.Component<ItemProps, {}> {
   render (): React.ReactNode {
-    var groups = null
+    let groups = null
     if (this.props.groups !== undefined) {
       groups = this.props.groups.map((item, index: number) => (
         <Description
@@ -30,7 +30,7 @@ class Item extends React.Component<ItemProps, {}> {
         />
       ))
     }
-    var title
+    let title
     if (this.props.type !== undefined) {
       title = `${this.props.type}: ${this.props.identifier}`
     } else {

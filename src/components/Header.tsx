@@ -1,8 +1,6 @@
 import React from 'react'
 import {
-  NavLink,
-  RouteComponentProps,
-  withRouter
+  NavLink
 } from 'react-router-dom'
 import {
   Col,
@@ -26,6 +24,7 @@ import {
 import { detect } from 'detect-browser'
 
 import Button from './Button'
+import { RouteComponentProps, withRouter } from '../utils/router'
 
 interface HeaderProps extends RouteComponentProps {
   app: {
@@ -127,7 +126,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
   }
 
   render (): React.ReactNode {
-    var user = null
+    let user = null
     if (this.props.user !== undefined) {
       const userMenuItems = []
       if (this.props.onUserLogout !== undefined) {

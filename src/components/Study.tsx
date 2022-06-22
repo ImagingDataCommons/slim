@@ -2,7 +2,7 @@ import React from 'react'
 import * as dmv from 'dicom-microscopy-viewer'
 
 import Description from './Description'
-import { parseDate, parseTime } from '../valueUtils'
+import { parseDate, parseTime } from '../utils/values'
 
 interface StudyProps {
   metadata: dmv.metadata.Study|dmv.metadata.SOPClass

@@ -73,7 +73,7 @@ const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
   const rois: dmv.roi.ROI[] = []
   measurementGroupItems.forEach((item) => {
     const evaluations = []
-    var observerType: string
+    let observerType: string
     const group = item as dcmjs.sr.valueTypes.ContainerContentItem
     let items = findContentItemsByName({
       content: group.ContentSequence,
@@ -156,7 +156,7 @@ const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
       )
     }
     const regionItem = items[0] as dcmjs.sr.valueTypes.Scoord3DContentItem
-    var scoord3d: dmv.scoord3d.Scoord3D
+    let scoord3d: dmv.scoord3d.Scoord3D
     if (regionItem.GraphicType === 'POINT') {
       scoord3d = new dmv.scoord3d.Point({
         frameOfReferenceUID: regionItem.ReferencedFrameOfReferenceUID,
