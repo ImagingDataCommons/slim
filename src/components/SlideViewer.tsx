@@ -583,7 +583,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               this.setState(state => {
                 const mapping: {
                   [sopInstanceUID: string]:
-                    dmv.metadata.AdvancedBlendingPresentationState
+                  dmv.metadata.AdvancedBlendingPresentationState
                 } = {}
                 state.presentationStates.forEach(instance => {
                   mapping[instance.SOPInstanceUID] = instance
@@ -1544,7 +1544,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const refSpecimen = refImage.SpecimenDescriptionSequence[0]
 
     console.debug('create Observation Context')
-    var observer
+    let observer
     if (this.props.user !== undefined) {
       observer = new dcmjs.sr.templates.PersonObserverIdentifyingAttributes({
         name: this.props.user.name,
@@ -1681,7 +1681,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     const report = this.state.generatedReport
     if (report !== undefined) {
-      var dataset = report as unknown as dmv.metadata.Comprehensive3DSR
+      const dataset = report as unknown as dmv.metadata.Comprehensive3DSR
       console.debug('create File Meta Information')
       const fileMetaInformationVersionArray = new Uint8Array(2)
       fileMetaInformationVersionArray[1] = 1
@@ -1749,7 +1749,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     console.log(`selected ROI ${roiUID}`)
     this.setState({ selectedRoiUIDs: new Set([roiUID]) })
     this.volumeViewer.getAllROIs().forEach((roi) => {
-      var style = {}
+      let style = {}
       if (roi.uid === roiUID) {
         style = this.selectedRoiStyle
         this.setState(state => {
@@ -2513,6 +2513,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           dropdownMatchSelectWidth={false}
           size='small'
         >
+          {}
         </Select.Option>
       )
       presentationStateMenu = (

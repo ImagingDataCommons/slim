@@ -25,6 +25,7 @@ if (config.mode === 'dark') {
 }
 
 const container = document.getElementById('root')
+// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 const root = createRoot(container!)
 root.render(
   <React.StrictMode>
@@ -36,5 +37,5 @@ root.render(
         homepage='https://github.com/herrmannlab/slim'
       />
     </React.Suspense>
-  </React.StrictMode>,
+  </React.StrictMode>
 )

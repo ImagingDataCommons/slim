@@ -1,6 +1,6 @@
 import React from 'react'
 import {
-  NavLink,
+  NavLink
 } from 'react-router-dom'
 import {
   Col,
@@ -126,7 +126,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
   }
 
   render (): React.ReactNode {
-    var user = null
+    let user = null
     if (this.props.user !== undefined) {
       const userMenuItems = []
       if (this.props.onUserLogout !== undefined) {

@@ -25,8 +25,7 @@ import { Slide, createSlides } from '../data/slides'
 import { SOPClassUIDs } from '../data/uids'
 import { RouteComponentProps, withRouter } from '../utils/router'
 
-
-function ParametrizedSlideViewer({
+function ParametrizedSlideViewer ({
   client,
   slides,
   user,
@@ -47,7 +46,7 @@ function ParametrizedSlideViewer({
   preload: boolean
   enableAnnotationTools: boolean
   annotations: AnnotationSettings[]
-}) {
+}): JSX.Element | null {
   const { studyInstanceUID, seriesInstanceUID } = useParams()
   const location = useLocation()
 

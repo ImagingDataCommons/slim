@@ -21,7 +21,7 @@ import { User, AuthManager } from './auth'
 import OidcManager from './auth/OidcManager'
 import DicomWebManager from './DicomWebManager'
 
-function ParametrizedCaseViewer({ client, user, app, config }: {
+function ParametrizedCaseViewer ({ client, user, app, config }: {
   client: DicomWebManager
   user?: User
   app: {
@@ -31,7 +31,7 @@ function ParametrizedCaseViewer({ client, user, app, config }: {
     organization?: string
   }
   config: AppConfig
-}) {
+}): JSX.Element {
   const { studyInstanceUID } = useParams()
 
   const enableAnnotationTools = !(config.disableAnnotationTools ?? false)
@@ -64,7 +64,6 @@ interface AppState {
   wasAuthSuccessful: boolean
   error?: ErrorMessageSettings
 }
-
 
 class App extends React.Component<AppProps, AppState> {
   private readonly auth?: AuthManager
