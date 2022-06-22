@@ -2518,6 +2518,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           dropdownMatchSelectWidth={false}
           size='small'
         >
+          {}
         </Select.Option>
       )
       presentationStateMenu = (

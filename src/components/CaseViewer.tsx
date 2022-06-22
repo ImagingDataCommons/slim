@@ -14,6 +14,7 @@ import {
 import * as dmv from 'dicom-microscopy-viewer'
 
 import { AnnotationSettings } from '../AppConfig'
+import ClinicalTrial from './ClinicalTrial'
 import DicomWebManager from '../DicomWebManager'
 import Patient from './Patient'
 import Study from './Study'
@@ -165,6 +166,15 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       selectedSeriesInstanceUID = volumeInstances[0].SeriesInstanceUID
     }
 
+    let clinicalTrialMenu
+    if (refImage.ClinicalTrialSponsorName != null) {
+      clinicalTrialMenu = (
+        <Menu.SubMenu key='clinical-trial' title='Clinical Trial'>
+          <ClinicalTrial metadata={refImage} />
+        </Menu.SubMenu>
+      )
+    }
+
     return (
       <Layout style={{ height: '100%' }} hasSider>
         <Layout.Sider
@@ -179,16 +189,17 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
         >
           <Menu
             mode='inline'
-            defaultOpenKeys={['patient', 'case', 'slides']}
+            defaultOpenKeys={['patient', 'study', 'clinical-trial', 'slides']}
             style={{ height: '100%' }}
             inlineIndent={14}
           >
             <Menu.SubMenu key='patient' title='Patient'>
               <Patient metadata={refImage} />
             </Menu.SubMenu>
-            <Menu.SubMenu key='case' title='Case'>
+            <Menu.SubMenu key='study' title='Study'>
               <Study metadata={refImage} />
             </Menu.SubMenu>
+            {clinicalTrialMenu}
             <Menu.SubMenu key='slides' title='Slides'>
               <SlideList
                 client={this.props.client}

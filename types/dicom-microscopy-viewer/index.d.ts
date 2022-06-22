@@ -454,6 +454,13 @@ declare module 'dicom-microscopy-viewer' {
       StudyID: string
       StudyDate: string
       StudyTime: string
+      // Clinical Trial Subject module
+      ClinicalTrialSponsorName?: string
+      ClinicalTrialProtocolID?: string
+      ClinicalTrialProtocolName?: string
+      ClinicalTrialSiteName?: string
+      // Clinical Trial Study module
+      ClinicalTrialTimePointID?: string
       // General Series module
       SeriesInstanceUID: string
       SeriesNumber: number | null | undefined
@@ -480,7 +487,7 @@ declare module 'dicom-microscopy-viewer' {
       SpecimenDescriptionSequence: SpecimenDescription[]
       // Optical Path module
       OpticalPathSequence: OpticalPath[]
-      // Equipment
+      // Equipment module
       Manufacturer: string
       ManufacturerModelName: string
       DeviceSerialNumber: string
