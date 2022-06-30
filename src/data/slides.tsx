@@ -16,7 +16,7 @@ const hasImageFlavor = (
 
 const areSameAcquisition = (
   image: dmv.metadata.VLWholeSlideMicroscopyImage,
-  refImage: dmv.metadata.VLWholeSlideMicroscopyImage,
+  refImage: dmv.metadata.VLWholeSlideMicroscopyImage
 ): boolean => {
   if (image.AcquisitionUID != null) {
     return image.AcquisitionUID === refImage.AcquisitionUID
@@ -163,7 +163,7 @@ const createSlides = (
         const refImage = volumeImages[0]
         const filteredVolumeImages = volumeImages.filter((image) => {
           return refImage.SamplesPerPixel === image.SamplesPerPixel
-         })
+        })
         const slideMetadataIndex = slideMetadata.findIndex((slide) => {
           return _doesImageBelongToSlide(slide, refImage)
         })
