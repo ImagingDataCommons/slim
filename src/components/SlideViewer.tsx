@@ -536,8 +536,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       if (matchedInstances == null) {
         matchedInstances = []
       }
-      matchedInstances.forEach(i => {
-        const { dataset } = dmv.metadata.formatMetadata(i)
+      matchedInstances.forEach((rawInstance, index)  => {
+        const { dataset } = dmv.metadata.formatMetadata(rawInstance)
         const instance = dataset as dmv.metadata.Instance
         console.info(`retrieve PR instance "${instance.SOPInstanceUID}"`)
         this.props.client.retrieveInstance({
@@ -566,10 +566,17 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 `"${presentationState.SOPInstanceUID}"`
               )
               if (
-                presentationState.SOPInstanceUID ===
-                this.props.selectedPresentationStateUID
+                index === 0 &&
+                this.props.selectedPresentationStateUID == null
               ) {
                 this.setPresentationState(presentationState)
+              } else {
+                if (
+                  presentationState.SOPInstanceUID ===
+                  this.props.selectedPresentationStateUID
+                ) {
+                  this.setPresentationState(presentationState)
+                }
               }
               this.setState(state => {
                 const mapping: {
