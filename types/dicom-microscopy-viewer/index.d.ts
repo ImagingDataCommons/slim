@@ -499,6 +499,8 @@ declare module 'dicom-microscopy-viewer' {
       ImageType: string[]
       SamplesPerPixel: number
       PhotometricInterpretation: string
+      // Acquisition
+      AcquisitionUID?: string
       // Frame of Reference module
       FrameOfReferenceUID: string
       // Specimen module
