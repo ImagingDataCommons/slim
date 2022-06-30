@@ -536,7 +536,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       if (matchedInstances == null) {
         matchedInstances = []
       }
-      matchedInstances.forEach((rawInstance, index)  => {
+      matchedInstances.forEach((rawInstance, index) => {
         const { dataset } = dmv.metadata.formatMetadata(rawInstance)
         const instance = dataset as dmv.metadata.Instance
         console.info(`retrieve PR instance "${instance.SOPInstanceUID}"`)
