@@ -1195,8 +1195,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   onFrameLoadingStarted = (event: CustomEventInit): void => {
-    const frameInfo = event.detail.payload
-    const key = `${frameInfo.sopInstanceUID}-${frameInfo.frameNumber}`
+    const frameInfo: {
+      studyInstanceUID: string
+      seriesInstanceUID: string
+      sopInstanceUID: string
+      sopClassUID: string
+      frameNumber: string
+      channelIdentifier: string
+    } = event.detail.payload
+    const key: string = `${frameInfo.sopInstanceUID}-${frameInfo.frameNumber}`
     this.setState(state => {
       state.loadingFrames.add(key)
       return state
@@ -1204,7 +1211,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   onFrameLoadingEnded = (event: CustomEventInit): void => {
-    const frameInfo = event.detail.payload
+    const frameInfo: {
+      studyInstanceUID: string
+      seriesInstanceUID: string
+      sopInstanceUID: string
+      sopClassUID: string
+      frameNumber: string
+      channelIdentifier: string
+      pixelArray: Uint8Array|Uint16Array|Float32Array
+    } = event.detail.payload
     const key = `${frameInfo.sopInstanceUID}-${frameInfo.frameNumber}`
     this.setState(state => {
       state.loadingFrames.delete(key)
