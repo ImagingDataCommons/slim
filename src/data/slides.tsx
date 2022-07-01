@@ -14,6 +14,16 @@ const hasImageFlavor = (
   return image.ImageType[2] === imageFlavor
 }
 
+const areSameAcquisition = (
+  image: dmv.metadata.VLWholeSlideMicroscopyImage,
+  refImage: dmv.metadata.VLWholeSlideMicroscopyImage
+): boolean => {
+  if (image.AcquisitionUID != null) {
+    return image.AcquisitionUID === refImage.AcquisitionUID
+  }
+  return false
+}
+
 interface SlideImageCollection {
   frameOfReferenceUID: string
   containerIdentifier: string
@@ -57,24 +67,31 @@ class Slide {
     const seriesInstanceUIDs = new Set([] as string[])
     const opticalPathIdentifiers = new Set([] as string[])
     const containerIdentifiers = new Set([] as string[])
-    const frameOfReferenceUIDs = new Set([] as string[])
+    const frameOfReferenceUIDs = {
+      VOLUME: new Set([] as string[]),
+      LABEL: new Set([] as string[]),
+      OVERVIEW: new Set([] as string[])
+    }
     const volumeImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
     const labelImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
     const overviewImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
     options.images.forEach((image) => {
-      frameOfReferenceUIDs.add(image.FrameOfReferenceUID)
       containerIdentifiers.add(image.ContainerIdentifier)
       seriesInstanceUIDs.add(image.SeriesInstanceUID)
       image.OpticalPathSequence.forEach(item => {
         opticalPathIdentifiers.add(item.OpticalPathIdentifier)
       })
       if (hasImageFlavor(image, ImageFlavors.VOLUME)) {
+        frameOfReferenceUIDs.VOLUME.add(image.FrameOfReferenceUID)
         volumeImages.push(image)
       } else if (hasImageFlavor(image, ImageFlavors.THUMBNAIL)) {
+        frameOfReferenceUIDs.VOLUME.add(image.FrameOfReferenceUID)
         volumeImages.push(image)
       } else if (hasImageFlavor(image, ImageFlavors.LABEL)) {
+        frameOfReferenceUIDs.LABEL.add(image.FrameOfReferenceUID)
         labelImages.push(image)
       } else if (hasImageFlavor(image, ImageFlavors.OVERVIEW)) {
+        frameOfReferenceUIDs.OVERVIEW.add(image.FrameOfReferenceUID)
         overviewImages.push(image)
       }
     })
@@ -104,12 +121,13 @@ class Slide {
       )
     }
     this.containerIdentifier = [...containerIdentifiers][0]
-    if (frameOfReferenceUIDs.size !== 1) {
+    if (frameOfReferenceUIDs.VOLUME.size !== 1) {
       throw new Error(
-        'All images of a slide must have the same Frame of Reference UID.'
+        'All VOLUME images of a slide must have ' +
+        'the same Frame of Reference UID.'
       )
     }
-    this.frameOfReferenceUID = [...frameOfReferenceUIDs][0]
+    this.frameOfReferenceUID = [...frameOfReferenceUIDs.VOLUME][0]
 
     this.areVolumeImagesMonochrome = (
       this.volumeImages[0].SamplesPerPixel === 1 &&
@@ -141,37 +159,51 @@ const createSlides = (
           hasImageFlavor(image, ImageFlavors.THUMBNAIL)
         )
       })
-      const labelImages = series.filter((image) => {
-        return hasImageFlavor(image, ImageFlavors.LABEL)
-      })
-      const overviewImages = series.filter((image) => {
-        return hasImageFlavor(image, ImageFlavors.OVERVIEW)
-      })
-
       if (volumeImages.length > 0) {
         const refImage = volumeImages[0]
         const filteredVolumeImages = volumeImages.filter((image) => {
           return refImage.SamplesPerPixel === image.SamplesPerPixel
         })
-        const filteredOverviewImages = overviewImages.filter((image) => {
-          return refImage.SamplesPerPixel === image.SamplesPerPixel
-        })
         const slideMetadataIndex = slideMetadata.findIndex((slide) => {
           return _doesImageBelongToSlide(slide, refImage)
         })
+
+        const labelImages = series.filter((image) => {
+          return hasImageFlavor(image, ImageFlavors.LABEL)
+        })
+        let filteredLabelImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
+        if (labelImages.length > 1) {
+          filteredLabelImages = labelImages.filter((image) => {
+            return areSameAcquisition(image, refImage)
+          })
+        } else {
+          filteredLabelImages = labelImages
+        }
+        const overviewImages = series.filter((image) => {
+          return hasImageFlavor(image, ImageFlavors.OVERVIEW)
+        })
+        let filteredOverviewImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
+        if (overviewImages.length > 1) {
+          filteredOverviewImages = overviewImages.filter((image) => {
+            return areSameAcquisition(image, refImage)
+          })
+        } else {
+          filteredOverviewImages = overviewImages
+        }
+
         if (slideMetadataIndex === -1) {
           const slideMetadataItem: SlideImageCollection = {
             frameOfReferenceUID: refImage.FrameOfReferenceUID,
             containerIdentifier: refImage.ContainerIdentifier,
             volumeImages: filteredVolumeImages,
-            labelImages: labelImages,
+            labelImages: filteredLabelImages,
             overviewImages: filteredOverviewImages
           }
           slideMetadata.push(slideMetadataItem)
         } else {
           const slideMetadataItem = slideMetadata[slideMetadataIndex]
           slideMetadataItem.volumeImages.push(...filteredVolumeImages)
-          slideMetadataItem.labelImages.push(...labelImages)
+          slideMetadataItem.labelImages.push(...filteredLabelImages)
           slideMetadataItem.overviewImages.push(...filteredOverviewImages)
         }
       }
