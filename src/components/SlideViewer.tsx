@@ -296,6 +296,7 @@ interface SlideViewerState {
       numFramesSampled: number
     }
   }
+  loadingFrames: Set<string>
 }
 
 /**
@@ -467,7 +468,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       isRoiModificationActive: false,
       areRoisHidden: false,
       pixelDataStatistics: {},
-      selectedPresentationStateUID: this.props.selectedPresentationStateUID
+      selectedPresentationStateUID: this.props.selectedPresentationStateUID,
+      loadingFrames: new Set()
     }
   }
 
@@ -1199,8 +1201,44 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.setState({ isLoading: false })
   }
 
+  onFrameLoadingStarted = (event: CustomEventInit): void => {
+    const frameInfo: {
+      studyInstanceUID: string
+      seriesInstanceUID: string
+      sopInstanceUID: string
+      sopClassUID: string
+      frameNumber: string
+      channelIdentifier: string
+    } = event.detail.payload
+    const key: string = `${frameInfo.sopInstanceUID}-${frameInfo.frameNumber}`
+    this.setState(state => {
+      state.loadingFrames.add(key)
+      return state
+    })
+  }
+
   onFrameLoadingEnded = (event: CustomEventInit): void => {
-    const frameInfo = event.detail.payload
+    const frameInfo: {
+      studyInstanceUID: string
+      seriesInstanceUID: string
+      sopInstanceUID: string
+      sopClassUID: string
+      frameNumber: string
+      channelIdentifier: string
+      pixelArray: Uint8Array|Uint16Array|Float32Array
+    } = event.detail.payload
+    const key = `${frameInfo.sopInstanceUID}-${frameInfo.frameNumber}`
+    this.setState(state => {
+      state.loadingFrames.delete(key)
+      let isLoading: boolean = false
+      if (state.loadingFrames.size > 0) {
+        isLoading = true
+      }
+      return {
+        isLoading,
+        loadingFrames: state.loadingFrames
+      }
+    })
     if (
       frameInfo.sopClassUID === SOPClassUIDs.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE &&
       this.props.slide.areVolumeImagesMonochrome
@@ -1276,6 +1314,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.onLoadingEnded
     )
     document.body.removeEventListener(
+      'dicommicroscopyviewer_frame_loading_started',
+      this.onFrameLoadingStarted
+    )
+    document.body.removeEventListener(
       'dicommicroscopyviewer_frame_loading_ended',
       this.onFrameLoadingEnded
     )
@@ -1322,6 +1364,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     document.body.addEventListener(
       'dicommicroscopyviewer_loading_ended',
       this.onLoadingEnded
+    )
+    document.body.addEventListener(
+      'dicommicroscopyviewer_frame_loading_started',
+      this.onFrameLoadingStarted
     )
     document.body.addEventListener(
       'dicommicroscopyviewer_frame_loading_ended',
@@ -2672,12 +2718,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       toolbarHeight = '50px'
     }
 
-    /* It would be nicer to use the ant Spin component, but that causes issues
-     * with the positioning of the viewport.
-     */
-    let loadingDisplay = 'none'
+    let cursor = 'default'
     if (this.state.isLoading) {
-      loadingDisplay = 'block'
+      cursor = 'progress'
     }
 
     return (
@@ -2685,12 +2728,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         <Layout.Content style={{ height: '100%' }}>
           {toolbar}
 
-          <div className='dimmer' style={{ display: loadingDisplay }} />
-          <div className='spinner' style={{ display: loadingDisplay }} />
           <div
             style={{
               height: `calc(100% - ${toolbarHeight})`,
-              overflow: 'hidden'
+              overflow: 'hidden',
+              cursor: cursor
             }}
             ref={this.volumeViewportRef}
           />
