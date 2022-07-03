@@ -517,7 +517,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         visibleAnnotationGroupUIDs: new Set(),
         visibleOpticalPathIdentifiers,
         activeOpticalPathIdentifiers,
-        presentationStates: []
+        presentationStates: [],
+        loadingFrames: new Set()
       })
       this.populateViewports()
     }
