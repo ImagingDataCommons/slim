@@ -1226,7 +1226,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       sopClassUID: string
       frameNumber: string
       channelIdentifier: string
-      pixelArray: Uint8Array|Uint16Array|Float32Array
+      pixelArray: Uint8Array|Uint16Array|Float32Array|null
     } = event.detail.payload
     const key = `${frameInfo.sopInstanceUID}-${frameInfo.frameNumber}`
     this.setState(state => {
@@ -1245,7 +1245,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.props.slide.areVolumeImagesMonochrome
     ) {
       const opticalPathIdentifier = frameInfo.channelIdentifier
-      if (!(opticalPathIdentifier in this.state.pixelDataStatistics)) {
+      if (
+        !(opticalPathIdentifier in this.state.pixelDataStatistics) &&
+        frameInfo.pixelArray != null
+      ) {
         /*
          * There are limits on the number of arguments Math.min and Math.max
          * functions can accept. Therefore, we compute values in smaller chunks.
