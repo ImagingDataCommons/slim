@@ -28,7 +28,6 @@ These images were originally stored in SVS-TIFF or OME-TIFF format and were subs
 In addition, the demo includes images that were collected for interoperability demonstrations at DICOM WG-26 Pathology Connectathons or Hackathons.
 These images were directly stored in DICOM format and did not require conversion.
 
-
 ## Features
 
 ### Display of images
@@ -242,3 +241,12 @@ The configuration can be specified using the `REACT_APP_CONFIG` environment vari
 ```none
 REACT_APP_CONFIG=local yarn start
 ```
+
+## Citation
+
+For more information about the motivation, design, and capabilities of Slim, please see the following article:
+
+> [Slim: interoperable web viewer and annotation tool for quantitative microscopy tissue imaging](https://arxiv.org/abs/2205.09122)
+> C. Gorman, D. Punzo, I. Octaviano, S. Pieper, W.J.R. Longabaugh, D.A. Clunie, R. Kikinis, A.Y. Fedorov, M.D. Herrmann
+
+If you use Slim in your research, please cite the above article.
