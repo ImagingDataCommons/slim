@@ -750,6 +750,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         this.volumeViewer.deactivateOpticalPath(identifier)
       }
     })
+    const searchParams = new URLSearchParams(this.props.location.search)
+    searchParams.set('state', presentationState.SOPInstanceUID)
+    this.props.navigate(
+      {
+        pathname: this.props.location.pathname,
+        search: searchParams.toString()
+      },
+      { replace: true }
+    )
     this.setState(state => ({
       activeOpticalPathIdentifiers: selectedOpticalPathIdentifiers,
       visibleOpticalPathIdentifiers: selectedOpticalPathIdentifiers,
