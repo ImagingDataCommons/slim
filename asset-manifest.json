@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "https://herrmannlab.github.io/slim/static/css/main.e6c13ad2.css",
-    "main.js": "https://herrmannlab.github.io/slim/static/js/main.25d3e7eb.js",
+    "main.js": "https://herrmannlab.github.io/slim/static/js/main.a3c9af39.js",
     "static/css/455.4940f90f.chunk.css": "https://herrmannlab.github.io/slim/static/css/455.4940f90f.chunk.css",
     "static/js/455.8a6ca5f2.chunk.js": "https://herrmannlab.github.io/slim/static/js/455.8a6ca5f2.chunk.js",
     "static/css/267.dbf9e191.chunk.css": "https://herrmannlab.github.io/slim/static/css/267.dbf9e191.chunk.css",
     "static/js/267.9ea21038.chunk.js": "https://herrmannlab.github.io/slim/static/js/267.9ea21038.chunk.js",
     "static/js/649.7f3a26cd.chunk.js": "https://herrmannlab.github.io/slim/static/js/649.7f3a26cd.chunk.js",
-    "static/js/884.c770f513.chunk.js": "https://herrmannlab.github.io/slim/static/js/884.c770f513.chunk.js",
+    "static/js/884.eae376c7.chunk.js": "https://herrmannlab.github.io/slim/static/js/884.eae376c7.chunk.js",
     "static/js/dicomMicroscopyViewer.min.js.map": "https://herrmannlab.github.io/slim/static/js/dicomMicroscopyViewer.min.js.map",
     "static/js/dicomMicroscopyViewer.min.js": "https://herrmannlab.github.io/slim/static/js/dicomMicroscopyViewer.min.js",
     "static/js/index.worker.min.worker.js.map": "https://herrmannlab.github.io/slim/static/js/index.worker.min.worker.js.map",
@@ -15,16 +15,16 @@
     "static/js/index.worker.min.worker.js": "https://herrmannlab.github.io/slim/static/js/index.worker.min.worker.js",
     "index.html": "https://herrmannlab.github.io/slim/index.html",
     "main.e6c13ad2.css.map": "https://herrmannlab.github.io/slim/static/css/main.e6c13ad2.css.map",
-    "main.25d3e7eb.js.map": "https://herrmannlab.github.io/slim/static/js/main.25d3e7eb.js.map",
+    "main.a3c9af39.js.map": "https://herrmannlab.github.io/slim/static/js/main.a3c9af39.js.map",
     "455.4940f90f.chunk.css.map": "https://herrmannlab.github.io/slim/static/css/455.4940f90f.chunk.css.map",
     "455.8a6ca5f2.chunk.js.map": "https://herrmannlab.github.io/slim/static/js/455.8a6ca5f2.chunk.js.map",
     "267.dbf9e191.chunk.css.map": "https://herrmannlab.github.io/slim/static/css/267.dbf9e191.chunk.css.map",
     "267.9ea21038.chunk.js.map": "https://herrmannlab.github.io/slim/static/js/267.9ea21038.chunk.js.map",
     "649.7f3a26cd.chunk.js.map": "https://herrmannlab.github.io/slim/static/js/649.7f3a26cd.chunk.js.map",
-    "884.c770f513.chunk.js.map": "https://herrmannlab.github.io/slim/static/js/884.c770f513.chunk.js.map"
+    "884.eae376c7.chunk.js.map": "https://herrmannlab.github.io/slim/static/js/884.eae376c7.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.e6c13ad2.css",
-    "static/js/main.25d3e7eb.js"
+    "static/js/main.a3c9af39.js"
   ]
 }
