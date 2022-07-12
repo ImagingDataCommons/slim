@@ -1265,8 +1265,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         const size = 2 ** 16
         const chunks = Math.ceil(frameInfo.pixelArray.length / size)
         let offset = 0
-        const minValues = []
-        const maxValues = []
+        const minValues: number[] = []
+        const maxValues: number[] = []
         for (let i = 0; i < chunks; i++) {
           offset = i * size
           const pixels = frameInfo.pixelArray.slice(offset, offset + size)
@@ -1289,6 +1289,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               max: max,
               numFramesSampled: 1
             }
+          }
+          if (state.selectedPresentationStateUID == null) {
+            const style = {
+              ...this.volumeViewer.getOpticalPathStyle(opticalPathIdentifier)
+            }
+            style.limitValues = [
+              stats[opticalPathIdentifier].min,
+              stats[opticalPathIdentifier].max
+            ]
+            this.volumeViewer.setOpticalPathStyle(opticalPathIdentifier, style)
           }
           return state
         })
@@ -2512,12 +2522,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       opticalPathMetadata[identifier] = metadata
       const style = {
         ...this.volumeViewer.getOpticalPathStyle(identifier)
-      }
-      if (this.state.selectedPresentationStateUID == null) {
-        const stats = this.state.pixelDataStatistics[identifier]
-        if (stats != null) {
-          style.limitValues = [stats.min, stats.max]
-        }
       }
       opticalPathStyles[identifier] = style
     })
