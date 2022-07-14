@@ -76,6 +76,7 @@ class App extends React.Component<AppProps, AppState> {
       this.signIn()
     }
     if (error.status === 403) {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       message.error('User is not authorized to access DICOMweb resources.')
     }
     if (serverSettings.errorMessages !== undefined) {
@@ -173,7 +174,7 @@ class App extends React.Component<AppProps, AppState> {
     const storedPath = window.localStorage.getItem('slim_path')
     const storedSearch = window.localStorage.getItem('slim_search')
     console.log('DEBUG [HANDLE SIGNIN]: ', storedPath, storedSearch)
-    if (window.location.hash) {
+    if (window.location.hash !== '') {
       window.location.hash = ''
     }
     if (storedPath != null) {
@@ -203,7 +204,7 @@ class App extends React.Component<AppProps, AppState> {
         console.info('sign-in was successful')
         this.setState({
           isLoading: false,
-          wasAuthSuccessful: true,
+          wasAuthSuccessful: true
         })
       }).catch((error) => {
         console.error('sign-in failed ', error)
@@ -226,7 +227,7 @@ class App extends React.Component<AppProps, AppState> {
 
   componentDidMount (): void {
     console.log('DEBUG [MOUNT BEFORE]: ', window.localStorage.getItem('slim_path'))
-    let path = window.localStorage.getItem('slim_path')
+    const path = window.localStorage.getItem('slim_path')
     if (path == null) {
       window.localStorage.setItem('slim_path', window.location.pathname)
       window.localStorage.setItem('slim_search', window.location.search)
