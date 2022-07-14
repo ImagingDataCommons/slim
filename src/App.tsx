@@ -75,6 +75,9 @@ class App extends React.Component<AppProps, AppState> {
     if (error.status === 401) {
       this.signIn()
     }
+    if (error.status === 403) {
+      message.error('User is not authorized to access DICOMweb resources.')
+    }
     if (serverSettings.errorMessages !== undefined) {
       serverSettings.errorMessages.forEach(
         ({ status, message }: ErrorMessageSettings) => {
@@ -167,18 +170,29 @@ class App extends React.Component<AppProps, AppState> {
     )
     const client = this.state.client
     client.updateHeaders({ Authorization: authorization })
-    const fullPath = window.location.pathname + window.location.search
-    const basePath = this.props.config.path
-    let path = fullPath.substring(basePath.length)
-    if (basePath === '/' || basePath === '') {
-      path = fullPath
+    const storedPath = window.localStorage.getItem('slim_path')
+    const storedSearch = window.localStorage.getItem('slim_search')
+    console.log('DEBUG [HANDLE SIGNIN]: ', storedPath, storedSearch)
+    if (window.location.hash) {
+      window.location.hash = ''
     }
+    if (storedPath != null) {
+      const currentPath = window.location.pathname
+      const currentSearch = window.location.search
+      if (storedPath !== currentPath) {
+        window.location.pathname = storedPath
+        if (storedSearch != null) {
+          if (storedSearch !== currentSearch) {
+            window.location.search = storedSearch
+          }
+        }
+      }
+    }
+    window.localStorage.removeItem('slim_path')
+    window.localStorage.removeItem('slim_search')
     this.setState({
       user: user,
-      client: client,
-      wasAuthSuccessful: true,
-      isLoading: false,
-      redirectTo: path
+      client: client
     })
   }
 
@@ -189,8 +203,7 @@ class App extends React.Component<AppProps, AppState> {
         console.info('sign-in was successful')
         this.setState({
           isLoading: false,
-          redirectTo: undefined,
-          wasAuthSuccessful: true
+          wasAuthSuccessful: true,
         })
       }).catch((error) => {
         console.error('sign-in failed ', error)
@@ -212,7 +225,14 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   componentDidMount (): void {
+    console.log('DEBUG [MOUNT BEFORE]: ', window.localStorage.getItem('slim_path'))
+    let path = window.localStorage.getItem('slim_path')
+    if (path == null) {
+      window.localStorage.setItem('slim_path', window.location.pathname)
+      window.localStorage.setItem('slim_search', window.location.search)
+    }
     this.signIn()
+    console.log('DEBUG [MOUNT AFTER]: ', path)
   }
 
   render (): React.ReactNode {
