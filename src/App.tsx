@@ -173,7 +173,6 @@ class App extends React.Component<AppProps, AppState> {
     client.updateHeaders({ Authorization: authorization })
     const storedPath = window.localStorage.getItem('slim_path')
     const storedSearch = window.localStorage.getItem('slim_search')
-    console.log('DEBUG [HANDLE SIGNIN]: ', storedPath, storedSearch)
     if (window.location.hash !== '') {
       window.location.hash = ''
     }
@@ -226,14 +225,12 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   componentDidMount (): void {
-    console.log('DEBUG [MOUNT BEFORE]: ', window.localStorage.getItem('slim_path'))
     const path = window.localStorage.getItem('slim_path')
     if (path == null) {
       window.localStorage.setItem('slim_path', window.location.pathname)
       window.localStorage.setItem('slim_search', window.location.search)
     }
     this.signIn()
-    console.log('DEBUG [MOUNT AFTER]: ', path)
   }
 
   render (): React.ReactNode {
