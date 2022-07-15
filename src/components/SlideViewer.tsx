@@ -637,10 +637,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       } | null
     } = {}
     opticalPaths.forEach(opticalPath => {
-      // First, deactivate and hide all optical paths
+      // First, deactivate and hide all optical paths and reset style
       const identifier = opticalPath.identifier
       this.volumeViewer.hideOpticalPath(identifier)
       this.volumeViewer.deactivateOpticalPath(identifier)
+      const style = this.volumeViewer.getOpticalPathDefaultStyle(identifier)
+      this.volumeViewer.setOpticalPathStyle(identifier, style)
 
       presentationState.AdvancedBlendingSequence.forEach(blendingItem => {
         // FIXME
