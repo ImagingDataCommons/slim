@@ -173,19 +173,14 @@ class App extends React.Component<AppProps, AppState> {
     client.updateHeaders({ Authorization: authorization })
     const storedPath = window.localStorage.getItem('slim_path')
     const storedSearch = window.localStorage.getItem('slim_search')
-    if (window.location.hash !== '') {
-      window.location.hash = ''
-    }
     if (storedPath != null) {
       const currentPath = window.location.pathname
-      const currentSearch = window.location.search
       if (storedPath !== currentPath) {
-        window.location.pathname = storedPath
+        let path = storedPath
         if (storedSearch != null) {
-          if (storedSearch !== currentSearch) {
-            window.location.search = storedSearch
-          }
+          path += storedSearch
         }
+        window.location.href = path
       }
     }
     window.localStorage.removeItem('slim_path')
