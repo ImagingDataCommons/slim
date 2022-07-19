@@ -110,23 +110,18 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
   }
 
   render (): React.ReactNode {
-    const identifier = `Annotation Group ${this.props.annotationGroup.number}`
     const attributes: Array<{ name: string, value: string }> = [
       {
-        name: 'Label',
-        value: this.props.annotationGroup.label
-      },
-      {
-        name: 'Algorithm Name',
-        value: this.props.annotationGroup.algorithmName
+        name: 'Property type',
+        value: this.props.annotationGroup.propertyType.CodeMeaning
       },
       {
         name: 'Property category',
         value: this.props.annotationGroup.propertyCategory.CodeMeaning
       },
       {
-        name: 'Property type',
-        value: this.props.annotationGroup.propertyType.CodeMeaning
+        name: 'Algorithm Name',
+        value: this.props.annotationGroup.algorithmName
       }
     ]
 
@@ -241,7 +236,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
             </Space>
           </div>
           <Description
-            header={identifier}
+            header={this.props.annotationGroup.label}
             attributes={attributes}
             selectable
             hasLongValues

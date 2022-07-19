@@ -80,12 +80,12 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
   render (): React.ReactNode {
     const attributes: Array<{ name: string, value: string }> = [
       {
-        name: 'Property Category',
-        value: this.props.segment.propertyCategory.CodeMeaning
-      },
-      {
         name: 'Property Type',
         value: this.props.segment.propertyType.CodeMeaning
+      },
+      {
+        name: 'Property Category',
+        value: this.props.segment.propertyCategory.CodeMeaning
       },
       {
         name: 'Algorithm Name',
