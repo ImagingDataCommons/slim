@@ -57,9 +57,12 @@ function ParametrizedSlideViewer ({
     })
   })
   const searchParams = new URLSearchParams(location.search)
-  let presentationStateUID: string|null|undefined = searchParams.get('state')
-  if (presentationStateUID === null) {
-    presentationStateUID = undefined
+  let presentationStateUID: string|null|undefined
+  if (!searchParams.has('access_token')) {
+    presentationStateUID = searchParams.get('state')
+    if (presentationStateUID === null) {
+      presentationStateUID = undefined
+    }
   }
   let viewer = null
   if (selectedSlide != null) {

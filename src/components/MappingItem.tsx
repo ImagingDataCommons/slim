@@ -60,7 +60,7 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
 
   handleVisibilityChange (
     checked: boolean,
-    event: Event
+    event: React.MouseEvent<HTMLButtonElement>
   ): void {
     this.props.onVisibilityChange({
       mappingUID: this.props.mapping.uid,

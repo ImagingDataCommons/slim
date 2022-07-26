@@ -2575,7 +2575,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               style={{ minWidth: 200, maxWidth: 200 }}
               onSelect={this.handlePresentationStateSelection}
               key='presentation-states'
-              defaultValue={this.props.selectedPresentationStateUID}
               value={this.state.selectedPresentationStateUID}
             >
               {presentationStateOptions}

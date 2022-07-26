@@ -58,7 +58,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
 
   handleVisibilityChange (
     checked: boolean,
-    event: Event
+    event: React.MouseEvent<HTMLButtonElement>
   ): void {
     this.props.onVisibilityChange({
       segmentUID: this.props.segment.uid,

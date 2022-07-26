@@ -27,7 +27,10 @@ class AnnotationList extends React.Component<AnnotationListProps, {}> {
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
   }
 
-  handleVisibilityChange (checked: boolean, event: Event): void {
+  handleVisibilityChange (
+    checked: boolean,
+    event: React.MouseEvent<HTMLButtonElement>
+  ): void {
     if (checked) {
       this.props.rois.forEach(roi => {
         this.props.onVisibilityChange({ roiUID: roi.uid, isVisible: checked })

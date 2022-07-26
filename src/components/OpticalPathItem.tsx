@@ -103,7 +103,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
 
   handleVisibilityChange (
     checked: boolean,
-    event: Event
+    event: React.MouseEvent<HTMLButtonElement>
   ): void {
     const identifier = this.props.opticalPath.identifier
     this.setState({

@@ -64,7 +64,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
 
   handleVisibilityChange (
     checked: boolean,
-    event: Event
+    event: React.MouseEvent<HTMLButtonElement>
   ): void {
     this.props.onVisibilityChange({
       annotationGroupUID: this.props.annotationGroup.uid,
