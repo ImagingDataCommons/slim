@@ -1075,6 +1075,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               pm.ContainerIdentifier === refImage.ContainerIdentifier
             ) {
               parametricMaps.push(pm)
+            } else {
+              console.warn(
+                `skip Parametric Map instance "${pm.SOPInstanceUID}"`
+              )
             }
           })
           if (parametricMaps.length > 0) {
@@ -2083,6 +2087,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   setDefaultPresentationState (): void {
     const visibleOpticalPathIdentifiers: Set<string> = new Set()
     const opticalPaths = this.volumeViewer.getAllOpticalPaths()
+    opticalPaths.sort((a, b) => {
+      if (a.identifier.localeCompare(b.identifier) === 1) {
+        return 1
+      } else if (b.identifier.localeCompare(a.identifier) === 1) {
+        return -1
+      }
+      return 0
+    })
     opticalPaths.forEach((item: dmv.opticalPath.OpticalPath) => {
       const identifier = item.identifier
       const style = this.volumeViewer.getOpticalPathDefaultStyle(identifier)
@@ -2105,20 +2117,18 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     /*
      * If no optical paths have been selected for visualization so far, select
-     * first 3 optical paths and set a default value of interest (VOI) window
+     * first n optical paths and set a default value of interest (VOI) window
      * (using pre-computed pixel data statistics) and a default color.
      */
     if (visibleOpticalPathIdentifiers.size === 0) {
       const defaultColors = [
-        [0, 0, 255],
-        [0, 255, 0],
-        [255, 0, 0]
+        [255, 255, 255],
       ]
       opticalPaths.forEach((item: dmv.opticalPath.OpticalPath) => {
         const identifier = item.identifier
         if (item.isMonochromatic) {
           const numVisible = visibleOpticalPathIdentifiers.size
-          if (numVisible < 3) {
+          if (numVisible < defaultColors.length) {
             const style = {
               ...this.volumeViewer.getOpticalPathStyle(identifier)
             }
@@ -2500,10 +2510,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     const opticalPaths = this.volumeViewer.getAllOpticalPaths()
     opticalPaths.sort((a, b) => {
-      if (a.identifier < b.identifier) {
-        return -1
-      } else if (a.identifier > b.identifier) {
+      if (a.identifier.localeCompare(b.identifier) === 1) {
         return 1
+      } else if (b.identifier.localeCompare(a.identifier) === 1) {
+        return -1
       }
       return 0
     })
