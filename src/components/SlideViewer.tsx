@@ -1,5 +1,6 @@
 import React from 'react'
 import {
+  FaCrosshairs,
   FaDrawPolygon,
   FaEye,
   FaEyeSlash,
@@ -11,6 +12,7 @@ import {
 import {
   Button as Btn,
   Checkbox,
+  InputNumber,
   message,
   Menu,
   Modal,
@@ -20,7 +22,11 @@ import {
   Space,
   Tooltip
 } from 'antd'
-import { UndoOutlined } from '@ant-design/icons'
+import {
+  UndoOutlined,
+  CheckOutlined,
+  StopOutlined,
+} from '@ant-design/icons'
 import * as dmv from 'dicom-microscopy-viewer'
 import * as dcmjs from 'dcmjs'
 import * as dwc from 'dicomweb-client'
@@ -108,25 +114,38 @@ const _constructViewers = ({ client, slide, preload }: {
   volumeViewer: dmv.viewer.VolumeImageViewer
   labelViewer?: dmv.viewer.LabelImageViewer
 } => {
-  const volumeViewer = new dmv.viewer.VolumeImageViewer({
-    client: client,
-    metadata: slide.volumeImages,
-    controls: ['overview'],
-    preload: preload
-  })
-  volumeViewer.activateSelectInteraction({})
-
-  let labelViewer
-  if (slide.labelImages.length > 0) {
-    labelViewer = new dmv.viewer.LabelImageViewer({
+  console.info(
+    'instantiate viewer for VOLUME images of slide ' +
+    `"${slide.volumeImages[0].ContainerIdentifier}"`
+  )
+  try {
+    const volumeViewer = new dmv.viewer.VolumeImageViewer({
       client: client,
-      metadata: slide.labelImages[0],
-      resizeFactor: 1,
-      orientation: 'vertical'
+      metadata: slide.volumeImages,
+      controls: ['overview', 'position'],
+      preload: preload
     })
-  }
+    volumeViewer.activateSelectInteraction({})
 
-  return { volumeViewer, labelViewer }
+    let labelViewer
+    if (slide.labelImages.length > 0) {
+      console.info(
+        'instantiate viewer for LABEL image of slide ' +
+        `"${slide.labelImages[0].ContainerIdentifier}"`
+      )
+      labelViewer = new dmv.viewer.LabelImageViewer({
+        client: client,
+        metadata: slide.labelImages[0],
+        resizeFactor: 1,
+        orientation: 'vertical'
+      })
+    }
+
+    return { volumeViewer, labelViewer }
+  } catch (error) {
+      message.error(`Failed to instantiate viewer: ${error}`)
+      throw error
+  }
 }
 
 /*
@@ -288,6 +307,15 @@ interface SlideViewerState {
   isRoiDrawingActive: boolean
   isRoiModificationActive: boolean
   isRoiTranslationActive: boolean
+  isGoToModalVisible: boolean
+  isMagnificationInputValid: boolean
+  isXCoordinateInputValid: boolean
+  isYCoordinateInputValid: boolean
+  xCoordinate: number | null
+  xCoordinateRange: number[]
+  yCoordinate: number | null
+  yCoordinateRange: number[]
+  magnification: number | null
   areRoisHidden: boolean
   pixelDataStatistics: {
     [opticalPathIdentifier: string]: {
@@ -397,6 +425,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.componentSetup = this.componentSetup.bind(this)
     this.componentCleanup = this.componentCleanup.bind(this)
 
+    this.onWindowResize = this.onWindowResize.bind(this)
     this.handleRoiDrawing = this.handleRoiDrawing.bind(this)
     this.handleRoiTranslation = this.handleRoiTranslation.bind(this)
     this.handleRoiModification = this.handleRoiModification.bind(this)
@@ -413,6 +442,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleAnnotationVisibilityChange = this.handleAnnotationVisibilityChange.bind(this)
     this.handleAnnotationGroupVisibilityChange = this.handleAnnotationGroupVisibilityChange.bind(this)
     this.handleAnnotationGroupStyleChange = this.handleAnnotationGroupStyleChange.bind(this)
+    this.handleGoTo = this.handleGoTo.bind(this)
+    this.handleXCoordinateInput = this.handleXCoordinateInput.bind(this)
+    this.handleYCoordinateInput = this.handleYCoordinateInput.bind(this)
+    this.handleMagnificationInput = this.handleMagnificationInput.bind(this)
+    this.handleSlidePositionSelection = this.handleSlidePositionSelection.bind(this)
+    this.handleSlidePositionSelectionCancellation = this.handleSlidePositionSelectionCancellation.bind(this)
     this.handleReportGeneration = this.handleReportGeneration.bind(this)
     this.handleReportVerification = this.handleReportVerification.bind(this)
     this.handleReportCancellation = this.handleReportCancellation.bind(this)
@@ -426,10 +461,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handlePresentationStateSelection = this.handlePresentationStateSelection.bind(this)
     this.handlePresentationStateReset = this.handlePresentationStateReset.bind(this)
 
-    console.info(
-      'instantiate viewers for slide of series ' +
-      this.props.seriesInstanceUID
-    )
     const { volumeViewer, labelViewer } = _constructViewers({
       client: this.props.client,
       slide: this.props.slide,
@@ -448,6 +479,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.volumeViewer.deactivateOpticalPath(opticalPath.identifier)
     })
 
+    const [offset, size] = this.volumeViewer.boundingBox
+
     this.state = {
       selectedRoiUIDs: new Set(),
       visibleRoiUIDs: new Set(),
@@ -462,10 +495,19 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       generatedReport: undefined,
       isLoading: false,
       isAnnotationModalVisible: false,
+      isMagnificationInputValid: false,
       isReportModalVisible: false,
       isRoiDrawingActive: false,
       isRoiTranslationActive: false,
       isRoiModificationActive: false,
+      isGoToModalVisible: false,
+      isXCoordinateInputValid: false,
+      isYCoordinateInputValid: false,
+      xCoordinate: null,
+      xCoordinateRange: [offset[0], offset[0] + size[0]],
+      yCoordinate: null,
+      yCoordinateRange: [offset[1], offset[1] + size[1]],
+      magnification: null,
       areRoisHidden: false,
       pixelDataStatistics: {},
       selectedPresentationStateUID: this.props.selectedPresentationStateUID,
@@ -487,8 +529,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.props.slide !== previousProps.slide ||
       this.props.client !== previousProps.client
     ) {
+      if (this.volumeViewportRef.current != null) {
+        this.volumeViewportRef.current.innerHTML = ''
+      }
       this.volumeViewer.cleanup()
       if (this.labelViewer != null) {
+        if (this.labelViewportRef.current != null) {
+          this.labelViewportRef.current.innerHTML = ''
+        }
         this.labelViewer.cleanup()
       }
       const { volumeViewer, labelViewer } = _constructViewers({
@@ -510,6 +558,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           activeOpticalPathIdentifiers.add(identifier)
         }
       })
+
+      const [offset, size] = this.volumeViewer.boundingBox
+
       this.setState({
         visibleRoiUIDs: new Set(),
         visibleSegmentUIDs: new Set(),
@@ -518,7 +569,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         visibleOpticalPathIdentifiers,
         activeOpticalPathIdentifiers,
         presentationStates: [],
-        loadingFrames: new Set()
+        loadingFrames: new Set(),
+        xCoordinateRange: [offset[0], offset[0] + size[0]],
+        yCoordinateRange: [offset[1], offset[1] + size[1]]
       })
       this.populateViewports()
     }
@@ -1125,14 +1178,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
 
     if (this.volumeViewportRef.current != null) {
-      this.volumeViewportRef.current.innerHTML = ''
       this.volumeViewer.render({ container: this.volumeViewportRef.current })
     }
     if (
       this.labelViewportRef.current != null &&
       this.labelViewer != null
     ) {
-      this.labelViewportRef.current.innerHTML = ''
       this.labelViewer.render({ container: this.labelViewportRef.current })
     }
 
@@ -1153,6 +1204,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.setState(state => ({
       visibleRoiUIDs: new Set(state.visibleRoiUIDs)
     }))
+  }
+
+  onWindowResize = (event: Event): void => {
+    console.info('resize viewports')
+    this.volumeViewer.resize()
+    if (this.labelViewer != null) {
+      this.labelViewer.resize()
+    }
   }
 
   onRoiDrawn = (event: CustomEventInit): void => {
@@ -1350,6 +1409,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       'dicommicroscopyviewer_frame_loading_ended',
       this.onFrameLoadingEnded
     )
+    document.body.removeEventListener(
+      'keyup',
+      this.onKeyUp
+    )
+    window.removeEventListener('resize', this.onWindowResize)
 
     this.volumeViewer.cleanup()
     if (this.labelViewer != null) {
@@ -1364,6 +1428,46 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
      * either.
      */
   }
+
+  onKeyUp = (event: KeyboardEvent): void => {
+    if (event.key === 'Escape') {
+      if (this.state.isRoiDrawingActive) {
+        console.info('deactivate drawing of ROIs')
+        this.volumeViewer.deactivateDrawInteraction()
+        this.volumeViewer.activateSelectInteraction({})
+      } else if (this.state.isRoiModificationActive) {
+        console.info('deactivate modification of ROIs')
+        this.volumeViewer.deactivateModifyInteraction()
+        this.volumeViewer.activateSelectInteraction({})
+      } else if (this.state.isRoiTranslationActive) {
+        console.info('deactivate modification of ROIs')
+        this.volumeViewer.deactivateTranslateInteraction()
+        this.volumeViewer.activateSelectInteraction({})
+      }
+      this.setState({
+        isAnnotationModalVisible: false,
+        isRoiTranslationActive: false,
+        isRoiDrawingActive: false,
+        isRoiModificationActive: false,
+        isGoToModalVisible: false
+      })
+    } else if (event.altKey) {
+      if (event.code === 'KeyD') {
+        this.handleRoiDrawing()
+      } else if (event.code === 'KeyM') {
+        this.handleRoiModification()
+      } else if (event.code === 'KeyT') {
+        this.handleRoiTranslation()
+      } else if (event.code === 'KeyR') {
+        this.handleRoiRemoval()
+      } else if (event.code === 'KeyV') {
+        this.handleRoiVisibilityChange()
+      } else if (event.code === 'KeyS') {
+        this.handleReportGeneration()
+      }
+    }
+  }
+
 
   componentWillUnmount (): void {
     window.removeEventListener('beforeunload', this.componentCleanup)
@@ -1402,48 +1506,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       'dicommicroscopyviewer_frame_loading_ended',
       this.onFrameLoadingEnded
     )
-
-    const onKeyUp = (
-      event: KeyboardEvent
-    ): void => {
-      if (event.key === 'Escape') {
-        if (this.state.isRoiDrawingActive) {
-          console.info('deactivate drawing of ROIs')
-          this.volumeViewer.deactivateDrawInteraction()
-          this.volumeViewer.activateSelectInteraction({})
-        } else if (this.state.isRoiModificationActive) {
-          console.info('deactivate modification of ROIs')
-          this.volumeViewer.deactivateModifyInteraction()
-          this.volumeViewer.activateSelectInteraction({})
-        } else if (this.state.isRoiTranslationActive) {
-          console.info('deactivate modification of ROIs')
-          this.volumeViewer.deactivateTranslateInteraction()
-          this.volumeViewer.activateSelectInteraction({})
-        }
-        this.setState({
-          isAnnotationModalVisible: false,
-          isRoiTranslationActive: false,
-          isRoiDrawingActive: false,
-          isRoiModificationActive: false
-        })
-      } else if (event.key === 'd') {
-        this.handleRoiDrawing()
-      } else if (event.key === 'm') {
-        this.handleRoiModification()
-      } else if (event.key === 't') {
-        this.handleRoiTranslation()
-      } else if (event.key === 'r') {
-        this.handleRoiRemoval()
-      } else if (event.key === 'v') {
-        this.handleRoiVisibilityChange()
-      } else if (event.key === 's') {
-        this.handleReportGeneration()
-      }
-    }
     document.body.addEventListener(
       'keyup',
-      onKeyUp
+      this.onKeyUp
     )
+    window.addEventListener('resize', this.onWindowResize)
   }
 
   componentDidMount (): void {
@@ -1563,6 +1630,108 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   handleAnnotationEvaluationClearance (): void {
     this.setState({
       selectedEvaluations: []
+    })
+  }
+
+  handleXCoordinateInput (value: any): void {
+    if (value != null) {
+      const start = this.state.xCoordinateRange[0]
+      const end = this.state.xCoordinateRange[1]
+      if (value >= start && value <= end) {
+        this.setState({
+          xCoordinate: value,
+          isXCoordinateInputValid: true
+        })
+      }
+    } else {
+        this.setState({ isXCoordinateInputValid: false })
+    }
+  }
+
+  handleYCoordinateInput (value: any): void {
+    if (value != null) {
+      const start = this.state.yCoordinateRange[0]
+      const end = this.state.yCoordinateRange[1]
+      if (value >= start && value <= end) {
+        this.setState({
+          yCoordinate: value,
+          isYCoordinateInputValid: true
+        })
+        return
+      }
+    }
+    this.setState({ isYCoordinateInputValid: false })
+  }
+
+  handleMagnificationInput (value: any): void {
+    if (value != null) {
+      if (value > 0 && value <= 40) {
+        this.setState({
+          magnification: Number(value),
+          isMagnificationInputValid: true
+        })
+        return
+      }
+    }
+    this.setState({ isMagnificationInputValid: false })
+  }
+
+  /**
+   * Handler that gets called when the selection of slide position was
+   * completed.
+   */
+  handleSlidePositionSelection (): void {
+    if (
+      this.state.isXCoordinateInputValid &&
+      this.state.isYCoordinateInputValid &&
+      this.state.isMagnificationInputValid &&
+      this.state.xCoordinate != null &&
+      this.state.yCoordinate != null &&
+      this.state.magnification != null
+    ) {
+      console.info(
+        'select slide position ' +
+        `(${this.state.xCoordinate}, ${this.state.yCoordinate}) ` +
+        `at ${this.state.magnification}x magnification`
+      )
+
+      const factor = Number(this.state.magnification)
+      /**
+       * On an optical microscope an objective with 1x magnification
+       * corresponds to approximately 10 micrometer pixel spacing
+       * (due to the ocular).
+       */
+      const targetPixelSpacing = 0.01 / factor
+      const diffs = []
+      for (let i = 0; i < this.volumeViewer.numLevels; i++) {
+        const actualPixelSpacing = this.volumeViewer.getPixelSpacing(i)[0]
+        diffs.push(Math.abs(targetPixelSpacing - actualPixelSpacing))
+      }
+      const level = diffs.indexOf(Math.min(...diffs))
+      this.volumeViewer.navigate({
+        position: [this.state.xCoordinate, this.state.yCoordinate],
+        level: level
+      })
+      this.setState({
+        isGoToModalVisible: false
+      })
+    }
+  }
+
+  /**
+   * Handler that gets called when the selection of a slide position was
+   * canceled.
+   */
+  handleSlidePositionSelectionCancellation (): void {
+    console.log('cancel slide position selection')
+    this.setState({
+      isGoToModalVisible: false,
+      isXCoordinateInputValid: false,
+      isYCoordinateInputValid: false,
+      isMagnificationInputValid: false,
+      xCoordinate: null,
+      yCoordinate: null,
+      magnification: null
     })
   }
 
@@ -2217,7 +2386,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         isAnnotationModalVisible: false,
         isRoiTranslationActive: false,
         isRoiDrawingActive: false,
-        isRoiModificationActive: false
+        isRoiModificationActive: false,
+        isGoToModalVisible: false
       })
     } else {
       console.info('activate drawing of ROIs')
@@ -2225,7 +2395,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         isAnnotationModalVisible: true,
         isRoiDrawingActive: true,
         isRoiModificationActive: false,
-        isRoiTranslationActive: false
+        isRoiTranslationActive: false,
+        isGoToModalVisible: false
       })
       this.volumeViewer.deactivateSelectInteraction()
       this.volumeViewer.deactivateSnapInteraction()
@@ -2288,6 +2459,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.volumeViewer.deactivateSelectInteraction()
       this.volumeViewer.activateTranslateInteraction({})
     }
+  }
+
+  handleGoTo (): void {
+    this.setState({
+      isGoToModalVisible: true
+    })
   }
 
   /**
@@ -2425,7 +2602,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       )
     }
 
-    const selections: React.ReactNode[] = [
+    const annotationConfigurations: React.ReactNode[] = [
       (
         <Select
           style={{ minWidth: 130 }}
@@ -2453,7 +2630,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             </Select.Option>
           )
         })
-        selections.push(
+        annotationConfigurations.push(
           <>
             {evaluation.name.CodeMeaning}
             <Select
@@ -2471,7 +2648,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const geometryTypeOptions = this.geometryTypeOptions[key].map(name => {
         return geometryTypeOptionsMapping[name]
       })
-      selections.push(
+      annotationConfigurations.push(
         <>
           ROI geometry type
           <Select
@@ -2483,7 +2660,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           </Select>
         </>
       )
-      selections.push(
+      annotationConfigurations.push(
         <Checkbox
           onChange={this.handleAnnotationMeasurementActivation}
           key='annotation-measurement'
@@ -2704,43 +2881,54 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     let toolbar
     let toolbarHeight = '0px'
+    const annotationTools = [
+      <Button
+        tooltip='Draw ROI [Alt+D]'
+        icon={FaDrawPolygon}
+        onClick={this.handleRoiDrawing}
+        isSelected={this.state.isRoiDrawingActive}
+      />,
+      <Button
+        tooltip='Modify ROIs [Alt+M]'
+        icon={FaHandPointer}
+        onClick={this.handleRoiModification}
+        isSelected={this.state.isRoiModificationActive}
+      />,
+      <Button
+        tooltip='Translate ROIs [Alt+T]'
+        icon={FaHandPaper}
+        onClick={this.handleRoiTranslation}
+        isSelected={this.state.isRoiTranslationActive}
+      />,
+      <Button
+        tooltip='Remove selected ROI [Alt+R]'
+        onClick={this.handleRoiRemoval}
+        icon={FaTrash}
+      />,
+      <Button
+        tooltip='Show/Hide ROIs [Alt+V]'
+        icon={this.state.areRoisHidden ? FaEye : FaEyeSlash}
+        onClick={this.handleRoiVisibilityChange}
+        isSelected={this.state.areRoisHidden}
+      />,
+      <Button
+        tooltip='Save ROIs [Alt+S]'
+        icon={FaSave}
+        onClick={this.handleReportGeneration}
+      />
+    ]
+    const controlTools = [
+        <Button
+          tooltip='Go to [Alt+G]'
+          icon={FaCrosshairs}
+          onClick={this.handleGoTo}
+        />,
+    ]
     if (this.props.enableAnnotationTools) {
       toolbar = (
-        <Row>
-          <Button
-            tooltip='Draw ROI [d]'
-            icon={FaDrawPolygon}
-            onClick={this.handleRoiDrawing}
-            isSelected={this.state.isRoiDrawingActive}
-          />
-          <Button
-            tooltip='Modify ROIs [m]'
-            icon={FaHandPointer}
-            onClick={this.handleRoiModification}
-            isSelected={this.state.isRoiModificationActive}
-          />
-          <Button
-            tooltip='Translate ROIs [t]'
-            icon={FaHandPaper}
-            onClick={this.handleRoiTranslation}
-            isSelected={this.state.isRoiTranslationActive}
-          />
-          <Button
-            tooltip='Remove selected ROI [r]'
-            onClick={this.handleRoiRemoval}
-            icon={FaTrash}
-          />
-          <Button
-            tooltip='Show/Hide ROIs [v]'
-            icon={this.state.areRoisHidden ? FaEye : FaEyeSlash}
-            onClick={this.handleRoiVisibilityChange}
-            isSelected={this.state.areRoisHidden}
-          />
-          <Button
-            tooltip='Save ROIs [s]'
-            icon={FaSave}
-            onClick={this.handleReportGeneration}
-          />
+        <Row justify="start">
+          {annotationTools.map(item => <>{item}</>)}
+          {controlTools.map(item => <>{item}</>)}
         </Row>
       )
       toolbarHeight = '50px'
@@ -2773,7 +2961,66 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             okText='Select'
           >
             <Space align='start' direction='vertical'>
-              {selections}
+              {annotationConfigurations}
+            </Space>
+          </Modal>
+
+          <Modal
+            visible={this.state.isGoToModalVisible}
+            title='Go to slide position'
+            onOk={this.handleSlidePositionSelection}
+            onCancel={this.handleSlidePositionSelectionCancellation}
+            okText='Select'
+          >
+            <Space align='start' direction='vertical'>
+              <InputNumber
+                placeholder={(
+                  '[' +
+                  `${this.state.xCoordinateRange[0]}` +
+                  ', ' +
+                  `${this.state.xCoordinateRange[1]}` +
+                  ']'
+                )}
+                prefix='X Coordinate [mm]'
+                onChange={this.handleXCoordinateInput}
+                onPressEnter={this.handleXCoordinateInput}
+                controls={false}
+                addonAfter={
+                  this.state.isXCoordinateInputValid
+                    ? <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                    : <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                }
+              />
+              <InputNumber
+                placeholder={
+                  '[' +
+                  `${this.state.yCoordinateRange[0]}` +
+                  ', ' +
+                  `${this.state.yCoordinateRange[1]}` +
+                  ']'
+                }
+                prefix='Y Coordinate [mm]'
+                onChange={this.handleYCoordinateInput}
+                onPressEnter={this.handleYCoordinateInput}
+                controls={false}
+                addonAfter={
+                  this.state.isYCoordinateInputValid
+                    ? <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                    : <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                }
+              />
+              <InputNumber
+                placeholder='[0 - 40]'
+                prefix='Magnification'
+                onChange={this.handleMagnificationInput}
+                onPressEnter={this.handleMagnificationInput}
+                controls={false}
+                addonAfter={
+                  this.state.isMagnificationInputValid
+                    ? <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                    : <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                }
+              />
             </Space>
           </Modal>
 
@@ -2804,9 +3051,20 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             style={{ height: '100%' }}
             inlineIndent={14}
             forceSubMenuRender
+            onOpenChange={() => {
+              // Give menu item time to render before updating viewer size
+              setTimeout(
+                () => {
+                  if (this.labelViewer != null) {
+                    this.labelViewer.resize()
+                  }
+                },
+                100
+              )
+            }}
           >
             <Menu.SubMenu key='label' title='Slide label'>
-              <Menu.Item style={{ height: '100%' }}>
+              <Menu.Item style={{ height: '100%' }} key='image'>
                 <div
                   style={{ height: '220px' }}
                   ref={this.labelViewportRef}
