@@ -24,9 +24,7 @@ interface SlideItemState {
  * contained images.
  */
 class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
-  state = {
-    isLoading: false
-  }
+  state = { isLoading: false }
 
   private readonly overviewViewportRef = React.createRef<HTMLDivElement>()
 

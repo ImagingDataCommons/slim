@@ -25,7 +25,7 @@ import {
 import {
   UndoOutlined,
   CheckOutlined,
-  StopOutlined,
+  StopOutlined
 } from '@ant-design/icons'
 import * as dmv from 'dicom-microscopy-viewer'
 import * as dcmjs from 'dcmjs'
@@ -143,8 +143,9 @@ const _constructViewers = ({ client, slide, preload }: {
 
     return { volumeViewer, labelViewer }
   } catch (error) {
-      message.error(`Failed to instantiate viewer: ${error}`)
-      throw error
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    message.error('Failed to instantiate viewer')
+    throw error
   }
 }
 
@@ -1468,7 +1469,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-
   componentWillUnmount (): void {
     window.removeEventListener('beforeunload', this.componentCleanup)
   }
@@ -1644,7 +1644,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         })
       }
     } else {
-        this.setState({ isXCoordinateInputValid: false })
+      this.setState({ isXCoordinateInputValid: false })
     }
   }
 
@@ -2291,7 +2291,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
      */
     if (visibleOpticalPathIdentifiers.size === 0) {
       const defaultColors = [
-        [255, 255, 255],
+        [255, 255, 255]
       ]
       opticalPaths.forEach((item: dmv.opticalPath.OpticalPath) => {
         const identifier = item.identifier
@@ -2887,48 +2887,59 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         icon={FaDrawPolygon}
         onClick={this.handleRoiDrawing}
         isSelected={this.state.isRoiDrawingActive}
+        key='draw-roi-button'
       />,
       <Button
         tooltip='Modify ROIs [Alt+M]'
         icon={FaHandPointer}
         onClick={this.handleRoiModification}
         isSelected={this.state.isRoiModificationActive}
+        key='modify-roi-button'
       />,
       <Button
         tooltip='Translate ROIs [Alt+T]'
         icon={FaHandPaper}
         onClick={this.handleRoiTranslation}
         isSelected={this.state.isRoiTranslationActive}
+        key='translate-roi-button'
       />,
       <Button
         tooltip='Remove selected ROI [Alt+R]'
         onClick={this.handleRoiRemoval}
         icon={FaTrash}
+        key='remove-roi-button'
       />,
       <Button
         tooltip='Show/Hide ROIs [Alt+V]'
         icon={this.state.areRoisHidden ? FaEye : FaEyeSlash}
         onClick={this.handleRoiVisibilityChange}
         isSelected={this.state.areRoisHidden}
+        key='toggle-roi-visibility-button'
       />,
       <Button
         tooltip='Save ROIs [Alt+S]'
         icon={FaSave}
         onClick={this.handleReportGeneration}
+        key='generate-report-button'
       />
     ]
     const controlTools = [
-        <Button
-          tooltip='Go to [Alt+G]'
-          icon={FaCrosshairs}
-          onClick={this.handleGoTo}
-        />,
+      <Button
+        tooltip='Go to [Alt+G]'
+        icon={FaCrosshairs}
+        onClick={this.handleGoTo}
+        key='go-to-slide-position-button'
+      />
     ]
     if (this.props.enableAnnotationTools) {
       toolbar = (
-        <Row justify="start">
-          {annotationTools.map(item => <>{item}</>)}
-          {controlTools.map(item => <>{item}</>)}
+        <Row justify='start'>
+          {annotationTools.map((item, i) => {
+            return <React.Fragment key={i}>{item}</React.Fragment>
+          })}
+          {controlTools.map((item, i) => {
+            return <React.Fragment key={i}>{item}</React.Fragment>
+          })}
         </Row>
       )
       toolbarHeight = '50px'
