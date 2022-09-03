@@ -309,6 +309,24 @@ class App extends React.Component<AppProps, AppState> {
         <BrowserRouter basename={this.props.config.path}>
           <Routes>
             <Route
+              path='/'
+              element={
+                <Layout style={layoutStyle}>
+                  <Header
+                    app={appInfo}
+                    user={this.state.user}
+                    showWorklistButton={false}
+                    onServerSelection={this.handleServerSelection}
+                    onUserLogout={isLogoutPossible ? onLogout : undefined}
+                    showServerSelectionButton={enableServerSelection}
+                  />
+                  <Layout.Content style={layoutContentStyle}>
+                    {worklist}
+                  </Layout.Content>
+                </Layout>
+              }
+            />
+            <Route
               path='/studies/:studyInstanceUID/*'
               element={
                 <Layout style={layoutStyle}>
@@ -344,24 +362,6 @@ class App extends React.Component<AppProps, AppState> {
                     showServerSelectionButton={enableServerSelection}
                   />
                   Logged out
-                </Layout>
-              }
-            />
-            <Route
-              path='/'
-              element={
-                <Layout style={layoutStyle}>
-                  <Header
-                    app={appInfo}
-                    user={this.state.user}
-                    showWorklistButton={false}
-                    onServerSelection={this.handleServerSelection}
-                    onUserLogout={isLogoutPossible ? onLogout : undefined}
-                    showServerSelectionButton={enableServerSelection}
-                  />
-                  <Layout.Content style={layoutContentStyle}>
-                    {worklist}
-                  </Layout.Content>
                 </Layout>
               }
             />

@@ -44,8 +44,8 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
       if (this.overviewViewportRef.current !== null) {
         this.overviewViewportRef.current.innerHTML = ''
         console.info(
-          'instantiate viewer for OVERVIEW image of series ' +
-          metadata.SeriesInstanceUID
+          'instantiate viewer for OVERVIEW image of slide ' +
+          `"${metadata.ContainerIdentifier}"`
         )
         this.overviewViewer = new dmv.viewer.OverviewImageViewer({
           client: this.props.client,
@@ -63,9 +63,6 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
 
   render (): React.ReactNode {
     if (this.overviewViewer !== undefined) {
-      this.overviewViewer.render({
-        container: this.overviewViewportRef.current
-      })
       this.overviewViewer.resize()
     }
     const attributes = []

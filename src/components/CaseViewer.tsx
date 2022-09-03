@@ -110,7 +110,7 @@ interface ViewerState {
 class Viewer extends React.Component<ViewerProps, ViewerState> {
   state = {
     slides: [],
-    isLoading: false
+    isLoading: true
   }
 
   constructor (props: ViewerProps) {
@@ -119,7 +119,6 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
   }
 
   componentDidMount (): void {
-    this.setState({ isLoading: true })
     this.fetchImageMetadata().then(
       (metadata: dmv.metadata.VLWholeSlideMicroscopyImage[][]) => {
         this.setState({
@@ -207,6 +206,10 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
   }
 
   render (): React.ReactNode {
+    if (this.state.isLoading) {
+      return null
+    }
+
     if (this.state.slides.length === 0) {
       return null
     }

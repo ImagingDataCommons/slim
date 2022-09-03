@@ -131,12 +131,12 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
     const item = this.props.metadata.AnnotationGroupSequence[index]
     const measurementsSequence = item.MeasurementsSequence ?? []
 
-    const measurementOptions = measurementsSequence.map(measurementItem => {
+    const measurementOptions = measurementsSequence.map((measurementItem, i) => {
       const name = measurementItem.ConceptNameCodeSequence[0]
       const key = `${name.CodingSchemeDesignator}-${name.CodeValue}`
       return (
         <Select.Option
-          key={key}
+          key={i}
           value={key}
           dropdownMatchSelectWidth={false}
           size='small'

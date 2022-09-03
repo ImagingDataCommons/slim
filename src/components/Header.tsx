@@ -182,8 +182,10 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       )
     }
 
-    const handleServerSelectionInput = (event: any): void => {
-      const value = event.target.value
+    const handleServerSelectionInput = (
+      event: React.FormEvent<HTMLInputElement>
+    ): void => {
+      const value = event.currentTarget.value
       let isDisabled = true
       if (value != null) {
         try {
