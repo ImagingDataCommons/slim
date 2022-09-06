@@ -43,6 +43,7 @@ export interface AnnotationSettings {
     fill: {
       color: number[]
     }
+    radius?: number
   }
 }
 

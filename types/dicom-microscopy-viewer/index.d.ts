@@ -21,6 +21,18 @@ declare module 'dicom-microscopy-viewer' {
       fill?: {
         color: number[]
       }
+      image?: {
+        circle?: {
+          radius?: number
+          stroke?: {
+            color: number[]
+            width?: number
+          }
+          fill?: {
+            color: number[]
+          }
+        }
+      }
     }
 
     export class VolumeImageViewer {
@@ -29,6 +41,7 @@ declare module 'dicom-microscopy-viewer' {
       navigate (options: { level?: number, position?: number[] })
       cleanup (): void
       get numLevels(): number
+      get frameOfReferenceUID(): string
       getPixelSpacing (level: number): number[]
       get physicalOffset (): number[]
       get physicalSize (): number[]
@@ -317,7 +330,7 @@ declare module 'dicom-microscopy-viewer' {
 
     export interface ROIOptions {
       scoord3d: scoord3d.Scoord3D
-      uid: string
+      uid?: string
       properties?: {
         trackingUID?: string
         observerType?: string

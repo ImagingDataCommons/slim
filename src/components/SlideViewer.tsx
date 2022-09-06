@@ -53,7 +53,7 @@ const _buildKey = (concept: dcmjs.sr.coding.CodedConcept): string => {
   return `${codingScheme}-${codeValue}`
 }
 
-const _getRoiKey = (roi: dmv.roi.ROI): string => {
+const _getRoiKey = (roi: dmv.roi.ROI): string | undefined => {
   const matches = findContentItemsByName({
     content: roi.evaluations,
     name: new dcmjs.sr.coding.CodedConcept({
@@ -63,7 +63,8 @@ const _getRoiKey = (roi: dmv.roi.ROI): string => {
     })
   })
   if (matches.length === 0) {
-    throw new Error(`No finding found for ROI ${roi.uid}`)
+    console.warn(`no finding found for ROI ${roi.uid}`)
+    return
   }
   const finding = matches[0] as dcmjs.sr.valueTypes.CodeContentItem
   const findingName = finding.ConceptCodeSequence[0]
@@ -104,6 +105,31 @@ const _areROIsEqual = (a: dmv.roi.ROI, b: dmv.roi.ROI): boolean => {
     }
   }
   return true
+}
+
+const _formatRoiStyle = (style: {
+  stroke: {
+    color: number[]
+    width: number
+  }
+  fill: {
+    color: number[]
+  }
+  radius?: number
+}): dmv.viewer.ROIStyleOptions => {
+  return {
+    stroke: style.stroke,
+    fill: style.fill,
+    image: {
+      circle: {
+        radius: style.radius != null
+          ? style.radius
+          : Math.max(5 - style.stroke.width, 1),
+        stroke: style.stroke,
+        fill: style.fill
+      }
+    }
+  }
 }
 
 const _constructViewers = ({ client, slide, preload }: {
@@ -309,14 +335,14 @@ interface SlideViewerState {
   isRoiModificationActive: boolean
   isRoiTranslationActive: boolean
   isGoToModalVisible: boolean
-  isMagnificationInputValid: boolean
-  isXCoordinateInputValid: boolean
-  isYCoordinateInputValid: boolean
-  xCoordinate: number | null
-  xCoordinateRange: number[]
-  yCoordinate: number | null
-  yCoordinateRange: number[]
-  magnification: number | null
+  isSelectedMagnificationValid: boolean
+  isSelectedXCoordinateValid: boolean
+  isSelectedYCoordinateValid: boolean
+  selectedXCoordinate?: number
+  validXCoordinateRange: number[]
+  selectedYCoordinate?: number
+  validYCoordinateRange: number[]
+  selectedMagnification?: number
   areRoisHidden: boolean
   pixelDataStatistics: {
     [opticalPathIdentifier: string]: {
@@ -357,6 +383,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     },
     fill: {
       color: [0, 126, 163, 0.1]
+    },
+    image: {
+      circle: {
+        fill: {
+          color: [0, 126, 163]
+        },
+        radius: 5
+      }
     }
   }
 
@@ -364,12 +398,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private readonly selectionColor: number[] = [140, 184, 198]
 
-  private readonly selectedRoiStyle: {
-    stroke?: { color: number[], width: number }
-    fill?: { color: number[] }
-  } = {
+  private readonly selectedRoiStyle: dmv.viewer.ROIStyleOptions = {
     stroke: { color: [...this.selectionColor, 1], width: 3 },
-    fill: { color: [...this.selectionColor, 0.2] }
+    fill: { color: [...this.selectionColor, 0.2] },
+    image: {
+      circle: {
+        radius: 5,
+        fill: { color: [...this.selectionColor, 1] }
+      }
+    }
   }
 
   constructor (props: SlideViewerProps) {
@@ -417,7 +454,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         })
       }
       if (annotation.style != null) {
-        this.roiStyles[key] = annotation.style
+        this.roiStyles[key] = _formatRoiStyle(annotation.style)
       } else {
         this.roiStyles[key] = this.defaultRoiStyle
       }
@@ -444,9 +481,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleAnnotationGroupVisibilityChange = this.handleAnnotationGroupVisibilityChange.bind(this)
     this.handleAnnotationGroupStyleChange = this.handleAnnotationGroupStyleChange.bind(this)
     this.handleGoTo = this.handleGoTo.bind(this)
-    this.handleXCoordinateInput = this.handleXCoordinateInput.bind(this)
-    this.handleYCoordinateInput = this.handleYCoordinateInput.bind(this)
-    this.handleMagnificationInput = this.handleMagnificationInput.bind(this)
+    this.handleXCoordinateSelection = this.handleXCoordinateSelection.bind(this)
+    this.handleYCoordinateSelection = this.handleYCoordinateSelection.bind(this)
+    this.handleMagnificationSelection = this.handleMagnificationSelection.bind(this)
     this.handleSlidePositionSelection = this.handleSlidePositionSelection.bind(this)
     this.handleSlidePositionSelectionCancellation = this.handleSlidePositionSelectionCancellation.bind(this)
     this.handleReportGeneration = this.handleReportGeneration.bind(this)
@@ -496,19 +533,19 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       generatedReport: undefined,
       isLoading: false,
       isAnnotationModalVisible: false,
-      isMagnificationInputValid: false,
+      isSelectedMagnificationValid: false,
       isReportModalVisible: false,
       isRoiDrawingActive: false,
       isRoiTranslationActive: false,
       isRoiModificationActive: false,
       isGoToModalVisible: false,
-      isXCoordinateInputValid: false,
-      isYCoordinateInputValid: false,
-      xCoordinate: null,
-      xCoordinateRange: [offset[0], offset[0] + size[0]],
-      yCoordinate: null,
-      yCoordinateRange: [offset[1], offset[1] + size[1]],
-      magnification: null,
+      isSelectedXCoordinateValid: false,
+      isSelectedYCoordinateValid: false,
+      selectedXCoordinate: undefined,
+      validXCoordinateRange: [offset[0], offset[0] + size[0]],
+      selectedYCoordinate: undefined,
+      validYCoordinateRange: [offset[1], offset[1] + size[1]],
+      selectedMagnification: undefined,
       areRoisHidden: false,
       pixelDataStatistics: {},
       selectedPresentationStateUID: this.props.selectedPresentationStateUID,
@@ -571,8 +608,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         activeOpticalPathIdentifiers,
         presentationStates: [],
         loadingFrames: new Set(),
-        xCoordinateRange: [offset[0], offset[0] + size[0]],
-        yCoordinateRange: [offset[1], offset[1] + size[1]]
+        validXCoordinateRange: [offset[0], offset[0] + size[0]],
+        validYCoordinateRange: [offset[1], offset[1] + size[1]]
       })
       this.populateViewports()
     }
@@ -822,7 +859,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }))
   }
 
-  getRoiStyle = (key: string): dmv.viewer.ROIStyleOptions => {
+  getRoiStyle = (key?: string): dmv.viewer.ROIStyleOptions => {
+    if (key == null) {
+      return this.defaultRoiStyle
+    }
     if (this.roiStyles[key] !== undefined) {
       return this.roiStyles[key]
     }
@@ -1633,47 +1673,58 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
   }
 
-  handleXCoordinateInput (value: any): void {
+  handleXCoordinateSelection (value: any): void {
     if (value != null) {
-      const start = this.state.xCoordinateRange[0]
-      const end = this.state.xCoordinateRange[1]
-      if (value >= start && value <= end) {
+      const x = Number(value)
+      const start = this.state.validXCoordinateRange[0]
+      const end = this.state.validXCoordinateRange[1]
+      if (x >= start && x <= end) {
         this.setState({
-          xCoordinate: value,
-          isXCoordinateInputValid: true
-        })
-      }
-    } else {
-      this.setState({ isXCoordinateInputValid: false })
-    }
-  }
-
-  handleYCoordinateInput (value: any): void {
-    if (value != null) {
-      const start = this.state.yCoordinateRange[0]
-      const end = this.state.yCoordinateRange[1]
-      if (value >= start && value <= end) {
-        this.setState({
-          yCoordinate: value,
-          isYCoordinateInputValid: true
+          selectedXCoordinate: x,
+          isSelectedXCoordinateValid: true
         })
         return
       }
     }
-    this.setState({ isYCoordinateInputValid: false })
+    this.setState({
+      selectedXCoordinate: undefined,
+      isSelectedXCoordinateValid: false
+    })
   }
 
-  handleMagnificationInput (value: any): void {
+  handleYCoordinateSelection (value: any): void {
+    if (value != null) {
+      const y = Number(value)
+      const start = this.state.validYCoordinateRange[0]
+      const end = this.state.validYCoordinateRange[1]
+      if (y >= start && y <= end) {
+        this.setState({
+          selectedYCoordinate: y,
+          isSelectedYCoordinateValid: true
+        })
+        return
+      }
+    }
+    this.setState({
+      selectedYCoordinate: undefined,
+      isSelectedYCoordinateValid: false
+    })
+  }
+
+  handleMagnificationSelection (value: any): void {
     if (value != null) {
       if (value > 0 && value <= 40) {
         this.setState({
-          magnification: Number(value),
-          isMagnificationInputValid: true
+          selectedMagnification: Number(value),
+          isSelectedMagnificationValid: true
         })
         return
       }
     }
-    this.setState({ isMagnificationInputValid: false })
+    this.setState({
+      selectedMagnification: undefined,
+      isSelectedMagnificationValid: false
+    })
   }
 
   /**
@@ -1682,20 +1733,21 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    */
   handleSlidePositionSelection (): void {
     if (
-      this.state.isXCoordinateInputValid &&
-      this.state.isYCoordinateInputValid &&
-      this.state.isMagnificationInputValid &&
-      this.state.xCoordinate != null &&
-      this.state.yCoordinate != null &&
-      this.state.magnification != null
+      this.state.isSelectedXCoordinateValid &&
+      this.state.isSelectedYCoordinateValid &&
+      this.state.isSelectedMagnificationValid &&
+      this.state.selectedXCoordinate != null &&
+      this.state.selectedYCoordinate != null &&
+      this.state.selectedMagnification != null
     ) {
       console.info(
         'select slide position ' +
-        `(${this.state.xCoordinate}, ${this.state.yCoordinate}) ` +
-        `at ${this.state.magnification}x magnification`
+        `(${this.state.selectedXCoordinate}, ` +
+        `${this.state.selectedYCoordinate}) ` +
+        `at ${this.state.selectedMagnification}x magnification`
       )
 
-      const factor = Number(this.state.magnification)
+      const factor = this.state.selectedMagnification
       /**
        * On an optical microscope an objective with 1x magnification
        * corresponds to approximately 10 micrometer pixel spacing
@@ -1709,11 +1761,33 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       }
       const level = diffs.indexOf(Math.min(...diffs))
       this.volumeViewer.navigate({
-        position: [this.state.xCoordinate, this.state.yCoordinate],
+        position: [
+          this.state.selectedXCoordinate,
+          this.state.selectedYCoordinate
+        ],
         level: level
       })
-      this.setState({
-        isGoToModalVisible: false
+      const opticalPaths = this.volumeViewer.getAllOpticalPaths()
+      const metadata = this.volumeViewer.getOpticalPathMetadata(
+        opticalPaths[0].identifier
+      )
+      const point = new dmv.scoord3d.Point({
+        coordinates: [
+          this.state.selectedXCoordinate,
+          this.state.selectedYCoordinate,
+          0
+        ],
+        frameOfReferenceUID: metadata[0].FrameOfReferenceUID
+      })
+      const roi = new dmv.roi.ROI({ scoord3d: point })
+      this.volumeViewer.addROI(roi, this.defaultRoiStyle)
+      this.setState(state => {
+        const visibleRoiUIDs = state.visibleRoiUIDs
+        visibleRoiUIDs.add(roi.uid)
+        return {
+          visibleRoiUIDs,
+          isGoToModalVisible: false
+        }
       })
     }
   }
@@ -1726,12 +1800,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     console.log('cancel slide position selection')
     this.setState({
       isGoToModalVisible: false,
-      isXCoordinateInputValid: false,
-      isYCoordinateInputValid: false,
-      isMagnificationInputValid: false,
-      xCoordinate: null,
-      yCoordinate: null,
-      magnification: null
+      isSelectedXCoordinateValid: false,
+      isSelectedYCoordinateValid: false,
+      isSelectedMagnificationValid: false,
+      selectedXCoordinate: undefined,
+      selectedYCoordinate: undefined,
+      selectedMagnification: undefined
     })
   }
 
@@ -2462,8 +2536,18 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   handleGoTo (): void {
+    this.volumeViewer.deactivateDrawInteraction()
+    this.volumeViewer.deactivateModifyInteraction()
+    this.volumeViewer.deactivateSnapInteraction()
+    this.volumeViewer.deactivateTranslateInteraction()
+    this.volumeViewer.deactivateSelectInteraction()
     this.setState({
-      isGoToModalVisible: true
+      isGoToModalVisible: true,
+      isAnnotationModalVisible: false,
+      isReportModalVisible: false,
+      isRoiTranslationActive: false,
+      isRoiModificationActive: false,
+      isRoiDrawingActive: false
     })
   }
 
@@ -2987,17 +3071,17 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               <InputNumber
                 placeholder={(
                   '[' +
-                  `${this.state.xCoordinateRange[0]}` +
+                  `${this.state.validXCoordinateRange[0]}` +
                   ', ' +
-                  `${this.state.xCoordinateRange[1]}` +
+                  `${this.state.validXCoordinateRange[1]}` +
                   ']'
                 )}
                 prefix='X Coordinate [mm]'
-                onChange={this.handleXCoordinateInput}
-                onPressEnter={this.handleXCoordinateInput}
+                onChange={this.handleXCoordinateSelection}
+                onPressEnter={this.handleXCoordinateSelection}
                 controls={false}
                 addonAfter={
-                  this.state.isXCoordinateInputValid
+                  this.state.isSelectedXCoordinateValid
                     ? <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
                     : <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
                 }
@@ -3005,17 +3089,17 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               <InputNumber
                 placeholder={
                   '[' +
-                  `${this.state.yCoordinateRange[0]}` +
+                  `${this.state.validYCoordinateRange[0]}` +
                   ', ' +
-                  `${this.state.yCoordinateRange[1]}` +
+                  `${this.state.validYCoordinateRange[1]}` +
                   ']'
                 }
                 prefix='Y Coordinate [mm]'
-                onChange={this.handleYCoordinateInput}
-                onPressEnter={this.handleYCoordinateInput}
+                onChange={this.handleYCoordinateSelection}
+                onPressEnter={this.handleYCoordinateSelection}
                 controls={false}
                 addonAfter={
-                  this.state.isYCoordinateInputValid
+                  this.state.isSelectedYCoordinateValid
                     ? <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
                     : <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
                 }
@@ -3023,11 +3107,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               <InputNumber
                 placeholder='[0 - 40]'
                 prefix='Magnification'
-                onChange={this.handleMagnificationInput}
-                onPressEnter={this.handleMagnificationInput}
+                onChange={this.handleMagnificationSelection}
+                onPressEnter={this.handleMagnificationSelection}
                 controls={false}
                 addonAfter={
-                  this.state.isMagnificationInputValid
+                  this.state.isSelectedMagnificationValid
                     ? <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
                     : <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
                 }
