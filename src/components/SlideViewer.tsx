@@ -1769,17 +1769,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         ],
         level: level
       })
-      const opticalPaths = this.volumeViewer.getAllOpticalPaths()
-      const metadata = this.volumeViewer.getOpticalPathMetadata(
-        opticalPaths[0].identifier
-      )
       const point = new dmv.scoord3d.Point({
         coordinates: [
           this.state.selectedXCoordinate,
           this.state.selectedYCoordinate,
           0
         ],
-        frameOfReferenceUID: metadata[0].FrameOfReferenceUID
+        frameOfReferenceUID: this.volumeViewer.frameOfReferenceUID
       })
       const roi = new dmv.roi.ROI({ scoord3d: point })
       this.volumeViewer.addROI(roi, this.defaultRoiStyle)
