@@ -1505,6 +1505,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         this.handleRoiVisibilityChange()
       } else if (event.code === 'KeyS') {
         this.handleReportGeneration()
+      } else if (event.code === 'KeyG') {
+        this.handleGoTo()
       }
     }
   }
