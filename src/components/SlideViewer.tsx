@@ -2126,7 +2126,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     console.log(`change visibility of annotation group ${annotationGroupUID}`)
     if (isVisible) {
       console.info(`show annotation group ${annotationGroupUID}`)
-      this.volumeViewer.showAnnotationGroup(annotationGroupUID)
+      try {
+        this.volumeViewer.showAnnotationGroup(annotationGroupUID)
+      } catch (error) {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        message.error('Failed to show annotation group.')
+        throw error
+      }
       this.setState(state => {
         const visibleAnnotationGroupUIDs = new Set(
           state.visibleAnnotationGroupUIDs
@@ -2157,7 +2163,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }): void {
     console.log(`change style of annotation group ${annotationGroupUID}`)
-    this.volumeViewer.setAnnotationGroupStyle(annotationGroupUID, styleOptions)
+    try {
+      this.volumeViewer.setAnnotationGroupStyle(
+        annotationGroupUID,
+        styleOptions
+      )
+    } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      message.error('Failed to change style of annotation group.')
+      throw error
+    }
   }
 
   /**
