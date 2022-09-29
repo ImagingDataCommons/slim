@@ -14,6 +14,7 @@ interface AnnotationGroupListProps {
   defaultAnnotationGroupStyles: {
     [annotationGroupUID: string]: {
       opacity: number
+      color: number[]
     }
   }
   onAnnotationGroupVisibilityChange: ({ annotationGroupUID, isVisible }: {
@@ -24,6 +25,7 @@ interface AnnotationGroupListProps {
     annotationGroupUID: string
     styleOptions: {
       opacity?: number
+      color?: number[]
       measurement?: dcmjs.sr.coding.CodedConcept
     }
   }) => void
