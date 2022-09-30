@@ -229,7 +229,7 @@ declare module 'dcmjs' {
       export interface MeasurmentOptions {
         name: sr.coding.CodedConcept
         value: number
-        uint: sr.coding.CodedConcept
+        unit: sr.coding.CodedConcept
         trackingIdentifier: TrackingIdentifier
         qualifier?: sr.coding.CodedConcept
         method?: sr.coding.CodedConcept
@@ -526,6 +526,7 @@ declare module 'dcmjs' {
         ConceptNameCodeSequence: sr.coding.CodedConcept[]
         RelationshipType: string
         ValueType: string
+        ContentSequence?: ContentItem[]
       }
 
       export interface NumContentItemOptions {
