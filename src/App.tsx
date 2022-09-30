@@ -52,14 +52,13 @@ function ParametrizedCaseViewer ({ clients, user, app, config }: {
 
 function _createClientMapping ({ baseUri, settings, onError }: {
   baseUri: string
-  settings: ServerSettings[],
+  settings: ServerSettings[]
   onError: (
     error: dwc.api.DICOMwebClientError,
     serverSettings: ServerSettings
   ) => void
 }): { [sopClassUID: string]: DicomWebManager } {
-  const storageClassMapping: { [key: string]: number } = {}
-  storageClassMapping['default'] = 0
+  const storageClassMapping: { [key: string]: number } = { default: 0 }
   settings.forEach(serverSettings => {
     if (serverSettings.storageClasses != null) {
       serverSettings.storageClasses.forEach(sopClassUID => {
@@ -77,11 +76,11 @@ function _createClientMapping ({ baseUri, settings, onError }: {
         }
       })
     } else {
-      storageClassMapping['default'] += 1
+      storageClassMapping.default += 1
     }
   })
 
-  if (storageClassMapping['default'] > 1) {
+  if (storageClassMapping.default > 1) {
     throw new Error(
       'Only one default server can be configured without specification ' +
       'of storage classes.'
@@ -93,9 +92,9 @@ function _createClientMapping ({ baseUri, settings, onError }: {
     }
     if (storageClassMapping[key] > 1) {
       throw new Error(
-          'Only one configured server can specify a given storage class. ' +
-          `Storage class "${key}" is specified by more than one ` +
-          'of the configured servers.'
+        'Only one configured server can specify a given storage class. ' +
+        `Storage class "${key}" is specified by more than one ` +
+        'of the configured servers.'
       )
     }
   }
@@ -114,16 +113,16 @@ function _createClientMapping ({ baseUri, settings, onError }: {
         })
       }
     })
-    clientMapping['default'] = clientMapping[
+    clientMapping.default = clientMapping[
       StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE
     ]
   } else {
     const client = new DicomWebManager({ baseUri, settings, onError })
-    clientMapping['default'] = client
+    clientMapping.default = client
   }
   Object.values(StorageClasses).forEach(sopClassUID => {
     if (!(sopClassUID in clientMapping)) {
-      clientMapping[sopClassUID] = clientMapping['default']
+      clientMapping[sopClassUID] = clientMapping.default
     }
   })
   return clientMapping
@@ -160,19 +159,18 @@ class App extends React.Component<AppProps, AppState> {
     }
     if (serverSettings.errorMessages !== undefined) {
       serverSettings.errorMessages.forEach((setting: ErrorMessageSettings) => {
-          if (error.status === setting.status) {
-            this.setState({
-              error: {
-                status: error.status,
-                message: setting.message
-              }
-            })
-          } else if (error.status === 500) {
-            // eslint-disable-next-line @typescript-eslint/no-floating-promises
-            message.error('An unexpected server error occured.')
-          }
+        if (error.status === setting.status) {
+          this.setState({
+            error: {
+              status: error.status,
+              message: setting.message
+            }
+          })
+        } else if (error.status === 500) {
+          // eslint-disable-next-line @typescript-eslint/no-floating-promises
+          message.error('An unexpected server error occured.')
         }
-      )
+      })
     }
   }
 
@@ -229,7 +227,7 @@ class App extends React.Component<AppProps, AppState> {
       }],
       onError: this.handleDICOMwebError
     })
-    client.updateHeaders(this.state.clients['default'].headers)
+    client.updateHeaders(this.state.clients.default.headers)
     // FIXME
     // this.setState({ clients })
   }
