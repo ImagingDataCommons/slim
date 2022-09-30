@@ -1084,6 +1084,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               const finding = item.AnnotationPropertyTypeCodeSequence[0]
               const key = _buildKey(finding)
               const style = this.roiStyles[key]
+              // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
               if (style != null && style.fill != null) {
                 this.volumeViewer.setAnnotationGroupStyle(
                   annotationGroupUID,
@@ -1374,7 +1375,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-  handleRoiSelectionCancellation () {
+  handleRoiSelectionCancellation (): void {
     this.setState({
       isSelectedRoiModalVisible: false,
       selectedRoiUIDs: new Set()
@@ -2233,8 +2234,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   handleAnnotationGroupStyleChange ({ annotationGroupUID, styleOptions }: {
     annotationGroupUID: string
     styleOptions: {
-      opacity?: number,
-      color?: number[],
+      opacity?: number
+      color?: number[]
       measurement?: dcmjs.sr.coding.CodedConcept
     }
   }): void {
@@ -3025,7 +3026,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (annotationGroups.length > 0) {
       const defaultAnnotationGroupStyles: {
         [annotationGroupUID: string]: {
-          opacity: number,
+          opacity: number
           color: number[]
         }
       } = {}
@@ -3129,38 +3130,38 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     let selectedRoiInformation
     if (this.state.selectedRoi != null) {
-      const roiAttributes: {
-        name: string,
-        value: string,
+      const roiAttributes: Array<{
+        name: string
+        value: string
         unit?: string
-      }[] = [
+      }> = [
         {
           name: 'UID',
           value: this.state.selectedRoi.uid
         }
       ]
-      const roiScoordAttributes: {
-        name: string,
+      const roiScoordAttributes: Array<{
+        name: string
         value: string
-      }[] = [
+      }> = [
         {
           name: 'Graphic type',
           value: this.state.selectedRoi.scoord3d.graphicType
         }
       ]
-      const roiEvaluationAttributes: {
-        name: string,
+      const roiEvaluationAttributes: Array<{
+        name: string
         value: string
-      }[] = []
+      }> = []
       this.state.selectedRoi.evaluations.forEach(item => {
         if (item.ValueType === 'CODE') {
-          let codeItem = item as dcmjs.sr.valueTypes.CodeContentItem
+          const codeItem = item as dcmjs.sr.valueTypes.CodeContentItem
           roiEvaluationAttributes.push({
             name: codeItem.ConceptNameCodeSequence[0].CodeMeaning,
             value: codeItem.ConceptCodeSequence[0].CodeMeaning
           })
         } else {
-          let textItem = item as dcmjs.sr.valueTypes.TextContentItem
+          const textItem = item as dcmjs.sr.valueTypes.TextContentItem
           roiEvaluationAttributes.push({
             name: textItem.ConceptNameCodeSequence[0].CodeMeaning,
             value: textItem.TextValue
@@ -3168,11 +3169,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         }
       })
       const roiMeasurmentAttributesPerOpticalPath: {
-        [identifier: string]: {
-          name: string,
-          value: string,
+        [identifier: string]: Array<{
+          name: string
+          value: string
           unit?: string
-        }[]
+        }>
       } = {}
       this.state.selectedRoi.measurements.forEach(item => {
         let identifier = 'default'
@@ -3191,7 +3192,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 // @ts-expect-error
                 .ReferencedSOPSequence[0]
                 .ReferencedOpticalPathIdentifier
-              )
+            )
           }
         }
         if (!(identifier in roiMeasurmentAttributesPerOpticalPath)) {
@@ -3201,12 +3202,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         roiMeasurmentAttributesPerOpticalPath[identifier].push({
           name: item.ConceptNameCodeSequence[0].CodeMeaning,
           value: measuredValueItem.NumericValue.toString(),
-          // unit: measuredValueItem.MeasurementUnitsCodeSequence[0].CodeMeaning
+          unit: measuredValueItem.MeasurementUnitsCodeSequence[0].CodeMeaning
         })
       })
       const createRoiDescription = (
-        attributes: { name: string, value: string, unit?: string }[]
-     ) => {
+        attributes: Array<{ name: string, value: string, unit?: string }>
+      ): React.ReactNode[] => {
         return attributes.map(item => {
           let value
           if (item.unit != null) {
