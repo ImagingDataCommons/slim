@@ -775,7 +775,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.volumeViewer.setOpticalPathStyle(identifier, style)
 
       presentationState.AdvancedBlendingSequence.forEach(blendingItem => {
-        // FIXME
+        /**
+         * Referenced Instance Sequence should be used instead of Referenced
+         * Image Sequence, but that's easy to mix up and we have encountered
+         * implementations that get it wrong.
+         */
         let refInstanceItems = blendingItem.ReferencedInstanceSequence
         if (refInstanceItems === undefined) {
           refInstanceItems = blendingItem.ReferencedImageSequence
