@@ -24,6 +24,9 @@ describe('Worklist', () => {
     baseUri: 'http://mockserver.org',
     settings: [serverSettings]
   })
+  const clientMapping = {
+    '1.2.840.10008.5.1.4.1.1.77.1.6': manager
+  }
 
   const searchResults = [
     {
@@ -79,7 +82,7 @@ describe('Worklist', () => {
   it('should populate one row for each available study', () => {
     const { queryAllByRole } = render(
       <BrowserRouter>
-        <Worklist client={manager} />
+        <Worklist clients={clientMapping} />
       </BrowserRouter>
     )
 
