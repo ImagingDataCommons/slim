@@ -217,7 +217,7 @@ class App extends React.Component<AppProps, AppState> {
 
   handleServerSelection ({ url }: { url: string }): void {
     console.info('select DICOMweb server: ', url)
-    const client = new DicomWebManager({
+    const tmpClient = new DicomWebManager({
       baseUri: '',
       settings: [{
         id: 'tmp',
@@ -227,9 +227,19 @@ class App extends React.Component<AppProps, AppState> {
       }],
       onError: this.handleDICOMwebError
     })
-    client.updateHeaders(this.state.clients.default.headers)
-    // FIXME
-    // this.setState({ clients })
+    tmpClient.updateHeaders(this.state.clients.default.headers)
+    /**
+     * Use the newly created client for all storage classes. We may want to
+     * make this more sophisticated in the future to allow users to override
+     * the entire server configuration.
+     */
+    this.setState(state => {
+      const clients: { [key: string]: DicomWebManager } = {}
+      for (const key in state.clients) {
+        clients[key] = tmpClient
+      }
+      return { clients }
+    })
   }
 
   /**
