@@ -135,9 +135,9 @@ class Slide {
         return image.ImageType[3] !== 'RESAMPLED'
       })
       if (isNotResampled.length > opticalPathIdentifiers.size) {
-        throw new Error(
-          'The set of VOLUME images of a slide must contain only a single ' +
-          'image that has not been resampled per optical path.'
+        console.warn(
+          'the set of VOLUME images of a slide must contain only a single ' +
+          'image that has not been resampled per optical path'
         )
       }
     }
