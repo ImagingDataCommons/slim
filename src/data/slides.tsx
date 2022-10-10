@@ -26,7 +26,6 @@ const areSameAcquisition = (
 
 interface SlideImageCollection {
   acquisitionUID?: string
-  pyramidUID?: string
   frameOfReferenceUID: string
   containerIdentifier: string
   volumeImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
@@ -46,11 +45,11 @@ interface SlideOptions {
 class Slide {
   readonly description: string
   readonly acquisitionUID: string | null
-  readonly pyramidUID: string | null
   readonly frameOfReferenceUID: string
   readonly containerIdentifier: string
   readonly seriesInstanceUIDs: string[]
   readonly opticalPathIdentifiers: string[]
+  readonly pyramidUIDs: string[] = []
   readonly areVolumeImagesMonochrome: boolean
   readonly volumeImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
   readonly labelImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
@@ -77,8 +76,10 @@ class Slide {
       LABEL: new Set([] as string[]),
       OVERVIEW: new Set([] as string[])
     }
-    const pyramidUIDs = {
-      VOLUME: new Set([] as string[])
+    const pyramidUIDs: {
+      [key: string]: { [opticalPathIdentifier: string]: Set<string> }
+    } = {
+      VOLUME: {}
     }
     const volumeImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
     const labelImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
@@ -98,7 +99,9 @@ class Slide {
       ) {
         frameOfReferenceUIDs.VOLUME.add(image.FrameOfReferenceUID)
         if (image.PyramidUID != null) {
-          pyramidUIDs.VOLUME.add(image.PyramidUID)
+          for (const identifier in opticalPathIdentifiers) {
+            pyramidUIDs.VOLUME[identifier].add(image.PyramidUID)
+          }
         }
         volumeImages.push(image)
       } else if (hasImageFlavor(image, ImageFlavors.LABEL)) {
@@ -144,12 +147,14 @@ class Slide {
 
     this.seriesInstanceUIDs = [...seriesInstanceUIDs]
     this.opticalPathIdentifiers = [...opticalPathIdentifiers]
+
     if (containerIdentifiers.size !== 1) {
       throw new Error(
         'All images of a slide must have the same Container Identifier.'
       )
     }
     this.containerIdentifier = [...containerIdentifiers][0]
+
     if (frameOfReferenceUIDs.VOLUME.size !== 1) {
       throw new Error(
         'All VOLUME images of a slide must have ' +
@@ -157,20 +162,42 @@ class Slide {
       )
     }
     this.frameOfReferenceUID = [...frameOfReferenceUIDs.VOLUME][0]
-    if (pyramidUIDs.VOLUME.size > 1) {
-      throw new Error(
-        'All VOLUME images of a slide must be part of the same  ' +
-        'multi-resolution pyramid and have the same Pyramid UID.'
-      )
-    } else if (pyramidUIDs.VOLUME.size === 1) {
-      this.pyramidUID = [...pyramidUIDs.VOLUME][0]
-    } else {
-      this.pyramidUID = null
+
+    let requirePyramidUID = false
+    if (Object.keys(pyramidUIDs.VOLUME).length > 0) {
+      requirePyramidUID = true
     }
+    this.opticalPathIdentifiers.forEach(identifier => {
+      if (pyramidUIDs.VOLUME[identifier] != null) {
+        if (pyramidUIDs.VOLUME[identifier].size > 1) {
+          throw new Error(
+            `All VOLUME images for optical path "${identifier}"` +
+            'must be part of the same multi-resolution pyramid.'
+          )
+        } else if (pyramidUIDs.VOLUME[identifier].size === 1) {
+          this.pyramidUIDs.push([...pyramidUIDs.VOLUME[identifier]][0])
+        } else {
+          throw new Error(
+            `The VOLUME images for optical path "${identifier}" ` +
+            'lack the Pyramid UID, while the images for other optical paths ' +
+            'contain it.'
+          )
+        }
+      } else {
+        if (requirePyramidUID) {
+          throw new Error(
+            `The VOLUME images for optical path "${identifier}" ` +
+            'lack the Pyramid UID, while the images for other optical paths ' +
+            'contain it.'
+          )
+        }
+      }
+    })
+
     if (acquisitionUIDs.size > 1) {
       throw new Error(
         'All VOLUME images of a slide must be part of the same  ' +
-        'multi-resolution pyramid and have the same Pyramid UID.'
+        'acquisition and have the same Acquisition UID.'
       )
     } else if (acquisitionUIDs.size === 1) {
       this.acquisitionUID = [...acquisitionUIDs][0]
@@ -243,7 +270,6 @@ const createSlides = (
         if (slideMetadataIndex === -1) {
           const slideMetadataItem: SlideImageCollection = {
             acquisitionUID: refImage.AcquisitionUID,
-            pyramidUID: refImage.PyramidUID,
             frameOfReferenceUID: refImage.FrameOfReferenceUID,
             containerIdentifier: refImage.ContainerIdentifier,
             volumeImages: filteredVolumeImages,
@@ -298,8 +324,7 @@ function _doesImageBelongToSlide (
   if (
     slide.frameOfReferenceUID === image.FrameOfReferenceUID &&
     slide.containerIdentifier === image.ContainerIdentifier &&
-    slide.acquisitionUID === image.AcquisitionUID &&
-    slide.pyramidUID === image.PyramidUID
+    slide.acquisitionUID === image.AcquisitionUID
   ) {
     return true
   }
