@@ -523,6 +523,8 @@ declare module 'dicom-microscopy-viewer' {
       PhotometricInterpretation: string
       // Acquisition
       AcquisitionUID?: string
+      // Multi-Resolution Pyramid
+      PyramidUID?: string
       // Frame of Reference module
       FrameOfReferenceUID: string
       // Specimen module
