@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "https://herrmannlab.github.io/slim/static/css/main.e6c13ad2.css",
-    "main.js": "https://herrmannlab.github.io/slim/static/js/main.3c1d3e18.js",
+    "main.js": "https://herrmannlab.github.io/slim/static/js/main.e307b27a.js",
     "static/css/455.5cd65a83.chunk.css": "https://herrmannlab.github.io/slim/static/css/455.5cd65a83.chunk.css",
     "static/js/455.8a6ca5f2.chunk.js": "https://herrmannlab.github.io/slim/static/js/455.8a6ca5f2.chunk.js",
     "static/css/267.a1f9d27a.chunk.css": "https://herrmannlab.github.io/slim/static/css/267.a1f9d27a.chunk.css",
@@ -15,7 +15,7 @@
     "static/js/index.worker.min.worker.js": "https://herrmannlab.github.io/slim/static/js/index.worker.min.worker.js",
     "index.html": "https://herrmannlab.github.io/slim/index.html",
     "main.e6c13ad2.css.map": "https://herrmannlab.github.io/slim/static/css/main.e6c13ad2.css.map",
-    "main.3c1d3e18.js.map": "https://herrmannlab.github.io/slim/static/js/main.3c1d3e18.js.map",
+    "main.e307b27a.js.map": "https://herrmannlab.github.io/slim/static/js/main.e307b27a.js.map",
     "455.5cd65a83.chunk.css.map": "https://herrmannlab.github.io/slim/static/css/455.5cd65a83.chunk.css.map",
     "455.8a6ca5f2.chunk.js.map": "https://herrmannlab.github.io/slim/static/js/455.8a6ca5f2.chunk.js.map",
     "267.a1f9d27a.chunk.css.map": "https://herrmannlab.github.io/slim/static/css/267.a1f9d27a.chunk.css.map",
@@ -25,6 +25,6 @@
   },
   "entrypoints": [
     "static/css/main.e6c13ad2.css",
-    "static/js/main.3c1d3e18.js"
+    "static/js/main.e307b27a.js"
   ]
 }
