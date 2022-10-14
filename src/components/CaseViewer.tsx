@@ -23,11 +23,11 @@ import SlideViewer from './SlideViewer'
 
 import { User } from '../auth'
 import { Slide, createSlides } from '../data/slides'
-import { SOPClassUIDs } from '../data/uids'
+import { StorageClasses } from '../data/uids'
 import { RouteComponentProps, withRouter } from '../utils/router'
 
 function ParametrizedSlideViewer ({
-  client,
+  clients,
   slides,
   user,
   app,
@@ -35,7 +35,7 @@ function ParametrizedSlideViewer ({
   enableAnnotationTools,
   annotations
 }: {
-  client: DicomWebManager
+  clients: { [key: string]: DicomWebManager }
   slides: Slide[]
   user?: User
   app: {
@@ -68,7 +68,7 @@ function ParametrizedSlideViewer ({
   if (selectedSlide != null) {
     viewer = (
       <SlideViewer
-        client={client}
+        clients={clients}
         studyInstanceUID={studyInstanceUID}
         seriesInstanceUID={seriesInstanceUID}
         selectedPresentationStateUID={presentationStateUID}
@@ -85,7 +85,7 @@ function ParametrizedSlideViewer ({
 }
 
 interface ViewerProps extends RouteComponentProps {
-  client: DicomWebManager
+  clients: { [key: string]: DicomWebManager }
   studyInstanceUID: string
   app: {
     name: string
@@ -146,7 +146,10 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     const images: dmv.metadata.VLWholeSlideMicroscopyImage[][] = []
     const studyInstanceUID = this.props.studyInstanceUID
     console.info(`search for series of study "${studyInstanceUID}"...`)
-    const matchedSeries = await this.props.client.searchForSeries({
+    const client = this.props.clients[
+      StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE
+    ]
+    const matchedSeries = await client.searchForSeries({
       queryParams: {
         Modality: 'SM',
         StudyInstanceUID: studyInstanceUID
@@ -159,7 +162,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       console.info(
         `retrieve metadata of series "${loadingSeries.SeriesInstanceUID}"`
       )
-      const retrievedMetadata = await this.props.client.retrieveSeriesMetadata({
+      const retrievedMetadata = await client.retrieveSeriesMetadata({
         studyInstanceUID: this.props.studyInstanceUID,
         seriesInstanceUID: loadingSeries.SeriesInstanceUID
       })
@@ -170,7 +173,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
           const values = item['00080016'].Value
           if (values != null) {
             const sopClassUID = values[0]
-            if (sopClassUID === SOPClassUIDs.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE) {
+            if (sopClassUID === StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE) {
               const image = new dmv.metadata.VLWholeSlideMicroscopyImage({
                 metadata: item
               })
@@ -268,7 +271,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
             {clinicalTrialMenu}
             <Menu.SubMenu key='slides' title='Slides'>
               <SlideList
-                client={this.props.client}
+                clients={this.props.clients}
                 metadata={this.state.slides}
                 selectedSeriesInstanceUID={selectedSeriesInstanceUID}
                 onSeriesSelection={this.handleSeriesSelection}
@@ -282,7 +285,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
             path='/series/:seriesInstanceUID'
             element={
               <ParametrizedSlideViewer
-                client={this.props.client}
+                clients={this.props.clients}
                 slides={this.state.slides}
                 preload={this.props.preload}
                 annotations={this.props.annotations}

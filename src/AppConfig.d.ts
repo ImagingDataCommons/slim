@@ -63,6 +63,7 @@ export interface ServerSettings {
   stowPathPrefix?: string
   retry?: RetryRequestSettings
   errorMessages?: ErrorMessageSettings[]
+  storageClasses?: string[]
 }
 
 export interface OidcSettings {

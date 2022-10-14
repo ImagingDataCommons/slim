@@ -7,7 +7,7 @@ import { Slide } from '../data/slides'
 
 interface SlideListProps {
   metadata: Slide[]
-  client: DicomWebManager
+  clients: { [key: string]: DicomWebManager }
   selectedSeriesInstanceUID: string
   onSeriesSelection: (
     { seriesInstanceUID }: { seriesInstanceUID: string }
@@ -41,7 +41,7 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
         <SlideItem
           key={slide.seriesInstanceUIDs[0]}
           slide={slide}
-          client={this.props.client}
+          clients={this.props.clients}
         />
       )
 

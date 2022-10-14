@@ -6,7 +6,8 @@ declare module 'dicom-microscopy-viewer' {
   declare namespace viewer {
 
     export interface VolumeImageViewerOptions {
-      client: dwc.api.DICOMwebClient
+      client?: dwc.api.DICOMwebClient
+      clientMapping?: { [key: string]: dwc.api.DICOMwebClient }
       metadata: metadata.VLWholeSlideMicroscopyImage[]
       debug?: boolean
       preload?: boolean
@@ -195,7 +196,8 @@ declare module 'dicom-microscopy-viewer' {
       showAnnotationGroup (
         annotationGroupUID: string,
         styleOptions?: {
-          opacity?: number
+          opacity?: number,
+          color?: number[],
           measurement?: dcmjs.sr.coding.CodedConcept
         }
       ): void
@@ -203,10 +205,15 @@ declare module 'dicom-microscopy-viewer' {
       setAnnotationGroupStyle (
         annotationGroupUID: string,
         styleOptions: {
-          opacity?: number
+          opacity?: number,
+          color?: number[],
+          measurement?: dcmjs.sr.coding.CodedConcept
         }
       ): void
-      getAnnotationGroupStyle (annotationGroupUID: string): { opacity: number }
+      getAnnotationGroupStyle (annotationGroupUID: string): {
+        opacity: number,
+        color: number[]
+      }
       isAnnotationGroupVisible (annotationGroupUID: string): boolean
       getAllAnnotationGroups (): dwc.annotation.AnnotationGroup[]
       getAnnotationGroupMetadata (
