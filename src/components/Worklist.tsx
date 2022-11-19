@@ -17,6 +17,7 @@ import * as dmv from 'dicom-microscopy-viewer'
 import { StorageClasses } from '../data/uids'
 import { withRouter, RouteComponentProps } from '../utils/router'
 import { parseDate, parseName, parseSex, parseTime } from '../utils/values'
+import ErrorMiddleware from './ErrorHandler/ErrorMiddleware'
 
 interface WorklistProps extends RouteComponentProps {
   clients: { [key: string]: DicomWebManager }
@@ -62,8 +63,9 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       })
     }).catch((error) => {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      message.error('An error occured. Search for studies failed.')
-      console.error(error)
+      ErrorMiddleware.onError('dicomweb-client', 
+      new Error('An error occured. Search for studies failed.'
+      ))
     })
   }
 
@@ -113,7 +115,11 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
           return dataset as dmv.metadata.Study
         })
       })
-    }).catch(() => message.error('Request to search for studies failed.'))
+    }).catch((error) => {
+      ErrorMiddleware.onError('dicomweb-client', 
+      new Error('Request to search for studies failed.'
+      ))
+    })
   }
 
   handleChange (

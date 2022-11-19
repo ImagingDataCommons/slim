@@ -12,6 +12,7 @@ declare module 'dicom-microscopy-viewer' {
       debug?: boolean
       preload?: boolean
       controls: string[]
+      errorInterceptor?: (error: Error) => void
     }
 
     export interface ROIStyleOptions {
@@ -227,6 +228,7 @@ declare module 'dicom-microscopy-viewer' {
       orientation?: string
       resizeFactor?: number
       includeIccProfile?: boolean
+      errorInterceptor?: (error: Error) => void
     }
 
     export class OverviewImageViewer {
@@ -244,6 +246,7 @@ declare module 'dicom-microscopy-viewer' {
       orientation?: string
       resizeFactor?: number
       includeIccProfile?: boolean
+      errorInterceptor?: (error: Error) => void
     }
 
     export class LabelImageViewer {

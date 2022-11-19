@@ -1,4 +1,5 @@
 import * as dmv from 'dicom-microscopy-viewer'
+import ErrorMiddleware from '../components/ErrorHandler/ErrorMiddleware'
 
 enum ImageFlavors {
   VOLUME = 'VOLUME',
@@ -44,7 +45,7 @@ interface SlideOptions {
  */
 class Slide {
   readonly description: string
-  readonly acquisitionUID: string | null
+  readonly acquisitionUID: string | null | undefined
   readonly frameOfReferenceUID: string
   readonly containerIdentifier: string
   readonly seriesInstanceUIDs: string[]
@@ -64,7 +65,9 @@ class Slide {
     options: SlideOptions
   ) {
     if (options.images.length === 0) {
-      throw new Error('Value of option "images" have been non-zero length.')
+      ErrorMiddleware.onError('slim', 
+      new Error('Value of option "images" have been non-zero length.'
+      ))
     }
 
     const seriesInstanceUIDs = new Set([] as string[])
@@ -113,23 +116,27 @@ class Slide {
       }
     })
     if (volumeImages.length === 0) {
-      throw new Error('At least one VOLUME image must be provided for a slide.')
+      ErrorMiddleware.onError('slim', 
+      new Error('At least one VOLUME image must be provided for a slide.'
+      ))
     } else {
       if (acquisitionUIDs.size > 1) {
-        throw new Error(
-          'All VOLUME images of a slide must have the same number of ' +
-          'Samples per Pixel.'
-        )
+        //To do: Check wtih Markus, same as the next error? line 136
+          ErrorMiddleware.onError('slim', 
+          new Error(
+            'All VOLUME images of a slide must have the same number of ' +
+            'Samples per Pixel.'
+            ))
       }
       const samplesPerPixel = new Set([] as number[])
       volumeImages.forEach((image) => {
         samplesPerPixel.add(image.SamplesPerPixel)
       })
       if (samplesPerPixel.size > 1) {
-        throw new Error(
-          'All VOLUME images of a slide must have the same number of ' +
-          'Samples per Pixel.'
-        )
+          ErrorMiddleware.onError('slim', 
+          new Error('All VOLUME images of a slide must have the same number of ' +
+            'Samples per Pixel.'
+            ))
       }
       const isNotResampled = volumeImages.filter(image => {
         return image.ImageType[3] !== 'RESAMPLED'
@@ -148,18 +155,18 @@ class Slide {
     this.seriesInstanceUIDs = [...seriesInstanceUIDs]
     this.opticalPathIdentifiers = [...opticalPathIdentifiers]
 
+    
     if (containerIdentifiers.size !== 1) {
-      throw new Error(
-        'All images of a slide must have the same Container Identifier.'
-      )
+      ErrorMiddleware.onError('slim', 
+      new Error('All images of a slide must have the same Container Identifier.'
+      ))
     }
     this.containerIdentifier = [...containerIdentifiers][0]
 
     if (frameOfReferenceUIDs.VOLUME.size !== 1) {
-      throw new Error(
+      ErrorMiddleware.onError('slim', new Error(
         'All VOLUME images of a slide must have ' +
-        'the same Frame of Reference UID.'
-      )
+        'the same Frame of Reference UID.'))
     }
     this.frameOfReferenceUID = [...frameOfReferenceUIDs.VOLUME][0]
 
@@ -170,35 +177,31 @@ class Slide {
     this.opticalPathIdentifiers.forEach(identifier => {
       if (pyramidUIDs.VOLUME[identifier] != null) {
         if (pyramidUIDs.VOLUME[identifier].size > 1) {
-          throw new Error(
+          ErrorMiddleware.onError('slim', new Error(
             `All VOLUME images for optical path "${identifier}"` +
-            'must be part of the same multi-resolution pyramid.'
-          )
+            'must be part of the same multi-resolution pyramid.'))
         } else if (pyramidUIDs.VOLUME[identifier].size === 1) {
           this.pyramidUIDs.push([...pyramidUIDs.VOLUME[identifier]][0])
         } else {
-          throw new Error(
+          ErrorMiddleware.onError('slim', new Error(
             `The VOLUME images for optical path "${identifier}" ` +
             'lack the Pyramid UID, while the images for other optical paths ' +
-            'contain it.'
-          )
+            'contain it.' ))
         }
       } else {
         if (requirePyramidUID) {
-          throw new Error(
+          ErrorMiddleware.onError('slim', new Error(
             `The VOLUME images for optical path "${identifier}" ` +
             'lack the Pyramid UID, while the images for other optical paths ' +
-            'contain it.'
-          )
+            'contain it.'))
         }
       }
     })
 
     if (acquisitionUIDs.size > 1) {
-      throw new Error(
+      ErrorMiddleware.onError('slim', new Error(
         'All VOLUME images of a slide must be part of the same  ' +
-        'acquisition and have the same Acquisition UID.'
-      )
+        'acquisition and have the same Acquisition UID.'))
     } else if (acquisitionUIDs.size === 1) {
       this.acquisitionUID = [...acquisitionUIDs][0]
     } else {

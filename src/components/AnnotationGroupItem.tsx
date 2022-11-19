@@ -276,10 +276,10 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
     if (value != null && option.children != null) {
       const codeComponents = value.split('-')
       const measurement = new dcmjs.sr.coding.CodedConcept({
-        value: codeComponents[1],
-        schemeDesignator: codeComponents[0],
-        meaning: option.children
-      })
+          value: codeComponents[1],
+          schemeDesignator: codeComponents[0],
+          meaning: option.children
+        })
       this.props.onStyleChange({
         annotationGroupUID: this.props.annotationGroup.uid,
         styleOptions: { measurement }

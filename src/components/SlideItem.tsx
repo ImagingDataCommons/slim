@@ -7,6 +7,7 @@ import DicomWebManager from '../DicomWebManager'
 import Description from './Description'
 import { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
+import ErrorMiddleware from './ErrorHandler/ErrorMiddleware'
 
 interface SlideItemProps {
   clients: { [key: string]: DicomWebManager }
@@ -51,7 +52,8 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
             StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE
           ],
           metadata: metadata,
-          resizeFactor: 1
+          resizeFactor: 1,
+          errorInterceptor: (error: Error) => ErrorMiddleware.onError('dicom-microscopy-viewer', error)
         })
         this.overviewViewer.render({
           container: this.overviewViewportRef.current

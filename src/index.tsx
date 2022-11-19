@@ -5,6 +5,7 @@ import './index.css'
 import AppConfig from './AppConfig'
 
 import packageInfo from '../package.json'
+import CustomErrorBoundary from './components/ErrorHandler/ErrorBoundary'
 
 declare global {
   interface Window {
@@ -30,12 +31,15 @@ const root = createRoot(container!)
 root.render(
   <React.StrictMode>
     <React.Suspense fallback={<div>Loading application...</div>}>
+      <CustomErrorBoundary context = "App">
       <App
         config={config}
         version={packageInfo.version}
         name={packageInfo.name}
         homepage='https://github.com/herrmannlab/slim'
       />
+      </CustomErrorBoundary>
+
     </React.Suspense>
   </React.StrictMode>
 )
