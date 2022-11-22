@@ -1,48 +1,45 @@
-import React from "react";
+import React from 'react'
 import {
   BrowserRouter,
   Navigate,
   Route,
   Routes,
-  useParams,
-} from "react-router-dom";
-import { Layout, message } from "antd";
-import { FaSpinner } from "react-icons/fa";
-import * as dwc from "dicomweb-client";
+  useParams
+} from 'react-router-dom'
+import { Layout, message } from 'antd'
+import { FaSpinner } from 'react-icons/fa'
+import * as dwc from 'dicomweb-client'
 
-import AppConfig, { ServerSettings, ErrorMessageSettings } from "./AppConfig";
-import CaseViewer from "./components/CaseViewer";
-import Header from "./components/Header";
-import InfoPage from "./components/InfoPage";
-import Worklist from "./components/Worklist";
+import AppConfig, { ServerSettings, ErrorMessageSettings } from './AppConfig'
+import CaseViewer from './components/CaseViewer'
+import Header from './components/Header'
+import InfoPage from './components/InfoPage'
+import Worklist from './components/Worklist'
 
-import { User, AuthManager } from "./auth";
-import OidcManager from "./auth/OidcManager";
-import { StorageClasses } from "./data/uids";
-import DicomWebManager from "./DicomWebManager";
-import { joinUrl } from "./utils/url";
-import ErrorMiddleware from "./components/ErrorHandler/ErrorMiddleware";
+import { User, AuthManager } from './auth'
+import OidcManager from './auth/OidcManager'
+import { StorageClasses } from './data/uids'
+import DicomWebManager from './DicomWebManager'
+import { joinUrl } from './utils/url'
+import NotificationMiddleware, {
+  NotificationMiddlewareContext
+} from './services/NotificationMiddleware'
 
-function ParametrizedCaseViewer({
-  clients,
-  user,
-  app,
-  config,
-}: {
-  clients: { [key: string]: DicomWebManager };
-  user?: User;
+function ParametrizedCaseViewer ({ clients, user, app, config }: {
+  clients: { [key: string]: DicomWebManager }
+  user?: User
   app: {
-    name: string;
-    version: string;
-    uid: string;
-    organization?: string;
-  };
-  config: AppConfig;
+    name: string
+    version: string
+    uid: string
+    organization?: string
+  }
+  config: AppConfig
 }): JSX.Element {
-  const { studyInstanceUID } = useParams();
+  const { studyInstanceUID } = useParams()
 
-  const enableAnnotationTools = !(config.disableAnnotationTools ?? false);
-  const preload = config.preload ?? false;
+  const enableAnnotationTools = !(config.disableAnnotationTools ?? false)
+  const preload = config.preload ?? false
   return (
     <CaseViewer
       clients={clients}
@@ -53,127 +50,124 @@ function ParametrizedCaseViewer({
       enableAnnotationTools={enableAnnotationTools}
       studyInstanceUID={studyInstanceUID}
     />
-  );
+  )
 }
 
-function _createClientMapping({
-  baseUri,
-  settings,
-  onError,
-}: {
-  baseUri: string;
-  settings: ServerSettings[];
+function _createClientMapping ({ baseUri, settings, onError }: {
+  baseUri: string
+  settings: ServerSettings[]
   onError: (
     error: dwc.api.DICOMwebClientError,
     serverSettings: ServerSettings
-  ) => void;
+  ) => void
 }): { [sopClassUID: string]: DicomWebManager } {
-  const storageClassMapping: { [key: string]: number } = { default: 0 };
-  settings.forEach((serverSettings) => {
+  const storageClassMapping: { [key: string]: number } = { default: 0 }
+  settings.forEach(serverSettings => {
     if (serverSettings.storageClasses != null) {
-      serverSettings.storageClasses.forEach((sopClassUID) => {
+      serverSettings.storageClasses.forEach(sopClassUID => {
         if (Object.values<string>(StorageClasses).includes(sopClassUID)) {
           if (sopClassUID in storageClassMapping) {
-            storageClassMapping[sopClassUID] += 1;
+            storageClassMapping[sopClassUID] += 1
           } else {
-            storageClassMapping[sopClassUID] = 1;
+            storageClassMapping[sopClassUID] = 1
           }
         } else {
           console.warn(
             `unknown storage class "${sopClassUID}" specified ` +
               `for configured server "${serverSettings.id}"`
-          );
+          )
         }
-      });
+      })
     } else {
-      storageClassMapping.default += 1;
+      storageClassMapping.default += 1
     }
-  });
+  })
 
   if (storageClassMapping.default > 1) {
-    ErrorMiddleware.onError(
-      "slim",
+    NotificationMiddleware.onError(
+      NotificationMiddlewareContext.SLIM,
       new Error(
-        "Only one default server can be configured without specification " +
-          "of storage classes."
+        'Only one default server can be configured without specification ' +
+          'of storage classes.'
       )
-    );
+    )
   }
   for (const key in storageClassMapping) {
-    if (key === "default") {
-      continue;
+    if (key === 'default') {
+      continue
     }
     if (storageClassMapping[key] > 1) {
-      ErrorMiddleware.onError(
-        "slim",
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.SLIM,
         new Error(
-          "Only one configured server can specify a given storage class. " +
+          'Only one configured server can specify a given storage class. ' +
             `Storage class "${key}" is specified by more than one ` +
-            "of the configured servers."
+            'of the configured servers.'
         )
-      );
+      )
     }
   }
 
-  const clientMapping: { [sopClassUID: string]: DicomWebManager } = {};
+  const clientMapping: { [sopClassUID: string]: DicomWebManager } = {}
   if (Object.keys(storageClassMapping).length > 1) {
-    settings.forEach((server) => {
+    settings.forEach(server => {
       const client = new DicomWebManager({
         baseUri,
         settings: [server],
-        onError,
-      });
+        onError
+      })
       if (server.storageClasses != null) {
-        server.storageClasses.forEach((sopClassUID) => {
-          clientMapping[sopClassUID] = client;
-        });
+        server.storageClasses.forEach(sopClassUID => {
+          clientMapping[sopClassUID] = client
+        })
       }
-    });
-    clientMapping.default =
-      clientMapping[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE];
+    })
+    clientMapping.default = clientMapping[
+      StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE
+    ]
   } else {
-    const client = new DicomWebManager({ baseUri, settings, onError });
-    clientMapping.default = client;
+    const client = new DicomWebManager({ baseUri, settings, onError })
+    clientMapping.default = client
   }
-  Object.values(StorageClasses).forEach((sopClassUID) => {
+  Object.values(StorageClasses).forEach(sopClassUID => {
     if (!(sopClassUID in clientMapping)) {
-      clientMapping[sopClassUID] = clientMapping.default;
+      clientMapping[sopClassUID] = clientMapping.default
     }
-  });
-  return clientMapping;
+  })
+  return clientMapping
 }
 
 interface AppProps {
-  name: string;
-  homepage: string;
-  version: string;
-  config: AppConfig;
+  name: string
+  homepage: string
+  version: string
+  config: AppConfig
 }
 
 interface AppState {
-  clients: { [sopClassUID: string]: DicomWebManager };
-  user?: User;
-  isLoading: boolean;
-  redirectTo?: string;
-  wasAuthSuccessful: boolean;
-  error?: ErrorMessageSettings;
+  clients: { [sopClassUID: string]: DicomWebManager }
+  user?: User
+  isLoading: boolean
+  redirectTo?: string
+  wasAuthSuccessful: boolean
+  error?: ErrorMessageSettings
 }
 
 class App extends React.Component<AppProps, AppState> {
-  private readonly auth?: AuthManager;
+  private readonly auth?: AuthManager
 
   private readonly handleDICOMwebError = (
     error: dwc.api.DICOMwebClientError,
     serverSettings: ServerSettings
   ): void => {
     if (error.status === 401) {
-      this.signIn();
+      this.signIn()
     } else if (error.status === 403) {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      ErrorMiddleware.onError(
-        "dicomweb-client",
-        new Error("User is not authorized to access DICOMweb resources.")
-      );
+      NotificationMiddleware.onError(
+        'dicomweb-client',
+        new Error('User is not authorized to access DICOMweb resources.')
+      )
     }
     if (serverSettings.errorMessages !== undefined) {
       serverSettings.errorMessages.forEach((setting: ErrorMessageSettings) => {
@@ -181,89 +175,91 @@ class App extends React.Component<AppProps, AppState> {
           this.setState({
             error: {
               status: error.status,
-              message: setting.message,
-            },
-          });
+              message: setting.message
+            }
+          })
         } else if (error.status === 500) {
           // eslint-disable-next-line @typescript-eslint/no-floating-promises
-          ErrorMiddleware.onError(
-            "dicomweb-client",
-            new Error("An unexpected server error occured.")
-          );
+          NotificationMiddleware.onError(
+            NotificationMiddlewareContext.DICOMWEB,
+            new Error('An unexpected server error occured.')
+          )
         }
-      });
+      })
     }
-  };
+  }
 
   constructor(props: AppProps) {
-    super(props);
+    super(props)
 
-    console.info("instatiate app");
-    console.info(`app is located at "${props.config.path}"`);
-    const { protocol, host } = window.location;
-    const baseUri = `${protocol}//${host}`;
-    const appUri = joinUrl(props.config.path, baseUri);
+    console.info('instatiate app')
+    console.info(`app is located at "${props.config.path}"`)
+    const { protocol, host } = window.location
+    const baseUri = `${protocol}//${host}`
+    const appUri = joinUrl(props.config.path, baseUri)
 
-    const oidcSettings = props.config.oidc;
+    const oidcSettings = props.config.oidc
     if (oidcSettings !== undefined) {
       console.info(
-        "app uses the following OIDC configuration: ",
+        'app uses the following OIDC configuration: ',
         props.config.oidc
-      );
-      this.auth = new OidcManager(appUri, oidcSettings);
+      )
+      this.auth = new OidcManager(appUri, oidcSettings)
     }
 
     if (props.config.servers.length === 0) {
-      const noServerError = new Error("One server needs to be configured.");
-      ErrorMiddleware.onError("slim", noServerError);
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.SLIM,
+        new Error('One server needs to be configured.')
+      )
     }
     console.info(
-      "app uses the following DICOMweb server configuration: ",
+      'app uses the following DICOMweb server configuration: ',
       props.config.servers
-    );
+    )
 
-    this.handleServerSelection = this.handleServerSelection.bind(this);
+    this.handleServerSelection = this.handleServerSelection.bind(this)
 
-    message.config({ duration: 5 });
+    message.config({ duration: 5 })
 
     this.state = {
       clients: _createClientMapping({
         baseUri,
         settings: props.config.servers,
-        onError: this.handleDICOMwebError,
+        onError: this.handleDICOMwebError
       }),
       isLoading: true,
-      wasAuthSuccessful: false,
-    };
+      wasAuthSuccessful: false
+    }
   }
 
   handleServerSelection({ url }: { url: string }): void {
-    console.info("select DICOMweb server: ", url);
+    console.info('select DICOMweb server: ', url)
     const tmpClient = new DicomWebManager({
-      baseUri: "",
+      baseUri: '',
       settings: [
         {
-          id: "tmp",
+          id: 'tmp',
           url,
           read: true,
-          write: false,
-        },
+          write: false
+        }
       ],
-      onError: this.handleDICOMwebError,
-    });
-    tmpClient.updateHeaders(this.state.clients.default.headers);
+      onError: this.handleDICOMwebError
+    })
+    tmpClient.updateHeaders(this.state.clients.default.headers)
     /**
      * Use the newly created client for all storage classes. We may want to
      * make this more sophisticated in the future to allow users to override
      * the entire server configuration.
      */
-    this.setState((state) => {
-      const clients: { [key: string]: DicomWebManager } = {};
+    this.setState(state => {
+      const clients: { [key: string]: DicomWebManager } = {}
       for (const key in state.clients) {
-        clients[key] = tmpClient;
+        clients[key] = tmpClient
       }
-      return { clients };
-    });
+      return { clients }
+    })
   }
 
   /**
@@ -275,99 +271,100 @@ class App extends React.Component<AppProps, AppState> {
    * @param user - Information about the user
    * @param authorization - Value of the "Authorization" HTTP header field
    */
-  handleSignIn = ({
-    user,
-    authorization,
-  }: {
-    user: User;
-    authorization: string;
+  handleSignIn = ({ user, authorization }: {
+    user: User
+    authorization: string
   }): void => {
     console.info(
       `handle sign in of user "${user.name}" and ` +
         `update authorization token "${authorization}"`
-    );
+    )
     for (const key in this.state.clients) {
-      const client = this.state.clients[key];
-      client.updateHeaders({ Authorization: authorization });
+      const client = this.state.clients[key]
+      client.updateHeaders({ Authorization: authorization })
     }
-    const storedPath = window.localStorage.getItem("slim_path");
-    const storedSearch = window.localStorage.getItem("slim_search");
+    const storedPath = window.localStorage.getItem('slim_path')
+    const storedSearch = window.localStorage.getItem('slim_search')
     if (storedPath != null) {
-      const currentPath = window.location.pathname;
+      const currentPath = window.location.pathname
       if (storedPath !== currentPath) {
-        let path = storedPath;
+        let path = storedPath
         if (storedSearch != null) {
-          path += storedSearch;
+          path += storedSearch
         }
-        window.location.href = path;
+        window.location.href = path
       }
     }
-    window.localStorage.removeItem("slim_path");
-    window.localStorage.removeItem("slim_search");
-    this.setState({ user: user });
-  };
+    window.localStorage.removeItem('slim_path')
+    window.localStorage.removeItem('slim_search')
+    this.setState({ user: user })
+  }
 
   signIn(): void {
     if (this.auth !== undefined) {
-      console.info("try to sign in user");
-      this.auth
-        .signIn({ onSignIn: this.handleSignIn })
-        .then(() => {
-          console.info("sign-in was successful");
+      console.info('try to sign in user')
+      this.auth.signIn({ onSignIn: this.handleSignIn }).then(() => {
+          console.info('sign-in was successful')
           this.setState({
             isLoading: false,
-            wasAuthSuccessful: true,
-          });
+            wasAuthSuccessful: true
+          })
         })
-        .catch((error) => {
+        .catch(error => {
           // eslint-disable-next-line @typescript-eslint/no-floating-promises
-          ErrorMiddleware.onError("slim", new Error("Could not sign-in user."));
+          NotificationMiddleware.onError(
+            NotificationMiddlewareContext.SLIM,
+            new Error('Could not sign-in user.')
+          )
           this.setState({
             isLoading: false,
             redirectTo: undefined,
-            wasAuthSuccessful: false,
-          });
-        });
+            wasAuthSuccessful: false
+          })
+        })
     } else {
       this.setState({
         isLoading: false,
         redirectTo: undefined,
-        wasAuthSuccessful: true,
-      });
+        wasAuthSuccessful: true
+      })
     }
   }
 
-  componentDidMount(): void {
-    const path = window.localStorage.getItem("slim_path");
+  componentDidMount (): void {
+    const path = window.localStorage.getItem('slim_path')
     if (path == null) {
-      window.localStorage.setItem("slim_path", window.location.pathname);
-      window.localStorage.setItem("slim_search", window.location.search);
+      window.localStorage.setItem('slim_path', window.location.pathname)
+      window.localStorage.setItem('slim_search', window.location.search)
     }
-    this.signIn();
+    this.signIn()
   }
 
-  render(): React.ReactNode {
+  render (): React.ReactNode {
     const appInfo = {
       name: this.props.name,
       version: this.props.version,
       homepage: this.props.homepage,
-      uid: "1.2.826.0.1.3680043.9.7433.1.5",
-      organization: this.props.config.organization,
-    };
-
-    const enableWorklist = !(this.props.config.disableWorklist ?? false);
-    const enableServerSelection =
-      this.props.config.enableServerSelection ?? false;
-
-    let worklist;
-    if (enableWorklist) {
-      worklist = <Worklist clients={this.state.clients} />;
-    } else {
-      worklist = <div>Worklist has been disabled.</div>;
+      uid: '1.2.826.0.1.3680043.9.7433.1.5',
+      organization: this.props.config.organization
     }
 
-    let isLogoutPossible = false;
-    let onLogout: () => void;
+    const enableWorklist = !(
+      this.props.config.disableWorklist ?? false
+    )
+    const enableServerSelection = (
+      this.props.config.enableServerSelection ?? false
+    )
+
+    let worklist
+    if (enableWorklist) {
+      worklist = <Worklist clients={this.state.clients} />
+    } else {
+      worklist = <div>Worklist has been disabled.</div>
+    }
+
+    let isLogoutPossible = false
+    let onLogout: () => void
     if (
       // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
       this.props.config.oidc != null &&
@@ -376,24 +373,24 @@ class App extends React.Component<AppProps, AppState> {
       onLogout = (): void => {
         if (this.auth != null) {
           // eslint-disable-next-line @typescript-eslint/no-floating-promises
-          this.auth.signOut();
+          this.auth.signOut()
         }
-      };
-      isLogoutPossible = true;
+      }
+      isLogoutPossible = true
     } else {
-      onLogout = () => {};
-      isLogoutPossible = false;
+      onLogout = () => {}
+      isLogoutPossible = false
     }
 
-    const layoutStyle = { height: "100vh" };
-    const layoutContentStyle = { height: "100%" };
+    const layoutStyle = { height: '100vh' }
+    const layoutContentStyle = { height: '100%' }
 
     if (this.state.redirectTo !== undefined) {
       return (
         <BrowserRouter basename={this.props.config.path}>
           <Navigate to={this.state.redirectTo} replace />
         </BrowserRouter>
-      );
+      )
     } else if (this.state.isLoading) {
       return (
         <BrowserRouter basename={this.props.config.path}>
@@ -410,17 +407,21 @@ class App extends React.Component<AppProps, AppState> {
             </Layout.Content>
           </Layout>
         </BrowserRouter>
-      );
+      )
     } else if (!this.state.wasAuthSuccessful) {
-      return <InfoPage type="error" message="Sign-in failed." />;
+      return (
+        <InfoPage type='error' message='Sign-in failed.' />
+      )
     } else if (this.state.error != null) {
-      return <InfoPage type="error" message={this.state.error.message} />;
+      return (
+        <InfoPage type='error' message={this.state.error.message} />
+      )
     } else {
       return (
         <BrowserRouter basename={this.props.config.path}>
           <Routes>
             <Route
-              path="/"
+              path='/'
               element={
                 <Layout style={layoutStyle}>
                   <Header
@@ -438,7 +439,7 @@ class App extends React.Component<AppProps, AppState> {
               }
             />
             <Route
-              path="/studies/:studyInstanceUID/*"
+              path='/studies/:studyInstanceUID/*'
               element={
                 <Layout style={layoutStyle}>
                   <Header
@@ -461,7 +462,7 @@ class App extends React.Component<AppProps, AppState> {
               }
             />
             <Route
-              path="/logout"
+              path='/logout'
               element={
                 <Layout style={layoutStyle}>
                   <Header
@@ -478,9 +479,9 @@ class App extends React.Component<AppProps, AppState> {
             />
           </Routes>
         </BrowserRouter>
-      );
+      )
     }
   }
 }
 
-export default App;
+export default App

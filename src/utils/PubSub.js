@@ -1,16 +1,16 @@
 // Use symbols to prevent exposing private attributes
-const _subscriptions = Symbol('subscriptions');
-const _lastSubscriptionId = Symbol('lastSubscriptionId');
+const _subscriptions = Symbol('subscriptions')
+const _lastSubscriptionId = Symbol('lastSubscriptionId')
 
 /**
  * Class to enable implementation of publish/subscribe pattern
  * @class
  * @classdesc Enables publishing/subscribing
  */
-export default class CustomPubSub {
+export default class PubSub {
   constructor() {
-    this[_subscriptions] = {};
-    this[_lastSubscriptionId] = 0;
+    this[_subscriptions] = {}
+    this[_lastSubscriptionId] = 0
   }
 
   /**
@@ -21,19 +21,19 @@ export default class CustomPubSub {
    */
   subscribe(eventName, callback) {
     if (eventName === undefined) {
-      throw new Error('Trying to subscribe to an inexistent event');
+      throw new Error('Trying to subscribe to an inexistent event')
     }
 
     if (typeof callback !== 'function') {
-      throw new Error('The provided callback must be a function');
+      throw new Error('The provided callback must be a function')
     }
 
     if (!this[_subscriptions].hasOwnProperty(eventName)) {
-      this[_subscriptions][eventName] = {};
+      this[_subscriptions][eventName] = {}
     }
 
-    const subscriptionId = `sub${this[_lastSubscriptionId]++}`;
-    this[_subscriptions][eventName][subscriptionId] = callback;
+    const subscriptionId = `sub${this[_lastSubscriptionId]++}`
+    this[_subscriptions][eventName][subscriptionId] = callback
   }
 
   /**
@@ -43,12 +43,12 @@ export default class CustomPubSub {
    * @returns {void}
    */
   unsubscribe(eventName, callback) {
-    const callbacks = this[_subscriptions][eventName] || {};
+    const callbacks = this[_subscriptions][eventName] || {}
     for (let subscriptionId in callbacks) {
       if (!callback) {
-        delete callbacks[subscriptionId];
+        delete callbacks[subscriptionId]
       } else if (callbacks[subscriptionId] === callback) {
-        delete callbacks[subscriptionId];
+        delete callbacks[subscriptionId]
       }
     }
   }
@@ -61,12 +61,12 @@ export default class CustomPubSub {
    */
   publish(eventName, ...payload) {
     if (eventName === undefined) {
-      throw new Error('Trying to publish an inexistent event');
+      throw new Error('Trying to publish an inexistent event')
     }
 
-    const callbacks = this[_subscriptions][eventName] || {};
+    const callbacks = this[_subscriptions][eventName] || {}
     for (let subscriptionId in callbacks) {
-      callbacks[subscriptionId](...payload);
+      callbacks[subscriptionId](...payload)
     }
   }
 
@@ -76,9 +76,9 @@ export default class CustomPubSub {
    */
   unsubscribeFromAll() {
     for (let eventName in this[_subscriptions]) {
-      const callbacks = this[_subscriptions][eventName];
+      const callbacks = this[_subscriptions][eventName]
       for (let subscriptionId in callbacks) {
-        delete callbacks[subscriptionId];
+        delete callbacks[subscriptionId]
       }
     }
   }

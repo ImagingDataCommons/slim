@@ -7,7 +7,9 @@ import DicomWebManager from '../DicomWebManager'
 import Description from './Description'
 import { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
-import ErrorMiddleware from './ErrorHandler/ErrorMiddleware'
+import NotificationMiddleware, {
+  NotificationMiddlewareContext
+} from '../services/NotificationMiddleware'
 
 interface SlideItemProps {
   clients: { [key: string]: DicomWebManager }
@@ -53,7 +55,11 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
           ],
           metadata: metadata,
           resizeFactor: 1,
-          errorInterceptor: (error: Error) => ErrorMiddleware.onError('dicom-microscopy-viewer', error)
+          errorInterceptor: (error: Error) =>
+            NotificationMiddleware.onError(
+              NotificationMiddlewareContext.DMV,
+              error
+            )
         })
         this.overviewViewer.render({
           container: this.overviewViewportRef.current

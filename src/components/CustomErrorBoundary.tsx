@@ -1,14 +1,21 @@
-import { Modal, Collapse } from "antd";
-import { ErrorBoundary, FallbackProps } from "react-error-boundary";
+import { Modal, Collapse } from 'antd'
+import { ErrorBoundary, FallbackProps } from 'react-error-boundary'
 
+  /**
+ * React's error boundary component to catch errors during rendering phase
+ * FallbackComponent is rendered in the event of an error
+ * 
+ * @param context - name of the react component 
+ * @param children - the component wrapped inside the Custom Error Boundary
+ */
 const CustomErrorBoundary = ({
   context,
-  children,
+  children
 }: {
-  context: string;
-  children: JSX.Element;
+  context: string
+  children: JSX.Element
 }) => {
-  const { Panel } = Collapse;
+  const { Panel } = Collapse
   const ErrorFallback = (error: FallbackProps) => {
     const openModal = () => {
       Modal.error({
@@ -22,47 +29,47 @@ const CustomErrorBoundary = ({
         content: (
           <>
             <Collapse>
-              <Panel header="Component Stack" key="stack1">
+              <Panel header='Component Stack' key='stack1'>
                 {error.error.stack}
               </Panel>
             </Collapse>
           </>
         ),
-        onOk(): void {},
-      });
-    };
+        onOk(): void {}
+      })
+    }
 
     return (
       <div>
         <p>
-          There was an error in loading this page.{" "}
+          There was an error in loading this page.{' '}
           <span
-            style={{ cursor: "pointer", color: "#0077FF" }}
+            style={{ cursor: 'pointer', color: '#0077FF' }}
             onClick={() => {
-              openModal();
+              openModal()
             }}
           >
             Click for error details
-          </span>{" "}
+          </span>{' '}
         </p>
       </div>
-    );
-  };
+    )
+  }
 
   const ErrorHandler = (
     error: Error,
     info: {
-      componentStack: string;
+      componentStack: string
     }
   ) => {
-    console.error(error);
-  };
+    console.error(error)
+  }
 
   return (
     <ErrorBoundary onError={ErrorHandler} FallbackComponent={ErrorFallback}>
       {children}
     </ErrorBoundary>
-  );
-};
+  )
+}
 
-export default CustomErrorBoundary;
+export default CustomErrorBoundary
