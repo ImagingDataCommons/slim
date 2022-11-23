@@ -119,16 +119,15 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
           slides: createSlides(metadata),
           isLoading: false
         })
-      })
-      .catch(error => {
+      }
+    ).catch((error) => {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        NotificationMiddleware.onError(
-          NotificationMiddlewareContext.SLIM,
-          new Error('Image metadata could not be retrieved or decoded.')
-        )
-      console.error(error)
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.SLIM,
+        new Error('Image metadata could not be retrieved or decoded.')
+      )
       this.setState({ isLoading: false })
-      })
+    })
   }
 
   /**

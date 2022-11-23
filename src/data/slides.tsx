@@ -63,7 +63,7 @@ class Slide {
    * @param options.images - Metadata of images associated with the slide
    * @param options.description - Description of the slide
    */
-   constructor (
+  constructor (
     options: SlideOptions
   ) {
     if (options.images.length === 0) {

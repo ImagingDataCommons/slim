@@ -58,7 +58,7 @@ interface HeaderState {
  * React component for the application header.
  */
 class Header extends React.Component<HeaderProps, HeaderState> {
-  constructor(props: HeaderProps) {
+  constructor (props: HeaderProps) {
     super(props)
     this.state = {
       isServerSelectionModalVisible: false,
@@ -138,7 +138,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           </Descriptions>
         </>
       ),
-      onOk(): void {}
+      onOk (): void {}
     })
   }
 
@@ -221,20 +221,22 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     this.setState({ isServerSelectionModalVisible: true })
   }
 
-  render(): React.ReactNode {
+  render (): React.ReactNode {
     let user = null
     if (this.props.user !== undefined) {
       const userMenuItems = []
       if (this.props.onUserLogout !== undefined) {
-        userMenuItems.push({
-          label: 'Logout',
-          key: 'user-logout',
-          onClick: () => {
-            if (this.props.onUserLogout !== undefined) {
-              this.props.onUserLogout()
+        userMenuItems.push(
+          {
+            label: 'Logout',
+            key: 'user-logout',
+            onClick: () => {
+              if (this.props.onUserLogout !== undefined) {
+                this.props.onUserLogout()
+              }
             }
           }
-        })
+        )
       }
       const userMenu = <Menu items={userMenuItems} />
       user = (

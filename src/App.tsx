@@ -74,7 +74,7 @@ function _createClientMapping ({ baseUri, settings, onError }: {
         } else {
           console.warn(
             `unknown storage class "${sopClassUID}" specified ` +
-              `for configured server "${serverSettings.id}"`
+            `for configured server "${serverSettings.id}"`
           )
         }
       })
@@ -189,7 +189,7 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  constructor(props: AppProps) {
+  constructor (props: AppProps) {
     super(props)
 
     console.info('instatiate app')
@@ -233,18 +233,16 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  handleServerSelection({ url }: { url: string }): void {
+  handleServerSelection ({ url }: { url: string }): void {
     console.info('select DICOMweb server: ', url)
     const tmpClient = new DicomWebManager({
       baseUri: '',
-      settings: [
-        {
-          id: 'tmp',
-          url,
-          read: true,
-          write: false
-        }
-      ],
+      settings: [{
+        id: 'tmp',
+        url,
+        read: true,
+        write: false
+      }],
       onError: this.handleDICOMwebError
     })
     tmpClient.updateHeaders(this.state.clients.default.headers)
@@ -277,7 +275,7 @@ class App extends React.Component<AppProps, AppState> {
   }): void => {
     console.info(
       `handle sign in of user "${user.name}" and ` +
-        `update authorization token "${authorization}"`
+      `update authorization token "${authorization}"`
     )
     for (const key in this.state.clients) {
       const client = this.state.clients[key]
@@ -300,28 +298,27 @@ class App extends React.Component<AppProps, AppState> {
     this.setState({ user: user })
   }
 
-  signIn(): void {
+  signIn (): void {
     if (this.auth !== undefined) {
       console.info('try to sign in user')
       this.auth.signIn({ onSignIn: this.handleSignIn }).then(() => {
-          console.info('sign-in was successful')
-          this.setState({
-            isLoading: false,
-            wasAuthSuccessful: true
-          })
+        console.info('sign-in was successful')
+        this.setState({
+          isLoading: false,
+          wasAuthSuccessful: true
         })
-        .catch(error => {
-          // eslint-disable-next-line @typescript-eslint/no-floating-promises
-          NotificationMiddleware.onError(
-            NotificationMiddlewareContext.SLIM,
-            new Error('Could not sign-in user.')
-          )
-          this.setState({
-            isLoading: false,
-            redirectTo: undefined,
-            wasAuthSuccessful: false
-          })
+      }).catch((error) => {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        NotificationMiddleware.onError(
+          NotificationMiddlewareContext.SLIM,
+          new Error('Could not sign-in user.')
+        )
+        this.setState({
+          isLoading: false,
+          redirectTo: undefined,
+          wasAuthSuccessful: false
         })
+      })
     } else {
       this.setState({
         isLoading: false,

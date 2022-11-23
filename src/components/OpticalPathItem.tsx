@@ -251,7 +251,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
           return {
             currentStyle: {
               color: state.currentStyle.color,
-              paletteColorLookupTable:state.currentStyle.paletteColorLookupTable,
+              paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
               opacity: state.currentStyle.opacity,
               limitValues: state.currentStyle.limitValues
             }
@@ -405,8 +405,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
                     }
                   }
                 }
-              }
-            )
+              })
           }
         )
       })

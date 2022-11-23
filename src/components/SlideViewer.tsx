@@ -1189,29 +1189,27 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               this.volumeViewer.addSegments(segmentations)
             } catch (error: any) {
               // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                  NotificationMiddleware.onError(
-                    NotificationMiddlewareContext.SLIM,
-                    new Error('Segmentations cannot be displayed')
-                  )
-                  console.error('failed to add segments: ', error)
-                }
-                /*
-               * React is not aware of the fact that segments have been added via
-               * the viewer (the underlying HTML viewport element is a ref object)
-               * and won't show the segments in the user interface unless an update
-               * is forced.
-               */
-                this.forceUpdate()
-              }
-            })
-            .catch((error: any) => {
-              // eslint-disable-next-line @typescript-eslint/no-floating-promises
               NotificationMiddleware.onError(
-                NotificationMiddlewareContext.SLIM,
-                new Error(
-                  'Retrieval of metadata of Segmentation instances failed.'
-                )
+              NotificationMiddlewareContext.SLIM,
+              new Error('Segmentations cannot be displayed')
               )
+              console.error('failed to add segments: ', error)
+            }
+            /*
+           * React is not aware of the fact that mappings have been added via
+           * the viewer (the underlying HTML viewport element is a ref object)
+           * and won't show the mappings in the user interface unless an update
+           * is forced.
+           */
+            this.forceUpdate()
+          }
+            }).catch((error: any) => {
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
+            NotificationMiddleware.onError(
+            NotificationMiddlewareContext.SLIM,
+            new Error(
+            'Retrieval of metadata of Segmentation instances failed.')
+            )
             })
         })
       })
@@ -1274,14 +1272,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                   )
                   console.error('failed to add mappings: ', error)
                 }
-                /*
-                 * React is not aware of the fact that mappings have been added via
-                 * the viewer (the underlying HTML viewport element is a ref object)
-                 * and won't show the mappings in the user interface unless an update
-                 * is forced.
-                 */
-                this.forceUpdate()
-              }
+            /*
+           * React is not aware of the fact that mappings have been added via
+           * the viewer (the underlying HTML viewport element is a ref object)
+           * and won't show the mappings in the user interface unless an update
+           * is forced.
+           */
+            this.forceUpdate()
+          }
             })
             .catch((error: any) => {
               // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -1316,7 +1314,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (this.volumeViewportRef.current != null) {
       this.volumeViewer.render({ container: this.volumeViewportRef.current })
     }
-    if (this.labelViewportRef.current != null && this.labelViewer != null) {
+    if (
+      this.labelViewportRef.current != null &&
+      this.labelViewer != null
+    ) {
       this.labelViewer.render({ container: this.labelViewportRef.current })
     }
 
@@ -1743,7 +1744,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * @param value - Code value of the coded evaluation that got selected
    * @param option - Option that got selected
    */
-   handleAnnotationEvaluationSelection (
+  handleAnnotationEvaluationSelection (
     value: string,
     option: any
   ): void {
