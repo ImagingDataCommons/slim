@@ -26,7 +26,7 @@ import { detect } from 'detect-browser'
 
 import Button from './Button'
 import { RouteComponentProps, withRouter } from '../utils/router'
-import NotificationMiddleware from '../services/NotificationMiddleware'
+import NotificationMiddleware, {NotificationMiddlewareEvents} from '../services/NotificationMiddleware'
 
 interface HeaderProps extends RouteComponentProps {
   app: {
@@ -80,7 +80,8 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       })
     }
 
-    NotificationMiddleware.subscribe('onError', onErrorHandler)
+    NotificationMiddleware.subscribe (
+      NotificationMiddlewareEvents.OnError, onErrorHandler)
   }
 
   handleInfoButtonClick = (): void => {

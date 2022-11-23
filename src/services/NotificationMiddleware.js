@@ -1,7 +1,7 @@
 import PubSub from '../utils/PubSub'
 import { notification } from 'antd'
 
-const ErrorMiddlewareEvents = {
+export const NotificationMiddlewareEvents = {
   OnError: 'onError'
 }
 
@@ -10,6 +10,17 @@ export const NotificationMiddlewareContext = {
   DMV: 'dicom-microscopy-viewer',
   DCMJS: 'dcmjs',
   SLIM: 'slim'
+}
+
+const NotificationType = {
+  TOAST: 'toast',
+  CONSOLE: 'console'
+}
+
+const NotificationCategory = {
+  SERVER: 'Server',
+  VIEWER: 'Viewer',
+  PARSING: 'Parsing'
 }
 
 /* Sources of Error:
@@ -21,23 +32,23 @@ const NotificationSourceDefinition = {
   sources: [
     {
       name: NotificationMiddlewareContext.DICOMWEB,
-      notificationType: 'toast',
-      category: 'Server'
+      notificationType: NotificationType.TOAST,
+      category: NotificationCategory.SERVER
     },
     {
       name: NotificationMiddlewareContext.DMV,
-      notificationType: 'toast',
-      category: 'Viewer'
+      notificationType: NotificationType.TOAST,
+      category: NotificationCategory.VIEWER
     },
     {
       name: NotificationMiddlewareContext.DCMJS,
-      notificationType: 'toast',
-      category: 'Parsing'
+      notificationType: NotificationType.TOAST,
+      category: NotificationCategory.PARSING
     },
     {
       name: NotificationMiddlewareContext.SLIM,
-      notificationType: 'toast',
-      category: 'Parsing'
+      notificationType: NotificationType.TOAST,
+      category: NotificationCategory.PARSING
     }
   ]
 }
@@ -50,13 +61,13 @@ class NotificationMiddleware extends PubSub {
  * @param source - source of error - dicomweb-client, dmv, dcmjs or slim itself
  * @param error - error object
  */
-  onError(source, error) {
+  onError (source, error) {
     const sourceConfig = NotificationSourceDefinition.sources.find(
       s => s.name === source
     )
     const { notificationType, category } = sourceConfig
 
-    this.publish(ErrorMiddlewareEvents.OnError, {
+    this.publish(NotificationMiddlewareEvents.OnError, {
       source,
       error,
       category
@@ -70,7 +81,7 @@ class NotificationMiddleware extends PubSub {
     }
 
     switch (notificationType) {
-      case 'toast':
+      case NotificationType.TOAST:
         console.error(`An error occured in ${category}`, error)
         return notification.error({
           message: `${category} error`,
@@ -78,7 +89,7 @@ class NotificationMiddleware extends PubSub {
           duration: 3
         })
 
-      case 'console':
+      case NotificationType.CONSOLE:
         console.error(`An error occured in ${category}`, error)
         return
 
