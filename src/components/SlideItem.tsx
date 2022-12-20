@@ -10,6 +10,7 @@ import { StorageClasses } from '../data/uids'
 import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from '../services/NotificationMiddleware'
+import { CustomError } from '../utils/CustomError'
 
 interface SlideItemProps {
   clients: { [key: string]: DicomWebManager }
@@ -55,7 +56,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
           ],
           metadata: metadata,
           resizeFactor: 1,
-          errorInterceptor: (error: Error) =>
+          errorInterceptor: (error: CustomError) =>
             NotificationMiddleware.onError(
               NotificationMiddlewareContext.DMV,
               error

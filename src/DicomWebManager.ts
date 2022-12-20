@@ -3,6 +3,7 @@ import * as dwc from 'dicomweb-client'
 import { ServerSettings, DicomWebManagerErrorHandler } from './AppConfig'
 import { joinUrl } from './utils/url'
 import getXHRRetryHook from './utils/xhrRetryHook'
+import {CustomError, errorTypes} from './utils/CustomError'
 import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from './services/NotificationMiddleware'
@@ -36,7 +37,10 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       if (serverSettings === undefined) {
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.SLIM,
-          new Error('At least one server needs to be configured.')
+          new CustomError(
+            errorTypes.COMMUNICATION,
+            'At least one server needs to be configured.'
+          )
         )
       }
 
@@ -48,7 +52,8 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       } else {
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.SLIM,
-          new Error(
+          new CustomError(
+            errorTypes.COMMUNICATION,
             'Either path or full URL needs to be configured for server.'
           )
         )
@@ -84,7 +89,10 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
     if (this.stores.length > 1) {
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
-        new Error('Only one store is supported for now.')
+        new CustomError(
+          errorTypes.COMMUNICATION,
+          'Only one store is supported for now.'
+        )
       )
     }
   }

@@ -27,6 +27,7 @@ import { SpecimenPreparationStepItems } from '../data/specimens'
 import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from '../services/NotificationMiddleware'
+import { CustomError, errorTypes } from '../utils/CustomError'
 
 interface OpticalPathItemProps {
   opticalPath: dmv.opticalPath.OpticalPath
@@ -410,7 +411,13 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
         )
       })
     } catch (error: any) {
-      NotificationMiddleware.onError(NotificationMiddlewareContext.DCMJS, error)
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.DCMJS,
+        new CustomError(
+          errorTypes.ENCODINGANDDECODING,
+          error.message
+        )
+      )
     }
 
     const maxValue = Math.pow(2, this.props.metadata[0].BitsAllocated) - 1

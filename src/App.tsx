@@ -21,6 +21,7 @@ import OidcManager from './auth/OidcManager'
 import { StorageClasses } from './data/uids'
 import DicomWebManager from './DicomWebManager'
 import { joinUrl } from './utils/url'
+import {CustomError, errorTypes} from './utils/CustomError'
 import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from './services/NotificationMiddleware'
@@ -86,9 +87,10 @@ function _createClientMapping ({ baseUri, settings, onError }: {
   if (storageClassMapping.default > 1) {
     NotificationMiddleware.onError(
       NotificationMiddlewareContext.SLIM,
-      new Error(
+      new CustomError(
+        errorTypes.COMMUNICATION,
         'Only one default server can be configured without specification ' +
-          'of storage classes.'
+        'of storage classes.'
       )
     )
   }
@@ -99,10 +101,11 @@ function _createClientMapping ({ baseUri, settings, onError }: {
     if (storageClassMapping[key] > 1) {
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
-        new Error(
+        new CustomError(
+          errorTypes.COMMUNICATION,
           'Only one configured server can specify a given storage class. ' +
-            `Storage class "${key}" is specified by more than one ` +
-            'of the configured servers.'
+          `Storage class "${key}" is specified by more than one ` +
+          'of the configured servers.'
         )
       )
     }
@@ -165,8 +168,10 @@ class App extends React.Component<AppProps, AppState> {
     } else if (error.status === 403) {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       NotificationMiddleware.onError(
-        'dicomweb-client',
-        new Error('User is not authorized to access DICOMweb resources.')
+        NotificationMiddlewareContext.DICOMWEB,
+        new CustomError(
+          errorTypes.COMMUNICATION,
+          'User is not authorized to access DICOMweb resources.')
       )
     }
     if (serverSettings.errorMessages !== undefined) {
@@ -182,7 +187,9 @@ class App extends React.Component<AppProps, AppState> {
           // eslint-disable-next-line @typescript-eslint/no-floating-promises
           NotificationMiddleware.onError(
             NotificationMiddlewareContext.DICOMWEB,
-            new Error('An unexpected server error occured.')
+            new CustomError(
+              errorTypes.COMMUNICATION,
+              'An unexpected server error occured.')
           )
         }
       })
@@ -210,7 +217,9 @@ class App extends React.Component<AppProps, AppState> {
     if (props.config.servers.length === 0) {
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
-        new Error('One server needs to be configured.')
+        new CustomError(
+          errorTypes.COMMUNICATION,
+          'One server needs to be configured.')
       )
     }
     console.info(
@@ -310,8 +319,10 @@ class App extends React.Component<AppProps, AppState> {
       }).catch((error) => {
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         NotificationMiddleware.onError(
-          NotificationMiddlewareContext.SLIM,
-          new Error('Could not sign-in user.')
+          NotificationMiddlewareContext.AUTH,
+          new CustomError(
+            errorTypes.AUTHENTICATION,
+            'Could not sign-in user.')
         )
         this.setState({
           isLoading: false,

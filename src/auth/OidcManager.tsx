@@ -3,12 +3,21 @@ import { UserManager, User as UserData } from 'oidc-client'
 import { OidcSettings } from '../AppConfig'
 import { isAuthorizationCodeInUrl } from '../utils/url'
 import { User, AuthManager, SignInCallback } from './'
+import NotificationMiddleware, 
+{NotificationMiddlewareContext} from '../services/NotificationMiddleware'
+import { CustomError, errorTypes } from '../utils/CustomError'
 
 const createUser = (userData: UserData): User => {
   const profile = userData.profile
   if (profile !== undefined) {
     if (profile.name === undefined || profile.email === undefined) {
-      throw Error('Failed to obtain user "name" and "email".')
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.AUTH,
+        new CustomError(
+          errorTypes.AUTHENTICATION,
+          'Failed to obtain user "name" and "email".'
+        )
+      )
     } else {
       return {
         name: profile.name,
@@ -16,7 +25,17 @@ const createUser = (userData: UserData): User => {
       }
     }
   } else {
-    throw Error('Failed to obtain user profile.')
+    NotificationMiddleware.onError(
+      NotificationMiddlewareContext.AUTH,
+      new CustomError(
+        errorTypes.AUTHENTICATION,
+        'Failed to obtain user profile.'
+      )
+    )
+  }
+  return {
+    name: undefined,
+    email: undefined
   }
 }
 
@@ -131,12 +150,18 @@ export default class OidcManager implements AuthManager {
   /**
    * Get authorization. Requires prior sign-in.
    */
-  getAuthorization = async (): Promise<string> => {
+  getAuthorization = async (): Promise<string|undefined> => {
     return await this._oidc.getUser().then((userData) => {
       if (userData !== null) {
         return userData.access_token
       } else {
-        throw Error('Failed to obtain access token.')
+        NotificationMiddleware.onError(
+          NotificationMiddlewareContext.AUTH,
+          new CustomError(
+            errorTypes.AUTHENTICATION,
+            'Failed to obtain user profile.'
+          )
+        )
       }
     })
   }
@@ -147,7 +172,13 @@ export default class OidcManager implements AuthManager {
   getUser = async (): Promise<User> => {
     return await this._oidc.getUser().then((userData) => {
       if (userData === null) {
-        throw Error('Failed to obtain user information.')
+        NotificationMiddleware.onError(
+          NotificationMiddlewareContext.AUTH,
+          new CustomError(
+            errorTypes.AUTHENTICATION,
+            'Failed to obtain user information.'
+          )
+        )
       }
       return createUser(userData)
     })

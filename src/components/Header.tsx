@@ -27,6 +27,7 @@ import { detect } from 'detect-browser'
 import Button from './Button'
 import { RouteComponentProps, withRouter } from '../utils/router'
 import NotificationMiddleware, {NotificationMiddlewareEvents} from '../services/NotificationMiddleware'
+import { CustomError } from '../utils/CustomError'
 
 interface HeaderProps extends RouteComponentProps {
   app: {
@@ -50,7 +51,7 @@ interface HeaderState {
   selectedServerUrl?: string
   isServerSelectionModalVisible: boolean
   isServerSelectionDisabled: boolean
-  errorObj: Error[]
+  errorObj: CustomError[]
   errorCategory: string[]
 }
 
@@ -67,21 +68,20 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       errorCategory: []
     }
 
-    const onErrorHandler = ({
-      category,
-      error
-    }: {
+    const onErrorHandler = ({error}: {
       category: string
-      error: Error
+      error: CustomError
     }) => {
       this.setState({
         errorObj: [...this.state.errorObj, error],
-        errorCategory: [...this.state.errorCategory, category]
+        errorCategory: [...this.state.errorCategory, error.type]
       })
     }
 
     NotificationMiddleware.subscribe (
-      NotificationMiddlewareEvents.OnError, onErrorHandler)
+      NotificationMiddlewareEvents.OnError, 
+      onErrorHandler
+    )
   }
 
   handleInfoButtonClick = (): void => {
@@ -145,13 +145,15 @@ class Header extends React.Component<HeaderProps, HeaderState> {
 
   handleDebugButtonClick = (): void => {
     let errorMsgs: {
-      Server: string[]
-      Parsing: string[]
-      Viewer: string[]
+      Authentication: string[]
+      Communication: string[]
+      EncodingDecoding: string[]
+      Visualization: string[]
     } = {
-      Server: [],
-      Parsing: [],
-      Viewer: []
+      Authentication: [],
+      Communication: [],
+      EncodingDecoding: [],
+      Visualization: []
     }
 
     type ObjectKey = keyof typeof errorMsgs
@@ -171,43 +173,54 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     )
 
     Modal.info({
-      title: 'Debug Information\n (Check console for more info.)',
+      title: 'Debug Information\n (Check console for more information)',
       width: 800,
       content: (
         <Collapse>
           <Panel
-            header='Server Error'
-            key='servererror'
-            extra={showErrorCount(errorMsgs.Server.length)}
+            header='Communication Error'
+            key='communicationerror'
+            extra={showErrorCount(errorMsgs.Communication.length)}
           >
             {
               <ol>
-                {errorMsgs.Server.map(e => (
+                {errorMsgs.Communication.map(e => (
                   <li>{e}</li>
                 ))}
               </ol>
             }
           </Panel>
           <Panel
-            header='Data Parsing error'
-            key='parsingerror'
-            extra={showErrorCount(errorMsgs.Parsing.length)}
+            header='Data Encoding/Decoding error'
+            key='encodedecodeerror'
+            extra={showErrorCount(errorMsgs.EncodingDecoding.length)}
           >
             {
               <ol>
-                {errorMsgs.Parsing.map(e => (
+                {errorMsgs.EncodingDecoding.map(e => (
                   <li>{e}</li>
                 ))}
               </ol>
             }
           </Panel>
           <Panel
-            header='Viewer error'
-            key='viewererror'
-            extra={showErrorCount(errorMsgs.Viewer.length)}
+            header='Visualization error'
+            key='visualizationerror'
+            extra={showErrorCount(errorMsgs.Visualization.length)}
           >
             <ol>
-              {errorMsgs.Viewer.map(e => (
+              {errorMsgs.Visualization.map(e => (
+                <li>{e}</li>
+              ))}
+            </ol>
+          </Panel>
+          <Panel
+            header='Authentication error'
+            key='autherror'
+            extra={showErrorCount(errorMsgs.Authentication.length)}
+          >
+            <ol>
+              {errorMsgs.Authentication.map(e => (
                 <li>{e}</li>
               ))}
             </ol>

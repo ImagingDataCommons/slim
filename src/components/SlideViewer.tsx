@@ -44,6 +44,7 @@ import { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
 import { findContentItemsByName } from '../utils/sr'
 import { RouteComponentProps, withRouter } from '../utils/router'
+import { CustomError, errorTypes } from '../utils/CustomError'
 import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from '../services/NotificationMiddleware'
@@ -181,8 +182,10 @@ const _constructViewers = ({ clients, slide, preload }: {
       metadata: slide.volumeImages,
       controls: ['overview', 'position'],
       preload: preload,
-      errorInterceptor: (error: Error) =>
-        NotificationMiddleware.onError(NotificationMiddlewareContext.DMV, error)
+      errorInterceptor: (error: CustomError) =>
+        NotificationMiddleware.onError(
+          NotificationMiddlewareContext.DMV, error
+        )
     })
     volumeViewer.activateSelectInteraction({})
 
@@ -197,7 +200,7 @@ const _constructViewers = ({ clients, slide, preload }: {
         metadata: slide.labelImages[0],
         resizeFactor: 1,
         orientation: 'vertical',
-        errorInterceptor: (error: Error) =>
+        errorInterceptor: (error: CustomError) =>
           NotificationMiddleware.onError(
             NotificationMiddlewareContext.DMV,
             error
@@ -210,9 +213,12 @@ const _constructViewers = ({ clients, slide, preload }: {
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     NotificationMiddleware.onError(
       NotificationMiddlewareContext.SLIM,
-      new Error('Failed to instantiate viewer')
+      new CustomError(
+        errorTypes.VISUALIZATION,
+        'Failed to instantiate viewer'
+      )
     )
-    throw error //To do: Check with Markus : Stop the app?
+    throw error
   }
 }
 
@@ -740,11 +746,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             )
           }
         }).catch((error) => {
-            // eslint-disable-next-line @typescript-eslint/no-floating-promises
-            NotificationMiddleware.onError(
-              NotificationMiddlewareContext.SLIM,
-              new Error('Presentation State could not be loaded')
+          // eslint-disable-next-line @typescript-eslint/no-floating-promises
+          NotificationMiddleware.onError(
+            NotificationMiddlewareContext.SLIM,
+            new CustomError(
+              errorTypes.VISUALIZATION,
+              'Presentation State could not be loaded'
             )
+          )
           console.error(
             'failed to load presentation state ' +
             `of SOP instance "${instance.SOPInstanceUID}" ` +
@@ -754,13 +763,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           )
         })
       })
-      }).catch((error) => {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        NotificationMiddleware.onError(
-          NotificationMiddlewareContext.SLIM,
-          new Error('Presentation State could not be loaded')
+    }).catch((error) => {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.SLIM,
+        new CustomError(
+        errorTypes.VISUALIZATION,
+        'Presentation State could not be loaded'
         )
-      })
+      )
+    })
   }
 
   /**
@@ -1023,10 +1035,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             })
           }).catch((error) => {
             // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                NotificationMiddleware.onError(
-                  NotificationMiddlewareContext.SLIM,
-                  new Error('Annotations could not be loaded')
-                )
+            NotificationMiddleware.onError(
+              NotificationMiddlewareContext.SLIM,
+              new CustomError(
+                errorTypes.VISUALIZATION,
+                'Annotations could not be loaded'
+              )
+            )
             console.error(
               'failed to load ROIs ' +
               `of SOP instance "${instance.SOPInstanceUID}" ` +
@@ -1045,11 +1060,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       })
     }).catch((error) => {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        NotificationMiddleware.onError(
-          NotificationMiddlewareContext.SLIM,
-          new Error('Annotations could not be loaded')
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.SLIM,
+        new CustomError(
+          errorTypes.VISUALIZATION,
+          'Annotations could not be loaded'
         )
-      })
+      )
+    })
   }
 
   /**
@@ -1096,15 +1114,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               this.volumeViewer.addAnnotationGroups(ann)
             } catch (error: any) {
               // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                  NotificationMiddleware.onError(
-                    NotificationMiddlewareContext.SLIM,
-                    new Error(
-                      'Microscopy Bulk Simple Annotations cannot be displayed.'
-                    )
-                  )
-                  // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                  console.error('failed to add annotation groups: ', error)
-                }
+              NotificationMiddleware.onError(
+                NotificationMiddlewareContext.SLIM,
+                new CustomError(
+                  errorTypes.VISUALIZATION,
+                  'Microscopy Bulk Simple Annotations cannot be displayed.'
+                )
+              )
+              // eslint-disable-next-line @typescript-eslint/no-floating-promises
+              console.error('failed to add annotation groups: ', error)
+            }
             ann.AnnotationGroupSequence.forEach(item => {
               const annotationGroupUID = item.AnnotationGroupUID
               const finding = item.AnnotationPropertyTypeCodeSequence[0]
@@ -1128,25 +1147,26 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           this.forceUpdate()
         }).catch((error: any) => {
           // eslint-disable-next-line @typescript-eslint/no-floating-promises
-              NotificationMiddleware.onError(
-                NotificationMiddlewareContext.SLIM,
-                new Error(
-                  'Retrieval of metadata of Microscopy Bulk Simple Annotations ' +
-                    'instances failed.'
-                )
-              )
-            })
+          NotificationMiddleware.onError(
+            NotificationMiddlewareContext.SLIM,
+            new CustomError(
+              errorTypes.VISUALIZATION,
+              'Retrieval of metadata of Microscopy Bulk Simple Annotations ' +
+              'instances failed.'
+            )
+          )
         })
       })
-      .catch((error: any) => {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        NotificationMiddleware.onError(
-          NotificationMiddlewareContext.SLIM,
-          new Error(
-            'Search for Microscopy Bulk Simple Annotations instances failed.'
-          )
+    }).catch((error: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.SLIM,
+        new CustomError(
+          errorTypes.VISUALIZATION,
+          'Search for Microscopy Bulk Simple Annotations instances failed.'
         )
-      })
+      )
+    })
   }
 
   /**
@@ -1190,36 +1210,43 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             } catch (error: any) {
               // eslint-disable-next-line @typescript-eslint/no-floating-promises
               NotificationMiddleware.onError(
-              NotificationMiddlewareContext.SLIM,
-              new Error('Segmentations cannot be displayed')
+                NotificationMiddlewareContext.SLIM,
+                new CustomError(
+                  errorTypes.VISUALIZATION,
+                  'Segmentations cannot be displayed'
+                )
               )
               console.error('failed to add segments: ', error)
             }
             /*
-           * React is not aware of the fact that mappings have been added via
+           * React is not aware of the fact that segments have been added via
            * the viewer (the underlying HTML viewport element is a ref object)
-           * and won't show the mappings in the user interface unless an update
+           * and won't show the segments in the user interface unless an update
            * is forced.
            */
             this.forceUpdate()
           }
-            }).catch((error: any) => {
-            // eslint-disable-next-line @typescript-eslint/no-floating-promises
-            NotificationMiddleware.onError(
+        }).catch((error: any) => {
+          // eslint-disable-next-line @typescript-eslint/no-floating-promises
+          NotificationMiddleware.onError(
             NotificationMiddlewareContext.SLIM,
-            new Error(
-            'Retrieval of metadata of Segmentation instances failed.')
+            new CustomError(
+              errorTypes.VISUALIZATION,
+              'Retrieval of metadata of Segmentation instances failed.'
             )
-            })
+          )
         })
       })
-      .catch((error: any) => {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        NotificationMiddleware.onError(
-          NotificationMiddlewareContext.SLIM,
-          new Error('Search for Segmentation instances failed.')
+    }).catch((error: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.SLIM,
+        new CustomError(
+          errorTypes.VISUALIZATION,
+          'Search for Segmentation instances failed.'
         )
-      })
+      )
+    })
   }
 
   /**
@@ -1266,12 +1293,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               this.volumeViewer.addParameterMappings(parametricMaps)
             } catch (error: any) {
               // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                  NotificationMiddleware.onError(
-                    NotificationMiddlewareContext.SLIM,
-                    new Error('Parametric Map cannot be displayed')
-                  )
-                  console.error('failed to add mappings: ', error)
-                }
+              NotificationMiddleware.onError(
+                NotificationMiddlewareContext.SLIM,
+                new CustomError(
+                  errorTypes.VISUALIZATION,
+                  'Parametric Map cannot be displayed'
+                )
+              )
+              console.error('failed to add mappings: ', error)
+            }
             /*
            * React is not aware of the fact that mappings have been added via
            * the viewer (the underlying HTML viewport element is a ref object)
@@ -1280,25 +1310,27 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
            */
             this.forceUpdate()
           }
-            })
-            .catch((error: any) => {
-              // eslint-disable-next-line @typescript-eslint/no-floating-promises
-              NotificationMiddleware.onError(
-                NotificationMiddlewareContext.SLIM,
-                new Error(
-                  'Retrieval of metadata of Parametric Map instances failed.'
-                )
-              )
-            })
+        }).catch((error: any) => {
+          // eslint-disable-next-line @typescript-eslint/no-floating-promises
+          NotificationMiddleware.onError(
+            NotificationMiddlewareContext.SLIM,
+            new CustomError(
+              errorTypes.VISUALIZATION,
+              'Retrieval of metadata of Parametric Map instances failed.'
+            )
+          )
         })
       })
-      .catch((error: any) => {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        NotificationMiddleware.onError(
-          NotificationMiddlewareContext.SLIM,
-          new Error('Search for Parametric Map instances failed.')
+    }).catch((error: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.SLIM,
+        new CustomError(
+          errorTypes.VISUALIZATION,
+          'Search for Parametric Map instances failed.'
         )
-      })
+      )
+    })
   }
 
   /**
@@ -1381,7 +1413,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         return { visibleRoiUIDs }
       })
     } else {
-      //To do: Check with Markus -  Raise this as an error?
       console.debug(`could not add ROI "${roi.uid}"`)
     }
   }
@@ -1450,7 +1481,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       sopClassUID: string
       frameNumber: string
       channelIdentifier: string
-      pixelArray: Uint8Array | Uint16Array | Float32Array | null
+      pixelArray: Uint8Array|Uint16Array|Float32Array|null
     } = event.detail.payload
     const key = `${frameInfo.sopInstanceUID}-${frameInfo.frameNumber}`
     this.setState(state => {
@@ -1934,7 +1965,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     } else {
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
-        new Error('Could not complete annotation configuration')
+        new CustomError(
+          errorTypes.VISUALIZATION,
+          'Could not complete annotation configuration'
+        )
       )
     }
   }
@@ -1971,7 +2005,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (refImage.SpecimenDescriptionSequence.length > 1) {
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
-        new Error('more than one specimen has been described for the slide')
+        new CustomError(
+          errorTypes.VISUALIZATION,
+          'More than one specimen has been described for the slide'
+        )
       )
     }
     const refSpecimen = refImage.SpecimenDescriptionSequence[0]
@@ -2041,7 +2078,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       if (findingType === undefined) {
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.SLIM,
-          new Error(`No finding type was specified for ROI "${roi.uid}"`)
+          new CustomError(
+            errorTypes.ENCODINGANDDECODING,
+            `No finding type was specified for ROI "${roi.uid}"`
+          )
         )
       }
       findingType = findingType as dcmjs.sr.valueTypes.CodeContentItem
@@ -2158,11 +2198,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         (response: any) => message.info('Annotations were saved.')
       ).catch((error: any) => {
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
-          NotificationMiddleware.onError(
-            NotificationMiddlewareContext.SLIM,
-            new Error('Annotations could not be saved')
+        NotificationMiddleware.onError(
+          NotificationMiddlewareContext.SLIM,
+          new CustomError(
+            errorTypes.ENCODINGANDDECODING,
+            'Annotations could not be saved'
           )
-        })
+        )
+      })
     }
     this.setState({
       isReportModalVisible: false,
@@ -2254,7 +2297,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.SLIM,
-          new Error('Failed to show annotation group.')
+          new CustomError(
+            errorTypes.VISUALIZATION,
+            'Failed to show annotation group.'
+          )
         )
         throw error
       }
@@ -2299,7 +2345,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
-        new Error('Failed to change style of annotation group.')
+        new CustomError(
+          errorTypes.VISUALIZATION,
+          'Failed to change style of annotation group.'
+        )
       )
       throw error
     }
@@ -2580,7 +2629,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.SLIM,
-          new Error('Presentation State could not be found')
+          new CustomError(
+            errorTypes.VISUALIZATION,
+            'Presentation State could not be found'
+          )
         )
         console.log(
           'failed to handle section of presentation state: ' +

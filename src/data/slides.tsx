@@ -1,4 +1,5 @@
 import * as dmv from 'dicom-microscopy-viewer'
+import { CustomError, errorTypes } from '../utils/CustomError'
 import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from '../services/NotificationMiddleware'
@@ -69,7 +70,10 @@ class Slide {
     if (options.images.length === 0) {
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
-        new Error('Value of option "images" have been non-zero length.')
+        new CustomError(
+          errorTypes.ENCODINGANDDECODING,
+          'Value of option "images" have been non-zero length.'
+        )
       )
     }
 
@@ -121,16 +125,19 @@ class Slide {
     if (volumeImages.length === 0) {
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
-        new Error('At least one VOLUME image must be provided for a slide.')
+        new CustomError(
+          errorTypes.ENCODINGANDDECODING,
+          'At least one VOLUME image must be provided for a slide.'
+        )
       )
     } else {
       if (acquisitionUIDs.size > 1) {
-        //To do: Check wtih Markus, same as the next error? line 136
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.SLIM,
-          new Error(
+          new CustomError(
+            errorTypes.ENCODINGANDDECODING,
             'All VOLUME images of a slide must have the same number of ' +
-              'Samples per Pixel.'
+            'Samples per Pixel.'
           )
         )
       }
@@ -141,9 +148,10 @@ class Slide {
       if (samplesPerPixel.size > 1) {
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.SLIM,
-          new Error(
+          new CustomError(
+            errorTypes.ENCODINGANDDECODING,
             'All VOLUME images of a slide must have the same number of ' +
-              'Samples per Pixel.'
+            'Samples per Pixel.'
           )
         )
       }
@@ -167,7 +175,8 @@ class Slide {
     if (containerIdentifiers.size !== 1) {
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
-        new Error(
+        new CustomError(
+          errorTypes.ENCODINGANDDECODING,
           'All images of a slide must have the same Container Identifier.'
         )
       )
@@ -177,9 +186,10 @@ class Slide {
     if (frameOfReferenceUIDs.VOLUME.size !== 1) {
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
-        new Error(
+        new CustomError(
+          errorTypes.ENCODINGANDDECODING,
           'All VOLUME images of a slide must have ' +
-            'the same Frame of Reference UID.'
+          'the same Frame of Reference UID.'
         )
       )
     }
@@ -194,9 +204,10 @@ class Slide {
         if (pyramidUIDs.VOLUME[identifier].size > 1) {
           NotificationMiddleware.onError(
             NotificationMiddlewareContext.SLIM,
-            new Error(
+            new CustomError(
+              errorTypes.ENCODINGANDDECODING,
               `All VOLUME images for optical path "${identifier}"` +
-                'must be part of the same multi-resolution pyramid.'
+              'must be part of the same multi-resolution pyramid.'
             )
           )
         } else if (pyramidUIDs.VOLUME[identifier].size === 1) {
@@ -204,10 +215,11 @@ class Slide {
         } else {
           NotificationMiddleware.onError(
             NotificationMiddlewareContext.SLIM,
-            new Error(
+            new CustomError(
+              errorTypes.ENCODINGANDDECODING,
               `The VOLUME images for optical path "${identifier}" ` +
-                'lack the Pyramid UID, while the images for other optical paths ' +
-                'contain it.'
+              'lack the Pyramid UID, while the images for other optical paths ' +
+              'contain it.'
             )
           )
         }
@@ -215,10 +227,11 @@ class Slide {
         if (requirePyramidUID) {
           NotificationMiddleware.onError(
             NotificationMiddlewareContext.SLIM,
-            new Error(
+            new CustomError(
+              errorTypes.ENCODINGANDDECODING,
               `The VOLUME images for optical path "${identifier}" ` +
-                'lack the Pyramid UID, while the images for other optical paths ' +
-                'contain it.'
+              'lack the Pyramid UID, while the images for other optical paths ' +
+              'contain it.'
             )
           )
         }
@@ -228,9 +241,10 @@ class Slide {
     if (acquisitionUIDs.size > 1) {
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
-        new Error(
+        new CustomError(
+          errorTypes.ENCODINGANDDECODING,
           'All VOLUME images of a slide must be part of the same  ' +
-            'acquisition and have the same Acquisition UID.'
+          'acquisition and have the same Acquisition UID.'
         )
       )
     } else if (acquisitionUIDs.size === 1) {

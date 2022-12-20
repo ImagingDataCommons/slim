@@ -16,6 +16,7 @@ import { User } from '../auth'
 import { Slide, createSlides } from '../data/slides'
 import { StorageClasses } from '../data/uids'
 import { RouteComponentProps, withRouter } from '../utils/router'
+import {CustomError, errorTypes} from '../utils/CustomError'
 import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from '../services/NotificationMiddleware'
@@ -124,7 +125,9 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
-        new Error('Image metadata could not be retrieved or decoded.')
+        new CustomError(
+          errorTypes.ENCODINGANDDECODING,
+          'Image metadata could not be retrieved or decoded.')
       )
       this.setState({ isLoading: false })
     })

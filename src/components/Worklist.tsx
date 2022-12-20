@@ -10,6 +10,7 @@ import * as dmv from 'dicom-microscopy-viewer'
 import { StorageClasses } from '../data/uids'
 import { withRouter, RouteComponentProps } from '../utils/router'
 import { parseDate, parseName, parseSex, parseTime } from '../utils/values'
+import { CustomError, errorTypes } from '../utils/CustomError'
 import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from '../services/NotificationMiddleware'
@@ -61,7 +62,10 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.DICOMWEB,
-          new Error('An error occured. Search for studies failed.')
+          new CustomError(
+            errorTypes.COMMUNICATION,
+            'An error occured. Search for studies failed.'
+          )
         )
       })
   }
@@ -116,7 +120,10 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       .catch(error => {
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.DICOMWEB,
-          new Error('Request to search for studies failed.')
+          new CustomError(
+            errorTypes.COMMUNICATION,
+            'Request to search for studies failed.'
+          )
         )
       })
   }

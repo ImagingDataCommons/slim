@@ -1,5 +1,6 @@
 import PubSub from '../utils/PubSub'
 import { notification } from 'antd'
+import { CustomError, errorTypes } from '../utils/CustomError'
 
 export const NotificationMiddlewareEvents = {
   OnError: 'onError'
@@ -9,7 +10,8 @@ export const NotificationMiddlewareContext = {
   DICOMWEB: 'dicomweb-client',
   DMV: 'dicom-microscopy-viewer',
   DCMJS: 'dcmjs',
-  SLIM: 'slim'
+  SLIM: 'slim',
+  AUTH: 'authentication'
 }
 
 const NotificationType = {
@@ -17,38 +19,31 @@ const NotificationType = {
   CONSOLE: 'console'
 }
 
-const NotificationCategory = {
-  SERVER: 'Server',
-  VIEWER: 'Viewer',
-  PARSING: 'Parsing'
-}
-
 /* Sources of Error:
-  1. 'dicomweb-client': Server related error: Error while fetching data, tagged as 'Server'
-  2. 'slim' and 'dcmjs' library: Syntactical/Logical/Data parsing error, tagged as 'Parsing'
-  3. 'dicom-microscopy-viewer' library: Data manipulation error, tagged as 'Viewer'
+  1. 'dicomweb-client': Error while requesting/fetching data, tagged as 'Communication'
+  2. 'slim' and 'dicom-microscopy-viewer' library: Error related to dicom data encoding/decoding,
+  could directly/indirectly impact image-related visualization, tagged as 'Visualization' or
+  'Encoding/Decoding' accordingly
+  3. 'dcmjs' library: Data parsing error, tagged as 'DICOMError'
+  4. 'authentication': Error during user authentication, tagged as 'Authentication'
   */
 const NotificationSourceDefinition = {
   sources: [
     {
-      name: NotificationMiddlewareContext.DICOMWEB,
-      notificationType: NotificationType.TOAST,
-      category: NotificationCategory.SERVER
+      category: errorTypes.AUTHENTICATION,
+      notificationType: NotificationType.TOAST
     },
     {
-      name: NotificationMiddlewareContext.DMV,
-      notificationType: NotificationType.TOAST,
-      category: NotificationCategory.VIEWER
+      category: errorTypes.COMMUNICATION,
+      notificationType: NotificationType.TOAST
     },
     {
-      name: NotificationMiddlewareContext.DCMJS,
-      notificationType: NotificationType.TOAST,
-      category: NotificationCategory.PARSING
+      category: errorTypes.VISUALIZATION,
+      notificationType: NotificationType.TOAST
     },
     {
-      name: NotificationMiddlewareContext.SLIM,
-      notificationType: NotificationType.TOAST,
-      category: NotificationCategory.PARSING
+      category: errorTypes.ENCODINGANDDECODING,
+      notificationType: NotificationType.CONSOLE
     }
   ]
 }
@@ -62,19 +57,19 @@ class NotificationMiddleware extends PubSub {
  * @param error - error object
  */
   onError (source, error) {
+    const errorCategory = error.type;
     const sourceConfig = NotificationSourceDefinition.sources.find(
-      s => s.name === source
+      s => s.category === errorCategory
     )
-    const { notificationType, category } = sourceConfig
+    const { notificationType } = sourceConfig
 
     this.publish(NotificationMiddlewareEvents.OnError, {
       source,
-      error,
-      category
+      error
     })
 
     let notificationMsg
-    if (error instanceof Error) {
+    if (error instanceof CustomError) {
       notificationMsg = error.message
     } else {
       notificationMsg = String(error)
@@ -82,15 +77,15 @@ class NotificationMiddleware extends PubSub {
 
     switch (notificationType) {
       case NotificationType.TOAST:
-        console.error(`An error occured in ${category}`, error)
+        console.error(`A ${errorCategory} error occurred: `, error)
         return notification.error({
-          message: `${category} error`,
+          message: `${errorCategory} error`,
           description: notificationMsg,
           duration: 3
         })
 
       case NotificationType.CONSOLE:
-        console.error(`An error occured in ${category}`, error)
+        console.error(`A ${errorCategory} error occurred: `, error)
         return
 
       default:
