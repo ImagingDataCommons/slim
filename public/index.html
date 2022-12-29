@@ -31,6 +31,7 @@
     <script type="text/javascript">
       /*
        * Hack for GitHub Pages (https://github.com/rafgraph/spa-github-pages)
+       * or other deployments that may serve the app out of a bucket.
        * This script checks whether a custom redirect is present in the query
        * string (which may be introduced via a custom 404.html error page),
        * converts it back into the correct URL and adds it to the browser's
@@ -39,8 +40,8 @@
        * the browser's history for the app to route accordingly.
        */
       (function(l) {
-        if (l.search[1] === '/' && window.location.host.includes('github.io')) {
-          var decoded = l.search.slice(1).split('&').map(function(s) {
+        if (l.search[1] === '/') {
+          var decoded = l.search.slice(1).split('~query~').map(function(s) {
             return s.replace(/~and~/g, '&')
           }).join('?');
           window.history.replaceState(null, null,

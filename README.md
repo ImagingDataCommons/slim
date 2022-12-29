@@ -18,7 +18,7 @@ The IDC viewer uses the [Google Cloud Healthcare API](https://cloud.google.com/h
 
 ### Demo
 
-Explore additional slide microscopy imaging data sets and advanced viewer features at [herrmannlab.github.io/slim](https://herrmannlab.github.io/slim/).
+Explore additional slide microscopy imaging data sets and advanced viewer features at [imagingdatacommons.github.io/slim](https://imagingdatacommons.github.io/slim/).
 
 <img src="docs/screenshots/IDC_HTAN_HTA9_1_32.png" alt="IDC HTAN HTA9_1_32" width="100%">
 
@@ -90,7 +90,7 @@ The configuration can be changed at build-time using the `REACT_APP_CONFIG` envi
 
 ## Deployment
 
-Download the latest release from [github.com/herrmannlab/slim/releases](https://github.com/herrmannlab/slim/releases) and then run the following commands to install build dependencies and build the app:
+Download the latest release from [github.com/imagingdatacommons/slim/releases](https://github.com/imagingdatacommons/slim/releases) and then run the following commands to install build dependencies and build the app:
 
 ```none
 yarn install
@@ -98,7 +98,7 @@ PUBLIC_URL=/ yarn build
 ```
 
 Once the app has been built, the content of the `build` folder can be directly served by a static web server at the location specified by `PUBLIC_URL` (in this case at `/`).
-The `PUBLIC_URL` must be either a full URL or a relative path to the location at which the viewer application will get deployed (e.g., `PUBLIC_URL=https://herrmannlab.github.io/slim` or `PUBLIC_URL='/slim'`).
+The `PUBLIC_URL` must be either a full URL or a relative path to the location at which the viewer application will get deployed (e.g., `PUBLIC_URL=https://imagingdatacommons.github.io/slim` or `PUBLIC_URL='/slim'`).
 
 
 ### Local
