@@ -69,7 +69,7 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
     this.setState({ isVisible: checked })
   }
 
-  handleOpacityChange (value: number): void {
+  handleOpacityChange (value: any): void {
     this.props.onStyleChange({
       mappingUID: this.props.mapping.uid,
       styleOptions: {

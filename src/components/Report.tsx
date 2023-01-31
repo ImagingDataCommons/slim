@@ -176,7 +176,7 @@ const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
       )
     }
     const regionItem = items[0] as dcmjs.sr.valueTypes.Scoord3DContentItem
-    let scoord3d: dmv.scoord3d.Scoord3D
+    let scoord3d: any
     if (regionItem.GraphicType === 'POINT') {
       scoord3d = new dmv.scoord3d.Point({
         frameOfReferenceUID: regionItem.ReferencedFrameOfReferenceUID,

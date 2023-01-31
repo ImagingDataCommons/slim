@@ -86,7 +86,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
     this.setState({ isVisible: checked })
   }
 
-  handleOpacityChange (value: number): void {
+  handleOpacityChange (value: any): void {
     this.props.onStyleChange({
       annotationGroupUID: this.props.annotationGroup.uid,
       styleOptions: {
@@ -103,7 +103,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
   }
 
   handleColorRChange (
-    value: number | number[]
+    value: any
   ): void {
     if (this.state.currentStyle.color !== undefined) {
       const color = [
@@ -126,7 +126,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
   }
 
   handleColorGChange (
-    value: number | number[]
+    value: any
   ): void {
     if (this.state.currentStyle.color !== undefined) {
       const color = [
@@ -149,7 +149,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
   }
 
   handleColorBChange (
-    value: number | number[]
+    value: any
   ): void {
     if (this.state.currentStyle.color !== undefined) {
       const color = [
@@ -187,7 +187,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
   }
 
   handleLowerLimitChange (
-    value: number
+    value: any
   ): void {
     if (this.state.currentStyle.limitValues !== undefined) {
       this.setState(state => {
@@ -222,7 +222,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
   }
 
   handleUpperLimitChange (
-    value: number
+    value: any
   ): void {
     if (this.state.currentStyle.limitValues !== undefined) {
       this.setState(state => {

@@ -67,7 +67,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
     this.setState({ isVisible: checked })
   }
 
-  handleOpacityChange (value: number): void {
+  handleOpacityChange (value: any): void {
     this.props.onStyleChange({
       segmentUID: this.props.segment.uid,
       styleOptions: {

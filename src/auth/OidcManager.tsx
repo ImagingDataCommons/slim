@@ -7,8 +7,12 @@ import NotificationMiddleware,
 { NotificationMiddlewareContext } from '../services/NotificationMiddleware'
 import { CustomError, errorTypes } from '../utils/CustomError'
 
-const createUser = (userData: UserData): User => {
-  const profile = userData.profile
+const createUser = (userData: UserData | null): User => {
+  let profile
+  if (userData !== null) {
+    profile = userData.profile
+  }
+
   if (profile !== undefined) {
     if (profile.name === undefined || profile.email === undefined) {
       NotificationMiddleware.onError(
