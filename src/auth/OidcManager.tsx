@@ -3,8 +3,8 @@ import { UserManager, User as UserData } from 'oidc-client'
 import { OidcSettings } from '../AppConfig'
 import { isAuthorizationCodeInUrl } from '../utils/url'
 import { User, AuthManager, SignInCallback } from './'
-import NotificationMiddleware, 
-{NotificationMiddlewareContext} from '../services/NotificationMiddleware'
+import NotificationMiddleware,
+{ NotificationMiddlewareContext } from '../services/NotificationMiddleware'
 import { CustomError, errorTypes } from '../utils/CustomError'
 
 const createUser = (userData: UserData): User => {

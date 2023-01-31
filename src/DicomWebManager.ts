@@ -3,7 +3,7 @@ import * as dwc from 'dicomweb-client'
 import { ServerSettings, DicomWebManagerErrorHandler } from './AppConfig'
 import { joinUrl } from './utils/url'
 import getXHRRetryHook from './utils/xhrRetryHook'
-import {CustomError, errorTypes} from './utils/CustomError'
+import { CustomError, errorTypes } from './utils/CustomError'
 import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from './services/NotificationMiddleware'

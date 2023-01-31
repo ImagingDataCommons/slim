@@ -21,7 +21,7 @@ import OidcManager from './auth/OidcManager'
 import { StorageClasses } from './data/uids'
 import DicomWebManager from './DicomWebManager'
 import { joinUrl } from './utils/url'
-import {CustomError, errorTypes} from './utils/CustomError'
+import { CustomError, errorTypes } from './utils/CustomError'
 import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from './services/NotificationMiddleware'
@@ -282,10 +282,10 @@ class App extends React.Component<AppProps, AppState> {
     user: User
     authorization: string
   }): void => {
-    console.info(
-      `handle sign in of user "${user.name}" and ` +
-      `update authorization token "${authorization}"`
-    )
+    // console.info(
+    //   `handle sign in of user "${user.name}" and ` +
+    //   `update authorization token "${authorization}"`
+    // )
     for (const key in this.state.clients) {
       const client = this.state.clients[key]
       client.updateHeaders({ Authorization: authorization })
@@ -316,7 +316,7 @@ class App extends React.Component<AppProps, AppState> {
           isLoading: false,
           wasAuthSuccessful: true
         })
-      }).catch((error) => {
+      }).catch(() => {
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.AUTH,

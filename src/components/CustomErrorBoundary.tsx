@@ -1,11 +1,11 @@
 import { Modal, Collapse } from 'antd'
 import { ErrorBoundary, FallbackProps } from 'react-error-boundary'
 
-  /**
+/**
  * React's error boundary component to catch errors during rendering phase
  * FallbackComponent is rendered in the event of an error
- * 
- * @param context - name of the react component 
+ *
+ * @param context - name of the react component
  * @param children - the component wrapped inside the Custom Error Boundary
  */
 const CustomErrorBoundary = ({
@@ -14,10 +14,10 @@ const CustomErrorBoundary = ({
 }: {
   context: string
   children: JSX.Element
-}) => {
+}): JSX.Element => {
   const { Panel } = Collapse
-  const ErrorFallback = (error: FallbackProps) => {
-    const openModal = () => {
+  const ErrorFallback = (error: FallbackProps): JSX.Element => {
+    const openModal = (): void => {
       Modal.error({
         title: (
           <>
@@ -35,7 +35,7 @@ const CustomErrorBoundary = ({
             </Collapse>
           </>
         ),
-        onOk(): void {}
+        onOk (): void {}
       })
     }
 
@@ -61,7 +61,7 @@ const CustomErrorBoundary = ({
     info: {
       componentStack: string
     }
-  ) => {
+  ): void => {
     console.error(error)
   }
 

@@ -26,8 +26,9 @@ import { detect } from 'detect-browser'
 
 import Button from './Button'
 import { RouteComponentProps, withRouter } from '../utils/router'
-import NotificationMiddleware, {NotificationMiddlewareEvents} from '../services/NotificationMiddleware'
+import NotificationMiddleware, { NotificationMiddlewareEvents } from '../services/NotificationMiddleware'
 import { CustomError } from '../utils/CustomError'
+import { v4 as uuidv4 } from 'uuid'
 
 interface HeaderProps extends RouteComponentProps {
   app: {
@@ -68,18 +69,18 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       errorCategory: []
     }
 
-    const onErrorHandler = ({error}: {
+    const onErrorHandler = ({ error }: {
       category: string
       error: CustomError
-    }) => {
+    }): void => {
       this.setState({
         errorObj: [...this.state.errorObj, error],
         errorCategory: [...this.state.errorCategory, error.type]
       })
     }
 
-    NotificationMiddleware.subscribe (
-      NotificationMiddlewareEvents.OnError, 
+    NotificationMiddleware.subscribe(
+      NotificationMiddlewareEvents.OnError,
       onErrorHandler
     )
   }
@@ -144,7 +145,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
   }
 
   handleDebugButtonClick = (): void => {
-    let errorMsgs: {
+    const errorMsgs: {
       Authentication: string[]
       Communication: string[]
       EncodingDecoding: string[]
@@ -168,8 +169,8 @@ class Header extends React.Component<HeaderProps, HeaderState> {
 
     const { Panel } = Collapse
 
-    const showErrorCount = (errcount: number) => (
-      <Badge count={errcount}></Badge>
+    const showErrorCount = (errcount: number): JSX.Element => (
+      <Badge count={errcount} />
     )
 
     Modal.info({
@@ -182,26 +183,22 @@ class Header extends React.Component<HeaderProps, HeaderState> {
             key='communicationerror'
             extra={showErrorCount(errorMsgs.Communication.length)}
           >
-            {
-              <ol>
-                {errorMsgs.Communication.map(e => (
-                  <li>{e}</li>
-                ))}
-              </ol>
-            }
+            <ol>
+              {errorMsgs.Communication.map(e => (
+                <li key={uuidv4()}>{e}</li>
+              ))}
+            </ol>
           </Panel>
           <Panel
             header='Data Encoding/Decoding error'
             key='encodedecodeerror'
             extra={showErrorCount(errorMsgs.EncodingDecoding.length)}
           >
-            {
-              <ol>
-                {errorMsgs.EncodingDecoding.map(e => (
-                  <li>{e}</li>
-                ))}
-              </ol>
-            }
+            <ol>
+              {errorMsgs.EncodingDecoding.map(e => (
+                <li key={uuidv4()}>{e}</li>
+              ))}
+            </ol>
           </Panel>
           <Panel
             header='Visualization error'
@@ -210,7 +207,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           >
             <ol>
               {errorMsgs.Visualization.map(e => (
-                <li>{e}</li>
+                <li key={uuidv4()}>{e}</li>
               ))}
             </ol>
           </Panel>
@@ -221,13 +218,13 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           >
             <ol>
               {errorMsgs.Authentication.map(e => (
-                <li>{e}</li>
+                <li key={uuidv4()}>{e}</li>
               ))}
             </ol>
           </Panel>
         </Collapse>
       ),
-      onOk(): void {}
+      onOk (): void {}
     })
   }
 

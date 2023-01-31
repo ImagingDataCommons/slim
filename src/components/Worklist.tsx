@@ -50,15 +50,15 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE
     ]
     client.searchForStudies(searchOptions).then((studies) => {
-        this.setState({
-          numStudies: studies.length,
-          studies: studies.slice(0, this.state.pageSize).map(study => {
-            const { dataset } = dmv.metadata.formatMetadata(study)
-            return dataset as dmv.metadata.Study
-          })
+      this.setState({
+        numStudies: studies.length,
+        studies: studies.slice(0, this.state.pageSize).map(study => {
+          const { dataset } = dmv.metadata.formatMetadata(study)
+          return dataset as dmv.metadata.Study
         })
       })
-      .catch(error => {
+    })
+      .catch(() => {
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.DICOMWEB,
@@ -110,14 +110,14 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE
     ]
     client.searchForStudies(searchOptions).then((studies) => {
-        this.setState({
-          studies: studies.map(study => {
-            const { dataset } = dmv.metadata.formatMetadata(study)
-            return dataset as dmv.metadata.Study
-          })
+      this.setState({
+        studies: studies.map(study => {
+          const { dataset } = dmv.metadata.formatMetadata(study)
+          return dataset as dmv.metadata.Study
         })
       })
-      .catch(error => {
+    })
+      .catch(() => {
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.DICOMWEB,
           new CustomError(

@@ -361,52 +361,52 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       specimenDescriptions.forEach(description => {
         const specimenPreparationSteps: dmv.metadata.SpecimenPreparation[] =
           description.SpecimenPreparationSequence ?? []
-          specimenPreparationSteps.forEach(
-            (step: dmv.metadata.SpecimenPreparation, index: number): void => {
-              step.SpecimenPreparationStepContentItemSequence.forEach((
-                item: (
-                  dcmjs.sr.valueTypes.CodeContentItem |
-                  dcmjs.sr.valueTypes.TextContentItem |
-                  dcmjs.sr.valueTypes.UIDRefContentItem |
-                  dcmjs.sr.valueTypes.PNameContentItem |
-                  dcmjs.sr.valueTypes.DateTimeContentItem
-                ),
-                index: number
-              ) => {
-                const name = new dcmjs.sr.coding.CodedConcept({
-                  value: item.ConceptNameCodeSequence[0].CodeValue,
-                  schemeDesignator:
+        specimenPreparationSteps.forEach(
+          (step: dmv.metadata.SpecimenPreparation, index: number): void => {
+            step.SpecimenPreparationStepContentItemSequence.forEach((
+              item: (
+                dcmjs.sr.valueTypes.CodeContentItem |
+                dcmjs.sr.valueTypes.TextContentItem |
+                dcmjs.sr.valueTypes.UIDRefContentItem |
+                dcmjs.sr.valueTypes.PNameContentItem |
+                dcmjs.sr.valueTypes.DateTimeContentItem
+              ),
+              index: number
+            ) => {
+              const name = new dcmjs.sr.coding.CodedConcept({
+                value: item.ConceptNameCodeSequence[0].CodeValue,
+                schemeDesignator:
                     item.ConceptNameCodeSequence[0].CodingSchemeDesignator,
-                  meaning: item.ConceptNameCodeSequence[0].CodeMeaning
-                })
-                if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.CODE) {
-                  item = item as dcmjs.sr.valueTypes.CodeContentItem
-                  const value = new dcmjs.sr.coding.CodedConcept({
-                    value: item.ConceptCodeSequence[0].CodeValue,
-                    schemeDesignator:
+                meaning: item.ConceptNameCodeSequence[0].CodeMeaning
+              })
+              if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.CODE) {
+                item = item as dcmjs.sr.valueTypes.CodeContentItem
+                const value = new dcmjs.sr.coding.CodedConcept({
+                  value: item.ConceptCodeSequence[0].CodeValue,
+                  schemeDesignator:
                       item.ConceptCodeSequence[0].CodingSchemeDesignator,
-                    meaning: item.ConceptCodeSequence[0].CodeMeaning
-                  })
-                  if (!name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
-                    if (name.equals(SpecimenPreparationStepItems.STAIN)) {
-                      attributes.push({
-                        name: 'Tissue stain',
-                        value: value.CodeMeaning
-                      })
-                    }
-                  }
-                } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
-                  item = item as dcmjs.sr.valueTypes.TextContentItem
-                  if (!name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
-                    if (name.equals(SpecimenPreparationStepItems.STAIN)) {
-                      attributes.push({
-                        name: 'Tissue stain',
-                        value: item.TextValue
-                      })
-                    }
+                  meaning: item.ConceptCodeSequence[0].CodeMeaning
+                })
+                if (!name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
+                  if (name.equals(SpecimenPreparationStepItems.STAIN)) {
+                    attributes.push({
+                      name: 'Tissue stain',
+                      value: value.CodeMeaning
+                    })
                   }
                 }
-              })
+              } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
+                item = item as dcmjs.sr.valueTypes.TextContentItem
+                if (!name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
+                  if (name.equals(SpecimenPreparationStepItems.STAIN)) {
+                    attributes.push({
+                      name: 'Tissue stain',
+                      value: item.TextValue
+                    })
+                  }
+                }
+              }
+            })
           }
         )
       })

@@ -8,7 +8,7 @@ import Description from './Description'
 import Patient from './Patient'
 import Study from './Study'
 import { findContentItemsByName } from '../utils/sr'
-import {CustomError, errorTypes} from '../utils/CustomError'
+import { CustomError, errorTypes } from '../utils/CustomError'
 import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from '../services/NotificationMiddleware'
