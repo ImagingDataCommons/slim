@@ -1,6 +1,6 @@
 {
   "name": "slim",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "homepage": "https://github.com/imagingdatacommons/slim",
   "private": true,
   "scripts": {
