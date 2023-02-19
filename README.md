@@ -1,3 +1,6 @@
+[![DOI](https://zenodo.org/badge/335130719.svg)](https://zenodo.org/badge/latestdoi/335130719)
+[![Build Status](https://github.com/imagingdatacommons/slim/actions/workflows/run_unit_tests.yml/badge.svg)](https://github.com/imagingdatacommons/slim/actions)
+
 # Slim: interoperable web viewer and annotation tool for computational pathology
 
 *Slim* is a single-page application for interactive visualization and annotation of digital whole slide microscopy images and derived image analysis results in standard DICOM format.
