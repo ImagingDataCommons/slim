@@ -1,7 +1,7 @@
 [![DOI](https://zenodo.org/badge/335130719.svg)](https://zenodo.org/badge/latestdoi/335130719)
 [![Build Status](https://github.com/imagingdatacommons/slim/actions/workflows/run_unit_tests.yml/badge.svg)](https://github.com/imagingdatacommons/slim/actions)
 
-# Slim: interoperable web viewer and annotation tool for computational pathology
+# Slim: Interoperable slide microscopy viewer and annotation tool for imaging data science and computational pathology
 
 *Slim* is a single-page application for interactive visualization and annotation of digital whole slide microscopy images and derived image analysis results in standard DICOM format.
 The application is based on the [dicom-microscopy-viewer](https://github.com/MGHComputationalPathology/dicom-microscopy-viewer) JavaScript library and runs fully client side without any custom server components.
@@ -249,7 +249,8 @@ REACT_APP_CONFIG=local yarn start
 
 For more information about the motivation, design, and capabilities of Slim, please see the following article:
 
-> [Slim: interoperable web viewer and annotation tool for quantitative microscopy tissue imaging](https://arxiv.org/abs/2205.09122)
+> [Interoperable slide microscopy viewer and annotation tool for imaging data science and computational pathology]([https://arxiv.org/abs/2205.09122](https://www.nature.com/articles/s41467-023-37224-2))
 > C. Gorman, D. Punzo, I. Octaviano, S. Pieper, W.J.R. Longabaugh, D.A. Clunie, R. Kikinis, A.Y. Fedorov, M.D. Herrmann
+> Nature Communications 4:1572 (2023)
 
 If you use Slim in your research, please cite the above article.
