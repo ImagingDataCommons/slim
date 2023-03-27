@@ -1,0 +1,42 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite our paper."
+authors:
+- family-names: "Herrmann"
+  given-names: "Markus D."
+- family-names: "Octaviano"
+  given-names: "Igor"
+- family-names: "Gorman"
+  given-names: "Chris"
+- family-names: "Punzo"
+  given-names: "Davide"
+preferred-citation:
+  type: article
+  authors:
+    - family-names: "Gorman"
+      given-names: "Chris"
+    - family-names: "Punzo"
+      given-names: "Davide"
+      orcid: "https://orcid.org/0000-0003-1624-5814"
+    - family-names: "Octaviano"
+      given-names: "Igor"
+      orcid: "https://orcid.org/0000-0002-6455-1480"
+    - family-names: "Pieper"
+      given-names: "Steven"
+    - family-names: "Longabaugh"
+      given-names: "William J.R."
+    - family-names: "Clunie"
+      given-names: "David A."
+      orcid: "https://orcid.org/0000-0002-2406-1145"
+    - family-names: "Kikinis"
+      given-names: "Ron"
+    - family-names: "Fedorov"
+      given-names: "Andriy Y."
+    - family-names: "Herrmann"
+      given-names: "Markus D."
+      orcid: "https://orcid.org/0000-0002-7257-9205"
+  title: "Interoperable slide microscopy viewer and annotation tool for imaging data science and computational pathology"
+  journal: "Nat Commun"
+  year: 2023
+  doi: 10.1038/s41467-023-37224-2
+  volume: 14
+  pages: 1572
