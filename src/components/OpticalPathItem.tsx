@@ -120,28 +120,30 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
   }
 
   handleOpacityChange (
-    value: number
+    value: number | null
   ): void {
-    const identifier = this.props.opticalPath.identifier
-    this.props.onStyleChange({
-      opticalPathIdentifier: identifier,
-      styleOptions: { opacity: value }
-    })
-    this.setState(state => ({
-      currentStyle: {
-        color: state.currentStyle.color,
-        paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
-        opacity: value,
-        limitValues: state.currentStyle.limitValues
-      }
-    }))
+    if (value) {
+      const identifier = this.props.opticalPath.identifier
+      this.props.onStyleChange({
+        opticalPathIdentifier: identifier,
+        styleOptions: { opacity: value }
+      })
+      this.setState(state => ({
+        currentStyle: {
+          color: state.currentStyle.color,
+          paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
+          opacity: value,
+          limitValues: state.currentStyle.limitValues
+        }
+      }))
+    }
   }
 
   handleColorRChange (
-    value: number | number[]
+    value: number | number[] | null
   ): void {
     const identifier = this.props.opticalPath.identifier
-    if (this.state.currentStyle.color !== undefined) {
+    if (value && this.state.currentStyle.color !== undefined) {
       const color = [
         Array.isArray(value) ? value[0] : value,
         this.state.currentStyle.color[1],
@@ -163,10 +165,10 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
   }
 
   handleColorGChange (
-    value: number | number[]
+    value: number | number[] | null
   ): void {
     const identifier = this.props.opticalPath.identifier
-    if (this.state.currentStyle.color !== undefined) {
+    if (value && this.state.currentStyle.color !== undefined) {
       const color = [
         this.state.currentStyle.color[0],
         Array.isArray(value) ? value[0] : value,
@@ -188,10 +190,10 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
   }
 
   handleColorBChange (
-    value: number | number[]
+    value: number | number[] | null
   ): void {
     const identifier = this.props.opticalPath.identifier
-    if (this.state.currentStyle.color !== undefined) {
+    if (value && this.state.currentStyle.color !== undefined) {
       const color = [
         this.state.currentStyle.color[0],
         this.state.currentStyle.color[1],
@@ -234,10 +236,10 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
   }
 
   handleLowerLimitChange (
-    value: number
+    value: number | null
   ): void {
     const identifier = this.props.opticalPath.identifier
-    if (this.state.currentStyle.limitValues !== undefined) {
+    if (value && this.state.currentStyle.limitValues !== undefined) {
       this.setState(state => {
         if (state.currentStyle.limitValues !== undefined) {
           return {
@@ -272,10 +274,10 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
   }
 
   handleUpperLimitChange (
-    value: number
+    value: number | null
   ): void {
     const identifier = this.props.opticalPath.identifier
-    if (this.state.currentStyle.limitValues !== undefined) {
+    if (value && this.state.currentStyle.limitValues !== undefined) {
       this.setState(state => {
         if (state.currentStyle.limitValues !== undefined) {
           return {
