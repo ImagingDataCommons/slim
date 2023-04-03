@@ -122,7 +122,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
   handleOpacityChange (
     value: number | null
   ): void {
-    if (value) {
+    if (value != null) {
       const identifier = this.props.opticalPath.identifier
       this.props.onStyleChange({
         opticalPathIdentifier: identifier,
