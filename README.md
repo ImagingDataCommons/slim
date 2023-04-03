@@ -1,4 +1,7 @@
-# Slim: interoperable web viewer and annotation tool for computational pathology
+[![DOI](https://zenodo.org/badge/335130719.svg)](https://zenodo.org/badge/latestdoi/335130719)
+[![Build Status](https://github.com/imagingdatacommons/slim/actions/workflows/run_unit_tests.yml/badge.svg)](https://github.com/imagingdatacommons/slim/actions)
+
+# Slim: Interoperable slide microscopy viewer and annotation tool for imaging data science and computational pathology
 
 *Slim* is a single-page application for interactive visualization and annotation of digital whole slide microscopy images and derived image analysis results in standard DICOM format.
 The application is based on the [dicom-microscopy-viewer](https://github.com/MGHComputationalPathology/dicom-microscopy-viewer) JavaScript library and runs fully client side without any custom server components.
@@ -18,7 +21,7 @@ The IDC viewer uses the [Google Cloud Healthcare API](https://cloud.google.com/h
 
 ### Demo
 
-Explore additional slide microscopy imaging data sets and advanced viewer features at [herrmannlab.github.io/slim](https://herrmannlab.github.io/slim/).
+Explore additional slide microscopy imaging data sets and advanced viewer features at [imagingdatacommons.github.io/slim](https://imagingdatacommons.github.io/slim/).
 
 <img src="docs/screenshots/IDC_HTAN_HTA9_1_32.png" alt="IDC HTAN HTA9_1_32" width="100%">
 
@@ -90,7 +93,7 @@ The configuration can be changed at build-time using the `REACT_APP_CONFIG` envi
 
 ## Deployment
 
-Download the latest release from [github.com/herrmannlab/slim/releases](https://github.com/herrmannlab/slim/releases) and then run the following commands to install build dependencies and build the app:
+Download the latest release from [github.com/imagingdatacommons/slim/releases](https://github.com/imagingdatacommons/slim/releases) and then run the following commands to install build dependencies and build the app:
 
 ```none
 yarn install
@@ -98,7 +101,7 @@ PUBLIC_URL=/ yarn build
 ```
 
 Once the app has been built, the content of the `build` folder can be directly served by a static web server at the location specified by `PUBLIC_URL` (in this case at `/`).
-The `PUBLIC_URL` must be either a full URL or a relative path to the location at which the viewer application will get deployed (e.g., `PUBLIC_URL=https://herrmannlab.github.io/slim` or `PUBLIC_URL='/slim'`).
+The `PUBLIC_URL` must be either a full URL or a relative path to the location at which the viewer application will get deployed (e.g., `PUBLIC_URL=https://imagingdatacommons.github.io/slim` or `PUBLIC_URL='/slim'`).
 
 
 ### Local
@@ -246,7 +249,8 @@ REACT_APP_CONFIG=local yarn start
 
 For more information about the motivation, design, and capabilities of Slim, please see the following article:
 
-> [Slim: interoperable web viewer and annotation tool for quantitative microscopy tissue imaging](https://arxiv.org/abs/2205.09122)
+> [Interoperable slide microscopy viewer and annotation tool for imaging data science and computational pathology]([https://arxiv.org/abs/2205.09122](https://www.nature.com/articles/s41467-023-37224-2))
 > C. Gorman, D. Punzo, I. Octaviano, S. Pieper, W.J.R. Longabaugh, D.A. Clunie, R. Kikinis, A.Y. Fedorov, M.D. Herrmann
+> Nature Communications 4:1572 (2023)
 
 If you use Slim in your research, please cite the above article.
