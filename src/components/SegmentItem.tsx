@@ -68,7 +68,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
   }
 
   handleOpacityChange (value: number | null): void {
-    if (value) {
+    if (value != null) {
       this.props.onStyleChange({
         segmentUID: this.props.segment.uid,
         styleOptions: {

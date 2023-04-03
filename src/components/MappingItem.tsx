@@ -70,7 +70,7 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
   }
 
   handleOpacityChange (value: number | null): void {
-    if (value) {
+    if (value != null) {
       this.props.onStyleChange({
         mappingUID: this.props.mapping.uid,
         styleOptions: {
