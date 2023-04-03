@@ -282,10 +282,6 @@ class App extends React.Component<AppProps, AppState> {
     user: User
     authorization: string
   }): void => {
-    // console.info(
-    //   `handle sign in of user "${user.name}" and ` +
-    //   `update authorization token "${authorization}"`
-    // )
     for (const key in this.state.clients) {
       const client = this.state.clients[key]
       client.updateHeaders({ Authorization: authorization })
