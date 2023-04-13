@@ -1,15 +1,6 @@
 import React from 'react'
-import {
-  Routes,
-  Route,
-  useLocation,
-  useParams
-} from 'react-router-dom'
-import {
-  Layout,
-  message,
-  Menu
-} from 'antd'
+import { Routes, Route, useLocation, useParams } from 'react-router-dom'
+import { Layout, Menu } from 'antd'
 
 import * as dmv from 'dicom-microscopy-viewer'
 
@@ -25,6 +16,10 @@ import { User } from '../auth'
 import { Slide, createSlides } from '../data/slides'
 import { StorageClasses } from '../data/uids'
 import { RouteComponentProps, withRouter } from '../utils/router'
+import { CustomError, errorTypes } from '../utils/CustomError'
+import NotificationMiddleware, {
+  NotificationMiddlewareContext
+} from '../services/NotificationMiddleware'
 
 function ParametrizedSlideViewer ({
   clients,
@@ -57,7 +52,7 @@ function ParametrizedSlideViewer ({
     })
   })
   const searchParams = new URLSearchParams(location.search)
-  let presentationStateUID: string|null|undefined
+  let presentationStateUID: string | null | undefined
   if (!searchParams.has('access_token')) {
     presentationStateUID = searchParams.get('state')
     if (presentationStateUID === null) {
@@ -126,13 +121,14 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
           isLoading: false
         })
       }
-    ).catch((error) => {
+    ).catch(() => {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      message.error(
-        'An error occured. ' +
-          'Image metadata could not be retrieved or decoded.'
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.SLIM,
+        new CustomError(
+          errorTypes.ENCODINGANDDECODING,
+          'Image metadata could not be retrieved or decoded.')
       )
-      console.error(error)
       this.setState({ isLoading: false })
     })
   }

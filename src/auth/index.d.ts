@@ -4,13 +4,13 @@ export type SignInCallback = ({ user, authorization }: {
 }) => void
 
 export interface User {
-  name: string
-  email: string
+  name: string|undefined
+  email: string|undefined
 }
 
 export interface AuthManager {
   signIn: ({ onSignIn }: { onSignIn: SignInCallback }) => Promise<void>
   signOut: () => Promise<void>
-  getAuthorization: () => Promise<string>
+  getAuthorization: () => Promise<string|undefined>
   getUser: () => Promise<User>
 }

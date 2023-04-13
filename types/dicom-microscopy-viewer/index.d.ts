@@ -2,6 +2,7 @@ declare module 'dicom-microscopy-viewer' {
 
   import * as dwc from 'dicomweb-client'
   import * as dcmjs from 'dcmjs'
+  import { CustomError } from '../../src/utils/CustomError'
 
   declare namespace viewer {
 
@@ -12,6 +13,7 @@ declare module 'dicom-microscopy-viewer' {
       debug?: boolean
       preload?: boolean
       controls: string[]
+      errorInterceptor?: (error: CustomError) => void
     }
 
     export interface ROIStyleOptions {
@@ -227,6 +229,7 @@ declare module 'dicom-microscopy-viewer' {
       orientation?: string
       resizeFactor?: number
       includeIccProfile?: boolean
+      errorInterceptor?: (error: CustomError) => void
     }
 
     export class OverviewImageViewer {
@@ -244,6 +247,7 @@ declare module 'dicom-microscopy-viewer' {
       orientation?: string
       resizeFactor?: number
       includeIccProfile?: boolean
+      errorInterceptor?: (error: CustomError) => void
     }
 
     export class LabelImageViewer {

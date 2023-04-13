@@ -8,6 +8,10 @@ import Description from './Description'
 import Patient from './Patient'
 import Study from './Study'
 import { findContentItemsByName } from '../utils/sr'
+import { CustomError, errorTypes } from '../utils/CustomError'
+import NotificationMiddleware, {
+  NotificationMiddlewareContext
+} from '../services/NotificationMiddleware'
 
 export const hasValueType = (
   item: dcmjs.sr.valueTypes.ContentItem,
@@ -53,10 +57,14 @@ const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
     })
   })
   if (matches.length !== 1) {
-    throw new Error(
-      'Content item "Imaging Measurements" not found.' +
-      'Content of Comprehensive 3D SR document is not structured based on ' +
-      'TID 1500 "Measurement Report".'
+    NotificationMiddleware.onError(
+      NotificationMiddlewareContext.SLIM,
+      new CustomError(
+        errorTypes.ENCODINGANDDECODING,
+        'Content item "Imaging Measurements" not found.' +
+        'Content of Comprehensive 3D SR document is not structured based on ' +
+        'TID 1500 "Measurement Report".'
+      )
     )
   }
   const measurementsItem = matches[0] as dcmjs.sr.valueTypes.ContainerContentItem
@@ -84,11 +92,15 @@ const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
       })
     })
     if (items.length === 0) {
-      throw new Error(
-        'Content item "Tracking Unique Identifier" not found. ' +
-        'Content of Comprehensive 3D SR document is not structured ' +
-        'based on TID 1500 "Measurement Report" -> ' +
-        'TID 1410 "Planar ROI Measurements and Qualitative Evaluations".'
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.SLIM,
+        new CustomError(
+          errorTypes.ENCODINGANDDECODING,
+          'Content item "Tracking Unique Identifier" not found. ' +
+          'Content of Comprehensive 3D SR document is not structured ' +
+          'based on TID 1500 "Measurement Report" -> ' +
+          'TID 1410 "Planar ROI Measurements and Qualitative Evaluations".'
+        )
       )
     }
     const trackingUIDItem = items[0] as dcmjs.sr.valueTypes.UIDRefContentItem
@@ -102,11 +114,15 @@ const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
       })
     })
     if (items.length === 0) {
-      throw new Error(
-        'Content item "Finding" not found. ' +
-        'Content of Comprehensive 3D SR document is not structured ' +
-        'based on TID 1500 "Measurement Report" -> ' +
-        'TID 1410 "Planar ROI Measurements and Qualitative Evaluations".'
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.SLIM,
+        new CustomError(
+          errorTypes.ENCODINGANDDECODING,
+          'Content item "Finding" not found. ' +
+          'Content of Comprehensive 3D SR document is not structured ' +
+          'based on TID 1500 "Measurement Report" -> ' +
+          'TID 1410 "Planar ROI Measurements and Qualitative Evaluations".'
+        )
       )
     }
 
@@ -148,15 +164,19 @@ const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
       })
     })
     if (items.length === 0) {
-      throw new Error(
-        'Content item "Image Region" not found. ' +
-        'Content of Comprehensive 3D SR document is not structured ' +
-        'based on TID 1500 "Measurement Report" -> ' +
-        'TID 1410 "Planar ROI Measurements and Qualitative Evaluations".'
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.SLIM,
+        new CustomError(
+          errorTypes.ENCODINGANDDECODING,
+          'Content item "Image Region" not found. ' +
+          'Content of Comprehensive 3D SR document is not structured ' +
+          'based on TID 1500 "Measurement Report" -> ' +
+          'TID 1410 "Planar ROI Measurements and Qualitative Evaluations".'
+        )
       )
     }
     const regionItem = items[0] as dcmjs.sr.valueTypes.Scoord3DContentItem
-    let scoord3d: dmv.scoord3d.Scoord3D
+    let scoord3d: any
     if (regionItem.GraphicType === 'POINT') {
       scoord3d = new dmv.scoord3d.Point({
         frameOfReferenceUID: regionItem.ReferencedFrameOfReferenceUID,
@@ -193,12 +213,16 @@ const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
           coordinates: coordinates
         })
       } else {
-        throw new Error(
-          'Content item "Image Region" has unknown graphic type ' +
-          `"${regionItem.GraphicType}". ` +
-          'Content of Comprehensive 3D SR document is not structured ' +
-          'based on TID 1500 "Measurement Report" -> ' +
-          'TID 1410 "Planar ROI Measurements and Qualitative Evaluations".'
+        NotificationMiddleware.onError(
+          NotificationMiddlewareContext.SLIM,
+          new CustomError(
+            errorTypes.ENCODINGANDDECODING,
+            'Content item "Image Region" has unknown graphic type ' +
+            `"${regionItem.GraphicType}". ` +
+            'Content of Comprehensive 3D SR document is not structured ' +
+            'based on TID 1500 "Measurement Report" -> ' +
+            'TID 1410 "Planar ROI Measurements and Qualitative Evaluations".'
+          )
         )
       }
     }
@@ -252,11 +276,15 @@ class MeasurementReport {
       })
     })
     if (items.length === 0) {
-      throw new Error(
-        'Content item "Specimen UID" not found. ' +
-        'Content of Comprehensive 3D SR document is not structured based on ' +
-        'TID 1500 "Measurement Report" -> TID 1001 "Observation Context" -> ' +
-        'TID 1006 "Subject Context" -> TID 1009 "Subject Context, Specimen".'
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.SLIM,
+        new CustomError(
+          errorTypes.ENCODINGANDDECODING,
+          'Content item "Specimen UID" not found. ' +
+          'Content of Comprehensive 3D SR document is not structured based on ' +
+          'TID 1500 "Measurement Report" -> TID 1001 "Observation Context" -> ' +
+          'TID 1006 "Subject Context" -> TID 1009 "Subject Context, Specimen".'
+        )
       )
     }
     const specimenUIDItem = (
@@ -273,11 +301,15 @@ class MeasurementReport {
       })
     })
     if (items.length === 0) {
-      throw new Error(
-        'Content item "Specimen Identifier" not found. ' +
-        'Content of Comprehensive 3D SR document is not structured based on ' +
-        'TID 1500 "Measurement Report" -> TID 1001 "Observation Context" -> ' +
-        'TID 1006 "Subject Context" -> TID 1009 "Subject Context, Specimen".'
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.SLIM,
+        new CustomError(
+          errorTypes.ENCODINGANDDECODING,
+          'Content item "Specimen Identifier" not found. ' +
+          'Content of Comprehensive 3D SR document is not structured based on ' +
+          'TID 1500 "Measurement Report" -> TID 1001 "Observation Context" -> ' +
+          'TID 1006 "Subject Context" -> TID 1009 "Subject Context, Specimen".'
+        )
       )
     }
     const specimenIdItem = (
@@ -294,11 +326,15 @@ class MeasurementReport {
       })
     })
     if (items.length === 0) {
-      throw new Error(
-        'Content item "Specimen Container Identifier" not found. ' +
-        'Content of Comprehensive 3D SR document is not structured based on ' +
-        'TID 1500 "Measurement Report" -> TID 1001 "Observation Context" -> ' +
-        'TID 1006 "Subject Context" -> TID 1009 "Subject Context, Specimen".'
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.SLIM,
+        new CustomError(
+          errorTypes.ENCODINGANDDECODING,
+          'Content item "Specimen Container Identifier" not found. ' +
+          'Content of Comprehensive 3D SR document is not structured based on ' +
+          'TID 1500 "Measurement Report" -> TID 1001 "Observation Context" -> ' +
+          'TID 1006 "Subject Context" -> TID 1009 "Subject Context, Specimen".'
+        )
       )
     }
     const containerIdItem = (

@@ -21,6 +21,10 @@ import OidcManager from './auth/OidcManager'
 import { StorageClasses } from './data/uids'
 import DicomWebManager from './DicomWebManager'
 import { joinUrl } from './utils/url'
+import { CustomError, errorTypes } from './utils/CustomError'
+import NotificationMiddleware, {
+  NotificationMiddlewareContext
+} from './services/NotificationMiddleware'
 
 function ParametrizedCaseViewer ({ clients, user, app, config }: {
   clients: { [key: string]: DicomWebManager }
@@ -81,9 +85,13 @@ function _createClientMapping ({ baseUri, settings, onError }: {
   })
 
   if (storageClassMapping.default > 1) {
-    throw new Error(
-      'Only one default server can be configured without specification ' +
-      'of storage classes.'
+    NotificationMiddleware.onError(
+      NotificationMiddlewareContext.SLIM,
+      new CustomError(
+        errorTypes.COMMUNICATION,
+        'Only one default server can be configured without specification ' +
+        'of storage classes.'
+      )
     )
   }
   for (const key in storageClassMapping) {
@@ -91,10 +99,14 @@ function _createClientMapping ({ baseUri, settings, onError }: {
       continue
     }
     if (storageClassMapping[key] > 1) {
-      throw new Error(
-        'Only one configured server can specify a given storage class. ' +
-        `Storage class "${key}" is specified by more than one ` +
-        'of the configured servers.'
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.SLIM,
+        new CustomError(
+          errorTypes.COMMUNICATION,
+          'Only one configured server can specify a given storage class. ' +
+          `Storage class "${key}" is specified by more than one ` +
+          'of the configured servers.'
+        )
       )
     }
   }
@@ -155,7 +167,12 @@ class App extends React.Component<AppProps, AppState> {
       this.signIn()
     } else if (error.status === 403) {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      message.error('User is not authorized to access DICOMweb resources.')
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.DICOMWEB,
+        new CustomError(
+          errorTypes.COMMUNICATION,
+          'User is not authorized to access DICOMweb resources.')
+      )
     }
     if (serverSettings.errorMessages !== undefined) {
       serverSettings.errorMessages.forEach((setting: ErrorMessageSettings) => {
@@ -168,7 +185,12 @@ class App extends React.Component<AppProps, AppState> {
           })
         } else if (error.status === 500) {
           // eslint-disable-next-line @typescript-eslint/no-floating-promises
-          message.error('An unexpected server error occured.')
+          NotificationMiddleware.onError(
+            NotificationMiddlewareContext.DICOMWEB,
+            new CustomError(
+              errorTypes.COMMUNICATION,
+              'An unexpected server error occured.')
+          )
         }
       })
     }
@@ -193,7 +215,12 @@ class App extends React.Component<AppProps, AppState> {
     }
 
     if (props.config.servers.length === 0) {
-      throw Error('At least one server needs to be configured.')
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.SLIM,
+        new CustomError(
+          errorTypes.COMMUNICATION,
+          'One server needs to be configured.')
+      )
     }
     console.info(
       'app uses the following DICOMweb server configuration: ',
@@ -255,10 +282,6 @@ class App extends React.Component<AppProps, AppState> {
     user: User
     authorization: string
   }): void => {
-    console.info(
-      `handle sign in of user "${user.name}" and ` +
-      `update authorization token "${authorization}"`
-    )
     for (const key in this.state.clients) {
       const client = this.state.clients[key]
       client.updateHeaders({ Authorization: authorization })
@@ -289,10 +312,14 @@ class App extends React.Component<AppProps, AppState> {
           isLoading: false,
           wasAuthSuccessful: true
         })
-      }).catch((error) => {
-        console.error('sign-in failed ', error)
+      }).catch(() => {
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        message.error('Could not sign-in user.')
+        NotificationMiddleware.onError(
+          NotificationMiddlewareContext.AUTH,
+          new CustomError(
+            errorTypes.AUTHENTICATION,
+            'Could not sign-in user.')
+        )
         this.setState({
           isLoading: false,
           redirectTo: undefined,

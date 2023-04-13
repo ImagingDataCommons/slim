@@ -24,6 +24,10 @@ import * as dmv from 'dicom-microscopy-viewer'
 import * as dcmjs from 'dcmjs'
 
 import { SpecimenPreparationStepItems } from '../data/specimens'
+import NotificationMiddleware, {
+  NotificationMiddlewareContext
+} from '../services/NotificationMiddleware'
+import { CustomError, errorTypes } from '../utils/CustomError'
 
 interface OpticalPathItemProps {
   opticalPath: dmv.opticalPath.OpticalPath
@@ -116,28 +120,30 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
   }
 
   handleOpacityChange (
-    value: number
+    value: number | null
   ): void {
-    const identifier = this.props.opticalPath.identifier
-    this.props.onStyleChange({
-      opticalPathIdentifier: identifier,
-      styleOptions: { opacity: value }
-    })
-    this.setState(state => ({
-      currentStyle: {
-        color: state.currentStyle.color,
-        paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
-        opacity: value,
-        limitValues: state.currentStyle.limitValues
-      }
-    }))
+    if (value != null) {
+      const identifier = this.props.opticalPath.identifier
+      this.props.onStyleChange({
+        opticalPathIdentifier: identifier,
+        styleOptions: { opacity: value }
+      })
+      this.setState(state => ({
+        currentStyle: {
+          color: state.currentStyle.color,
+          paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
+          opacity: value,
+          limitValues: state.currentStyle.limitValues
+        }
+      }))
+    }
   }
 
   handleColorRChange (
-    value: number | number[]
+    value: number | number[] | null
   ): void {
     const identifier = this.props.opticalPath.identifier
-    if (this.state.currentStyle.color !== undefined) {
+    if (value != null && this.state.currentStyle.color !== undefined) {
       const color = [
         Array.isArray(value) ? value[0] : value,
         this.state.currentStyle.color[1],
@@ -159,10 +165,10 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
   }
 
   handleColorGChange (
-    value: number | number[]
+    value: number | number[] | null
   ): void {
     const identifier = this.props.opticalPath.identifier
-    if (this.state.currentStyle.color !== undefined) {
+    if (value != null && this.state.currentStyle.color !== undefined) {
       const color = [
         this.state.currentStyle.color[0],
         Array.isArray(value) ? value[0] : value,
@@ -184,10 +190,10 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
   }
 
   handleColorBChange (
-    value: number | number[]
+    value: number | number[] | null
   ): void {
     const identifier = this.props.opticalPath.identifier
-    if (this.state.currentStyle.color !== undefined) {
+    if (value != null && this.state.currentStyle.color !== undefined) {
       const color = [
         this.state.currentStyle.color[0],
         this.state.currentStyle.color[1],
@@ -230,10 +236,10 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
   }
 
   handleLowerLimitChange (
-    value: number
+    value: number | null
   ): void {
     const identifier = this.props.opticalPath.identifier
-    if (this.state.currentStyle.limitValues !== undefined) {
+    if (value != null && this.state.currentStyle.limitValues !== undefined) {
       this.setState(state => {
         if (state.currentStyle.limitValues !== undefined) {
           return {
@@ -268,10 +274,10 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
   }
 
   handleUpperLimitChange (
-    value: number
+    value: number | null
   ): void {
     const identifier = this.props.opticalPath.identifier
-    if (this.state.currentStyle.limitValues !== undefined) {
+    if (value != null && this.state.currentStyle.limitValues !== undefined) {
       this.setState(state => {
         if (state.currentStyle.limitValues !== undefined) {
           return {
@@ -353,59 +359,68 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     const specimenDescriptions: dmv.metadata.SpecimenDescription[] = (
       this.props.metadata[0].SpecimenDescriptionSequence ?? []
     )
-    specimenDescriptions.forEach(description => {
-      const specimenPreparationSteps: dmv.metadata.SpecimenPreparation[] = (
-        description.SpecimenPreparationSequence ?? []
-      )
-      specimenPreparationSteps.forEach(
-        (step: dmv.metadata.SpecimenPreparation, index: number): void => {
-          step.SpecimenPreparationStepContentItemSequence.forEach((
-            item: (
-              dcmjs.sr.valueTypes.CodeContentItem |
-              dcmjs.sr.valueTypes.TextContentItem |
-              dcmjs.sr.valueTypes.UIDRefContentItem |
-              dcmjs.sr.valueTypes.PNameContentItem |
-              dcmjs.sr.valueTypes.DateTimeContentItem
-            ),
-            index: number
-          ) => {
-            const name = new dcmjs.sr.coding.CodedConcept({
-              value: item.ConceptNameCodeSequence[0].CodeValue,
-              schemeDesignator:
-                item.ConceptNameCodeSequence[0].CodingSchemeDesignator,
-              meaning: item.ConceptNameCodeSequence[0].CodeMeaning
-            })
-            if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.CODE) {
-              item = item as dcmjs.sr.valueTypes.CodeContentItem
-              const value = new dcmjs.sr.coding.CodedConcept({
-                value: item.ConceptCodeSequence[0].CodeValue,
+    try {
+      specimenDescriptions.forEach(description => {
+        const specimenPreparationSteps: dmv.metadata.SpecimenPreparation[] =
+          description.SpecimenPreparationSequence ?? []
+        specimenPreparationSteps.forEach(
+          (step: dmv.metadata.SpecimenPreparation, index: number): void => {
+            step.SpecimenPreparationStepContentItemSequence.forEach((
+              item: (
+                dcmjs.sr.valueTypes.CodeContentItem |
+                dcmjs.sr.valueTypes.TextContentItem |
+                dcmjs.sr.valueTypes.UIDRefContentItem |
+                dcmjs.sr.valueTypes.PNameContentItem |
+                dcmjs.sr.valueTypes.DateTimeContentItem
+              ),
+              index: number
+            ) => {
+              const name = new dcmjs.sr.coding.CodedConcept({
+                value: item.ConceptNameCodeSequence[0].CodeValue,
                 schemeDesignator:
-                  item.ConceptCodeSequence[0].CodingSchemeDesignator,
-                meaning: item.ConceptCodeSequence[0].CodeMeaning
+                    item.ConceptNameCodeSequence[0].CodingSchemeDesignator,
+                meaning: item.ConceptNameCodeSequence[0].CodeMeaning
               })
-              if (!name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
-                if (name.equals(SpecimenPreparationStepItems.STAIN)) {
-                  attributes.push({
-                    name: 'Tissue stain',
-                    value: value.CodeMeaning
-                  })
+              if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.CODE) {
+                item = item as dcmjs.sr.valueTypes.CodeContentItem
+                const value = new dcmjs.sr.coding.CodedConcept({
+                  value: item.ConceptCodeSequence[0].CodeValue,
+                  schemeDesignator:
+                      item.ConceptCodeSequence[0].CodingSchemeDesignator,
+                  meaning: item.ConceptCodeSequence[0].CodeMeaning
+                })
+                if (!name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
+                  if (name.equals(SpecimenPreparationStepItems.STAIN)) {
+                    attributes.push({
+                      name: 'Tissue stain',
+                      value: value.CodeMeaning
+                    })
+                  }
+                }
+              } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
+                item = item as dcmjs.sr.valueTypes.TextContentItem
+                if (!name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
+                  if (name.equals(SpecimenPreparationStepItems.STAIN)) {
+                    attributes.push({
+                      name: 'Tissue stain',
+                      value: item.TextValue
+                    })
+                  }
                 }
               }
-            } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
-              item = item as dcmjs.sr.valueTypes.TextContentItem
-              if (!name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
-                if (name.equals(SpecimenPreparationStepItems.STAIN)) {
-                  attributes.push({
-                    name: 'Tissue stain',
-                    value: item.TextValue
-                  })
-                }
-              }
-            }
-          })
-        }
+            })
+          }
+        )
+      })
+    } catch (error: any) {
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.DCMJS,
+        new CustomError(
+          errorTypes.ENCODINGANDDECODING,
+          error.message
+        )
       )
-    })
+    }
 
     const maxValue = Math.pow(2, this.props.metadata[0].BitsAllocated) - 1
 

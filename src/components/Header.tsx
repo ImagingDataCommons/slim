@@ -1,7 +1,5 @@
 import React from 'react'
-import {
-  NavLink
-} from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import {
   Col,
   Descriptions,
@@ -11,7 +9,9 @@ import {
   Menu,
   Modal,
   Row,
-  Space
+  Space,
+  Badge,
+  Collapse
 } from 'antd'
 import {
   ApiOutlined,
@@ -19,12 +19,16 @@ import {
   InfoOutlined,
   StopOutlined,
   UnorderedListOutlined,
-  UserOutlined
+  UserOutlined,
+  SettingOutlined
 } from '@ant-design/icons'
 import { detect } from 'detect-browser'
 
 import Button from './Button'
 import { RouteComponentProps, withRouter } from '../utils/router'
+import NotificationMiddleware, { NotificationMiddlewareEvents } from '../services/NotificationMiddleware'
+import { CustomError } from '../utils/CustomError'
+import { v4 as uuidv4 } from 'uuid'
 
 interface HeaderProps extends RouteComponentProps {
   app: {
@@ -48,6 +52,8 @@ interface HeaderState {
   selectedServerUrl?: string
   isServerSelectionModalVisible: boolean
   isServerSelectionDisabled: boolean
+  errorObj: CustomError[]
+  errorCategory: string[]
 }
 
 /**
@@ -58,8 +64,25 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     super(props)
     this.state = {
       isServerSelectionModalVisible: false,
-      isServerSelectionDisabled: true
+      isServerSelectionDisabled: true,
+      errorObj: [],
+      errorCategory: []
     }
+
+    const onErrorHandler = ({ error }: {
+      category: string
+      error: CustomError
+    }): void => {
+      this.setState({
+        errorObj: [...this.state.errorObj, error],
+        errorCategory: [...this.state.errorCategory, error.type]
+      })
+    }
+
+    NotificationMiddleware.subscribe(
+      NotificationMiddlewareEvents.OnError,
+      onErrorHandler
+    )
   }
 
   handleInfoButtonClick = (): void => {
@@ -121,6 +144,90 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     })
   }
 
+  handleDebugButtonClick = (): void => {
+    const errorMsgs: {
+      Authentication: string[]
+      Communication: string[]
+      EncodingDecoding: string[]
+      Visualization: string[]
+    } = {
+      Authentication: [],
+      Communication: [],
+      EncodingDecoding: [],
+      Visualization: []
+    }
+
+    type ObjectKey = keyof typeof errorMsgs
+    const errorNum = this.state.errorObj.length
+
+    if (errorNum > 0) {
+      for (let i = 0; i < errorNum; i++) {
+        const category = this.state.errorCategory[i] as ObjectKey
+        errorMsgs[category].push(this.state.errorObj[i].message)
+      }
+    }
+
+    const { Panel } = Collapse
+
+    const showErrorCount = (errcount: number): JSX.Element => (
+      <Badge count={errcount} />
+    )
+
+    Modal.info({
+      title: 'Debug Information\n (Check console for more information)',
+      width: 800,
+      content: (
+        <Collapse>
+          <Panel
+            header='Communication Error'
+            key='communicationerror'
+            extra={showErrorCount(errorMsgs.Communication.length)}
+          >
+            <ol>
+              {errorMsgs.Communication.map(e => (
+                <li key={uuidv4()}>{e}</li>
+              ))}
+            </ol>
+          </Panel>
+          <Panel
+            header='Data Encoding/Decoding error'
+            key='encodedecodeerror'
+            extra={showErrorCount(errorMsgs.EncodingDecoding.length)}
+          >
+            <ol>
+              {errorMsgs.EncodingDecoding.map(e => (
+                <li key={uuidv4()}>{e}</li>
+              ))}
+            </ol>
+          </Panel>
+          <Panel
+            header='Visualization error'
+            key='visualizationerror'
+            extra={showErrorCount(errorMsgs.Visualization.length)}
+          >
+            <ol>
+              {errorMsgs.Visualization.map(e => (
+                <li key={uuidv4()}>{e}</li>
+              ))}
+            </ol>
+          </Panel>
+          <Panel
+            header='Authentication error'
+            key='autherror'
+            extra={showErrorCount(errorMsgs.Authentication.length)}
+          >
+            <ol>
+              {errorMsgs.Authentication.map(e => (
+                <li key={uuidv4()}>{e}</li>
+              ))}
+            </ol>
+          </Panel>
+        </Collapse>
+      ),
+      onOk (): void {}
+    })
+  }
+
   handleServerSelectionButtonClick = (): void => {
     this.setState({ isServerSelectionModalVisible: true })
   }
@@ -169,6 +276,16 @@ class Header extends React.Component<HeaderProps, HeaderState> {
         tooltip='Get app info'
         onClick={this.handleInfoButtonClick}
       />
+    )
+
+    const debugButton = (
+      <Badge count={this.state.errorObj.length}>
+        <Button
+          icon={SettingOutlined}
+          tooltip='Debug info'
+          onClick={this.handleDebugButtonClick}
+        />
+      </Badge>
     )
 
     let serverSelectionButton
@@ -245,6 +362,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
               <Space direction='horizontal'>
                 {worklistButton}
                 {infoButton}
+                {debugButton}
                 {serverSelectionButton}
                 {user}
               </Space>

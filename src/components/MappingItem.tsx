@@ -69,18 +69,20 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
     this.setState({ isVisible: checked })
   }
 
-  handleOpacityChange (value: number): void {
-    this.props.onStyleChange({
-      mappingUID: this.props.mapping.uid,
-      styleOptions: {
-        opacity: value
-      }
-    })
-    this.setState(state => ({
-      currentStyle: {
-        opacity: value
-      }
-    }))
+  handleOpacityChange (value: number | null): void {
+    if (value != null) {
+      this.props.onStyleChange({
+        mappingUID: this.props.mapping.uid,
+        styleOptions: {
+          opacity: value
+        }
+      })
+      this.setState(state => ({
+        currentStyle: {
+          opacity: value
+        }
+      }))
+    }
   }
 
   render (): React.ReactNode {

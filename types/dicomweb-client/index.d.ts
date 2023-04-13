@@ -10,7 +10,7 @@ declare module 'dicomweb-client' {
     export type DICOMwebClientRequestHook = (request: XMLHttpRequest, metadata: DICOMwebClientRequestHookMetadata) => XMLHttpRequest
 
     export interface DICOMwebClientOptions {
-      url: string
+      url: string|undefined
       qidoURLPrefix?: string
       wadoURLPrefix?: string
       stowURLPrefix?: string
