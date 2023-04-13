@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "https://imagingdatacommons.github.io/slim/static/css/main.e6c13ad2.css",
-    "main.js": "https://imagingdatacommons.github.io/slim/static/js/main.33f63de0.js",
-    "static/css/455.5cd65a83.chunk.css": "https://imagingdatacommons.github.io/slim/static/css/455.5cd65a83.chunk.css",
-    "static/js/455.8a6ca5f2.chunk.js": "https://imagingdatacommons.github.io/slim/static/js/455.8a6ca5f2.chunk.js",
-    "static/css/267.a1f9d27a.chunk.css": "https://imagingdatacommons.github.io/slim/static/css/267.a1f9d27a.chunk.css",
-    "static/js/267.9ea21038.chunk.js": "https://imagingdatacommons.github.io/slim/static/js/267.9ea21038.chunk.js",
-    "static/js/63.a816f431.chunk.js": "https://imagingdatacommons.github.io/slim/static/js/63.a816f431.chunk.js",
-    "static/js/884.d59075cd.chunk.js": "https://imagingdatacommons.github.io/slim/static/js/884.d59075cd.chunk.js",
+    "main.js": "https://imagingdatacommons.github.io/slim/static/js/main.665173f3.js",
+    "static/css/455.b37fdaf9.chunk.css": "https://imagingdatacommons.github.io/slim/static/css/455.b37fdaf9.chunk.css",
+    "static/js/455.46becc8e.chunk.js": "https://imagingdatacommons.github.io/slim/static/js/455.46becc8e.chunk.js",
+    "static/css/267.ca42ab60.chunk.css": "https://imagingdatacommons.github.io/slim/static/css/267.ca42ab60.chunk.css",
+    "static/js/267.9beeab82.chunk.js": "https://imagingdatacommons.github.io/slim/static/js/267.9beeab82.chunk.js",
+    "static/js/745.811de3f4.chunk.js": "https://imagingdatacommons.github.io/slim/static/js/745.811de3f4.chunk.js",
+    "static/js/565.9a8836b5.chunk.js": "https://imagingdatacommons.github.io/slim/static/js/565.9a8836b5.chunk.js",
     "static/js/dicomMicroscopyViewer.min.js.map": "https://imagingdatacommons.github.io/slim/static/js/dicomMicroscopyViewer.min.js.map",
     "static/js/dicomMicroscopyViewer.min.js": "https://imagingdatacommons.github.io/slim/static/js/dicomMicroscopyViewer.min.js",
     "static/js/index.worker.min.worker.js.map": "https://imagingdatacommons.github.io/slim/static/js/index.worker.min.worker.js.map",
@@ -15,16 +15,16 @@
     "static/js/index.worker.min.worker.js": "https://imagingdatacommons.github.io/slim/static/js/index.worker.min.worker.js",
     "index.html": "https://imagingdatacommons.github.io/slim/index.html",
     "main.e6c13ad2.css.map": "https://imagingdatacommons.github.io/slim/static/css/main.e6c13ad2.css.map",
-    "main.33f63de0.js.map": "https://imagingdatacommons.github.io/slim/static/js/main.33f63de0.js.map",
-    "455.5cd65a83.chunk.css.map": "https://imagingdatacommons.github.io/slim/static/css/455.5cd65a83.chunk.css.map",
-    "455.8a6ca5f2.chunk.js.map": "https://imagingdatacommons.github.io/slim/static/js/455.8a6ca5f2.chunk.js.map",
-    "267.a1f9d27a.chunk.css.map": "https://imagingdatacommons.github.io/slim/static/css/267.a1f9d27a.chunk.css.map",
-    "267.9ea21038.chunk.js.map": "https://imagingdatacommons.github.io/slim/static/js/267.9ea21038.chunk.js.map",
-    "63.a816f431.chunk.js.map": "https://imagingdatacommons.github.io/slim/static/js/63.a816f431.chunk.js.map",
-    "884.d59075cd.chunk.js.map": "https://imagingdatacommons.github.io/slim/static/js/884.d59075cd.chunk.js.map"
+    "main.665173f3.js.map": "https://imagingdatacommons.github.io/slim/static/js/main.665173f3.js.map",
+    "455.b37fdaf9.chunk.css.map": "https://imagingdatacommons.github.io/slim/static/css/455.b37fdaf9.chunk.css.map",
+    "455.46becc8e.chunk.js.map": "https://imagingdatacommons.github.io/slim/static/js/455.46becc8e.chunk.js.map",
+    "267.ca42ab60.chunk.css.map": "https://imagingdatacommons.github.io/slim/static/css/267.ca42ab60.chunk.css.map",
+    "267.9beeab82.chunk.js.map": "https://imagingdatacommons.github.io/slim/static/js/267.9beeab82.chunk.js.map",
+    "745.811de3f4.chunk.js.map": "https://imagingdatacommons.github.io/slim/static/js/745.811de3f4.chunk.js.map",
+    "565.9a8836b5.chunk.js.map": "https://imagingdatacommons.github.io/slim/static/js/565.9a8836b5.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.e6c13ad2.css",
-    "static/js/main.33f63de0.js"
+    "static/js/main.665173f3.js"
   ]
 }
