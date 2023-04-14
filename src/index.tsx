@@ -36,7 +36,7 @@ root.render(
           config={config}
           version={packageInfo.version}
           name={packageInfo.name}
-          homepage='https://github.com/herrmannlab/slim'
+          homepage='https://github.com/ImagingDataCommons/slim'
         />
       </CustomErrorBoundary>
     </React.Suspense>
