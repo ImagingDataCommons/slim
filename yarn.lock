@@ -1136,20 +1136,20 @@
   resolved "https://registry.yarnpkg.com/@bcoe/v8-coverage/-/v8-coverage-0.2.3.tgz#75a2e8b51cb758a7553d6804a5932d7aace75c39"
   integrity sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==
 
-"@cornerstonejs/codec-charls@^0.1.1":
-  version "0.1.1"
-  resolved "https://registry.yarnpkg.com/@cornerstonejs/codec-charls/-/codec-charls-0.1.1.tgz#e55d4aa908732d0cc902888b7f3856c5a996df7f"
-  integrity sha512-Y250DGVzmownJ7WgpHxNqWvfTnv4/malaKm/tWm0xE1FxhQE8iErMWFpKxpNDk3MdfXO4/98piVsUwmJMiWoDQ==
+"@cornerstonejs/codec-charls@^1.2.1":
+  version "1.2.3"
+  resolved "https://registry.yarnpkg.com/@cornerstonejs/codec-charls/-/codec-charls-1.2.3.tgz#6952c420486822ac8404409ae0ed5a559aff6e25"
+  integrity sha512-qKUe6DN0dnGzhhfZLYhH9UZacMcudjxcaLXCrpxJImT/M/PQvZCT2rllu6VGJbWKJWG+dMVV2zmmleZcdJ7/cA==
 
-"@cornerstonejs/codec-libjpeg-turbo-8bit@^0.0.7":
-  version "0.0.7"
-  resolved "https://registry.yarnpkg.com/@cornerstonejs/codec-libjpeg-turbo-8bit/-/codec-libjpeg-turbo-8bit-0.0.7.tgz#2ea9b575eed19e6e7e3701b7a50a4ae0ffbef0c4"
-  integrity sha512-qgm6BuVAy5mNP8SJ+A6+VbmPnqgj8jPvJrw4HbUoAzndmf9/VHjTYwawn3kmZWya5ErFAsXQ6c0U0noB1LKAiA==
+"@cornerstonejs/codec-libjpeg-turbo-8bit@^1.2.1":
+  version "1.2.2"
+  resolved "https://registry.yarnpkg.com/@cornerstonejs/codec-libjpeg-turbo-8bit/-/codec-libjpeg-turbo-8bit-1.2.2.tgz#ae384b149d6655e3dd6e18b9891fab479ab5e144"
+  integrity sha512-aAUMK2958YNpOb/7G6e2/aG7hExTiFTASlMt/v90XA0pRHdWiNg5ny4S5SAju0FbIw4zcMnR0qfY+yW3VG2ivg==
 
-"@cornerstonejs/codec-openjpeg@^0.1.1":
-  version "0.1.1"
-  resolved "https://registry.yarnpkg.com/@cornerstonejs/codec-openjpeg/-/codec-openjpeg-0.1.1.tgz#5bd1c52a33a425299299e970312731fa0cc2711b"
-  integrity sha512-HOMMOLV6xy8O/agNGGvrl0a8DwShpBvWxAzEzv2pqq12d3r5z/3MyIgNA3Oj/8bIBVvvVXxh9RX7rMDRHJdowg==
+"@cornerstonejs/codec-openjpeg@^1.2.1":
+  version "1.2.2"
+  resolved "https://registry.yarnpkg.com/@cornerstonejs/codec-openjpeg/-/codec-openjpeg-1.2.2.tgz#f0b524235b5551426b46db197a37b06f8ac805d7"
+  integrity sha512-b1O7lZacKXelgeV9n8XWZ7pTw3i4Bq4qQ26G5ahBjWoOw4QNcCrb5hPxWBxNB/I8AoNbJxAe+lyLtyQGfdrTbw==
 
 "@craco/craco@^6.4.0":
   version "6.4.5"
@@ -4180,14 +4180,14 @@ detective@^5.2.1:
     defined "^1.0.0"
     minimist "^1.2.6"
 
-dicom-microscopy-viewer@^0.44.0:
-  version "0.44.0"
-  resolved "https://registry.yarnpkg.com/dicom-microscopy-viewer/-/dicom-microscopy-viewer-0.44.0.tgz#d4a9e985acb23c5b82a9aedbe379b39198b8fd55"
-  integrity sha512-7rcm8bXTcOLsXrhBPwWe5gf4Sj1Rz1lRh+ECcaznOEr/uvX6BTAYLqNJNmeAUMoKcadboEeDrmLihCwCteRSJQ==
+dicom-microscopy-viewer@^0.45.0:
+  version "0.45.0"
+  resolved "https://registry.yarnpkg.com/dicom-microscopy-viewer/-/dicom-microscopy-viewer-0.45.0.tgz#ed31188b91adc022388359b2ea550a95c5d80de8"
+  integrity sha512-0J41BiRV8ijbZCiRRkOp+3I/425acLP2iJYNld/Tu0VercHUjG0RPsX99Rxb2Ey8PHhpDQx39NN1sFUOmOv67A==
   dependencies:
-    "@cornerstonejs/codec-charls" "^0.1.1"
-    "@cornerstonejs/codec-libjpeg-turbo-8bit" "^0.0.7"
-    "@cornerstonejs/codec-openjpeg" "^0.1.1"
+    "@cornerstonejs/codec-charls" "^1.2.1"
+    "@cornerstonejs/codec-libjpeg-turbo-8bit" "^1.2.1"
+    "@cornerstonejs/codec-openjpeg" "^1.2.1"
     colormap "^2.3"
     dcmjs "^0.27"
     dicomicc "^0.1"
