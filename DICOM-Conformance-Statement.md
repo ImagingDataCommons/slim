@@ -94,10 +94,10 @@ The DICOM Standard is the authoritative source for formal definitions of these t
 <dd>A set of mechanisms, such as encryption, user authentication, or digital signatures, used by an Application Entity to ensure confidentiality, integrity, and/or availability of exchanged DICOMdata.</dd>
 
 <dt>Service Class Provider (SCP)</dt>
-<dd>Role of an Application Entity that provides a DICOMnetwork service; typically, a server that performs operations requested by another Application Entity (Service Class User). Examples: Picture Archiving and Communication System (image storage SCP, and image query/retrieve SCP), Radiology Information System (modality worklist SCP).</dd>
+<dd>Role of an Application Entity that provides a DICOM network service; typically, a server that performs operations requested by another Application Entity (Service Class User). Examples: Picture Archiving and Communication System (image storage SCP, and image query/retrieve SCP), Radiology Information System (modality worklist SCP).</dd>
 
 <dt>Service Class User (SCU)</dt>
-<dd>Role of an Application Entity that uses a DICOMnetwork service; typically, a client. Examples: imaging modality (image storage SCU, and modality worklist SCU), imaging workstation (image query/retrieve SCU).</dd>
+<dd>Role of an Application Entity that uses a DICOM network service; typically, a client. Examples: imaging modality (image storage SCU, and modality worklist SCU), imaging workstation (image query/retrieve SCU).</dd>
 
 <dt>Service/Object Pair Class (SOP Class)</dt>
 <dd>The specification of the network or media transfer (service) of a particular type of data (object); the fundamental unit of DICOM interoperability specification. Examples: Ultrasound Image Storage Service, Basic Grayscale Print Management.</dd>
@@ -115,16 +115,16 @@ The DICOM Standard is the authoritative source for formal definitions of these t
 <dd>A globally unique "dotted decimal" string that identifies a specific object or a class of objects; an ISO-8824 Object Identifier. Examples: Study Instance UID, SOP Class UID, SOP Instance UID.</dd>
 
 <dt>Value Representation (VR)</dt>
-<dd>The format type of an individual DICOM data element, such as text, an integer, a person's name, or a code. DICOM information objects can be transmitted with either explicit identification of the type of each data element (Explicit VR), or without explicit identification (Implicit VR); with Implicit VR, the receiving application must use a DICOMdata dictionary to look up the format of each data element.</dd>
+<dd>The format type of an individual DICOM data element, such as text, an integer, a person's name, or a code. DICOM information objects can be transmitted with either explicit identification of the type of each data element (Explicit VR), or without explicit identification (Implicit VR); with Implicit VR, the receiving application must use a DICOM data dictionary to look up the format of each data element.</dd>
 </dl>
 
 ## Basics of DICOM Communication
 This section describes terminology used in this Conformance Statement for the non-specialist.
 The key terms used in the Conformance Statement
 are highlighted in italics below.
-This section is not a substitute for training about [DICOM]{acronym-label="DICOM" acronym-form="singular+short"}, and it makes many simplifications about the meanings of [DICOM]{acronym-label="DICOM" acronym-form="singular+short"} terms.
+This section is not a substitute for training about DICOM, and it makes many simplifications about the meanings of DICOM terms.
 
-Two *Application Entities* (devices) that want to communicate with each other over a network using [DICOM]{acronym-label="DICOM" acronym-form="singular+short"} protocol must first agree on several things during an initial network "handshake".
+Two *Application Entities* (devices) that want to communicate with each other over a network using DICOM protocol must first agree on several things during an initial network "handshake".
 One of the two devices must initiate an *Association* (a connection to the other device), and ask if specific services, information, and encoding can be supported by the other device (*Negotiation*).
 
 DICOM specifies a number of network services and types of information objects, each of which is called an *Abstract Syntax* for the Negotiation.
