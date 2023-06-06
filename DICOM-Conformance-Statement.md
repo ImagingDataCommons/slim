@@ -120,8 +120,7 @@ The DICOM Standard is the authoritative source for formal definitions of these t
 
 ## Basics of DICOM Communication
 This section describes terminology used in this Conformance Statement for the non-specialist.
-The key terms used in the Conformance Statement
-are highlighted in italics below.
+The key terms used in the Conformance Statement are highlighted in italics below.
 This section is not a substitute for training about DICOM, and it makes many simplifications about the meanings of DICOM terms.
 
 Two *Application Entities* (devices) that want to communicate with each other over a network using DICOM protocol must first agree on several things during an initial network "handshake".
