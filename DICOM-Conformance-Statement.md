@@ -14,9 +14,8 @@ title: Slim v0.14.0
 ## DICOM Web Services
 | Service    | User of Service (User Agent) | Provider of Service (Origin Server) |
 | - | - | - |
-| Studies Service | | |                        
-| Retrieve transaction (WADO-RS)  |  Yes  | No |
-| Search transaction (QIDO-RS)    |  Yes  | No |
+| Studies Service - Retrieve transaction (WADO-RS)  |  Yes  | No |
+| Studies Service - Search transaction (QIDO-RS)    |  Yes  | No |
 
 
 # Introduction

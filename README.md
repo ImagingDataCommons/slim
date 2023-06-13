@@ -254,3 +254,7 @@ For more information about the motivation, design, and capabilities of Slim, ple
 > Nature Communications 4:1572 (2023)
 
 If you use Slim in your research, please cite the above article.
+
+## DICOM Conformance Statement
+
+The DICOM conformance statement for Slim is available in this repository [here](/DICOM-Conformance-Statement.md)
