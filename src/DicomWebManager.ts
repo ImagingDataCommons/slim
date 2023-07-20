@@ -20,7 +20,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
 
   private readonly handleError: DicomWebManagerErrorHandler
 
-  constructor ({ baseUri, settings, onError }: {
+  constructor({ baseUri, settings, onError }: {
     baseUri: string
     settings: ServerSettings[]
     onError?: DicomWebManagerErrorHandler
@@ -58,18 +58,36 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
           )
         )
       }
+      // Addresses #159
+      let upgradeInsecure = false
       const clientSettings: dwc.api.DICOMwebClientOptions = {
         url: serviceUrl
       }
+      if (serviceUrl?.startsWith('https') ?? false) {
+        upgradeInsecure = true
+      }
       if (serverSettings.qidoPathPrefix !== undefined) {
         clientSettings.qidoURLPrefix = serverSettings.qidoPathPrefix
+        if (serverSettings.qidoPathPrefix.startsWith('https')) {
+          upgradeInsecure = true
+        }
       }
       if (serverSettings.wadoPathPrefix !== undefined) {
         clientSettings.wadoURLPrefix = serverSettings.wadoPathPrefix
+        if (serverSettings.wadoPathPrefix.startsWith('https')) {
+          upgradeInsecure = true
+        }
       }
       if (serverSettings.stowPathPrefix !== undefined) {
         clientSettings.stowURLPrefix = serverSettings.stowPathPrefix
+        if (serverSettings.stowPathPrefix.startsWith('https')) {
+          upgradeInsecure = true
+        }
       }
+      if (upgradeInsecure) {
+        clientSettings.headers = { 'Content-Security-Policy': 'upgrade-insecure-requests' }
+      }
+
       if (serverSettings.retry !== undefined) {
         clientSettings.requestHooks = [getXHRRetryHook(serverSettings.retry)]
       }
@@ -97,7 +115,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
     }
   }
 
-  get baseURL (): string {
+  get baseURL(): string {
     return this.stores[0].client.baseURL
   }
 
@@ -107,7 +125,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
     }
   }
 
-  get headers (): { [name: string]: string } {
+  get headers(): { [name: string]: string } {
     return this.stores[0].client.headers
   }
 
