@@ -20,7 +20,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
 
   private readonly handleError: DicomWebManagerErrorHandler
 
-  constructor({ baseUri, settings, onError }: {
+  constructor ({ baseUri, settings, onError }: {
     baseUri: string
     settings: ServerSettings[]
     onError?: DicomWebManagerErrorHandler
@@ -115,7 +115,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
     }
   }
 
-  get baseURL(): string {
+  get baseURL (): string {
     return this.stores[0].client.baseURL
   }
 
@@ -125,7 +125,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
     }
   }
 
-  get headers(): { [name: string]: string } {
+  get headers (): { [name: string]: string } {
     return this.stores[0].client.headers
   }
 
