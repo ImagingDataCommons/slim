@@ -764,7 +764,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           )
         })
       })
-    }).catch(() => {
+    }).catch((error) => {
+      console.error(error)
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
@@ -1059,7 +1060,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           this.forceUpdate()
         }
       })
-    }).catch(() => {
+    }).catch((error) => {
+      console.error(error)
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
@@ -1146,7 +1148,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
            * interface unless an update is forced.
            */
           this.forceUpdate()
-        }).catch(() => {
+        }).catch((error) => {
+          console.error(error)
           // eslint-disable-next-line @typescript-eslint/no-floating-promises
           NotificationMiddleware.onError(
             NotificationMiddlewareContext.SLIM,
@@ -1158,7 +1161,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           )
         })
       })
-    }).catch(() => {
+    }).catch((error) => {
+      console.error(error)
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
@@ -1227,7 +1231,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
            */
             this.forceUpdate()
           }
-        }).catch(() => {
+        }).catch((error) => {
+          console.error(error)
           // eslint-disable-next-line @typescript-eslint/no-floating-promises
           NotificationMiddleware.onError(
             NotificationMiddlewareContext.SLIM,
@@ -1238,7 +1243,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           )
         })
       })
-    }).catch(() => {
+    }).catch((error) => {
+      console.error(error)
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
@@ -1311,7 +1317,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
            */
             this.forceUpdate()
           }
-        }).catch(() => {
+        }).catch((error) => {
+          console.error(error)
           // eslint-disable-next-line @typescript-eslint/no-floating-promises
           NotificationMiddleware.onError(
             NotificationMiddlewareContext.SLIM,
@@ -1322,7 +1329,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           )
         })
       })
-    }).catch(() => {
+    }).catch((error) => {
+      console.error(error)
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
@@ -2215,7 +2223,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const client = this.props.clients[StorageClasses.COMPREHENSIVE_3D_SR]
       client.storeInstances({ datasets: [buffer] }).then(
         (response: any) => message.info('Annotations were saved.')
-      ).catch(() => {
+      ).catch((error) => {
+        console.error(error)
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.SLIM,
