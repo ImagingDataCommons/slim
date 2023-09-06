@@ -319,7 +319,8 @@ class App extends React.Component<AppProps, AppState> {
           isLoading: false,
           wasAuthSuccessful: true
         })
-      }).catch(() => {
+      }).catch((error) => {
+        console.error(error)
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.AUTH,

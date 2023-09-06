@@ -121,7 +121,8 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
           isLoading: false
         })
       }
-    ).catch(() => {
+    ).catch((error) => {
+      console.error(error)
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,

@@ -1,4 +1,4 @@
-version: '3.7'
+version: "3.7"
 
 volumes:
   db_data: {}
@@ -19,7 +19,7 @@ services:
       - arc
 
   ldap:
-    image: dcm4che/slapd-dcm4chee:2.6.0-26.0
+    image: dcm4che/slapd-dcm4chee:2.6.5-31.0
     logging:
       driver: json-file
       options:
@@ -62,9 +62,15 @@ services:
       - 12575
     env_file: docker-compose.env
     environment:
+      # Used to set the initial and maximal Java heap size to avoid 
+      # problems retrieving large WSI bulk data annotations.
+      #
+      # The default is "-Xms64m -Xmx512m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m"
+      # Reference: https://github.com/dcm4che-dockerfiles/dcm4chee-arc-psql
+      JBOSS_JAVA_SIZING: "-Xms64m -Xmx1024m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m"
       WILDFLY_CHOWN: /opt/wildfly/standalone /storage
       WILDFLY_WAIT_FOR: ldap:389 db:5432
-      HTTP_PROXY_ADDRESS_FORWARDING: 'true'
+      HTTP_PROXY_ADDRESS_FORWARDING: "true"
       ARCHIVE_HOST: localhost
     depends_on:
       - ldap
