@@ -13,6 +13,7 @@ declare module 'dicom-microscopy-viewer' {
       debug?: boolean
       preload?: boolean
       controls: string[]
+      annotationOptions?: object
       errorInterceptor?: (error: CustomError) => void
     }
 
