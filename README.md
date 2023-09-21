@@ -49,7 +49,7 @@ Shown below are screenshots of examples images that are publicly available on th
 
 ### Display of image annotations and analysis results
 
-Slime further allows for interative visualization of image annotations and analysis results.
+*Slim* further allows for interative visualization of image annotations and analysis results.
 The viewer currently supports the following types of DICOM instances:
 
 Vector graphics:
