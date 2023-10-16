@@ -1729,7 +1729,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   componentDidMount (): void {
     window.addEventListener('beforeunload', this.componentCleanup)
     this.componentSetup()
-    this.populateViewports()
 
     if (!this.props.slide.areVolumeImagesMonochrome) {
       let hasICCProfile = false
