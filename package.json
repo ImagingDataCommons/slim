@@ -4,9 +4,9 @@
   "homepage": "https://github.com/imagingdatacommons/slim",
   "private": true,
   "author": "ImagingDataCommons",
+  "proxy": "http://localhost:8008",
   "scripts": {
     "start": "rm -rf ./node_modules/.cache/default-development && craco start",
-    "start:proxy": "HTTP_PROXY=http://localhost:4000 yarn start",
     "build": "craco build",
     "lint": "ts-standard --env jest 'src/**/*.{tsx,ts}'",
     "fmt": "ts-standard --env jest 'src/**/*.{tsx,ts}' --fix",
