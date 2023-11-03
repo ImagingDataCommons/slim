@@ -1136,20 +1136,20 @@
   resolved "https://registry.yarnpkg.com/@bcoe/v8-coverage/-/v8-coverage-0.2.3.tgz#75a2e8b51cb758a7553d6804a5932d7aace75c39"
   integrity sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==
 
-"@cornerstonejs/codec-charls@^0.1.1":
-  version "0.1.1"
-  resolved "https://registry.yarnpkg.com/@cornerstonejs/codec-charls/-/codec-charls-0.1.1.tgz#e55d4aa908732d0cc902888b7f3856c5a996df7f"
-  integrity sha512-Y250DGVzmownJ7WgpHxNqWvfTnv4/malaKm/tWm0xE1FxhQE8iErMWFpKxpNDk3MdfXO4/98piVsUwmJMiWoDQ==
+"@cornerstonejs/codec-charls@^1.2.1":
+  version "1.2.3"
+  resolved "https://registry.yarnpkg.com/@cornerstonejs/codec-charls/-/codec-charls-1.2.3.tgz#6952c420486822ac8404409ae0ed5a559aff6e25"
+  integrity sha512-qKUe6DN0dnGzhhfZLYhH9UZacMcudjxcaLXCrpxJImT/M/PQvZCT2rllu6VGJbWKJWG+dMVV2zmmleZcdJ7/cA==
 
-"@cornerstonejs/codec-libjpeg-turbo-8bit@^0.0.7":
-  version "0.0.7"
-  resolved "https://registry.yarnpkg.com/@cornerstonejs/codec-libjpeg-turbo-8bit/-/codec-libjpeg-turbo-8bit-0.0.7.tgz#2ea9b575eed19e6e7e3701b7a50a4ae0ffbef0c4"
-  integrity sha512-qgm6BuVAy5mNP8SJ+A6+VbmPnqgj8jPvJrw4HbUoAzndmf9/VHjTYwawn3kmZWya5ErFAsXQ6c0U0noB1LKAiA==
+"@cornerstonejs/codec-libjpeg-turbo-8bit@^1.2.1":
+  version "1.2.2"
+  resolved "https://registry.yarnpkg.com/@cornerstonejs/codec-libjpeg-turbo-8bit/-/codec-libjpeg-turbo-8bit-1.2.2.tgz#ae384b149d6655e3dd6e18b9891fab479ab5e144"
+  integrity sha512-aAUMK2958YNpOb/7G6e2/aG7hExTiFTASlMt/v90XA0pRHdWiNg5ny4S5SAju0FbIw4zcMnR0qfY+yW3VG2ivg==
 
-"@cornerstonejs/codec-openjpeg@^0.1.1":
-  version "0.1.1"
-  resolved "https://registry.yarnpkg.com/@cornerstonejs/codec-openjpeg/-/codec-openjpeg-0.1.1.tgz#5bd1c52a33a425299299e970312731fa0cc2711b"
-  integrity sha512-HOMMOLV6xy8O/agNGGvrl0a8DwShpBvWxAzEzv2pqq12d3r5z/3MyIgNA3Oj/8bIBVvvVXxh9RX7rMDRHJdowg==
+"@cornerstonejs/codec-openjpeg@^1.2.1":
+  version "1.2.2"
+  resolved "https://registry.yarnpkg.com/@cornerstonejs/codec-openjpeg/-/codec-openjpeg-1.2.2.tgz#f0b524235b5551426b46db197a37b06f8ac805d7"
+  integrity sha512-b1O7lZacKXelgeV9n8XWZ7pTw3i4Bq4qQ26G5ahBjWoOw4QNcCrb5hPxWBxNB/I8AoNbJxAe+lyLtyQGfdrTbw==
 
 "@craco/craco@^6.4.0":
   version "6.4.5"
@@ -3294,7 +3294,7 @@ bonjour-service@^1.0.11:
     fast-deep-equal "^3.1.3"
     multicast-dns "^7.2.5"
 
-boolbase@^1.0.0, boolbase@~1.0.0:
+boolbase@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/boolbase/-/boolbase-1.0.0.tgz#68dff5fbe60c51eb37725ea9e3ed310dcc1e776e"
   integrity sha512-JZOSA7Mo9sNGB8+UjSgzdLtokWAky1zbztM3WRLCbZ70/3cTANmQmOdR7y2g+J0e2WXywy1yS468tY+IruqEww==
@@ -4180,14 +4180,14 @@ detective@^5.2.1:
     defined "^1.0.0"
     minimist "^1.2.6"
 
-dicom-microscopy-viewer@^0.44.0:
-  version "0.44.0"
-  resolved "https://registry.yarnpkg.com/dicom-microscopy-viewer/-/dicom-microscopy-viewer-0.44.0.tgz#d4a9e985acb23c5b82a9aedbe379b39198b8fd55"
-  integrity sha512-7rcm8bXTcOLsXrhBPwWe5gf4Sj1Rz1lRh+ECcaznOEr/uvX6BTAYLqNJNmeAUMoKcadboEeDrmLihCwCteRSJQ==
+dicom-microscopy-viewer@^0.45.1:
+  version "0.45.1"
+  resolved "https://registry.yarnpkg.com/dicom-microscopy-viewer/-/dicom-microscopy-viewer-0.45.1.tgz#68a878bbb4e663bd37d09104ddf5e586f242e384"
+  integrity sha512-ZWDTbOEOWpms1ZUe1lMXsuoAamaOoq60XL6cbwf6x6qX8OkUSavv+hK6NPF/nSN1VISDTAuvNBa1Njxe1JdzkA==
   dependencies:
-    "@cornerstonejs/codec-charls" "^0.1.1"
-    "@cornerstonejs/codec-libjpeg-turbo-8bit" "^0.0.7"
-    "@cornerstonejs/codec-openjpeg" "^0.1.1"
+    "@cornerstonejs/codec-charls" "^1.2.1"
+    "@cornerstonejs/codec-libjpeg-turbo-8bit" "^1.2.1"
+    "@cornerstonejs/codec-openjpeg" "^1.2.1"
     colormap "^2.3"
     dcmjs "^0.27"
     dicomicc "^0.1"
@@ -7372,17 +7372,10 @@ npm-run-path@^4.0.1:
   dependencies:
     path-key "^3.0.0"
 
-nth-check@^1.0.2:
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/nth-check/-/nth-check-1.0.2.tgz#b2bd295c37e3dd58a3bf0700376663ba4d9cf05c"
-  integrity sha512-WeBOdju8SnzPN5vTUJYxYUxLeXpCaVP5i5e0LF8fg7WORF2Wd7wFX/pk0tYZk7s8T+J7VLy0Da6J1+wCT0AtHg==
-  dependencies:
-    boolbase "~1.0.0"
-
-nth-check@^2.0.1:
-  version "2.1.1"
-  resolved "https://registry.yarnpkg.com/nth-check/-/nth-check-2.1.1.tgz#c9eab428effce36cd6b92c924bdb000ef1f1ed1d"
-  integrity sha512-lqjrjmaOoAnWfMmBPL+XNnynZh2+swxiX3WUE0s4yEHI6m+AwrK2UZOimIRl3X/4QctVqS8AiZjFqyOGrMXb/w==
+nth-check@2.0.1, nth-check@^1.0.2, nth-check@^2.0.1:
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/nth-check/-/nth-check-2.0.1.tgz#2efe162f5c3da06a28959fbd3db75dbeea9f0fc2"
+  integrity sha512-it1vE95zF6dTT9lBsYbxvqh0Soy4SPowchj0UBGj/V6cTPnXXtQOPUbhZ6CmGzAD/rW22LQK6E96pcdJXk4A4w==
   dependencies:
     boolbase "^1.0.0"
 

@@ -49,7 +49,7 @@ Shown below are screenshots of examples images that are publicly available on th
 
 ### Display of image annotations and analysis results
 
-Slime further allows for interative visualization of image annotations and analysis results.
+*Slim* further allows for interative visualization of image annotations and analysis results.
 The viewer currently supports the following types of DICOM instances:
 
 Vector graphics:
@@ -103,6 +103,7 @@ PUBLIC_URL=/ yarn build
 Once the app has been built, the content of the `build` folder can be directly served by a static web server at the location specified by `PUBLIC_URL` (in this case at `/`).
 The `PUBLIC_URL` must be either a full URL or a relative path to the location at which the viewer application will get deployed (e.g., `PUBLIC_URL=https://imagingdatacommons.github.io/slim` or `PUBLIC_URL='/slim'`).
 
+To learn how to deploy Slim as a Google Firebase webapp, consider [this tutorial](https://tinyurl.com/idc-slim-gcp).
 
 ### Local
 
@@ -254,3 +255,7 @@ For more information about the motivation, design, and capabilities of Slim, ple
 > Nature Communications 4:1572 (2023)
 
 If you use Slim in your research, please cite the above article.
+
+## DICOM Conformance Statement
+
+The DICOM conformance statement for Slim is available in this repository [here](/DICOM-Conformance-Statement.md)
