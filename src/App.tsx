@@ -248,15 +248,15 @@ class App extends React.Component<AppProps, AppState> {
   addGcpSecondaryAnnotationServer(config: AppProps['config']) {
     const serverId = 'gcp_secondary_annotation_server';
     const urlParams = new URLSearchParams(window.location.search);
-    const gcpPath = urlParams.get("gcp");
+    const url = urlParams.get("gcp");
     const gcpSecondaryAnnotationServer = config.servers.find(
       (server) => server.id === serverId
     );
-    if (!gcpSecondaryAnnotationServer && gcpPath) {
+    if (!gcpSecondaryAnnotationServer && url) {
       config.servers.push({
         id: serverId,
         write: true,
-        url: `https://healthcare.googleapis.com/v1beta1/${gcpPath}`,
+        url,
         storageClasses: [
           StorageClasses.COMPREHENSIVE_SR,
           StorageClasses.COMPREHENSIVE_3D_SR,
