@@ -49,7 +49,6 @@ const NotificationSourceDefinition = {
 }
 
 class NotificationMiddleware extends PubSub {
-
   /**
  * Error handling middleware function
  *
@@ -57,7 +56,7 @@ class NotificationMiddleware extends PubSub {
  * @param error - error object
  */
   onError (source, error) {
-    const errorCategory = error.type;
+    const errorCategory = error.type
     const sourceConfig = NotificationSourceDefinition.sources.find(
       s => s.category === errorCategory
     )
@@ -86,10 +85,9 @@ class NotificationMiddleware extends PubSub {
 
       case NotificationType.CONSOLE:
         console.error(`A ${errorCategory} error occurred: `, error)
-        return
+        break
 
       default:
-        return
     }
   }
 }

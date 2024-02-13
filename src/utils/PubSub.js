@@ -8,7 +8,7 @@ const _lastSubscriptionId = Symbol('lastSubscriptionId')
  * @classdesc Enables publishing/subscribing
  */
 export default class PubSub {
-  constructor() {
+  constructor () {
     this[_subscriptions] = {}
     this[_lastSubscriptionId] = 0
   }
@@ -19,7 +19,7 @@ export default class PubSub {
    * @param {Function} callback Function to be executed when event is published
    * @returns {void}
    */
-  subscribe(eventName, callback) {
+  subscribe (eventName, callback) {
     if (eventName === undefined) {
       throw new Error('Trying to subscribe to an inexistent event')
     }
@@ -42,9 +42,9 @@ export default class PubSub {
    * @param {Function} [callback] Function to have its subscription removed
    * @returns {void}
    */
-  unsubscribe(eventName, callback) {
+  unsubscribe (eventName, callback) {
     const callbacks = this[_subscriptions][eventName] || {}
-    for (let subscriptionId in callbacks) {
+    for (const subscriptionId in callbacks) {
       if (!callback) {
         delete callbacks[subscriptionId]
       } else if (callbacks[subscriptionId] === callback) {
@@ -59,13 +59,13 @@ export default class PubSub {
    * @param {any} [payload] Payload that will be passed to the callback fuction
    * @returns {void}
    */
-  publish(eventName, ...payload) {
+  publish (eventName, ...payload) {
     if (eventName === undefined) {
       throw new Error('Trying to publish an inexistent event')
     }
 
     const callbacks = this[_subscriptions][eventName] || {}
-    for (let subscriptionId in callbacks) {
+    for (const subscriptionId in callbacks) {
       callbacks[subscriptionId](...payload)
     }
   }
@@ -74,10 +74,10 @@ export default class PubSub {
    * Cleares all subscriptions for current instance
    * @returns {void}
    */
-  unsubscribeFromAll() {
-    for (let eventName in this[_subscriptions]) {
+  unsubscribeFromAll () {
+    for (const eventName in this[_subscriptions]) {
       const callbacks = this[_subscriptions][eventName]
-      for (let subscriptionId in callbacks) {
+      for (const subscriptionId in callbacks) {
         delete callbacks[subscriptionId]
       }
     }
