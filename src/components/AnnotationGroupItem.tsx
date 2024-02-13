@@ -330,6 +330,10 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
       {
         name: 'Graphic type',
         value: item.GraphicType
+      },
+      {
+        name: 'Annotation coordinate type',
+        value: this.props.metadata.AnnotationCoordinateType
       }
     ]
 

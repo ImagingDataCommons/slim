@@ -1107,13 +1107,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               metadata
             })
           })
-          annotations = annotations.filter(ann => {
-            const refImage = this.props.slide.volumeImages[0]
-            return (
-              ann.FrameOfReferenceUID === refImage.FrameOfReferenceUID &&
-              ann.ContainerIdentifier === refImage.ContainerIdentifier
-            )
-          })
+          // annotations = annotations.filter(ann => {
+          //   const refImage = this.props.slide.volumeImages[0]
+          //   return (
+          //     ann.FrameOfReferenceUID === refImage.FrameOfReferenceUID &&
+          //     ann.ContainerIdentifier === refImage.ContainerIdentifier
+          //   )
+          // })
           annotations.forEach(ann => {
             try {
               this.volumeViewer.addAnnotationGroups(ann)
