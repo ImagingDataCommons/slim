@@ -34,7 +34,7 @@ window.config = {
         fill: {
           color: [255, 255, 255, 0.2]
         }
-      },
+      }
     },
     {
       finding: {
