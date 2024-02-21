@@ -63,6 +63,8 @@ function _createClientMapping ({ baseUri, settings, onError }: {
   ) => void
 }): { [sopClassUID: string]: DicomWebManager } {
   const storageClassMapping: { [key: string]: number } = { default: 0 }
+  const clientMapping: { [sopClassUID: string]: DicomWebManager } = {}
+
   settings.forEach(serverSettings => {
     if (serverSettings.storageClasses != null) {
       serverSettings.storageClasses.forEach(sopClassUID => {
@@ -81,6 +83,11 @@ function _createClientMapping ({ baseUri, settings, onError }: {
       })
     } else {
       storageClassMapping.default += 1
+      clientMapping.default = new DicomWebManager({
+        baseUri,
+        settings: [serverSettings],
+        onError
+      })
     }
   })
 
@@ -94,6 +101,7 @@ function _createClientMapping ({ baseUri, settings, onError }: {
       )
     )
   }
+
   for (const key in storageClassMapping) {
     if (key === 'default') {
       continue
@@ -111,7 +119,6 @@ function _createClientMapping ({ baseUri, settings, onError }: {
     }
   }
 
-  const clientMapping: { [sopClassUID: string]: DicomWebManager } = {}
   if (Object.keys(storageClassMapping).length > 1) {
     settings.forEach(server => {
       const client = new DicomWebManager({
@@ -125,13 +132,8 @@ function _createClientMapping ({ baseUri, settings, onError }: {
         })
       }
     })
-    clientMapping.default = clientMapping[
-      StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE
-    ]
-  } else {
-    const client = new DicomWebManager({ baseUri, settings, onError })
-    clientMapping.default = client
   }
+
   Object.values(StorageClasses).forEach(sopClassUID => {
     if (!(sopClassUID in clientMapping)) {
       clientMapping[sopClassUID] = clientMapping.default
@@ -237,6 +239,7 @@ class App extends React.Component<AppProps, AppState> {
     this.handleServerSelection = this.handleServerSelection.bind(this)
 
     message.config({ duration: 5 })
+    this.addGcpSecondaryAnnotationServer(props.config)
 
     this.state = {
       clients: _createClientMapping({
@@ -246,6 +249,33 @@ class App extends React.Component<AppProps, AppState> {
       }),
       isLoading: true,
       wasAuthSuccessful: false
+    }
+  }
+
+  addGcpSecondaryAnnotationServer (config: AppProps['config']): void {
+    const serverId = 'gcp_secondary_annotation_server'
+    const urlParams = new URLSearchParams(window.location.search)
+    const url = urlParams.get('gcp')
+    const gcpSecondaryAnnotationServer = config.servers.find(
+      (server) => server.id === serverId
+    )
+    if (gcpSecondaryAnnotationServer === undefined && typeof url === 'string') {
+      config.servers.push({
+        id: serverId,
+        write: true,
+        url,
+        storageClasses: [
+          StorageClasses.COMPREHENSIVE_SR,
+          StorageClasses.COMPREHENSIVE_3D_SR,
+          StorageClasses.SEGMENTATION,
+          StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION,
+          StorageClasses.PARAMETRIC_MAP,
+          StorageClasses.ADVANCED_BLENDING_PRESENTATION_STATE,
+          StorageClasses.COLOR_SOFTCOPY_PRESENTATION_STATE,
+          StorageClasses.GRAYSCALE_SOFTCOPY_PRESENTATION_STATE,
+          StorageClasses.PSEUDOCOLOR_SOFTCOPY_PRESENTATION_STATE
+        ]
+      })
     }
   }
 

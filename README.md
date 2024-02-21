@@ -11,7 +11,7 @@ It relies on [DICOMweb](https://www.dicomstandard.org/dicomweb/) RESTful service
 
 ### National Cancer Institute's Imaging Data Commons
 
-*Slim* serves as the slide microscopy viewer of the [National Cancer Institute's Imaging Data Commons (IDC)](https://datacommons.cancer.gov/repository/imaging-data-commons).
+*Slim* is used as the slide microscopy viewer by the [National Cancer Institute's Imaging Data Commons (IDC)](https://imaging.datacommons.cancer.gov).
 
 <img src="docs/screenshots/IDC_CPTAC_C3L-00965-26.png" alt="IDC CPTAC C3L-00965-26" width="100%">
 
@@ -21,15 +21,10 @@ The IDC viewer uses the [Google Cloud Healthcare API](https://cloud.google.com/h
 
 ### Demo
 
-Explore additional slide microscopy imaging data sets and advanced viewer features at [imagingdatacommons.github.io/slim](https://imagingdatacommons.github.io/slim/).
+Below you will find links to the representative DICOM SM images opened in Slim viewer:
 
-<img src="docs/screenshots/IDC_HTAN_HTA9_1_32.png" alt="IDC HTAN HTA9_1_32" width="100%">
-
-The demo viewer uses an instance of the open-source [DCM4CHEE Archive](https://github.com/dcm4che/dcm4chee-arc-light) as DICOMweb server.
-It includes brightfield and fluorescence microscopy images that were collected for different research projects, including [The Cancer Genome Atlas (TCGA)](https://www.cancer.gov/about-nci/organization/ccg/research/structural-genomics/tcga), the [Clinical Proteomic Tumor Analysis Consortium (CPTAC)](https://gdc.cancer.gov/about-gdc/contributed-genomic-data-cancer-research/clinical-proteomic-tumor-analysis-consortium-cptac), the [Human Tumor Atlas Network (HTAN)](https://www.cancer.gov/research/key-initiatives/moonshot-cancer-initiative/implementation/human-tumor-atlas)).
-These images were originally stored in SVS-TIFF or OME-TIFF format and were subsequently converted into DICOM format for ingestion into the IDC.
-In addition, the demo includes images that were collected for interoperability demonstrations at DICOM WG-26 Pathology Connectathons or Hackathons.
-These images were directly stored in DICOM format and did not require conversion.
+* H&E: https://viewer.imaging.datacommons.cancer.gov/slim/studies/2.25.211094631316408413440371843585977094852/series/1.3.6.1.4.1.5962.99.1.208792987.352384958.1640886332827.2.0
+* multichannel fluorescence: https://viewer.imaging.datacommons.cancer.gov/slim/studies/2.25.93749216439228361118017742627453453196/series/1.3.6.1.4.1.5962.99.1.2344794501.795090168.1655907236229.4.0?state=1.2.826.0.1.3680043.10.511.3.79630386778396943986328353882008803
 
 ## Features
 
