@@ -8,6 +8,7 @@
   "scripts": {
     "start": "rm -rf ./node_modules/.cache/default-development && craco start",
     "build": "craco build",
+    "build:firebase": "REACT_APP_CONFIG=gcp PUBLIC_URL=/ craco build",
     "lint": "ts-standard --env jest 'src/**/*.{tsx,ts}'",
     "fmt": "ts-standard --env jest 'src/**/*.{tsx,ts}' --fix",
     "test": "ts-standard --env jest 'src/**/*.{tsx,ts}' && craco test --setupFiles ./src/setupTests.tsx --watchAll=false",
