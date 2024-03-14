@@ -181,9 +181,6 @@ const _constructViewers = ({ clients, slide, preload }: {
     const volumeViewer = new dmv.viewer.VolumeImageViewer({
       clientMapping: clients,
       metadata: slide.volumeImages,
-      annotationOptions: {
-        maxZoom: 2.8,
-      },
       controls: ['overview', 'position'],
       preload: preload,
       errorInterceptor: (error: CustomError) =>
