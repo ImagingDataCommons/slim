@@ -1676,6 +1676,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   componentWillUnmount (): void {
+    this.volumeViewer.cleanup()
+    if (this.labelViewer != null) {
+      this.labelViewer.cleanup()
+    }
     window.removeEventListener('beforeunload', this.componentCleanup)
   }
 
