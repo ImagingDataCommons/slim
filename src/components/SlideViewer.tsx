@@ -1124,7 +1124,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 )
               )
               // eslint-disable-next-line @typescript-eslint/no-floating-promises
-              console.error('failed to add annotation groups: ', error)
+              console.error('failed to add annotation groups:', error)
             }
             ann.AnnotationGroupSequence.forEach(item => {
               const annotationGroupUID = item.AnnotationGroupUID
@@ -1481,6 +1481,22 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
   }
 
+  onFrameLoadingError = (event: CustomEventInit): void => { 
+    console.error('Failed to load frame')
+  }
+
+  onLoadingError = (event: CustomEventInit): void => { 
+    console.error('Failed to load data')
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    NotificationMiddleware.onError(
+      NotificationMiddlewareContext.SLIM,
+      new CustomError(
+        errorTypes.VISUALIZATION,
+        event.detail.payload && event.detail.payload.message ? event.detail.payload.message : 'Failed to load data'
+      )
+    )
+  }
+
   onFrameLoadingEnded = (event: CustomEventInit): void => {
     const frameInfo: {
       studyInstanceUID: string
@@ -1694,12 +1710,20 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.onLoadingEnded
     )
     document.body.addEventListener(
+      'dicommicroscopyviewer_loading_error',
+      this.onLoadingError
+    )
+    document.body.addEventListener(
       'dicommicroscopyviewer_frame_loading_started',
       this.onFrameLoadingStarted
     )
     document.body.addEventListener(
       'dicommicroscopyviewer_frame_loading_ended',
       this.onFrameLoadingEnded
+    )
+    document.body.addEventListener(
+      'dicommicroscopyviewer_frame_loading_error',
+      this.onFrameLoadingError
     )
     document.body.addEventListener(
       'keyup',
