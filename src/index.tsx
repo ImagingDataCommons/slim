@@ -29,7 +29,7 @@ const container = document.getElementById('root')
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 const root = createRoot(container!)
 root.render(
-  <React.StrictMode>
+ //// <React.StrictMode>
     <React.Suspense fallback={<div>Loading application...</div>}>
       <CustomErrorBoundary context='App'>
         <App
@@ -40,5 +40,5 @@ root.render(
         />
       </CustomErrorBoundary>
     </React.Suspense>
-  </React.StrictMode>
+//</React.StrictMode>
 )

@@ -3,7 +3,8 @@ import { notification } from 'antd'
 import { CustomError, errorTypes } from '../utils/CustomError'
 
 export const NotificationMiddlewareEvents = {
-  OnError: 'onError'
+  OnError: 'onError',
+  OnWarning: 'onWarning'
 }
 
 export const NotificationMiddlewareContext = {
@@ -44,17 +45,39 @@ const NotificationSourceDefinition = {
     {
       category: errorTypes.ENCODINGANDDECODING,
       notificationType: NotificationType.CONSOLE
+    },
+    {
+      category: 'Warning',
+      notificationType: NotificationType.TOAST
     }
   ]
 }
 
 class NotificationMiddleware extends PubSub {
+  constructor() {
+    super()
+
+    const outerContext = (args) => {
+      this.publish(NotificationMiddlewareEvents.OnWarning, Array.from(args).join(' '))
+    }
+
+    (function () {
+      var warn = console.warn;
+      console.warn = function () {
+        if (!JSON.stringify(arguments).includes('request')) {
+          outerContext(arguments)
+        }
+        warn.apply(this, Array.prototype.slice.call(arguments))
+      }
+    }())
+  }
+
   /**
- * Error handling middleware function
- *
- * @param source - source of error - dicomweb-client, dmv, dcmjs or slim itself
- * @param error - error object
- */
+   * Error handling middleware function
+   *
+   * @param source - source of error - dicomweb-client, dmv, dcmjs or slim itself
+   * @param error - error object
+   */
   onError (source, error) {
     const errorCategory = error.type
     const sourceConfig = NotificationSourceDefinition.sources.find(

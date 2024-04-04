@@ -54,6 +54,7 @@ interface HeaderState {
   isServerSelectionDisabled: boolean
   errorObj: CustomError[]
   errorCategory: string[]
+  warnings: string[]
 }
 
 /**
@@ -66,23 +67,49 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       isServerSelectionModalVisible: false,
       isServerSelectionDisabled: true,
       errorObj: [],
-      errorCategory: []
+      errorCategory: [],
+      warnings: [],
     }
 
     const onErrorHandler = ({ error }: {
       category: string
       error: CustomError
     }): void => {
-      this.setState({
-        errorObj: [...this.state.errorObj, error],
-        errorCategory: [...this.state.errorCategory, error.type]
-      })
+      this.setState(state => ({
+        ...state,
+        errorObj: [...state.errorObj, error],
+        errorCategory: [...state.errorCategory, error.type]
+      }))
+    }
+
+    const onWarningHandler = (warning: string): void => {
+      this.setState(state => ({
+        ...state,
+        warnings: [...state.warnings, warning]
+      }))
     }
 
     NotificationMiddleware.subscribe(
       NotificationMiddlewareEvents.OnError,
       onErrorHandler
     )
+
+    NotificationMiddleware.subscribe(
+      NotificationMiddlewareEvents.OnWarning,
+      onWarningHandler
+    )
+  }
+
+  componentDidUpdate(prevProps: Readonly<HeaderProps>, prevState: Readonly<HeaderState>): void {
+    if ((prevState.warnings.length || prevState.errorObj.length) && this.props.location.pathname !== prevProps.location.pathname) {
+      this.setState({
+        isServerSelectionModalVisible: false,
+        isServerSelectionDisabled: true,
+        errorObj: [],
+        errorCategory: [],
+        warnings: [],
+      })
+    }
   }
 
   handleInfoButtonClick = (): void => {
@@ -173,6 +200,10 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       <Badge count={errcount} />
     )
 
+    const showWarningCount = (warncount: number): JSX.Element => (
+      <Badge color="green" count={warncount} />
+    )
+
     Modal.info({
       title: 'Debug Information\n (Check console for more information)',
       width: 800,
@@ -219,6 +250,17 @@ class Header extends React.Component<HeaderProps, HeaderState> {
             <ol>
               {errorMsgs.Authentication.map(e => (
                 <li key={uuidv4()}>{e}</li>
+              ))}
+            </ol>
+          </Panel>
+          <Panel
+            header='Warning'
+            key='warning'
+            extra={showWarningCount(this.state.warnings.length)}
+          >
+            <ol>
+              {this.state.warnings.map(warning => (
+                <li key={uuidv4()}>{warning}</li>
               ))}
             </ol>
           </Panel>
@@ -280,12 +322,14 @@ class Header extends React.Component<HeaderProps, HeaderState> {
 
     const debugButton = (
       <Badge count={this.state.errorObj.length}>
-        <Button
-          icon={SettingOutlined}
-          tooltip='Debug info'
-          onClick={this.handleDebugButtonClick}
-        />
+        <Badge color="green" count={this.state.warnings.length}>
+          <Button
+            icon={SettingOutlined}
+            tooltip='Debug info'
+            onClick={this.handleDebugButtonClick}
+          />
       </Badge>
+    </Badge>
     )
 
     let serverSelectionButton
