@@ -50,8 +50,8 @@ import NotificationMiddleware, {
 } from '../services/NotificationMiddleware'
 import AnnotationCategoryList from './AnnotationCategoryList'
 
-const DEFAULT_ROI_STROKE_COLOR: number[] = [0, 126, 163]
-const DEFAULT_ROI_FILL_COLOR: number[] = [0, 126, 163, 0.2]
+const DEFAULT_ROI_STROKE_COLOR: number[] = [255, 234, 0] // [0, 126, 163]
+const DEFAULT_ROI_FILL_COLOR: number[] = [255, 234, 0, 0.2] // [0, 126, 163, 0.2]
 const DEFAULT_ROI_STROKE_WIDTH: number = 2
 const DEFAULT_ROI_RADIUS: number = 5
 
