@@ -445,7 +445,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private roiStyles: {[key: string]: dmv.viewer.ROIStyleOptions} = {}
 
-  private readonly selectionColor: number[] = [140, 184, 198]
+  private readonly selectionColor: number[] = [140, 184, 198] 
 
   private readonly selectedRoiStyle: dmv.viewer.ROIStyleOptions = {
     stroke: { color: [...this.selectionColor, 1], width: 3 },
@@ -1445,7 +1445,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   handleRoiSelectionCancellation (): void {
     this.setState({
       isSelectedRoiModalVisible: false,
-      selectedRoiUIDs: new Set()
     })
   }
 
