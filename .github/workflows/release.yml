@@ -1,4 +1,4 @@
-name: release
+name: Release
 
 on:
   push:
@@ -6,14 +6,15 @@ on:
       - master
 
 jobs:
-  ci:
+  release:
+    name: Release
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4.1.4
         with:
-          fetch-depth: 0
+          ref: master
 
       - name: Setup Node
         uses: actions/setup-node@v4.0.2
@@ -31,5 +32,5 @@ jobs:
 
       - name: Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
         run: npx semantic-release --branches master
