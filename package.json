@@ -51,7 +51,7 @@
     "detect-browser": "^5.2.1",
     "dicom-microscopy-viewer": "^0.45.1",
     "dicomweb-client": "^0.8.4",
-    "gh-pages": "^3.2.3",
+    "gh-pages": "^5.0.0",
     "oidc-client": "^1.11.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
