@@ -1,20 +1,28 @@
-name: Deploy to gh-pages
+name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
   deploy-gh-pages:
-    name: Deploying to gh-pages
+    name: Deploying to GitHub Pages
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - run: sudo npm install -g yarn
+      - uses: actions/checkout@v4.1.4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4.0.2
+        with:
+          node-version: 20.8.1
+
+      - run: sudo npm i -g yarn
+
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn
+
       - name: Build and deploy with gh-pages
         run: |
           git remote set-url origin https://git:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
