@@ -18,10 +18,10 @@ jobs:
         with:
           node-version: 20.8.1
 
-      - run: sudo npm install -g yarn
+      - run: sudo npm i -g yarn
 
       - name: Install dependencies
-        run: yarn --frozen-lockfile
+        run: yarn
 
       - name: Build and deploy with gh-pages
         run: |
