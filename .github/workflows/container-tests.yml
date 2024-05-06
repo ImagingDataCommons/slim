@@ -13,6 +13,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4.1.4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4.0.2
+        with:
+          node-version: 20.8.1
+
       - name: Build and run containers using docker compose
         run: docker-compose up -d
 
