@@ -17,7 +17,7 @@ jobs:
           ref: master
           persist-credentials: false
 
-      - name: Setup Node
+      - name: Setup node
         uses: actions/setup-node@v4.0.2
         with:
           node-version: 20.8.1
@@ -25,10 +25,10 @@ jobs:
       - name: Install dependencies
         run: yarn
 
-      - name: Run build
+      - name: Build
         run: yarn build
 
-      - name: ZIP build
+      - name: Zip build
         run: zip -r build.zip build
 
       - name: Release
