@@ -1,3 +1,10 @@
+## [0.31.2](https://github.com/ImagingDataCommons/slim/compare/v0.31.1...v0.31.2) (2024-05-08)
+
+
+### Bug Fixes
+
+* **ROI:** Avoid removing highlighting of ROI after closing ROI info dialog and use double click to open it ([#197](https://github.com/ImagingDataCommons/slim/issues/197)) ([a76a79f](https://github.com/ImagingDataCommons/slim/commit/a76a79f46c09f876933e9a6d57b667d673f13e96))
+
 ## [0.31.1](https://github.com/ImagingDataCommons/slim/compare/v0.31.0...v0.31.1) (2024-05-08)
 
 
