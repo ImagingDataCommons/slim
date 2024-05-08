@@ -1,24 +1,32 @@
-name: container tests
+name: slim/container-tests
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
   build-and-test-containers:
-
+    name: "Build and test containers"
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v4.1.4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4.0.2
+        with:
+          node-version: 20.8.1
+
       - name: Build and run containers using docker compose
         run: docker-compose up -d
+
       - name: Test web page
         run: |
           curl -sI http://localhost:8008/ | grep -o '200 OK'
           curl -s http://localhost:8008/ | grep -o '<title>Slim</title>'
+
       - name: Test DICOMweb service
         run: |
           sleep 20
