@@ -1,3 +1,10 @@
+## [0.31.1](https://github.com/ImagingDataCommons/slim/compare/v0.31.0...v0.31.1) (2024-05-08)
+
+
+### Bug Fixes
+
+* **.github:** Refactor workflows ([#205](https://github.com/ImagingDataCommons/slim/issues/205)) ([552f99f](https://github.com/ImagingDataCommons/slim/commit/552f99f3052c039801f0a6b86564445a3497cc26))
+
 # [0.31.0](https://github.com/ImagingDataCommons/slim/compare/v0.30.0...v0.31.0) (2024-05-07)
 
 
