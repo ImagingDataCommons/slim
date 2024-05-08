@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: slim/deploy-to-github-pages
 
 on:
   push:
@@ -7,23 +7,25 @@ on:
     branches: [master]
 
 jobs:
-  deploy-gh-pages:
-    name: Deploying to GitHub Pages
+  deploy-to-github-pages:
+    name: "Deploy to GitHub Pages"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.1.4
+      - name: Checkout to repository
+        uses: actions/checkout@v4.1.4
 
       - name: Setup Node
         uses: actions/setup-node@v4.0.2
         with:
           node-version: 20.8.1
 
-      - run: sudo npm i -g yarn
+      - name: Install Yarn
+        run: sudo npm i -g yarn
 
       - name: Install dependencies
         run: yarn
 
-      - name: Build and deploy with gh-pages
+      - name: Build and deploy to GitHub Pages
         run: |
           git remote set-url origin https://git:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
           yarn deploy -- -u "github-actions-bot <support+actions@github.com>"
