@@ -1,4 +1,4 @@
-name: Deploy to Firebase
+name: slim/deploy-to-firebase
 
 on:
   pull_request:
@@ -8,17 +8,20 @@ on:
 
 jobs:
   deploy-firebase:
+    name: "Deploy to Firebase"
     if: "${{ github.event.pull_request.head.repo.full_name == github.repository }}"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.1.4
+      - name: Checkout repository
+        uses: actions/checkout@v4.1.4
 
       - name: Setup Node
         uses: actions/setup-node@v4.0.2
         with:
           node-version: 20.8.1
 
-      - run: sudo npm i -g yarn
+      - name: Install Yarn
+        run: sudo npm i -g yarn
 
       - name: Install dependencies
         run: yarn

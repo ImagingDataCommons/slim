@@ -1,4 +1,4 @@
-name: Build and run unit tests
+name: slim/build-and-run-unit-tests
 
 on:
   push:
@@ -8,10 +8,11 @@ on:
 
 jobs:
   build-and-test:
-    name: Build and run unit tests
+    name: "Build and run unit tests"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.1.4
+      - name: Checkout repository
+        uses: actions/checkout@v4.1.4
 
       - name: Setup Node
         uses: actions/setup-node@v4.0.2
@@ -21,11 +22,11 @@ jobs:
       - name: Install dependencies
         run: yarn
 
-      - name: Build 
+      - name: Build
         run: yarn build
 
-      - name: Lint 
+      - name: Lint
         run: yarn lint
 
-      - name: Test 
+      - name: Test
         run: yarn test

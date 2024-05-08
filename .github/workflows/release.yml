@@ -1,4 +1,4 @@
-name: Release
+name: slim/release
 
 on:
   push:
@@ -7,9 +7,8 @@ on:
 
 jobs:
   release:
-    name: Release
+    name: "Bump version and cut a release"
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4.1.4
@@ -31,7 +30,7 @@ jobs:
       - name: Zip build
         run: zip -r build.zip build
 
-      - name: Release
+      - name: Bump version and cut a release
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
           GIT_AUTHOR_NAME: ${{ vars.RELEASE_GIT_AUTHOR_NAME }}
