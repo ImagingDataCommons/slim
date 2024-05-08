@@ -1,4 +1,4 @@
-name: Container tests
+name: slim/container-tests
 
 on:
   push:
@@ -8,10 +8,11 @@ on:
 
 jobs:
   build-and-test-containers:
-    name: Build and test containers
+    name: "Build and test containers"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.1.4
+      - name: Checkout repository
+        uses: actions/checkout@v4.1.4
 
       - name: Setup Node
         uses: actions/setup-node@v4.0.2
