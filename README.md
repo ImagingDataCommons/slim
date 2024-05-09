@@ -1,5 +1,5 @@
 [![DOI](https://zenodo.org/badge/335130719.svg)](https://zenodo.org/badge/latestdoi/335130719)
-[![Build Status](https://github.com/imagingdatacommons/slim/actions/workflows/run_unit_tests.yml/badge.svg)](https://github.com/imagingdatacommons/slim/actions)
+[![Build Status](https://github.com/imagingdatacommons/slim/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/imagingdatacommons/slim/actions)
 
 # Slim: Interoperable slide microscopy viewer and annotation tool for imaging data science and computational pathology
 
