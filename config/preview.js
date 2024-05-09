@@ -7,6 +7,11 @@ window.config = {
       write: false
     }
   ],
+  disableWorklist: false,
+  disableAnnotationTools: false,
+  enableServerSelection: true,
+  mode: "light",
+  preload: true,
   annotations: [
     {
       finding: { value: '85756007', schemeDesignator: 'SCT', meaning: 'Tissue' },
@@ -19,6 +24,6 @@ window.config = {
           color: [255, 255, 255, 0.2]
         }
       }
-    },
+    }
   ]
 }
