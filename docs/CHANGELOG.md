@@ -1,3 +1,10 @@
+## [0.31.3](https://github.com/ImagingDataCommons/slim/compare/v0.31.2...v0.31.3) (2024-05-09)
+
+
+### Bug Fixes
+
+* **README.md:** Update README.md to fix build status ([#210](https://github.com/ImagingDataCommons/slim/issues/210)) ([7574a93](https://github.com/ImagingDataCommons/slim/commit/7574a93b0c9a303202f135566328c69eb605cd69))
+
 ## [0.31.2](https://github.com/ImagingDataCommons/slim/compare/v0.31.1...v0.31.2) (2024-05-08)
 
 
