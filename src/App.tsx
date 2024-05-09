@@ -177,13 +177,14 @@ class App extends React.Component<AppProps, AppState> {
       )
     }
 
-    const logServerError = () => {
+    const logServerError = (): void => {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.DICOMWEB,
         new CustomError(
           errorTypes.COMMUNICATION,
-          'An unexpected server error occured.')
+          'An unexpected server error occured.'
+        )
       )
     }
 

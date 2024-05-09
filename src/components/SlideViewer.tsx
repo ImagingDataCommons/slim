@@ -1098,8 +1098,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           studyInstanceUID: this.props.studyInstanceUID,
           seriesInstanceUID: series.SeriesInstanceUID
         }).then((retrievedMetadata): void => {
-          let annotations: dmv.metadata.MicroscopyBulkSimpleAnnotations[]
-          annotations = retrievedMetadata.map(metadata => {
+          const annotations: dmv.metadata.MicroscopyBulkSimpleAnnotations[] = retrievedMetadata.map(metadata => {
             return new dmv.metadata.MicroscopyBulkSimpleAnnotations({
               metadata
             })
@@ -1491,19 +1490,20 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
   }
 
-  onFrameLoadingError = (event: CustomEventInit): void => { 
+  onFrameLoadingError = (event: CustomEventInit): void => {
     console.error('Failed to load frame')
   }
 
-  onLoadingError = (event: CustomEventInit): void => { 
+  onLoadingError = (event: CustomEventInit): void => {
     console.error('Failed to load data')
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    const message = (event.detail?.payload?.message === null ? 'Failed to load data' : event.detail?.payload?.message) as string
     NotificationMiddleware.onError(
       NotificationMiddlewareContext.SLIM,
       new CustomError(
         errorTypes.VISUALIZATION,
-        event.detail.payload && event.detail.payload.message ? event.detail.payload.message : 'Failed to load data'
-      )
+        message
+      ) as any
     )
   }
 
