@@ -68,7 +68,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       isServerSelectionDisabled: true,
       errorObj: [],
       errorCategory: [],
-      warnings: [],
+      warnings: []
     }
 
     const onErrorHandler = ({ error }: {
@@ -100,14 +100,14 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     )
   }
 
-  componentDidUpdate(prevProps: Readonly<HeaderProps>, prevState: Readonly<HeaderState>): void {
-    if ((prevState.warnings.length || prevState.errorObj.length) && this.props.location.pathname !== prevProps.location.pathname) {
+  componentDidUpdate (prevProps: Readonly<HeaderProps>, prevState: Readonly<HeaderState>): void {
+    if (((prevState.warnings.length > 0) || (prevState.errorObj.length > 0)) && this.props.location.pathname !== prevProps.location.pathname) {
       this.setState({
         isServerSelectionModalVisible: false,
         isServerSelectionDisabled: true,
         errorObj: [],
         errorCategory: [],
-        warnings: [],
+        warnings: []
       })
     }
   }
@@ -201,7 +201,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     )
 
     const showWarningCount = (warncount: number): JSX.Element => (
-      <Badge color="green" count={warncount} />
+      <Badge color='green' count={warncount} />
     )
 
     Modal.info({
@@ -322,14 +322,14 @@ class Header extends React.Component<HeaderProps, HeaderState> {
 
     const debugButton = (
       <Badge count={this.state.errorObj.length}>
-        <Badge color="green" count={this.state.warnings.length}>
+        <Badge color='green' count={this.state.warnings.length}>
           <Button
             icon={SettingOutlined}
             tooltip='Debug info'
             onClick={this.handleDebugButtonClick}
           />
+        </Badge>
       </Badge>
-    </Badge>
     )
 
     let serverSelectionButton
