@@ -182,10 +182,11 @@ const _constructViewers = ({ clients, slide, preload }: {
       metadata: slide.volumeImages,
       controls: ['overview', 'position'],
       preload: preload,
-      errorInterceptor: (error: CustomError) =>
+      errorInterceptor: (error: CustomError) => {
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.DMV, error
         )
+      }
     })
     volumeViewer.activateSelectInteraction({})
 
@@ -200,11 +201,12 @@ const _constructViewers = ({ clients, slide, preload }: {
         metadata: slide.labelImages[0],
         resizeFactor: 1,
         orientation: 'vertical',
-        errorInterceptor: (error: CustomError) =>
+        errorInterceptor: (error: CustomError) => {
           NotificationMiddleware.onError(
             NotificationMiddlewareContext.DMV,
             error
           )
+        }
       })
     }
 

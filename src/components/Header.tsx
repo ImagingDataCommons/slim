@@ -48,11 +48,15 @@ interface HeaderProps extends RouteComponentProps {
   showServerSelectionButton: boolean
 }
 
+interface ExtendedCustomError extends CustomError {
+  source: string
+}
+
 interface HeaderState {
   selectedServerUrl?: string
   isServerSelectionModalVisible: boolean
   isServerSelectionDisabled: boolean
-  errorObj: CustomError[]
+  errorObj: ExtendedCustomError[]
   errorCategory: string[]
   warnings: string[]
 }
@@ -71,14 +75,14 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       warnings: []
     }
 
-    const onErrorHandler = ({ error }: {
-      category: string
+    const onErrorHandler = ({ source, error }: {
+      source: string
       error: CustomError
     }): void => {
       this.setState(state => ({
         ...state,
-        errorObj: [...state.errorObj, error],
-        errorCategory: [...state.errorCategory, error.type]
+        errorObj: [...state.errorObj, { ...error, source }],
+        errorCategory: [...state.errorCategory, error.type],
       }))
     }
 
@@ -190,7 +194,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     if (errorNum > 0) {
       for (let i = 0; i < errorNum; i++) {
         const category = this.state.errorCategory[i] as ObjectKey
-        errorMsgs[category].push(this.state.errorObj[i].message)
+        errorMsgs[category].push(`${this.state.errorObj[i].message} (Source: ${this.state.errorObj[i].source})`)
       }
     }
 
