@@ -83,6 +83,7 @@ class NotificationMiddleware extends PubSub {
     const sourceConfig = NotificationSourceDefinition.sources.find(
       s => s.category === errorCategory
     )
+
     const { notificationType } = sourceConfig
 
     this.publish(NotificationMiddlewareEvents.OnError, {
