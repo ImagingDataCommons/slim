@@ -54,8 +54,9 @@ function ParametrizedCaseViewer ({ clients, user, app, config }: {
   )
 }
 
-function _createClientMapping ({ baseUri, settings, onError }: {
+function _createClientMapping ({ baseUri, gcpBaseUrl, settings, onError }: {
   baseUri: string
+  gcpBaseUrl: string
   settings: ServerSettings[]
   onError: (
     error: dwc.api.DICOMwebClientError,
@@ -82,6 +83,12 @@ function _createClientMapping ({ baseUri, settings, onError }: {
         }
       })
     } else {
+      if (window.location.pathname.includes('/projects/')) {
+        const pathname = window.location.pathname.split('/study/')[0]
+        const pathUrl = `${gcpBaseUrl}${pathname}/dicomWeb`;
+        serverSettings.url = pathUrl;
+      }
+
       storageClassMapping.default += 1
       clientMapping.default = new DicomWebManager({
         baseUri,
@@ -237,6 +244,7 @@ class App extends React.Component<AppProps, AppState> {
     this.state = {
       clients: _createClientMapping({
         baseUri,
+        gcpBaseUrl: props.config.gcpBaseUrl || 'https://healthcare.googleapis.com/v1',
         settings: props.config.servers,
         onError: this.handleDICOMwebError
       }),
@@ -474,6 +482,29 @@ class App extends React.Component<AppProps, AppState> {
             />
             <Route
               path='/studies/:studyInstanceUID/*'
+              element={
+                <Layout style={layoutStyle}>
+                  <Header
+                    app={appInfo}
+                    user={this.state.user}
+                    showWorklistButton={enableWorklist}
+                    onServerSelection={this.handleServerSelection}
+                    onUserLogout={isLogoutPossible ? onLogout : undefined}
+                    showServerSelectionButton={enableServerSelection}
+                  />
+                  <Layout.Content style={layoutContentStyle}>
+                    <ParametrizedCaseViewer
+                      clients={this.state.clients}
+                      user={this.state.user}
+                      config={this.props.config}
+                      app={appInfo}
+                    />
+                  </Layout.Content>
+                </Layout>
+              }
+            />
+            <Route
+              path='/projects/:project/locations/:location/datasets/:dataset/dicomStores/:dicomStore/study/:studyInstanceUID/*'
               element={
                 <Layout style={layoutStyle}>
                   <Header

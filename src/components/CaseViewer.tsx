@@ -195,10 +195,10 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       `/studies/${this.props.studyInstanceUID}` +
       `/series/${seriesInstanceUID}`
     )
-    if (
-      this.props.location.pathname.includes('/series/') &&
-      this.props.location.search != null
-    ) {
+    if (this.props.location.pathname.includes('/projects/')) {
+      urlPath = this.props.location.pathname + `/series/${seriesInstanceUID}`
+    }
+    if (this.props.location.search != null) {
       urlPath += this.props.location.search
     }
     this.props.navigate(urlPath, { replace: true })
