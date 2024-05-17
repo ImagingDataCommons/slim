@@ -1,45 +1,88 @@
 import React from "react";
 import { Menu } from "antd";
+import * as dmv from "dicom-microscopy-viewer";
 import AnnotationCategoryItem from "./AnnotationCategoryItem";
 
-const AnnotationCategoryList = ({ annotationGroups, onChange, checkedAnnotationGroupUids }: any) => {
-  const categoriesWithTypes = annotationGroups?.map((annotationGroup: any) => {
-    const uid = annotationGroup.uid;
-    const category = annotationGroup.propertyCategory.CodeMeaning;
-    const type = annotationGroup.propertyType.CodeMeaning;
-    return {
-      uid,
-      category,
-      type,
-    };
-  });
+export interface Type {
+  CodeValue: string;
+  CodeMeaning: string;
+  CodingSchemeDesignator: string;
+  uids: string[];
+}
+export interface Category {
+  CodeValue: string;
+  CodeMeaning: string;
+  CodingSchemeDesignator: string;
+  types: Type[];
+}
 
-  const uniqueCategoriesWithTypes = categoriesWithTypes.reduce(
-    (acc: any, categoryWithType: any) => {
-      const { category, type, uid } = categoryWithType;
-      const oldCategoryEntry = acc[category] ?? {};
-      const oldTypeEntry = oldCategoryEntry[type] ?? [];
+const getCategories = (annotationGroups: any) => {
+  const categories = annotationGroups?.reduce(
+    (
+      categoriesAcc: Record<string, Category & { types: Record<string, Type> }>,
+      annotationGroup: dmv.annotation.AnnotationGroup
+    ) => {
+      const { propertyCategory, propertyType, uid } = annotationGroup;
+      const categoryKey = propertyCategory.CodeMeaning;
+      const typeKey = propertyType.CodeMeaning;
 
-      const uniqueUids = new Set([...oldTypeEntry, uid]);
-      const uids = Array.from(uniqueUids);
+      const oldCategory = categoriesAcc[categoryKey] ?? {
+        ...propertyCategory,
+        types: {},
+      };
+      const oldType = oldCategory.types[typeKey] ?? {
+        ...propertyType,
+        uids: [],
+      };
 
-      return { ...acc, [category]: { ...oldCategoryEntry, [type]: uids } };
+      return {
+        ...categoriesAcc,
+        [categoryKey]: {
+          ...oldCategory,
+          types: {
+            ...oldCategory.types,
+            [typeKey]: { ...oldType, uids: [...oldType.uids, uid] },
+          },
+        },
+      };
     },
     {}
   );
 
-  const categories = Object.keys(uniqueCategoriesWithTypes);
+  // Normalizing types so that it's an array instead of an object:
+  Object.keys(categories).forEach((categoryKey: string) => {
+    const category = categories[categoryKey];
+    const { types } = category;
+    const typesArr = Object.keys(types).map(
+      (typeKey: string) => types[typeKey]
+    );
+    categories[categoryKey].types = typesArr;
+  });
 
-  if (categories.length === 0) {
+  return categories;
+};
+
+const AnnotationCategoryList = ({
+  annotationGroups,
+  onChange,
+  checkedAnnotationGroupUids,
+}: {
+  annotationGroups: dmv.annotation.AnnotationGroup[];
+  onChange: Function;
+  checkedAnnotationGroupUids: Set<string>;
+}) => {
+  const categories: Record<string, Category> = getCategories(annotationGroups);
+
+  if (Object.keys(categories).length === 0) {
     return <></>;
   }
 
-  const items = categories.map((category: any) => {
+  const items = Object.keys(categories).map((categoryKey: any) => {
+    const category = categories[categoryKey];
     return (
       <AnnotationCategoryItem
-        key={category}
+        key={category.CodeMeaning}
         category={category}
-        typesWithUids={uniqueCategoriesWithTypes[category]}
         onChange={onChange}
         checkedAnnotationGroupUids={checkedAnnotationGroupUids}
       />
