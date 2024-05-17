@@ -195,12 +195,21 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       `/studies/${this.props.studyInstanceUID}` +
       `/series/${seriesInstanceUID}`
     )
+
     if (this.props.location.pathname.includes('/projects/')) {
-      urlPath = this.props.location.pathname + `/series/${seriesInstanceUID}`
+      urlPath = this.props.location.pathname
+      if (!this.props.location.pathname.includes('/series/')) {
+        urlPath += `/series/${seriesInstanceUID}`
+      }
     }
-    if (this.props.location.search != null) {
+
+    if (
+      this.props.location.pathname.includes('/series/') &&
+      this.props.location.search != null
+    ) {
       urlPath += this.props.location.search
     }
+    
     this.props.navigate(urlPath, { replace: true })
   }
 
@@ -225,8 +234,8 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
      */
     let selectedSeriesInstanceUID: string
     if (this.props.location.pathname.includes('series/')) {
-      const fragments = this.props.location.pathname.split('/')
-      selectedSeriesInstanceUID = fragments[4]
+      const seriesFragment = this.props.location.pathname.split('series/')[1]
+      selectedSeriesInstanceUID = seriesFragment.includes('/') ? seriesFragment.split('/')[0] : seriesFragment
     } else {
       selectedSeriesInstanceUID = volumeInstances[0].SeriesInstanceUID
     }
