@@ -85,8 +85,8 @@ function _createClientMapping ({ baseUri, gcpBaseUrl, settings, onError }: {
     } else {
       if (window.location.pathname.includes('/projects/')) {
         const pathname = window.location.pathname.split('/study/')[0]
-        const pathUrl = `${gcpBaseUrl}${pathname}/dicomWeb`;
-        serverSettings.url = pathUrl;
+        const pathUrl = `${gcpBaseUrl}${pathname}/dicomWeb`
+        serverSettings.url = pathUrl
       }
 
       storageClassMapping.default += 1
@@ -244,7 +244,7 @@ class App extends React.Component<AppProps, AppState> {
     this.state = {
       clients: _createClientMapping({
         baseUri,
-        gcpBaseUrl: props.config.gcpBaseUrl || 'https://healthcare.googleapis.com/v1',
+        gcpBaseUrl: props.config.gcpBaseUrl ?? 'https://healthcare.googleapis.com/v1',
         settings: props.config.servers,
         onError: this.handleDICOMwebError
       }),

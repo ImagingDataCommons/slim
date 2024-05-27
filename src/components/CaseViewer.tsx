@@ -209,7 +209,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     ) {
       urlPath += this.props.location.search
     }
-    
+
     this.props.navigate(urlPath, { replace: true })
   }
 
