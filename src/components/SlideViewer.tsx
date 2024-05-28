@@ -48,6 +48,7 @@ import { CustomError, errorTypes } from '../utils/CustomError'
 import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from '../services/NotificationMiddleware'
+import AnnotationCategoryList from './AnnotationCategoryList'
 
 const DEFAULT_ROI_STROKE_COLOR: number[] = [0, 126, 163]
 const DEFAULT_ROI_FILL_COLOR: number[] = [0, 126, 163, 0.2]
@@ -3555,6 +3556,24 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               {annotationMenuItems}
             </Menu.SubMenu>
             {annotationGroupMenu}
+            {annotationGroups.length === 0
+              ? (
+                <></>
+                )
+              : (
+                <Menu.SubMenu
+                  key='annotation-category'
+                  title='Annotation Categories'
+                >
+                  <AnnotationCategoryList
+                    annotationGroups={annotationGroups}
+                    onChange={this.handleAnnotationGroupVisibilityChange}
+                    checkedAnnotationGroupUids={
+                    this.state.visibleAnnotationGroupUIDs
+                  }
+                  />
+                </Menu.SubMenu>
+                )}
             {segmentationMenu}
             {parametricMapMenu}
           </Menu>
