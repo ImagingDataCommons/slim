@@ -3538,28 +3538,30 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               {annotationMenuItems}
             </Menu.SubMenu>
             {annotationGroupMenu}
-            {annotationGroups.length === 0 ? (
-              <></>
-            ) : (
-              <Menu.SubMenu
-                key="annotation-category"
-                title="Annotation Categories"
-              >
-                <AnnotationCategoryList
-                  annotationGroups={annotationGroups}
-                  onChange={this.handleAnnotationGroupVisibilityChange}
-                  checkedAnnotationGroupUids={
+            {annotationGroups.length === 0
+              ? (
+                <></>
+                )
+              : (
+                <Menu.SubMenu
+                  key='annotation-category'
+                  title='Annotation Categories'
+                >
+                  <AnnotationCategoryList
+                    annotationGroups={annotationGroups}
+                    onChange={this.handleAnnotationGroupVisibilityChange}
+                    checkedAnnotationGroupUids={
                     this.state.visibleAnnotationGroupUIDs
                   }
-                ></AnnotationCategoryList>
-              </Menu.SubMenu>
-            )}
+                  />
+                </Menu.SubMenu>
+                )}
             {segmentationMenu}
             {parametricMapMenu}
           </Menu>
         </Layout.Sider>
       </Layout>
-    );
+    )
   }
 }
 

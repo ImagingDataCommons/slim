@@ -1,54 +1,54 @@
-import React from "react";
-import { Menu, Space, Checkbox, Tooltip } from "antd";
-import { Category, Type } from "./AnnotationCategoryList";
+import React from 'react'
+import { Menu, Space, Checkbox, Tooltip } from 'antd'
+import { Category, Type } from './AnnotationCategoryList'
 
 const AnnotationGroupItem = ({
   category,
   onChange,
-  checkedAnnotationGroupUids,
+  checkedAnnotationGroupUids
 }: {
-  category: Category;
-  onChange: Function;
-  checkedAnnotationGroupUids: Set<string>;
-}) => {
-  const { types } = category;
+  category: Category
+  onChange: Function
+  checkedAnnotationGroupUids: Set<string>
+}): JSX.Element => {
+  const { types } = category
 
-  const onCheckCategoryChange = (e: any) => {
-    const isVisible = e.target.checked;
+  const onCheckCategoryChange = (e: any): void => {
+    const isVisible = e.target.checked
     types.forEach((type: Type) => {
-      handleChangeCheckedType({ type, isVisible });
-    });
-  };
+      handleChangeCheckedType({ type, isVisible })
+    })
+  }
 
   const checkAll = types.every((type: Type) =>
     type.uids.every((uid: string) => checkedAnnotationGroupUids.has(uid))
-  );
+  )
   const indeterminate =
     !checkAll &&
     types.some((type: Type) =>
       type.uids.some((uid: string) => checkedAnnotationGroupUids.has(uid))
-    );
+    )
 
   const handleChangeCheckedType = ({
     type,
-    isVisible,
+    isVisible
   }: {
-    type: Type;
-    isVisible: boolean;
-  }) => {
+    type: Type
+    isVisible: boolean
+  }): void => {
     type.uids.forEach((uid: string) => {
-      onChange({ annotationGroupUID: uid, isVisible });
-    });
-  };
+      onChange({ annotationGroupUID: uid, isVisible })
+    })
+  }
 
   return (
     <Menu.Item
-      style={{ height: "100%", paddingLeft: "3px" }}
+      style={{ height: '100%', paddingLeft: '3px' }}
       key={category.CodeMeaning}
     >
-      <Space align="start">
-        <div style={{ paddingLeft: "14px" }}>
-          <Space direction="vertical" align="end">
+      <Space align='start'>
+        <div style={{ paddingLeft: '14px' }}>
+          <Space direction='vertical' align='end'>
             <Checkbox
               indeterminate={indeterminate}
               checked={checkAll}
@@ -64,24 +64,23 @@ const AnnotationGroupItem = ({
           </Space>
           {types.map((type: Type) => {
             const { CodeMeaning, CodingSchemeDesignator, CodeValue, uids } =
-              type;
+              type
             const isChecked = uids.every((uid: string) =>
               checkedAnnotationGroupUids.has(uid)
-            );
+            )
             const indeterminateType =
               !isChecked &&
-              uids.some((uid: string) => checkedAnnotationGroupUids.has(uid));
+              uids.some((uid: string) => checkedAnnotationGroupUids.has(uid))
             return (
-              <div style={{ paddingLeft: "25px" }}>
+              <div key={`${type.CodingSchemeDesignator}:${type.CodeMeaning}`} style={{ paddingLeft: '25px' }}>
                 <Checkbox
                   indeterminate={indeterminateType}
                   checked={isChecked}
                   onChange={(e: any) =>
                     handleChangeCheckedType({
                       type,
-                      isVisible: e.target.checked,
-                    })
-                  }
+                      isVisible: e.target.checked
+                    })}
                 >
                   <Tooltip
                     title={`${CodeValue}:${CodingSchemeDesignator}`}
@@ -91,12 +90,12 @@ const AnnotationGroupItem = ({
                   </Tooltip>
                 </Checkbox>
               </div>
-            );
+            )
           })}
         </div>
       </Space>
     </Menu.Item>
-  );
-};
+  )
+}
 
-export default AnnotationGroupItem;
+export default AnnotationGroupItem
