@@ -1418,6 +1418,19 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
+  onRoiDoubleClicked = (event: CustomEventInit): void => {
+    const selectedRoi = event.detail.payload as dmv.roi.ROI
+    if (selectedRoi != null) {
+      this.setState({
+        isSelectedRoiModalVisible: true
+      })
+    } else {
+      this.setState({
+        isSelectedRoiModalVisible: false
+      })
+    }
+  }
+
   onRoiSelected = (event: CustomEventInit): void => {
     const selectedRoi = event.detail.payload as dmv.roi.ROI
     if (selectedRoi != null) {
@@ -1431,22 +1444,19 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       })
       this.setState({
         selectedRoiUIDs: new Set([selectedRoi.uid]),
-        selectedRoi: selectedRoi,
-        isSelectedRoiModalVisible: true
+        selectedRoi: selectedRoi
       })
     } else {
       this.setState({
         selectedRoiUIDs: new Set(),
-        selectedRoi: undefined,
-        isSelectedRoiModalVisible: false
+        selectedRoi: undefined
       })
     }
   }
 
   handleRoiSelectionCancellation (): void {
     this.setState({
-      isSelectedRoiModalVisible: false,
-      selectedRoiUIDs: new Set()
+      isSelectedRoiModalVisible: false
     })
   }
 
@@ -1568,6 +1578,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.onRoiSelected
     )
     document.body.removeEventListener(
+      'dicommicroscopyviewer_roi_double_clicked',
+      this.onRoiDoubleClicked
+    )
+    document.body.removeEventListener(
       'dicommicroscopyviewer_roi_removed',
       this.onRoiRemoved
     )
@@ -1665,6 +1679,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     document.body.addEventListener(
       'dicommicroscopyviewer_roi_selected',
       this.onRoiSelected
+    )
+    document.body.addEventListener(
+      'dicommicroscopyviewer_roi_double_clicked',
+      this.onRoiDoubleClicked
     )
     document.body.addEventListener(
       'dicommicroscopyviewer_roi_removed',
