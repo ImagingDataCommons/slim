@@ -3189,13 +3189,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
 
     let annotationGroupMenu
+    const defaultAnnotationGroupStyles: {
+      [annotationGroupUID: string]: {
+        opacity: number
+        color: number[]
+      }
+    } = {}
     if (annotationGroups.length > 0) {
-      const defaultAnnotationGroupStyles: {
-        [annotationGroupUID: string]: {
-          opacity: number
-          color: number[]
-        }
-      } = {}
       const annotationGroupMetadata: {
         [annotationGroupUID: string]: dmv.metadata.MicroscopyBulkSimpleAnnotations
       } = {}
@@ -3610,6 +3610,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                     checkedAnnotationGroupUids={
                     this.state.visibleAnnotationGroupUIDs
                   }
+                    onStyleChange={this.handleAnnotationGroupStyleChange}
+                    defaultAnnotationGroupStyles={defaultAnnotationGroupStyles}
                   />
                 </Menu.SubMenu>
                 )}

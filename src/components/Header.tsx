@@ -82,7 +82,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       this.setState(state => ({
         ...state,
         errorObj: [...state.errorObj, { ...error, source }],
-        errorCategory: [...state.errorCategory, error.type],
+        errorCategory: [...state.errorCategory, error.type]
       }))
     }
 
