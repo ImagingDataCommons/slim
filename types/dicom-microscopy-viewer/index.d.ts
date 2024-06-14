@@ -13,6 +13,7 @@ declare module 'dicom-microscopy-viewer' {
       debug?: boolean
       preload?: boolean
       controls: string[]
+      annotationOptions?: object
       errorInterceptor?: (error: CustomError) => void
     }
 
@@ -453,6 +454,7 @@ declare module 'dicom-microscopy-viewer' {
     }
 
     export class MicroscopyBulkSimpleAnnotations {
+      AnnotationCoordinateType: string
       constructor ({ metadata: Dataset }: object)
     }
 
@@ -561,6 +563,7 @@ declare module 'dicom-microscopy-viewer' {
     }
 
     export interface MicroscopyBulkSimpleAnnotations extends SOPClass {
+      AnnotationCoordinateType: string
       // Frame of Reference module
       FrameOfReferenceUID: string
       // Specimen module
@@ -573,6 +576,7 @@ declare module 'dicom-microscopy-viewer' {
       SpecimenDescriptionSequence: SpecimenDescription[]
       OpticalPathSequence: OpticalPath[]
       AnnotationGroupSequence: Array<{
+        SOPClassUID: string,
         AnnotationGroupNumber: number
         AnnotationGroupUID: string
         AnnotationGroupLabel: string
