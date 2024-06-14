@@ -194,7 +194,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     if (errorNum > 0) {
       for (let i = 0; i < errorNum; i++) {
         const category = this.state.errorCategory[i] as ObjectKey
-        errorMsgs[category].push(`${this.state.errorObj[i].message} (Source: ${this.state.errorObj[i].source})`)
+        errorMsgs[category].push(`${this.state.errorObj[i].message as string} (Source: ${this.state.errorObj[i].source})`)
       }
     }
 
