@@ -2891,7 +2891,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     rois.push(...this.volumeViewer.getAllROIs())
     segments.push(...this.volumeViewer.getAllSegments())
     mappings.push(...this.volumeViewer.getAllParameterMappings())
-    annotationGroups.push(...this.volumeViewer.getAllAnnotationGroups())
+    const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups();
+    const filteredAnnotationGroups = allAnnotationGroups?.filter((annotationGroup) =>
+      annotationGroup.referencedSeriesInstanceUID === this.props.seriesInstanceUID
+  );
+  annotationGroups.push(...filteredAnnotationGroups);
 
     const openSubMenuItems = [
       'specimens', 'optical-paths', 'annotations', 'presentation-states'
@@ -3199,7 +3203,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const annotationGroupMetadata: {
         [annotationGroupUID: string]: dmv.metadata.MicroscopyBulkSimpleAnnotations
       } = {}
-      const annotationGroups = this.volumeViewer.getAllAnnotationGroups()
       annotationGroups.forEach(annotationGroup => {
         defaultAnnotationGroupStyles[annotationGroup.uid] = this.volumeViewer.getAnnotationGroupStyle(
           annotationGroup.uid
