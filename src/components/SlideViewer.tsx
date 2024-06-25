@@ -2893,7 +2893,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     mappings.push(...this.volumeViewer.getAllParameterMappings())
     const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups();
     const filteredAnnotationGroups = allAnnotationGroups?.filter((annotationGroup) =>
-      annotationGroup.referencedSeriesSequence.SeriesInstanceUID === this.props.seriesInstanceUID
+      annotationGroup.referencedSeriesInstanceUID === this.props.seriesInstanceUID
   );
   annotationGroups.push(...filteredAnnotationGroups);
 
