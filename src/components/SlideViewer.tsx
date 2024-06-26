@@ -49,6 +49,7 @@ import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from '../services/NotificationMiddleware'
 import AnnotationCategoryList from './AnnotationCategoryList'
+import HoveredRoiTooltip from './HoveredRoiTooltip'
 
 const DEFAULT_ROI_STROKE_COLOR: number[] = [255, 234, 0] // [0, 126, 163]
 const DEFAULT_ROI_FILL_COLOR: number[] = [255, 234, 0, 0.2] // [0, 126, 163, 0.2]
@@ -382,6 +383,11 @@ interface SlideViewerState {
   isLoading: boolean
   isAnnotationModalVisible: boolean
   isSelectedRoiModalVisible: boolean
+  isHoveredRoiTooltipVisible: boolean
+  hoveredRoi?: dmv.roi.ROI
+  hoveredRoiAttributes: Array<{ name: string, value: string }>
+  hoveredRoiTooltipX: number,
+  hoveredRoiTooltipY: number,
   isReportModalVisible: boolean
   isRoiDrawingActive: boolean
   isRoiModificationActive: boolean
@@ -587,6 +593,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       isLoading: false,
       isAnnotationModalVisible: false,
       isSelectedRoiModalVisible: false,
+      isHoveredRoiTooltipVisible: false,
+      hoveredRoiTooltipX: 0,
+      hoveredRoiTooltipY: 0,
+      hoveredRoiAttributes: [],
       isSelectedMagnificationValid: false,
       isReportModalVisible: false,
       isRoiDrawingActive: false,
@@ -1440,6 +1450,72 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
+  setHoveredRoiAttributes = (hoveredRoi: dmv.roi.ROI) => {
+    const attributes: Array<{ name: string, value: string }> = []
+    hoveredRoi.evaluations.forEach((
+      item: (
+        dcmjs.sr.valueTypes.TextContentItem |
+        dcmjs.sr.valueTypes.CodeContentItem
+      )
+    ) => {
+      const nameValue = item.ConceptNameCodeSequence[0].CodeValue
+      const nameMeaning = item.ConceptNameCodeSequence[0].CodeMeaning
+      const name = `${nameMeaning}`
+      if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.CODE) {
+        const codeContentItem = item as dcmjs.sr.valueTypes.CodeContentItem
+        const valueMeaning = codeContentItem.ConceptCodeSequence[0].CodeMeaning
+        // For consistency with Segment and Annotation Group
+        if (nameValue === '276214006') {
+          attributes.push({
+            name: 'Property category',
+            value: `${valueMeaning}`
+          })
+        } else if (nameValue === '121071') {
+          attributes.push({
+            name: 'Property type',
+            value: `${valueMeaning}`
+          })
+        } else if (nameValue === '111001') {
+          attributes.push({
+            name: 'Algorithm Name',
+            value: `${valueMeaning}`
+          })
+        } else {
+          attributes.push({
+            name: name,
+            value: `${valueMeaning}`
+          })
+        }
+      } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
+        const textContentItem = item as dcmjs.sr.valueTypes.TextContentItem
+        attributes.push({
+          name: name,
+          value: textContentItem.TextValue
+        })
+      }
+    })
+
+    this.setState({ hoveredRoiAttributes: attributes })
+  }
+
+  onPointerMove = (event: CustomEventInit): void => {
+    const { feature: hoveredRoi, event: evt } = event.detail.payload as any;
+    if (hoveredRoi != null) {
+      const originalEvent = evt.originalEvent;
+      this.setHoveredRoiAttributes(hoveredRoi);
+      this.setState({
+        isHoveredRoiTooltipVisible: true,
+        hoveredRoi,
+        hoveredRoiTooltipX: originalEvent.clientX,
+        hoveredRoiTooltipY: originalEvent.clientY,
+      })
+    } else {
+      this.setState({
+        isHoveredRoiTooltipVisible: false
+      })
+    }
+  }
+
   onRoiSelected = (event: CustomEventInit): void => {
     const selectedRoi = event.detail.payload as dmv.roi.ROI
     if (selectedRoi != null) {
@@ -1608,6 +1684,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.onRoiDoubleClicked
     )
     document.body.removeEventListener(
+      'dicommicroscopyviewer_pointer_move',
+      this.onPointerMove
+    )
+    document.body.removeEventListener(
       'dicommicroscopyviewer_roi_removed',
       this.onRoiRemoved
     )
@@ -1713,6 +1793,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     document.body.addEventListener(
       'dicommicroscopyviewer_roi_double_clicked',
       this.onRoiDoubleClicked
+    )
+    document.body.addEventListener(
+      'dicommicroscopyviewer_pointer_move',
+      this.onPointerMove
     )
     document.body.addEventListener(
       'dicommicroscopyviewer_roi_removed',
@@ -3620,8 +3704,18 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             {parametricMapMenu}
           </Menu>
         </Layout.Sider>
+        {this.state.isHoveredRoiTooltipVisible &&
+        this.state.hoveredRoiAttributes.length ? (
+          <HoveredRoiTooltip
+            xPosition={this.state.hoveredRoiTooltipX}
+            yPosition={this.state.hoveredRoiTooltipY}
+            attributes={this.state.hoveredRoiAttributes}
+          />
+        ) : (
+          <></>
+        )}
       </Layout>
-    )
+    );
   }
 }
 
