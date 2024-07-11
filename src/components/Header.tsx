@@ -366,7 +366,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       })
     }
 
-    const handleServerSelectionCancellation = (event: Event): void => {
+    const handleServerSelectionCancellation = (): void => {
       this.setState({
         selectedServerUrl: undefined,
         isServerSelectionModalVisible: false,
@@ -374,7 +374,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       })
     }
 
-    const handleServerSelection = (event: Event): void => {
+    const handleServerSelection = (): void => {
       const url = this.state.selectedServerUrl
       let closeModal = false
       if (url != null && url !== '') {
