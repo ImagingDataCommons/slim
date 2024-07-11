@@ -82,7 +82,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       this.setState(state => ({
         ...state,
         errorObj: [...state.errorObj, { ...error, source }],
-        errorCategory: [...state.errorCategory, error.type],
+        errorCategory: [...state.errorCategory, error.type]
       }))
     }
 
@@ -194,7 +194,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     if (errorNum > 0) {
       for (let i = 0; i < errorNum; i++) {
         const category = this.state.errorCategory[i] as ObjectKey
-        errorMsgs[category].push(`${this.state.errorObj[i].message} (Source: ${this.state.errorObj[i].source})`)
+        errorMsgs[category].push(`${this.state.errorObj[i].message as string} (Source: ${this.state.errorObj[i].source})`)
       }
     }
 
@@ -366,7 +366,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       })
     }
 
-    const handleServerSelectionCancellation = (event: any): void => {
+    const handleServerSelectionCancellation = (event: Event): void => {
       this.setState({
         selectedServerUrl: undefined,
         isServerSelectionModalVisible: false,
@@ -374,7 +374,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       })
     }
 
-    const handleServerSelection = (event: any): void => {
+    const handleServerSelection = (event: Event): void => {
       const url = this.state.selectedServerUrl
       let closeModal = false
       if (url != null && url !== '') {

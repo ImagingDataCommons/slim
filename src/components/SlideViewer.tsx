@@ -386,8 +386,8 @@ interface SlideViewerState {
   isHoveredRoiTooltipVisible: boolean
   hoveredRoi?: dmv.roi.ROI
   hoveredRoiAttributes: Array<{ name: string, value: string }>
-  hoveredRoiTooltipX: number,
-  hoveredRoiTooltipY: number,
+  hoveredRoiTooltipX: number
+  hoveredRoiTooltipY: number
   isReportModalVisible: boolean
   isRoiDrawingActive: boolean
   isRoiModificationActive: boolean
@@ -1450,7 +1450,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-  setHoveredRoiAttributes = (hoveredRoi: dmv.roi.ROI) => {
+  setHoveredRoiAttributes = (hoveredRoi: dmv.roi.ROI): void => {
     const attributes: Array<{ name: string, value: string }> = []
     hoveredRoi.evaluations.forEach((
       item: (
@@ -1499,15 +1499,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   onPointerMove = (event: CustomEventInit): void => {
-    const { feature: hoveredRoi, event: evt } = event.detail.payload as any;
+    const { feature: hoveredRoi, event: evt } = event.detail.payload
     if (hoveredRoi != null) {
-      const originalEvent = evt.originalEvent;
-      this.setHoveredRoiAttributes(hoveredRoi);
+      const originalEvent = evt.originalEvent
+      this.setHoveredRoiAttributes(hoveredRoi)
       this.setState({
         isHoveredRoiTooltipVisible: true,
         hoveredRoi,
         hoveredRoiTooltipX: originalEvent.clientX,
-        hoveredRoiTooltipY: originalEvent.clientY,
+        hoveredRoiTooltipY: originalEvent.clientY
       })
     } else {
       this.setState({
@@ -2975,11 +2975,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     rois.push(...this.volumeViewer.getAllROIs())
     segments.push(...this.volumeViewer.getAllSegments())
     mappings.push(...this.volumeViewer.getAllParameterMappings())
-    const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups();
+    const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups()
     const filteredAnnotationGroups = allAnnotationGroups?.filter((annotationGroup) =>
       annotationGroup.referencedSeriesInstanceUID === this.props.seriesInstanceUID
-  );
-  annotationGroups.push(...filteredAnnotationGroups);
+    )
+    annotationGroups.push(...filteredAnnotationGroups)
 
     const openSubMenuItems = [
       'specimens', 'optical-paths', 'annotations', 'presentation-states'
@@ -3705,17 +3705,19 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           </Menu>
         </Layout.Sider>
         {this.state.isHoveredRoiTooltipVisible &&
-        this.state.hoveredRoiAttributes.length ? (
-          <HoveredRoiTooltip
-            xPosition={this.state.hoveredRoiTooltipX}
-            yPosition={this.state.hoveredRoiTooltipY}
-            attributes={this.state.hoveredRoiAttributes}
-          />
-        ) : (
-          <></>
-        )}
+        (this.state.hoveredRoiAttributes.length > 0)
+          ? (
+            <HoveredRoiTooltip
+              xPosition={this.state.hoveredRoiTooltipX}
+              yPosition={this.state.hoveredRoiTooltipY}
+              attributes={this.state.hoveredRoiAttributes}
+            />
+            )
+          : (
+            <></>
+            )}
       </Layout>
-    );
+    )
   }
 }
 
