@@ -30,4 +30,4 @@ jobs:
       - name: Test DICOMweb service
         run: |
           sleep 20
-          curl -I http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs/studies | grep -o 'HTTP/1.1 200 OK'
+          curl -sI http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs/studies | grep -o '204 No Content'
