@@ -183,6 +183,18 @@ class App extends React.Component<AppProps, AppState> {
           'User is not authorized to access DICOMweb resources.')
       )
     }
+
+    const logServerError = (): void => {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.DICOMWEB,
+        new CustomError(
+          errorTypes.COMMUNICATION,
+          'An unexpected server error occured.'
+        )
+      )
+    }
+
     if (serverSettings.errorMessages !== undefined) {
       serverSettings.errorMessages.forEach((setting: ErrorMessageSettings) => {
         if (error.status === setting.status) {
@@ -193,15 +205,11 @@ class App extends React.Component<AppProps, AppState> {
             }
           })
         } else if (error.status === 500) {
-          // eslint-disable-next-line @typescript-eslint/no-floating-promises
-          NotificationMiddleware.onError(
-            NotificationMiddlewareContext.DICOMWEB,
-            new CustomError(
-              errorTypes.COMMUNICATION,
-              'An unexpected server error occured.')
-          )
+          logServerError()
         }
       })
+    } else if (error.status === 500) {
+      logServerError()
     }
   }
 
@@ -350,7 +358,8 @@ class App extends React.Component<AppProps, AppState> {
           isLoading: false,
           wasAuthSuccessful: true
         })
-      }).catch(() => {
+      }).catch((error) => {
+        console.error(error)
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.AUTH,

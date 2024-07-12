@@ -56,11 +56,12 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
           ],
           metadata: metadata,
           resizeFactor: 1,
-          errorInterceptor: (error: CustomError) =>
+          errorInterceptor: (error: CustomError) => {
             NotificationMiddleware.onError(
               NotificationMiddlewareContext.DMV,
               error
             )
+          }
         })
         this.overviewViewer.render({
           container: this.overviewViewportRef.current

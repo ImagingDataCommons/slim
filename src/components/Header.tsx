@@ -48,12 +48,17 @@ interface HeaderProps extends RouteComponentProps {
   showServerSelectionButton: boolean
 }
 
+interface ExtendedCustomError extends CustomError {
+  source: string
+}
+
 interface HeaderState {
   selectedServerUrl?: string
   isServerSelectionModalVisible: boolean
   isServerSelectionDisabled: boolean
-  errorObj: CustomError[]
+  errorObj: ExtendedCustomError[]
   errorCategory: string[]
+  warnings: string[]
 }
 
 /**
@@ -66,23 +71,49 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       isServerSelectionModalVisible: false,
       isServerSelectionDisabled: true,
       errorObj: [],
-      errorCategory: []
+      errorCategory: [],
+      warnings: []
     }
 
-    const onErrorHandler = ({ error }: {
-      category: string
+    const onErrorHandler = ({ source, error }: {
+      source: string
       error: CustomError
     }): void => {
-      this.setState({
-        errorObj: [...this.state.errorObj, error],
-        errorCategory: [...this.state.errorCategory, error.type]
-      })
+      this.setState(state => ({
+        ...state,
+        errorObj: [...state.errorObj, { ...error, source }],
+        errorCategory: [...state.errorCategory, error.type]
+      }))
+    }
+
+    const onWarningHandler = (warning: string): void => {
+      this.setState(state => ({
+        ...state,
+        warnings: [...state.warnings, warning]
+      }))
     }
 
     NotificationMiddleware.subscribe(
       NotificationMiddlewareEvents.OnError,
       onErrorHandler
     )
+
+    NotificationMiddleware.subscribe(
+      NotificationMiddlewareEvents.OnWarning,
+      onWarningHandler
+    )
+  }
+
+  componentDidUpdate (prevProps: Readonly<HeaderProps>, prevState: Readonly<HeaderState>): void {
+    if (((prevState.warnings.length > 0) || (prevState.errorObj.length > 0)) && this.props.location.pathname !== prevProps.location.pathname) {
+      this.setState({
+        isServerSelectionModalVisible: false,
+        isServerSelectionDisabled: true,
+        errorObj: [],
+        errorCategory: [],
+        warnings: []
+      })
+    }
   }
 
   handleInfoButtonClick = (): void => {
@@ -163,7 +194,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     if (errorNum > 0) {
       for (let i = 0; i < errorNum; i++) {
         const category = this.state.errorCategory[i] as ObjectKey
-        errorMsgs[category].push(this.state.errorObj[i].message)
+        errorMsgs[category].push(`${this.state.errorObj[i].message as string} (Source: ${this.state.errorObj[i].source})`)
       }
     }
 
@@ -171,6 +202,10 @@ class Header extends React.Component<HeaderProps, HeaderState> {
 
     const showErrorCount = (errcount: number): JSX.Element => (
       <Badge count={errcount} />
+    )
+
+    const showWarningCount = (warncount: number): JSX.Element => (
+      <Badge color='green' count={warncount} />
     )
 
     Modal.info({
@@ -219,6 +254,17 @@ class Header extends React.Component<HeaderProps, HeaderState> {
             <ol>
               {errorMsgs.Authentication.map(e => (
                 <li key={uuidv4()}>{e}</li>
+              ))}
+            </ol>
+          </Panel>
+          <Panel
+            header='Warning'
+            key='warning'
+            extra={showWarningCount(this.state.warnings.length)}
+          >
+            <ol>
+              {this.state.warnings.map(warning => (
+                <li key={uuidv4()}>{warning}</li>
               ))}
             </ol>
           </Panel>
@@ -280,11 +326,13 @@ class Header extends React.Component<HeaderProps, HeaderState> {
 
     const debugButton = (
       <Badge count={this.state.errorObj.length}>
-        <Button
-          icon={SettingOutlined}
-          tooltip='Debug info'
-          onClick={this.handleDebugButtonClick}
-        />
+        <Badge color='green' count={this.state.warnings.length}>
+          <Button
+            icon={SettingOutlined}
+            tooltip='Debug info'
+            onClick={this.handleDebugButtonClick}
+          />
+        </Badge>
       </Badge>
     )
 
@@ -318,7 +366,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       })
     }
 
-    const handleServerSelectionCancellation = (event: any): void => {
+    const handleServerSelectionCancellation = (): void => {
       this.setState({
         selectedServerUrl: undefined,
         isServerSelectionModalVisible: false,
@@ -326,7 +374,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       })
     }
 
-    const handleServerSelection = (event: any): void => {
+    const handleServerSelection = (): void => {
       const url = this.state.selectedServerUrl
       let closeModal = false
       if (url != null && url !== '') {
