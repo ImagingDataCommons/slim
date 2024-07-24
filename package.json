@@ -52,7 +52,7 @@
     "craco-less": "^2.0.0",
     "dcmjs": "^0.29.8",
     "detect-browser": "^5.2.1",
-    "dicom-microscopy-viewer": "^0.45.1",
+    "dicom-microscopy-viewer": "^0.46.1",
     "dicomweb-client": "^0.10.3",
     "gh-pages": "^5.0.0",
     "oidc-client": "^1.11.5",
