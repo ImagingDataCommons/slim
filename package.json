@@ -36,6 +36,12 @@
     "@babel/preset-react": "^7.17.12",
     "@babel/preset-typescript": "^7.17.12",
     "@craco/craco": "^6.4.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^12.0.0",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^10.0.3",
+    "@semantic-release/npm": "^12.0.0",
+    "@semantic-release/release-notes-generator": "^13.0.0",
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/react": "^11.2.2",
     "@testing-library/user-event": "^7.1.2",
@@ -52,7 +58,7 @@
     "craco-less": "^2.0.0",
     "dcmjs": "^0.29.8",
     "detect-browser": "^5.2.1",
-    "dicom-microscopy-viewer": "^0.46.1",
+    "dicom-microscopy-viewer": "^0.47.0",
     "dicomweb-client": "^0.10.3",
     "gh-pages": "^5.0.0",
     "oidc-client": "^1.11.5",
@@ -64,13 +70,7 @@
     "react-test-renderer": "^18.2.0",
     "retry": "^0.13.1",
     "ts-standard": "^11.0.0",
-    "typescript": "^4.7.4",
-    "@semantic-release/changelog": "^6.0.3",
-    "@semantic-release/commit-analyzer": "^12.0.0",
-    "@semantic-release/git": "^10.0.1",
-    "@semantic-release/github": "^10.0.3",
-    "@semantic-release/npm": "^12.0.0",
-    "@semantic-release/release-notes-generator": "^13.0.0"
+    "typescript": "^4.7.4"
   },
   "dependencies": {
     "react-error-boundary": "^3.1.4"
