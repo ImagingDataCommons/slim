@@ -3044,7 +3044,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           {findingOptions}
         </Select>
       )
-    ]
+    ] 
 
     const selectedFinding = this.state.selectedFinding
     if (selectedFinding !== undefined) {
