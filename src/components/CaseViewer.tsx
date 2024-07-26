@@ -198,9 +198,11 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     )
 
     if (this.props.location.pathname.includes('/projects/')) {
-      urlPath = this.props.location.pathname
+      urlPath = this.props.location.pathname;
       if (!this.props.location.pathname.includes('/series/')) {
         urlPath += `/series/${seriesInstanceUID}`
+      } else {
+        urlPath = urlPath.replace(/\/series\/[^/]+/, `/series/${seriesInstanceUID}`)
       }
     }
 
