@@ -1,3 +1,10 @@
+## [0.31.4](https://github.com/ImagingDataCommons/slim/compare/v0.31.3...v0.31.4) (2024-07-29)
+
+
+### Bug Fixes
+
+* **CaseViewer:** Address series selection for gcp ([#226](https://github.com/ImagingDataCommons/slim/issues/226)) ([408ebdd](https://github.com/ImagingDataCommons/slim/commit/408ebdd4d2c4f7668be06aeec9e74c8a5d0a3241))
+
 ## [0.31.3](https://github.com/ImagingDataCommons/slim/compare/v0.31.2...v0.31.3) (2024-05-09)
 
 
