@@ -2,14 +2,14 @@ import React from 'react'
 import { Menu, Space, Checkbox, Tooltip } from 'antd'
 import { Category, Type } from './AnnotationCategoryList'
 
-const AnnotationGroupItem = ({
+const AnnotationCategoryItem = ({
   category,
   onChange,
-  checkedAnnotationGroupUids
+  checkedAnnotationUids
 }: {
   category: Category
   onChange: Function
-  checkedAnnotationGroupUids: Set<string>
+  checkedAnnotationUids: Set<string>
 }): JSX.Element => {
   const { types } = category
 
@@ -21,12 +21,12 @@ const AnnotationGroupItem = ({
   }
 
   const checkAll = types.every((type: Type) =>
-    type.uids.every((uid: string) => checkedAnnotationGroupUids.has(uid))
+    type.uids.every((uid: string) => checkedAnnotationUids.has(uid))
   )
   const indeterminate =
     !checkAll &&
     types.some((type: Type) =>
-      type.uids.some((uid: string) => checkedAnnotationGroupUids.has(uid))
+      type.uids.some((uid: string) => checkedAnnotationUids.has(uid))
     )
 
   const handleChangeCheckedType = ({
@@ -37,7 +37,7 @@ const AnnotationGroupItem = ({
     isVisible: boolean
   }): void => {
     type.uids.forEach((uid: string) => {
-      onChange({ annotationGroupUID: uid, isVisible })
+      onChange({ roiUID: uid, isVisible })
     })
   }
 
@@ -66,11 +66,11 @@ const AnnotationGroupItem = ({
             const { CodeMeaning, CodingSchemeDesignator, CodeValue, uids } =
               type
             const isChecked = uids.every((uid: string) =>
-              checkedAnnotationGroupUids.has(uid)
+              checkedAnnotationUids.has(uid)
             )
             const indeterminateType =
               !isChecked &&
-              uids.some((uid: string) => checkedAnnotationGroupUids.has(uid))
+              uids.some((uid: string) => checkedAnnotationUids.has(uid))
             return (
               <div key={`${type.CodingSchemeDesignator}:${type.CodeMeaning}`} style={{ paddingLeft: '25px' }}>
                 <Checkbox
@@ -98,4 +98,4 @@ const AnnotationGroupItem = ({
   )
 }
 
-export default AnnotationGroupItem
+export default AnnotationCategoryItem

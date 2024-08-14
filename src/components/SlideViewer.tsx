@@ -50,6 +50,7 @@ import NotificationMiddleware, {
 } from '../services/NotificationMiddleware'
 import AnnotationCategoryList from './AnnotationCategoryList'
 import HoveredRoiTooltip from './HoveredRoiTooltip'
+import { adaptRoiToAnnotation } from '../services/RoiToAnnotationAdapter'
 
 const DEFAULT_ROI_STROKE_COLOR: number[] = [255, 234, 0] // [0, 126, 163]
 const DEFAULT_ROI_FILL_COLOR: number[] = [255, 234, 0, 0.2] // [0, 126, 163, 0.2]
@@ -2981,6 +2982,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     )
     annotationGroups.push(...filteredAnnotationGroups)
 
+    const annotations = rois.map(roi => adaptRoiToAnnotation(roi));
+
     const openSubMenuItems = [
       'specimens', 'optical-paths', 'annotations', 'presentation-states'
     ]
@@ -3682,7 +3685,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               {annotationMenuItems}
             </Menu.SubMenu>
             {annotationGroupMenu}
-            {annotationGroups.length === 0
+            {annotations.length === 0
               ? (
                 <></>
                 )
@@ -3692,11 +3695,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                   title='Annotation Categories'
                 >
                   <AnnotationCategoryList
-                    annotationGroups={annotationGroups}
-                    onChange={this.handleAnnotationGroupVisibilityChange}
-                    checkedAnnotationGroupUids={
-                    this.state.visibleAnnotationGroupUIDs
-                  }
+                    annotations={annotations}
+                    onChange={this.handleAnnotationVisibilityChange}
+                    checkedAnnotationUids={this.state.visibleRoiUIDs}
                   />
                 </Menu.SubMenu>
                 )}
