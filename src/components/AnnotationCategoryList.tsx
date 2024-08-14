@@ -70,10 +70,19 @@ const getCategories = (annotations: any): Record<string, Category> => {
 const AnnotationCategoryList = ({
   annotations,
   onChange,
+  onStyleChange,
+  defaultAnnotationGroupStyles,
   checkedAnnotationUids
 }: {
   annotations: AnnotationCategoryAndType[]
   onChange: Function
+  onStyleChange: Function
+  defaultAnnotationGroupStyles: {
+    [annotationGroupUID: string]: {
+      opacity: number
+      color: number[]
+    }
+  }
   checkedAnnotationUids: Set<string>
 }): JSX.Element => {
   const categories: Record<string, Category> = getCategories(annotations)
@@ -89,6 +98,8 @@ const AnnotationCategoryList = ({
         key={category.CodeMeaning}
         category={category}
         onChange={onChange}
+        onStyleChange={onStyleChange}
+        defaultAnnotationGroupStyles={defaultAnnotationGroupStyles}
         checkedAnnotationUids={checkedAnnotationUids}
       />
     )
