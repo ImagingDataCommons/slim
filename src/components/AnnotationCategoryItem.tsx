@@ -9,13 +9,13 @@ const AnnotationCategoryItem = ({
   onChange,
   checkedAnnotationUids,
   onStyleChange,
-  defaultAnnotationGroupStyles
+  defaultAnnotationStyles
 }: {
   category: Category
   onChange: Function
   onStyleChange: Function
-  defaultAnnotationGroupStyles: {
-    [annotationGroupUID: string]: {
+  defaultAnnotationStyles: {
+    [annotationUID: string]: {
       opacity: number
       color: number[]
     }
@@ -85,7 +85,7 @@ const AnnotationCategoryItem = ({
                     )}
                     onStyleChange={onStyleChange}
                     defaultStyle={
-                      defaultAnnotationGroupStyles[types[0].uids[0]]
+                      defaultAnnotationStyles[types[0].uids[0]]
                     }
                   />
                 )}
@@ -101,7 +101,9 @@ const AnnotationCategoryItem = ({
           </Space>
           {types.map((type: Type) => {
             const { CodeMeaning, CodingSchemeDesignator, CodeValue, uids } =
-              type
+              type;
+            const shortenedCodeMeaning = CodeMeaning.slice(0, 22);
+            const displayCodeMeaning = shortenedCodeMeaning === CodeMeaning ? CodeMeaning : `${shortenedCodeMeaning}...`;
             const isChecked = uids.every((uid: string) =>
               checkedAnnotationUids.has(uid)
             )
@@ -111,7 +113,13 @@ const AnnotationCategoryItem = ({
             return (
               <div
                 key={`${type.CodingSchemeDesignator}:${type.CodeMeaning}`}
-                style={{ paddingLeft: '25px' }}
+                style={{
+                  paddingLeft: "25px",
+                  wordWrap: "break-word",
+                  width: "100%",
+                  display: "flex",
+                  flexDirection: "row",
+                }}
               >
                 <Checkbox
                   indeterminate={indeterminateType}
@@ -119,39 +127,39 @@ const AnnotationCategoryItem = ({
                   onChange={(e: any) =>
                     handleChangeCheckedType({
                       type,
-                      isVisible: e.target.checked
-                    })}
-                >
+                      isVisible: e.target.checked,
+                    })
+                  }
+                ></Checkbox>
+                <div style={{ paddingLeft: "5px" }}>
                   <Tooltip
                     title={`${CodeValue}:${CodingSchemeDesignator}`}
                     mouseEnterDelay={1}
                   >
-                    {CodeMeaning}
+                    {displayCodeMeaning}
                   </Tooltip>
                   <Popover
-                    placement='topLeft'
-                    overlayStyle={{ width: '350px' }}
-                    title='Display Settings'
+                    placement="topLeft"
+                    overlayStyle={{ width: "350px" }}
+                    title="Display Settings"
                     content={() => (
                       <ColorSettingsMenu
                         annotationGroupsUIDs={type.uids}
                         onStyleChange={onStyleChange}
-                        defaultStyle={
-                          defaultAnnotationGroupStyles[type.uids[0]]
-                        }
+                        defaultStyle={defaultAnnotationStyles[type.uids[0]]}
                       />
                     )}
                   >
                     <Button
-                      type='primary'
-                      shape='circle'
-                      style={{ marginLeft: '10px' }}
+                      type="primary"
+                      shape="circle"
+                      style={{ marginLeft: "10px" }}
                       icon={<SettingOutlined />}
                     />
                   </Popover>
-                </Checkbox>
+                </div>
               </div>
-            )
+            );
           })}
         </div>
       </Space>

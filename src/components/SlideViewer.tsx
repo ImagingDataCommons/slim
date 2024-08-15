@@ -540,6 +540,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleAnnotationVisibilityChange = this.handleAnnotationVisibilityChange.bind(this)
     this.handleAnnotationGroupVisibilityChange = this.handleAnnotationGroupVisibilityChange.bind(this)
     this.handleAnnotationGroupStyleChange = this.handleAnnotationGroupStyleChange.bind(this)
+    this.handleRoiStyleChange = this.handleRoiStyleChange.bind(this)
     this.handleGoTo = this.handleGoTo.bind(this)
     this.handleXCoordinateSelection = this.handleXCoordinateSelection.bind(this)
     this.handleYCoordinateSelection = this.handleYCoordinateSelection.bind(this)
@@ -2470,18 +2471,18 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   /**
    * Handle change of annotation group style.
    */
-  handleAnnotationGroupStyleChange ({ annotationGroupUID, styleOptions }: {
-    annotationGroupUID: string
+  handleAnnotationGroupStyleChange ({ uid, styleOptions }: {
+    uid: string
     styleOptions: {
       opacity?: number
       color?: number[]
       measurement?: dcmjs.sr.coding.CodedConcept
     }
   }): void {
-    console.log(`change style of annotation group ${annotationGroupUID}`)
+    console.log(`change style of annotation group ${uid}`)
     try {
       this.volumeViewer.setAnnotationGroupStyle(
-        annotationGroupUID,
+        uid,
         styleOptions
       )
     } catch (error) {
@@ -2491,6 +2492,37 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         new CustomError(
           errorTypes.VISUALIZATION,
           'Failed to change style of annotation group.'
+        )
+      )
+      throw error
+    }
+  }
+
+  handleRoiStyleChange ({ uid, styleOptions }: {
+    uid: string
+    styleOptions: {
+      opacity?: number
+      color?: number[]
+    }
+  }): void {
+    console.log(`change style of ROI ${uid}`)
+    try {
+      const opacity = styleOptions.opacity ?? 0.4;
+      const strokeColor = styleOptions.color ?? [0, 0, 0];
+      const fillColor = strokeColor.map((c) => Math.min(c + 25, 255));
+      const style = _formatRoiStyle({
+        fill: { color: [...fillColor, opacity] },
+        stroke: { color: [...strokeColor, opacity] },
+        radius: this.defaultRoiStyle.stroke?.width,
+      });
+      this.volumeViewer.setROIStyle(uid, style);
+    } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.SLIM,
+        new CustomError(
+          errorTypes.VISUALIZATION,
+          'Failed to change style of ROI.'
         )
       )
       throw error
@@ -3280,20 +3312,29 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
 
     let annotationGroupMenu
-    const defaultAnnotationGroupStyles: {
-      [annotationGroupUID: string]: {
+    const defaultAnnotationStyles: {
+      [annotationUID: string]: {
         opacity: number
         color: number[]
       }
     } = {}
+
+    if(annotations.length > 0){
+      annotations.forEach((annotation) => {
+        const key = _buildKey(annotation.category);
+        const style = this.getRoiStyle(key);
+        defaultAnnotationStyles[annotation.uid] = {
+          color: style.stroke?.color,
+          opacity: 0.4,
+        } as any;
+      });
+    }
+
     if (annotationGroups.length > 0) {
       const annotationGroupMetadata: {
         [annotationGroupUID: string]: dmv.metadata.MicroscopyBulkSimpleAnnotations
       } = {}
       annotationGroups.forEach(annotationGroup => {
-        defaultAnnotationGroupStyles[annotationGroup.uid] = this.volumeViewer.getAnnotationGroupStyle(
-          annotationGroup.uid
-        )
         annotationGroupMetadata[annotationGroup.uid] = this.volumeViewer.getAnnotationGroupMetadata(
           annotationGroup.uid
         )
@@ -3303,7 +3344,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           <AnnotationGroupList
             annotationGroups={annotationGroups}
             metadata={annotationGroupMetadata}
-            defaultAnnotationGroupStyles={defaultAnnotationGroupStyles}
+            defaultAnnotationGroupStyles={defaultAnnotationStyles}
             visibleAnnotationGroupUIDs={this.state.visibleAnnotationGroupUIDs}
             onAnnotationGroupVisibilityChange={this.handleAnnotationGroupVisibilityChange}
             onAnnotationGroupStyleChange={this.handleAnnotationGroupStyleChange}
@@ -3698,8 +3739,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                     annotations={annotations}
                     onChange={this.handleAnnotationVisibilityChange}
                     checkedAnnotationUids={this.state.visibleRoiUIDs}
-                    onStyleChange={this.handleAnnotationGroupStyleChange}
-                    defaultAnnotationGroupStyles={defaultAnnotationGroupStyles}
+                    onStyleChange={this.handleRoiStyleChange}
+                    defaultAnnotationStyles={defaultAnnotationStyles}
                   />
                 </Menu.SubMenu>
                 )}

@@ -43,8 +43,9 @@ ColorSettingsMenuState
     if (value != null) {
       this.props.annotationGroupsUIDs.forEach((uid) => {
         this.props.onStyleChange({
-          annotationGroupUID: uid,
+          uid,
           styleOptions: {
+            color: this.state.currentStyle.color,
             opacity: value
           }
         })
@@ -73,9 +74,12 @@ ColorSettingsMenuState
       }))
       this.props.annotationGroupsUIDs.forEach((uid) => {
         this.props.onStyleChange({
-          annotationGroupUID: uid,
-          styleOptions: { color: color }
-        })
+          uid,
+          styleOptions: {
+            color: color,
+            opacity: this.state.currentStyle.opacity,
+          },
+        });
       })
     }
   }
@@ -95,8 +99,11 @@ ColorSettingsMenuState
       }))
       this.props.annotationGroupsUIDs.forEach((uid) => {
         this.props.onStyleChange({
-          annotationGroupUID: uid,
-          styleOptions: { color: color }
+          uid,
+          styleOptions: {
+            color: color,
+            opacity: this.state.currentStyle.opacity,
+          },
         })
       })
     }
@@ -118,8 +125,11 @@ ColorSettingsMenuState
 
       this.props.annotationGroupsUIDs.forEach((uid) => {
         this.props.onStyleChange({
-          annotationGroupUID: uid,
-          styleOptions: { color: color }
+          uid,
+          styleOptions: {
+            color: color,
+            opacity: this.state.currentStyle.opacity,
+          },
         })
       })
     }

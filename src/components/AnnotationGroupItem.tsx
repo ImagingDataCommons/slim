@@ -32,8 +32,8 @@ interface AnnotationGroupItemProps {
     annotationGroupUID: string
     isVisible: boolean
   }) => void
-  onStyleChange: ({ annotationGroupUID, styleOptions }: {
-    annotationGroupUID: string
+  onStyleChange: ({ uid, styleOptions }: {
+    uid: string
     styleOptions: {
       opacity?: number
       color?: number[]
@@ -89,7 +89,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
   handleOpacityChange (value: number | null): void {
     if (value != null) {
       this.props.onStyleChange({
-        annotationGroupUID: this.props.annotationGroup.uid,
+        uid: this.props.annotationGroup.uid,
         styleOptions: {
           opacity: value
         }
@@ -121,7 +121,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
         }
       }))
       this.props.onStyleChange({
-        annotationGroupUID: this.props.annotationGroup.uid,
+        uid: this.props.annotationGroup.uid,
         styleOptions: { color: color }
       })
     }
@@ -144,7 +144,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
         }
       }))
       this.props.onStyleChange({
-        annotationGroupUID: this.props.annotationGroup.uid,
+        uid: this.props.annotationGroup.uid,
         styleOptions: { color: color }
       })
     }
@@ -167,7 +167,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
         }
       }))
       this.props.onStyleChange({
-        annotationGroupUID: this.props.annotationGroup.uid,
+        uid: this.props.annotationGroup.uid,
         styleOptions: { color: color }
       })
     }
@@ -212,7 +212,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
         }
       })
       this.props.onStyleChange({
-        annotationGroupUID: this.props.annotationGroup.uid,
+        uid: this.props.annotationGroup.uid,
         styleOptions: {
           limitValues: [
             value,
@@ -247,7 +247,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
         }
       })
       this.props.onStyleChange({
-        annotationGroupUID: this.props.annotationGroup.uid,
+        uid: this.props.annotationGroup.uid,
         styleOptions: {
           limitValues: [
             this.state.currentStyle.limitValues[0],
@@ -269,7 +269,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
       }
     }))
     this.props.onStyleChange({
-      annotationGroupUID: this.props.annotationGroup.uid,
+      uid: this.props.annotationGroup.uid,
       styleOptions: { limitValues: values }
     })
   }
@@ -283,7 +283,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
         meaning: option.children
       })
       this.props.onStyleChange({
-        annotationGroupUID: this.props.annotationGroup.uid,
+        uid: this.props.annotationGroup.uid,
         styleOptions: { measurement }
       })
       this.setState(state => ({
@@ -294,7 +294,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
       }))
     } else {
       this.props.onStyleChange({
-        annotationGroupUID: this.props.annotationGroup.uid,
+        uid: this.props.annotationGroup.uid,
         styleOptions: {
           color: this.props.defaultStyle.color
         }

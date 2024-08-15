@@ -21,8 +21,8 @@ interface AnnotationGroupListProps {
     annotationGroupUID: string
     isVisible: boolean
   }) => void
-  onAnnotationGroupStyleChange: ({ annotationGroupUID, styleOptions }: {
-    annotationGroupUID: string
+  onAnnotationGroupStyleChange: ({ uid, styleOptions }: {
+    uid: string
     styleOptions: {
       opacity?: number
       color?: number[]

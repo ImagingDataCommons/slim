@@ -71,14 +71,14 @@ const AnnotationCategoryList = ({
   annotations,
   onChange,
   onStyleChange,
-  defaultAnnotationGroupStyles,
+  defaultAnnotationStyles,
   checkedAnnotationUids
 }: {
   annotations: AnnotationCategoryAndType[]
   onChange: Function
   onStyleChange: Function
-  defaultAnnotationGroupStyles: {
-    [annotationGroupUID: string]: {
+  defaultAnnotationStyles: {
+    [annotationUID: string]: {
       opacity: number
       color: number[]
     }
@@ -99,7 +99,7 @@ const AnnotationCategoryList = ({
         category={category}
         onChange={onChange}
         onStyleChange={onStyleChange}
-        defaultAnnotationGroupStyles={defaultAnnotationGroupStyles}
+        defaultAnnotationStyles={defaultAnnotationStyles}
         checkedAnnotationUids={checkedAnnotationUids}
       />
     )
