@@ -576,7 +576,7 @@ declare module 'dicom-microscopy-viewer' {
       SpecimenDescriptionSequence: SpecimenDescription[]
       OpticalPathSequence: OpticalPath[]
       AnnotationGroupSequence: Array<{
-        SOPClassUID: string,
+        SOPClassUID: string
         AnnotationGroupNumber: number
         AnnotationGroupUID: string
         AnnotationGroupLabel: string

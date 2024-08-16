@@ -2,9 +2,8 @@ import React from 'react'
 import { Menu } from 'antd'
 import AnnotationCategoryItem from './AnnotationCategoryItem'
 
-
 export interface AnnotationCategoryAndType {
-  uid: string;
+  uid: string
   type: Omit<Type, 'uids'>
   category: Omit<Category, 'types'>
 }

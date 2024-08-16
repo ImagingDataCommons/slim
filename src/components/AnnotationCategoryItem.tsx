@@ -101,9 +101,9 @@ const AnnotationCategoryItem = ({
           </Space>
           {types.map((type: Type) => {
             const { CodeMeaning, CodingSchemeDesignator, CodeValue, uids } =
-              type;
-            const shortenedCodeMeaning = CodeMeaning.slice(0, 22);
-            const displayCodeMeaning = shortenedCodeMeaning === CodeMeaning ? CodeMeaning : `${shortenedCodeMeaning}...`;
+              type
+            const shortenedCodeMeaning = CodeMeaning.slice(0, 22)
+            const displayCodeMeaning = shortenedCodeMeaning === CodeMeaning ? CodeMeaning : `${shortenedCodeMeaning}...`
             const isChecked = uids.every((uid: string) =>
               checkedAnnotationUids.has(uid)
             )
@@ -114,11 +114,11 @@ const AnnotationCategoryItem = ({
               <div
                 key={`${type.CodingSchemeDesignator}:${type.CodeMeaning}`}
                 style={{
-                  paddingLeft: "25px",
-                  wordWrap: "break-word",
-                  width: "100%",
-                  display: "flex",
-                  flexDirection: "row",
+                  paddingLeft: '25px',
+                  wordWrap: 'break-word',
+                  width: '100%',
+                  display: 'flex',
+                  flexDirection: 'row'
                 }}
               >
                 <Checkbox
@@ -127,11 +127,10 @@ const AnnotationCategoryItem = ({
                   onChange={(e: any) =>
                     handleChangeCheckedType({
                       type,
-                      isVisible: e.target.checked,
-                    })
-                  }
-                ></Checkbox>
-                <div style={{ paddingLeft: "5px" }}>
+                      isVisible: e.target.checked
+                    })}
+                />
+                <div style={{ paddingLeft: '5px' }}>
                   <Tooltip
                     title={`${CodeValue}:${CodingSchemeDesignator}`}
                     mouseEnterDelay={1}
@@ -139,9 +138,9 @@ const AnnotationCategoryItem = ({
                     {displayCodeMeaning}
                   </Tooltip>
                   <Popover
-                    placement="topLeft"
-                    overlayStyle={{ width: "350px" }}
-                    title="Display Settings"
+                    placement='topLeft'
+                    overlayStyle={{ width: '350px' }}
+                    title='Display Settings'
                     content={() => (
                       <ColorSettingsMenu
                         annotationGroupsUIDs={type.uids}
@@ -151,15 +150,15 @@ const AnnotationCategoryItem = ({
                     )}
                   >
                     <Button
-                      type="primary"
-                      shape="circle"
-                      style={{ marginLeft: "10px" }}
+                      type='primary'
+                      shape='circle'
+                      style={{ marginLeft: '10px' }}
                       icon={<SettingOutlined />}
                     />
                   </Popover>
                 </div>
               </div>
-            );
+            )
           })}
         </div>
       </Space>

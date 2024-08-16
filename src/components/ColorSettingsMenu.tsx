@@ -77,9 +77,9 @@ ColorSettingsMenuState
           uid,
           styleOptions: {
             color: color,
-            opacity: this.state.currentStyle.opacity,
-          },
-        });
+            opacity: this.state.currentStyle.opacity
+          }
+        })
       })
     }
   }
@@ -102,8 +102,8 @@ ColorSettingsMenuState
           uid,
           styleOptions: {
             color: color,
-            opacity: this.state.currentStyle.opacity,
-          },
+            opacity: this.state.currentStyle.opacity
+          }
         })
       })
     }
@@ -128,8 +128,8 @@ ColorSettingsMenuState
           uid,
           styleOptions: {
             color: color,
-            opacity: this.state.currentStyle.opacity,
-          },
+            opacity: this.state.currentStyle.opacity
+          }
         })
       })
     }

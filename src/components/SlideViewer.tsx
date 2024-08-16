@@ -2507,15 +2507,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }): void {
     console.log(`change style of ROI ${uid}`)
     try {
-      const opacity = styleOptions.opacity ?? 0.4;
-      const strokeColor = styleOptions.color ?? [0, 0, 0];
-      const fillColor = strokeColor.map((c) => Math.min(c + 25, 255));
+      const opacity = styleOptions.opacity ?? 0.4
+      const strokeColor = styleOptions.color ?? [0, 0, 0]
+      const fillColor = strokeColor.map((c) => Math.min(c + 25, 255))
       const style = _formatRoiStyle({
         fill: { color: [...fillColor, opacity] },
         stroke: { color: [...strokeColor, opacity] },
-        radius: this.defaultRoiStyle.stroke?.width,
-      });
-      this.volumeViewer.setROIStyle(uid, style);
+        radius: this.defaultRoiStyle.stroke?.width
+      })
+      this.volumeViewer.setROIStyle(uid, style)
     } catch (error) {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       NotificationMiddleware.onError(
@@ -3014,7 +3014,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     )
     annotationGroups.push(...filteredAnnotationGroups)
 
-    const annotations = rois.map(roi => adaptRoiToAnnotation(roi));
+    const annotations = rois.map(roi => adaptRoiToAnnotation(roi))
 
     const openSubMenuItems = [
       'specimens', 'optical-paths', 'annotations', 'presentation-states'
@@ -3319,15 +3319,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       }
     } = {}
 
-    if(annotations.length > 0){
+    if (annotations.length > 0) {
       annotations.forEach((annotation) => {
-        const key = _buildKey(annotation.category);
-        const style = this.getRoiStyle(key);
+        const key = _buildKey(annotation.category)
+        const style = this.getRoiStyle(key)
         defaultAnnotationStyles[annotation.uid] = {
           color: style.stroke?.color,
-          opacity: 0.4,
-        } as any;
-      });
+          opacity: 0.4
+        } as any
+      })
     }
 
     if (annotationGroups.length > 0) {
