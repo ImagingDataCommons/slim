@@ -20,7 +20,7 @@ jobs:
           node-version: 20.8.1
 
       - name: Build and run containers using docker compose
-        run: docker-compose up -d
+        run: docker compose up -d
 
       - name: Test web page
         run: |
