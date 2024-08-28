@@ -455,6 +455,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private roiStyles: {[key: string]: dmv.viewer.ROIStyleOptions} = {}
 
+  private defaultAnnotationStyles: {
+    [annotationUID: string]: {
+      opacity: number
+      color: number[]
+    }
+  } = {}
+
   private readonly selectionColor: number[] = [140, 184, 198]
 
   private readonly selectedRoiStyle: dmv.viewer.ROIStyleOptions = {
@@ -2405,7 +2412,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       console.info(`show ROI ${roiUID}`)
       const roi = this.volumeViewer.getROI(roiUID)
       const key = _getRoiKey(roi)
-      this.volumeViewer.setROIStyle(roi.uid, this.getRoiStyle(key))
+      const style = this.getRoiStyle(key)
+      this.volumeViewer.setROIStyle(roi.uid, style)
       this.setState(state => {
         const visibleRoiUIDs = state.visibleRoiUIDs
         visibleRoiUIDs.add(roi.uid)
@@ -2498,23 +2506,37 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-  handleRoiStyleChange ({ uid, styleOptions }: {
-    uid: string
+  generateRoiStyle (
     styleOptions: {
       opacity?: number
       color?: number[]
+    }): dmv.viewer.ROIStyleOptions {
+    const opacity = styleOptions.opacity ?? 0.4
+    const strokeColor = styleOptions.color ?? [0, 0, 0]
+    const fillColor = strokeColor.map((c) => Math.min(c + 25, 255))
+    const style = _formatRoiStyle({
+      fill: { color: [...fillColor, opacity] },
+      stroke: { color: [...strokeColor, opacity] },
+      radius: this.defaultRoiStyle.stroke?.width
+    })
+    return style
+  }
+
+  handleRoiStyleChange ({ uid, styleOptions }: {
+    uid: string
+    styleOptions: {
+      opacity: number
+      color: number[]
     }
   }): void {
     console.log(`change style of ROI ${uid}`)
     try {
-      const opacity = styleOptions.opacity ?? 0.4
-      const strokeColor = styleOptions.color ?? [0, 0, 0]
-      const fillColor = strokeColor.map((c) => Math.min(c + 25, 255))
-      const style = _formatRoiStyle({
-        fill: { color: [...fillColor, opacity] },
-        stroke: { color: [...strokeColor, opacity] },
-        radius: this.defaultRoiStyle.stroke?.width
-      })
+      this.defaultAnnotationStyles[uid] = styleOptions
+      const style = this.generateRoiStyle(styleOptions)
+
+      const roi = this.volumeViewer.getROI(uid)
+      const key = _getRoiKey(roi) as string
+      this.roiStyles[key] = style
       this.volumeViewer.setROIStyle(uid, style)
     } catch (error) {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -3312,21 +3334,33 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
 
     let annotationGroupMenu
-    const defaultAnnotationStyles: {
-      [annotationUID: string]: {
-        opacity: number
-        color: number[]
-      }
-    } = {}
 
     if (annotations.length > 0) {
+      const defaultColorPallete = [
+        [54, 162, 235],
+        [181, 65, 98],
+        [75, 192, 192],
+        [255, 158, 64],
+        [153, 102, 254],
+        [255, 205, 86],
+        [200, 203, 207]
+      ]
       annotations.forEach((annotation) => {
-        const key = _buildKey(annotation.category)
-        const style = this.getRoiStyle(key)
-        defaultAnnotationStyles[annotation.uid] = {
-          color: style.stroke?.color,
+        const roi = this.volumeViewer.getROI(annotation.uid)
+        const key = _getRoiKey(roi) as string
+        const color = this.roiStyles[key] !== undefined
+          ? this.roiStyles[key].stroke?.color.slice(0, 3)
+          : defaultColorPallete[
+            Object.keys(this.roiStyles).length % defaultColorPallete.length
+          ]
+        this.defaultAnnotationStyles[annotation.uid] = {
+          color,
           opacity: 0.4
         } as any
+
+        this.roiStyles[key] = this.generateRoiStyle(
+          this.defaultAnnotationStyles[annotation.uid]
+        )
       })
     }
 
@@ -3344,7 +3378,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           <AnnotationGroupList
             annotationGroups={annotationGroups}
             metadata={annotationGroupMetadata}
-            defaultAnnotationGroupStyles={defaultAnnotationStyles}
+            defaultAnnotationGroupStyles={this.defaultAnnotationStyles}
             visibleAnnotationGroupUIDs={this.state.visibleAnnotationGroupUIDs}
             onAnnotationGroupVisibilityChange={this.handleAnnotationGroupVisibilityChange}
             onAnnotationGroupStyleChange={this.handleAnnotationGroupStyleChange}
@@ -3740,7 +3774,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                     onChange={this.handleAnnotationVisibilityChange}
                     checkedAnnotationUids={this.state.visibleRoiUIDs}
                     onStyleChange={this.handleRoiStyleChange}
-                    defaultAnnotationStyles={defaultAnnotationStyles}
+                    defaultAnnotationStyles={this.defaultAnnotationStyles}
                   />
                 </Menu.SubMenu>
                 )}
