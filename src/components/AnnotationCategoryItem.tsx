@@ -58,7 +58,7 @@ const AnnotationCategoryItem = ({
       key={category.CodeMeaning}
     >
       <Space align='start'>
-        <div style={{ paddingLeft: '14px' }}>
+        <div style={{ paddingLeft: '14px', color: 'black' }}>
           <Space direction='vertical' align='end'>
             <Checkbox
               indeterminate={indeterminate}
@@ -115,7 +115,6 @@ const AnnotationCategoryItem = ({
                 key={`${type.CodingSchemeDesignator}:${type.CodeMeaning}`}
                 style={{
                   paddingLeft: '25px',
-                  wordWrap: 'break-word',
                   width: '100%',
                   display: 'flex',
                   flexDirection: 'row'
