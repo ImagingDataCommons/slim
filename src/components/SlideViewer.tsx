@@ -2550,6 +2550,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const key = _getRoiKey(roi) as string
       this.roiStyles[key] = style
       this.volumeViewer.setROIStyle(uid, style)
+      this.state.visibleRoiUIDs.add(uid)
     } catch (error) {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       NotificationMiddleware.onError(
