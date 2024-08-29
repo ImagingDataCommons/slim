@@ -3368,7 +3368,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const annotationGroupMetadata: {
         [annotationGroupUID: string]: dmv.metadata.MicroscopyBulkSimpleAnnotations
       } = {}
+      const defaultAnnotationGroupStyles: {
+        [annotationUID: string]: {
+          opacity: number
+          color: number[]
+        }
+      } = {}
       annotationGroups.forEach(annotationGroup => {
+        defaultAnnotationGroupStyles[annotationGroup.uid] = this.volumeViewer.getAnnotationGroupStyle(
+          annotationGroup.uid
+        )
         annotationGroupMetadata[annotationGroup.uid] = this.volumeViewer.getAnnotationGroupMetadata(
           annotationGroup.uid
         )
@@ -3378,7 +3387,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           <AnnotationGroupList
             annotationGroups={annotationGroups}
             metadata={annotationGroupMetadata}
-            defaultAnnotationGroupStyles={this.defaultAnnotationStyles}
+            // when adding annotationGroups to annotationCategory list,
+            // make so that this is uses this.defaultAnnotationStyles later instead of defaultAnnotationGroupStyles
+            defaultAnnotationGroupStyles={defaultAnnotationGroupStyles}
             visibleAnnotationGroupUIDs={this.state.visibleAnnotationGroupUIDs}
             onAnnotationGroupVisibilityChange={this.handleAnnotationGroupVisibilityChange}
             onAnnotationGroupStyleChange={this.handleAnnotationGroupStyleChange}
