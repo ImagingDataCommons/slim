@@ -55,7 +55,7 @@
     "antd": "^4.22.8",
     "classnames": "^2.2.6",
     "copy-webpack-plugin": "^10.2.4",
-    "craco-less": "^2.0.0",
+    "craco-less": "^3.0.1",
     "dcmjs": "^0.29.8",
     "detect-browser": "^5.2.1",
     "dicom-microscopy-viewer": "^0.47.0",
@@ -77,6 +77,20 @@
   },
   "resolutions": {
     "nth-check": "2.0.1",
-    "wrap-ansi": "7.0.0"
+    "wrap-ansi": "7.0.0",
+    "make-dir": "3.1.0",
+    "react-scripts/babel-jest/babel-plugin-istanbul/istanbul-lib-instrument/semver": "6.3.1",
+    "@babel/preset-env/babel-plugin-polyfill-corejs2/@babel/helper-define-polyfill-provider/semver": "6.3.1",
+    "make-dir/semver": "6.3.1",
+    "@babel/preset-env/babel-plugin-polyfill-corejs2/semver": "6.3.1",
+    "ts-standard/eslint-plugin-node/semver": "6.3.1",
+    "@craco/craco/semver": "7.5.2",
+    "@typescript-eslint/typescript-estree/semver": "7.5.2",
+    "ts-standard/eslint/semver": "7.5.2",
+    "ts-standard/@typescript-eslint/eslint-plugin/semver": "7.5.2",
+    "react-scripts/postcss-loader/semver": "7.5.2",
+    "react-scripts/css-loader/semver": "7.5.2",
+    "react-scripts/react-dev-utils/fork-ts-checker-webpack-plugin/semver": "7.5.2",
+    "@semantic-release/npm/npm/**/semver": "7.5.2"
   }
 }
