@@ -55,7 +55,7 @@
     "antd": "^4.22.8",
     "classnames": "^2.2.6",
     "copy-webpack-plugin": "^10.2.4",
-    "craco-less": "^3.0.1",
+    "craco-less": "^2.0.0",
     "dcmjs": "^0.29.8",
     "detect-browser": "^5.2.1",
     "dicom-microscopy-viewer": "^0.47.0",
