@@ -91,6 +91,7 @@
     "react-scripts/postcss-loader/semver": "7.5.2",
     "react-scripts/css-loader/semver": "7.5.2",
     "react-scripts/react-dev-utils/fork-ts-checker-webpack-plugin/semver": "7.5.2",
-    "@semantic-release/npm/npm/**/semver": "7.5.2"
+    "@semantic-release/npm/npm/**/semver": "7.5.2",
+    "express": "4.21.0"
   }
 }
