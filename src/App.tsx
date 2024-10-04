@@ -167,6 +167,7 @@ interface AppState {
 
 class App extends React.Component<AppProps, AppState> {
   private readonly auth?: AuthManager
+  private memoryMonitoringIntervalId?: ReturnType<typeof setInterval>;
 
   private readonly handleDICOMwebError = (
     error: dwc.api.DICOMwebClientError,
@@ -389,6 +390,31 @@ class App extends React.Component<AppProps, AppState> {
       window.localStorage.setItem('slim_search', window.location.search)
     }
     this.signIn()
+    this.memoryMonitoringIntervalId = setInterval(async () => {
+
+      const performanceMemoryAvailable = Math.round(
+        //@ts-ignore
+        (performance?.memory?.totalJSHeapSize -
+          //@ts-ignore
+          performance?.memory?.usedJSHeapSize) /
+          1024 /
+          1024
+      );
+      console.log(
+        "Estimate of memory available:",
+        `${performanceMemoryAvailable} MB`
+      );
+      console.log(
+        "Estimate of memory usage:",
+        //@ts-ignore
+        `${Math.round(performance?.memory?.usedJSHeapSize / 1024 / 1024)} MB`
+      );
+
+    }, 2000);
+  }
+
+  componentWillUnmount(): void {
+    clearInterval(this.memoryMonitoringIntervalId);
   }
 
   render (): React.ReactNode {
