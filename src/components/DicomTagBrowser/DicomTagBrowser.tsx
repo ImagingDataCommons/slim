@@ -51,6 +51,75 @@ interface FilteredTreeNode extends TreeNode {
 
 const columnHelper = createColumnHelper<TreeNode>();
 
+// Move these functions outside the component
+const transformToTreeData = (tags: TagInfo[], depth = 0, parentId = '', expandedRows: Set<string>): TreeNode[] => {
+  return tags.map((tag, index) => {
+    const id = parentId ? `${parentId}-${index}` : `${index}`;
+    
+    return {
+      id,
+      tag: tag.tag,
+      vr: tag.vr,
+      keyword: tag.keyword,
+      value: tag.value,
+      depth,
+      expanded: expandedRows.has(id),
+      hasChildren: Boolean(tag.children?.length),
+      children: tag.children ? transformToTreeData(tag.children, depth + 1, id, expandedRows) : undefined,
+    };
+  });
+};
+
+const flattenTreeData = (nodes: TreeNode[]): TreeNode[] => {
+  const seen = new Set<string>();
+  
+  return nodes.reduce<TreeNode[]>((flat, node) => {
+    if (seen.has(node.id)) return flat;
+    
+    seen.add(node.id);
+    const expanded = node.expanded;
+    
+    return [
+      ...flat,
+      node,
+      ...(expanded && node.children ? flattenTreeData(node.children) : []),
+    ];
+  }, []);
+};
+
+const filterTreeData = (nodes: TreeNode[], searchText: string): FilteredTreeNode[] => {
+  if (!searchText) return nodes as FilteredTreeNode[];
+  
+  const searchLower = searchText.toLowerCase();
+  
+  const filtered = nodes
+    .map(node => {
+      const matchesSearch = 
+        (node.tag?.toLowerCase() || '').includes(searchLower) ||
+        (node.keyword?.toLowerCase() || '').includes(searchLower) ||
+        (node.value?.toString().toLowerCase() || '').includes(searchLower) ||
+        (node.vr?.toLowerCase() || '').includes(searchLower);
+
+      let filteredChildren: FilteredTreeNode[] = [];
+      if (node.children) {
+        filteredChildren = filterTreeData(node.children, searchText);
+      }
+
+      if (matchesSearch || filteredChildren.length > 0) {
+        return {
+          ...node,
+          children: filteredChildren,
+          expanded: true,
+        } as FilteredTreeNode;
+      }
+
+      return null;
+    })
+    .filter((node): node is FilteredTreeNode => node !== null);
+
+  return filtered;
+};
+
 const DicomTagBrowser = () => {
   const { slides, isLoading } = useSlides();
   const [displaySets, setDisplaySets] = useState<DisplaySet[]>([]);
@@ -117,41 +186,6 @@ const DicomTagBrowser = () => {
   const showInstanceList =
     displaySets[selectedDisplaySetInstanceUID]?.images.length > 1;
 
-  const transformToTreeData = (tags: TagInfo[], depth = 0, parentId = ''): TreeNode[] => {
-    return tags.map((tag, index) => {
-      const id = parentId ? `${parentId}-${index}` : `${index}`;
-      
-      return {
-        id,
-        tag: tag.tag,
-        vr: tag.vr,
-        keyword: tag.keyword,
-        value: tag.value,
-        depth,
-        expanded: expandedRows.has(id),
-        hasChildren: Boolean(tag.children?.length),
-        children: tag.children ? transformToTreeData(tag.children, depth + 1, id) : undefined,
-      };
-    });
-  };
-
-  const flattenTreeData = (nodes: TreeNode[]): TreeNode[] => {
-    const seen = new Set<string>();
-    
-    return nodes.reduce<TreeNode[]>((flat, node) => {
-      if (seen.has(node.id)) return flat;
-      
-      seen.add(node.id);
-      const expanded = node.expanded;
-      
-      return [
-        ...flat,
-        node,
-        ...(expanded && node.children ? flattenTreeData(node.children) : []),
-      ];
-    }, []);
-  };
-
   const toggleRow = (nodeId: string) => {
     setExpandedRows((prev) => {
       const next = new Set(prev);
@@ -199,44 +233,11 @@ const DicomTagBrowser = () => {
     []
   );
 
-  const filterTreeData = (nodes: TreeNode[], searchText: string): FilteredTreeNode[] => {
-    if (!searchText) return nodes as FilteredTreeNode[];
-    
-    const searchLower = searchText.toLowerCase();
-    
-    const filtered = nodes
-      .map(node => {
-        const matchesSearch = 
-          (node.tag?.toLowerCase() || '').includes(searchLower) ||
-          (node.keyword?.toLowerCase() || '').includes(searchLower) ||
-          (node.value?.toString().toLowerCase() || '').includes(searchLower) ||
-          (node.vr?.toLowerCase() || '').includes(searchLower);
-
-        let filteredChildren: FilteredTreeNode[] = [];
-        if (node.children) {
-          filteredChildren = filterTreeData(node.children, searchText);
-        }
-
-        if (matchesSearch || filteredChildren.length > 0) {
-          return {
-            ...node,
-            children: filteredChildren,
-            expanded: true,
-          } as FilteredTreeNode;
-        }
-
-        return null;
-      })
-      .filter((node): node is FilteredTreeNode => node !== null);
-
-    return filtered;
-  };
-
   const treeData = useMemo(() => {
     if (!displaySets[selectedDisplaySetInstanceUID]) return [];
     const metadata = displaySets[selectedDisplaySetInstanceUID]?.images[instanceNumber - 1];
     const tags = getSortedTags(metadata);
-    const hierarchicalData = transformToTreeData(tags);
+    const hierarchicalData = transformToTreeData(tags, 0, '', expandedRows);
     
     if (!filterValue) {
       return flattenTreeData(hierarchicalData);

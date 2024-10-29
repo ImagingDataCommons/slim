@@ -178,10 +178,10 @@ class Header extends React.Component<HeaderProps, HeaderState> {
   }
 
   handleDicomTagBrowserButtonClick = (): void => {
-    const width = window.innerWidth - 300;
+    const width = window.innerWidth - 200;
     Modal.info({
       title: 'DICOM Tag Browser',
-      width: width,
+      width,
       content: <DicomTagBrowser />,
       onOk (): void {}
     })
