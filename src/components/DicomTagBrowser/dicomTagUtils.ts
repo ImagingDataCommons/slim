@@ -6,10 +6,11 @@ const { nameMap } = DicomMetaDictionary;
 
 interface TagInfo {
   tag: string;
-  tagIndent: string;
   vr: string;
   keyword: string;
   value: string;
+  children?: TagInfo[]; // Added for nested structure
+  level: number;      // Added to track nesting level
 }
 
 /**
@@ -20,7 +21,6 @@ interface TagInfo {
  */
 export function getRows(metadata: Record<string, any>, depth = 0): TagInfo[] {
   const keywords = Object.keys(metadata).filter(key => key !== '_vrMap');
-  const tagIndent = '>'.repeat(depth) + (depth > 0 ? ' ' : '');
 
   return keywords.flatMap(keyword => {
     const tagInfo = nameMap[keyword];
@@ -33,29 +33,30 @@ export function getRows(metadata: Record<string, any>, depth = 0): TagInfo[] {
       
       return [{
         tag: `(${keyword.substring(0, 4)},${keyword.substring(4, 8)})`,
-        tagIndent,
         vr: '',
         keyword: 'Private Tag',
         value: value?.toString() || '',
+        level: depth
       }];
     }
 
     // Handle sequence values (SQ VR)
     if (tagInfo.vr === 'SQ' && value) {
       const sequenceItems = Array.isArray(value) ? value : [value];
-      return sequenceItems.flatMap((item, index) => {
-        const subRows = getRows(item, depth + 1);
-        return [
-          {
-            tag: tagInfo.tag,
-            tagIndent,
-            vr: tagInfo.vr,
-            keyword,
-            value: `Sequence Item #${index + 1}`,
-          },
-          ...subRows,
-        ];
+      const children = sequenceItems.flatMap((item, index) => {
+        // Process each item in the sequence
+        const itemTags = getRows(item, depth + 1);
+        return itemTags;
       });
+
+      return [{
+        tag: tagInfo.tag,
+        vr: tagInfo.vr,
+        keyword,
+        value: `Sequence with ${sequenceItems.length} item(s)`,
+        level: depth,
+        children: children
+      }];
     }
 
     // Handle array values
@@ -65,10 +66,10 @@ export function getRows(metadata: Record<string, any>, depth = 0): TagInfo[] {
 
     return [{
       tag: tagInfo.tag,
-      tagIndent,
       vr: tagInfo.vr,
       keyword: keyword.replace('RETIRED_', ''),
       value: value?.toString() || '',
+      level: depth
     }];
   });
 }

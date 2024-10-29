@@ -63,3 +63,18 @@
 .ant-slider:hover .ant-slider-track {
   background-color: #1890ff;
 }
+
+/* Add these styles to your existing CSS */
+.ant-tree {
+  background: transparent;
+}
+
+.ant-tree-node-content-wrapper {
+  width: 100%;
+}
+
+.table-header {
+  background: #fafafa;
+  border-bottom: 1px solid #f0f0f0;
+  padding: 8px 16px;
+}

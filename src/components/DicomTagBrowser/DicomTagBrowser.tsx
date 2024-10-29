@@ -1,7 +1,8 @@
 import moment from "moment";
 import { useState, useMemo, useEffect } from "react";
-import { Select, Input, Table, Typography, Slider } from "antd";
+import { Select, Input, Tree, Typography, Slider } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
+import type { DataNode } from 'antd/es/tree';
 
 import "./DicomTagBrowser.css";
 import { useSlides } from "../../hooks/useSlides";
@@ -17,6 +18,13 @@ interface DisplaySet {
   SeriesDescription: string;
   Modality: string;
   images: any[];
+}
+
+interface TreeNodeData extends DataNode {
+  tag?: string;
+  keyword?: string;
+  value?: string;
+  children?: TreeNodeData[];
 }
 
 const DicomTagBrowser = () => {
@@ -86,58 +94,62 @@ const DicomTagBrowser = () => {
   const showInstanceList =
     displaySets[selectedDisplaySetInstanceUID]?.images.length > 1;
 
-  const tableData = useMemo(() => {
+    // @ts-ignore
+  const transformToTreeData = (tags: TagInfo[]): TreeNodeData[] => {
+    return tags.map((tag, index) => ({
+      key: `${tag.tag}-${index}`,
+      title: (
+        <div style={{ display: 'flex', width: '100%' }}>
+          <span style={{ width: '20%' }}>{tag.tag}</span>
+          <span style={{ width: '10%' }}>{tag.vr}</span>
+          <span style={{ width: '30%' }}>{tag.keyword}</span>
+          <span style={{ width: '40%' }}>{tag.value}</span>
+        </div>
+      ),
+      children: tag.children ? transformToTreeData(tag.children) : undefined,
+      tag: tag.tag,
+      keyword: tag.keyword,
+      value: tag.value,
+    }));
+  };
+
+  const filterTreeData = (treeData: TreeNodeData[], searchText: string): TreeNodeData[] => {
+    if (!searchText) return treeData;
+
+    const searchLower = searchText.toLowerCase();
+    
+    return treeData.filter(node => {
+      const matchesSearch = 
+        node.tag?.toLowerCase().includes(searchLower) ||
+        node.keyword?.toLowerCase().includes(searchLower) ||
+        node.value?.toString().toLowerCase().includes(searchLower);
+
+      if (matchesSearch) return true;
+
+      if (node.children) {
+        const filteredChildren = filterTreeData(node.children, searchText);
+        if (filteredChildren.length) {
+          node.children = filteredChildren;
+          return true;
+        }
+      }
+
+      return false;
+    });
+  };
+
+  const treeData = useMemo(() => {
     if (!displaySets[selectedDisplaySetInstanceUID]) return [];
     const metadata =
       displaySets[selectedDisplaySetInstanceUID]?.images[instanceNumber - 1];
 
     const tags = getSortedTags(metadata);
-    return tags.map((tag, index) => ({
-      key: index,
-      tag: `${tag.tagIndent}${tag.tag}`,
-      vr: tag.vr,
-      keyword: tag.keyword,
-      value: tag.value || "",
-    }));
+    return transformToTreeData(tags);
   }, [instanceNumber, selectedDisplaySetInstanceUID, displaySets]);
 
-  const columns = [
-    {
-      title: "Tag",
-      dataIndex: "tag",
-      key: "tag",
-      width: "20%",
-    },
-    {
-      title: "VR",
-      dataIndex: "vr",
-      key: "vr",
-      width: "10%",
-    },
-    {
-      title: "Keyword",
-      dataIndex: "keyword",
-      key: "keyword",
-      width: "30%",
-    },
-    {
-      title: "Value",
-      dataIndex: "value",
-      key: "value",
-      width: "40%",
-    },
-  ];
-
-  const filteredData = useMemo(() => {
-    if (!filterValue) return tableData;
-
-    return tableData.filter(
-      (item) =>
-        item.tag.toLowerCase().includes(filterValue.toLowerCase()) ||
-        item.keyword.toLowerCase().includes(filterValue.toLowerCase()) ||
-        item.value.toString().toLowerCase().includes(filterValue.toLowerCase())
-    );
-  }, [filterValue, tableData]);
+  const filteredTreeData = useMemo(() => {
+    return filterTreeData(treeData, filterValue);
+  }, [treeData, filterValue]);
 
   const instanceSliderMarks = useMemo(() => {
     if (!displaySets[selectedDisplaySetInstanceUID]) return {};
@@ -219,13 +231,19 @@ const DicomTagBrowser = () => {
         onChange={(e) => setFilterValue(e.target.value)}
       />
 
-      <Table
-        columns={columns}
-        dataSource={filteredData}
-        pagination={false}
-        size="small"
-        scroll={{ y: 400 }}
-        loading={isLoading}
+      <div className="table-header" style={{ display: 'flex', padding: '8px 0', fontWeight: 'bold' }}>
+        <span style={{ width: '20%' }}>Tag</span>
+        <span style={{ width: '10%' }}>VR</span>
+        <span style={{ width: '30%' }}>Keyword</span>
+        <span style={{ width: '40%' }}>Value</span>
+      </div>
+
+      <Tree
+        treeData={filteredTreeData}
+        defaultExpandAll={false}
+        showLine={{ showLeafIcon: false }}
+        style={{ maxHeight: 400, overflow: 'auto' }}
+        titleRender={(nodeData: TreeNodeData) => nodeData.title as React.ReactNode}
       />
     </div>
   );
