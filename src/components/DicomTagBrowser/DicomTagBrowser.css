@@ -8,5 +8,24 @@
 }
 
 .ant-select-selection-item {
-  color: white;
+  color: rgba(0, 0, 0, 0.85) !important;
+}
+
+.ant-slider {
+  margin: 10px 8px 24px;
+}
+
+.ant-slider-mark-text {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.ant-slider-handle {
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+}
+
+.ant-slider:hover .ant-slider-track {
+  background-color: #1890ff;
 }

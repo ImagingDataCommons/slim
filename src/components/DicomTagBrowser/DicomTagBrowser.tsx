@@ -2,7 +2,7 @@
 import dcmjs from 'dcmjs';
 import moment from 'moment';
 import { useState, useMemo } from 'react';
-import { Select, Input, Table, Typography } from 'antd';
+import { Select, Input, Table, Typography, Slider } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 
 import './DicomTagBrowser.css';
@@ -15,8 +15,6 @@ const { Option } = Select;
 
 const DicomTagBrowser = () => {
   const { slides } = useSlides();
-
-  const displaySetInstanceUID = 0;
 
   const displaySets = slides.map((slide, index) => {
     const { volumeImages } = slide;
@@ -32,8 +30,11 @@ const DicomTagBrowser = () => {
     };
   });
 
+  // Set initial displaySetInstanceUID based on first available displaySet
+  const initialDisplaySetInstanceUID = displaySets.length > 0 ? displaySets[0].displaySetInstanceUID : 0;
+
   const [selectedDisplaySetInstanceUID, setSelectedDisplaySetInstanceUID] = 
-    useState(displaySetInstanceUID);
+    useState(initialDisplaySetInstanceUID);
   const [instanceNumber, setInstanceNumber] = useState(1);
   const [filterValue, setFilterValue] = useState('');
 
@@ -116,41 +117,70 @@ const DicomTagBrowser = () => {
       )
     : tableData;
 
+  const instanceSliderMarks = useMemo(() => {
+    if (!activeDisplaySet) return {};
+    const totalInstances = activeDisplaySet.images.length;
+    
+    // Create marks for first, middle, and last instances only
+    const marks: Record<number, string> = {
+      1: '1',  // First
+      [Math.ceil(totalInstances / 2)]: Math.ceil(totalInstances / 2).toString(),  // Middle
+      [totalInstances]: totalInstances.toString()  // Last
+    };
+    
+    return marks;
+  }, [activeDisplaySet]);
+
   return (
     <div className="dicom-tag-browser-content">
-      <div className="mb-6 flex items-center">
-        <div className="w-1/2 mr-4">
+      <div className="mb-6">
+        <div className="w-full mb-4">
           <Typography.Text strong>Series</Typography.Text>
           <Select
             style={{ width: '100%' }}
             value={selectedDisplaySetInstanceUID}
+            defaultValue={initialDisplaySetInstanceUID}
             onChange={value => {
               setSelectedDisplaySetInstanceUID(value);
               setInstanceNumber(1);
             }}
+            optionLabelProp="label"
+            optionFilterProp="label"
           >
             {displaySetList.map(item => (
-              <Option key={item.value} value={item.value}>
-                {item.label}
+              <Option 
+                key={item.value} 
+                value={item.value}
+                label={item.label}
+              >
+                <div>
+                  <div>{item.label}</div>
+                  <div style={{ fontSize: '12px', color: 'rgba(0, 0, 0, 0.45)' }}>{item.description}</div>
+                </div>
               </Option>
             ))}
           </Select>
         </div>
         
         {showInstanceList && (
-          <div className="w-1/2">
-            <Typography.Text strong>Instance Number</Typography.Text>
-            <Select
-              style={{ width: '100%' }}
+          <div className="w-full">
+            <div className="flex justify-between items-center">
+              <Typography.Text strong>Instance Number: {instanceNumber}</Typography.Text>
+              <Typography.Text type="secondary">
+                Total: {activeDisplaySet.images.length}
+              </Typography.Text>
+            </div>
+            <Slider
+              min={1}
+              max={activeDisplaySet.images.length}
               value={instanceNumber}
               onChange={value => setInstanceNumber(value)}
-            >
-              {Array.from({ length: activeDisplaySet.images.length }, (_, i) => (
-                <Option key={i + 1} value={i + 1}>
-                  {i + 1}
-                </Option>
-              ))}
-            </Select>
+              marks={instanceSliderMarks}
+              tooltip={{
+                formatter: value => `Instance ${value}`
+              }}
+              style={{ marginTop: 8 }}
+            />
           </div>
         )}
       </div>
