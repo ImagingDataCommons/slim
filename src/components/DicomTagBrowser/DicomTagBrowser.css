@@ -47,7 +47,7 @@
 .header-row,
 .tag-content {
   display: grid;
-  grid-template-columns: 120px 60px 180px 1fr;
+  grid-template-columns: 120px 60px minmax(200px, 300px) minmax(100px, 1fr);
   width: 100%;
   padding: 8px 8px 8px 24px;
   align-items: center;
