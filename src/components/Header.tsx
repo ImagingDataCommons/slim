@@ -43,6 +43,7 @@ interface HeaderProps extends RouteComponentProps {
     name: string
     email: string
   }
+  clients: any
   showWorklistButton: boolean
   onServerSelection: ({ url }: { url: string }) => void
   onUserLogout?: () => void
@@ -181,7 +182,10 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     Modal.info({
       title: 'DICOM Tag Browser',
       width,
-      content: <DicomTagBrowser />,
+      content: <DicomTagBrowser 
+        clients={this.props.clients} 
+        studyInstanceUID={this.props.params.studyInstanceUID ?? ''} 
+      />,
       onOk (): void {}
     })
   }
@@ -351,13 +355,11 @@ class Header extends React.Component<HeaderProps, HeaderState> {
 
     const dicomTagBrowserButton = showDicomTagBrowser
       ? (
-        <Badge count={this.state.errorObj.length}>
           <Button
             icon={FileSearchOutlined}
             tooltip='Dicom Tag Browser'
             onClick={this.handleDicomTagBrowserButtonClick}
           />
-        </Badge>
         )
       : null
 

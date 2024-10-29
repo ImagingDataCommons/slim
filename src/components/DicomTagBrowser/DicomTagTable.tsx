@@ -15,7 +15,14 @@ const rowStyle = {
   ...rowVerticalPaddingStyle
 }
 
-function ColumnHeaders ({ tagRef, vrRef, keywordRef, valueRef }) {
+interface ColumnHeadersProps {
+  tagRef: (elem: HTMLLabelElement | undefined) => void
+  vrRef: (elem: HTMLLabelElement | undefined) => void
+  keywordRef: (elem: HTMLLabelElement | undefined) => void
+  valueRef: (elem: HTMLLabelElement | undefined) => void
+}
+
+function ColumnHeaders ({ tagRef, vrRef, keywordRef, valueRef }: ColumnHeadersProps): JSX.Element {
   return (
     <div
       className={classNames(
@@ -59,7 +66,11 @@ function ColumnHeaders ({ tagRef, vrRef, keywordRef, valueRef }) {
   )
 }
 
-function DicomTagTable ({ rows }) {
+interface DicomTagTableProps {
+  rows: string[][]
+}
+
+function DicomTagTable ({ rows }: DicomTagTableProps): JSX.Element {
   const listRef = useRef()
   const canvasRef = useRef()
 
@@ -71,23 +82,23 @@ function DicomTagTable ({ rows }) {
   // Here the refs are inturn stored in state to trigger a render of the table.
   // This virtualized table does NOT render until the header is rendered because the header column widths are used to determine the row heights in the table.
   // Therefore whenever the refs change (in particular the first time the refs are set), we want to trigger a render of the table.
-  const tagRef = elem => {
-    if (elem) {
+  const tagRef = (elem: HTMLLabelElement | undefined): void => {
+    if (elem !== undefined) {
       setTagHeaderElem(elem)
     }
   }
-  const vrRef = elem => {
-    if (elem) {
+  const vrRef = (elem: HTMLLabelElement | undefined): void => {
+    if (elem !== undefined) {
       setVrHeaderElem(elem)
     }
   }
-  const keywordRef = elem => {
-    if (elem) {
+  const keywordRef = (elem: HTMLLabelElement | undefined): void => {
+    if (elem !== undefined) {
       setKeywordHeaderElem(elem)
     }
   }
-  const valueRef = elem => {
-    if (elem) {
+  const valueRef = (elem: HTMLLabelElement | undefined): void => {
+    if (elem !== undefined) {
       setValueHeaderElem(elem)
     }
   }
@@ -96,7 +107,7 @@ function DicomTagTable ({ rows }) {
    * When new rows are set, scroll to the top and reset the virtualization.
    */
   useEffect(() => {
-    if (!listRef?.current) {
+    if (listRef?.current === undefined) {
       return
     }
 
@@ -119,7 +130,7 @@ function DicomTagTable ({ rows }) {
   }, [])
 
   const Row = useCallback(
-    ({ index, style }) => {
+    function ({ index, style }: { index: number, style: React.CSSProperties }) {
       const row = rows[index]
 
       return (
@@ -145,7 +156,7 @@ function DicomTagTable ({ rows }) {
    * Whenever any one of the column headers is set, then the header is rendered.
    * Here we chose the tag header.
    */
-  const isHeaderRendered = useCallback(() => tagHeaderElem !== null, [tagHeaderElem])
+  const isHeaderRendered = useCallback((): boolean => tagHeaderElem !== null, [tagHeaderElem])
 
   /**
    * Get the item/row size. We use the header column widths to calculate the various row heights.
@@ -153,7 +164,7 @@ function DicomTagTable ({ rows }) {
    * @returns the row height
    */
   const getItemSize = useCallback(
-    index => {
+    (index: number): number => {
       const headerWidths = [
         tagHeaderElem.offsetWidth,
         vrHeaderElem.offsetWidth,

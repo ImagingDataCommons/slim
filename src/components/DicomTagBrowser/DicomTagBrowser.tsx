@@ -9,6 +9,7 @@ import {
   flexRender
 } from '@tanstack/react-table'
 
+import DicomWebManager from '../../DicomWebManager'
 import './DicomTagBrowser.css'
 import { useSlides } from '../../hooks/useSlides'
 import { getSortedTags } from './dicomTagUtils'
@@ -54,7 +55,7 @@ const columnHelper = createColumnHelper<TreeNode>()
 // Move these functions outside the component
 const transformToTreeData = (tags: TagInfo[], depth = 0, parentId = '', expandedRows: Set<string>): TreeNode[] => {
   return tags.map((tag, index) => {
-    const id = parentId ? `${parentId}-${index}` : `${index}`
+    const id = parentId !== undefined ? `${parentId}-${index}` : `${index}`
 
     return {
       id,
@@ -65,7 +66,7 @@ const transformToTreeData = (tags: TagInfo[], depth = 0, parentId = '', expanded
       depth,
       expanded: expandedRows.has(id),
       hasChildren: Boolean(tag.children?.length),
-      children: (tag.children != null) ? transformToTreeData(tag.children, depth + 1, id, expandedRows) : undefined
+      children: (tag.children !== undefined) ? transformToTreeData(tag.children, depth + 1, id, expandedRows) : undefined
     }
   })
 }
@@ -88,17 +89,17 @@ const flattenTreeData = (nodes: TreeNode[]): TreeNode[] => {
 }
 
 const filterTreeData = (nodes: TreeNode[], searchText: string): FilteredTreeNode[] => {
-  if (!searchText) return nodes as FilteredTreeNode[]
+  if (searchText === undefined) return nodes as FilteredTreeNode[]
 
   const searchLower = searchText.toLowerCase()
 
   const filtered = nodes
     .map(node => {
       const matchesSearch =
-        (node.tag?.toLowerCase() || '').includes(searchLower) ||
-        (node.keyword?.toLowerCase() || '').includes(searchLower) ||
-        (node.value?.toString().toLowerCase() || '').includes(searchLower) ||
-        (node.vr?.toLowerCase() || '').includes(searchLower)
+        (node.tag?.toLowerCase() ?? '').includes(searchLower) ||
+        (node.keyword?.toLowerCase() ?? '').includes(searchLower) ||
+        (node.value?.toString().toLowerCase() ?? '').includes(searchLower) ||
+        (node.vr?.toLowerCase() ?? '').includes(searchLower)
 
       let filteredChildren: FilteredTreeNode[] = []
       if (node.children != null) {
@@ -106,11 +107,12 @@ const filterTreeData = (nodes: TreeNode[], searchText: string): FilteredTreeNode
       }
 
       if (matchesSearch || filteredChildren.length > 0) {
-        return {
+        const filteredNode: FilteredTreeNode = {
           ...node,
           children: filteredChildren,
           expanded: true
-        } as FilteredTreeNode
+        }
+        return filteredNode
       }
 
       return null
@@ -120,8 +122,14 @@ const filterTreeData = (nodes: TreeNode[], searchText: string): FilteredTreeNode
   return filtered
 }
 
-const DicomTagBrowser = () => {
-  const { slides, isLoading } = useSlides()
+interface DicomTagBrowserProps {
+  clients: { [key: string]: DicomWebManager }
+  studyInstanceUID: string
+}
+
+const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): JSX.Element => {
+  const { slides, isLoading } = useSlides({ clients, studyInstanceUID })
+
   const [displaySets, setDisplaySets] = useState<DisplaySet[]>([])
   const [selectedDisplaySetInstanceUID, setSelectedDisplaySetInstanceUID] = useState(0)
   const [instanceNumber, setInstanceNumber] = useState(1)
@@ -134,7 +142,7 @@ const DicomTagBrowser = () => {
     const updatedDisplaySets = slides
       .map((slide, index) => {
         const { volumeImages } = slide
-        if (!volumeImages?.[0]) return null
+        if (volumeImages?.[0] === undefined) return null
 
         const {
           SeriesDate,
@@ -186,7 +194,7 @@ const DicomTagBrowser = () => {
   const showInstanceList =
     displaySets[selectedDisplaySetInstanceUID]?.images.length > 1
 
-  const toggleRow = (nodeId: string) => {
+  const toggleRow = (nodeId: string): void => {
     setExpandedRows((prev) => {
       const next = new Set(prev)
       if (next.has(nodeId)) {
@@ -234,12 +242,12 @@ const DicomTagBrowser = () => {
   )
 
   const treeData = useMemo(() => {
-    if (!displaySets[selectedDisplaySetInstanceUID]) return []
+    if (displaySets[selectedDisplaySetInstanceUID] === undefined) return []
     const metadata = displaySets[selectedDisplaySetInstanceUID]?.images[instanceNumber - 1]
     const tags = getSortedTags(metadata)
     const hierarchicalData = transformToTreeData(tags, 0, '', expandedRows)
 
-    if (!filterValue) {
+    if (filterValue === undefined) {
       return flattenTreeData(hierarchicalData)
     }
 
@@ -254,14 +262,14 @@ const DicomTagBrowser = () => {
   })
 
   const instanceSliderMarks = useMemo(() => {
-    if (!displaySets[selectedDisplaySetInstanceUID]) return {}
+    if (displaySets[selectedDisplaySetInstanceUID] === undefined) return {}
     const totalInstances = displaySets[selectedDisplaySetInstanceUID].images.length
 
     // Create marks for first, middle, and last instances
     const marks: Record<number, string> = {
       1: '1', // First
-      [Math.ceil(totalInstances / 2)]: Math.ceil(totalInstances / 2).toString(), // Middle
-      [totalInstances]: totalInstances.toString() // Last
+      [Math.ceil(totalInstances / 2)]: String(Math.ceil(totalInstances / 2)), // Middle
+      [totalInstances]: String(totalInstances) // Last
     }
 
     return marks
@@ -269,10 +277,6 @@ const DicomTagBrowser = () => {
 
   if (isLoading) {
     return <div>Loading...</div>
-  }
-
-  if (displaySets.length === 0) {
-    return <div>No DICOM data available</div>
   }
 
   return (
@@ -319,7 +323,7 @@ const DicomTagBrowser = () => {
                 onChange={(value) => setInstanceNumber(value)}
                 marks={instanceSliderMarks}
                 tooltip={{
-                  formatter: (value) => `Instance ${value}`
+                  formatter: (value: number | undefined) => value !== undefined ? `Instance ${value}` : ''
                 }}
               />
             </div>

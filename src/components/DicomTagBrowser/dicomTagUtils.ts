@@ -9,8 +9,8 @@ interface TagInfo {
   vr: string
   keyword: string
   value: string
-  children?: TagInfo[]; // Added for nested structure
-  level: number; // Added to track nesting level
+  children?: TagInfo[]
+  level: number
 }
 
 /**
@@ -27,7 +27,7 @@ export function getRows (metadata: Record<string, any>, depth = 0): TagInfo[] {
     let value = metadata[keyword]
 
     // Handle private or unknown tags
-    if (!tagInfo) {
+    if (tagInfo === undefined) {
       const regex = /[0-9A-Fa-f]{6}/g
       if (keyword.match(regex) == null) return []
 
@@ -35,13 +35,13 @@ export function getRows (metadata: Record<string, any>, depth = 0): TagInfo[] {
         tag: `(${keyword.substring(0, 4)},${keyword.substring(4, 8)})`,
         vr: '',
         keyword: 'Private Tag',
-        value: value?.toString() || '',
+        value: value?.toString() ?? '',
         level: depth
       }]
     }
 
     // Handle sequence values (SQ VR)
-    if (tagInfo.vr === 'SQ' && value) {
+    if (tagInfo.vr === 'SQ' && value !== undefined) {
       const sequenceItems = Array.isArray(value) ? value : [value]
       const children = sequenceItems.flatMap((item, index) => {
         // Process each item in the sequence
@@ -68,7 +68,7 @@ export function getRows (metadata: Record<string, any>, depth = 0): TagInfo[] {
       tag: tagInfo.tag,
       vr: tagInfo.vr,
       keyword: keyword.replace('RETIRED_', ''),
-      value: value?.toString() || '',
+      value: value?.toString() ?? '',
       level: depth
     }]
   })
