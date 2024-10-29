@@ -35,46 +35,154 @@
   margin-bottom: 20px;
 }
 
-/* Table styles */
-.ant-table-body {
+/* Tree styles */
+.ant-tree {
+  background: transparent;
+  font-size: 14px;
+}
+
+.ant-tree .ant-tree-node-content-wrapper {
+  width: calc(100% - 24px); /* Account for the arrow icon */
+  min-height: 32px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+}
+
+/* Style for the tree node content */
+.dicom-tag-row {
+  display: flex;
+  width: 100%;
+  padding: 4px 0;
+  align-items: center;
+  min-height: 32px;
+}
+
+.dicom-tag-row span {
+  padding: 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+/* Add tooltip behavior */
+.dicom-tag-row span {
+  position: relative;
+  cursor: default;
+}
+
+/* Value column specific styles */
+.dicom-tag-value {
+  word-break: break-word;
+  white-space: pre-wrap !important;
+  max-height: 80px;
   overflow-y: auto !important;
 }
 
-.ant-select-selection-item {
-  color: rgba(0, 0, 0, 0.85) !important;
+/* Ensure the tree nodes can expand to fit content */
+.ant-tree .ant-tree-node-content-wrapper {
+  width: calc(100% - 24px);
+  min-height: 32px;
+  height: auto;
+  padding: 0 8px;
+  display: flex;
+  align-items: flex-start;
 }
 
-/* Slider styles */
-.ant-slider {
-  margin: 10px 8px 0;
+/* Add scrollbar styling */
+.dicom-tag-value::-webkit-scrollbar {
+  width: 6px;
 }
 
-.ant-slider-mark-text {
-  font-size: 12px;
-  color: rgba(0, 0, 0, 0.45);
+.dicom-tag-value::-webkit-scrollbar-track {
+  background: #f1f1f1;
 }
 
-.ant-slider-handle {
-  width: 16px;
-  height: 16px;
-  margin-top: -6px;
+.dicom-tag-value::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
 }
 
-.ant-slider:hover .ant-slider-track {
-  background-color: #1890ff;
+.dicom-tag-value::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 
-/* Add these styles to your existing CSS */
-.ant-tree {
-  background: transparent;
+/* Ensure the tree container scrolls properly */
+.tree-container .ant-tree {
+  padding: 8px;
 }
 
-.ant-tree-node-content-wrapper {
+/* Make the header stick to the top while scrolling */
+.table-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fafafa;
+  border-bottom: 1px solid #f0f0f0;
+  padding: 8px;
+  padding-left: 32px; /* Account for the tree's default indentation */
+  font-weight: bold;
+  display: flex;
+  align-items: center;
   width: 100%;
 }
 
-.table-header {
-  background: #fafafa;
-  border-bottom: 1px solid #f0f0f0;
-  padding: 8px 16px;
+.table-header span {
+  padding: 0 4px;
+}
+
+/* Column widths for both header and content */
+.table-header span:nth-child(1),
+.dicom-tag-row span:nth-child(1) {
+  width: 20%;
+  min-width: 120px;
+}
+
+.table-header span:nth-child(2),
+.dicom-tag-row span:nth-child(2) {
+  width: 10%;
+  min-width: 60px;
+}
+
+.table-header span:nth-child(3),
+.dicom-tag-row span:nth-child(3) {
+  width: 30%;
+  min-width: 180px;
+}
+
+.table-header span:nth-child(4),
+.dicom-tag-row span:nth-child(4) {
+  width: 40%;
+  flex: 1; /* Allow last column to take remaining space */
+}
+
+/* Tree container */
+.tree-container {
+  border: 1px solid #f0f0f0;
+  border-radius: 2px;
+}
+
+/* Adjust tree node wrapper */
+.ant-tree .ant-tree-node-content-wrapper {
+  width: calc(100% - 24px);
+  min-height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* Ensure the tree container scrolls properly */
+.tree-container .ant-tree {
+  padding: 0;
+}
+
+/* Hover state for tree nodes */
+.ant-tree-node-content-wrapper:hover {
+  background-color: #f5f5f5;
+}
+
+/* Selected state for tree nodes */
+.ant-tree-node-selected {
+  background-color: #e6f7ff !important;
 }

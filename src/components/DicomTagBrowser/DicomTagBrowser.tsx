@@ -99,11 +99,11 @@ const DicomTagBrowser = () => {
     return tags.map((tag, index) => ({
       key: `${tag.tag}-${index}`,
       title: (
-        <div style={{ display: 'flex', width: '100%' }}>
-          <span style={{ width: '20%' }}>{tag.tag}</span>
-          <span style={{ width: '10%' }}>{tag.vr}</span>
-          <span style={{ width: '30%' }}>{tag.keyword}</span>
-          <span style={{ width: '40%' }}>{tag.value}</span>
+        <div className="dicom-tag-row">
+          <span title={tag.tag}>{tag.tag}</span>
+          <span title={tag.vr}>{tag.vr}</span>
+          <span title={tag.keyword}>{tag.keyword}</span>
+          <span title={tag.value} className="dicom-tag-value">{tag.value}</span>
         </div>
       ),
       children: tag.children ? transformToTreeData(tag.children) : undefined,
@@ -231,20 +231,22 @@ const DicomTagBrowser = () => {
         onChange={(e) => setFilterValue(e.target.value)}
       />
 
-      <div className="table-header" style={{ display: 'flex', padding: '8px 0', fontWeight: 'bold' }}>
-        <span style={{ width: '20%' }}>Tag</span>
-        <span style={{ width: '10%' }}>VR</span>
-        <span style={{ width: '30%' }}>Keyword</span>
-        <span style={{ width: '40%' }}>Value</span>
-      </div>
+      <div className="tree-container">
+        <div className="table-header">
+          <span>Tag</span>
+          <span>VR</span>
+          <span>Keyword</span>
+          <span>Value</span>
+        </div>
 
-      <Tree
-        treeData={filteredTreeData}
-        defaultExpandAll={false}
-        showLine={{ showLeafIcon: false }}
-        style={{ maxHeight: 400, overflow: 'auto' }}
-        titleRender={(nodeData: TreeNodeData) => nodeData.title as React.ReactNode}
-      />
+        <Tree
+          treeData={filteredTreeData}
+          defaultExpandAll={false}
+          showLine={{ showLeafIcon: false }}
+          style={{ maxHeight: 400, overflow: 'auto' }}
+          titleRender={(nodeData: TreeNodeData) => nodeData.title as React.ReactNode}
+        />
+      </div>
     </div>
   );
 };
