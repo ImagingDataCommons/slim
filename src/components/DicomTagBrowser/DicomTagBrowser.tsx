@@ -4,13 +4,34 @@ import moment from 'moment';
 import { useState, useMemo } from 'react';
 import { Select, Input, Table, Typography } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
+
 import './DicomTagBrowser.css';
+import { useSlides } from '../../hooks/useSlides';
+import { getSortedTags } from './dicomTagUtils';
 
 const { DicomMetaDictionary } = dcmjs.data;
 const { nameMap } = DicomMetaDictionary;
 const { Option } = Select;
 
-const DicomTagBrowser = ({ displaySets, displaySetInstanceUID }) => {
+const DicomTagBrowser = () => {
+  const { slides } = useSlides();
+
+  const displaySetInstanceUID = 0;
+
+  const displaySets = slides.map((slide, index) => {
+    const { volumeImages } = slide;
+    const { SeriesDate, SeriesTime, SeriesNumber, SeriesDescription, Modality } = volumeImages[0];
+    return {
+      displaySetInstanceUID: index,
+      SeriesDate,
+      SeriesTime,
+      SeriesNumber,
+      SeriesDescription,
+      Modality,
+      images: volumeImages,
+    };
+  });
+
   const [selectedDisplaySetInstanceUID, setSelectedDisplaySetInstanceUID] = 
     useState(displaySetInstanceUID);
   const [instanceNumber, setInstanceNumber] = useState(1);
@@ -44,16 +65,10 @@ const DicomTagBrowser = ({ displaySets, displaySetInstanceUID }) => {
     ds => ds.displaySetInstanceUID === selectedDisplaySetInstanceUID
   );
 
-  const isImageStack = activeDisplaySet?.constructor.name === 'ImageSet';
-  const showInstanceList = isImageStack && activeDisplaySet.images.length > 1;
+  const showInstanceList = activeDisplaySet.images.length > 1;
 
   const tableData = useMemo(() => {
-    let metadata;
-    if (isImageStack) {
-      metadata = activeDisplaySet.images[instanceNumber - 1];
-    } else {
-      metadata = activeDisplaySet.instance || activeDisplaySet;
-    }
+    const metadata = activeDisplaySet.images[instanceNumber - 1];
     
     const tags = getSortedTags(metadata);
     return tags.map((tag, index) => ({
@@ -63,7 +78,7 @@ const DicomTagBrowser = ({ displaySets, displaySetInstanceUID }) => {
       keyword: tag.keyword,
       value: tag.value || ''
     }));
-  }, [instanceNumber, selectedDisplaySetInstanceUID, activeDisplaySet]);
+  }, [instanceNumber, activeDisplaySet]);
 
   const columns = [
     {
@@ -158,62 +173,5 @@ const DicomTagBrowser = ({ displaySets, displaySetInstanceUID }) => {
   );
 };
 
-// Helper functions for processing DICOM tags
-function getSortedTags(metadata) {
-  const tagList = getRows(metadata);
-  return tagList.sort((a, b) => a.tag.localeCompare(b.tag));
-}
-
-function getRows(metadata, depth = 0) {
-  const keywords = Object.keys(metadata).filter(key => key !== '_vrMap');
-  const tagIndent = '>'.repeat(depth) + (depth > 0 ? ' ' : '');
-
-  return keywords.flatMap(keyword => {
-    const tagInfo = nameMap[keyword];
-    let value = metadata[keyword];
-
-    if (!tagInfo) {
-      const regex = /[0-9A-Fa-f]{6}/g;
-      if (!keyword.match(regex)) return [];
-      
-      return [{
-        tag: `(${keyword.substring(0, 4)},${keyword.substring(4, 8)})`,
-        tagIndent,
-        vr: '',
-        keyword: 'Private Tag',
-        value: value?.toString() || '',
-      }];
-    }
-
-    if (tagInfo.vr === 'SQ' && value) {
-      const sequenceItems = Array.isArray(value) ? value : [value];
-      return sequenceItems.flatMap((item, index) => {
-        const subRows = getRows(item, depth + 1);
-        return [
-          {
-            tag: tagInfo.tag,
-            tagIndent,
-            vr: tagInfo.vr,
-            keyword,
-            value: `Sequence Item #${index + 1}`,
-          },
-          ...subRows,
-        ];
-      });
-    }
-
-    if (Array.isArray(value)) {
-      value = value.join('\\');
-    }
-
-    return [{
-      tag: tagInfo.tag,
-      tagIndent,
-      vr: tagInfo.vr,
-      keyword: keyword.replace('RETIRED_', ''),
-      value: value?.toString() || '',
-    }];
-  });
-}
-
 export default DicomTagBrowser;
+

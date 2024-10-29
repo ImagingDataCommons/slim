@@ -228,15 +228,12 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     Modal.info({
       title: 'DICOM Tag Browser',
       width: 800,
-      content: <DicomTagBrowser 
-        displaySets={mockDisplaySets} 
-        displaySetInstanceUID={mockDisplaySets[0].displaySetInstanceUID} 
-      />,
+      content: <DicomTagBrowser />,
       onOk (): void {}
     })
   }
 
-  handleDebugButtonClick = (): void => {
+  handleDebugButtonClick = (): void => { 
     const errorMsgs: {
       Authentication: string[]
       Communication: string[]
