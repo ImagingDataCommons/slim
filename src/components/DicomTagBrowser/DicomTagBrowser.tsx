@@ -133,9 +133,9 @@ const DicomTagBrowser = () => {
 
   return (
     <div className="dicom-tag-browser-content">
-      <div className="mb-6">
-        <div className="w-full mb-4">
-          <Typography.Text strong>Series</Typography.Text>
+      <div className="controls-row">
+        <div className="series-selector">
+          <Typography.Text strong>Slide</Typography.Text>
           <Select
             style={{ width: '100%' }}
             value={selectedDisplaySetInstanceUID}
@@ -163,13 +163,8 @@ const DicomTagBrowser = () => {
         </div>
         
         {showInstanceList && (
-          <div className="w-full">
-            <div className="flex justify-between items-center">
-              <Typography.Text strong>Instance Number: {instanceNumber}</Typography.Text>
-              <Typography.Text type="secondary">
-                Total: {activeDisplaySet.images.length}
-              </Typography.Text>
-            </div>
+          <div className="instance-slider">
+            <Typography.Text strong>Instance Number: {instanceNumber}</Typography.Text>
             <Slider
               min={1}
               max={activeDisplaySet.images.length}
@@ -179,17 +174,16 @@ const DicomTagBrowser = () => {
               tooltip={{
                 formatter: value => `Instance ${value}`
               }}
-              style={{ marginTop: 8 }}
             />
           </div>
         )}
       </div>
 
       <Input
+        className="search-input"
         placeholder="Search DICOM tags..."
         prefix={<SearchOutlined />}
         onChange={e => setFilterValue(e.target.value)}
-        style={{ marginBottom: 16 }}
       />
 
       <Table

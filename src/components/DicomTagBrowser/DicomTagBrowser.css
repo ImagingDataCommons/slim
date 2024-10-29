@@ -1,8 +1,41 @@
 .dicom-tag-browser-content {
   width: 100%;
-  padding-bottom: 20px;
+  padding: 16px 20px 20px;
 }
 
+/* Controls row layout */
+.controls-row {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+/* Series selector section */
+.series-selector {
+  flex: 1;
+}
+
+.series-selector .ant-typography {
+  display: block;
+  margin-bottom: 8px;
+}
+
+/* Instance slider section */
+.instance-slider {
+  flex: 1;
+}
+
+.instance-slider .ant-typography {
+  display: block;
+  margin-bottom: 8px;
+}
+
+/* Search input */
+.search-input {
+  margin-bottom: 20px;
+}
+
+/* Table styles */
 .ant-table-body {
   overflow-y: auto !important;
 }
@@ -11,8 +44,9 @@
   color: rgba(0, 0, 0, 0.85) !important;
 }
 
+/* Slider styles */
 .ant-slider {
-  margin: 10px 8px 24px;
+  margin: 10px 8px 0;
 }
 
 .ant-slider-mark-text {

@@ -394,7 +394,9 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       </Badge>
     )
 
-    const dicomTagBrowserButton = (
+    const showDicomTagBrowser = this.props.location.pathname.includes('/studies/')
+
+    const dicomTagBrowserButton = showDicomTagBrowser ? (
       <Badge count={this.state.errorObj.length}>
         <Badge color='green' count={this.state.warnings.length}>
           <Button
@@ -404,7 +406,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           />
         </Badge>
       </Badge>
-    )
+    ) : null
 
     let serverSelectionButton
     if (this.props.showServerSelectionButton) {
