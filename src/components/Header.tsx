@@ -307,9 +307,9 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           }
         )
       }
-      const userMenu = <Menu items={userMenuItems} />
+      const userMenu = { items: userMenuItems }
       user = (
-        <Dropdown overlay={userMenu} trigger={['click']}>
+        <Dropdown menu={userMenu} trigger={['click']}>
           <Button
             icon={UserOutlined}
             onClick={e => e.preventDefault()}
@@ -444,7 +444,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
         </Layout.Header>
 
         <Modal
-          visible={this.state.isServerSelectionModalVisible}
+          open={this.state.isServerSelectionModalVisible}
           title='Select DICOMweb server'
           onOk={handleServerSelection}
           onCancel={handleServerSelectionCancellation}
