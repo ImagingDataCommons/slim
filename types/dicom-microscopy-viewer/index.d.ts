@@ -519,6 +519,9 @@ declare module 'dicom-microscopy-viewer' {
       // General Series module
       SeriesInstanceUID: string
       SeriesNumber: number | null | undefined
+      SeriesDate: string
+      SeriesTime: string
+      SeriesDescription: string
       Modality: string
       // SOP Common module
       SOPClassUID: string

@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import * as dmv from "dicom-microscopy-viewer";
 import DicomWebManager from "../DicomWebManager";
+
 import { Slide, createSlides } from "../data/slides";
 import { StorageClasses } from "../data/uids";
 import { CustomError, errorTypes } from "../utils/CustomError";
@@ -56,7 +57,8 @@ export const useSlides = ({
 
   // Important: Use provided values first, fall back to cache only if undefined
   const effectiveClients = clients !== undefined ? clients : cachedClients;
-  const effectiveStudyUID = studyInstanceUID !== undefined ? studyInstanceUID : cachedStudyUID;
+  const effectiveStudyUID =
+    studyInstanceUID !== undefined ? studyInstanceUID : cachedStudyUID;
 
   // Cache new values when they're provided
   useEffect(() => {
@@ -81,7 +83,7 @@ export const useSlides = ({
     }
 
     setIsLoading(true); // Set loading to true when starting a new fetch
-    
+
     const fetchImageMetadata = async (): Promise<void> => {
       try {
         const images: dmv.metadata.VLWholeSlideMicroscopyImage[][] = [];

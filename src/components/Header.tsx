@@ -18,6 +18,7 @@ import {
   CheckOutlined,
   InfoOutlined,
   StopOutlined,
+  FileSearchOutlined,
   UnorderedListOutlined,
   UserOutlined,
   SettingOutlined
@@ -225,9 +226,10 @@ class Header extends React.Component<HeaderProps, HeaderState> {
   }
 
   handleDicomTagBrowserButtonClick = (): void => {
+    const width = window.innerWidth - 300;
     Modal.info({
       title: 'DICOM Tag Browser',
-      width: 800,
+      width: width,
       content: <DicomTagBrowser />,
       onOk (): void {}
     })
@@ -398,13 +400,11 @@ class Header extends React.Component<HeaderProps, HeaderState> {
 
     const dicomTagBrowserButton = showDicomTagBrowser ? (
       <Badge count={this.state.errorObj.length}>
-        <Badge color='green' count={this.state.warnings.length}>
-          <Button
-            icon={SettingOutlined}
-            tooltip='Dicom Tag Browser'
-            onClick={this.handleDicomTagBrowserButtonClick}
-          />
-        </Badge>
+        <Button
+          icon={FileSearchOutlined}
+          tooltip='Dicom Tag Browser'
+          onClick={this.handleDicomTagBrowserButtonClick}
+        />
       </Badge>
     ) : null
 
