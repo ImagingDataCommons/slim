@@ -100,10 +100,12 @@ const DicomTagBrowser = () => {
       key: `${tag.tag}-${index}`,
       title: (
         <div className="dicom-tag-row">
-          <span title={tag.tag}>{tag.tag}</span>
-          <span title={tag.vr}>{tag.vr}</span>
-          <span title={tag.keyword}>{tag.keyword}</span>
-          <span className="dicom-tag-value">{tag.value}</span>
+          <div className="tag-content">
+            <span>{tag.tag}</span>
+            <span>{tag.vr}</span>
+            <span>{tag.keyword}</span>
+            <span className="dicom-tag-value">{tag.value}</span>
+          </div>
         </div>
       ),
       children: tag.children ? transformToTreeData(tag.children) : undefined,
@@ -233,10 +235,12 @@ const DicomTagBrowser = () => {
 
       <div className="tree-container">
         <div className="table-header">
-          <span>Tag</span>
-          <span>VR</span>
-          <span>Keyword</span>
-          <span>Value</span>
+          <div className="header-row">
+            <span>Tag</span>
+            <span>VR</span>
+            <span>Keyword</span>
+            <span>Value</span>
+          </div>
         </div>
 
         <Tree
@@ -244,7 +248,6 @@ const DicomTagBrowser = () => {
           defaultExpandAll={false}
           showLine={{ showLeafIcon: false }}
           style={{ maxHeight: 400, overflow: 'auto' }}
-          titleRender={(nodeData: TreeNodeData) => nodeData.title as React.ReactNode}
         />
       </div>
     </div>

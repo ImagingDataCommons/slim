@@ -10,178 +10,78 @@
   margin-bottom: 32px;
 }
 
-/* Series selector section */
 .series-selector {
   flex: 1;
 }
 
-.series-selector .ant-typography {
-  display: block;
-  margin-bottom: 8px;
-}
-
-/* Instance slider section */
 .instance-slider {
   flex: 1;
 }
 
+.series-selector .ant-typography,
 .instance-slider .ant-typography {
   display: block;
   margin-bottom: 8px;
 }
 
-/* Search input */
 .search-input {
   margin-bottom: 20px;
-}
-
-/* Tree styles */
-.ant-tree {
-  background: transparent;
-  font-size: 14px;
-}
-
-.ant-tree .ant-tree-node-content-wrapper {
-  width: calc(100% - 24px); /* Account for the arrow icon */
-  min-height: 32px;
-  padding: 0 8px;
-  display: flex;
-  align-items: center;
-}
-
-/* Style for the tree node content */
-.dicom-tag-row {
-  display: flex;
-  width: 100%;
-  padding: 4px 0;
-  align-items: flex-start;
-  min-height: 32px;
-  height: auto;
-}
-
-.dicom-tag-row span {
-  padding: 0 8px;
-  white-space: normal; /* Allow wrapping */
-  word-break: break-word; /* Break words when needed */
-  line-height: 1.4;
-  overflow: visible; /* Remove overflow hidden */
-}
-
-/* Add tooltip behavior */
-.dicom-tag-row span {
-  position: relative;
-  cursor: default;
-}
-
-/* Value column specific styles */
-.dicom-tag-value {
-  word-break: break-word;
-  white-space: pre-wrap;
-  overflow: visible !important; /* Show all content */
-  padding-right: 16px !important;
-  max-height: none; /* Remove max height restriction */
-}
-
-/* Ensure the tree nodes can expand to fit content */
-.ant-tree .ant-tree-node-content-wrapper {
-  height: auto !important;
-  min-height: 32px;
-  padding: 4px 0;
-}
-
-/* Add scrollbar styling */
-.dicom-tag-value::-webkit-scrollbar {
-  width: 6px;
-}
-
-.dicom-tag-value::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-.dicom-tag-value::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 3px;
-}
-
-.dicom-tag-value::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-
-/* Ensure the tree container scrolls properly */
-.tree-container .ant-tree {
-  padding: 8px;
-}
-
-/* Make the header stick to the top while scrolling */
-.table-header {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: #fafafa;
-  border-bottom: 1px solid #f0f0f0;
-  padding: 8px;
-  padding-left: 32px; /* Account for the tree's default indentation */
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  width: 100%;
-}
-
-.table-header span {
-  padding: 0 4px;
-}
-
-/* Column widths for both header and content */
-.table-header span:nth-child(1),
-.dicom-tag-row span:nth-child(1) {
-  width: 20%;
-  min-width: 120px;
-}
-
-.table-header span:nth-child(2),
-.dicom-tag-row span:nth-child(2) {
-  width: 10%;
-  min-width: 60px;
-}
-
-.table-header span:nth-child(3),
-.dicom-tag-row span:nth-child(3) {
-  width: 30%;
-  min-width: 180px;
-}
-
-.table-header span:nth-child(4),
-.dicom-tag-row span:nth-child(4) {
-  width: 40%;
-  flex: 1; /* Allow last column to take remaining space */
 }
 
 /* Tree container */
 .tree-container {
   border: 1px solid #f0f0f0;
   border-radius: 2px;
+  overflow: auto;
 }
 
-/* Adjust tree node wrapper */
-.ant-tree .ant-tree-node-content-wrapper {
-  width: calc(100% - 24px);
-  min-height: 32px;
-  padding: 0;
-  display: flex;
+/* Header styles */
+.table-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fafafa;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.header-row,
+.tag-content {
+  display: grid;
+  grid-template-columns: 120px 60px 180px 1fr;
+  width: 100%;
+  padding: 8px 8px 8px 24px;
   align-items: center;
 }
 
-/* Ensure the tree container scrolls properly */
-.tree-container .ant-tree {
+.header-row span,
+.tag-content span {
+  white-space: nowrap;
+  overflow: visible;
+  padding: 0 8px;
+}
+
+.tag-content span:last-child,
+.header-row span:last-child {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Tree styles */
+.ant-tree {
+  background: transparent;
+  font-size: 14px;
   padding: 0;
 }
 
-/* Hover state for tree nodes */
-.ant-tree-node-content-wrapper:hover {
-  background-color: #f5f5f5;
+.ant-tree .ant-tree-node-content-wrapper {
+  width: 100%;
+  padding: 0 !important;
 }
 
-/* Selected state for tree nodes */
-.ant-tree-node-selected {
-  background-color: #e6f7ff !important;
+.ant-tree .ant-tree-treenode {
+  padding: 0 !important;
+}
+
+.dicom-tag-row {
+  width: 100%;
 }
