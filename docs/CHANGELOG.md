@@ -1,3 +1,10 @@
+# [0.32.0](https://github.com/ImagingDataCommons/slim/compare/v0.31.4...v0.32.0) (2024-10-29)
+
+
+### Features
+
+* remove unused white space ([#247](https://github.com/ImagingDataCommons/slim/issues/247)) ([155e001](https://github.com/ImagingDataCommons/slim/commit/155e0018c2fd8b87eee70c207051de9df55f0ada))
+
 ## [0.31.4](https://github.com/ImagingDataCommons/slim/compare/v0.31.3...v0.31.4) (2024-07-29)
 
 
