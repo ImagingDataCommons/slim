@@ -63,54 +63,6 @@ interface HeaderState {
   warnings: string[]
 }
 
-// Update the mock display sets with more complete DICOM metadata
-const mockDisplaySets = [
-  {
-    displaySetInstanceUID: '1.2.3.4.5.1',
-    SeriesInstanceUID: '1.2.3.4.5',
-    SeriesNumber: '1',
-    SeriesDescription: 'Chest CT Series',
-    Modality: 'CT',
-    images: [
-      {
-        metadata: {
-          '00100010': { Value: ['John Doe'], vr: 'PN' },
-          '00100020': { Value: ['12345'], vr: 'LO' },
-          '00080060': { Value: ['CT'], vr: 'CS' },
-          '00200011': { Value: ['1'], vr: 'IS' },
-          '0020000D': { Value: ['1.2.3.4.5.1.1'], vr: 'UI' }, // Study Instance UID
-          '0020000E': { Value: ['1.2.3.4.5.1'], vr: 'UI' },   // Series Instance UID
-          '00080070': { Value: ['MANUFACTURER'], vr: 'LO' },   // Manufacturer
-          '00081030': { Value: ['Chest Study'], vr: 'LO' },    // Study Description
-          '0008103E': { Value: ['Chest CT Series'], vr: 'LO' } // Series Description
-        }
-      }
-    ]
-  },
-  {
-    displaySetInstanceUID: '1.2.3.4.5.2',
-    SeriesInstanceUID: '1.2.3.4.6',
-    SeriesNumber: '2',
-    SeriesDescription: 'Chest CT Series 2',
-    Modality: 'CT',
-    images: [
-      {
-        metadata: {
-          '00100010': { Value: ['John Doe'], vr: 'PN' },
-          '00100020': { Value: ['12345'], vr: 'LO' },
-          '00080060': { Value: ['CT'], vr: 'CS' },
-          '00200011': { Value: ['2'], vr: 'IS' },
-          '0020000D': { Value: ['1.2.3.4.5.1.1'], vr: 'UI' },
-          '0020000E': { Value: ['1.2.3.4.5.2'], vr: 'UI' },
-          '00080070': { Value: ['MANUFACTURER'], vr: 'LO' },
-          '00081030': { Value: ['Chest Study'], vr: 'LO' },
-          '0008103E': { Value: ['Chest CT Series 2'], vr: 'LO' }
-        }
-      }
-    ]
-  }
-]
-
 /**
  * React component for the application header.
  */
