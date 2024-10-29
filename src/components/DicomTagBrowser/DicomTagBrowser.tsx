@@ -280,7 +280,7 @@ const DicomTagBrowser = () => {
       <div className="dicom-tag-browser-content">
         <div className="controls-row">
           <div className="series-selector">
-            <Typography.Text strong>Slide</Typography.Text>
+            <Typography.Text strong>Slides</Typography.Text>
             <Select
               style={{ width: "100%" }}
               value={selectedDisplaySetInstanceUID}
