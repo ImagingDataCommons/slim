@@ -54,16 +54,17 @@
   display: flex;
   width: 100%;
   padding: 4px 0;
-  align-items: center;
+  align-items: flex-start;
   min-height: 32px;
+  height: auto;
 }
 
 .dicom-tag-row span {
   padding: 0 8px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal; /* Allow wrapping */
+  word-break: break-word; /* Break words when needed */
   line-height: 1.4;
+  overflow: visible; /* Remove overflow hidden */
 }
 
 /* Add tooltip behavior */
@@ -75,19 +76,17 @@
 /* Value column specific styles */
 .dicom-tag-value {
   word-break: break-word;
-  white-space: pre-wrap !important;
-  max-height: 80px;
-  overflow-y: auto !important;
+  white-space: pre-wrap;
+  overflow: visible !important; /* Show all content */
+  padding-right: 16px !important;
+  max-height: none; /* Remove max height restriction */
 }
 
 /* Ensure the tree nodes can expand to fit content */
 .ant-tree .ant-tree-node-content-wrapper {
-  width: calc(100% - 24px);
+  height: auto !important;
   min-height: 32px;
-  height: auto;
-  padding: 0 8px;
-  display: flex;
-  align-items: flex-start;
+  padding: 4px 0;
 }
 
 /* Add scrollbar styling */

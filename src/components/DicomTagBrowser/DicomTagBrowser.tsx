@@ -103,7 +103,7 @@ const DicomTagBrowser = () => {
           <span title={tag.tag}>{tag.tag}</span>
           <span title={tag.vr}>{tag.vr}</span>
           <span title={tag.keyword}>{tag.keyword}</span>
-          <span title={tag.value} className="dicom-tag-value">{tag.value}</span>
+          <span className="dicom-tag-value">{tag.value}</span>
         </div>
       ),
       children: tag.children ? transformToTreeData(tag.children) : undefined,
