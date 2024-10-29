@@ -1,8 +1,13 @@
 import moment from "moment";
 import { useState, useMemo, useEffect } from "react";
-import { Select, Input, Tree, Typography, Slider } from "antd";
-import { SearchOutlined } from "@ant-design/icons";
-import type { DataNode } from 'antd/es/tree';
+import { Select, Input, Slider, Typography } from "antd";
+import { SearchOutlined, CaretRightOutlined, CaretDownOutlined } from "@ant-design/icons";
+import {
+  useReactTable,
+  getCoreRowModel,
+  createColumnHelper,
+  flexRender,
+} from '@tanstack/react-table';
 
 import "./DicomTagBrowser.css";
 import { useSlides } from "../../hooks/useSlides";
@@ -20,21 +25,39 @@ interface DisplaySet {
   images: any[];
 }
 
-interface TreeNodeData extends DataNode {
-  tag?: string;
-  keyword?: string;
-  value?: string;
-  children?: TreeNodeData[];
+interface TagInfo {
+  tag: string;
+  vr: string;
+  keyword: string;
+  value: string;
+  children?: TagInfo[];
 }
 
-const DicomTagBrowser = () => {
-  const { slides, isLoading } = useSlides(); // Assuming loading state exists in useSlides
+interface TreeNode {
+  id: string;
+  tag: string;
+  vr: string;
+  keyword: string;
+  value: string;
+  depth: number;
+  expanded: boolean;
+  hasChildren: boolean;
+  children?: TreeNode[];
+}
 
+interface FilteredTreeNode extends TreeNode {
+  children: FilteredTreeNode[];
+}
+
+const columnHelper = createColumnHelper<TreeNode>();
+
+const DicomTagBrowser = () => {
+  const { slides, isLoading } = useSlides();
   const [displaySets, setDisplaySets] = useState<DisplaySet[]>([]);
-  const [selectedDisplaySetInstanceUID, setSelectedDisplaySetInstanceUID] =
-    useState(0);
+  const [selectedDisplaySetInstanceUID, setSelectedDisplaySetInstanceUID] = useState(0);
   const [instanceNumber, setInstanceNumber] = useState(1);
   const [filterValue, setFilterValue] = useState("");
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!slides.length) return;
@@ -65,7 +88,7 @@ const DicomTagBrowser = () => {
       .filter((set): set is DisplaySet => set !== null);
 
     setDisplaySets(updatedDisplaySets);
-  }, [slides]); // Remove selectedDisplaySetInstanceUID from deps
+  }, [slides]);
 
   const displaySetList = useMemo(() => {
     displaySets.sort((a, b) => a.SeriesNumber - b.SeriesNumber);
@@ -94,71 +117,146 @@ const DicomTagBrowser = () => {
   const showInstanceList =
     displaySets[selectedDisplaySetInstanceUID]?.images.length > 1;
 
-    // @ts-ignore
-  const transformToTreeData = (tags: TagInfo[]): TreeNodeData[] => {
-    return tags.map((tag, index) => ({
-      key: `${tag.tag}-${index}`,
-      title: (
-        <div className="dicom-tag-row">
-          <div className="tag-content">
-            <span>{tag.tag}</span>
-            <span>{tag.vr}</span>
-            <span>{tag.keyword}</span>
-            <span className="dicom-tag-value">{tag.value}</span>
-          </div>
-        </div>
-      ),
-      children: tag.children ? transformToTreeData(tag.children) : undefined,
-      tag: tag.tag,
-      keyword: tag.keyword,
-      value: tag.value,
-    }));
+  const transformToTreeData = (tags: TagInfo[], depth = 0, parentId = ''): TreeNode[] => {
+    return tags.map((tag, index) => {
+      const id = parentId ? `${parentId}-${index}` : `${index}`;
+      
+      return {
+        id,
+        tag: tag.tag,
+        vr: tag.vr,
+        keyword: tag.keyword,
+        value: tag.value,
+        depth,
+        expanded: expandedRows.has(id),
+        hasChildren: Boolean(tag.children?.length),
+        children: tag.children ? transformToTreeData(tag.children, depth + 1, id) : undefined,
+      };
+    });
   };
 
-  const filterTreeData = (treeData: TreeNodeData[], searchText: string): TreeNodeData[] => {
-    if (!searchText) return treeData;
+  const flattenTreeData = (nodes: TreeNode[]): TreeNode[] => {
+    const seen = new Set<string>();
+    
+    return nodes.reduce<TreeNode[]>((flat, node) => {
+      if (seen.has(node.id)) return flat;
+      
+      seen.add(node.id);
+      const expanded = node.expanded;
+      
+      return [
+        ...flat,
+        node,
+        ...(expanded && node.children ? flattenTreeData(node.children) : []),
+      ];
+    }, []);
+  };
 
+  const toggleRow = (nodeId: string) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) {
+        next.delete(nodeId);
+      } else {
+        next.add(nodeId);
+      }
+      return next;
+    });
+  };
+
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor('tag', {
+        header: 'Tag',
+        cell: (info) => {
+          const node = info.row.original;
+          return (
+            <div style={{ paddingLeft: `${node.depth * 24}px` }} className="tree-cell">
+              {node.hasChildren && (
+                <span
+                  className="tree-toggle"
+                  onClick={() => toggleRow(node.id)}
+                >
+                  {node.expanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
+                </span>
+              )}
+              {!node.hasChildren && <span className="tree-spacer" />}
+              {node.tag}
+            </div>
+          );
+        },
+      }),
+      columnHelper.accessor('vr', {
+        header: 'VR',
+      }),
+      columnHelper.accessor('keyword', {
+        header: 'Keyword',
+      }),
+      columnHelper.accessor('value', {
+        header: 'Value',
+      }),
+    ],
+    []
+  );
+
+  const filterTreeData = (nodes: TreeNode[], searchText: string): FilteredTreeNode[] => {
+    if (!searchText) return nodes as FilteredTreeNode[];
+    
     const searchLower = searchText.toLowerCase();
     
-    return treeData.filter(node => {
-      const matchesSearch = 
-        node.tag?.toLowerCase().includes(searchLower) ||
-        node.keyword?.toLowerCase().includes(searchLower) ||
-        node.value?.toString().toLowerCase().includes(searchLower);
+    const filtered = nodes
+      .map(node => {
+        const matchesSearch = 
+          (node.tag?.toLowerCase() || '').includes(searchLower) ||
+          (node.keyword?.toLowerCase() || '').includes(searchLower) ||
+          (node.value?.toString().toLowerCase() || '').includes(searchLower) ||
+          (node.vr?.toLowerCase() || '').includes(searchLower);
 
-      if (matchesSearch) return true;
-
-      if (node.children) {
-        const filteredChildren = filterTreeData(node.children, searchText);
-        if (filteredChildren.length) {
-          node.children = filteredChildren;
-          return true;
+        let filteredChildren: FilteredTreeNode[] = [];
+        if (node.children) {
+          filteredChildren = filterTreeData(node.children, searchText);
         }
-      }
 
-      return false;
-    });
+        if (matchesSearch || filteredChildren.length > 0) {
+          return {
+            ...node,
+            children: filteredChildren,
+            expanded: true,
+          } as FilteredTreeNode;
+        }
+
+        return null;
+      })
+      .filter((node): node is FilteredTreeNode => node !== null);
+
+    return filtered;
   };
 
   const treeData = useMemo(() => {
     if (!displaySets[selectedDisplaySetInstanceUID]) return [];
-    const metadata =
-      displaySets[selectedDisplaySetInstanceUID]?.images[instanceNumber - 1];
-
+    const metadata = displaySets[selectedDisplaySetInstanceUID]?.images[instanceNumber - 1];
     const tags = getSortedTags(metadata);
-    return transformToTreeData(tags);
-  }, [instanceNumber, selectedDisplaySetInstanceUID, displaySets]);
+    const hierarchicalData = transformToTreeData(tags);
+    
+    if (!filterValue) {
+      return flattenTreeData(hierarchicalData);
+    }
 
-  const filteredTreeData = useMemo(() => {
-    return filterTreeData(treeData, filterValue);
-  }, [treeData, filterValue]);
+    const filteredData = filterTreeData(hierarchicalData, filterValue);
+    return flattenTreeData(filteredData);
+  }, [instanceNumber, selectedDisplaySetInstanceUID, displaySets, expandedRows, filterValue]);
+
+  const table = useReactTable({
+    data: treeData,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  });
 
   const instanceSliderMarks = useMemo(() => {
     if (!displaySets[selectedDisplaySetInstanceUID]) return {};
-    const totalInstances =
-      displaySets[selectedDisplaySetInstanceUID].images.length;
+    const totalInstances = displaySets[selectedDisplaySetInstanceUID].images.length;
 
-    // Create marks for first, middle, and last instances only
+    // Create marks for first, middle, and last instances
     const marks: Record<number, string> = {
       1: "1", // First
       [Math.ceil(totalInstances / 2)]: Math.ceil(totalInstances / 2).toString(), // Middle
@@ -233,22 +331,34 @@ const DicomTagBrowser = () => {
         onChange={(e) => setFilterValue(e.target.value)}
       />
 
-      <div className="tree-container">
-        <div className="table-header">
-          <div className="header-row">
-            <span>Tag</span>
-            <span>VR</span>
-            <span>Keyword</span>
-            <span>Value</span>
-          </div>
-        </div>
-
-        <Tree
-          treeData={filteredTreeData}
-          defaultExpandAll={false}
-          showLine={{ showLeafIcon: false }}
-          style={{ maxHeight: 400, overflow: 'auto' }}
-        />
+      <div className="table-container">
+        <table>
+          <thead>
+            {table.getHeaderGroups().map(headerGroup => (
+              <tr key={headerGroup.id}>
+                {headerGroup.headers.map(header => (
+                  <th key={header.id}>
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {table.getRowModel().rows.map(row => (
+              <tr key={row.id}>
+                {row.getVisibleCells().map(cell => (
+                  <td key={cell.id}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
