@@ -73,7 +73,11 @@
     "typescript": "^4.7.4"
   },
   "dependencies": {
-    "react-error-boundary": "^3.1.4"
+    "@types/lodash.debounce": "^4.0.9",
+    "lodash.debounce": "^4.0.8",
+    "react-error-boundary": "^3.1.4",
+    "react-select": "^5.8.2",
+    "react-window": "^1.8.10"
   },
   "resolutions": {
     "nth-check": "2.0.1",
