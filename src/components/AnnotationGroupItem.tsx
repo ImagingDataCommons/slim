@@ -360,7 +360,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
         size='small'
         disabled={!this.props.isVisible}
       >
-        {}
+        <></>
       </Select.Option>
     )
 

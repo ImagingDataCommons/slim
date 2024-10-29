@@ -177,7 +177,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
   }
 
   handleDicomTagBrowserButtonClick = (): void => {
-    const width = window.innerWidth - 200;
+    const width = window.innerWidth - 200
     Modal.info({
       title: 'DICOM Tag Browser',
       width,
@@ -186,7 +186,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     })
   }
 
-  handleDebugButtonClick = (): void => { 
+  handleDebugButtonClick = (): void => {
     const errorMsgs: {
       Authentication: string[]
       Communication: string[]
@@ -349,15 +349,17 @@ class Header extends React.Component<HeaderProps, HeaderState> {
 
     const showDicomTagBrowser = this.props.location.pathname.includes('/studies/')
 
-    const dicomTagBrowserButton = showDicomTagBrowser ? (
-      <Badge count={this.state.errorObj.length}>
-        <Button
-          icon={FileSearchOutlined}
-          tooltip='Dicom Tag Browser'
-          onClick={this.handleDicomTagBrowserButtonClick}
-        />
-      </Badge>
-    ) : null
+    const dicomTagBrowserButton = showDicomTagBrowser
+      ? (
+        <Badge count={this.state.errorObj.length}>
+          <Button
+            icon={FileSearchOutlined}
+            tooltip='Dicom Tag Browser'
+            onClick={this.handleDicomTagBrowserButtonClick}
+          />
+        </Badge>
+        )
+      : null
 
     let serverSelectionButton
     if (this.props.showServerSelectionButton) {

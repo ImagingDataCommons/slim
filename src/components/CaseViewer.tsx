@@ -90,7 +90,7 @@ interface ViewerProps extends RouteComponentProps {
   }
 }
 
-function Viewer(props: ViewerProps): JSX.Element | null {
+function Viewer (props: ViewerProps): JSX.Element | null {
   const { clients, studyInstanceUID, location, navigate } = props
   const { slides, isLoading } = useSlides({ clients, studyInstanceUID })
 
@@ -128,7 +128,7 @@ function Viewer(props: ViewerProps): JSX.Element | null {
     return null
   }
 
-  const firstSlide = slides[0] as Slide
+  const firstSlide = slides[0]
   const volumeInstances = firstSlide.volumeImages
   if (volumeInstances.length === 0) {
     return null
