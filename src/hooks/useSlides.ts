@@ -42,14 +42,14 @@ export const useSlides = ({ clients, studyInstanceUID }: UseSlidesProps): UseSli
   const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
-    if (!studyInstanceUID) {
+    if (studyInstanceUID === undefined) {
       setSlides([])
       setIsLoading(false)
       return
     }
 
     const cachedData = slidesCache.get(studyInstanceUID)
-    if (cachedData) {
+    if (cachedData !== undefined) {
       setSlides(cachedData)
       setIsLoading(false)
       return
@@ -57,13 +57,13 @@ export const useSlides = ({ clients, studyInstanceUID }: UseSlidesProps): UseSli
 
     setIsLoading(true)
 
-    const fetchSlides = async () => {
+    const fetchSlides = async (): Promise<void> => {
       // Check if there's already a pending request for this study
       let pendingRequest = pendingRequests.get(studyInstanceUID)
-      
-      if (!pendingRequest) {
+
+      if (pendingRequest === undefined) {
         // Create a new promise for this request
-        pendingRequest = new Promise((resolve, reject) => {
+        pendingRequest = new Promise((resolve, reject): void => {
           fetchImageMetadata({
             clients,
             studyInstanceUID,
@@ -73,7 +73,9 @@ export const useSlides = ({ clients, studyInstanceUID }: UseSlidesProps): UseSli
             },
             onError: (err) => {
               reject(err)
-            },
+            }
+          }).catch((err) => {
+            reject(err)
           })
         })
         pendingRequests.set(studyInstanceUID, pendingRequest)

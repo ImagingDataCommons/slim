@@ -19,7 +19,7 @@ export const fetchImageMetadata = async ({
   clients,
   studyInstanceUID,
   onSuccess,
-  onError,
+  onError
 }: FetchImageMetadataParams): Promise<void> => {
   try {
     const images: dmv.metadata.VLWholeSlideMicroscopyImage[][] = []
@@ -77,4 +77,4 @@ export const fetchImageMetadata = async ({
       customError
     )
   }
-} 
+}

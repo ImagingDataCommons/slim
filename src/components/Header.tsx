@@ -182,10 +182,10 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     Modal.info({
       title: 'DICOM Tag Browser',
       width,
-      content: <DicomTagBrowser 
-        clients={this.props.clients} 
-        studyInstanceUID={this.props.params.studyInstanceUID ?? ''} 
-      />,
+      content: <DicomTagBrowser
+        clients={this.props.clients}
+        studyInstanceUID={this.props.params.studyInstanceUID ?? ''}
+               />,
       onOk (): void {}
     })
   }
@@ -355,11 +355,11 @@ class Header extends React.Component<HeaderProps, HeaderState> {
 
     const dicomTagBrowserButton = showDicomTagBrowser
       ? (
-          <Button
-            icon={FileSearchOutlined}
-            tooltip='Dicom Tag Browser'
-            onClick={this.handleDicomTagBrowserButtonClick}
-          />
+        <Button
+          icon={FileSearchOutlined}
+          tooltip='Dicom Tag Browser'
+          onClick={this.handleDicomTagBrowserButtonClick}
+        />
         )
       : null
 
