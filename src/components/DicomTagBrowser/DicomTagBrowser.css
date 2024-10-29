@@ -1,55 +1,59 @@
-.dicom-tag-browser-content {
+.dicom-tag-browser {
+  /* Add wrapper class */
+}
+
+.dicom-tag-browser .dicom-tag-browser-content {
   width: 100%;
   padding: 16px 20px 20px;
 }
 
 /* Controls row layout */
-.controls-row {
+.dicom-tag-browser .controls-row {
   display: flex;
   gap: 24px;
   margin-bottom: 32px;
 }
 
-.series-selector {
+.dicom-tag-browser .series-selector {
   flex: 1;
 }
 
-.instance-slider {
+.dicom-tag-browser .instance-slider {
   flex: 1;
 }
 
-.series-selector .ant-typography,
-.instance-slider .ant-typography {
+.dicom-tag-browser .series-selector .ant-typography,
+.dicom-tag-browser .instance-slider .ant-typography {
   display: block;
   margin-bottom: 8px;
 }
 
-.search-input {
+.dicom-tag-browser .search-input {
   margin-bottom: 20px;
 }
 
 /* Tree container */
-.table-container {
+.dicom-tag-browser .table-container {
   border: 1px solid #f0f0f0;
   border-radius: 2px;
   overflow: auto;
   height: 500px;
 }
 
-table {
+.dicom-tag-browser table {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
 }
 
-thead {
+.dicom-tag-browser thead {
   position: sticky;
   top: 0;
   background: #fafafa;
   z-index: 1;
 }
 
-th {
+.dicom-tag-browser th {
   padding: 12px 16px;
   text-align: left;
   font-weight: 600;
@@ -57,22 +61,22 @@ th {
   white-space: nowrap;
 }
 
-td {
+.dicom-tag-browser td {
   padding: 8px 16px;
   border-bottom: 1px solid #f0f0f0;
 }
 
-tr:hover {
+.dicom-tag-browser tr:hover {
   background-color: #fafafa;
 }
 
-.tree-cell {
+.dicom-tag-browser .tree-cell {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.tree-toggle {
+.dicom-tag-browser .tree-toggle {
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -82,40 +86,40 @@ tr:hover {
   color: rgba(0, 0, 0, 0.45);
 }
 
-.tree-toggle:hover {
+.dicom-tag-browser .tree-toggle:hover {
   color: rgba(0, 0, 0, 0.85);
 }
 
-.tree-spacer {
+.dicom-tag-browser .tree-spacer {
   width: 24px;
 }
 
 /* Column widths */
-th:nth-child(1),
-td:nth-child(1) {
+.dicom-tag-browser th:nth-child(1),
+.dicom-tag-browser td:nth-child(1) {
   width: auto;
   min-width: 120px;
 }
 
-th:nth-child(2),
-td:nth-child(2) {
+.dicom-tag-browser th:nth-child(2),
+.dicom-tag-browser td:nth-child(2) {
   width: auto;
   min-width: 60px;
 }
 
-th:nth-child(3),
-td:nth-child(3) {
+.dicom-tag-browser th:nth-child(3),
+.dicom-tag-browser td:nth-child(3) {
   width: auto;
   min-width: 200px;
 }
 
-th:nth-child(4),
-td:nth-child(4) {
+.dicom-tag-browser th:nth-child(4),
+.dicom-tag-browser td:nth-child(4) {
   width: 100%;
 }
 
 /* Value column wrapping */
-td:last-child {
+.dicom-tag-browser td:last-child {
   white-space: pre-wrap;
   word-break: break-word;
 }

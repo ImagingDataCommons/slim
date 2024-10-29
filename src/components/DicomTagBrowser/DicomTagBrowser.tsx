@@ -276,90 +276,92 @@ const DicomTagBrowser = () => {
   }
 
   return (
-    <div className="dicom-tag-browser-content">
-      <div className="controls-row">
-        <div className="series-selector">
-          <Typography.Text strong>Slide</Typography.Text>
-          <Select
-            style={{ width: "100%" }}
-            value={selectedDisplaySetInstanceUID}
-            defaultValue={0}
-            onChange={(value) => {
-              setSelectedDisplaySetInstanceUID(value);
-              setInstanceNumber(1);
-            }}
-            optionLabelProp="label"
-            optionFilterProp="label"
-          >
-            {displaySetList.map((item) => (
-              <Option key={item.value} value={item.value} label={item.label}>
-                <div>
-                  <div>{item.label}</div>
-                  <div
-                    style={{ fontSize: "12px", color: "rgba(0, 0, 0, 0.45)" }}
-                  >
-                    {item.description}
+    <div className="dicom-tag-browser">
+      <div className="dicom-tag-browser-content">
+        <div className="controls-row">
+          <div className="series-selector">
+            <Typography.Text strong>Slide</Typography.Text>
+            <Select
+              style={{ width: "100%" }}
+              value={selectedDisplaySetInstanceUID}
+              defaultValue={0}
+              onChange={(value) => {
+                setSelectedDisplaySetInstanceUID(value);
+                setInstanceNumber(1);
+              }}
+              optionLabelProp="label"
+              optionFilterProp="label"
+            >
+              {displaySetList.map((item) => (
+                <Option key={item.value} value={item.value} label={item.label}>
+                  <div>
+                    <div>{item.label}</div>
+                    <div
+                      style={{ fontSize: "12px", color: "rgba(0, 0, 0, 0.45)" }}
+                    >
+                      {item.description}
+                    </div>
                   </div>
-                </div>
-              </Option>
-            ))}
-          </Select>
+                </Option>
+              ))}
+            </Select>
+          </div>
+
+          {showInstanceList && (
+            <div className="instance-slider">
+              <Typography.Text strong>
+                Instance Number: {instanceNumber}
+              </Typography.Text>
+              <Slider
+                min={1}
+                max={displaySets[selectedDisplaySetInstanceUID]?.images.length}
+                value={instanceNumber}
+                onChange={(value) => setInstanceNumber(value)}
+                marks={instanceSliderMarks}
+                tooltip={{
+                  formatter: (value) => `Instance ${value}`,
+                }}
+              />
+            </div>
+          )}
         </div>
 
-        {showInstanceList && (
-          <div className="instance-slider">
-            <Typography.Text strong>
-              Instance Number: {instanceNumber}
-            </Typography.Text>
-            <Slider
-              min={1}
-              max={displaySets[selectedDisplaySetInstanceUID]?.images.length}
-              value={instanceNumber}
-              onChange={(value) => setInstanceNumber(value)}
-              marks={instanceSliderMarks}
-              tooltip={{
-                formatter: (value) => `Instance ${value}`,
-              }}
-            />
-          </div>
-        )}
-      </div>
+        <Input
+          className="search-input"
+          placeholder="Search DICOM tags..."
+          prefix={<SearchOutlined />}
+          onChange={(e) => setFilterValue(e.target.value)}
+        />
 
-      <Input
-        className="search-input"
-        placeholder="Search DICOM tags..."
-        prefix={<SearchOutlined />}
-        onChange={(e) => setFilterValue(e.target.value)}
-      />
-
-      <div className="table-container">
-        <table>
-          <thead>
-            {table.getHeaderGroups().map(headerGroup => (
-              <tr key={headerGroup.id}>
-                {headerGroup.headers.map(header => (
-                  <th key={header.id}>
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {table.getRowModel().rows.map(row => (
-              <tr key={row.id}>
-                {row.getVisibleCells().map(cell => (
-                  <td key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="table-container">
+          <table>
+            <thead>
+              {table.getHeaderGroups().map(headerGroup => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map(header => (
+                    <th key={header.id}>
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody>
+              {table.getRowModel().rows.map(row => (
+                <tr key={row.id}>
+                  {row.getVisibleCells().map(cell => (
+                    <td key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
