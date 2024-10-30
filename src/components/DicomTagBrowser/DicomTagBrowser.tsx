@@ -1,12 +1,12 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Select, Input, Slider, Typography, Table } from 'antd'
 import { SearchOutlined } from '@ant-design/icons'
+
 import DicomWebManager from '../../DicomWebManager'
 import './DicomTagBrowser.css'
 import { useSlides } from '../../hooks/useSlides'
 import { getSortedTags } from './dicomTagUtils'
 import { formatDicomDate } from '../../utils/formatDicomDate'
-import { DicomTag, formatTagValue } from './dicomTagUtils'
 
 const { Option } = Select
 
