@@ -42,6 +42,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
   const [instanceNumber, setInstanceNumber] = useState(1)
   const [filterValue, setFilterValue] = useState('')
   const [expandedKeys, setExpandedKeys] = useState<string[]>([])
+  const [searchExpandedKeys, setSearchExpandedKeys] = useState<string[]>([])
 
   useEffect(() => {
     if (slides.length === 0) return
@@ -206,10 +207,13 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
     },
   ]
 
-  const transformTagsToTableData = (tags: any[]): TableDataItem[] => {
+  const transformTagsToTableData = (tags: any[], parentKey = ''): TableDataItem[] => {
     return tags.map((tag, index) => {
+      // Create a unique key that includes the parent path
+      const currentKey = parentKey ? `${parentKey}-${index}` : `${index}`
+      
       const item: TableDataItem = {
-        key: `${index}`,
+        key: currentKey,
         tag: tag.tag,
         vr: tag.vr,
         keyword: tag.keyword,
@@ -217,7 +221,8 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
       }
 
       if (tag.children && tag.children.length > 0) {
-        item.children = transformTagsToTableData(tag.children)
+        // Pass the current key as parent for nested items
+        item.children = transformTagsToTableData(tag.children, currentKey)
       }
 
       return item
@@ -235,32 +240,52 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
     if (!filterValue) return tableData
 
     const searchLower = filterValue.toLowerCase()
+    const newSearchExpandedKeys: string[] = []
     
-    const filterNodes = (nodes: TableDataItem[]): TableDataItem[] => {
-      return nodes.reduce<TableDataItem[]>((filtered, node) => {
+    const filterNodes = (nodes: TableDataItem[], parentKey = ''): TableDataItem[] => {
+      return nodes.map(node => {
+        const newNode = { ...node }
+        
         const matchesSearch = 
           (node.tag?.toLowerCase() ?? '').includes(searchLower) ||
           (node.vr?.toLowerCase() ?? '').includes(searchLower) ||
           (node.keyword?.toLowerCase() ?? '').includes(searchLower) ||
           (node.value?.toString().toLowerCase() ?? '').includes(searchLower)
 
-        if (matchesSearch) {
-          return [...filtered, node]
-        }
-
         if (node.children) {
-          const filteredChildren = filterNodes(node.children)
-          if (filteredChildren.length > 0) {
-            return [...filtered, { ...node, children: filteredChildren }]
+          const filteredChildren = filterNodes(node.children, node.key)
+          newNode.children = filteredChildren
+          
+          if (matchesSearch || filteredChildren.length > 0) {
+            // Add all parent keys to maintain the expansion chain
+            if (parentKey) {
+              newSearchExpandedKeys.push(parentKey)
+            }
+            newSearchExpandedKeys.push(node.key)
+            return newNode
           }
         }
 
-        return filtered
-      }, [])
+        return matchesSearch ? newNode : null
+      }).filter((node): node is TableDataItem => node !== null)
     }
 
-    return filterNodes(tableData)
+    const filtered = filterNodes(tableData)
+    setSearchExpandedKeys(newSearchExpandedKeys)
+    return filtered
   }, [tableData, filterValue])
+
+  // Reset search expanded keys when search is cleared
+  useEffect(() => {
+    if (!filterValue) {
+      setSearchExpandedKeys([])
+    }
+  }, [filterValue])
+
+  // Combine manual expansion with search expansion
+  const allExpandedKeys = useMemo(() => {
+    return [...new Set([...expandedKeys, ...searchExpandedKeys])]
+  }, [expandedKeys, searchExpandedKeys])
 
   if (isLoading) {
     return <div>Loading...</div>
@@ -330,7 +355,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
           dataSource={filteredData}
           pagination={false}
           expandable={{
-            expandedRowKeys: expandedKeys,
+            expandedRowKeys: allExpandedKeys,
             onExpandedRowsChange: (keys) => setExpandedKeys(keys as string[]),
           }}
           size="small"
