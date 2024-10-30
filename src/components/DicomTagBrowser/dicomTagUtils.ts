@@ -60,20 +60,31 @@ export function getRows (metadata: Record<string, any>, depth = 0): TagInfo[] {
     // Handle sequence values (SQ VR)
     if (tagInfo.vr === 'SQ' && value !== undefined) {
       const sequenceItems = Array.isArray(value) ? value : [value]
-      const children = sequenceItems.flatMap((item, index) => {
-        // Process each item in the sequence
-        const itemTags = getRows(item, depth + 1)
-        return itemTags
-      })
-
-      return [{
+      
+      // Create a parent sequence node
+      const sequenceNode: TagInfo = {
         tag: tagInfo.tag,
         vr: tagInfo.vr,
         keyword,
         value: `Sequence with ${sequenceItems.length} item(s)`,
         level: depth,
-        children: children
-      }]
+        children: []
+      }
+
+      // Create individual nodes for each sequence item
+      sequenceNode.children = sequenceItems.map((item, index) => {
+        const itemNode: TagInfo = {
+          tag: `${tagInfo.tag}.${index + 1}`,
+          vr: 'Item',
+          keyword: `Item ${index + 1}`,
+          value: `Sequence Item ${index + 1}`,
+          level: depth + 1,
+          children: getRows(item, depth + 2)
+        }
+        return itemNode
+      })
+
+      return [sequenceNode]
     }
 
     // Handle array values
