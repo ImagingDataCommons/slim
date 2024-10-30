@@ -60,7 +60,7 @@ export function getRows (metadata: Record<string, any>, depth = 0): TagInfo[] {
     // Handle sequence values (SQ VR)
     if (tagInfo.vr === 'SQ' && value !== undefined) {
       const sequenceItems = Array.isArray(value) ? value : [value]
-      
+
       // Create a parent sequence node
       const sequenceNode: TagInfo = {
         tag: tagInfo.tag,
