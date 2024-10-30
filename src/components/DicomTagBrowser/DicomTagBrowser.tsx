@@ -120,7 +120,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
       title: 'Tag',
       dataIndex: 'tag',
       key: 'tag',
-      width: '20%'
+      width: '30%'
     },
     {
       title: 'VR',

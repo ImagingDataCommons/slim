@@ -6,11 +6,3 @@
 .dicom-tag-browser .ant-table-cell {
   word-break: break-word;
 }
-
-.dicom-tag-browser .ant-table-row:hover > td {
-  background-color: #fafafa !important;
-}
-
-.dicom-tag-browser .ant-table-expanded-row > td {
-  background-color: #fafafa;
-}
