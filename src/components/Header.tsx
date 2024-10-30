@@ -30,6 +30,7 @@ import NotificationMiddleware, { NotificationMiddlewareEvents } from '../service
 import { CustomError } from '../utils/CustomError'
 import { v4 as uuidv4 } from 'uuid'
 import DicomTagBrowser from './DicomTagBrowser/DicomTagBrowser'
+import DicomWebManager from '../DicomWebManager'
 
 interface HeaderProps extends RouteComponentProps {
   app: {
@@ -43,7 +44,7 @@ interface HeaderProps extends RouteComponentProps {
     name: string
     email: string
   }
-  clients: any
+  clients: { [key: string]: DicomWebManager }
   showWorklistButton: boolean
   onServerSelection: ({ url }: { url: string }) => void
   onUserLogout?: () => void

@@ -1,4 +1,3 @@
-import moment from 'moment'
 import { useState, useMemo, useEffect } from 'react'
 import { Select, Input, Slider, Typography } from 'antd'
 import { SearchOutlined, CaretRightOutlined, CaretDownOutlined } from '@ant-design/icons'
@@ -13,6 +12,7 @@ import DicomWebManager from '../../DicomWebManager'
 import './DicomTagBrowser.css'
 import { useSlides } from '../../hooks/useSlides'
 import { getSortedTags } from './dicomTagUtils'
+import { formatDicomDate } from '../../utils/formatDicomDate'
 
 const { Option } = Select
 
@@ -46,13 +46,8 @@ interface TreeNode {
   children?: TreeNode[]
 }
 
-interface FilteredTreeNode extends TreeNode {
-  children: FilteredTreeNode[]
-}
-
 const columnHelper = createColumnHelper<TreeNode>()
 
-// Move these functions outside the component
 const transformToTreeData = (tags: TagInfo[], depth = 0, parentId = '', expandedRows: Set<string>): TreeNode[] => {
   return tags.map((tag, index) => {
     const id = parentId !== undefined ? `${parentId}-${index}` : `${index}`
@@ -88,8 +83,8 @@ const flattenTreeData = (nodes: TreeNode[]): TreeNode[] => {
   }, [])
 }
 
-const filterTreeData = (nodes: TreeNode[], searchText: string): FilteredTreeNode[] => {
-  if (searchText === undefined) return nodes as FilteredTreeNode[]
+const filterTreeData = (nodes: TreeNode[], searchText: string): TreeNode[] => {
+  if (searchText === undefined) return nodes
 
   const searchLower = searchText.toLowerCase()
 
@@ -101,13 +96,13 @@ const filterTreeData = (nodes: TreeNode[], searchText: string): FilteredTreeNode
         (node.value?.toString().toLowerCase() ?? '').includes(searchLower) ||
         (node.vr?.toLowerCase() ?? '').includes(searchLower)
 
-      let filteredChildren: FilteredTreeNode[] = []
+      let filteredChildren: TreeNode[] = []
       if (node.children != null) {
         filteredChildren = filterTreeData(node.children, searchText)
       }
 
       if (matchesSearch || filteredChildren.length > 0) {
-        const filteredNode: FilteredTreeNode = {
+        const filteredNode: TreeNode = {
           ...node,
           children: filteredChildren,
           expanded: true
@@ -117,7 +112,7 @@ const filterTreeData = (nodes: TreeNode[], searchText: string): FilteredTreeNode
 
       return null
     })
-    .filter((node): node is FilteredTreeNode => node !== null)
+    .filter((node): node is TreeNode => node !== null)
 
   return filtered
 }
@@ -180,8 +175,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
       } = displaySet
 
       const dateStr = `${SeriesDate}:${SeriesTime}`.split('.')[0]
-      const date = moment(dateStr, 'YYYYMMDD:HHmmss')
-      const displayDate = date.format('ddd, MMM Do YYYY')
+      const displayDate = formatDicomDate(dateStr)
 
       return {
         value: displaySetInstanceUID,

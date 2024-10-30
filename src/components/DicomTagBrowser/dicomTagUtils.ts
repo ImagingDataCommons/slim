@@ -1,7 +1,7 @@
-// @ts-nocheck
 import dcmjs from 'dcmjs'
 
 const { DicomMetaDictionary } = dcmjs.data
+// @ts-expect-error
 const { nameMap } = DicomMetaDictionary
 
 interface TagInfo {

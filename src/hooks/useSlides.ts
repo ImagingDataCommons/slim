@@ -4,25 +4,14 @@ import DicomWebManager from '../DicomWebManager'
 import { Slide } from '../data/slides'
 import { fetchImageMetadata } from '../services/fetchImageMetadata'
 
-/**
- * Props for the useSlides hook - all props are optional since we'll cache them
- */
 interface UseSlidesProps {
-  /** Map of DICOM web clients keyed by storage class */
   clients: { [key: string]: DicomWebManager }
-  /** Study instance UID */
   studyInstanceUID: string
 }
 
-/**
- * Return type for the useSlides hook
- */
 interface UseSlidesReturn {
-  /** Array of retrieved slides */
   slides: Slide[]
-  /** Loading state indicator */
   isLoading: boolean
-  /** Error object if retrieval failed */
   error: Error | null
 }
 
