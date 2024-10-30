@@ -1,18 +1,12 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Select, Input, Slider, Typography } from 'antd'
+import { Select, Input, Slider, Typography, Table } from 'antd'
 import { SearchOutlined, CaretRightOutlined, CaretDownOutlined } from '@ant-design/icons'
-import {
-  useReactTable,
-  getCoreRowModel,
-  createColumnHelper,
-  flexRender
-} from '@tanstack/react-table'
-
 import DicomWebManager from '../../DicomWebManager'
 import './DicomTagBrowser.css'
 import { useSlides } from '../../hooks/useSlides'
 import { getSortedTags } from './dicomTagUtils'
 import { formatDicomDate } from '../../utils/formatDicomDate'
+import { DicomTag, formatTagValue } from './dicomTagUtils'
 
 const { Option } = Select
 
@@ -26,95 +20,13 @@ interface DisplaySet {
   images: any[]
 }
 
-interface TagInfo {
+interface TableDataItem {
+  key: string
   tag: string
   vr: string
   keyword: string
   value: string
-  children?: TagInfo[]
-}
-
-interface TreeNode {
-  id: string
-  tag: string
-  vr: string
-  keyword: string
-  value: string
-  depth: number
-  expanded: boolean
-  hasChildren: boolean
-  children?: TreeNode[]
-}
-
-const columnHelper = createColumnHelper<TreeNode>()
-
-const transformToTreeData = (tags: TagInfo[], depth = 0, parentId = '', expandedRows: Set<string>): TreeNode[] => {
-  return tags.map((tag, index) => {
-    const id = parentId !== undefined ? `${parentId}-${index}` : `${index}`
-
-    return {
-      id,
-      tag: tag.tag,
-      vr: tag.vr,
-      keyword: tag.keyword,
-      value: tag.value,
-      depth,
-      expanded: expandedRows.has(id),
-      hasChildren: Boolean(tag.children?.length),
-      children: (tag.children !== undefined) ? transformToTreeData(tag.children, depth + 1, id, expandedRows) : undefined
-    }
-  })
-}
-
-const flattenTreeData = (nodes: TreeNode[]): TreeNode[] => {
-  const seen = new Set<string>()
-
-  return nodes.reduce<TreeNode[]>((flat, node) => {
-    if (seen.has(node.id)) return flat
-
-    seen.add(node.id)
-    const expanded = node.expanded
-
-    return [
-      ...flat,
-      node,
-      ...(expanded && (node.children != null) ? flattenTreeData(node.children) : [])
-    ]
-  }, [])
-}
-
-const filterTreeData = (nodes: TreeNode[], searchText: string): TreeNode[] => {
-  if (searchText === undefined) return nodes
-
-  const searchLower = searchText.toLowerCase()
-
-  const filtered = nodes
-    .map(node => {
-      const matchesSearch =
-        (node.tag?.toLowerCase() ?? '').includes(searchLower) ||
-        (node.keyword?.toLowerCase() ?? '').includes(searchLower) ||
-        (node.value?.toString().toLowerCase() ?? '').includes(searchLower) ||
-        (node.vr?.toLowerCase() ?? '').includes(searchLower)
-
-      let filteredChildren: TreeNode[] = []
-      if (node.children != null) {
-        filteredChildren = filterTreeData(node.children, searchText)
-      }
-
-      if (matchesSearch || filteredChildren.length > 0) {
-        const filteredNode: TreeNode = {
-          ...node,
-          children: filteredChildren,
-          expanded: true
-        }
-        return filteredNode
-      }
-
-      return null
-    })
-    .filter((node): node is TreeNode => node !== null)
-
-  return filtered
+  children?: TableDataItem[]
 }
 
 interface DicomTagBrowserProps {
@@ -129,7 +41,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
   const [selectedDisplaySetInstanceUID, setSelectedDisplaySetInstanceUID] = useState(0)
   const [instanceNumber, setInstanceNumber] = useState(1)
   const [filterValue, setFilterValue] = useState('')
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [expandedKeys, setExpandedKeys] = useState<string[]>([])
 
   useEffect(() => {
     if (slides.length === 0) return
@@ -189,71 +101,69 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
     displaySets[selectedDisplaySetInstanceUID]?.images.length > 1
 
   const toggleRow = (nodeId: string): void => {
-    setExpandedRows((prev) => {
+    setExpandedKeys((prev) => {
       const next = new Set(prev)
       if (next.has(nodeId)) {
         next.delete(nodeId)
       } else {
         next.add(nodeId)
       }
-      return next
+      return Array.from(next)
     })
   }
 
-  const columns = useMemo(
-    () => [
-      columnHelper.accessor('tag', {
-        header: 'Tag',
-        cell: (info) => {
-          const node = info.row.original
-          return (
-            <div style={{ paddingLeft: `${node.depth * 24}px` }} className='tree-cell'>
-              {node.hasChildren && (
-                <span
-                  className='tree-toggle'
-                  onClick={() => toggleRow(node.id)}
-                >
-                  {node.expanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
-                </span>
-              )}
-              {!node.hasChildren && <span className='tree-spacer' />}
-              {node.tag}
+  const toggleSequence = (tagPath: string) => {
+    setExpandedKeys(prev => {
+      const newSet = new Set(prev);
+      if (prev.includes(tagPath)) {
+        newSet.delete(tagPath);
+      } else {
+        newSet.add(tagPath);
+      }
+      return Array.from(newSet);
+    });
+  };
+
+  const renderDicomTag = (tag: DicomTag, path: string = '') => {
+    const currentPath = path ? `${path}.${tag.name}` : tag.name;
+    
+    if (tag.vr === 'SQ') {
+      const isExpanded = expandedKeys.includes(currentPath);
+      return (
+        <div key={currentPath} className="dicom-tag sequence">
+          <div 
+            className="sequence-header" 
+            onClick={() => toggleSequence(currentPath)}
+          >
+            <span className={`collapse-icon ${isExpanded ? 'expanded' : ''}`}>
+              {isExpanded ? '▼' : '▶'}
+            </span>
+            <span className="tag-name">{tag.name}</span>
+            <span className="tag-vr">{tag.vr}</span>
+          </div>
+          {isExpanded && tag.Value && (
+            <div className="sequence-items">
+              {tag.Value.map((item: any, index: number) => (
+                <div key={index} className="sequence-item">
+                  {Object.entries(item).map(([key, value]) => 
+                    renderDicomTag(value as DicomTag, `${currentPath}.${index}`)
+                  )}
+                </div>
+              ))}
             </div>
-          )
-        }
-      }),
-      columnHelper.accessor('vr', {
-        header: 'VR'
-      }),
-      columnHelper.accessor('keyword', {
-        header: 'Keyword'
-      }),
-      columnHelper.accessor('value', {
-        header: 'Value'
-      })
-    ],
-    []
-  )
-
-  const treeData = useMemo(() => {
-    if (displaySets[selectedDisplaySetInstanceUID] === undefined) return []
-    const metadata = displaySets[selectedDisplaySetInstanceUID]?.images[instanceNumber - 1]
-    const tags = getSortedTags(metadata)
-    const hierarchicalData = transformToTreeData(tags, 0, '', expandedRows)
-
-    if (filterValue === undefined) {
-      return flattenTreeData(hierarchicalData)
+          )}
+        </div>
+      );
     }
 
-    const filteredData = filterTreeData(hierarchicalData, filterValue)
-    return flattenTreeData(filteredData)
-  }, [instanceNumber, selectedDisplaySetInstanceUID, displaySets, expandedRows, filterValue])
-
-  const table = useReactTable({
-    data: treeData,
-    columns,
-    getCoreRowModel: getCoreRowModel()
-  })
+    return (
+      <div key={currentPath} className="dicom-tag">
+        <span className="tag-name">{tag.name}</span>
+        <span className="tag-vr">{tag.vr}</span>
+        <span className="tag-value">{formatTagValue(tag)}</span>
+      </div>
+    );
+  };
 
   const instanceSliderMarks = useMemo(() => {
     if (displaySets[selectedDisplaySetInstanceUID] === undefined) return {}
@@ -268,6 +178,89 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
 
     return marks
   }, [selectedDisplaySetInstanceUID, displaySets])
+
+  const columns = [
+    {
+      title: 'Tag',
+      dataIndex: 'tag',
+      key: 'tag',
+      width: '20%',
+    },
+    {
+      title: 'VR',
+      dataIndex: 'vr',
+      key: 'vr',
+      width: '10%',
+    },
+    {
+      title: 'Keyword',
+      dataIndex: 'keyword',
+      key: 'keyword',
+      width: '30%',
+    },
+    {
+      title: 'Value',
+      dataIndex: 'value',
+      key: 'value',
+      width: '40%',
+    },
+  ]
+
+  const transformTagsToTableData = (tags: any[]): TableDataItem[] => {
+    return tags.map((tag, index) => {
+      const item: TableDataItem = {
+        key: `${index}`,
+        tag: tag.tag,
+        vr: tag.vr,
+        keyword: tag.keyword,
+        value: tag.value
+      }
+
+      if (tag.children && tag.children.length > 0) {
+        item.children = transformTagsToTableData(tag.children)
+      }
+
+      return item
+    })
+  }
+
+  const tableData = useMemo(() => {
+    if (displaySets[selectedDisplaySetInstanceUID] === undefined) return []
+    const metadata = displaySets[selectedDisplaySetInstanceUID]?.images[instanceNumber - 1]
+    const tags = getSortedTags(metadata)
+    return transformTagsToTableData(tags)
+  }, [instanceNumber, selectedDisplaySetInstanceUID, displaySets])
+
+  const filteredData = useMemo(() => {
+    if (!filterValue) return tableData
+
+    const searchLower = filterValue.toLowerCase()
+    
+    const filterNodes = (nodes: TableDataItem[]): TableDataItem[] => {
+      return nodes.reduce<TableDataItem[]>((filtered, node) => {
+        const matchesSearch = 
+          (node.tag?.toLowerCase() ?? '').includes(searchLower) ||
+          (node.vr?.toLowerCase() ?? '').includes(searchLower) ||
+          (node.keyword?.toLowerCase() ?? '').includes(searchLower) ||
+          (node.value?.toString().toLowerCase() ?? '').includes(searchLower)
+
+        if (matchesSearch) {
+          return [...filtered, node]
+        }
+
+        if (node.children) {
+          const filteredChildren = filterNodes(node.children)
+          if (filteredChildren.length > 0) {
+            return [...filtered, { ...node, children: filteredChildren }]
+          }
+        }
+
+        return filtered
+      }, [])
+    }
+
+    return filterNodes(tableData)
+  }, [tableData, filterValue])
 
   if (isLoading) {
     return <div>Loading...</div>
@@ -329,37 +322,20 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
           placeholder='Search DICOM tags...'
           prefix={<SearchOutlined />}
           onChange={(e) => setFilterValue(e.target.value)}
+          value={filterValue}
         />
 
-        <div className='table-container'>
-          <table>
-            <thead>
-              {table.getHeaderGroups().map(headerGroup => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map(header => (
-                    <th key={header.id}>
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {table.getRowModel().rows.map(row => (
-                <tr key={row.id}>
-                  {row.getVisibleCells().map(cell => (
-                    <td key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table
+          columns={columns}
+          dataSource={filteredData}
+          pagination={false}
+          expandable={{
+            expandedRowKeys: expandedKeys,
+            onExpandedRowsChange: (keys) => setExpandedKeys(keys as string[]),
+          }}
+          size="small"
+          scroll={{ y: 500 }}
+        />
       </div>
     </div>
   )

@@ -13,6 +13,23 @@ interface TagInfo {
   level: number
 }
 
+export interface DicomTag {
+  name: string;
+  vr: string;
+  Value?: any[];
+  [key: string]: any;
+}
+
+export const formatTagValue = (tag: DicomTag): string => {
+  if (!tag.Value) return '';
+  
+  if (Array.isArray(tag.Value)) {
+    return tag.Value.join(', ');
+  }
+  
+  return String(tag.Value);
+};
+
 /**
  * Processes DICOM metadata and returns a flattened array of tag information
  * @param metadata - The DICOM metadata object to process
