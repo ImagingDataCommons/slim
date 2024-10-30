@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Select, Input, Slider, Typography, Table } from 'antd'
-import { SearchOutlined, CaretRightOutlined, CaretDownOutlined } from '@ant-design/icons'
+import { SearchOutlined } from '@ant-design/icons'
 import DicomWebManager from '../../DicomWebManager'
 import './DicomTagBrowser.css'
 import { useSlides } from '../../hooks/useSlides'
@@ -100,71 +100,6 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
 
   const showInstanceList =
     displaySets[selectedDisplaySetInstanceUID]?.images.length > 1
-
-  const toggleRow = (nodeId: string): void => {
-    setExpandedKeys((prev) => {
-      const next = new Set(prev)
-      if (next.has(nodeId)) {
-        next.delete(nodeId)
-      } else {
-        next.add(nodeId)
-      }
-      return Array.from(next)
-    })
-  }
-
-  const toggleSequence = (tagPath: string) => {
-    setExpandedKeys(prev => {
-      const newSet = new Set(prev);
-      if (prev.includes(tagPath)) {
-        newSet.delete(tagPath);
-      } else {
-        newSet.add(tagPath);
-      }
-      return Array.from(newSet);
-    });
-  };
-
-  const renderDicomTag = (tag: DicomTag, path: string = '') => {
-    const currentPath = path ? `${path}.${tag.name}` : tag.name;
-    
-    if (tag.vr === 'SQ') {
-      const isExpanded = expandedKeys.includes(currentPath);
-      return (
-        <div key={currentPath} className="dicom-tag sequence">
-          <div 
-            className="sequence-header" 
-            onClick={() => toggleSequence(currentPath)}
-          >
-            <span className={`collapse-icon ${isExpanded ? 'expanded' : ''}`}>
-              {isExpanded ? '▼' : '▶'}
-            </span>
-            <span className="tag-name">{tag.name}</span>
-            <span className="tag-vr">{tag.vr}</span>
-          </div>
-          {isExpanded && tag.Value && (
-            <div className="sequence-items">
-              {tag.Value.map((item: any, index: number) => (
-                <div key={index} className="sequence-item">
-                  {Object.entries(item).map(([key, value]) => 
-                    renderDicomTag(value as DicomTag, `${currentPath}.${index}`)
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    return (
-      <div key={currentPath} className="dicom-tag">
-        <span className="tag-name">{tag.name}</span>
-        <span className="tag-vr">{tag.vr}</span>
-        <span className="tag-value">{formatTagValue(tag)}</span>
-      </div>
-    );
-  };
 
   const instanceSliderMarks = useMemo(() => {
     if (displaySets[selectedDisplaySetInstanceUID] === undefined) return {}
