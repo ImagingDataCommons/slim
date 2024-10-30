@@ -40,7 +40,7 @@ export function getRows (metadata: Record<string, any>, depth = 0): TagInfo[] {
   const keywords = Object.keys(metadata).filter(key => key !== '_vrMap')
 
   return keywords.flatMap(keyword => {
-    const tagInfo = nameMap[keyword]
+    const tagInfo = nameMap[keyword] as TagInfo | undefined
     let value = metadata[keyword]
 
     // Handle private or unknown tags
