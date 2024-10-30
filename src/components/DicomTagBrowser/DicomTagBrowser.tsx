@@ -120,51 +120,51 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
       title: 'Tag',
       dataIndex: 'tag',
       key: 'tag',
-      width: '20%',
+      width: '20%'
     },
     {
       title: 'VR',
       dataIndex: 'vr',
       key: 'vr',
-      width: '10%',
+      width: '10%'
     },
     {
       title: 'Keyword',
       dataIndex: 'keyword',
       key: 'keyword',
-      width: '30%',
+      width: '30%'
     },
     {
       title: 'Value',
       dataIndex: 'value',
       key: 'value',
-      width: '40%',
-    },
+      width: '40%'
+    }
   ]
 
-  const transformTagsToTableData = (tags: any[], parentKey = ''): TableDataItem[] => {
-    return tags.map((tag, index) => {
-      // Create a unique key that includes the parent path
-      const currentKey = parentKey ? `${parentKey}-${index}` : `${index}`
-      
-      const item: TableDataItem = {
-        key: currentKey,
-        tag: tag.tag,
-        vr: tag.vr,
-        keyword: tag.keyword,
-        value: tag.value
-      }
-
-      if (tag.children && tag.children.length > 0) {
-        // Pass the current key as parent for nested items
-        item.children = transformTagsToTableData(tag.children, currentKey)
-      }
-
-      return item
-    })
-  }
-
   const tableData = useMemo(() => {
+    const transformTagsToTableData = (tags: any[], parentKey = ''): TableDataItem[] => {
+      return tags.map((tag, index) => {
+        // Create a unique key that includes the parent path
+        const currentKey = parentKey !== undefined ? `${parentKey}-${index}` : `${index}`
+
+        const item: TableDataItem = {
+          key: currentKey,
+          tag: tag.tag,
+          vr: tag.vr,
+          keyword: tag.keyword,
+          value: tag.value
+        }
+
+        if (tag.children !== undefined && tag.children.length > 0) {
+          // Pass the current key as parent for nested items
+          item.children = transformTagsToTableData(tag.children, currentKey)
+        }
+
+        return item
+      })
+    }
+
     if (displaySets[selectedDisplaySetInstanceUID] === undefined) return []
     const metadata = displaySets[selectedDisplaySetInstanceUID]?.images[instanceNumber - 1]
     const tags = getSortedTags(metadata)
@@ -172,28 +172,28 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
   }, [instanceNumber, selectedDisplaySetInstanceUID, displaySets])
 
   const filteredData = useMemo(() => {
-    if (!filterValue) return tableData
+    if (filterValue === undefined || filterValue === '') return tableData
 
     const searchLower = filterValue.toLowerCase()
     const newSearchExpandedKeys: string[] = []
-    
+
     const filterNodes = (nodes: TableDataItem[], parentKey = ''): TableDataItem[] => {
       return nodes.map(node => {
         const newNode = { ...node }
-        
-        const matchesSearch = 
+
+        const matchesSearch =
           (node.tag?.toLowerCase() ?? '').includes(searchLower) ||
           (node.vr?.toLowerCase() ?? '').includes(searchLower) ||
           (node.keyword?.toLowerCase() ?? '').includes(searchLower) ||
           (node.value?.toString().toLowerCase() ?? '').includes(searchLower)
 
-        if (node.children) {
+        if (node.children != null) {
           const filteredChildren = filterNodes(node.children, node.key)
           newNode.children = filteredChildren
-          
+
           if (matchesSearch || filteredChildren.length > 0) {
             // Add all parent keys to maintain the expansion chain
-            if (parentKey) {
+            if (parentKey !== undefined) {
               newSearchExpandedKeys.push(parentKey)
             }
             newSearchExpandedKeys.push(node.key)
@@ -212,7 +212,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
 
   // Reset search expanded keys when search is cleared
   useEffect(() => {
-    if (!filterValue) {
+    if (filterValue === undefined || filterValue === '') {
       setSearchExpandedKeys([])
     }
   }, [filterValue])
@@ -291,9 +291,9 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
           pagination={false}
           expandable={{
             expandedRowKeys: allExpandedKeys,
-            onExpandedRowsChange: (keys) => setExpandedKeys(keys as string[]),
+            onExpandedRowsChange: (keys) => setExpandedKeys(keys as string[])
           }}
-          size="small"
+          size='small'
           scroll={{ y: 500 }}
         />
       </div>
