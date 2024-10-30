@@ -228,10 +228,15 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
 
   return (
     <div className='dicom-tag-browser'>
-      <div className='dicom-tag-browser-content'>
-        <div className='controls-row'>
-          <div className='series-selector'>
-            <Typography.Text strong>Slides</Typography.Text>
+      <div
+        style={{
+          width: '100%',
+          padding: '16px 20px 20px'
+        }}
+      >
+        <div style={{ display: 'flex', gap: '24px', marginBottom: '32px' }}>
+          <div style={{ flex: 1 }}>
+            <Typography.Text strong style={{ display: 'block', marginBottom: '8px' }}>Slides</Typography.Text>
             <Select
               style={{ width: '100%' }}
               value={selectedDisplaySetInstanceUID}
@@ -259,8 +264,8 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
           </div>
 
           {showInstanceList && (
-            <div className='instance-slider'>
-              <Typography.Text strong>
+            <div style={{ flex: 1 }}>
+              <Typography.Text strong style={{ display: 'block', marginBottom: '8px' }}>
                 Instance Number: {instanceNumber}
               </Typography.Text>
               <Slider
@@ -278,7 +283,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
         </div>
 
         <Input
-          className='search-input'
+          style={{ marginBottom: '20px' }}
           placeholder='Search DICOM tags...'
           prefix={<SearchOutlined />}
           onChange={(e) => setFilterValue(e.target.value)}

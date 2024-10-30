@@ -1,38 +1,3 @@
-.dicom-tag-browser {
-  /* Add wrapper class */
-}
-
-.dicom-tag-browser .dicom-tag-browser-content {
-  width: 100%;
-  padding: 16px 20px 20px;
-}
-
-/* Controls row layout */
-.dicom-tag-browser .controls-row {
-  display: flex;
-  gap: 24px;
-  margin-bottom: 32px;
-}
-
-.dicom-tag-browser .series-selector {
-  flex: 1;
-}
-
-.dicom-tag-browser .instance-slider {
-  flex: 1;
-}
-
-.dicom-tag-browser .series-selector .ant-typography,
-.dicom-tag-browser .instance-slider .ant-typography {
-  display: block;
-  margin-bottom: 8px;
-}
-
-.dicom-tag-browser .search-input {
-  margin-bottom: 20px;
-}
-
-/* Table styles */
 .dicom-tag-browser .ant-table-wrapper {
   border: 1px solid #f0f0f0;
   border-radius: 2px;
@@ -49,5 +14,3 @@
 .dicom-tag-browser .ant-table-expanded-row > td {
   background-color: #fafafa;
 }
-
-/* Remove old table styles that are no longer needed */
