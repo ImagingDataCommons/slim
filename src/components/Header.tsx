@@ -6,7 +6,6 @@ import {
   Dropdown,
   Input,
   Layout,
-  Menu,
   Modal,
   Row,
   Space,
@@ -18,6 +17,7 @@ import {
   CheckOutlined,
   InfoOutlined,
   StopOutlined,
+  FileSearchOutlined,
   UnorderedListOutlined,
   UserOutlined,
   SettingOutlined
@@ -29,6 +29,8 @@ import { RouteComponentProps, withRouter } from '../utils/router'
 import NotificationMiddleware, { NotificationMiddlewareEvents } from '../services/NotificationMiddleware'
 import { CustomError } from '../utils/CustomError'
 import { v4 as uuidv4 } from 'uuid'
+import DicomTagBrowser from './DicomTagBrowser/DicomTagBrowser'
+import DicomWebManager from '../DicomWebManager'
 
 interface HeaderProps extends RouteComponentProps {
   app: {
@@ -42,6 +44,7 @@ interface HeaderProps extends RouteComponentProps {
     name: string
     email: string
   }
+  clients: { [key: string]: DicomWebManager }
   showWorklistButton: boolean
   onServerSelection: ({ url }: { url: string }) => void
   onUserLogout?: () => void
@@ -175,6 +178,19 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     })
   }
 
+  handleDicomTagBrowserButtonClick = (): void => {
+    const width = window.innerWidth - 200
+    Modal.info({
+      title: 'DICOM Tag Browser',
+      width,
+      content: <DicomTagBrowser
+        clients={this.props.clients}
+        studyInstanceUID={this.props.params.studyInstanceUID ?? ''}
+               />,
+      onOk (): void {}
+    })
+  }
+
   handleDebugButtonClick = (): void => {
     const errorMsgs: {
       Authentication: string[]
@@ -295,9 +311,9 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           }
         )
       }
-      const userMenu = <Menu items={userMenuItems} />
+      const userMenu = { items: userMenuItems }
       user = (
-        <Dropdown overlay={userMenu} trigger={['click']}>
+        <Dropdown menu={userMenu} trigger={['click']}>
           <Button
             icon={UserOutlined}
             onClick={e => e.preventDefault()}
@@ -335,6 +351,18 @@ class Header extends React.Component<HeaderProps, HeaderState> {
         </Badge>
       </Badge>
     )
+
+    const showDicomTagBrowser = this.props.location.pathname.includes('/studies/')
+
+    const dicomTagBrowserButton = showDicomTagBrowser
+      ? (
+        <Button
+          icon={FileSearchOutlined}
+          tooltip='Dicom Tag Browser'
+          onClick={this.handleDicomTagBrowserButtonClick}
+        />
+        )
+      : null
 
     let serverSelectionButton
     if (this.props.showServerSelectionButton) {
@@ -411,6 +439,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
                 {worklistButton}
                 {infoButton}
                 {debugButton}
+                {dicomTagBrowserButton}
                 {serverSelectionButton}
                 {user}
               </Space>
@@ -419,7 +448,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
         </Layout.Header>
 
         <Modal
-          visible={this.state.isServerSelectionModalVisible}
+          open={this.state.isServerSelectionModalVisible}
           title='Select DICOMweb server'
           onOk={handleServerSelection}
           onCancel={handleServerSelectionCancellation}

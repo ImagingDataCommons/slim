@@ -3249,11 +3249,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       presentationStateOptions.push(
         <Select.Option
           key='default-presentation-state'
-          value={null}
+          value={undefined}
           dropdownMatchSelectWidth={false}
           size='small'
         >
-          {}
+          <></>
         </Select.Option>
       )
       presentationStateMenu = (
@@ -3638,7 +3638,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           />
 
           <Modal
-            visible={this.state.isAnnotationModalVisible}
+            open={this.state.isAnnotationModalVisible}
             title='Configure annotations'
             onOk={this.handleAnnotationConfigurationCompletion}
             onCancel={this.handleAnnotationConfigurationCancellation}
@@ -3650,7 +3650,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           </Modal>
 
           <Modal
-            visible={this.state.isSelectedRoiModalVisible}
+            open={this.state.isSelectedRoiModalVisible}
             title='Selected ROI'
             onCancel={this.handleRoiSelectionCancellation}
             maskClosable
@@ -3662,7 +3662,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           </Modal>
 
           <Modal
-            visible={this.state.isGoToModalVisible}
+            open={this.state.isGoToModalVisible}
             title='Go to slide position'
             onOk={this.handleSlidePositionSelection}
             onCancel={this.handleSlidePositionSelectionCancellation}
@@ -3733,7 +3733,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           </Modal>
 
           <Modal
-            visible={this.state.isReportModalVisible}
+            open={this.state.isReportModalVisible}
             title='Verify and save report'
             onOk={this.handleReportVerification}
             onCancel={this.handleReportCancellation}

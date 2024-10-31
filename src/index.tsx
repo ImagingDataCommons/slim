@@ -1,5 +1,6 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
+import { message } from 'antd'
 
 import './index.css'
 import AppConfig from './AppConfig'
@@ -24,6 +25,10 @@ if (config.mode === 'dark') {
 } else {
   App = React.lazy(async () => await import('./AppLight'))
 }
+
+message.config({
+  top: 100
+})
 
 const container = document.getElementById('root')
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
