@@ -24,7 +24,16 @@ export const formatTagValue = (tag: DicomTag): string => {
   if (tag.Value == null) return ''
 
   if (Array.isArray(tag.Value)) {
-    return tag.Value.join(', ')
+    return tag.Value.map(val => {
+      if (typeof val === 'object' && val !== null) {
+        return JSON.stringify(val)
+      }
+      return String(val)
+    }).join(', ')
+  }
+
+  if (typeof tag.Value === 'object' && tag.Value !== null) {
+    return JSON.stringify(tag.Value)
   }
 
   return String(tag.Value)
@@ -89,7 +98,14 @@ export function getRows (metadata: Record<string, any>, depth = 0): TagInfo[] {
 
     // Handle array values
     if (Array.isArray(value)) {
-      value = value.join('\\')
+      value = value.map(val => {
+        if (typeof val === 'object' && val !== null) {
+          return JSON.stringify(val)
+        }
+        return String(val)
+      }).join('\\')
+    } else if (typeof value === 'object' && value !== null) {
+      value = JSON.stringify(value)
     }
 
     return [{
