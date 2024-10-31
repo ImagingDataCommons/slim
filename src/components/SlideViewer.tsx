@@ -3670,21 +3670,25 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           >
             <Space align='start' direction='vertical'>
               <InputNumber
-                placeholder={(
+                placeholder={
                   '[' +
                   `${this.state.validXCoordinateRange[0]}` +
                   ', ' +
                   `${this.state.validXCoordinateRange[1]}` +
                   ']'
-                )}
+                }
                 prefix='X Coordinate [mm]'
                 onChange={this.handleXCoordinateSelection}
                 onPressEnter={this.handleXCoordinateSelection}
                 controls={false}
                 addonAfter={
                   this.state.isSelectedXCoordinateValid
-                    ? <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                    : <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                    ? (
+                      <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                      )
+                    : (
+                      <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                      )
                 }
               />
               <InputNumber
@@ -3701,8 +3705,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 controls={false}
                 addonAfter={
                   this.state.isSelectedYCoordinateValid
-                    ? <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                    : <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                    ? (
+                      <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                      )
+                    : (
+                      <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                      )
                 }
               />
               <InputNumber
@@ -3713,8 +3721,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 controls={false}
                 addonAfter={
                   this.state.isSelectedMagnificationValid
-                    ? <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                    : <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                    ? (
+                      <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                      )
+                    : (
+                      <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                      )
                 }
               />
             </Space>
@@ -3749,24 +3761,23 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             forceSubMenuRender
             onOpenChange={() => {
               // Give menu item time to render before updating viewer size
-              setTimeout(
-                () => {
-                  if (this.labelViewer != null) {
-                    this.labelViewer.resize()
-                  }
-                },
-                100
-              )
+              setTimeout(() => {
+                if (this.labelViewer != null) {
+                  this.labelViewer.resize()
+                }
+              }, 100)
             }}
           >
-            <Menu.SubMenu key='label' title='Slide label'>
-              <Menu.Item style={{ height: '100%' }} key='image'>
-                <div
-                  style={{ height: '220px' }}
-                  ref={this.labelViewportRef}
-                />
-              </Menu.Item>
-            </Menu.SubMenu>
+            {this.labelViewportRef.current != null && (
+              <Menu.SubMenu key='label' title='Slide label'>
+                <Menu.Item style={{ height: '100%' }} key='image'>
+                  <div
+                    style={{ height: '220px' }}
+                    ref={this.labelViewportRef}
+                  />
+                </Menu.Item>
+              </Menu.SubMenu>
+            )}
             {specimenMenu}
             {equipmentMenu}
             {opticalPathMenu}
@@ -3798,7 +3809,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           </Menu>
         </Layout.Sider>
         {this.state.isHoveredRoiTooltipVisible &&
-        (this.state.hoveredRoiAttributes.length > 0)
+        this.state.hoveredRoiAttributes.length > 0
           ? (
             <HoveredRoiTooltip
               xPosition={this.state.hoveredRoiTooltipX}
