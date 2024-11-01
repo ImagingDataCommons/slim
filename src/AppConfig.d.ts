@@ -64,6 +64,7 @@ export interface ServerSettings {
   retry?: RetryRequestSettings
   errorMessages?: ErrorMessageSettings[]
   storageClasses?: string[]
+  upgradeInsecureRequests?: boolean
 }
 
 export interface OidcSettings {
