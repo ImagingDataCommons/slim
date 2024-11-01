@@ -51,6 +51,7 @@ import NotificationMiddleware, {
 import AnnotationCategoryList from './AnnotationCategoryList'
 import HoveredRoiTooltip from './HoveredRoiTooltip'
 import { adaptRoiToAnnotation } from '../services/RoiToAnnotationAdapter'
+import type { MessageType } from '../AppConfig'
 
 const DEFAULT_ROI_STROKE_COLOR: number[] = [255, 234, 0] // [0, 126, 163]
 const DEFAULT_ROI_FILL_COLOR: number[] = [255, 234, 0, 0.2] // [0, 126, 163, 0.2]
@@ -375,6 +376,9 @@ interface SlideViewerProps extends RouteComponentProps {
     email: string
   }
   selectedPresentationStateUID?: string
+  messages?: {
+    disabled: boolean | MessageType[]
+  }
 }
 
 interface SlideViewerState {
@@ -909,7 +913,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                       cpLUTItem.SegmentedBluePaletteColorLookupTableData
                     )
                     : undefined
-                )
               })
             }
 
@@ -1879,8 +1882,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         hasICCProfile = true
       }
       if (!hasICCProfile) {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        message.warning('No ICC Profile was found for color images')
+        this.showMessage('warning', 'No ICC Profile was found for color images')
       }
     }
   }
@@ -2238,6 +2240,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         }
       )
       if (findingType === undefined) {
+        // Keep using NotificationMiddleware for critical errors
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.SLIM,
           new CustomError(
@@ -2357,10 +2360,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const buffer = writer.write()
       const client = this.props.clients[StorageClasses.COMPREHENSIVE_3D_SR]
       client.storeInstances({ datasets: [buffer] }).then(
-        (response: any) => message.info('Annotations were saved.')
+        (response: any) => this.showMessage('success', 'Annotations were saved.')
       ).catch((error) => {
         console.error(error)
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.SLIM,
           new CustomError(
@@ -2974,14 +2976,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (this.state.selectedRoiUIDs.size > 0) {
       this.state.selectedRoiUIDs.forEach(uid => {
         if (uid === undefined) {
-          // eslint-disable-next-line @typescript-eslint/no-floating-promises
-          message.warning('No annotation was selected for removal')
+          this.showMessage('warning', 'No annotation was selected for removal')
           return
         }
         console.info(`remove ROI "${uid}"`)
         this.volumeViewer.removeROI(uid)
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        message.info('Annotation was removed')
+        this.showMessage('info', 'Annotation was removed')
       })
       this.setState({
         selectedRoiUIDs: new Set(),
@@ -3822,6 +3822,38 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             )}
       </Layout>
     )
+  }
+
+  private isMessageTypeDisabled(type: MessageType): boolean {
+    const { messages } = this.props
+    if (!messages) return false
+    
+    if (typeof messages.disabled === 'boolean') {
+      return messages.disabled 
+    }
+    
+    return Array.isArray(messages.disabled) && messages.disabled.includes(type)
+  }
+
+  private showMessage(type: MessageType, content: string): void {
+    if (!this.isMessageTypeDisabled(type)) {
+      const { messages } = this.props
+      const config: {
+        duration?: number
+        top?: number
+      } = {}
+      
+      if (messages?.duration !== undefined) {
+        config.duration = messages.duration
+      }
+      
+      if (messages?.top !== undefined) {
+        config.top = messages.top
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      message[type](content, config)
+    }
   }
 }
 

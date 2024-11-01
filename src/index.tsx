@@ -27,7 +27,8 @@ if (config.mode === 'dark') {
 }
 
 message.config({
-  top: 100
+  top: config.messages?.top ?? 100,
+  duration: config.messages?.duration ?? 5
 })
 
 const container = document.getElementById('root')
