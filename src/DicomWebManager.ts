@@ -58,33 +58,31 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
           )
         )
       }
-      // Addresses #159
-      let upgradeInsecure = false
+
+      const hasHttpsUrl = (url?: string): boolean => url?.startsWith('https') ?? false
+
       const clientSettings: dwc.api.DICOMwebClientOptions = {
         url: serviceUrl
       }
-      if (serviceUrl?.startsWith('https') ?? false) {
-        upgradeInsecure = true
-      }
+
+      const shouldUpgradeInsecure = serverSettings.upgradeInsecureRequests === true && [
+        serviceUrl,
+        serverSettings.qidoPathPrefix,
+        serverSettings.wadoPathPrefix,
+        serverSettings.stowPathPrefix
+      ].some(hasHttpsUrl)
+
       if (serverSettings.qidoPathPrefix !== undefined) {
         clientSettings.qidoURLPrefix = serverSettings.qidoPathPrefix
-        if (serverSettings.qidoPathPrefix.startsWith('https')) {
-          upgradeInsecure = true
-        }
       }
       if (serverSettings.wadoPathPrefix !== undefined) {
         clientSettings.wadoURLPrefix = serverSettings.wadoPathPrefix
-        if (serverSettings.wadoPathPrefix.startsWith('https')) {
-          upgradeInsecure = true
-        }
       }
       if (serverSettings.stowPathPrefix !== undefined) {
         clientSettings.stowURLPrefix = serverSettings.stowPathPrefix
-        if (serverSettings.stowPathPrefix.startsWith('https')) {
-          upgradeInsecure = true
-        }
       }
-      if (upgradeInsecure) {
+
+      if (shouldUpgradeInsecure) {
         clientSettings.headers = { 'Content-Security-Policy': 'upgrade-insecure-requests' }
       }
 
