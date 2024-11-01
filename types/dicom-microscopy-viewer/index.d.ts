@@ -13,6 +13,7 @@ declare module 'dicom-microscopy-viewer' {
       debug?: boolean
       preload?: boolean
       controls: string[]
+      annotationOptions?: object
       errorInterceptor?: (error: CustomError) => void
     }
 
@@ -43,8 +44,8 @@ declare module 'dicom-microscopy-viewer' {
       render (options: object): void
       navigate (options: { level?: number, position?: number[] })
       cleanup (): void
-      get numLevels(): number
-      get frameOfReferenceUID(): string
+      get numLevels (): number
+      get frameOfReferenceUID (): string
       getPixelSpacing (level: number): number[]
       get physicalOffset (): number[]
       get physicalSize (): number[]
@@ -198,8 +199,8 @@ declare module 'dicom-microscopy-viewer' {
       showAnnotationGroup (
         annotationGroupUID: string,
         styleOptions?: {
-          opacity?: number,
-          color?: number[],
+          opacity?: number
+          color?: number[]
           measurement?: dcmjs.sr.coding.CodedConcept
         }
       ): void
@@ -207,13 +208,13 @@ declare module 'dicom-microscopy-viewer' {
       setAnnotationGroupStyle (
         annotationGroupUID: string,
         styleOptions: {
-          opacity?: number,
-          color?: number[],
+          opacity?: number
+          color?: number[]
           measurement?: dcmjs.sr.coding.CodedConcept
         }
       ): void
       getAnnotationGroupStyle (annotationGroupUID: string): {
-        opacity: number,
+        opacity: number
         color: number[]
       }
       isAnnotationGroupVisible (annotationGroupUID: string): boolean
@@ -453,6 +454,7 @@ declare module 'dicom-microscopy-viewer' {
     }
 
     export class MicroscopyBulkSimpleAnnotations {
+      AnnotationCoordinateType: string
       constructor ({ metadata: Dataset }: object)
     }
 
@@ -517,6 +519,9 @@ declare module 'dicom-microscopy-viewer' {
       // General Series module
       SeriesInstanceUID: string
       SeriesNumber: number | null | undefined
+      SeriesDate: string
+      SeriesTime: string
+      SeriesDescription: string
       Modality: string
       // SOP Common module
       SOPClassUID: string
@@ -561,6 +566,7 @@ declare module 'dicom-microscopy-viewer' {
     }
 
     export interface MicroscopyBulkSimpleAnnotations extends SOPClass {
+      AnnotationCoordinateType: string
       // Frame of Reference module
       FrameOfReferenceUID: string
       // Specimen module
@@ -573,6 +579,7 @@ declare module 'dicom-microscopy-viewer' {
       SpecimenDescriptionSequence: SpecimenDescription[]
       OpticalPathSequence: OpticalPath[]
       AnnotationGroupSequence: Array<{
+        SOPClassUID: string
         AnnotationGroupNumber: number
         AnnotationGroupUID: string
         AnnotationGroupLabel: string

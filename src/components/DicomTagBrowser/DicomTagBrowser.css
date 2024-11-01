@@ -1,0 +1,8 @@
+.dicom-tag-browser .ant-table-wrapper {
+  border: 1px solid #f0f0f0;
+  border-radius: 2px;
+}
+
+.dicom-tag-browser .ant-table-cell {
+  word-break: break-word;
+}

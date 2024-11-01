@@ -1,0 +1,33 @@
+name: slim/deploy-to-github-pages
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  deploy-to-github-pages:
+    name: "Deploy to GitHub Pages"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout to repository
+        uses: actions/checkout@v4.1.4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4.0.2
+        with:
+          node-version: 20.8.1
+
+      - name: Install Yarn
+        run: sudo npm i -g yarn
+
+      - name: Install dependencies
+        run: yarn
+
+      - name: Build and deploy to GitHub Pages
+        run: |
+          git remote set-url origin https://git:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
+          yarn deploy -- -u "github-actions-bot <support+actions@github.com>"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

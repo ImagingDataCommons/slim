@@ -6,12 +6,12 @@ const errorTypes = {
 }
 
 class CustomError extends Error {
-    constructor(type, message) {
-      super();
-      this.message = message;
-      this.stack = new Error().stack;
-      this.type = type
-    }
+  constructor (type, message) {
+    super()
+    this.message = message
+    this.stack = new Error().stack
+    this.type = type
+  }
 }
-  
-export {errorTypes, CustomError};
+
+export { errorTypes, CustomError }

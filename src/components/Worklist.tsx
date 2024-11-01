@@ -58,7 +58,8 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
         })
       })
     })
-      .catch(() => {
+      .catch((error) => {
+        console.error(error)
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.DICOMWEB,
@@ -117,7 +118,8 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
         })
       })
     })
-      .catch(() => {
+      .catch((error) => {
+        console.error(error)
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.DICOMWEB,
           new CustomError(

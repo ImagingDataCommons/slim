@@ -1,0 +1,43 @@
+{
+    "plugins": [
+        "@semantic-release/commit-analyzer",
+        "@semantic-release/release-notes-generator",
+        [
+            "@semantic-release/changelog",
+            {
+                "changelogFile": "docs/CHANGELOG.md"
+            }
+        ],
+        [
+            "@semantic-release/npm",
+            {
+                "npmPublish": false
+            }
+        ],
+        [
+            "@semantic-release/git",
+            {
+                "assets": [
+                    "docs",
+                    "package.json"
+                ],
+                "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+            }
+        ],
+        [
+            "@semantic-release/github",
+            {
+                "assets": [
+                    {
+                        "path": "build.zip",
+                        "label": "slim-${nextRelease.gitTag}.zip"
+                    },
+                    {
+                        "path": "docs/CHANGELOG.md",
+                        "label": "${nextRelease.gitTag}-CHANGELOG.md"
+                    }
+                ]
+            }
+        ]
+    ]
+}

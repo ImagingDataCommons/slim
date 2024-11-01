@@ -88,6 +88,7 @@ export default interface AppConfig {
   path: string
   annotations: AnnotationSettings[]
   organization?: string
+  gcpBaseUrl?: string
   oidc?: OidcSettings
   disableWorklist?: boolean
   disableAnnotationTools?: boolean
