@@ -1,4 +1,5 @@
 import * as dcmjs from 'dcmjs'
+import type { MessageInstance } from 'antd/lib/message'
 
 export type DicomWebManagerErrorHandler = (
   error: dwc.api.DICOMwebClientError,
@@ -75,6 +76,14 @@ export interface OidcSettings {
   endSessionEndpoint?: string
 }
 
+export type MessageType = keyof MessageInstance
+
+export interface MessageConfig {
+  disabled: boolean | MessageType[]
+  duration?: number // Duration in seconds
+  top?: number // Distance from top of screen in pixels
+}
+
 export default interface AppConfig {
   /**
    * Currently, only one server is supported. However, support for multiple
@@ -94,4 +103,5 @@ export default interface AppConfig {
   enableServerSelection?: boolean
   mode?: string
   preload?: boolean
+  messages?: MessageConfig
 }

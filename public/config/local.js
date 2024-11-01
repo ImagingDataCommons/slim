@@ -141,5 +141,8 @@ window.config = {
         }
       }
     }
-  ]
+  ],
+  messages: {
+    disabled: true
+  }
 }

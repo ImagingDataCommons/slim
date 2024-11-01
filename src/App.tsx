@@ -246,7 +246,6 @@ class App extends React.Component<AppProps, AppState> {
 
     this.handleServerSelection = this.handleServerSelection.bind(this)
 
-    message.config({ duration: 5 })
     this.addGcpSecondaryAnnotationServer(props.config)
 
     this.state = {

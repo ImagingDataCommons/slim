@@ -254,3 +254,71 @@ If you use Slim in your research, please cite the above article.
 ## DICOM Conformance Statement
 
 The DICOM conformance statement for Slim is available in this repository [here](/DICOM-Conformance-Statement.md)
+
+# Message Configuration
+
+Configure Ant Design message popup notifications that appear at the top of the screen. By default, all message popups are enabled.
+
+## Configuration
+
+```javascript
+window.config = {
+  // ... other config options ...
+  messages: {
+    disabled: ['warning', 'info'], // Disable specific message types
+    duration: 5, // Show messages for 5 seconds
+    top: 100 // Show 100px from top of screen
+  }
+}
+```
+
+### Message Options
+
+- `disabled`: Disable specific message types or all messages
+- `duration`: How long messages are shown (in seconds)
+- `top`: Distance from top of screen (in pixels)
+
+### Message Types
+
+Available message types from Ant Design:
+- `success` - Green popups
+- `error` - Red popups  
+- `warning` - Yellow popups
+- `info` - Blue popups
+
+### Examples
+
+```javascript
+// Disable specific types with custom duration
+messages: {
+  disabled: ['warning', 'info'],
+  duration: 5 // Show for 5 seconds
+}
+
+// Disable all popups
+messages: {
+  disabled: true
+}
+
+// Custom position
+messages: {
+  disabled: false,
+  top: 24 // Show 24px from top
+}
+
+// Full configuration
+messages: {
+  disabled: ['warning'],
+  duration: 3,
+  top: 16
+}
+
+// Keep all enabled with defaults
+messages: {
+  disabled: false
+}
+```
+
+Default values if not specified:
+- `duration`: 5 seconds
+- `top`: 100 pixels
