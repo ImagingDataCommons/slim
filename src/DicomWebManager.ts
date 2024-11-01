@@ -83,7 +83,10 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       }
 
       if (shouldUpgradeInsecure) {
-        clientSettings.headers = { 'Content-Security-Policy': 'upgrade-insecure-requests' }
+        clientSettings.headers = {
+          ...clientSettings.headers,
+          'Content-Security-Policy': 'upgrade-insecure-requests'
+        }
       }
 
       if (serverSettings.retry !== undefined) {

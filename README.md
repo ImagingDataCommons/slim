@@ -86,10 +86,39 @@ Users can authenticate and authorize the application to access data via [OpenID 
 
 ## Configuration
 
+### Server Configuration
+
 The app can be configured via a `public/config/{name}.js` JavaScript configuration file (see for example the default `public/config/local.js`).
 Please refer to the [AppConfig.d.ts](src/AppConfig.d.ts) file for configuration options.
 
 The configuration can be changed at build-time using the `REACT_APP_CONFIG` environment variable.
+
+### Handling Mixed Content and HTTPS
+
+When deploying SLIM with HTTPS, you may encounter mixed content scenarios where your PACS/VNA server returns HTTP URLs in its responses. This commonly occurs when:
+
+- The PACS server populates bulkdataURI fields with internal HTTP URLs
+- Your viewer is running on HTTPS but needs to communicate with services that respond with HTTP URLs
+- You're using a reverse proxy that terminates SSL
+
+To handle these scenarios, SLIM provides the `upgradeInsecureRequests` option in the server configuration:
+
+```js
+window.config = {
+  servers: [{
+    id: "local",
+    url: "https://your-server.com/dcm4chee-arc/aets/MYAET/rs",
+    upgradeInsecureRequests: true  // Enable automatic HTTP -> HTTPS upgrade
+  }]
+}
+```
+
+When `upgradeInsecureRequests` is set to `true` and at least one of your URLs (service URL, QIDO, WADO, or STOW prefixes) uses HTTPS, the viewer will automatically:
+
+1. Add the `Content-Security-Policy: upgrade-insecure-requests` header to requests
+2. Attempt to upgrade any HTTP responses to HTTPS
+
+This feature was implemented in response to [issue #159](https://github.com/ImagingDataCommons/slim/issues/159) where PACS servers would return HTTP bulkdata URIs even when accessed via HTTPS.
 
 ## Deployment
 
@@ -226,7 +255,6 @@ Create an [OIDC client ID for web application](https://developers.google.com/ide
 
 Note that Google's OIDC implementation does currently not yet support the authorization code grant type with PKCE challenge for private clients.
 For the time being, the legacy implicit grand type has to be used.
-
 
 ## Development
 
