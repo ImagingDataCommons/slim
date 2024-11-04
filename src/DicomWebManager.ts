@@ -58,9 +58,20 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
           )
         )
       }
+
+      const hasHttpsUrl = (url?: string): boolean => url?.startsWith('https') ?? false
+
       const clientSettings: dwc.api.DICOMwebClientOptions = {
         url: serviceUrl
       }
+
+      const shouldUpgradeInsecure = serverSettings.upgradeInsecureRequests === true && [
+        serviceUrl,
+        serverSettings.qidoPathPrefix,
+        serverSettings.wadoPathPrefix,
+        serverSettings.stowPathPrefix
+      ].some(hasHttpsUrl)
+
       if (serverSettings.qidoPathPrefix !== undefined) {
         clientSettings.qidoURLPrefix = serverSettings.qidoPathPrefix
       }
@@ -70,6 +81,14 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       if (serverSettings.stowPathPrefix !== undefined) {
         clientSettings.stowURLPrefix = serverSettings.stowPathPrefix
       }
+
+      if (shouldUpgradeInsecure) {
+        clientSettings.headers = {
+          ...clientSettings.headers,
+          'Content-Security-Policy': 'upgrade-insecure-requests'
+        }
+      }
+
       if (serverSettings.retry !== undefined) {
         clientSettings.requestHooks = [getXHRRetryHook(serverSettings.retry)]
       }
