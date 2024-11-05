@@ -40,14 +40,14 @@ const originalMessage = { ...message }
 
 const createMessageConfig = (content: string | object): object => {
   const duration = config.messages?.duration ?? 5
-  
+
   if (typeof content === 'object' && content !== null) {
     return {
       ...content,
       duration
     }
   }
-  
+
   return {
     content,
     duration
