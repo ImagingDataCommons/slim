@@ -95,4 +95,9 @@ export default interface AppConfig {
   enableServerSelection?: boolean
   mode?: string
   preload?: boolean
+  messages?: {
+    disabled?: boolean | string[]
+    top?: number
+    duration?: number
+  }
 }

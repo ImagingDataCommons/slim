@@ -26,8 +26,41 @@ if (config.mode === 'dark') {
   App = React.lazy(async () => await import('./AppLight'))
 }
 
+const isMessageTypeDisabled = ({ type }: { type: string }): boolean => {
+  const { messages } = config
+  if (messages === undefined) return false
+  if (typeof messages.disabled === 'boolean') {
+    return messages.disabled
+  }
+  return Array.isArray(messages.disabled) && messages.disabled.includes(type)
+}
+
+// Store original message methods
+const originalMessage = { ...message }
+
+/** Create a proxy to control antd message */
+const messageProxy = new Proxy(originalMessage, {
+  get (target, prop: PropertyKey) {
+    if (prop === 'config') {
+      return message.config.bind(message)
+    }
+    if (typeof target[prop as keyof typeof target] === 'function') {
+      return (...args: any[]) => {
+        const isMessageEnabled = isMessageTypeDisabled({ type: prop as string })
+        if (!isMessageEnabled) {
+          return (target[prop as keyof typeof target] as Function).apply(message, args)
+        }
+        return { then: () => {} }
+      }
+    }
+    return Reflect.get(target, prop)
+  }
+})
+Object.assign(message, messageProxy)
+
 message.config({
-  top: 100
+  top: config.messages?.top ?? 100,
+  duration: config.messages?.duration ?? 5
 })
 
 const container = document.getElementById('root')

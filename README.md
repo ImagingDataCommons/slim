@@ -115,6 +115,53 @@ When `upgradeInsecureRequests` is set to `true` and at least one of your URLs (s
 
 This feature was implemented in response to [issue #159](https://github.com/ImagingDataCommons/slim/issues/159) where PACS servers would return HTTP bulkdata URIs even when accessed via HTTPS.
 
+### Messages/Popups Configuration
+
+Configure message popup notifications that appear at the top of the screen. By default, all message popups are enabled.
+
+```javascript
+window.config = {
+  // ... other config options ...
+  messages: {
+    disabled: ['warning', 'info'], // Disable specific message types
+    duration: 5, // Show messages for 5 seconds
+    top: 100 // Show 100px from top of screen
+  }
+}
+```
+
+Options:
+- `disabled`: Disable specific message types or all messages
+- `duration`: How long messages are shown (in seconds)
+- `top`: Distance from top of screen (in pixels)
+
+Available message types:
+- `success` - Green popups
+- `error` - Red popups  
+- `warning` - Yellow popups
+- `info` - Blue popups
+
+Examples:
+```javascript
+// Disable specific types with custom duration and position
+messages: {
+  disabled: ['warning', 'info'],
+  duration: 5, // Show for 5 seconds
+  top: 50 // Show 50px from top
+}
+```
+
+```javascript
+// Disable all popups
+messages: {
+  disabled: true
+}
+```
+
+Default values if not specified:
+- `duration`: 5 seconds
+- `top`: 100 pixels
+
 ## Deployment
 
 Download the latest release from [github.com/imagingdatacommons/slim/releases](https://github.com/imagingdatacommons/slim/releases) and then run the following commands to install build dependencies and build the app:
