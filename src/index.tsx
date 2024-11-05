@@ -48,6 +48,19 @@ const messageProxy = new Proxy(originalMessage, {
       return (...args: any[]) => {
         const isMessageEnabled = isMessageTypeDisabled({ type: prop as string })
         if (!isMessageEnabled) {
+          // For message methods like success, error, etc., the first argument might be config object
+          if (typeof args[0] === 'object' && args[0] !== null) {
+            args[0] = {
+              ...args[0],
+              duration: config.messages?.duration ?? 5
+            }
+          } else {
+            // If first argument is just a string, wrap it in an object with our duration
+            args = [{
+              content: args[0],
+              duration: config.messages?.duration ?? 5
+            }]
+          }
           return (target[prop as keyof typeof target] as Function).apply(message, args)
         }
         return { then: () => {} }
@@ -56,8 +69,11 @@ const messageProxy = new Proxy(originalMessage, {
     return Reflect.get(target, prop)
   }
 })
+
+// Apply the proxy
 Object.assign(message, messageProxy)
 
+// Set global config after proxy is in place
 message.config({
   top: config.messages?.top ?? 100,
   duration: config.messages?.duration ?? 5
