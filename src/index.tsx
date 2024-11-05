@@ -38,34 +38,44 @@ const isMessageTypeDisabled = ({ type }: { type: string }): boolean => {
 // Store original message methods
 const originalMessage = { ...message }
 
+const createMessageConfig = (content: string | object): object => {
+  const duration = config.messages?.duration ?? 5
+  
+  if (typeof content === 'object' && content !== null) {
+    return {
+      ...content,
+      duration
+    }
+  }
+  
+  return {
+    content,
+    duration
+  }
+}
+
 /** Create a proxy to control antd message */
 const messageProxy = new Proxy(originalMessage, {
   get (target, prop: PropertyKey) {
+    // Handle config method separately
     if (prop === 'config') {
       return message.config.bind(message)
     }
-    if (typeof target[prop as keyof typeof target] === 'function') {
+
+    // Handle message methods (success, error, etc)
+    const method = target[prop as keyof typeof target]
+    if (typeof method === 'function') {
       return (...args: any[]) => {
-        const isMessageEnabled = isMessageTypeDisabled({ type: prop as string })
-        if (!isMessageEnabled) {
-          // For message methods like success, error, etc., the first argument might be config object
-          if (typeof args[0] === 'object' && args[0] !== null) {
-            args[0] = {
-              ...args[0],
-              duration: config.messages?.duration ?? 5
-            }
-          } else {
-            // If first argument is just a string, wrap it in an object with our duration
-            args = [{
-              content: args[0],
-              duration: config.messages?.duration ?? 5
-            }]
-          }
-          return (target[prop as keyof typeof target] as Function).apply(message, args)
+        const isMessageEnabled = !isMessageTypeDisabled({ type: prop as string })
+        if (isMessageEnabled) {
+          const messageConfig = createMessageConfig(args[0])
+          return (method as Function).apply(message, [messageConfig])
         }
         return { then: () => {} }
       }
     }
+
+    // Pass through any other properties
     return Reflect.get(target, prop)
   }
 })
