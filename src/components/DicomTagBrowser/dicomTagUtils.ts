@@ -44,6 +44,7 @@ export const formatTagValue = (tag: DicomTag): string => {
  * @returns Array of processed tag information
  */
 export function getRows (metadata: Record<string, any>, depth = 0): TagInfo[] {
+  if (!metadata) return []
   const keywords = Object.keys(metadata).filter(key => key !== '_vrMap')
 
   return keywords.flatMap(keyword => {

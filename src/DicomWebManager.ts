@@ -1,4 +1,5 @@
 import * as dwc from 'dicomweb-client'
+import * as dcmjs from 'dcmjs'
 
 import { ServerSettings, DicomWebManagerErrorHandler } from './AppConfig'
 import { joinUrl } from './utils/url'
@@ -7,6 +8,9 @@ import { CustomError, errorTypes } from './utils/CustomError'
 import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from './services/NotificationMiddleware'
+import DicomMetadataStore from './services/DICOMMetadataStore'
+
+const { naturalizeDataset } = dcmjs.data.DicomMetaDictionary
 
 interface Store {
   id: string
@@ -163,13 +167,19 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   retrieveStudyMetadata = async (
     options: dwc.api.RetrieveStudyMetadataOptions
   ): Promise<dwc.api.Metadata[]> => {
-    return await this.stores[0].client.retrieveStudyMetadata(options)
+    const studySummaryMetadata = await this.stores[0].client.retrieveStudyMetadata(options)
+    const naturalized = naturalizeDataset(studySummaryMetadata)
+    DicomMetadataStore.addStudy(naturalized)
+    return studySummaryMetadata
   }
 
   retrieveSeriesMetadata = async (
     options: dwc.api.RetrieveSeriesMetadataOptions
   ): Promise<dwc.api.Metadata[]> => {
-    return await this.stores[0].client.retrieveSeriesMetadata(options)
+    const seriesSummaryMetadata = await this.stores[0].client.retrieveSeriesMetadata(options)
+    const naturalized = seriesSummaryMetadata.map(naturalizeDataset)
+    DicomMetadataStore.addSeriesMetadata(naturalized, true)
+    return seriesSummaryMetadata
   }
 
   retrieveInstanceMetadata = async (

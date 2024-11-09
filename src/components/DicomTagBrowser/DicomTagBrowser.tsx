@@ -7,15 +7,16 @@ import './DicomTagBrowser.css'
 import { useSlides } from '../../hooks/useSlides'
 import { getSortedTags } from './dicomTagUtils'
 import { formatDicomDate } from '../../utils/formatDicomDate'
+import DicomMetadataStore, { Series, Study } from '../../services/DICOMMetadataStore'
 
 const { Option } = Select
 
 interface DisplaySet {
   displaySetInstanceUID: number
-  SeriesDate: string
-  SeriesTime: string
-  SeriesNumber: number
-  SeriesDescription: string
+  SeriesDate?: string
+  SeriesTime?: string
+  SeriesNumber: string
+  SeriesDescription?: string
   Modality: string
   images: any[]
 }
@@ -36,6 +37,7 @@ interface DicomTagBrowserProps {
 
 const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): JSX.Element => {
   const { slides, isLoading } = useSlides({ clients, studyInstanceUID })
+  const [study, setStudy] = useState<Study | undefined>(undefined)
 
   const [displaySets, setDisplaySets] = useState<DisplaySet[]>([])
   const [selectedDisplaySetInstanceUID, setSelectedDisplaySetInstanceUID] = useState(0)
@@ -45,43 +47,79 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
   const [searchExpandedKeys, setSearchExpandedKeys] = useState<string[]>([])
 
   useEffect(() => {
-    if (slides.length === 0) return
+    const study = DicomMetadataStore.getStudy(studyInstanceUID)
+    setStudy(study)
+    DicomMetadataStore.subscribe(DicomMetadataStore.EVENTS.SERIES_ADDED, (event: any) => {
+      const study = DicomMetadataStore.getStudy(studyInstanceUID)
+      setStudy(study)
+    })
+  }, [studyInstanceUID])
 
-    const updatedDisplaySets = slides
-      .map((slide, index) => {
-        const { volumeImages } = slide
-        if (volumeImages?.[0] === undefined) return null
+  useEffect(() => {
+    let displaySets: DisplaySet[] = []
 
-        const {
-          SeriesDate,
-          SeriesTime,
-          SeriesNumber,
-          SeriesDescription,
-          Modality
-        } = volumeImages[0]
+    let index = 0
+    if (slides.length > 0) {
+      displaySets = slides
+        .map((slide): DisplaySet | null => {
+          const { volumeImages } = slide
+          if (volumeImages?.[0] === undefined) return null
 
-        return {
-          displaySetInstanceUID: index,
-          SeriesDate,
-          SeriesTime,
-          SeriesNumber,
-          SeriesDescription,
-          Modality,
-          images: volumeImages
-        }
-      })
-      .filter((set): set is DisplaySet => set !== null)
+          const {
+            SeriesDate,
+            SeriesTime,
+            SeriesNumber,
+            SeriesDescription,
+            Modality
+          } = volumeImages[0]
 
-    setDisplaySets(updatedDisplaySets)
-  }, [slides])
+          const ds: DisplaySet = {
+            displaySetInstanceUID: index,
+            SeriesDate,
+            SeriesTime,
+            // @ts-expect-error
+            SeriesNumber,
+            SeriesDescription,
+            Modality,
+            images: volumeImages
+          }
+          index++
+          return ds
+        })
+        .filter((set): set is DisplaySet => set !== null)
+    }
+
+    if (study !== undefined) {
+      displaySets = study.series
+        .map((series: Series): DisplaySet => {
+          const ds: DisplaySet = {
+            displaySetInstanceUID: index,
+            SeriesDate: series.SeriesDate,
+            SeriesTime: series.SeriesTime,
+            // @ts-expect-error
+            SeriesNumber: series.SeriesNumber,
+            SeriesDescription: series.SeriesDescription,
+            Modality: series.Modality,
+            images: [series]
+          }
+          index++
+          return ds
+        })
+    }
+
+    console.debug('displaySets:', displaySets)
+
+    setDisplaySets(displaySets)
+  }, [slides, study])
 
   const displaySetList = useMemo(() => {
-    displaySets.sort((a, b) => a.SeriesNumber - b.SeriesNumber)
+    displaySets.sort((a, b) => Number(a.SeriesNumber) - Number(b.SeriesNumber))
     return displaySets.map((displaySet) => {
       const {
         displaySetInstanceUID,
         SeriesDate,
         SeriesTime,
+        // @ts-expect-error
         SeriesNumber,
         SeriesDescription,
         Modality
