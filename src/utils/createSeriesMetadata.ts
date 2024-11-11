@@ -1,6 +1,6 @@
 import { Instance, Series } from '../services/DICOMMetadataStore'
 
-function createSeriesMetadata (SeriesInstanceUID: string): Series {
+function createSeriesMetadata (SeriesInstanceUID: string, defaultInstances?: Instance[]): Series {
   const instances: Instance[] = []
   const instancesMap = new Map<string, Instance>()
 
@@ -11,6 +11,7 @@ function createSeriesMetadata (SeriesInstanceUID: string): Series {
     SeriesDescription: '',
     SeriesDate: '',
     SeriesTime: '',
+    ...defaultInstances?.[0],
     instances,
     addInstance: function (newInstance: Instance) {
       this.addInstances([newInstance])

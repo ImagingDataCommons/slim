@@ -57,8 +57,10 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
 
   useEffect(() => {
     let displaySets: DisplaySet[] = []
-
+    let derivedDisplaySets: DisplaySet[] = []
+    let processedSeries: string[] = []
     let index = 0
+
     if (slides.length > 0) {
       displaySets = slides
         .map((slide): DisplaySet | null => {
@@ -69,14 +71,18 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
             SeriesDate,
             SeriesTime,
             SeriesNumber,
+            SeriesInstanceUID,
             SeriesDescription,
             Modality
           } = volumeImages[0]
+
+          processedSeries.push(SeriesInstanceUID)
 
           const ds: DisplaySet = {
             displaySetInstanceUID: index,
             SeriesDate,
             SeriesTime,
+            SeriesInstanceUID,
             // @ts-expect-error
             SeriesNumber,
             SeriesDescription,
@@ -89,8 +95,9 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
         .filter((set): set is DisplaySet => set !== null)
     }
 
-    if (study !== undefined) {
-      displaySets = study.series
+    if (study !== undefined && study.series.length > 0) {
+      console.debug('study.series:', study.series)
+      derivedDisplaySets = study.series.filter(s => !processedSeries.includes(s.SeriesInstanceUID))
         .map((series: Series): DisplaySet => {
           const ds: DisplaySet = {
             displaySetInstanceUID: index,
@@ -99,27 +106,24 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
             // @ts-expect-error
             SeriesNumber: series.SeriesNumber,
             SeriesDescription: series.SeriesDescription,
+            SeriesInstanceUID: series.SeriesInstanceUID,
             Modality: series.Modality,
-            images: [series]
+            images: series.instances ? series.instances : [series]
           }
           index++
           return ds
         })
     }
 
-    console.debug('displaySets:', displaySets)
-
-    setDisplaySets(displaySets)
+    setDisplaySets([...displaySets, ...derivedDisplaySets])
   }, [slides, study])
 
   const displaySetList = useMemo(() => {
     displaySets.sort((a, b) => Number(a.SeriesNumber) - Number(b.SeriesNumber))
-    return displaySets.map((displaySet) => {
+    return displaySets.map((displaySet, index) => {
       const {
-        displaySetInstanceUID,
         SeriesDate,
         SeriesTime,
-        // @ts-expect-error
         SeriesNumber,
         SeriesDescription,
         Modality
@@ -129,7 +133,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
       const displayDate = formatDicomDate(dateStr)
 
       return {
-        value: displaySetInstanceUID,
+        value: index,
         label: `${SeriesNumber} (${Modality}): ${SeriesDescription}`,
         description: displayDate
       }
@@ -137,7 +141,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
   }, [displaySets])
 
   const showInstanceList =
-    displaySets[selectedDisplaySetInstanceUID]?.images.length > 1
+    displaySets[selectedDisplaySetInstanceUID]?.images.length > 1 
 
   const instanceSliderMarks = useMemo(() => {
     if (displaySets[selectedDisplaySetInstanceUID] === undefined) return {}
@@ -278,7 +282,6 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
             <Select
               style={{ width: '100%' }}
               value={selectedDisplaySetInstanceUID}
-              defaultValue={0}
               onChange={(value) => {
                 setSelectedDisplaySetInstanceUID(value)
                 setInstanceNumber(1)

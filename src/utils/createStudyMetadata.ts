@@ -27,15 +27,17 @@ function createStudyMetadata (StudyInstanceUID: string): Study {
      */
     addInstancesToSeries: function (instances: Instance[]) {
       const { SeriesInstanceUID } = instances[0]
+
       if (!this.StudyDescription) {
         this.StudyDescription = instances[0].StudyDescription
       }
+
       let series = this.series.find(
         (s) => s.SeriesInstanceUID === SeriesInstanceUID
       )
 
       if (series == null) {
-        series = createSeriesMetadata(SeriesInstanceUID)
+        series = createSeriesMetadata(SeriesInstanceUID, instances)
         this.series.push(series)
       }
 

@@ -211,7 +211,6 @@ const BaseImplementation: BaseImplementationType = {
 
     if (study == null) {
       _model.studies.push(createStudyMetadata(StudyInstanceUID))
-
       study = _model.studies[_model.studies.length - 1]
     }
 
@@ -304,7 +303,6 @@ const BaseImplementation: BaseImplementationType = {
   getInstanceByImageId: _getInstanceByImageId,
   updateMetadataForSeries: _updateMetadataForSeries,
   _broadcastEvent (eventName: string, data: any): void {
-    // Implementation for _broadcastEvent
   }
 }
 
