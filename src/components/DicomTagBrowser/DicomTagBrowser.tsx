@@ -45,6 +45,29 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
   const [filterValue, setFilterValue] = useState('')
   const [expandedKeys, setExpandedKeys] = useState<string[]>([])
   const [searchExpandedKeys, setSearchExpandedKeys] = useState<string[]>([])
+  const [searchInput, setSearchInput] = useState('')
+
+  const useDebounce = <T,>(value: T, delay: number): T => {
+    const [debouncedValue, setDebouncedValue] = useState<T>(value)
+
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        setDebouncedValue(value)
+      }, delay)
+
+      return () => {
+        clearTimeout(timer)
+      }
+    }, [value, delay])
+
+    return debouncedValue
+  }
+
+  const debouncedSearchValue = useDebounce(searchInput, 300)
+
+  useEffect(() => {
+    setFilterValue(debouncedSearchValue)
+  }, [debouncedSearchValue])
 
   useEffect(() => {
     const study = DicomMetadataStore.getStudy(studyInstanceUID)
@@ -337,8 +360,8 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
           style={{ marginBottom: '20px' }}
           placeholder='Search DICOM tags...'
           prefix={<SearchOutlined />}
-          onChange={(e) => setFilterValue(e.target.value)}
-          value={filterValue}
+          onChange={(e) => setSearchInput(e.target.value)}
+          value={searchInput}
         />
 
         <Table
