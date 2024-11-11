@@ -73,15 +73,15 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
       const study = DicomMetadataStore.getStudy(studyInstanceUID)
       setStudy({ ...study } as Study)
     }
-    DicomMetadataStore.subscribe(DicomMetadataStore.EVENTS.SERIES_ADDED, handler)
-    DicomMetadataStore.subscribe(DicomMetadataStore.EVENTS.INSTANCES_ADDED, handler)
+    const seriesAddedSubscription = DicomMetadataStore.subscribe(DicomMetadataStore.EVENTS.SERIES_ADDED, handler)
+    const instancesAddedSubscription = DicomMetadataStore.subscribe(DicomMetadataStore.EVENTS.INSTANCES_ADDED, handler)
 
     const study = DicomMetadataStore.getStudy(studyInstanceUID)
     setStudy(study)
 
     return () => {
-      DicomMetadataStore.unsubscribe(DicomMetadataStore.EVENTS.SERIES_ADDED, handler)
-      DicomMetadataStore.unsubscribe(DicomMetadataStore.EVENTS.INSTANCES_ADDED, handler)
+      seriesAddedSubscription.unsubscribe()
+      instancesAddedSubscription.unsubscribe()
     }
   }, [studyInstanceUID])
 
@@ -126,7 +126,6 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
     }
 
     if (study !== undefined && study.series.length > 0) {
-      console.debug('study.series:', study.series)
       derivedDisplaySets = study.series.filter(s => !processedSeries.includes(s.SeriesInstanceUID))
         .map((series: Series): DisplaySet => {
           const ds: DisplaySet = {
@@ -138,7 +137,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
             SeriesDescription: series.SeriesDescription,
             SeriesInstanceUID: series.SeriesInstanceUID,
             Modality: series.Modality,
-            images: series.instances ? series.instances : [series]
+            images: series.instances && series.instances.length > 0 ? series.instances : [series]
           }
           index++
           return ds
@@ -172,6 +171,8 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
 
   const showInstanceList =
     displaySets[selectedDisplaySetInstanceUID]?.images.length > 1
+
+  console.debug('displaySets:', displaySets)
 
   const instanceSliderMarks = useMemo(() => {
     if (displaySets[selectedDisplaySetInstanceUID] === undefined) return {}

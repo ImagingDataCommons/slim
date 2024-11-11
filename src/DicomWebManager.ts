@@ -178,7 +178,9 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
     options: dwc.api.RetrieveSeriesMetadataOptions
   ): Promise<dwc.api.Metadata[]> => {
     const seriesSummaryMetadata = await this.stores[0].client.retrieveSeriesMetadata(options)
+    console.debug('seriesSummaryMetadata:', seriesSummaryMetadata)
     const naturalized = seriesSummaryMetadata.map(naturalizeDataset)
+    console.debug('naturalized:', naturalized)
     DicomMetadataStore.addSeriesMetadata(naturalized, true)
     return seriesSummaryMetadata
   }
