@@ -44,7 +44,6 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
   const [instanceNumber, setInstanceNumber] = useState(1)
   const [filterValue, setFilterValue] = useState('')
   const [expandedKeys, setExpandedKeys] = useState<string[]>([])
-  const [searchExpandedKeys, setSearchExpandedKeys] = useState<string[]>([])
   const [searchInput, setSearchInput] = useState('')
 
   const useDebounce = <T,>(value: T, delay: number): T => {
@@ -70,18 +69,26 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
   }, [debouncedSearchValue])
 
   useEffect(() => {
+    const handler = (event: any) => {
+      const study = DicomMetadataStore.getStudy(studyInstanceUID)
+      setStudy({ ...study } as Study)
+    }
+    DicomMetadataStore.subscribe(DicomMetadataStore.EVENTS.SERIES_ADDED, handler)
+    DicomMetadataStore.subscribe(DicomMetadataStore.EVENTS.INSTANCES_ADDED, handler)
+
     const study = DicomMetadataStore.getStudy(studyInstanceUID)
     setStudy(study)
-    DicomMetadataStore.subscribe(DicomMetadataStore.EVENTS.SERIES_ADDED, (event: any) => {
-      const study = DicomMetadataStore.getStudy(studyInstanceUID)
-      setStudy(study)
-    })
+
+    return () => {
+      DicomMetadataStore.unsubscribe(DicomMetadataStore.EVENTS.SERIES_ADDED, handler)
+      DicomMetadataStore.unsubscribe(DicomMetadataStore.EVENTS.INSTANCES_ADDED, handler)
+    }
   }, [studyInstanceUID])
 
   useEffect(() => {
     let displaySets: DisplaySet[] = []
     let derivedDisplaySets: DisplaySet[] = []
-    let processedSeries: string[] = []
+    const processedSeries: string[] = []
     let index = 0
 
     if (slides.length > 0) {
@@ -164,7 +171,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
   }, [displaySets])
 
   const showInstanceList =
-    displaySets[selectedDisplaySetInstanceUID]?.images.length > 1 
+    displaySets[selectedDisplaySetInstanceUID]?.images.length > 1
 
   const instanceSliderMarks = useMemo(() => {
     if (displaySets[selectedDisplaySetInstanceUID] === undefined) return {}
