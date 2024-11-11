@@ -187,8 +187,9 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
   const tableData = useMemo(() => {
     const transformTagsToTableData = (tags: any[], parentKey = ''): TableDataItem[] => {
       return tags.map((tag, index) => {
-        // Create a unique key that includes the parent path
-        const currentKey = parentKey !== undefined ? `${parentKey}-${index}` : `${index}`
+        // Create a unique key using tag value if available, otherwise use index
+        const keyBase = tag.tag?.replace(/[(),]/g, '') || index.toString()
+        const currentKey = parentKey ? `${parentKey}-${keyBase}` : keyBase
 
         const item: TableDataItem = {
           key: currentKey,
@@ -199,7 +200,6 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
         }
 
         if (tag.children !== undefined && tag.children.length > 0) {
-          // Pass the current key as parent for nested items
           item.children = transformTagsToTableData(tag.children, currentKey)
         }
 
@@ -213,56 +213,66 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
     return transformTagsToTableData(tags)
   }, [instanceNumber, selectedDisplaySetInstanceUID, displaySets])
 
+  // Reset expanded keys when search value changes
+  useEffect(() => {
+    setExpandedKeys([])
+  }, [filterValue])
+
   const filteredData = useMemo(() => {
     if (filterValue === undefined || filterValue === '') return tableData
 
     const searchLower = filterValue.toLowerCase()
-    const newSearchExpandedKeys: string[] = []
 
-    const filterNodes = (nodes: TableDataItem[], parentKey = ''): TableDataItem[] => {
-      return nodes.map(node => {
-        const newNode = { ...node }
+    const nodeMatches = (node: TableDataItem): boolean => {
+      return (
+        (node.tag?.toLowerCase() ?? '').includes(searchLower) ||
+        (node.vr?.toLowerCase() ?? '').includes(searchLower) ||
+        (node.keyword?.toLowerCase() ?? '').includes(searchLower) ||
+        (node.value?.toString().toLowerCase() ?? '').includes(searchLower)
+      )
+    }
 
-        const matchesSearch =
-          (node.tag?.toLowerCase() ?? '').includes(searchLower) ||
-          (node.vr?.toLowerCase() ?? '').includes(searchLower) ||
-          (node.keyword?.toLowerCase() ?? '').includes(searchLower) ||
-          (node.value?.toString().toLowerCase() ?? '').includes(searchLower)
+    const findMatchingNodes = (nodes: TableDataItem[]): TableDataItem[] => {
+      const results: TableDataItem[] = []
 
-        if (node.children != null) {
-          const filteredChildren = filterNodes(node.children, node.key)
-          newNode.children = filteredChildren
-
-          if (matchesSearch || filteredChildren.length > 0) {
-            // Add all parent keys to maintain the expansion chain
-            if (parentKey !== undefined) {
-              newSearchExpandedKeys.push(parentKey)
-            }
-            newSearchExpandedKeys.push(node.key)
-            return newNode
+      const searchNode = (node: TableDataItem) => {
+        if (nodeMatches(node)) {
+          // Create a new matching node with its original structure
+          const matchingNode: TableDataItem = {
+            key: node.key,
+            tag: node.tag,
+            vr: node.vr,
+            keyword: node.keyword,
+            value: node.value
           }
+
+          // If the node has children, preserve them for expansion
+          if (node.children?.length) {
+            matchingNode.children = node.children.map(child => ({
+              key: child.key,
+              tag: child.tag,
+              vr: child.vr,
+              keyword: child.keyword,
+              value: child.value,
+              children: child.children
+            }))
+          }
+
+          results.push(matchingNode)
         }
 
-        return matchesSearch ? newNode : null
-      }).filter((node): node is TableDataItem => node !== null)
+        // Continue searching through children
+        if (node.children?.length) {
+          node.children.forEach(searchNode)
+        }
+      }
+
+      nodes.forEach(searchNode)
+      return results
     }
 
-    const filtered = filterNodes(tableData)
-    setSearchExpandedKeys(newSearchExpandedKeys)
-    return filtered
+    return findMatchingNodes(tableData)
   }, [tableData, filterValue])
-
-  // Reset search expanded keys when search is cleared
-  useEffect(() => {
-    if (filterValue === undefined || filterValue === '') {
-      setSearchExpandedKeys([])
-    }
-  }, [filterValue])
-
-  // Combine manual expansion with search expansion
-  const allExpandedKeys = useMemo(() => {
-    return [...new Set([...expandedKeys, ...searchExpandedKeys])]
-  }, [expandedKeys, searchExpandedKeys])
 
   if (isLoading) {
     return <div>Loading...</div>
@@ -336,7 +346,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
           dataSource={filteredData}
           pagination={false}
           expandable={{
-            expandedRowKeys: allExpandedKeys,
+            expandedRowKeys: expandedKeys,
             onExpandedRowsChange: (keys) => setExpandedKeys(keys as string[])
           }}
           size='small'
