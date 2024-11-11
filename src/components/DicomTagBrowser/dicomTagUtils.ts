@@ -42,7 +42,7 @@ export const formatTagValue = (tag: DicomTag): string => {
  * @returns Array of processed tag information
  */
 export function getRows (metadata: Record<string, any>, depth = 0): TagInfo[] {
-  if (!metadata) return []
+  if (metadata === undefined || metadata === null) return []
   const keywords = Object.keys(metadata).filter(key => key !== '_vrMap')
 
   return keywords.flatMap(keyword => {
@@ -52,8 +52,6 @@ export function getRows (metadata: Record<string, any>, depth = 0): TagInfo[] {
 
     // Handle private or unknown tags
     if (tagInfo === undefined) {
-      // @ts-expect-error
-      console.debug('keyword:', keyword, DicomMetaDictionary.nameMap)
       const regex = /[0-9A-Fa-f]{6}/g
       if (keyword.match(regex) == null) return []
 

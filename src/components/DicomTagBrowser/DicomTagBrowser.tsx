@@ -69,14 +69,14 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
   }, [debouncedSearchValue])
 
   useEffect(() => {
-    const handler = (event: any) => {
-      const study = DicomMetadataStore.getStudy(studyInstanceUID)
-      setStudy({ ...study } as Study)
+    const handler = (event: any): void => {
+      const study: Study | undefined = Object.assign({}, DicomMetadataStore.getStudy(studyInstanceUID))
+      setStudy(study)
     }
     const seriesAddedSubscription = DicomMetadataStore.subscribe(DicomMetadataStore.EVENTS.SERIES_ADDED, handler)
     const instancesAddedSubscription = DicomMetadataStore.subscribe(DicomMetadataStore.EVENTS.INSTANCES_ADDED, handler)
 
-    const study = DicomMetadataStore.getStudy(studyInstanceUID)
+    const study = Object.assign({}, DicomMetadataStore.getStudy(studyInstanceUID))
     setStudy(study)
 
     return () => {
@@ -125,7 +125,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
         .filter((set): set is DisplaySet => set !== null)
     }
 
-    if (study !== undefined && study.series.length > 0) {
+    if (study !== undefined && study.series?.length > 0) {
       derivedDisplaySets = study.series.filter(s => !processedSeries.includes(s.SeriesInstanceUID))
         .map((series: Series): DisplaySet => {
           const ds: DisplaySet = {
@@ -137,7 +137,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
             SeriesDescription: series.SeriesDescription,
             SeriesInstanceUID: series.SeriesInstanceUID,
             Modality: series.Modality,
-            images: series.instances && series.instances.length > 0 ? series.instances : [series]
+            images: series?.instances?.length > 0 ? series.instances : [series]
           }
           index++
           return ds
@@ -151,11 +151,11 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
     displaySets.sort((a, b) => Number(a.SeriesNumber) - Number(b.SeriesNumber))
     return displaySets.map((displaySet, index) => {
       const {
-        SeriesDate,
-        SeriesTime,
-        SeriesNumber,
-        SeriesDescription,
-        Modality
+        SeriesDate = '',
+        SeriesTime = '',
+        SeriesNumber = '',
+        SeriesDescription = '',
+        Modality = ''
       } = displaySet
 
       const dateStr = `${SeriesDate}:${SeriesTime}`.split('.')[0]
@@ -219,8 +219,8 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
     const transformTagsToTableData = (tags: any[], parentKey = ''): TableDataItem[] => {
       return tags.map((tag, index) => {
         // Create a unique key using tag value if available, otherwise use index
-        const keyBase = tag.tag?.replace(/[(),]/g, '') || index.toString()
-        const currentKey = parentKey ? `${parentKey}-${keyBase}` : keyBase
+        const keyBase: string = tag.tag !== '' ? tag.tag.replace(/[(),]/g, '') : index.toString()
+        const currentKey: string = parentKey !== '' ? `${parentKey}-${keyBase}` : keyBase
 
         const item: TableDataItem = {
           key: currentKey,
@@ -266,7 +266,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
     const findMatchingNodes = (nodes: TableDataItem[]): TableDataItem[] => {
       const results: TableDataItem[] = []
 
-      const searchNode = (node: TableDataItem) => {
+      const searchNode = (node: TableDataItem): void => {
         if (nodeMatches(node)) {
           // Create a new matching node with its original structure
           const matchingNode: TableDataItem = {
@@ -278,24 +278,20 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
           }
 
           // If the node has children, preserve them for expansion
-          if (node.children?.length) {
-            matchingNode.children = node.children.map(child => ({
-              key: child.key,
-              tag: child.tag,
-              vr: child.vr,
-              keyword: child.keyword,
-              value: child.value,
-              children: child.children
-            }))
-          }
+          matchingNode.children = node?.children?.map((child): TableDataItem => ({
+            key: child.key,
+            tag: child.tag,
+            vr: child.vr,
+            keyword: child.keyword,
+            value: child.value,
+            children: child.children
+          }))
 
           results.push(matchingNode)
         }
 
         // Continue searching through children
-        if (node.children?.length) {
-          node.children.forEach(searchNode)
-        }
+        node?.children?.forEach(searchNode)
       }
 
       nodes.forEach(searchNode)

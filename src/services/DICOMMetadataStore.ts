@@ -19,7 +19,7 @@ export interface Instance {
   Modality: string
   InstanceNumber: string
   imageId?: string
-  [key: string]: any; // For dynamic metadata properties
+  [key: string]: any // For dynamic metadata properties
 }
 
 export interface Series {
@@ -240,9 +240,9 @@ const BaseImplementation: BaseImplementationType = {
   },
   addSeriesMetadata (seriesSummaryMetadata, madeInClient = false) {
     if (
-      !seriesSummaryMetadata ||
-      (seriesSummaryMetadata.length === 0) ||
-      !seriesSummaryMetadata[0]
+      seriesSummaryMetadata === undefined ||
+      seriesSummaryMetadata.length === 0 ||
+      seriesSummaryMetadata[0] === undefined
     ) {
       return
     }
@@ -253,13 +253,11 @@ const BaseImplementation: BaseImplementationType = {
       study = createStudyMetadata(StudyInstanceUID)
       // Will typically be undefined with a compliant DICOMweb server, reset later
       study.StudyDescription = seriesSummaryMetadata[0].StudyDescription
-      if (study) {
-        seriesSummaryMetadata.forEach((item) => {
-          if (study?.ModalitiesInStudy.indexOf(item.Modality) === -1) {
-            study?.ModalitiesInStudy.push(item.Modality)
-          }
-        })
-      }
+      seriesSummaryMetadata?.forEach((item) => {
+        if (study !== undefined && !study.ModalitiesInStudy?.includes(item.Modality)) {
+          study.ModalitiesInStudy?.push(item.Modality)
+        }
+      })
       study.NumberOfStudyRelatedSeries = seriesSummaryMetadata.length
       _model.studies.push(study)
     }

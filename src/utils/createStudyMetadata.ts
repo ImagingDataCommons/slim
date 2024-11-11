@@ -28,7 +28,7 @@ function createStudyMetadata (StudyInstanceUID: string): Study {
     addInstancesToSeries: function (instances: Instance[]) {
       const { SeriesInstanceUID } = instances[0]
 
-      if (!this.StudyDescription) {
+      if (this.StudyDescription !== '' && this.StudyDescription !== undefined) {
         this.StudyDescription = instances[0].StudyDescription
       }
 

@@ -21,7 +21,7 @@ export default pubSubInterface
  * @param {Function} callback Events callback
  * @return {Object} Observable object with actions
  */
-function subscribe (this: PubSubService, eventName: string, callback: Function) {
+function subscribe (this: PubSubService, eventName: string, callback: Function): { unsubscribe: () => any } {
   if (this._isValidEvent(eventName)) {
     const listenerId = guid()
     const subscription = { id: listenerId, callback }
@@ -48,8 +48,8 @@ function subscribe (this: PubSubService, eventName: string, callback: Function) 
  * @param {string} listenerId The listeners id
  * @return void
  */
-function _unsubscribe (this: PubSubService, eventName: string, listenerId: string) {
-  if (!this.listeners[eventName]) {
+function _unsubscribe (this: PubSubService, eventName: string, listenerId: string): void {
+  if (this.listeners[eventName] === undefined) {
     return
   }
 
@@ -67,7 +67,7 @@ function _unsubscribe (this: PubSubService, eventName: string, listenerId: strin
  * @param {string} eventName The name of the event
  * @return {boolean} Event name validation
  */
-function _isValidEvent (this: PubSubService, eventName: string) {
+function _isValidEvent (this: PubSubService, eventName: string): boolean {
   return Object.values(this.EVENTS).includes(eventName)
 }
 
@@ -78,7 +78,7 @@ function _isValidEvent (this: PubSubService, eventName: string) {
  * @param {func} callbackProps - Properties to pass callback
  * @return void
  */
-function _broadcastEvent (this: PubSubService, eventName: string, callbackProps: any) {
+function _broadcastEvent (this: PubSubService, eventName: string, callbackProps: any): void {
   const hasListeners = Object.keys(this.listeners).length > 0
   const hasCallbacks = Array.isArray(this.listeners[eventName])
 
@@ -112,7 +112,7 @@ export class PubSubService {
     this.unsubscriptions = []
   }
 
-  reset () {
+  reset (): void {
     this.unsubscriptions.forEach((unsub) => unsub())
     this.unsubscriptions = []
   }
@@ -123,7 +123,7 @@ export class PubSubService {
    * Check eventData.isConsumed to see if it is consumed or not.
    * @param props - to include in the event
    */
-  protected createConsumableEvent (props: Record<string, any>) {
+  protected createConsumableEvent (props: Record<string, any>): Record<string, any> {
     return {
       ...props,
       isConsumed: false,
