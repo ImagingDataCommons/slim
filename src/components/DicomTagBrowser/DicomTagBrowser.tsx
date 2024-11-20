@@ -8,6 +8,7 @@ import { useSlides } from '../../hooks/useSlides'
 import { getSortedTags } from './dicomTagUtils'
 import { formatDicomDate } from '../../utils/formatDicomDate'
 import DicomMetadataStore, { Series, Study } from '../../services/DICOMMetadataStore'
+import { useDebounce } from '../../hooks/useDebounce'
 
 const { Option } = Select
 
@@ -45,22 +46,6 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
   const [filterValue, setFilterValue] = useState('')
   const [expandedKeys, setExpandedKeys] = useState<string[]>([])
   const [searchInput, setSearchInput] = useState('')
-
-  const useDebounce = <T,>(value: T, delay: number): T => {
-    const [debouncedValue, setDebouncedValue] = useState<T>(value)
-
-    useEffect(() => {
-      const timer = setTimeout(() => {
-        setDebouncedValue(value)
-      }, delay)
-
-      return () => {
-        clearTimeout(timer)
-      }
-    }, [value, delay])
-
-    return debouncedValue
-  }
 
   const debouncedSearchValue = useDebounce(searchInput, 300)
 
