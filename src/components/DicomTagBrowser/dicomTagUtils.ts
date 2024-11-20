@@ -1,8 +1,6 @@
 import dcmjs from 'dcmjs'
 
 const { DicomMetaDictionary } = dcmjs.data
-// @ts-expect-error
-const { nameMap } = DicomMetaDictionary
 
 interface TagInfo {
   tag: string
@@ -44,10 +42,12 @@ export const formatTagValue = (tag: DicomTag): string => {
  * @returns Array of processed tag information
  */
 export function getRows (metadata: Record<string, any>, depth = 0): TagInfo[] {
+  if (metadata === undefined || metadata === null) return []
   const keywords = Object.keys(metadata).filter(key => key !== '_vrMap')
 
   return keywords.flatMap(keyword => {
-    const tagInfo = nameMap[keyword] as TagInfo | undefined
+    // @ts-expect-error
+    const tagInfo = DicomMetaDictionary.nameMap[keyword] as TagInfo | undefined
     let value = metadata[keyword]
 
     // Handle private or unknown tags
