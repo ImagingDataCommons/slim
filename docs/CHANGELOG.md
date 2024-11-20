@@ -1,3 +1,10 @@
+# [0.34.0](https://github.com/ImagingDataCommons/slim/compare/v0.33.0...v0.34.0) (2024-11-20)
+
+
+### Features
+
+* improve dicom tag browser ([#251](https://github.com/ImagingDataCommons/slim/issues/251)) ([7e57859](https://github.com/ImagingDataCommons/slim/commit/7e57859287ea3b758f9d2cf4e53729063c589569))
+
 # [0.33.0](https://github.com/ImagingDataCommons/slim/compare/v0.32.0...v0.33.0) (2024-10-31)
 
 
