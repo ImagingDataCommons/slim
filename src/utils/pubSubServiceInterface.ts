@@ -1,4 +1,4 @@
-import guid from './guid'
+import { v4 as generateUUID } from 'uuid'
 
 /**
  * Consumer must implement:
@@ -23,7 +23,7 @@ export default pubSubInterface
  */
 function subscribe (this: PubSubService, eventName: string, callback: Function): { unsubscribe: () => any } {
   if (this._isValidEvent(eventName)) {
-    const listenerId = guid()
+    const listenerId = generateUUID()
     const subscription = { id: listenerId, callback }
 
     // console.info(`Subscribing to '${eventName}'.`);
