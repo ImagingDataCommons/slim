@@ -1,11 +1,11 @@
 const HoveredRoiTooltip = ({
   xPosition,
   yPosition,
-  attributes
+  rois
 }: {
   xPosition: number
   yPosition: number
-  attributes: Array<{ name: string, value: string }>
+  rois: Array<{ index: number, roiUid: string, attributes: Array<{ name: string, value: string }>}>
 }): JSX.Element => {
   return (
     <div
@@ -21,11 +21,22 @@ const HoveredRoiTooltip = ({
         pointerEvents: 'none'
       }}
     >
-      {attributes.map((attr) => (
-        <div key={attr.name}>
-          {attr.name}: <span style={{ fontWeight: 500 }}>{attr.value}</span>
-        </div>
-      ))}
+      {rois.map((roi, i) => {
+        const attributes = roi.attributes
+        return (
+          <div key={roi.roiUid}>
+            <span>ROI {roi.index}</span>
+            {attributes.map((attr) => {
+              return (
+                <div key={attr.name + roi.roiUid}>
+                  {attr.name}: <span style={{ fontWeight: 500 }}>{attr.value}</span>
+                </div>
+              )
+            })}
+          </div>
+
+        )
+      })}
     </div>
   )
 }
