@@ -261,7 +261,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
         matchingPaths.push(currentPath)
       }
 
-      if (node.children) {
+      if (node.children != null) {
         node.children.forEach(child => {
           const childPaths = findMatchingPaths(child, currentPath)
           matchingPaths = [...matchingPaths, ...childPaths]
@@ -282,7 +282,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
       if (paths.length === 0 || level >= paths[0].length) return []
 
       const nodesAtLevel = new Map<string, {
-        node: TableDataItem,
+        node: TableDataItem
         childPaths: TableDataItem[][]
       }>()
 
