@@ -50,7 +50,12 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
   const debouncedSearchValue = useDebounce(searchInput, 300)
 
   useEffect(() => {
-    setFilterValue(debouncedSearchValue)
+    if (debouncedSearchValue === '') {
+      setFilterValue('')
+      setExpandedKeys([])
+    } else {
+      setFilterValue(debouncedSearchValue)
+    }
   }, [debouncedSearchValue])
 
   useEffect(() => {
@@ -228,11 +233,6 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
     const tags = getSortedTags(metadata)
     return transformTagsToTableData(tags)
   }, [instanceNumber, selectedDisplaySetInstanceUID, displaySets])
-
-  // Reset expanded keys when search value changes
-  useEffect(() => {
-    setExpandedKeys([])
-  }, [filterValue])
 
   const filteredData = useMemo(() => {
     if (filterValue === undefined || filterValue === '') return tableData
