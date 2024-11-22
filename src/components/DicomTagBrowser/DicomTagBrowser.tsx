@@ -50,7 +50,12 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
   const debouncedSearchValue = useDebounce(searchInput, 300)
 
   useEffect(() => {
-    setFilterValue(debouncedSearchValue)
+    if (debouncedSearchValue === '') {
+      setFilterValue('')
+      setExpandedKeys([])
+    } else {
+      setFilterValue(debouncedSearchValue)
+    }
   }, [debouncedSearchValue])
 
   useEffect(() => {
@@ -229,15 +234,11 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
     return transformTagsToTableData(tags)
   }, [instanceNumber, selectedDisplaySetInstanceUID, displaySets])
 
-  // Reset expanded keys when search value changes
-  useEffect(() => {
-    setExpandedKeys([])
-  }, [filterValue])
-
   const filteredData = useMemo(() => {
     if (filterValue === undefined || filterValue === '') return tableData
 
     const searchLower = filterValue.toLowerCase()
+    const matchedKeys = new Set<string>()
 
     const nodeMatches = (node: TableDataItem): boolean => {
       return (
@@ -248,42 +249,69 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
       )
     }
 
-    const findMatchingNodes = (nodes: TableDataItem[]): TableDataItem[] => {
-      const results: TableDataItem[] = []
+    // First pass: find all matching nodes and their parent paths
+    const findMatchingPaths = (
+      node: TableDataItem,
+      parentPath: TableDataItem[] = []
+    ): TableDataItem[][] => {
+      const currentPath = [...parentPath, node]
+      let matchingPaths: TableDataItem[][] = []
 
-      const searchNode = (node: TableDataItem): void => {
-        if (nodeMatches(node)) {
-          // Create a new matching node with its original structure
-          const matchingNode: TableDataItem = {
-            key: node.key,
-            tag: node.tag,
-            vr: node.vr,
-            keyword: node.keyword,
-            value: node.value
-          }
-
-          // If the node has children, preserve them for expansion
-          matchingNode.children = node?.children?.map((child): TableDataItem => ({
-            key: child.key,
-            tag: child.tag,
-            vr: child.vr,
-            keyword: child.keyword,
-            value: child.value,
-            children: child.children
-          }))
-
-          results.push(matchingNode)
-        }
-
-        // Continue searching through children
-        node?.children?.forEach(searchNode)
+      if (nodeMatches(node)) {
+        matchingPaths.push(currentPath)
       }
 
-      nodes.forEach(searchNode)
-      return results
+      if (node.children != null) {
+        node.children.forEach(child => {
+          const childPaths = findMatchingPaths(child, currentPath)
+          matchingPaths = [...matchingPaths, ...childPaths]
+        })
+      }
+
+      return matchingPaths
     }
 
-    return findMatchingNodes(tableData)
+    // Find all paths that contain matches
+    const matchingPaths = tableData.flatMap(node => findMatchingPaths(node))
+
+    // Second pass: reconstruct the tree with matching paths
+    const reconstructTree = (
+      paths: TableDataItem[][],
+      level = 0
+    ): TableDataItem[] => {
+      if (paths.length === 0 || level >= paths[0].length) return []
+
+      const nodesAtLevel = new Map<string, {
+        node: TableDataItem
+        childPaths: TableDataItem[][]
+      }>()
+
+      paths.forEach(path => {
+        if (level < path.length) {
+          const node = path[level]
+          if (!nodesAtLevel.has(node.key)) {
+            nodesAtLevel.set(node.key, {
+              node: { ...node },
+              childPaths: []
+            })
+          }
+          if (level + 1 < path.length) {
+            nodesAtLevel.get(node.key)?.childPaths.push(path)
+          }
+        }
+      })
+
+      return Array.from(nodesAtLevel.values()).map(({ node, childPaths }) => {
+        matchedKeys.add(node.key)
+        const children = reconstructTree(childPaths, level + 1)
+        return children.length > 0 ? { ...node, children } : node
+      })
+    }
+
+    const filtered = reconstructTree(matchingPaths)
+    setExpandedKeys(Array.from(matchedKeys))
+
+    return filtered
   }, [tableData, filterValue])
 
   if (isLoading) {
