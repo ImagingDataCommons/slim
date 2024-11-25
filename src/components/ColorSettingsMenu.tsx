@@ -1,11 +1,12 @@
 import React from 'react'
-import { Col, Divider, InputNumber, Row, Slider } from 'antd'
+import { Checkbox, Col, Divider, InputNumber, Row, Slider } from 'antd'
 
 interface ColorSettingsMenuProps {
   annotationGroupsUIDs: string[]
   defaultStyle: {
     opacity: number
     color: number[]
+    contourOnly: boolean
   }
   onStyleChange: Function
 }
@@ -14,6 +15,7 @@ interface ColorSettingsMenuState {
   currentStyle: {
     opacity: number
     color?: number[]
+    contourOnly: boolean
   }
 }
 
@@ -34,7 +36,8 @@ ColorSettingsMenuState
     this.state = {
       currentStyle: {
         opacity: this.props.defaultStyle.opacity,
-        color: this.props.defaultStyle.color
+        color: this.props.defaultStyle.color,
+        contourOnly: this.props.defaultStyle.contourOnly
       }
     }
   }
@@ -46,16 +49,12 @@ ColorSettingsMenuState
           uid,
           styleOptions: {
             color: this.state.currentStyle.color,
-            opacity: value
+            opacity: value,
+            contourOnly: this.state.currentStyle.contourOnly
           }
         })
       })
-      this.setState({
-        currentStyle: {
-          opacity: value,
-          color: this.state.currentStyle.color
-        }
-      })
+      this.updateCurrentStyle({ opacity: value })
     }
   }
 
@@ -66,18 +65,14 @@ ColorSettingsMenuState
         this.state.currentStyle.color[1],
         this.state.currentStyle.color[2]
       ]
-      this.setState((state) => ({
-        currentStyle: {
-          color: color,
-          opacity: state.currentStyle.opacity
-        }
-      }))
+      this.updateCurrentStyle({ color })
       this.props.annotationGroupsUIDs.forEach((uid) => {
         this.props.onStyleChange({
           uid,
           styleOptions: {
             color: color,
-            opacity: this.state.currentStyle.opacity
+            opacity: this.state.currentStyle.opacity,
+            contourOnly: this.state.currentStyle.contourOnly
           }
         })
       })
@@ -91,18 +86,14 @@ ColorSettingsMenuState
         Array.isArray(value) ? value[0] : value,
         this.state.currentStyle.color[2]
       ]
-      this.setState((state) => ({
-        currentStyle: {
-          color: color,
-          opacity: state.currentStyle.opacity
-        }
-      }))
+      this.updateCurrentStyle({ color })
       this.props.annotationGroupsUIDs.forEach((uid) => {
         this.props.onStyleChange({
           uid,
           styleOptions: {
             color: color,
-            opacity: this.state.currentStyle.opacity
+            opacity: this.state.currentStyle.opacity,
+            contourOnly: this.state.currentStyle.contourOnly
           }
         })
       })
@@ -116,23 +107,33 @@ ColorSettingsMenuState
         this.state.currentStyle.color[1],
         Array.isArray(value) ? value[0] : value
       ]
-      this.setState((state) => ({
-        currentStyle: {
-          color: color,
-          opacity: state.currentStyle.opacity
-        }
-      }))
-
+      this.updateCurrentStyle({ color })
       this.props.annotationGroupsUIDs.forEach((uid) => {
         this.props.onStyleChange({
           uid,
           styleOptions: {
             color: color,
-            opacity: this.state.currentStyle.opacity
+            opacity: this.state.currentStyle.opacity,
+            contourOnly: this.state.currentStyle.contourOnly
           }
         })
       })
     }
+  }
+
+  handleShowOutlineOnly (value: boolean): void {
+    this.updateCurrentStyle({ contourOnly: value })
+
+    this.props.annotationGroupsUIDs.forEach((uid) => {
+      this.props.onStyleChange({
+        uid,
+        styleOptions: {
+          color: this.state.currentStyle.color,
+          opacity: this.state.currentStyle.opacity,
+          contourOnly: value
+        }
+      })
+    })
   }
 
   getCurrentColor (): string {
@@ -148,6 +149,24 @@ ColorSettingsMenuState
     } else {
       return 'white'
     }
+  }
+
+  updateCurrentStyle ({
+    color,
+    opacity,
+    contourOnly
+  }: {
+    color?: number[]
+    opacity?: number
+    contourOnly?: boolean
+  }): void {
+    this.setState((state) => ({
+      currentStyle: {
+        opacity: opacity ?? state.currentStyle.opacity,
+        color: color ?? state.currentStyle.color,
+        contourOnly: contourOnly ?? state.currentStyle.contourOnly
+      }
+    }))
   }
 
   render (): React.ReactNode {
@@ -258,6 +277,15 @@ ColorSettingsMenuState
               onChange={this.handleOpacityChange}
             />
           </Col>
+        </Row>
+        <Row justify='start' align='middle' gutter={[8, 8]}>
+          <Checkbox
+            value={this.state.currentStyle.contourOnly}
+            onChange={(event) =>
+              this.handleShowOutlineOnly(event.target.checked)}
+          >
+            Show outline only
+          </Checkbox>
         </Row>
       </div>
     )

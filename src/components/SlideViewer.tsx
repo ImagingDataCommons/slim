@@ -60,13 +60,12 @@ const DEFAULT_ROI_RADIUS: number = 5
 const DEFAULT_ANNOTATION_OPACITY = 0.4
 const DEFAULT_ANNOTATION_STROKE_COLOR = [0, 0, 0]
 const DEFAULT_ANNOTATION_COLOR_PALETTE = [
-  [54, 162, 235],
-  [181, 65, 98],
-  [75, 192, 192],
-  [255, 158, 64],
-  [153, 102, 254],
-  [255, 205, 86],
-  [200, 203, 207]
+  [255, 0, 0],
+  [0, 255, 0],
+  [0, 0, 255],
+  [255, 255, 0],
+  [0, 255, 255],
+  [0, 0, 0]
 ]
 
 const _buildKey = (concept: {
@@ -397,8 +396,7 @@ interface SlideViewerState {
   isAnnotationModalVisible: boolean
   isSelectedRoiModalVisible: boolean
   isHoveredRoiTooltipVisible: boolean
-  hoveredRoi?: dmv.roi.ROI
-  hoveredRoiAttributes: Array<{ name: string, value: string }>
+  hoveredRoiAttributes: Array<{index: number, roiUid: string, attributes: Array<{ name: string, value: string }>}>
   hoveredRoiTooltipX: number
   hoveredRoiTooltipY: number
   isReportModalVisible: boolean
@@ -447,6 +445,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private labelViewer?: dmv.viewer.LabelImageViewer
 
+  private hoveredRois = [] as dmv.roi.ROI[]
+
+  private lastPixel = [0, 0] as [number, number]
+
   private readonly defaultRoiStyle: dmv.viewer.ROIStyleOptions = {
     stroke: {
       color: DEFAULT_ROI_STROKE_COLOR,
@@ -471,6 +473,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     [annotationUID: string]: {
       opacity: number
       color: number[]
+      contourOnly: boolean
     }
   } = {}
 
@@ -1471,62 +1474,94 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-  setHoveredRoiAttributes = (hoveredRoi: dmv.roi.ROI): void => {
-    const attributes: Array<{ name: string, value: string }> = []
-    hoveredRoi.evaluations.forEach((
-      item: (
-        dcmjs.sr.valueTypes.TextContentItem |
-        dcmjs.sr.valueTypes.CodeContentItem
-      )
-    ) => {
-      const nameValue = item.ConceptNameCodeSequence[0].CodeValue
-      const nameMeaning = item.ConceptNameCodeSequence[0].CodeMeaning
-      const name = `${nameMeaning}`
-      if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.CODE) {
-        const codeContentItem = item as dcmjs.sr.valueTypes.CodeContentItem
-        const valueMeaning = codeContentItem.ConceptCodeSequence[0].CodeMeaning
-        // For consistency with Segment and Annotation Group
-        if (nameValue === '276214006') {
-          attributes.push({
-            name: 'Property category',
-            value: `${valueMeaning}`
-          })
-        } else if (nameValue === '121071') {
-          attributes.push({
-            name: 'Property type',
-            value: `${valueMeaning}`
-          })
-        } else if (nameValue === '111001') {
-          attributes.push({
-            name: 'Algorithm Name',
-            value: `${valueMeaning}`
-          })
-        } else {
+  setHoveredRoiAttributes = (hoveredRois: dmv.roi.ROI[]): void => {
+    const rois = this.volumeViewer.getAllROIs()
+    const result = hoveredRois.map((roi) => {
+      const attributes: Array<{ name: string, value: string }> = []
+      const evaluations = roi.evaluations
+      evaluations.forEach((
+        item: (
+          dcmjs.sr.valueTypes.TextContentItem |
+          dcmjs.sr.valueTypes.CodeContentItem
+        )
+      ) => {
+        const nameValue = item.ConceptNameCodeSequence[0].CodeValue
+        const nameMeaning = item.ConceptNameCodeSequence[0].CodeMeaning
+        const name = `${nameMeaning}`
+        if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.CODE) {
+          const codeContentItem = item as dcmjs.sr.valueTypes.CodeContentItem
+          const valueMeaning = codeContentItem.ConceptCodeSequence[0].CodeMeaning
+          // For consistency with Segment and Annotation Group
+          if (nameValue === '276214006') {
+            attributes.push({
+              name: 'Property category',
+              value: `${valueMeaning}`
+            })
+          } else if (nameValue === '121071') {
+            attributes.push({
+              name: 'Property type',
+              value: `${valueMeaning}`
+            })
+          } else if (nameValue === '111001') {
+            attributes.push({
+              name: 'Algorithm Name',
+              value: `${valueMeaning}`
+            })
+          } else {
+            attributes.push({
+              name: name,
+              value: `${valueMeaning}`
+            })
+          }
+        } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
+          const textContentItem = item as dcmjs.sr.valueTypes.TextContentItem
           attributes.push({
             name: name,
-            value: `${valueMeaning}`
+            value: textContentItem.TextValue
           })
         }
-      } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
-        const textContentItem = item as dcmjs.sr.valueTypes.TextContentItem
-        attributes.push({
-          name: name,
-          value: textContentItem.TextValue
-        })
-      }
-    })
+      })
 
-    this.setState({ hoveredRoiAttributes: attributes })
+      const index = (rois.findIndex((r) => r.uid === roi.uid) ?? 0) + 1
+      return { index, roiUid: roi.uid, attributes }
+    }, [] as Array<dcmjs.sr.valueTypes.CodeContentItem | dcmjs.sr.valueTypes.TextContentItem>)
+
+    this.setState({ hoveredRoiAttributes: result })
+  }
+
+  clearHoveredRois = (): void => {
+    this.hoveredRois = [] as any
+  }
+
+  getUniqueHoveredRois = (newRoi: dmv.roi.ROI | null): dmv.roi.ROI[] => {
+    if (newRoi == null) {
+      return []
+    }
+    const allRois = [...this.hoveredRois, newRoi]
+    const uniqueIds = Array.from(new Set(allRois.map(roi => roi.uid)))
+    // @ts-expect-error
+    return uniqueIds.map(id => allRois.find(roi => roi.uid === id)).filter(roi => roi !== undefined)
+  }
+
+  isSamePixelAsLast = (event: any): boolean => {
+    return event.clientX === this.lastPixel[0] && event.clientY === this.lastPixel[1]
   }
 
   onPointerMove = (event: CustomEventInit): void => {
     const { feature: hoveredRoi, event: evt } = event.detail.payload
-    if (hoveredRoi != null) {
-      const originalEvent = evt.originalEvent
-      this.setHoveredRoiAttributes(hoveredRoi)
+    const originalEvent = evt.originalEvent
+
+    if (!this.isSamePixelAsLast(originalEvent)) {
+      this.lastPixel = [originalEvent.clientX, originalEvent.clientY]
+      this.clearHoveredRois()
+    }
+
+    this.hoveredRois = this.getUniqueHoveredRois(hoveredRoi)
+
+    if (this.hoveredRois.length > 0) {
+      this.setHoveredRoiAttributes(this.hoveredRois)
       this.setState({
         isHoveredRoiTooltipVisible: true,
-        hoveredRoi,
         hoveredRoiTooltipX: originalEvent.clientX,
         hoveredRoiTooltipY: originalEvent.clientY
       })
@@ -1538,26 +1573,21 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   onRoiSelected = (event: CustomEventInit): void => {
-    const selectedRoi = event.detail.payload as dmv.roi.ROI
-    if (selectedRoi != null) {
-      console.debug(`selected ROI "${selectedRoi.uid}"`)
-      this.volumeViewer.setROIStyle(selectedRoi.uid, this.selectedRoiStyle)
-      const key = _getRoiKey(selectedRoi)
-      this.volumeViewer.getAllROIs().forEach((roi) => {
-        if (roi.uid !== selectedRoi.uid) {
-          this.volumeViewer.setROIStyle(roi.uid, this.getRoiStyle(key))
-        }
-      })
-      this.setState({
-        selectedRoiUIDs: new Set([selectedRoi.uid]),
-        selectedRoi: selectedRoi
-      })
-    } else {
+    const selectedRoi = event.detail.payload as dmv.roi.ROI | null
+    if (selectedRoi == null) {
       this.setState({
         selectedRoiUIDs: new Set(),
         selectedRoi: undefined
       })
+      return
     }
+
+    console.debug(`selected ROI "${selectedRoi.uid}"`)
+    const oldSelectedRois = Array.from(this.state.selectedRoiUIDs)
+    this.setState({
+      selectedRoiUIDs: new Set([...oldSelectedRois, selectedRoi.uid]),
+      selectedRoi: selectedRoi
+    })
   }
 
   handleRoiSelectionCancellation (): void {
@@ -2522,10 +2552,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     styleOptions: {
       opacity?: number
       color?: number[]
+      contourOnly: boolean
     }): dmv.viewer.ROIStyleOptions {
     const opacity = styleOptions.opacity ?? DEFAULT_ANNOTATION_OPACITY
     const strokeColor = styleOptions.color ?? DEFAULT_ANNOTATION_STROKE_COLOR
-    const fillColor = strokeColor.map((c) => Math.min(c + 25, 255))
+    const fillColor = styleOptions.contourOnly ? [0, 0, 0, 0] : strokeColor.map((c) => Math.min(c + 25, 255))
     const style = _formatRoiStyle({
       fill: { color: [...fillColor, opacity] },
       stroke: { color: [...strokeColor, opacity] },
@@ -2539,6 +2570,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     styleOptions: {
       opacity: number
       color: number[]
+      contourOnly: boolean
     }
   }): void {
     console.log(`change style of ROI ${uid}`)
@@ -3359,7 +3391,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           ]
         this.defaultAnnotationStyles[annotation.uid] = {
           color,
-          opacity: DEFAULT_ANNOTATION_OPACITY
+          opacity: DEFAULT_ANNOTATION_OPACITY,
+          contourOnly: false
         } as any
 
         this.roiStyles[key] = this.generateRoiStyle(
@@ -3814,7 +3847,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             <HoveredRoiTooltip
               xPosition={this.state.hoveredRoiTooltipX}
               yPosition={this.state.hoveredRoiTooltipY}
-              attributes={this.state.hoveredRoiAttributes}
+              rois={this.state.hoveredRoiAttributes}
             />
             )
           : (

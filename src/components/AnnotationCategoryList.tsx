@@ -80,6 +80,7 @@ const AnnotationCategoryList = ({
     [annotationUID: string]: {
       opacity: number
       color: number[]
+      contourOnly: boolean
     }
   }
   checkedAnnotationUids: Set<string>
