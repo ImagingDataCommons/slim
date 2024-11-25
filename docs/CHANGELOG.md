@@ -1,3 +1,17 @@
+## [0.35.1](https://github.com/ImagingDataCommons/slim/compare/v0.35.0...v0.35.1) (2024-11-22)
+
+
+### Bug Fixes
+
+* **DICOMTagBrowser:** Searched items should display all tree ([#255](https://github.com/ImagingDataCommons/slim/issues/255)) ([4633031](https://github.com/ImagingDataCommons/slim/commit/463303113ae9d4cb13b5aec8314947f21d39a725))
+
+# [0.35.0](https://github.com/ImagingDataCommons/slim/compare/v0.34.0...v0.35.0) (2024-11-21)
+
+
+### Features
+
+* bump dmv version ([#254](https://github.com/ImagingDataCommons/slim/issues/254)) ([fe9bb49](https://github.com/ImagingDataCommons/slim/commit/fe9bb496aa503c54ee65ffba86a0cf14b7e7c20f))
+
 # [0.34.0](https://github.com/ImagingDataCommons/slim/compare/v0.33.0...v0.34.0) (2024-11-20)
 
 

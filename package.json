@@ -1,6 +1,6 @@
 {
   "name": "slim",
-  "version": "0.34.0",
+  "version": "0.35.1",
   "homepage": "https://github.com/imagingdatacommons/slim",
   "private": true,
   "author": "ImagingDataCommons",
@@ -58,7 +58,7 @@
     "craco-less": "^2.0.0",
     "dcmjs": "^0.35.0",
     "detect-browser": "^5.2.1",
-    "dicom-microscopy-viewer": "^0.47.0",
+    "dicom-microscopy-viewer": "^0.47.2",
     "dicomweb-client": "^0.10.3",
     "gh-pages": "^5.0.0",
     "oidc-client": "^1.11.5",
