@@ -54,13 +54,7 @@ ColorSettingsMenuState
           }
         })
       })
-      this.setState({
-        currentStyle: {
-          opacity: value,
-          color: this.state.currentStyle.color,
-          contourOnly: this.state.currentStyle.contourOnly
-        }
-      })
+      this.updateCurrentStyle({ opacity: value })
     }
   }
 
@@ -71,13 +65,7 @@ ColorSettingsMenuState
         this.state.currentStyle.color[1],
         this.state.currentStyle.color[2]
       ]
-      this.setState((state) => ({
-        currentStyle: {
-          color: color,
-          opacity: state.currentStyle.opacity,
-          contourOnly: state.currentStyle.contourOnly
-        }
-      }))
+      this.updateCurrentStyle({ color })
       this.props.annotationGroupsUIDs.forEach((uid) => {
         this.props.onStyleChange({
           uid,
@@ -98,13 +86,7 @@ ColorSettingsMenuState
         Array.isArray(value) ? value[0] : value,
         this.state.currentStyle.color[2]
       ]
-      this.setState((state) => ({
-        currentStyle: {
-          color: color,
-          opacity: state.currentStyle.opacity,
-          contourOnly: state.currentStyle.contourOnly
-        }
-      }))
+      this.updateCurrentStyle({ color })
       this.props.annotationGroupsUIDs.forEach((uid) => {
         this.props.onStyleChange({
           uid,
@@ -125,14 +107,7 @@ ColorSettingsMenuState
         this.state.currentStyle.color[1],
         Array.isArray(value) ? value[0] : value
       ]
-      this.setState((state) => ({
-        currentStyle: {
-          color: color,
-          opacity: state.currentStyle.opacity,
-          contourOnly: state.currentStyle.contourOnly
-        }
-      }))
-
+      this.updateCurrentStyle({ color })
       this.props.annotationGroupsUIDs.forEach((uid) => {
         this.props.onStyleChange({
           uid,
@@ -147,13 +122,7 @@ ColorSettingsMenuState
   }
 
   handleShowOutlineOnly (value: boolean): void {
-    this.setState({
-      currentStyle: {
-        opacity: this.state.currentStyle.opacity,
-        color: this.state.currentStyle.color,
-        contourOnly: value
-      }
-    })
+    this.updateCurrentStyle({ contourOnly: value })
 
     this.props.annotationGroupsUIDs.forEach((uid) => {
       this.props.onStyleChange({
@@ -180,6 +149,24 @@ ColorSettingsMenuState
     } else {
       return 'white'
     }
+  }
+
+  updateCurrentStyle ({
+    color,
+    opacity,
+    contourOnly
+  }: {
+    color?: number[]
+    opacity?: number
+    contourOnly?: boolean
+  }): void {
+    this.setState((state) => ({
+      currentStyle: {
+        opacity: opacity ?? state.currentStyle.opacity,
+        color: color ?? state.currentStyle.color,
+        contourOnly: contourOnly ?? state.currentStyle.contourOnly
+      }
+    }))
   }
 
   render (): React.ReactNode {
