@@ -1,3 +1,10 @@
+# [0.36.0](https://github.com/ImagingDataCommons/slim/compare/v0.35.1...v0.36.0) (2024-12-06)
+
+
+### Features
+
+* update dmv version ([#257](https://github.com/ImagingDataCommons/slim/issues/257)) ([6feed17](https://github.com/ImagingDataCommons/slim/commit/6feed17845365a41fc48a991dc9d5f7e94d34c47))
+
 ## [0.35.1](https://github.com/ImagingDataCommons/slim/compare/v0.35.0...v0.35.1) (2024-11-22)
 
 
