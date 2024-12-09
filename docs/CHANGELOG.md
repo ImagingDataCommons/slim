@@ -1,3 +1,10 @@
+# [0.37.0](https://github.com/ImagingDataCommons/slim/compare/v0.36.0...v0.37.0) (2024-12-09)
+
+
+### Features
+
+* improve annotation styles ([#253](https://github.com/ImagingDataCommons/slim/issues/253)) ([b65b459](https://github.com/ImagingDataCommons/slim/commit/b65b459eacc8516553a56dc5b8d236c404cdbd81))
+
 # [0.36.0](https://github.com/ImagingDataCommons/slim/compare/v0.35.1...v0.36.0) (2024-12-06)
 
 
