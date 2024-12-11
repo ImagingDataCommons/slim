@@ -320,9 +320,9 @@ REACT_APP_CONFIG=local yarn start
 
 For more information about the motivation, design, and capabilities of Slim, please see the following article:
 
-> [Interoperable slide microscopy viewer and annotation tool for imaging data science and computational pathology]([https://arxiv.org/abs/2205.09122](https://www.nature.com/articles/s41467-023-37224-2))
+> [Interoperable slide microscopy viewer and annotation tool for imaging data science and computational pathology](https://doi.org/10.1038/s41467-023-37224-2)
 > C. Gorman, D. Punzo, I. Octaviano, S. Pieper, W.J.R. Longabaugh, D.A. Clunie, R. Kikinis, A.Y. Fedorov, M.D. Herrmann
-> Nature Communications 4:1572 (2023)
+> Nature Communications 4:1572 (2023) https://doi.org/10.1038/s41467-023-37224-2
 
 If you use Slim in your research, please cite the above article.
 
