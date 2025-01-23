@@ -1,5 +1,8 @@
 import { Routes, Route, useLocation, useParams } from 'react-router-dom'
 import { Layout, Menu } from 'antd'
+import * as dcmjs from 'dcmjs'
+import * as dmv from 'dicom-microscopy-viewer'
+import { useEffect, useState } from 'react'
 
 import { AnnotationSettings } from '../AppConfig'
 import ClinicalTrial from './ClinicalTrial'
@@ -13,6 +16,9 @@ import { User } from '../auth'
 import { Slide } from '../data/slides'
 import { RouteComponentProps, withRouter } from '../utils/router'
 import { useSlides } from '../hooks/useSlides'
+import { StorageClasses } from '../data/uids'
+
+const { naturalizeDataset } = dcmjs.data.DicomMetaDictionary
 
 function ParametrizedSlideViewer ({
   clients,
@@ -38,12 +44,54 @@ function ParametrizedSlideViewer ({
 }): JSX.Element | null {
   const { studyInstanceUID, seriesInstanceUID } = useParams()
   const location = useLocation()
-
-  const selectedSlide = slides.find((slide: Slide) => {
+  const [selectedSlide, setSelectedSlide] = useState(slides.find((slide: Slide) => {
     return slide.seriesInstanceUIDs.find((uid: string) => {
       return uid === seriesInstanceUID
     })
-  })
+  }))
+  const [derivedDataset, setDerivedDataset] = useState(null)
+
+  useEffect(() => {
+    const findReferencedSlide = async () => {
+      const client = clients[StorageClasses.COMPREHENSIVE_3D_SR]
+      const rawInstances = await client.searchForInstances({
+        studyInstanceUID: studyInstanceUID,
+        queryParams: { Modality: 'SR' }
+      })
+      const naturalizedInstancesMetadata = rawInstances.map((i) => naturalizeDataset(i)) 
+      // @ts-expect-error
+      const naturalizedInstances = await Promise.all(naturalizedInstancesMetadata.map(async (im: { SeriesInstanceUID: string; SOPInstanceUID: string }) => {
+        const retrievedInstance = await client.retrieveInstance({
+          // @ts-expect-error
+          studyInstanceUID: studyInstanceUID,
+          seriesInstanceUID: im.SeriesInstanceUID,
+          sopInstanceUID: im.SOPInstanceUID
+        })
+        const data = dcmjs.data.DicomMessage.readFile(retrievedInstance)
+        const { dataset } = dmv.metadata.formatMetadata(data.dict)
+        return dataset
+      }))
+      const IMAGE_LIBRARY_CONCEPT_NAME_CODE = '111028'
+      // @ts-expect-error
+      const imageLibrary = naturalizedInstances[0].ContentSequence.find(
+        // @ts-expect-error
+        contentItem => contentItem.ConceptNameCodeSequence[0].CodeValue === IMAGE_LIBRARY_CONCEPT_NAME_CODE
+      );
+      const referecedSOPInstanceUID = imageLibrary.ContentSequence[0].ContentSequence[0].ReferencedSOPSequence[0].ReferencedSOPInstanceUID
+      const referencedSlide = slides.find((slide: Slide) => {
+        return slide.volumeImages.find((image: { SOPInstanceUID: string }) => {
+          return image.SOPInstanceUID === referecedSOPInstanceUID
+        })
+      })
+      setSelectedSlide(referencedSlide)
+      // @ts-expect-error
+      setDerivedDataset(naturalizedInstances[0])
+    }
+    if (selectedSlide == null) {
+      findReferencedSlide()
+    }
+  }, [slides, studyInstanceUID, seriesInstanceUID])
+
   const searchParams = new URLSearchParams(location.search)
   let presentationStateUID: string | null | undefined
   if (!searchParams.has('access_token')) {
@@ -66,6 +114,7 @@ function ParametrizedSlideViewer ({
         enableAnnotationTools={enableAnnotationTools}
         app={app}
         user={user}
+        derivedDataset={derivedDataset}
       />
     )
   }

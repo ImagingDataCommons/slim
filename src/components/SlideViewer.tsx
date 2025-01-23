@@ -981,7 +981,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * with 3D spatial coordinates defined in the same frame of reference as the
    * currently selected series and add them to the VOLUME image viewer.
    */
-  addAnnotations = (): void => {
+  addAnnotations = (derivedDataset: dmv.metadata.Dataset): void => {
     console.info('search for Comprehensive 3D SR instances')
     const client = this.props.clients[StorageClasses.COMPREHENSIVE_3D_SR]
     client.searchForInstances({
@@ -1071,6 +1071,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 )
               }
             })
+
+            if (derivedDataset) {
+              this.loadDerivedDataset(derivedDataset)
+            }
           }).catch((error) => {
             // eslint-disable-next-line @typescript-eslint/no-floating-promises
             NotificationMiddleware.onError(
@@ -1107,6 +1111,40 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         )
       )
     })
+  }
+
+  loadDerivedDataset = (derivedDataset: dmv.metadata.Dataset): void => { 
+    const Comprehensive3DSR = '1.2.840.10008.5.1.4.1.1.88.34'
+    const MicroscopyBulkSimpleAnnotation = '1.2.840.10008.5.1.4.1.1.88.24'
+    const Segmentation = '1.2.840.10008.5.1.4.1.1.88.23'
+    const ParametricMap = '1.2.840.10008.5.1.4.1.1.88.22'
+    const OpticalPath = '1.2.840.10008.5.1.4.1.1.88.21'
+    if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === Comprehensive3DSR) {
+      const allRois = this.volumeViewer.getAllROIs()
+      allRois.forEach((roi) => {
+        this.handleAnnotationVisibilityChange({ roiUID: roi.uid, isVisible: true })
+      })
+    } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === MicroscopyBulkSimpleAnnotation) {
+      const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups()
+      allAnnotationGroups.forEach((annotationGroup) => {
+        this.handleAnnotationGroupVisibilityChange({ annotationGroupUID: annotationGroup.uid, isVisible: true })
+      })
+    } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === Segmentation) {
+      const allSegments = this.volumeViewer.getAllSegments()
+      allSegments.forEach((segment) => {
+        this.handleSegmentVisibilityChange({ segmentUID: segment.uid, isVisible: true })
+      })
+    } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === ParametricMap) {
+      const allParameterMappings = this.volumeViewer.getAllParameterMappings()
+      allParameterMappings.forEach((parameterMapping) => {
+        this.handleMappingVisibilityChange({ mappingUID: parameterMapping.uid, isVisible: true })
+      })
+    } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === OpticalPath) {
+      const allOpticalPaths = this.volumeViewer.getAllOpticalPaths()
+      allOpticalPaths.forEach((opticalPath) => {
+        this.handleOpticalPathVisibilityChange({ opticalPathIdentifier: opticalPath.identifier, isVisible: true })
+      })
+    }
   }
 
   /**
@@ -1403,7 +1441,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.setDefaultPresentationState()
     this.loadPresentationStates()
 
-    this.addAnnotations()
+    // @ts-expect-error
+    this.addAnnotations(this.props.derivedDataset)
     this.addAnnotationGroups()
     this.addSegmentations()
     this.addParametricMaps()
@@ -3034,6 +3073,33 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       })
     }
     this.volumeViewer.activateSelectInteraction({})
+  }
+
+  setROIVisibility (isVisible: boolean): void {
+    console.info('toggle visibility of ROIs')
+    if (!isVisible) {
+      this.volumeViewer.deactivateDrawInteraction()
+      this.volumeViewer.deactivateSnapInteraction()
+      this.volumeViewer.deactivateTranslateInteraction()
+      this.volumeViewer.deactivateSelectInteraction()
+      this.volumeViewer.deactivateModifyInteraction()
+      this.volumeViewer.hideROIs()
+      this.setState({
+        areRoisHidden: true,
+        isRoiDrawingActive: false,
+        isRoiModificationActive: false,
+        isRoiTranslationActive: false
+      })
+    } else {
+      this.volumeViewer.showROIs()
+      this.volumeViewer.activateSelectInteraction({})
+      this.state.selectedRoiUIDs.forEach(uid => {
+        if (uid !== undefined) {
+          this.volumeViewer.setROIStyle(uid, this.selectedRoiStyle)
+        }
+      })
+      this.setState({ areRoisHidden: false })
+    }
   }
 
   /**
