@@ -129,7 +129,7 @@ function ParametrizedSlideViewer ({
         console.error('Error finding referenced slide:', error)
       })
     }
-  }, [slides, studyInstanceUID, seriesInstanceUID])
+  }, [slides, clients, selectedSlide, studyInstanceUID, seriesInstanceUID])
 
   const searchParams = new URLSearchParams(location.search)
   let presentationStateUID: string | null | undefined
