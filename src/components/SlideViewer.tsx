@@ -1150,7 +1150,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             'Annotations could not be loaded'
           )
         )
-        reject(error)
+        reject(error instanceof Error ? error : new Error(String(error)))
       })
     })
   }
@@ -1254,7 +1254,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             'Search for Microscopy Bulk Simple Annotations instances failed.'
           )
         )
-        reject(error)
+        reject(error instanceof Error ? error : new Error(String(error)))
       })
     })
   }
@@ -1341,7 +1341,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             'Search for Segmentation instances failed.'
           )
         )
-        reject(error)
+        reject(error instanceof Error ? error : new Error(String(error)))
       })
     })
   }
@@ -1431,7 +1431,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             'Search for Parametric Map instances failed.'
           )
         )
-        reject(error)
+        reject(error instanceof Error ? error : new Error(String(error)))
       })
     })
   }
@@ -1634,8 +1634,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
     const allRois = [...this.hoveredRois, newRoi]
     const uniqueIds = Array.from(new Set(allRois.map(roi => roi.uid)))
-    // @ts-expect-error
-    return uniqueIds.map(id => allRois.find(roi => roi.uid === id)).filter(roi => roi !== undefined)
+    return uniqueIds.map(id => allRois.find(roi => roi.uid === id))
+      .filter((roi): roi is dmv.roi.ROI => roi !== undefined)
   }
 
   isSamePixelAsLast = (event: any): boolean => {
