@@ -374,7 +374,7 @@ interface SlideViewerProps extends RouteComponentProps {
     email: string
   }
   selectedPresentationStateUID?: string
-  derivedDataset?: dmv.metadata.Dataset  // Add this line
+  derivedDataset?: dmv.metadata.Dataset // Add this line
 }
 
 interface SlideViewerState {
@@ -977,7 +977,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     return this.defaultRoiStyle
   }
 
-  loadDerivedDataset = (derivedDataset: dmv.metadata.Dataset): void => { 
+  loadDerivedDataset = (derivedDataset: dmv.metadata.Dataset): void => {
     console.debug('Loading derived dataset')
     const Comprehensive3DSR = '1.2.840.10008.5.1.4.1.1.88.34'
     const MicroscopyBulkSimpleAnnotation = '1.2.840.10008.5.1.4.1.1.88.24'
@@ -1022,8 +1022,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * with 3D spatial coordinates defined in the same frame of reference as the
    * currently selected series and add them to the VOLUME image viewer.
    */
-  addAnnotations (): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
+  async addAnnotations (): Promise<void> {
+    return await new Promise<void>((resolve, reject) => {
       console.info('search for Comprehensive 3D SR instances')
       const client = this.props.clients[StorageClasses.COMPREHENSIVE_3D_SR]
       client.searchForInstances({
@@ -1161,7 +1161,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * selected series and add them to the VOLUME image viewer.
    */
   addAnnotationGroups = async (): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
+    return await new Promise<void>((resolve, reject) => {
       console.info('search for Microscopy Bulk Simple Annotations instances')
       const client = this.props.clients[
         StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION
@@ -1257,7 +1257,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         reject(error)
       })
     })
-   }
+  }
 
   /**
    * Retrieve Segmentation instances that contain segments defined in the same
@@ -1265,7 +1265,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * VOLUME image viewer.
    */
   addSegmentations = async (): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
+    return await new Promise<void>((resolve, reject) => {
       console.info('search for Segmentation instances')
       const client = this.props.clients[StorageClasses.SEGMENTATION]
       client.searchForSeries({
@@ -1352,7 +1352,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * VOLUME image viewer.
    */
   addParametricMaps = async (): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
+    return await new Promise<void>((resolve, reject) => {
       console.info('search for Parametric Map instances')
       const client = this.props.clients[StorageClasses.PARAMETRIC_MAP]
       client.searchForSeries({
@@ -1462,10 +1462,46 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.setDefaultPresentationState()
     this.loadPresentationStates()
 
-    this.addAnnotations().then(() => this.props.derivedDataset && this.loadDerivedDataset(this.props.derivedDataset))
-    this.addAnnotationGroups().then(() => this.props.derivedDataset && this.loadDerivedDataset(this.props.derivedDataset))
-    this.addSegmentations().then(() => this.props.derivedDataset && this.loadDerivedDataset(this.props.derivedDataset))
-    this.addParametricMaps().then(() => this.props.derivedDataset && this.loadDerivedDataset(this.props.derivedDataset))
+    // Handle promises properly with catch blocks
+    void this.addAnnotations()
+      .then(() => {
+        if (this.props.derivedDataset != null) {
+          this.loadDerivedDataset(this.props.derivedDataset)
+        }
+      })
+      .catch(error => {
+        console.error('Failed to add annotations:', error)
+      })
+
+    void this.addAnnotationGroups()
+      .then(() => {
+        if (this.props.derivedDataset != null) {
+          this.loadDerivedDataset(this.props.derivedDataset)
+        }
+      })
+      .catch(error => {
+        console.error('Failed to add annotation groups:', error)
+      })
+
+    void this.addSegmentations()
+      .then(() => {
+        if (this.props.derivedDataset != null) {
+          this.loadDerivedDataset(this.props.derivedDataset)
+        }
+      })
+      .catch(error => {
+        console.error('Failed to add segmentations:', error)
+      })
+
+    void this.addParametricMaps()
+      .then(() => {
+        if (this.props.derivedDataset != null) {
+          this.loadDerivedDataset(this.props.derivedDataset)
+        }
+      })
+      .catch(error => {
+        console.error('Failed to add parametric maps:', error)
+      })
   }
 
   onRoiModified = (event: CustomEventInit): void => {

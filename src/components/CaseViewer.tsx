@@ -1,7 +1,6 @@
 import { Routes, Route, useLocation, useParams } from 'react-router-dom'
 import { Layout, Menu } from 'antd'
 import * as dcmjs from 'dcmjs'
-import * as dmv from 'dicom-microscopy-viewer'
 import { useEffect, useState } from 'react'
 
 import { AnnotationSettings } from '../AppConfig'
@@ -67,7 +66,7 @@ function ParametrizedSlideViewer ({
   enableAnnotationTools: boolean
   annotations: AnnotationSettings[]
 }): JSX.Element | null {
-  const { studyInstanceUID = '', seriesInstanceUID = '' } = useParams<{ studyInstanceUID: string; seriesInstanceUID: string }>()
+  const { studyInstanceUID = '', seriesInstanceUID = '' } = useParams<{ studyInstanceUID: string, seriesInstanceUID: string }>()
   const location = useLocation()
   const [selectedSlide, setSelectedSlide] = useState(slides.find((slide: Slide) => {
     return slide.seriesInstanceUIDs.find((uid: string) => {
@@ -77,17 +76,21 @@ function ParametrizedSlideViewer ({
   const [derivedDataset, setDerivedDataset] = useState<NaturalizedInstance | null>(null)
 
   useEffect(() => {
-      const findReferencedSlide = async ({ clients, studyInstanceUID, seriesInstanceUID }: { clients: { [key: string]: DicomWebManager }, studyInstanceUID: string, seriesInstanceUID: string }) => new Promise<ReferencedSlideResult | null>((resolve, reject) => {
-        try {
-          const allClients = Object.values(StorageClasses).map((storageClass) => clients[storageClass])
-          allClients.map(async (client) => { 
-            const seriesMetadata = await client.retrieveSeriesMetadata({
+    const findReferencedSlide = async ({ clients, studyInstanceUID, seriesInstanceUID }: {
+      clients: { [key: string]: DicomWebManager }
+      studyInstanceUID: string
+      seriesInstanceUID: string
+    }): Promise<ReferencedSlideResult | null> => await new Promise<ReferencedSlideResult | null>((resolve, reject) => {
+      try {
+        const allClients = Object.values(StorageClasses).map((storageClass) => clients[storageClass])
+        Promise.all(allClients.map(async (client) => {
+          const seriesMetadata = await client.retrieveSeriesMetadata({
             studyInstanceUID: studyInstanceUID,
             seriesInstanceUID: seriesInstanceUID
           })
           const [naturalizedSeriesMetadata] = seriesMetadata.map((metadata) => naturalizeDataset(metadata)) as NaturalizedInstance[]
 
-          if (naturalizedSeriesMetadata.ReferencedSeriesSequence) {
+          if (naturalizedSeriesMetadata.ReferencedSeriesSequence != null) {
             const referencedSeriesInstanceUID = naturalizedSeriesMetadata.ReferencedSeriesSequence[0].SeriesInstanceUID
             const referencedSlide = slides.find((slide: Slide) => {
               return slide.seriesInstanceUIDs.find((uid: string) => {
@@ -101,7 +104,7 @@ function ParametrizedSlideViewer ({
           const imageLibrary = naturalizedSeriesMetadata.ContentSequence?.find(
             contentItem => contentItem.ConceptNameCodeSequence[0].CodeValue === IMAGE_LIBRARY_CONCEPT_NAME_CODE
           )
-          if (imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]?.ReferencedSOPSequence?.[0]) {
+          if ((imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]?.ReferencedSOPSequence?.[0]) != null) {
             const referencedSOPInstanceUID = imageLibrary.ContentSequence[0].ContentSequence[0].ReferencedSOPSequence[0].ReferencedSOPInstanceUID
             const referencedSlide = slides.find((slide: Slide) => {
               return slide.volumeImages.find((image: { SOPInstanceUID: string }) => {
@@ -110,18 +113,20 @@ function ParametrizedSlideViewer ({
             })
             resolve({ slide: referencedSlide, metadata: naturalizedSeriesMetadata })
           }
-        })
+        })).catch(reject)
       } catch (error) {
         reject(error)
       }
     })
-       
+
     if (selectedSlide == null) {
-      findReferencedSlide({ clients, studyInstanceUID, seriesInstanceUID }).then((result: ReferencedSlideResult | null) => {
+      void findReferencedSlide({ clients, studyInstanceUID, seriesInstanceUID }).then((result: ReferencedSlideResult | null) => {
         if (result != null) {
           setSelectedSlide(result.slide)
           setDerivedDataset(result.metadata)
         }
+      }).catch(error => {
+        console.error('Error finding referenced slide:', error)
       })
     }
   }, [slides, studyInstanceUID, seriesInstanceUID])
