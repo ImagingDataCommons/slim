@@ -3131,40 +3131,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.volumeViewer.activateSelectInteraction({})
   }
 
-  setROIVisibility (isVisible: boolean): void {
-    console.info('toggle visibility of ROIs')
-    if (!isVisible) {
-      this.volumeViewer.deactivateDrawInteraction()
-      this.volumeViewer.deactivateSnapInteraction()
-      this.volumeViewer.deactivateTranslateInteraction()
-      this.volumeViewer.deactivateSelectInteraction()
-      this.volumeViewer.deactivateModifyInteraction()
-      this.volumeViewer.hideROIs()
-      this.setState({
-        areRoisHidden: true,
-        isRoiDrawingActive: false,
-        isRoiModificationActive: false,
-        isRoiTranslationActive: false
-      })
-    } else {
-      this.volumeViewer.showROIs()
-      this.volumeViewer.activateSelectInteraction({})
-      this.state.selectedRoiUIDs.forEach(uid => {
-        if (uid !== undefined) {
-          this.volumeViewer.setROIStyle(uid, this.selectedRoiStyle)
-        }
-      })
-      this.setState({ areRoisHidden: false })
-    }
-  }
-
   /**
    * Handler that will toggle the ROI visibility tool, i.e., either activate
    * or de-activate it, depending on its current state.
    */
   handleRoiVisibilityChange (): void {
     console.info('toggle visibility of ROIs')
-    if (this.volumeViewer.areROIsVisible) {
+    if (!this.state.areRoisHidden) {
       this.volumeViewer.deactivateDrawInteraction()
       this.volumeViewer.deactivateSnapInteraction()
       this.volumeViewer.deactivateTranslateInteraction()

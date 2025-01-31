@@ -8,4 +8,7 @@ enabled = true
   environment = ["browser"]
   plugins = ["react"]
   style_guide = "standard"
-  dialect = "typescript" 
+  dialect = "typescript"
+  
+  [analyzers.meta.settings]
+  typescript_any_usage = "warn" 
