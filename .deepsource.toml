@@ -9,6 +9,3 @@ enabled = true
   plugins = ["react"]
   style_guide = "standard"
   dialect = "typescript"
-  
-  [analyzers.meta.settings]
-  typescript_any_usage = "warn" 
