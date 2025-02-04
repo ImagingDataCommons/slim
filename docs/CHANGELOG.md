@@ -1,3 +1,10 @@
+# [0.38.0](https://github.com/ImagingDataCommons/slim/compare/v0.37.0...v0.38.0) (2025-02-04)
+
+
+### Features
+
+* enable visualization of annotations on load ([#261](https://github.com/ImagingDataCommons/slim/issues/261)) ([cb766c8](https://github.com/ImagingDataCommons/slim/commit/cb766c812fa469150bb9bc183f26dfe355b59cdc))
+
 # [0.37.0](https://github.com/ImagingDataCommons/slim/compare/v0.36.0...v0.37.0) (2024-12-09)
 
 
