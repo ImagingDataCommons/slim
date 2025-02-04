@@ -1,5 +1,7 @@
 import { Routes, Route, useLocation, useParams } from 'react-router-dom'
 import { Layout, Menu } from 'antd'
+import * as dcmjs from 'dcmjs'
+import { useEffect, useState } from 'react'
 
 import { AnnotationSettings } from '../AppConfig'
 import ClinicalTrial from './ClinicalTrial'
@@ -13,6 +15,34 @@ import { User } from '../auth'
 import { Slide } from '../data/slides'
 import { RouteComponentProps, withRouter } from '../utils/router'
 import { useSlides } from '../hooks/useSlides'
+import { StorageClasses } from '../data/uids'
+
+const { naturalizeDataset } = dcmjs.data.DicomMetaDictionary
+
+interface NaturalizedInstance {
+  SeriesInstanceUID: string
+  SOPInstanceUID: string
+  ReferencedSeriesSequence?: Array<{
+    SeriesInstanceUID: string
+  }>
+  ContentSequence?: Array<{
+    ConceptNameCodeSequence: Array<{
+      CodeValue: string
+    }>
+    ContentSequence?: Array<{
+      ContentSequence: Array<{
+        ReferencedSOPSequence: Array<{
+          ReferencedSOPInstanceUID: string
+        }>
+      }>
+    }>
+  }>
+}
+
+interface ReferencedSlideResult {
+  slide: Slide | undefined
+  metadata: NaturalizedInstance
+}
 
 function ParametrizedSlideViewer ({
   clients,
@@ -36,14 +66,71 @@ function ParametrizedSlideViewer ({
   enableAnnotationTools: boolean
   annotations: AnnotationSettings[]
 }): JSX.Element | null {
-  const { studyInstanceUID, seriesInstanceUID } = useParams()
+  const { studyInstanceUID = '', seriesInstanceUID = '' } = useParams<{ studyInstanceUID: string, seriesInstanceUID: string }>()
   const location = useLocation()
-
-  const selectedSlide = slides.find((slide: Slide) => {
+  const [selectedSlide, setSelectedSlide] = useState(slides.find((slide: Slide) => {
     return slide.seriesInstanceUIDs.find((uid: string) => {
       return uid === seriesInstanceUID
     })
-  })
+  }))
+  const [derivedDataset, setDerivedDataset] = useState<NaturalizedInstance | null>(null)
+
+  useEffect(() => {
+    const findReferencedSlide = async ({ clients, studyInstanceUID, seriesInstanceUID }: {
+      clients: { [key: string]: DicomWebManager }
+      studyInstanceUID: string
+      seriesInstanceUID: string
+    }): Promise<ReferencedSlideResult | null> => await new Promise<ReferencedSlideResult | null>((resolve, reject) => {
+      try {
+        const allClients = Object.values(StorageClasses).map((storageClass) => clients[storageClass])
+        Promise.all(allClients.map(async (client) => {
+          const seriesMetadata = await client.retrieveSeriesMetadata({
+            studyInstanceUID: studyInstanceUID,
+            seriesInstanceUID: seriesInstanceUID
+          })
+          const [naturalizedSeriesMetadata] = seriesMetadata.map((metadata) => naturalizeDataset(metadata)) as NaturalizedInstance[]
+
+          if (naturalizedSeriesMetadata.ReferencedSeriesSequence != null) {
+            const referencedSeriesInstanceUID = naturalizedSeriesMetadata.ReferencedSeriesSequence[0].SeriesInstanceUID
+            const referencedSlide = slides.find((slide: Slide) => {
+              return slide.seriesInstanceUIDs.find((uid: string) => {
+                return uid === referencedSeriesInstanceUID
+              })
+            })
+            resolve({ slide: referencedSlide, metadata: naturalizedSeriesMetadata })
+          }
+
+          const IMAGE_LIBRARY_CONCEPT_NAME_CODE = '111028'
+          const imageLibrary = naturalizedSeriesMetadata.ContentSequence?.find(
+            contentItem => contentItem.ConceptNameCodeSequence[0].CodeValue === IMAGE_LIBRARY_CONCEPT_NAME_CODE
+          )
+          if ((imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]?.ReferencedSOPSequence?.[0]) != null) {
+            const referencedSOPInstanceUID = imageLibrary.ContentSequence[0].ContentSequence[0].ReferencedSOPSequence[0].ReferencedSOPInstanceUID
+            const referencedSlide = slides.find((slide: Slide) => {
+              return slide.volumeImages.find((image: { SOPInstanceUID: string }) => {
+                return image.SOPInstanceUID === referencedSOPInstanceUID
+              })
+            })
+            resolve({ slide: referencedSlide, metadata: naturalizedSeriesMetadata })
+          }
+        })).catch(reject)
+      } catch (error) {
+        reject(error)
+      }
+    })
+
+    if (selectedSlide == null) {
+      void findReferencedSlide({ clients, studyInstanceUID, seriesInstanceUID }).then((result: ReferencedSlideResult | null) => {
+        if (result != null) {
+          setSelectedSlide(result.slide)
+          setDerivedDataset(result.metadata)
+        }
+      }).catch(error => {
+        console.error('Error finding referenced slide:', error)
+      })
+    }
+  }, [slides, clients, selectedSlide, studyInstanceUID, seriesInstanceUID])
+
   const searchParams = new URLSearchParams(location.search)
   let presentationStateUID: string | null | undefined
   if (!searchParams.has('access_token')) {
@@ -66,6 +153,7 @@ function ParametrizedSlideViewer ({
         enableAnnotationTools={enableAnnotationTools}
         app={app}
         user={user}
+        derivedDataset={derivedDataset}
       />
     )
   }
