@@ -66,6 +66,7 @@ Raster graphics:
 | <img src="docs/screenshots/IDC_TCGA_TCGA-05-4244-01Z-00-DX1_segmentation.png" alt="IDC TCGA Segmentation" width="350"> | Segmentation |
 | <img src="docs/screenshots/IDC_TCGA_TCGA-05-4244-01Z-00-DX1_bulk_annotations.png" alt="IDC TCGA Segmentation" width="350"> | Microscopy Bulk Simple Annotations |
 
+Note that selection of a derived object in the URL will automatically load the referenced slide and will toggle visibility of the selected derived object. 
 
 ### Annotation of images
 
