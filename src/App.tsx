@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import {
   BrowserRouter,
   Navigate,
@@ -26,7 +26,12 @@ import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from './services/NotificationMiddleware'
 
-function ParametrizedCaseViewer ({ clients, user, app, config }: {
+function ParametrizedCaseViewer ({
+  clients,
+  user,
+  app,
+  config
+}: {
   clients: { [key: string]: DicomWebManager }
   user?: User
   app: {
@@ -54,7 +59,12 @@ function ParametrizedCaseViewer ({ clients, user, app, config }: {
   )
 }
 
-function _createClientMapping ({ baseUri, gcpBaseUrl, settings, onError }: {
+function _createClientMapping ({
+  baseUri,
+  gcpBaseUrl,
+  settings,
+  onError
+}: {
   baseUri: string
   gcpBaseUrl: string
   settings: ServerSettings[]
@@ -66,9 +76,9 @@ function _createClientMapping ({ baseUri, gcpBaseUrl, settings, onError }: {
   const storageClassMapping: { [key: string]: number } = { default: 0 }
   const clientMapping: { [sopClassUID: string]: DicomWebManager } = {}
 
-  settings.forEach(serverSettings => {
+  settings.forEach((serverSettings) => {
     if (serverSettings.storageClasses != null) {
-      serverSettings.storageClasses.forEach(sopClassUID => {
+      serverSettings.storageClasses.forEach((sopClassUID) => {
         if (Object.values<string>(StorageClasses).includes(sopClassUID)) {
           if (sopClassUID in storageClassMapping) {
             storageClassMapping[sopClassUID] += 1
@@ -76,9 +86,10 @@ function _createClientMapping ({ baseUri, gcpBaseUrl, settings, onError }: {
             storageClassMapping[sopClassUID] = 1
           }
         } else {
+          const safeSOPClassUID = sopClassUID ?? 'unknown'
           console.warn(
-            `unknown storage class "${sopClassUID}" specified ` +
-            `for configured server "${serverSettings.id}"`
+            `unknown storage class "${safeSOPClassUID}" specified ` +
+              `for configured server "${serverSettings.id}"`
           )
         }
       })
@@ -104,7 +115,7 @@ function _createClientMapping ({ baseUri, gcpBaseUrl, settings, onError }: {
       new CustomError(
         errorTypes.COMMUNICATION,
         'Only one default server can be configured without specification ' +
-        'of storage classes.'
+          'of storage classes.'
       )
     )
   }
@@ -119,34 +130,107 @@ function _createClientMapping ({ baseUri, gcpBaseUrl, settings, onError }: {
         new CustomError(
           errorTypes.COMMUNICATION,
           'Only one configured server can specify a given storage class. ' +
-          `Storage class "${key}" is specified by more than one ` +
-          'of the configured servers.'
+            `Storage class "${key}" is specified by more than one ` +
+            'of the configured servers.'
         )
       )
     }
   }
 
   if (Object.keys(storageClassMapping).length > 1) {
-    settings.forEach(server => {
+    settings.forEach((server) => {
       const client = new DicomWebManager({
         baseUri,
         settings: [server],
         onError
       })
       if (server.storageClasses != null) {
-        server.storageClasses.forEach(sopClassUID => {
+        server.storageClasses.forEach((sopClassUID) => {
           clientMapping[sopClassUID] = client
         })
       }
     })
   }
 
-  Object.values(StorageClasses).forEach(sopClassUID => {
+  Object.values(StorageClasses).forEach((sopClassUID) => {
     if (!(sopClassUID in clientMapping)) {
       clientMapping[sopClassUID] = clientMapping.default
     }
   })
   return clientMapping
+}
+
+function GCPRouteWrapper ({
+  clients,
+  user,
+  config,
+  app,
+  onServerSelection,
+  enableWorklist,
+  isLogoutPossible,
+  onLogout,
+  enableServerSelection,
+  layoutStyle,
+  layoutContentStyle,
+  gcpBaseUrl
+}: {
+  clients: { [key: string]: DicomWebManager }
+  user?: User
+  config: AppConfig
+  app: any
+  onServerSelection: (args: { url: string }) => void
+  enableWorklist: boolean
+  isLogoutPossible: boolean
+  onLogout?: () => void
+  enableServerSelection: boolean
+  layoutStyle: React.CSSProperties
+  layoutContentStyle: React.CSSProperties
+  gcpBaseUrl: string | undefined
+}): JSX.Element {
+  const params = useParams()
+  const hasSetUrl = React.useRef(false)
+
+  useEffect(() => {
+    const isValidParams =
+      typeof params.project === 'string' &&
+      params.project !== '' &&
+      typeof params.location === 'string' &&
+      params.location !== '' &&
+      typeof params.dataset === 'string' &&
+      params.dataset !== '' &&
+      typeof params.dicomStore === 'string' &&
+      params.dicomStore !== ''
+
+    if (!hasSetUrl.current && isValidParams) {
+      const baseUrl = gcpBaseUrl ?? 'https://healthcare.googleapis.com/v1'
+      const gcpUrl = `${baseUrl}/projects/${params.project as string}/locations/${params.location as string}/datasets/${params.dataset as string}/dicomStores/${params.dicomStore as string}/dicomWeb`
+      onServerSelection({ url: gcpUrl })
+      hasSetUrl.current = true
+    }
+  }, [params, onServerSelection])
+
+  const logoutHandler = isLogoutPossible && typeof onLogout === 'function' ? onLogout : undefined
+
+  return (
+    <Layout style={layoutStyle}>
+      <Header
+        app={app}
+        user={user}
+        showWorklistButton={enableWorklist}
+        onServerSelection={onServerSelection}
+        onUserLogout={logoutHandler}
+        showServerSelectionButton={enableServerSelection}
+      />
+      <Layout.Content style={layoutContentStyle}>
+        <ParametrizedCaseViewer
+          clients={clients}
+          user={user}
+          config={config}
+          app={app}
+        />
+      </Layout.Content>
+    </Layout>
+  )
 }
 
 interface AppProps {
@@ -180,7 +264,8 @@ class App extends React.Component<AppProps, AppState> {
         NotificationMiddlewareContext.DICOMWEB,
         new CustomError(
           errorTypes.COMMUNICATION,
-          'User is not authorized to access DICOMweb resources.')
+          'User is not authorized to access DICOMweb resources.'
+        )
       )
     }
 
@@ -236,7 +321,8 @@ class App extends React.Component<AppProps, AppState> {
         NotificationMiddlewareContext.SLIM,
         new CustomError(
           errorTypes.COMMUNICATION,
-          'One server needs to be configured.')
+          'One server needs to be configured.'
+        )
       )
     }
     console.info(
@@ -252,7 +338,8 @@ class App extends React.Component<AppProps, AppState> {
     this.state = {
       clients: _createClientMapping({
         baseUri,
-        gcpBaseUrl: props.config.gcpBaseUrl ?? 'https://healthcare.googleapis.com/v1',
+        gcpBaseUrl:
+          props.config.gcpBaseUrl ?? 'https://healthcare.googleapis.com/v1',
         settings: props.config.servers,
         onError: this.handleDICOMwebError
       }),
@@ -290,14 +377,19 @@ class App extends React.Component<AppProps, AppState> {
 
   handleServerSelection ({ url }: { url: string }): void {
     console.info('select DICOMweb server: ', url)
+    // Store the selected server URL in localStorage
+    //  window.localStorage.setItem("slim_selected_server", url);
+
     const tmpClient = new DicomWebManager({
       baseUri: '',
-      settings: [{
-        id: 'tmp',
-        url,
-        read: true,
-        write: false
-      }],
+      settings: [
+        {
+          id: 'tmp',
+          url,
+          read: true,
+          write: false
+        }
+      ],
       onError: this.handleDICOMwebError
     })
     tmpClient.updateHeaders(this.state.clients.default.headers)
@@ -306,7 +398,7 @@ class App extends React.Component<AppProps, AppState> {
      * make this more sophisticated in the future to allow users to override
      * the entire server configuration.
      */
-    this.setState(state => {
+    this.setState((state) => {
       const clients: { [key: string]: DicomWebManager } = {}
       for (const key in state.clients) {
         clients[key] = tmpClient
@@ -324,7 +416,10 @@ class App extends React.Component<AppProps, AppState> {
    * @param user - Information about the user
    * @param authorization - Value of the "Authorization" HTTP header field
    */
-  handleSignIn = ({ user, authorization }: {
+  handleSignIn = ({
+    user,
+    authorization
+  }: {
     user: User
     authorization: string
   }): void => {
@@ -334,11 +429,11 @@ class App extends React.Component<AppProps, AppState> {
     }
     const storedPath = window.localStorage.getItem('slim_path')
     const storedSearch = window.localStorage.getItem('slim_search')
-    if (storedPath != null) {
+    if (storedPath !== null) {
       const currentPath = window.location.pathname
       if (storedPath !== currentPath) {
         let path = storedPath
-        if (storedSearch != null) {
+        if (storedSearch !== null) {
           path += storedSearch
         }
         window.location.href = path
@@ -350,29 +445,33 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   signIn (): void {
-    if (this.auth !== undefined) {
+    if (this.auth !== undefined && this.auth !== null) {
       console.info('try to sign in user')
-      this.auth.signIn({ onSignIn: this.handleSignIn }).then(() => {
-        console.info('sign-in was successful')
-        this.setState({
-          isLoading: false,
-          wasAuthSuccessful: true
+      this.auth
+        .signIn({ onSignIn: this.handleSignIn })
+        .then(() => {
+          console.info('sign-in was successful')
+          this.setState({
+            isLoading: false,
+            wasAuthSuccessful: true
+          })
         })
-      }).catch((error) => {
-        console.error(error)
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        NotificationMiddleware.onError(
-          NotificationMiddlewareContext.AUTH,
-          new CustomError(
-            errorTypes.AUTHENTICATION,
-            'Could not sign-in user.')
-        )
-        this.setState({
-          isLoading: false,
-          redirectTo: undefined,
-          wasAuthSuccessful: false
+        .catch((error) => {
+          console.error(error)
+          // eslint-disable-next-line @typescript-eslint/no-floating-promises
+          NotificationMiddleware.onError(
+            NotificationMiddlewareContext.AUTH,
+            new CustomError(
+              errorTypes.AUTHENTICATION,
+              'Could not sign-in user.'
+            )
+          )
+          this.setState({
+            isLoading: false,
+            redirectTo: undefined,
+            wasAuthSuccessful: false
+          })
         })
-      })
     } else {
       this.setState({
         isLoading: false,
@@ -383,11 +482,19 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   componentDidMount (): void {
-    const path = window.localStorage.getItem('slim_path')
-    if (path == null) {
+    const storedPath = window.localStorage.getItem('slim_path')
+    // Only store path if there isn't one already stored
+    if (storedPath === null) {
       window.localStorage.setItem('slim_path', window.location.pathname)
       window.localStorage.setItem('slim_search', window.location.search)
     }
+
+    // Restore the selected server if it exists
+    const savedServer = window.localStorage.getItem('slim_selected_server')
+    if (savedServer !== null) {
+      this.handleServerSelection({ url: savedServer })
+    }
+
     this.signIn()
   }
 
@@ -400,12 +507,9 @@ class App extends React.Component<AppProps, AppState> {
       organization: this.props.config.organization
     }
 
-    const enableWorklist = !(
-      this.props.config.disableWorklist ?? false
-    )
-    const enableServerSelection = (
+    const enableWorklist = !(this.props.config.disableWorklist ?? false)
+    const enableServerSelection =
       this.props.config.enableServerSelection ?? false
-    )
 
     let worklist
     if (enableWorklist) {
@@ -461,13 +565,9 @@ class App extends React.Component<AppProps, AppState> {
         </BrowserRouter>
       )
     } else if (!this.state.wasAuthSuccessful) {
-      return (
-        <InfoPage type='error' message='Sign-in failed.' />
-      )
+      return <InfoPage type='error' message='Sign-in failed.' />
     } else if (this.state.error != null) {
-      return (
-        <InfoPage type='error' message={this.state.error.message} />
-      )
+      return <InfoPage type='error' message={this.state.error.message} />
     } else {
       return (
         <BrowserRouter basename={this.props.config.path}>
@@ -516,24 +616,20 @@ class App extends React.Component<AppProps, AppState> {
             <Route
               path='/projects/:project/locations/:location/datasets/:dataset/dicomStores/:dicomStore/study/:studyInstanceUID/*'
               element={
-                <Layout style={layoutStyle}>
-                  <Header
-                    app={appInfo}
-                    user={this.state.user}
-                    showWorklistButton={enableWorklist}
-                    onServerSelection={this.handleServerSelection}
-                    onUserLogout={isLogoutPossible ? onLogout : undefined}
-                    showServerSelectionButton={enableServerSelection}
-                  />
-                  <Layout.Content style={layoutContentStyle}>
-                    <ParametrizedCaseViewer
-                      clients={this.state.clients}
-                      user={this.state.user}
-                      config={this.props.config}
-                      app={appInfo}
-                    />
-                  </Layout.Content>
-                </Layout>
+                <GCPRouteWrapper
+                  gcpBaseUrl={this.props.config.gcpBaseUrl}
+                  layoutStyle={layoutStyle}
+                  layoutContentStyle={layoutContentStyle}
+                  clients={this.state.clients}
+                  user={this.state.user}
+                  config={this.props.config}
+                  app={appInfo}
+                  onServerSelection={this.handleServerSelection}
+                  enableWorklist={enableWorklist}
+                  isLogoutPossible={isLogoutPossible}
+                  onLogout={isLogoutPossible ? onLogout : undefined}
+                  enableServerSelection={enableServerSelection}
+                />
               }
             />
             <Route
