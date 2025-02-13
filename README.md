@@ -293,6 +293,31 @@ window.config = {
 };
 ```
 
+#### GCP Route Support
+
+Slim includes built-in support for GCP Healthcare API routes in the format:
+
+```
+/projects/{project}/locations/{location}/datasets/{dataset}/dicomStores/{dicomStore}/study/{studyInstanceUID}
+```
+
+When accessing studies through this route pattern, Slim will:
+
+1. Automatically construct the appropriate GCP Healthcare API DICOMweb endpoint URL
+2. Handle authentication and authorization through the configured OIDC settings
+3. Support viewing and annotation of studies stored in the specified GCP Healthcare DICOM store
+
+The base URL for the GCP Healthcare API can be customized through the `gcpBaseUrl` configuration option (defaults to 'https://healthcare.googleapis.com/v1'):
+
+```js
+window.config = {
+  // ... other config ...
+  gcpBaseUrl: "https://healthcare.googleapis.com/v1"
+}
+```
+
+This allows seamless integration with GCP Healthcare API DICOM stores while maintaining all of Slim's viewing and annotation capabilities.
+
 #### OAuth 2.0 configuration
 
 Create an [OIDC client ID for web application](https://developers.google.com/identity/sign-in/web/sign-in).
