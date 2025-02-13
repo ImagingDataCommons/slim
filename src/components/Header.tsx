@@ -487,7 +487,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
             </Col>
             <Col flex='auto' style={{ minWidth: 0, overflow: 'hidden' }}>
               <div style={{ width: '100%', overflow: 'hidden' }}>
-                {urlInfo}
+                {this.props.showServerSelectionButton ? urlInfo : ''}
               </div>
             </Col>
             <Col style={{ flexShrink: 0 }}>
