@@ -422,7 +422,7 @@ interface SlideViewerState {
     }
   }
   loadingFrames: Set<string>
-  isICCProfileEnabled: boolean
+  isICCProfilesEnabled: boolean
 }
 
 /**
@@ -583,7 +583,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleOpticalPathActivityChange = this.handleOpticalPathActivityChange.bind(this)
     this.handlePresentationStateSelection = this.handlePresentationStateSelection.bind(this)
     this.handlePresentationStateReset = this.handlePresentationStateReset.bind(this)
-    this.handleICCProfileToggle = this.handleICCProfileToggle.bind(this)
+    this.handleICCProfilesToggle = this.handleICCProfilesToggle.bind(this)
 
     const { volumeViewer, labelViewer } = _constructViewers({
       clients: this.props.clients,
@@ -641,7 +641,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       pixelDataStatistics: {},
       selectedPresentationStateUID: this.props.selectedPresentationStateUID,
       loadingFrames: new Set(),
-      isICCProfileEnabled: true
+      isICCProfilesEnabled: true
     }
   }
 
@@ -3169,8 +3169,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that will toggle the ICC profile color management, i.e., either
    * enable or disable it, depending on its current state.
    */
-  handleICCProfileToggle (checked: boolean): void {
-    this.setState({ isICCProfileEnabled: checked })
+  handleICCProfilesToggle (checked: boolean): void {
+    this.setState({ isICCProfilesEnabled: checked })
     this.volumeViewer.toggleICCProfiles()
   }
 
@@ -3763,17 +3763,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       )
     }
 
-    const iccProfilesMenu = (
-      <Menu.SubMenu key="icc-profiles" title="ICC Profiles">
-        <Menu.Item key="icc-toggle">
-          <Checkbox
-            checked={this.state.isICCProfileEnabled}
-            onChange={(e) => this.handleICCProfileToggle(e.target.checked)}
-          >
-            Enable ICC Profiles
-          </Checkbox>
-        </Menu.Item>
-      </Menu.SubMenu>
+    const iccProfilesMenu = this.volumeViewer.getICCProfiles().length > 0 && (
+      <div style={{ margin: '0.9rem' }}>
+        <Checkbox
+          checked={this.state.isICCProfilesEnabled}
+          onChange={(e) => this.handleICCProfilesToggle(e.target.checked)}
+        >
+          ICC Profiles
+        </Checkbox>
+      </div>
     )
 
     return (
