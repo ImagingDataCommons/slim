@@ -422,6 +422,7 @@ interface SlideViewerState {
     }
   }
   loadingFrames: Set<string>
+  isICCProfileEnabled: boolean
 }
 
 /**
@@ -582,6 +583,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleOpticalPathActivityChange = this.handleOpticalPathActivityChange.bind(this)
     this.handlePresentationStateSelection = this.handlePresentationStateSelection.bind(this)
     this.handlePresentationStateReset = this.handlePresentationStateReset.bind(this)
+    this.handleICCProfileToggle = this.handleICCProfileToggle.bind(this)
 
     const { volumeViewer, labelViewer } = _constructViewers({
       clients: this.props.clients,
@@ -638,7 +640,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       areRoisHidden: false,
       pixelDataStatistics: {},
       selectedPresentationStateUID: this.props.selectedPresentationStateUID,
-      loadingFrames: new Set()
+      loadingFrames: new Set(),
+      isICCProfileEnabled: true
     }
   }
 
@@ -3162,6 +3165,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
+  /**
+   * Handler that will toggle the ICC profile color management, i.e., either
+   * enable or disable it, depending on its current state.
+   */
+  handleICCProfileToggle (checked: boolean): void {
+    this.setState({ isICCProfileEnabled: checked })
+    this.volumeViewer.toggleICCProfiles()
+  }
+
   render (): React.ReactNode {
     const rois: dmv.roi.ROI[] = []
     const segments: dmv.segment.Segment[] = []
@@ -3751,6 +3763,19 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       )
     }
 
+    const iccProfilesMenu = (
+      <Menu.SubMenu key="icc-profiles" title="ICC Profiles">
+        <Menu.Item key="icc-toggle">
+          <Checkbox
+            checked={this.state.isICCProfileEnabled}
+            onChange={(e) => this.handleICCProfileToggle(e.target.checked)}
+          >
+            Enable ICC Profiles
+          </Checkbox>
+        </Menu.Item>
+      </Menu.SubMenu>
+    )
+
     return (
       <Layout style={{ height: '100%' }} hasSider>
         <Layout.Content style={{ height: '100%' }}>
@@ -3907,6 +3932,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               </Menu.SubMenu>
             )}
             {specimenMenu}
+            {iccProfilesMenu}
             {equipmentMenu}
             {opticalPathMenu}
             {presentationStateMenu}
