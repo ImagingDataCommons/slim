@@ -28,6 +28,7 @@ import { UndoOutlined, CheckOutlined, StopOutlined } from '@ant-design/icons'
 import * as dmv from 'dicom-microscopy-viewer'
 import * as dcmjs from 'dcmjs'
 import * as dwc from 'dicomweb-client'
+import type { CheckboxChangeEvent } from 'antd/es/checkbox'
 
 import DicomWebManager from '../DicomWebManager'
 import AnnotationList from './AnnotationList'
@@ -3169,7 +3170,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that will toggle the ICC profile color management, i.e., either
    * enable or disable it, depending on its current state.
    */
-  handleICCProfilesToggle (checked: boolean): void {
+  handleICCProfilesToggle (event: CheckboxChangeEvent): void {
+    const checked = event.target.checked
     this.setState({ isICCProfilesEnabled: checked })
     this.volumeViewer.toggleICCProfiles()
   }
@@ -3767,7 +3769,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       <div style={{ margin: '0.9rem' }}>
         <Checkbox
           checked={this.state.isICCProfilesEnabled}
-          onChange={(e) => this.handleICCProfilesToggle(e.target.checked)}
+          onChange={this.handleICCProfilesToggle}
         >
           ICC Profiles
         </Checkbox>
