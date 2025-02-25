@@ -341,8 +341,8 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     )
 
     const debugButton = (
-      <Badge count={this.state.errorObj.length}>
-        <Badge color='green' count={this.state.warnings.length}>
+      <Badge count={this.state.errorObj.length} style={{ zIndex: 1000 }}>
+        <Badge color='green' count={this.state.warnings.length} style={{ zIndex: 1001 }}>
           <Button
             icon={SettingOutlined}
             tooltip='Debug info'

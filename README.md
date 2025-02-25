@@ -327,6 +327,27 @@ For more information about the motivation, design, and capabilities of Slim, ple
 
 If you use Slim in your research, please cite the above article.
 
+## Acknowledgments
+
+This software is maintained by the Imaging Data Commons (IDC) team, which has been funded in whole or
+in part with Federal funds from the NCI, NIH, under task order no. HHSN26110071
+under contract no. HHSN261201500003l.
+
+NCI Imaging Data Commons (IDC) (https://imaging.datacommons.cancer.gov/) is a cloud-based environment 
+containing publicly available cancer imaging data co-located with analysis and exploration tools and resources. 
+IDC is a node within the broader NCI Cancer Research Data Commons (CRDC) infrastructure that provides secure 
+access to a large, comprehensive, and expanding collection of cancer research data.
+
+Learn more about IDC from this publication:
+
+> Fedorov, A., Longabaugh, W. J. R., Pot, D., Clunie, D. A., Pieper, S. D.,
+> Gibbs, D. L., Bridge, C., Herrmann, M. D., Homeyer, A., Lewis, R., Aerts, H.
+> J. W., Krishnaswamy, D., Thiriveedhi, V. K., Ciausu, C., Schacherer, D. P.,
+> Bontempi, D., Pihl, T., Wagner, U., Farahani, K., Kim, E. & Kikinis, R.
+> _National Cancer Institute Imaging Data Commons: Toward Transparency,
+> Reproducibility, and Scalability in Imaging Artificial Intelligence_.
+> RadioGraphics (2023). https://doi.org/10.1148/rg.230180
+
 ## DICOM Conformance Statement
 
 The DICOM conformance statement for Slim is available in this repository [here](/DICOM-Conformance-Statement.md)

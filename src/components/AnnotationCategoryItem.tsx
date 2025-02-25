@@ -9,7 +9,8 @@ const AnnotationCategoryItem = ({
   onChange,
   checkedAnnotationUids,
   onStyleChange,
-  defaultAnnotationStyles
+  defaultAnnotationStyles,
+  ...props
 }: {
   category: Category
   onChange: Function
@@ -56,7 +57,7 @@ const AnnotationCategoryItem = ({
   return (
     <Menu.Item
       style={{ height: '100%', paddingLeft: '3px' }}
-      key={category.CodeMeaning}
+      {...props}
     >
       <Space align='start'>
         <div style={{ paddingLeft: '14px', color: 'black' }}>

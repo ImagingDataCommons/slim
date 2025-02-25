@@ -91,11 +91,11 @@ const AnnotationCategoryList = ({
     return <></>
   }
 
-  const items = Object.keys(categories).map((categoryKey: any) => {
+  const items = Object.keys(categories).map((categoryKey: string) => {
     const category = categories[categoryKey]
     return (
       <AnnotationCategoryItem
-        key={category.CodeMeaning}
+        key={category.CodeMeaning !== '' ? category.CodeMeaning : `category-${categoryKey}`}
         category={category}
         onChange={onChange}
         onStyleChange={onStyleChange}
