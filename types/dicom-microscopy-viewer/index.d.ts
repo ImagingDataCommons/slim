@@ -222,6 +222,8 @@ declare module 'dicom-microscopy-viewer' {
       getAnnotationGroupMetadata (
         annotationGroupUID: string
       ): metadata.MicroscopyBulkSimpleAnnotations
+      toggleICCProfiles(): void;
+      getICCProfiles(): any[];
     }
 
     export interface OverviewImageViewerOptions {

@@ -28,6 +28,7 @@ import { UndoOutlined, CheckOutlined, StopOutlined } from '@ant-design/icons'
 import * as dmv from 'dicom-microscopy-viewer'
 import * as dcmjs from 'dcmjs'
 import * as dwc from 'dicomweb-client'
+import type { CheckboxChangeEvent } from 'antd/es/checkbox'
 
 import DicomWebManager from '../DicomWebManager'
 import AnnotationList from './AnnotationList'
@@ -422,6 +423,7 @@ interface SlideViewerState {
     }
   }
   loadingFrames: Set<string>
+  isICCProfilesEnabled: boolean
 }
 
 /**
@@ -582,6 +584,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleOpticalPathActivityChange = this.handleOpticalPathActivityChange.bind(this)
     this.handlePresentationStateSelection = this.handlePresentationStateSelection.bind(this)
     this.handlePresentationStateReset = this.handlePresentationStateReset.bind(this)
+    this.handleICCProfilesToggle = this.handleICCProfilesToggle.bind(this)
 
     const { volumeViewer, labelViewer } = _constructViewers({
       clients: this.props.clients,
@@ -638,7 +641,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       areRoisHidden: false,
       pixelDataStatistics: {},
       selectedPresentationStateUID: this.props.selectedPresentationStateUID,
-      loadingFrames: new Set()
+      loadingFrames: new Set(),
+      isICCProfilesEnabled: true
     }
   }
 
@@ -3167,6 +3171,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
+  /**
+   * Handler that will toggle the ICC profile color management, i.e., either
+   * enable or disable it, depending on its current state.
+   */
+  handleICCProfilesToggle = (event: CheckboxChangeEvent): void => {
+    const checked = event.target.checked
+    this.setState({ isICCProfilesEnabled: checked })
+    this.volumeViewer.toggleICCProfiles()
+  }
+
   render (): React.ReactNode {
     const rois: dmv.roi.ROI[] = []
     const segments: dmv.segment.Segment[] = []
@@ -3757,6 +3771,17 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       )
     }
 
+    const iccProfilesMenu = this.volumeViewer.getICCProfiles().length > 0 && (
+      <div style={{ margin: '0.9rem' }}>
+        <Checkbox
+          checked={this.state.isICCProfilesEnabled}
+          onChange={this.handleICCProfilesToggle}
+        >
+          ICC Profiles
+        </Checkbox>
+      </div>
+    )
+
     return (
       <Layout style={{ height: '100%' }} hasSider>
         <Layout.Content style={{ height: '100%' }}>
@@ -3914,6 +3939,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               </Menu.SubMenu>
             )}
             {specimenMenu}
+            {iccProfilesMenu}
             {equipmentMenu}
             {opticalPathMenu}
             {presentationStateMenu}

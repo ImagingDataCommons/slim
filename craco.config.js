@@ -69,7 +69,7 @@ module.exports = {
         '^.+\\.[t|j]sx?$': 'babel-jest'
       }
       config.transformIgnorePatterns = [
-        'node_modules/(?!(ol|dicom-microscopy-viewer|dicomweb-client|@cornerstonejs|dicomicc)/)'
+        'node_modules/(?!(ol|dicom-microscopy-viewer|dicomweb-client|@cornerstonejs|dicomicc|rbush|color-rgba|color-parse|color-name|color-space|quickselect|earcut)/)'
       ]
       config.moduleNameMapper = {
         '@cornerstonejs/codec-libjpeg-turbo-8bit/decodewasmjs': '@cornerstonejs/codec-libjpeg-turbo-8bit/dist/libjpegturbowasm_decode',
