@@ -3170,7 +3170,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that will toggle the ICC profile color management, i.e., either
    * enable or disable it, depending on its current state.
    */
-  handleICCProfilesToggle (event: CheckboxChangeEvent): void {
+  handleICCProfilesToggle = (event: CheckboxChangeEvent): void => {
     const checked = event.target.checked
     this.setState({ isICCProfilesEnabled: checked })
     this.volumeViewer.toggleICCProfiles()
