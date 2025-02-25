@@ -28,6 +28,7 @@ import { UndoOutlined, CheckOutlined, StopOutlined } from '@ant-design/icons'
 import * as dmv from 'dicom-microscopy-viewer'
 import * as dcmjs from 'dcmjs'
 import * as dwc from 'dicomweb-client'
+import type { CheckboxChangeEvent } from 'antd/es/checkbox'
 
 import DicomWebManager from '../DicomWebManager'
 import AnnotationList from './AnnotationList'
@@ -422,6 +423,7 @@ interface SlideViewerState {
     }
   }
   loadingFrames: Set<string>
+  isICCProfilesEnabled: boolean
 }
 
 /**
@@ -582,6 +584,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleOpticalPathActivityChange = this.handleOpticalPathActivityChange.bind(this)
     this.handlePresentationStateSelection = this.handlePresentationStateSelection.bind(this)
     this.handlePresentationStateReset = this.handlePresentationStateReset.bind(this)
+    this.handleICCProfilesToggle = this.handleICCProfilesToggle.bind(this)
 
     const { volumeViewer, labelViewer } = _constructViewers({
       clients: this.props.clients,
@@ -638,7 +641,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       areRoisHidden: false,
       pixelDataStatistics: {},
       selectedPresentationStateUID: this.props.selectedPresentationStateUID,
-      loadingFrames: new Set()
+      loadingFrames: new Set(),
+      isICCProfilesEnabled: true
     }
   }
 
@@ -1571,6 +1575,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   setHoveredRoiAttributes = (hoveredRois: dmv.roi.ROI[]): void => {
     const rois = this.volumeViewer.getAllROIs()
+    if (rois.length === 0) {
+      this.setState({ hoveredRoiAttributes: [] })
+      return
+    }
+
     const result = hoveredRois.map((roi) => {
       const attributes: Array<{ name: string, value: string }> = []
       const evaluations = roi.evaluations
@@ -3162,6 +3171,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
+  /**
+   * Handler that will toggle the ICC profile color management, i.e., either
+   * enable or disable it, depending on its current state.
+   */
+  handleICCProfilesToggle = (event: CheckboxChangeEvent): void => {
+    const checked = event.target.checked
+    this.setState({ isICCProfilesEnabled: checked })
+    this.volumeViewer.toggleICCProfiles()
+  }
+
   render (): React.ReactNode {
     const rois: dmv.roi.ROI[] = []
     const segments: dmv.segment.Segment[] = []
@@ -3201,10 +3220,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       )
     }
 
-    const findingOptions = this.findingOptions.map(finding => {
+    const findingOptions = this.findingOptions.map((finding, index) => {
       return (
         <Select.Option
-          key={finding.CodeValue}
+          key={(finding.CodeValue !== undefined && finding.CodeValue !== '') ? finding.CodeValue : `finding-${index}`}
           value={finding.CodeValue}
         >
           {finding.CodeMeaning}
@@ -3237,20 +3256,20 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           onSelect={this.handleAnnotationFindingSelection}
           key='annotation-finding'
           defaultActiveFirstOption
+          placeholder='Select finding'
         >
           {findingOptions}
         </Select>
       )
     ]
-
     const selectedFinding = this.state.selectedFinding
     if (selectedFinding !== undefined) {
       const key = _buildKey(selectedFinding)
-      this.evaluationOptions[key].forEach(evaluation => {
+      this.evaluationOptions[key].forEach((evaluation, index) => {
         const evaluationOptions = evaluation.values.map(code => {
           return (
             <Select.Option
-              key={code.CodeValue}
+              key={(code.CodeValue !== undefined && code.CodeValue !== '') ? code.CodeValue : `evaluation-${index}`}
               value={code.CodeValue}
               label={evaluation.name}
             >
@@ -3283,6 +3302,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             style={{ minWidth: 130 }}
             onSelect={this.handleAnnotationGeometryTypeSelection}
             key='annotation-geometry-type'
+            placeholder='Select geometry type'
           >
             {geometryTypeOptions}
           </Select>
@@ -3361,15 +3381,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     let presentationStateMenu
     if (this.state.presentationStates.length > 0) {
       const presentationStateOptions = []
-      this.state.presentationStates.forEach(instance => {
+      this.state.presentationStates.forEach((instance, index) => {
         presentationStateOptions.push(
           <Select.Option
-            key={instance.SOPInstanceUID}
+            key={(instance.SOPInstanceUID !== undefined && instance.SOPInstanceUID !== '') ? instance.SOPInstanceUID : `presentation-state-${index}`}
             value={instance.SOPInstanceUID}
             dropdownMatchSelectWidth={false}
             size='small'
           >
-            {instance.ContentDescription}
+            {instance.ContentDescription !== undefined && instance.ContentDescription !== '' ? instance.ContentDescription : 'Untitled'}
           </Select.Option>
         )
       })
@@ -3751,6 +3771,17 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       )
     }
 
+    const iccProfilesMenu = this.volumeViewer.getICCProfiles().length > 0 && (
+      <div style={{ margin: '0.9rem' }}>
+        <Checkbox
+          checked={this.state.isICCProfilesEnabled}
+          onChange={this.handleICCProfilesToggle}
+        >
+          ICC Profiles
+        </Checkbox>
+      </div>
+    )
+
     return (
       <Layout style={{ height: '100%' }} hasSider>
         <Layout.Content style={{ height: '100%' }}>
@@ -3769,6 +3800,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             open={this.state.isAnnotationModalVisible}
             title='Configure annotations'
             onOk={this.handleAnnotationConfigurationCompletion}
+            okButtonProps={{ disabled: !(this.state.selectedFinding !== undefined && this.state.selectedGeometryType !== undefined) }}
             onCancel={this.handleAnnotationConfigurationCancellation}
             okText='Select'
           >
@@ -3907,6 +3939,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               </Menu.SubMenu>
             )}
             {specimenMenu}
+            {iccProfilesMenu}
             {equipmentMenu}
             {opticalPathMenu}
             {presentationStateMenu}
@@ -3920,7 +3953,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 )
               : (
                 <Menu.SubMenu
-                  key='annotation-category'
+                  key='annotation-categories'
                   title='Annotation Categories'
                 >
                   <AnnotationCategoryList
