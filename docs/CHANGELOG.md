@@ -1,3 +1,10 @@
+## [0.39.1](https://github.com/ImagingDataCommons/slim/compare/v0.39.0...v0.39.1) (2025-02-25)
+
+
+### Bug Fixes
+
+* overview thumbnails ([#275](https://github.com/ImagingDataCommons/slim/issues/275)) ([566d1cc](https://github.com/ImagingDataCommons/slim/commit/566d1ccb900cb0e30c14a1b7ac4c7da9f3f7c111))
+
 # [0.39.0](https://github.com/ImagingDataCommons/slim/compare/v0.38.0...v0.39.0) (2025-02-25)
 
 
