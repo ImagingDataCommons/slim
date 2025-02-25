@@ -54,7 +54,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
           client: this.props.clients[
             StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE
           ],
-          metadata: metadata,
+          metadata,
           resizeFactor: 1,
           errorInterceptor: (error: CustomError) => {
             NotificationMiddleware.onError(
@@ -101,8 +101,8 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
           header={this.props.slide.containerIdentifier}
           attributes={attributes}
           selectable
-        >
-          {(this.overviewViewportRef.current != null) && <div style={{ height: '100px' }} ref={this.overviewViewportRef} />}
+      >
+          <div style={{ height: '100px' }} ref={this.overviewViewportRef} />
         </Description>
       </Menu.Item>
     )

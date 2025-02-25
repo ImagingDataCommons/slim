@@ -95,7 +95,7 @@ const AnnotationCategoryList = ({
     const category = categories[categoryKey]
     return (
       <AnnotationCategoryItem
-        key={category.CodeMeaning}
+        key={category.CodeMeaning || `category-${categoryKey}`}
         category={category}
         onChange={onChange}
         onStyleChange={onStyleChange}

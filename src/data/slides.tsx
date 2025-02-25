@@ -94,6 +94,7 @@ class Slide {
     const volumeImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
     const labelImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
     const overviewImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
+
     options.images.forEach((image) => {
       containerIdentifiers.add(image.ContainerIdentifier)
       seriesInstanceUIDs.add(image.SeriesInstanceUID)
@@ -122,6 +123,7 @@ class Slide {
         overviewImages.push(image)
       }
     })
+
     if (volumeImages.length === 0) {
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
@@ -141,6 +143,7 @@ class Slide {
           )
         )
       }
+
       const samplesPerPixel = new Set([] as number[])
       volumeImages.forEach((image) => {
         samplesPerPixel.add(image.SamplesPerPixel)
@@ -155,6 +158,7 @@ class Slide {
           )
         )
       }
+
       const isNotResampled = volumeImages.filter(image => {
         return image.ImageType[3] !== 'RESAMPLED'
       })
@@ -165,6 +169,7 @@ class Slide {
         )
       }
     }
+
     this.volumeImages = volumeImages
     this.labelImages = labelImages
     this.overviewImages = overviewImages
