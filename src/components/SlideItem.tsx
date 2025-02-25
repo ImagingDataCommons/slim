@@ -101,7 +101,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
           header={this.props.slide.containerIdentifier}
           attributes={attributes}
           selectable
-      >
+        >
           <div style={{ height: '100px' }} ref={this.overviewViewportRef} />
         </Description>
       </Menu.Item>

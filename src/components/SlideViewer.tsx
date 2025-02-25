@@ -1575,7 +1575,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.setState({ hoveredRoiAttributes: [] })
       return
     }
-    
+
     const result = hoveredRois.map((roi) => {
       const attributes: Array<{ name: string, value: string }> = []
       const evaluations = roi.evaluations
@@ -3209,7 +3209,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const findingOptions = this.findingOptions.map((finding, index) => {
       return (
         <Select.Option
-          key={finding.CodeValue || `finding-${index}`}
+          key={(finding.CodeValue !== undefined && finding.CodeValue !== '') ? finding.CodeValue : `finding-${index}`}
           value={finding.CodeValue}
         >
           {finding.CodeMeaning}
@@ -3241,8 +3241,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           style={{ minWidth: 130 }}
           onSelect={this.handleAnnotationFindingSelection}
           key='annotation-finding'
-          defaultActiveFirstOption={true}
-          placeholder="Select finding"
+          defaultActiveFirstOption
+          placeholder='Select finding'
         >
           {findingOptions}
         </Select>
@@ -3255,7 +3255,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         const evaluationOptions = evaluation.values.map(code => {
           return (
             <Select.Option
-              key={code.CodeValue || `evaluation-${index}`}
+              key={(code.CodeValue !== undefined && code.CodeValue !== '') ? code.CodeValue : `evaluation-${index}`}
               value={code.CodeValue}
               label={evaluation.name}
             >
@@ -3288,7 +3288,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             style={{ minWidth: 130 }}
             onSelect={this.handleAnnotationGeometryTypeSelection}
             key='annotation-geometry-type'
-            placeholder="Select geometry type"
+            placeholder='Select geometry type'
           >
             {geometryTypeOptions}
           </Select>
@@ -3370,12 +3370,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.state.presentationStates.forEach((instance, index) => {
         presentationStateOptions.push(
           <Select.Option
-            key={instance.SOPInstanceUID || `presentation-state-${index}`}
+            key={(instance.SOPInstanceUID !== undefined && instance.SOPInstanceUID !== '') ? instance.SOPInstanceUID : `presentation-state-${index}`}
             value={instance.SOPInstanceUID}
             dropdownMatchSelectWidth={false}
             size='small'
           >
-            {instance.ContentDescription}
+            {instance.ContentDescription !== undefined && instance.ContentDescription !== '' ? instance.ContentDescription : 'Untitled'}
           </Select.Option>
         )
       })
@@ -3961,4 +3961,3 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 }
 
 export default withRouter(SlideViewer)
-
