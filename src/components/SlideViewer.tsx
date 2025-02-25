@@ -1575,6 +1575,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   setHoveredRoiAttributes = (hoveredRois: dmv.roi.ROI[]): void => {
     const rois = this.volumeViewer.getAllROIs()
+    if (rois.length === 0) {
+      this.setState({ hoveredRoiAttributes: [] })
+      return
+    }
+
     const result = hoveredRois.map((roi) => {
       const attributes: Array<{ name: string, value: string }> = []
       const evaluations = roi.evaluations
@@ -3215,10 +3220,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       )
     }
 
-    const findingOptions = this.findingOptions.map(finding => {
+    const findingOptions = this.findingOptions.map((finding, index) => {
       return (
         <Select.Option
-          key={finding.CodeValue}
+          key={(finding.CodeValue !== undefined && finding.CodeValue !== '') ? finding.CodeValue : `finding-${index}`}
           value={finding.CodeValue}
         >
           {finding.CodeMeaning}
@@ -3251,20 +3256,20 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           onSelect={this.handleAnnotationFindingSelection}
           key='annotation-finding'
           defaultActiveFirstOption
+          placeholder='Select finding'
         >
           {findingOptions}
         </Select>
       )
     ]
-
     const selectedFinding = this.state.selectedFinding
     if (selectedFinding !== undefined) {
       const key = _buildKey(selectedFinding)
-      this.evaluationOptions[key].forEach(evaluation => {
+      this.evaluationOptions[key].forEach((evaluation, index) => {
         const evaluationOptions = evaluation.values.map(code => {
           return (
             <Select.Option
-              key={code.CodeValue}
+              key={(code.CodeValue !== undefined && code.CodeValue !== '') ? code.CodeValue : `evaluation-${index}`}
               value={code.CodeValue}
               label={evaluation.name}
             >
@@ -3297,6 +3302,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             style={{ minWidth: 130 }}
             onSelect={this.handleAnnotationGeometryTypeSelection}
             key='annotation-geometry-type'
+            placeholder='Select geometry type'
           >
             {geometryTypeOptions}
           </Select>
@@ -3375,15 +3381,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     let presentationStateMenu
     if (this.state.presentationStates.length > 0) {
       const presentationStateOptions = []
-      this.state.presentationStates.forEach(instance => {
+      this.state.presentationStates.forEach((instance, index) => {
         presentationStateOptions.push(
           <Select.Option
-            key={instance.SOPInstanceUID}
+            key={(instance.SOPInstanceUID !== undefined && instance.SOPInstanceUID !== '') ? instance.SOPInstanceUID : `presentation-state-${index}`}
             value={instance.SOPInstanceUID}
             dropdownMatchSelectWidth={false}
             size='small'
           >
-            {instance.ContentDescription}
+            {instance.ContentDescription !== undefined && instance.ContentDescription !== '' ? instance.ContentDescription : 'Untitled'}
           </Select.Option>
         )
       })
@@ -3794,6 +3800,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             open={this.state.isAnnotationModalVisible}
             title='Configure annotations'
             onOk={this.handleAnnotationConfigurationCompletion}
+            okButtonProps={{ disabled: !(this.state.selectedFinding !== undefined && this.state.selectedGeometryType !== undefined) }}
             onCancel={this.handleAnnotationConfigurationCancellation}
             okText='Select'
           >
@@ -3946,7 +3953,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 )
               : (
                 <Menu.SubMenu
-                  key='annotation-category'
+                  key='annotation-categories'
                   title='Annotation Categories'
                 >
                   <AnnotationCategoryList
