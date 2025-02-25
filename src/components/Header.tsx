@@ -78,13 +78,13 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     const cachedMode = window.localStorage.getItem('slim_server_selection_mode') as 'default' | 'custom' | null
 
     this.state = {
-      selectedServerUrl: cachedServerUrl ?? undefined,
-      isServerSelectionModalVisible: false,
-      isServerSelectionDisabled: !this.isValidServerUrl(cachedServerUrl),
       errorObj: [],
       errorCategory: [],
       warnings: [],
-      serverSelectionMode: cachedMode ?? (cachedServerUrl != null && cachedServerUrl !== '' ? 'custom' : 'default')
+      selectedServerUrl: cachedServerUrl ?? '',
+      isServerSelectionModalVisible: false,
+      isServerSelectionDisabled: !this.isValidServerUrl(cachedServerUrl),
+      serverSelectionMode: cachedMode === 'custom' && cachedServerUrl !== null && cachedServerUrl !== '' ? 'custom' : 'default'
     }
 
     const onErrorHandler = ({ source, error }: {
@@ -328,6 +328,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
   handleServerSelectionCancellation = (): void => {
     const cachedServerUrl = window.localStorage.getItem('slim_selected_server')
     this.setState({
+      serverSelectionMode: cachedServerUrl ? 'custom' : 'default',
       selectedServerUrl: cachedServerUrl ?? undefined,
       isServerSelectionModalVisible: false,
       isServerSelectionDisabled: !this.isValidServerUrl(cachedServerUrl)
@@ -336,14 +337,12 @@ class Header extends React.Component<HeaderProps, HeaderState> {
 
   handleServerSelectionModeChange = (e: any): void => {
     const mode = e.target.value
-    window.localStorage.setItem('slim_server_selection_mode', mode)
-    this.setState({
-      serverSelectionMode: mode,
-      selectedServerUrl: mode === 'default' ? undefined : this.state.selectedServerUrl
-    })
+    this.setState({ serverSelectionMode: mode })
   }
 
   handleServerSelection = (): void => {
+    window.localStorage.setItem('slim_server_selection_mode', this.state.serverSelectionMode)
+    
     if (this.state.serverSelectionMode === 'default') {
       this.props.onServerSelection({ url: '' })
       this.setState({
@@ -453,6 +452,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     const selectedServerUrl = this.state.serverSelectionMode === 'custom'
       ? this.state.selectedServerUrl
       : this.props.clients?.default?.baseURL ?? this.props.defaultClients?.default?.baseURL
+
     const urlInfo = selectedServerUrl != null && selectedServerUrl !== ''
       ? (
         <Tooltip title={selectedServerUrl}>
