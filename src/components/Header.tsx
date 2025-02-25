@@ -328,7 +328,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
   handleServerSelectionCancellation = (): void => {
     const cachedServerUrl = window.localStorage.getItem('slim_selected_server')
     this.setState({
-      serverSelectionMode: cachedServerUrl ? 'custom' : 'default',
+      serverSelectionMode: cachedServerUrl !== null && cachedServerUrl !== '' ? 'custom' : 'default',
       selectedServerUrl: cachedServerUrl ?? undefined,
       isServerSelectionModalVisible: false,
       isServerSelectionDisabled: !this.isValidServerUrl(cachedServerUrl)
@@ -342,7 +342,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
 
   handleServerSelection = (): void => {
     window.localStorage.setItem('slim_server_selection_mode', this.state.serverSelectionMode)
-    
+
     if (this.state.serverSelectionMode === 'default') {
       this.props.onServerSelection({ url: '' })
       this.setState({
