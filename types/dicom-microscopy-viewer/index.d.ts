@@ -232,6 +232,7 @@ declare module 'dicom-microscopy-viewer' {
       orientation?: string
       resizeFactor?: number
       includeIccProfile?: boolean
+      disableInteractions?: boolean
       errorInterceptor?: (error: CustomError) => void
     }
 
