@@ -54,6 +54,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
           client: this.props.clients[
             StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE
           ],
+          disableInteractions: true,
           metadata,
           resizeFactor: 1,
           errorInterceptor: (error: CustomError) => {
