@@ -25,7 +25,7 @@ class Patient extends React.Component<PatientProps, {}> {
         value: parseName(this.props.metadata.PatientName)
       },
       {
-        name: 'Gender',
+        name: 'Sex',
         value: parseSex(this.props.metadata.PatientSex)
       },
       {

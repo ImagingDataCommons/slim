@@ -44,6 +44,14 @@ interface ReferencedSlideResult {
   metadata: NaturalizedInstance
 }
 
+const findSeriesSlide = (slides: Slide[], seriesInstanceUID: string): Slide | undefined => {
+  return slides.find((slide: Slide) => {
+    return slide.seriesInstanceUIDs.find((uid: string) => {
+      return uid === seriesInstanceUID
+    })
+  })
+}
+
 function ParametrizedSlideViewer ({
   clients,
   slides,
@@ -68,12 +76,16 @@ function ParametrizedSlideViewer ({
 }): JSX.Element | null {
   const { studyInstanceUID = '', seriesInstanceUID = '' } = useParams<{ studyInstanceUID: string, seriesInstanceUID: string }>()
   const location = useLocation()
-  const [selectedSlide, setSelectedSlide] = useState(slides.find((slide: Slide) => {
-    return slide.seriesInstanceUIDs.find((uid: string) => {
-      return uid === seriesInstanceUID
-    })
-  }))
+
+  const [selectedSlide, setSelectedSlide] = useState(findSeriesSlide(slides, seriesInstanceUID))
   const [derivedDataset, setDerivedDataset] = useState<NaturalizedInstance | null>(null)
+
+  useEffect(() => {
+    const seriesSlide = findSeriesSlide(slides, seriesInstanceUID)
+    if (seriesSlide !== null) {
+      setSelectedSlide(seriesSlide)
+    }
+  }, [seriesInstanceUID])
 
   useEffect(() => {
     const findReferencedSlide = async ({ clients, studyInstanceUID, seriesInstanceUID }: {
@@ -119,9 +131,9 @@ function ParametrizedSlideViewer ({
       }
     })
 
-    if (selectedSlide == null) {
+    if (selectedSlide === null || selectedSlide === undefined) {
       void findReferencedSlide({ clients, studyInstanceUID, seriesInstanceUID }).then((result: ReferencedSlideResult | null) => {
-        if (result != null) {
+        if (result !== null) {
           setSelectedSlide(result.slide)
           setDerivedDataset(result.metadata)
         }
@@ -139,6 +151,7 @@ function ParametrizedSlideViewer ({
       presentationStateUID = undefined
     }
   }
+
   let viewer = null
   if (selectedSlide != null) {
     viewer = (
