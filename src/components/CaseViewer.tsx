@@ -85,7 +85,7 @@ function ParametrizedSlideViewer ({
     if (seriesSlide !== null) {
       setSelectedSlide(seriesSlide)
     }
-  }, [seriesInstanceUID])
+  }, [seriesInstanceUID, slides])
 
   useEffect(() => {
     const findReferencedSlide = async ({ clients, studyInstanceUID, seriesInstanceUID }: {
