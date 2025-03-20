@@ -3495,26 +3495,26 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     let annotationGroupMenu
 
-    if (annotations.length > 0) {
-      annotations.forEach((annotation) => {
-        const roi = this.volumeViewer.getROI(annotation.uid)
-        const key = _getRoiKey(roi) as string
-        const color = this.roiStyles[key] !== undefined
-          ? this.roiStyles[key].stroke?.color.slice(0, 3)
-          : DEFAULT_ANNOTATION_COLOR_PALETTE[
-            Object.keys(this.roiStyles).length % DEFAULT_ANNOTATION_COLOR_PALETTE.length
-          ]
-        this.defaultAnnotationStyles[annotation.uid] = {
-          color,
-          opacity: DEFAULT_ANNOTATION_OPACITY,
-          contourOnly: false
-        } as any
+    annotations?.forEach?.((annotation) => {
+      const roi = this.volumeViewer.getROI(annotation.uid)
+      const key = _getRoiKey(roi) as string
+      const color = this.roiStyles[key] !== undefined
+        ? this.roiStyles[key].stroke?.color.slice(0, 3)
+        : DEFAULT_ANNOTATION_COLOR_PALETTE[
+          Object.keys(this.roiStyles).length % DEFAULT_ANNOTATION_COLOR_PALETTE.length
+        ]
+      this.defaultAnnotationStyles[annotation.uid] = {
+        color,
+        opacity: DEFAULT_ANNOTATION_OPACITY,
+        contourOnly: false
+      } as any
 
-        this.roiStyles[key] = this.generateRoiStyle(
-          this.defaultAnnotationStyles[annotation.uid]
-        )
-      })
-    }
+      this.roiStyles[key] = this.generateRoiStyle(
+        this.defaultAnnotationStyles[annotation.uid]
+      )
+
+      this.volumeViewer.setROIStyle(roi.uid, this.roiStyles[key])
+    })
 
     if (annotationGroups.length > 0) {
       const annotationGroupMetadata: {
