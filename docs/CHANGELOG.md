@@ -1,3 +1,10 @@
+## [0.39.2](https://github.com/ImagingDataCommons/slim/compare/v0.39.1...v0.39.2) (2025-03-20)
+
+
+### Bug Fixes
+
+* autoload annotation styles ([#281](https://github.com/ImagingDataCommons/slim/issues/281)) ([14463e2](https://github.com/ImagingDataCommons/slim/commit/14463e2f1568e6280977589892ae95145d09c3da))
+
 ## [0.39.1](https://github.com/ImagingDataCommons/slim/compare/v0.39.0...v0.39.1) (2025-02-25)
 
 
