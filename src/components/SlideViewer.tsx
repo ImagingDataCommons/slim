@@ -3498,10 +3498,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           Object.keys(this.roiStyles).length % DEFAULT_ANNOTATION_COLOR_PALETTE.length
         ]
       this.defaultAnnotationStyles[annotation.uid] = {
-        color,
+        color: color as number[],
         opacity: DEFAULT_ANNOTATION_OPACITY,
         contourOnly: false
-      } as StyleOptions
+      }
 
       this.roiStyles[key] = this.generateRoiStyle(
         this.defaultAnnotationStyles[annotation.uid]
