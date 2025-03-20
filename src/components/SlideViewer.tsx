@@ -69,6 +69,12 @@ const DEFAULT_ANNOTATION_COLOR_PALETTE = [
   [0, 0, 0]
 ]
 
+type StyleOptions = {
+  opacity: number
+  color: number[]
+  contourOnly: boolean
+}
+
 const _buildKey = (concept: {
   CodeValue: string
   CodeMeaning: string
@@ -473,11 +479,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   private roiStyles: {[key: string]: dmv.viewer.ROIStyleOptions} = {}
 
   private defaultAnnotationStyles: {
-    [annotationUID: string]: {
-      opacity: number
-      color: number[]
-      contourOnly: boolean
-    }
+    [annotationUID: string]: StyleOptions
   } = {}
 
   private readonly selectionColor: number[] = [140, 184, 198]
@@ -2653,11 +2655,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   generateRoiStyle (
-    styleOptions: {
-      opacity?: number
-      color?: number[]
-      contourOnly: boolean
-    }): dmv.viewer.ROIStyleOptions {
+    styleOptions: StyleOptions): dmv.viewer.ROIStyleOptions {
     const opacity = styleOptions.opacity ?? DEFAULT_ANNOTATION_OPACITY
     const strokeColor = styleOptions.color ?? DEFAULT_ANNOTATION_STROKE_COLOR
     const fillColor = styleOptions.contourOnly ? [0, 0, 0, 0] : strokeColor.map((c) => Math.min(c + 25, 255))
@@ -2671,11 +2669,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   handleRoiStyleChange ({ uid, styleOptions }: {
     uid: string
-    styleOptions: {
-      opacity: number
-      color: number[]
-      contourOnly: boolean
-    }
+    styleOptions: StyleOptions
   }): void {
     console.log(`change style of ROI ${uid}`)
     try {
@@ -3507,7 +3501,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         color,
         opacity: DEFAULT_ANNOTATION_OPACITY,
         contourOnly: false
-      } as any
+      } as StyleOptions
 
       this.roiStyles[key] = this.generateRoiStyle(
         this.defaultAnnotationStyles[annotation.uid]
