@@ -1,3 +1,10 @@
+## [0.39.3](https://github.com/ImagingDataCommons/slim/compare/v0.39.2...v0.39.3) (2025-03-21)
+
+
+### Bug Fixes
+
+* annotation selection styles ([#283](https://github.com/ImagingDataCommons/slim/issues/283)) ([b24a02a](https://github.com/ImagingDataCommons/slim/commit/b24a02aec12073f47b9fbf3e80707057f7e149d7))
+
 ## [0.39.2](https://github.com/ImagingDataCommons/slim/compare/v0.39.1...v0.39.2) (2025-03-20)
 
 
