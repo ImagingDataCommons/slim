@@ -1105,6 +1105,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                     try {
                       // Add ROI without style such that it won't be visible.
                       this.volumeViewer.addROI(roi, {})
+                      const roiAsAnnotation = adaptRoiToAnnotation(roi);
+                      this.formatAnnotation(roiAsAnnotation);
                     } catch {
                       console.error(`could not add ROI "${roi.uid}"`)
                     }
@@ -3175,6 +3177,25 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.volumeViewer.toggleICCProfiles()
   }
 
+  formatAnnotation = (annotation: any) => {
+    const roi = this.volumeViewer.getROI(annotation.uid)
+    const key = _getRoiKey(roi) as string
+    const color = this.roiStyles[key] !== undefined
+      ? this.roiStyles[key].stroke?.color.slice(0, 3)
+      : DEFAULT_ANNOTATION_COLOR_PALETTE[
+        Object.keys(this.roiStyles).length % DEFAULT_ANNOTATION_COLOR_PALETTE.length
+      ]
+    this.defaultAnnotationStyles[annotation.uid] = {
+      color: color as number[],
+      opacity: DEFAULT_ANNOTATION_OPACITY,
+      contourOnly: false
+    }
+
+    this.roiStyles[key] = this.generateRoiStyle(
+      this.defaultAnnotationStyles[annotation.uid]
+    )
+  }
+
   render (): React.ReactNode {
     const rois: dmv.roi.ROI[] = []
     const segments: dmv.segment.Segment[] = []
@@ -3489,28 +3510,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     let annotationGroupMenu
 
-    annotations?.forEach?.((annotation) => {
-      const roi = this.volumeViewer.getROI(annotation.uid)
-      const key = _getRoiKey(roi) as string
-      const color = this.roiStyles[key] !== undefined
-        ? this.roiStyles[key].stroke?.color.slice(0, 3)
-        : DEFAULT_ANNOTATION_COLOR_PALETTE[
-          Object.keys(this.roiStyles).length % DEFAULT_ANNOTATION_COLOR_PALETTE.length
-        ]
-      this.defaultAnnotationStyles[annotation.uid] = {
-        color: color as number[],
-        opacity: DEFAULT_ANNOTATION_OPACITY,
-        contourOnly: false
-      }
-
-      this.roiStyles[key] = this.generateRoiStyle(
-        this.defaultAnnotationStyles[annotation.uid]
-      )
-
-      if (!this.state.selectedRoiUIDs.has(annotation.uid)) {
-        this.volumeViewer.setROIStyle(roi.uid, this.roiStyles[key])
-      }
-    })
+    annotations?.forEach?.(this.formatAnnotation.bind(this))
 
     if (annotationGroups.length > 0) {
       const annotationGroupMetadata: {
