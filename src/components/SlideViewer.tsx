@@ -1105,8 +1105,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                     try {
                       // Add ROI without style such that it won't be visible.
                       this.volumeViewer.addROI(roi, {})
-                      const roiAsAnnotation = adaptRoiToAnnotation(roi);
-                      this.formatAnnotation(roiAsAnnotation);
+                      const roiAsAnnotation = adaptRoiToAnnotation(roi)
+                      this.formatAnnotation(roiAsAnnotation)
                     } catch {
                       console.error(`could not add ROI "${roi.uid}"`)
                     }
