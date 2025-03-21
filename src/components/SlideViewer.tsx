@@ -49,7 +49,7 @@ import { CustomError, errorTypes } from '../utils/CustomError'
 import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from '../services/NotificationMiddleware'
-import AnnotationCategoryList from './AnnotationCategoryList'
+import AnnotationCategoryList, { AnnotationCategoryAndType } from './AnnotationCategoryList'
 import HoveredRoiTooltip from './HoveredRoiTooltip'
 import { adaptRoiToAnnotation } from '../services/RoiToAnnotationAdapter'
 
