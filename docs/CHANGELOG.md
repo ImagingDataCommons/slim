@@ -1,3 +1,10 @@
+## [0.39.4](https://github.com/ImagingDataCommons/slim/compare/v0.39.3...v0.39.4) (2025-03-21)
+
+
+### Bug Fixes
+
+* infinite re-renders ([#284](https://github.com/ImagingDataCommons/slim/issues/284)) ([808a62e](https://github.com/ImagingDataCommons/slim/commit/808a62e4850b4c6321bf5f9b386577187b8a3e82))
+
 ## [0.39.3](https://github.com/ImagingDataCommons/slim/compare/v0.39.2...v0.39.3) (2025-03-21)
 
 
