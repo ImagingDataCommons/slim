@@ -3507,7 +3507,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         this.defaultAnnotationStyles[annotation.uid]
       )
 
-      this.volumeViewer.setROIStyle(roi.uid, this.roiStyles[key])
+      if (!this.state.selectedRoiUIDs.has(annotation.uid)) {
+        this.volumeViewer.setROIStyle(roi.uid, this.roiStyles[key])
+      }
     })
 
     if (annotationGroups.length > 0) {
