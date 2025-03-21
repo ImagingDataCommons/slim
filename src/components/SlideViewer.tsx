@@ -3177,7 +3177,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.volumeViewer.toggleICCProfiles()
   }
 
-  formatAnnotation = (annotation: any) => {
+  formatAnnotation = (annotation: AnnotationCategoryAndType | dmv.roi.ROI) => {
     const roi = this.volumeViewer.getROI(annotation.uid)
     const key = _getRoiKey(roi) as string
     const color = this.roiStyles[key] !== undefined
