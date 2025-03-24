@@ -551,7 +551,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     this.componentSetup = this.componentSetup.bind(this)
     this.componentCleanup = this.componentCleanup.bind(this)
-
     this.onWindowResize = this.onWindowResize.bind(this)
     this.handleRoiDrawing = this.handleRoiDrawing.bind(this)
     this.handleRoiTranslation = this.handleRoiTranslation.bind(this)
@@ -589,6 +588,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handlePresentationStateSelection = this.handlePresentationStateSelection.bind(this)
     this.handlePresentationStateReset = this.handlePresentationStateReset.bind(this)
     this.handleICCProfilesToggle = this.handleICCProfilesToggle.bind(this)
+    this.handleAnnotationSelection = this.handleAnnotationSelection.bind(this)
 
     const { volumeViewer, labelViewer } = _constructViewers({
       clients: this.props.clients,
@@ -1752,7 +1752,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.resetUnselectedRoiStyles(updatedSelectedRois)
   }
 
-  handleAnnotationListSelection (uid: string): void {
+  handleAnnotationSelection (uid: string): void {
     // @ts-expect-error
     this.volumeViewer.clearSelections()
 
@@ -3304,7 +3304,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           selectedRoiUIDs={this.state.selectedRoiUIDs}
           visibleRoiUIDs={this.state.visibleRoiUIDs}
           onVisibilityChange={this.handleAnnotationVisibilityChange}
-          onSelection={this.handleAnnotationListSelection.bind(this)}
+          onSelection={this.handleAnnotationSelection}
         />
       )
     }
