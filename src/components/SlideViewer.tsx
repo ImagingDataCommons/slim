@@ -458,7 +458,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private lastPixel = [0, 0] as [number, number]
 
-  private keysDown = new Set<string>();
+  private readonly keysDown = new Set<string>()
 
   private readonly defaultRoiStyle: dmv.viewer.ROIStyleOptions = {
     stroke: {
@@ -484,8 +484,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     [annotationUID: string]: StyleOptions
   } = {}
 
-  private readonly selectionStrokeColor: number[] = [0, 153, 255];
-  private readonly selectionFillColor: number[] = [255, 255, 255];
+  private readonly selectionStrokeColor: number[] = [0, 153, 255]
+  private readonly selectionFillColor: number[] = [255, 255, 255]
 
   private readonly selectedRoiStyle: dmv.viewer.ROIStyleOptions = {
     stroke: { color: [...this.selectionStrokeColor, 1], width: 3 },
@@ -1682,36 +1682,36 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-  getUpdatedSelectedRois = (newSelectedRoiUid?: string): { selectedRoiUIDs: Set<string>; selectedRoi?: dmv.roi.ROI}=> {
-    const selectedRoiUid = newSelectedRoiUid;
-    const emptySelection =  {
+  getUpdatedSelectedRois = (newSelectedRoiUid?: string): { selectedRoiUIDs: Set<string>, selectedRoi?: dmv.roi.ROI} => {
+    const selectedRoiUid = newSelectedRoiUid
+    const emptySelection = {
       selectedRoiUIDs: new Set<string>(),
       selectedRoi: undefined
-    };
+    }
 
-    if (!selectedRoiUid) {
+    if (selectedRoiUid == null) {
       return emptySelection
     }
 
-    const selectedRoi = this.volumeViewer.getROI(selectedRoiUid);
-    if(!selectedRoi){
-      return emptySelection;
+    const selectedRoi = this.volumeViewer.getROI(selectedRoiUid)
+    if (selectedRoi == null) {
+      return emptySelection
     }
 
-    console.debug(`selected ROI "${selectedRoi.uid}"`);
+    console.debug(`selected ROI "${selectedRoi.uid}"`)
 
-    if (!this.keysDown.has("Shift")) {
+    if (!this.keysDown.has('Shift')) {
       return {
         selectedRoiUIDs: new Set([selectedRoi.uid]),
-        selectedRoi,
-      };
+        selectedRoi
+      }
     }
 
-    const oldSelectedRois = Array.from(this.state.selectedRoiUIDs);
+    const oldSelectedRois = Array.from(this.state.selectedRoiUIDs)
     return {
       selectedRoiUIDs: new Set([...oldSelectedRois, selectedRoi.uid]),
-      selectedRoi,
-    };
+      selectedRoi
+    }
   }
 
   onRoiSelected = (event: CustomEventInit): void => {
@@ -1916,12 +1916,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
      */
   }
 
-  onKeyDown = (event: KeyboardEvent) => {
-    this.keysDown.add(event.key);
+  onKeyDown = (event: KeyboardEvent): void => {
+    this.keysDown.add(event.key)
   }
 
   onKeyUp = (event: KeyboardEvent): void => {
-    this.keysDown.delete(event.key);
+    this.keysDown.delete(event.key)
     if (event.key === 'Escape') {
       if (this.state.isRoiDrawingActive) {
         console.info('deactivate drawing of ROIs')
@@ -2558,7 +2558,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       generatedReport: undefined
     })
   }
-
 
   /**
    * Handle toggling of annotation visibility, i.e., whether a given
