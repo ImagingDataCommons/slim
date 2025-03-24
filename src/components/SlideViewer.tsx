@@ -1715,20 +1715,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-  onRoiSelected = (event: CustomEventInit): void => {
-    const selectedRoiUid = event.detail?.payload?.uid as string
-    const updatedSelectedRois = this.getUpdatedSelectedRois(selectedRoiUid)
-    this.setState(updatedSelectedRois)
-
-    if (updatedSelectedRois.selectedRoiUIDs.size === 0) {
-      // @ts-expect-error
-      this.volumeViewer.clearSelections()
-    }
-
+  resetUnselectedRoiStyles = (selectionState: { selectedRoiUIDs: Set<string> }): void => {
     this.volumeViewer.getAllROIs().forEach(roi => {
       const uid = roi.uid
 
-      if (updatedSelectedRois.selectedRoiUIDs.has(uid) || !this.state.visibleRoiUIDs.has(uid)) {
+      if (selectionState.selectedRoiUIDs.has(uid) || !this.state.visibleRoiUIDs.has(uid)) {
         return
       }
 
@@ -1736,6 +1727,30 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const style = this.getRoiStyle(key)
       this.volumeViewer.setROIStyle(uid, style)
     })
+  }
+
+  onMapClicked = (event: CustomEventInit): void => {
+    const roisClicked = event.detail?.payload?.featuresAtPixel as number
+
+    if (roisClicked !== 0) {
+      return
+    }
+
+    const updatedSelectedRois = this.getUpdatedSelectedRois(undefined)
+    this.setState(updatedSelectedRois)
+
+    // @ts-expect-error
+    this.volumeViewer.clearSelections()
+
+    this.resetUnselectedRoiStyles(updatedSelectedRois)
+  }
+
+  onRoiSelected = (event: CustomEventInit): void => {
+    const selectedRoiUid = event.detail?.payload?.uid as string
+    const updatedSelectedRois = this.getUpdatedSelectedRois(selectedRoiUid)
+    this.setState(updatedSelectedRois)
+
+    this.resetUnselectedRoiStyles(updatedSelectedRois)
   }
 
   handleAnnotationListSelection (uid: string): void {
@@ -1900,6 +1915,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.onRoiDrawn
     )
     document.body.removeEventListener(
+      'dicommicroscopyviewer_viewport_clicked',
+      this.onMapClicked
+    )
+    document.body.removeEventListener(
       'dicommicroscopyviewer_roi_selected',
       this.onRoiSelected
     )
@@ -2022,6 +2041,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     document.body.addEventListener(
       'dicommicroscopyviewer_roi_selected',
       this.onRoiSelected
+    )
+    document.body.addEventListener(
+      'dicommicroscopyviewer_viewport_clicked',
+      this.onMapClicked
     )
     document.body.addEventListener(
       'dicommicroscopyviewer_roi_double_clicked',
