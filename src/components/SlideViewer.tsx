@@ -1735,7 +1735,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       return
     }
 
-    const updatedSelectedRois = this.getUpdatedSelectedRois(undefined)
+    const updatedSelectedRois = this.getUpdatedSelectedRois()
     this.setState(updatedSelectedRois)
 
     // @ts-expect-error
