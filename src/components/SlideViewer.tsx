@@ -1690,12 +1690,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       selectedRoi: undefined
     }
 
-    if (selectedRoiUid == null) {
+    if (selectedRoiUid === undefined) {
       return emptySelection
     }
 
     const selectedRoi = this.volumeViewer.getROI(selectedRoiUid)
-    if (selectedRoi == null) {
+    if (selectedRoi === undefined) {
       return emptySelection
     }
 
