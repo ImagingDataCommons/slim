@@ -589,6 +589,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handlePresentationStateSelection = this.handlePresentationStateSelection.bind(this)
     this.handlePresentationStateReset = this.handlePresentationStateReset.bind(this)
     this.handleICCProfilesToggle = this.handleICCProfilesToggle.bind(this)
+    this.handleAnnotationListSelection = this.handleAnnotationListSelection.bind(this)
 
     const { volumeViewer, labelViewer } = _constructViewers({
       clients: this.props.clients,
@@ -1718,6 +1719,48 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const selectedRoiUid = event.detail?.payload?.uid as string
     const updatedSelectedRois = this.getUpdatedSelectedRois(selectedRoiUid)
     this.setState(updatedSelectedRois)
+
+    if (updatedSelectedRois.selectedRoiUIDs.size === 0) {
+      // @ts-expect-error
+      this.volumeViewer.clearSelections()
+    }
+
+    this.volumeViewer.getAllROIs().forEach(roi => {
+      const uid = roi.uid
+
+      if (updatedSelectedRois.selectedRoiUIDs.has(uid) || !this.state.visibleRoiUIDs.has(uid)) {
+        return
+      }
+
+      const key = _getRoiKey(roi)
+      const style = this.getRoiStyle(key)
+      this.volumeViewer.setROIStyle(uid, style)
+    })
+  }
+
+  handleAnnotationListSelection (uid: string): void {
+    // @ts-expect-error
+    this.volumeViewer.clearSelections()
+
+    const updatedSelectedRois = this.getUpdatedSelectedRois(uid)
+    this.setState(updatedSelectedRois)
+    this.volumeViewer.getAllROIs().forEach((roi) => {
+      let style = {}
+      if (updatedSelectedRois.selectedRoiUIDs.has(roi.uid)) {
+        style = this.selectedRoiStyle
+        this.setState(state => {
+          const visibleRoiUIDs = state.visibleRoiUIDs
+          visibleRoiUIDs.add(roi.uid)
+          return { visibleRoiUIDs }
+        })
+      } else {
+        if (this.state.visibleRoiUIDs.has(roi.uid)) {
+          const key = _getRoiKey(roi)
+          style = this.getRoiStyle(key)
+        }
+      }
+      this.volumeViewer.setROIStyle(roi.uid, style)
+    })
   }
 
   handleRoiSelectionCancellation (): void {
@@ -3239,6 +3282,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           selectedRoiUIDs={this.state.selectedRoiUIDs}
           visibleRoiUIDs={this.state.visibleRoiUIDs}
           onVisibilityChange={this.handleAnnotationVisibilityChange}
+          onSelection={this.handleAnnotationListSelection}
         />
       )
     }

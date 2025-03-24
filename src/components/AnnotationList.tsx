@@ -13,6 +13,7 @@ interface AnnotationListProps {
     roiUID: string
     isVisible: boolean
   }) => void
+  onSelection: (uid: string) => void
 }
 
 /**
@@ -22,6 +23,7 @@ interface AnnotationListProps {
 class AnnotationList extends React.Component<AnnotationListProps, {}> {
   constructor (props: AnnotationListProps) {
     super(props)
+    this.handleMenuItemSelection = this.handleMenuItemSelection.bind(this)
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
   }
 
@@ -38,6 +40,10 @@ class AnnotationList extends React.Component<AnnotationListProps, {}> {
         this.props.onVisibilityChange({ roiUID, isVisible: checked })
       })
     }
+  }
+
+  handleMenuItemSelection (object: any): void {
+    this.props.onSelection(object.key)
   }
 
   render (): React.ReactNode {
@@ -64,6 +70,8 @@ class AnnotationList extends React.Component<AnnotationListProps, {}> {
         </div>
         <Menu
           selectedKeys={[...this.props.selectedRoiUIDs.values()]}
+          onSelect={this.handleMenuItemSelection}
+          onClick={this.handleMenuItemSelection}
         >
           {items}
         </Menu>
