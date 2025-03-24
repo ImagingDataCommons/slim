@@ -589,7 +589,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handlePresentationStateSelection = this.handlePresentationStateSelection.bind(this)
     this.handlePresentationStateReset = this.handlePresentationStateReset.bind(this)
     this.handleICCProfilesToggle = this.handleICCProfilesToggle.bind(this)
-    this.handleAnnotationListSelection = this.handleAnnotationListSelection.bind(this)
 
     const { volumeViewer, labelViewer } = _constructViewers({
       clients: this.props.clients,
@@ -3305,7 +3304,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           selectedRoiUIDs={this.state.selectedRoiUIDs}
           visibleRoiUIDs={this.state.visibleRoiUIDs}
           onVisibilityChange={this.handleAnnotationVisibilityChange}
-          onSelection={this.handleAnnotationListSelection}
+          onSelection={this.handleAnnotationListSelection.bind(this)}
         />
       )
     }
