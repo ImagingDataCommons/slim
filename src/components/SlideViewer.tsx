@@ -3303,8 +3303,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           rois={rois}
           selectedRoiUIDs={this.state.selectedRoiUIDs}
           visibleRoiUIDs={this.state.visibleRoiUIDs}
-          onVisibilityChange={this.handleAnnotationVisibilityChange}
           onSelection={this.handleAnnotationSelection}
+          onVisibilityChange={this.handleAnnotationVisibilityChange}
         />
       )
     }
