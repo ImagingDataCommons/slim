@@ -1729,9 +1729,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   onMapClicked = (event: CustomEventInit): void => {
-    const roisClicked = event.detail?.payload?.featuresAtPixel as number
+    const roisClicked = (event.detail?.payload?.rois ?? []) as dmv.roi.ROI[]
 
-    if (roisClicked !== 0) {
+    if (roisClicked.length !== 0) {
       return
     }
 
