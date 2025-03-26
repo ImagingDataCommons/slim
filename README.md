@@ -15,7 +15,14 @@ It relies on [DICOMweb](https://www.dicomstandard.org/dicomweb/) RESTful service
 
 <img src="docs/screenshots/IDC_CPTAC_C3L-00965-26.png" alt="IDC CPTAC C3L-00965-26" width="100%">
 
-Explore public IDC cancer imaging data collections by visiting the IDC web portal: [portal.imaging.datacommons.cancer.gov](https://portal.imaging.datacommons.cancer.gov/).
+Explore public IDC cancer imaging data collections by visiting the IDC web portal: [portal.imaging.datacommons.cancer.gov](https://portal.imaging.datacommons.cancer.gov/). Some of the highlights of the data types available in IDC that can be handled by Slim are shown below.
+
+| Example/URL    | Screenshot |
+| :-: |:------: |
+| [Cyclic Immunofluorescence (CycIF)](https://viewer.imaging.datacommons.cancer.gov/slim/studies/2.25.332948525917882045731716820411285694886/series/1.3.6.1.4.1.5962.99.1.2339926922.537408935.1655902368650.4.0?state=1.2.826.0.1.3680043.10.511.3.10891959104580772758516809686777375) | <img src="https://github.com/ImagingDataCommons/slim/releases/download/v0.39.4/htan_hms_cycif.jpg" alt="IDC/HTAN-HMS" width="450"> | 
+| [H&E slide + manual annotations (DICOM SR)](https://viewer.imaging.datacommons.cancer.gov/slim/studies/2.25.266314239954879564284639768519696615904/series/1.2.826.0.1.3680043.10.511.3.65352168153070950281170547035589843) | <img src="https://github.com/ImagingDataCommons/slim/releases/download/v0.39.4/rms_expert_annotations.jpg" alt="IDC/RMS-Mutation-Predictions + expert annotations" width="450"> | 
+| [H&E slide + nuclei segmentations (DICOM SEG)](https://viewer.imaging.datacommons.cancer.gov/slim/studies/2.25.312916405820155829215771528638931942827/series/1.2.826.0.1.3680043.10.511.3.11534436557194942782874737859569974) | <img src="https://github.com/ImagingDataCommons/slim/releases/download/v0.39.4/tcga_nuclei_seg.jpg" alt="IDC/TCGA-READ + nuclei segmentations" width="450"> | 
+| [H&E slide + nuclei polygon annotations (DICOM ANN)](https://viewer.imaging.datacommons.cancer.gov/slim/studies/2.25.312916405820155829215771528638931942827/series/1.2.826.0.1.3680043.10.511.3.65930042075829390210508226259517515) | <img src="https://github.com/ImagingDataCommons/slim/releases/download/v0.39.4/tcga_nuclei_ann.jpg" alt="IDC/TCGA-READ + nuclei polygon annotations" width="450"> | 
 
 The IDC viewer uses the [Google Cloud Healthcare API](https://cloud.google.com/healthcare-api/) as DICOMweb server.
 
