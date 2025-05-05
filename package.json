@@ -11,7 +11,7 @@
     "build:firebase": "REACT_APP_CONFIG=gcp PUBLIC_URL=/ craco build",
     "lint": "ts-standard --env jest 'src/**/*.{tsx,ts}'",
     "fmt": "ts-standard --env jest 'src/**/*.{tsx,ts}' --fix",
-    "test": "ts-standard --env jest 'src/**/*.{tsx,ts}' && craco test --setupFiles ./src/setupTests.tsx --watchAll=false",
+    "test": "ts-standard --env jest 'src/**/*.{tsx,ts}' && bun test --preload ./src/setupTests.tsx",
     "predeploy": "REACT_APP_CONFIG=demo PUBLIC_URL='https://imagingdatacommons.github.io/slim/' craco build",
     "deploy": "gh-pages -d build",
     "clean": "rm -rf ./build ./node_modules"
@@ -77,9 +77,7 @@
     "react-error-boundary": "^3.1.4"
   },
   "overrides": {
-    "semver": "7.5.4"
-  },
-  "resolutions": {
+    "semver": "7.5.4",
     "nth-check": "2.0.1",
     "wrap-ansi": "7.0.0",
     "make-dir": "3.1.0",
