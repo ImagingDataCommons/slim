@@ -1,7 +1,13 @@
-// eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-global.matchMedia = global.matchMedia || function () {
+import '@testing-library/jest-dom'
+
+// Mock matchMedia which is not provided by happy-dom
+window.matchMedia = window.matchMedia || function () {
   return {
-    addListener: jest.fn(),
-    removeListener: jest.fn()
+    matches: false,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
   }
 }

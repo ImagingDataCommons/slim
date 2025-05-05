@@ -24,6 +24,8 @@ public/config/*
 .env.test.local
 .env.production.local
 
+# Bun
+bun.lockb
+.bun
+
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*

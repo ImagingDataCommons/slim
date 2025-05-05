@@ -190,27 +190,27 @@ const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
       if (regionItem.GraphicType === 'POLYGON') {
         scoord3d = new dmv.scoord3d.Polygon({
           frameOfReferenceUID: regionItem.ReferencedFrameOfReferenceUID,
-          coordinates: coordinates
+          coordinates
         })
       } else if (regionItem.GraphicType === 'MULTIPOINT') {
         scoord3d = new dmv.scoord3d.MultiPoint({
           frameOfReferenceUID: regionItem.ReferencedFrameOfReferenceUID,
-          coordinates: coordinates
+          coordinates
         })
       } else if (regionItem.GraphicType === 'POLYLINE') {
         scoord3d = new dmv.scoord3d.Polyline({
           frameOfReferenceUID: regionItem.ReferencedFrameOfReferenceUID,
-          coordinates: coordinates
+          coordinates
         })
       } else if (regionItem.GraphicType === 'ELLIPSE') {
         scoord3d = new dmv.scoord3d.Ellipse({
           frameOfReferenceUID: regionItem.ReferencedFrameOfReferenceUID,
-          coordinates: coordinates
+          coordinates
         })
       } else if (regionItem.GraphicType === 'ELLIPSOID') {
         scoord3d = new dmv.scoord3d.Ellipsoid({
           frameOfReferenceUID: regionItem.ReferencedFrameOfReferenceUID,
-          coordinates: coordinates
+          coordinates
         })
       } else {
         NotificationMiddleware.onError(
@@ -235,13 +235,13 @@ const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
     })
 
     const roi = new dmv.roi.ROI({
-      scoord3d: scoord3d,
+      scoord3d,
       uid: generateUUID(),
       properties: {
         trackingUID: trackingUIDItem.UID,
-        observerType: observerType,
-        evaluations: evaluations,
-        measurements: measurements
+        observerType,
+        evaluations,
+        measurements
       }
     })
     rois.push(roi)

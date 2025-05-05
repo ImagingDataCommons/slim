@@ -5,7 +5,7 @@ import Description from './Description'
 import { parseName, parseSex, parseDate } from '../utils/values'
 
 interface PatientProps {
-  metadata: dmv.metadata.Study|dmv.metadata.SOPClass
+  metadata: dmv.metadata.Study | dmv.metadata.SOPClass
 }
 
 /**

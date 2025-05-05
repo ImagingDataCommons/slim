@@ -97,8 +97,8 @@ function ParametrizedSlideViewer ({
         const allClients = Object.values(StorageClasses).map((storageClass) => clients[storageClass])
         Promise.all(allClients.map(async (client) => {
           const seriesMetadata = await client.retrieveSeriesMetadata({
-            studyInstanceUID: studyInstanceUID,
-            seriesInstanceUID: seriesInstanceUID
+            studyInstanceUID,
+            seriesInstanceUID
           })
           const [naturalizedSeriesMetadata] = seriesMetadata.map((metadata) => naturalizeDataset(metadata)) as NaturalizedInstance[]
 

@@ -202,7 +202,7 @@ const _constructViewers = ({ clients, slide, preload }: {
       clientMapping: clients,
       metadata: slide.volumeImages,
       controls: ['overview', 'position'],
-      preload: preload,
+      preload,
       errorInterceptor: (error: CustomError) => {
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.DMV, error
@@ -404,7 +404,7 @@ interface SlideViewerState {
   isAnnotationModalVisible: boolean
   isSelectedRoiModalVisible: boolean
   isHoveredRoiTooltipVisible: boolean
-  hoveredRoiAttributes: Array<{index: number, roiUid: string, attributes: Array<{ name: string, value: string }>}>
+  hoveredRoiAttributes: Array<{ index: number, roiUid: string, attributes: Array<{ name: string, value: string }> }>
   hoveredRoiTooltipX: number
   hoveredRoiTooltipY: number
   isReportModalVisible: boolean
@@ -476,7 +476,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-  private roiStyles: {[key: string]: dmv.viewer.ROIStyleOptions} = {}
+  private roiStyles: { [key: string]: dmv.viewer.ROIStyleOptions } = {}
 
   private defaultAnnotationStyles: {
     [annotationUID: string]: StyleOptions
@@ -937,7 +937,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             opticalPathStyles[identifier] = {
               opacity: 1,
               paletteColorLookupTable: paletteColorLUT,
-              limitValues: limitValues
+              limitValues
             }
           }
         })
@@ -1617,14 +1617,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             })
           } else {
             attributes.push({
-              name: name,
+              name,
               value: `${valueMeaning}`
             })
           }
         } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
           const textContentItem = item as dcmjs.sr.valueTypes.TextContentItem
           attributes.push({
-            name: name,
+            name,
             value: textContentItem.TextValue
           })
         }
@@ -1694,7 +1694,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const oldSelectedRois = Array.from(this.state.selectedRoiUIDs)
     this.setState({
       selectedRoiUIDs: new Set([...oldSelectedRois, selectedRoi.uid]),
-      selectedRoi: selectedRoi
+      selectedRoi
     })
   }
 
@@ -1753,7 +1753,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       sopClassUID: string
       frameNumber: string
       channelIdentifier: string
-      pixelArray: Uint8Array|Uint16Array|Float32Array|null
+      pixelArray: Uint8Array | Uint16Array | Float32Array | null
     } = event.detail.payload
     const key = `${frameInfo.sopInstanceUID}-${frameInfo.frameNumber}`
     this.setState(state => {
@@ -1803,8 +1803,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             }
           } else {
             stats[opticalPathIdentifier] = {
-              min: min,
-              max: max,
+              min,
+              max,
               numFramesSampled: 1
             }
           }
@@ -2096,7 +2096,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               this.setState({
                 selectedEvaluations: [
                   ...filteredEvaluations,
-                  { name: name, value: code }
+                  { name, value: code }
                 ]
               })
             }
@@ -2208,7 +2208,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           this.state.selectedXCoordinate,
           this.state.selectedYCoordinate
         ],
-        level: level
+        level
       })
       const point = new dmv.scoord3d.Point({
         coordinates: [
@@ -2419,13 +2419,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     console.debug('create Measurement Report document content')
     const measurementReport = new dcmjs.sr.templates.MeasurementReport({
       languageOfContentItemAndDescendants: new dcmjs.sr.templates.LanguageOfContentItemAndDescendants({}),
-      observationContext: observationContext,
+      observationContext,
       procedureReported: new dcmjs.sr.coding.CodedConcept({
         value: '112703',
         schemeDesignator: 'DCM',
         meaning: 'Whole Slide Imaging'
       }),
-      imagingMeasurements: imagingMeasurements
+      imagingMeasurements
     })
 
     console.info('create Comprehensive 3D SR document')
@@ -3787,7 +3787,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             style={{
               height: `calc(100% - ${toolbarHeight})`,
               overflow: 'hidden',
-              cursor: cursor
+              cursor
             }}
             ref={this.volumeViewportRef}
           />

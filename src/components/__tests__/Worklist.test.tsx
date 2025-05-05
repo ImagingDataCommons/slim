@@ -1,10 +1,11 @@
 import React from 'react'
 import { BrowserRouter } from 'react-router-dom'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import * as dwc from 'dicomweb-client'
 
 import DicomWebManager from '../../DicomWebManager'
 import Worklist from '../Worklist'
+import { StorageClasses } from '../../data/uids'
 
 beforeAll(() => {})
 
@@ -25,7 +26,7 @@ describe('Worklist', () => {
     settings: [serverSettings]
   })
   const clientMapping = {
-    '1.2.840.10008.5.1.4.1.1.77.1.6': manager
+    [StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]: manager
   }
 
   const searchResults = [
@@ -79,14 +80,16 @@ describe('Worklist', () => {
     return await Promise.resolve(searchResults)
   }
 
-  it('should populate one row for each available study', () => {
-    const { queryAllByRole } = render(
+  it('should populate one row for each available study', async () => {
+    render(
       <BrowserRouter>
         <Worklist clients={clientMapping} />
       </BrowserRouter>
     )
 
-    const rows = queryAllByRole('row')
-    expect(rows).toHaveLength(2)
+    await waitFor(async () => {
+      const rows = await screen.findAllByRole('row')
+      expect(rows).toHaveLength(4) // Header row + 3 data rows
+    })
   })
 })

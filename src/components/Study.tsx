@@ -5,7 +5,7 @@ import Description from './Description'
 import { parseDate, parseTime } from '../utils/values'
 
 interface StudyProps {
-  metadata: dmv.metadata.Study|dmv.metadata.SOPClass
+  metadata: dmv.metadata.Study | dmv.metadata.SOPClass
 }
 
 /**

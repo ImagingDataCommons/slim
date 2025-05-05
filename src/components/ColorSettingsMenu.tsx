@@ -70,7 +70,7 @@ ColorSettingsMenuState
         this.props.onStyleChange({
           uid,
           styleOptions: {
-            color: color,
+            color,
             opacity: this.state.currentStyle.opacity,
             contourOnly: this.state.currentStyle.contourOnly
           }
@@ -91,7 +91,7 @@ ColorSettingsMenuState
         this.props.onStyleChange({
           uid,
           styleOptions: {
-            color: color,
+            color,
             opacity: this.state.currentStyle.opacity,
             contourOnly: this.state.currentStyle.contourOnly
           }
@@ -112,7 +112,7 @@ ColorSettingsMenuState
         this.props.onStyleChange({
           uid,
           styleOptions: {
-            color: color,
+            color,
             opacity: this.state.currentStyle.opacity,
             contourOnly: this.state.currentStyle.contourOnly
           }

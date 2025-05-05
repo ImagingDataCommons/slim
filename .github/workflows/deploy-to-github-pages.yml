@@ -14,20 +14,17 @@ jobs:
       - name: Checkout to repository
         uses: actions/checkout@v4.1.4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4.0.2
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
         with:
-          node-version: 20.8.1
-
-      - name: Install Yarn
-        run: sudo npm i -g yarn
+          bun-version: latest
 
       - name: Install dependencies
-        run: yarn
+        run: bun install
 
       - name: Build and deploy to GitHub Pages
         run: |
           git remote set-url origin https://git:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
-          yarn deploy -- -u "github-actions-bot <support+actions@github.com>"
+          bun run deploy -- -u "github-actions-bot <support+actions@github.com>"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

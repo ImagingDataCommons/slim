@@ -5,7 +5,7 @@ const HoveredRoiTooltip = ({
 }: {
   xPosition: number
   yPosition: number
-  rois: Array<{ index: number, roiUid: string, attributes: Array<{ name: string, value: string }>}>
+  rois: Array<{ index: number, roiUid: string, attributes: Array<{ name: string, value: string }> }>
 }): JSX.Element => {
   return (
     <div

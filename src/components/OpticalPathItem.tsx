@@ -151,7 +151,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       ]
       this.setState(state => ({
         currentStyle: {
-          color: color,
+          color,
           paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
           opacity: state.currentStyle.opacity,
           limitValues: state.currentStyle.limitValues
@@ -159,7 +159,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       }))
       this.props.onStyleChange({
         opticalPathIdentifier: identifier,
-        styleOptions: { color: color }
+        styleOptions: { color }
       })
     }
   }
@@ -176,7 +176,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       ]
       this.setState(state => ({
         currentStyle: {
-          color: color,
+          color,
           paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
           opacity: state.currentStyle.opacity,
           limitValues: state.currentStyle.limitValues
@@ -184,7 +184,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       }))
       this.props.onStyleChange({
         opticalPathIdentifier: identifier,
-        styleOptions: { color: color }
+        styleOptions: { color }
       })
     }
   }
@@ -201,7 +201,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       ]
       this.setState(state => ({
         currentStyle: {
-          color: color,
+          color,
           paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
           opacity: state.currentStyle.opacity,
           limitValues: state.currentStyle.limitValues
@@ -209,7 +209,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       }))
       this.props.onStyleChange({
         opticalPathIdentifier: identifier,
-        styleOptions: { color: color }
+        styleOptions: { color }
       })
     }
   }

@@ -175,8 +175,8 @@ Default values if not specified:
 Download the latest release from [github.com/imagingdatacommons/slim/releases](https://github.com/imagingdatacommons/slim/releases) and then run the following commands to install build dependencies and build the app:
 
 ```none
-yarn install
-PUBLIC_URL=/ yarn build
+bun install
+PUBLIC_URL=/ bun run build
 ```
 
 Once the app has been built, the content of the `build` folder can be directly served by a static web server at the location specified by `PUBLIC_URL` (in this case at `/`).
@@ -312,8 +312,8 @@ For the time being, the legacy implicit grand type has to be used.
 To install requirements and run the app for local development, run the following commands:
 
 ```none
-yarn install
-yarn start
+bun install
+bun run start
 ```
 
 This will serve the app via a development server at [http://localhost:3000](http://localhost:3000) using the default `local` configuration.
@@ -321,7 +321,7 @@ This will serve the app via a development server at [http://localhost:3000](http
 The configuration can be specified using the `REACT_APP_CONFIG` environment variable, which can be set either in the `.env` file or directly in the command line:
 
 ```none
-REACT_APP_CONFIG=local yarn start
+REACT_APP_CONFIG=local bun run start
 ```
 
 ## Citation

@@ -14,14 +14,16 @@ export interface RouteComponentProps {
   params: Params<string>
 }
 
-export function withRouter<T> (Component: React.ComponentType<T>): Function {
-  function ComponentWithRouterProp (props: any): JSX.Element {
+export function withRouter<T extends RouteComponentProps> (
+  Component: React.ComponentType<T>
+): React.ComponentType<Omit<T, keyof RouteComponentProps>> {
+  function ComponentWithRouterProp (props: Omit<T, keyof RouteComponentProps>): JSX.Element {
     const location = useLocation()
     const navigate = useNavigate()
     const params = useParams()
     return (
       <Component
-        {...props}
+        {...props as T}
         location={location}
         navigate={navigate}
         params={params}

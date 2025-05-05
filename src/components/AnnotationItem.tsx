@@ -73,14 +73,14 @@ class AnnotationItem extends React.Component<AnnotationItemProps, {}> {
           })
         } else {
           attributes.push({
-            name: name,
+            name,
             value: `${valueMeaning}`
           })
         }
       } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
         const textContentItem = item as dcmjs.sr.valueTypes.TextContentItem
         attributes.push({
-          name: name,
+          name,
           value: textContentItem.TextValue
         })
       }
@@ -92,7 +92,7 @@ class AnnotationItem extends React.Component<AnnotationItemProps, {}> {
       const value = seq.NumericValue.toPrecision(6)
       const unit = seq.MeasurementUnitsCodeSequence[0].CodeValue
       attributes.push({
-        name: name,
+        name,
         value: `${value} ${unit}`
       })
     })

@@ -116,4 +116,6 @@ class NotificationMiddleware extends PubSub {
   }
 }
 
-export default new NotificationMiddleware()
+const notificationMiddleware = new NotificationMiddleware()
+
+export default notificationMiddleware

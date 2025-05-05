@@ -115,14 +115,14 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
       ]
       this.setState(state => ({
         currentStyle: {
-          color: color,
+          color,
           opacity: state.currentStyle.opacity,
           limitValues: state.currentStyle.limitValues
         }
       }))
       this.props.onStyleChange({
         uid: this.props.annotationGroup.uid,
-        styleOptions: { color: color }
+        styleOptions: { color }
       })
     }
   }
@@ -138,14 +138,14 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
       ]
       this.setState(state => ({
         currentStyle: {
-          color: color,
+          color,
           opacity: state.currentStyle.opacity,
           limitValues: state.currentStyle.limitValues
         }
       }))
       this.props.onStyleChange({
         uid: this.props.annotationGroup.uid,
-        styleOptions: { color: color }
+        styleOptions: { color }
       })
     }
   }
@@ -161,14 +161,14 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
       ]
       this.setState(state => ({
         currentStyle: {
-          color: color,
+          color,
           opacity: state.currentStyle.opacity,
           limitValues: state.currentStyle.limitValues
         }
       }))
       this.props.onStyleChange({
         uid: this.props.annotationGroup.uid,
-        styleOptions: { color: color }
+        styleOptions: { color }
       })
     }
   }
