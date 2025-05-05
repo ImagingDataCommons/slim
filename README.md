@@ -175,16 +175,38 @@ Default values if not specified:
 Download the latest release from [github.com/imagingdatacommons/slim/releases](https://github.com/imagingdatacommons/slim/releases) and then run the following commands to install build dependencies and build the app:
 
 ```none
+# Install dependencies
 bun install
+
+# Build the app
+bun run build
+
+# For specific deployment paths, use PUBLIC_URL
 PUBLIC_URL=/ bun run build
 ```
 
 Once the app has been built, the content of the `build` folder can be directly served by a static web server at the location specified by `PUBLIC_URL` (in this case at `/`).
 The `PUBLIC_URL` must be either a full URL or a relative path to the location at which the viewer application will get deployed (e.g., `PUBLIC_URL=https://imagingdatacommons.github.io/slim` or `PUBLIC_URL='/slim'`).
 
-To learn how to deploy Slim as a Google Firebase webapp, consider [this tutorial](https://tinyurl.com/idc-slim-gcp).
+### Development
 
-### Local
+For local development, you can use:
+
+```none
+# Start the development server
+bun run start
+
+# Run tests
+bun run test
+
+# Format code
+bun run fmt
+
+# Lint code
+bun run lint
+```
+
+### Local Deployment
 
 The repository provides a [Docker compose file](https://docs.docker.com/compose/compose-file/) to deploy a static web server and a [dcm4chee-arc-light](https://github.com/dcm4che/dcm4chee-arc-light) DICOMweb server on localhost for local app development and testing:
 

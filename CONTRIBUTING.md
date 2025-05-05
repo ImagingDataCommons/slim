@@ -29,9 +29,16 @@ The [antd](https://ant.design/https://ant.design/) React UI component library is
 
 The app is built using [craco](https://github.com/gsoft-inc/craco) (with the [craco-less plugin](https://github.com/DocSpring/craco-less)), which serves as a configuration layer around [create-react-app](https://github.com/facebook/create-react-app/).
 
-Tests are written and run using the [jest](https://jestjs.io/) framework.
+Tests are written and run using [Bun's test runner](https://bun.sh/docs/cli/test) which is compatible with Jest.
 
-The [Bun](https://bun.sh/) package manager and runtime is used to manage dependencies and run scripts specified in `package.json` (`build`, `lint`, `test`, etc.).
+The [Bun](https://bun.sh/) package manager and runtime is used to manage dependencies and run scripts. Available scripts in `package.json`:
+
+- `bun run start` - Start the development server
+- `bun run build` - Build the production app
+- `bun run test` - Run tests
+- `bun run lint` - Check code style
+- `bun run fmt` - Format code
+- `bun run clean` - Clean build artifacts
 
 ## Coding style
 
@@ -39,8 +46,11 @@ Source code is linted using [ts-standard](https://github.com/standard/ts-standar
 
 Use the following command to identify potential coding style and type annotation violations:
 
-    $ bun lint
+    $ bun run lint
 
+To automatically fix formatting issues:
+
+    $ bun run fmt
 
 ### Documentation
 
