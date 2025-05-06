@@ -1,10 +1,8 @@
 {
   "name": "slim",
   "version": "0.39.4",
-  "homepage": "/",
   "private": true,
   "author": "ImagingDataCommons",
-  "proxy": "http://localhost:8008",
   "scripts": {
     "start": "rm -rf ./node_modules/.cache/default-development && craco start",
     "build": "craco build",
