@@ -48,7 +48,7 @@ module.exports = {
           patterns: [
             {
               from: './node_modules/dicom-microscopy-viewer/dist/dynamic-import/dicom-microscopy-viewer',
-              to: './static/js'
+              to: './dicom-microscopy-viewer'
             }
           ]
         })
