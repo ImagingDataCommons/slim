@@ -62,7 +62,7 @@ module.exports = {
               { name: 'RewriteUrlsPlugin', stage: webpack.Compilation.PROCESS_ASSETS_STAGE_OPTIMIZE },
               (assets) => {
                 for (const [filename, asset] of Object.entries(assets)) {
-                  if (filename.endsWith('.js') && typeof asset.source() === 'string') {
+                  if (typeof asset.source() === 'string') {
                     compilation.updateAsset(
                       filename,
                       new webpack.sources.RawSource(asset.source().replace(/\/dicom-microscopy-viewer\//g, '/static/js/'))
