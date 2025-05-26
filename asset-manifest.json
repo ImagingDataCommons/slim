@@ -8,11 +8,11 @@
     "static/js/912.f76663e7.chunk.js": "https://imagingdatacommons.github.io/slim/static/js/912.f76663e7.chunk.js",
     "static/js/948.e2efa1f6.chunk.js": "https://imagingdatacommons.github.io/slim/static/js/948.e2efa1f6.chunk.js",
     "static/js/687.f55b83b9.chunk.js": "https://imagingdatacommons.github.io/slim/static/js/687.f55b83b9.chunk.js",
-    "static/js/dicomMicroscopyViewer.min.js.map": "https://imagingdatacommons.github.io/slim/static/js/dicomMicroscopyViewer.min.js.map",
-    "static/js/dicomMicroscopyViewer.min.js": "https://imagingdatacommons.github.io/slim/static/js/dicomMicroscopyViewer.min.js",
-    "static/js/index.worker.min.worker.js.map": "https://imagingdatacommons.github.io/slim/static/js/index.worker.min.worker.js.map",
-    "static/js/index.worker.min.worker.js": "https://imagingdatacommons.github.io/slim/static/js/index.worker.min.worker.js",
-    "static/js/wasm": "https://imagingdatacommons.github.io/slim/static/js/5004fdc02f329ce53b69.wasm",
+    "dicom-microscopy-viewer/dicomMicroscopyViewer.min.js.map": "https://imagingdatacommons.github.io/slim/dicom-microscopy-viewer/dicomMicroscopyViewer.min.js.map",
+    "dicom-microscopy-viewer/dicomMicroscopyViewer.min.js": "https://imagingdatacommons.github.io/slim/dicom-microscopy-viewer/dicomMicroscopyViewer.min.js",
+    "dicom-microscopy-viewer/index.worker.min.worker.js.map": "https://imagingdatacommons.github.io/slim/dicom-microscopy-viewer/index.worker.min.worker.js.map",
+    "dicom-microscopy-viewer/index.worker.min.worker.js": "https://imagingdatacommons.github.io/slim/dicom-microscopy-viewer/index.worker.min.worker.js",
+    "dicom-microscopy-viewer/wasm": "https://imagingdatacommons.github.io/slim/dicom-microscopy-viewer/5004fdc02f329ce53b69.wasm",
     "index.html": "https://imagingdatacommons.github.io/slim/index.html"
   },
   "entrypoints": [
