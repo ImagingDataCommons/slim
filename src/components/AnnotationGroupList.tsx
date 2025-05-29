@@ -32,12 +32,14 @@ interface AnnotationGroupListProps {
   }) => void
 }
 
+
 /**
  * React component representing a list of Annotation Groups.
  */
 class AnnotationGroupList extends React.Component<AnnotationGroupListProps, {}> {
+
   handleVisibilityChange (
-    checked: boolean
+    checked: boolean,
   ): void {
     if (checked) {
       this.props.annotationGroups.forEach(annotationGroup => {
@@ -66,22 +68,21 @@ class AnnotationGroupList extends React.Component<AnnotationGroupListProps, {}> 
       )
     })
 
-    return (
-      <>
+    return (<>
 
-        <div style={{ paddingLeft: '14px', paddingTop: '7px', paddingBottom: '7px' }}>
-          <Switch
-            size='small'
-            onChange={(checked: boolean) => this.handleVisibilityChange(checked)}
-            checked={this.props.visibleAnnotationGroupUIDs.size > 0}
-            checkedChildren={<FaEye />}
-            unCheckedChildren={<FaEyeSlash />}
-          />
-        </div>
-        <Menu selectable={false}>
-          {items}
-        </Menu>
-      </>
+      <div style={{ paddingLeft: '14px', paddingTop: '7px', paddingBottom: '7px' }}>
+        <Switch
+          size='small'
+          onChange={(checked: boolean) => this.handleVisibilityChange(checked)}
+          checked={this.props.visibleAnnotationGroupUIDs.size > 0}
+          checkedChildren={<FaEye />}
+          unCheckedChildren={<FaEyeSlash />}
+        />
+      </div>
+      <Menu selectable={false}>
+        {items}
+      </Menu>
+    </>
     )
   }
 }
