@@ -73,7 +73,7 @@ class AnnotationGroupList extends React.Component<AnnotationGroupListProps, {}> 
       <div style={{ paddingLeft: '14px', paddingTop: '7px', paddingBottom: '7px' }}>
         <Switch
           size='small'
-          onChange={this.handleVisibilityChange.bind(this)}
+          onChange={(checked: boolean) => this.handleVisibilityChange(checked)}
           checked={this.props.visibleAnnotationGroupUIDs.size > 0}
           checkedChildren={<FaEye />}
           unCheckedChildren={<FaEyeSlash />}
