@@ -43,7 +43,7 @@ interface AnnotationGroupListProps {
  */
 class AnnotationGroupList extends React.Component<
 AnnotationGroupListProps,
-{}
+unknown
 > {
   constructor (props: AnnotationGroupListProps) {
     super(props)
