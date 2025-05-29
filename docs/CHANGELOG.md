@@ -1,3 +1,10 @@
+# [0.40.0](https://github.com/ImagingDataCommons/slim/compare/v0.39.4...v0.40.0) (2025-05-13)
+
+
+### Features
+
+* format readme + table of contents ([#294](https://github.com/ImagingDataCommons/slim/issues/294)) ([a09db12](https://github.com/ImagingDataCommons/slim/commit/a09db125e0b33a98fe848f66d668ba6f9167a96b))
+
 ## [0.39.4](https://github.com/ImagingDataCommons/slim/compare/v0.39.3...v0.39.4) (2025-03-21)
 
 
