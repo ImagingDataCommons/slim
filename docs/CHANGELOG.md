@@ -1,3 +1,10 @@
+# [0.41.0](https://github.com/ImagingDataCommons/slim/compare/v0.40.1...v0.41.0) (2025-05-30)
+
+
+### Features
+
+* add toggle all button ([#301](https://github.com/ImagingDataCommons/slim/issues/301)) ([de550c0](https://github.com/ImagingDataCommons/slim/commit/de550c0b936339cafdf6931af71a75b03969b479))
+
 ## [0.40.1](https://github.com/ImagingDataCommons/slim/compare/v0.40.0...v0.40.1) (2025-05-29)
 
 
