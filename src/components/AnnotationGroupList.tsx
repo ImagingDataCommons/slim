@@ -45,12 +45,7 @@ class AnnotationGroupList extends React.Component<
 AnnotationGroupListProps,
 unknown
 > {
-  constructor (props: AnnotationGroupListProps) {
-    super(props)
-    this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
-  }
-
-  handleVisibilityChange (checked: boolean): void {
+  handleVisibilityChange = (checked: boolean): void => {
     if (checked) {
       this.props.annotationGroups.forEach((annotationGroup) => {
         this.props.onAnnotationGroupVisibilityChange({
