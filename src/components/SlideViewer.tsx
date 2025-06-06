@@ -1733,9 +1733,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   onLoadingError = (event: CustomEventInit): void => {
-    console.error('Failed to load data')
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    const message = (event.detail?.payload?.message === null ? 'Failed to load data' : event.detail?.payload?.message) as string
+    const message = (event.detail?.payload?.message ?? 'Failed to load data') as string
+    console.error(message)
     NotificationMiddleware.onError(
       NotificationMiddlewareContext.SLIM,
       new CustomError(
