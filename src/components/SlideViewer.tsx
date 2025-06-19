@@ -2295,10 +2295,18 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const metadata = this.volumeViewer.getOpticalPathMetadata(
       opticalPaths[0].identifier
     )
-    const report = generateReport({ rois, metadata, user: this.props.user, app: this.props.app, visibleRoiUIDs: this.state.visibleRoiUIDs })
-    this.setState({
-      isReportModalVisible: report.isReportModalVisible,
-      generatedReport: report.generatedReport
+    this.setState((prevState) => {
+      const report = generateReport({
+        rois,
+        metadata,
+        user: this.props.user,
+        app: this.props.app,
+        visibleRoiUIDs: prevState.visibleRoiUIDs
+      })
+      return {
+        isReportModalVisible: report.isReportModalVisible,
+        generatedReport: report.generatedReport
+      }
     })
   }
 
