@@ -26,7 +26,7 @@ It relies on [DICOMweb](https://www.dicomstandard.org/dicomweb/) RESTful service
   - [Google Cloud Platform](#google-cloud-platform)
     - [OAuth 2.0 configuration](#oauth-20-configuration)
 - [Development](#development)
-- [Lining Slim to a Local dicom-microscopy-viewer Library](#linking-slim-to-a-local-dicom-microscopy-viewer-library)
+- [Linking Slim to a Local dicom-microscopy-viewer Library](#linking-slim-to-a-local-dicom-microscopy-viewer-library)
 - [Citation](#citation)
 - [Acknowledgments](#acknowledgments)
 - [DICOM Conformance Statement](#dicom-conformance-statement)
