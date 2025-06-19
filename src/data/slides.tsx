@@ -105,8 +105,8 @@ class Slide {
       }
       if (hasImageFlavor(image, ImageFlavors.VOLUME)) {
         frameOfReferenceUIDs.VOLUME.add(image.FrameOfReferenceUID)
-        if (image.PyramidUID != null) {
-          for (const identifier in opticalPathIdentifiers) {
+        if (image.PyramidUID !== null && image.PyramidUID !== undefined) {
+          for (const identifier of Object.keys(opticalPathIdentifiers)) {
             pyramidUIDs.VOLUME[identifier].add(image.PyramidUID)
           }
         }
@@ -119,8 +119,8 @@ class Slide {
         )
         if (!hasEquivalentVolume) {
           frameOfReferenceUIDs.VOLUME.add(image.FrameOfReferenceUID)
-          if (image.PyramidUID != null) {
-            for (const identifier in opticalPathIdentifiers) {
+          if (image.PyramidUID !== null && image.PyramidUID !== undefined) {
+            for (const identifier of Object.keys(opticalPathIdentifiers)) {
               pyramidUIDs.VOLUME[identifier].add(image.PyramidUID)
             }
           }

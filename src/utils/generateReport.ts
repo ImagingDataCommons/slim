@@ -157,13 +157,13 @@ const generateReport = ({
     languageOfContentItemAndDescendants: new dcmjs.sr.templates.LanguageOfContentItemAndDescendants(
       {}
     ),
-    observationContext: observationContext,
+    observationContext,
     procedureReported: new dcmjs.sr.coding.CodedConcept({
       value: '112703',
       schemeDesignator: 'DCM',
       meaning: 'Whole Slide Imaging'
     }),
-    imagingMeasurements: imagingMeasurements
+    imagingMeasurements
   })
 
   console.info('create Comprehensive 3D SR document')
