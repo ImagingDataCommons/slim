@@ -1,3 +1,17 @@
+# [0.41.0](https://github.com/ImagingDataCommons/slim/compare/v0.40.1...v0.41.0) (2025-05-30)
+
+
+### Features
+
+* add toggle all button ([#301](https://github.com/ImagingDataCommons/slim/issues/301)) ([de550c0](https://github.com/ImagingDataCommons/slim/commit/de550c0b936339cafdf6931af71a75b03969b479))
+
+## [0.40.1](https://github.com/ImagingDataCommons/slim/compare/v0.40.0...v0.40.1) (2025-05-29)
+
+
+### Bug Fixes
+
+* use dmv folder for wasm files ([#302](https://github.com/ImagingDataCommons/slim/issues/302)) ([1ebb711](https://github.com/ImagingDataCommons/slim/commit/1ebb711ab38138290c9cf506ad2972fadddbed93))
+
 # [0.40.0](https://github.com/ImagingDataCommons/slim/compare/v0.39.4...v0.40.0) (2025-05-13)
 
 
