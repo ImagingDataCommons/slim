@@ -47,6 +47,7 @@ const generateReport = ({
 
   console.debug('create Observation Context')
   let observer
+
   if (user !== undefined) {
     observer = new dcmjs.sr.templates.PersonObserverIdentifyingAttributes({
       name: user.name ?? 'ANONYMOUS',
@@ -58,6 +59,7 @@ const generateReport = ({
       name: 'ANONYMOUS'
     })
   }
+
   const observationContext = new dcmjs.sr.templates.ObservationContext({
     observerPersonContext: new dcmjs.sr.templates.ObserverContext({
       observerType: new dcmjs.sr.coding.CodedConcept({
@@ -100,9 +102,11 @@ const generateReport = ({
     if (!visibleRoiUIDs.has(roi.uid)) {
       continue
     }
+
     let findingType = roi.evaluations.find((item: dcmjs.sr.valueTypes.ContentItem) => {
       return item.ConceptNameCodeSequence[0].CodeValue === '121071'
     })
+
     if (findingType === undefined) {
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
@@ -112,12 +116,16 @@ const generateReport = ({
         )
       )
     }
+
     findingType = findingType as dcmjs.sr.valueTypes.CodeContentItem
+
+    const trackingIdentifier = new dcmjs.sr.templates.TrackingIdentifier({
+      uid: roi.properties.trackingUID ?? roi.uid,
+      identifier: `ROI #${i + 1}`
+    })
+
     const group = new dcmjs.sr.templates.PlanarROIMeasurementsAndQualitativeEvaluations({
-      trackingIdentifier: new dcmjs.sr.templates.TrackingIdentifier({
-        uid: roi.properties.trackingUID ?? roi.uid,
-        identifier: `ROI #${i + 1}`
-      }),
+      trackingIdentifier,
       referencedRegion: new dcmjs.sr.contentItems.ImageRegion3D({
         graphicType: roi.scoord3d.graphicType,
         graphicData: roi.scoord3d.graphicData,
@@ -133,6 +141,7 @@ const generateReport = ({
       }),
       measurements: roi.measurements
     })
+
     const measurements = group as dcmjs.sr.valueTypes.ContainerContentItem[]
     measurements[0].ContentTemplateSequence = [
       {
