@@ -5,6 +5,14 @@ import { CustomError, errorTypes } from '../utils/CustomError'
 import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from '../services/NotificationMiddleware'
+import { User } from '../auth'
+
+interface AppInfo {
+  name: string
+  version: string
+  uid: string
+  organization?: string
+}
 
 const generateReport = ({
   rois,
@@ -13,12 +21,12 @@ const generateReport = ({
   app,
   visibleRoiUIDs
 }: {
-  rois: any
-  metadata: any
-  user: any
-  app: any
-  visibleRoiUIDs: any
-}) => {
+  rois: dmv.roi.ROI[]
+  metadata: dmv.metadata.VLWholeSlideMicroscopyImage[]
+  user: User | undefined
+  app: AppInfo
+  visibleRoiUIDs: Set<string>
+}): { isReportModalVisible: boolean, generatedReport: dmv.metadata.Comprehensive3DSR } => {
   // Metadata should be sorted such that the image with the highest
   // resolution is the last item in the array.
   const refImage = metadata[metadata.length - 1]
@@ -26,7 +34,7 @@ const generateReport = ({
   // ontainer (slide). Only the tissue section is tracked with a unique
   // identifier, even if the section may be composed of different biological
   // samples.
-  if (refImage.SpecimenDescriptionSequence.length > 1) {
+  if ((refImage.SpecimenDescriptionSequence?.length ?? 0) > 1) {
     NotificationMiddleware.onError(
       NotificationMiddlewareContext.SLIM,
       new CustomError(
@@ -41,8 +49,8 @@ const generateReport = ({
   let observer
   if (user !== undefined) {
     observer = new dcmjs.sr.templates.PersonObserverIdentifyingAttributes({
-      name: user.name,
-      loginName: user.email
+      name: user.name ?? 'ANONYMOUS',
+      loginName: user.email ?? ''
     })
   } else {
     console.warn('no user information available')
@@ -100,7 +108,7 @@ const generateReport = ({
         NotificationMiddlewareContext.SLIM,
         new CustomError(
           errorTypes.ENCODINGANDDECODING,
-          `No finding type was specified for ROI "${roi.uid}"`
+          `No finding type was specified for ROI "${String(roi.uid)}"`
         )
       )
     }
