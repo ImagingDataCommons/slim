@@ -458,6 +458,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private lastPixel = [0, 0] as [number, number]
 
+  private readonly keysDown = new Set<string>()
+
   private readonly defaultRoiStyle: dmv.viewer.ROIStyleOptions = {
     stroke: {
       color: DEFAULT_ROI_STROKE_COLOR,
@@ -482,15 +484,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     [annotationUID: string]: StyleOptions
   } = {}
 
-  private readonly selectionColor: number[] = [140, 184, 198]
+  private readonly selectionStrokeColor: number[] = [0, 153, 255]
+  private readonly selectionFillColor: number[] = [255, 255, 255]
 
   private readonly selectedRoiStyle: dmv.viewer.ROIStyleOptions = {
-    stroke: { color: [...this.selectionColor, 1], width: 3 },
-    fill: { color: [...this.selectionColor, 0.2] },
+    stroke: { color: [...this.selectionStrokeColor, 1], width: 3 },
+    fill: { color: [...this.selectionFillColor, 0.5] },
     image: {
       circle: {
         radius: 5,
-        fill: { color: [...this.selectionColor, 1] }
+        fill: { color: [...this.selectionStrokeColor, 1] }
       }
     }
   }
@@ -548,7 +551,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     this.componentSetup = this.componentSetup.bind(this)
     this.componentCleanup = this.componentCleanup.bind(this)
-
     this.onWindowResize = this.onWindowResize.bind(this)
     this.handleRoiDrawing = this.handleRoiDrawing.bind(this)
     this.handleRoiTranslation = this.handleRoiTranslation.bind(this)
@@ -563,7 +565,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleAnnotationEvaluationSelection = this.handleAnnotationEvaluationSelection.bind(this)
     this.handleAnnotationEvaluationClearance = this.handleAnnotationEvaluationClearance.bind(this)
     this.handleAnnotationConfigurationCompletion = this.handleAnnotationConfigurationCompletion.bind(this)
-    this.handleAnnotationSelection = this.handleAnnotationSelection.bind(this)
     this.handleAnnotationVisibilityChange = this.handleAnnotationVisibilityChange.bind(this)
     this.handleAnnotationGroupVisibilityChange = this.handleAnnotationGroupVisibilityChange.bind(this)
     this.handleAnnotationGroupStyleChange = this.handleAnnotationGroupStyleChange.bind(this)
@@ -587,6 +588,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handlePresentationStateSelection = this.handlePresentationStateSelection.bind(this)
     this.handlePresentationStateReset = this.handlePresentationStateReset.bind(this)
     this.handleICCProfilesToggle = this.handleICCProfilesToggle.bind(this)
+    this.handleAnnotationSelection = this.handleAnnotationSelection.bind(this)
 
     const { volumeViewer, labelViewer } = _constructViewers({
       clients: this.props.clients,
@@ -1680,21 +1682,98 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-  onRoiSelected = (event: CustomEventInit): void => {
-    const selectedRoi = event.detail.payload as dmv.roi.ROI | null
-    if (selectedRoi == null) {
-      this.setState({
-        selectedRoiUIDs: new Set(),
-        selectedRoi: undefined
-      })
-      return
+  getUpdatedSelectedRois = (newSelectedRoiUid?: string): { selectedRoiUIDs: Set<string>, selectedRoi?: dmv.roi.ROI} => {
+    const selectedRoiUid = newSelectedRoiUid
+    const emptySelection = {
+      selectedRoiUIDs: new Set<string>(),
+      selectedRoi: undefined
+    }
+
+    if (selectedRoiUid === undefined) {
+      return emptySelection
+    }
+
+    const selectedRoi = this.volumeViewer.getROI(selectedRoiUid)
+    if (selectedRoi === undefined) {
+      return emptySelection
     }
 
     console.debug(`selected ROI "${selectedRoi.uid}"`)
+
+    if (!this.keysDown.has('Shift')) {
+      return {
+        selectedRoiUIDs: new Set([selectedRoi.uid]),
+        selectedRoi
+      }
+    }
+
     const oldSelectedRois = Array.from(this.state.selectedRoiUIDs)
-    this.setState({
+    return {
       selectedRoiUIDs: new Set([...oldSelectedRois, selectedRoi.uid]),
-      selectedRoi: selectedRoi
+      selectedRoi
+    }
+  }
+
+  resetUnselectedRoiStyles = (selectionState: { selectedRoiUIDs: Set<string> }): void => {
+    this.volumeViewer.getAllROIs().forEach(roi => {
+      const uid = roi.uid
+
+      if (selectionState.selectedRoiUIDs.has(uid) || !this.state.visibleRoiUIDs.has(uid)) {
+        return
+      }
+
+      const key = _getRoiKey(roi)
+      const style = this.getRoiStyle(key)
+      this.volumeViewer.setROIStyle(uid, style)
+    })
+  }
+
+  onMapClicked = (event: CustomEventInit): void => {
+    const roisClicked = (event.detail?.payload?.rois ?? []) as dmv.roi.ROI[]
+
+    if (roisClicked.length !== 0) {
+      return
+    }
+
+    const updatedSelectedRois = this.getUpdatedSelectedRois()
+    this.setState(updatedSelectedRois)
+
+    // @ts-expect-error
+    this.volumeViewer.clearSelections()
+
+    this.resetUnselectedRoiStyles(updatedSelectedRois)
+  }
+
+  onRoiSelected = (event: CustomEventInit): void => {
+    const selectedRoiUid = event.detail?.payload?.uid as string
+    const updatedSelectedRois = this.getUpdatedSelectedRois(selectedRoiUid)
+    this.setState(updatedSelectedRois)
+
+    this.resetUnselectedRoiStyles(updatedSelectedRois)
+  }
+
+  handleAnnotationSelection (uid: string): void {
+    // @ts-expect-error
+    this.volumeViewer.clearSelections()
+
+    const updatedSelectedRois = this.getUpdatedSelectedRois(uid)
+    this.setState(updatedSelectedRois)
+    this.volumeViewer.getAllROIs().forEach((roi) => {
+      let style = {}
+      if (updatedSelectedRois.selectedRoiUIDs.has(roi.uid)) {
+        style = this.selectedRoiStyle
+        this.setState(state => {
+          const visibleRoiUIDs = state.visibleRoiUIDs
+          visibleRoiUIDs.add(roi.uid)
+          return { visibleRoiUIDs }
+        })
+      } else {
+        if (this.state.visibleRoiUIDs.has(roi.uid)) {
+          const key = _getRoiKey(roi)
+          style = this.getRoiStyle(key)
+        }
+      }
+      this.volumeViewer.setROIStyle(roi.uid, style)
     })
   }
 
@@ -1835,6 +1914,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.onRoiDrawn
     )
     document.body.removeEventListener(
+      'dicommicroscopyviewer_viewport_clicked',
+      this.onMapClicked
+    )
+    document.body.removeEventListener(
       'dicommicroscopyviewer_roi_selected',
       this.onRoiSelected
     )
@@ -1874,6 +1957,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       'keyup',
       this.onKeyUp
     )
+    document.body.removeEventListener(
+      'keyup',
+      this.onKeyDown
+    )
     window.removeEventListener('resize', this.onWindowResize)
 
     this.volumeViewer.cleanup()
@@ -1890,7 +1977,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
      */
   }
 
+  onKeyDown = (event: KeyboardEvent): void => {
+    this.keysDown.add(event.key)
+  }
+
   onKeyUp = (event: KeyboardEvent): void => {
+    this.keysDown.delete(event.key)
     if (event.key === 'Escape') {
       if (this.state.isRoiDrawingActive) {
         console.info('deactivate drawing of ROIs')
@@ -1950,6 +2042,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.onRoiSelected
     )
     document.body.addEventListener(
+      'dicommicroscopyviewer_viewport_clicked',
+      this.onMapClicked
+    )
+    document.body.addEventListener(
       'dicommicroscopyviewer_roi_double_clicked',
       this.onRoiDoubleClicked
     )
@@ -1992,6 +2088,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     document.body.addEventListener(
       'keyup',
       this.onKeyUp
+    )
+    document.body.addEventListener(
+      'keydown',
+      this.onKeyDown
     )
     window.addEventListener('beforeunload', this.componentCleanup)
     window.addEventListener('resize', this.onWindowResize)
@@ -2521,32 +2621,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.setState({
       isReportModalVisible: false,
       generatedReport: undefined
-    })
-  }
-
-  /**
-   * Handler that gets called when an annotation has been selected from the
-   * current list of annotations.
-   */
-  handleAnnotationSelection ({ roiUID }: { roiUID: string }): void {
-    console.log(`selected ROI ${roiUID}`)
-    this.setState({ selectedRoiUIDs: new Set([roiUID]) })
-    this.volumeViewer.getAllROIs().forEach((roi) => {
-      let style = {}
-      if (roi.uid === roiUID) {
-        style = this.selectedRoiStyle
-        this.setState(state => {
-          const visibleRoiUIDs = state.visibleRoiUIDs
-          visibleRoiUIDs.add(roi.uid)
-          return { visibleRoiUIDs }
-        })
-      } else {
-        if (this.state.visibleRoiUIDs.has(roi.uid)) {
-          const key = _getRoiKey(roi)
-          style = this.getRoiStyle(key)
-        }
-      }
-      this.volumeViewer.setROIStyle(roi.uid, style)
     })
   }
 
