@@ -3030,6 +3030,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
+  handleAnnotationGroupClick = (annotationGroupUID: string): void => {
+    this.volumeViewer.zoomToROI(annotationGroupUID)
+  }
+
   /**
    * Handler that will toggle the ICC profile color management, i.e., either
    * enable or disable it, depending on its current state.
@@ -3398,6 +3402,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           <AnnotationGroupList
             annotationGroups={annotationGroups}
             metadata={annotationGroupMetadata}
+            onAnnotationGroupClick={this.handleAnnotationGroupClick}
             // when adding annotationGroups to annotationCategory list,
             // make so that this is uses this.defaultAnnotationStyles later instead of defaultAnnotationGroupStyles
             defaultAnnotationGroupStyles={defaultAnnotationGroupStyles}
