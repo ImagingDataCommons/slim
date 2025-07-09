@@ -28,6 +28,7 @@ interface AnnotationGroupItemProps {
     opacity: number
     color: number[]
   }
+  onAnnotationGroupClick: (annotationGroupUID: string) => void
   onVisibilityChange: ({ annotationGroupUID, isVisible }: {
     annotationGroupUID: string
     isVisible: boolean
@@ -66,6 +67,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
     this.handleColorGChange = this.handleColorGChange.bind(this)
     this.handleColorBChange = this.handleColorBChange.bind(this)
     this.getCurrentColor = this.getCurrentColor.bind(this)
+    this.handleAnnotationGroupClick = this.handleAnnotationGroupClick.bind(this)
     this.state = {
       isVisible: this.props.isVisible,
       currentStyle: {
@@ -272,6 +274,10 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
       uid: this.props.annotationGroup.uid,
       styleOptions: { limitValues: values }
     })
+  }
+
+  handleAnnotationGroupClick (): void {
+    this.props.onAnnotationGroupClick(this.props.annotationGroup.uid)
   }
 
   handleMeasurementSelection (value?: string, option?: any): void {
@@ -578,6 +584,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
       <Menu.Item
         style={{ height: '100%', paddingLeft: '3px' }}
         key={this.props.annotationGroup.uid}
+        onClick={this.handleAnnotationGroupClick}
         {...otherProps}
       >
         <Space align='start'>

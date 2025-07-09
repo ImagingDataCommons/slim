@@ -131,6 +131,7 @@ declare module 'dicom-microscopy-viewer' {
         }
       ): void
       hideOpticalPath (opticalPathIdentifier: string): void
+      zoomToROI (roiUID: string): void
       isOpticalPathVisible (opticalPathIdentifier: string): boolean
       activateOpticalPath (opticalPathIdentifier: string): void
       deactivateOpticalPath (opticalPathIdentifier: string): void

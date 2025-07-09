@@ -5,7 +5,7 @@ window.config = {
     {
       id: 'local',
       // This must match the proxy location configured for the web server
-      url: 'http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs',
+      url: 'http://localhost:8080/dcm4chee-arc/aets/DCM4CHEE/rs',
       write: true
     }
   ],

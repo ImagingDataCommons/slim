@@ -26,6 +26,7 @@ It relies on [DICOMweb](https://www.dicomstandard.org/dicomweb/) RESTful service
   - [Google Cloud Platform](#google-cloud-platform)
     - [OAuth 2.0 configuration](#oauth-20-configuration)
 - [Development](#development)
+- [Linking Slim to a Local dicom-microscopy-viewer Library](#linking-slim-to-a-local-dicom-microscopy-viewer-library)
 - [Citation](#citation)
 - [Acknowledgments](#acknowledgments)
 - [DICOM Conformance Statement](#dicom-conformance-statement)
@@ -351,6 +352,46 @@ The configuration can be specified using the `REACT_APP_CONFIG` environment vari
 ```none
 REACT_APP_CONFIG=local yarn start
 ```
+
+## Linking Slim to a Local dicom-microscopy-viewer Library
+
+If you are developing features or fixing bugs that require changes in both Slim and the underlying [`dicom-microscopy-viewer`](https://github.com/ImagingDataCommons/dicom-microscopy-viewer) library, you can use `yarn link` to connect your local Slim project to a local clone of `dicom-microscopy-viewer`. This allows Slim to immediately use the latest local changes from the library without publishing to npm.
+
+### Steps
+
+1. **Clone dicom-microscopy-viewer**  
+   If you haven't already, clone the `dicom-microscopy-viewer` repository to your machine.
+
+2. **Set up yarn link in dicom-microscopy-viewer**  
+   In the root directory of your local `dicom-microscopy-viewer` repository, run:
+   ```sh
+   yarn link
+   ```
+
+3. **Link dicom-microscopy-viewer in Slim**  
+   In the root directory of your Slim project, run:
+   ```sh
+   yarn link dicom-microscopy-viewer
+   ```
+
+4. **Enable live rebuilding in dicom-microscopy-viewer**  
+   To automatically rebuild `dicom-microscopy-viewer` when you make changes, run the following command in the `dicom-microscopy-viewer` directory:
+   ```sh
+   yarn webpack:dynamic-import:watch
+   ```
+   This will watch for file changes and rebuild the library, so Slim can immediately use the updated code.
+
+5. **Run Slim as usual**  
+   In the Slim directory, start the development server:
+   ```sh
+   yarn start
+   ```
+   Slim will now use your locally linked version of `dicom-microscopy-viewer`.
+
+### Notes
+
+- If you want to unlink and return to the npm-published version, run `yarn unlink dicom-microscopy-viewer` and `yarn install --force` in the Slim directory.
+- Make sure both projects use compatible Node and Yarn versions to avoid dependency issues.
 
 ## Citation
 
