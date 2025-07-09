@@ -1,3 +1,10 @@
+# [0.42.0](https://github.com/ImagingDataCommons/slim/compare/v0.41.0...v0.42.0) (2025-06-20)
+
+
+### Features
+
+* add right menu highlight ([#285](https://github.com/ImagingDataCommons/slim/issues/285)) ([b3024c2](https://github.com/ImagingDataCommons/slim/commit/b3024c200f7982054d1268d68837ae4c21a8b7f1))
+
 # [0.41.0](https://github.com/ImagingDataCommons/slim/compare/v0.40.1...v0.41.0) (2025-05-30)
 
 

@@ -13,7 +13,7 @@ interface AnnotationListProps {
     roiUID: string
     isVisible: boolean
   }) => void
-  onSelection: ({ roiUID }: { roiUID: string }) => void
+  onSelection: (uid: string) => void
 }
 
 /**
@@ -43,7 +43,7 @@ class AnnotationList extends React.Component<AnnotationListProps, {}> {
   }
 
   handleMenuItemSelection (object: any): void {
-    this.props.onSelection({ roiUID: object.key })
+    this.props.onSelection(object.key)
   }
 
   render (): React.ReactNode {
