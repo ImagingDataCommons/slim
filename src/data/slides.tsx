@@ -112,12 +112,14 @@ class Slide {
         }
         volumeImages.push(image)
       } else if (hasImageFlavor(image, ImageFlavors.THUMBNAIL)) {
+        /* Only include THUMBNAIL if no equivalent VOLUME image exists */
         const hasEquivalentVolume = options.images.some(img =>
           hasImageFlavor(img, ImageFlavors.VOLUME) &&
           img.FrameOfReferenceUID === image.FrameOfReferenceUID &&
           img.OpticalPathSequence.every(opt => opt.OpticalPathIdentifier === image.OpticalPathSequence[0].OpticalPathIdentifier)
         )
         if (!hasEquivalentVolume) {
+          console.debug('Does not have equivalent volume for thumbnail, using thumbnail.', image.FrameOfReferenceUID)
           frameOfReferenceUIDs.VOLUME.add(image.FrameOfReferenceUID)
           if (image.PyramidUID !== null && image.PyramidUID !== undefined) {
             for (const identifier of Object.keys(opticalPathIdentifiers)) {
@@ -294,10 +296,18 @@ const createSlides = (
   images.forEach((series) => {
     if (series.length > 0) {
       const volumeImages = series.filter((image) => {
-        return (
-          hasImageFlavor(image, ImageFlavors.VOLUME) ||
-          hasImageFlavor(image, ImageFlavors.THUMBNAIL)
-        )
+        if (hasImageFlavor(image, ImageFlavors.VOLUME)) {
+          return true
+        } else if (hasImageFlavor(image, ImageFlavors.THUMBNAIL)) {
+          /** Only include THUMBNAIL if no equivalent VOLUME image exists */
+          const hasEquivalentVolume = series.some(img =>
+            hasImageFlavor(img, ImageFlavors.VOLUME) &&
+            img.FrameOfReferenceUID === image.FrameOfReferenceUID &&
+            img.OpticalPathSequence.every(opt => opt.OpticalPathIdentifier === image.OpticalPathSequence[0].OpticalPathIdentifier)
+          )
+          return !hasEquivalentVolume
+        }
+        return false
       })
       if (volumeImages.length > 0) {
         const refImage = volumeImages[0]
