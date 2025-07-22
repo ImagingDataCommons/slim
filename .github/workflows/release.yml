@@ -10,14 +10,14 @@ jobs:
     name: "Bump version and cut a release"
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4.1.4
+      - name: Checkout to repository
+        uses: actions/checkout@v4.2.2
         with:
           ref: master
           persist-credentials: false
 
-      - name: Setup node
-        uses: actions/setup-node@v4.0.2
+      - name: Setup Node
+        uses: actions/setup-node@v4.4.0
         with:
           node-version: 20.8.1
 
