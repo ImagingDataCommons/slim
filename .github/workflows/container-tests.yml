@@ -42,6 +42,11 @@ jobs:
           docker compose logs arc || true
           exit 1
 
+      - name: Debug arc health endpoint
+        run: |
+          echo "--- arc health endpoint response ---"
+          docker compose exec arc curl -i http://localhost:8080/dcm4chee-arc/aets/DCM4CHEE/rs/studies || true
+
       - name: Test web page
         run: |
           curl -sI http://localhost:8008/ | grep -o '200 OK'
