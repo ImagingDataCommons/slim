@@ -22,6 +22,23 @@ jobs:
       - name: Build and run containers using docker compose
         run: docker compose up -d
 
+      - name: Wait for containers to be ready
+        run: |
+          echo "Waiting for containers to start up..."
+          # Wait for the main app to be ready
+          timeout 60 bash -c 'until curl -s http://localhost:8008/ > /dev/null; do sleep 2; done'
+          echo "App container is ready"
+          
+          # Wait for the arc service to be ready (direct connection)
+          echo "Waiting for arc service on port 8080..."
+          timeout 180 bash -c 'until curl -sI http://localhost:8080/ | grep -q "200\|404\|401"; do sleep 5; echo "Waiting for arc service..."; done'
+          echo "Arc service is ready"
+          
+          # Wait for the DICOMweb service to be ready (through nginx proxy)
+          echo "Waiting for DICOMweb service through nginx..."
+          timeout 60 bash -c 'until curl -sI http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs/studies | grep -q "204\|200\|401\|404"; do sleep 5; echo "Waiting for DICOMweb service..."; done'
+          echo "DICOMweb service is ready"
+
       - name: Test web page
         run: |
           curl -sI http://localhost:8008/ | grep -o '200 OK'
