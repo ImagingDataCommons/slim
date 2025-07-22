@@ -22,6 +22,21 @@ jobs:
       - name: Build and run containers using docker compose
         run: docker compose up -d
 
+      - name: Wait for app and arc to be healthy
+        run: |
+          for i in {1..30}; do
+            app_status=$(docker inspect --format='{{.State.Health.Status}}' slim_app_1 || echo "none")
+            arc_status=$(docker inspect --format='{{.State.Health.Status}}' slim_arc_1 || echo "none")
+            echo "app: $app_status, arc: $arc_status"
+            if [ "$app_status" = "healthy" ] && [ "$arc_status" = "healthy" ]; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Services did not become healthy in time"
+          docker compose ps
+          exit 1
+
       - name: Test web page
         run: |
           curl -sI http://localhost:8008/ | grep -o '200 OK'
