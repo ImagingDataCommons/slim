@@ -25,6 +25,10 @@ jobs:
           df -h || true
           ulimit -a || true
 
+      - name: Print arc entrypoint script
+        run: |
+          docker compose run --rm arc cat /docker-entrypoint.sh || true
+
       - name: Build and start services
         run: docker compose up -d
 

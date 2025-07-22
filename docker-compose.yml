@@ -82,11 +82,12 @@ services:
       #
       # The default is "-Xms64m -Xmx512m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m"
       # Reference: https://github.com/dcm4che-dockerfiles/dcm4chee-arc-psql
-      JBOSS_JAVA_SIZING: "-Xms256m -Xmx1024m -XX:MetaspaceSize=128M -XX:MaxMetaspaceSize=512M"
+      JBOSS_JAVA_SIZING: "-Xms512m -Xmx4096m -XX:MetaspaceSize=256M -XX:MaxMetaspaceSize=4096m"
       WILDFLY_CHOWN: /opt/wildfly/standalone /storage
       WILDFLY_WAIT_FOR: ldap:389 db:5432
       HTTP_PROXY_ADDRESS_FORWARDING: "true"
       ARCHIVE_HOST: localhost
+      JAVA_OPTS: "-Dlogging.level.org.dcm4che=DEBUG -Dlogging.level.org.dcm4chee=DEBUG"
     depends_on:
       - ldap
       - db
