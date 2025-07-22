@@ -7,64 +7,54 @@ on:
     branches: [master]
 
 jobs:
-  build-and-test-containers:
-    name: "Build and test containers"
+  docker-compose-test:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout to repository
+      - name: Checkout code
         uses: actions/checkout@v4.2.2
 
-      - name: Setup Node
-        uses: actions/setup-node@v4.4.0
-        with:
-          node-version: 20.8.1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Build and run containers using docker compose
-        run: docker compose up -d
+      - name: Set up Docker Compose
+        uses: docker/setup-buildx-action@v3
 
-      - name: Test web page
+      - name: Build and start services
+        run: docker-compose up -d --build
+
+      - name: Wait for app healthcheck
         run: |
-          curl -sI http://localhost:8008/ | grep -o '200 OK'
-          curl -s http://localhost:8008/ | grep -o '<title>Slim</title>'
-
-      - name: Test DICOMweb service
-        timeout-minutes: 2
-        shell: bash
-        run: |
-          timeout=60
-          interval=5
-          elapsed=0
-
-          echo "Waiting for arc DICOMweb service to return 204 No Content..."
-
-          while true; do
-            if curl -sI http://localhost:8080/dcm4chee-arc/aets/DCM4CHEE/rs/studies | grep -q '204 No Content'; then
-              echo "arc is ready!"
-              break
+          for i in {1..30}; do
+            if curl -f http://localhost:8008/; then
+              echo "App is up!"
+              exit 0
             fi
-            sleep $interval
-            elapsed=$((elapsed + interval))
-            if [ $elapsed -ge $timeout ]; then
-              echo "Timed out waiting for arc to be ready"
-              exit 1
-            fi
+            echo "Waiting for app..."
+            sleep 5
           done
+          echo "App did not become healthy in time."
+          docker-compose logs
+          exit 1
 
-      - name: Print arc logs on failure
-        if: failure()
-        run: docker logs $(docker ps -aqf "name=arc")
-
-      - name: Check open ports
-        if: failure()
+      - name: Wait for arc healthcheck
         run: |
-          ss -tln
-          docker exec $(docker ps -aqf "name=arc") ss -tln
+          for i in {1..30}; do
+            if curl -f http://localhost:8080/dcm4chee-arc/aets/DCM4CHEE/rs/studies; then
+              echo "Arc is up!"
+              exit 0
+            fi
+            echo "Waiting for arc..."
+            sleep 5
+          done
+          echo "Arc did not become healthy in time."
+          docker-compose logs
+          exit 1
 
-      - name: Debug curl arc endpoint
+      - name: Show logs on failure
         if: failure()
-        run: |
-          curl -v http://localhost:8080/dcm4chee-arc/aets/DCM4CHEE/rs/studies || true
+        run: docker-compose logs
 
-      - name: Check arc health status
-        if: failure()
-        run: docker inspect --format='{{json .State.Health}}' $(docker ps -aqf "name=arc")
+      - name: Shut down services
+        if: always()
+        run: docker-compose down -v
