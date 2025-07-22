@@ -1,7 +1,7 @@
-import * as dmv from 'dicom-microscopy-viewer'
-import * as dcmjs from 'dcmjs'
+import { roi, metadata } from 'dicom-microscopy-viewer'
+import { sr, data } from 'dcmjs'
 
-import { CustomError, errorTypes } from '../utils/CustomError'
+import { CustomError, errorTypes } from './CustomError'
 import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from '../services/NotificationMiddleware'
@@ -21,12 +21,12 @@ const generateReport = ({
   app,
   visibleRoiUIDs
 }: {
-  rois: dmv.roi.ROI[]
-  metadata: dmv.metadata.VLWholeSlideMicroscopyImage[]
+  rois: roi.ROI[]
+  metadata: metadata.VLWholeSlideMicroscopyImage[]
   user: User | undefined
   app: AppInfo
   visibleRoiUIDs: Set<string>
-}): { isReportModalVisible: boolean, generatedReport: dmv.metadata.Comprehensive3DSR } => {
+}): { isReportModalVisible: boolean, generatedReport: metadata.Comprehensive3DSR } => {
   // Metadata should be sorted such that the image with the highest
   // resolution is the last item in the array.
   const refImage = metadata[metadata.length - 1]
@@ -49,45 +49,45 @@ const generateReport = ({
   let observer
 
   if (user !== undefined) {
-    observer = new dcmjs.sr.templates.PersonObserverIdentifyingAttributes({
+    observer = new sr.templates.PersonObserverIdentifyingAttributes({
       name: user.name ?? 'ANONYMOUS',
       loginName: user.email ?? ''
     })
   } else {
     console.warn('no user information available')
-    observer = new dcmjs.sr.templates.PersonObserverIdentifyingAttributes({
+    observer = new sr.templates.PersonObserverIdentifyingAttributes({
       name: 'ANONYMOUS'
     })
   }
 
-  const observationContext = new dcmjs.sr.templates.ObservationContext({
-    observerPersonContext: new dcmjs.sr.templates.ObserverContext({
-      observerType: new dcmjs.sr.coding.CodedConcept({
+  const observationContext = new sr.templates.ObservationContext({
+    observerPersonContext: new sr.templates.ObserverContext({
+      observerType: new sr.coding.CodedConcept({
         value: '121006',
         schemeDesignator: 'DCM',
         meaning: 'Person'
       }),
       observerIdentifyingAttributes: observer
     }),
-    observerDeviceContext: new dcmjs.sr.templates.ObserverContext({
-      observerType: new dcmjs.sr.coding.CodedConcept({
+    observerDeviceContext: new sr.templates.ObserverContext({
+      observerType: new sr.coding.CodedConcept({
         value: '121007',
         schemeDesignator: 'DCM',
         meaning: 'Device'
       }),
-      observerIdentifyingAttributes: new dcmjs.sr.templates.DeviceObserverIdentifyingAttributes({
+      observerIdentifyingAttributes: new sr.templates.DeviceObserverIdentifyingAttributes({
         uid: app.uid,
         manufacturerName: 'MGH Computational Pathology',
         modelName: app.name
       })
     }),
-    subjectContext: new dcmjs.sr.templates.SubjectContext({
-      subjectClass: new dcmjs.sr.coding.CodedConcept({
+    subjectContext: new sr.templates.SubjectContext({
+      subjectClass: new sr.coding.CodedConcept({
         value: '121027',
         schemeDesignator: 'DCM',
         meaning: 'Specimen'
       }),
-      subjectClassSpecificContext: new dcmjs.sr.templates.SubjectContextSpecimen({
+      subjectClassSpecificContext: new sr.templates.SubjectContextSpecimen({
         uid: refSpecimen.SpecimenUID,
         identifier: refSpecimen.SpecimenIdentifier,
         containerIdentifier: refImage.ContainerIdentifier
@@ -96,14 +96,14 @@ const generateReport = ({
   })
 
   console.debug('encode Imaging Measurements')
-  const imagingMeasurements: dcmjs.sr.valueTypes.ContainerContentItem[] = []
+  const imagingMeasurements: sr.valueTypes.ContainerContentItem[] = []
   for (let i = 0; i < rois.length; i++) {
     const roi = rois[i]
     if (!visibleRoiUIDs.has(roi.uid)) {
       continue
     }
 
-    let findingType = roi.evaluations.find((item: dcmjs.sr.valueTypes.ContentItem) => {
+    let findingType = roi.evaluations.find((item: sr.valueTypes.ContentItem) => {
       return item.ConceptNameCodeSequence[0].CodeValue === '121071'
     })
 
@@ -117,32 +117,32 @@ const generateReport = ({
       )
     }
 
-    findingType = findingType as dcmjs.sr.valueTypes.CodeContentItem
+    findingType = findingType as sr.valueTypes.CodeContentItem
 
-    const trackingIdentifier = new dcmjs.sr.templates.TrackingIdentifier({
+    const trackingIdentifier = new sr.templates.TrackingIdentifier({
       uid: roi.properties.trackingUID ?? roi.uid,
       identifier: `ROI #${i + 1}`
     })
 
-    const group = new dcmjs.sr.templates.PlanarROIMeasurementsAndQualitativeEvaluations({
+    const group = new sr.templates.PlanarROIMeasurementsAndQualitativeEvaluations({
       trackingIdentifier,
-      referencedRegion: new dcmjs.sr.contentItems.ImageRegion3D({
+      referencedRegion: new sr.contentItems.ImageRegion3D({
         graphicType: roi.scoord3d.graphicType,
         graphicData: roi.scoord3d.graphicData,
         frameOfReferenceUID: roi.scoord3d.frameOfReferenceUID
       }),
-      findingType: new dcmjs.sr.coding.CodedConcept({
+      findingType: new sr.coding.CodedConcept({
         value: findingType.ConceptCodeSequence[0].CodeValue,
         schemeDesignator: findingType.ConceptCodeSequence[0].CodingSchemeDesignator,
         meaning: findingType.ConceptCodeSequence[0].CodeMeaning
       }),
-      qualitativeEvaluations: roi.evaluations.filter((item: dcmjs.sr.valueTypes.ContentItem) => {
+      qualitativeEvaluations: roi.evaluations.filter((item: sr.valueTypes.ContentItem) => {
         return item.ConceptNameCodeSequence[0].CodeValue !== '121071'
       }),
       measurements: roi.measurements
     })
 
-    const measurements = group as dcmjs.sr.valueTypes.ContainerContentItem[]
+    const measurements = group as sr.valueTypes.ContainerContentItem[]
     measurements[0].ContentTemplateSequence = [
       {
         MappingResource: 'DCMR',
@@ -153,12 +153,12 @@ const generateReport = ({
   }
 
   console.debug('create Measurement Report document content')
-  const measurementReport = new dcmjs.sr.templates.MeasurementReport({
-    languageOfContentItemAndDescendants: new dcmjs.sr.templates.LanguageOfContentItemAndDescendants(
+  const measurementReport = new sr.templates.MeasurementReport({
+    languageOfContentItemAndDescendants: new sr.templates.LanguageOfContentItemAndDescendants(
       {}
     ),
     observationContext,
-    procedureReported: new dcmjs.sr.coding.CodedConcept({
+    procedureReported: new sr.coding.CodedConcept({
       value: '112703',
       schemeDesignator: 'DCM',
       meaning: 'Whole Slide Imaging'
@@ -167,13 +167,13 @@ const generateReport = ({
   })
 
   console.info('create Comprehensive 3D SR document')
-  const dataset = new dcmjs.sr.documents.Comprehensive3DSR({
+  const dataset = new sr.documents.Comprehensive3DSR({
     content: measurementReport[0],
     evidence: [refImage],
-    seriesInstanceUID: dcmjs.data.DicomMetaDictionary.uid(),
+    seriesInstanceUID: data.DicomMetaDictionary.uid(),
     seriesNumber: 1,
     seriesDescription: 'Annotation',
-    sopInstanceUID: dcmjs.data.DicomMetaDictionary.uid(),
+    sopInstanceUID: data.DicomMetaDictionary.uid(),
     instanceNumber: 1,
     manufacturer: 'MGH Computational Pathology',
     previousVersions: undefined // TODO
@@ -181,7 +181,7 @@ const generateReport = ({
 
   return {
     isReportModalVisible: true,
-    generatedReport: dataset as dmv.metadata.Comprehensive3DSR
+    generatedReport: dataset as metadata.Comprehensive3DSR
   }
 }
 

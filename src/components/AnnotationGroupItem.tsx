@@ -29,11 +29,17 @@ interface AnnotationGroupItemProps {
     color: number[]
   }
   onAnnotationGroupClick: (annotationGroupUID: string) => void
-  onVisibilityChange: ({ annotationGroupUID, isVisible }: {
+  onVisibilityChange: ({
+    annotationGroupUID,
+    isVisible
+  }: {
     annotationGroupUID: string
     isVisible: boolean
   }) => void
-  onStyleChange: ({ uid, styleOptions }: {
+  onStyleChange: ({
+    uid,
+    styleOptions
+  }: {
     uid: string
     styleOptions: {
       opacity?: number
@@ -57,17 +63,20 @@ interface AnnotationGroupItemState {
 /**
  * React component representing an Annotation Group.
  */
-class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, AnnotationGroupItemState> {
+class AnnotationGroupItem extends React.Component<
+AnnotationGroupItemProps,
+AnnotationGroupItemState
+> {
   constructor (props: AnnotationGroupItemProps) {
     super(props)
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
-    this.handleMeasurementSelection = this.handleMeasurementSelection.bind(this)
+    this.handleMeasurementSelection =
+      this.handleMeasurementSelection.bind(this)
     this.handleOpacityChange = this.handleOpacityChange.bind(this)
     this.handleColorRChange = this.handleColorRChange.bind(this)
     this.handleColorGChange = this.handleColorGChange.bind(this)
     this.handleColorBChange = this.handleColorBChange.bind(this)
     this.getCurrentColor = this.getCurrentColor.bind(this)
-    this.handleAnnotationGroupClick = this.handleAnnotationGroupClick.bind(this)
     this.state = {
       isVisible: this.props.isVisible,
       currentStyle: {
@@ -106,16 +115,14 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
     }
   }
 
-  handleColorRChange (
-    value: number | number[] | null
-  ): void {
+  handleColorRChange (value: number | number[] | null): void {
     if (value != null && this.state.currentStyle.color !== undefined) {
       const color = [
         Array.isArray(value) ? value[0] : value,
         this.state.currentStyle.color[1],
         this.state.currentStyle.color[2]
       ]
-      this.setState(state => ({
+      this.setState((state) => ({
         currentStyle: {
           color: color,
           opacity: state.currentStyle.opacity,
@@ -129,16 +136,14 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
     }
   }
 
-  handleColorGChange (
-    value: number | number[] | null
-  ): void {
+  handleColorGChange (value: number | number[] | null): void {
     if (value != null && this.state.currentStyle.color !== undefined) {
       const color = [
         this.state.currentStyle.color[0],
         Array.isArray(value) ? value[0] : value,
         this.state.currentStyle.color[2]
       ]
-      this.setState(state => ({
+      this.setState((state) => ({
         currentStyle: {
           color: color,
           opacity: state.currentStyle.opacity,
@@ -152,16 +157,14 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
     }
   }
 
-  handleColorBChange (
-    value: number | number[] | null
-  ): void {
+  handleColorBChange (value: number | number[] | null): void {
     if (value != null && this.state.currentStyle.color !== undefined) {
       const color = [
         this.state.currentStyle.color[0],
         this.state.currentStyle.color[1],
         Array.isArray(value) ? value[0] : value
       ]
-      this.setState(state => ({
+      this.setState((state) => ({
         currentStyle: {
           color: color,
           opacity: state.currentStyle.opacity,
@@ -190,11 +193,9 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
     }
   }
 
-  handleLowerLimitChange (
-    value: number | null
-  ): void {
+  handleLowerLimitChange (value: number | null): void {
     if (value != null && this.state.currentStyle.limitValues !== undefined) {
-      this.setState(state => {
+      this.setState((state) => {
         if (state.currentStyle.limitValues !== undefined) {
           return {
             currentStyle: {
@@ -216,20 +217,15 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
       this.props.onStyleChange({
         uid: this.props.annotationGroup.uid,
         styleOptions: {
-          limitValues: [
-            value,
-            this.state.currentStyle.limitValues[1]
-          ]
+          limitValues: [value, this.state.currentStyle.limitValues[1]]
         }
       })
     }
   }
 
-  handleUpperLimitChange (
-    value: number | null
-  ): void {
+  handleUpperLimitChange (value: number | null): void {
     if (value != null && this.state.currentStyle.limitValues !== undefined) {
-      this.setState(state => {
+      this.setState((state) => {
         if (state.currentStyle.limitValues !== undefined) {
           return {
             currentStyle: {
@@ -251,19 +247,14 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
       this.props.onStyleChange({
         uid: this.props.annotationGroup.uid,
         styleOptions: {
-          limitValues: [
-            this.state.currentStyle.limitValues[0],
-            value
-          ]
+          limitValues: [this.state.currentStyle.limitValues[0], value]
         }
       })
     }
   }
 
-  handleLimitChange (
-    values: number[]
-  ): void {
-    this.setState(state => ({
+  handleLimitChange (values: number[]): void {
+    this.setState((state) => ({
       currentStyle: {
         color: state.currentStyle.color,
         opacity: state.currentStyle.opacity,
@@ -276,7 +267,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
     })
   }
 
-  handleAnnotationGroupClick (): void {
+  handleAnnotationGroupClick = (): void => {
     this.props.onAnnotationGroupClick(this.props.annotationGroup.uid)
   }
 
@@ -292,7 +283,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
         uid: this.props.annotationGroup.uid,
         styleOptions: { measurement }
       })
-      this.setState(state => ({
+      this.setState((state) => ({
         currentStyle: {
           opacity: state.currentStyle.opacity,
           measurement
@@ -305,7 +296,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
           color: this.props.defaultStyle.color
         }
       })
-      this.setState(state => ({
+      this.setState((state) => ({
         currentStyle: {
           opacity: state.currentStyle.opacity,
           color: this.props.defaultStyle.color,
@@ -317,7 +308,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
 
   render (): React.ReactNode {
     const index = this.props.metadata.AnnotationGroupSequence.findIndex(
-      item => (item.AnnotationGroupUID === this.props.annotationGroup.uid)
+      (item) => item.AnnotationGroupUID === this.props.annotationGroup.uid
     )
     const item = this.props.metadata.AnnotationGroupSequence[index]
     const attributes: Array<{ name: string, value: string }> = [
@@ -344,20 +335,22 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
     ]
 
     const measurementsSequence = item.MeasurementsSequence ?? []
-    const measurementOptions = measurementsSequence.map((measurementItem, i) => {
-      const name = measurementItem.ConceptNameCodeSequence[0]
-      return (
-        <Select.Option
-          key={i}
-          value={`${name.CodingSchemeDesignator}-${name.CodeValue}`}
-          dropdownMatchSelectWidth={false}
-          size='small'
-          disabled={!this.props.isVisible}
-        >
-          {name.CodeMeaning}
-        </Select.Option>
-      )
-    })
+    const measurementOptions = measurementsSequence.map(
+      (measurementItem, i) => {
+        const name = measurementItem.ConceptNameCodeSequence[0]
+        return (
+          <Select.Option
+            key={i}
+            value={`${name.CodingSchemeDesignator}-${name.CodeValue}`}
+            dropdownMatchSelectWidth={false}
+            size='small'
+            disabled={!this.props.isVisible}
+          >
+            {name.CodeMeaning}
+          </Select.Option>
+        )
+      }
+    )
     measurementOptions.push(
       <Select.Option
         key='-'
@@ -374,13 +367,9 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
     if (this.state.currentStyle.color != null) {
       colorSettings = (
         <>
-          <Divider plain>
-            Color
-          </Divider>
+          <Divider plain>Color</Divider>
           <Row justify='center' align='middle' gutter={[8, 8]}>
-            <Col span={5}>
-              Red
-            </Col>
+            <Col span={5}>Red</Col>
             <Col span={14}>
               <Slider
                 range={false}
@@ -404,9 +393,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
           </Row>
 
           <Row justify='center' align='middle' gutter={[8, 8]}>
-            <Col span={5}>
-              Green
-            </Col>
+            <Col span={5}>Green</Col>
             <Col span={14}>
               <Slider
                 range={false}
@@ -430,9 +417,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
           </Row>
 
           <Row justify='center' align='middle' gutter={[8, 8]}>
-            <Col span={5}>
-              Blue
-            </Col>
+            <Col span={5}>Blue</Col>
             <Col span={14}>
               <Slider
                 range={false}
@@ -468,9 +453,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
         const maxValue = 1000
         windowSettings = (
           <>
-            <Divider plain>
-              Values of interest
-            </Divider>
+            <Divider plain>Values of interest</Divider>
             <Row justify='center' align='middle' gutter={[8, 8]}>
               <Col span={6}>
                 <InputNumber
@@ -511,13 +494,9 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
       }
       explorationSettings = (
         <>
-          <Divider plain>
-            Exploration
-          </Divider>
+          <Divider plain>Exploration</Divider>
           <Row justify='start' align='middle' gutter={[8, 8]}>
-            <Col span={8}>
-              Measurement
-            </Col>
+            <Col span={8}>Measurement</Col>
             <Col span={16}>
               <Select
                 style={{ minWidth: '65px', width: '90%' }}
@@ -538,9 +517,7 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
         {colorSettings}
         {windowSettings}
         <Row justify='start' align='middle' gutter={[8, 8]}>
-          <Col span={6}>
-            Opacity
-          </Col>
+          <Col span={6}>Opacity</Col>
           <Col span={12}>
             <Slider
               range={false}
@@ -568,9 +545,8 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
     )
 
     const color = this.getCurrentColor()
-    const isBadgeVisible = (
+    const isBadgeVisible =
       this.state.isVisible && this.state.currentStyle.measurement == null
-    )
     const {
       annotationGroup,
       defaultStyle,
@@ -589,50 +565,88 @@ class AnnotationGroupItem extends React.Component<AnnotationGroupItemProps, Anno
       >
         <Space align='start'>
           <div style={{ paddingLeft: '14px' }}>
-            <Space direction='vertical' align='end'>
-              <Switch
-                size='small'
-                onChange={this.handleVisibilityChange}
-                checked={this.props.isVisible}
-                checkedChildren={<FaEye />}
-                unCheckedChildren={<FaEyeSlash />}
-              />
-              <Popover
-                placement='left'
-                content={settings}
-                overlayStyle={{ width: '350px' }}
-                title='Display Settings'
-              >
-                <Button
-                  type='primary'
-                  shape='circle'
-                  icon={<SettingOutlined />}
-                />
-              </Popover>
-            </Space>
-          </div>
-          <Badge
-            offset={[-20, 20]}
-            count={' '}
-            style={{
-              borderStyle: 'solid',
-              borderWidth: '1px',
-              borderColor: 'gray',
-              visibility: isBadgeVisible ? 'visible' : 'hidden',
-              backgroundImage: `linear-gradient(to bottom, ${color}, ${color}`
-            }}
-          >
-            <Description
-              header={this.props.annotationGroup.label}
-              attributes={attributes}
-              selectable
-              hasLongValues
+            <AnnotationGroupControls
+              isVisible={this.props.isVisible}
+              onVisibilityChange={this.handleVisibilityChange}
+              settings={settings}
             />
-          </Badge>
+          </div>
+          <AnnotationGroupBadgeDescription
+            isBadgeVisible={isBadgeVisible}
+            color={color}
+            label={this.props.annotationGroup.label}
+            attributes={attributes}
+          />
         </Space>
       </Menu.Item>
     )
   }
+}
+
+function AnnotationGroupControls ({
+  isVisible,
+  onVisibilityChange,
+  settings
+}: {
+  isVisible: boolean
+  onVisibilityChange: (
+    checked: boolean,
+    event: React.MouseEvent<HTMLButtonElement>
+  ) => void
+  settings: React.ReactNode
+}): React.ReactElement {
+  return (
+    <Space direction='vertical' align='end'>
+      <Switch
+        size='small'
+        onChange={onVisibilityChange}
+        checked={isVisible}
+        checkedChildren={<FaEye />}
+        unCheckedChildren={<FaEyeSlash />}
+      />
+      <Popover
+        placement='left'
+        content={settings}
+        overlayStyle={{ width: '350px' }}
+        title='Display Settings'
+      >
+        <Button type='primary' shape='circle' icon={<SettingOutlined />} />
+      </Popover>
+    </Space>
+  )
+}
+
+function AnnotationGroupBadgeDescription ({
+  isBadgeVisible,
+  color,
+  label,
+  attributes
+}: {
+  isBadgeVisible: boolean
+  color: string
+  label: string
+  attributes: any
+}): React.ReactElement {
+  return (
+    <Badge
+      offset={[-20, 20]}
+      count={' '}
+      style={{
+        borderStyle: 'solid',
+        borderWidth: '1px',
+        borderColor: 'gray',
+        visibility: isBadgeVisible ? 'visible' : 'hidden',
+        backgroundImage: `linear-gradient(to bottom, ${color}, ${color}`
+      }}
+    >
+      <Description
+        header={label}
+        attributes={attributes}
+        selectable
+        hasLongValues
+      />
+    </Badge>
+  )
 }
 
 export default AnnotationGroupItem

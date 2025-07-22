@@ -295,20 +295,15 @@ const createSlides = (
   const slideMetadata: SlideImageCollection[] = []
   images.forEach((series) => {
     if (series.length > 0) {
-      const volumeImages = series.filter((image) => {
-        if (hasImageFlavor(image, ImageFlavors.VOLUME)) {
-          return true
-        } else if (hasImageFlavor(image, ImageFlavors.THUMBNAIL)) {
-          /** Only include THUMBNAIL if no equivalent VOLUME image exists */
-          const hasEquivalentVolume = series.some(img =>
+      const volumeImages = series.filter((image) =>
+        hasImageFlavor(image, ImageFlavors.VOLUME) ||
+        (hasImageFlavor(image, ImageFlavors.THUMBNAIL) &&
+          !series.some(img =>
             hasImageFlavor(img, ImageFlavors.VOLUME) &&
             img.FrameOfReferenceUID === image.FrameOfReferenceUID &&
             img.OpticalPathSequence.every(opt => opt.OpticalPathIdentifier === image.OpticalPathSequence[0].OpticalPathIdentifier)
-          )
-          return !hasEquivalentVolume
-        }
-        return false
-      })
+          ))
+      )
       if (volumeImages.length > 0) {
         const refImage = volumeImages[0]
         const filteredVolumeImages = volumeImages.filter((image) => {
