@@ -20,6 +20,74 @@ import * as dcmjs from 'dcmjs'
 
 import Description from './Description'
 
+// Helper function components
+function AnnotationGroupControls ({
+  isVisible,
+  onVisibilityChange,
+  settings
+}: {
+  isVisible: boolean
+  onVisibilityChange: (
+    checked: boolean,
+    event: React.MouseEvent<HTMLButtonElement>
+  ) => void
+  settings: React.ReactNode
+}): React.ReactElement {
+  return (
+    <Space direction='vertical' align='end'>
+      <Switch
+        size='small'
+        onChange={onVisibilityChange}
+        checked={isVisible}
+        checkedChildren={<FaEye />}
+        unCheckedChildren={<FaEyeSlash />}
+      />
+      <Popover
+        placement='left'
+        content={settings}
+        overlayStyle={{ width: '350px' }}
+        title='Display Settings'
+      >
+        <Button type='primary' shape='circle' icon={<SettingOutlined />} />
+      </Popover>
+    </Space>
+  )
+}
+
+function AnnotationGroupBadgeDescription ({
+  isBadgeVisible,
+  color,
+  label,
+  attributes
+}: {
+  isBadgeVisible: boolean
+  color: string
+  label: string
+  attributes: Array<{ name: string, value: string }>
+}): React.ReactElement {
+  return (
+    <Badge
+      offset={[-20, 20]}
+      count={' '}
+      style={{
+        borderStyle: 'solid',
+        borderWidth: '1px',
+        borderColor: 'gray',
+        visibility: isBadgeVisible ? 'visible' : 'hidden',
+        backgroundImage: `linear-gradient(to bottom, ${color}, ${color}`
+      }}
+    >
+      <Description
+        header={label}
+        attributes={attributes}
+        selectable
+        hasLongValues
+      />
+    </Badge>
+  )
+}
+
+// Interfaces
 interface AnnotationGroupItemProps {
   annotationGroup: dmv.annotation.AnnotationGroup
   isVisible: boolean
@@ -60,6 +128,7 @@ interface AnnotationGroupItemState {
   }
 }
 
+// Class
 /**
  * React component representing an Annotation Group.
  */
@@ -69,7 +138,6 @@ AnnotationGroupItemState
 > {
   constructor (props: AnnotationGroupItemProps) {
     super(props)
-    this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
     this.handleMeasurementSelection =
       this.handleMeasurementSelection.bind(this)
     this.handleOpacityChange = this.handleOpacityChange.bind(this)
@@ -86,10 +154,10 @@ AnnotationGroupItemState
     }
   }
 
-  handleVisibilityChange (
+  handleVisibilityChange = (
     checked: boolean,
     event: React.MouseEvent<HTMLButtonElement>
-  ): void {
+  ): void => {
     this.props.onVisibilityChange({
       annotationGroupUID: this.props.annotationGroup.uid,
       isVisible: checked
@@ -336,12 +404,13 @@ AnnotationGroupItemState
 
     const measurementsSequence = item.MeasurementsSequence ?? []
     const measurementOptions = measurementsSequence.map(
-      (measurementItem, i) => {
+      (measurementItem) => {
         const name = measurementItem.ConceptNameCodeSequence[0]
+        const key = `${name.CodingSchemeDesignator}-${name.CodeValue}`
         return (
           <Select.Option
-            key={i}
-            value={`${name.CodingSchemeDesignator}-${name.CodeValue}`}
+            key={key}
+            value={key}
             dropdownMatchSelectWidth={false}
             size='small'
             disabled={!this.props.isVisible}
@@ -581,72 +650,6 @@ AnnotationGroupItemState
       </Menu.Item>
     )
   }
-}
-
-function AnnotationGroupControls ({
-  isVisible,
-  onVisibilityChange,
-  settings
-}: {
-  isVisible: boolean
-  onVisibilityChange: (
-    checked: boolean,
-    event: React.MouseEvent<HTMLButtonElement>
-  ) => void
-  settings: React.ReactNode
-}): React.ReactElement {
-  return (
-    <Space direction='vertical' align='end'>
-      <Switch
-        size='small'
-        onChange={onVisibilityChange}
-        checked={isVisible}
-        checkedChildren={<FaEye />}
-        unCheckedChildren={<FaEyeSlash />}
-      />
-      <Popover
-        placement='left'
-        content={settings}
-        overlayStyle={{ width: '350px' }}
-        title='Display Settings'
-      >
-        <Button type='primary' shape='circle' icon={<SettingOutlined />} />
-      </Popover>
-    </Space>
-  )
-}
-
-function AnnotationGroupBadgeDescription ({
-  isBadgeVisible,
-  color,
-  label,
-  attributes
-}: {
-  isBadgeVisible: boolean
-  color: string
-  label: string
-  attributes: any
-}): React.ReactElement {
-  return (
-    <Badge
-      offset={[-20, 20]}
-      count={' '}
-      style={{
-        borderStyle: 'solid',
-        borderWidth: '1px',
-        borderColor: 'gray',
-        visibility: isBadgeVisible ? 'visible' : 'hidden',
-        backgroundImage: `linear-gradient(to bottom, ${color}, ${color}`
-      }}
-    >
-      <Description
-        header={label}
-        attributes={attributes}
-        selectable
-        hasLongValues
-      />
-    </Badge>
-  )
 }
 
 export default AnnotationGroupItem
