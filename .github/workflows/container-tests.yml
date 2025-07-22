@@ -28,8 +28,10 @@ jobs:
           curl -s http://localhost:8008/ | grep -o '<title>Slim</title>'
 
       - name: Test DICOMweb service
+        timeout-minutes: 2
+        shell: bash
         run: |
-          timeout=180
+          timeout=60
           interval=5
           elapsed=0
 
@@ -47,4 +49,22 @@ jobs:
               exit 1
             fi
           done
-        shell: bash
+
+      - name: Print arc logs on failure
+        if: failure()
+        run: docker logs $(docker ps -aqf "name=arc")
+
+      - name: Check open ports
+        if: failure()
+        run: |
+          ss -tln
+          docker exec $(docker ps -aqf "name=arc") ss -tln
+
+      - name: Debug curl arc endpoint
+        if: failure()
+        run: |
+          curl -v http://localhost:8080/dcm4chee-arc/aets/DCM4CHEE/rs/studies || true
+
+      - name: Check arc health status
+        if: failure()
+        run: docker inspect --format='{{json .State.Health}}' $(docker ps -aqf "name=arc")
