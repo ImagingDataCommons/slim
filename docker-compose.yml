@@ -97,4 +97,4 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8080/dcm4chee-arc/aets/DCM4CHEE/rs/studies"]
       interval: 15s
       timeout: 10s
-      retries: 20
+      retries: 10

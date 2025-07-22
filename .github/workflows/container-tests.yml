@@ -58,6 +58,26 @@ jobs:
         if: failure()
         run: docker compose logs arc
 
+      - name: Show db logs on failure
+        if: failure()
+        run: docker compose logs db
+
+      - name: Show ldap logs on failure
+        if: failure()
+        run: docker compose logs ldap
+
+      - name: Show container status on failure
+        if: failure()
+        run: docker compose ps -a
+
+      - name: Show arc environment variables on failure
+        if: failure()
+        run: docker compose exec arc env || true
+
+      - name: Show arc process list on failure
+        if: failure()
+        run: docker compose exec arc ps aux || true
+
       - name: Show logs on failure
         if: failure()
         run: docker compose logs
