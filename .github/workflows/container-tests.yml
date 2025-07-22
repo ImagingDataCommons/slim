@@ -38,7 +38,7 @@ jobs:
 
       - name: Wait for arc healthcheck
         run: |
-          for i in {1..30}; do
+          for i in {1..60}; do
             response=$(curl -s -w "%{http_code}" http://localhost:8080/dcm4chee-arc/aets/DCM4CHEE/rs/studies)
             body=${response::-3}
             code=${response: -3}

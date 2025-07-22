@@ -52,6 +52,11 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   arc:
     image: dcm4che/dcm4chee-arc-psql:5.34.0
@@ -92,4 +97,4 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8080/dcm4chee-arc/aets/DCM4CHEE/rs/studies"]
       interval: 15s
       timeout: 10s
-      retries: 5
+      retries: 20
