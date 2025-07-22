@@ -18,9 +18,9 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8008/"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 15s
+      timeout: 10s
+      retries: 10
 
   ldap:
     image: dcm4che/slapd-dcm4chee:2.6.8-34.1
@@ -54,8 +54,8 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
+      interval: 15s
+      timeout: 10s
       retries: 10
 
   arc:
