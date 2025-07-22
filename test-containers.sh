@@ -6,10 +6,14 @@ set -e
 echo "Starting containers..."
 docker compose up -d
 
+echo "Docker Compose status:"
+docker compose ps
+
 echo "Waiting for app and arc containers to become healthy..."
 for i in {1..30}; do
   app_id=$(docker compose ps -q app)
   arc_id=$(docker compose ps -q arc)
+  echo "app_id: $app_id, arc_id: $arc_id"
   app_status=$(docker inspect --format='{{.State.Health.Status}}' $app_id 2>/dev/null || echo "none")
   arc_status=$(docker inspect --format='{{.State.Health.Status}}' $arc_id 2>/dev/null || echo "none")
   echo "app: $app_status, arc: $arc_status"
@@ -23,6 +27,8 @@ done
 if [ "$app_status" != "healthy" ] || [ "$arc_status" != "healthy" ]; then
   echo "Services did not become healthy in time."
   docker compose ps
+  echo "\n--- arc logs ---"
+  docker compose logs arc || true
   exit 1
 fi
 
