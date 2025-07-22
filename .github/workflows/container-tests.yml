@@ -40,6 +40,19 @@ jobs:
           echo "Arc service direct response:"
           echo "$arc_response"
           
+          # Check container logs to see what is happening
+          echo "=== Container Logs ==="
+          echo "App container logs:"
+          docker compose logs app
+          echo ""
+          echo "Arc container logs:"
+          docker compose logs arc
+          echo ""
+          echo "Nginx logs (from app container):"
+          docker compose exec app cat /var/log/nginx/error.log 2>/dev/null || echo "No nginx error log found"
+          echo ""
+          echo "=== End Container Logs ==="
+          
           # Wait for the DICOMweb service to be ready (through nginx proxy)
           echo "Waiting for DICOMweb service through nginx..."
           timeout 180 bash -c '
