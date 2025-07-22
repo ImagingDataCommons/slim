@@ -29,5 +29,15 @@ jobs:
 
       - name: Test DICOMweb service
         run: |
-          sleep 20
-          curl -sI http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs/studies | grep -o '204 No Content'
+          # Test the DICOMweb service with retry logic
+          for i in {1..5}; do
+            echo "Attempt $i: Testing DICOMweb service..."
+            if curl -sI http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs/studies | grep -o '204 No Content'; then
+              echo "DICOMweb service test passed"
+              exit 0
+            fi
+            echo "Attempt $i failed, waiting 10 seconds before retry..."
+            sleep 10
+          done
+          echo "DICOMweb service test failed after 5 attempts"
+          exit 1
