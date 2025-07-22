@@ -19,6 +19,12 @@ jobs:
           docker --version
           docker compose version
 
+      - name: Show system resources
+        run: |
+          free -h || true
+          df -h || true
+          ulimit -a || true
+
       - name: Build and start services
         run: docker compose up -d
 
