@@ -29,5 +29,22 @@ jobs:
 
       - name: Test DICOMweb service
         run: |
-          sleep 20
-          curl -sI http://localhost:8080/dcm4chee-arc/aets/DCM4CHEE/rs/studies | grep -o '204 No Content'
+          timeout=180
+          interval=5
+          elapsed=0
+
+          echo "Waiting for arc DICOMweb service to return 204 No Content..."
+
+          while true; do
+            if curl -sI http://localhost:8080/dcm4chee-arc/aets/DCM4CHEE/rs/studies | grep -q '204 No Content'; then
+              echo "arc is ready!"
+              break
+            fi
+            sleep $interval
+            elapsed=$((elapsed + interval))
+            if [ $elapsed -ge $timeout ]; then
+              echo "Timed out waiting for arc to be ready"
+              exit 1
+            fi
+          done
+        shell: bash
