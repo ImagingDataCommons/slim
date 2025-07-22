@@ -34,6 +34,12 @@ jobs:
           timeout 180 bash -c 'until curl -sI http://localhost:8080/ | grep -q "200\|404\|401"; do sleep 5; echo "Waiting for arc service..."; done'
           echo "Arc service is ready"
           
+          # Test arc service directly to see what it returns
+          echo "Testing arc service directly..."
+          arc_response=$(curl -v -s http://localhost:8080/ 2>&1)
+          echo "Arc service direct response:"
+          echo "$arc_response"
+          
           # Wait for the DICOMweb service to be ready (through nginx proxy)
           echo "Waiting for DICOMweb service through nginx..."
           timeout 60 bash -c '
@@ -41,6 +47,14 @@ jobs:
               echo "Testing nginx proxy..."
               response=$(curl -sI http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs/studies 2>&1)
               echo "Nginx response: $response"
+              
+              # Get the full error response if it's a 500
+              if echo "$response" | grep -q "500"; then
+                echo "Getting full 500 error response..."
+                error_response=$(curl -s http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs/studies)
+                echo "Full error response: $error_response"
+              fi
+              
               if echo "$response" | grep -q "204\|200\|401\|404"; then
                 echo "DICOMweb service is responding through nginx"
                 break
