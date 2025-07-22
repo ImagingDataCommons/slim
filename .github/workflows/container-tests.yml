@@ -36,7 +36,19 @@ jobs:
           
           # Wait for the DICOMweb service to be ready (through nginx proxy)
           echo "Waiting for DICOMweb service through nginx..."
-          timeout 60 bash -c 'until curl -sI http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs/studies | grep -q "204\|200\|401\|404"; do sleep 5; echo "Waiting for DICOMweb service..."; done'
+          timeout 60 bash -c '
+            while true; do
+              echo "Testing nginx proxy..."
+              response=$(curl -sI http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs/studies 2>&1)
+              echo "Nginx response: $response"
+              if echo "$response" | grep -q "204\|200\|401\|404"; then
+                echo "DICOMweb service is responding through nginx"
+                break
+              fi
+              echo "Waiting for DICOMweb service..."
+              sleep 5
+            done
+          '
           echo "DICOMweb service is ready"
 
       - name: Test web page
