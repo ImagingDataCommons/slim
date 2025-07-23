@@ -33,5 +33,6 @@ jobs:
           curl -sI http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs/studies | grep -o '204 No Content'
 
       - name: Print Wildfly internal server.log
+        if: always()
         run: |
           docker compose exec -T dcm4chee-arc cat /opt/wildfly/standalone/log/server.log || echo "Log not found"
