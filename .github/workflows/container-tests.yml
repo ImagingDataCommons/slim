@@ -39,4 +39,5 @@ jobs:
           cat ./server.log || echo "Log not found"
 
       - name: Print arc container environment
+        if: always()
         run: docker compose exec arc env
