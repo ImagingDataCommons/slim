@@ -28,8 +28,8 @@ services:
     volumes:
       - ldap_data:/var/lib/openldap/openldap-data
       - ldap_config:/etc/openldap/slapd.d
-      - ./etc/openldap/data/modify-dcmRemapRetrieveURL.ldif:/etc/openldap/data/modify-dcmRemapRetrieveURL.ldif:ro
-      - ./etc/openldap/data/modify-dcmWebServicePath.ldif:/etc/openldap/data/modify-dcmWebServicePath.ldif:ro
+      - ${GITHUB_WORKSPACE:-${PWD}}/etc/openldap/data/modify-dcmRemapRetrieveURL.ldif:/etc/openldap/data/modify-dcmRemapRetrieveURL.ldif:ro
+      - ${GITHUB_WORKSPACE:-${PWD}}/etc/openldap/data/modify-dcmWebServicePath.ldif:/etc/openldap/data/modify-dcmWebServicePath.ldif:ro
 
   db:
     image: dcm4che/postgres-dcm4chee:11.22-34

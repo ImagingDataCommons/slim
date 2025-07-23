@@ -34,69 +34,10 @@ jobs:
           timeout 60 bash -c 'until docker compose exec ldap ldapsearch -x -b "dc=dcm4che,dc=org" -s base 2>/dev/null; do sleep 5; echo "Waiting for LDAP..."; done'
           echo "LDAP service is ready"
           
-          # Debug environment variables
-          echo "=== Environment Variables Debug ==="
-          echo "Checking LDAP_INIT_CONFIG in ldap container:"
-          docker compose exec ldap env | grep LDAP_INIT_CONFIG || echo "LDAP_INIT_CONFIG not found"
-          echo ""
-          echo "Checking all environment variables in ldap container:"
-          docker compose exec ldap env | grep -E "(LDAP|DICOM)" || echo "No LDAP/DICOM env vars found"
-          echo ""
-          echo "Checking if docker-compose.env file exists:"
-          ls -la docker-compose.env || echo "docker-compose.env not found"
-          echo ""
-          echo "Content of docker-compose.env:"
-          cat docker-compose.env || echo "Cannot read docker-compose.env"
-          echo "=== End Environment Debug ==="
-          
-          # Debug LDAP configuration
-          echo "=== LDAP Configuration Debug ==="
-          echo "Checking what is in LDAP:"
-          docker compose exec ldap ldapsearch -x -b "dc=dcm4che,dc=org" -s sub "(objectClass=*)" 2>/dev/null || echo "LDAP search failed"
-          echo ""
-          echo "Checking for dcm4chee-arc device:"
-          docker compose exec ldap ldapsearch -x -b "dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org" 2>/dev/null || echo "dcm4chee-arc device not found"
-          echo ""
-          echo "Checking if default-config.ldif exists in container:"
-          docker compose exec ldap find /docker-entrypoint.d -name "default-config.ldif" 2>/dev/null || echo "default-config.ldif not found"
-          echo "=== End LDAP Debug ==="
-          
           # Wait for the arc service to be ready (direct connection)
           echo "Waiting for arc service on port 8080..."
           timeout 300 bash -c 'until curl -sI http://localhost:8080/ | grep -q "200\|404\|401"; do sleep 10; echo "Waiting for arc service..."; done'
-          echo "Arc service is ready" 
-          
-          echo "WildFly server logs:"
-          docker compose exec arc cat /opt/wildfly/standalone/log/server.log 2>/dev/null || echo "No server.log found"
-          echo "WildFly boot log:"
-          docker compose exec arc cat /opt/wildfly/standalone/log/boot.log 2>/dev/null || echo "No boot.log found"
-          echo "Nginx logs (from app container):"
-          docker compose exec app cat /var/log/nginx/error.log 2>/dev/null || echo "No nginx error log found"
-          
-          # Wait for the DICOMweb service to be ready (through nginx proxy)
-          echo "Waiting for DICOMweb service through nginx..."
-          timeout 180 bash -c '
-            while true; do
-              echo "Testing nginx proxy..."
-              response=$(curl -sI http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs/studies 2>&1)
-              echo "Nginx response: $response"
-              
-              # Get the full error response if it is a 500
-              if echo "$response" | grep -q "500"; then
-                echo "Getting full 500 error response..."
-                error_response=$(curl -s http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs/studies)
-                echo "Full error response: $error_response"
-              fi
-              
-              if echo "$response" | grep -q "204\|200\|401\|404"; then
-                echo "DICOMweb service is responding through nginx"
-                break
-              fi
-              echo "Waiting for DICOMweb service..."
-              sleep 10
-            done
-          '
-          echo "DICOMweb service is ready"
+          echo "Arc service is ready"
 
       - name: Test web page
         run: |
@@ -105,29 +46,16 @@ jobs:
 
       - name: Test DICOMweb service
         run: |
-          # Test the DICOMweb service with retry logic and debugging
-          # In CI, we'll be more lenient with acceptable responses
+          # Test the DICOMweb service with retry logic
           for i in {1..3}; do
             echo "Attempt $i: Testing DICOMweb service..."
             
-            # Get the full response with status code and body for debugging
-            echo "Making request to: http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs/studies"
-            
-            # Use curl with verbose output to see what is happening
-            response=$(curl -v -s http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs/studies 2>&1)
-            echo "Full curl response:"
-            echo "$response"
-            
-            # Extract the HTTP status code
+            response=$(curl -sI http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs/studies 2>&1)
             status_code=$(echo "$response" | grep -o "HTTP/[0-9.]* [0-9]*" | tail -1 | awk '{print $2}')
             echo "HTTP Status Code: $status_code"
             
-            # In CI, accept more response codes as valid
-            if [ "$status_code" = "204" ] || [ "$status_code" = "200" ] || [ "$status_code" = "401" ] || [ "$status_code" = "404" ] || [ "$status_code" = "500" ]; then
+            if [ "$status_code" = "204" ] || [ "$status_code" = "200" ] || [ "$status_code" = "401" ] || [ "$status_code" = "404" ]; then
               echo "DICOMweb service test passed with status code: $status_code"
-              if [ "$status_code" = "500" ]; then
-                echo "Note: 500 status in CI environment - service is responding but may have initialization issues"
-              fi
               exit 0
             else
               echo "Attempt $i failed with status code: $status_code"
