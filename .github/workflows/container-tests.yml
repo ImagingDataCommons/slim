@@ -34,7 +34,33 @@ jobs:
           timeout 60 bash -c 'until docker compose exec ldap ldapsearch -x -b "dc=dcm4che,dc=org" -s base 2>/dev/null; do sleep 5; echo "Waiting for LDAP..."; done'
           echo "LDAP service is ready"
           
-
+          # Debug environment variables
+          echo "=== Environment Variables Debug ==="
+          echo "Checking LDAP_INIT_CONFIG in ldap container:"
+          docker compose exec ldap env | grep LDAP_INIT_CONFIG || echo "LDAP_INIT_CONFIG not found"
+          echo ""
+          echo "Checking all environment variables in ldap container:"
+          docker compose exec ldap env | grep -E "(LDAP|DICOM)" || echo "No LDAP/DICOM env vars found"
+          echo ""
+          echo "Checking if docker-compose.env file exists:"
+          ls -la docker-compose.env || echo "docker-compose.env not found"
+          echo ""
+          echo "Content of docker-compose.env:"
+          cat docker-compose.env || echo "Cannot read docker-compose.env"
+          echo "=== End Environment Debug ==="
+          
+          # Debug LDAP configuration
+          echo "=== LDAP Configuration Debug ==="
+          echo "Checking what is in LDAP:"
+          docker compose exec ldap ldapsearch -x -b "dc=dcm4che,dc=org" -s sub "(objectClass=*)" 2>/dev/null || echo "LDAP search failed"
+          echo ""
+          echo "Checking for dcm4chee-arc device:"
+          docker compose exec ldap ldapsearch -x -b "dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org" 2>/dev/null || echo "dcm4chee-arc device not found"
+          echo ""
+          echo "Checking if default-config.ldif exists in container:"
+          docker compose exec ldap find /docker-entrypoint.d -name "default-config.ldif" 2>/dev/null || echo "default-config.ldif not found"
+          echo "=== End LDAP Debug ==="
+          
           # Wait for the arc service to be ready (direct connection)
           echo "Waiting for arc service on port 8080..."
           timeout 300 bash -c 'until curl -sI http://localhost:8080/ | grep -q "200\|404\|401"; do sleep 10; echo "Waiting for arc service..."; done'
