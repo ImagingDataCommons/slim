@@ -48,6 +48,12 @@ jobs:
           echo "Arc container logs:"
           docker compose logs arc
           echo ""
+          echo "WildFly server logs:"
+          docker compose exec arc cat /opt/wildfly/standalone/log/server.log 2>/dev/null || echo "No server.log found"
+          echo ""
+          echo "WildFly boot log:"
+          docker compose exec arc cat /opt/wildfly/standalone/log/boot.log 2>/dev/null || echo "No boot.log found"
+          echo ""
           echo "Nginx logs (from app container):"
           docker compose exec app cat /var/log/nginx/error.log 2>/dev/null || echo "No nginx error log found"
           echo ""
