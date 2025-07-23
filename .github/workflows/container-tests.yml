@@ -35,4 +35,10 @@ jobs:
       - name: Print Wildfly internal server.log
         if: always()
         run: |
-          docker compose exec -T dcm4chee-arc cat /opt/wildfly/standalone/log/server.log || echo "Log not found"
+          CONTAINER_ID=$(docker ps -a -q -f name=dcm4chee-arc)
+          if [ -n "$CONTAINER_ID" ]; then
+            docker cp "$CONTAINER_ID":/opt/wildfly/standalone/log/server.log ./server.log || echo "Log not found"
+            cat ./server.log || echo "Log not found"
+          else
+            echo "Container not found"
+          fi
