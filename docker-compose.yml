@@ -17,7 +17,9 @@ services:
       - arc
 
   ldap:
-    image: dcm4che/slapd-dcm4chee:2.6.8-34.1
+    build:
+      context: .
+      dockerfile: Dockerfile.ldap
     logging:
       driver: json-file
       options:
@@ -28,8 +30,6 @@ services:
     volumes:
       - ldap_data:/var/lib/openldap/openldap-data
       - ldap_config:/etc/openldap/slapd.d
-      - ${GITHUB_WORKSPACE:-${PWD}}/etc/openldap/data/modify-dcmRemapRetrieveURL.ldif:/etc/openldap/data/modify-dcmRemapRetrieveURL.ldif:ro
-      - ${GITHUB_WORKSPACE:-${PWD}}/etc/openldap/data/modify-dcmWebServicePath.ldif:/etc/openldap/data/modify-dcmWebServicePath.ldif:ro
 
   db:
     image: dcm4che/postgres-dcm4chee:11.22-34

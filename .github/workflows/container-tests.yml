@@ -34,6 +34,18 @@ jobs:
           timeout 60 bash -c 'until docker compose exec ldap ldapsearch -x -b "dc=dcm4che,dc=org" -s base 2>/dev/null; do sleep 5; echo "Waiting for LDAP..."; done'
           echo "LDAP service is ready"
           
+          # Check if LDAP config files are present
+          echo "=== LDAP Configuration Check ==="
+          echo "Checking if config files are in /docker-entrypoint.d/:"
+          docker compose exec ldap ls -la /docker-entrypoint.d/ | grep -E "(modify|default)" || echo "No config files found"
+          echo ""
+          echo "Checking if DICOM Configuration exists:"
+          docker compose exec ldap ldapsearch -x -b "cn=DICOM Configuration,dc=dcm4che,dc=org" -s base 2>/dev/null || echo "DICOM Configuration not found"
+          echo ""
+          echo "Checking for dcm4chee-arc device:"
+          docker compose exec ldap ldapsearch -x -b "dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org" 2>/dev/null || echo "dcm4chee-arc device not found"
+          echo "=== End LDAP Configuration Check ==="
+          
           # Wait for the arc service to be ready (direct connection)
           echo "Waiting for arc service on port 8080..."
           timeout 300 bash -c 'until curl -sI http://localhost:8080/ | grep -q "200\|404\|401"; do sleep 10; echo "Waiting for arc service..."; done'
