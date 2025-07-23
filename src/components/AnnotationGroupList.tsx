@@ -18,6 +18,7 @@ interface AnnotationGroupListProps {
       color: number[]
     }
   }
+  onAnnotationGroupClick: (annotationGroupUID: string) => void
   onAnnotationGroupVisibilityChange: ({
     annotationGroupUID,
     isVisible
@@ -71,6 +72,7 @@ unknown
         <AnnotationGroupItem
           key={annotationGroup.uid}
           annotationGroup={annotationGroup}
+          onAnnotationGroupClick={this.props.onAnnotationGroupClick}
           metadata={this.props.metadata[uid]}
           isVisible={this.props.visibleAnnotationGroupUIDs.has(uid)}
           defaultStyle={this.props.defaultAnnotationGroupStyles[uid]}
