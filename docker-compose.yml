@@ -44,6 +44,7 @@ services:
       - db_data:/var/lib/postgresql/data
 
   arc:
+    container_name: dcm4chee-arc
     image: dcm4che/dcm4chee-arc-psql:5.34.0
     logging:
       driver: json-file
