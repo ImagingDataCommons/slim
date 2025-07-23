@@ -1,3 +1,10 @@
+## [0.42.1](https://github.com/ImagingDataCommons/slim/compare/v0.42.0...v0.42.1) (2025-07-23)
+
+
+### Bug Fixes
+
+* Multiple Slim issues regarding ANN visualization ([#306](https://github.com/ImagingDataCommons/slim/issues/306)) ([16e5ff9](https://github.com/ImagingDataCommons/slim/commit/16e5ff994a0638e0a68ccbf255b24639c08a4bbd))
+
 # [0.42.0](https://github.com/ImagingDataCommons/slim/compare/v0.41.0...v0.42.0) (2025-06-20)
 
 
