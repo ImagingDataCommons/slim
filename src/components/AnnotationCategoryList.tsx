@@ -1,8 +1,12 @@
 import React from 'react'
 import { Menu } from 'antd'
-import * as dmv from 'dicom-microscopy-viewer'
 import AnnotationCategoryItem from './AnnotationCategoryItem'
 
+export interface AnnotationCategoryAndType {
+  uid: string
+  type: Omit<Type, 'uids'>
+  category: Omit<Category, 'types'>
+}
 export interface Type {
   CodeValue: string
   CodeMeaning: string
@@ -16,22 +20,22 @@ export interface Category {
   types: Type[]
 }
 
-const getCategories = (annotationGroups: any): Record<string, Category> => {
-  const categories = annotationGroups?.reduce(
+const getCategories = (annotations: any): Record<string, Category> => {
+  const categories = annotations?.reduce(
     (
       categoriesAcc: Record<string, Category & { types: Record<string, Type> }>,
-      annotationGroup: dmv.annotation.AnnotationGroup
+      annotation: AnnotationCategoryAndType
     ) => {
-      const { propertyCategory, propertyType, uid } = annotationGroup
-      const categoryKey = propertyCategory.CodeMeaning
-      const typeKey = propertyType.CodeMeaning
+      const { category, type, uid } = annotation
+      const categoryKey = category.CodeMeaning
+      const typeKey = type.CodeMeaning
 
       const oldCategory = categoriesAcc[categoryKey] ?? {
-        ...propertyCategory,
+        ...category,
         types: {}
       }
       const oldType = oldCategory.types[typeKey] ?? {
-        ...propertyType,
+        ...type,
         uids: []
       }
 
@@ -63,39 +67,40 @@ const getCategories = (annotationGroups: any): Record<string, Category> => {
 }
 
 const AnnotationCategoryList = ({
-  annotationGroups,
+  annotations,
   onChange,
   onStyleChange,
-  defaultAnnotationGroupStyles,
-  checkedAnnotationGroupUids
+  defaultAnnotationStyles,
+  checkedAnnotationUids
 }: {
-  annotationGroups: dmv.annotation.AnnotationGroup[]
+  annotations: AnnotationCategoryAndType[]
   onChange: Function
   onStyleChange: Function
-  defaultAnnotationGroupStyles: {
-    [annotationGroupUID: string]: {
+  defaultAnnotationStyles: {
+    [annotationUID: string]: {
       opacity: number
       color: number[]
+      contourOnly: boolean
     }
   }
-  checkedAnnotationGroupUids: Set<string>
+  checkedAnnotationUids: Set<string>
 }): JSX.Element => {
-  const categories: Record<string, Category> = getCategories(annotationGroups)
+  const categories: Record<string, Category> = getCategories(annotations)
 
   if (Object.keys(categories).length === 0) {
     return <></>
   }
 
-  const items = Object.keys(categories).map((categoryKey: any) => {
+  const items = Object.keys(categories).map((categoryKey: string) => {
     const category = categories[categoryKey]
     return (
       <AnnotationCategoryItem
-        key={category.CodeMeaning}
+        key={category.CodeMeaning !== '' ? category.CodeMeaning : `category-${categoryKey}`}
         category={category}
         onChange={onChange}
         onStyleChange={onStyleChange}
-        defaultAnnotationGroupStyles={defaultAnnotationGroupStyles}
-        checkedAnnotationGroupUids={checkedAnnotationGroupUids}
+        defaultAnnotationStyles={defaultAnnotationStyles}
+        checkedAnnotationUids={checkedAnnotationUids}
       />
     )
   })

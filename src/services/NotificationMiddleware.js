@@ -54,7 +54,7 @@ const NotificationSourceDefinition = {
 }
 
 class NotificationMiddleware extends PubSub {
-  constructor() {
+  constructor () {
     super()
 
     const outerContext = (args) => {
@@ -62,7 +62,7 @@ class NotificationMiddleware extends PubSub {
     }
 
     (function () {
-      var warn = console.warn;
+      const warn = console.warn
       console.warn = function () {
         if (!JSON.stringify(arguments).includes('request')) {
           outerContext(arguments)

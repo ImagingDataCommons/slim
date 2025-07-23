@@ -1,5 +1,6 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
+import { message } from 'antd'
 
 import './index.css'
 import AppConfig from './AppConfig'
@@ -24,6 +25,69 @@ if (config.mode === 'dark') {
 } else {
   App = React.lazy(async () => await import('./AppLight'))
 }
+
+const isMessageTypeDisabled = ({ type }: { type: string }): boolean => {
+  const { messages } = config
+  if (messages === undefined) return false
+  if (typeof messages.disabled === 'boolean') {
+    return messages.disabled
+  }
+  return Array.isArray(messages.disabled) && messages.disabled.includes(type)
+}
+
+// Store original message methods
+const originalMessage = { ...message }
+
+const createMessageConfig = (content: string | object): object => {
+  const duration = config.messages?.duration ?? 5
+
+  if (typeof content === 'object' && content !== null) {
+    return {
+      ...content,
+      duration
+    }
+  }
+
+  return {
+    content,
+    duration
+  }
+}
+
+/** Create a proxy to control antd message */
+const messageProxy = new Proxy(originalMessage, {
+  get (target, prop: PropertyKey) {
+    // Handle config method separately
+    if (prop === 'config') {
+      return message.config.bind(message)
+    }
+
+    // Handle message methods (success, error, etc)
+    const method = target[prop as keyof typeof target]
+    if (typeof method === 'function') {
+      return (...args: any[]) => {
+        const isMessageEnabled = !isMessageTypeDisabled({ type: prop as string })
+        if (isMessageEnabled) {
+          const messageConfig = createMessageConfig(args[0])
+          return (method as Function).apply(message, [messageConfig])
+        }
+        return { then: () => {} }
+      }
+    }
+
+    // Pass through any other properties
+    return Reflect.get(target, prop)
+  }
+})
+
+// Apply the proxy
+Object.assign(message, messageProxy)
+
+// Set global config after proxy is in place
+message.config({
+  top: config.messages?.top ?? 100,
+  duration: config.messages?.duration ?? 5
+})
 
 const container = document.getElementById('root')
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion

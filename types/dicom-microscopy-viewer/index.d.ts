@@ -131,6 +131,7 @@ declare module 'dicom-microscopy-viewer' {
         }
       ): void
       hideOpticalPath (opticalPathIdentifier: string): void
+      zoomToROI (roiUID: string): void
       isOpticalPathVisible (opticalPathIdentifier: string): boolean
       activateOpticalPath (opticalPathIdentifier: string): void
       deactivateOpticalPath (opticalPathIdentifier: string): void
@@ -222,6 +223,8 @@ declare module 'dicom-microscopy-viewer' {
       getAnnotationGroupMetadata (
         annotationGroupUID: string
       ): metadata.MicroscopyBulkSimpleAnnotations
+      toggleICCProfiles(): void;
+      getICCProfiles(): any[];
     }
 
     export interface OverviewImageViewerOptions {
@@ -230,6 +233,7 @@ declare module 'dicom-microscopy-viewer' {
       orientation?: string
       resizeFactor?: number
       includeIccProfile?: boolean
+      disableInteractions?: boolean
       errorInterceptor?: (error: CustomError) => void
     }
 
@@ -519,6 +523,9 @@ declare module 'dicom-microscopy-viewer' {
       // General Series module
       SeriesInstanceUID: string
       SeriesNumber: number | null | undefined
+      SeriesDate: string
+      SeriesTime: string
+      SeriesDescription: string
       Modality: string
       // SOP Common module
       SOPClassUID: string
@@ -576,7 +583,7 @@ declare module 'dicom-microscopy-viewer' {
       SpecimenDescriptionSequence: SpecimenDescription[]
       OpticalPathSequence: OpticalPath[]
       AnnotationGroupSequence: Array<{
-        SOPClassUID: string,
+        SOPClassUID: string
         AnnotationGroupNumber: number
         AnnotationGroupUID: string
         AnnotationGroupLabel: string

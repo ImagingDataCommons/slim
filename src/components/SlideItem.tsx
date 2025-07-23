@@ -54,7 +54,8 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
           client: this.props.clients[
             StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE
           ],
-          metadata: metadata,
+          disableInteractions: true,
+          metadata,
           resizeFactor: 1,
           errorInterceptor: (error: CustomError) => {
             NotificationMiddleware.onError(
@@ -76,14 +77,16 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
     if (this.overviewViewer !== undefined) {
       this.overviewViewer.resize()
     }
+
     const attributes = []
     const description = this.props.slide.description
-    if (description != null && description !== '') {
+    if (description !== null && description !== '') {
       attributes.push({
         name: 'Description',
         value: description
       })
     }
+
     if (this.state.isLoading) {
       return (<FaSpinner />)
     }
@@ -102,7 +105,26 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
           attributes={attributes}
           selectable
         >
-          <div style={{ height: '100px' }} ref={this.overviewViewportRef} />
+          {this.props.slide.overviewImages.length > 0
+            ? (
+              <div style={{ height: '100px' }} ref={this.overviewViewportRef} />
+              )
+            : (
+              <div style={{
+                height: '100px',
+                textAlign: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.5rem',
+                fontWeight: 300,
+                color: '#8F9BA8',
+                letterSpacing: '0.1em'
+              }}
+              >
+                SM
+              </div>
+              )}
         </Description>
       </Menu.Item>
     )

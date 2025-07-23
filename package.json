@@ -1,10 +1,8 @@
 {
   "name": "slim",
-  "version": "0.31.3",
-  "homepage": "https://github.com/imagingdatacommons/slim",
+  "version": "0.42.1",
   "private": true,
   "author": "ImagingDataCommons",
-  "proxy": "http://localhost:8008",
   "scripts": {
     "start": "rm -rf ./node_modules/.cache/default-development && craco start",
     "build": "craco build",
@@ -56,9 +54,9 @@
     "classnames": "^2.2.6",
     "copy-webpack-plugin": "^10.2.4",
     "craco-less": "^2.0.0",
-    "dcmjs": "^0.29.8",
+    "dcmjs": "^0.35.0",
     "detect-browser": "^5.2.1",
-    "dicom-microscopy-viewer": "^0.47.0",
+    "dicom-microscopy-viewer": "^0.48.4",
     "dicomweb-client": "^0.10.3",
     "gh-pages": "^5.0.0",
     "oidc-client": "^1.11.5",
@@ -77,6 +75,22 @@
   },
   "resolutions": {
     "nth-check": "2.0.1",
-    "wrap-ansi": "7.0.0"
+    "wrap-ansi": "7.0.0",
+    "make-dir": "3.1.0",
+    "react-scripts/babel-jest/babel-plugin-istanbul/istanbul-lib-instrument/semver": "6.3.1",
+    "@babel/preset-env/babel-plugin-polyfill-corejs2/@babel/helper-define-polyfill-provider/semver": "6.3.1",
+    "make-dir/semver": "6.3.1",
+    "@babel/preset-env/babel-plugin-polyfill-corejs2/semver": "6.3.1",
+    "ts-standard/eslint-plugin-node/semver": "6.3.1",
+    "@craco/craco/semver": "7.5.2",
+    "@typescript-eslint/typescript-estree/semver": "7.5.2",
+    "ts-standard/eslint/semver": "7.5.2",
+    "ts-standard/@typescript-eslint/eslint-plugin/semver": "7.5.2",
+    "react-scripts/postcss-loader/semver": "7.5.2",
+    "react-scripts/css-loader/semver": "7.5.2",
+    "react-scripts/react-dev-utils/fork-ts-checker-webpack-plugin/semver": "7.5.2",
+    "@semantic-release/npm/npm/**/semver": "7.5.2",
+    "express": "4.21.0",
+    "rollup": "3.29.5"
   }
 }

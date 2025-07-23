@@ -6,18 +6,20 @@ import {
   Dropdown,
   Input,
   Layout,
-  Menu,
   Modal,
   Row,
   Space,
   Badge,
-  Collapse
+  Collapse,
+  Radio,
+  Tooltip
 } from 'antd'
 import {
   ApiOutlined,
   CheckOutlined,
   InfoOutlined,
   StopOutlined,
+  FileSearchOutlined,
   UnorderedListOutlined,
   UserOutlined,
   SettingOutlined
@@ -29,6 +31,8 @@ import { RouteComponentProps, withRouter } from '../utils/router'
 import NotificationMiddleware, { NotificationMiddlewareEvents } from '../services/NotificationMiddleware'
 import { CustomError } from '../utils/CustomError'
 import { v4 as uuidv4 } from 'uuid'
+import DicomTagBrowser from './DicomTagBrowser/DicomTagBrowser'
+import DicomWebManager from '../DicomWebManager'
 
 interface HeaderProps extends RouteComponentProps {
   app: {
@@ -42,6 +46,8 @@ interface HeaderProps extends RouteComponentProps {
     name: string
     email: string
   }
+  clients?: { [key: string]: DicomWebManager }
+  defaultClients?: { [key: string]: DicomWebManager }
   showWorklistButton: boolean
   onServerSelection: ({ url }: { url: string }) => void
   onUserLogout?: () => void
@@ -59,6 +65,7 @@ interface HeaderState {
   errorObj: ExtendedCustomError[]
   errorCategory: string[]
   warnings: string[]
+  serverSelectionMode: 'default' | 'custom'
 }
 
 /**
@@ -67,12 +74,17 @@ interface HeaderState {
 class Header extends React.Component<HeaderProps, HeaderState> {
   constructor (props: HeaderProps) {
     super(props)
+    const cachedServerUrl = window.localStorage.getItem('slim_selected_server')
+    const cachedMode = window.localStorage.getItem('slim_server_selection_mode') as 'default' | 'custom' | null
+
     this.state = {
-      isServerSelectionModalVisible: false,
-      isServerSelectionDisabled: true,
       errorObj: [],
       errorCategory: [],
-      warnings: []
+      warnings: [],
+      selectedServerUrl: cachedServerUrl ?? '',
+      isServerSelectionModalVisible: false,
+      isServerSelectionDisabled: !this.isValidServerUrl(cachedServerUrl),
+      serverSelectionMode: cachedMode === 'custom' && cachedServerUrl !== null && cachedServerUrl !== '' ? 'custom' : 'default'
     }
 
     const onErrorHandler = ({ source, error }: {
@@ -113,6 +125,18 @@ class Header extends React.Component<HeaderProps, HeaderState> {
         errorCategory: [],
         warnings: []
       })
+    }
+  }
+
+  isValidServerUrl = (url: string | null | undefined): boolean => {
+    if (url == null || url === '') {
+      return false
+    }
+    try {
+      const urlObj = new URL(url)
+      return urlObj.protocol.startsWith('http') && urlObj.pathname.length > 0
+    } catch (TypeError) {
+      return false
     }
   }
 
@@ -171,6 +195,19 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           </Descriptions>
         </>
       ),
+      onOk (): void {}
+    })
+  }
+
+  handleDicomTagBrowserButtonClick = (): void => {
+    const width = window.innerWidth - 200
+    Modal.info({
+      title: 'DICOM Tag Browser',
+      width,
+      content: <DicomTagBrowser
+        clients={this.props.clients ?? {}}
+        studyInstanceUID={this.props.params.studyInstanceUID ?? ''}
+               />,
       onOk (): void {}
     })
   }
@@ -278,6 +315,57 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     this.setState({ isServerSelectionModalVisible: true })
   }
 
+  handleServerSelectionInput = (
+    event: React.FormEvent<HTMLInputElement>
+  ): void => {
+    const value = event.currentTarget.value
+    this.setState({
+      selectedServerUrl: value,
+      isServerSelectionDisabled: !this.isValidServerUrl(value)
+    })
+  }
+
+  handleServerSelectionCancellation = (): void => {
+    const cachedServerUrl = window.localStorage.getItem('slim_selected_server')
+    this.setState({
+      serverSelectionMode: cachedServerUrl !== null && cachedServerUrl !== '' ? 'custom' : 'default',
+      selectedServerUrl: cachedServerUrl ?? undefined,
+      isServerSelectionModalVisible: false,
+      isServerSelectionDisabled: !this.isValidServerUrl(cachedServerUrl)
+    })
+  }
+
+  handleServerSelectionModeChange = (e: any): void => {
+    const mode = e.target.value
+    this.setState({ serverSelectionMode: mode })
+  }
+
+  handleServerSelection = (): void => {
+    window.localStorage.setItem('slim_server_selection_mode', this.state.serverSelectionMode)
+
+    if (this.state.serverSelectionMode === 'default') {
+      this.props.onServerSelection({ url: '' })
+      this.setState({
+        isServerSelectionModalVisible: false,
+        isServerSelectionDisabled: false
+      })
+      return
+    }
+
+    const url = this.state.selectedServerUrl
+    let closeModal = false
+    if (url != null && url !== '') {
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        this.props.onServerSelection({ url })
+        closeModal = true
+      }
+    }
+    this.setState({
+      isServerSelectionModalVisible: !closeModal,
+      isServerSelectionDisabled: !closeModal
+    })
+  }
+
   render (): React.ReactNode {
     let user = null
     if (this.props.user !== undefined) {
@@ -295,9 +383,9 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           }
         )
       }
-      const userMenu = <Menu items={userMenuItems} />
+      const userMenu = { items: userMenuItems }
       user = (
-        <Dropdown overlay={userMenu} trigger={['click']}>
+        <Dropdown menu={userMenu} trigger={['click']}>
           <Button
             icon={UserOutlined}
             onClick={e => e.preventDefault()}
@@ -325,8 +413,8 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     )
 
     const debugButton = (
-      <Badge count={this.state.errorObj.length}>
-        <Badge color='green' count={this.state.warnings.length}>
+      <Badge count={this.state.errorObj.length} style={{ zIndex: 1000 }}>
+        <Badge color='green' count={this.state.warnings.length} style={{ zIndex: 1001 }}>
           <Button
             icon={SettingOutlined}
             tooltip='Debug info'
@@ -335,6 +423,18 @@ class Header extends React.Component<HeaderProps, HeaderState> {
         </Badge>
       </Badge>
     )
+
+    const showDicomTagBrowser = this.props.location.pathname.includes('/studies/')
+
+    const dicomTagBrowserButton = showDicomTagBrowser
+      ? (
+        <Button
+          icon={FileSearchOutlined}
+          tooltip='Dicom Tag Browser'
+          onClick={this.handleDicomTagBrowserButtonClick}
+        />
+        )
+      : null
 
     let serverSelectionButton
     if (this.props.showServerSelectionButton) {
@@ -347,56 +447,36 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       )
     }
 
-    const handleServerSelectionInput = (
-      event: React.FormEvent<HTMLInputElement>
-    ): void => {
-      const value = event.currentTarget.value
-      let isDisabled = true
-      if (value != null) {
-        try {
-          const url = new URL(value)
-          if (url.protocol.startsWith('http') && url.pathname.length > 0) {
-            isDisabled = false
-          }
-        } catch (TypeError) {}
-      }
-      this.setState({
-        selectedServerUrl: value,
-        isServerSelectionDisabled: isDisabled
-      })
-    }
-
-    const handleServerSelectionCancellation = (): void => {
-      this.setState({
-        selectedServerUrl: undefined,
-        isServerSelectionModalVisible: false,
-        isServerSelectionDisabled: true
-      })
-    }
-
-    const handleServerSelection = (): void => {
-      const url = this.state.selectedServerUrl
-      let closeModal = false
-      if (url != null && url !== '') {
-        if (url.startsWith('http://') || url.startsWith('https://')) {
-          this.props.onServerSelection({ url })
-          closeModal = true
-        }
-      }
-      this.setState({
-        selectedServerUrl: undefined,
-        isServerSelectionModalVisible: !closeModal,
-        isServerSelectionDisabled: true
-      })
-    }
-
     const logoUrl = process.env.PUBLIC_URL + '/logo.svg'
+
+    const selectedServerUrl = this.state.serverSelectionMode === 'custom'
+      ? this.state.selectedServerUrl
+      : this.props.clients?.default?.baseURL ?? this.props.defaultClients?.default?.baseURL
+
+    const urlInfo = selectedServerUrl != null && selectedServerUrl !== ''
+      ? (
+        <Tooltip title={selectedServerUrl}>
+          <div
+            style={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              paddingRight: '20px',
+              paddingLeft: '20px'
+            }}
+            title={selectedServerUrl}
+          >
+            {selectedServerUrl}
+          </div>
+        </Tooltip>
+        )
+      : null
 
     return (
       <>
         <Layout.Header style={{ width: '100%', padding: '0 14px' }}>
-          <Row>
-            <Col>
+          <Row style={{ flexWrap: 'nowrap' }}>
+            <Col style={{ flexShrink: 0 }}>
               <Space align='center' direction='horizontal'>
                 <img
                   src={logoUrl}
@@ -405,12 +485,17 @@ class Header extends React.Component<HeaderProps, HeaderState> {
                 />
               </Space>
             </Col>
-            <Col flex='auto' />
-            <Col>
+            <Col flex='auto' style={{ minWidth: 0, overflow: 'hidden' }}>
+              <div style={{ width: '100%', overflow: 'hidden' }}>
+                {this.props.showServerSelectionButton ? urlInfo : ''}
+              </div>
+            </Col>
+            <Col style={{ flexShrink: 0 }}>
               <Space direction='horizontal'>
                 {worklistButton}
                 {infoButton}
                 {debugButton}
+                {dicomTagBrowserButton}
                 {serverSelectionButton}
                 {user}
               </Space>
@@ -419,21 +504,35 @@ class Header extends React.Component<HeaderProps, HeaderState> {
         </Layout.Header>
 
         <Modal
-          visible={this.state.isServerSelectionModalVisible}
+          open={this.state.isServerSelectionModalVisible}
           title='Select DICOMweb server'
-          onOk={handleServerSelection}
-          onCancel={handleServerSelectionCancellation}
+          onOk={this.handleServerSelection}
+          onCancel={this.handleServerSelectionCancellation}
         >
-          <Input
-            placeholder='Enter base URL of DICOMweb Study Service'
-            onChange={handleServerSelectionInput}
-            onPressEnter={handleServerSelection}
-            addonAfter={
-              this.state.isServerSelectionDisabled
-                ? <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                : <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-            }
-          />
+          <Radio.Group
+            value={this.state.serverSelectionMode}
+            onChange={this.handleServerSelectionModeChange}
+            style={{ marginBottom: '16px' }}
+          >
+            <Radio value='default'>Use default server</Radio>
+            <Radio value='custom'>Use custom server</Radio>
+          </Radio.Group>
+
+          {this.state.serverSelectionMode === 'custom' && (
+            <Tooltip title={this.state.selectedServerUrl}>
+              <Input
+                placeholder='Enter base URL of DICOMweb Study Service'
+                value={this.state.selectedServerUrl}
+                onChange={this.handleServerSelectionInput}
+                onPressEnter={this.handleServerSelection}
+                addonAfter={
+                this.state.isServerSelectionDisabled
+                  ? <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                  : <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                }
+              />
+            </Tooltip>
+          )}
         </Modal>
       </>
     )

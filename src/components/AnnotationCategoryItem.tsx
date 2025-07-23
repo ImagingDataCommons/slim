@@ -4,23 +4,25 @@ import { SettingOutlined } from '@ant-design/icons'
 import { Category, Type } from './AnnotationCategoryList'
 import ColorSettingsMenu from './ColorSettingsMenu'
 
-const AnnotationGroupItem = ({
+const AnnotationCategoryItem = ({
   category,
   onChange,
-  checkedAnnotationGroupUids,
+  checkedAnnotationUids,
   onStyleChange,
-  defaultAnnotationGroupStyles
+  defaultAnnotationStyles,
+  ...props
 }: {
   category: Category
   onChange: Function
   onStyleChange: Function
-  defaultAnnotationGroupStyles: {
-    [annotationGroupUID: string]: {
+  defaultAnnotationStyles: {
+    [annotationUID: string]: {
       opacity: number
       color: number[]
+      contourOnly: boolean
     }
   }
-  checkedAnnotationGroupUids: Set<string>
+  checkedAnnotationUids: Set<string>
 }): JSX.Element => {
   const { types } = category
 
@@ -32,12 +34,12 @@ const AnnotationGroupItem = ({
   }
 
   const checkAll = types.every((type: Type) =>
-    type.uids.every((uid: string) => checkedAnnotationGroupUids.has(uid))
+    type.uids.every((uid: string) => checkedAnnotationUids.has(uid))
   )
   const indeterminate =
     !checkAll &&
     types.some((type: Type) =>
-      type.uids.some((uid: string) => checkedAnnotationGroupUids.has(uid))
+      type.uids.some((uid: string) => checkedAnnotationUids.has(uid))
     )
 
   const handleChangeCheckedType = ({
@@ -48,17 +50,17 @@ const AnnotationGroupItem = ({
     isVisible: boolean
   }): void => {
     type.uids.forEach((uid: string) => {
-      onChange({ annotationGroupUID: uid, isVisible })
+      onChange({ roiUID: uid, isVisible })
     })
   }
 
   return (
     <Menu.Item
       style={{ height: '100%', paddingLeft: '3px' }}
-      key={category.CodeMeaning}
+      {...props}
     >
       <Space align='start'>
-        <div style={{ paddingLeft: '14px' }}>
+        <div style={{ paddingLeft: '14px', color: 'black' }}>
           <Space direction='vertical' align='end'>
             <Checkbox
               indeterminate={indeterminate}
@@ -85,7 +87,7 @@ const AnnotationGroupItem = ({
                     )}
                     onStyleChange={onStyleChange}
                     defaultStyle={
-                      defaultAnnotationGroupStyles[types[0].uids[0]]
+                      defaultAnnotationStyles[types[0].uids[0]]
                     }
                   />
                 )}
@@ -102,16 +104,23 @@ const AnnotationGroupItem = ({
           {types.map((type: Type) => {
             const { CodeMeaning, CodingSchemeDesignator, CodeValue, uids } =
               type
+            const shortenedCodeMeaning = CodeMeaning.slice(0, 22)
+            const displayCodeMeaning = shortenedCodeMeaning === CodeMeaning ? CodeMeaning : `${shortenedCodeMeaning}...`
             const isChecked = uids.every((uid: string) =>
-              checkedAnnotationGroupUids.has(uid)
+              checkedAnnotationUids.has(uid)
             )
             const indeterminateType =
               !isChecked &&
-              uids.some((uid: string) => checkedAnnotationGroupUids.has(uid))
+              uids.some((uid: string) => checkedAnnotationUids.has(uid))
             return (
               <div
                 key={`${type.CodingSchemeDesignator}:${type.CodeMeaning}`}
-                style={{ paddingLeft: '25px' }}
+                style={{
+                  paddingLeft: '25px',
+                  width: '100%',
+                  display: 'flex',
+                  flexDirection: 'row'
+                }}
               >
                 <Checkbox
                   indeterminate={indeterminateType}
@@ -121,12 +130,13 @@ const AnnotationGroupItem = ({
                       type,
                       isVisible: e.target.checked
                     })}
-                >
+                />
+                <div style={{ paddingLeft: '5px' }}>
                   <Tooltip
                     title={`${CodeValue}:${CodingSchemeDesignator}`}
                     mouseEnterDelay={1}
                   >
-                    {CodeMeaning}
+                    {displayCodeMeaning}
                   </Tooltip>
                   <Popover
                     placement='topLeft'
@@ -136,9 +146,7 @@ const AnnotationGroupItem = ({
                       <ColorSettingsMenu
                         annotationGroupsUIDs={type.uids}
                         onStyleChange={onStyleChange}
-                        defaultStyle={
-                          defaultAnnotationGroupStyles[type.uids[0]]
-                        }
+                        defaultStyle={defaultAnnotationStyles[type.uids[0]]}
                       />
                     )}
                   >
@@ -149,7 +157,7 @@ const AnnotationGroupItem = ({
                       icon={<SettingOutlined />}
                     />
                   </Popover>
-                </Checkbox>
+                </div>
               </div>
             )
           })}
@@ -159,4 +167,4 @@ const AnnotationGroupItem = ({
   )
 }
 
-export default AnnotationGroupItem
+export default AnnotationCategoryItem

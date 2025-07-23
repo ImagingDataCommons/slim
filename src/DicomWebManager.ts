@@ -1,4 +1,6 @@
 import * as dwc from 'dicomweb-client'
+import * as dcmjs from 'dcmjs'
+import * as dmv from 'dicom-microscopy-viewer'
 
 import { ServerSettings, DicomWebManagerErrorHandler } from './AppConfig'
 import { joinUrl } from './utils/url'
@@ -7,6 +9,9 @@ import { CustomError, errorTypes } from './utils/CustomError'
 import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from './services/NotificationMiddleware'
+import DicomMetadataStore, { Instance } from './services/DICOMMetadataStore'
+
+const { naturalizeDataset } = dcmjs.data.DicomMetaDictionary
 
 interface Store {
   id: string
@@ -58,9 +63,20 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
           )
         )
       }
+
+      const hasHttpsUrl = (url?: string): boolean => url?.startsWith('https') ?? false
+
       const clientSettings: dwc.api.DICOMwebClientOptions = {
         url: serviceUrl
       }
+
+      const shouldUpgradeInsecure = serverSettings.upgradeInsecureRequests === true && [
+        serviceUrl,
+        serverSettings.qidoPathPrefix,
+        serverSettings.wadoPathPrefix,
+        serverSettings.stowPathPrefix
+      ].some(hasHttpsUrl)
+
       if (serverSettings.qidoPathPrefix !== undefined) {
         clientSettings.qidoURLPrefix = serverSettings.qidoPathPrefix
       }
@@ -70,6 +86,14 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       if (serverSettings.stowPathPrefix !== undefined) {
         clientSettings.stowURLPrefix = serverSettings.stowPathPrefix
       }
+
+      if (shouldUpgradeInsecure) {
+        clientSettings.headers = {
+          ...clientSettings.headers,
+          'Content-Security-Policy': 'upgrade-insecure-requests'
+        }
+      }
+
       if (serverSettings.retry !== undefined) {
         clientSettings.requestHooks = [getXHRRetryHook(serverSettings.retry)]
       }
@@ -144,13 +168,19 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   retrieveStudyMetadata = async (
     options: dwc.api.RetrieveStudyMetadataOptions
   ): Promise<dwc.api.Metadata[]> => {
-    return await this.stores[0].client.retrieveStudyMetadata(options)
+    const studySummaryMetadata = await this.stores[0].client.retrieveStudyMetadata(options)
+    const naturalized = naturalizeDataset(studySummaryMetadata)
+    DicomMetadataStore.addStudy(naturalized)
+    return studySummaryMetadata
   }
 
   retrieveSeriesMetadata = async (
     options: dwc.api.RetrieveSeriesMetadataOptions
   ): Promise<dwc.api.Metadata[]> => {
-    return await this.stores[0].client.retrieveSeriesMetadata(options)
+    const seriesSummaryMetadata = await this.stores[0].client.retrieveSeriesMetadata(options)
+    const naturalized = seriesSummaryMetadata.map(naturalizeDataset)
+    DicomMetadataStore.addSeriesMetadata(naturalized, true)
+    return seriesSummaryMetadata
   }
 
   retrieveInstanceMetadata = async (
@@ -162,7 +192,11 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   retrieveInstance = async (
     options: dwc.api.RetrieveInstanceOptions
   ): Promise<dwc.api.Dataset> => {
-    return await this.stores[0].client.retrieveInstance(options)
+    const instance = await this.stores[0].client.retrieveInstance(options)
+    const data = dcmjs.data.DicomMessage.readFile(instance)
+    const { dataset } = dmv.metadata.formatMetadata(data.dict)
+    DicomMetadataStore.addInstances([dataset as Instance])
+    return instance
   }
 
   retrieveInstanceFrames = async (
