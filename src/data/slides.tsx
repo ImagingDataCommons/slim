@@ -94,7 +94,6 @@ class Slide {
     const volumeImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
     const labelImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
     const overviewImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
-
     options.images.forEach((image) => {
       containerIdentifiers.add(image.ContainerIdentifier)
       seriesInstanceUIDs.add(image.SeriesInstanceUID)
@@ -104,17 +103,31 @@ class Slide {
       if (image.AcquisitionUID != null) {
         acquisitionUIDs.add(image.AcquisitionUID)
       }
-      if (
-        hasImageFlavor(image, ImageFlavors.VOLUME) ||
-        hasImageFlavor(image, ImageFlavors.THUMBNAIL)
-      ) {
+      if (hasImageFlavor(image, ImageFlavors.VOLUME)) {
         frameOfReferenceUIDs.VOLUME.add(image.FrameOfReferenceUID)
-        if (image.PyramidUID != null) {
-          for (const identifier in opticalPathIdentifiers) {
+        if (image.PyramidUID !== null && image.PyramidUID !== undefined) {
+          for (const identifier of Object.keys(opticalPathIdentifiers)) {
             pyramidUIDs.VOLUME[identifier].add(image.PyramidUID)
           }
         }
         volumeImages.push(image)
+      } else if (hasImageFlavor(image, ImageFlavors.THUMBNAIL)) {
+        /* Only include THUMBNAIL if no equivalent VOLUME image exists */
+        const hasEquivalentVolume = options.images.some(img =>
+          hasImageFlavor(img, ImageFlavors.VOLUME) &&
+          img.FrameOfReferenceUID === image.FrameOfReferenceUID &&
+          img.OpticalPathSequence.every(opt => opt.OpticalPathIdentifier === image.OpticalPathSequence[0].OpticalPathIdentifier)
+        )
+        if (!hasEquivalentVolume) {
+          console.debug('Does not have equivalent volume for thumbnail, using thumbnail.', image.FrameOfReferenceUID)
+          frameOfReferenceUIDs.VOLUME.add(image.FrameOfReferenceUID)
+          if (image.PyramidUID !== null && image.PyramidUID !== undefined) {
+            for (const identifier of Object.keys(opticalPathIdentifiers)) {
+              pyramidUIDs.VOLUME[identifier].add(image.PyramidUID)
+            }
+          }
+          volumeImages.push(image)
+        }
       } else if (hasImageFlavor(image, ImageFlavors.LABEL)) {
         frameOfReferenceUIDs.LABEL.add(image.FrameOfReferenceUID)
         labelImages.push(image)
@@ -282,12 +295,15 @@ const createSlides = (
   const slideMetadata: SlideImageCollection[] = []
   images.forEach((series) => {
     if (series.length > 0) {
-      const volumeImages = series.filter((image) => {
-        return (
-          hasImageFlavor(image, ImageFlavors.VOLUME) ||
-          hasImageFlavor(image, ImageFlavors.THUMBNAIL)
-        )
-      })
+      const volumeImages = series.filter((image) =>
+        hasImageFlavor(image, ImageFlavors.VOLUME) ||
+        (hasImageFlavor(image, ImageFlavors.THUMBNAIL) &&
+          !series.some(img =>
+            hasImageFlavor(img, ImageFlavors.VOLUME) &&
+            img.FrameOfReferenceUID === image.FrameOfReferenceUID &&
+            img.OpticalPathSequence.every(opt => opt.OpticalPathIdentifier === image.OpticalPathSequence[0].OpticalPathIdentifier)
+          ))
+      )
       if (volumeImages.length > 0) {
         const refImage = volumeImages[0]
         const filteredVolumeImages = volumeImages.filter((image) => {

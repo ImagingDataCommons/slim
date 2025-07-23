@@ -4820,10 +4820,10 @@ dcmjs@^0.35.0:
     ndarray "^1.0.19"
     pako "^2.0.4"
 
-dcmjs@^0.38.1:
-  version "0.38.1"
-  resolved "https://registry.yarnpkg.com/dcmjs/-/dcmjs-0.38.1.tgz#9c39813ac2717a8efc62d1db64ce8a723e8efae8"
-  integrity sha512-amSv71Gs/Yd8DRLcvS15dGlcWjpSHt5h6NTj8ozWRRuKIP5BgXhAnPPzrsJTXs+LDm13JDA8Ip2/7WLo5qfzhA==
+dcmjs@^0.41.0:
+  version "0.41.0"
+  resolved "https://registry.yarnpkg.com/dcmjs/-/dcmjs-0.41.0.tgz#4804099980ab769f8902a948ad330abdf3b577d2"
+  integrity sha512-kr46REomItFeWz+0ck4Wif4uS5VVDWVlwdh5GGaCtTYHWfNQmrcCSiQOkrShc7Dc5zP8vNKrHEdORlZXenlg3w==
   dependencies:
     "@babel/runtime-corejs3" "^7.22.5"
     adm-zip "^0.5.10"
@@ -4986,17 +4986,17 @@ detective@^5.2.1:
     defined "^1.0.0"
     minimist "^1.2.6"
 
-dicom-microscopy-viewer@^0.48.3:
-  version "0.48.3"
-  resolved "https://registry.yarnpkg.com/dicom-microscopy-viewer/-/dicom-microscopy-viewer-0.48.3.tgz#af99911270970205cf29a560f7ebfa4591a6d5c0"
-  integrity sha512-BXXQSZx4dNhKGHJB8Wo1Q2o6UAoqpxROmM0Z8JMoIqkhVPOaSgisUkm3XYm/STK0GiU+ZjIPX2FYHYE+k86+iw==
+dicom-microscopy-viewer@^0.48.4:
+  version "0.48.4"
+  resolved "https://registry.yarnpkg.com/dicom-microscopy-viewer/-/dicom-microscopy-viewer-0.48.4.tgz#b3fb919aa0ba96f52902ca41a3caf451f635e8cf"
+  integrity sha512-HDWJgb1Bbxg1HmpSoq6whR9PCBEIGR01x2bUG35H8yGTc/eOx6I8zYptnfqmu5G29CQAUETD3SUvxgUYVU34Ew==
   dependencies:
     "@cornerstonejs/codec-charls" "^1.2.3"
     "@cornerstonejs/codec-libjpeg-turbo-8bit" "^1.2.2"
     "@cornerstonejs/codec-openjpeg" "^1.2.4"
     "@cornerstonejs/codec-openjph" "^2.4.5"
     colormap "^2.3"
-    dcmjs "^0.38.1"
+    dcmjs "^0.41.0"
     dicomicc "^0.1"
     dicomweb-client "^0.10.3"
     image-type "^4.1"

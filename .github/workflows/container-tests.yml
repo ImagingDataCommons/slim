@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.1.4
+        uses: actions/checkout@v4.2.2
 
       - name: Setup Node
-        uses: actions/setup-node@v4.0.2
+        uses: actions/setup-node@v4.4.0
         with:
           node-version: 20.8.1
 
@@ -31,3 +31,9 @@ jobs:
         run: |
           sleep 20
           curl -sI http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs/studies | grep -o '204 No Content'
+
+      - name: Wildfly internal server.log
+        if: always()
+        run: |
+          docker cp dcm4chee-arc:/opt/wildfly/standalone/log/server.log ./server.log || echo "Log not found"
+          cat ./server.log || echo "Log not found"
