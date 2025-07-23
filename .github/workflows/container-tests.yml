@@ -32,12 +32,12 @@ jobs:
           sleep 20
           curl -sI http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs/studies | grep -o '204 No Content'
 
-      - name: Print Wildfly internal server.log
+      - name: Wildfly internal server.log
         if: always()
         run: |
           docker cp dcm4chee-arc:/opt/wildfly/standalone/log/server.log ./server.log || echo "Log not found"
           cat ./server.log || echo "Log not found"
 
-      - name: Print arc container environment
+      - name: Arc container environment variables
         if: always()
         run: docker compose exec arc env

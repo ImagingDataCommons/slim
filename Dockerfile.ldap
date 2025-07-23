@@ -1,5 +1,6 @@
 FROM dcm4che/slapd-dcm4chee:2.6.8-34.1
 
 # Copy the LDAP configuration files into the container
+COPY etc/openldap/data/default-config.ldif /docker-entrypoint.d/
 COPY etc/openldap/data/modify-dcmRemapRetrieveURL.ldif /docker-entrypoint.d/
 COPY etc/openldap/data/modify-dcmWebServicePath.ldif /docker-entrypoint.d/ 

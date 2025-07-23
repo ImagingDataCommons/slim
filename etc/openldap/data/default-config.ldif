@@ -1,0 +1,33 @@
+dn: dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+objectClass: dcmDevice
+objectClass: dcmArchiveDevice
+objectClass: top
+dicomDeviceName: dcm4chee-arc
+dicomDescription: DCM4CHEE Archive 5
+dicomInstalled: TRUE
+dicomManufacturer: dcm4che.org
+dicomManufacturerModelName: dcm4chee-arc
+dicomSoftwareVersion: 5.34.0
+dicomDeviceSerialNumber: 1
+dicomIssuerOfPatientID: dcm4chee-arc
+dicomNetworkConnectionReference: cn=localhost,cn=NetworkConnections,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+dicomNetworkAE: cn=DCM4CHEE,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+dicomNetworkAE: cn=DCM4CHEE_ADMIN,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+dicomNetworkAE: cn=DCM4CHEE_TRASH,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+dicomWebApp: cn=DCM4CHEE,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+dicomWebApp: cn=DCM4CHEE_ADMIN,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+dicomWebApp: cn=DCM4CHEE_QIDO,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+dicomWebApp: cn=DCM4CHEE_STOW,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+dicomWebApp: cn=DCM4CHEE_WADO,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+dicomWebApp: cn=DCM4CHEE_WADO_RS,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+dicomWebApp: cn=DCM4CHEE_WADO_URI,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+dicomWebApp: cn=DCM4CHEE_IHE_ID,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+dicomWebApp: cn=DCM4CHEE_IHE_MHD,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+dicomWebApp: cn=DCM4CHEE_IHE_PIX,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+dicomWebApp: cn=DCM4CHEE_IHE_PDQ,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+dicomWebApp: cn=DCM4CHEE_IHE_XDSI,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+dicomWebApp: cn=DCM4CHEE_IHE_XDS,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+dicomWebApp: cn=DCM4CHEE_IHE_XCA,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+dicomWebApp: cn=DCM4CHEE_IHE_XCPD,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+dicomWebApp: cn=DCM4CHEE_IHE_XUA,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+dicomWebApp: cn=DCM4CHEE_UI,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org 
