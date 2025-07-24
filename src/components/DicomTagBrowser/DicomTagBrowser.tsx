@@ -229,7 +229,14 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
     }
 
     if (displaySets[selectedDisplaySetInstanceUID] === undefined) return []
-    const metadata = displaySets[selectedDisplaySetInstanceUID]?.images[instanceNumber - 1]
+    const images =  displaySets[selectedDisplaySetInstanceUID]?.images
+    const sortedMetadata = images ? [...images].sort((a, b) => {
+    if (a.InstanceNumber !== undefined && b.InstanceNumber !== undefined) {
+      return Number(a.InstanceNumber) - Number(b.InstanceNumber)
+    }
+    return 0 // keep original order if either is missing InstanceNumber
+    }) : []
+    const metadata = sortedMetadata[instanceNumber - 1]
     const tags = getSortedTags(metadata)
     return transformTagsToTableData(tags)
   }, [instanceNumber, selectedDisplaySetInstanceUID, displaySets])
@@ -328,7 +335,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
       >
         <div style={{ display: 'flex', gap: '24px', marginBottom: '32px' }}>
           <div style={{ flex: 1 }}>
-            <Typography.Text strong style={{ display: 'block', marginBottom: '8px' }}>Slides</Typography.Text>
+            <Typography.Text strong style={{ display: 'block', marginBottom: '8px' }}>Series</Typography.Text>
             <Select
               style={{ width: '100%' }}
               value={selectedDisplaySetInstanceUID}
