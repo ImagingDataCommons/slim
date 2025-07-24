@@ -229,13 +229,15 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
     }
 
     if (displaySets[selectedDisplaySetInstanceUID] === undefined) return []
-    const images =  displaySets[selectedDisplaySetInstanceUID]?.images
-    const sortedMetadata = images ? [...images].sort((a, b) => {
-    if (a.InstanceNumber !== undefined && b.InstanceNumber !== undefined) {
-      return Number(a.InstanceNumber) - Number(b.InstanceNumber)
-    }
-    return 0 // keep original order if either is missing InstanceNumber
-    }) : []
+    const images = displaySets[selectedDisplaySetInstanceUID]?.images
+    const sortedMetadata = Array.isArray(images)
+      ? [...images].sort((a, b) => {
+          if (a.InstanceNumber !== undefined && b.InstanceNumber !== undefined) {
+            return Number(a.InstanceNumber) - Number(b.InstanceNumber)
+          }
+          return 0 // keep original order if either is missing InstanceNumber
+        })
+      : []
     const metadata = sortedMetadata[instanceNumber - 1]
     const tags = getSortedTags(metadata)
     return transformTagsToTableData(tags)
