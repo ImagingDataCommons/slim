@@ -1,7 +1,7 @@
 import React from 'react'
-import { FaSpinner } from 'react-icons/fa'
+import { FaSpinner, FaExclamationTriangle } from 'react-icons/fa'
 import * as dmv from 'dicom-microscopy-viewer'
-import { Menu } from 'antd'
+import { Menu, Tooltip } from 'antd'
 
 import DicomWebManager from '../DicomWebManager'
 import Description from './Description'
@@ -105,26 +105,42 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
           attributes={attributes}
           selectable
         >
-          {this.props.slide.overviewImages.length > 0
-            ? (
-              <div style={{ height: '100px' }} ref={this.overviewViewportRef} />
-              )
-            : (
-              <div style={{
-                height: '100px',
-                textAlign: 'center',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.5rem',
-                fontWeight: 300,
-                color: '#8F9BA8',
-                letterSpacing: '0.1em'
-              }}
-              >
-                SM
-              </div>
-              )}
+          <div style={{ position: 'relative', height: '100px' }}>
+            {this.props.slide.overviewImages.length > 0
+              ? (
+                <div ref={this.overviewViewportRef} style={{ height: '100%' }} />
+                )
+              : (
+                <div style={{
+                  height: '100%',
+                  textAlign: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.5rem',
+                  fontWeight: 300,
+                  color: '#8F9BA8',
+                  letterSpacing: '0.1em'
+                }}
+                >
+                  SM
+                </div>
+                )}
+            {this.props.slide.volumeImages.length <= 1 && (
+              <Tooltip title='This slide is missing a multi-resolution pyramid. Display and performance may be degraded.'>
+                <FaExclamationTriangle style={{
+                  position: 'absolute',
+                  top: 4,
+                  right: 4,
+                  color: '#e69500', // slightly darker for more pop
+                  fontSize: '1.3em',
+                  zIndex: 2,
+                  textShadow: '0 2px 6px rgba(0,0,0,0.25), 0 0px 2px #fff'
+                }}
+                />
+              </Tooltip>
+            )}
+          </div>
         </Description>
       </Menu.Item>
     )
