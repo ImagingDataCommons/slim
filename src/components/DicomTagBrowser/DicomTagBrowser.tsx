@@ -162,8 +162,6 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
   const showInstanceList =
     displaySets[selectedDisplaySetInstanceUID]?.images.length > 1
 
-  console.debug('displaySets:', displaySets)
-
   const instanceSliderMarks = useMemo(() => {
     if (displaySets[selectedDisplaySetInstanceUID] === undefined) return {}
     const totalInstances = displaySets[selectedDisplaySetInstanceUID].images.length
