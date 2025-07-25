@@ -39,7 +39,7 @@ module.exports = {
         */
         alias: {
           'dicom-microscopy-viewer':
-            'dicom-microscopy-viewer/dist/dynamic-import/dicomMicroscopyViewer.min.js'
+            'dicom-microscopy-viewer/dynamic-import'
         }
       }
       config.plugins.push(
@@ -48,7 +48,7 @@ module.exports = {
           patterns: [
             {
               from: './node_modules/dicom-microscopy-viewer/dist/dynamic-import',
-              to: './static/js'
+              to: './'
             }
           ]
         })
