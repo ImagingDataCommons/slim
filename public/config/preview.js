@@ -7,12 +7,12 @@ window.config = {
       write: false
     }
   ],
-  oidc: {
-    authority: 'https://accounts.google.com',
-    clientId: '293449031882-k4um45hl4g94fsgbnviel0lh38836i9v.apps.googleusercontent.com',
-    scope: 'email profile openid https://www.googleapis.com/auth/cloud-healthcare',
-    grantType: 'implicit'
-  },
+  // oidc: {
+  //   authority: 'https://accounts.google.com',
+  //   clientId: '293449031882-k4um45hl4g94fsgbnviel0lh38836i9v.apps.googleusercontent.com',
+  //   scope: 'email profile openid https://www.googleapis.com/auth/cloud-healthcare',
+  //   grantType: 'implicit'
+  // },
   disableWorklist: false,
   disableAnnotationTools: false,
   enableServerSelection: true,
