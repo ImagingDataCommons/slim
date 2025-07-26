@@ -19,6 +19,7 @@ import * as dmv from 'dicom-microscopy-viewer'
 import * as dcmjs from 'dcmjs'
 
 import Description from './Description'
+import ValidationWarning from './ValidationWarning'
 
 // Helper function components
 function AnnotationGroupControls ({
@@ -55,35 +56,45 @@ function AnnotationGroupControls ({
 }
 
 function AnnotationGroupBadgeDescription ({
+  annotationGroup,
+  onClick,
   isBadgeVisible,
   color,
   label,
   attributes
 }: {
+  annotationGroup: any
+  onClick: () => void
   isBadgeVisible: boolean
   color: string
   label: string
   attributes: Array<{ name: string, value: string }>
 }): React.ReactElement {
   return (
-    <Badge
-      offset={[-20, 20]}
-      count={' '}
-      style={{
-        borderStyle: 'solid',
-        borderWidth: '1px',
-        borderColor: 'gray',
-        visibility: isBadgeVisible ? 'visible' : 'hidden',
-        backgroundImage: `linear-gradient(to bottom, ${color}, ${color}`
-      }}
-    >
-      <Description
-        header={label}
-        attributes={attributes}
-        selectable
-        hasLongValues
-      />
-    </Badge>
+    <div onClick={onClick}>
+      <Badge
+        offset={[-20, 20]}
+        count={' '}
+        style={{
+          borderStyle: 'solid',
+          borderWidth: '1px',
+          borderColor: 'gray',
+          visibility: isBadgeVisible ? 'visible' : 'hidden',
+          backgroundImage: `linear-gradient(to bottom, ${color}, ${color}`
+        }}
+      >
+        <ValidationWarning
+          annotationGroup={annotationGroup}
+          style={{ padding: '0.3rem' }}
+        />
+        <Description
+          header={label}
+          attributes={attributes}
+          selectable
+          hasLongValues
+        />
+      </Badge>
+    </div>
   )
 }
 
@@ -629,7 +640,6 @@ AnnotationGroupItemState
       <Menu.Item
         style={{ height: '100%', paddingLeft: '3px' }}
         key={this.props.annotationGroup.uid}
-        onClick={this.handleAnnotationGroupClick}
         {...otherProps}
       >
         <Space align='start'>
@@ -641,6 +651,8 @@ AnnotationGroupItemState
             />
           </div>
           <AnnotationGroupBadgeDescription
+            onClick={this.handleAnnotationGroupClick}
+            annotationGroup={this.props.annotationGroup}
             isBadgeVisible={isBadgeVisible}
             color={color}
             label={this.props.annotationGroup.label}

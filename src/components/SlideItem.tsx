@@ -1,10 +1,11 @@
 import React from 'react'
-import { FaSpinner, FaExclamationTriangle } from 'react-icons/fa'
+import { FaSpinner } from 'react-icons/fa'
 import * as dmv from 'dicom-microscopy-viewer'
-import { Menu, Tooltip } from 'antd'
+import { Menu } from 'antd'
 
 import DicomWebManager from '../DicomWebManager'
 import Description from './Description'
+import ValidationWarning from './ValidationWarning'
 import { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
 import NotificationMiddleware, {
@@ -126,20 +127,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
                   SM
                 </div>
                 )}
-            {this.props.slide.volumeImages.length <= 1 && (
-              <Tooltip title='This slide is missing a multi-resolution pyramid. Display and performance may be degraded.'>
-                <FaExclamationTriangle style={{
-                  position: 'absolute',
-                  top: 4,
-                  right: 4,
-                  color: '#e69500', // slightly darker for more pop
-                  fontSize: '1.3em',
-                  zIndex: 2,
-                  textShadow: '0 2px 6px rgba(0,0,0,0.25), 0 0px 2px #fff'
-                }}
-                />
-              </Tooltip>
-            )}
+            <ValidationWarning slide={this.props.slide} />
           </div>
         </Description>
       </Menu.Item>
