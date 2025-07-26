@@ -15,6 +15,11 @@ interface ValidationWarningProps {
   }
 }
 
+const MessageEnum = {
+  MISSING_MULTI_RESOLUTION_PYRAMID: 'This slide is missing a multi-resolution pyramid. Display and performance may be degraded.',
+  NOT_ASSOCIATED_WITH_ANY_SLIDE: 'The annotation group is not associated with any slide.'
+}
+
 const ValidationWarning: React.FC<ValidationWarningProps> = ({
   slide,
   annotationGroup,
@@ -31,9 +36,9 @@ const ValidationWarning: React.FC<ValidationWarningProps> = ({
   useEffect(() => {
     if (slide?.volumeImages?.length <= 1) {
       setShow(true)
-      setTooltipText('This slide is missing a multi-resolution pyramid. Display and performance may be degraded.')
-    } else if (slides != null && annotationGroup != null) {
-      // Check if any of the annotation group's SOP instance UIDs are found in any slide
+      setTooltipText(MessageEnum.MISSING_MULTI_RESOLUTION_PYRAMID)
+      console.warn(MessageEnum.MISSING_MULTI_RESOLUTION_PYRAMID)
+    } else if (slides != null && slides.length > 0 && annotationGroup != null) {
       const hasMatchingSlide = slides.some((slide: any) =>
         slide.volumeImages?.some(
           (volumeImage: any) =>
@@ -42,12 +47,10 @@ const ValidationWarning: React.FC<ValidationWarningProps> = ({
             annotationGroup.referencedSOPInstanceUID
         )
       )
-
       if (!hasMatchingSlide) {
         setShow(true)
-        setTooltipText(
-          'The annotation group is not associated with any slide.'
-        )
+        setTooltipText(MessageEnum.NOT_ASSOCIATED_WITH_ANY_SLIDE)
+        console.warn(MessageEnum.NOT_ASSOCIATED_WITH_ANY_SLIDE)
       } else {
         setShow(false)
         setTooltipText(undefined)
