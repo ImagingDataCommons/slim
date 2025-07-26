@@ -5,6 +5,7 @@ import { Menu } from 'antd'
 
 import DicomWebManager from '../DicomWebManager'
 import Description from './Description'
+import ValidationWarning from './ValidationWarning'
 import { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
 import NotificationMiddleware, {
@@ -105,26 +106,29 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
           attributes={attributes}
           selectable
         >
-          {this.props.slide.overviewImages.length > 0
-            ? (
-              <div style={{ height: '100px' }} ref={this.overviewViewportRef} />
-              )
-            : (
-              <div style={{
-                height: '100px',
-                textAlign: 'center',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.5rem',
-                fontWeight: 300,
-                color: '#8F9BA8',
-                letterSpacing: '0.1em'
-              }}
-              >
-                SM
-              </div>
-              )}
+          <div style={{ position: 'relative', height: '100px' }}>
+            {this.props.slide.overviewImages.length > 0
+              ? (
+                <div ref={this.overviewViewportRef} style={{ height: '100%' }} />
+                )
+              : (
+                <div style={{
+                  height: '100%',
+                  textAlign: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.5rem',
+                  fontWeight: 300,
+                  color: '#8F9BA8',
+                  letterSpacing: '0.1em'
+                }}
+                >
+                  SM
+                </div>
+                )}
+            <ValidationWarning slide={this.props.slide} />
+          </div>
         </Description>
       </Menu.Item>
     )
