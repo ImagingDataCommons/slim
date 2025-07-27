@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 
 import DicomWebManager from '../DicomWebManager'
 import { Slide } from '../data/slides'
@@ -17,6 +17,42 @@ interface UseSlidesReturn {
 
 const slidesCache = new Map<string, Slide[]>()
 const pendingRequests = new Map<string, Promise<Slide[]>>()
+const cacheTimestamps = new Map<string, number>()
+
+// Cache expiration time: 30 minutes
+const CACHE_EXPIRATION_TIME = 30 * 60 * 1000
+
+// Clean up expired cache entries
+const cleanupExpiredCache = () => {
+  const now = Date.now()
+  for (const [key, timestamp] of cacheTimestamps.entries()) {
+    if (now - timestamp > CACHE_EXPIRATION_TIME) {
+      slidesCache.delete(key)
+      cacheTimestamps.delete(key)
+    }
+  }
+}
+
+// Utility functions for cache management
+export const clearSlidesCache = (studyInstanceUID?: string) => {
+  if (studyInstanceUID) {
+    slidesCache.delete(studyInstanceUID)
+    cacheTimestamps.delete(studyInstanceUID)
+    pendingRequests.delete(studyInstanceUID)
+  } else {
+    slidesCache.clear()
+    cacheTimestamps.clear()
+    pendingRequests.clear()
+  }
+}
+
+export const getCachedSlides = (studyInstanceUID: string): Slide[] | undefined => {
+  return slidesCache.get(studyInstanceUID)
+}
+
+export const isSlidesCached = (studyInstanceUID: string): boolean => {
+  return slidesCache.has(studyInstanceUID)
+}
 
 /**
  * Hook to fetch and manage whole slide microscopy images for a given study.
@@ -33,6 +69,9 @@ export const useSlides = ({ clients, studyInstanceUID }: UseSlidesProps = {}): U
   const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
+    // Clean up expired cache entries periodically
+    cleanupExpiredCache()
+
     // If no arguments provided, return cached slides if available
     if ((clients == null) || studyInstanceUID == null || studyInstanceUID === '') {
       // Get the most recently cached slides (last entry in the cache)
@@ -54,10 +93,12 @@ export const useSlides = ({ clients, studyInstanceUID }: UseSlidesProps = {}): U
     if (cachedData !== undefined) {
       setSlides(cachedData)
       setIsLoading(false)
+      setError(null)
       return
     }
 
     setIsLoading(true)
+    setError(null)
 
     const fetchSlides = async (): Promise<void> => {
       // Check if there's already a pending request for this study
@@ -71,6 +112,7 @@ export const useSlides = ({ clients, studyInstanceUID }: UseSlidesProps = {}): U
             studyInstanceUID,
             onSuccess: (newSlides) => {
               slidesCache.set(studyInstanceUID, newSlides)
+              cacheTimestamps.set(studyInstanceUID, Date.now())
               resolve(newSlides)
             },
             onError: (err) => {
@@ -99,5 +141,12 @@ export const useSlides = ({ clients, studyInstanceUID }: UseSlidesProps = {}): U
     void fetchSlides()
   }, [clients, studyInstanceUID])
 
-  return { slides, isLoading, error }
+  // Memoize the return value to prevent unnecessary re-renders
+  const result = useMemo(() => ({
+    slides,
+    isLoading,
+    error
+  }), [slides, isLoading, error])
+
+  return result
 }

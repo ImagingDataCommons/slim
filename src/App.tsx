@@ -15,6 +15,7 @@ import CaseViewer from './components/CaseViewer'
 import Header from './components/Header'
 import InfoPage from './components/InfoPage'
 import Worklist from './components/Worklist'
+import { ValidationProvider } from './contexts/ValidationContext'
 
 import { User, AuthManager } from './auth'
 import OidcManager from './auth/OidcManager'
@@ -42,15 +43,17 @@ function ParametrizedCaseViewer ({ clients, user, app, config }: {
   const enableAnnotationTools = !(config.disableAnnotationTools ?? false)
   const preload = config.preload ?? false
   return (
-    <CaseViewer
-      clients={clients}
-      user={user}
-      annotations={config.annotations}
-      preload={preload}
-      app={app}
-      enableAnnotationTools={enableAnnotationTools}
-      studyInstanceUID={studyInstanceUID}
-    />
+    <ValidationProvider clients={clients} studyInstanceUID={studyInstanceUID}>
+      <CaseViewer
+        clients={clients}
+        user={user}
+        annotations={config.annotations}
+        preload={preload}
+        app={app}
+        enableAnnotationTools={enableAnnotationTools}
+        studyInstanceUID={studyInstanceUID}
+      />
+    </ValidationProvider>
   )
 }
 

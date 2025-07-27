@@ -53,6 +53,7 @@ import AnnotationCategoryList, { AnnotationCategoryAndType } from './AnnotationC
 import HoveredRoiTooltip from './HoveredRoiTooltip'
 import { adaptRoiToAnnotation } from '../services/RoiToAnnotationAdapter'
 import generateReport from '../utils/generateReport'
+import { runValidations } from '../contexts/ValidationContext'
 
 const DEFAULT_ROI_STROKE_COLOR: number[] = [255, 234, 0] // [0, 126, 163]
 const DEFAULT_ROI_FILL_COLOR: number[] = [255, 234, 0, 0.2] // [0, 126, 163, 0.2]
@@ -2527,6 +2528,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     annotationGroupUID: string
     isVisible: boolean
   }): void {
+    const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups()
+    const annotationGroup = allAnnotationGroups.find(ag => ag.uid === annotationGroupUID)
+    if (annotationGroup) {
+      runValidations({
+        dialog: true,
+        context: { annotationGroup, slide: this.props.slide }
+      })
+    }
+    
     console.log(`change visibility of annotation group ${annotationGroupUID}`)
     if (isVisible) {
       console.info(`show annotation group ${annotationGroupUID}`)

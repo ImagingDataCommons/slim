@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { FaExclamationTriangle } from 'react-icons/fa'
 import { Tooltip } from 'antd'
+import { useValidation } from '../contexts/ValidationContext'
 import { useSlides } from '../hooks/useSlides'
 
 interface ValidationWarningProps {
   annotationGroup?: any
+  onEvent?: () => void
   slide?: any
   iconColor?: string
   iconSize?: string
@@ -13,11 +15,6 @@ interface ValidationWarningProps {
     top?: string
     right?: string
   }
-}
-
-const MessageEnum = {
-  MISSING_MULTI_RESOLUTION_PYRAMID: 'This slide is missing a multi-resolution pyramid. Display and performance may be degraded.',
-  NOT_ASSOCIATED_WITH_ANY_SLIDE: 'The annotation group is not associated with any slide.'
 }
 
 const ValidationWarning: React.FC<ValidationWarningProps> = ({
@@ -31,35 +28,22 @@ const ValidationWarning: React.FC<ValidationWarningProps> = ({
   const [show, setShow] = useState(false)
   const [tooltipText, setTooltipText] = useState<string | undefined>(undefined)
 
-  const { slides } = useSlides()
+  const { runValidations } = useValidation()
 
   useEffect(() => {
-    if (slide?.volumeImages?.length <= 1) {
+    const validationResult = runValidations({
+      dialog: false,
+      context: { annotationGroup, slide }
+    })
+    if (!validationResult.isValid) {
       setShow(true)
-      setTooltipText(MessageEnum.MISSING_MULTI_RESOLUTION_PYRAMID)
-      console.warn(MessageEnum.MISSING_MULTI_RESOLUTION_PYRAMID)
-    } else if (slides != null && slides.length > 0 && annotationGroup != null) {
-      const hasMatchingSlide = slides.some((slide: any) =>
-        slide.volumeImages?.some(
-          (volumeImage: any) =>
-            volumeImage.SOPInstanceUID != null &&
-            volumeImage.SOPInstanceUID ===
-            annotationGroup.referencedSOPInstanceUID
-        )
-      )
-      if (!hasMatchingSlide) {
-        setShow(true)
-        setTooltipText(MessageEnum.NOT_ASSOCIATED_WITH_ANY_SLIDE)
-        console.warn(MessageEnum.NOT_ASSOCIATED_WITH_ANY_SLIDE)
-      } else {
-        setShow(false)
-        setTooltipText(undefined)
-      }
+      setTooltipText(validationResult.message)
+      console.warn(validationResult.message)
     } else {
       setShow(false)
       setTooltipText(undefined)
     }
-  }, [slide, annotationGroup, slides])
+  }, [slide,annotationGroup, runValidations])
 
   if (!show) {
     return null
