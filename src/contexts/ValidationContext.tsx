@@ -23,20 +23,20 @@ interface ValidationProviderProps {
 
 /**
  * ValidationProvider - Provides validation context for running validations and showing dialogs
- * 
+ *
  * Usage:
  * 1. Wrap your component tree with ValidationProvider
  * 2. Use useValidation hook to access validation functions
- * 
+ *
  * Example:
  * ```tsx
  * // Simple usage - just call runValidations with options
  * const { runValidations } = useValidation()
- * 
+ *
  * const handleAction = () => {
- *   const result = runValidations({ 
- *     dialog: true, 
- *     context: { annotationGroup, slide } 
+ *   const result = runValidations({
+ *     dialog: true,
+ *     context: { annotationGroup, slide }
  *   })
  *   if (result.isValid) {
  *     // proceed with action
@@ -44,10 +44,10 @@ interface ValidationProviderProps {
  * }
  * ```
  */
-export const ValidationProvider: React.FC<ValidationProviderProps> = ({ 
-  children, 
-  clients, 
-  studyInstanceUID 
+export const ValidationProvider: React.FC<ValidationProviderProps> = ({
+  children,
+  clients,
+  studyInstanceUID
 }) => {
   const [isDialogVisible, setIsDialogVisible] = useState(false)
   const [currentValidationResult, setCurrentValidationResult] = useState<ValidationResult | null>(null)
@@ -61,10 +61,17 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
   }, [slides])
 
   // Memoize the slides length and existence to avoid unnecessary validation function recreations
-  const slidesInfo = useMemo(() => ({
-    hasSlides: slides != null && slides.length > 0,
-    slidesLength: slides?.length || 0
-  }), [slides])
+  const slidesInfo = useMemo(() => {
+    const slidesLength = slides?.length
+    let hasSlides = false
+    if (slides != null && typeof slidesLength === 'number' && !Number.isNaN(slidesLength)) {
+      hasSlides = slidesLength !== 0
+    }
+    return {
+      hasSlides,
+      slidesLength: slidesLength ?? 0
+    }
+  }, [slides])
 
   const showValidationDialog = useCallback((result: ValidationResult) => {
     setCurrentValidationResult(result)
@@ -72,7 +79,7 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
   }, [])
 
   const validateMultiResolutionPyramid = useCallback((slide: any): ValidationResult => {
-    if (slide?.volumeImages?.length <= 1) {
+    if ((slide?.volumeImages?.length ?? 0) <= 1) {
       return {
         isValid: false,
         message: 'This slide is missing a multi-resolution pyramid. Display and performance may be degraded.',
@@ -92,7 +99,7 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
         )
         return hasMatchingImage
       })
-      
+
       if (!hasMatchingSlide) {
         return {
           isValid: false,
@@ -108,7 +115,7 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
     const { dialog = false, context } = options
     const { annotationGroup, slide } = context
 
-    if (slide) {
+    if (slide != null) {
       const pyramidValidation = validateMultiResolutionPyramid(slide)
       if (!pyramidValidation.isValid) {
         if (dialog) {
@@ -139,12 +146,12 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
     setGlobalValidationContext(context)
   }, [runValidations])
 
-  const handleDialogClose = () => {
+  const handleDialogClose = (): void => {
     setIsDialogVisible(false)
     setCurrentValidationResult(null)
   }
 
-  const getModalType = (type: ValidationResult['type']) => {
+  const getModalType = (type: ValidationResult['type']): { error?: boolean, warning?: boolean, info?: boolean } => {
     switch (type) {
       case 'error':
         return { error: true }
@@ -164,13 +171,13 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
   return (
     <ValidationContext.Provider value={value}>
       {children}
-      {currentValidationResult && (
+      {(currentValidationResult != null) && (
         <Modal
           open={isDialogVisible}
           onCancel={handleDialogClose}
           onOk={handleDialogClose}
           title={`Validation ${currentValidationResult.type.charAt(0).toUpperCase() + currentValidationResult.type.slice(1)}`}
-          okText="OK"
+          okText='OK'
           cancelButtonProps={{ style: { display: 'none' } }}
           {...getModalType(currentValidationResult.type)}
         >
@@ -194,14 +201,14 @@ export const useValidation = (): ValidationContextType => {
  */
 let globalValidationContext: ValidationContextType | null = null
 
-export const setGlobalValidationContext = (context: ValidationContextType) => {
+export const setGlobalValidationContext = (context: ValidationContextType): void => {
   globalValidationContext = context
 }
 
 export const runValidations = (options: { dialog?: boolean, context: { annotationGroup?: any, slide?: any } }): ValidationResult => {
-  if (!globalValidationContext) {
+  if (globalValidationContext == null) {
     console.warn('Validation context not available. Make sure ValidationProvider is mounted.')
     return { isValid: true, type: 'info' }
   }
   return globalValidationContext.runValidations(options)
-} 
+}

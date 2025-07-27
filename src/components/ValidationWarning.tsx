@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { FaExclamationTriangle } from 'react-icons/fa'
 import { Tooltip } from 'antd'
 import { useValidation } from '../contexts/ValidationContext'
-import { useSlides } from '../hooks/useSlides'
 
 interface ValidationWarningProps {
   annotationGroup?: any
@@ -43,7 +42,7 @@ const ValidationWarning: React.FC<ValidationWarningProps> = ({
       setShow(false)
       setTooltipText(undefined)
     }
-  }, [slide,annotationGroup, runValidations])
+  }, [slide, annotationGroup, runValidations])
 
   if (!show) {
     return null

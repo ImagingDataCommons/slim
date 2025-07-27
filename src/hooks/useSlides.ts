@@ -23,7 +23,7 @@ const cacheTimestamps = new Map<string, number>()
 const CACHE_EXPIRATION_TIME = 30 * 60 * 1000
 
 // Clean up expired cache entries
-const cleanupExpiredCache = () => {
+const cleanupExpiredCache = (): void => {
   const now = Date.now()
   for (const [key, timestamp] of cacheTimestamps.entries()) {
     if (now - timestamp > CACHE_EXPIRATION_TIME) {
@@ -34,8 +34,8 @@ const cleanupExpiredCache = () => {
 }
 
 // Utility functions for cache management
-export const clearSlidesCache = (studyInstanceUID?: string) => {
-  if (studyInstanceUID) {
+export const clearSlidesCache = (studyInstanceUID?: string): void => {
+  if (studyInstanceUID != null && studyInstanceUID !== '' && studyInstanceUID.length > 0) {
     slidesCache.delete(studyInstanceUID)
     cacheTimestamps.delete(studyInstanceUID)
     pendingRequests.delete(studyInstanceUID)
@@ -73,7 +73,7 @@ export const useSlides = ({ clients, studyInstanceUID }: UseSlidesProps = {}): U
     cleanupExpiredCache()
 
     // If no arguments provided, return cached slides if available
-    if ((clients == null) || studyInstanceUID == null || studyInstanceUID === '') {
+    if ((clients == null) || studyInstanceUID == null || studyInstanceUID === '' || studyInstanceUID.length === 0) {
       // Get the most recently cached slides (last entry in the cache)
       const cachedEntries = Array.from(slidesCache.entries())
       if (cachedEntries.length > 0) {
@@ -106,7 +106,7 @@ export const useSlides = ({ clients, studyInstanceUID }: UseSlidesProps = {}): U
 
       if (pendingRequest === undefined) {
         // Create a new promise for this request
-        pendingRequest = new Promise((resolve, reject): void => {
+        pendingRequest = new Promise<Slide[]>((resolve, reject): void => {
           fetchImageMetadata({
             clients,
             studyInstanceUID,
