@@ -4986,10 +4986,10 @@ detective@^5.2.1:
     defined "^1.0.0"
     minimist "^1.2.6"
 
-dicom-microscopy-viewer@^0.48.4:
-  version "0.48.4"
-  resolved "https://registry.yarnpkg.com/dicom-microscopy-viewer/-/dicom-microscopy-viewer-0.48.4.tgz#b3fb919aa0ba96f52902ca41a3caf451f635e8cf"
-  integrity sha512-HDWJgb1Bbxg1HmpSoq6whR9PCBEIGR01x2bUG35H8yGTc/eOx6I8zYptnfqmu5G29CQAUETD3SUvxgUYVU34Ew==
+dicom-microscopy-viewer@^0.48.5:
+  version "0.48.5"
+  resolved "https://registry.yarnpkg.com/dicom-microscopy-viewer/-/dicom-microscopy-viewer-0.48.5.tgz#425d0af54583ca4b0c466860a21eef8b07328e65"
+  integrity sha512-geLgEe4uz74DUYoO5fMnbGeeBju1xmjTLG9QxPdcLsWi0HTWnRGfO+0vRARJeZzR7tH/sQUswoluujUumZLOyg==
   dependencies:
     "@cornerstonejs/codec-charls" "^1.2.3"
     "@cornerstonejs/codec-libjpeg-turbo-8bit" "^1.2.2"
