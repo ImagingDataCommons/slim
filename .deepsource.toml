@@ -9,8 +9,3 @@ enabled = true
   plugins = ["react"]
   style_guide = "standard"
   dialect = "typescript"
-
-  [analyzers.exclude]
-  - "explicit-import-specific-method"
-  - "jsx-props-no-functions"
-  - "JS-C1003"
