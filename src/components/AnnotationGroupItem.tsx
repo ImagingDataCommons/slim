@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import {
   Badge,
   Button,
@@ -70,12 +70,12 @@ function AnnotationGroupBadgeDescription ({
   label: string
   attributes: Array<{ name: string, value: string }>
 }): React.ReactElement {
-  function handleKeyDown (event: React.KeyboardEvent): void {
+  const handleKeyDown = useCallback((event: React.KeyboardEvent): void => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
       onClick()
     }
-  }
+  }, [onClick])
 
   return (
     <div

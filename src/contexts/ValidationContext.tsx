@@ -160,10 +160,10 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
     setGlobalValidationContext(context)
   }, [runValidations])
 
-  function handleDialogClose (): void {
+  const handleDialogClose = useCallback((): void => {
     setIsDialogVisible(false)
     setCurrentValidationResult(null)
-  }
+  }, [])
 
   function getModalType (type: ValidationResult['type']): { error?: boolean, warning?: boolean, info?: boolean } {
     switch (type) {

@@ -1,5 +1,6 @@
 import { Modal, Collapse } from 'antd'
 import { ErrorBoundary, FallbackProps } from 'react-error-boundary'
+import { useCallback } from 'react'
 
 /**
  * React's error boundary component to catch errors during rendering phase
@@ -39,16 +40,16 @@ const CustomErrorBoundary = ({
       })
     }
 
-    const handleClick = (): void => {
+    const handleClick = useCallback((): void => {
       openModal()
-    }
+    }, [openModal])
 
-    function handleKeyDown (event: React.KeyboardEvent): void {
+    const handleKeyDown = useCallback((event: React.KeyboardEvent): void => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault()
         openModal()
       }
-    }
+    }, [openModal])
 
     return (
       <div>
