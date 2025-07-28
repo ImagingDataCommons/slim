@@ -544,7 +544,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           })
         })
       }
-      if (annotation.style != null) {
+      if (annotation.style !== null && annotation.style !== undefined) {
         this.roiStyles[key] = _formatRoiStyle(annotation.style)
       } else {
         this.roiStyles[key] = this.defaultRoiStyle
@@ -666,12 +666,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.props.slide !== previousProps.slide ||
       this.props.clients !== previousProps.clients
     ) {
-      if (this.volumeViewportRef.current != null) {
+      if (this.volumeViewportRef.current !== null && this.volumeViewportRef.current !== undefined) {
         this.volumeViewportRef.current.innerHTML = ''
       }
       this.volumeViewer.cleanup()
-      if (this.labelViewer != null) {
-        if (this.labelViewportRef.current != null) {
+      if (this.labelViewer !== null && this.labelViewer !== undefined) {
+        if (this.labelViewportRef.current !== null && this.labelViewportRef.current !== undefined) {
           this.labelViewportRef.current.innerHTML = ''
         }
         this.labelViewer.cleanup()
