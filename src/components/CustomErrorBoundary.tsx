@@ -38,7 +38,7 @@ const CustomErrorBoundary = ({
         ),
         onOk (): void {}
       })
-    }, [context, error.error.message, error.error.stack])
+    }, [error.error.message, error.error.stack])
 
     const handleClick = useCallback((): void => {
       openModal()
