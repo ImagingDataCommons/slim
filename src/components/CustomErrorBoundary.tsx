@@ -39,21 +39,25 @@ const CustomErrorBoundary = ({
       })
     }
 
+    const handleClick = (): void => {
+      openModal()
+    }
+
+    const handleKeyDown = (event: React.KeyboardEvent): void => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        openModal()
+      }
+    }
+
     return (
       <div>
         <p>
           There was an error in loading this page.{' '}
           <span
             style={{ cursor: 'pointer', color: '#0077FF' }}
-            onClick={() => {
-              openModal()
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault()
-                openModal()
-              }
-            }}
+            onClick={handleClick}
+            onKeyDown={handleKeyDown}
             tabIndex={0}
             role='button'
             aria-label='Show error details'

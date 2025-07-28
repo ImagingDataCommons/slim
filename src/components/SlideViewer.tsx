@@ -978,7 +978,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   getRoiStyle = (key?: string): dmv.viewer.ROIStyleOptions => {
-    if (key == null) {
+    if (key === null || key === undefined) {
       return this.defaultRoiStyle
     }
     if (this.roiStyles[key] !== undefined) {

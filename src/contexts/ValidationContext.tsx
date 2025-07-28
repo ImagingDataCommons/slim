@@ -17,6 +17,15 @@ interface ValidationContextType {
 
 const ValidationContext = createContext<ValidationContextType | undefined>(undefined)
 
+/**
+ * Global validation function for class components
+ */
+let globalValidationContext: ValidationContextType | null = null
+
+function setGlobalValidationContext (context: ValidationContextType): void {
+  globalValidationContext = context
+}
+
 interface ValidationProviderProps {
   children: React.ReactNode
   clients?: { [key: string]: DicomWebManager }
@@ -93,14 +102,16 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
 
   const validateAnnotationGroupAssociation = useCallback((annotationGroup?: dmv.annotation.AnnotationGroup): ValidationResult => {
     if (annotationGroup != null && slidesInfo.hasSlides) {
-      const hasMatchingSlide = memoizedSlides.some((slide: Slide) => {
-        const hasMatchingImage = slide.volumeImages?.some(
-          (volumeImage: dmv.metadata.VLWholeSlideMicroscopyImage) =>
-            volumeImage.SOPInstanceUID != null &&
-            volumeImage.SOPInstanceUID === (annotationGroup as dmv.annotation.AnnotationGroup & { referencedSOPInstanceUID: string }).referencedSOPInstanceUID
-        )
+      const checkSlideMatch = (slide: Slide): boolean => {
+        const checkImageMatch = (volumeImage: dmv.metadata.VLWholeSlideMicroscopyImage): boolean =>
+          volumeImage.SOPInstanceUID != null &&
+          volumeImage.SOPInstanceUID === (annotationGroup as dmv.annotation.AnnotationGroup & { referencedSOPInstanceUID: string }).referencedSOPInstanceUID
+
+        const hasMatchingImage = slide.volumeImages?.some(checkImageMatch)
         return hasMatchingImage
-      })
+      }
+
+      const hasMatchingSlide = memoizedSlides.some(checkSlideMatch)
 
       if (!hasMatchingSlide) {
         return {
@@ -196,15 +207,6 @@ export const useValidation = (): ValidationContextType => {
     throw new Error('useValidation must be used within a ValidationProvider')
   }
   return context
-}
-
-/**
- * Global validation function for class components
- */
-let globalValidationContext: ValidationContextType | null = null
-
-function setGlobalValidationContext (context: ValidationContextType): void {
-  globalValidationContext = context
 }
 
 export const runValidations = (options: { dialog?: boolean, context: { annotationGroup?: dmv.annotation.AnnotationGroup, slide?: Slide } }): ValidationResult => {

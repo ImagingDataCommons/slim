@@ -639,7 +639,7 @@ AnnotationGroupItemState
 
     const color = this.getCurrentColor()
     const isBadgeVisible =
-      this.state.isVisible && this.state.currentStyle.measurement == null
+      this.state.isVisible && this.state.currentStyle.measurement === null
     const {
       annotationGroup,
       defaultStyle,
