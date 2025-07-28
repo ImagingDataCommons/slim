@@ -364,7 +364,7 @@ AnnotationGroupItemState
   }
 
   handleMeasurementSelection (value?: string, option?: any): void {
-    if (value !== null && value !== undefined && option?.children != null) {
+    if (value !== null && value !== undefined && option?.children !== null && option?.children !== undefined) {
       const codeComponents = value.split('-')
       const measurement = new dcmjs.sr.coding.CodedConcept({
         value: codeComponents[1],
@@ -427,8 +427,8 @@ AnnotationGroupItemState
     ]
 
     const measurementsSequence = item.MeasurementsSequence ?? []
-    const createMeasurementOption = (measurementItem: any): React.ReactElement => {
-      const name = measurementItem.ConceptNameCodeSequence[0] as { CodingSchemeDesignator: string, CodeValue: string, CodeMeaning: string }
+    const createMeasurementOption = (measurementItem: { ConceptNameCodeSequence: Array<{ CodingSchemeDesignator: string, CodeValue: string, CodeMeaning: string }> }): React.ReactElement => {
+      const name = measurementItem.ConceptNameCodeSequence[0]
       const key = `${name.CodingSchemeDesignator}-${name.CodeValue}`
       return (
         <Select.Option

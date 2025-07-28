@@ -164,7 +164,7 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
     setCurrentValidationResult(null)
   }
 
-  const getModalType = (type: ValidationResult['type']): { error?: boolean, warning?: boolean, info?: boolean } => {
+  function getModalType (type: ValidationResult['type']): { error?: boolean, warning?: boolean, info?: boolean } {
     switch (type) {
       case 'error':
         return { error: true }
@@ -184,7 +184,7 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
   return (
     <ValidationContext.Provider value={value}>
       {children}
-      {(currentValidationResult != null) && (
+      {(currentValidationResult !== null && currentValidationResult !== undefined) && (
         <Modal
           open={isDialogVisible}
           onCancel={handleDialogClose}

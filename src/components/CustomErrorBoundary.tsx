@@ -43,7 +43,7 @@ const CustomErrorBoundary = ({
       openModal()
     }
 
-    const handleKeyDown = (event: React.KeyboardEvent): void => {
+    function handleKeyDown (event: React.KeyboardEvent): void {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault()
         openModal()

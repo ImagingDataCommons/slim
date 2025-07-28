@@ -9,3 +9,6 @@ enabled = true
   plugins = ["react"]
   style_guide = "standard"
   dialect = "typescript"
+
+  [[analyzers.ignore]]
+  message = "Explicitly import the specific method needed"
