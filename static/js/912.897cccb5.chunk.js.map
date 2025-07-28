@@ -1,0 +1,1 @@
+{"version":3,"file":"static/js/912.897cccb5.chunk.js","mappings":"yHAGA,Q,OAAkB,C","sources":["AppLight.tsx"],"sourcesContent":["import './App.light.less'\nimport App from './App'\n\nexport default App\n"],"names":[],"sourceRoot":""}
