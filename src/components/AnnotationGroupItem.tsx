@@ -70,7 +70,7 @@ function AnnotationGroupBadgeDescription ({
   label: string
   attributes: Array<{ name: string, value: string }>
 }): React.ReactElement {
-  const handleKeyDown = (event: React.KeyboardEvent): void => {
+  function handleKeyDown (event: React.KeyboardEvent): void {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
       onClick()
@@ -190,7 +190,7 @@ AnnotationGroupItemState
   }
 
   handleOpacityChange (value: number | null): void {
-    if (value != null) {
+    if (value !== null && value !== undefined) {
       this.props.onStyleChange({
         uid: this.props.annotationGroup.uid,
         styleOptions: {
@@ -208,7 +208,7 @@ AnnotationGroupItemState
   }
 
   handleColorRChange (value: number | number[] | null): void {
-    if (value != null && this.state.currentStyle.color !== undefined) {
+    if (value !== null && value !== undefined && this.state.currentStyle.color !== undefined) {
       const color = [
         Array.isArray(value) ? value[0] : value,
         this.state.currentStyle.color[1],
@@ -229,7 +229,7 @@ AnnotationGroupItemState
   }
 
   handleColorGChange (value: number | number[] | null): void {
-    if (value != null && this.state.currentStyle.color !== undefined) {
+    if (value !== null && value !== undefined && this.state.currentStyle.color !== undefined) {
       const color = [
         this.state.currentStyle.color[0],
         Array.isArray(value) ? value[0] : value,
@@ -250,7 +250,7 @@ AnnotationGroupItemState
   }
 
   handleColorBChange (value: number | number[] | null): void {
-    if (value != null && this.state.currentStyle.color !== undefined) {
+    if (value !== null && value !== undefined && this.state.currentStyle.color !== undefined) {
       const color = [
         this.state.currentStyle.color[0],
         this.state.currentStyle.color[1],
@@ -278,7 +278,7 @@ AnnotationGroupItemState
       return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)
     }
 
-    if (this.state.currentStyle.color != null) {
+    if (this.state.currentStyle.color !== null && this.state.currentStyle.color !== undefined) {
       return rgb2hex(this.state.currentStyle.color)
     } else {
       return 'white'
@@ -286,7 +286,7 @@ AnnotationGroupItemState
   }
 
   handleLowerLimitChange (value: number | null): void {
-    if (value != null && this.state.currentStyle.limitValues !== undefined) {
+    if (value !== null && value !== undefined && this.state.currentStyle.limitValues !== undefined) {
       this.setState((state) => {
         if (state.currentStyle.limitValues !== undefined) {
           return {
@@ -316,7 +316,7 @@ AnnotationGroupItemState
   }
 
   handleUpperLimitChange (value: number | null): void {
-    if (value != null && this.state.currentStyle.limitValues !== undefined) {
+    if (value !== null && value !== undefined && this.state.currentStyle.limitValues !== undefined) {
       this.setState((state) => {
         if (state.currentStyle.limitValues !== undefined) {
           return {
@@ -364,7 +364,7 @@ AnnotationGroupItemState
   }
 
   handleMeasurementSelection (value?: string, option?: any): void {
-    if (value != null && option?.children != null) {
+    if (value !== null && value !== undefined && option?.children != null) {
       const codeComponents = value.split('-')
       const measurement = new dcmjs.sr.coding.CodedConcept({
         value: codeComponents[1],
@@ -427,23 +427,22 @@ AnnotationGroupItemState
     ]
 
     const measurementsSequence = item.MeasurementsSequence ?? []
-    const measurementOptions = measurementsSequence.map(
-      (measurementItem) => {
-        const name = measurementItem.ConceptNameCodeSequence[0]
-        const key = `${name.CodingSchemeDesignator}-${name.CodeValue}`
-        return (
-          <Select.Option
-            key={key}
-            value={key}
-            dropdownMatchSelectWidth={false}
-            size='small'
-            disabled={!this.props.isVisible}
-          >
-            {name.CodeMeaning}
-          </Select.Option>
-        )
-      }
-    )
+    const createMeasurementOption = (measurementItem: any) => {
+      const name = measurementItem.ConceptNameCodeSequence[0]
+      const key = `${name.CodingSchemeDesignator}-${name.CodeValue}`
+      return (
+        <Select.Option
+          key={key}
+          value={key}
+          dropdownMatchSelectWidth={false}
+          size='small'
+          disabled={!this.props.isVisible}
+        >
+          {name.CodeMeaning}
+        </Select.Option>
+      )
+    }
+    const measurementOptions = measurementsSequence.map(createMeasurementOption)
     measurementOptions.push(
       <Select.Option
         key='-'
@@ -457,7 +456,7 @@ AnnotationGroupItemState
     )
 
     let colorSettings
-    if (this.state.currentStyle.color != null) {
+    if (this.state.currentStyle.color !== null && this.state.currentStyle.color !== undefined) {
       colorSettings = (
         <>
           <Divider plain>Color</Divider>
@@ -540,7 +539,7 @@ AnnotationGroupItemState
     let windowSettings
     let explorationSettings
     if (measurementsSequence.length > 0) {
-      if (this.state.currentStyle.limitValues != null) {
+      if (this.state.currentStyle.limitValues !== null && this.state.currentStyle.limitValues !== undefined) {
         // TODO: need to get default min/max values from viewer first
         const minValue = 0
         const maxValue = 1000

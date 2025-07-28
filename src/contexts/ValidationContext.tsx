@@ -75,7 +75,7 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
   const slidesInfo = useMemo(() => {
     const slidesLength = slides?.length
     let hasSlides = false
-    if (slides != null && typeof slidesLength === 'number' && !Number.isNaN(slidesLength)) {
+    if (slides !== null && slides !== undefined && typeof slidesLength === 'number' && !Number.isNaN(slidesLength)) {
       hasSlides = slidesLength !== 0
     }
     return {
@@ -101,10 +101,10 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
   }, [])
 
   const validateAnnotationGroupAssociation = useCallback((annotationGroup?: dmv.annotation.AnnotationGroup): ValidationResult => {
-    if (annotationGroup != null && slidesInfo.hasSlides) {
+    if (annotationGroup !== null && annotationGroup !== undefined && slidesInfo.hasSlides) {
       const checkSlideMatch = (slide: Slide): boolean => {
         const checkImageMatch = (volumeImage: dmv.metadata.VLWholeSlideMicroscopyImage): boolean =>
-          volumeImage.SOPInstanceUID != null &&
+          volumeImage.SOPInstanceUID !== null && volumeImage.SOPInstanceUID !== undefined &&
           volumeImage.SOPInstanceUID === (annotationGroup as dmv.annotation.AnnotationGroup & { referencedSOPInstanceUID: string }).referencedSOPInstanceUID
 
         const hasMatchingImage = slide.volumeImages?.some(checkImageMatch)
@@ -128,7 +128,7 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
     const { dialog = false, context } = options
     const { annotationGroup, slide } = context
 
-    if (slide != null) {
+    if (slide !== null && slide !== undefined) {
       const pyramidValidation = validateMultiResolutionPyramid(slide)
       if (!pyramidValidation.isValid) {
         if (dialog) {
@@ -159,7 +159,7 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
     setGlobalValidationContext(context)
   }, [runValidations])
 
-  const handleDialogClose = (): void => {
+  function handleDialogClose (): void {
     setIsDialogVisible(false)
     setCurrentValidationResult(null)
   }

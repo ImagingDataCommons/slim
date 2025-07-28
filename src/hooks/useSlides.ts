@@ -35,7 +35,7 @@ const cleanupExpiredCache = (): void => {
 
 // Utility functions for cache management
 export const clearSlidesCache = (studyInstanceUID?: string): void => {
-  if (studyInstanceUID != null && studyInstanceUID !== '' && studyInstanceUID.length > 0) {
+  if (studyInstanceUID !== null && studyInstanceUID !== undefined && studyInstanceUID !== '' && studyInstanceUID.length > 0) {
     slidesCache.delete(studyInstanceUID)
     cacheTimestamps.delete(studyInstanceUID)
     pendingRequests.delete(studyInstanceUID)
@@ -73,7 +73,7 @@ export const useSlides = ({ clients, studyInstanceUID }: UseSlidesProps = {}): U
     cleanupExpiredCache()
 
     // If no arguments provided, return cached slides if available
-    if ((clients == null) || studyInstanceUID == null || studyInstanceUID === '' || studyInstanceUID.length === 0) {
+    if ((clients === null || clients === undefined) || (studyInstanceUID === null || studyInstanceUID === undefined) || studyInstanceUID === '' || studyInstanceUID.length === 0) {
       // Get the most recently cached slides (last entry in the cache)
       const cachedEntries = Array.from(slidesCache.entries())
       if (cachedEntries.length > 0) {

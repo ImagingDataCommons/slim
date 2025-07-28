@@ -156,19 +156,19 @@ const _formatRoiStyle = (style: {
     color: DEFAULT_ROI_STROKE_COLOR,
     width: DEFAULT_ROI_STROKE_WIDTH
   }
-  if (style.stroke != null) {
-    if (style.stroke.color != null) {
+      if (style.stroke !== null && style.stroke !== undefined) {
+      if (style.stroke.color !== null && style.stroke.color !== undefined) {
       stroke.color = style.stroke.color
     }
-    if (style.stroke.width != null) {
+          if (style.stroke.width !== null && style.stroke.width !== undefined) {
       stroke.width = style.stroke.width
     }
   }
   const fill = {
     color: DEFAULT_ROI_FILL_COLOR
   }
-  if (style.fill != null) {
-    if (style.fill.color != null) {
+      if (style.fill !== null && style.fill !== undefined) {
+      if (style.fill.color !== null && style.fill.color !== undefined) {
       fill.color = style.fill.color
     }
   }
@@ -177,7 +177,7 @@ const _formatRoiStyle = (style: {
     fill,
     image: {
       circle: {
-        radius: style.radius != null
+        radius: style.radius !== null && style.radius !== undefined
           ? style.radius
           : Math.max(5 - stroke.width, 1),
         stroke,
