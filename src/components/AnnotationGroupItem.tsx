@@ -427,8 +427,8 @@ AnnotationGroupItemState
     ]
 
     const measurementsSequence = item.MeasurementsSequence ?? []
-    const createMeasurementOption = (measurementItem: any) => {
-      const name = measurementItem.ConceptNameCodeSequence[0]
+    const createMeasurementOption = (measurementItem: any): React.ReactElement => {
+      const name = measurementItem.ConceptNameCodeSequence[0] as { CodingSchemeDesignator: string, CodeValue: string, CodeMeaning: string }
       const key = `${name.CodingSchemeDesignator}-${name.CodeValue}`
       return (
         <Select.Option
