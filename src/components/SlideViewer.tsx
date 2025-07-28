@@ -53,6 +53,7 @@ import AnnotationCategoryList, { AnnotationCategoryAndType } from './AnnotationC
 import HoveredRoiTooltip from './HoveredRoiTooltip'
 import { adaptRoiToAnnotation } from '../services/RoiToAnnotationAdapter'
 import generateReport from '../utils/generateReport'
+import { runValidations } from '../contexts/ValidationContext'
 
 const DEFAULT_ROI_STROKE_COLOR: number[] = [255, 234, 0] // [0, 126, 163]
 const DEFAULT_ROI_FILL_COLOR: number[] = [255, 234, 0, 0.2] // [0, 126, 163, 0.2]
@@ -155,19 +156,19 @@ const _formatRoiStyle = (style: {
     color: DEFAULT_ROI_STROKE_COLOR,
     width: DEFAULT_ROI_STROKE_WIDTH
   }
-  if (style.stroke != null) {
-    if (style.stroke.color != null) {
+  if (style.stroke !== null && style.stroke !== undefined) {
+    if (style.stroke.color !== null && style.stroke.color !== undefined) {
       stroke.color = style.stroke.color
     }
-    if (style.stroke.width != null) {
+    if (style.stroke.width !== null && style.stroke.width !== undefined) {
       stroke.width = style.stroke.width
     }
   }
   const fill = {
     color: DEFAULT_ROI_FILL_COLOR
   }
-  if (style.fill != null) {
-    if (style.fill.color != null) {
+  if (style.fill !== null && style.fill !== undefined) {
+    if (style.fill.color !== null && style.fill.color !== undefined) {
       fill.color = style.fill.color
     }
   }
@@ -176,7 +177,7 @@ const _formatRoiStyle = (style: {
     fill,
     image: {
       circle: {
-        radius: style.radius != null
+        radius: style.radius !== null && style.radius !== undefined
           ? style.radius
           : Math.max(5 - stroke.width, 1),
         stroke,
@@ -543,7 +544,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           })
         })
       }
-      if (annotation.style != null) {
+      if (annotation.style !== null && annotation.style !== undefined) {
         this.roiStyles[key] = _formatRoiStyle(annotation.style)
       } else {
         this.roiStyles[key] = this.defaultRoiStyle
@@ -665,12 +666,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.props.slide !== previousProps.slide ||
       this.props.clients !== previousProps.clients
     ) {
-      if (this.volumeViewportRef.current != null) {
+      if (this.volumeViewportRef.current !== null && this.volumeViewportRef.current !== undefined) {
         this.volumeViewportRef.current.innerHTML = ''
       }
       this.volumeViewer.cleanup()
-      if (this.labelViewer != null) {
-        if (this.labelViewportRef.current != null) {
+      if (this.labelViewer !== null && this.labelViewer !== undefined) {
+        if (this.labelViewportRef.current !== null && this.labelViewportRef.current !== undefined) {
           this.labelViewportRef.current.innerHTML = ''
         }
         this.labelViewer.cleanup()
@@ -728,7 +729,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         Modality: 'PR'
       }
     }).then((matchedInstances): void => {
-      if (matchedInstances == null) {
+      if (matchedInstances === null) {
         matchedInstances = []
       }
       matchedInstances.forEach((rawInstance, index) => {
@@ -762,7 +763,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               )
               if (
                 index === 0 &&
-                this.props.selectedPresentationStateUID == null
+                this.props.selectedPresentationStateUID === null
               ) {
                 this.setPresentationState(presentationState)
               } else {
@@ -977,7 +978,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   getRoiStyle = (key?: string): dmv.viewer.ROIStyleOptions => {
-    if (key == null) {
+    if (key === null || key === undefined) {
       return this.defaultRoiStyle
     }
     if (this.roiStyles[key] !== undefined) {
@@ -1041,7 +1042,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           Modality: 'SR'
         }
       }).then((matchedInstances): void => {
-        if (matchedInstances == null) {
+        if (matchedInstances === null) {
           matchedInstances = []
         }
         matchedInstances.forEach(i => {
@@ -1183,7 +1184,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           Modality: 'ANN'
         }
       }).then((matchedSeries): void => {
-        if (matchedSeries == null) {
+        if (matchedSeries === null) {
           matchedSeries = []
         }
         matchedSeries.forEach(s => {
@@ -1285,7 +1286,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           Modality: 'SEG'
         }
       }).then((matchedSeries): void => {
-        if (matchedSeries == null) {
+        if (matchedSeries === null) {
           matchedSeries = []
         }
         matchedSeries.forEach((s, i) => {
@@ -1372,7 +1373,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           Modality: 'OT'
         }
       }).then((matchedSeries): void => {
-        if (matchedSeries == null) {
+        if (matchedSeries === null) {
           matchedSeries = []
         }
         matchedSeries.forEach(s => {
@@ -1645,7 +1646,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   getUniqueHoveredRois = (newRoi: dmv.roi.ROI | null): dmv.roi.ROI[] => {
-    if (newRoi == null) {
+    if (newRoi === null) {
       return []
     }
     const allRois = [...this.hoveredRois, newRoi]
@@ -1887,7 +1888,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               numFramesSampled: 1
             }
           }
-          if (state.selectedPresentationStateUID == null) {
+          if (state.selectedPresentationStateUID === null) {
             const style = {
               ...this.volumeViewer.getOpticalPathStyle(opticalPathIdentifier)
             }
@@ -2105,7 +2106,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       let hasICCProfile = false
       const image = this.props.slide.volumeImages[0]
       const metadataItem = image.OpticalPathSequence[0]
-      if (metadataItem.ICCProfile == null) {
+      if (metadataItem.ICCProfile === null) {
         if ('OpticalPathSequence' in image.bulkdataReferences) {
           // @ts-expect-error
           const bulkdataItem = image.bulkdataReferences.OpticalPathSequence[0]
@@ -2527,6 +2528,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     annotationGroupUID: string
     isVisible: boolean
   }): void {
+    const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups()
+    const annotationGroup = allAnnotationGroups.find(ag => ag.uid === annotationGroupUID)
+    if (annotationGroup !== null) {
+      runValidations({
+        dialog: true,
+        context: { annotationGroup, slide: this.props.slide }
+      })
+    }
+
     console.log(`change visibility of annotation group ${annotationGroupUID}`)
     if (isVisible) {
       console.info(`show annotation group ${annotationGroupUID}`)
