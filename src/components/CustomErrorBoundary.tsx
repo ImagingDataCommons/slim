@@ -18,7 +18,7 @@ const CustomErrorBoundary = ({
 }): JSX.Element => {
   const { Panel } = Collapse
   const ErrorFallback = (error: FallbackProps): JSX.Element => {
-    const openModal = (): void => {
+    const openModal = useCallback((): void => {
       Modal.error({
         title: (
           <>
@@ -38,7 +38,7 @@ const CustomErrorBoundary = ({
         ),
         onOk (): void {}
       })
-    }
+    }, [context, error.error.message, error.error.stack])
 
     const handleClick = useCallback((): void => {
       openModal()
