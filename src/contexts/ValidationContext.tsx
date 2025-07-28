@@ -3,6 +3,7 @@ import { Modal } from 'antd'
 import { useSlides } from '../hooks/useSlides'
 import DicomWebManager from '../DicomWebManager'
 import { Slide } from '../data/slides'
+// skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
 
 interface ValidationResult {

@@ -3,6 +3,7 @@ import { FaExclamationTriangle } from 'react-icons/fa'
 import { Tooltip } from 'antd'
 import { useValidation } from '../contexts/ValidationContext'
 import { Slide } from '../data/slides'
+// skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
 
 interface ValidationWarningProps {

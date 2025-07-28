@@ -2530,7 +2530,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }): void {
     const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups()
     const annotationGroup = allAnnotationGroups.find(ag => ag.uid === annotationGroupUID)
-    if (annotationGroup != null) {
+    if (annotationGroup !== null) {
       runValidations({
         dialog: true,
         context: { annotationGroup, slide: this.props.slide }
