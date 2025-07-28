@@ -48,6 +48,15 @@ const CustomErrorBoundary = ({
             onClick={() => {
               openModal()
             }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                openModal()
+              }
+            }}
+            tabIndex={0}
+            role='button'
+            aria-label='Show error details'
           >
             Click for error details
           </span>{' '}

@@ -63,15 +63,28 @@ function AnnotationGroupBadgeDescription ({
   label,
   attributes
 }: {
-  annotationGroup: any
+  annotationGroup: dmv.annotation.AnnotationGroup
   onClick: () => void
   isBadgeVisible: boolean
   color: string
   label: string
   attributes: Array<{ name: string, value: string }>
 }): React.ReactElement {
+  const handleKeyDown = (event: React.KeyboardEvent): void => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onClick()
+    }
+  }
+
   return (
-    <div onClick={onClick}>
+    <div
+      onClick={onClick}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role='button'
+      aria-label={`Annotation group ${label}`}
+    >
       <Badge
         offset={[-20, 20]}
         count={' '}
@@ -351,7 +364,7 @@ AnnotationGroupItemState
   }
 
   handleMeasurementSelection (value?: string, option?: any): void {
-    if (value != null && option.children != null) {
+    if (value != null && option?.children != null) {
       const codeComponents = value.split('-')
       const measurement = new dcmjs.sr.coding.CodedConcept({
         value: codeComponents[1],

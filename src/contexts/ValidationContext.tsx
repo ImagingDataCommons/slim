@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import { Modal } from 'antd'
 import { useSlides } from '../hooks/useSlides'
 import DicomWebManager from '../DicomWebManager'
+import { Slide } from '../data/slides'
+import * as dmv from 'dicom-microscopy-viewer'
 
 interface ValidationResult {
   isValid: boolean
@@ -10,7 +12,7 @@ interface ValidationResult {
 }
 
 interface ValidationContextType {
-  runValidations: (options: { dialog?: boolean, context: { annotationGroup?: any, slide?: any } }) => ValidationResult
+  runValidations: (options: { dialog?: boolean, context: { annotationGroup?: dmv.annotation.AnnotationGroup, slide?: Slide } }) => ValidationResult
 }
 
 const ValidationContext = createContext<ValidationContextType | undefined>(undefined)
@@ -78,7 +80,7 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
     setIsDialogVisible(true)
   }, [])
 
-  const validateMultiResolutionPyramid = useCallback((slide: any): ValidationResult => {
+  const validateMultiResolutionPyramid = useCallback((slide: Slide): ValidationResult => {
     if ((slide?.volumeImages?.length ?? 0) <= 1) {
       return {
         isValid: false,
@@ -89,13 +91,13 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
     return { isValid: true, type: 'info' }
   }, [])
 
-  const validateAnnotationGroupAssociation = useCallback((annotationGroup: any): ValidationResult => {
+  const validateAnnotationGroupAssociation = useCallback((annotationGroup?: dmv.annotation.AnnotationGroup): ValidationResult => {
     if (annotationGroup != null && slidesInfo.hasSlides) {
-      const hasMatchingSlide = memoizedSlides.some((slide: any) => {
+      const hasMatchingSlide = memoizedSlides.some((slide: Slide) => {
         const hasMatchingImage = slide.volumeImages?.some(
-          (volumeImage: any) =>
+          (volumeImage: dmv.metadata.VLWholeSlideMicroscopyImage) =>
             volumeImage.SOPInstanceUID != null &&
-            volumeImage.SOPInstanceUID === annotationGroup.referencedSOPInstanceUID
+            volumeImage.SOPInstanceUID === (annotationGroup as dmv.annotation.AnnotationGroup & { referencedSOPInstanceUID: string }).referencedSOPInstanceUID
         )
         return hasMatchingImage
       })
@@ -111,7 +113,7 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
     return { isValid: true, type: 'info' }
   }, [memoizedSlides, slidesInfo.hasSlides])
 
-  const runValidations = useCallback((options: { dialog?: boolean, context: { annotationGroup?: any, slide?: any } }): ValidationResult => {
+  const runValidations = useCallback((options: { dialog?: boolean, context: { annotationGroup?: dmv.annotation.AnnotationGroup, slide?: Slide } }): ValidationResult => {
     const { dialog = false, context } = options
     const { annotationGroup, slide } = context
 
@@ -201,12 +203,12 @@ export const useValidation = (): ValidationContextType => {
  */
 let globalValidationContext: ValidationContextType | null = null
 
-export const setGlobalValidationContext = (context: ValidationContextType): void => {
+function setGlobalValidationContext (context: ValidationContextType): void {
   globalValidationContext = context
 }
 
-export const runValidations = (options: { dialog?: boolean, context: { annotationGroup?: any, slide?: any } }): ValidationResult => {
-  if (globalValidationContext == null) {
+export const runValidations = (options: { dialog?: boolean, context: { annotationGroup?: dmv.annotation.AnnotationGroup, slide?: Slide } }): ValidationResult => {
+  if (globalValidationContext === null) {
     console.warn('Validation context not available. Make sure ValidationProvider is mounted.')
     return { isValid: true, type: 'info' }
   }

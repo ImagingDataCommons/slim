@@ -729,7 +729,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         Modality: 'PR'
       }
     }).then((matchedInstances): void => {
-      if (matchedInstances == null) {
+      if (matchedInstances === null) {
         matchedInstances = []
       }
       matchedInstances.forEach((rawInstance, index) => {
@@ -763,7 +763,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               )
               if (
                 index === 0 &&
-                this.props.selectedPresentationStateUID == null
+                this.props.selectedPresentationStateUID === null
               ) {
                 this.setPresentationState(presentationState)
               } else {
@@ -1042,7 +1042,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           Modality: 'SR'
         }
       }).then((matchedInstances): void => {
-        if (matchedInstances == null) {
+        if (matchedInstances === null) {
           matchedInstances = []
         }
         matchedInstances.forEach(i => {
@@ -1184,7 +1184,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           Modality: 'ANN'
         }
       }).then((matchedSeries): void => {
-        if (matchedSeries == null) {
+        if (matchedSeries === null) {
           matchedSeries = []
         }
         matchedSeries.forEach(s => {
@@ -1286,7 +1286,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           Modality: 'SEG'
         }
       }).then((matchedSeries): void => {
-        if (matchedSeries == null) {
+        if (matchedSeries === null) {
           matchedSeries = []
         }
         matchedSeries.forEach((s, i) => {
@@ -1373,7 +1373,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           Modality: 'OT'
         }
       }).then((matchedSeries): void => {
-        if (matchedSeries == null) {
+        if (matchedSeries === null) {
           matchedSeries = []
         }
         matchedSeries.forEach(s => {
@@ -1646,7 +1646,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   getUniqueHoveredRois = (newRoi: dmv.roi.ROI | null): dmv.roi.ROI[] => {
-    if (newRoi == null) {
+    if (newRoi === null) {
       return []
     }
     const allRois = [...this.hoveredRois, newRoi]
@@ -1888,7 +1888,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               numFramesSampled: 1
             }
           }
-          if (state.selectedPresentationStateUID == null) {
+          if (state.selectedPresentationStateUID === null) {
             const style = {
               ...this.volumeViewer.getOpticalPathStyle(opticalPathIdentifier)
             }
@@ -2106,7 +2106,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       let hasICCProfile = false
       const image = this.props.slide.volumeImages[0]
       const metadataItem = image.OpticalPathSequence[0]
-      if (metadataItem.ICCProfile == null) {
+      if (metadataItem.ICCProfile === null) {
         if ('OpticalPathSequence' in image.bulkdataReferences) {
           // @ts-expect-error
           const bulkdataItem = image.bulkdataReferences.OpticalPathSequence[0]

@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react'
 import { FaExclamationTriangle } from 'react-icons/fa'
 import { Tooltip } from 'antd'
 import { useValidation } from '../contexts/ValidationContext'
+import { Slide } from '../data/slides'
+import * as dmv from 'dicom-microscopy-viewer'
 
 interface ValidationWarningProps {
-  annotationGroup?: any
+  annotationGroup?: dmv.annotation.AnnotationGroup
   onEvent?: () => void
-  slide?: any
+  slide?: Slide
   iconColor?: string
   iconSize?: string
   style?: React.CSSProperties
