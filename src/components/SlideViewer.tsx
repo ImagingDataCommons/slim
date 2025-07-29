@@ -1,4 +1,7 @@
 import React from 'react'
+import { Layout, Space, Checkbox, Descriptions, Divider, Select, Tooltip, message, Menu, Row } from 'antd'
+import { CheckboxChangeEvent } from 'antd/es/checkbox'
+import { UndoOutlined } from '@ant-design/icons'
 import {
   FaCrosshairs,
   FaDrawPolygon,
@@ -9,63 +12,42 @@ import {
   FaTrash,
   FaSave
 } from 'react-icons/fa'
-import {
-  Button as Btn,
-  Checkbox,
-  Descriptions,
-  Divider,
-  message,
-  Menu,
-  Layout,
-  Row,
-  Select,
-  Space,
-  Tooltip
-} from 'antd'
-import { UndoOutlined } from '@ant-design/icons'
 import * as dmv from 'dicom-microscopy-viewer'
+import * as dwc from 'dicomweb-client'
 import * as dcmjs from 'dcmjs'
-import type { CheckboxChangeEvent } from 'antd/es/checkbox'
-
-import DicomWebManager from '../DicomWebManager'
-import AnnotationList from './AnnotationList'
-import AnnotationGroupList from './AnnotationGroupList'
-import Button from './Button'
-import Equipment from './Equipment'
-import Report, { MeasurementReport } from './Report'
-import SpecimenList from './SpecimenList'
-import OpticalPathList from './OpticalPathList'
-import MappingList from './MappingList'
-import SegmentList from './SegmentList'
-import { AnnotationSettings } from '../AppConfig'
-import { Slide } from '../data/slides'
+import { withRouter } from '../utils/router'
 import { StorageClasses } from '../data/uids'
-import { findContentItemsByName } from '../utils/sr'
-import { RouteComponentProps, withRouter } from '../utils/router'
 import { CustomError, errorTypes } from '../utils/CustomError'
+import { findContentItemsByName } from '../utils/sr'
 import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from '../services/NotificationMiddleware'
-import { AnnotationCategoryAndType } from './AnnotationCategoryList'
-import HoveredRoiTooltip from './HoveredRoiTooltip'
 import { adaptRoiToAnnotation } from '../services/RoiToAnnotationAdapter'
-import generateReport from '../utils/generateReport'
-import { runValidations } from '../contexts/ValidationContext'
-import DicomMetadataStore from '../services/DICOMMetadataStore'
-
-// Import extracted components and utilities
+import { AnnotationSettings, AnnotationCategoryAndType } from '../types/annotations'
 import {
-  SlideViewerModals,
-  SlideViewerSidebar,
-  SlideViewerContent,
+  SlideViewerProps,
+  SlideViewerState,
+  StyleOptions,
+  EvaluationOptions,
+  Evaluation,
+  Measurement
+} from './SlideViewer/types'
+import SlideViewerModals from './SlideViewer/SlideViewerModals'
+import SlideViewerSidebar from './SlideViewer/SlideViewerSidebar'
+import SlideViewerContent from './SlideViewer/SlideViewerContent'
+import {
   buildKey,
   getRoiKey,
   areROIsEqual,
-  formatRoiStyle,
+  formatRoiStyle
+} from './SlideViewer/utils/roiUtils'
+import {
   constructViewers,
   implementsTID1500,
   describesSpecimenSubject,
-  containsROIAnnotations,
+  containsROIAnnotations
+} from './SlideViewer/utils/viewerUtils'
+import {
   DEFAULT_ROI_STROKE_COLOR,
   DEFAULT_ROI_FILL_COLOR,
   DEFAULT_ROI_STROKE_WIDTH,
@@ -73,100 +55,20 @@ import {
   DEFAULT_ANNOTATION_OPACITY,
   DEFAULT_ANNOTATION_STROKE_COLOR,
   DEFAULT_ANNOTATION_COLOR_PALETTE
-} from './SlideViewer/index'
-
-interface StyleOptions {
-  opacity: number
-  color: number[]
-  contourOnly: boolean
-}
-
-interface EvaluationOptions {
-  name: dcmjs.sr.coding.CodedConcept
-  values: dcmjs.sr.coding.CodedConcept[]
-}
-
-interface Evaluation {
-  name: dcmjs.sr.coding.CodedConcept
-  value: dcmjs.sr.coding.CodedConcept
-}
-
-interface Measurement {
-  name: dcmjs.sr.coding.CodedConcept
-  value?: number
-  unit: dcmjs.sr.coding.CodedConcept
-}
-
-interface SlideViewerProps extends RouteComponentProps {
-  slide: Slide
-  clients: { [key: string]: DicomWebManager }
-  studyInstanceUID: string
-  seriesInstanceUID: string
-  app: {
-    name: string
-    version: string
-    uid: string
-    organization?: string
-  }
-  annotations: AnnotationSettings[]
-  enableAnnotationTools: boolean
-  preload: boolean
-  user?: {
-    name: string
-    email: string
-  }
-  selectedPresentationStateUID?: string
-  derivedDataset?: dmv.metadata.Dataset // Add this line
-}
-
-interface SlideViewerState {
-  visibleRoiUIDs: Set<string>
-  visibleSegmentUIDs: Set<string>
-  visibleMappingUIDs: Set<string>
-  visibleAnnotationGroupUIDs: Set<string>
-  visibleOpticalPathIdentifiers: Set<string>
-  activeOpticalPathIdentifiers: Set<string>
-  presentationStates: dmv.metadata.AdvancedBlendingPresentationState[]
-  selectedPresentationStateUID?: string
-  selectedFinding?: dcmjs.sr.coding.CodedConcept
-  selectedEvaluations: Evaluation[]
-  selectedGeometryType?: string
-  selectedMarkup?: string
-  selectedRoi?: dmv.roi.ROI
-  selectedRoiUIDs: Set<string>
-  generatedReport?: dmv.metadata.Comprehensive3DSR
-  isLoading: boolean
-  isAnnotationModalVisible: boolean
-  isSelectedRoiModalVisible: boolean
-  isHoveredRoiTooltipVisible: boolean
-  hoveredRoiAttributes: Array<{index: number, roiUid: string, attributes: Array<{ name: string, value: string }>}>
-  hoveredRoiTooltipX: number
-  hoveredRoiTooltipY: number
-  isReportModalVisible: boolean
-  isRoiDrawingActive: boolean
-  isRoiModificationActive: boolean
-  isRoiTranslationActive: boolean
-  isGoToModalVisible: boolean
-  isSelectedMagnificationValid: boolean
-  isSelectedXCoordinateValid: boolean
-  isSelectedYCoordinateValid: boolean
-  selectedXCoordinate?: number
-  validXCoordinateRange: number[]
-  selectedYCoordinate?: number
-  validYCoordinateRange: number[]
-  selectedMagnification?: number
-  areRoisHidden: boolean
-  selectedSeriesInstanceUID?: string
-  pixelDataStatistics: {
-    [opticalPathIdentifier: string]: {
-      min: number
-      max: number
-      numFramesSampled: number
-    }
-  }
-  loadingFrames: Set<string>
-  isICCProfilesEnabled: boolean
-}
+} from './SlideViewer/constants'
+import AnnotationList from './AnnotationList'
+import AnnotationGroupList from './AnnotationGroupList'
+import Report, { MeasurementReport } from './Report'
+import HoveredRoiTooltip from './HoveredRoiTooltip'
+import generateReport from '../utils/generateReport'
+import { runValidations } from '../contexts/ValidationContext'
+import DicomMetadataStore from '../services/DICOMMetadataStore'
+import SpecimenList from './SpecimenList'
+import Equipment from './Equipment'
+import OpticalPathList from './OpticalPathList'
+import SegmentList from './SegmentList'
+import MappingList from './MappingList'
+import Btn from './Button'
 
 /**
  * React component for interactive viewing of an individual digital slide,
@@ -463,11 +365,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       queryParams: {
         Modality: 'PR'
       }
-    }).then((matchedInstances): void => {
+    }).then((matchedInstances: dwc.api.Instance[] | null): void => {
       if (matchedInstances === null || matchedInstances === undefined) {
         matchedInstances = []
       }
-      matchedInstances.forEach((rawInstance, index) => {
+      matchedInstances.forEach((rawInstance: dwc.api.Instance, index: number) => {
         const { dataset } = dmv.metadata.formatMetadata(rawInstance)
         const instance = dataset as dmv.metadata.Instance
         console.info(`retrieve PR instance "${instance.SOPInstanceUID}"`)
@@ -475,7 +377,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           studyInstanceUID: this.props.studyInstanceUID,
           seriesInstanceUID: instance.SeriesInstanceUID,
           sopInstanceUID: instance.SOPInstanceUID
-        }).then((retrievedInstance): void => {
+        }).then((retrievedInstance: dwc.api.Dataset): void => {
           const data = dcmjs.data.DicomMessage.readFile(retrievedInstance)
           const { dataset } = dmv.metadata.formatMetadata(data.dict)
           if (this.props.slide.areVolumeImagesMonochrome) {
@@ -2910,7 +2812,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     segments: dmv.segment.Segment[]
     mappings: dmv.mapping.ParameterMapping[]
     annotationGroups: dmv.annotation.AnnotationGroup[]
-    annotations: any[]
+    annotations: AnnotationCategoryAndType[]
   } => {
     const rois: dmv.roi.ROI[] = []
     const segments: dmv.segment.Segment[] = []
@@ -3170,8 +3072,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             </Select>
             <Tooltip title='Reset'>
               <Btn
-                icon={<UndoOutlined />}
-                type='primary'
+                icon={UndoOutlined}
                 onClick={this.handlePresentationStateReset}
               />
             </Tooltip>
@@ -3346,41 +3247,41 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private readonly getToolbar = (): { toolbar: React.ReactNode, toolbarHeight: string } => {
     const annotationTools = [
-      <Button
+      <Btn
         tooltip='Draw ROI [Alt+D]'
         icon={FaDrawPolygon}
         onClick={this.handleRoiDrawing}
         isSelected={this.state.isRoiDrawingActive}
         key='draw-roi-button'
       />,
-      <Button
+      <Btn
         tooltip='Modify ROIs [Alt+M]'
         icon={FaHandPointer}
         onClick={this.handleRoiModification}
         isSelected={this.state.isRoiModificationActive}
         key='modify-roi-button'
       />,
-      <Button
+      <Btn
         tooltip='Translate ROIs [Alt+T]'
         icon={FaHandPaper}
         onClick={this.handleRoiTranslation}
         isSelected={this.state.isRoiTranslationActive}
         key='translate-roi-button'
       />,
-      <Button
+      <Btn
         tooltip='Remove selected ROI [Alt+R]'
         onClick={this.handleRoiRemoval}
         icon={FaTrash}
         key='remove-roi-button'
       />,
-      <Button
+      <Btn
         tooltip='Show/Hide ROIs [Alt+V]'
         icon={this.state.areRoisHidden ? FaEye : FaEyeSlash}
         onClick={this.handleRoiVisibilityChange}
         isSelected={this.state.areRoisHidden}
         key='toggle-roi-visibility-button'
       />,
-      <Button
+      <Btn
         tooltip='Save ROIs [Alt+S]'
         icon={FaSave}
         onClick={this.handleReportGeneration}
@@ -3388,7 +3289,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       />
     ]
     const controlTools = [
-      <Button
+      <Btn
         tooltip='Go to [Alt+G]'
         icon={FaCrosshairs}
         onClick={this.handleGoTo}

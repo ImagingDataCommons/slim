@@ -144,12 +144,10 @@ function ParametrizedSlideViewer ({
   }, [slides, clients, studyInstanceUID, seriesInstanceUID, selectedSlide])
 
   const searchParams = new URLSearchParams(location.search)
-  let presentationStateUID: string | null | undefined
+  let presentationStateUID: string | undefined
   if (!searchParams.has('access_token')) {
-    presentationStateUID = searchParams.get('state')
-    if (presentationStateUID === null || presentationStateUID === undefined) {
-      presentationStateUID = undefined
-    }
+    const stateParam = searchParams.get('state')
+    presentationStateUID = stateParam !== null ? stateParam : undefined
   }
 
   let viewer = null
@@ -166,7 +164,7 @@ function ParametrizedSlideViewer ({
         enableAnnotationTools={enableAnnotationTools}
         app={app}
         user={user}
-        derivedDataset={derivedDataset}
+        derivedDataset={derivedDataset ?? undefined}
       />
     )
   }

@@ -1,8 +1,9 @@
 import React from 'react'
 import { Button as Btn, Divider, Tooltip } from 'antd'
+import { IconType } from 'react-icons'
 
 interface ButtonProps {
-  icon: any
+  icon: IconType | React.ComponentType<any>
   tooltip?: string
   label?: string
   onClick?: (options: any) => void

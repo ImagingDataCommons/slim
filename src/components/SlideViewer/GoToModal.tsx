@@ -11,9 +11,9 @@ interface GoToModalProps {
   isSelectedXCoordinateValid: boolean
   isSelectedYCoordinateValid: boolean
   isSelectedMagnificationValid: boolean
-  onXCoordinateSelection: (value: any) => void
-  onYCoordinateSelection: (value: any) => void
-  onMagnificationSelection: (value: any) => void
+  onXCoordinateSelection: (value: number | string | null) => void
+  onYCoordinateSelection: (value: number | string | null) => void
+  onMagnificationSelection: (value: number | string | null) => void
 }
 
 /**
@@ -32,6 +32,21 @@ const GoToModal: React.FC<GoToModalProps> = ({
   onYCoordinateSelection,
   onMagnificationSelection
 }) => {
+  const handleXCoordinateEnter = (event: React.KeyboardEvent<HTMLInputElement>): void => {
+    const target = event.target as HTMLInputElement
+    onXCoordinateSelection(target.value !== '' ? Number(target.value) : null)
+  }
+
+  const handleYCoordinateEnter = (event: React.KeyboardEvent<HTMLInputElement>): void => {
+    const target = event.target as HTMLInputElement
+    onYCoordinateSelection(target.value !== '' ? Number(target.value) : null)
+  }
+
+  const handleMagnificationEnter = (event: React.KeyboardEvent<HTMLInputElement>): void => {
+    const target = event.target as HTMLInputElement
+    onMagnificationSelection(target.value !== '' ? Number(target.value) : null)
+  }
+
   return (
     <Modal
       open={isVisible}
@@ -51,7 +66,7 @@ const GoToModal: React.FC<GoToModalProps> = ({
           }
           prefix='X Coordinate [mm]'
           onChange={onXCoordinateSelection}
-          onPressEnter={onXCoordinateSelection}
+          onPressEnter={handleXCoordinateEnter}
           controls={false}
           addonAfter={
             isSelectedXCoordinateValid
@@ -73,7 +88,7 @@ const GoToModal: React.FC<GoToModalProps> = ({
           }
           prefix='Y Coordinate [mm]'
           onChange={onYCoordinateSelection}
-          onPressEnter={onYCoordinateSelection}
+          onPressEnter={handleYCoordinateEnter}
           controls={false}
           addonAfter={
             isSelectedYCoordinateValid
@@ -89,7 +104,7 @@ const GoToModal: React.FC<GoToModalProps> = ({
           placeholder='[0 - 40]'
           prefix='Magnification'
           onChange={onMagnificationSelection}
-          onPressEnter={onMagnificationSelection}
+          onPressEnter={handleMagnificationEnter}
           controls={false}
           addonAfter={
             isSelectedMagnificationValid

@@ -26,9 +26,9 @@ interface SlideViewerModalsProps {
   isSelectedXCoordinateValid: boolean
   isSelectedYCoordinateValid: boolean
   isSelectedMagnificationValid: boolean
-  onXCoordinateSelection: (value: any) => void
-  onYCoordinateSelection: (value: any) => void
-  onMagnificationSelection: (value: any) => void
+  onXCoordinateSelection: (value: number | string | null) => void
+  onYCoordinateSelection: (value: number | string | null) => void
+  onMagnificationSelection: (value: number | string | null) => void
 
   // Report Modal
   isReportModalVisible: boolean

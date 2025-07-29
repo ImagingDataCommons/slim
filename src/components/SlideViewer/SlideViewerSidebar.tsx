@@ -1,10 +1,13 @@
 import React from 'react'
 import { Layout, Menu } from 'antd'
+import * as dmv from 'dicom-microscopy-viewer'
 import AnnotationCategoryList from '../AnnotationCategoryList'
+import { AnnotationCategoryAndType } from '../../types/annotations'
+import { StyleOptions } from './types'
 
 interface SlideViewerSidebarProps {
   labelViewportRef: React.RefObject<HTMLDivElement>
-  labelViewer: any
+  labelViewer?: dmv.viewer.LabelImageViewer
   openSubMenuItems: string[]
   specimenMenu: React.ReactNode
   iccProfilesMenu: React.ReactNode
@@ -15,11 +18,11 @@ interface SlideViewerSidebarProps {
   annotationGroupMenu: React.ReactNode
   segmentationMenu: React.ReactNode
   parametricMapMenu: React.ReactNode
-  annotations: any[]
+  annotations: AnnotationCategoryAndType[]
   visibleRoiUIDs: Set<string>
   onAnnotationVisibilityChange: ({ roiUID, isVisible }: { roiUID: string, isVisible: boolean }) => void
-  onRoiStyleChange: ({ uid, styleOptions }: { uid: string, styleOptions: any }) => void
-  defaultAnnotationStyles: { [annotationUID: string]: any }
+  onRoiStyleChange: ({ uid, styleOptions }: { uid: string, styleOptions: StyleOptions }) => void
+  defaultAnnotationStyles: { [annotationUID: string]: StyleOptions }
 }
 
 /**
