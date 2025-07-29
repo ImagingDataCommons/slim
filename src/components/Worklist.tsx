@@ -283,7 +283,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       <Table<dmv.metadata.Study>
         style={{ cursor: 'pointer' }}
         columns={columns}
-        rowKey={(record) => Worklist.getRowKey(record)}
+        rowKey={Worklist.getRowKey}
         dataSource={this.state.studies}
         pagination={pagination}
         onRow={this.handleRowProps}

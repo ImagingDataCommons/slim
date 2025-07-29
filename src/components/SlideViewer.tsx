@@ -2462,7 +2462,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    */
   handlePresentationStateSelection = (
     value?: string,
-    _option?: any
+    _option?: unknown
   ): void => {
     if (value !== null) {
       console.info(`select Presentation State instance "${value ?? 'undefined'}"`)
