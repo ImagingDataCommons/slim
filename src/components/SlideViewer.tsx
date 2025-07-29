@@ -14,20 +14,17 @@ import {
   Checkbox,
   Descriptions,
   Divider,
-  InputNumber,
   message,
   Menu,
-  Modal,
   Layout,
   Row,
   Select,
   Space,
   Tooltip
 } from 'antd'
-import { UndoOutlined, CheckOutlined, StopOutlined } from '@ant-design/icons'
+import { UndoOutlined } from '@ant-design/icons'
 import * as dmv from 'dicom-microscopy-viewer'
 import * as dcmjs from 'dcmjs'
-import * as dwc from 'dicomweb-client'
 import type { CheckboxChangeEvent } from 'antd/es/checkbox'
 
 import DicomWebManager from '../DicomWebManager'
@@ -49,304 +46,39 @@ import { CustomError, errorTypes } from '../utils/CustomError'
 import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from '../services/NotificationMiddleware'
-import AnnotationCategoryList, { AnnotationCategoryAndType } from './AnnotationCategoryList'
+import { AnnotationCategoryAndType } from './AnnotationCategoryList'
 import HoveredRoiTooltip from './HoveredRoiTooltip'
 import { adaptRoiToAnnotation } from '../services/RoiToAnnotationAdapter'
 import generateReport from '../utils/generateReport'
 import { runValidations } from '../contexts/ValidationContext'
 import DicomMetadataStore from '../services/DICOMMetadataStore'
 
-const DEFAULT_ROI_STROKE_COLOR: number[] = [255, 234, 0] // [0, 126, 163]
-const DEFAULT_ROI_FILL_COLOR: number[] = [255, 234, 0, 0.2] // [0, 126, 163, 0.2]
-const DEFAULT_ROI_STROKE_WIDTH: number = 2
-const DEFAULT_ROI_RADIUS: number = 5
-
-const DEFAULT_ANNOTATION_OPACITY = 0.4
-const DEFAULT_ANNOTATION_STROKE_COLOR = [0, 0, 0]
-const DEFAULT_ANNOTATION_COLOR_PALETTE = [
-  [255, 0, 0],
-  [0, 255, 0],
-  [0, 0, 255],
-  [255, 255, 0],
-  [0, 255, 255],
-  [0, 0, 0]
-]
+// Import extracted components and utilities
+import {
+  SlideViewerModals,
+  SlideViewerSidebar,
+  SlideViewerContent,
+  buildKey,
+  getRoiKey,
+  areROIsEqual,
+  formatRoiStyle,
+  constructViewers,
+  implementsTID1500,
+  describesSpecimenSubject,
+  containsROIAnnotations,
+  DEFAULT_ROI_STROKE_COLOR,
+  DEFAULT_ROI_FILL_COLOR,
+  DEFAULT_ROI_STROKE_WIDTH,
+  DEFAULT_ROI_RADIUS,
+  DEFAULT_ANNOTATION_OPACITY,
+  DEFAULT_ANNOTATION_STROKE_COLOR,
+  DEFAULT_ANNOTATION_COLOR_PALETTE
+} from './SlideViewer/index'
 
 interface StyleOptions {
   opacity: number
   color: number[]
   contourOnly: boolean
-}
-
-const _buildKey = (concept: {
-  CodeValue: string
-  CodeMeaning: string
-  CodingSchemeDesignator: string
-  CodingSchemeVersion?: string
-}): string => {
-  const codingScheme = concept.CodingSchemeDesignator
-  const codeValue = concept.CodeValue
-  return `${codingScheme}-${codeValue}`
-}
-
-const _getRoiKey = (roi: dmv.roi.ROI): string | undefined => {
-  const matches = findContentItemsByName({
-    content: roi.evaluations,
-    name: new dcmjs.sr.coding.CodedConcept({
-      value: '121071',
-      meaning: 'Finding',
-      schemeDesignator: 'DCM'
-    })
-  })
-  if (matches.length === 0) {
-    console.warn(`no finding found for ROI ${roi.uid}`)
-    return
-  }
-  const finding = matches[0] as dcmjs.sr.valueTypes.CodeContentItem
-  const findingName = finding.ConceptCodeSequence[0]
-  return _buildKey(findingName)
-}
-
-const _areROIsEqual = (a: dmv.roi.ROI, b: dmv.roi.ROI): boolean => {
-  if (a.scoord3d.graphicType !== b.scoord3d.graphicType) {
-    return false
-  }
-  if (a.scoord3d.frameOfReferenceUID !== b.scoord3d.frameOfReferenceUID) {
-    return false
-  }
-  if (a.scoord3d.graphicData.length !== b.scoord3d.graphicData.length) {
-    return false
-  }
-
-  const decimals = 6
-  for (let i = 0; i < a.scoord3d.graphicData.length; ++i) {
-    if (a.scoord3d.graphicType === 'POINT') {
-      const s1 = a.scoord3d as dmv.scoord3d.Point
-      const s2 = b.scoord3d as dmv.scoord3d.Point
-      const c1 = s1.graphicData[i].toPrecision(decimals)
-      const c2 = s2.graphicData[i].toPrecision(decimals)
-      if (c1 !== c2) {
-        return false
-      }
-    } else {
-      const s1 = a.scoord3d as dmv.scoord3d.Polygon
-      const s2 = b.scoord3d as dmv.scoord3d.Polygon
-      for (let j = 0; j < s1.graphicData[i].length; ++j) {
-        const c1 = s1.graphicData[i][j].toPrecision(decimals)
-        const c2 = s2.graphicData[i][j].toPrecision(decimals)
-        if (c1 !== c2) {
-          return false
-        }
-      }
-    }
-  }
-  return true
-}
-
-const _formatRoiStyle = (style: {
-  stroke?: {
-    color?: number[]
-    width?: number
-  }
-  fill?: {
-    color?: number[]
-  }
-  radius?: number
-}): dmv.viewer.ROIStyleOptions => {
-  const stroke = {
-    color: DEFAULT_ROI_STROKE_COLOR,
-    width: DEFAULT_ROI_STROKE_WIDTH
-  }
-  if (style.stroke !== null && style.stroke !== undefined) {
-    if (style.stroke.color !== null && style.stroke.color !== undefined) {
-      stroke.color = style.stroke.color
-    }
-    if (style.stroke.width !== null && style.stroke.width !== undefined) {
-      stroke.width = style.stroke.width
-    }
-  }
-  const fill = {
-    color: DEFAULT_ROI_FILL_COLOR
-  }
-  if (style.fill !== null && style.fill !== undefined) {
-    if (style.fill.color !== null && style.fill.color !== undefined) {
-      fill.color = style.fill.color
-    }
-  }
-  return {
-    stroke,
-    fill,
-    image: {
-      circle: {
-        radius: style.radius !== null && style.radius !== undefined
-          ? style.radius
-          : Math.max(5 - stroke.width, 1),
-        stroke,
-        fill
-      }
-    }
-  }
-}
-
-const _constructViewers = ({ clients, slide, preload }: {
-  clients: { [key: string]: dwc.api.DICOMwebClient }
-  slide: Slide
-  preload?: boolean
-}): {
-  volumeViewer: dmv.viewer.VolumeImageViewer
-  labelViewer?: dmv.viewer.LabelImageViewer
-} => {
-  console.info(
-    'instantiate viewer for VOLUME images of slide ' +
-    `"${slide.volumeImages[0].ContainerIdentifier}"`
-  )
-  try {
-    const volumeViewer = new dmv.viewer.VolumeImageViewer({
-      clientMapping: clients,
-      metadata: slide.volumeImages,
-      controls: ['overview', 'position'],
-      preload: preload,
-      errorInterceptor: (error: CustomError) => {
-        NotificationMiddleware.onError(
-          NotificationMiddlewareContext.DMV, error
-        )
-      }
-    })
-    volumeViewer.activateSelectInteraction({})
-
-    let labelViewer
-    if (slide.labelImages.length > 0) {
-      console.info(
-        'instantiate viewer for LABEL image of slide ' +
-        `"${slide.labelImages[0].ContainerIdentifier}"`
-      )
-      labelViewer = new dmv.viewer.LabelImageViewer({
-        client: clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE],
-        metadata: slide.labelImages[0],
-        resizeFactor: 1,
-        orientation: 'vertical',
-        errorInterceptor: (error: CustomError) => {
-          NotificationMiddleware.onError(
-            NotificationMiddlewareContext.DMV,
-            error
-          )
-        }
-      })
-    }
-
-    return { volumeViewer, labelViewer }
-  } catch (error) {
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    NotificationMiddleware.onError(
-      NotificationMiddlewareContext.SLIM,
-      new CustomError(
-        errorTypes.VISUALIZATION,
-        'Failed to instantiate viewer'
-      )
-    )
-    throw error
-  }
-}
-
-/*
- * Check whether the report is structured according to template
- * TID 1500 "MeasurementReport".
- */
-const _implementsTID1500 = (
-  report: dmv.metadata.Comprehensive3DSR
-): boolean => {
-  const templateSeq = report.ContentTemplateSequence
-  if (templateSeq.length > 0) {
-    const tid = templateSeq[0].TemplateIdentifier
-    if (tid === '1500') {
-      return true
-    }
-  }
-  return false
-}
-
-/*
- * Check whether the subject described in the report is a specimen as compared
- * to a patient, fetus, or device.
- */
-const _describesSpecimenSubject = (
-  report: dmv.metadata.Comprehensive3DSR
-): boolean => {
-  const items = findContentItemsByName({
-    content: report.ContentSequence,
-    name: new dcmjs.sr.coding.CodedConcept({
-      value: '121024',
-      schemeDesignator: 'DCM',
-      meaning: 'Subject Class'
-    })
-  })
-  if (items.length === 0) {
-    return false
-  }
-  const subjectClassItem = items[0] as dcmjs.sr.valueTypes.CodeContentItem
-  const subjectClassValue = subjectClassItem.ConceptCodeSequence[0]
-  const retrievedConcept = new dcmjs.sr.coding.CodedConcept({
-    value: subjectClassValue.CodeValue,
-    meaning: subjectClassValue.CodeMeaning,
-    schemeDesignator: subjectClassValue.CodingSchemeDesignator
-  })
-  const expectedConcept = new dcmjs.sr.coding.CodedConcept({
-    value: '121027',
-    meaning: 'Specimen',
-    schemeDesignator: 'DCM'
-  })
-  if (retrievedConcept.equals(expectedConcept)) {
-    return true
-  }
-  return false
-}
-
-/*
- * Check whether the report contains appropriate graphic ROI annotations.
- */
-const _containsROIAnnotations = (
-  report: dmv.metadata.Comprehensive3DSR
-): boolean => {
-  const measurements = findContentItemsByName({
-    content: report.ContentSequence,
-    name: new dcmjs.sr.coding.CodedConcept({
-      value: '126010',
-      schemeDesignator: 'DCM',
-      meaning: 'Imaging Measurements'
-    })
-  })
-  if (measurements.length === 0) {
-    return false
-  }
-  const container = measurements[0] as dcmjs.sr.valueTypes.ContainerContentItem
-  const measurementGroups = findContentItemsByName({
-    content: container.ContentSequence,
-    name: new dcmjs.sr.coding.CodedConcept({
-      value: '125007',
-      schemeDesignator: 'DCM',
-      meaning: 'Measurement Group'
-    })
-  })
-
-  let foundRegion = false
-  measurementGroups.forEach((group) => {
-    const container = group as dcmjs.sr.valueTypes.ContainerContentItem
-    const regions = findContentItemsByName({
-      content: container.ContentSequence,
-      name: new dcmjs.sr.coding.CodedConcept({
-        value: '111030',
-        schemeDesignator: 'DCM',
-        meaning: 'Image Region'
-      })
-    })
-    if (regions.length > 0) {
-      if (regions[0].ValueType === dcmjs.sr.valueTypes.ValueTypes.SCOORD3D) {
-        foundRegion = true
-      }
-    }
-  })
-
-  return foundRegion
 }
 
 interface EvaluationOptions {
@@ -520,7 +252,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     props.annotations.forEach((annotation: AnnotationSettings) => {
       const finding = new dcmjs.sr.coding.CodedConcept(annotation.finding)
       this.findingOptions.push(finding)
-      const key = _buildKey(finding)
+      const key = buildKey(finding)
       if (annotation.geometryTypes !== undefined) {
         this.geometryTypeOptions[key] = annotation.geometryTypes
       } else {
@@ -547,7 +279,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         })
       }
       if (annotation.style !== null && annotation.style !== undefined) {
-        this.roiStyles[key] = _formatRoiStyle(annotation.style)
+        this.roiStyles[key] = formatRoiStyle(annotation.style)
       } else {
         this.roiStyles[key] = this.defaultRoiStyle
       }
@@ -594,7 +326,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.handleICCProfilesToggle = this.handleICCProfilesToggle.bind(this)
     this.handleAnnotationSelection = this.handleAnnotationSelection.bind(this)
 
-    const { volumeViewer, labelViewer } = _constructViewers({
+    const { volumeViewer, labelViewer } = constructViewers({
       clients: this.props.clients,
       slide: this.props.slide,
       preload: this.props.preload
@@ -679,7 +411,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         }
         this.labelViewer.cleanup()
       }
-      const { volumeViewer, labelViewer } = _constructViewers({
+      const { volumeViewer, labelViewer } = constructViewers({
         clients: this.props.clients,
         slide: this.props.slide,
         preload: this.props.preload
@@ -1066,7 +798,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               * Perform a couple of checks to ensure the document content of the
               * report fullfils the requirements of the application.
               */
-              if (!_implementsTID1500(report)) {
+              if (!implementsTID1500(report)) {
                 console.debug(
                   `ignore SR document "${report.SOPInstanceUID}" ` +
                   'because it is not structured according to template ' +
@@ -1074,14 +806,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 )
                 return
               }
-              if (!_describesSpecimenSubject(report)) {
+              if (!describesSpecimenSubject(report)) {
                 console.debug(
                   `ignore SR document "${report.SOPInstanceUID}" ` +
                   'because it does not describe a specimen subject'
                 )
                 return
               }
-              if (!_containsROIAnnotations(report)) {
+              if (!containsROIAnnotations(report)) {
                 console.debug(
                   `ignore SR document "${report.SOPInstanceUID}" ` +
                   'because it does not contain any suitable ROI annotations'
@@ -1106,7 +838,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                   */
                   const doesROIExist = this.volumeViewer.getAllROIs().some(
                     (otherROI: dmv.roi.ROI): boolean => {
-                      return _areROIsEqual(otherROI, roi)
+                      return areROIsEqual(otherROI, roi)
                     }
                   )
                   if (!doesROIExist) {
@@ -1228,7 +960,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               ann.AnnotationGroupSequence.forEach(item => {
                 const annotationGroupUID = item.AnnotationGroupUID
                 const finding = item.AnnotationPropertyTypeCodeSequence[0]
-                const key = _buildKey(finding)
+                const key = buildKey(finding)
                 const style = this.roiStyles[key]
                 // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
                 if (style !== null && style !== undefined && style.fill !== null && style.fill !== undefined) {
@@ -1559,7 +1291,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         })
         roi.addEvaluation(item)
       })
-      const key = _buildKey(selectedFinding)
+      const key = buildKey(selectedFinding)
       const style = this.getRoiStyle(key)
       this.volumeViewer.addROI(roi, style)
       this.setState(state => {
@@ -1728,7 +1460,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         return
       }
 
-      const key = _getRoiKey(roi)
+      const key = getRoiKey(roi)
       const style = this.getRoiStyle(key)
       this.volumeViewer.setROIStyle(uid, style)
     })
@@ -1775,7 +1507,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         })
       } else {
         if (this.state.visibleRoiUIDs.has(roi.uid)) {
-          const key = _getRoiKey(roi)
+          const key = getRoiKey(roi)
           style = this.getRoiStyle(key)
         }
       }
@@ -2186,7 +1918,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   ): void {
     const selectedFinding = this.state.selectedFinding
     if (selectedFinding !== undefined) {
-      const key = _buildKey(selectedFinding)
+      const key = buildKey(selectedFinding)
       const name = option.label
       this.evaluationOptions[key].forEach(evaluation => {
         if (
@@ -2503,7 +2235,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (isVisible) {
       console.info(`show ROI ${roiUID}`)
       const roi = this.volumeViewer.getROI(roiUID)
-      const key = _getRoiKey(roi)
+      const key = getRoiKey(roi)
       const style = this.getRoiStyle(key)
       this.volumeViewer.setROIStyle(roi.uid, style)
       this.setState(state => {
@@ -2612,7 +2344,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const opacity = styleOptions.opacity ?? DEFAULT_ANNOTATION_OPACITY
     const strokeColor = styleOptions.color ?? DEFAULT_ANNOTATION_STROKE_COLOR
     const fillColor = styleOptions.contourOnly ? [0, 0, 0, 0] : strokeColor.map((c) => Math.min(c + 25, 255))
-    const style = _formatRoiStyle({
+    const style = formatRoiStyle({
       fill: { color: [...fillColor, opacity] },
       stroke: { color: [...strokeColor, opacity] },
       radius: this.defaultRoiStyle.stroke?.width
@@ -2630,7 +2362,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const style = this.generateRoiStyle(styleOptions)
 
       const roi = this.volumeViewer.getROI(uid)
-      const key = _getRoiKey(roi) as string
+      const key = getRoiKey(roi) as string
       this.roiStyles[key] = style
       this.volumeViewer.setROIStyle(uid, style)
       this.state.visibleRoiUIDs.add(uid)
@@ -3155,7 +2887,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   formatAnnotation = (annotation: AnnotationCategoryAndType): void => {
     const roi = this.volumeViewer.getROI(annotation.uid)
-    const key = _getRoiKey(roi) as string
+    const key = getRoiKey(roi) as string
     const color = this.roiStyles[key] !== undefined
       ? this.roiStyles[key].stroke?.color.slice(0, 3)
       : DEFAULT_ANNOTATION_COLOR_PALETTE[
@@ -3277,7 +3009,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     ]
     const selectedFinding = this.state.selectedFinding
     if (selectedFinding !== undefined) {
-      const key = _buildKey(selectedFinding)
+      const key = buildKey(selectedFinding)
       this.evaluationOptions[key].forEach((evaluation, index) => {
         const evaluationOptions = evaluation.values.map(code => {
           return (
@@ -3890,191 +3622,59 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     return (
       <Layout style={{ height: '100%' }} hasSider>
-        <Layout.Content style={{ height: '100%' }}>
-          {toolbar}
-
-          <div
-            style={{
-              height: `calc(100% - ${toolbarHeight})`,
-              overflow: 'hidden',
-              cursor: cursor
-            }}
-            ref={this.volumeViewportRef}
-          />
-
-          <Modal
-            open={this.state.isAnnotationModalVisible}
-            title='Configure annotations'
-            onOk={this.handleAnnotationConfigurationCompletion}
-            okButtonProps={{ disabled: !(this.state.selectedFinding !== undefined && this.state.selectedGeometryType !== undefined) }}
-            onCancel={this.handleAnnotationConfigurationCancellation}
-            okText='Select'
-          >
-            <Space align='start' direction='vertical'>
-              {annotationConfigurations}
-            </Space>
-          </Modal>
-
-          <Modal
-            open={this.state.isSelectedRoiModalVisible}
-            title='Selected ROI'
-            onCancel={this.handleRoiSelectionCancellation}
-            maskClosable
-            footer={null}
-          >
-            <Space align='start' direction='vertical'>
-              {selectedRoiInformation}
-            </Space>
-          </Modal>
-
-          <Modal
-            open={this.state.isGoToModalVisible}
-            title='Go to slide position'
-            onOk={this.handleSlidePositionSelection}
-            onCancel={this.handleSlidePositionSelectionCancellation}
-            okText='Select'
-          >
-            <Space align='start' direction='vertical'>
-              <InputNumber
-                placeholder={
-                  '[' +
-                  `${this.state.validXCoordinateRange[0]}` +
-                  ', ' +
-                  `${this.state.validXCoordinateRange[1]}` +
-                  ']'
-                }
-                prefix='X Coordinate [mm]'
-                onChange={this.handleXCoordinateSelection}
-                onPressEnter={this.handleXCoordinateSelection}
-                controls={false}
-                addonAfter={
-                  this.state.isSelectedXCoordinateValid
-                    ? (
-                      <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                      )
-                    : (
-                      <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                      )
-                }
-              />
-              <InputNumber
-                placeholder={
-                  '[' +
-                  `${this.state.validYCoordinateRange[0]}` +
-                  ', ' +
-                  `${this.state.validYCoordinateRange[1]}` +
-                  ']'
-                }
-                prefix='Y Coordinate [mm]'
-                onChange={this.handleYCoordinateSelection}
-                onPressEnter={this.handleYCoordinateSelection}
-                controls={false}
-                addonAfter={
-                  this.state.isSelectedYCoordinateValid
-                    ? (
-                      <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                      )
-                    : (
-                      <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                      )
-                }
-              />
-              <InputNumber
-                placeholder='[0 - 40]'
-                prefix='Magnification'
-                onChange={this.handleMagnificationSelection}
-                onPressEnter={this.handleMagnificationSelection}
-                controls={false}
-                addonAfter={
-                  this.state.isSelectedMagnificationValid
-                    ? (
-                      <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                      )
-                    : (
-                      <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                      )
-                }
-              />
-            </Space>
-          </Modal>
-
-          <Modal
-            open={this.state.isReportModalVisible}
-            title='Verify and save report'
-            onOk={this.handleReportVerification}
-            onCancel={this.handleReportCancellation}
-            okText='Save'
-          >
-            {report}
-          </Modal>
-        </Layout.Content>
-
-        <Layout.Sider
-          width={300}
-          reverseArrow
-          style={{
-            borderLeft: 'solid',
-            borderLeftWidth: 0.25,
-            overflow: 'hidden',
-            background: 'none'
-          }}
+        <SlideViewerContent
+          toolbar={toolbar}
+          toolbarHeight={toolbarHeight}
+          cursor={cursor}
+          volumeViewportRef={this.volumeViewportRef}
         >
-          <Menu
-            mode='inline'
-            defaultOpenKeys={openSubMenuItems}
-            style={{ height: '100%' }}
-            inlineIndent={14}
-            forceSubMenuRender
-            onOpenChange={() => {
-              // Give menu item time to render before updating viewer size
-              setTimeout(() => {
-                if (this.labelViewer != null) {
-                  this.labelViewer.resize()
-                }
-              }, 100)
-            }}
-          >
-            {this.labelViewportRef.current != null && (
-              <Menu.SubMenu key='label' title='Slide label'>
-                <Menu.Item style={{ height: '100%' }} key='image'>
-                  <div
-                    style={{ height: '220px' }}
-                    ref={this.labelViewportRef}
-                  />
-                </Menu.Item>
-              </Menu.SubMenu>
-            )}
-            {specimenMenu}
-            {iccProfilesMenu}
-            {equipmentMenu}
-            {opticalPathMenu}
-            {presentationStateMenu}
-            <Menu.SubMenu key='annotations' title='Annotations'>
-              {annotationMenuItems}
-            </Menu.SubMenu>
-            {annotationGroupMenu}
-            {annotations.length === 0
-              ? (
-                <></>
-                )
-              : (
-                <Menu.SubMenu
-                  key='annotation-categories'
-                  title='Annotation Categories'
-                >
-                  <AnnotationCategoryList
-                    annotations={annotations}
-                    onChange={this.handleAnnotationVisibilityChange}
-                    checkedAnnotationUids={this.state.visibleRoiUIDs}
-                    onStyleChange={this.handleRoiStyleChange}
-                    defaultAnnotationStyles={this.defaultAnnotationStyles}
-                  />
-                </Menu.SubMenu>
-                )}
-            {segmentationMenu}
-            {parametricMapMenu}
-          </Menu>
-        </Layout.Sider>
+          <SlideViewerModals
+            isAnnotationModalVisible={this.state.isAnnotationModalVisible}
+            onAnnotationConfigurationCompletion={this.handleAnnotationConfigurationCompletion}
+            onAnnotationConfigurationCancellation={this.handleAnnotationConfigurationCancellation}
+            isAnnotationOkDisabled={!(this.state.selectedFinding !== undefined && this.state.selectedGeometryType !== undefined)}
+            annotationConfigurations={annotationConfigurations}
+            isSelectedRoiModalVisible={this.state.isSelectedRoiModalVisible}
+            onRoiSelectionCancellation={this.handleRoiSelectionCancellation}
+            selectedRoiInformation={selectedRoiInformation}
+            isGoToModalVisible={this.state.isGoToModalVisible}
+            onSlidePositionSelection={this.handleSlidePositionSelection}
+            onSlidePositionSelectionCancellation={this.handleSlidePositionSelectionCancellation}
+            validXCoordinateRange={this.state.validXCoordinateRange}
+            validYCoordinateRange={this.state.validYCoordinateRange}
+            isSelectedXCoordinateValid={this.state.isSelectedXCoordinateValid}
+            isSelectedYCoordinateValid={this.state.isSelectedYCoordinateValid}
+            isSelectedMagnificationValid={this.state.isSelectedMagnificationValid}
+            onXCoordinateSelection={this.handleXCoordinateSelection}
+            onYCoordinateSelection={this.handleYCoordinateSelection}
+            onMagnificationSelection={this.handleMagnificationSelection}
+            isReportModalVisible={this.state.isReportModalVisible}
+            onReportVerification={this.handleReportVerification}
+            onReportCancellation={this.handleReportCancellation}
+            report={report}
+          />
+        </SlideViewerContent>
+
+        <SlideViewerSidebar
+          labelViewportRef={this.labelViewportRef}
+          labelViewer={this.labelViewer}
+          openSubMenuItems={openSubMenuItems}
+          specimenMenu={specimenMenu}
+          iccProfilesMenu={iccProfilesMenu}
+          equipmentMenu={equipmentMenu}
+          opticalPathMenu={opticalPathMenu}
+          presentationStateMenu={presentationStateMenu}
+          annotationMenuItems={annotationMenuItems}
+          annotationGroupMenu={annotationGroupMenu}
+          segmentationMenu={segmentationMenu}
+          parametricMapMenu={parametricMapMenu}
+          annotations={annotations}
+          visibleRoiUIDs={this.state.visibleRoiUIDs}
+          onAnnotationVisibilityChange={this.handleAnnotationVisibilityChange}
+          onRoiStyleChange={this.handleRoiStyleChange}
+          defaultAnnotationStyles={this.defaultAnnotationStyles}
+        />
+
         {this.state.isHoveredRoiTooltipVisible &&
         this.state.hoveredRoiAttributes.length > 0
           ? (
