@@ -16,6 +16,11 @@ import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from '../services/NotificationMiddleware'
 
+// Standalone function for row key generation
+const getRowKey = (record: dmv.metadata.Study): string => {
+  return record.StudyInstanceUID
+}
+
 interface WorklistProps extends RouteComponentProps {
   clients: { [key: string]: DicomWebManager }
 }
@@ -166,10 +171,6 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     clearFilters()
   }
 
-  static getRowKey (record: dmv.metadata.Study): string {
-    return record.StudyInstanceUID
-  }
-
   handleRowProps = (record: dmv.metadata.Study): object => {
     return {
       onClick: (event: React.SyntheticEvent): void => {
@@ -283,7 +284,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       <Table<dmv.metadata.Study>
         style={{ cursor: 'pointer' }}
         columns={columns}
-        rowKey={Worklist.getRowKey}
+        rowKey={getRowKey}
         dataSource={this.state.studies}
         pagination={pagination}
         onRow={this.handleRowProps}

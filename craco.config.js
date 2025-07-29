@@ -79,6 +79,8 @@ module.exports = {
         '@cornerstonejs/codec-openjpeg/decodewasmjs': '@cornerstonejs/codec-openjpeg/dist/openjpegwasm_decode.js',
         '@cornerstonejs/codec-openjpeg/decodewasm': '@cornerstonejs/codec-openjpeg/dist/openjpegwasm_decode.wasm'
       }
+      config.setupFilesAfterEnv = ['<rootDir>/src/setupTests.tsx']
+      config.testEnvironment = 'jsdom'
       return config
     }
   }
