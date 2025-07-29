@@ -871,11 +871,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           ) as boolean
           if (isReferenced) {
             let paletteColorLUT
-            if (blendingItem.PaletteColorLookupTableSequence != null) {
+            if (blendingItem.PaletteColorLookupTableSequence !== null && blendingItem.PaletteColorLookupTableSequence !== undefined) {
               const cpLUTItem = blendingItem.PaletteColorLookupTableSequence[0]
               paletteColorLUT = new dmv.color.PaletteColorLookupTable({
                 uid: (
-                  cpLUTItem.PaletteColorLookupTableUID != null
+                  cpLUTItem.PaletteColorLookupTableUID !== null && cpLUTItem.PaletteColorLookupTableUID !== undefined
                     ? cpLUTItem.PaletteColorLookupTableUID
                     : ''
                 ),
@@ -886,42 +886,42 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 blueDescriptor:
                   cpLUTItem.BluePaletteColorLookupTableDescriptor,
                 redData: (
-                  (cpLUTItem.RedPaletteColorLookupTableData != null)
+                  (cpLUTItem.RedPaletteColorLookupTableData !== null && cpLUTItem.RedPaletteColorLookupTableData !== undefined)
                     ? new Uint16Array(
                       cpLUTItem.RedPaletteColorLookupTableData
                     )
                     : undefined
                 ),
                 greenData: (
-                  (cpLUTItem.GreenPaletteColorLookupTableData != null)
+                  (cpLUTItem.GreenPaletteColorLookupTableData !== null && cpLUTItem.GreenPaletteColorLookupTableData !== undefined)
                     ? new Uint16Array(
                       cpLUTItem.GreenPaletteColorLookupTableData
                     )
                     : undefined
                 ),
                 blueData: (
-                  (cpLUTItem.BluePaletteColorLookupTableData != null)
+                  (cpLUTItem.BluePaletteColorLookupTableData !== null && cpLUTItem.BluePaletteColorLookupTableData !== undefined)
                     ? new Uint16Array(
                       cpLUTItem.BluePaletteColorLookupTableData
                     )
                     : undefined
                 ),
                 redSegmentedData: (
-                  (cpLUTItem.SegmentedRedPaletteColorLookupTableData != null)
+                  (cpLUTItem.SegmentedRedPaletteColorLookupTableData !== null && cpLUTItem.SegmentedRedPaletteColorLookupTableData !== undefined)
                     ? new Uint16Array(
                       cpLUTItem.SegmentedRedPaletteColorLookupTableData
                     )
                     : undefined
                 ),
                 greenSegmentedData: (
-                  (cpLUTItem.SegmentedGreenPaletteColorLookupTableData != null)
+                  (cpLUTItem.SegmentedGreenPaletteColorLookupTableData !== null && cpLUTItem.SegmentedGreenPaletteColorLookupTableData !== undefined)
                     ? new Uint16Array(
                       cpLUTItem.SegmentedGreenPaletteColorLookupTableData
                     )
                     : undefined
                 ),
                 blueSegmentedData: (
-                  (cpLUTItem.SegmentedBluePaletteColorLookupTableData != null)
+                  (cpLUTItem.SegmentedBluePaletteColorLookupTableData !== null && cpLUTItem.SegmentedBluePaletteColorLookupTableData !== undefined)
                     ? new Uint16Array(
                       cpLUTItem.SegmentedBluePaletteColorLookupTableData
                     )
@@ -931,7 +931,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             }
 
             let limitValues
-            if (blendingItem.SoftcopyVOILUTSequence != null) {
+            if (blendingItem.SoftcopyVOILUTSequence !== null && blendingItem.SoftcopyVOILUTSequence !== undefined) {
               const voiLUTItem = blendingItem.SoftcopyVOILUTSequence[0]
               const windowCenter = voiLUTItem.WindowCenter
               const windowWidth = voiLUTItem.WindowWidth
@@ -954,7 +954,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const selectedOpticalPathIdentifiers: Set<string> = new Set()
     Object.keys(opticalPathStyles).forEach(identifier => {
       const styleOptions = opticalPathStyles[identifier]
-      if (styleOptions != null) {
+      if (styleOptions !== null) {
         this.volumeViewer.setOpticalPathStyle(identifier, styleOptions)
         this.volumeViewer.activateOpticalPath(identifier)
         this.volumeViewer.showOpticalPath(identifier)
@@ -1230,7 +1230,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 const key = _buildKey(finding)
                 const style = this.roiStyles[key]
                 // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
-                if (style != null && style.fill != null) {
+                if (style !== null && style !== undefined && style.fill !== null && style.fill !== undefined) {
                   this.volumeViewer.setAnnotationGroupStyle(
                     annotationGroupUID,
                     { color: style.fill.color }
@@ -1461,12 +1461,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       presentationStates: []
     })
 
-    if (this.volumeViewportRef.current != null) {
+    if (this.volumeViewportRef.current !== null) {
       this.volumeViewer.render({ container: this.volumeViewportRef.current })
     }
     if (
-      this.labelViewportRef.current != null &&
-      this.labelViewer != null
+      this.labelViewportRef.current !== null &&
+      this.labelViewer !== null && this.labelViewer !== undefined
     ) {
       this.labelViewer.render({ container: this.labelViewportRef.current })
     }
@@ -1480,7 +1480,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     // Handle promises properly with catch blocks
     void this.addAnnotations()
       .then(() => {
-        if (this.props.derivedDataset != null) {
+        if (this.props.derivedDataset !== null && this.props.derivedDataset !== undefined) {
           this.loadDerivedDataset(this.props.derivedDataset)
         }
       })
@@ -1490,7 +1490,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     void this.addAnnotationGroups()
       .then(() => {
-        if (this.props.derivedDataset != null) {
+        if (this.props.derivedDataset !== null && this.props.derivedDataset !== undefined) {
           this.loadDerivedDataset(this.props.derivedDataset)
         }
       })
@@ -1500,7 +1500,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     void this.addSegmentations()
       .then(() => {
-        if (this.props.derivedDataset != null) {
+        if (this.props.derivedDataset !== null && this.props.derivedDataset !== undefined) {
           this.loadDerivedDataset(this.props.derivedDataset)
         }
       })
@@ -1510,7 +1510,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     void this.addParametricMaps()
       .then(() => {
-        if (this.props.derivedDataset != null) {
+        if (this.props.derivedDataset !== null && this.props.derivedDataset !== undefined) {
           this.loadDerivedDataset(this.props.derivedDataset)
         }
       })
@@ -1529,7 +1529,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   onWindowResize = (event: Event): void => {
     console.info('resize viewports')
     this.volumeViewer.resize()
-    if (this.labelViewer != null) {
+    if (this.labelViewer !== null && this.labelViewer !== undefined) {
       this.labelViewer.resize()
     }
   }
@@ -1573,7 +1573,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   onRoiDoubleClicked = (event: CustomEventInit): void => {
     const selectedRoi = event.detail.payload as dmv.roi.ROI
-    if (selectedRoi != null) {
+    if (selectedRoi !== null) {
       this.setState({
         isSelectedRoiModalVisible: true
       })
@@ -1857,7 +1857,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const opticalPathIdentifier = frameInfo.channelIdentifier
       if (
         !(opticalPathIdentifier in this.state.pixelDataStatistics) &&
-        frameInfo.pixelArray != null
+        frameInfo.pixelArray !== null
       ) {
         /*
          * There are limits on the number of arguments Math.min and Math.max
@@ -1878,7 +1878,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         const max = Math.max(...maxValues)
         this.setState(state => {
           const stats = state.pixelDataStatistics
-          if (stats[opticalPathIdentifier] != null) {
+          if (stats[opticalPathIdentifier] !== null) {
             stats[opticalPathIdentifier] = {
               min: Math.min(stats[opticalPathIdentifier].min, min),
               max: Math.max(stats[opticalPathIdentifier].max, max),
@@ -1968,7 +1968,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     window.removeEventListener('resize', this.onWindowResize)
 
     this.volumeViewer.cleanup()
-    if (this.labelViewer != null) {
+    if (this.labelViewer !== null && this.labelViewer !== undefined) {
       this.labelViewer.cleanup()
     }
     /*
@@ -2030,7 +2030,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   componentWillUnmount (): void {
     this.volumeViewer.cleanup()
-    if (this.labelViewer != null) {
+    if (this.labelViewer !== null && this.labelViewer !== undefined) {
       this.labelViewer.cleanup()
     }
     window.removeEventListener('beforeunload', this.componentCleanup)
@@ -2527,10 +2527,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handle toggling of annotation group visibility, i.e., whether a given
    * annotation group should be either displayed or hidden by the viewer.
    */
-  handleAnnotationGroupVisibilityChange ({ annotationGroupUID, isVisible }: {
+  handleAnnotationGroupVisibilityChange = ({ annotationGroupUID, isVisible }: {
     annotationGroupUID: string
     isVisible: boolean
-  }): void {
+  }): void => {
     const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups()
     const annotationGroup = allAnnotationGroups.find(ag => ag.uid === annotationGroupUID)
     if (annotationGroup !== null) {
@@ -2579,14 +2579,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   /**
    * Handle change of annotation group style.
    */
-  handleAnnotationGroupStyleChange ({ uid, styleOptions }: {
+  handleAnnotationGroupStyleChange = ({ uid, styleOptions }: {
     uid: string
     styleOptions: {
       opacity?: number
       color?: number[]
       measurement?: dcmjs.sr.coding.CodedConcept
     }
-  }): void {
+  }): void => {
     console.log(`change style of annotation group ${uid}`)
     try {
       this.volumeViewer.setAnnotationGroupStyle(

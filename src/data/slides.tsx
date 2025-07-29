@@ -22,7 +22,7 @@ const areSameAcquisition = (
   image: dmv.metadata.VLWholeSlideMicroscopyImage,
   refImage: dmv.metadata.VLWholeSlideMicroscopyImage
 ): boolean => {
-  if (image.AcquisitionUID != null) {
+  if (image.AcquisitionUID !== null) {
     return image.AcquisitionUID === refImage.AcquisitionUID
   }
   return false
