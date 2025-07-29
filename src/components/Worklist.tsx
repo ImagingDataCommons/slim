@@ -166,7 +166,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     clearFilters()
   }
 
-  getRowKey = (record: dmv.metadata.Study): string => {
+  static getRowKey (record: dmv.metadata.Study): string {
     return record.StudyInstanceUID
   }
 
@@ -182,12 +182,12 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     this.handleSearch(selectedKeys, confirm, dataIndex)
   }
 
-  handleInputChange = (e: React.ChangeEvent<HTMLInputElement>, setSelectedKeys: (selectedKeys: React.Key[]) => void): void => {
+  static handleInputChange (e: React.ChangeEvent<HTMLInputElement>, setSelectedKeys: (selectedKeys: React.Key[]) => void): void {
     setSelectedKeys(e.target.value !== undefined ? [e.target.value] : [])
   }
 
   getFilterInputChangeHandler = (setSelectedKeys: (selectedKeys: React.Key[]) => void) => {
-    return (e: React.ChangeEvent<HTMLInputElement>) => this.handleInputChange(e, setSelectedKeys)
+    return (e: React.ChangeEvent<HTMLInputElement>) => Worklist.handleInputChange(e, setSelectedKeys)
   }
 
   getFilterPressEnterHandler = (selectedKeys: React.Key[], confirm: (params?: FilterConfirmProps) => void, dataIndex: string) => {
@@ -283,7 +283,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       <Table<dmv.metadata.Study>
         style={{ cursor: 'pointer' }}
         columns={columns}
-        rowKey={this.getRowKey}
+        rowKey={Worklist.getRowKey}
         dataSource={this.state.studies}
         pagination={pagination}
         onRow={this.handleRowProps}

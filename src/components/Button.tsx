@@ -3,7 +3,7 @@ import { Button as Btn, Divider, Tooltip } from 'antd'
 import { IconType } from 'react-icons'
 
 interface ButtonProps {
-  icon: IconType | React.ComponentType<{}>
+  icon: IconType | React.ComponentType<Record<string, never>> | React.ForwardRefExoticComponent<any>
   tooltip?: string
   label?: string
   onClick?: (options: React.SyntheticEvent) => void

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { Modal, Space, InputNumber } from 'antd'
 import { CheckOutlined, StopOutlined } from '@ant-design/icons'
 
@@ -32,20 +32,20 @@ const GoToModal: React.FC<GoToModalProps> = ({
   onYCoordinateSelection,
   onMagnificationSelection
 }) => {
-  function handleXCoordinateEnter (event: React.KeyboardEvent<HTMLInputElement>): void {
+  const handleXCoordinateEnter = useCallback((event: React.KeyboardEvent<HTMLInputElement>): void => {
     const target = event.target as HTMLInputElement
     onXCoordinateSelection(target.value !== '' ? Number(target.value) : null)
-  }
+  }, [onXCoordinateSelection])
 
-  function handleYCoordinateEnter (event: React.KeyboardEvent<HTMLInputElement>): void {
+  const handleYCoordinateEnter = useCallback((event: React.KeyboardEvent<HTMLInputElement>): void => {
     const target = event.target as HTMLInputElement
     onYCoordinateSelection(target.value !== '' ? Number(target.value) : null)
-  }
+  }, [onYCoordinateSelection])
 
-  function handleMagnificationEnter (event: React.KeyboardEvent<HTMLInputElement>): void {
+  const handleMagnificationEnter = useCallback((event: React.KeyboardEvent<HTMLInputElement>): void => {
     const target = event.target as HTMLInputElement
     onMagnificationSelection(target.value !== '' ? Number(target.value) : null)
-  }
+  }, [onMagnificationSelection])
 
   return (
     <Modal
