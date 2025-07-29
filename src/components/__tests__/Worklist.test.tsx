@@ -1,6 +1,7 @@
 import React from 'react'
 import { BrowserRouter } from 'react-router-dom'
 import { cleanup, render } from '@testing-library/react'
+// skipcq: JS-C1003
 import * as dwc from 'dicomweb-client'
 
 import DicomWebManager from '../../DicomWebManager'

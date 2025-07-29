@@ -8,6 +8,7 @@ import {
 } from 'react-router-dom'
 import { Layout, message } from 'antd'
 import { FaSpinner } from 'react-icons/fa'
+// skipcq: JS-C1003
 import * as dwc from 'dicomweb-client'
 
 import AppConfig, { ServerSettings, ErrorMessageSettings } from './AppConfig'
@@ -396,14 +397,14 @@ class App extends React.Component<AppProps, AppState> {
 
   componentDidMount (): void {
     const path = window.localStorage.getItem('slim_path')
-    if (path === null || path === '') {
+    if (path === null || path === undefined || path === '') {
       window.localStorage.setItem('slim_path', window.location.pathname)
       window.localStorage.setItem('slim_search', window.location.search)
     }
 
     // Restore cached server selection if it exists
     const cachedServerUrl = window.localStorage.getItem('slim_selected_server')
-    if (cachedServerUrl !== null && cachedServerUrl !== '') {
+    if (cachedServerUrl !== null && cachedServerUrl !== undefined && cachedServerUrl !== '') {
       this.handleServerSelection({ url: cachedServerUrl })
     }
 

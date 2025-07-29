@@ -1,11 +1,12 @@
 import React from 'react'
 import { Button as Btn, Divider, Tooltip } from 'antd'
+import { IconType } from 'react-icons'
 
 interface ButtonProps {
-  icon: any
+  icon: IconType | React.ComponentType<Record<string, never>> | React.ForwardRefExoticComponent<object>
   tooltip?: string
   label?: string
-  onClick?: (options: any) => void
+  onClick?: (options: React.SyntheticEvent) => void
   isSelected?: boolean
 }
 

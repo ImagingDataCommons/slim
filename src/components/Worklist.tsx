@@ -5,6 +5,7 @@ import { FilterConfirmProps } from 'antd/es/table/interface'
 import { SearchOutlined } from '@ant-design/icons'
 import DicomWebManager from '../DicomWebManager'
 
+// skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
 
 import { StorageClasses } from '../data/uids'
@@ -14,6 +15,11 @@ import { CustomError, errorTypes } from '../utils/CustomError'
 import NotificationMiddleware, {
   NotificationMiddlewareContext
 } from '../services/NotificationMiddleware'
+
+// Standalone function for row key generation
+const getRowKey = (record: dmv.metadata.Study): string => {
+  return record.StudyInstanceUID
+}
 
 interface WorklistProps extends RouteComponentProps {
   clients: { [key: string]: DicomWebManager }
@@ -31,9 +37,6 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
 
   constructor (props: WorklistProps) {
     super(props)
-    this.fetchData = this.fetchData.bind(this)
-    this.handleClick = this.handleClick.bind(this)
-    this.handleChange = this.handleChange.bind(this)
     this.state = {
       studies: [],
       isLoading: false,
@@ -81,15 +84,15 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     }
   }
 
-  handleClick (event: React.SyntheticEvent, study: dmv.metadata.Study): void {
+  handleClick = (event: React.SyntheticEvent, study: dmv.metadata.Study): void => {
     this.props.navigate(`/studies/${study.StudyInstanceUID}`)
   }
 
-  fetchData ({ offset, limit, searchCriteria }: {
+  fetchData = ({ offset, limit, searchCriteria }: {
     offset: number
     limit: number
     searchCriteria?: { [attribute: string]: string }
-  }): void {
+  }): void => {
     const queryParams: { [key: string]: any } = {
       ModalitiesInStudy: 'SM',
       offset: offset,
@@ -130,10 +133,10 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       })
   }
 
-  handleChange (
+  handleChange = (
     pagination: TablePaginationConfig,
     filters: any
-  ): void {
+  ): void => {
     this.setState({ isLoading: true })
     let index = pagination.current
     if (index === undefined) {
@@ -148,7 +151,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     console.debug(`search for studies of page #${index}...`)
     const searchCriteria: { [attribute: string]: string } = {}
     for (const dataIndex in filters) {
-      if (filters[dataIndex] !== null) {
+      if (filters[dataIndex] !== null && filters[dataIndex] !== undefined) {
         searchCriteria[dataIndex] = filters[dataIndex][0].toString()
       }
     }
@@ -166,6 +169,38 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
 
   handleReset = (clearFilters: () => void): void => {
     clearFilters()
+  }
+
+  handleRowProps = (record: dmv.metadata.Study): object => {
+    return {
+      onClick: (event: React.SyntheticEvent): void => {
+        return this.handleClick(event, record)
+      }
+    }
+  }
+
+  handlePressEnter = (selectedKeys: React.Key[], confirm: (params?: FilterConfirmProps) => void, dataIndex: string): void => {
+    this.handleSearch(selectedKeys, confirm, dataIndex)
+  }
+
+  static handleInputChange (e: React.ChangeEvent<HTMLInputElement>, setSelectedKeys: (selectedKeys: React.Key[]) => void): void {
+    setSelectedKeys(e.target.value !== undefined ? [e.target.value] : [])
+  }
+
+  static getFilterInputChangeHandler (setSelectedKeys: (selectedKeys: React.Key[]) => void) {
+    return (e: React.ChangeEvent<HTMLInputElement>) => Worklist.handleInputChange(e, setSelectedKeys)
+  }
+
+  getFilterPressEnterHandler = (selectedKeys: React.Key[], confirm: (params?: FilterConfirmProps) => void, dataIndex: string) => {
+    return () => this.handlePressEnter(selectedKeys, confirm, dataIndex)
+  }
+
+  getFilterSearchHandler = (selectedKeys: React.Key[], confirm: (params?: FilterConfirmProps) => void, dataIndex: string) => {
+    return () => this.handleSearch(selectedKeys, confirm, dataIndex)
+  }
+
+  getFilterResetHandler = (clearFilters: () => void) => {
+    return () => this.handleReset(clearFilters)
   }
 
   render (): React.ReactNode {
@@ -249,16 +284,10 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       <Table<dmv.metadata.Study>
         style={{ cursor: 'pointer' }}
         columns={columns}
-        rowKey={record => record.StudyInstanceUID}
+        rowKey={getRowKey}
         dataSource={this.state.studies}
         pagination={pagination}
-        onRow={(record: dmv.metadata.Study): object => {
-          return {
-            onClick: (event: React.SyntheticEvent): void => {
-              return this.handleClick(event, record)
-            }
-          }
-        }}
+        onRow={this.handleRowProps}
         onChange={this.handleChange}
         size='small'
         loading={this.state.isLoading}
@@ -266,49 +295,49 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     )
   }
 
-  getColumnSearchProps = (dataIndex: string): object => ({
-    filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }: {
-      setSelectedKeys: (selectedKeys: React.Key[]) => void
-      selectedKeys: React.Key[]
-      confirm: (params?: FilterConfirmProps) => void
-      clearFilters: () => void
-    }) => (
-      <div style={{ padding: 8 }}>
-        <Input
-          placeholder='Search'
-          value={selectedKeys[0]}
-          onChange={e => setSelectedKeys(
-            e.target.value !== undefined ? [e.target.value] : []
-          )}
-          onPressEnter={() => this.handleSearch(selectedKeys, confirm, dataIndex)}
-          style={{ width: 188, marginBottom: 8, display: 'block' }}
+  getColumnSearchProps = (dataIndex: string): object => {
+    return {
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }: {
+        setSelectedKeys: (selectedKeys: React.Key[]) => void
+        selectedKeys: React.Key[]
+        confirm: (params?: FilterConfirmProps) => void
+        clearFilters: () => void
+      }) => (
+        <div style={{ padding: 8 }}>
+          <Input
+            placeholder='Search'
+            value={selectedKeys[0]}
+            onChange={Worklist.getFilterInputChangeHandler(setSelectedKeys)}
+            onPressEnter={this.getFilterPressEnterHandler(selectedKeys, confirm, dataIndex)}
+            style={{ width: 188, marginBottom: 8, display: 'block' }}
+          />
+          <Space>
+            <Button
+              type='primary'
+              onClick={this.getFilterSearchHandler(selectedKeys, confirm, dataIndex)}
+              icon={<SearchOutlined />}
+              size='small'
+              style={{ width: 90 }}
+            >
+              Search
+            </Button>
+            <Button
+              onClick={this.getFilterResetHandler(clearFilters)}
+              size='small'
+              style={{ width: 90 }}
+            >
+              Reset
+            </Button>
+          </Space>
+        </div>
+      ),
+      filterIcon: (filtered: boolean) => (
+        <SearchOutlined
+          style={{ color: filtered ? '#1890ff' : undefined }}
         />
-        <Space>
-          <Button
-            type='primary'
-            onClick={() => this.handleSearch(selectedKeys, confirm, dataIndex)}
-            icon={<SearchOutlined />}
-            size='small'
-            style={{ width: 90 }}
-          >
-            Search
-          </Button>
-          <Button
-            onClick={() => this.handleReset(clearFilters)}
-            size='small'
-            style={{ width: 90 }}
-          >
-            Reset
-          </Button>
-        </Space>
-      </div>
-    ),
-    filterIcon: (filtered: boolean) => (
-      <SearchOutlined
-        style={{ color: filtered ? '#1890ff' : undefined }}
-      />
-    )
-  })
+      )
+    }
+  }
 }
 
 export default withRouter(Worklist)

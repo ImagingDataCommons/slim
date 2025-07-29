@@ -15,7 +15,9 @@ import {
 } from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
+// skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
+// skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
 
 import Description from './Description'
@@ -451,7 +453,7 @@ AnnotationGroupItemState
         size='small'
         disabled={!this.props.isVisible}
       >
-        <></>
+        {null}
       </Select.Option>
     )
 

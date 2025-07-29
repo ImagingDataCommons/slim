@@ -1,4 +1,5 @@
 import React from 'react'
+// skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
 import { Button as Btn, Menu, Select, Space, Tooltip } from 'antd'
 import { AppstoreAddOutlined } from '@ant-design/icons'
