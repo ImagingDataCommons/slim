@@ -1,5 +1,6 @@
 import React from 'react'
 import { FaSpinner } from 'react-icons/fa'
+// skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
 import { Menu } from 'antd'
 

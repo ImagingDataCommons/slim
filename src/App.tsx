@@ -8,6 +8,7 @@ import {
 } from 'react-router-dom'
 import { Layout, message } from 'antd'
 import { FaSpinner } from 'react-icons/fa'
+// skipcq: JS-C1003
 import * as dwc from 'dicomweb-client'
 
 import AppConfig, { ServerSettings, ErrorMessageSettings } from './AppConfig'

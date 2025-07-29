@@ -1,5 +1,6 @@
 import React from 'react'
 import { Layout, Menu } from 'antd'
+// skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
 import AnnotationCategoryList from '../AnnotationCategoryList'
 import { AnnotationCategoryAndType } from '../../types/annotations'
@@ -75,7 +76,7 @@ const SlideViewerSidebar: React.FC<SlideViewerSidebarProps> = ({
         forceSubMenuRender
         onOpenChange={handleMenuOpenChange}
       >
-        {labelViewportRef.current != null && (
+        {labelViewportRef.current !== null && (
           <Menu.SubMenu key='label' title='Slide label'>
             <Menu.Item style={{ height: '100%' }} key='image'>
               <div

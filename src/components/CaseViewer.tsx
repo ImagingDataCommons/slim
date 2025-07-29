@@ -1,5 +1,6 @@
 import { Routes, Route, useLocation, useParams } from 'react-router-dom'
 import { Layout, Menu } from 'antd'
+// skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
 import { useEffect, useState } from 'react'
 

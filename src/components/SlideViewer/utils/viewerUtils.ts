@@ -1,5 +1,8 @@
+// skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
+// skipcq: JS-C1003
 import * as dwc from 'dicomweb-client'
+// skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
 import { Slide } from '../../../data/slides'
 import { StorageClasses } from '../../../data/uids'

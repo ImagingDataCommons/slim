@@ -1,4 +1,6 @@
+// skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
+// skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
 import { RouteComponentProps } from '../../utils/router'
 import { Slide } from '../../data/slides'

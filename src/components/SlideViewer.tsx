@@ -12,8 +12,11 @@ import {
   FaTrash,
   FaSave
 } from 'react-icons/fa'
+// skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
+// skipcq: JS-C1003
 import * as dwc from 'dicomweb-client'
+// skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
 import { withRouter } from '../utils/router'
 import { StorageClasses } from '../data/uids'
@@ -186,47 +189,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         this.roiStyles[key] = this.defaultRoiStyle
       }
     })
-
-    this.componentSetup = this.componentSetup.bind(this)
-    this.componentCleanup = this.componentCleanup.bind(this)
-    this.onWindowResize = this.onWindowResize.bind(this)
-    this.handleRoiDrawing = this.handleRoiDrawing.bind(this)
-    this.handleRoiTranslation = this.handleRoiTranslation.bind(this)
-    this.handleRoiModification = this.handleRoiModification.bind(this)
-    this.handleRoiVisibilityChange = this.handleRoiVisibilityChange.bind(this)
-    this.handleRoiRemoval = this.handleRoiRemoval.bind(this)
-    this.handleRoiSelectionCancellation = this.handleRoiSelectionCancellation.bind(this)
-    this.handleAnnotationConfigurationCancellation = this.handleAnnotationConfigurationCancellation.bind(this)
-    this.handleAnnotationGeometryTypeSelection = this.handleAnnotationGeometryTypeSelection.bind(this)
-    this.handleAnnotationMeasurementActivation = this.handleAnnotationMeasurementActivation.bind(this)
-    this.handleAnnotationFindingSelection = this.handleAnnotationFindingSelection.bind(this)
-    this.handleAnnotationEvaluationSelection = this.handleAnnotationEvaluationSelection.bind(this)
-    this.handleAnnotationEvaluationClearance = this.handleAnnotationEvaluationClearance.bind(this)
-    this.handleAnnotationConfigurationCompletion = this.handleAnnotationConfigurationCompletion.bind(this)
-    this.handleAnnotationVisibilityChange = this.handleAnnotationVisibilityChange.bind(this)
-    this.handleAnnotationGroupVisibilityChange = this.handleAnnotationGroupVisibilityChange.bind(this)
-    this.handleAnnotationGroupStyleChange = this.handleAnnotationGroupStyleChange.bind(this)
-    this.handleRoiStyleChange = this.handleRoiStyleChange.bind(this)
-    this.handleGoTo = this.handleGoTo.bind(this)
-    this.handleXCoordinateSelection = this.handleXCoordinateSelection.bind(this)
-    this.handleYCoordinateSelection = this.handleYCoordinateSelection.bind(this)
-    this.handleMagnificationSelection = this.handleMagnificationSelection.bind(this)
-    this.handleSlidePositionSelection = this.handleSlidePositionSelection.bind(this)
-    this.handleSlidePositionSelectionCancellation = this.handleSlidePositionSelectionCancellation.bind(this)
-    this.handleReportGeneration = this.handleReportGeneration.bind(this)
-    this.handleReportVerification = this.handleReportVerification.bind(this)
-    this.handleReportCancellation = this.handleReportCancellation.bind(this)
-    this.handleSegmentVisibilityChange = this.handleSegmentVisibilityChange.bind(this)
-    this.handleSegmentStyleChange = this.handleSegmentStyleChange.bind(this)
-    this.handleMappingVisibilityChange = this.handleMappingVisibilityChange.bind(this)
-    this.handleMappingStyleChange = this.handleMappingStyleChange.bind(this)
-    this.handleOpticalPathVisibilityChange = this.handleOpticalPathVisibilityChange.bind(this)
-    this.handleOpticalPathStyleChange = this.handleOpticalPathStyleChange.bind(this)
-    this.handleOpticalPathActivityChange = this.handleOpticalPathActivityChange.bind(this)
-    this.handlePresentationStateSelection = this.handlePresentationStateSelection.bind(this)
-    this.handlePresentationStateReset = this.handlePresentationStateReset.bind(this)
-    this.handleICCProfilesToggle = this.handleICCProfilesToggle.bind(this)
-    this.handleAnnotationSelection = this.handleAnnotationSelection.bind(this)
 
     const { volumeViewer, labelViewer } = constructViewers({
       clients: this.props.clients,
@@ -847,7 +809,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             annotations.forEach(ann => {
               try {
                 this.volumeViewer.addAnnotationGroups(ann)
-              } catch (error: any) {
+              } catch (error: unknown) {
                 // eslint-disable-next-line @typescript-eslint/no-floating-promises
                 NotificationMiddleware.onError(
                   NotificationMiddlewareContext.SLIM,
@@ -948,7 +910,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             if (segmentations.length > 0) {
               try {
                 this.volumeViewer.addSegments(segmentations)
-              } catch (error: any) {
+              } catch (error: unknown) {
                 // eslint-disable-next-line @typescript-eslint/no-floating-promises
                 NotificationMiddleware.onError(
                   NotificationMiddlewareContext.SLIM,
@@ -1039,7 +1001,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             if (parametricMaps.length > 0) {
               try {
                 this.volumeViewer.addParameterMappings(parametricMaps)
-              } catch (error: any) {
+              } catch (error: unknown) {
                 // eslint-disable-next-line @typescript-eslint/no-floating-promises
                 NotificationMiddleware.onError(
                   NotificationMiddlewareContext.SLIM,
@@ -1392,7 +1354,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.resetUnselectedRoiStyles(updatedSelectedRois)
   }
 
-  handleAnnotationSelection (uid: string): void {
+  handleAnnotationSelection = (uid: string): void => {
     // @ts-expect-error
     this.volumeViewer.clearSelections()
 
@@ -1548,7 +1510,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     console.debug(`removed ROI "${roi.uid}"`)
   }
 
-  componentCleanup (): void {
+  componentCleanup = (): void => {
     document.body.removeEventListener(
       'dicommicroscopyviewer_roi_drawn',
       this.onRoiDrawn
@@ -1664,7 +1626,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-  componentWillUnmount (): void {
+  componentWillUnmount = (): void => {
     this.volumeViewer.cleanup()
     if (this.labelViewer !== null && this.labelViewer !== undefined) {
       this.labelViewer.cleanup()
@@ -1672,7 +1634,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     window.removeEventListener('beforeunload', this.componentCleanup)
   }
 
-  componentSetup (): void {
+  componentSetup = (): void => {
     document.body.addEventListener(
       'dicommicroscopyviewer_roi_drawn',
       this.onRoiDrawn
@@ -1737,7 +1699,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     window.addEventListener('resize', this.onWindowResize)
   }
 
-  componentDidMount (): void {
+  componentDidMount = (): void => {
     this.componentSetup()
     this.populateViewports()
 
@@ -1791,7 +1753,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * @param value - Code value of the coded finding that got selected
    * @param option - Option that got selected
    */
-  handleAnnotationGeometryTypeSelection (value: string, option: any): void {
+  handleAnnotationGeometryTypeSelection = (value: string, option: any): void => {
     this.setState({ selectedGeometryType: value })
   }
 
@@ -1799,7 +1761,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that gets called when measurements have been selected for
    * annotation.
    */
-  handleAnnotationMeasurementActivation (event: any): void {
+  handleAnnotationMeasurementActivation = (event: any): void => {
     const active: boolean = event.target.checked
     if (active) {
       this.setState({ selectedMarkup: 'measurement' })
@@ -1850,7 +1812,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that gets called when an evaluation has been cleared for an
    * annotation.
    */
-  handleAnnotationEvaluationClearance (): void {
+  handleAnnotationEvaluationClearance = (): void => {
     this.setState({
       selectedEvaluations: []
     })
@@ -1859,10 +1821,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   handleXCoordinateSelection = (value: number | string | null): void => {
     if (value !== null && value !== undefined) {
       const x = Number(value)
-      const isValid = x >= this.state.validXCoordinateRange[0] && x <= this.state.validXCoordinateRange[1]
-      this.setState({
-        selectedXCoordinate: x,
-        isSelectedXCoordinateValid: isValid
+      this.setState(state => {
+        const isValid = x >= state.validXCoordinateRange[0] && x <= state.validXCoordinateRange[1]
+        return {
+          selectedXCoordinate: x,
+          isSelectedXCoordinateValid: isValid
+        }
       })
     } else {
       this.setState({
@@ -1875,10 +1839,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   handleYCoordinateSelection = (value: number | string | null): void => {
     if (value !== null && value !== undefined) {
       const y = Number(value)
-      const isValid = y >= this.state.validYCoordinateRange[0] && y <= this.state.validYCoordinateRange[1]
-      this.setState({
-        selectedYCoordinate: y,
-        isSelectedYCoordinateValid: isValid
+      this.setState(state => {
+        const isValid = y >= state.validYCoordinateRange[0] && y <= state.validYCoordinateRange[1]
+        return {
+          selectedYCoordinate: y,
+          isSelectedYCoordinateValid: isValid
+        }
       })
     } else {
       this.setState({
@@ -1891,10 +1857,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   handleMagnificationSelection = (value: number | string | null): void => {
     if (value !== null && value !== undefined) {
       const magnification = Number(value)
-      const isValid = magnification >= 0 && magnification <= 40
-      this.setState({
-        selectedMagnification: magnification,
-        isSelectedMagnificationValid: isValid
+      this.setState(() => {
+        const isValid = magnification >= 0 && magnification <= 40
+        return {
+          selectedMagnification: magnification,
+          isSelectedMagnificationValid: isValid
+        }
       })
     } else {
       this.setState({
@@ -2020,7 +1988,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that gets called when a report should be generated for the current
    * set of annotations.
    */
-  handleReportGeneration (): void {
+  handleReportGeneration = (): void => {
     console.info('save ROIs')
     const rois = this.volumeViewer.getAllROIs()
     const opticalPaths = this.volumeViewer.getAllOpticalPaths()
@@ -2047,14 +2015,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * list of annotations will be presented to the user together with other
    * pertinent metadata about the patient, study, and specimen.
    */
-  handleReportVerification (): void {
+  handleReportVerification = (): void => {
     console.info('verify report generation')
     if (this.state.generatedReport !== undefined) {
       const client = this.props.clients[StorageClasses.COMPREHENSIVE_3D_SR]
       // The Comprehensive3DSR object should have a write method or similar
       // For now, let's try to access it as an ArrayBuffer directly
-      client.storeInstances({ datasets: [this.state.generatedReport as any] }).then(
-        (response: any) => message.info('Annotations were saved.')
+      client.storeInstances({ datasets: [(this.state.generatedReport as unknown as dcmjs.data.DicomDict).write()] }).then(
+        () => message.info('Annotations were saved.')
       ).catch((error) => {
         console.error(error)
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -2076,7 +2044,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   /**
    * Handler that gets called when report generation has been cancelled.
    */
-  handleReportCancellation (): void {
+  handleReportCancellation = (): void => {
     this.setState({
       isReportModalVisible: false,
       generatedReport: undefined
@@ -2403,7 +2371,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Set default presentation state that is either defined by metadata included
    * in the DICOM Slide Microscopy instance or by the viewer.
    */
-  setDefaultPresentationState (): void {
+  setDefaultPresentationState = (): void => {
     const visibleOpticalPathIdentifiers: Set<string> = new Set()
     const opticalPaths = this.volumeViewer.getAllOpticalPaths()
     opticalPaths.sort((a, b) => {
@@ -2481,7 +2449,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that gets called when a presentation state has been selected from
    * the current list of available presentation states.
    */
-  handlePresentationStateReset (): void {
+  handlePresentationStateReset = (): void => {
     this.setState({ selectedPresentationStateUID: undefined })
     const urlPath = this.props.location.pathname
     this.props.navigate(urlPath)
@@ -2533,7 +2501,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that will toggle the ROI drawing tool, i.e., either activate or
    * de-activate it, depending on its current state.
    */
-  handleRoiDrawing (): void {
+  handleRoiDrawing = (): void => {
     if (this.state.isRoiDrawingActive) {
       console.info('deactivate drawing of ROIs')
       this.volumeViewer.deactivateDrawInteraction()
@@ -2567,7 +2535,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that will toggle the ROI modification tool, i.e., either activate
    * or de-activate it, depending on its current state.
    */
-  handleRoiModification (): void {
+  handleRoiModification = (): void => {
     console.info('toggle modification of ROIs')
     if (this.volumeViewer.isModifyInteractionActive) {
       this.volumeViewer.deactivateModifyInteraction()
@@ -2596,7 +2564,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that will toggle the ROI translation tool, i.e., either activate
    * or de-activate it, depending on its current state.
    */
-  handleRoiTranslation (): void {
+  handleRoiTranslation = (): void => {
     console.info('toggle translation of ROIs')
     if (this.volumeViewer.isTranslateInteractionActive) {
       this.volumeViewer.deactivateTranslateInteraction()
@@ -2619,7 +2587,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-  handleGoTo (): void {
+  handleGoTo = (): void => {
     this.volumeViewer.deactivateDrawInteraction()
     this.volumeViewer.deactivateModifyInteraction()
     this.volumeViewer.deactivateSnapInteraction()
@@ -2640,7 +2608,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that will toggle the ROI removal tool, i.e., either activate
    * or de-activate it, depending on its current state.
    */
-  handleRoiRemoval (): void {
+  handleRoiRemoval = (): void => {
     this.volumeViewer.deactivateDrawInteraction()
     this.volumeViewer.deactivateSnapInteraction()
     this.volumeViewer.deactivateTranslateInteraction()
@@ -2682,7 +2650,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that will toggle the ROI visibility tool, i.e., either activate
    * or de-activate it, depending on its current state.
    */
-  handleRoiVisibilityChange (): void {
+  handleRoiVisibilityChange = (): void => {
     console.info('toggle visibility of ROIs')
     if (!this.state.areRoisHidden) {
       this.volumeViewer.deactivateDrawInteraction()
@@ -3445,7 +3413,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     )
   }
 
-  render (): React.ReactNode {
+  render = (): React.ReactNode => {
     const { rois, segments, mappings, annotationGroups, annotations } = this.getDataFromViewer()
 
     const openSubMenuItems = SlideViewer.getOpenSubMenuItems()
@@ -3476,7 +3444,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
 
     // Format annotations
-    annotations?.forEach?.(this.formatAnnotation.bind(this))
+    annotations?.forEach?.(this.formatAnnotation)
 
     return (
       <Layout style={{ height: '100%' }} hasSider>

@@ -5,6 +5,7 @@ import { FilterConfirmProps } from 'antd/es/table/interface'
 import { SearchOutlined } from '@ant-design/icons'
 import DicomWebManager from '../DicomWebManager'
 
+// skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
 
 import { StorageClasses } from '../data/uids'
@@ -31,9 +32,6 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
 
   constructor (props: WorklistProps) {
     super(props)
-    this.fetchData = this.fetchData.bind(this)
-    this.handleClick = this.handleClick.bind(this)
-    this.handleChange = this.handleChange.bind(this)
     this.state = {
       studies: [],
       isLoading: false,
@@ -81,15 +79,15 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     }
   }
 
-  handleClick (event: React.SyntheticEvent, study: dmv.metadata.Study): void {
+  handleClick = (event: React.SyntheticEvent, study: dmv.metadata.Study): void => {
     this.props.navigate(`/studies/${study.StudyInstanceUID}`)
   }
 
-  fetchData ({ offset, limit, searchCriteria }: {
+  fetchData = ({ offset, limit, searchCriteria }: {
     offset: number
     limit: number
     searchCriteria?: { [attribute: string]: string }
-  }): void {
+  }): void => {
     const queryParams: { [key: string]: any } = {
       ModalitiesInStudy: 'SM',
       offset: offset,
@@ -130,10 +128,10 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       })
   }
 
-  handleChange (
+  handleChange = (
     pagination: TablePaginationConfig,
     filters: any
-  ): void {
+  ): void => {
     this.setState({ isLoading: true })
     let index = pagination.current
     if (index === undefined) {
@@ -166,6 +164,26 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
 
   handleReset = (clearFilters: () => void): void => {
     clearFilters()
+  }
+
+  getRowKey = (record: dmv.metadata.Study): string => {
+    return record.StudyInstanceUID
+  }
+
+  handleRowProps = (record: dmv.metadata.Study): object => {
+    return {
+      onClick: (event: React.SyntheticEvent): void => {
+        return this.handleClick(event, record)
+      }
+    }
+  }
+
+  handlePressEnter = (selectedKeys: React.Key[], confirm: (params?: FilterConfirmProps) => void, dataIndex: string): void => {
+    this.handleSearch(selectedKeys, confirm, dataIndex)
+  }
+
+  handleInputChange = (e: React.ChangeEvent<HTMLInputElement>, setSelectedKeys: (selectedKeys: React.Key[]) => void): void => {
+    setSelectedKeys(e.target.value !== undefined ? [e.target.value] : [])
   }
 
   render (): React.ReactNode {
@@ -249,16 +267,10 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       <Table<dmv.metadata.Study>
         style={{ cursor: 'pointer' }}
         columns={columns}
-        rowKey={record => record.StudyInstanceUID}
+        rowKey={this.getRowKey}
         dataSource={this.state.studies}
         pagination={pagination}
-        onRow={(record: dmv.metadata.Study): object => {
-          return {
-            onClick: (event: React.SyntheticEvent): void => {
-              return this.handleClick(event, record)
-            }
-          }
-        }}
+        onRow={this.handleRowProps}
         onChange={this.handleChange}
         size='small'
         loading={this.state.isLoading}
@@ -267,10 +279,6 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   }
 
   getColumnSearchProps = (dataIndex: string): object => {
-    const handlePressEnter = (selectedKeys: React.Key[], confirm: (params?: FilterConfirmProps) => void): void => {
-      this.handleSearch(selectedKeys, confirm, dataIndex)
-    }
-
     return {
       filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }: {
         setSelectedKeys: (selectedKeys: React.Key[]) => void
@@ -282,10 +290,8 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
           <Input
             placeholder='Search'
             value={selectedKeys[0]}
-            onChange={e => setSelectedKeys(
-              e.target.value !== undefined ? [e.target.value] : []
-            )}
-            onPressEnter={() => handlePressEnter(selectedKeys, confirm)}
+            onChange={(e) => this.handleInputChange(e, setSelectedKeys)}
+            onPressEnter={() => this.handlePressEnter(selectedKeys, confirm, dataIndex)}
             style={{ width: 188, marginBottom: 8, display: 'block' }}
           />
           <Space>

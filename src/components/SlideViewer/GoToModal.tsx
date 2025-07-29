@@ -32,17 +32,17 @@ const GoToModal: React.FC<GoToModalProps> = ({
   onYCoordinateSelection,
   onMagnificationSelection
 }) => {
-  const handleXCoordinateEnter = (event: React.KeyboardEvent<HTMLInputElement>): void => {
+  function handleXCoordinateEnter (event: React.KeyboardEvent<HTMLInputElement>): void {
     const target = event.target as HTMLInputElement
     onXCoordinateSelection(target.value !== '' ? Number(target.value) : null)
   }
 
-  const handleYCoordinateEnter = (event: React.KeyboardEvent<HTMLInputElement>): void => {
+  function handleYCoordinateEnter (event: React.KeyboardEvent<HTMLInputElement>): void {
     const target = event.target as HTMLInputElement
     onYCoordinateSelection(target.value !== '' ? Number(target.value) : null)
   }
 
-  const handleMagnificationEnter = (event: React.KeyboardEvent<HTMLInputElement>): void => {
+  function handleMagnificationEnter (event: React.KeyboardEvent<HTMLInputElement>): void {
     const target = event.target as HTMLInputElement
     onMagnificationSelection(target.value !== '' ? Number(target.value) : null)
   }
