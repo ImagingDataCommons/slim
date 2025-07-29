@@ -29,7 +29,7 @@ export const constructViewers = ({ clients, slide, preload }: {
       clientMapping: clients,
       metadata: slide.volumeImages,
       controls: ['overview', 'position'],
-      preload: preload,
+      preload,
       errorInterceptor: (error: CustomError) => {
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.DMV, error
@@ -117,10 +117,7 @@ export const describesSpecimenSubject = (
     meaning: 'Specimen',
     schemeDesignator: 'DCM'
   })
-  if (retrievedConcept.equals(expectedConcept)) {
-    return true
-  }
-  return false
+  return retrievedConcept.equals(expectedConcept)
 }
 
 /**

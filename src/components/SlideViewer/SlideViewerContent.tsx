@@ -27,7 +27,7 @@ const SlideViewerContent: React.FC<SlideViewerContentProps> = ({
         style={{
           height: `calc(100% - ${toolbarHeight})`,
           overflow: 'hidden',
-          cursor: cursor
+          cursor
         }}
         ref={volumeViewportRef}
       />

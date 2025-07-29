@@ -6,7 +6,7 @@ interface ButtonProps {
   icon: IconType | React.ComponentType<any>
   tooltip?: string
   label?: string
-  onClick?: (options: any) => void
+  onClick?: (options: React.SyntheticEvent) => void
   isSelected?: boolean
 }
 

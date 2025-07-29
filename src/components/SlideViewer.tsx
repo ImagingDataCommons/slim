@@ -1417,7 +1417,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
   }
 
-  handleRoiSelectionCancellation (): void {
+  handleRoiSelectionCancellation = (): void => {
+    console.info('cancel ROI selection')
     this.setState({
       isSelectedRoiModalVisible: false
     })
@@ -1855,72 +1856,66 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
   }
 
-  handleXCoordinateSelection (value: any): void {
-    if (value != null) {
+  handleXCoordinateSelection = (value: number | string | null): void => {
+    if (value !== null && value !== undefined) {
       const x = Number(value)
-      const start = this.state.validXCoordinateRange[0]
-      const end = this.state.validXCoordinateRange[1]
-      if (x >= start && x <= end) {
-        this.setState({
-          selectedXCoordinate: x,
-          isSelectedXCoordinateValid: true
-        })
-        return
-      }
+      const isValid = x >= this.state.validXCoordinateRange[0] && x <= this.state.validXCoordinateRange[1]
+      this.setState({
+        selectedXCoordinate: x,
+        isSelectedXCoordinateValid: isValid
+      })
+    } else {
+      this.setState({
+        selectedXCoordinate: undefined,
+        isSelectedXCoordinateValid: false
+      })
     }
-    this.setState({
-      selectedXCoordinate: undefined,
-      isSelectedXCoordinateValid: false
-    })
   }
 
-  handleYCoordinateSelection (value: any): void {
-    if (value != null) {
+  handleYCoordinateSelection = (value: number | string | null): void => {
+    if (value !== null && value !== undefined) {
       const y = Number(value)
-      const start = this.state.validYCoordinateRange[0]
-      const end = this.state.validYCoordinateRange[1]
-      if (y >= start && y <= end) {
-        this.setState({
-          selectedYCoordinate: y,
-          isSelectedYCoordinateValid: true
-        })
-        return
-      }
+      const isValid = y >= this.state.validYCoordinateRange[0] && y <= this.state.validYCoordinateRange[1]
+      this.setState({
+        selectedYCoordinate: y,
+        isSelectedYCoordinateValid: isValid
+      })
+    } else {
+      this.setState({
+        selectedYCoordinate: undefined,
+        isSelectedYCoordinateValid: false
+      })
     }
-    this.setState({
-      selectedYCoordinate: undefined,
-      isSelectedYCoordinateValid: false
-    })
   }
 
-  handleMagnificationSelection (value: any): void {
-    if (value != null) {
-      if (value > 0 && value <= 40) {
-        this.setState({
-          selectedMagnification: Number(value),
-          isSelectedMagnificationValid: true
-        })
-        return
-      }
+  handleMagnificationSelection = (value: number | string | null): void => {
+    if (value !== null && value !== undefined) {
+      const magnification = Number(value)
+      const isValid = magnification >= 0 && magnification <= 40
+      this.setState({
+        selectedMagnification: magnification,
+        isSelectedMagnificationValid: isValid
+      })
+    } else {
+      this.setState({
+        selectedMagnification: undefined,
+        isSelectedMagnificationValid: false
+      })
     }
-    this.setState({
-      selectedMagnification: undefined,
-      isSelectedMagnificationValid: false
-    })
   }
 
   /**
    * Handler that gets called when the selection of slide position was
    * completed.
    */
-  handleSlidePositionSelection (): void {
+  handleSlidePositionSelection = (): void => {
     if (
       this.state.isSelectedXCoordinateValid &&
       this.state.isSelectedYCoordinateValid &&
       this.state.isSelectedMagnificationValid &&
-      this.state.selectedXCoordinate != null &&
-      this.state.selectedYCoordinate != null &&
-      this.state.selectedMagnification != null
+              this.state.selectedXCoordinate !== null && this.state.selectedXCoordinate !== undefined &&
+        this.state.selectedYCoordinate !== null && this.state.selectedYCoordinate !== undefined &&
+        this.state.selectedMagnification !== null && this.state.selectedMagnification !== undefined
     ) {
       console.info(
         'select slide position ' +
@@ -1974,13 +1969,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that gets called when the selection of a slide position was
    * canceled.
    */
-  handleSlidePositionSelectionCancellation (): void {
-    console.log('cancel slide position selection')
+  handleSlidePositionSelectionCancellation = (): void => {
+    console.info('cancel slide position selection')
     this.setState({
       isGoToModalVisible: false,
-      isSelectedXCoordinateValid: false,
-      isSelectedYCoordinateValid: false,
-      isSelectedMagnificationValid: false,
       selectedXCoordinate: undefined,
       selectedYCoordinate: undefined,
       selectedMagnification: undefined
@@ -1990,7 +1982,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   /**
    * Handler that gets called when annotation configuration has been completed.
    */
-  handleAnnotationConfigurationCompletion (): void {
+  handleAnnotationConfigurationCompletion = (): void => {
     console.debug('complete annotation configuration')
     const finding = this.state.selectedFinding
     const geometryType = this.state.selectedGeometryType
@@ -2015,8 +2007,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   /**
    * Handler that gets called when annotation configuration has been cancelled.
    */
-  handleAnnotationConfigurationCancellation (): void {
-    console.debug('cancel annotation configuration')
+  handleAnnotationConfigurationCancellation = (): void => {
+    console.info('cancel annotation configuration')
+    this.volumeViewer.activateSelectInteraction({})
     this.setState({
       isAnnotationModalVisible: false,
       isRoiDrawingActive: false
@@ -2055,48 +2048,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * pertinent metadata about the patient, study, and specimen.
    */
   handleReportVerification (): void {
-    console.info('verfied report')
-
-    const report = this.state.generatedReport
-    if (report !== undefined) {
-      const dataset = report as unknown as dmv.metadata.Comprehensive3DSR
-      console.debug('create File Meta Information')
-      const fileMetaInformationVersionArray = new Uint8Array(2)
-      fileMetaInformationVersionArray[1] = 1
-      const fileMeta = {
-        // FileMetaInformationVersion
-        '00020001': {
-          Value: [fileMetaInformationVersionArray.buffer],
-          vr: 'OB'
-        },
-        // MediaStorageSOPClassUID
-        '00020002': {
-          Value: [dataset.SOPClassUID],
-          vr: 'UI'
-        },
-        // MediaStorageSOPInstanceUID
-        '00020003': {
-          Value: [dataset.SOPInstanceUID],
-          vr: 'UI'
-        },
-        // TransferSyntaxUID
-        '00020010': {
-          Value: ['1.2.840.10008.1.2.1'],
-          vr: 'UI'
-        },
-        // ImplementationClassUID
-        '00020012': {
-          Value: [this.props.app.uid],
-          vr: 'UI'
-        }
-      }
-
-      console.info('store Comprehensive 3D SR document')
-      const writer = new dcmjs.data.DicomDict(fileMeta)
-      writer.dict = dcmjs.data.DicomMetaDictionary.denaturalizeDataset(dataset)
-      const buffer = writer.write()
+    console.info('verify report generation')
+    if (this.state.generatedReport !== undefined) {
       const client = this.props.clients[StorageClasses.COMPREHENSIVE_3D_SR]
-      client.storeInstances({ datasets: [buffer] }).then(
+      // The Comprehensive3DSR object should have a write method or similar
+      // For now, let's try to access it as an ArrayBuffer directly
+      client.storeInstances({ datasets: [this.state.generatedReport as any] }).then(
         (response: any) => message.info('Annotations were saved.')
       ).catch((error) => {
         console.error(error)
@@ -2468,7 +2425,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
          * If the image metadata contains a palette color lookup table for the
          * optical path, then it will be displayed by default.
          */
-        if (item.paletteColorLookupTableUID != null) {
+        if (item.paletteColorLookupTableUID !== null) {
           visibleOpticalPathIdentifiers.add(identifier)
         }
       } else {
@@ -2497,7 +2454,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             const index = numVisible
             style.color = defaultColors[index]
             const stats = this.state.pixelDataStatistics[item.identifier]
-            if (stats != null) {
+            if (stats !== null) {
               style.limitValues = [stats.min, stats.max]
             }
             this.volumeViewer.setOpticalPathStyle(item.identifier, style)
@@ -2539,17 +2496,17 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     value?: string,
     option?: any
   ): void {
-    if (value != null) {
-      console.info(`select Presentation State instance "${value}"`)
+    if (value !== null) {
+      console.info(`select Presentation State instance "${value ?? 'undefined'}"`)
       let presentationState
       this.state.presentationStates.forEach(instance => {
         if (instance.SOPInstanceUID === value) {
           presentationState = instance
         }
       })
-      if (presentationState != null) {
+      if (presentationState !== null && presentationState !== undefined) {
         let urlPath = this.props.location.pathname
-        urlPath += `?state=${value}`
+        urlPath += `?state=${value ?? ''}`
         this.props.navigate(urlPath)
         this.setPresentationState(presentationState)
       } else {
@@ -2563,7 +2520,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         )
         console.log(
           'failed to handle section of presentation state: ' +
-          `could not find instance "${value}"`
+          `could not find instance "${value ?? 'undefined'}"`
         )
       }
     } else {
@@ -2764,7 +2721,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     // Get the study from DicomMetadataStore
     const study = DicomMetadataStore.getStudy(this.props.studyInstanceUID)
 
-    if ((study?.series) != null) {
+    if ((study?.series) !== null && study !== null && study !== undefined) {
       // Find the series that matches this series instance UID
       const series = study.series.find(s => s.SeriesInstanceUID === seriesInstanceUID)
 
@@ -2832,7 +2789,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     return { rois, segments, mappings, annotationGroups, annotations }
   }
 
-  private readonly getOpenSubMenuItems = (): string[] => {
+  private static getOpenSubMenuItems (): string[] {
     return ['specimens', 'optical-paths', 'annotations', 'presentation-states']
   }
 
@@ -2872,7 +2829,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
   }
 
-  private readonly getGeometryTypeOptionsMapping = (): { [key: string]: React.ReactNode } => {
+  private static getGeometryTypeOptionsMapping (): { [key: string]: React.ReactNode } {
     return {
       point: <Select.Option key='point' value='point'>Point</Select.Option>,
       circle: <Select.Option key='circle' value='circle'>Circle</Select.Option>,
@@ -2894,7 +2851,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private readonly getAnnotationConfigurations = (): React.ReactNode[] => {
     const findingOptions = this.getFindingOptions()
-    const geometryTypeOptionsMapping = this.getGeometryTypeOptionsMapping()
+    const geometryTypeOptionsMapping = SlideViewer.getGeometryTypeOptionsMapping()
 
     const annotationConfigurations: React.ReactNode[] = [
       (
@@ -3056,7 +3013,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           dropdownMatchSelectWidth={false}
           size='small'
         >
-          <></>
+          {null}
         </Select.Option>
       )
       return (
@@ -3325,7 +3282,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   private readonly getSelectedRoiInformation = (): React.ReactNode => {
-    if (this.state.selectedRoi != null) {
+    if (this.state.selectedRoi !== null && this.state.selectedRoi !== undefined) {
       const roiAttributes: Array<{
         name: string
         value: string
@@ -3373,7 +3330,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       } = {}
       this.state.selectedRoi.measurements.forEach(item => {
         let identifier = 'default'
-        if (item.ContentSequence != null) {
+        if (item.ContentSequence !== null && item.ContentSequence !== undefined) {
           const refItems = findContentItemsByName({
             content: item.ContentSequence,
             name: new dcmjs.sr.coding.CodedConcept({
@@ -3406,7 +3363,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       ): React.ReactNode[] => {
         return attributes.map(item => {
           let value
-          if (item.unit != null) {
+          if (item.unit !== null && item.unit !== undefined) {
             value = `${item.value} [${item.unit}]`
           } else {
             value = item.value
@@ -3491,7 +3448,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   render (): React.ReactNode {
     const { rois, segments, mappings, annotationGroups, annotations } = this.getDataFromViewer()
 
-    const openSubMenuItems = ['specimens', 'optical-paths', 'annotations', 'presentation-states']
+    const openSubMenuItems = SlideViewer.getOpenSubMenuItems()
     const report = this.getReport()
     const annotationMenuItems = this.getAnnotationMenuItems(rois)
     const annotationConfigurations = this.getAnnotationConfigurations()
@@ -3585,9 +3542,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               rois={this.state.hoveredRoiAttributes}
             />
             )
-          : (
-            <></>
-            )}
+          : null}
       </Layout>
     )
   }

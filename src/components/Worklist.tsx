@@ -266,49 +266,55 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     )
   }
 
-  getColumnSearchProps = (dataIndex: string): object => ({
-    filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }: {
-      setSelectedKeys: (selectedKeys: React.Key[]) => void
-      selectedKeys: React.Key[]
-      confirm: (params?: FilterConfirmProps) => void
-      clearFilters: () => void
-    }) => (
-      <div style={{ padding: 8 }}>
-        <Input
-          placeholder='Search'
-          value={selectedKeys[0]}
-          onChange={e => setSelectedKeys(
-            e.target.value !== undefined ? [e.target.value] : []
-          )}
-          onPressEnter={() => this.handleSearch(selectedKeys, confirm, dataIndex)}
-          style={{ width: 188, marginBottom: 8, display: 'block' }}
+  getColumnSearchProps = (dataIndex: string): object => {
+    const handlePressEnter = (selectedKeys: React.Key[], confirm: (params?: FilterConfirmProps) => void): void => {
+      this.handleSearch(selectedKeys, confirm, dataIndex)
+    }
+
+    return {
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }: {
+        setSelectedKeys: (selectedKeys: React.Key[]) => void
+        selectedKeys: React.Key[]
+        confirm: (params?: FilterConfirmProps) => void
+        clearFilters: () => void
+      }) => (
+        <div style={{ padding: 8 }}>
+          <Input
+            placeholder='Search'
+            value={selectedKeys[0]}
+            onChange={e => setSelectedKeys(
+              e.target.value !== undefined ? [e.target.value] : []
+            )}
+            onPressEnter={() => handlePressEnter(selectedKeys, confirm)}
+            style={{ width: 188, marginBottom: 8, display: 'block' }}
+          />
+          <Space>
+            <Button
+              type='primary'
+              onClick={() => this.handleSearch(selectedKeys, confirm, dataIndex)}
+              icon={<SearchOutlined />}
+              size='small'
+              style={{ width: 90 }}
+            >
+              Search
+            </Button>
+            <Button
+              onClick={() => this.handleReset(clearFilters)}
+              size='small'
+              style={{ width: 90 }}
+            >
+              Reset
+            </Button>
+          </Space>
+        </div>
+      ),
+      filterIcon: (filtered: boolean) => (
+        <SearchOutlined
+          style={{ color: filtered ? '#1890ff' : undefined }}
         />
-        <Space>
-          <Button
-            type='primary'
-            onClick={() => this.handleSearch(selectedKeys, confirm, dataIndex)}
-            icon={<SearchOutlined />}
-            size='small'
-            style={{ width: 90 }}
-          >
-            Search
-          </Button>
-          <Button
-            onClick={() => this.handleReset(clearFilters)}
-            size='small'
-            style={{ width: 90 }}
-          >
-            Reset
-          </Button>
-        </Space>
-      </div>
-    ),
-    filterIcon: (filtered: boolean) => (
-      <SearchOutlined
-        style={{ color: filtered ? '#1890ff' : undefined }}
-      />
-    )
-  })
+      )
+    }
+  }
 }
 
 export default withRouter(Worklist)

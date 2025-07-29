@@ -451,7 +451,7 @@ AnnotationGroupItemState
         size='small'
         disabled={!this.props.isVisible}
       >
-        <></>
+        {null}
       </Select.Option>
     )
 

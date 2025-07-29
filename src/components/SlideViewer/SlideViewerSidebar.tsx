@@ -47,6 +47,15 @@ const SlideViewerSidebar: React.FC<SlideViewerSidebarProps> = ({
   onRoiStyleChange,
   defaultAnnotationStyles
 }) => {
+  const handleMenuOpenChange = (): void => {
+    // Give menu item time to render before updating viewer size
+    setTimeout(() => {
+      if (labelViewer !== null && labelViewer !== undefined) {
+        labelViewer.resize()
+      }
+    }, 100)
+  }
+
   return (
     <Layout.Sider
       width={300}
@@ -64,14 +73,7 @@ const SlideViewerSidebar: React.FC<SlideViewerSidebarProps> = ({
         style={{ height: '100%' }}
         inlineIndent={14}
         forceSubMenuRender
-        onOpenChange={() => {
-          // Give menu item time to render before updating viewer size
-          setTimeout(() => {
-            if (labelViewer != null) {
-              labelViewer.resize()
-            }
-          }, 100)
-        }}
+        onOpenChange={handleMenuOpenChange}
       >
         {labelViewportRef.current != null && (
           <Menu.SubMenu key='label' title='Slide label'>
@@ -93,9 +95,7 @@ const SlideViewerSidebar: React.FC<SlideViewerSidebarProps> = ({
         </Menu.SubMenu>
         {annotationGroupMenu}
         {annotations.length === 0
-          ? (
-            <></>
-            )
+          ? null
           : (
             <Menu.SubMenu
               key='annotation-categories'
