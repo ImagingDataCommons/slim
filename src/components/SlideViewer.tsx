@@ -54,6 +54,7 @@ import HoveredRoiTooltip from './HoveredRoiTooltip'
 import { adaptRoiToAnnotation } from '../services/RoiToAnnotationAdapter'
 import generateReport from '../utils/generateReport'
 import { runValidations } from '../contexts/ValidationContext'
+import DicomMetadataStore from '../services/DICOMMetadataStore'
 
 const DEFAULT_ROI_STROKE_COLOR: number[] = [255, 234, 0] // [0, 126, 163]
 const DEFAULT_ROI_FILL_COLOR: number[] = [255, 234, 0, 0.2] // [0, 126, 163, 0.2]
@@ -423,6 +424,7 @@ interface SlideViewerState {
   validYCoordinateRange: number[]
   selectedMagnification?: number
   areRoisHidden: boolean
+  selectedSeriesInstanceUID?: string
   pixelDataStatistics: {
     [opticalPathIdentifier: string]: {
       min: number
@@ -645,6 +647,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       validYCoordinateRange: [offset[1], offset[1] + size[1]],
       selectedMagnification: undefined,
       areRoisHidden: false,
+      selectedSeriesInstanceUID: undefined,
       pixelDataStatistics: {},
       selectedPresentationStateUID: this.props.selectedPresentationStateUID,
       loadingFrames: new Set(),
@@ -3118,6 +3121,27 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.volumeViewer.zoomToROI(annotationGroupUID)
   }
 
+  handleAnnotationGroupSelection = (value: string): void => {
+    this.setState({ selectedSeriesInstanceUID: value })
+  }
+
+  getSeriesDescription = (seriesInstanceUID: string): string => {
+    // Get the study from DicomMetadataStore
+    const study = DicomMetadataStore.getStudy(this.props.studyInstanceUID)
+
+    if ((study?.series) != null) {
+      // Find the series that matches this series instance UID
+      const series = study.series.find(s => s.SeriesInstanceUID === seriesInstanceUID)
+
+      if (series?.SeriesDescription !== undefined && series.SeriesDescription !== '') {
+        return series.SeriesDescription
+      }
+    }
+
+    // Fallback to truncated UID if no description found
+    return `Series ${seriesInstanceUID.slice(0, 8)}...`
+  }
+
   /**
    * Handler that will toggle the ICC profile color management, i.e., either
    * enable or disable it, depending on its current state.
@@ -3481,19 +3505,75 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           annotationGroup.uid
         )
       })
+
+      // Group annotation groups by seriesInstanceUID
+      const annotationGroupsBySeries: { [seriesInstanceUID: string]: dmv.annotation.AnnotationGroup[] } = {}
+      annotationGroups.forEach(annotationGroup => {
+        const seriesUID = annotationGroup.seriesInstanceUID
+        if (!(seriesUID in annotationGroupsBySeries)) {
+          annotationGroupsBySeries[seriesUID] = []
+        }
+        annotationGroupsBySeries[seriesUID].push(annotationGroup)
+      })
+
+      // Initialize selected series if not set
+      if (this.state.selectedSeriesInstanceUID === undefined && annotationGroups.length !== 0) {
+        this.setState({ selectedSeriesInstanceUID: 'all' })
+      }
+
+      // Create dropdown options for series
+      const dropdownOptions = [
+        {
+          value: 'all',
+          label: 'All'
+        },
+        ...Object.keys(annotationGroupsBySeries).map((seriesUID) => ({
+          value: seriesUID,
+          label: `${this.getSeriesDescription(seriesUID)} (${annotationGroupsBySeries[seriesUID]?.length ?? 0} groups)`
+        }))
+      ]
+
+      // Get annotation groups for the selected series or all series
+      const selectedSeriesAnnotationGroups = this.state.selectedSeriesInstanceUID === 'all'
+        ? annotationGroups
+        : (this.state.selectedSeriesInstanceUID !== undefined
+            ? annotationGroupsBySeries[this.state.selectedSeriesInstanceUID] ?? []
+            : [])
+
       annotationGroupMenu = (
         <Menu.SubMenu key='annotation-groups' title='Annotation Groups'>
-          <AnnotationGroupList
-            annotationGroups={annotationGroups}
-            metadata={annotationGroupMetadata}
-            onAnnotationGroupClick={this.handleAnnotationGroupClick}
-            // when adding annotationGroups to annotationCategory list,
-            // make so that this is uses this.defaultAnnotationStyles later instead of defaultAnnotationGroupStyles
-            defaultAnnotationGroupStyles={defaultAnnotationGroupStyles}
-            visibleAnnotationGroupUIDs={this.state.visibleAnnotationGroupUIDs}
-            onAnnotationGroupVisibilityChange={this.handleAnnotationGroupVisibilityChange}
-            onAnnotationGroupStyleChange={this.handleAnnotationGroupStyleChange}
-          />
+          {/* Series Selection Dropdown */}
+          <div
+            style={{
+              paddingLeft: '14px',
+              paddingRight: '14px',
+              paddingTop: '7px',
+              paddingBottom: '7px'
+            }}
+          >
+            <Select
+              style={{ width: '100%' }}
+              placeholder='Select a series'
+              value={this.state.selectedSeriesInstanceUID}
+              onChange={this.handleAnnotationGroupSelection}
+              options={dropdownOptions}
+            />
+          </div>
+
+          {/* Display annotation groups for the selected series */}
+          {selectedSeriesAnnotationGroups.length > 0 && (
+            <AnnotationGroupList
+              annotationGroups={selectedSeriesAnnotationGroups}
+              metadata={annotationGroupMetadata}
+              onAnnotationGroupClick={this.handleAnnotationGroupClick}
+              // when adding annotationGroups to annotationCategory list,
+              // make so that this is uses this.defaultAnnotationStyles later instead of defaultAnnotationGroupStyles
+              defaultAnnotationGroupStyles={defaultAnnotationGroupStyles}
+              visibleAnnotationGroupUIDs={this.state.visibleAnnotationGroupUIDs}
+              onAnnotationGroupVisibilityChange={this.handleAnnotationGroupVisibilityChange}
+              onAnnotationGroupStyleChange={this.handleAnnotationGroupStyleChange}
+            />
+          )}
         </Menu.SubMenu>
       )
       openSubMenuItems.push('annotationGroups')
