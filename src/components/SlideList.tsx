@@ -60,8 +60,7 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
     }
 
     let selectedKeys
-    if (this.state.selectedSeriesInstanceUID !== undefined &&
-      this.state.selectedSeriesInstanceUID !== null) {
+    if (this.state.selectedSeriesInstanceUID !== null && this.state.selectedSeriesInstanceUID !== undefined) {
       selectedKeys = [this.state.selectedSeriesInstanceUID]
     }
 

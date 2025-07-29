@@ -133,7 +133,7 @@ export default class OidcManager implements AuthManager {
        * the DICOMweb server.
        */
       const userData = await this._oidc.getUser()
-      if (userData === null || userData.expired) {
+      if (userData === null || userData === undefined || userData.expired) {
         console.info('authenticating user')
         await this._oidc.signinRedirect()
       } else {
@@ -156,7 +156,7 @@ export default class OidcManager implements AuthManager {
    */
   getAuthorization = async (): Promise<string|undefined> => {
     return await this._oidc.getUser().then((userData) => {
-      if (userData !== null) {
+      if (userData !== null && userData !== undefined) {
         return userData.access_token
       } else {
         NotificationMiddleware.onError(
@@ -175,7 +175,7 @@ export default class OidcManager implements AuthManager {
    */
   getUser = async (): Promise<User> => {
     return await this._oidc.getUser().then((userData) => {
-      if (userData === null) {
+      if (userData === null || userData === undefined) {
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.AUTH,
           new CustomError(

@@ -148,7 +148,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     console.debug(`search for studies of page #${index}...`)
     const searchCriteria: { [attribute: string]: string } = {}
     for (const dataIndex in filters) {
-      if (filters[dataIndex] !== null) {
+      if (filters[dataIndex] !== null && filters[dataIndex] !== undefined) {
         searchCriteria[dataIndex] = filters[dataIndex][0].toString()
       }
     }

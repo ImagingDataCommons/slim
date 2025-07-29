@@ -45,7 +45,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
     this.setState({ isLoading: true })
     if (this.props.slide.overviewImages.length > 0) {
       const metadata = this.props.slide.overviewImages[0]
-      if (this.overviewViewportRef.current !== null) {
+      if (this.overviewViewportRef.current !== null && this.overviewViewportRef.current !== undefined) {
         this.overviewViewportRef.current.innerHTML = ''
         console.info(
           'instantiate viewer for OVERVIEW image of slide ' +
@@ -81,7 +81,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
 
     const attributes = []
     const description = this.props.slide.description
-    if (description !== null && description !== '') {
+    if (description !== null && description !== undefined && description !== '') {
       attributes.push({
         name: 'Description',
         value: description

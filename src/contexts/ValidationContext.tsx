@@ -211,7 +211,7 @@ export const useValidation = (): ValidationContextType => {
 }
 
 export const runValidations = (options: { dialog?: boolean, context: { annotationGroup?: dmv.annotation.AnnotationGroup, slide?: Slide } }): ValidationResult => {
-  if (globalValidationContext === null) {
+  if (globalValidationContext === null || globalValidationContext === undefined) {
     console.warn('Validation context not available. Make sure ValidationProvider is mounted.')
     return { isValid: true, type: 'info' }
   }

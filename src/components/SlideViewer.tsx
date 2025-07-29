@@ -732,7 +732,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         Modality: 'PR'
       }
     }).then((matchedInstances): void => {
-      if (matchedInstances === null) {
+      if (matchedInstances === null || matchedInstances === undefined) {
         matchedInstances = []
       }
       matchedInstances.forEach((rawInstance, index) => {
@@ -766,7 +766,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               )
               if (
                 index === 0 &&
-                this.props.selectedPresentationStateUID === null
+                (this.props.selectedPresentationStateUID === null ||
+                 this.props.selectedPresentationStateUID === undefined)
               ) {
                 this.setPresentationState(presentationState)
               } else {
@@ -1045,7 +1046,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           Modality: 'SR'
         }
       }).then((matchedInstances): void => {
-        if (matchedInstances === null) {
+        if (matchedInstances === null || matchedInstances === undefined) {
           matchedInstances = []
         }
         matchedInstances.forEach(i => {
@@ -1187,7 +1188,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           Modality: 'ANN'
         }
       }).then((matchedSeries): void => {
-        if (matchedSeries === null) {
+        if (matchedSeries === null || matchedSeries === undefined) {
           matchedSeries = []
         }
         matchedSeries.forEach(s => {
@@ -1289,7 +1290,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           Modality: 'SEG'
         }
       }).then((matchedSeries): void => {
-        if (matchedSeries === null) {
+        if (matchedSeries === null || matchedSeries === undefined) {
           matchedSeries = []
         }
         matchedSeries.forEach((s, i) => {
@@ -1376,7 +1377,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           Modality: 'OT'
         }
       }).then((matchedSeries): void => {
-        if (matchedSeries === null) {
+        if (matchedSeries === null || matchedSeries === undefined) {
           matchedSeries = []
         }
         matchedSeries.forEach(s => {
@@ -1649,8 +1650,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   getUniqueHoveredRois = (newRoi: dmv.roi.ROI | null): dmv.roi.ROI[] => {
-    if (newRoi === null) {
-      return []
+    if (newRoi === null || newRoi === undefined) {
+      return this.hoveredRois
     }
     const allRois = [...this.hoveredRois, newRoi]
     const uniqueIds = Array.from(new Set(allRois.map(roi => roi.uid)))
@@ -1878,7 +1879,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         const max = Math.max(...maxValues)
         this.setState(state => {
           const stats = state.pixelDataStatistics
-          if (stats[opticalPathIdentifier] !== null) {
+          if (stats[opticalPathIdentifier] !== null && stats[opticalPathIdentifier] !== undefined) {
             stats[opticalPathIdentifier] = {
               min: Math.min(stats[opticalPathIdentifier].min, min),
               max: Math.max(stats[opticalPathIdentifier].max, max),
@@ -1891,7 +1892,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               numFramesSampled: 1
             }
           }
-          if (state.selectedPresentationStateUID === null) {
+          if (state.selectedPresentationStateUID === null || state.selectedPresentationStateUID === undefined) {
             const style = {
               ...this.volumeViewer.getOpticalPathStyle(opticalPathIdentifier)
             }
@@ -2109,7 +2110,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       let hasICCProfile = false
       const image = this.props.slide.volumeImages[0]
       const metadataItem = image.OpticalPathSequence[0]
-      if (metadataItem.ICCProfile === null) {
+      if (metadataItem.ICCProfile === null || metadataItem.ICCProfile === undefined) {
         if ('OpticalPathSequence' in image.bulkdataReferences) {
           // @ts-expect-error
           const bulkdataItem = image.bulkdataReferences.OpticalPathSequence[0]
@@ -2533,7 +2534,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }): void => {
     const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups()
     const annotationGroup = allAnnotationGroups.find(ag => ag.uid === annotationGroupUID)
-    if (annotationGroup !== null) {
+    if (annotationGroup !== null && annotationGroup !== undefined) {
       runValidations({
         dialog: true,
         context: { annotationGroup, slide: this.props.slide }
@@ -3152,7 +3153,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.volumeViewer.toggleICCProfiles()
   }
 
-  formatAnnotation = (annotation: AnnotationCategoryAndType | dmv.roi.ROI): void => {
+  formatAnnotation = (annotation: AnnotationCategoryAndType): void => {
     const roi = this.volumeViewer.getROI(annotation.uid)
     const key = _getRoiKey(roi) as string
     const color = this.roiStyles[key] !== undefined
@@ -3171,7 +3172,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     )
   }
 
-  render (): React.ReactNode {
+  // Helper functions to extract render logic
+  private getDataFromViewer = (): {
+    rois: dmv.roi.ROI[]
+    segments: dmv.segment.Segment[]
+    mappings: dmv.mapping.ParameterMapping[]
+    annotationGroups: dmv.annotation.AnnotationGroup[]
+    annotations: any[]
+  } => {
     const rois: dmv.roi.ROI[] = []
     const segments: dmv.segment.Segment[] = []
     const mappings: dmv.mapping.ParameterMapping[] = []
@@ -3187,19 +3195,24 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     const annotations = rois.map(roi => adaptRoiToAnnotation(roi))
 
-    const openSubMenuItems = [
-      'specimens', 'optical-paths', 'annotations', 'presentation-states'
-    ]
+    return { rois, segments, mappings, annotationGroups, annotations }
+  }
 
-    let report: React.ReactNode
+  private getOpenSubMenuItems = (): string[] => {
+    return ['specimens', 'optical-paths', 'annotations', 'presentation-states']
+  }
+
+  private getReport = (): React.ReactNode => {
     const dataset = this.state.generatedReport
     if (dataset !== undefined) {
-      report = <Report dataset={dataset} />
+      return <Report dataset={dataset} />
     }
+    return undefined
+  }
 
-    let annotationMenuItems: React.ReactNode
+  private getAnnotationMenuItems = (rois: dmv.roi.ROI[]): React.ReactNode => {
     if (rois.length > 0) {
-      annotationMenuItems = (
+      return (
         <AnnotationList
           rois={rois}
           selectedRoiUIDs={this.state.selectedRoiUIDs}
@@ -3209,8 +3222,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         />
       )
     }
+    return undefined
+  }
 
-    const findingOptions = this.findingOptions.map((finding, index) => {
+  private getFindingOptions = (): React.ReactNode[] => {
+    return this.findingOptions.map((finding, index) => {
       return (
         <Select.Option
           key={(finding.CodeValue !== undefined && finding.CodeValue !== '') ? finding.CodeValue : `finding-${index}`}
@@ -3220,8 +3236,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         </Select.Option>
       )
     })
+  }
 
-    const geometryTypeOptionsMapping: { [key: string]: React.ReactNode } = {
+  private getGeometryTypeOptionsMapping = (): { [key: string]: React.ReactNode } => {
+    return {
       point: <Select.Option key='point' value='point'>Point</Select.Option>,
       circle: <Select.Option key='circle' value='circle'>Circle</Select.Option>,
       box: <Select.Option key='box' value='box'>Box</Select.Option>,
@@ -3238,6 +3256,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         </Select.Option>
       )
     }
+  }
+
+  private getAnnotationConfigurations = (): React.ReactNode[] => {
+    const findingOptions = this.getFindingOptions()
+    const geometryTypeOptionsMapping = this.getGeometryTypeOptionsMapping()
 
     const annotationConfigurations: React.ReactNode[] = [
       (
@@ -3308,7 +3331,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       )
     }
 
-    const specimenMenu = (
+    return annotationConfigurations
+  }
+
+  private getSpecimenMenu = (): React.ReactNode => {
+    return (
       <Menu.SubMenu key='specimens' title='Specimens'>
         <SpecimenList
           metadata={this.props.slide.volumeImages[0]}
@@ -3316,13 +3343,17 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         />
       </Menu.SubMenu>
     )
+  }
 
-    const equipmentMenu = (
+  private getEquipmentMenu = (): React.ReactNode => {
+    return (
       <Menu.SubMenu key='equipment' title='Equipment'>
         <Equipment metadata={this.props.slide.volumeImages[0]} />
       </Menu.SubMenu>
     )
+  }
 
+  private getOpticalPathMenu = (): React.ReactNode => {
     const opticalPaths = this.volumeViewer.getAllOpticalPaths()
     opticalPaths.sort((a, b) => {
       if (a.identifier.localeCompare(b.identifier) === 1) {
@@ -3352,7 +3383,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       }
       opticalPathStyles[identifier] = style
     })
-    const opticalPathMenu = (
+    return (
       <Menu.SubMenu key='optical-paths' title='Optical Paths'>
         <OpticalPathList
           metadata={opticalPathMetadata}
@@ -3367,8 +3398,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         />
       </Menu.SubMenu>
     )
+  }
 
-    let presentationStateMenu
+  private getPresentationStateMenu = (): React.ReactNode => {
     if (this.state.presentationStates.length > 0) {
       const presentationStateOptions = []
       this.state.presentationStates.forEach((instance, index) => {
@@ -3393,7 +3425,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           <></>
         </Select.Option>
       )
-      presentationStateMenu = (
+      return (
         <Menu.SubMenu key='presentation-states' title='Presentation States'>
           <Space align='center' size={20} style={{ padding: '14px' }}>
             <Select
@@ -3415,8 +3447,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         </Menu.SubMenu>
       )
     }
+    return undefined
+  }
 
-    let segmentationMenu
+  private getSegmentationMenu = (segments: dmv.segment.Segment[]): React.ReactNode => {
     if (segments.length > 0) {
       const defaultSegmentStyles: {
         [segmentUID: string]: {
@@ -3426,7 +3460,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const segmentMetadata: {
         [segmentUID: string]: dmv.metadata.Segmentation[]
       } = {}
-      const segments = this.volumeViewer.getAllSegments()
       segments.forEach(segment => {
         defaultSegmentStyles[segment.uid] = this.volumeViewer.getSegmentStyle(
           segment.uid
@@ -3435,7 +3468,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           segment.uid
         )
       })
-      segmentationMenu = (
+      return (
         <Menu.SubMenu key='segmentations' title='Segmentations'>
           <SegmentList
             segments={segments}
@@ -3447,10 +3480,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           />
         </Menu.SubMenu>
       )
-      openSubMenuItems.push('segmentations')
     }
+    return undefined
+  }
 
-    let parametricMapMenu
+  private getParametricMapMenu = (mappings: dmv.mapping.ParameterMapping[]): React.ReactNode => {
     if (mappings.length > 0) {
       const defaultMappingStyles: {
         [mappingUID: string]: {
@@ -3468,7 +3502,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           mapping.uid
         )
       })
-      parametricMapMenu = (
+      return (
         <Menu.SubMenu key='parmetric-maps' title='Parametric Maps'>
           <MappingList
             mappings={mappings}
@@ -3480,13 +3514,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           />
         </Menu.SubMenu>
       )
-      openSubMenuItems.push('parametric-maps')
     }
+    return undefined
+  }
 
-    let annotationGroupMenu
-
-    annotations?.forEach?.(this.formatAnnotation.bind(this))
-
+  private getAnnotationGroupMenu = (annotationGroups: dmv.annotation.AnnotationGroup[]): React.ReactNode => {
     if (annotationGroups.length > 0) {
       const annotationGroupMetadata: {
         [annotationGroupUID: string]: dmv.metadata.MicroscopyBulkSimpleAnnotations
@@ -3540,7 +3572,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             ? annotationGroupsBySeries[this.state.selectedSeriesInstanceUID] ?? []
             : [])
 
-      annotationGroupMenu = (
+      return (
         <Menu.SubMenu key='annotation-groups' title='Annotation Groups'>
           {/* Series Selection Dropdown */}
           <div
@@ -3576,11 +3608,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           )}
         </Menu.SubMenu>
       )
-      openSubMenuItems.push('annotationGroups')
     }
+    return undefined
+  }
 
-    let toolbar
-    let toolbarHeight = '0px'
+  private getToolbar = (): { toolbar: React.ReactNode, toolbarHeight: string } => {
     const annotationTools = [
       <Button
         tooltip='Draw ROI [Alt+D]'
@@ -3631,6 +3663,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         key='go-to-slide-position-button'
       />
     ]
+    
+    let toolbar: React.ReactNode
+    let toolbarHeight = '0px'
+    
     if (this.props.enableAnnotationTools) {
       toolbar = (
         <Row justify='start'>
@@ -3645,12 +3681,17 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       toolbarHeight = '50px'
     }
 
-    let cursor = 'default'
-    if (this.state.isLoading) {
-      cursor = 'progress'
-    }
+    return { toolbar, toolbarHeight }
+  }
 
-    let selectedRoiInformation
+  private getCursor = (): string => {
+    if (this.state.isLoading) {
+      return 'progress'
+    }
+    return 'default'
+  }
+
+  private getSelectedRoiInformation = (): React.ReactNode => {
     if (this.state.selectedRoi != null) {
       const roiAttributes: Array<{
         name: string
@@ -3772,7 +3813,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           )
         }
       }
-      selectedRoiInformation = (
+      return (
         <>
           <Descriptions layout='horizontal' column={1}>
             {roiDescriptions}
@@ -3798,8 +3839,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         </>
       )
     }
+    return undefined
+  }
 
-    const iccProfilesMenu = this.volumeViewer.getICCProfiles().length > 0 && (
+  private getICCProfilesMenu = (): React.ReactNode => {
+    return this.volumeViewer.getICCProfiles().length > 0 && (
       <div style={{ margin: '0.9rem' }}>
         <Checkbox
           checked={this.state.isICCProfilesEnabled}
@@ -3809,6 +3853,40 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         </Checkbox>
       </div>
     )
+  }
+
+  render (): React.ReactNode {
+    const { rois, segments, mappings, annotationGroups, annotations } = this.getDataFromViewer()
+    
+    const openSubMenuItems = ['specimens', 'optical-paths', 'annotations', 'presentation-states']
+    const report = this.getReport()
+    const annotationMenuItems = this.getAnnotationMenuItems(rois)
+    const annotationConfigurations = this.getAnnotationConfigurations()
+    const specimenMenu = this.getSpecimenMenu()
+    const equipmentMenu = this.getEquipmentMenu()
+    const opticalPathMenu = this.getOpticalPathMenu()
+    const presentationStateMenu = this.getPresentationStateMenu()
+    const segmentationMenu = this.getSegmentationMenu(segments)
+    const parametricMapMenu = this.getParametricMapMenu(mappings)
+    const annotationGroupMenu = this.getAnnotationGroupMenu(annotationGroups)
+    const { toolbar, toolbarHeight } = this.getToolbar()
+    const cursor = this.getCursor()
+    const selectedRoiInformation = this.getSelectedRoiInformation()
+    const iccProfilesMenu = this.getICCProfilesMenu()
+
+    // Add segmentations and parametric maps to open sub menu items if they exist
+    if (segmentationMenu) {
+      openSubMenuItems.push('segmentations')
+    }
+    if (parametricMapMenu) {
+      openSubMenuItems.push('parametric-maps')
+    }
+    if (annotationGroupMenu) {
+      openSubMenuItems.push('annotationGroups')
+    }
+
+    // Format annotations
+    annotations?.forEach?.(this.formatAnnotation.bind(this))
 
     return (
       <Layout style={{ height: '100%' }} hasSider>

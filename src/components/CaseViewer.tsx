@@ -133,7 +133,7 @@ function ParametrizedSlideViewer ({
 
     if (selectedSlide === null || selectedSlide === undefined) {
       void findReferencedSlide({ clients, studyInstanceUID, seriesInstanceUID }).then((result: ReferencedSlideResult | null) => {
-        if (result !== null) {
+        if (result !== null && result !== undefined) {
           setSelectedSlide(result.slide)
           setDerivedDataset(result.metadata)
         }
@@ -147,13 +147,13 @@ function ParametrizedSlideViewer ({
   let presentationStateUID: string | null | undefined
   if (!searchParams.has('access_token')) {
     presentationStateUID = searchParams.get('state')
-    if (presentationStateUID === null) {
+    if (presentationStateUID === null || presentationStateUID === undefined) {
       presentationStateUID = undefined
     }
   }
 
   let viewer = null
-  if (selectedSlide != null) {
+  if (selectedSlide != null && selectedSlide !== undefined) {
     viewer = (
       <SlideViewer
         clients={clients}

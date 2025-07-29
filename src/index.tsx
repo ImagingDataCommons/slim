@@ -41,7 +41,7 @@ const originalMessage = { ...message }
 const createMessageConfig = (content: string | object): object => {
   const duration = config.messages?.duration ?? 5
 
-  if (typeof content === 'object' && content !== null) {
+  if (typeof content === 'object' && content !== null && content !== undefined) {
     return {
       ...content,
       duration
