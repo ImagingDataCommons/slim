@@ -1255,7 +1255,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       .filter((roi): roi is dmv.roi.ROI => roi !== undefined)
   }
 
-  isSamePixelAsLast = (event: any): boolean => {
+  isSamePixelAsLast = (event: MouseEvent): boolean => {
     return event.clientX === this.lastPixel[0] && event.clientY === this.lastPixel[1]
   }
 
@@ -1733,7 +1733,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    */
   handleAnnotationFindingSelection (
     value: string,
-    option: any
+    _option: { label: React.ReactNode }
   ): void {
     this.findingOptions.forEach(finding => {
       if (finding.CodeValue === value) {
@@ -1753,7 +1753,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * @param value - Code value of the coded finding that got selected
    * @param option - Option that got selected
    */
-  handleAnnotationGeometryTypeSelection = (value: string, option: any): void => {
+  handleAnnotationGeometryTypeSelection = (value: string, _option: { label: string }): void => {
     this.setState({ selectedGeometryType: value })
   }
 
@@ -1761,7 +1761,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that gets called when measurements have been selected for
    * annotation.
    */
-  handleAnnotationMeasurementActivation = (event: any): void => {
+  handleAnnotationMeasurementActivation = (event: CheckboxChangeEvent): void => {
     const active: boolean = event.target.checked
     if (active) {
       this.setState({ selectedMarkup: 'measurement' })
@@ -1777,10 +1777,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * @param value - Code value of the coded evaluation that got selected
    * @param option - Option that got selected
    */
-  handleAnnotationEvaluationSelection (
+  handleAnnotationEvaluationSelection = (
     value: string,
-    option: any
-  ): void {
+    option: { label: dcmjs.sr.coding.CodedConcept }
+  ): void => {
     const selectedFinding = this.state.selectedFinding
     if (selectedFinding !== undefined) {
       const key = buildKey(selectedFinding)
@@ -2055,10 +2055,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handle toggling of annotation visibility, i.e., whether a given
    * annotation should be either displayed or hidden by the viewer.
    */
-  handleAnnotationVisibilityChange ({ roiUID, isVisible }: {
+  handleAnnotationVisibilityChange = ({ roiUID, isVisible }: {
     roiUID: string
     isVisible: boolean
-  }): void {
+  }): void => {
     if (isVisible) {
       console.info(`show ROI ${roiUID}`)
       const roi = this.volumeViewer.getROI(roiUID)
@@ -2166,8 +2166,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-  generateRoiStyle (
-    styleOptions: StyleOptions): dmv.viewer.ROIStyleOptions {
+  generateRoiStyle = (
+    styleOptions: StyleOptions): dmv.viewer.ROIStyleOptions => {
     const opacity = styleOptions.opacity ?? DEFAULT_ANNOTATION_OPACITY
     const strokeColor = styleOptions.color ?? DEFAULT_ANNOTATION_STROKE_COLOR
     const fillColor = styleOptions.contourOnly ? [0, 0, 0, 0] : strokeColor.map((c) => Math.min(c + 25, 255))
@@ -2179,10 +2179,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     return style
   }
 
-  handleRoiStyleChange ({ uid, styleOptions }: {
+  handleRoiStyleChange = ({ uid, styleOptions }: {
     uid: string
     styleOptions: StyleOptions
-  }): void {
+  }): void => {
     console.log(`change style of ROI ${uid}`)
     try {
       this.defaultAnnotationStyles[uid] = styleOptions
@@ -2210,10 +2210,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handle toggling of segment visibility, i.e., whether a given
    * segment should be either displayed or hidden by the viewer.
    */
-  handleSegmentVisibilityChange ({ segmentUID, isVisible }: {
+  handleSegmentVisibilityChange = ({ segmentUID, isVisible }: {
     segmentUID: string
     isVisible: boolean
-  }): void {
+  }): void => {
     console.log(`change visibility of segment ${segmentUID}`)
     if (isVisible) {
       console.info(`show segment ${segmentUID}`)
@@ -2237,12 +2237,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   /**
    * Handle change of segment style.
    */
-  handleSegmentStyleChange ({ segmentUID, styleOptions }: {
+  handleSegmentStyleChange = ({ segmentUID, styleOptions }: {
     segmentUID: string
     styleOptions: {
       opacity?: number
     }
-  }): void {
+  }): void => {
     console.log(`change style of segment ${segmentUID}`)
     this.volumeViewer.setSegmentStyle(segmentUID, styleOptions)
   }
@@ -2251,10 +2251,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handle toggling of mapping visibility, i.e., whether a given
    * mapping should be either displayed or hidden by the viewer.
    */
-  handleMappingVisibilityChange ({ mappingUID, isVisible }: {
+  handleMappingVisibilityChange = ({ mappingUID, isVisible }: {
     mappingUID: string
     isVisible: boolean
-  }): void {
+  }): void => {
     console.log(`change visibility of mapping ${mappingUID}`)
     if (isVisible) {
       console.info(`show mapping ${mappingUID}`)
@@ -2278,12 +2278,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   /**
    * Handle change of mapping style.
    */
-  handleMappingStyleChange ({ mappingUID, styleOptions }: {
+  handleMappingStyleChange = ({ mappingUID, styleOptions }: {
     mappingUID: string
     styleOptions: {
       opacity?: number
     }
-  }): void {
+  }): void => {
     console.log(`change style of mapping ${mappingUID}`)
     this.volumeViewer.setParameterMappingStyle(mappingUID, styleOptions)
   }
@@ -2292,10 +2292,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handle toggling of optical path visibility, i.e., whether a given
    * optical path should be either displayed or hidden by the viewer.
    */
-  handleOpticalPathVisibilityChange ({ opticalPathIdentifier, isVisible }: {
+  handleOpticalPathVisibilityChange = ({ opticalPathIdentifier, isVisible }: {
     opticalPathIdentifier: string
     isVisible: boolean
-  }): void {
+  }): void => {
     console.log(`change visibility of optical path ${opticalPathIdentifier}`)
     if (isVisible) {
       console.info(`show optical path ${opticalPathIdentifier}`)
@@ -2323,14 +2323,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   /**
    * Handle change of optical path style.
    */
-  handleOpticalPathStyleChange ({ opticalPathIdentifier, styleOptions }: {
+  handleOpticalPathStyleChange = ({ opticalPathIdentifier, styleOptions }: {
     opticalPathIdentifier: string
     styleOptions: {
       opacity?: number
       color?: number[]
       limitValues?: number[]
     }
-  }): void {
+  }): void => {
     console.log(`change style of optical path ${opticalPathIdentifier}`)
     this.volumeViewer.setOpticalPathStyle(opticalPathIdentifier, styleOptions)
   }
@@ -2339,10 +2339,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handle toggling of optical path activity, i.e., whether a given
    * optical path should be either added or removed from the viewport.
    */
-  handleOpticalPathActivityChange ({ opticalPathIdentifier, isActive }: {
+  handleOpticalPathActivityChange = ({ opticalPathIdentifier, isActive }: {
     opticalPathIdentifier: string
     isActive: boolean
-  }): void {
+  }): void => {
     console.log(`change activity of optical path ${opticalPathIdentifier}`)
     if (isActive) {
       console.info(`activate optical path ${opticalPathIdentifier}`)
@@ -2460,10 +2460,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that gets called when a presentation state has been selected from
    * the current list of available presentation states.
    */
-  handlePresentationStateSelection (
+  handlePresentationStateSelection = (
     value?: string,
-    option?: any
-  ): void {
+    _option?: any
+  ): void => {
     if (value !== null) {
       console.info(`select Presentation State instance "${value ?? 'undefined'}"`)
       let presentationState

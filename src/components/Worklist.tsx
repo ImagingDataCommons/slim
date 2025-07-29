@@ -186,6 +186,22 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     setSelectedKeys(e.target.value !== undefined ? [e.target.value] : [])
   }
 
+  getFilterInputChangeHandler = (setSelectedKeys: (selectedKeys: React.Key[]) => void) => {
+    return (e: React.ChangeEvent<HTMLInputElement>) => this.handleInputChange(e, setSelectedKeys)
+  }
+
+  getFilterPressEnterHandler = (selectedKeys: React.Key[], confirm: (params?: FilterConfirmProps) => void, dataIndex: string) => {
+    return () => this.handlePressEnter(selectedKeys, confirm, dataIndex)
+  }
+
+  getFilterSearchHandler = (selectedKeys: React.Key[], confirm: (params?: FilterConfirmProps) => void, dataIndex: string) => {
+    return () => this.handleSearch(selectedKeys, confirm, dataIndex)
+  }
+
+  getFilterResetHandler = (clearFilters: () => void) => {
+    return () => this.handleReset(clearFilters)
+  }
+
   render (): React.ReactNode {
     const columns: ColumnsType<dmv.metadata.Study> = [
       {
@@ -290,14 +306,14 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
           <Input
             placeholder='Search'
             value={selectedKeys[0]}
-            onChange={(e) => this.handleInputChange(e, setSelectedKeys)}
-            onPressEnter={() => this.handlePressEnter(selectedKeys, confirm, dataIndex)}
+            onChange={this.getFilterInputChangeHandler(setSelectedKeys)}
+            onPressEnter={this.getFilterPressEnterHandler(selectedKeys, confirm, dataIndex)}
             style={{ width: 188, marginBottom: 8, display: 'block' }}
           />
           <Space>
             <Button
               type='primary'
-              onClick={() => this.handleSearch(selectedKeys, confirm, dataIndex)}
+              onClick={this.getFilterSearchHandler(selectedKeys, confirm, dataIndex)}
               icon={<SearchOutlined />}
               size='small'
               style={{ width: 90 }}
@@ -305,7 +321,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
               Search
             </Button>
             <Button
-              onClick={() => this.handleReset(clearFilters)}
+              onClick={this.getFilterResetHandler(clearFilters)}
               size='small'
               style={{ width: 90 }}
             >

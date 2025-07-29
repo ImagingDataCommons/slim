@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { Layout, Menu } from 'antd'
 // skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
@@ -48,14 +48,15 @@ const SlideViewerSidebar: React.FC<SlideViewerSidebarProps> = ({
   onRoiStyleChange,
   defaultAnnotationStyles
 }) => {
-  const handleMenuOpenChange = (): void => {
+  const handleMenuOpenChange = useCallback((): void => {
     // Give menu item time to render before updating viewer size
-    setTimeout(() => {
+    const resizeViewer = (): void => {
       if (labelViewer !== null && labelViewer !== undefined) {
         labelViewer.resize()
       }
-    }, 100)
-  }
+    }
+    setTimeout(resizeViewer, 100)
+  }, [labelViewer])
 
   return (
     <Layout.Sider
