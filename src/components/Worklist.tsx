@@ -186,7 +186,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     setSelectedKeys(e.target.value !== undefined ? [e.target.value] : [])
   }
 
-  getFilterInputChangeHandler = (setSelectedKeys: (selectedKeys: React.Key[]) => void) => {
+  static getFilterInputChangeHandler (setSelectedKeys: (selectedKeys: React.Key[]) => void) {
     return (e: React.ChangeEvent<HTMLInputElement>) => Worklist.handleInputChange(e, setSelectedKeys)
   }
 
@@ -283,7 +283,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       <Table<dmv.metadata.Study>
         style={{ cursor: 'pointer' }}
         columns={columns}
-        rowKey={Worklist.getRowKey}
+        rowKey={(record) => Worklist.getRowKey(record)}
         dataSource={this.state.studies}
         pagination={pagination}
         onRow={this.handleRowProps}
@@ -306,7 +306,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
           <Input
             placeholder='Search'
             value={selectedKeys[0]}
-            onChange={this.getFilterInputChangeHandler(setSelectedKeys)}
+            onChange={Worklist.getFilterInputChangeHandler(setSelectedKeys)}
             onPressEnter={this.getFilterPressEnterHandler(selectedKeys, confirm, dataIndex)}
             style={{ width: 188, marginBottom: 8, display: 'block' }}
           />
