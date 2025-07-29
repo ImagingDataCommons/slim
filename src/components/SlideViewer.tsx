@@ -3173,7 +3173,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   // Helper functions to extract render logic
-  private getDataFromViewer = (): {
+  private readonly getDataFromViewer = (): {
     rois: dmv.roi.ROI[]
     segments: dmv.segment.Segment[]
     mappings: dmv.mapping.ParameterMapping[]
@@ -3198,11 +3198,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     return { rois, segments, mappings, annotationGroups, annotations }
   }
 
-  private getOpenSubMenuItems = (): string[] => {
+  private readonly getOpenSubMenuItems = (): string[] => {
     return ['specimens', 'optical-paths', 'annotations', 'presentation-states']
   }
 
-  private getReport = (): React.ReactNode => {
+  private readonly getReport = (): React.ReactNode => {
     const dataset = this.state.generatedReport
     if (dataset !== undefined) {
       return <Report dataset={dataset} />
@@ -3210,7 +3210,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     return undefined
   }
 
-  private getAnnotationMenuItems = (rois: dmv.roi.ROI[]): React.ReactNode => {
+  private readonly getAnnotationMenuItems = (rois: dmv.roi.ROI[]): React.ReactNode => {
     if (rois.length > 0) {
       return (
         <AnnotationList
@@ -3225,7 +3225,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     return undefined
   }
 
-  private getFindingOptions = (): React.ReactNode[] => {
+  private readonly getFindingOptions = (): React.ReactNode[] => {
     return this.findingOptions.map((finding, index) => {
       return (
         <Select.Option
@@ -3238,7 +3238,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
   }
 
-  private getGeometryTypeOptionsMapping = (): { [key: string]: React.ReactNode } => {
+  private readonly getGeometryTypeOptionsMapping = (): { [key: string]: React.ReactNode } => {
     return {
       point: <Select.Option key='point' value='point'>Point</Select.Option>,
       circle: <Select.Option key='circle' value='circle'>Circle</Select.Option>,
@@ -3258,7 +3258,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-  private getAnnotationConfigurations = (): React.ReactNode[] => {
+  private readonly getAnnotationConfigurations = (): React.ReactNode[] => {
     const findingOptions = this.getFindingOptions()
     const geometryTypeOptionsMapping = this.getGeometryTypeOptionsMapping()
 
@@ -3334,7 +3334,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     return annotationConfigurations
   }
 
-  private getSpecimenMenu = (): React.ReactNode => {
+  private readonly getSpecimenMenu = (): React.ReactNode => {
     return (
       <Menu.SubMenu key='specimens' title='Specimens'>
         <SpecimenList
@@ -3345,7 +3345,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     )
   }
 
-  private getEquipmentMenu = (): React.ReactNode => {
+  private readonly getEquipmentMenu = (): React.ReactNode => {
     return (
       <Menu.SubMenu key='equipment' title='Equipment'>
         <Equipment metadata={this.props.slide.volumeImages[0]} />
@@ -3353,7 +3353,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     )
   }
 
-  private getOpticalPathMenu = (): React.ReactNode => {
+  private readonly getOpticalPathMenu = (): React.ReactNode => {
     const opticalPaths = this.volumeViewer.getAllOpticalPaths()
     opticalPaths.sort((a, b) => {
       if (a.identifier.localeCompare(b.identifier) === 1) {
@@ -3400,7 +3400,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     )
   }
 
-  private getPresentationStateMenu = (): React.ReactNode => {
+  private readonly getPresentationStateMenu = (): React.ReactNode => {
     if (this.state.presentationStates.length > 0) {
       const presentationStateOptions = []
       this.state.presentationStates.forEach((instance, index) => {
@@ -3450,7 +3450,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     return undefined
   }
 
-  private getSegmentationMenu = (segments: dmv.segment.Segment[]): React.ReactNode => {
+  private readonly getSegmentationMenu = (segments: dmv.segment.Segment[]): React.ReactNode => {
     if (segments.length > 0) {
       const defaultSegmentStyles: {
         [segmentUID: string]: {
@@ -3484,7 +3484,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     return undefined
   }
 
-  private getParametricMapMenu = (mappings: dmv.mapping.ParameterMapping[]): React.ReactNode => {
+  private readonly getParametricMapMenu = (mappings: dmv.mapping.ParameterMapping[]): React.ReactNode => {
     if (mappings.length > 0) {
       const defaultMappingStyles: {
         [mappingUID: string]: {
@@ -3518,7 +3518,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     return undefined
   }
 
-  private getAnnotationGroupMenu = (annotationGroups: dmv.annotation.AnnotationGroup[]): React.ReactNode => {
+  private readonly getAnnotationGroupMenu = (annotationGroups: dmv.annotation.AnnotationGroup[]): React.ReactNode => {
     if (annotationGroups.length > 0) {
       const annotationGroupMetadata: {
         [annotationGroupUID: string]: dmv.metadata.MicroscopyBulkSimpleAnnotations
@@ -3612,7 +3612,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     return undefined
   }
 
-  private getToolbar = (): { toolbar: React.ReactNode, toolbarHeight: string } => {
+  private readonly getToolbar = (): { toolbar: React.ReactNode, toolbarHeight: string } => {
     const annotationTools = [
       <Button
         tooltip='Draw ROI [Alt+D]'
@@ -3663,10 +3663,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         key='go-to-slide-position-button'
       />
     ]
-    
+
     let toolbar: React.ReactNode
     let toolbarHeight = '0px'
-    
+
     if (this.props.enableAnnotationTools) {
       toolbar = (
         <Row justify='start'>
@@ -3684,14 +3684,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     return { toolbar, toolbarHeight }
   }
 
-  private getCursor = (): string => {
+  private readonly getCursor = (): string => {
     if (this.state.isLoading) {
       return 'progress'
     }
     return 'default'
   }
 
-  private getSelectedRoiInformation = (): React.ReactNode => {
+  private readonly getSelectedRoiInformation = (): React.ReactNode => {
     if (this.state.selectedRoi != null) {
       const roiAttributes: Array<{
         name: string
@@ -3842,7 +3842,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     return undefined
   }
 
-  private getICCProfilesMenu = (): React.ReactNode => {
+  private readonly getICCProfilesMenu = (): React.ReactNode => {
     return this.volumeViewer.getICCProfiles().length > 0 && (
       <div style={{ margin: '0.9rem' }}>
         <Checkbox
@@ -3857,7 +3857,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   render (): React.ReactNode {
     const { rois, segments, mappings, annotationGroups, annotations } = this.getDataFromViewer()
-    
+
     const openSubMenuItems = ['specimens', 'optical-paths', 'annotations', 'presentation-states']
     const report = this.getReport()
     const annotationMenuItems = this.getAnnotationMenuItems(rois)
@@ -3875,13 +3875,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const iccProfilesMenu = this.getICCProfilesMenu()
 
     // Add segmentations and parametric maps to open sub menu items if they exist
-    if (segmentationMenu) {
+    if (segmentationMenu !== null && segmentationMenu !== undefined) {
       openSubMenuItems.push('segmentations')
     }
-    if (parametricMapMenu) {
+    if (parametricMapMenu !== null && parametricMapMenu !== undefined) {
       openSubMenuItems.push('parametric-maps')
     }
-    if (annotationGroupMenu) {
+    if (annotationGroupMenu !== null && annotationGroupMenu !== undefined) {
       openSubMenuItems.push('annotationGroups')
     }
 
