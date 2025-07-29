@@ -589,11 +589,17 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   loadDerivedDataset = (derivedDataset: dmv.metadata.Dataset): void => {
     console.debug('Loading derived dataset')
-    const Comprehensive3DSR = '1.2.840.10008.5.1.4.1.1.88.34'
-    const MicroscopyBulkSimpleAnnotation = '1.2.840.10008.5.1.4.1.1.88.24'
-    const Segmentation = '1.2.840.10008.5.1.4.1.1.66.4'
-    const ParametricMap = '1.2.840.10008.5.1.4.1.1.88.22'
-    const OpticalPath = '1.2.840.10008.5.1.4.1.1.88.21'
+    const Comprehensive3DSR = StorageClasses.COMPREHENSIVE_3D_SR
+    const ComprehensiveSR = StorageClasses.COMPREHENSIVE_SR
+    const MicroscopyBulkSimpleAnnotation = StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION
+    const Segmentation = StorageClasses.SEGMENTATION
+    const ParametricMap = StorageClasses.PARAMETRIC_MAP
+    const OpticalPath = StorageClasses.OPTICAL_PATH
+    const AdvancedBlendingPresentationState = StorageClasses.ADVANCED_BLENDING_PRESENTATION_STATE
+    const ColorSoftcopyPresentationState = StorageClasses.COLOR_SOFTCOPY_PRESENTATION_STATE
+    const GrayscaleSoftcopyPresentationState = StorageClasses.GRAYSCALE_SOFTCOPY_PRESENTATION_STATE
+    const PseudocolorSoftcopyPresentationState = StorageClasses.PSEUDOCOLOR_SOFTCOPY_PRESENTATION_STATE
+
     if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === Comprehensive3DSR) {
       const allRois = this.volumeViewer.getAllROIs()
       allRois.forEach((roi) => {
@@ -624,6 +630,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         this.handleOpticalPathVisibilityChange({ opticalPathIdentifier: opticalPath.identifier, isVisible: true })
       })
       console.debug('Loading Optical Path')
+    } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === ComprehensiveSR) {
+      console.debug('TODO: Loading Comprehensive SR')
+    } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === AdvancedBlendingPresentationState) {
+      console.debug('TODO: Loading Advanced Blending Presentation State')
+    } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === ColorSoftcopyPresentationState) {
+      console.debug('TODO: Loading Color Softcopy Presentation State')
+    } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === GrayscaleSoftcopyPresentationState) {  
+      console.debug('TODO: Loading Grayscale Softcopy Presentation State')
+    } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === PseudocolorSoftcopyPresentationState) {
+      console.debug('TODO: Loading Pseudocolor Softcopy Presentation State')
     }
   }
 
