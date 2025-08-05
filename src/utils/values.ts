@@ -1,3 +1,4 @@
+// skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
 
 function parseName (value: dmv.metadata.PersonName|null|undefined): string {

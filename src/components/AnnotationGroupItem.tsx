@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import {
   Badge,
   Button,
@@ -15,10 +15,13 @@ import {
 } from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
+// skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
+// skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
 
 import Description from './Description'
+import ValidationWarning from './ValidationWarning'
 
 // Helper function components
 function AnnotationGroupControls ({
@@ -55,35 +58,58 @@ function AnnotationGroupControls ({
 }
 
 function AnnotationGroupBadgeDescription ({
+  annotationGroup,
+  onClick,
   isBadgeVisible,
   color,
   label,
   attributes
 }: {
+  annotationGroup: dmv.annotation.AnnotationGroup
+  onClick: () => void
   isBadgeVisible: boolean
   color: string
   label: string
   attributes: Array<{ name: string, value: string }>
 }): React.ReactElement {
+  const handleKeyDown = useCallback((event: React.KeyboardEvent): void => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onClick()
+    }
+  }, [onClick])
+
   return (
-    <Badge
-      offset={[-20, 20]}
-      count={' '}
-      style={{
-        borderStyle: 'solid',
-        borderWidth: '1px',
-        borderColor: 'gray',
-        visibility: isBadgeVisible ? 'visible' : 'hidden',
-        backgroundImage: `linear-gradient(to bottom, ${color}, ${color}`
-      }}
+    <div
+      onClick={onClick}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role='button'
+      aria-label={`Annotation group ${label}`}
     >
-      <Description
-        header={label}
-        attributes={attributes}
-        selectable
-        hasLongValues
-      />
-    </Badge>
+      <Badge
+        offset={[-20, 20]}
+        count={' '}
+        style={{
+          borderStyle: 'solid',
+          borderWidth: '1px',
+          borderColor: 'gray',
+          visibility: isBadgeVisible ? 'visible' : 'hidden',
+          backgroundImage: `linear-gradient(to bottom, ${color}, ${color}`
+        }}
+      >
+        <ValidationWarning
+          annotationGroup={annotationGroup}
+          style={{ padding: '0.3rem' }}
+        />
+        <Description
+          header={label}
+          attributes={attributes}
+          selectable
+          hasLongValues
+        />
+      </Badge>
+    </div>
   )
 }
 
@@ -166,7 +192,7 @@ AnnotationGroupItemState
   }
 
   handleOpacityChange (value: number | null): void {
-    if (value != null) {
+    if (value !== null && value !== undefined) {
       this.props.onStyleChange({
         uid: this.props.annotationGroup.uid,
         styleOptions: {
@@ -184,7 +210,7 @@ AnnotationGroupItemState
   }
 
   handleColorRChange (value: number | number[] | null): void {
-    if (value != null && this.state.currentStyle.color !== undefined) {
+    if (value !== null && value !== undefined && this.state.currentStyle.color !== undefined) {
       const color = [
         Array.isArray(value) ? value[0] : value,
         this.state.currentStyle.color[1],
@@ -205,7 +231,7 @@ AnnotationGroupItemState
   }
 
   handleColorGChange (value: number | number[] | null): void {
-    if (value != null && this.state.currentStyle.color !== undefined) {
+    if (value !== null && value !== undefined && this.state.currentStyle.color !== undefined) {
       const color = [
         this.state.currentStyle.color[0],
         Array.isArray(value) ? value[0] : value,
@@ -226,7 +252,7 @@ AnnotationGroupItemState
   }
 
   handleColorBChange (value: number | number[] | null): void {
-    if (value != null && this.state.currentStyle.color !== undefined) {
+    if (value !== null && value !== undefined && this.state.currentStyle.color !== undefined) {
       const color = [
         this.state.currentStyle.color[0],
         this.state.currentStyle.color[1],
@@ -254,7 +280,7 @@ AnnotationGroupItemState
       return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)
     }
 
-    if (this.state.currentStyle.color != null) {
+    if (this.state.currentStyle.color !== null && this.state.currentStyle.color !== undefined) {
       return rgb2hex(this.state.currentStyle.color)
     } else {
       return 'white'
@@ -262,7 +288,7 @@ AnnotationGroupItemState
   }
 
   handleLowerLimitChange (value: number | null): void {
-    if (value != null && this.state.currentStyle.limitValues !== undefined) {
+    if (value !== null && value !== undefined && this.state.currentStyle.limitValues !== undefined) {
       this.setState((state) => {
         if (state.currentStyle.limitValues !== undefined) {
           return {
@@ -292,7 +318,7 @@ AnnotationGroupItemState
   }
 
   handleUpperLimitChange (value: number | null): void {
-    if (value != null && this.state.currentStyle.limitValues !== undefined) {
+    if (value !== null && value !== undefined && this.state.currentStyle.limitValues !== undefined) {
       this.setState((state) => {
         if (state.currentStyle.limitValues !== undefined) {
           return {
@@ -340,7 +366,7 @@ AnnotationGroupItemState
   }
 
   handleMeasurementSelection (value?: string, option?: any): void {
-    if (value != null && option.children != null) {
+    if (value !== null && value !== undefined && option?.children !== null && option?.children !== undefined) {
       const codeComponents = value.split('-')
       const measurement = new dcmjs.sr.coding.CodedConcept({
         value: codeComponents[1],
@@ -403,23 +429,22 @@ AnnotationGroupItemState
     ]
 
     const measurementsSequence = item.MeasurementsSequence ?? []
-    const measurementOptions = measurementsSequence.map(
-      (measurementItem) => {
-        const name = measurementItem.ConceptNameCodeSequence[0]
-        const key = `${name.CodingSchemeDesignator}-${name.CodeValue}`
-        return (
-          <Select.Option
-            key={key}
-            value={key}
-            dropdownMatchSelectWidth={false}
-            size='small'
-            disabled={!this.props.isVisible}
-          >
-            {name.CodeMeaning}
-          </Select.Option>
-        )
-      }
-    )
+    const createMeasurementOption = (measurementItem: { ConceptNameCodeSequence: Array<{ CodingSchemeDesignator: string, CodeValue: string, CodeMeaning: string }> }): React.ReactElement => {
+      const name = measurementItem.ConceptNameCodeSequence[0]
+      const key = `${name.CodingSchemeDesignator}-${name.CodeValue}`
+      return (
+        <Select.Option
+          key={key}
+          value={key}
+          dropdownMatchSelectWidth={false}
+          size='small'
+          disabled={!this.props.isVisible}
+        >
+          {name.CodeMeaning}
+        </Select.Option>
+      )
+    }
+    const measurementOptions = measurementsSequence.map(createMeasurementOption)
     measurementOptions.push(
       <Select.Option
         key='-'
@@ -428,12 +453,12 @@ AnnotationGroupItemState
         size='small'
         disabled={!this.props.isVisible}
       >
-        <></>
+        {null}
       </Select.Option>
     )
 
     let colorSettings
-    if (this.state.currentStyle.color != null) {
+    if (this.state.currentStyle.color !== null && this.state.currentStyle.color !== undefined) {
       colorSettings = (
         <>
           <Divider plain>Color</Divider>
@@ -516,7 +541,7 @@ AnnotationGroupItemState
     let windowSettings
     let explorationSettings
     if (measurementsSequence.length > 0) {
-      if (this.state.currentStyle.limitValues != null) {
+      if (this.state.currentStyle.limitValues !== null && this.state.currentStyle.limitValues !== undefined) {
         // TODO: need to get default min/max values from viewer first
         const minValue = 0
         const maxValue = 1000
@@ -615,7 +640,7 @@ AnnotationGroupItemState
 
     const color = this.getCurrentColor()
     const isBadgeVisible =
-      this.state.isVisible && this.state.currentStyle.measurement == null
+      this.state.isVisible && this.state.currentStyle.measurement === null
     const {
       annotationGroup,
       defaultStyle,
@@ -629,7 +654,6 @@ AnnotationGroupItemState
       <Menu.Item
         style={{ height: '100%', paddingLeft: '3px' }}
         key={this.props.annotationGroup.uid}
-        onClick={this.handleAnnotationGroupClick}
         {...otherProps}
       >
         <Space align='start'>
@@ -641,6 +665,8 @@ AnnotationGroupItemState
             />
           </div>
           <AnnotationGroupBadgeDescription
+            onClick={this.handleAnnotationGroupClick}
+            annotationGroup={this.props.annotationGroup}
             isBadgeVisible={isBadgeVisible}
             color={color}
             label={this.props.annotationGroup.label}

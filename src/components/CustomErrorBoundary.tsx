@@ -1,5 +1,6 @@
 import { Modal, Collapse } from 'antd'
 import { ErrorBoundary, FallbackProps } from 'react-error-boundary'
+import { useCallback } from 'react'
 
 /**
  * React's error boundary component to catch errors during rendering phase
@@ -17,7 +18,7 @@ const CustomErrorBoundary = ({
 }): JSX.Element => {
   const { Panel } = Collapse
   const ErrorFallback = (error: FallbackProps): JSX.Element => {
-    const openModal = (): void => {
+    const openModal = useCallback((): void => {
       Modal.error({
         title: (
           <>
@@ -37,7 +38,18 @@ const CustomErrorBoundary = ({
         ),
         onOk (): void {}
       })
-    }
+    }, [error.error.message, error.error.stack])
+
+    const handleClick = useCallback((): void => {
+      openModal()
+    }, [openModal])
+
+    const handleKeyDown = useCallback((event: React.KeyboardEvent): void => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        openModal()
+      }
+    }, [openModal])
 
     return (
       <div>
@@ -45,9 +57,11 @@ const CustomErrorBoundary = ({
           There was an error in loading this page.{' '}
           <span
             style={{ cursor: 'pointer', color: '#0077FF' }}
-            onClick={() => {
-              openModal()
-            }}
+            onClick={handleClick}
+            onKeyDown={handleKeyDown}
+            tabIndex={0}
+            role='button'
+            aria-label='Show error details'
           >
             Click for error details
           </span>{' '}

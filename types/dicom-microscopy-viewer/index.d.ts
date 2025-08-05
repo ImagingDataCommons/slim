@@ -1,7 +1,9 @@
 declare module 'dicom-microscopy-viewer' {
 
-  import * as dwc from 'dicomweb-client'
-  import * as dcmjs from 'dcmjs'
+  // skipcq: JS-C1003
+import * as dwc from 'dicomweb-client'
+// skipcq: JS-C1003
+import * as dcmjs from 'dcmjs'
   import { CustomError } from '../../src/utils/CustomError'
 
   declare namespace viewer {

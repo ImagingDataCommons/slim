@@ -1,5 +1,8 @@
+// skipcq: JS-C1003
 import * as dwc from 'dicomweb-client'
+// skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
+// skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
 
 import { ServerSettings, DicomWebManagerErrorHandler } from './AppConfig'

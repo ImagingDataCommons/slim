@@ -20,7 +20,9 @@ import {
   SettingOutlined
 } from '@ant-design/icons'
 import Description from './Description'
+// skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
+// skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
 
 import { SpecimenPreparationStepItems } from '../data/specimens'

@@ -1,10 +1,12 @@
 import React from 'react'
 import { FaSpinner } from 'react-icons/fa'
+// skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
 import { Menu } from 'antd'
 
 import DicomWebManager from '../DicomWebManager'
 import Description from './Description'
+import ValidationWarning from './ValidationWarning'
 import { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
 import NotificationMiddleware, {
@@ -44,7 +46,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
     this.setState({ isLoading: true })
     if (this.props.slide.overviewImages.length > 0) {
       const metadata = this.props.slide.overviewImages[0]
-      if (this.overviewViewportRef.current !== null) {
+      if (this.overviewViewportRef.current !== null && this.overviewViewportRef.current !== undefined) {
         this.overviewViewportRef.current.innerHTML = ''
         console.info(
           'instantiate viewer for OVERVIEW image of slide ' +
@@ -80,7 +82,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
 
     const attributes = []
     const description = this.props.slide.description
-    if (description !== null && description !== '') {
+    if (description !== null && description !== undefined && description !== '') {
       attributes.push({
         name: 'Description',
         value: description
@@ -105,26 +107,29 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
           attributes={attributes}
           selectable
         >
-          {this.props.slide.overviewImages.length > 0
-            ? (
-              <div style={{ height: '100px' }} ref={this.overviewViewportRef} />
-              )
-            : (
-              <div style={{
-                height: '100px',
-                textAlign: 'center',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.5rem',
-                fontWeight: 300,
-                color: '#8F9BA8',
-                letterSpacing: '0.1em'
-              }}
-              >
-                SM
-              </div>
-              )}
+          <div style={{ position: 'relative', height: '100px' }}>
+            {this.props.slide.overviewImages.length > 0
+              ? (
+                <div ref={this.overviewViewportRef} style={{ height: '100%' }} />
+                )
+              : (
+                <div style={{
+                  height: '100%',
+                  textAlign: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.5rem',
+                  fontWeight: 300,
+                  color: '#8F9BA8',
+                  letterSpacing: '0.1em'
+                }}
+                >
+                  SM
+                </div>
+                )}
+            <ValidationWarning slide={this.props.slide} />
+          </div>
         </Description>
       </Menu.Item>
     )

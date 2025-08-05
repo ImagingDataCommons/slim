@@ -1,5 +1,6 @@
 import { Routes, Route, useLocation, useParams } from 'react-router-dom'
 import { Layout, Menu } from 'antd'
+// skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
 import { useEffect, useState } from 'react'
 
@@ -133,7 +134,7 @@ function ParametrizedSlideViewer ({
 
     if (selectedSlide === null || selectedSlide === undefined) {
       void findReferencedSlide({ clients, studyInstanceUID, seriesInstanceUID }).then((result: ReferencedSlideResult | null) => {
-        if (result !== null) {
+        if (result !== null && result !== undefined) {
           setSelectedSlide(result.slide)
           setDerivedDataset(result.metadata)
         }
@@ -141,19 +142,17 @@ function ParametrizedSlideViewer ({
         console.error('Error finding referenced slide:', error)
       })
     }
-  }, [slides, clients, selectedSlide, studyInstanceUID, seriesInstanceUID])
+  }, [slides, clients, studyInstanceUID, seriesInstanceUID, selectedSlide])
 
   const searchParams = new URLSearchParams(location.search)
-  let presentationStateUID: string | null | undefined
+  let presentationStateUID: string | undefined
   if (!searchParams.has('access_token')) {
-    presentationStateUID = searchParams.get('state')
-    if (presentationStateUID === null) {
-      presentationStateUID = undefined
-    }
+    const stateParam = searchParams.get('state')
+    presentationStateUID = stateParam !== null ? stateParam : undefined
   }
 
   let viewer = null
-  if (selectedSlide != null) {
+  if (selectedSlide != null && selectedSlide !== undefined) {
     viewer = (
       <SlideViewer
         clients={clients}
@@ -166,7 +165,7 @@ function ParametrizedSlideViewer ({
         enableAnnotationTools={enableAnnotationTools}
         app={app}
         user={user}
-        derivedDataset={derivedDataset}
+        derivedDataset={derivedDataset ?? undefined}
       />
     )
   }

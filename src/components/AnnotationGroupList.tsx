@@ -1,6 +1,8 @@
 import React from 'react'
 import { Menu, Switch } from 'antd'
+// skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
+// skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
 
 import AnnotationGroupItem from './AnnotationGroupItem'

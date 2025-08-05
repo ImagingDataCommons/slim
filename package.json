@@ -9,7 +9,7 @@
     "build:firebase": "REACT_APP_CONFIG=gcp PUBLIC_URL=/ craco build",
     "lint": "ts-standard --env jest 'src/**/*.{tsx,ts}'",
     "fmt": "ts-standard --env jest 'src/**/*.{tsx,ts}' --fix",
-    "test": "ts-standard --env jest 'src/**/*.{tsx,ts}' && craco test --setupFiles ./src/setupTests.tsx --watchAll=false",
+    "test": "ts-standard --env jest 'src/**/*.{tsx,ts}' && craco test --watchAll=false",
     "predeploy": "REACT_APP_CONFIG=demo PUBLIC_URL='https://imagingdatacommons.github.io/slim/' craco build",
     "deploy": "gh-pages -d build",
     "clean": "rm -rf ./build ./node_modules"
@@ -56,7 +56,7 @@
     "craco-less": "^2.0.0",
     "dcmjs": "^0.35.0",
     "detect-browser": "^5.2.1",
-    "dicom-microscopy-viewer": "^0.48.4",
+    "dicom-microscopy-viewer": "^0.48.5",
     "dicomweb-client": "^0.10.3",
     "gh-pages": "^5.0.0",
     "oidc-client": "^1.11.5",

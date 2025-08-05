@@ -1,5 +1,7 @@
 import React from 'react'
+// skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
+// skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
 import { Divider } from 'antd'
 import { v4 as generateUUID } from 'uuid'

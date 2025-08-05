@@ -1,3 +1,4 @@
+// skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
 
 /**

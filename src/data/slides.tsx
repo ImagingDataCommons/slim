@@ -1,3 +1,4 @@
+// skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
 import { CustomError, errorTypes } from '../utils/CustomError'
 import NotificationMiddleware, {
@@ -22,7 +23,7 @@ const areSameAcquisition = (
   image: dmv.metadata.VLWholeSlideMicroscopyImage,
   refImage: dmv.metadata.VLWholeSlideMicroscopyImage
 ): boolean => {
-  if (image.AcquisitionUID != null) {
+  if (image.AcquisitionUID !== null && image.AcquisitionUID !== undefined) {
     return image.AcquisitionUID === refImage.AcquisitionUID
   }
   return false
@@ -100,7 +101,7 @@ class Slide {
       image.OpticalPathSequence.forEach(item => {
         opticalPathIdentifiers.add(item.OpticalPathIdentifier)
       })
-      if (image.AcquisitionUID != null) {
+      if (image.AcquisitionUID !== null && image.AcquisitionUID !== undefined) {
         acquisitionUIDs.add(image.AcquisitionUID)
       }
       if (hasImageFlavor(image, ImageFlavors.VOLUME) || hasImageFlavor(image, ImageFlavors.THUMBNAIL)) {

@@ -112,7 +112,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
           index++
           return ds
         })
-        .filter((set): set is DisplaySet => set !== null)
+        .filter((set): set is DisplaySet => set !== null && set !== undefined)
     }
 
     if (study !== undefined && study.series?.length > 0) {
