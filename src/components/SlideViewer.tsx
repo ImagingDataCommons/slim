@@ -636,7 +636,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       console.debug('TODO: Loading Advanced Blending Presentation State')
     } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === ColorSoftcopyPresentationState) {
       console.debug('TODO: Loading Color Softcopy Presentation State')
-    } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === GrayscaleSoftcopyPresentationState) {  
+    } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === GrayscaleSoftcopyPresentationState) {
       console.debug('TODO: Loading Grayscale Softcopy Presentation State')
     } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === PseudocolorSoftcopyPresentationState) {
       console.debug('TODO: Loading Pseudocolor Softcopy Presentation State')
@@ -2698,7 +2698,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   handleAnnotationGroupSelection = (value: string): void => {
-    this.setState({ selectedSeriesInstanceUID: value })
+    // Hide all currently visible annotation groups when selection changes
+    this.state.visibleAnnotationGroupUIDs.forEach(annotationGroupUID => {
+      this.volumeViewer.hideAnnotationGroup(annotationGroupUID)
+    })
+
+    // Reset the visible annotation groups state
+    this.setState({
+      selectedSeriesInstanceUID: value,
+      visibleAnnotationGroupUIDs: new Set()
+    })
   }
 
   getSeriesDescription = (seriesInstanceUID: string): string => {
