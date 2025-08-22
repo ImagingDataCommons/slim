@@ -14,6 +14,7 @@ import * as dcmjs from 'dcmjs'
       metadata: metadata.VLWholeSlideMicroscopyImage[]
       debug?: boolean
       preload?: boolean
+      skipThumbnails?: boolean
       controls: string[]
       annotationOptions?: object
       errorInterceptor?: (error: CustomError) => void

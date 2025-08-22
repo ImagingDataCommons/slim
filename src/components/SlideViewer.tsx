@@ -1747,10 +1747,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * @param value - Code value of the coded finding that got selected
    * @param option - Option that got selected
    */
-  handleAnnotationFindingSelection (
+  handleAnnotationFindingSelection = (
     value: string,
     _option: { label: React.ReactNode }
-  ): void {
+  ): void => {
     this.findingOptions.forEach(finding => {
       if (finding.CodeValue === value) {
         console.info(`selected finding "${finding.CodeMeaning}"`)

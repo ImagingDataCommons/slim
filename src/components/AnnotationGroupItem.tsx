@@ -648,6 +648,7 @@ AnnotationGroupItemState
       metadata,
       onVisibilityChange,
       onStyleChange,
+      onAnnotationGroupClick,
       ...otherProps
     } = this.props
     return (
