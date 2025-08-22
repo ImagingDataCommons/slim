@@ -32,6 +32,7 @@ export const constructViewers = ({ clients, slide, preload }: {
       clientMapping: clients,
       metadata: slide.volumeImages,
       controls: ['overview', 'position'],
+      skipThumbnails: true,
       preload,
       errorInterceptor: (error: CustomError) => {
         NotificationMiddleware.onError(
