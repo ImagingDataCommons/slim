@@ -2698,16 +2698,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   handleAnnotationGroupSelection = (value: string): void => {
-    // Hide all currently visible annotation groups when selection changes
-    this.state.visibleAnnotationGroupUIDs.forEach(annotationGroupUID => {
-      this.volumeViewer.hideAnnotationGroup(annotationGroupUID)
-    })
-
-    // Reset the visible annotation groups state
-    this.setState({
-      selectedSeriesInstanceUID: value,
-      visibleAnnotationGroupUIDs: new Set()
-    })
+    this.setState({ selectedSeriesInstanceUID: value })
   }
 
   getSeriesDescription = (seriesInstanceUID: string): string => {
