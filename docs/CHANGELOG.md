@@ -1,3 +1,10 @@
+## [0.42.2](https://github.com/ImagingDataCommons/slim/compare/v0.42.1...v0.42.2) (2025-08-22)
+
+
+### Bug Fixes
+
+* ui adjustments ([#325](https://github.com/ImagingDataCommons/slim/issues/325)) ([d27b49f](https://github.com/ImagingDataCommons/slim/commit/d27b49f8a8ca38b833466a1460382c98bc0c8293))
+
 ## [0.42.1](https://github.com/ImagingDataCommons/slim/compare/v0.42.0...v0.42.1) (2025-07-23)
 
 
