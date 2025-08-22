@@ -297,17 +297,18 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   handleServerSelection ({ url }: { url: string }): void {
-    console.info('select DICOMweb server: ', url)
-    if (url === '' || window.localStorage.getItem('slim_server_selection_mode') === 'default') {
+    const trimmedUrl = url.trim()
+    console.info('select DICOMweb server: ', trimmedUrl)
+    if (trimmedUrl === '' || window.localStorage.getItem('slim_server_selection_mode') === 'default') {
       this.setState({ clients: this.state.defaultClients })
       return
     }
-    window.localStorage.setItem('slim_selected_server', url)
+    window.localStorage.setItem('slim_selected_server', trimmedUrl)
     const tmpClient = new DicomWebManager({
       baseUri: '',
       settings: [{
         id: 'tmp',
-        url,
+        url: trimmedUrl,
         read: true,
         write: false
       }],

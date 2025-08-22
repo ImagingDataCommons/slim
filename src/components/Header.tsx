@@ -74,7 +74,7 @@ interface HeaderState {
 class Header extends React.Component<HeaderProps, HeaderState> {
   constructor (props: HeaderProps) {
     super(props)
-    const cachedServerUrl = window.localStorage.getItem('slim_selected_server')
+    const cachedServerUrl = window.localStorage.getItem('slim_selected_server')?.trim()
     const cachedMode = window.localStorage.getItem('slim_server_selection_mode') as 'default' | 'custom' | null
 
     this.state = {
@@ -132,8 +132,12 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     if (url == null || url === '') {
       return false
     }
+    const trimmedUrl = url.trim()
+    if (trimmedUrl === '') {
+      return false
+    }
     try {
-      const urlObj = new URL(url)
+      const urlObj = new URL(trimmedUrl)
       return urlObj.protocol.startsWith('http') && urlObj.pathname.length > 0
     } catch (TypeError) {
       return false
@@ -318,7 +322,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
   handleServerSelectionInput = (
     event: React.FormEvent<HTMLInputElement>
   ): void => {
-    const value = event.currentTarget.value
+    const value = event.currentTarget.value.trim()
     this.setState({
       selectedServerUrl: value,
       isServerSelectionDisabled: !this.isValidServerUrl(value)
@@ -326,7 +330,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
   }
 
   handleServerSelectionCancellation = (): void => {
-    const cachedServerUrl = window.localStorage.getItem('slim_selected_server')
+    const cachedServerUrl = window.localStorage.getItem('slim_selected_server')?.trim()
     this.setState({
       serverSelectionMode: cachedServerUrl !== null && cachedServerUrl !== undefined && cachedServerUrl !== '' ? 'custom' : 'default',
       selectedServerUrl: cachedServerUrl ?? undefined,
@@ -352,7 +356,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       return
     }
 
-    const url = this.state.selectedServerUrl
+    const url = this.state.selectedServerUrl?.trim()
     let closeModal = false
     if (url != null && url !== '') {
       if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -450,7 +454,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     const logoUrl = process.env.PUBLIC_URL + '/logo.svg'
 
     const selectedServerUrl = this.state.serverSelectionMode === 'custom'
-      ? this.state.selectedServerUrl
+      ? this.state.selectedServerUrl?.trim()
       : this.props.clients?.default?.baseURL ?? this.props.defaultClients?.default?.baseURL
 
     const urlInfo = selectedServerUrl != null && selectedServerUrl !== ''
@@ -519,7 +523,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           </Radio.Group>
 
           {this.state.serverSelectionMode === 'custom' && (
-            <Tooltip title={this.state.selectedServerUrl}>
+            <Tooltip title={this.state.selectedServerUrl?.trim()}>
               <Input
                 placeholder='Enter base URL of DICOMweb Study Service'
                 value={this.state.selectedServerUrl}
