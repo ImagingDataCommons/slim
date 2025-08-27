@@ -927,6 +927,26 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             if (segmentations.length > 0) {
               try {
                 this.volumeViewer.addSegments(segmentations)
+                
+                /** Apply default styles to newly added segments to ensure color consistency */
+                const segments = this.volumeViewer.getAllSegments()
+                segments.forEach((segment, index) => {
+                  try {
+                    const defaultStyle = this.volumeViewer.getSegmentStyle(segment.uid)
+                    if (defaultStyle && typeof defaultStyle.opacity === 'number') {
+                      const segmentColor = generateSegmentColor(index)
+                      this.volumeViewer.setSegmentStyle(segment.uid, {
+                        opacity: defaultStyle.opacity,
+                        paletteColorLookupTable: createSegmentPaletteColorLookupTable(
+                          segment.uid,
+                          segmentColor
+                        )
+                      })
+                    }
+                  } catch (error) {
+                    console.warn(`Failed to apply default style for segment ${segment.uid}:`, error)
+                  }
+                })
               } catch (error: unknown) {
                 // eslint-disable-next-line @typescript-eslint/no-floating-promises
                 NotificationMiddleware.onError(

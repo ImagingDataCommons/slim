@@ -284,7 +284,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
       >
         <Space align='start'>
           <div style={{ paddingLeft: '14px' }}>
-            <Space direction='vertical' align='end'>
+            <Space direction='vertical' align='center'>
               <Switch
                 size='small'
                 onChange={this.handleVisibilityChange}
@@ -304,6 +304,20 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
                   icon={<SettingOutlined />}
                 />
               </Popover>
+              {/* Color indicator */}
+              <div
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  backgroundColor: rgbToHex(this.state.currentStyle.color),
+                  border: '1px solid #d9d9d9',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                title={`Segment color: ${rgbToHex(this.state.currentStyle.color)}`}
+              />
             </Space>
           </div>
           <div style={{ flex: 1 }}>
@@ -312,18 +326,6 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
               attributes={attributes}
               selectable
               hasLongValues
-            />
-            {/* Color indicator */}
-            <div
-              style={{
-                width: '16px',
-                height: '16px',
-                backgroundColor: rgbToHex(this.state.currentStyle.color),
-                border: '1px solid #d9d9d9',
-                borderRadius: '2px',
-                marginTop: '8px'
-              }}
-              title={`Segment color: ${rgbToHex(this.state.currentStyle.color)}`}
             />
           </div>
         </Space>
