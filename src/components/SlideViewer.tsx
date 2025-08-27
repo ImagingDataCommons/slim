@@ -779,7 +779,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             'Annotations could not be loaded'
           )
         )
-        reject(error instanceof Error ? error : new Error(String(error)))
+        reject(error instanceof Error ? error : new Error(String(error as unknown)))
       })
     })
   }
@@ -883,7 +883,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             'Search for Microscopy Bulk Simple Annotations instances failed.'
           )
         )
-        reject(error instanceof Error ? error : new Error(String(error)))
+        reject(error instanceof Error ? error : new Error(String(error as unknown)))
       })
     })
   }
@@ -927,13 +927,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             if (segmentations.length > 0) {
               try {
                 this.volumeViewer.addSegments(segmentations)
-                
+
                 /** Apply default styles to newly added segments to ensure color consistency */
                 const segments = this.volumeViewer.getAllSegments()
                 segments.forEach((segment, index) => {
                   try {
                     const defaultStyle = this.volumeViewer.getSegmentStyle(segment.uid)
-                    if (defaultStyle && typeof defaultStyle.opacity === 'number') {
+                    if (defaultStyle?.opacity !== undefined && typeof defaultStyle.opacity === 'number') {
                       const segmentColor = generateSegmentColor(index)
                       this.volumeViewer.setSegmentStyle(segment.uid, {
                         opacity: defaultStyle.opacity,
@@ -944,7 +944,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                       })
                     }
                   } catch (error) {
-                    console.warn(`Failed to apply default style for segment ${segment.uid}:`, error)
+                    console.warn('Failed to apply default style for segment ' + String(segment.uid) + ':', String(error))
                   }
                 })
               } catch (error: unknown) {
@@ -990,7 +990,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             'Search for Segmentation instances failed.'
           )
         )
-        reject(error instanceof Error ? error : new Error(String(error)))
+        reject(error instanceof Error ? error : new Error(String(error as unknown)))
       })
     })
   }
@@ -1080,7 +1080,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             'Search for Parametric Map instances failed.'
           )
         )
-        reject(error instanceof Error ? error : new Error(String(error)))
+        reject(error instanceof Error ? error : new Error(String(error as unknown)))
       })
     })
   }
@@ -3073,7 +3073,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (segments.length === 0 || this.volumeViewer === null || this.volumeViewer === undefined) {
       return undefined
     }
-    
+
     if (segments.length > 0) {
       const defaultSegmentStyles: {
         [segmentUID: string]: {
@@ -3129,7 +3129,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           try {
             const currentStyle = this.volumeViewer.getSegmentStyle(segment.uid)
             /** Only set style if it's not already set or if it's different */
-            if (!currentStyle || currentStyle.opacity !== defaultStyle.opacity) {
+            if (currentStyle?.opacity === undefined || currentStyle.opacity !== defaultStyle.opacity) {
               this.volumeViewer.setSegmentStyle(segment.uid, {
                 opacity: defaultStyle.opacity,
                 paletteColorLookupTable: createSegmentPaletteColorLookupTable(

@@ -3,6 +3,13 @@
  */
 
 /**
+ * Type guard to check if a value is defined and not null
+ */
+const isDefined = <T>(value: T | undefined | null): value is T => {
+  return value !== undefined && value !== null
+}
+
+/**
  * Generate a distinct color for a segment based on its index
  * Uses a predefined palette of distinct colors that work well together
  */
@@ -109,7 +116,7 @@ export const extractSegmentColorFromMetadata = (
         (seg: Record<string, unknown>) => seg.SegmentNumber === segmentNumber
       )
 
-      if (segment !== undefined && segment !== null && segment.RecommendedDisplayCIELabValue !== undefined && segment.RecommendedDisplayCIELabValue !== null && Array.isArray(segment.RecommendedDisplayCIELabValue)) {
+      if (isDefined(segment) && isDefined(segment.RecommendedDisplayCIELabValue) && Array.isArray(segment.RecommendedDisplayCIELabValue)) {
         /** Convert CIELab to RGB */
         /** This is a simplified conversion - in practice you might want a more accurate algorithm */
         const labValues = segment.RecommendedDisplayCIELabValue as number[]

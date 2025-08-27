@@ -60,8 +60,8 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
     this.handleColorGChange = this.handleColorGChange.bind(this)
     this.handleColorBChange = this.handleColorBChange.bind(this)
 
-            /** Initialize with default color if not provided */
-        const defaultColor = this.props.defaultStyle.color ?? [255, 255, 0] // Default yellow
+    /** Initialize with default color if not provided */
+    const defaultColor = this.props.defaultStyle.color ?? [255, 255, 0] // Default yellow
     this.state = {
       isVisible: this.props.isVisible,
       currentStyle: {
