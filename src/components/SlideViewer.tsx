@@ -2263,14 +2263,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }): void => {
     console.log(`change style of segment ${segmentUID}`)
 
-            /** If color is provided, create a palette color lookup table */
-        let paletteColorLookupTable
-        if (styleOptions.color !== undefined) {
-          paletteColorLookupTable = createSegmentPaletteColorLookupTable(
-            segmentUID,
-            styleOptions.color
-          )
-        }
+    /** If color is provided, create a palette color lookup table */
+    let paletteColorLookupTable
+    if (styleOptions.color !== undefined) {
+      paletteColorLookupTable = createSegmentPaletteColorLookupTable(
+        segmentUID,
+        styleOptions.color
+      )
+    }
 
     this.volumeViewer.setSegmentStyle(segmentUID, {
       opacity: styleOptions.opacity,
@@ -3049,6 +3049,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   private readonly getSegmentationMenu = (segments: dmv.segment.Segment[]): React.ReactNode => {
+    // Skip processing if no segments or if viewer is not ready
+    if (segments.length === 0 || this.volumeViewer === null || this.volumeViewer === undefined) {
+      return undefined
+    }
+    
     if (segments.length > 0) {
       const defaultSegmentStyles: {
         [segmentUID: string]: {
@@ -3100,15 +3105,19 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             color: segmentColor
           }
 
-          /** Apply the color to the segment in the viewer */
+          /** Apply the color to the segment in the viewer only if it hasn't been set yet */
           try {
-            this.volumeViewer.setSegmentStyle(segment.uid, {
-              opacity: defaultStyle.opacity,
-              paletteColorLookupTable: createSegmentPaletteColorLookupTable(
-                segment.uid,
-                segmentColor
-              )
-            })
+            const currentStyle = this.volumeViewer.getSegmentStyle(segment.uid)
+            /** Only set style if it's not already set or if it's different */
+            if (!currentStyle || currentStyle.opacity !== defaultStyle.opacity) {
+              this.volumeViewer.setSegmentStyle(segment.uid, {
+                opacity: defaultStyle.opacity,
+                paletteColorLookupTable: createSegmentPaletteColorLookupTable(
+                  segment.uid,
+                  segmentColor
+                )
+              })
+            }
           } catch (styleError) {
             console.warn(`Failed to set segment style for ${segment.uid}:`, styleError)
             /** Continue without applying the style - the segment will still be displayed */
