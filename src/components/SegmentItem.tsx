@@ -10,12 +10,14 @@ import {
   Row,
   Slider,
   Space,
-  Switch
+  Switch,
+  Divider
 } from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
 
 import Description from './Description'
+import { rgbToHex } from '../utils/segmentColors'
 
 interface SegmentItemProps {
   segment: dmv.segment.Segment
@@ -23,6 +25,7 @@ interface SegmentItemProps {
   metadata: dmv.metadata.Segmentation[]
   defaultStyle: {
     opacity: number
+    color?: number[]
   }
   onVisibilityChange: ({ segmentUID, isVisible }: {
     segmentUID: string
@@ -32,6 +35,7 @@ interface SegmentItemProps {
     segmentUID: string
     styleOptions: {
       opacity: number
+      color?: number[]
     }
   }) => void
 }
@@ -40,6 +44,7 @@ interface SegmentItemState {
   isVisible: boolean
   currentStyle: {
     opacity: number
+    color: number[]
   }
 }
 
@@ -51,9 +56,18 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
     super(props)
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
     this.handleOpacityChange = this.handleOpacityChange.bind(this)
+    this.handleColorRChange = this.handleColorRChange.bind(this)
+    this.handleColorGChange = this.handleColorGChange.bind(this)
+    this.handleColorBChange = this.handleColorBChange.bind(this)
+
+            /** Initialize with default color if not provided */
+        const defaultColor = this.props.defaultStyle.color ?? [255, 255, 0] // Default yellow
     this.state = {
       isVisible: this.props.isVisible,
-      currentStyle: { opacity: this.props.defaultStyle.opacity }
+      currentStyle: {
+        opacity: this.props.defaultStyle.opacity,
+        color: defaultColor
+      }
     }
   }
 
@@ -73,10 +87,53 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
       this.props.onStyleChange({
         segmentUID: this.props.segment.uid,
         styleOptions: {
-          opacity: value
+          opacity: value,
+          color: this.state.currentStyle.color
         }
       })
-      this.setState({ currentStyle: { opacity: value } })
+      this.setState({ currentStyle: { ...this.state.currentStyle, opacity: value } })
+    }
+  }
+
+  handleColorRChange (value: number | null): void {
+    if (value != null) {
+      const newColor = [value, this.state.currentStyle.color[1], this.state.currentStyle.color[2]]
+      this.props.onStyleChange({
+        segmentUID: this.props.segment.uid,
+        styleOptions: {
+          opacity: this.state.currentStyle.opacity,
+          color: newColor
+        }
+      })
+      this.setState({ currentStyle: { ...this.state.currentStyle, color: newColor } })
+    }
+  }
+
+  handleColorGChange (value: number | null): void {
+    if (value != null) {
+      const newColor = [this.state.currentStyle.color[0], value, this.state.currentStyle.color[2]]
+      this.props.onStyleChange({
+        segmentUID: this.props.segment.uid,
+        styleOptions: {
+          opacity: this.state.currentStyle.opacity,
+          color: newColor
+        }
+      })
+      this.setState({ currentStyle: { ...this.state.currentStyle, color: newColor } })
+    }
+  }
+
+  handleColorBChange (value: number | null): void {
+    if (value != null) {
+      const newColor = [this.state.currentStyle.color[0], this.state.currentStyle.color[1], value]
+      this.props.onStyleChange({
+        segmentUID: this.props.segment.uid,
+        styleOptions: {
+          opacity: this.state.currentStyle.opacity,
+          color: newColor
+        }
+      })
+      this.setState({ currentStyle: { ...this.state.currentStyle, color: newColor } })
     }
   }
 
@@ -98,6 +155,85 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
 
     const settings = (
       <div>
+        <Divider plain>Color</Divider>
+        <Row justify='center' align='middle' gutter={[8, 8]}>
+          <Col span={5}>
+            Red
+          </Col>
+          <Col span={14}>
+            <Slider
+              range={false}
+              min={0}
+              max={255}
+              step={1}
+              value={this.state.currentStyle.color[0]}
+              onChange={this.handleColorRChange}
+            />
+          </Col>
+          <Col span={5}>
+            <InputNumber
+              min={0}
+              max={255}
+              size='small'
+              style={{ width: '65px' }}
+              value={this.state.currentStyle.color[0]}
+              onChange={this.handleColorRChange}
+            />
+          </Col>
+        </Row>
+
+        <Row justify='center' align='middle' gutter={[8, 8]}>
+          <Col span={5}>
+            Green
+          </Col>
+          <Col span={14}>
+            <Slider
+              range={false}
+              min={0}
+              max={255}
+              step={1}
+              value={this.state.currentStyle.color[1]}
+              onChange={this.handleColorGChange}
+            />
+          </Col>
+          <Col span={5}>
+            <InputNumber
+              min={0}
+              max={255}
+              size='small'
+              style={{ width: '65px' }}
+              value={this.state.currentStyle.color[1]}
+              onChange={this.handleColorGChange}
+            />
+          </Col>
+        </Row>
+
+        <Row justify='center' align='middle' gutter={[8, 8]}>
+          <Col span={5}>
+            Blue
+          </Col>
+          <Col span={14}>
+            <Slider
+              range={false}
+              min={0}
+              max={255}
+              step={1}
+              value={this.state.currentStyle.color[2]}
+              onChange={this.handleColorBChange}
+            />
+          </Col>
+          <Col span={5}>
+            <InputNumber
+              min={0}
+              max={255}
+              size='small'
+              style={{ width: '65px' }}
+              value={this.state.currentStyle.color[2]}
+              onChange={this.handleColorBChange}
+            />
+          </Col>
+        </Row>
+        <Divider plain />
         <Row justify='center' align='middle'>
           <Col span={6}>
             Opacity
@@ -170,12 +306,26 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
               </Popover>
             </Space>
           </div>
-          <Description
-            header={this.props.segment.label}
-            attributes={attributes}
-            selectable
-            hasLongValues
-          />
+          <div style={{ flex: 1 }}>
+            <Description
+              header={this.props.segment.label}
+              attributes={attributes}
+              selectable
+              hasLongValues
+            />
+            {/* Color indicator */}
+            <div
+              style={{
+                width: '16px',
+                height: '16px',
+                backgroundColor: rgbToHex(this.state.currentStyle.color),
+                border: '1px solid #d9d9d9',
+                borderRadius: '2px',
+                marginTop: '8px'
+              }}
+              title={`Segment color: ${rgbToHex(this.state.currentStyle.color)}`}
+            />
+          </div>
         </Space>
       </Menu.Item>
     )

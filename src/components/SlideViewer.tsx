@@ -44,6 +44,7 @@ import {
   areROIsEqual,
   formatRoiStyle
 } from './SlideViewer/utils/roiUtils'
+import { getSegmentColor, createSegmentPaletteColorLookupTable, generateSegmentColor } from '../utils/segmentColors'
 import {
   constructViewers,
   implementsTID1500,
@@ -2257,10 +2258,24 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     segmentUID: string
     styleOptions: {
       opacity?: number
+      color?: number[]
     }
   }): void => {
     console.log(`change style of segment ${segmentUID}`)
-    this.volumeViewer.setSegmentStyle(segmentUID, styleOptions)
+
+            /** If color is provided, create a palette color lookup table */
+        let paletteColorLookupTable
+        if (styleOptions.color !== undefined) {
+          paletteColorLookupTable = createSegmentPaletteColorLookupTable(
+            segmentUID,
+            styleOptions.color
+          )
+        }
+
+    this.volumeViewer.setSegmentStyle(segmentUID, {
+      opacity: styleOptions.opacity,
+      paletteColorLookupTable
+    })
   }
 
   /**
@@ -3038,18 +3053,75 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const defaultSegmentStyles: {
         [segmentUID: string]: {
           opacity: number
+          color: number[]
         }
       } = {}
       const segmentMetadata: {
         [segmentUID: string]: dmv.metadata.Segmentation[]
       } = {}
-      segments.forEach(segment => {
-        defaultSegmentStyles[segment.uid] = this.volumeViewer.getSegmentStyle(
-          segment.uid
-        )
-        segmentMetadata[segment.uid] = this.volumeViewer.getSegmentMetadata(
-          segment.uid
-        )
+      segments.forEach((segment, index) => {
+        try {
+          /** Validate segment object */
+          if (segment === null || segment === undefined || segment.uid === undefined || segment.uid === '') {
+            console.warn(`Invalid segment at index ${index}:`, segment)
+            return
+          }
+
+          /** Check if volumeViewer methods are available */
+          if (this.volumeViewer === null || this.volumeViewer === undefined || typeof this.volumeViewer.getSegmentStyle !== 'function') {
+            console.warn('Volume viewer not properly initialized')
+            return
+          }
+
+          const defaultStyle = this.volumeViewer.getSegmentStyle(segment.uid)
+          segmentMetadata[segment.uid] = this.volumeViewer.getSegmentMetadata(
+            segment.uid
+          )
+
+          /** Validate defaultStyle */
+          if (defaultStyle === null || defaultStyle === undefined || typeof defaultStyle.opacity !== 'number') {
+            console.warn(`Invalid default style for segment ${segment.uid}:`, defaultStyle)
+            defaultSegmentStyles[segment.uid] = {
+              opacity: 1,
+              color: generateSegmentColor(index)
+            }
+            return
+          }
+
+          /** Get the best color for this segment (from DICOM metadata or generated) */
+          const segmentColor = getSegmentColor(
+            (segmentMetadata[segment.uid]?.[0] as unknown) as Record<string, unknown> ?? {},
+            segment.number ?? index + 1,
+            index
+          )
+
+          defaultSegmentStyles[segment.uid] = {
+            opacity: defaultStyle.opacity,
+            color: segmentColor
+          }
+
+          /** Apply the color to the segment in the viewer */
+          try {
+            this.volumeViewer.setSegmentStyle(segment.uid, {
+              opacity: defaultStyle.opacity,
+              paletteColorLookupTable: createSegmentPaletteColorLookupTable(
+                segment.uid,
+                segmentColor
+              )
+            })
+          } catch (styleError) {
+            console.warn(`Failed to set segment style for ${segment.uid}:`, styleError)
+            /** Continue without applying the style - the segment will still be displayed */
+          }
+        } catch (error) {
+          console.warn(`Failed to process segment ${segment.uid}:`, error)
+          /** Fallback to default color */
+          const segmentColor = generateSegmentColor(index)
+          defaultSegmentStyles[segment.uid] = {
+            opacity: 1,
+            color: segmentColor
+          }
+        }
       })
       return (
         <Menu.SubMenu key='segmentations' title='Segmentations'>
