@@ -4782,10 +4782,10 @@ dayjs@1.x:
   resolved "https://registry.yarnpkg.com/dayjs/-/dayjs-1.11.7.tgz#4b296922642f70999544d1144a2c25730fce63e2"
   integrity sha512-+Yw9U6YO5TQohxLcIkrXBeY73WP3ejHWVvx8XCk3gxvQDCTEmS48ZrSZCKciI7Bhl/uCMyxYtE9UqRILmFphkQ==
 
-dcmjs@^0.35.0:
-  version "0.35.0"
-  resolved "https://registry.yarnpkg.com/dcmjs/-/dcmjs-0.35.0.tgz#5169fe27a8473b6e8459dbef922333a314fed2b9"
-  integrity sha512-kKOX4y0XoSQsDx7xYh9HJLfAWizrvYNJPU/d+DGOehdGz1frvimBZDEL0iaCK46Lhy7amAmtv4g5hkjcxVF+kg==
+dcmjs@^0.41.0:
+  version "0.41.0"
+  resolved "https://registry.yarnpkg.com/dcmjs/-/dcmjs-0.41.0.tgz#4804099980ab769f8902a948ad330abdf3b577d2"
+  integrity sha512-kr46REomItFeWz+0ck4Wif4uS5VVDWVlwdh5GGaCtTYHWfNQmrcCSiQOkrShc7Dc5zP8vNKrHEdORlZXenlg3w==
   dependencies:
     "@babel/runtime-corejs3" "^7.22.5"
     adm-zip "^0.5.10"
@@ -4795,10 +4795,10 @@ dcmjs@^0.35.0:
     ndarray "^1.0.19"
     pako "^2.0.4"
 
-dcmjs@^0.41.0:
-  version "0.41.0"
-  resolved "https://registry.yarnpkg.com/dcmjs/-/dcmjs-0.41.0.tgz#4804099980ab769f8902a948ad330abdf3b577d2"
-  integrity sha512-kr46REomItFeWz+0ck4Wif4uS5VVDWVlwdh5GGaCtTYHWfNQmrcCSiQOkrShc7Dc5zP8vNKrHEdORlZXenlg3w==
+dcmjs@^0.44.1:
+  version "0.44.1"
+  resolved "https://registry.yarnpkg.com/dcmjs/-/dcmjs-0.44.1.tgz#bd60d263dd3e5fa1148bb328344fa2a3ae21be3d"
+  integrity sha512-gaYKFBSjSqKSrieDKN6NrtoeG5MHrZautBGNl6SMpalWmakEA/07w3qsFThDTVFzPt5tnWKjxOV8he8w5Ef27A==
   dependencies:
     "@babel/runtime-corejs3" "^7.22.5"
     adm-zip "^0.5.10"
