@@ -1,12 +1,12 @@
-import React from 'react'
-import { Layout } from 'antd'
+import React from "react";
+import { Layout } from "antd";
 
 interface SlideViewerContentProps {
-  toolbar: React.ReactNode
-  toolbarHeight: string
-  cursor: string
-  volumeViewportRef: React.RefObject<HTMLDivElement>
-  children: React.ReactNode
+  toolbar: React.ReactNode;
+  toolbarHeight: string;
+  cursor: string;
+  volumeViewportRef: React.RefObject<HTMLDivElement>;
+  children: React.ReactNode;
 }
 
 /**
@@ -17,24 +17,24 @@ const SlideViewerContent: React.FC<SlideViewerContentProps> = ({
   toolbarHeight,
   cursor,
   volumeViewportRef,
-  children
+  children,
 }) => {
   return (
-    <Layout.Content style={{ height: '100%' }}>
+    <Layout.Content style={{ height: "100%" }}>
       {toolbar}
 
       <div
         style={{
           height: `calc(100% - ${toolbarHeight})`,
-          overflow: 'hidden',
-          cursor
+          overflow: "hidden",
+          cursor,
         }}
         ref={volumeViewportRef}
       />
 
       {children}
     </Layout.Content>
-  )
-}
+  );
+};
 
-export default SlideViewerContent
+export default SlideViewerContent;
