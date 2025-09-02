@@ -6,6 +6,12 @@ RUN corepack enable
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
 COPY . .
+# Ensure CRA builds for /wsi
+ARG PUBLIC_URL=/wsi
+ENV PUBLIC_URL=${PUBLIC_URL}
+# If your index.html uses %REACT_APP_CONFIG% in the script tag, export it here too
+# ARG REACT_APP_CONFIG=midas-dev
+# ENV REACT_APP_CONFIG=${REACT_APP_CONFIG}
 RUN yarn build
 
 # Stage 2: runtime (still Node + serve, no nginx)
@@ -18,7 +24,7 @@ RUN npm i -g serve
 
 COPY --from=build /app/build ./build
 # NOTE: use a relative path; no leading slash
-COPY public/config/midas-dev.js /srv/slim/window.config.tmpl.js
+COPY public/config/midas-prod.js /srv/slim/window.config.tmpl.js
 
 COPY entrypoint.sh /usr/local/bin/slim-entrypoint.sh
 RUN chmod +x /usr/local/bin/slim-entrypoint.sh
