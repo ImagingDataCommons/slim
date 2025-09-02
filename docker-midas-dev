@@ -1,0 +1,27 @@
+# Stage 1: build (Node ≥ 20.8.1 to satisfy engines)
+FROM node:20-slim AS build
+WORKDIR /app
+# Corepack provides Yarn; you already have a yarn.lock
+RUN corepack enable
+COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile
+COPY . .
+RUN yarn build
+
+# Stage 2: runtime (still Node + serve, no nginx)
+FROM node:20-slim
+WORKDIR /srv/slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends gettext-base \
+  && rm -rf /var/lib/apt/lists/*
+RUN npm i -g serve
+
+COPY --from=build /app/build ./build
+# NOTE: use a relative path; no leading slash
+COPY public/config/midas-dev.js /srv/slim/window.config.tmpl.js
+
+COPY entrypoint.sh /usr/local/bin/slim-entrypoint.sh
+RUN chmod +x /usr/local/bin/slim-entrypoint.sh
+
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/slim-entrypoint.sh"]
