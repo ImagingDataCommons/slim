@@ -79,26 +79,30 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
   }
 
   handleColorChange (newColor: number[]): void {
-    this.props.onStyleChange({
-      segmentUID: this.props.segment.uid,
-      styleOptions: {
-        opacity: this.state.currentStyle.opacity,
-        color: newColor
-      }
+    this.setState(prevState => {
+      this.props.onStyleChange({
+        segmentUID: this.props.segment.uid,
+        styleOptions: {
+          opacity: prevState.currentStyle.opacity,
+          color: newColor
+        }
+      })
+      return { currentStyle: { ...prevState.currentStyle, color: newColor } }
     })
-    this.setState({ currentStyle: { ...this.state.currentStyle, color: newColor } })
   }
 
   handleOpacityChange (opacity: number | null): void {
     if (opacity != null) {
-      this.props.onStyleChange({
-        segmentUID: this.props.segment.uid,
-        styleOptions: {
-          opacity,
-          color: this.state.currentStyle.color
-        }
+      this.setState(prevState => {
+        this.props.onStyleChange({
+          segmentUID: this.props.segment.uid,
+          styleOptions: {
+            opacity,
+            color: prevState.currentStyle.color
+          }
+        })
+        return { currentStyle: { ...prevState.currentStyle, opacity } }
       })
-      this.setState({ currentStyle: { ...this.state.currentStyle, opacity } })
     }
   }
 
