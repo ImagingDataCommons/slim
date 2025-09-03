@@ -15,6 +15,10 @@ const ColorSlider: React.FC<ColorSliderProps> = ({ color, onChange }) => {
     }
   }, [color, onChange])
 
+  const createChangeHandler = useCallback((index: number) => {
+    return (value: number | null) => handleColorChange(index, value)
+  }, [handleColorChange])
+
   const colorLabels = ['Red', 'Green', 'Blue']
 
   return (
@@ -31,7 +35,7 @@ const ColorSlider: React.FC<ColorSliderProps> = ({ color, onChange }) => {
               max={255}
               step={1}
               value={color[index]}
-              onChange={(value) => handleColorChange(index, value)}
+              onChange={createChangeHandler(index)}
             />
           </Col>
           <Col span={5}>
@@ -41,7 +45,7 @@ const ColorSlider: React.FC<ColorSliderProps> = ({ color, onChange }) => {
               size='small'
               style={{ width: '65px' }}
               value={color[index]}
-              onChange={(value) => handleColorChange(index, value)}
+              onChange={createChangeHandler(index)}
             />
           </Col>
         </Row>

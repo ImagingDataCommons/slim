@@ -13,6 +13,7 @@ import {
   Space,
   Switch
 } from 'antd'
+import type { SelectProps } from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
 // skipcq: JS-C1003
@@ -311,13 +312,13 @@ AnnotationGroupItemState
     this.props.onAnnotationGroupClick(this.props.annotationGroup.uid)
   }
 
-  handleMeasurementSelection = (value?: string, option?: any): void => {
-    if (value !== null && value !== undefined && option?.children !== null && option?.children !== undefined) {
+  handleMeasurementSelection: SelectProps['onChange'] = (value, option) => {
+    if (value !== null && value !== undefined && option !== null && option !== undefined && Array.isArray(option) && option.length > 0 && option[0] !== null && option[0] !== undefined && option[0].children !== null && option[0].children !== undefined) {
       const codeComponents = value.split('-')
       const measurement = new dcmjs.sr.coding.CodedConcept({
         value: codeComponents[1],
         schemeDesignator: codeComponents[0],
-        meaning: option.children
+        meaning: Array.isArray(option[0].children) ? String(option[0].children[0]) : String(option[0].children)
       })
       this.props.onStyleChange({
         uid: this.props.annotationGroup.uid,

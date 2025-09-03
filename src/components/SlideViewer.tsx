@@ -261,7 +261,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * @returns {color.PaletteColorLookupTable} Palette color lookup table
    * @private
    */
-  createSegmentPaletteColorLookupTable = (segmentColor: number[]): dmv.color.PaletteColorLookupTable => {
+  private static readonly createSegmentPaletteColorLookupTable = (segmentColor: number[]): dmv.color.PaletteColorLookupTable => {
     /** Create a simple palette with the segment color
      * For binary segments, we typically have 2 values: background (0) and segment (1) */
     const paletteData = [
@@ -2302,7 +2302,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     /** If color is provided, create a palette color lookup table */
     let paletteColorLookupTable
     if (styleOptions.color !== undefined) {
-      paletteColorLookupTable = this.createSegmentPaletteColorLookupTable(styleOptions.color)
+      paletteColorLookupTable = SlideViewer.createSegmentPaletteColorLookupTable(styleOptions.color)
     }
 
     this.volumeViewer.setSegmentStyle(segmentUID, {
@@ -3152,7 +3152,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
         this.volumeViewer.setSegmentStyle(segment.uid, {
           opacity: defaultSegmentStyles[segment.uid].opacity,
-          paletteColorLookupTable: this.createSegmentPaletteColorLookupTable(defaultSegmentStyles[segment.uid].color)
+          paletteColorLookupTable: SlideViewer.createSegmentPaletteColorLookupTable(defaultSegmentStyles[segment.uid].color)
         })
       })
       return (
