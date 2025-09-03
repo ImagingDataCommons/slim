@@ -22,6 +22,8 @@ import * as dcmjs from 'dcmjs'
 
 import Description from './Description'
 import ValidationWarning from './ValidationWarning'
+import ColorSlider from './ColorSlider'
+import OpacitySlider from './OpacitySlider'
 
 // Helper function components
 function AnnotationGroupControls ({
@@ -167,9 +169,7 @@ AnnotationGroupItemState
     this.handleMeasurementSelection =
       this.handleMeasurementSelection.bind(this)
     this.handleOpacityChange = this.handleOpacityChange.bind(this)
-    this.handleColorRChange = this.handleColorRChange.bind(this)
-    this.handleColorGChange = this.handleColorGChange.bind(this)
-    this.handleColorBChange = this.handleColorBChange.bind(this)
+    this.handleColorChange = this.handleColorChange.bind(this)
     this.getCurrentColor = this.getCurrentColor.bind(this)
     this.state = {
       isVisible: this.props.isVisible,
@@ -191,83 +191,34 @@ AnnotationGroupItemState
     this.setState({ isVisible: checked })
   }
 
-  handleOpacityChange (value: number | null): void {
-    if (value !== null && value !== undefined) {
+  handleColorChange (color: number[]): void {
+    this.setState((state) => ({
+      currentStyle: {
+        color: color,
+        opacity: state.currentStyle.opacity,
+        limitValues: state.currentStyle.limitValues
+      }
+    }))
+    this.props.onStyleChange({
+      uid: this.props.annotationGroup.uid,
+      styleOptions: { color: color }
+    })
+  }
+
+  handleOpacityChange (opacity: number | null): void {
+    if (opacity != null) {
       this.props.onStyleChange({
         uid: this.props.annotationGroup.uid,
         styleOptions: {
-          opacity: value
+          opacity: opacity
         }
       })
       this.setState({
         currentStyle: {
-          opacity: value,
+          opacity: opacity,
           color: this.state.currentStyle.color,
           limitValues: this.state.currentStyle.limitValues
         }
-      })
-    }
-  }
-
-  handleColorRChange (value: number | number[] | null): void {
-    if (value !== null && value !== undefined && this.state.currentStyle.color !== undefined) {
-      const color = [
-        Array.isArray(value) ? value[0] : value,
-        this.state.currentStyle.color[1],
-        this.state.currentStyle.color[2]
-      ]
-      this.setState((state) => ({
-        currentStyle: {
-          color: color,
-          opacity: state.currentStyle.opacity,
-          limitValues: state.currentStyle.limitValues
-        }
-      }))
-      this.props.onStyleChange({
-        uid: this.props.annotationGroup.uid,
-        styleOptions: { color: color }
-      })
-    }
-  }
-
-  handleColorGChange (value: number | number[] | null): void {
-    if (value !== null && value !== undefined && this.state.currentStyle.color !== undefined) {
-      const color = [
-        this.state.currentStyle.color[0],
-        Array.isArray(value) ? value[0] : value,
-        this.state.currentStyle.color[2]
-      ]
-      this.setState((state) => ({
-        currentStyle: {
-          color: color,
-          opacity: state.currentStyle.opacity,
-          limitValues: state.currentStyle.limitValues
-        }
-      }))
-      this.props.onStyleChange({
-        uid: this.props.annotationGroup.uid,
-        styleOptions: { color: color }
-      })
-    }
-  }
-
-  handleColorBChange (value: number | number[] | null): void {
-    if (value !== null && value !== undefined && this.state.currentStyle.color !== undefined) {
-      const color = [
-        this.state.currentStyle.color[0],
-        this.state.currentStyle.color[1],
-        Array.isArray(value) ? value[0] : value
-      ]
-      this.setState((state) => ({
-        currentStyle: {
-          color: color,
-          opacity: state.currentStyle.opacity,
-          limitValues: state.currentStyle.limitValues
-        }
-      }))
-      this.props.onStyleChange({
-        uid: this.props.annotationGroup.uid,
-        styleOptions: { color: color }
       })
     }
   }
@@ -401,6 +352,9 @@ AnnotationGroupItemState
   }
 
   render (): React.ReactNode {
+    console.log('AnnotationGroupItem render - state.currentStyle:', this.state.currentStyle)
+    console.log('AnnotationGroupItem render - state.currentStyle.color:', this.state.currentStyle.color)
+    
     const index = this.props.metadata.AnnotationGroupSequence.findIndex(
       (item) => item.AnnotationGroupUID === this.props.annotationGroup.uid
     )
@@ -458,84 +412,20 @@ AnnotationGroupItemState
     )
 
     let colorSettings
-    if (this.state.currentStyle.color !== null && this.state.currentStyle.color !== undefined) {
+    if (this.state.currentStyle.color != null && this.state.currentStyle.color.length === 3) {
+      console.log('ColorSlider should show, color:', this.state.currentStyle.color)
       colorSettings = (
         <>
           <Divider plain>Color</Divider>
-          <Row justify='center' align='middle' gutter={[8, 8]}>
-            <Col span={5}>Red</Col>
-            <Col span={14}>
-              <Slider
-                range={false}
-                min={0}
-                max={255}
-                step={1}
-                value={this.state.currentStyle.color[0]}
-                onChange={this.handleColorRChange}
-              />
-            </Col>
-            <Col span={5}>
-              <InputNumber
-                min={0}
-                max={255}
-                size='small'
-                style={{ width: '65px' }}
-                value={this.state.currentStyle.color[0]}
-                onChange={this.handleColorRChange}
-              />
-            </Col>
-          </Row>
-
-          <Row justify='center' align='middle' gutter={[8, 8]}>
-            <Col span={5}>Green</Col>
-            <Col span={14}>
-              <Slider
-                range={false}
-                min={0}
-                max={255}
-                step={1}
-                value={this.state.currentStyle.color[1]}
-                onChange={this.handleColorGChange}
-              />
-            </Col>
-            <Col span={5}>
-              <InputNumber
-                min={0}
-                max={255}
-                size='small'
-                style={{ width: '65px' }}
-                value={this.state.currentStyle.color[1]}
-                onChange={this.handleColorGChange}
-              />
-            </Col>
-          </Row>
-
-          <Row justify='center' align='middle' gutter={[8, 8]}>
-            <Col span={5}>Blue</Col>
-            <Col span={14}>
-              <Slider
-                range={false}
-                min={0}
-                max={255}
-                step={1}
-                value={this.state.currentStyle.color[2]}
-                onChange={this.handleColorBChange}
-              />
-            </Col>
-            <Col span={5}>
-              <InputNumber
-                min={0}
-                max={255}
-                size='small'
-                style={{ width: '65px' }}
-                value={this.state.currentStyle.color[2]}
-                onChange={this.handleColorBChange}
-              />
-            </Col>
-          </Row>
+          <ColorSlider
+            color={this.state.currentStyle.color}
+            onChange={this.handleColorChange}
+          />
           <Divider plain />
         </>
       )
+    } else {
+      console.log('ColorSlider not showing, color:', this.state.currentStyle.color)
     }
 
     let windowSettings
@@ -610,30 +500,10 @@ AnnotationGroupItemState
       <div>
         {colorSettings}
         {windowSettings}
-        <Row justify='start' align='middle' gutter={[8, 8]}>
-          <Col span={6}>Opacity</Col>
-          <Col span={12}>
-            <Slider
-              range={false}
-              min={0}
-              max={1}
-              step={0.01}
-              value={this.state.currentStyle.opacity}
-              onChange={this.handleOpacityChange}
-            />
-          </Col>
-          <Col span={6}>
-            <InputNumber
-              min={0}
-              max={1}
-              size='small'
-              step={0.1}
-              style={{ width: '65px' }}
-              value={this.state.currentStyle.opacity}
-              onChange={this.handleOpacityChange}
-            />
-          </Col>
-        </Row>
+        <OpacitySlider
+          opacity={this.state.currentStyle.opacity}
+          onChange={this.handleOpacityChange}
+        />
         {explorationSettings}
       </div>
     )

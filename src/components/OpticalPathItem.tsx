@@ -20,6 +20,8 @@ import {
   SettingOutlined
 } from '@ant-design/icons'
 import Description from './Description'
+import ColorSlider from './ColorSlider'
+import OpacitySlider from './OpacitySlider'
 // skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
 // skipcq: JS-C1003
@@ -80,9 +82,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     this.handleLimitChange = this.handleLimitChange.bind(this)
     this.handleLowerLimitChange = this.handleLowerLimitChange.bind(this)
     this.handleUpperLimitChange = this.handleUpperLimitChange.bind(this)
-    this.handleColorRChange = this.handleColorRChange.bind(this)
-    this.handleColorGChange = this.handleColorGChange.bind(this)
-    this.handleColorBChange = this.handleColorBChange.bind(this)
+    this.handleColorChange = this.handleColorChange.bind(this)
     this.handleRemoval = this.handleRemoval.bind(this)
     this.getCurrentColors = this.getCurrentColors.bind(this)
     this.state = {
@@ -141,79 +141,20 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     }
   }
 
-  handleColorRChange (
-    value: number | number[] | null
-  ): void {
+  handleColorChange (color: number[]): void {
     const identifier = this.props.opticalPath.identifier
-    if (value != null && this.state.currentStyle.color !== undefined) {
-      const color = [
-        Array.isArray(value) ? value[0] : value,
-        this.state.currentStyle.color[1],
-        this.state.currentStyle.color[2]
-      ]
-      this.setState(state => ({
-        currentStyle: {
-          color: color,
-          paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
-          opacity: state.currentStyle.opacity,
-          limitValues: state.currentStyle.limitValues
-        }
-      }))
-      this.props.onStyleChange({
-        opticalPathIdentifier: identifier,
-        styleOptions: { color: color }
-      })
-    }
-  }
-
-  handleColorGChange (
-    value: number | number[] | null
-  ): void {
-    const identifier = this.props.opticalPath.identifier
-    if (value != null && this.state.currentStyle.color !== undefined) {
-      const color = [
-        this.state.currentStyle.color[0],
-        Array.isArray(value) ? value[0] : value,
-        this.state.currentStyle.color[2]
-      ]
-      this.setState(state => ({
-        currentStyle: {
-          color: color,
-          paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
-          opacity: state.currentStyle.opacity,
-          limitValues: state.currentStyle.limitValues
-        }
-      }))
-      this.props.onStyleChange({
-        opticalPathIdentifier: identifier,
-        styleOptions: { color: color }
-      })
-    }
-  }
-
-  handleColorBChange (
-    value: number | number[] | null
-  ): void {
-    const identifier = this.props.opticalPath.identifier
-    if (value != null && this.state.currentStyle.color !== undefined) {
-      const color = [
-        this.state.currentStyle.color[0],
-        this.state.currentStyle.color[1],
-        Array.isArray(value) ? value[0] : value
-      ]
-      this.setState(state => ({
-        currentStyle: {
-          color: color,
-          paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
-          opacity: state.currentStyle.opacity,
-          limitValues: state.currentStyle.limitValues
-        }
-      }))
-      this.props.onStyleChange({
-        opticalPathIdentifier: identifier,
-        styleOptions: { color: color }
-      })
-    }
+    this.setState(state => ({
+      currentStyle: {
+        color: color,
+        paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
+        opacity: state.currentStyle.opacity,
+        limitValues: state.currentStyle.limitValues
+      }
+    }))
+    this.props.onStyleChange({
+      opticalPathIdentifier: identifier,
+      styleOptions: { color: color }
+    })
   }
 
   getCurrentColors (): string[] {
@@ -440,83 +381,10 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
             <Divider plain>
               Color
             </Divider>
-            <Row justify='center' align='middle' gutter={[8, 8]}>
-              <Col span={5}>
-                Red
-              </Col>
-              <Col span={14}>
-                <Slider
-                  range={false}
-                  min={0}
-                  max={255}
-                  step={1}
-                  value={this.state.currentStyle.color[0]}
-                  onChange={this.handleColorRChange}
-                />
-              </Col>
-              <Col span={5}>
-                <InputNumber
-                  min={0}
-                  max={255}
-                  size='small'
-                  style={{ width: '65px' }}
-                  value={this.state.currentStyle.color[0]}
-                  onChange={this.handleColorRChange}
-                />
-              </Col>
-            </Row>
-
-            <Row justify='center' align='middle' gutter={[8, 8]}>
-              <Col span={5}>
-                Green
-              </Col>
-              <Col span={14}>
-                <Slider
-                  range={false}
-                  min={0}
-                  max={255}
-                  step={1}
-                  value={this.state.currentStyle.color[1]}
-                  onChange={this.handleColorGChange}
-                />
-              </Col>
-              <Col span={5}>
-                <InputNumber
-                  min={0}
-                  max={255}
-                  size='small'
-                  style={{ width: '65px' }}
-                  value={this.state.currentStyle.color[1]}
-                  onChange={this.handleColorGChange}
-                />
-              </Col>
-            </Row>
-
-            <Row justify='center' align='middle' gutter={[8, 8]}>
-              <Col span={5}>
-                Blue
-              </Col>
-              <Col span={14}>
-                <Slider
-                  range={false}
-                  min={0}
-                  max={255}
-                  step={1}
-                  value={this.state.currentStyle.color[2]}
-                  onChange={this.handleColorBChange}
-                />
-              </Col>
-              <Col span={5}>
-                <InputNumber
-                  min={0}
-                  max={255}
-                  size='small'
-                  style={{ width: '65px' }}
-                  value={this.state.currentStyle.color[2]}
-                  onChange={this.handleColorBChange}
-                />
-              </Col>
-            </Row>
+            <ColorSlider
+              color={this.state.currentStyle.color}
+              onChange={this.handleColorChange}
+            />
           </>
         )
       } else {
@@ -581,32 +449,10 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
           {windowSettings}
           {colorSettings}
           <Divider plain />
-          <Row justify='center' align='middle' gutter={[8, 8]}>
-            <Col span={6}>
-              Opacity
-            </Col>
-            <Col span={12}>
-              <Slider
-                range={false}
-                min={0}
-                max={1}
-                step={0.01}
-                value={this.state.currentStyle.opacity}
-                onChange={this.handleOpacityChange}
-              />
-            </Col>
-            <Col span={6}>
-              <InputNumber
-                min={0}
-                max={1}
-                size='small'
-                step={0.1}
-                style={{ width: '65px' }}
-                value={this.state.currentStyle.opacity}
-                onChange={this.handleOpacityChange}
-              />
-            </Col>
-          </Row>
+          <OpacitySlider
+            opacity={this.state.currentStyle.opacity}
+            onChange={this.handleOpacityChange}
+          />
         </div>
       )
       const colors = this.getCurrentColors()
@@ -634,32 +480,10 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
       // color images
       settings = (
         <div>
-          <Row justify='center' align='middle' gutter={[8, 8]}>
-            <Col span={6}>
-              Opacity
-            </Col>
-            <Col span={12}>
-              <Slider
-                range={false}
-                min={0}
-                max={1}
-                step={0.01}
-                value={this.state.currentStyle.opacity}
-                onChange={this.handleOpacityChange}
-              />
-            </Col>
-            <Col span={6}>
-              <InputNumber
-                min={0}
-                max={1}
-                size='small'
-                step={0.1}
-                style={{ width: '60px' }}
-                value={this.state.currentStyle.opacity}
-                onChange={this.handleOpacityChange}
-              />
-            </Col>
-          </Row>
+          <OpacitySlider
+            opacity={this.state.currentStyle.opacity}
+            onChange={this.handleOpacityChange}
+          />
         </div>
       )
       item = (

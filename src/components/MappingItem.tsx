@@ -3,12 +3,8 @@ import React from 'react'
 import * as dmv from 'dicom-microscopy-viewer'
 import {
   Button,
-  Col,
-  InputNumber,
   Menu,
   Popover,
-  Row,
-  Slider,
   Space,
   Switch
 } from 'antd'
@@ -16,6 +12,7 @@ import { SettingOutlined } from '@ant-design/icons'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
 
 import Description from './Description'
+import OpacitySlider from './OpacitySlider'
 
 interface MappingItemProps {
   mapping: dmv.mapping.ParameterMapping
@@ -70,17 +67,17 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
     this.setState({ isVisible: checked })
   }
 
-  handleOpacityChange (value: number | null): void {
-    if (value != null) {
+  handleOpacityChange (opacity: number | null): void {
+    if (opacity != null) {
       this.props.onStyleChange({
         mappingUID: this.props.mapping.uid,
         styleOptions: {
-          opacity: value
+          opacity: opacity
         }
       })
       this.setState(state => ({
         currentStyle: {
-          opacity: value
+          opacity: opacity
         }
       }))
     }
@@ -96,32 +93,10 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
 
     const settings = (
       <div>
-        <Row justify='center' align='middle'>
-          <Col span={6}>
-            Opacity
-          </Col>
-          <Col span={12}>
-            <Slider
-              range={false}
-              min={0}
-              max={1}
-              step={0.01}
-              value={this.state.currentStyle.opacity}
-              onChange={this.handleOpacityChange}
-            />
-          </Col>
-          <Col span={6}>
-            <InputNumber
-              min={0}
-              max={1}
-              size='small'
-              step={0.1}
-              style={{ width: '65px' }}
-              value={this.state.currentStyle.opacity}
-              onChange={this.handleOpacityChange}
-            />
-          </Col>
-        </Row>
+        <OpacitySlider
+          opacity={this.state.currentStyle.opacity}
+          onChange={this.handleOpacityChange}
+        />
       </div>
     )
 

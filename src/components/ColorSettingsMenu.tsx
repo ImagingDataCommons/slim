@@ -1,5 +1,8 @@
 import React from 'react'
-import { Checkbox, Col, Divider, InputNumber, Row, Slider } from 'antd'
+import { Checkbox, Divider, Row } from 'antd'
+
+import ColorSlider from './ColorSlider'
+import OpacitySlider from './OpacitySlider'
 
 interface ColorSettingsMenuProps {
   annotationGroupsUIDs: string[]
@@ -29,9 +32,7 @@ ColorSettingsMenuState
   constructor (props: ColorSettingsMenuProps) {
     super(props)
     this.handleOpacityChange = this.handleOpacityChange.bind(this)
-    this.handleColorRChange = this.handleColorRChange.bind(this)
-    this.handleColorGChange = this.handleColorGChange.bind(this)
-    this.handleColorBChange = this.handleColorBChange.bind(this)
+    this.handleColorChange = this.handleColorChange.bind(this)
     this.getCurrentColor = this.getCurrentColor.bind(this)
     this.state = {
       currentStyle: {
@@ -42,82 +43,33 @@ ColorSettingsMenuState
     }
   }
 
-  handleOpacityChange (value: number | null): void {
-    if (value != null) {
+  handleColorChange (color: number[]): void {
+    this.updateCurrentStyle({ color })
+    this.props.annotationGroupsUIDs.forEach((uid) => {
+      this.props.onStyleChange({
+        uid,
+        styleOptions: {
+          color: color,
+          opacity: this.state.currentStyle.opacity,
+          contourOnly: this.state.currentStyle.contourOnly
+        }
+      })
+    })
+  }
+
+  handleOpacityChange (opacity: number | null): void {
+    if (opacity != null) {
       this.props.annotationGroupsUIDs.forEach((uid) => {
         this.props.onStyleChange({
           uid,
           styleOptions: {
             color: this.state.currentStyle.color,
-            opacity: value,
+            opacity: opacity,
             contourOnly: this.state.currentStyle.contourOnly
           }
         })
       })
-      this.updateCurrentStyle({ opacity: value })
-    }
-  }
-
-  handleColorRChange (value: number | number[] | null): void {
-    if (value != null && this.state.currentStyle.color !== undefined) {
-      const color = [
-        Array.isArray(value) ? value[0] : value,
-        this.state.currentStyle.color[1],
-        this.state.currentStyle.color[2]
-      ]
-      this.updateCurrentStyle({ color })
-      this.props.annotationGroupsUIDs.forEach((uid) => {
-        this.props.onStyleChange({
-          uid,
-          styleOptions: {
-            color: color,
-            opacity: this.state.currentStyle.opacity,
-            contourOnly: this.state.currentStyle.contourOnly
-          }
-        })
-      })
-    }
-  }
-
-  handleColorGChange (value: number | number[] | null): void {
-    if (value != null && this.state.currentStyle.color !== undefined) {
-      const color = [
-        this.state.currentStyle.color[0],
-        Array.isArray(value) ? value[0] : value,
-        this.state.currentStyle.color[2]
-      ]
-      this.updateCurrentStyle({ color })
-      this.props.annotationGroupsUIDs.forEach((uid) => {
-        this.props.onStyleChange({
-          uid,
-          styleOptions: {
-            color: color,
-            opacity: this.state.currentStyle.opacity,
-            contourOnly: this.state.currentStyle.contourOnly
-          }
-        })
-      })
-    }
-  }
-
-  handleColorBChange (value: number | number[] | null): void {
-    if (value != null && this.state.currentStyle.color !== undefined) {
-      const color = [
-        this.state.currentStyle.color[0],
-        this.state.currentStyle.color[1],
-        Array.isArray(value) ? value[0] : value
-      ]
-      this.updateCurrentStyle({ color })
-      this.props.annotationGroupsUIDs.forEach((uid) => {
-        this.props.onStyleChange({
-          uid,
-          styleOptions: {
-            color: color,
-            opacity: this.state.currentStyle.opacity,
-            contourOnly: this.state.currentStyle.contourOnly
-          }
-        })
-      })
+      this.updateCurrentStyle({ opacity })
     }
   }
 
@@ -175,77 +127,10 @@ ColorSettingsMenuState
       colorSettings = (
         <>
           <Divider plain>Color</Divider>
-          <Row justify='center' align='middle' gutter={[8, 8]}>
-            <Col span={5}>Red</Col>
-            <Col span={14}>
-              <Slider
-                range={false}
-                min={0}
-                max={255}
-                step={1}
-                value={this.state.currentStyle.color[0]}
-                onChange={this.handleColorRChange}
-              />
-            </Col>
-            <Col span={5}>
-              <InputNumber
-                min={0}
-                max={255}
-                size='small'
-                style={{ width: '65px' }}
-                value={this.state.currentStyle.color[0]}
-                onChange={this.handleColorRChange}
-              />
-            </Col>
-          </Row>
-
-          <Row justify='center' align='middle' gutter={[8, 8]}>
-            <Col span={5}>Green</Col>
-            <Col span={14}>
-              <Slider
-                range={false}
-                min={0}
-                max={255}
-                step={1}
-                value={this.state.currentStyle.color[1]}
-                onChange={this.handleColorGChange}
-              />
-            </Col>
-            <Col span={5}>
-              <InputNumber
-                min={0}
-                max={255}
-                size='small'
-                style={{ width: '65px' }}
-                value={this.state.currentStyle.color[1]}
-                onChange={this.handleColorGChange}
-              />
-            </Col>
-          </Row>
-
-          <Row justify='center' align='middle' gutter={[8, 8]}>
-            <Col span={5}>Blue</Col>
-            <Col span={14}>
-              <Slider
-                range={false}
-                min={0}
-                max={255}
-                step={1}
-                value={this.state.currentStyle.color[2]}
-                onChange={this.handleColorBChange}
-              />
-            </Col>
-            <Col span={5}>
-              <InputNumber
-                min={0}
-                max={255}
-                size='small'
-                style={{ width: '65px' }}
-                value={this.state.currentStyle.color[2]}
-                onChange={this.handleColorBChange}
-              />
-            </Col>
-          </Row>
+          <ColorSlider
+            color={this.state.currentStyle.color}
+            onChange={this.handleColorChange}
+          />
           <Divider plain />
         </>
       )
@@ -254,30 +139,10 @@ ColorSettingsMenuState
     return (
       <div>
         {colorSettings}
-        <Row justify='start' align='middle' gutter={[8, 8]}>
-          <Col span={6}>Opacity</Col>
-          <Col span={12}>
-            <Slider
-              range={false}
-              min={0}
-              max={1}
-              step={0.01}
-              value={this.state.currentStyle.opacity}
-              onChange={this.handleOpacityChange}
-            />
-          </Col>
-          <Col span={6}>
-            <InputNumber
-              min={0}
-              max={1}
-              size='small'
-              step={0.1}
-              style={{ width: '65px' }}
-              value={this.state.currentStyle.opacity}
-              onChange={this.handleOpacityChange}
-            />
-          </Col>
-        </Row>
+        <OpacitySlider
+          opacity={this.state.currentStyle.opacity}
+          onChange={this.handleOpacityChange}
+        />
         <Row justify='start' align='middle' gutter={[8, 8]}>
           <Checkbox
             value={this.state.currentStyle.contourOnly}
