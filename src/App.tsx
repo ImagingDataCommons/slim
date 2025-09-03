@@ -226,7 +226,7 @@ class App extends React.Component<AppProps, AppState> {
       console.info('instatiate app')
       console.info(`app is located at "${props.config.path}"`)
     }
-    
+
     const { protocol, host } = window.location
     const baseUri = `${protocol}//${host}`
     const appUri = joinUrl(props.config.path, baseUri)
@@ -250,7 +250,7 @@ class App extends React.Component<AppProps, AppState> {
           'One server needs to be configured.')
       )
     }
-    
+
     if (process.env.NODE_ENV === 'development') {
       console.info(
         'app uses the following DICOMweb server configuration: ',
