@@ -963,8 +963,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                       this.volumeViewer.setSegmentStyle(segment.uid, {
                         opacity: defaultStyle.opacity,
                         paletteColorLookupTable: createSegmentPaletteColorLookupTable(
-                          segment.uid,
-                          segmentColor
+                          segmentColor,
+                          this.volumeViewer
                         )
                       })
                     }
@@ -2323,8 +2323,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     let paletteColorLookupTable
     if (styleOptions.color !== undefined) {
       paletteColorLookupTable = createSegmentPaletteColorLookupTable(
-        segmentUID,
-        styleOptions.color
+        styleOptions.color,
+        this.volumeViewer
       )
     }
 
@@ -3184,8 +3184,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               this.volumeViewer.setSegmentStyle(segment.uid, {
                 opacity: defaultStyle.opacity,
                 paletteColorLookupTable: createSegmentPaletteColorLookupTable(
-                  segment.uid,
-                  finalColor
+                  finalColor,
+                  this.volumeViewer
                 )
               })
             }
