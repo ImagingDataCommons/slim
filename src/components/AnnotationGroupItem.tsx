@@ -354,7 +354,7 @@ AnnotationGroupItemState
   render (): React.ReactNode {
     console.log('AnnotationGroupItem render - state.currentStyle:', this.state.currentStyle)
     console.log('AnnotationGroupItem render - state.currentStyle.color:', this.state.currentStyle.color)
-    
+
     const index = this.props.metadata.AnnotationGroupSequence.findIndex(
       (item) => item.AnnotationGroupUID === this.props.annotationGroup.uid
     )
