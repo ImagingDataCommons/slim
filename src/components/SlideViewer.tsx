@@ -75,30 +75,6 @@ import MappingList from './MappingList'
 import Btn from './Button'
 
 /**
- * Create a palette color lookup table for a segment.
- *
- * @param {number[]} segmentColor - RGB color triplet [r, g, b]
- * @param {dmv.viewer.VolumeImageViewer} viewer - Volume image viewer
- * @returns {color.PaletteColorLookupTable} Palette color lookup table
- * @private
- */
-function createSegmentPaletteColorLookupTable (segmentColor: number[], viewer: dmv.viewer.VolumeImageViewer): dmv.color.PaletteColorLookupTable {
-  /** Create a simple palette with the segment color
-   * For binary segments, we typically have 2 values: background (0) and segment (1) */
-  const paletteData = [
-    [0, 0, 0], /** Background (black/transparent) */
-    segmentColor /** Segment color */
-  ]
-
-  const palette = viewer.buildPaletteColorLookupTable({
-    data: paletteData,
-    firstValueMapped: 0
-  })
-
-  return palette
-}
-
-/**
  * React component for interactive viewing of an individual digital slide,
  * which corresponds to one DICOM Series of DICOM Slide Microscopy images and
  * potentially one or more associated DICOM Series of DICOM SR documents.
@@ -275,6 +251,30 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       isICCProfilesEnabled: true,
       customizedSegmentColors: {}
     }
+  }
+
+  /**
+   * Create a palette color lookup table for a segment.
+   *
+   * @param {number[]} segmentColor - RGB color triplet [r, g, b]
+   * @param {dmv.viewer.VolumeImageViewer} viewer - Volume image viewer
+   * @returns {color.PaletteColorLookupTable} Palette color lookup table
+   * @private
+   */
+  createSegmentPaletteColorLookupTable = (segmentColor: number[]): dmv.color.PaletteColorLookupTable => {
+    /** Create a simple palette with the segment color
+     * For binary segments, we typically have 2 values: background (0) and segment (1) */
+    const paletteData = [
+      [0, 0, 0], /** Background (black/transparent) */
+      segmentColor /** Segment color */
+    ]
+
+    const palette = dmv.color.buildPaletteColorLookupTable({
+      data: paletteData,
+      firstValueMapped: 0
+    })
+
+    return palette
   }
 
   componentDidUpdate (
@@ -952,26 +952,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             if (segmentations.length > 0) {
               try {
                 this.volumeViewer.addSegments(segmentations)
-
-                /** Apply default styles to newly added segments to ensure color consistency */
-                const segments = this.volumeViewer.getAllSegments()
-                segments.forEach((segment, index) => {
-                  try {
-                    const defaultStyle = this.volumeViewer.getSegmentStyle(segment.uid)
-                    if (defaultStyle?.opacity !== undefined && typeof defaultStyle.opacity === 'number') {
-                      const segmentColor = generateSegmentColor(index)
-                      this.volumeViewer.setSegmentStyle(segment.uid, {
-                        opacity: defaultStyle.opacity,
-                        paletteColorLookupTable: createSegmentPaletteColorLookupTable(
-                          segmentColor,
-                          this.volumeViewer
-                        )
-                      })
-                    }
-                  } catch (error) {
-                    console.warn('Failed to apply default style for segment ' + String(segment.uid) + ':', String(error))
-                  }
-                })
               } catch (error: unknown) {
                 // eslint-disable-next-line @typescript-eslint/no-floating-promises
                 NotificationMiddleware.onError(
@@ -2322,10 +2302,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     /** If color is provided, create a palette color lookup table */
     let paletteColorLookupTable
     if (styleOptions.color !== undefined) {
-      paletteColorLookupTable = createSegmentPaletteColorLookupTable(
-        styleOptions.color,
-        this.volumeViewer
-      )
+      paletteColorLookupTable = this.createSegmentPaletteColorLookupTable(styleOptions.color)
     }
 
     this.volumeViewer.setSegmentStyle(segmentUID, {
@@ -3163,36 +3140,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             opacity: defaultStyle.opacity,
             color: finalColor
           }
-
-          /** Apply the color to the segment in the viewer only if it hasn't been set yet */
-          try {
-            const currentStyle = this.volumeViewer.getSegmentStyle(segment.uid)
-            /** Only set style if it's not already set or if it's different */
-            const currentColor = currentStyle?.paletteColorLookupTable?.data?.[1]
-            const colorsMatch = currentColor !== undefined &&
-                               currentColor.length >= 3 &&
-                               currentColor[0] === finalColor[0] &&
-                               currentColor[1] === finalColor[1] &&
-                               currentColor[2] === finalColor[2]
-
-            const needsUpdate = currentStyle?.opacity === undefined ||
-                               currentStyle.opacity !== defaultStyle.opacity ||
-                               currentStyle.paletteColorLookupTable === undefined ||
-                               !colorsMatch
-
-            if (needsUpdate) {
-              this.volumeViewer.setSegmentStyle(segment.uid, {
-                opacity: defaultStyle.opacity,
-                paletteColorLookupTable: createSegmentPaletteColorLookupTable(
-                  finalColor,
-                  this.volumeViewer
-                )
-              })
-            }
-          } catch (styleError) {
-            console.warn(`Failed to set segment style for ${segment.uid}:`, styleError)
-            /** Continue without applying the style - the segment will still be displayed */
-          }
         } catch (error) {
           console.warn(`Failed to process segment ${segment.uid}:`, error)
           /** Fallback to default color */
@@ -3202,6 +3149,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             color: segmentColor
           }
         }
+
+        this.volumeViewer.setSegmentStyle(segment.uid, {
+          opacity: defaultSegmentStyles[segment.uid].opacity,
+          paletteColorLookupTable: this.createSegmentPaletteColorLookupTable(defaultSegmentStyles[segment.uid].color)
+        })
       })
       return (
         <Menu.SubMenu key='segmentations' title='Segmentations'>

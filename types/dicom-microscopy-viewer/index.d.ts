@@ -795,6 +795,13 @@ import * as dcmjs from 'dcmjs'
       blueSegmentedData?: Unit8Array|Unit16Array
     }
 
+    export interface BuildPaletteColorLookupTableOptions {
+      data: number[][]
+      firstValueMapped: number
+    }
+
+    export function buildPaletteColorLookupTable(options: BuildPaletteColorLookupTableOptions): PaletteColorLookupTable
+
     export class PaletteColorLookupTable {
       constructor (options: PaletteColorLookupTableOptions)
       get uid (): string
