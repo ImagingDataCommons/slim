@@ -52,9 +52,6 @@ interface SegmentItemState {
 class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
   constructor (props: SegmentItemProps) {
     super(props)
-    this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
-    this.handleOpacityChange = this.handleOpacityChange.bind(this)
-    this.handleColorChange = this.handleColorChange.bind(this)
 
     /** Initialize with default color if not provided */
     const defaultColor = this.props.defaultStyle.color ?? [255, 255, 0] // Default yellow
@@ -67,10 +64,10 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
     }
   }
 
-  handleVisibilityChange (
+  handleVisibilityChange = (
     checked: boolean,
     event: React.MouseEvent<HTMLButtonElement>
-  ): void {
+  ): void => {
     this.props.onVisibilityChange({
       segmentUID: this.props.segment.uid,
       isVisible: checked
@@ -78,30 +75,34 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
     this.setState({ isVisible: checked })
   }
 
-  handleColorChange (newColor: number[]): void {
+  handleColorChange = (newColor: number[]): void => {
     this.setState(prevState => {
+      const newStyle = { ...prevState.currentStyle, color: newColor }
+      return { currentStyle: newStyle }
+    }, () => {
       this.props.onStyleChange({
         segmentUID: this.props.segment.uid,
         styleOptions: {
-          opacity: prevState.currentStyle.opacity,
+          opacity: this.state.currentStyle.opacity,
           color: newColor
         }
       })
-      return { currentStyle: { ...prevState.currentStyle, color: newColor } }
     })
   }
 
-  handleOpacityChange (opacity: number | null): void {
-    if (opacity != null) {
+  handleOpacityChange = (opacity: number | null): void => {
+    if (opacity !== null) {
       this.setState(prevState => {
+        const newStyle = { ...prevState.currentStyle, opacity }
+        return { currentStyle: newStyle }
+      }, () => {
         this.props.onStyleChange({
           segmentUID: this.props.segment.uid,
           styleOptions: {
             opacity,
-            color: prevState.currentStyle.color
+            color: this.state.currentStyle.color
           }
         })
-        return { currentStyle: { ...prevState.currentStyle, opacity } }
       })
     }
   }

@@ -25,6 +25,10 @@ declare module 'dcmjs' {
       static readFile (string): DicomDict
     }
 
+    export namespace Colors {
+      export function dicomlab2RGB(labValues: number[]): number[]
+    }
+
   }
 
   declare namespace sr {

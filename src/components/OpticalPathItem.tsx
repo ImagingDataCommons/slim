@@ -77,14 +77,6 @@ interface OpticalPathItemState {
 class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathItemState> {
   constructor (props: OpticalPathItemProps) {
     super(props)
-    this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
-    this.handleOpacityChange = this.handleOpacityChange.bind(this)
-    this.handleLimitChange = this.handleLimitChange.bind(this)
-    this.handleLowerLimitChange = this.handleLowerLimitChange.bind(this)
-    this.handleUpperLimitChange = this.handleUpperLimitChange.bind(this)
-    this.handleColorChange = this.handleColorChange.bind(this)
-    this.handleRemoval = this.handleRemoval.bind(this)
-    this.getCurrentColors = this.getCurrentColors.bind(this)
     this.state = {
       isVisible: this.props.isVisible,
       currentStyle: {
@@ -107,10 +99,10 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     }
   }
 
-  handleVisibilityChange (
+  handleVisibilityChange = (
     checked: boolean,
     event: React.MouseEvent<HTMLButtonElement>
-  ): void {
+  ): void => {
     const identifier = this.props.opticalPath.identifier
     this.setState({
       isVisible: checked
@@ -121,9 +113,9 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     })
   }
 
-  handleOpacityChange (
+  handleOpacityChange = (
     value: number | null
-  ): void {
+  ): void => {
     if (value != null) {
       const identifier = this.props.opticalPath.identifier
       this.props.onStyleChange({
@@ -141,11 +133,11 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     }
   }
 
-  handleColorChange (color: number[]): void {
+  handleColorChange = (color: number[]): void => {
     const identifier = this.props.opticalPath.identifier
     this.setState(state => ({
       currentStyle: {
-        color: color,
+        color,
         paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
         opacity: state.currentStyle.opacity,
         limitValues: state.currentStyle.limitValues
@@ -153,11 +145,11 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     }))
     this.props.onStyleChange({
       opticalPathIdentifier: identifier,
-      styleOptions: { color: color }
+      styleOptions: { color }
     })
   }
 
-  getCurrentColors (): string[] {
+  getCurrentColors = (): string[] => {
     const rgb2hex = (values: number[]): string => {
       const r = values[0]
       const g = values[1]
@@ -178,9 +170,9 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     }
   }
 
-  handleLowerLimitChange (
+  handleLowerLimitChange = (
     value: number | null
-  ): void {
+  ): void => {
     const identifier = this.props.opticalPath.identifier
     if (value != null && this.state.currentStyle.limitValues !== undefined) {
       this.setState(state => {
@@ -216,9 +208,9 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     }
   }
 
-  handleUpperLimitChange (
+  handleUpperLimitChange = (
     value: number | null
-  ): void {
+  ): void => {
     const identifier = this.props.opticalPath.identifier
     if (value != null && this.state.currentStyle.limitValues !== undefined) {
       this.setState(state => {
@@ -254,9 +246,9 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     }
   }
 
-  handleLimitChange (
+  handleLimitChange = (
     values: number[]
-  ): void {
+  ): void => {
     const identifier = this.props.opticalPath.identifier
     this.setState(state => ({
       currentStyle: {
@@ -272,7 +264,7 @@ class OpticalPathItem extends React.Component<OpticalPathItemProps, OpticalPathI
     })
   }
 
-  handleRemoval (): void {
+  handleRemoval = (): void => {
     const identifier = this.props.opticalPath.identifier
     this.props.onRemoval(identifier)
   }

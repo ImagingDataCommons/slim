@@ -46,8 +46,6 @@ interface MappingItemState {
 class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
   constructor (props: MappingItemProps) {
     super(props)
-    this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
-    this.handleOpacityChange = this.handleOpacityChange.bind(this)
     this.state = {
       isVisible: this.props.isVisible,
       currentStyle: {
@@ -56,10 +54,10 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
     }
   }
 
-  handleVisibilityChange (
+  handleVisibilityChange = (
     checked: boolean,
     event: React.MouseEvent<HTMLButtonElement>
-  ): void {
+  ): void => {
     this.props.onVisibilityChange({
       mappingUID: this.props.mapping.uid,
       isVisible: checked
@@ -67,17 +65,17 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
     this.setState({ isVisible: checked })
   }
 
-  handleOpacityChange (opacity: number | null): void {
-    if (opacity != null) {
+  handleOpacityChange = (opacity: number | null): void => {
+    if (opacity !== null) {
       this.props.onStyleChange({
         mappingUID: this.props.mapping.uid,
         styleOptions: {
-          opacity: opacity
+          opacity
         }
       })
       this.setState(state => ({
         currentStyle: {
-          opacity: opacity
+          opacity
         }
       }))
     }

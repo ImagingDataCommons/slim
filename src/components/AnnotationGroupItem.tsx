@@ -166,11 +166,6 @@ AnnotationGroupItemState
 > {
   constructor (props: AnnotationGroupItemProps) {
     super(props)
-    this.handleMeasurementSelection =
-      this.handleMeasurementSelection.bind(this)
-    this.handleOpacityChange = this.handleOpacityChange.bind(this)
-    this.handleColorChange = this.handleColorChange.bind(this)
-    this.getCurrentColor = this.getCurrentColor.bind(this)
     this.state = {
       isVisible: this.props.isVisible,
       currentStyle: {
@@ -191,31 +186,31 @@ AnnotationGroupItemState
     this.setState({ isVisible: checked })
   }
 
-  handleColorChange (color: number[]): void {
+  handleColorChange = (color: number[]): void => {
     this.setState((state) => ({
       currentStyle: {
-        color: color,
+        color,
         opacity: state.currentStyle.opacity,
         limitValues: state.currentStyle.limitValues
       }
     }))
     this.props.onStyleChange({
       uid: this.props.annotationGroup.uid,
-      styleOptions: { color: color }
+      styleOptions: { color }
     })
   }
 
-  handleOpacityChange (opacity: number | null): void {
-    if (opacity != null) {
+  handleOpacityChange = (opacity: number | null): void => {
+    if (opacity !== null) {
       this.props.onStyleChange({
         uid: this.props.annotationGroup.uid,
         styleOptions: {
-          opacity: opacity
+          opacity
         }
       })
       this.setState({
         currentStyle: {
-          opacity: opacity,
+          opacity,
           color: this.state.currentStyle.color,
           limitValues: this.state.currentStyle.limitValues
         }
@@ -223,7 +218,7 @@ AnnotationGroupItemState
     }
   }
 
-  getCurrentColor (): string {
+  getCurrentColor = (): string => {
     const rgb2hex = (values: number[]): string => {
       const r = values[0]
       const g = values[1]
@@ -238,7 +233,7 @@ AnnotationGroupItemState
     }
   }
 
-  handleLowerLimitChange (value: number | null): void {
+  handleLowerLimitChange = (value: number | null): void => {
     if (value !== null && value !== undefined && this.state.currentStyle.limitValues !== undefined) {
       this.setState((state) => {
         if (state.currentStyle.limitValues !== undefined) {
@@ -268,7 +263,7 @@ AnnotationGroupItemState
     }
   }
 
-  handleUpperLimitChange (value: number | null): void {
+  handleUpperLimitChange = (value: number | null): void => {
     if (value !== null && value !== undefined && this.state.currentStyle.limitValues !== undefined) {
       this.setState((state) => {
         if (state.currentStyle.limitValues !== undefined) {
@@ -298,7 +293,7 @@ AnnotationGroupItemState
     }
   }
 
-  handleLimitChange (values: number[]): void {
+  handleLimitChange = (values: number[]): void => {
     this.setState((state) => ({
       currentStyle: {
         color: state.currentStyle.color,
@@ -316,7 +311,7 @@ AnnotationGroupItemState
     this.props.onAnnotationGroupClick(this.props.annotationGroup.uid)
   }
 
-  handleMeasurementSelection (value?: string, option?: any): void {
+  handleMeasurementSelection = (value?: string, option?: any): void => {
     if (value !== null && value !== undefined && option?.children !== null && option?.children !== undefined) {
       const codeComponents = value.split('-')
       const measurement = new dcmjs.sr.coding.CodedConcept({
@@ -352,9 +347,6 @@ AnnotationGroupItemState
   }
 
   render (): React.ReactNode {
-    console.log('AnnotationGroupItem render - state.currentStyle:', this.state.currentStyle)
-    console.log('AnnotationGroupItem render - state.currentStyle.color:', this.state.currentStyle.color)
-
     const index = this.props.metadata.AnnotationGroupSequence.findIndex(
       (item) => item.AnnotationGroupUID === this.props.annotationGroup.uid
     )
@@ -412,8 +404,7 @@ AnnotationGroupItemState
     )
 
     let colorSettings
-    if (this.state.currentStyle.color != null && this.state.currentStyle.color.length === 3) {
-      console.log('ColorSlider should show, color:', this.state.currentStyle.color)
+    if (this.state.currentStyle.color !== null && this.state.currentStyle.color !== undefined && this.state.currentStyle.color.length === 3) {
       colorSettings = (
         <>
           <Divider plain>Color</Divider>
@@ -424,8 +415,6 @@ AnnotationGroupItemState
           <Divider plain />
         </>
       )
-    } else {
-      console.log('ColorSlider not showing, color:', this.state.currentStyle.color)
     }
 
     let windowSettings

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { Col, InputNumber, Row, Slider } from 'antd'
 
 interface ColorSliderProps {
@@ -7,13 +7,13 @@ interface ColorSliderProps {
 }
 
 const ColorSlider: React.FC<ColorSliderProps> = ({ color, onChange }) => {
-  const handleColorChange = (index: number, value: number | null): void => {
-    if (value != null) {
+  const handleColorChange = useCallback((index: number, value: number | null): void => {
+    if (value !== null) {
       const newColor = [...color]
       newColor[index] = value
       onChange(newColor)
     }
-  }
+  }, [color, onChange])
 
   const colorLabels = ['Red', 'Green', 'Blue']
 

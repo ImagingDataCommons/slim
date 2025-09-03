@@ -31,9 +31,6 @@ ColorSettingsMenuState
 > {
   constructor (props: ColorSettingsMenuProps) {
     super(props)
-    this.handleOpacityChange = this.handleOpacityChange.bind(this)
-    this.handleColorChange = this.handleColorChange.bind(this)
-    this.getCurrentColor = this.getCurrentColor.bind(this)
     this.state = {
       currentStyle: {
         opacity: this.props.defaultStyle.opacity,
@@ -43,13 +40,13 @@ ColorSettingsMenuState
     }
   }
 
-  handleColorChange (color: number[]): void {
+  handleColorChange = (color: number[]): void => {
     this.updateCurrentStyle({ color })
     this.props.annotationGroupsUIDs.forEach((uid) => {
       this.props.onStyleChange({
         uid,
         styleOptions: {
-          color: color,
+          color,
           opacity: this.state.currentStyle.opacity,
           contourOnly: this.state.currentStyle.contourOnly
         }
@@ -57,14 +54,14 @@ ColorSettingsMenuState
     })
   }
 
-  handleOpacityChange (opacity: number | null): void {
-    if (opacity != null) {
+  handleOpacityChange = (opacity: number | null): void => {
+    if (opacity !== null) {
       this.props.annotationGroupsUIDs.forEach((uid) => {
         this.props.onStyleChange({
           uid,
           styleOptions: {
             color: this.state.currentStyle.color,
-            opacity: opacity,
+            opacity,
             contourOnly: this.state.currentStyle.contourOnly
           }
         })
@@ -73,7 +70,7 @@ ColorSettingsMenuState
     }
   }
 
-  handleShowOutlineOnly (value: boolean): void {
+  handleShowOutlineOnly = (value: boolean): void => {
     this.updateCurrentStyle({ contourOnly: value })
 
     this.props.annotationGroupsUIDs.forEach((uid) => {
@@ -88,7 +85,7 @@ ColorSettingsMenuState
     })
   }
 
-  getCurrentColor (): string {
+  getCurrentColor = (): string => {
     const rgb2hex = (values: number[]): string => {
       const r = values[0]
       const g = values[1]
@@ -96,14 +93,14 @@ ColorSettingsMenuState
       return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)
     }
 
-    if (this.state.currentStyle.color != null) {
+    if (this.state.currentStyle.color !== null && this.state.currentStyle.color !== undefined) {
       return rgb2hex(this.state.currentStyle.color)
     } else {
       return 'white'
     }
   }
 
-  updateCurrentStyle ({
+  updateCurrentStyle = ({
     color,
     opacity,
     contourOnly
@@ -111,7 +108,7 @@ ColorSettingsMenuState
     color?: number[]
     opacity?: number
     contourOnly?: boolean
-  }): void {
+  }): void => {
     this.setState((state) => ({
       currentStyle: {
         opacity: opacity ?? state.currentStyle.opacity,
@@ -123,7 +120,7 @@ ColorSettingsMenuState
 
   render (): React.ReactNode {
     let colorSettings
-    if (this.state.currentStyle.color != null) {
+    if (this.state.currentStyle.color !== null && this.state.currentStyle.color !== undefined) {
       colorSettings = (
         <>
           <Divider plain>Color</Divider>

@@ -46,7 +46,7 @@ export const rgbToHex = (rgb: number[]): string => {
   const r = Math.max(0, Math.min(255, Math.round(rgb[0])))
   const g = Math.max(0, Math.min(255, Math.round(rgb[1])))
   const b = Math.max(0, Math.min(255, Math.round(rgb[2])))
-  return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)
+  return `#${(0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
 }
 
 /**
@@ -100,7 +100,7 @@ export const extractSegmentColorFromMetadata = (
         if (labValues.length >= 3) {
           try {
             /** Use dcmjs's dicomlab2RGB function for accurate DICOM CIELAB to RGB conversion */
-            const rgb = (dcmjs as any).data.Colors.dicomlab2RGB(labValues)
+            const rgb = dcmjs.data.Colors.dicomlab2RGB(labValues)
             /** Convert from 0-1 range to 0-255 range and round to integers */
             const result = [
               Math.max(0, Math.min(255, Math.round(rgb[0] * 255))),

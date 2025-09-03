@@ -8,10 +8,6 @@ interface OpacitySliderProps {
 }
 
 const OpacitySlider: React.FC<OpacitySliderProps> = ({ opacity, onChange, label = 'Opacity' }) => {
-  const handleOpacityChange = (value: number | null): void => {
-    onChange(value)
-  }
-
   return (
     <Row justify='center' align='middle'>
       <Col span={6}>
@@ -24,7 +20,7 @@ const OpacitySlider: React.FC<OpacitySliderProps> = ({ opacity, onChange, label 
           max={1}
           step={0.01}
           value={opacity}
-          onChange={handleOpacityChange}
+          onChange={onChange}
         />
       </Col>
       <Col span={6}>
@@ -35,7 +31,7 @@ const OpacitySlider: React.FC<OpacitySliderProps> = ({ opacity, onChange, label 
           step={0.1}
           style={{ width: '65px' }}
           value={opacity}
-          onChange={handleOpacityChange}
+          onChange={onChange}
         />
       </Col>
     </Row>
