@@ -48,7 +48,6 @@ The `src/utils/segmentColors.ts` file provides:
 - `generateSegmentColor(index)`: Generates distinct colors for segments
 - `extractSegmentColorFromMetadata(metadata, segmentNumber)`: Extracts colors from DICOM metadata
 - `getSegmentColor(metadata, segmentNumber, fallbackIndex)`: Gets the best available color
-- `createSegmentPaletteColorLookupTable(segmentUID, color)`: Creates DICOM-compatible color LUTs
 
 ### Component Updates
 
@@ -58,7 +57,7 @@ The `src/utils/segmentColors.ts` file provides:
 
 ### DICOM Integration
 
-Colors are applied to segments using the dicom-microscopy-viewer's `setSegmentStyle` method with custom palette color lookup tables.
+Colors are applied to segments using the dicom-microscopy-viewer's `setSegmentStyle` method with custom palette color lookup tables created by the viewer's built-in `createSegmentPaletteColorLookupTable` method.
 
 ## Usage
 

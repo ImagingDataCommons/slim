@@ -44,7 +44,7 @@ import {
   areROIsEqual,
   formatRoiStyle
 } from './SlideViewer/utils/roiUtils'
-import { getSegmentColor, createSegmentPaletteColorLookupTable, generateSegmentColor } from '../utils/segmentColors'
+import { getSegmentColor, generateSegmentColor } from '../utils/segmentColors'
 import {
   constructViewers,
   implementsTID1500,
@@ -937,7 +937,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                       const segmentColor = generateSegmentColor(index)
                       this.volumeViewer.setSegmentStyle(segment.uid, {
                         opacity: defaultStyle.opacity,
-                        paletteColorLookupTable: createSegmentPaletteColorLookupTable(
+                        paletteColorLookupTable: (this.volumeViewer as any).createSegmentPaletteColorLookupTable(
                           segment.uid,
                           segmentColor
                         )
@@ -2286,7 +2286,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     /** If color is provided, create a palette color lookup table */
     let paletteColorLookupTable
     if (styleOptions.color !== undefined) {
-      paletteColorLookupTable = createSegmentPaletteColorLookupTable(
+      paletteColorLookupTable = (this.volumeViewer as any).createSegmentPaletteColorLookupTable(
         segmentUID,
         styleOptions.color
       )
@@ -3132,7 +3132,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             if (currentStyle?.opacity === undefined || currentStyle.opacity !== defaultStyle.opacity) {
               this.volumeViewer.setSegmentStyle(segment.uid, {
                 opacity: defaultStyle.opacity,
-                paletteColorLookupTable: createSegmentPaletteColorLookupTable(
+                paletteColorLookupTable: (this.volumeViewer as any).createSegmentPaletteColorLookupTable(
                   segment.uid,
                   segmentColor
                 )

@@ -76,7 +76,11 @@ const CustomErrorBoundary = ({
       componentStack: string
     }
   ): void => {
-    console.error(error)
+    // Only log errors in development environment
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error caught by boundary:', error, info)
+    }
+    // In production, you might want to send this to an error reporting service
   }
 
   return (

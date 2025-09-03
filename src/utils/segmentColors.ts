@@ -2,6 +2,8 @@
  * Utility functions for handling segment colors
  */
 
+import dcmjs from 'dcmjs'
+
 /**
  * Type guard to check if a value is defined and not null
  */
@@ -78,30 +80,6 @@ export const getContrastColor = (rgb: number[]): number[] => {
 }
 
 /**
- * Create a palette color lookup table for a segment
- * This can be used with the dicom-microscopy-viewer's setSegmentStyle method
- */
-export const createSegmentPaletteColorLookupTable = (
-  segmentUID: string,
-  color: number[]
-): any => {
-  // Create a simple 2-entry LUT where index 0 is transparent and index 1 is the segment color
-  const redData = new Uint16Array([0, color[0]])
-  const greenData = new Uint16Array([0, color[1]])
-  const blueData = new Uint16Array([0, color[2]])
-
-  return {
-    uid: `segment-${segmentUID}-color-lut`,
-    redDescriptor: [2, 0, 16, 0],
-    greenDescriptor: [2, 0, 16, 0],
-    blueDescriptor: [2, 0, 16, 0],
-    redData,
-    greenData,
-    blueData
-  }
-}
-
-/**
  * Extract color hints from DICOM segment metadata
  * Looks for RecommendedDisplayCIELabValue in the Segment Sequence
  */
@@ -117,17 +95,23 @@ export const extractSegmentColorFromMetadata = (
       )
 
       if (isDefined(segment) && isDefined(segment.RecommendedDisplayCIELabValue) && Array.isArray(segment.RecommendedDisplayCIELabValue)) {
-        /** Convert CIELab to RGB */
-        /** This is a simplified conversion - in practice you might want a more accurate algorithm */
+        /** Convert CIELab to RGB using dcmjs */
         const labValues = segment.RecommendedDisplayCIELabValue as number[]
         if (labValues.length >= 3) {
-          const [L, a, b] = labValues
-
-          /** Simple CIELab to RGB conversion (approximate) */
-          /** This is a basic conversion and may not be perfectly accurate */
-          const rgb = labToRgb(L, a, b)
-          if (rgb !== null) {
-            return rgb
+          try {
+            /** Use dcmjs's dicomlab2RGB function for accurate DICOM CIELAB to RGB conversion */
+            const rgb = (dcmjs as any).data.Colors.dicomlab2RGB(labValues)
+            /** Convert from 0-1 range to 0-255 range and round to integers */
+            const result = [
+              Math.max(0, Math.min(255, Math.round(rgb[0] * 255))),
+              Math.max(0, Math.min(255, Math.round(rgb[1] * 255))),
+              Math.max(0, Math.min(255, Math.round(rgb[2] * 255)))
+            ]
+            return result
+          } catch (error) {
+            /** Failed to convert CIELab to RGB using dcmjs */
+            console.warn('Failed to convert CIELab to RGB using dcmjs:', error)
+            return null
           }
         }
       }
@@ -138,45 +122,6 @@ export const extractSegmentColorFromMetadata = (
   }
 
   return null
-}
-
-/**
- * Convert CIELab color space to RGB (simplified conversion)
- * This is an approximate conversion and may not be perfectly accurate
- */
-const labToRgb = (L: number, a: number, b: number): number[] | null => {
-  try {
-    /** Convert CIELab to XYZ */
-    const fy = (L + 16) / 116
-    const fx = a / 500 + fy
-    const fz = fy - b / 200
-
-    const xr = fx > 0.2069 ? Math.pow(fx, 3) : (fx - 16 / 116) / 7.787
-    const yr = fy > 0.2069 ? Math.pow(fy, 3) : (fy - 16 / 116) / 7.787
-    const zr = fz > 0.2069 ? Math.pow(fz, 3) : (fz - 16 / 116) / 7.787
-
-    /** Reference white point (D65) */
-    const X = xr * 0.95047
-    const Y = yr * 1.00000
-    const Z = zr * 1.08883
-
-    /** Convert XYZ to RGB (sRGB color space) */
-    const r = X * 3.2406 + Y * -1.5372 + Z * -0.4986
-    const g = X * -0.9689 + Y * 1.8758 + Z * 0.0415
-    const bVal = X * 0.0557 + Y * -0.2040 + Z * 1.0570
-
-    /** Apply gamma correction and clamp values */
-    const gammaCorrect = (c: number): number => {
-      const corrected = c > 0.0031308 ? 1.055 * Math.pow(c, 1 / 2.4) - 0.055 : 12.92 * c
-      return Math.max(0, Math.min(255, Math.round(corrected * 255)))
-    }
-
-    return [gammaCorrect(r), gammaCorrect(g), gammaCorrect(bVal)]
-  } catch (error) {
-    /** Failed to convert CIELab to RGB */
-    console.warn('Failed to convert CIELab to RGB:', error)
-    return null
-  }
 }
 
 /**

@@ -100,7 +100,10 @@ class NotificationMiddleware extends PubSub {
 
     switch (notificationType) {
       case NotificationType.TOAST:
-        console.error(`A ${errorCategory} error occurred: `, error)
+        // Only log errors in development environment
+        if (process.env.NODE_ENV === 'development') {
+          console.error(`A ${errorCategory} error occurred: `, error)
+        }
         return notification.error({
           message: `${errorCategory} error`,
           description: notificationMsg,
@@ -108,7 +111,10 @@ class NotificationMiddleware extends PubSub {
         })
 
       case NotificationType.CONSOLE:
-        console.error(`A ${errorCategory} error occurred: `, error)
+        // Only log errors in development environment
+        if (process.env.NODE_ENV === 'development') {
+          console.error(`A ${errorCategory} error occurred: `, error)
+        }
         break
 
       default:
