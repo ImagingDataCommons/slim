@@ -44,6 +44,7 @@ import {
   areROIsEqual,
   formatRoiStyle
 } from './SlideViewer/utils/roiUtils'
+import { getSegmentColor, generateSegmentColor } from '../utils/segmentColors'
 import {
   constructViewers,
   implementsTID1500,
@@ -247,8 +248,34 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       pixelDataStatistics: {},
       selectedPresentationStateUID: this.props.selectedPresentationStateUID,
       loadingFrames: new Set(),
-      isICCProfilesEnabled: true
+      isICCProfilesEnabled: true,
+      isSegmentationInterpolationEnabled: false,
+      customizedSegmentColors: {}
     }
+  }
+
+  /**
+   * Create a palette color lookup table for a segment.
+   *
+   * @param {number[]} segmentColor - RGB color triplet [r, g, b]
+   * @param {dmv.viewer.VolumeImageViewer} viewer - Volume image viewer
+   * @returns {color.PaletteColorLookupTable} Palette color lookup table
+   * @private
+   */
+  private static readonly createSegmentPaletteColorLookupTable = (segmentColor: number[]): dmv.color.PaletteColorLookupTable => {
+    /** Create a simple palette with the segment color
+     * For binary segments, we typically have 2 values: background (0) and segment (1) */
+    const paletteData = [
+      [0, 0, 0], /** Background (black/transparent) */
+      segmentColor /** Segment color */
+    ]
+
+    const palette = dmv.color.buildPaletteColorLookupTable({
+      data: paletteData,
+      firstValueMapped: 0
+    })
+
+    return palette
   }
 
   componentDidUpdate (
@@ -778,7 +805,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             'Annotations could not be loaded'
           )
         )
-        reject(error instanceof Error ? error : new Error(String(error)))
+        reject(error instanceof Error ? error : new Error(String(error as unknown)))
       })
     })
   }
@@ -882,7 +909,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             'Search for Microscopy Bulk Simple Annotations instances failed.'
           )
         )
-        reject(error instanceof Error ? error : new Error(String(error)))
+        reject(error instanceof Error ? error : new Error(String(error as unknown)))
       })
     })
   }
@@ -969,7 +996,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             'Search for Segmentation instances failed.'
           )
         )
-        reject(error instanceof Error ? error : new Error(String(error)))
+        reject(error instanceof Error ? error : new Error(String(error as unknown)))
       })
     })
   }
@@ -1059,7 +1086,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             'Search for Parametric Map instances failed.'
           )
         )
-        reject(error instanceof Error ? error : new Error(String(error)))
+        reject(error instanceof Error ? error : new Error(String(error as unknown)))
       })
     })
   }
@@ -2257,10 +2284,32 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     segmentUID: string
     styleOptions: {
       opacity?: number
+      color?: number[]
     }
   }): void => {
     console.log(`change style of segment ${segmentUID}`)
-    this.volumeViewer.setSegmentStyle(segmentUID, styleOptions)
+
+    /** Track user customization if color is provided */
+    if (styleOptions.color !== undefined) {
+      const color = styleOptions.color
+      this.setState(state => ({
+        customizedSegmentColors: {
+          ...state.customizedSegmentColors,
+          [segmentUID]: color
+        }
+      }))
+    }
+
+    /** If color is provided, create a palette color lookup table */
+    let paletteColorLookupTable
+    if (styleOptions.color !== undefined) {
+      paletteColorLookupTable = SlideViewer.createSegmentPaletteColorLookupTable(styleOptions.color)
+    }
+
+    this.volumeViewer.setSegmentStyle(segmentUID, {
+      opacity: styleOptions.opacity,
+      paletteColorLookupTable
+    })
   }
 
   /**
@@ -2425,7 +2474,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
      */
     if (visibleOpticalPathIdentifiers.size === 0) {
       const defaultColors = [
-        [255, 255, 255]
+        [255, 255, 255], // White
+        [255, 0, 0], // Red
+        [0, 255, 0], // Green
+        [0, 0, 255], // Blue
+        [255, 255, 0], // Yellow
+        [255, 0, 255], // Magenta
+        [0, 255, 255], // Cyan
+        [255, 165, 0], // Orange
+        [128, 0, 128], // Purple
+        [0, 128, 0] // Dark Green
       ]
       opticalPaths.forEach((item: dmv.opticalPath.OpticalPath) => {
         const identifier = item.identifier
@@ -2737,6 +2795,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.volumeViewer.toggleICCProfiles()
   }
 
+  /**
+   * Handler that will toggle the segmentation interpolation, i.e., either
+   * enable or disable it, depending on its current state.
+   */
+  handleSegmentationInterpolationToggle = (event: CheckboxChangeEvent): void => {
+    const checked = event.target.checked
+    this.setState({ isSegmentationInterpolationEnabled: checked })
+    ;(this.volumeViewer as any).toggleSegmentationInterpolation()
+  }
+
   formatAnnotation = (annotation: AnnotationCategoryAndType): void => {
     const roi = this.volumeViewer.getROI(annotation.uid)
     const key = getRoiKey(roi) as string
@@ -3034,22 +3102,78 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   private readonly getSegmentationMenu = (segments: dmv.segment.Segment[]): React.ReactNode => {
+    // Skip processing if no segments or if viewer is not ready
+    if (segments.length === 0 || this.volumeViewer === null || this.volumeViewer === undefined) {
+      return undefined
+    }
+
     if (segments.length > 0) {
       const defaultSegmentStyles: {
         [segmentUID: string]: {
           opacity: number
+          color: number[]
         }
       } = {}
       const segmentMetadata: {
         [segmentUID: string]: dmv.metadata.Segmentation[]
       } = {}
-      segments.forEach(segment => {
-        defaultSegmentStyles[segment.uid] = this.volumeViewer.getSegmentStyle(
-          segment.uid
-        )
-        segmentMetadata[segment.uid] = this.volumeViewer.getSegmentMetadata(
-          segment.uid
-        )
+      segments.forEach((segment, index) => {
+        try {
+          /** Validate segment object */
+          if (segment === null || segment === undefined || segment.uid === undefined || segment.uid === '') {
+            console.warn(`Invalid segment at index ${index}:`, segment)
+            return
+          }
+
+          /** Check if volumeViewer methods are available */
+          if (this.volumeViewer === null || this.volumeViewer === undefined || typeof this.volumeViewer.getSegmentStyle !== 'function') {
+            console.warn('Volume viewer not properly initialized')
+            return
+          }
+
+          const defaultStyle = this.volumeViewer.getSegmentStyle(segment.uid)
+          segmentMetadata[segment.uid] = this.volumeViewer.getSegmentMetadata(
+            segment.uid
+          )
+
+          /** Validate defaultStyle */
+          if (defaultStyle === null || defaultStyle === undefined || typeof defaultStyle.opacity !== 'number') {
+            console.warn(`Invalid default style for segment ${segment.uid}:`, defaultStyle)
+            defaultSegmentStyles[segment.uid] = {
+              opacity: 1,
+              color: generateSegmentColor(index)
+            }
+            return
+          }
+
+          /** Get the best color for this segment (from DICOM metadata or generated) */
+          const segmentColor = getSegmentColor(
+            (segmentMetadata[segment.uid]?.[0] as unknown) as Record<string, unknown> ?? {},
+            segment.number ?? index + 1,
+            index
+          )
+
+          /** Use customized color if user has set one, otherwise use DICOM/generated color */
+          const finalColor = this.state.customizedSegmentColors[segment.uid] ?? segmentColor
+
+          defaultSegmentStyles[segment.uid] = {
+            opacity: defaultStyle.opacity,
+            color: finalColor
+          }
+        } catch (error) {
+          console.warn(`Failed to process segment ${segment.uid}:`, error)
+          /** Fallback to default color */
+          const segmentColor = generateSegmentColor(index)
+          defaultSegmentStyles[segment.uid] = {
+            opacity: 1,
+            color: segmentColor
+          }
+        }
+
+        this.volumeViewer.setSegmentStyle(segment.uid, {
+          opacity: defaultSegmentStyles[segment.uid].opacity,
+          paletteColorLookupTable: SlideViewer.createSegmentPaletteColorLookupTable(defaultSegmentStyles[segment.uid].color)
+        })
       })
       return (
         <Menu.SubMenu key='segmentations' title='Segmentations'>
@@ -3438,6 +3562,20 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     )
   }
 
+  private readonly getSegmentationInterpolationMenu = (): React.ReactNode => {
+    const segments = this.volumeViewer.getAllSegments()
+    return segments.length > 0 && (
+      <div style={{ margin: '0.9rem' }}>
+        <Checkbox
+          checked={this.state.isSegmentationInterpolationEnabled}
+          onChange={this.handleSegmentationInterpolationToggle}
+        >
+          Segmentation Interpolation
+        </Checkbox>
+      </div>
+    )
+  }
+
   render = (): React.ReactNode => {
     const { rois, segments, mappings, annotationGroups, annotations } = this.getDataFromViewer()
 
@@ -3456,6 +3594,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const cursor = this.getCursor()
     const selectedRoiInformation = this.getSelectedRoiInformation()
     const iccProfilesMenu = this.getICCProfilesMenu()
+    const segmentationInterpolationMenu = this.getSegmentationInterpolationMenu()
 
     // Add segmentations and parametric maps to open sub menu items if they exist
     if (segmentationMenu !== null && segmentationMenu !== undefined) {
@@ -3512,6 +3651,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           openSubMenuItems={openSubMenuItems}
           specimenMenu={specimenMenu}
           iccProfilesMenu={iccProfilesMenu}
+          segmentationInterpolationMenu={segmentationInterpolationMenu}
           equipmentMenu={equipmentMenu}
           opticalPathMenu={opticalPathMenu}
           presentationStateMenu={presentationStateMenu}

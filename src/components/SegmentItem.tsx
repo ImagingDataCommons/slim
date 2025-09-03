@@ -3,19 +3,19 @@ import React from 'react'
 import * as dmv from 'dicom-microscopy-viewer'
 import {
   Button,
-  Col,
-  InputNumber,
   Menu,
   Popover,
-  Row,
-  Slider,
   Space,
-  Switch
+  Switch,
+  Divider
 } from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
 
 import Description from './Description'
+import ColorSlider from './ColorSlider'
+import OpacitySlider from './OpacitySlider'
+import { rgbToHex } from '../utils/segmentColors'
 
 interface SegmentItemProps {
   segment: dmv.segment.Segment
@@ -23,6 +23,7 @@ interface SegmentItemProps {
   metadata: dmv.metadata.Segmentation[]
   defaultStyle: {
     opacity: number
+    color?: number[]
   }
   onVisibilityChange: ({ segmentUID, isVisible }: {
     segmentUID: string
@@ -32,6 +33,7 @@ interface SegmentItemProps {
     segmentUID: string
     styleOptions: {
       opacity: number
+      color?: number[]
     }
   }) => void
 }
@@ -40,6 +42,7 @@ interface SegmentItemState {
   isVisible: boolean
   currentStyle: {
     opacity: number
+    color: number[]
   }
 }
 
@@ -49,18 +52,22 @@ interface SegmentItemState {
 class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
   constructor (props: SegmentItemProps) {
     super(props)
-    this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
-    this.handleOpacityChange = this.handleOpacityChange.bind(this)
+
+    /** Initialize with default color if not provided */
+    const defaultColor = this.props.defaultStyle.color ?? [255, 255, 0] // Default yellow
     this.state = {
       isVisible: this.props.isVisible,
-      currentStyle: { opacity: this.props.defaultStyle.opacity }
+      currentStyle: {
+        opacity: this.props.defaultStyle.opacity,
+        color: defaultColor
+      }
     }
   }
 
-  handleVisibilityChange (
+  handleVisibilityChange = (
     checked: boolean,
     event: React.MouseEvent<HTMLButtonElement>
-  ): void {
+  ): void => {
     this.props.onVisibilityChange({
       segmentUID: this.props.segment.uid,
       isVisible: checked
@@ -68,15 +75,35 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
     this.setState({ isVisible: checked })
   }
 
-  handleOpacityChange (value: number | null): void {
-    if (value != null) {
+  handleColorChange = (newColor: number[]): void => {
+    this.setState(prevState => {
+      const newStyle = { ...prevState.currentStyle, color: newColor }
+      return { currentStyle: newStyle }
+    }, () => {
       this.props.onStyleChange({
         segmentUID: this.props.segment.uid,
         styleOptions: {
-          opacity: value
+          opacity: this.state.currentStyle.opacity,
+          color: newColor
         }
       })
-      this.setState({ currentStyle: { opacity: value } })
+    })
+  }
+
+  handleOpacityChange = (opacity: number | null): void => {
+    if (opacity !== null) {
+      this.setState(prevState => {
+        const newStyle = { ...prevState.currentStyle, opacity }
+        return { currentStyle: newStyle }
+      }, () => {
+        this.props.onStyleChange({
+          segmentUID: this.props.segment.uid,
+          styleOptions: {
+            opacity,
+            color: this.state.currentStyle.color
+          }
+        })
+      })
     }
   }
 
@@ -98,32 +125,16 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
 
     const settings = (
       <div>
-        <Row justify='center' align='middle'>
-          <Col span={6}>
-            Opacity
-          </Col>
-          <Col span={12}>
-            <Slider
-              range={false}
-              min={0}
-              max={1}
-              step={0.01}
-              value={this.state.currentStyle.opacity}
-              onChange={this.handleOpacityChange}
-            />
-          </Col>
-          <Col span={6}>
-            <InputNumber
-              min={0}
-              max={1}
-              size='small'
-              step={0.1}
-              style={{ width: '65px' }}
-              value={this.state.currentStyle.opacity}
-              onChange={this.handleOpacityChange}
-            />
-          </Col>
-        </Row>
+        <Divider plain>Color</Divider>
+        <ColorSlider
+          color={this.state.currentStyle.color}
+          onChange={this.handleColorChange}
+        />
+        <Divider plain />
+        <OpacitySlider
+          opacity={this.state.currentStyle.opacity}
+          onChange={this.handleOpacityChange}
+        />
       </div>
     )
 
@@ -148,7 +159,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
       >
         <Space align='start'>
           <div style={{ paddingLeft: '14px' }}>
-            <Space direction='vertical' align='end'>
+            <Space direction='vertical' align='center'>
               <Switch
                 size='small'
                 onChange={this.handleVisibilityChange}
@@ -168,14 +179,30 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
                   icon={<SettingOutlined />}
                 />
               </Popover>
+              {/* Color indicator */}
+              <div
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  backgroundColor: rgbToHex(this.state.currentStyle.color),
+                  border: '1px solid #d9d9d9',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                title={`Segment color: ${rgbToHex(this.state.currentStyle.color)}`}
+              />
             </Space>
           </div>
-          <Description
-            header={this.props.segment.label}
-            attributes={attributes}
-            selectable
-            hasLongValues
-          />
+          <div style={{ flex: 1 }}>
+            <Description
+              header={this.props.segment.label}
+              attributes={attributes}
+              selectable
+              hasLongValues
+            />
+          </div>
         </Space>
       </Menu.Item>
     )

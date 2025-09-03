@@ -37,7 +37,10 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       this.handleError = onError
     } else {
       this.handleError = (error, serverSettings) => {
-        console.error(error, serverSettings)
+        // Only log errors in development environment
+        if (process.env.NODE_ENV === 'development') {
+          console.error(error, serverSettings)
+        }
       }
     }
 

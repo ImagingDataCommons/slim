@@ -40,7 +40,10 @@ const ValidationWarning: React.FC<ValidationWarningProps> = ({
     if (!validationResult.isValid) {
       setShow(true)
       setTooltipText(validationResult.message)
-      console.warn(validationResult.message)
+      // Only log warnings in development environment
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(validationResult.message)
+      }
     } else {
       setShow(false)
       setTooltipText(undefined)

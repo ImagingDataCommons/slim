@@ -71,6 +71,7 @@ import * as dcmjs from 'dcmjs'
       get isSnapInteractionActive (): boolean
       activateTranslateInteraction (options: object): void
       deactivateTranslateInteraction (): void
+      buildPaletteColorLookupTable (options: object): color.PaletteColorLookupTable
       get isTranslateInteractionActive (): boolean
       getAllROIs (): roi.ROI[]
       removeAllROIs (): void
@@ -793,6 +794,13 @@ import * as dcmjs from 'dcmjs'
       greenSegmentedData?: Unit8Array|Unit16Array
       blueSegmentedData?: Unit8Array|Unit16Array
     }
+
+    export interface BuildPaletteColorLookupTableOptions {
+      data: number[][]
+      firstValueMapped: number
+    }
+
+    export function buildPaletteColorLookupTable(options: BuildPaletteColorLookupTableOptions): PaletteColorLookupTable
 
     export class PaletteColorLookupTable {
       constructor (options: PaletteColorLookupTableOptions)

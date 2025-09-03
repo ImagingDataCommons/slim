@@ -14,6 +14,7 @@ interface SegmentListProps {
   defaultSegmentStyles: {
     [segmentUID: string]: {
       opacity: number
+      color?: number[]
     }
   }
   onSegmentVisibilityChange: ({ segmentUID, isVisible }: {
@@ -24,6 +25,7 @@ interface SegmentListProps {
     segmentUID: string
     styleOptions: {
       opacity: number
+      color?: number[]
     }
   }) => void
 }
