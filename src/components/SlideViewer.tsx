@@ -82,19 +82,19 @@ import Btn from './Button'
  * @returns {color.PaletteColorLookupTable} Palette color lookup table
  * @private
  */
-function createSegmentPaletteColorLookupTable (segmentColor: number[], viewer: dmv.viewer.VolumeImageViewer) {
+function createSegmentPaletteColorLookupTable (segmentColor: number[], viewer: dmv.viewer.VolumeImageViewer): dmv.color.PaletteColorLookupTable {
   /** Create a simple palette with the segment color
    * For binary segments, we typically have 2 values: background (0) and segment (1) */
   const paletteData = [
-    [0, 0, 0],        /** Background (black/transparent) */
-    segmentColor       /** Segment color */
+    [0, 0, 0], /** Background (black/transparent) */
+    segmentColor /** Segment color */
   ]
-  
+
   const palette = viewer.buildPaletteColorLookupTable({
     data: paletteData,
     firstValueMapped: 0
   })
-  
+
   return palette
 }
 
