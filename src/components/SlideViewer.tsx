@@ -2286,10 +2286,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     /** Track user customization if color is provided */
     if (styleOptions.color !== undefined) {
+      const color = styleOptions.color
       this.setState(state => ({
         customizedSegmentColors: {
           ...state.customizedSegmentColors,
-          [segmentUID]: styleOptions.color!
+          [segmentUID]: color
         }
       }))
     }
@@ -3144,17 +3145,17 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             const currentStyle = this.volumeViewer.getSegmentStyle(segment.uid)
             /** Only set style if it's not already set or if it's different */
             const currentColor = currentStyle?.paletteColorLookupTable?.data?.[1]
-            const colorsMatch = currentColor && 
+            const colorsMatch = currentColor !== undefined &&
                                currentColor.length >= 3 &&
                                currentColor[0] === finalColor[0] &&
                                currentColor[1] === finalColor[1] &&
                                currentColor[2] === finalColor[2]
-            
-            const needsUpdate = currentStyle?.opacity === undefined || 
+
+            const needsUpdate = currentStyle?.opacity === undefined ||
                                currentStyle.opacity !== defaultStyle.opacity ||
-                               !currentStyle.paletteColorLookupTable ||
+                               currentStyle.paletteColorLookupTable === undefined ||
                                !colorsMatch
-            
+
             if (needsUpdate) {
               this.volumeViewer.setSegmentStyle(segment.uid, {
                 opacity: defaultStyle.opacity,
