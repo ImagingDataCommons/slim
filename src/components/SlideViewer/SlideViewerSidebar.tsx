@@ -12,6 +12,7 @@ interface SlideViewerSidebarProps {
   openSubMenuItems: string[]
   specimenMenu: React.ReactNode
   iccProfilesMenu: React.ReactNode
+  segmentationInterpolationMenu: React.ReactNode
   equipmentMenu: React.ReactNode
   opticalPathMenu: React.ReactNode
   presentationStateMenu: React.ReactNode
@@ -35,6 +36,7 @@ const SlideViewerSidebar: React.FC<SlideViewerSidebarProps> = ({
   openSubMenuItems,
   specimenMenu,
   iccProfilesMenu,
+  segmentationInterpolationMenu,
   equipmentMenu,
   opticalPathMenu,
   presentationStateMenu,
@@ -89,6 +91,7 @@ const SlideViewerSidebar: React.FC<SlideViewerSidebarProps> = ({
         )}
         {specimenMenu}
         {iccProfilesMenu}
+        {segmentationInterpolationMenu}
         {equipmentMenu}
         {opticalPathMenu}
         {presentationStateMenu}

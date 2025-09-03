@@ -249,6 +249,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       selectedPresentationStateUID: this.props.selectedPresentationStateUID,
       loadingFrames: new Set(),
       isICCProfilesEnabled: true,
+      isSegmentationInterpolationEnabled: false,
       customizedSegmentColors: {}
     }
   }
@@ -2474,15 +2475,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (visibleOpticalPathIdentifiers.size === 0) {
       const defaultColors = [
         [255, 255, 255], // White
-        [255, 0, 0],     // Red
-        [0, 255, 0],     // Green
-        [0, 0, 255],     // Blue
-        [255, 255, 0],   // Yellow
-        [255, 0, 255],   // Magenta
-        [0, 255, 255],   // Cyan
-        [255, 165, 0],   // Orange
-        [128, 0, 128],   // Purple
-        [0, 128, 0]      // Dark Green
+        [255, 0, 0], // Red
+        [0, 255, 0], // Green
+        [0, 0, 255], // Blue
+        [255, 255, 0], // Yellow
+        [255, 0, 255], // Magenta
+        [0, 255, 255], // Cyan
+        [255, 165, 0], // Orange
+        [128, 0, 128], // Purple
+        [0, 128, 0] // Dark Green
       ]
       opticalPaths.forEach((item: dmv.opticalPath.OpticalPath) => {
         const identifier = item.identifier
@@ -2792,6 +2793,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const checked = event.target.checked
     this.setState({ isICCProfilesEnabled: checked })
     this.volumeViewer.toggleICCProfiles()
+  }
+
+  /**
+   * Handler that will toggle the segmentation interpolation, i.e., either
+   * enable or disable it, depending on its current state.
+   */
+  handleSegmentationInterpolationToggle = (event: CheckboxChangeEvent): void => {
+    const checked = event.target.checked
+    this.setState({ isSegmentationInterpolationEnabled: checked })
+    ;(this.volumeViewer as any).toggleSegmentationInterpolation()
   }
 
   formatAnnotation = (annotation: AnnotationCategoryAndType): void => {
@@ -3551,6 +3562,20 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     )
   }
 
+  private readonly getSegmentationInterpolationMenu = (): React.ReactNode => {
+    const segments = this.volumeViewer.getAllSegments()
+    return segments.length > 0 && (
+      <div style={{ margin: '0.9rem' }}>
+        <Checkbox
+          checked={this.state.isSegmentationInterpolationEnabled}
+          onChange={this.handleSegmentationInterpolationToggle}
+        >
+          Segmentation Interpolation
+        </Checkbox>
+      </div>
+    )
+  }
+
   render = (): React.ReactNode => {
     const { rois, segments, mappings, annotationGroups, annotations } = this.getDataFromViewer()
 
@@ -3569,6 +3594,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const cursor = this.getCursor()
     const selectedRoiInformation = this.getSelectedRoiInformation()
     const iccProfilesMenu = this.getICCProfilesMenu()
+    const segmentationInterpolationMenu = this.getSegmentationInterpolationMenu()
 
     // Add segmentations and parametric maps to open sub menu items if they exist
     if (segmentationMenu !== null && segmentationMenu !== undefined) {
@@ -3625,6 +3651,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           openSubMenuItems={openSubMenuItems}
           specimenMenu={specimenMenu}
           iccProfilesMenu={iccProfilesMenu}
+          segmentationInterpolationMenu={segmentationInterpolationMenu}
           equipmentMenu={equipmentMenu}
           opticalPathMenu={opticalPathMenu}
           presentationStateMenu={presentationStateMenu}
