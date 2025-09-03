@@ -116,4 +116,5 @@ export interface SlideViewerState {
   }
   loadingFrames: Set<string>
   isICCProfilesEnabled: boolean
+  customizedSegmentColors: { [segmentUID: string]: number[] }
 }

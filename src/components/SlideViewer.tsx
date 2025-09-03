@@ -248,7 +248,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       pixelDataStatistics: {},
       selectedPresentationStateUID: this.props.selectedPresentationStateUID,
       loadingFrames: new Set(),
-      isICCProfilesEnabled: true
+      isICCProfilesEnabled: true,
+      customizedSegmentColors: {}
     }
   }
 
@@ -2283,6 +2284,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }): void => {
     console.log(`change style of segment ${segmentUID}`)
 
+    /** Track user customization if color is provided */
+    if (styleOptions.color !== undefined) {
+      this.setState(state => ({
+        customizedSegmentColors: {
+          ...state.customizedSegmentColors,
+          [segmentUID]: styleOptions.color!
+        }
+      }))
+    }
+
     /** If color is provided, create a palette color lookup table */
     let paletteColorLookupTable
     if (styleOptions.color !== undefined) {
@@ -3120,21 +3131,36 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             index
           )
 
+          /** Use customized color if user has set one, otherwise use DICOM/generated color */
+          const finalColor = this.state.customizedSegmentColors[segment.uid] ?? segmentColor
+
           defaultSegmentStyles[segment.uid] = {
             opacity: defaultStyle.opacity,
-            color: segmentColor
+            color: finalColor
           }
 
           /** Apply the color to the segment in the viewer only if it hasn't been set yet */
           try {
             const currentStyle = this.volumeViewer.getSegmentStyle(segment.uid)
             /** Only set style if it's not already set or if it's different */
-            if (currentStyle?.opacity === undefined || currentStyle.opacity !== defaultStyle.opacity) {
+            const currentColor = currentStyle?.paletteColorLookupTable?.data?.[1]
+            const colorsMatch = currentColor && 
+                               currentColor.length >= 3 &&
+                               currentColor[0] === finalColor[0] &&
+                               currentColor[1] === finalColor[1] &&
+                               currentColor[2] === finalColor[2]
+            
+            const needsUpdate = currentStyle?.opacity === undefined || 
+                               currentStyle.opacity !== defaultStyle.opacity ||
+                               !currentStyle.paletteColorLookupTable ||
+                               !colorsMatch
+            
+            if (needsUpdate) {
               this.volumeViewer.setSegmentStyle(segment.uid, {
                 opacity: defaultStyle.opacity,
                 paletteColorLookupTable: (this.volumeViewer as any).createSegmentPaletteColorLookupTable(
                   segment.uid,
-                  segmentColor
+                  finalColor
                 )
               })
             }
