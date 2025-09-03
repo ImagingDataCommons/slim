@@ -57,7 +57,7 @@ The `src/utils/segmentColors.ts` file provides:
 
 ### DICOM Integration
 
-Colors are applied to segments using the dicom-microscopy-viewer's `setSegmentStyle` method with custom palette color lookup tables created by the viewer's built-in `createSegmentPaletteColorLookupTable` method.
+Colors are applied to segments using the dicom-microscopy-viewer's `setSegmentStyle` method with custom palette color lookup tables created by the `createSegmentPaletteColorLookupTable` method.
 
 ## Usage
 

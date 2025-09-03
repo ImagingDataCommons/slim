@@ -71,6 +71,7 @@ import * as dcmjs from 'dcmjs'
       get isSnapInteractionActive (): boolean
       activateTranslateInteraction (options: object): void
       deactivateTranslateInteraction (): void
+      buildPaletteColorLookupTable (options: object): color.PaletteColorLookupTable
       get isTranslateInteractionActive (): boolean
       getAllROIs (): roi.ROI[]
       removeAllROIs (): void
