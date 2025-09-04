@@ -2475,7 +2475,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
      */
     if (visibleOpticalPathIdentifiers.size === 0) {
       const defaultColors = [
-        [255, 255, 255],
+        [255, 255, 255]
       ]
       opticalPaths.forEach((item: dmv.opticalPath.OpticalPath) => {
         const identifier = item.identifier
@@ -2810,7 +2810,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       opacity: DEFAULT_ANNOTATION_OPACITY,
       contourOnly: false
     }
-
     this.roiStyles[key] = this.generateRoiStyle(
       this.defaultAnnotationStyles[annotation.uid]
     )
@@ -3112,7 +3111,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         segmentMetadata[segment.uid] = this.volumeViewer.getSegmentMetadata(
           segment.uid
         )
-        if (getSegmentationType(segmentMetadata[segment.uid][0] as any) !== 'FRACTIONAL') {
+        if (getSegmentationType(segmentMetadata[segment.uid][0] as any) !== 'BINARY') {
           defaultSegmentStyles[segment.uid] = this.volumeViewer.getSegmentStyle(
             segment.uid
           )
@@ -3149,7 +3148,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
           this.volumeViewer.setSegmentStyle(segment.uid, {
             opacity: defaultSegmentStyles[segment.uid].opacity,
-            paletteColorLookupTable: defaultSegmentStyles[segment.uid].color 
+            paletteColorLookupTable: (defaultSegmentStyles[segment.uid].color != null)
               ? SlideViewer.createSegmentPaletteColorLookupTable(defaultSegmentStyles[segment.uid].color as number[])
               : undefined
           })
