@@ -30,11 +30,13 @@ export const getRoiKey = (roi: dmv.roi.ROI): string | undefined => {
       schemeDesignator: 'DCM'
     })
   })
-  if (matches.length > 0) {
-    const finding = matches[0].ConceptNameCodeSequence[0]
-    return buildKey(finding)
+  if (matches.length === 0) {
+    console.warn(`no finding found for ROI ${roi.uid}`)
+    return
   }
-  return undefined
+  const finding = matches[0] as dcmjs.sr.valueTypes.CodeContentItem
+  const findingName = finding.ConceptCodeSequence[0]
+  return buildKey(findingName)
 }
 
 /**

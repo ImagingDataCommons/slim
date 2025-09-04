@@ -1363,11 +1363,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   resetUnselectedRoiStyles = (selectionState: { selectedRoiUIDs: Set<string> }): void => {
     this.volumeViewer.getAllROIs().forEach(roi => {
       const uid = roi.uid
-
       if (selectionState.selectedRoiUIDs.has(uid) || !this.state.visibleRoiUIDs.has(uid)) {
         return
       }
-
       const key = getRoiKey(roi)
       const style = this.getRoiStyle(key)
       this.volumeViewer.setROIStyle(uid, style)
@@ -1401,7 +1399,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   handleAnnotationSelection = (uid: string): void => {
     // @ts-expect-error
     this.volumeViewer.clearSelections()
-
     const updatedSelectedRois = this.getUpdatedSelectedRois(uid)
     this.setState(updatedSelectedRois)
     this.volumeViewer.getAllROIs().forEach((roi) => {
@@ -2231,14 +2228,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     try {
       this.defaultAnnotationStyles[uid] = styleOptions
       const style = this.generateRoiStyle(styleOptions)
-
       const roi = this.volumeViewer.getROI(uid)
       const key = getRoiKey(roi) as string
       this.roiStyles[key] = style
       this.volumeViewer.setROIStyle(uid, style)
       this.state.visibleRoiUIDs.add(uid)
     } catch (error) {
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
         new CustomError(
@@ -3284,8 +3279,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               annotationGroups={selectedSeriesAnnotationGroups}
               metadata={annotationGroupMetadata}
               onAnnotationGroupClick={this.handleAnnotationGroupClick}
-              // when adding annotationGroups to annotationCategory list,
-              // make so that this is uses this.defaultAnnotationStyles later instead of defaultAnnotationGroupStyles
               defaultAnnotationGroupStyles={defaultAnnotationGroupStyles}
               visibleAnnotationGroupUIDs={this.state.visibleAnnotationGroupUIDs}
               onAnnotationGroupVisibilityChange={this.handleAnnotationGroupVisibilityChange}
