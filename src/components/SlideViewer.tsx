@@ -44,7 +44,7 @@ import {
   areROIsEqual,
   formatRoiStyle
 } from './SlideViewer/utils/roiUtils'
-import { getSegmentColor, generateSegmentColor, getSegmentationType } from '../utils/segmentColors'
+import { getSegmentColor, getSegmentationType } from '../utils/segmentColors'
 import {
   constructViewers,
   implementsTID1500,
@@ -2810,7 +2810,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     )
   }
 
-  // Helper functions to extract render logic
   private readonly getDataFromViewer = (): {
     rois: dmv.roi.ROI[]
     segments: dmv.segment.Segment[]
@@ -3116,21 +3115,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         } else {
           const defaultStyle = this.volumeViewer.getSegmentStyle(segment.uid)
 
-          /** Validate defaultStyle */
-          if (defaultStyle === null || defaultStyle === undefined || typeof defaultStyle.opacity !== 'number') {
-            console.warn(`Invalid default style for segment ${segment.uid}:`, defaultStyle)
-            defaultSegmentStyles[segment.uid] = {
-              opacity: 1,
-              color: generateSegmentColor(index)
-            }
-            return
-          }
-
           /** Get the best color for this segment (from DICOM metadata or generated) */
           const segmentColor = getSegmentColor(
             (segmentMetadata[segment.uid]?.[0] as unknown) as Record<string, unknown> ?? {},
             segment.number ?? index + 1,
-            index
           )
 
           /** Use customized color if user has set one, otherwise use DICOM/generated color */
