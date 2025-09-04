@@ -2459,7 +2459,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
          * If the image metadata contains a palette color lookup table for the
          * optical path, then it will be displayed by default.
          */
-        if (item.paletteColorLookupTableUID !== null) {
+        if (item.paletteColorLookupTableUID !== null && item.paletteColorLookupTableUID !== undefined) {
           visibleOpticalPathIdentifiers.add(identifier)
         }
       } else {
@@ -2488,7 +2488,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             const index = numVisible
             style.color = defaultColors[index]
             const stats = this.state.pixelDataStatistics[item.identifier]
-            if (stats !== null) {
+            if (stats !== null && stats !== undefined) {
               style.limitValues = [stats.min, stats.max]
             }
             this.volumeViewer.setOpticalPathStyle(item.identifier, style)
