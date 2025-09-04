@@ -101,4 +101,9 @@ export default interface AppConfig {
     top?: number
     duration?: number
   }
+  logger?: {
+    level?: 'DEBUG' | 'LOG' | 'WARN' | 'ERROR' | 'NONE'
+    enableInProduction?: boolean
+    enableInDevelopment?: boolean
+  }
 }

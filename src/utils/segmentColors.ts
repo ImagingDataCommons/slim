@@ -141,3 +141,16 @@ export const getSegmentColor = (
   /** Fall back to generated color */
   return generateSegmentColor(fallbackIndex)
 }
+
+/**
+ * Get segmentation type from metadata
+ * Returns the SegmentationType from DICOM metadata or defaults to 'BINARY'
+ */
+export const getSegmentationType = (
+  segmentMetadata: Record<string, unknown> | undefined | null
+): string => {
+  if (segmentMetadata?.SegmentationType !== undefined && segmentMetadata?.SegmentationType !== null) {
+    return segmentMetadata.SegmentationType as string
+  }
+  return 'BINARY'
+}

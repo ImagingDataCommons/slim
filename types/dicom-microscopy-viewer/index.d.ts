@@ -1,9 +1,9 @@
 declare module 'dicom-microscopy-viewer' {
 
   // skipcq: JS-C1003
-import * as dwc from 'dicomweb-client'
-// skipcq: JS-C1003
-import * as dcmjs from 'dcmjs'
+  import * as dwc from 'dicomweb-client'
+  // skipcq: JS-C1003
+  import * as dcmjs from 'dcmjs'
   import { CustomError } from '../../src/utils/CustomError'
 
   declare namespace viewer {
@@ -227,8 +227,8 @@ import * as dcmjs from 'dcmjs'
       getAnnotationGroupMetadata (
         annotationGroupUID: string
       ): metadata.MicroscopyBulkSimpleAnnotations
-      toggleICCProfiles(): void;
-      getICCProfiles(): any[];
+      toggleICCProfiles (): void;
+      getICCProfiles (): any[];
     }
 
     export interface OverviewImageViewerOptions {
@@ -800,7 +800,7 @@ import * as dcmjs from 'dcmjs'
       firstValueMapped: number
     }
 
-    export function buildPaletteColorLookupTable(options: BuildPaletteColorLookupTableOptions): PaletteColorLookupTable
+    export function buildPaletteColorLookupTable (options: BuildPaletteColorLookupTableOptions): PaletteColorLookupTable
 
     export class PaletteColorLookupTable {
       constructor (options: PaletteColorLookupTableOptions)

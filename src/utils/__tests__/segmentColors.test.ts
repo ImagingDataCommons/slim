@@ -5,7 +5,8 @@ import {
   isLightColor,
   getContrastColor,
   extractSegmentColorFromMetadata,
-  getSegmentColor
+  getSegmentColor,
+  getSegmentationType
 } from '../segmentColors'
 
 describe('segmentColors utility', () => {
@@ -158,6 +159,35 @@ describe('segmentColors utility', () => {
       const metadata = {}
       const color = getSegmentColor(metadata, 1, 0)
       expect(color).toEqual([255, 0, 0]) // Red (index 0)
+    })
+  })
+
+  describe('getSegmentationType', () => {
+    it('should return SegmentationType when available', () => {
+      const metadata = {
+        SegmentationType: 'FRACTIONAL'
+      }
+      expect(getSegmentationType(metadata)).toBe('FRACTIONAL')
+    })
+
+    it('should return BINARY when SegmentationType is undefined', () => {
+      const metadata = {}
+      expect(getSegmentationType(metadata)).toBe('BINARY')
+    })
+
+    it('should return BINARY when SegmentationType is null', () => {
+      const metadata = {
+        SegmentationType: null
+      }
+      expect(getSegmentationType(metadata)).toBe('BINARY')
+    })
+
+    it('should return BINARY when metadata is undefined', () => {
+      expect(getSegmentationType(undefined)).toBe('BINARY')
+    })
+
+    it('should return BINARY when metadata is null', () => {
+      expect(getSegmentationType(null)).toBe('BINARY')
     })
   })
 })

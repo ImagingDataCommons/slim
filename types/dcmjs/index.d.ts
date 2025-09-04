@@ -26,7 +26,7 @@ declare module 'dcmjs' {
     }
 
     export namespace Colors {
-      export function dicomlab2RGB(labValues: number[]): number[]
+      export function dicomlab2RGB (labValues: number[]): number[]
     }
 
   }
