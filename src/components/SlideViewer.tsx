@@ -1533,7 +1533,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               numFramesSampled: 1
             }
           }
-          if (state.selectedPresentationStateUID === null || state.selectedPresentationStateUID === undefined) {
+          if (state.selectedPresentationStateUID === null) {
             const style = {
               ...this.volumeViewer.getOpticalPathStyle(opticalPathIdentifier)
             }
@@ -3576,7 +3576,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const iccProfilesMenu = this.getICCProfilesMenu()
     const segmentationInterpolationMenu = this.getSegmentationInterpolationMenu()
 
-    // Add segmentations and parametric maps to open sub menu items if they exist
     if (segmentationMenu !== null && segmentationMenu !== undefined) {
       openSubMenuItems.push('segmentations')
     }
@@ -3587,7 +3586,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       openSubMenuItems.push('annotationGroups')
     }
 
-    // Format annotations
     annotations?.forEach?.(this.formatAnnotation)
 
     return (
