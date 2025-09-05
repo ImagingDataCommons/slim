@@ -141,5 +141,11 @@ window.config = {
         }
       }
     }
-  ]
+  ],
+  // Logger configuration
+  logger: {
+    level: 'DEBUG', // DEBUG, LOG, WARN, ERROR, NONE
+    enableInProduction: false,
+    enableInDevelopment: true
+  }
 }
