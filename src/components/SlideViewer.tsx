@@ -3118,7 +3118,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           /** Get the best color for this segment (from DICOM metadata or generated) */
           const segmentColor = getSegmentColor(
             (segmentMetadata[segment.uid]?.[0] as unknown) as Record<string, unknown> ?? {},
-            segment.number ?? index + 1,
+            segment.number ?? index + 1
           )
 
           /** Use customized color if user has set one, otherwise use DICOM/generated color */
