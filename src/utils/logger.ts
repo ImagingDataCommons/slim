@@ -16,8 +16,8 @@ interface LoggerConfig {
   enableInDevelopment: boolean
 }
 
-class Logger {
-  private config: LoggerConfig
+export class Logger {
+  public config: LoggerConfig
 
   constructor () {
     // Get logger config from global config
@@ -39,7 +39,7 @@ class Logger {
   /**
    * Parse log level string to LogLevel enum
    */
-  private parseLogLevel (level: string): LogLevel {
+  public parseLogLevel (level: string): LogLevel {
     switch (level.toUpperCase()) {
       case 'DEBUG':
         return LogLevel.DEBUG

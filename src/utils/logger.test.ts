@@ -1,4 +1,4 @@
-import { logger, LogLevel } from './logger'
+import { Logger, LogLevel } from './logger'
 
 // Mock window.config
 const mockWindowConfig = (config: any): void => {
@@ -20,7 +20,7 @@ describe('Logger', () => {
   })
 
   it('should use default config when no config is provided', () => {
-    const testLogger = new (logger.constructor as any)()
+    const testLogger = new Logger()
     expect(testLogger.config.level).toBe(LogLevel.DEBUG)
     expect(testLogger.config.enableInProduction).toBe(false)
     expect(testLogger.config.enableInDevelopment).toBe(true)
@@ -35,14 +35,14 @@ describe('Logger', () => {
       }
     })
 
-    const testLogger = new (logger.constructor as any)()
+    const testLogger = new Logger()
     expect(testLogger.config.level).toBe(LogLevel.WARN)
     expect(testLogger.config.enableInProduction).toBe(true)
     expect(testLogger.config.enableInDevelopment).toBe(false)
   })
 
   it('should parse log levels correctly', () => {
-    const testLogger = new (logger.constructor as any)()
+    const testLogger = new Logger()
 
     expect(testLogger.parseLogLevel('DEBUG')).toBe(LogLevel.DEBUG)
     expect(testLogger.parseLogLevel('LOG')).toBe(LogLevel.LOG)
