@@ -1,5 +1,4 @@
 import {
-  generateSegmentColor,
   rgbToHex,
   hexToRgb,
   isLightColor,
@@ -10,23 +9,6 @@ import {
 } from '../segmentColors'
 
 describe('segmentColors utility', () => {
-  describe('generateSegmentColor', () => {
-    it('should generate distinct colors for different indices', () => {
-      const color1 = generateSegmentColor(0)
-      const color2 = generateSegmentColor(1)
-      const color3 = generateSegmentColor(2)
-
-      expect(color1).toEqual([255, 0, 0]) // Red
-      expect(color2).toEqual([0, 255, 0]) // Green
-      expect(color3).toEqual([0, 0, 255]) // Blue
-    })
-
-    it('should wrap around the color palette for large indices', () => {
-      const color = generateSegmentColor(20)
-      expect(color).toEqual([255, 0, 255]) // Magenta (index 4, since 20 % 16 = 4)
-    })
-  })
-
   describe('rgbToHex', () => {
     it('should convert RGB values to hex string', () => {
       expect(rgbToHex([255, 0, 0])).toBe('#ff0000')
@@ -149,16 +131,18 @@ describe('segmentColors utility', () => {
         ]
       }
 
-      const color = getSegmentColor(metadata, 1, 0)
+      const color = getSegmentColor(metadata, 1)
       expect(color).toBeDefined()
       expect(Array.isArray(color)).toBe(true)
-      expect(color.length).toBe(3)
+      if (color !== null) {
+        expect(color.length).toBe(3)
+      }
     })
 
-    it('should fall back to generated color when metadata is not available', () => {
+    it('should return null when metadata is not available', () => {
       const metadata = {}
-      const color = getSegmentColor(metadata, 1, 0)
-      expect(color).toEqual([255, 0, 0]) // Red (index 0)
+      const color = getSegmentColor(metadata, 1)
+      expect(color).toBeNull()
     })
   })
 
