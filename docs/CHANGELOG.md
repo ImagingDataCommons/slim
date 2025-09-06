@@ -1,3 +1,10 @@
+## [0.42.4](https://github.com/ImagingDataCommons/slim/compare/v0.42.3...v0.42.4) (2025-09-06)
+
+
+### Bug Fixes
+
+* Address regressions introduced by recent new features & refactoring ([#334](https://github.com/ImagingDataCommons/slim/issues/334)) ([f17fe0e](https://github.com/ImagingDataCommons/slim/commit/f17fe0e4325d80a00c6668477e62cbb46f2ed70a))
+
 ## [0.42.2](https://github.com/ImagingDataCommons/slim/compare/v0.42.1...v0.42.2) (2025-08-22)
 
 
