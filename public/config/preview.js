@@ -31,5 +31,11 @@ window.config = {
         }
       }
     }
-  ]
+  ],
+  // Logger configuration
+  logger: {
+    level: 'WARN', // DEBUG, LOG, WARN, ERROR, NONE
+    enableInProduction: false,
+    enableInDevelopment: true
+  }
 }

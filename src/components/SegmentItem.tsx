@@ -15,7 +15,7 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa'
 import Description from './Description'
 import ColorSlider from './ColorSlider'
 import OpacitySlider from './OpacitySlider'
-import { rgbToHex } from '../utils/segmentColors'
+import { rgbToHex, getSegmentationType } from '../utils/segmentColors'
 
 interface SegmentItemProps {
   segment: dmv.segment.Segment
@@ -123,14 +123,22 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
       }
     ]
 
+    /** Get segmentation type from metadata */
+    const segmentationMetadata = this.props.metadata?.[0] as any
+    const segmentationType = getSegmentationType(segmentationMetadata)
+
     const settings = (
       <div>
-        <Divider plain>Color</Divider>
-        <ColorSlider
-          color={this.state.currentStyle.color}
-          onChange={this.handleColorChange}
-        />
-        <Divider plain />
+        {segmentationType !== 'FRACTIONAL' && (
+          <>
+            <Divider plain>Color</Divider>
+            <ColorSlider
+              color={this.state.currentStyle.color}
+              onChange={this.handleColorChange}
+            />
+            <Divider plain />
+          </>
+        )}
         <OpacitySlider
           opacity={this.state.currentStyle.opacity}
           onChange={this.handleOpacityChange}
@@ -179,20 +187,22 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
                   icon={<SettingOutlined />}
                 />
               </Popover>
-              {/* Color indicator */}
-              <div
-                style={{
-                  width: '20px',
-                  height: '20px',
-                  backgroundColor: rgbToHex(this.state.currentStyle.color),
-                  border: '1px solid #d9d9d9',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-                title={`Segment color: ${rgbToHex(this.state.currentStyle.color)}`}
-              />
+              {/* Color indicator - only show for non-fractional segmentation */}
+              {segmentationType !== 'FRACTIONAL' && (
+                <div
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    backgroundColor: rgbToHex(this.state.currentStyle.color),
+                    border: '1px solid #d9d9d9',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title={`Segment color: ${rgbToHex(this.state.currentStyle.color)}`}
+                />
+              )}
             </Space>
           </div>
           <div style={{ flex: 1 }}>

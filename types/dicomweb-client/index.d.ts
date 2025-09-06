@@ -176,7 +176,7 @@ declare module 'dicomweb-client' {
     }
 
     export class DICOMwebClient implements DICOMwebClient {
-      constructor(options: DICOMwebClientOptions)
+      constructor (options: DICOMwebClientOptions)
     }
 
     export interface MetadataElement {

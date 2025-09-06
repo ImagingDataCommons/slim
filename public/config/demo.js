@@ -13,5 +13,11 @@ window.config = {
     {
       finding: { value: '85756007', schemeDesignator: 'SCT', meaning: 'Tissue' }
     }
-  ]
+  ],
+  // Logger configuration
+  logger: {
+    level: 'WARN', // DEBUG, LOG, WARN, ERROR, NONE
+    enableInProduction: false,
+    enableInDevelopment: true
+  }
 }

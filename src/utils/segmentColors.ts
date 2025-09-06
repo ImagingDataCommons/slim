@@ -12,34 +12,6 @@ const isDefined = <T>(value: T | undefined | null): value is T => {
 }
 
 /**
- * Generate a distinct color for a segment based on its index
- * Uses a predefined palette of distinct colors that work well together
- */
-export const generateSegmentColor = (index: number): number[] => {
-  // Use a predefined palette of distinct colors that work well together
-  const colorPalette = [
-    [255, 0, 0], // Red
-    [0, 255, 0], // Green
-    [0, 0, 255], // Blue
-    [255, 255, 0], // Yellow
-    [255, 0, 255], // Magenta
-    [0, 255, 255], // Cyan
-    [255, 128, 0], // Orange
-    [128, 0, 255], // Purple
-    [0, 128, 128], // Teal
-    [128, 128, 0], // Olive
-    [255, 128, 128], // Light Red
-    [128, 255, 128], // Light Green
-    [128, 128, 255], // Light Blue
-    [255, 255, 128], // Light Yellow
-    [255, 128, 255], // Light Magenta
-    [128, 255, 255] // Light Cyan
-  ]
-
-  return colorPalette[index % colorPalette.length]
-}
-
-/**
  * Convert RGB values to hex color string
  */
 export const rgbToHex = (rgb: number[]): string => {
@@ -129,15 +101,25 @@ export const extractSegmentColorFromMetadata = (
  */
 export const getSegmentColor = (
   segmentMetadata: Record<string, unknown>,
-  segmentNumber: number,
-  fallbackIndex: number
-): number[] => {
+  segmentNumber: number
+): number[] | null => {
   /** First try to get color from DICOM metadata */
   const metadataColor = extractSegmentColorFromMetadata(segmentMetadata, segmentNumber)
   if (metadataColor !== null) {
     return metadataColor
   }
+  return null
+}
 
-  /** Fall back to generated color */
-  return generateSegmentColor(fallbackIndex)
+/**
+ * Get segmentation type from metadata
+ * Returns the SegmentationType from DICOM metadata or defaults to 'BINARY'
+ */
+export const getSegmentationType = (
+  segmentMetadata: Record<string, unknown> | undefined | null
+): string => {
+  if (segmentMetadata?.SegmentationType !== undefined && segmentMetadata?.SegmentationType !== null) {
+    return segmentMetadata.SegmentationType as string
+  }
+  return 'BINARY'
 }
