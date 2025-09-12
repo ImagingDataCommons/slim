@@ -118,5 +118,26 @@ export function getRows (metadata: Record<string, any>, depth = 0): TagInfo[] {
  */
 export function getSortedTags (metadata: Record<string, any>): TagInfo[] {
   const tagList = getRows(metadata)
+  
+  // Add bulkdataReferences as a special tag if it exists
+  if (metadata.bulkdataReferences !== undefined && metadata.bulkdataReferences !== null) {
+    const bulkdataRefs = metadata.bulkdataReferences
+    const bulkdataTag: TagInfo = {
+      tag: 'bulkdataReferences',
+      vr: 'OB',
+      keyword: 'bulkdataReferences',
+      value: `Object with ${Object.keys(bulkdataRefs).length} bulk data reference(s)`,
+      level: 0,
+      children: Object.keys(bulkdataRefs).map(key => ({
+        tag: `bulkdataReferences.${key}`,
+        vr: 'OB',
+        keyword: key,
+        value: JSON.stringify(bulkdataRefs[key]),
+        level: 1
+      }))
+    }
+    tagList.push(bulkdataTag)
+  }
+  
   return tagList.sort((a, b) => a.tag.localeCompare(b.tag))
 }
