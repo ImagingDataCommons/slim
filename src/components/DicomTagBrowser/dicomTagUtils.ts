@@ -118,7 +118,7 @@ export function getRows (metadata: Record<string, any>, depth = 0): TagInfo[] {
  */
 export function getSortedTags (metadata: Record<string, any>): TagInfo[] {
   const tagList = getRows(metadata)
-  
+
   // Add bulkdataReferences as a special tag if it exists
   if (metadata.bulkdataReferences !== undefined && metadata.bulkdataReferences !== null) {
     const bulkdataRefs = metadata.bulkdataReferences
@@ -138,6 +138,6 @@ export function getSortedTags (metadata: Record<string, any>): TagInfo[] {
     }
     tagList.push(bulkdataTag)
   }
-  
+
   return tagList.sort((a, b) => a.tag.localeCompare(b.tag))
 }
