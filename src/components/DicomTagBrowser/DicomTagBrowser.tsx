@@ -18,6 +18,7 @@ interface DisplaySet {
   SeriesTime?: string
   SeriesNumber: string
   SeriesDescription?: string
+  SeriesInstanceUID?: string
   Modality: string
   images: any[]
 }
@@ -83,35 +84,51 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
 
     if (slides.length > 0) {
       displaySets = slides
-        .map((slide): DisplaySet | null => {
-          const { volumeImages } = slide
-          if (volumeImages?.[0] === undefined) return null
+        .map((slide): DisplaySet[] => {
+          const slideDisplaySets: DisplaySet[] = []
 
-          const {
-            SeriesDate,
-            SeriesTime,
-            SeriesNumber,
-            SeriesInstanceUID,
-            SeriesDescription,
-            Modality
-          } = volumeImages[0]
+          // Helper function to process any image type
+          const processImageType = (
+            images: any[] | undefined,
+            imageType: string
+          ): void => {
+            if (images?.[0] !== undefined) {
+              console.info(`Found ${images.length} ${imageType} image(s) for slide ${slide.containerIdentifier}`)
 
-          processedSeries.push(SeriesInstanceUID)
+              const {
+                SeriesDate,
+                SeriesTime,
+                SeriesNumber,
+                SeriesInstanceUID,
+                SeriesDescription,
+                Modality
+              } = images[0]
 
-          const ds: DisplaySet = {
-            displaySetInstanceUID: index,
-            SeriesDate,
-            SeriesTime,
-            SeriesInstanceUID,
-            // @ts-expect-error
-            SeriesNumber,
-            SeriesDescription,
-            Modality,
-            images: volumeImages
+              processedSeries.push(SeriesInstanceUID)
+
+              const ds: DisplaySet = {
+                displaySetInstanceUID: index,
+                SeriesDate,
+                SeriesTime,
+                SeriesInstanceUID,
+                SeriesNumber: String(SeriesNumber),
+                SeriesDescription,
+                Modality,
+                images
+              }
+              slideDisplaySets.push(ds)
+              index++
+            }
           }
-          index++
-          return ds
+
+          // Process all image types
+          processImageType(slide.volumeImages, 'volume')
+          processImageType(slide.overviewImages, 'overview')
+          processImageType(slide.labelImages, 'label')
+
+          return slideDisplaySets
         })
+        .flat()
         .filter((set): set is DisplaySet => set !== null && set !== undefined)
     }
 
@@ -122,8 +139,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
             displaySetInstanceUID: index,
             SeriesDate: series.SeriesDate,
             SeriesTime: series.SeriesTime,
-            // @ts-expect-error
-            SeriesNumber: series.SeriesNumber,
+            SeriesNumber: String(series.SeriesNumber),
             SeriesDescription: series.SeriesDescription,
             SeriesInstanceUID: series.SeriesInstanceUID,
             Modality: series.Modality,
