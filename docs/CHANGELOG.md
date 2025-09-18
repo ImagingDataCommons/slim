@@ -1,3 +1,10 @@
+# [0.43.0](https://github.com/ImagingDataCommons/slim/compare/v0.42.4...v0.43.0) (2025-09-18)
+
+
+### Features
+
+* Update dicom tag browser to display label and overview images + bulkdata references ([#336](https://github.com/ImagingDataCommons/slim/issues/336)) ([3cd48ed](https://github.com/ImagingDataCommons/slim/commit/3cd48ed198370393d9b5b0da427e7035c40ab3c9))
+
 ## [0.42.4](https://github.com/ImagingDataCommons/slim/compare/v0.42.3...v0.42.4) (2025-09-06)
 
 
