@@ -250,7 +250,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       selectedPresentationStateUID: this.props.selectedPresentationStateUID,
       loadingFrames: new Set(),
       isICCProfilesEnabled: true,
-      isSegmentationInterpolationEnabled: true,
+      isSegmentationInterpolationEnabled: false,
       customizedSegmentColors: {}
     }
   }

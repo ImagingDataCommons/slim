@@ -36,6 +36,7 @@ interface SlideImageCollection {
   volumeImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
   labelImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
   overviewImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
+  thumbnailImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
 }
 
 interface SlideOptions {
@@ -59,6 +60,7 @@ class Slide {
   readonly volumeImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
   readonly labelImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
   readonly overviewImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
+  readonly thumbnailImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
 
   /**
    * @param options
@@ -95,6 +97,7 @@ class Slide {
     const volumeImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
     const labelImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
     const overviewImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
+    const thumbnailImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
     options.images.forEach((image) => {
       containerIdentifiers.add(image.ContainerIdentifier)
       seriesInstanceUIDs.add(image.SeriesInstanceUID)
@@ -105,6 +108,9 @@ class Slide {
         acquisitionUIDs.add(image.AcquisitionUID)
       }
       if (hasImageFlavor(image, ImageFlavors.VOLUME) || hasImageFlavor(image, ImageFlavors.THUMBNAIL)) {
+        if (hasImageFlavor(image, ImageFlavors.THUMBNAIL)) {
+          thumbnailImages.push(image)
+        }
         frameOfReferenceUIDs.VOLUME.add(image.FrameOfReferenceUID)
         if (image.PyramidUID !== null && image.PyramidUID !== undefined) {
           for (const identifier of Object.keys(opticalPathIdentifiers)) {
@@ -170,6 +176,7 @@ class Slide {
     this.volumeImages = volumeImages
     this.labelImages = labelImages
     this.overviewImages = overviewImages
+    this.thumbnailImages = thumbnailImages
 
     this.seriesInstanceUIDs = [...seriesInstanceUIDs]
     this.opticalPathIdentifiers = [...opticalPathIdentifiers]
@@ -284,6 +291,9 @@ const createSlides = (
           hasImageFlavor(image, ImageFlavors.VOLUME) ||
           hasImageFlavor(image, ImageFlavors.THUMBNAIL)
       )
+      const thumbnailImages = series.filter(
+        (image) => hasImageFlavor(image, ImageFlavors.THUMBNAIL)
+      )
       if (volumeImages.length > 0) {
         const refImage = volumeImages[0]
         const filteredVolumeImages = volumeImages.filter((image) => {
@@ -323,7 +333,8 @@ const createSlides = (
             containerIdentifier: refImage.ContainerIdentifier,
             volumeImages: filteredVolumeImages,
             labelImages: filteredLabelImages,
-            overviewImages: filteredOverviewImages
+            overviewImages: filteredOverviewImages,
+            thumbnailImages
           }
           slideMetadata.push(slideMetadataItem)
         } else {
@@ -331,6 +342,7 @@ const createSlides = (
           slideMetadataItem.volumeImages.push(...filteredVolumeImages)
           slideMetadataItem.labelImages.push(...filteredLabelImages)
           slideMetadataItem.overviewImages.push(...filteredOverviewImages)
+          slideMetadataItem.thumbnailImages.push(...thumbnailImages)
         }
       }
     }
@@ -341,7 +353,8 @@ const createSlides = (
       images: [
         ...item.volumeImages,
         ...item.labelImages,
-        ...item.overviewImages
+        ...item.overviewImages,
+        ...item.thumbnailImages
       ]
     })
   })
