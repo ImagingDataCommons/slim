@@ -334,7 +334,7 @@ const createSlides = (
             volumeImages: filteredVolumeImages,
             labelImages: filteredLabelImages,
             overviewImages: filteredOverviewImages,
-            thumbnailImages: thumbnailImages
+            thumbnailImages
           }
           slideMetadata.push(slideMetadataItem)
         } else {
