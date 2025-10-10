@@ -1,3 +1,10 @@
+## [0.43.1](https://github.com/ImagingDataCommons/slim/compare/v0.43.0...v0.43.1) (2025-10-10)
+
+
+### Bug Fixes
+
+* Thumbnail fallback and multiple thumbnail using dicom tag browser ([#340](https://github.com/ImagingDataCommons/slim/issues/340)) ([6e8d4c4](https://github.com/ImagingDataCommons/slim/commit/6e8d4c40ddcd554fdf2edf5d7bb4a3b3a2f48b13))
+
 # [0.43.0](https://github.com/ImagingDataCommons/slim/compare/v0.42.4...v0.43.0) (2025-09-18)
 
 
