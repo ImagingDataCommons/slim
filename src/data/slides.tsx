@@ -353,8 +353,7 @@ const createSlides = (
       images: [
         ...item.volumeImages,
         ...item.labelImages,
-        ...item.overviewImages,
-        ...item.thumbnailImages
+        ...item.overviewImages
       ]
     })
   })

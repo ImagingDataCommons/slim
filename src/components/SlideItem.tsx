@@ -59,9 +59,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
           `instantiate viewer for ${imageType} image of slide ` +
           `"${metadata.ContainerIdentifier}"`
         )
-        // For thumbnails, use a much smaller resizeFactor to ensure the entire image fits
-        const resizeFactor = imageType === 'THUMBNAIL' ? 0.3 : 1
-
+        const resizeFactor = 1
         this.overviewViewer = new dmv.viewer.OverviewImageViewer({
           client: this.props.clients[
             StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE
@@ -79,16 +77,6 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
         this.overviewViewer.render({
           container: this.overviewViewportRef.current
         })
-
-        // For thumbnail images, ensure proper fitting after render
-        if (imageType === 'THUMBNAIL') {
-          setTimeout(() => {
-            if (this.overviewViewer !== undefined) {
-              // Force resize to ensure proper fitting
-              this.overviewViewer.resize()
-            }
-          }, 100)
-        }
       }
     }
 
