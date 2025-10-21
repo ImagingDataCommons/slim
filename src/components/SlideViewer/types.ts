@@ -107,6 +107,7 @@ export interface SlideViewerState {
   selectedMagnification?: number
   areRoisHidden: boolean
   selectedSeriesInstanceUID?: string
+  selectedSegmentationSeriesInstanceUID?: string
   pixelDataStatistics: {
     [opticalPathIdentifier: string]: {
       min: number
