@@ -2767,20 +2767,20 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const segmentMetadata: {
       [segmentUID: string]: dmv.metadata.Segmentation[]
     } = {}
-    
+
     // Group segments by series
     const segmentsBySeries: {
       [seriesUID: string]: dmv.segment.Segment[]
     } = {}
-    
+
     segments.forEach((segment) => {
       segmentMetadata[segment.uid] = this.volumeViewer.getSegmentMetadata(
         segment.uid
       )
-      
+
       // Get the series UID for this segment
       const seriesUID = segmentMetadata[segment.uid]?.[0]?.SeriesInstanceUID ?? 'unknown'
-      if (!segmentsBySeries[seriesUID]) {
+      if (!(seriesUID in segmentsBySeries)) {
         segmentsBySeries[seriesUID] = []
       }
       segmentsBySeries[seriesUID].push(segment)
