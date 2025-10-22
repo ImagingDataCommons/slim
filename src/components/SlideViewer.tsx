@@ -2791,23 +2791,25 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       ? segments
       : (segmentsBySeries[value] ?? [])
 
-    // Preserve visibility state for segments that exist in the new series
-    const preservedVisibleSegmentUIDs = new Set<string>()
-    this.state.visibleSegmentUIDs.forEach(segmentUID => {
-      const segmentExists = selectedSeriesSegments.some(segment => segment.uid === segmentUID)
-      if (segmentExists) {
-        preservedVisibleSegmentUIDs.add(segmentUID)
-      }
-    })
+    // Determine if segments were visible before switching
+    const hadVisibleSegments = this.state.visibleSegmentUIDs.size > 0
 
-    // Update state with preserved visibility
+    // If segments were visible before switching, show all segments in the new series
+    const newVisibleSegmentUIDs = new Set<string>()
+    if (hadVisibleSegments && selectedSeriesSegments.length > 0) {
+      selectedSeriesSegments.forEach(segment => {
+        newVisibleSegmentUIDs.add(segment.uid)
+      })
+    }
+
+    // Update state with new visibility
     this.setState({
       selectedSegmentationSeriesInstanceUID: value,
-      visibleSegmentUIDs: preservedVisibleSegmentUIDs
+      visibleSegmentUIDs: newVisibleSegmentUIDs
     })
 
     // Show segments that should be visible in the new series
-    preservedVisibleSegmentUIDs.forEach(segmentUID => {
+    newVisibleSegmentUIDs.forEach(segmentUID => {
       this.volumeViewer.showSegment(segmentUID)
     })
   }
