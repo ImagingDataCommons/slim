@@ -2762,10 +2762,53 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.volumeViewer.hideSegment(segmentUID)
     })
 
-    // Reset the visible segments state
+    // Get all segments to determine which ones are in the new series
+    const segments = this.volumeViewer.getAllSegments()
+    const segmentMetadata: {
+      [segmentUID: string]: dmv.metadata.Segmentation[]
+    } = {}
+    
+    // Group segments by series
+    const segmentsBySeries: {
+      [seriesUID: string]: dmv.segment.Segment[]
+    } = {}
+    
+    segments.forEach((segment) => {
+      segmentMetadata[segment.uid] = this.volumeViewer.getSegmentMetadata(
+        segment.uid
+      )
+      
+      // Get the series UID for this segment
+      const seriesUID = segmentMetadata[segment.uid]?.[0]?.SeriesInstanceUID ?? 'unknown'
+      if (!segmentsBySeries[seriesUID]) {
+        segmentsBySeries[seriesUID] = []
+      }
+      segmentsBySeries[seriesUID].push(segment)
+    })
+
+    // Get segments for the selected series or all series
+    const selectedSeriesSegments = value === 'all'
+      ? segments
+      : (segmentsBySeries[value] ?? [])
+
+    // Preserve visibility state for segments that exist in the new series
+    const preservedVisibleSegmentUIDs = new Set<string>()
+    this.state.visibleSegmentUIDs.forEach(segmentUID => {
+      const segmentExists = selectedSeriesSegments.some(segment => segment.uid === segmentUID)
+      if (segmentExists) {
+        preservedVisibleSegmentUIDs.add(segmentUID)
+      }
+    })
+
+    // Update state with preserved visibility
     this.setState({
       selectedSegmentationSeriesInstanceUID: value,
-      visibleSegmentUIDs: new Set()
+      visibleSegmentUIDs: preservedVisibleSegmentUIDs
+    })
+
+    // Show segments that should be visible in the new series
+    preservedVisibleSegmentUIDs.forEach(segmentUID => {
+      this.volumeViewer.showSegment(segmentUID)
     })
   }
 
