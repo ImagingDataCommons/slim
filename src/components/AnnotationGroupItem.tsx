@@ -25,12 +25,14 @@ import Description from './Description'
 import ValidationWarning from './ValidationWarning'
 import ColorSlider from './ColorSlider'
 import OpacitySlider from './OpacitySlider'
+import { rgbToHex } from '../utils/segmentColors'
 
 // Helper function components
 function AnnotationGroupControls ({
   isVisible,
   onVisibilityChange,
-  settings
+  settings,
+  color
 }: {
   isVisible: boolean
   onVisibilityChange: (
@@ -38,9 +40,10 @@ function AnnotationGroupControls ({
     event: React.MouseEvent<HTMLButtonElement>
   ) => void
   settings: React.ReactNode
+  color: number[]
 }): React.ReactElement {
   return (
-    <Space direction='vertical' align='end'>
+    <Space direction='vertical' align='center'>
       <Switch
         size='small'
         onChange={onVisibilityChange}
@@ -56,6 +59,20 @@ function AnnotationGroupControls ({
       >
         <Button type='primary' shape='circle' icon={<SettingOutlined />} />
       </Popover>
+      {/* Color indicator */}
+      <div
+        style={{
+          width: '20px',
+          height: '20px',
+          backgroundColor: rgbToHex(color),
+          border: '1px solid #d9d9d9',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+        title={`Annotation group color: ${rgbToHex(color)}`}
+      />
     </Space>
   )
 }
@@ -523,6 +540,7 @@ AnnotationGroupItemState
               isVisible={this.props.isVisible}
               onVisibilityChange={this.handleVisibilityChange}
               settings={settings}
+              color={this.state.currentStyle.color ?? [255, 255, 255]}
             />
           </div>
           <AnnotationGroupBadgeDescription
