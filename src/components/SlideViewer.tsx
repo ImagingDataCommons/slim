@@ -246,6 +246,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       selectedMagnification: undefined,
       areRoisHidden: false,
       selectedSeriesInstanceUID: undefined,
+      selectedSegmentationSeriesInstanceUID: undefined,
       pixelDataStatistics: {},
       selectedPresentationStateUID: this.props.selectedPresentationStateUID,
       loadingFrames: new Set(),
@@ -2755,6 +2756,64 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
   }
 
+  handleSegmentationSeriesSelection = (value: string): void => {
+    // Hide all currently visible segments when selection changes
+    this.state.visibleSegmentUIDs.forEach(segmentUID => {
+      this.volumeViewer.hideSegment(segmentUID)
+    })
+
+    // Get all segments to determine which ones are in the new series
+    const segments = this.volumeViewer.getAllSegments()
+    const segmentMetadata: {
+      [segmentUID: string]: dmv.metadata.Segmentation[]
+    } = {}
+
+    // Group segments by series
+    const segmentsBySeries: {
+      [seriesUID: string]: dmv.segment.Segment[]
+    } = {}
+
+    segments.forEach((segment) => {
+      segmentMetadata[segment.uid] = this.volumeViewer.getSegmentMetadata(
+        segment.uid
+      )
+
+      // Get the series UID for this segment
+      const seriesUID = segmentMetadata[segment.uid]?.[0]?.SeriesInstanceUID ?? 'unknown'
+      if (!(seriesUID in segmentsBySeries)) {
+        segmentsBySeries[seriesUID] = []
+      }
+      segmentsBySeries[seriesUID].push(segment)
+    })
+
+    // Get segments for the selected series or all series
+    const selectedSeriesSegments = value === 'all'
+      ? segments
+      : (segmentsBySeries[value] ?? [])
+
+    // Determine if segments were visible before switching
+    const hadVisibleSegments = this.state.visibleSegmentUIDs.size > 0
+
+    // If segments were visible before switching, show all segments in the new series
+    const newVisibleSegmentUIDs = new Set<string>()
+    if (hadVisibleSegments && selectedSeriesSegments.length > 0) {
+      selectedSeriesSegments.forEach(segment => {
+        newVisibleSegmentUIDs.add(segment.uid)
+      })
+    }
+
+    // Update state with new visibility
+    this.setState({
+      selectedSegmentationSeriesInstanceUID: value,
+      visibleSegmentUIDs: newVisibleSegmentUIDs
+    })
+
+    // Show segments that should be visible in the new series
+    newVisibleSegmentUIDs.forEach(segmentUID => {
+      this.volumeViewer.showSegment(segmentUID)
+    })
+  }
+
   getSeriesDescription = (seriesInstanceUID: string): string => {
     // Get the study from DicomMetadataStore
     const study = DicomMetadataStore.getStudy(this.props.studyInstanceUID)
@@ -3101,10 +3160,24 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const segmentMetadata: {
         [segmentUID: string]: dmv.metadata.Segmentation[]
       } = {}
+
+      // Group segments by series
+      const segmentsBySeries: {
+        [seriesUID: string]: dmv.segment.Segment[]
+      } = {}
+
       segments.forEach((segment, index) => {
         segmentMetadata[segment.uid] = this.volumeViewer.getSegmentMetadata(
           segment.uid
         )
+
+        // Get the series UID for this segment
+        const seriesUID = segmentMetadata[segment.uid]?.[0]?.SeriesInstanceUID ?? 'unknown'
+        if (segmentsBySeries[seriesUID] === undefined) {
+          segmentsBySeries[seriesUID] = []
+        }
+        segmentsBySeries[seriesUID].push(segment)
+
         if (getSegmentationType(segmentMetadata[segment.uid][0] as any) !== 'BINARY') {
           const defaultStyle = this.volumeViewer.getSegmentStyle(segment.uid)
           defaultSegmentStyles[segment.uid] = {
@@ -3136,16 +3209,62 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           })
         }
       })
+
+      // Initialize selected series if not set
+      if (this.state.selectedSegmentationSeriesInstanceUID === undefined && segments.length !== 0) {
+        this.setState({ selectedSegmentationSeriesInstanceUID: 'all' })
+      }
+
+      // Create dropdown options for series
+      const dropdownOptions = [
+        {
+          value: 'all',
+          label: `All Series (${segments.length} segments)`
+        },
+        ...Object.keys(segmentsBySeries).map(seriesUID => ({
+          value: seriesUID,
+          label: `${this.getSeriesDescription(seriesUID)} (${segmentsBySeries[seriesUID]?.length ?? 0} segments)`
+        }))
+      ]
+
+      // Get segments for the selected series or all series
+      const selectedSeriesSegments = this.state.selectedSegmentationSeriesInstanceUID === 'all'
+        ? segments
+        : (this.state.selectedSegmentationSeriesInstanceUID !== undefined
+            ? segmentsBySeries[this.state.selectedSegmentationSeriesInstanceUID] ?? []
+            : [])
+
       return (
         <Menu.SubMenu key='segmentations' title='Segmentations'>
-          <SegmentList
-            segments={segments}
-            metadata={segmentMetadata}
-            defaultSegmentStyles={defaultSegmentStyles}
-            visibleSegmentUIDs={this.state.visibleSegmentUIDs}
-            onSegmentVisibilityChange={this.handleSegmentVisibilityChange}
-            onSegmentStyleChange={this.handleSegmentStyleChange}
-          />
+          {/* Series Selection Dropdown */}
+          <div
+            style={{
+              paddingLeft: '14px',
+              paddingRight: '14px',
+              paddingTop: '7px',
+              paddingBottom: '7px'
+            }}
+          >
+            <Select
+              style={{ width: '100%' }}
+              placeholder='Select a series'
+              value={this.state.selectedSegmentationSeriesInstanceUID}
+              onChange={this.handleSegmentationSeriesSelection}
+              options={dropdownOptions}
+            />
+          </div>
+
+          {/* Display segments for the selected series */}
+          {selectedSeriesSegments.length > 0 && (
+            <SegmentList
+              segments={selectedSeriesSegments}
+              metadata={segmentMetadata}
+              defaultSegmentStyles={defaultSegmentStyles}
+              visibleSegmentUIDs={this.state.visibleSegmentUIDs}
+              onSegmentVisibilityChange={this.handleSegmentVisibilityChange}
+              onSegmentStyleChange={this.handleSegmentStyleChange}
+            />
+          )}
         </Menu.SubMenu>
       )
     }
