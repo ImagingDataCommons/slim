@@ -540,7 +540,7 @@ AnnotationGroupItemState
               isVisible={this.props.isVisible}
               onVisibilityChange={this.handleVisibilityChange}
               settings={settings}
-              color={(this.state.currentStyle.color != null) || [255, 255, 255]}
+              color={this.state.currentStyle.color ?? [255, 255, 255]}
             />
           </div>
           <AnnotationGroupBadgeDescription
