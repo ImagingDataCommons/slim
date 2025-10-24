@@ -23,16 +23,20 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
     if (this.props.metadata === undefined) {
       return null
     }
+
     const specimenDescription = this.props.metadata.SpecimenDescriptionSequence[
       this.props.index
     ]
+
     const attributes: Attribute[] = []
+
     if (specimenDescription.SpecimenShortDescription !== undefined) {
       attributes.push({
         name: 'Description',
         value: specimenDescription.SpecimenShortDescription
       })
     }
+
     if (specimenDescription.PrimaryAnatomicStructureSequence !== undefined) {
       if (specimenDescription.PrimaryAnatomicStructureSequence.length > 0) {
         const structures = specimenDescription.PrimaryAnatomicStructureSequence
@@ -43,10 +47,23 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
       }
     }
 
+    const structures = specimenDescription.PrimaryAnatomicStructureSequence
+    const modifierSequence = structures.find(s => (s as any).PrimaryAnatomicStructureModifierSequence !== undefined)
+    if (modifierSequence != null) {
+      const modifiers: dcmjs.sr.coding.CodedConcept[] = (modifierSequence as any).PrimaryAnatomicStructureModifierSequence
+      if (modifiers.length > 0) {
+        attributes.push({
+          name: 'Primary Anatomic Structure Modifier',
+          value: modifiers.map((item: dcmjs.sr.coding.CodedConcept) => item.CodeMeaning).join(', ')
+        })
+      }
+    }
+
     // TID 8001 "Specimen Preparation"
     const preparationSteps: dmv.metadata.SpecimenPreparation[] = (
       specimenDescription.SpecimenPreparationSequence ?? []
     )
+
     preparationSteps.forEach(
       (step: dmv.metadata.SpecimenPreparation, index: number): void => {
         step.SpecimenPreparationStepContentItemSequence.forEach((
@@ -65,6 +82,7 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
               item.ConceptNameCodeSequence[0].CodingSchemeDesignator,
             meaning: item.ConceptNameCodeSequence[0].CodeMeaning
           })
+
           if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.CODE) {
             item = item as dcmjs.sr.valueTypes.CodeContentItem
             const value = new dcmjs.sr.coding.CodedConcept({
@@ -73,6 +91,7 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
                 item.ConceptCodeSequence[0].CodingSchemeDesignator,
               meaning: item.ConceptCodeSequence[0].CodeMeaning
             })
+
             if (!name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)) {
               if (
                 name.equals(SpecimenPreparationStepItems.COLLECTION_METHOD)
@@ -127,8 +146,17 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
         })
       }
     )
+
+    if ((this.props.metadata as any).AdmittingDiagnosesDescription !== undefined) {
+      attributes.push({
+        name: 'Admitting Diagnoses',
+        value: (this.props.metadata as any).AdmittingDiagnosesDescription
+      })
+    }
+
     const uid = specimenDescription.SpecimenUID
     const identifier = specimenDescription.SpecimenIdentifier
+
     return (
       <Item
         uid={uid}
