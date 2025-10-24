@@ -23,7 +23,7 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
     if (this.props.metadata === undefined) {
       return null
     }
-    
+
     const specimenDescription = this.props.metadata.SpecimenDescriptionSequence[
       this.props.index
     ]
@@ -48,8 +48,8 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
     }
 
     const structures = specimenDescription.PrimaryAnatomicStructureSequence
-    const modifierSequence = structures.find(s => !!(s as any).PrimaryAnatomicStructureModifierSequence)
-    if (modifierSequence) {
+    const modifierSequence = structures.find(s => (s as any).PrimaryAnatomicStructureModifierSequence !== undefined)
+    if (modifierSequence != null) {
       const modifiers: dcmjs.sr.coding.CodedConcept[] = (modifierSequence as any).PrimaryAnatomicStructureModifierSequence
       if (modifiers.length > 0) {
         attributes.push({

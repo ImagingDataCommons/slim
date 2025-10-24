@@ -132,7 +132,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
     const segmentationType = getSegmentationType(segmentationMetadata)
 
     // Add SegmentationType from metadata if available
-    if (segmentationMetadata?.SegmentationType) {
+    if (segmentationMetadata?.SegmentationType !== undefined) {
       attributes.push({
         name: 'Segmentation Type',
         value: segmentationMetadata.SegmentationType

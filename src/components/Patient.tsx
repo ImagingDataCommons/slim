@@ -36,7 +36,7 @@ class Patient extends React.Component<PatientProps, {}> {
       {
         name: 'Age',
         value: (this.props.metadata as any).PatientAge
-      },
+      }
     ]
     return (
       <Description attributes={attributes} />
