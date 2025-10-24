@@ -32,7 +32,11 @@ class Patient extends React.Component<PatientProps, {}> {
       {
         name: 'Birthdate',
         value: parseDate(this.props.metadata.PatientBirthDate)
-      }
+      },
+      {
+        name: 'Age',
+        value: (this.props.metadata as any).PatientAge
+      },
     ]
     return (
       <Description attributes={attributes} />
