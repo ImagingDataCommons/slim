@@ -120,12 +120,24 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
       {
         name: 'Algorithm Name',
         value: this.props.segment.algorithmName
+      },
+      {
+        name: 'Algorithm Type',
+        value: this.props.segment.algorithmType
       }
     ]
 
     /** Get segmentation type from metadata */
     const segmentationMetadata = this.props.metadata?.[0] as any
     const segmentationType = getSegmentationType(segmentationMetadata)
+
+    // Add SegmentationType from metadata if available
+    if (segmentationMetadata?.SegmentationType !== undefined) {
+      attributes.push({
+        name: 'Segmentation Type',
+        value: segmentationMetadata.SegmentationType
+      })
+    }
 
     const settings = (
       <div>
