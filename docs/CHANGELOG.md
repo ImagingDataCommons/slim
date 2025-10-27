@@ -1,3 +1,12 @@
+# [0.44.0](https://github.com/ImagingDataCommons/slim/compare/v0.43.1...v0.44.0) (2025-10-27)
+
+
+### Features
+
+* Add Additional Metadata Fields to Patient, Specimen and Segment Panels ([#345](https://github.com/ImagingDataCommons/slim/issues/345)) ([61a3081](https://github.com/ImagingDataCommons/slim/commit/61a308143e827725fbd9bad65bf7bda2ab1e1d02))
+* Add color preview circles to annotation group items ([#344](https://github.com/ImagingDataCommons/slim/issues/344)) ([eb61284](https://github.com/ImagingDataCommons/slim/commit/eb61284aa1b58f94ca7b481ec393622cf2250d84))
+* Selector for seg ([#343](https://github.com/ImagingDataCommons/slim/issues/343)) ([f061971](https://github.com/ImagingDataCommons/slim/commit/f061971a7e0e3cff16deea3dec9cacfa0720d8ff))
+
 ## [0.43.1](https://github.com/ImagingDataCommons/slim/compare/v0.43.0...v0.43.1) (2025-10-10)
 
 
