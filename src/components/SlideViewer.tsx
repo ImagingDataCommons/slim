@@ -252,6 +252,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       loadingFrames: new Set(),
       isICCProfilesEnabled: true,
       isSegmentationInterpolationEnabled: false,
+      isParametricMapInterpolationEnabled: true,
       customizedSegmentColors: {}
     }
   }
@@ -2851,6 +2852,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     ;(this.volumeViewer as any).toggleSegmentationInterpolation()
   }
 
+  /**
+   * Handler that will toggle the parametric map interpolation, i.e., either
+   * enable or disable it, depending on its current state.
+   */
+  handleParametricMapInterpolationToggle = (event: CheckboxChangeEvent): void => {
+    const checked = event.target.checked
+    this.setState({ isParametricMapInterpolationEnabled: checked })
+    ;(this.volumeViewer as any).toggleParametricMapInterpolation()
+  }
+
   formatAnnotation = (annotation: AnnotationCategoryAndType): void => {
     const roi = this.volumeViewer.getROI(annotation.uid)
     const key = getRoiKey(roi) as string
@@ -3654,6 +3665,20 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     )
   }
 
+  private readonly getParametricMapInterpolationMenu = (): React.ReactNode => {
+    const mappings = this.volumeViewer.getAllParameterMappings()
+    return mappings.length > 0 && (
+      <div style={{ margin: '0.9rem' }}>
+        <Checkbox
+          checked={this.state.isParametricMapInterpolationEnabled}
+          onChange={this.handleParametricMapInterpolationToggle}
+        >
+          Parametric Map Interpolation
+        </Checkbox>
+      </div>
+    )
+  }
+
   render = (): React.ReactNode => {
     const { rois, segments, mappings, annotationGroups, annotations } = this.getDataFromViewer()
 
@@ -3673,6 +3698,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const selectedRoiInformation = this.getSelectedRoiInformation()
     const iccProfilesMenu = this.getICCProfilesMenu()
     const segmentationInterpolationMenu = this.getSegmentationInterpolationMenu()
+    const parametricMapInterpolationMenu = this.getParametricMapInterpolationMenu()
 
     if (segmentationMenu !== null && segmentationMenu !== undefined) {
       openSubMenuItems.push('segmentations')
@@ -3728,6 +3754,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           specimenMenu={specimenMenu}
           iccProfilesMenu={iccProfilesMenu}
           segmentationInterpolationMenu={segmentationInterpolationMenu}
+          parametricMapInterpolationMenu={parametricMapInterpolationMenu}
           equipmentMenu={equipmentMenu}
           opticalPathMenu={opticalPathMenu}
           presentationStateMenu={presentationStateMenu}

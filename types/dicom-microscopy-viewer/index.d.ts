@@ -196,7 +196,7 @@ declare module 'dicom-microscopy-viewer' {
       }
       isParameterMappingVisible (mappingUID: string): boolean
       getParameterMappingMetadata (mappingUID: string): metadata.ParametricMap[]
-      getAllParameterMappings (): dwc.mapping.ParameterMapping[]
+      getAllParameterMappings (): mapping.ParameterMapping[]
       addAnnotationGroups (
         metadata: metadata.MicroscopyBulkSimpleAnnotations
       ): void
@@ -229,6 +229,8 @@ declare module 'dicom-microscopy-viewer' {
       ): metadata.MicroscopyBulkSimpleAnnotations
       toggleICCProfiles (): void;
       getICCProfiles (): any[];
+      toggleSegmentationInterpolation (): void;
+      toggleParametricMapInterpolation (): void;
     }
 
     export interface OverviewImageViewerOptions {
