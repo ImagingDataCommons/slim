@@ -1227,8 +1227,84 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-  setHoveredRoiAttributes = (hoveredRois: dmv.roi.ROI[]): void => {
+  setHoveredRoiAttributes = (hoveredRois: dmv.roi.ROI[], annotationGroupUID: string | null = null): void => {
     const rois = this.volumeViewer.getAllROIs()
+
+    // Handle bulk annotations
+    if (annotationGroupUID !== null && annotationGroupUID !== undefined) {
+      try {
+        const annotationGroupMetadata = this.volumeViewer.getAnnotationGroupMetadata(annotationGroupUID)
+        const annotationGroupItem = annotationGroupMetadata.AnnotationGroupSequence.find(
+          (item) => item.AnnotationGroupUID === annotationGroupUID
+        )
+
+        if (annotationGroupItem != null) {
+          const attributes: Array<{ name: string, value: string }> = []
+
+          // Add Annotation Group Label
+          if (annotationGroupItem.AnnotationGroupLabel !== undefined && annotationGroupItem.AnnotationGroupLabel !== '') {
+            attributes.push({
+              name: 'Annotation Group Label',
+              value: annotationGroupItem.AnnotationGroupLabel
+            })
+          }
+
+          // Add Property Category if available
+          if (annotationGroupItem.AnnotationPropertyCategoryCodeSequence !== undefined &&
+              annotationGroupItem.AnnotationPropertyCategoryCodeSequence.length > 0) {
+            const propertyCategory = annotationGroupItem.AnnotationPropertyCategoryCodeSequence[0]
+            const categoryValue = propertyCategory.CodeMeaning !== undefined && propertyCategory.CodeMeaning !== ''
+              ? propertyCategory.CodeMeaning
+              : propertyCategory.CodeValue
+            attributes.push({
+              name: 'Property category',
+              value: categoryValue
+            })
+          }
+
+          // Add Property Type if available
+          if (annotationGroupItem.AnnotationPropertyTypeCodeSequence !== undefined &&
+              annotationGroupItem.AnnotationPropertyTypeCodeSequence.length > 0) {
+            const propertyType = annotationGroupItem.AnnotationPropertyTypeCodeSequence[0]
+            const typeValue = propertyType.CodeMeaning !== undefined && propertyType.CodeMeaning !== ''
+              ? propertyType.CodeMeaning
+              : propertyType.CodeValue
+            attributes.push({
+              name: 'Property type',
+              value: typeValue
+            })
+          }
+
+          // Extract annotation index from ROI UID (format: annotationGroupUID-annotationIndex)
+          // For bulk annotations, the UID format is annotationGroupUID-annotationIndex
+          const roiUid = hoveredRois.length > 0 ? hoveredRois[0].uid : annotationGroupUID
+          let annotationIndex = 0
+          if (roiUid !== undefined && roiUid !== null && roiUid !== '' && roiUid.includes('-')) {
+            const uidParts = roiUid.split('-')
+            // The last part should be the annotation index
+            const lastPart = uidParts[uidParts.length - 1]
+            const parsedIndex = parseInt(lastPart, 10)
+            if (!isNaN(parsedIndex)) {
+              annotationIndex = parsedIndex
+            }
+          }
+
+          this.setState({
+            hoveredRoiAttributes: [{
+              index: annotationIndex + 1,
+              roiUid: roiUid,
+              attributes
+            }]
+          })
+          return
+        }
+      } catch (error) {
+        logger.warn(`Failed to get annotation group metadata for ${annotationGroupUID}:`, error)
+        // Fall through to SR annotation handling
+      }
+    }
+
+    // Handle SR annotations (existing logic)
     if (rois.length === 0) {
       this.setState({ hoveredRoiAttributes: [] })
       return
@@ -1306,7 +1382,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   onPointerMove = (event: CustomEventInit): void => {
-    const { feature: hoveredRoi, event: evt } = event.detail.payload
+    const { feature: hoveredRoi, annotationGroupUID, event: evt } = event.detail.payload
     const originalEvent = evt.originalEvent
 
     if (!this.isSamePixelAsLast(originalEvent)) {
@@ -1317,7 +1393,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.hoveredRois = this.getUniqueHoveredRois(hoveredRoi)
 
     if (this.hoveredRois.length > 0) {
-      this.setHoveredRoiAttributes(this.hoveredRois)
+      this.setHoveredRoiAttributes(this.hoveredRois, annotationGroupUID !== undefined && annotationGroupUID !== null ? annotationGroupUID : null)
       this.setState({
         isHoveredRoiTooltipVisible: true,
         hoveredRoiTooltipX: originalEvent.clientX,
