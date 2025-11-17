@@ -25,6 +25,9 @@ const HoveredRoiTooltip = ({
         const attributes = roi.attributes
         return (
           <div key={roi.roiUid}>
+            {i > 0 && (
+              <hr style={{ margin: '10px 0', border: 'none', borderTop: '1px solid rgba(0, 0, 0, 0.2)' }} />
+            )}
             <span>ROI {roi.index}</span>
             {attributes.map((attr) => {
               return (

@@ -97,7 +97,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private labelViewer?: dmv.viewer.LabelImageViewer
 
-  private hoveredRois = [] as dmv.roi.ROI[]
+  private hoveredRois = [] as Array<{ roi: dmv.roi.ROI, annotationGroupUID: string | null }>
 
   private lastPixel = [0, 0] as [number, number]
 
@@ -1227,90 +1227,95 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-  setHoveredRoiAttributes = (hoveredRois: dmv.roi.ROI[], annotationGroupUID: string | null = null): void => {
+  setHoveredRoiAttributes = (hoveredRois: Array<{ roi: dmv.roi.ROI, annotationGroupUID: string | null }>): void => {
     const rois = this.volumeViewer.getAllROIs()
 
-    // Handle bulk annotations
-    if (annotationGroupUID !== null && annotationGroupUID !== undefined) {
-      try {
-        const annotationGroupMetadata = this.volumeViewer.getAnnotationGroupMetadata(annotationGroupUID)
-        const annotationGroupItem = annotationGroupMetadata.AnnotationGroupSequence.find(
-          (item) => item.AnnotationGroupUID === annotationGroupUID
-        )
-
-        if (annotationGroupItem != null) {
-          const attributes: Array<{ name: string, value: string }> = []
-
-          // Add Annotation Group Label
-          if (annotationGroupItem.AnnotationGroupLabel !== undefined && annotationGroupItem.AnnotationGroupLabel !== '') {
-            attributes.push({
-              name: 'Annotation Group Label',
-              value: annotationGroupItem.AnnotationGroupLabel
-            })
-          }
-
-          // Add Property Category if available
-          if (annotationGroupItem.AnnotationPropertyCategoryCodeSequence !== undefined &&
-              annotationGroupItem.AnnotationPropertyCategoryCodeSequence.length > 0) {
-            const propertyCategory = annotationGroupItem.AnnotationPropertyCategoryCodeSequence[0]
-            const categoryValue = propertyCategory.CodeMeaning !== undefined && propertyCategory.CodeMeaning !== ''
-              ? propertyCategory.CodeMeaning
-              : propertyCategory.CodeValue
-            attributes.push({
-              name: 'Property category',
-              value: categoryValue
-            })
-          }
-
-          // Add Property Type if available
-          if (annotationGroupItem.AnnotationPropertyTypeCodeSequence !== undefined &&
-              annotationGroupItem.AnnotationPropertyTypeCodeSequence.length > 0) {
-            const propertyType = annotationGroupItem.AnnotationPropertyTypeCodeSequence[0]
-            const typeValue = propertyType.CodeMeaning !== undefined && propertyType.CodeMeaning !== ''
-              ? propertyType.CodeMeaning
-              : propertyType.CodeValue
-            attributes.push({
-              name: 'Property type',
-              value: typeValue
-            })
-          }
-
-          // Extract annotation index from ROI UID (format: annotationGroupUID-annotationIndex)
-          // For bulk annotations, the UID format is annotationGroupUID-annotationIndex
-          const roiUid = hoveredRois.length > 0 ? hoveredRois[0].uid : annotationGroupUID
-          let annotationIndex = 0
-          if (roiUid !== undefined && roiUid !== null && roiUid !== '' && roiUid.includes('-')) {
-            const uidParts = roiUid.split('-')
-            // The last part should be the annotation index
-            const lastPart = uidParts[uidParts.length - 1]
-            const parsedIndex = parseInt(lastPart, 10)
-            if (!isNaN(parsedIndex)) {
-              annotationIndex = parsedIndex
-            }
-          }
-
-          this.setState({
-            hoveredRoiAttributes: [{
-              index: annotationIndex + 1,
-              roiUid: roiUid,
-              attributes
-            }]
-          })
-          return
-        }
-      } catch (error) {
-        logger.warn(`Failed to get annotation group metadata for ${annotationGroupUID}:`, error)
-        // Fall through to SR annotation handling
-      }
-    }
-
-    // Handle SR annotations (existing logic)
-    if (rois.length === 0) {
+    if (hoveredRois.length === 0) {
       this.setState({ hoveredRoiAttributes: [] })
       return
     }
 
-    const result = hoveredRois.map((roi) => {
+    const result = hoveredRois.map(({ roi, annotationGroupUID }) => {
+      // Handle bulk annotations
+      if (annotationGroupUID !== null && annotationGroupUID !== undefined) {
+        try {
+          const annotationGroupMetadata = this.volumeViewer.getAnnotationGroupMetadata(annotationGroupUID)
+          const annotationGroupItem = annotationGroupMetadata.AnnotationGroupSequence.find(
+            (item) => item.AnnotationGroupUID === annotationGroupUID
+          )
+
+          if (annotationGroupItem != null) {
+            const attributes: Array<{ name: string, value: string }> = []
+
+            // Add Annotation Group Label
+            if (annotationGroupItem.AnnotationGroupLabel !== undefined && annotationGroupItem.AnnotationGroupLabel !== '') {
+              attributes.push({
+                name: 'Annotation Group Label',
+                value: annotationGroupItem.AnnotationGroupLabel
+              })
+            }
+
+            // Add Property Category if available
+            if (annotationGroupItem.AnnotationPropertyCategoryCodeSequence !== undefined &&
+                annotationGroupItem.AnnotationPropertyCategoryCodeSequence.length > 0) {
+              const propertyCategory = annotationGroupItem.AnnotationPropertyCategoryCodeSequence[0]
+              const categoryValue = propertyCategory.CodeMeaning !== undefined && propertyCategory.CodeMeaning !== ''
+                ? propertyCategory.CodeMeaning
+                : propertyCategory.CodeValue
+              attributes.push({
+                name: 'Property category',
+                value: categoryValue
+              })
+            }
+
+            // Add Property Type if available
+            if (annotationGroupItem.AnnotationPropertyTypeCodeSequence !== undefined &&
+                annotationGroupItem.AnnotationPropertyTypeCodeSequence.length > 0) {
+              const propertyType = annotationGroupItem.AnnotationPropertyTypeCodeSequence[0]
+              const typeValue = propertyType.CodeMeaning !== undefined && propertyType.CodeMeaning !== ''
+                ? propertyType.CodeMeaning
+                : propertyType.CodeValue
+              attributes.push({
+                name: 'Property type',
+                value: typeValue
+              })
+            }
+
+            // Extract annotation index from ROI UID (format: annotationGroupUID-annotationIndex)
+            // For bulk annotations, the UID format is annotationGroupUID-annotationIndex
+            const roiUid = roi.uid
+            let annotationIndex = 0
+            if (roiUid !== undefined && roiUid !== null && roiUid !== '' && roiUid.includes('-')) {
+              const uidParts = roiUid.split('-')
+              // The last part should be the annotation index
+              const lastPart = uidParts[uidParts.length - 1]
+              const parsedIndex = parseInt(lastPart, 10)
+              if (!isNaN(parsedIndex)) {
+                annotationIndex = parsedIndex
+              }
+            }
+
+            return {
+              index: annotationIndex + 1,
+              roiUid: roiUid,
+              attributes
+            }
+          }
+        } catch (error) {
+          logger.warn(`Failed to get annotation group metadata for ${annotationGroupUID}:`, error)
+          // Fall through to SR annotation handling
+        }
+      }
+
+      // Handle SR annotations (existing logic)
+      if (rois.length === 0) {
+        return {
+          index: 0,
+          roiUid: roi.uid,
+          attributes: []
+        }
+      }
+
       const attributes: Array<{ name: string, value: string }> = []
       const evaluations = roi.evaluations
       evaluations.forEach((
@@ -1358,23 +1363,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
       const index = (rois.findIndex((r) => r.uid === roi.uid) ?? 0) + 1
       return { index, roiUid: roi.uid, attributes }
-    }, [] as Array<dcmjs.sr.valueTypes.CodeContentItem | dcmjs.sr.valueTypes.TextContentItem>)
+    })
 
     this.setState({ hoveredRoiAttributes: result })
   }
 
   clearHoveredRois = (): void => {
-    this.hoveredRois = [] as any
-  }
-
-  getUniqueHoveredRois = (newRoi: dmv.roi.ROI | null): dmv.roi.ROI[] => {
-    if (newRoi === null || newRoi === undefined) {
-      return this.hoveredRois
-    }
-    const allRois = [...this.hoveredRois, newRoi]
-    const uniqueIds = Array.from(new Set(allRois.map(roi => roi.uid)))
-    return uniqueIds.map(id => allRois.find(roi => roi.uid === id))
-      .filter((roi): roi is dmv.roi.ROI => roi !== undefined)
+    this.hoveredRois = []
   }
 
   isSamePixelAsLast = (event: MouseEvent): boolean => {
@@ -1382,7 +1377,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   onPointerMove = (event: CustomEventInit): void => {
-    const { feature: hoveredRoi, annotationGroupUID, event: evt } = event.detail.payload
+    const { features: featuresWithROIs, event: evt } = event.detail.payload
     const originalEvent = evt.originalEvent
 
     if (!this.isSamePixelAsLast(originalEvent)) {
@@ -1390,10 +1385,30 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.clearHoveredRois()
     }
 
-    this.hoveredRois = this.getUniqueHoveredRois(hoveredRoi)
+    // Extract unique ROIs from all features
+    const allRois: Array<{ roi: dmv.roi.ROI, annotationGroupUID: string | null }> = []
+    if (featuresWithROIs !== null && featuresWithROIs !== undefined && featuresWithROIs.length > 0) {
+      for (const item of featuresWithROIs) {
+        if (item.feature !== null && item.feature !== undefined) {
+          allRois.push({
+            roi: item.feature,
+            annotationGroupUID: item.annotationGroupUID !== null && item.annotationGroupUID !== undefined ? item.annotationGroupUID : null
+          })
+        }
+      }
+    }
+
+    // Get unique ROIs by UID
+    const uniqueRoiMap = new Map<string, { roi: dmv.roi.ROI, annotationGroupUID: string | null }>()
+    for (const item of allRois) {
+      if (!uniqueRoiMap.has(item.roi.uid)) {
+        uniqueRoiMap.set(item.roi.uid, item)
+      }
+    }
+    this.hoveredRois = Array.from(uniqueRoiMap.values())
 
     if (this.hoveredRois.length > 0) {
-      this.setHoveredRoiAttributes(this.hoveredRois, annotationGroupUID !== undefined && annotationGroupUID !== null ? annotationGroupUID : null)
+      this.setHoveredRoiAttributes(this.hoveredRois)
       this.setState({
         isHoveredRoiTooltipVisible: true,
         hoveredRoiTooltipX: originalEvent.clientX,
