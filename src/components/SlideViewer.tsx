@@ -1,4 +1,6 @@
 import React from 'react'
+import debounce from 'lodash/debounce'
+import type { DebouncedFunc } from 'lodash'
 import { Layout, Space, Checkbox, Descriptions, Divider, Select, Tooltip, message, Menu, Row } from 'antd'
 import { CheckboxChangeEvent } from 'antd/es/checkbox'
 import { UndoOutlined } from '@ant-design/icons'
@@ -102,6 +104,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   private lastPixel = [0, 0] as [number, number]
 
   private readonly keysDown = new Set<string>()
+
+  private readonly handlePointerMoveDebounced: DebouncedFunc<(event: CustomEventInit) => void>
+
+  private lastHoveredRoiSignature: string | null = null
+
+  private readonly annotationGroupMetadataCache = new Map<string, dmv.metadata.MicroscopyBulkSimpleAnnotations>()
 
   private readonly defaultRoiStyle: dmv.viewer.ROIStyleOptions = {
     stroke: {
@@ -255,6 +263,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       isParametricMapInterpolationEnabled: true,
       customizedSegmentColors: {}
     }
+
+    this.handlePointerMoveDebounced = debounce(
+      this.handlePointerMoveEvent,
+      0,
+      { leading: true, trailing: true }
+    )
   }
 
   /**
@@ -1239,13 +1253,29 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       // Handle bulk annotations
       if (annotationGroupUID !== null && annotationGroupUID !== undefined) {
         try {
-          const annotationGroupMetadata = this.volumeViewer.getAnnotationGroupMetadata(annotationGroupUID)
+          let annotationGroupMetadata = this.annotationGroupMetadataCache.get(annotationGroupUID)
+          if (annotationGroupMetadata === undefined) {
+            annotationGroupMetadata = this.volumeViewer.getAnnotationGroupMetadata(annotationGroupUID)
+            this.annotationGroupMetadataCache.set(annotationGroupUID, annotationGroupMetadata)
+          }
           const annotationGroupItem = annotationGroupMetadata.AnnotationGroupSequence.find(
             (item) => item.AnnotationGroupUID === annotationGroupUID
           )
 
           if (annotationGroupItem != null) {
             const attributes: Array<{ name: string, value: string }> = []
+
+            // Get Series Description for sorting
+            let seriesDescription = ''
+            if (annotationGroupMetadata.SeriesInstanceUID !== undefined && annotationGroupMetadata.SeriesInstanceUID !== null) {
+              seriesDescription = this.getSeriesDescription(annotationGroupMetadata.SeriesInstanceUID)
+              if (seriesDescription !== undefined && seriesDescription !== null && seriesDescription !== '') {
+                attributes.push({
+                  name: 'Series Description',
+                  value: seriesDescription
+                })
+              }
+            }
 
             // Add Annotation Group Label
             if (annotationGroupItem.AnnotationGroupLabel !== undefined && annotationGroupItem.AnnotationGroupLabel !== '') {
@@ -1298,7 +1328,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             return {
               index: annotationIndex + 1,
               roiUid: roiUid,
-              attributes
+              attributes,
+              seriesDescription: seriesDescription
             }
           }
         } catch (error) {
@@ -1312,7 +1343,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         return {
           index: 0,
           roiUid: roi.uid,
-          attributes: []
+          attributes: [],
+          seriesDescription: ''
         }
       }
 
@@ -1362,7 +1394,25 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       })
 
       const index = (rois.findIndex((r) => r.uid === roi.uid) ?? 0) + 1
-      return { index, roiUid: roi.uid, attributes }
+      return {
+        index,
+        roiUid: roi.uid,
+        attributes,
+        seriesDescription: ''
+      }
+    })
+
+    // Sort results: first by ROI index, then by series description
+    result.sort((a, b) => {
+      // First sort by ROI index
+      const indexComparison = a.index - b.index
+      if (indexComparison !== 0) {
+        return indexComparison
+      }
+      // Then sort by series description
+      const aDesc = (a.seriesDescription !== null && a.seriesDescription !== undefined && a.seriesDescription !== '') ? a.seriesDescription : ''
+      const bDesc = (b.seriesDescription !== null && b.seriesDescription !== undefined && b.seriesDescription !== '') ? b.seriesDescription : ''
+      return aDesc.localeCompare(bDesc)
     })
 
     this.setState({ hoveredRoiAttributes: result })
@@ -1377,6 +1427,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   onPointerMove = (event: CustomEventInit): void => {
+    this.handlePointerMoveDebounced(event)
+  }
+
+  handlePointerMoveEvent = (event: CustomEventInit): void => {
     const { features: featuresWithROIs, event: evt } = event.detail.payload
     const originalEvent = evt.originalEvent
 
@@ -1405,9 +1459,34 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         uniqueRoiMap.set(item.roi.uid, item)
       }
     }
-    this.hoveredRois = Array.from(uniqueRoiMap.values())
+
+    // Filter out non-visible ROIs
+    const visibleRois = Array.from(uniqueRoiMap.values()).filter(({ roi, annotationGroupUID }) => {
+      // For bulk annotations, check annotation group visibility
+      if (annotationGroupUID !== null && annotationGroupUID !== undefined) {
+        return this.state.visibleAnnotationGroupUIDs.has(annotationGroupUID)
+      }
+      // For SR annotations, check ROI visibility
+      return this.state.visibleRoiUIDs.has(roi.uid)
+    })
+
+    this.hoveredRois = visibleRois
 
     if (this.hoveredRois.length > 0) {
+      const roiSignature = this.hoveredRois
+        .map(({ roi, annotationGroupUID }) => `${roi.uid}:${annotationGroupUID ?? ''}`)
+        .sort()
+        .join('|')
+
+      if (this.lastHoveredRoiSignature === roiSignature && this.state.isHoveredRoiTooltipVisible) {
+        this.setState({
+          hoveredRoiTooltipX: originalEvent.clientX,
+          hoveredRoiTooltipY: originalEvent.clientY
+        })
+        return
+      }
+
+      this.lastHoveredRoiSignature = roiSignature
       this.setHoveredRoiAttributes(this.hoveredRois)
       this.setState({
         isHoveredRoiTooltipVisible: true,
@@ -1415,6 +1494,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         hoveredRoiTooltipY: originalEvent.clientY
       })
     } else {
+      this.lastHoveredRoiSignature = null
       this.setState({
         isHoveredRoiTooltipVisible: false
       })
@@ -1765,6 +1845,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (this.labelViewer !== null && this.labelViewer !== undefined) {
       this.labelViewer.cleanup()
     }
+    this.handlePointerMoveDebounced.cancel()
     window.removeEventListener('beforeunload', this.componentCleanup)
   }
 
