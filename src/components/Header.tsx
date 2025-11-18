@@ -2,7 +2,6 @@ import React from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   Col,
-  Descriptions,
   Dropdown,
   Input,
   Layout,
@@ -25,6 +24,7 @@ import {
   SettingOutlined
 } from '@ant-design/icons'
 import { detect } from 'detect-browser'
+import appPackageJson from '../../package.json'
 
 import Button from './Button'
 import { RouteComponentProps, withRouter } from '../utils/router'
@@ -168,36 +168,57 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       }
     }
 
+    const slimCommit = process.env.REACT_APP_GIT_SHA !== undefined && process.env.REACT_APP_GIT_SHA !== '' ? process.env.REACT_APP_GIT_SHA : null
+    const viewerCommit = process.env.REACT_APP_DMV_GIT_SHA !== undefined && process.env.REACT_APP_DMV_GIT_SHA !== '' ? process.env.REACT_APP_DMV_GIT_SHA : null
+    const devDeps = appPackageJson.devDependencies as Record<string, string> | undefined
+    const deps = appPackageJson.dependencies as Record<string, string> | undefined
+    const viewerVersionRaw =
+      devDeps?.['dicom-microscopy-viewer'] ??
+      deps?.['dicom-microscopy-viewer'] ??
+      'unknown'
+    const viewerVersion = viewerVersionRaw.replace(/^[^0-9]*/, '')
+
     Modal.info({
-      title: 'About',
-      width: 600,
+      width: 480,
+      title: null,
+      centered: true,
       content: (
-        <>
-          <Descriptions title='Application' column={1}>
-            <Descriptions.Item label='Name'>
-              {this.props.app.name}
-            </Descriptions.Item>
-            <Descriptions.Item label='Version'>
-              {this.props.app.version}
-            </Descriptions.Item>
-            <Descriptions.Item label='Homepage'>
+        <div style={{ textAlign: 'center', lineHeight: 1.6, paddingRight: 25 }}>
+          <div style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: 4 }}>{this.props.app.name}</div>
+          <div style={{ fontSize: '2rem', fontWeight: 600 }}>{this.props.app.version}</div>
+          <div style={{ fontSize: '1rem', marginBottom: 16 }}>
+            <a href={this.props.app.homepage} target='_blank' rel='noreferrer'>
               {this.props.app.homepage}
-            </Descriptions.Item>
-          </Descriptions>
-          <Descriptions title='Browser' column={1}>
-            <Descriptions.Item label='Name'>
-              {environment.browser.name}
-            </Descriptions.Item>
-            <Descriptions.Item label='Version'>
-              {environment.browser.version}
-            </Descriptions.Item>
-          </Descriptions>
-          <Descriptions title='Operating System' column={1}>
-            <Descriptions.Item label='Name'>
-              {environment.os.name}
-            </Descriptions.Item>
-          </Descriptions>
-        </>
+            </a>
+          </div>
+
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontWeight: 600 }}>Commit Hash</div>
+            <code>{slimCommit ?? 'unknown'}</code>
+          </div>
+
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontWeight: 600 }}>
+              <a
+                href='https://github.com/MGHComputationalPathology/dicom-microscopy-viewer'
+                target='_blank'
+                rel='noreferrer'
+              >
+                DICOM Microscopy Viewer
+              </a>
+            </div>
+            <div>Version {viewerVersion}</div>
+            <code>{viewerCommit ?? 'unknown'}</code>
+          </div>
+
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontWeight: 600 }}>Current Browser &amp; OS</div>
+            <div>
+              {environment.browser.name ?? 'Unknown'} {environment.browser.version ?? ''}
+            </div>
+            <div>{environment.os.name ?? 'Unknown OS'}</div>
+          </div>
+        </div>
       ),
       onOk (): void {}
     })
