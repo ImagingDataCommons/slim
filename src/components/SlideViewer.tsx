@@ -1235,14 +1235,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const roiUid = selectedRoi.uid
       const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups()
       const isBulkAnnotation = allAnnotationGroups.some(
-        annotationGroup => roiUid !== undefined && roiUid.startsWith(annotationGroup.uid + '-')
+        annotationGroup => roiUid?.startsWith(`${String(annotationGroup.uid)}-`)
       )
-      
+
       // Don't show modal for bulk annotations
       if (isBulkAnnotation) {
         return
       }
-      
+
       this.setState({
         selectedRoi,
         isSelectedRoiModalVisible: true
@@ -3697,7 +3697,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (this.state.selectedRoi !== null && this.state.selectedRoi !== undefined) {
       const allRois = this.volumeViewer.getAllROIs()
       const roiIndex = allRois.findIndex(roi => roi.uid === this.state.selectedRoi?.uid)
-      
+
       const roiAttributes: Array<{
         name: string
         value: string
