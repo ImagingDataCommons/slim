@@ -3696,26 +3696,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   private readonly getSelectedRoiInformation = (): React.ReactNode => {
     if (this.state.selectedRoi !== null && this.state.selectedRoi !== undefined) {
       const allRois = this.volumeViewer.getAllROIs()
-      
-      // Handle bulk annotations: extract annotation index from ROI UID (format: annotationGroupUID-annotationIndex)
-      const roiUid = this.state.selectedRoi.uid
-      let roiIndex = -1
-      if (roiUid !== undefined && roiUid !== null && roiUid !== '' && roiUid.includes('-')) {
-        const uidParts = roiUid.split('-')
-        // The last part should be the annotation index for bulk annotations
-        const lastPart = uidParts[uidParts.length - 1]
-        const parsedIndex = parseInt(lastPart, 10)
-        if (!isNaN(parsedIndex)) {
-          // This is a bulk annotation, use the extracted index
-          roiIndex = parsedIndex
-        } else {
-          // Not a bulk annotation, use findIndex
-          roiIndex = allRois.findIndex(roi => roi.uid === roiUid)
-        }
-      } else {
-        // Not a bulk annotation, use findIndex
-        roiIndex = allRois.findIndex(roi => roi.uid === roiUid)
-      }
+      const roiIndex = allRois.findIndex(roi => roi.uid === this.state.selectedRoi?.uid)
       
       const roiAttributes: Array<{
         name: string
