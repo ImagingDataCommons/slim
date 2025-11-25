@@ -4,7 +4,8 @@
   "private": true,
   "author": "ImagingDataCommons",
   "scripts": {
-    "start": "rm -rf ./node_modules/.cache/default-development && craco start",
+    "start": "rm -rf ./node_modules/.cache/default-development && ./scripts/set-git-env.sh craco start",
+    "dev": "npm run start",
     "build": "./scripts/set-git-env.sh craco build",
     "build:firebase": "REACT_APP_CONFIG=gcp PUBLIC_URL=/ ./scripts/set-git-env.sh craco build",
     "lint": "ts-standard --env jest 'src/**/*.{tsx,ts}'",
