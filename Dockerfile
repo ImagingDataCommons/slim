@@ -37,7 +37,10 @@ COPY craco.config.js .
 COPY tsconfig.json .
 COPY types ./types
 COPY public ./public
+COPY scripts ./scripts
 COPY src ./src
+
+RUN chmod +x scripts/*.sh
 
 
 FROM lib AS app
