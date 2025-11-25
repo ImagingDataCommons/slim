@@ -1232,10 +1232,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const selectedRoi = event.detail.payload as dmv.roi.ROI
     if (selectedRoi !== null) {
       this.setState({
+        selectedRoi,
         isSelectedRoiModalVisible: true
       })
     } else {
       this.setState({
+        selectedRoi: undefined,
         isSelectedRoiModalVisible: false
       })
     }
@@ -1501,7 +1503,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-  getUpdatedSelectedRois = (newSelectedRoiUid?: string): { selectedRoiUIDs: Set<string>, selectedRoi?: dmv.roi.ROI} => {
+  getUpdatedSelectedRois = (
+    newSelectedRoiUid?: string
+  ): { selectedRoiUIDs: Set<string>, selectedRoi?: dmv.roi.ROI } => {
     const selectedRoiUid = newSelectedRoiUid
     const emptySelection = {
       selectedRoiUIDs: new Set<string>(),
@@ -1562,11 +1566,29 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   onRoiSelected = (event: CustomEventInit): void => {
-    const selectedRoiUid = event.detail?.payload?.uid as string
-    const updatedSelectedRois = this.getUpdatedSelectedRois(selectedRoiUid)
-    this.setState(updatedSelectedRois)
+    const payload = event.detail?.payload
+    const roiPayload = payload as dmv.roi.ROI | { uid?: string } | undefined
+    const isRoiObject = (roiPayload != null) && typeof roiPayload === 'object' && 'uid' in roiPayload && 'scoord3d' in roiPayload
 
-    this.resetUnselectedRoiStyles(updatedSelectedRois)
+    if (isRoiObject) {
+      const selectedRoi = roiPayload
+      const updatedSelectedRois = !this.keysDown.has('Shift')
+        ? {
+            selectedRoiUIDs: new Set([selectedRoi.uid]),
+            selectedRoi
+          }
+        : {
+            selectedRoiUIDs: new Set([...Array.from(this.state.selectedRoiUIDs), selectedRoi.uid]),
+            selectedRoi
+          }
+      this.setState(updatedSelectedRois)
+      this.resetUnselectedRoiStyles(updatedSelectedRois)
+    } else {
+      const selectedRoiUid = (payload as { uid?: string } | undefined)?.uid
+      const updatedSelectedRois = this.getUpdatedSelectedRois(selectedRoiUid)
+      this.setState(updatedSelectedRois)
+      this.resetUnselectedRoiStyles(updatedSelectedRois)
+    }
   }
 
   handleAnnotationSelection = (uid: string): void => {
@@ -3661,14 +3683,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private readonly getSelectedRoiInformation = (): React.ReactNode => {
     if (this.state.selectedRoi !== null && this.state.selectedRoi !== undefined) {
+      const allRois = this.volumeViewer.getAllROIs()
+      const roiIndex = allRois.findIndex(roi => roi.uid === this.state.selectedRoi?.uid)
       const roiAttributes: Array<{
         name: string
         value: string
         unit?: string
       }> = [
         {
-          name: 'UID',
-          value: this.state.selectedRoi.uid
+          name: '',
+          value: `ROI ${roiIndex >= 0 ? roiIndex + 1 : 'N/A'}`
         }
       ]
       const roiScoordAttributes: Array<{
