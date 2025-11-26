@@ -632,7 +632,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   loadDerivedDataset = (derivedDataset: dmv.metadata.Dataset): void => {
-    logger.debug('Loading derived dataset')
+    logger.log('Loading derived dataset:', derivedDataset)
+
     const Comprehensive3DSR = StorageClasses.COMPREHENSIVE_3D_SR
     const ComprehensiveSR = StorageClasses.COMPREHENSIVE_SR
     const MicroscopyBulkSimpleAnnotation = StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION
@@ -704,6 +705,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       }).then((matchedInstances): void => {
         if (matchedInstances === null || matchedInstances === undefined) {
           matchedInstances = []
+        }
+        if (matchedInstances.length === 0) {
+          resolve()
+          return
         }
         matchedInstances.forEach(i => {
           const { dataset } = dmv.metadata.formatMetadata(i)
@@ -847,6 +852,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         if (matchedSeries === null || matchedSeries === undefined) {
           matchedSeries = []
         }
+        if (matchedSeries.length === 0) {
+          resolve()
+          return
+        }
         matchedSeries.forEach(s => {
           const { dataset } = dmv.metadata.formatMetadata(s)
           const series = dataset as dmv.metadata.Series
@@ -949,6 +958,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         if (matchedSeries === null || matchedSeries === undefined) {
           matchedSeries = []
         }
+        if (matchedSeries.length === 0) {
+          resolve()
+          return
+        }
         matchedSeries.forEach((s, i) => {
           const { dataset } = dmv.metadata.formatMetadata(s)
           const series = dataset as dmv.metadata.Series
@@ -1035,6 +1048,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       }).then((matchedSeries): void => {
         if (matchedSeries === null || matchedSeries === undefined) {
           matchedSeries = []
+        }
+        if (matchedSeries.length === 0) {
+          resolve()
+          return
         }
         matchedSeries.forEach(s => {
           const { dataset } = dmv.metadata.formatMetadata(s)
@@ -1135,44 +1152,20 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.loadPresentationStates()
 
     // Handle promises properly with catch blocks
-    void this.addAnnotations()
+    // Wait for all operations to complete before loading derived dataset
+    void Promise.allSettled([
+      this.addAnnotations(),
+      this.addAnnotationGroups(),
+      this.addSegmentations(),
+      this.addParametricMaps()
+    ])
       .then(() => {
         if (this.props.derivedDataset !== null && this.props.derivedDataset !== undefined) {
           this.loadDerivedDataset(this.props.derivedDataset)
         }
       })
       .catch(error => {
-        console.error('Failed to add annotations:', error)
-      })
-
-    void this.addAnnotationGroups()
-      .then(() => {
-        if (this.props.derivedDataset !== null && this.props.derivedDataset !== undefined) {
-          this.loadDerivedDataset(this.props.derivedDataset)
-        }
-      })
-      .catch(error => {
-        console.error('Failed to add annotation groups:', error)
-      })
-
-    void this.addSegmentations()
-      .then(() => {
-        if (this.props.derivedDataset !== null && this.props.derivedDataset !== undefined) {
-          this.loadDerivedDataset(this.props.derivedDataset)
-        }
-      })
-      .catch(error => {
-        console.error('Failed to add segmentations:', error)
-      })
-
-    void this.addParametricMaps()
-      .then(() => {
-        if (this.props.derivedDataset !== null && this.props.derivedDataset !== undefined) {
-          this.loadDerivedDataset(this.props.derivedDataset)
-        }
-      })
-      .catch(error => {
-        console.error('Failed to add parametric maps:', error)
+        console.error('Failed to add derived data:', error)
       })
   }
 
