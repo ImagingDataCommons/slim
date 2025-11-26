@@ -790,7 +790,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                   )
                 }
               })
-
               resolve()
             }).catch((error) => {
               // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -878,6 +877,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             annotations.forEach(ann => {
               try {
                 this.volumeViewer.addAnnotationGroups(ann)
+                resolve()
               } catch (error: unknown) {
                 // eslint-disable-next-line @typescript-eslint/no-floating-promises
                 NotificationMiddleware.onError(
@@ -911,7 +911,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             * interface unless an update is forced.
             */
             this.forceUpdate()
-            resolve()
           }).catch((error) => {
             console.error(error)
             // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -983,6 +982,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             if (segmentations.length > 0) {
               try {
                 this.volumeViewer.addSegments(segmentations)
+                resolve()
               } catch (error: unknown) {
                 // eslint-disable-next-line @typescript-eslint/no-floating-promises
                 NotificationMiddleware.onError(
@@ -1002,8 +1002,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               */
               this.forceUpdate()
             }
-
-            resolve()
           }).catch((error) => {
             console.error(error)
             // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -1078,6 +1076,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             if (parametricMaps.length > 0) {
               try {
                 this.volumeViewer.addParameterMappings(parametricMaps)
+                resolve()
               } catch (error: unknown) {
                 // eslint-disable-next-line @typescript-eslint/no-floating-promises
                 NotificationMiddleware.onError(
@@ -1097,7 +1096,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                */
               this.forceUpdate()
             }
-            resolve()
           }).catch((error) => {
             console.error(error)
             // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -1145,14 +1143,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.labelViewer.render({ container: this.labelViewportRef.current })
     }
 
-    // State update will also ensure that the component is re-rendered.
     this.setState({ isLoading: false })
 
     this.setDefaultPresentationState()
     this.loadPresentationStates()
 
-    // Handle promises properly with catch blocks
-    // Wait for all operations to complete before loading derived dataset
     void Promise.allSettled([
       this.addAnnotations(),
       this.addAnnotationGroups(),
@@ -1160,6 +1155,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.addParametricMaps()
     ])
       .then(() => {
+        console.debug('Loaded annotations, annotation groups, segmentations, and parametric maps!')
         if (this.props.derivedDataset !== null && this.props.derivedDataset !== undefined) {
           this.loadDerivedDataset(this.props.derivedDataset)
         }
