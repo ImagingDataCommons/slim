@@ -23,6 +23,8 @@ const { naturalizeDataset } = dcmjs.data.DicomMetaDictionary
 interface NaturalizedInstance {
   SeriesInstanceUID: string
   SOPInstanceUID: string
+  FrameOfReferenceUID?: string
+  ContainerIdentifier?: string
   ReferencedSeriesSequence?: Array<{
     SeriesInstanceUID: string
   }>
@@ -93,44 +95,197 @@ function ParametrizedSlideViewer ({
       clients: { [key: string]: DicomWebManager }
       studyInstanceUID: string
       seriesInstanceUID: string
-    }): Promise<ReferencedSlideResult | null> => await new Promise<ReferencedSlideResult | null>((resolve, reject) => {
+    }): Promise<ReferencedSlideResult | null> => {
       try {
         const allClients = Object.values(StorageClasses).map((storageClass) => clients[storageClass])
-        Promise.all(allClients.map(async (client) => {
-          const seriesMetadata = await client.retrieveSeriesMetadata({
-            studyInstanceUID: studyInstanceUID,
-            seriesInstanceUID: seriesInstanceUID
-          })
-          const [naturalizedSeriesMetadata] = seriesMetadata.map((metadata) => naturalizeDataset(metadata)) as NaturalizedInstance[]
-
-          if (naturalizedSeriesMetadata.ReferencedSeriesSequence != null) {
-            const referencedSeriesInstanceUID = naturalizedSeriesMetadata.ReferencedSeriesSequence[0].SeriesInstanceUID
-            const referencedSlide = slides.find((slide: Slide) => {
-              return slide.seriesInstanceUIDs.find((uid: string) => {
-                return uid === referencedSeriesInstanceUID
-              })
+        
+        // Try each client sequentially to avoid race conditions
+        for (const client of allClients) {
+          try {
+            const seriesMetadata = await client.retrieveSeriesMetadata({
+              studyInstanceUID: studyInstanceUID,
+              seriesInstanceUID: seriesInstanceUID
             })
-            resolve({ slide: referencedSlide, metadata: naturalizedSeriesMetadata })
-          }
+            
+            if (seriesMetadata.length === 0) {
+              continue
+            }
+            
+            const naturalizedSeriesMetadataArray = seriesMetadata.map((metadata) => naturalizeDataset(metadata)) as NaturalizedInstance[]
+            // Use the first instance for ReferencedSeriesSequence check
+            const naturalizedSeriesMetadata = naturalizedSeriesMetadataArray[0]
 
-          const IMAGE_LIBRARY_CONCEPT_NAME_CODE = '111028'
-          const imageLibrary = naturalizedSeriesMetadata.ContentSequence?.find(
-            contentItem => contentItem.ConceptNameCodeSequence[0].CodeValue === IMAGE_LIBRARY_CONCEPT_NAME_CODE
-          )
-          if ((imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]?.ReferencedSOPSequence?.[0]) != null) {
-            const referencedSOPInstanceUID = imageLibrary.ContentSequence[0].ContentSequence[0].ReferencedSOPSequence[0].ReferencedSOPInstanceUID
-            const referencedSlide = slides.find((slide: Slide) => {
-              return slide.volumeImages.find((image: { SOPInstanceUID: string }) => {
-                return image.SOPInstanceUID === referencedSOPInstanceUID
+            // Check ReferencedSeriesSequence - iterate through all items, not just the first
+            if (naturalizedSeriesMetadata.ReferencedSeriesSequence != null && naturalizedSeriesMetadata.ReferencedSeriesSequence.length > 0) {
+              // For each referenced series, get its metadata and match against slides
+              for (const referencedSeries of naturalizedSeriesMetadata.ReferencedSeriesSequence) {
+                const referencedSeriesInstanceUID = referencedSeries.SeriesInstanceUID
+                
+                try {
+                  // Get metadata from the referenced series to extract FrameOfReferenceUID/ContainerIdentifier
+                  const referencedSeriesMetadata = await client.retrieveSeriesMetadata({
+                    studyInstanceUID: studyInstanceUID,
+                    seriesInstanceUID: referencedSeriesInstanceUID
+                  })
+                  
+                  if (referencedSeriesMetadata.length === 0) {
+                    continue
+                  }
+                  
+                  const [referencedNaturalized] = referencedSeriesMetadata.map((metadata) => naturalizeDataset(metadata)) as NaturalizedInstance[]
+                  const refFrameOfReferenceUID = referencedNaturalized.FrameOfReferenceUID
+                  const refContainerIdentifier = referencedNaturalized.ContainerIdentifier
+                  
+                  if (refFrameOfReferenceUID == null || refContainerIdentifier == null) {
+                    console.warn(`Referenced series ${referencedSeriesInstanceUID} missing FrameOfReferenceUID or ContainerIdentifier`)
+                    continue
+                  }
+                  
+                  // Find slides that match both the seriesInstanceUID AND FrameOfReferenceUID/ContainerIdentifier
+                  const matchingSlides = slides.filter((slide: Slide) => {
+                    // First check if slide contains this referenced series
+                    const hasReferencedSeries = slide.seriesInstanceUIDs.some((uid: string) => {
+                      return uid === referencedSeriesInstanceUID
+                    })
+                    
+                    if (!hasReferencedSeries) {
+                      return false
+                    }
+                    
+                    // Then verify FrameOfReferenceUID and ContainerIdentifier match
+                    return (
+                      slide.frameOfReferenceUID === refFrameOfReferenceUID &&
+                      slide.containerIdentifier === refContainerIdentifier
+                    )
+                  })
+                  
+                  // If we found a matching slide, return it immediately
+                  if (matchingSlides.length > 0) {
+                    if (matchingSlides.length > 1) {
+                      console.warn(`Multiple slides match referenced series ${referencedSeriesInstanceUID} with same FrameOfReferenceUID/ContainerIdentifier, using first`)
+                    }
+                    return { slide: matchingSlides[0], metadata: naturalizedSeriesMetadata }
+                  }
+                } catch (refError) {
+                  console.warn(`Failed to retrieve referenced series metadata for ${referencedSeriesInstanceUID}:`, refError)
+                  continue
+                }
+              }
+              
+              // If we couldn't match any referenced series, try fallback: match by seriesInstanceUID only
+              // but only if we can verify using FrameOfReferenceUID/ContainerIdentifier from derived display set
+              let frameOfReferenceUID: string | undefined
+              let containerIdentifier: string | undefined
+              
+              for (const instanceMetadata of naturalizedSeriesMetadataArray) {
+                if (instanceMetadata.FrameOfReferenceUID != null) {
+                  frameOfReferenceUID = instanceMetadata.FrameOfReferenceUID
+                }
+                if (instanceMetadata.ContainerIdentifier != null) {
+                  containerIdentifier = instanceMetadata.ContainerIdentifier
+                }
+                if (frameOfReferenceUID != null && containerIdentifier != null) {
+                  break
+                }
+              }
+              
+              if (frameOfReferenceUID != null && containerIdentifier != null) {
+                // Try to find slide matching derived display set's FrameOfReferenceUID/ContainerIdentifier
+                for (const referencedSeries of naturalizedSeriesMetadata.ReferencedSeriesSequence) {
+                  const referencedSeriesInstanceUID = referencedSeries.SeriesInstanceUID
+                  const candidateSlides = slides.filter((slide: Slide) => {
+                    return slide.seriesInstanceUIDs.some((uid: string) => {
+                      return uid === referencedSeriesInstanceUID
+                    })
+                  })
+                  
+                  const matchedSlide = candidateSlides.find((slide: Slide) => {
+                    return (
+                      slide.frameOfReferenceUID === frameOfReferenceUID &&
+                      slide.containerIdentifier === containerIdentifier
+                    )
+                  })
+                  
+                  if (matchedSlide !== undefined) {
+                    return { slide: matchedSlide, metadata: naturalizedSeriesMetadata }
+                  }
+                }
+              }
+            }
+
+            // Check IMAGE_LIBRARY fallback
+            const IMAGE_LIBRARY_CONCEPT_NAME_CODE = '111028'
+            const imageLibrary = naturalizedSeriesMetadata.ContentSequence?.find(
+              contentItem => contentItem.ConceptNameCodeSequence?.[0]?.CodeValue === IMAGE_LIBRARY_CONCEPT_NAME_CODE
+            )
+            if ((imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]?.ReferencedSOPSequence?.[0]) != null) {
+              const referencedSOPInstanceUID = imageLibrary.ContentSequence[0].ContentSequence[0].ReferencedSOPSequence[0].ReferencedSOPInstanceUID
+              
+              // Find all slides that contain this SOP instance
+              const candidateSlides = slides.filter((slide: Slide) => {
+                return slide.volumeImages.some((image: { SOPInstanceUID: string }) => {
+                  return image.SOPInstanceUID === referencedSOPInstanceUID
+                })
               })
-            })
-            resolve({ slide: referencedSlide, metadata: naturalizedSeriesMetadata })
+              
+              if (candidateSlides.length === 0) {
+                // Continue to next client
+                continue
+              }
+              
+              // If only one candidate, use it
+              if (candidateSlides.length === 1) {
+                return { slide: candidateSlides[0], metadata: naturalizedSeriesMetadata }
+              }
+              
+              // Multiple candidates - try to match by FrameOfReferenceUID and ContainerIdentifier
+              // Check all instances for these values
+              let frameOfReferenceUID: string | undefined
+              let containerIdentifier: string | undefined
+              
+              for (const instanceMetadata of naturalizedSeriesMetadataArray) {
+                if (instanceMetadata.FrameOfReferenceUID != null) {
+                  frameOfReferenceUID = instanceMetadata.FrameOfReferenceUID
+                }
+                if (instanceMetadata.ContainerIdentifier != null) {
+                  containerIdentifier = instanceMetadata.ContainerIdentifier
+                }
+                if (frameOfReferenceUID != null && containerIdentifier != null) {
+                  break
+                }
+              }
+              
+              if (frameOfReferenceUID != null && containerIdentifier != null) {
+                const matchedSlide = candidateSlides.find((slide: Slide) => {
+                  return (
+                    slide.frameOfReferenceUID === frameOfReferenceUID &&
+                    slide.containerIdentifier === containerIdentifier
+                  )
+                })
+                
+                if (matchedSlide !== undefined) {
+                  return { slide: matchedSlide, metadata: naturalizedSeriesMetadata }
+                }
+              }
+              
+              // Last resort: return the first candidate
+              console.warn(`Multiple slides match referenced SOP ${referencedSOPInstanceUID}, using first match`)
+              return { slide: candidateSlides[0], metadata: naturalizedSeriesMetadata }
+            }
+          } catch (clientError) {
+            // Continue to next client if this one fails
+            console.warn(`Failed to retrieve metadata from client:`, clientError)
+            continue
           }
-        })).catch(reject)
+        }
+        
+        // No valid slide found
+        return null
       } catch (error) {
-        reject(error)
+        console.error('Error finding referenced slide:', error)
+        return null
       }
-    })
+    }
 
     if (selectedSlide === null || selectedSlide === undefined) {
       void findReferencedSlide({ clients, studyInstanceUID, seriesInstanceUID }).then((result: ReferencedSlideResult | null) => {
