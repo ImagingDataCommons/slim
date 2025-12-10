@@ -85,8 +85,10 @@ function ParametrizedSlideViewer ({
 
   useEffect(() => {
     const seriesSlide = findSeriesSlide(slides, seriesInstanceUID)
-    if (seriesSlide !== null) {
+    if (seriesSlide !== null && seriesSlide !== undefined) {
       setSelectedSlide(seriesSlide)
+      // Clear derivedDataset when we have a direct match (not a derived display set)
+      setDerivedDataset(null)
     }
   }, [seriesInstanceUID, slides])
 
@@ -97,10 +99,8 @@ function ParametrizedSlideViewer ({
       seriesInstanceUID: string
     }): Promise<ReferencedSlideResult | null> => {
       try {
-        // First, try to find a slide that directly matches the seriesInstanceUID
-        const directMatch = findSeriesSlide(slides, seriesInstanceUID)
-        
-        // Retrieve metadata for the seriesInstanceUID
+        // This function is only called when there's no direct match
+        // So seriesInstanceUID is likely a derived display set (annotation) that references a slide
         const allClients = Object.values(StorageClasses).map((storageClass) => clients[storageClass])
         for (const client of allClients) {
           try {
@@ -108,19 +108,13 @@ function ParametrizedSlideViewer ({
               studyInstanceUID: studyInstanceUID,
               seriesInstanceUID: seriesInstanceUID
             })
-            
             if (seriesMetadata.length === 0) {
               continue
             }
-            
+
             const naturalizedSeriesMetadata = naturalizeDataset(seriesMetadata[0]) as NaturalizedInstance
-            
-            // If we found a direct match, return it
-            if (directMatch !== undefined) {
-              return { slide: directMatch, metadata: naturalizedSeriesMetadata }
-            }
-            
-            // Otherwise, check if any slide contains a reference to the seriesInstanceUID
+
+            // Check if this series has ReferencedSeriesSequence (it's a derived display set)
             if (naturalizedSeriesMetadata.ReferencedSeriesSequence != null && naturalizedSeriesMetadata.ReferencedSeriesSequence.length > 0) {
               // Find slides that contain any of the referenced series UIDs
               for (const referencedSeries of naturalizedSeriesMetadata.ReferencedSeriesSequence) {
@@ -128,8 +122,9 @@ function ParametrizedSlideViewer ({
                 const matchingSlide = slides.find((slide: Slide) => {
                   return slide.seriesInstanceUIDs.some((uid: string) => uid === referencedSeriesInstanceUID)
                 })
-                
+
                 if (matchingSlide !== undefined) {
+                  // Return the referenced slide with the derived display set metadata
                   return { slide: matchingSlide, metadata: naturalizedSeriesMetadata }
                 }
               }
@@ -138,7 +133,7 @@ function ParametrizedSlideViewer ({
             continue
           }
         }
-        
+
         return null
       } catch (error) {
         console.error('Error finding referenced slide:', error)
@@ -150,6 +145,7 @@ function ParametrizedSlideViewer ({
       void findReferencedSlide({ clients, studyInstanceUID, seriesInstanceUID }).then((result: ReferencedSlideResult | null) => {
         if (result !== null && result !== undefined) {
           setSelectedSlide(result.slide)
+          // Set derivedDataset only if metadata exists (it's a derived display set)
           setDerivedDataset(result.metadata)
         }
       }).catch(error => {
