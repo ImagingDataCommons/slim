@@ -79,7 +79,9 @@ function ParametrizedSlideViewer ({
   const [derivedDataset, setDerivedDataset] = useState<NaturalizedInstance | null>(null)
 
   useEffect(() => {
-    if (selectedSlide === null || selectedSlide === undefined) {
+    const currentSlideMatchesSeries = selectedSlide?.seriesInstanceUIDs.some((uid: string) => uid === seriesInstanceUID) ?? false
+
+    if (selectedSlide === null || selectedSlide === undefined || !currentSlideMatchesSeries) {
       const imageSlide = findSeriesSlide(slides, seriesInstanceUID)
       if (imageSlide !== null && imageSlide !== undefined) {
         setSelectedSlide(imageSlide)
