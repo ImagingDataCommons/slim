@@ -647,6 +647,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const PseudocolorSoftcopyPresentationState = StorageClasses.PSEUDOCOLOR_SOFTCOPY_PRESENTATION_STATE
 
     if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === Comprehensive3DSR) {
+      // ROIs don't have seriesInstanceUID property, so we show all ROIs
+      // that match the frame of reference (already filtered during addAnnotations)
       const allRois = this.volumeViewer.getAllROIs()
       allRois.forEach((roi) => {
         this.handleAnnotationVisibilityChange({ roiUID: roi.uid, isVisible: true })
@@ -663,19 +665,31 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       logger.debug('Loading Microscopy Bulk Simple Annotation')
     } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === Segmentation) {
       const allSegments = this.volumeViewer.getAllSegments()
-      allSegments.forEach((segment) => {
+      const derivedSeriesInstanceUID = (derivedDataset as { SeriesInstanceUID: string }).SeriesInstanceUID
+      const matchingSegments = allSegments.filter((segment) => {
+        return segment.seriesInstanceUID === derivedSeriesInstanceUID
+      })
+      matchingSegments.forEach((segment) => {
         this.handleSegmentVisibilityChange({ segmentUID: segment.uid, isVisible: true })
       })
       logger.debug('Loading Segmentation')
     } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === ParametricMap) {
       const allParameterMappings = this.volumeViewer.getAllParameterMappings()
-      allParameterMappings.forEach((parameterMapping) => {
+      const derivedSeriesInstanceUID = (derivedDataset as { SeriesInstanceUID: string }).SeriesInstanceUID
+      const matchingMappings = allParameterMappings.filter((parameterMapping) => {
+        return parameterMapping.seriesInstanceUID === derivedSeriesInstanceUID
+      })
+      matchingMappings.forEach((parameterMapping) => {
         this.handleMappingVisibilityChange({ mappingUID: parameterMapping.uid, isVisible: true })
       })
       logger.debug('Loading Parametric Map')
     } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === OpticalPath) {
       const allOpticalPaths = this.volumeViewer.getAllOpticalPaths()
-      allOpticalPaths.forEach((opticalPath) => {
+      const derivedSeriesInstanceUID = (derivedDataset as { SeriesInstanceUID: string }).SeriesInstanceUID
+      const matchingOpticalPaths = allOpticalPaths.filter((opticalPath) => {
+        return opticalPath.seriesInstanceUID === derivedSeriesInstanceUID
+      })
+      matchingOpticalPaths.forEach((opticalPath) => {
         this.handleOpticalPathVisibilityChange({ opticalPathIdentifier: opticalPath.identifier, isVisible: true })
       })
       logger.debug('Loading Optical Path')
