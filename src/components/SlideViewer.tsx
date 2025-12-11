@@ -350,6 +350,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         activeOpticalPathIdentifiers,
         presentationStates: [],
         loadingFrames: new Set(),
+        selectedSeriesInstanceUID: undefined,
         validXCoordinateRange: [offset[0], offset[0] + size[0]],
         validYCoordinateRange: [offset[1], offset[1] + size[1]]
       })
@@ -632,7 +633,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   loadDerivedDataset = (derivedDataset: dmv.metadata.Dataset): void => {
-    logger.log('Loading derived dataset:', derivedDataset)
+    logger.debug('Loading derived dataset:', derivedDataset)
 
     const Comprehensive3DSR = StorageClasses.COMPREHENSIVE_3D_SR
     const ComprehensiveSR = StorageClasses.COMPREHENSIVE_SR
@@ -652,10 +653,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       })
       logger.debug('Loading Comprehensive 3D SR')
     } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === MicroscopyBulkSimpleAnnotation) {
-      const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups()
-      allAnnotationGroups.forEach((annotationGroup) => {
-        this.handleAnnotationGroupVisibilityChange({ annotationGroupUID: annotationGroup.uid, isVisible: true })
+      const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups() || []
+      const annotationGroup = allAnnotationGroups.find((annotationGroup) => {
+        return annotationGroup.seriesInstanceUID === (derivedDataset as { SeriesInstanceUID: string }).SeriesInstanceUID
       })
+      if (annotationGroup !== null && annotationGroup !== undefined) {
+        this.handleAnnotationGroupVisibilityChange({ annotationGroupUID: annotationGroup.uid, isVisible: true })
+      }
       logger.debug('Loading Microscopy Bulk Simple Annotation')
     } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === Segmentation) {
       const allSegments = this.volumeViewer.getAllSegments()
@@ -3091,7 +3095,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     mappings.push(...this.volumeViewer.getAllParameterMappings())
     const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups()
     const filteredAnnotationGroups = allAnnotationGroups?.filter((annotationGroup) =>
-      annotationGroup.referencedSeriesInstanceUID === this.props.seriesInstanceUID
+      this.props.slide.seriesInstanceUIDs.includes(annotationGroup.referencedSeriesInstanceUID)
     )
     annotationGroups.push(...filteredAnnotationGroups)
 

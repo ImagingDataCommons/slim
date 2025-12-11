@@ -84,73 +84,56 @@ function ParametrizedSlideViewer ({
   const [derivedDataset, setDerivedDataset] = useState<NaturalizedInstance | null>(null)
 
   useEffect(() => {
-    const seriesSlide = findSeriesSlide(slides, seriesInstanceUID)
-    if (seriesSlide !== null && seriesSlide !== undefined) {
-      setSelectedSlide(seriesSlide)
-      // Clear derivedDataset when we have a direct match (not a derived display set)
-      setDerivedDataset(null)
-    }
-  }, [seriesInstanceUID, slides])
+    if (selectedSlide === null || selectedSlide === undefined) {
+      const imageSlide = findSeriesSlide(slides, seriesInstanceUID)
+      if (imageSlide !== null && imageSlide !== undefined) {
+        setSelectedSlide(imageSlide)
+        setDerivedDataset(null)
+        return
+      }
 
-  useEffect(() => {
-    const findReferencedSlide = async ({ clients, studyInstanceUID, seriesInstanceUID }: {
-      clients: { [key: string]: DicomWebManager }
-      studyInstanceUID: string
-      seriesInstanceUID: string
-    }): Promise<ReferencedSlideResult | null> => {
-      try {
-        // This function is only called when there's no direct match
-        // So seriesInstanceUID is likely a derived display set (annotation) that references a slide
-        const allClients = Object.values(StorageClasses).map((storageClass) => clients[storageClass])
-        for (const client of allClients) {
-          try {
-            const seriesMetadata = await client.retrieveSeriesMetadata({
-              studyInstanceUID: studyInstanceUID,
-              seriesInstanceUID: seriesInstanceUID
+      const findReferencedSlide = async (): Promise<void> => {
+        const client = clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
+        const derivedSeriesMetadata = await client.retrieveSeriesMetadata({
+          studyInstanceUID: studyInstanceUID,
+          seriesInstanceUID: seriesInstanceUID
+        })
+        const naturalizedDerivedMetadata = naturalizeDataset(derivedSeriesMetadata[0]) as NaturalizedInstance
+        if (
+          naturalizedDerivedMetadata.ReferencedSeriesSequence != null && 
+          naturalizedDerivedMetadata.ReferencedSeriesSequence.length > 0
+        ) {
+          for (const referencedSeries of naturalizedDerivedMetadata.ReferencedSeriesSequence) {
+            const referencedImageSeriesUID = referencedSeries.SeriesInstanceUID
+            const referencedSlide = slides.find((slide: Slide) => {
+              return slide.seriesInstanceUIDs.some((uid: string) => uid === referencedImageSeriesUID)
             })
-            if (seriesMetadata.length === 0) {
-              continue
+            if (referencedSlide !== null && referencedSlide !== undefined) {
+              setSelectedSlide(referencedSlide)
+              setDerivedDataset(naturalizedDerivedMetadata)
+              console.log('naturalizedDerivedMetadata', naturalizedDerivedMetadata)
+              return
             }
-
-            const naturalizedSeriesMetadata = naturalizeDataset(seriesMetadata[0]) as NaturalizedInstance
-
-            // Check if this series has ReferencedSeriesSequence (it's a derived display set)
-            if (naturalizedSeriesMetadata.ReferencedSeriesSequence != null && naturalizedSeriesMetadata.ReferencedSeriesSequence.length > 0) {
-              // Find slides that contain any of the referenced series UIDs
-              for (const referencedSeries of naturalizedSeriesMetadata.ReferencedSeriesSequence) {
-                const referencedSeriesInstanceUID = referencedSeries.SeriesInstanceUID
-                const matchingSlide = slides.find((slide: Slide) => {
-                  return slide.seriesInstanceUIDs.some((uid: string) => uid === referencedSeriesInstanceUID)
-                })
-
-                if (matchingSlide !== undefined) {
-                  // Return the referenced slide with the derived display set metadata
-                  return { slide: matchingSlide, metadata: naturalizedSeriesMetadata }
-                }
-              }
-            }
-          } catch (error) {
-            continue
           }
         }
-
-        return null
-      } catch (error) {
-        console.error('Error finding referenced slide:', error)
-        return null
-      }
-    }
-
-    if (selectedSlide === null || selectedSlide === undefined) {
-      void findReferencedSlide({ clients, studyInstanceUID, seriesInstanceUID }).then((result: ReferencedSlideResult | null) => {
-        if (result !== null && result !== undefined) {
-          setSelectedSlide(result.slide)
-          // Set derivedDataset only if metadata exists (it's a derived display set)
-          setDerivedDataset(result.metadata)
+        const IMAGE_LIBRARY_CONCEPT_NAME_CODE = '111028'
+        const imageLibrary = naturalizedDerivedMetadata.ContentSequence?.find(
+          contentItem => contentItem.ConceptNameCodeSequence[0].CodeValue === IMAGE_LIBRARY_CONCEPT_NAME_CODE
+        )
+        if ((imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]?.ReferencedSOPSequence?.[0]) != null) {
+          const referencedSOPInstanceUID = imageLibrary.ContentSequence[0].ContentSequence[0].ReferencedSOPSequence[0].ReferencedSOPInstanceUID
+          const referencedSlide = slides.find((slide: Slide) => {
+            return slide.volumeImages.find((image: { SOPInstanceUID: string }) => {
+              return image.SOPInstanceUID === referencedSOPInstanceUID
+            })
+          })
+          setSelectedSlide(referencedSlide)
+          setDerivedDataset(naturalizedDerivedMetadata)
+          return
         }
-      }).catch(error => {
-        console.error('Error finding referenced slide:', error)
-      })
+      }
+
+      void findReferencedSlide()
     }
   }, [slides, clients, studyInstanceUID, seriesInstanceUID, selectedSlide])
 
