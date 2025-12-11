@@ -655,11 +655,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       })
       logger.debug('Loading Comprehensive 3D SR')
     } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === MicroscopyBulkSimpleAnnotation) {
-      const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups() || []
+      const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups()
       const annotationGroup = allAnnotationGroups.find((annotationGroup) => {
         return annotationGroup.seriesInstanceUID === (derivedDataset as { SeriesInstanceUID: string }).SeriesInstanceUID
       })
-      if (annotationGroup !== null && annotationGroup !== undefined) {
+      if (annotationGroup !== undefined) {
         this.handleAnnotationGroupVisibilityChange({ annotationGroupUID: annotationGroup.uid, isVisible: true })
       }
       logger.debug('Loading Microscopy Bulk Simple Annotation')

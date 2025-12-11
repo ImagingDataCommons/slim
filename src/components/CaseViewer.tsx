@@ -42,11 +42,6 @@ interface NaturalizedInstance {
   }>
 }
 
-interface ReferencedSlideResult {
-  slide: Slide | undefined
-  metadata: NaturalizedInstance
-}
-
 const findSeriesSlide = (slides: Slide[], seriesInstanceUID: string): Slide | undefined => {
   return slides.find((slide: Slide) => {
     return slide.seriesInstanceUIDs.find((uid: string) => {
@@ -100,7 +95,7 @@ function ParametrizedSlideViewer ({
         })
         const naturalizedDerivedMetadata = naturalizeDataset(derivedSeriesMetadata[0]) as NaturalizedInstance
         if (
-          naturalizedDerivedMetadata.ReferencedSeriesSequence != null && 
+          naturalizedDerivedMetadata.ReferencedSeriesSequence != null &&
           naturalizedDerivedMetadata.ReferencedSeriesSequence.length > 0
         ) {
           for (const referencedSeries of naturalizedDerivedMetadata.ReferencedSeriesSequence) {
@@ -129,7 +124,6 @@ function ParametrizedSlideViewer ({
           })
           setSelectedSlide(referencedSlide)
           setDerivedDataset(naturalizedDerivedMetadata)
-          return
         }
       }
 
