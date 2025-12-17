@@ -48,14 +48,16 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
     }
 
     const structures = specimenDescription.PrimaryAnatomicStructureSequence
-    const modifierSequence = structures.find(s => (s as any).PrimaryAnatomicStructureModifierSequence !== undefined)
-    if (modifierSequence != null) {
-      const modifiers: dcmjs.sr.coding.CodedConcept[] = (modifierSequence as any).PrimaryAnatomicStructureModifierSequence
-      if (modifiers.length > 0) {
-        attributes.push({
-          name: 'Primary Anatomic Structure Modifier',
-          value: modifiers.map((item: dcmjs.sr.coding.CodedConcept) => item.CodeMeaning).join(', ')
-        })
+    if (structures !== undefined && structures.length > 0) {
+      const modifierSequence = structures.find(s => (s as any).PrimaryAnatomicStructureModifierSequence !== undefined)
+      if (modifierSequence != null) {
+        const modifiers: dcmjs.sr.coding.CodedConcept[] = (modifierSequence as any).PrimaryAnatomicStructureModifierSequence
+        if (modifiers.length > 0) {
+          attributes.push({
+            name: 'Primary Anatomic Structure Modifier',
+            value: modifiers.map((item: dcmjs.sr.coding.CodedConcept) => item.CodeMeaning).join(', ')
+          })
+        }
       }
     }
 

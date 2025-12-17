@@ -23,6 +23,8 @@ const { naturalizeDataset } = dcmjs.data.DicomMetaDictionary
 interface NaturalizedInstance {
   SeriesInstanceUID: string
   SOPInstanceUID: string
+  FrameOfReferenceUID?: string
+  ContainerIdentifier?: string
   ReferencedSeriesSequence?: Array<{
     SeriesInstanceUID: string
   }>
@@ -38,11 +40,6 @@ interface NaturalizedInstance {
       }>
     }>
   }>
-}
-
-interface ReferencedSlideResult {
-  slide: Slide | undefined
-  metadata: NaturalizedInstance
 }
 
 const findSeriesSlide = (slides: Slide[], seriesInstanceUID: string): Slide | undefined => {
@@ -82,65 +79,57 @@ function ParametrizedSlideViewer ({
   const [derivedDataset, setDerivedDataset] = useState<NaturalizedInstance | null>(null)
 
   useEffect(() => {
-    const seriesSlide = findSeriesSlide(slides, seriesInstanceUID)
-    if (seriesSlide !== null) {
-      setSelectedSlide(seriesSlide)
-    }
-  }, [seriesInstanceUID, slides])
+    const currentSlideMatchesSeries = selectedSlide?.seriesInstanceUIDs.some((uid: string) => uid === seriesInstanceUID) ?? false
 
-  useEffect(() => {
-    const findReferencedSlide = async ({ clients, studyInstanceUID, seriesInstanceUID }: {
-      clients: { [key: string]: DicomWebManager }
-      studyInstanceUID: string
-      seriesInstanceUID: string
-    }): Promise<ReferencedSlideResult | null> => await new Promise<ReferencedSlideResult | null>((resolve, reject) => {
-      try {
-        const allClients = Object.values(StorageClasses).map((storageClass) => clients[storageClass])
-        Promise.all(allClients.map(async (client) => {
-          const seriesMetadata = await client.retrieveSeriesMetadata({
-            studyInstanceUID: studyInstanceUID,
-            seriesInstanceUID: seriesInstanceUID
-          })
-          const [naturalizedSeriesMetadata] = seriesMetadata.map((metadata) => naturalizeDataset(metadata)) as NaturalizedInstance[]
-
-          if (naturalizedSeriesMetadata.ReferencedSeriesSequence != null) {
-            const referencedSeriesInstanceUID = naturalizedSeriesMetadata.ReferencedSeriesSequence[0].SeriesInstanceUID
-            const referencedSlide = slides.find((slide: Slide) => {
-              return slide.seriesInstanceUIDs.find((uid: string) => {
-                return uid === referencedSeriesInstanceUID
-              })
-            })
-            resolve({ slide: referencedSlide, metadata: naturalizedSeriesMetadata })
-          }
-
-          const IMAGE_LIBRARY_CONCEPT_NAME_CODE = '111028'
-          const imageLibrary = naturalizedSeriesMetadata.ContentSequence?.find(
-            contentItem => contentItem.ConceptNameCodeSequence[0].CodeValue === IMAGE_LIBRARY_CONCEPT_NAME_CODE
-          )
-          if ((imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]?.ReferencedSOPSequence?.[0]) != null) {
-            const referencedSOPInstanceUID = imageLibrary.ContentSequence[0].ContentSequence[0].ReferencedSOPSequence[0].ReferencedSOPInstanceUID
-            const referencedSlide = slides.find((slide: Slide) => {
-              return slide.volumeImages.find((image: { SOPInstanceUID: string }) => {
-                return image.SOPInstanceUID === referencedSOPInstanceUID
-              })
-            })
-            resolve({ slide: referencedSlide, metadata: naturalizedSeriesMetadata })
-          }
-        })).catch(reject)
-      } catch (error) {
-        reject(error)
+    if (selectedSlide === null || selectedSlide === undefined || !currentSlideMatchesSeries) {
+      const imageSlide = findSeriesSlide(slides, seriesInstanceUID)
+      if (imageSlide !== null && imageSlide !== undefined) {
+        setSelectedSlide(imageSlide)
+        setDerivedDataset(null)
+        return
       }
-    })
 
-    if (selectedSlide === null || selectedSlide === undefined) {
-      void findReferencedSlide({ clients, studyInstanceUID, seriesInstanceUID }).then((result: ReferencedSlideResult | null) => {
-        if (result !== null && result !== undefined) {
-          setSelectedSlide(result.slide)
-          setDerivedDataset(result.metadata)
+      const findReferencedSlide = async (): Promise<void> => {
+        const client = clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
+        const derivedSeriesMetadata = await client.retrieveSeriesMetadata({
+          studyInstanceUID: studyInstanceUID,
+          seriesInstanceUID: seriesInstanceUID
+        })
+        const naturalizedDerivedMetadata = naturalizeDataset(derivedSeriesMetadata[0]) as NaturalizedInstance
+        if (
+          naturalizedDerivedMetadata.ReferencedSeriesSequence != null &&
+          naturalizedDerivedMetadata.ReferencedSeriesSequence.length > 0
+        ) {
+          for (const referencedSeries of naturalizedDerivedMetadata.ReferencedSeriesSequence) {
+            const referencedImageSeriesUID = referencedSeries.SeriesInstanceUID
+            const referencedSlide = slides.find((slide: Slide) => {
+              return slide.seriesInstanceUIDs.some((uid: string) => uid === referencedImageSeriesUID)
+            })
+            if (referencedSlide !== null && referencedSlide !== undefined) {
+              setSelectedSlide(referencedSlide)
+              setDerivedDataset(naturalizedDerivedMetadata)
+              console.log('naturalizedDerivedMetadata', naturalizedDerivedMetadata)
+              return
+            }
+          }
         }
-      }).catch(error => {
-        console.error('Error finding referenced slide:', error)
-      })
+        const IMAGE_LIBRARY_CONCEPT_NAME_CODE = '111028'
+        const imageLibrary = naturalizedDerivedMetadata.ContentSequence?.find(
+          contentItem => contentItem.ConceptNameCodeSequence[0].CodeValue === IMAGE_LIBRARY_CONCEPT_NAME_CODE
+        )
+        if ((imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]?.ReferencedSOPSequence?.[0]) != null) {
+          const referencedSOPInstanceUID = imageLibrary.ContentSequence[0].ContentSequence[0].ReferencedSOPSequence[0].ReferencedSOPInstanceUID
+          const referencedSlide = slides.find((slide: Slide) => {
+            return slide.volumeImages.find((image: { SOPInstanceUID: string }) => {
+              return image.SOPInstanceUID === referencedSOPInstanceUID
+            })
+          })
+          setSelectedSlide(referencedSlide)
+          setDerivedDataset(naturalizedDerivedMetadata)
+        }
+      }
+
+      void findReferencedSlide()
     }
   }, [slides, clients, studyInstanceUID, seriesInstanceUID, selectedSlide])
 

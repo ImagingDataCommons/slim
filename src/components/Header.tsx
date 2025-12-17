@@ -11,7 +11,8 @@ import {
   Badge,
   Collapse,
   Radio,
-  Tooltip
+  Tooltip,
+  Typography
 } from 'antd'
 import {
   ApiOutlined,
@@ -33,6 +34,47 @@ import { CustomError } from '../utils/CustomError'
 import { v4 as uuidv4 } from 'uuid'
 import DicomTagBrowser from './DicomTagBrowser/DicomTagBrowser'
 import DicomWebManager from '../DicomWebManager'
+
+const aboutModalCopyTooltips: [React.ReactNode, React.ReactNode] = ['Copy hash', 'Copied!']
+
+const aboutModalStyles: Record<string, React.CSSProperties> = {
+  container: {
+    textAlign: 'center',
+    lineHeight: 1.6,
+    paddingRight: 25,
+    fontSize: '1rem'
+  },
+  title: {
+    fontSize: '1.4rem',
+    fontWeight: 700,
+    marginBottom: 4
+  },
+  subtitle: {
+    fontSize: '1.15rem',
+    fontWeight: 600,
+    marginBottom: 12
+  },
+  link: {
+    display: 'inline-block',
+    marginBottom: 16
+  },
+  section: {
+    marginBottom: 12
+  },
+  label: {
+    fontWeight: 600,
+    display: 'block',
+    marginBottom: 4
+  },
+  bodyText: {
+    marginBottom: 4
+  },
+  code: {
+    display: 'inline-block',
+    wordBreak: 'break-all',
+    fontSize: '0.85rem'
+  }
+}
 
 interface HeaderProps extends RouteComponentProps {
   app: {
@@ -178,27 +220,50 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       'unknown'
     const viewerVersion = viewerVersionRaw.replace(/^[^0-9]*/, '')
 
+    const renderHashText = (hash: string | null): JSX.Element => {
+      if (hash == null) {
+        return (
+          <Typography.Text code style={aboutModalStyles.code}>
+            unknown
+          </Typography.Text>
+        )
+      }
+      return (
+        <Typography.Text
+          code
+          style={aboutModalStyles.code}
+          copyable={{
+            text: hash,
+            tooltips: aboutModalCopyTooltips
+          }}
+        >
+          {hash}
+        </Typography.Text>
+      )
+    }
+
     Modal.info({
       width: 480,
       title: null,
       centered: true,
       content: (
-        <div style={{ textAlign: 'center', lineHeight: 1.6, paddingRight: 25 }}>
-          <div style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: 4 }}>{this.props.app.name}</div>
-          <div style={{ fontSize: '2rem', fontWeight: 600 }}>{this.props.app.version}</div>
-          <div style={{ fontSize: '1rem', marginBottom: 16 }}>
-            <a href={this.props.app.homepage} target='_blank' rel='noreferrer'>
-              {this.props.app.homepage}
-            </a>
+        <div style={aboutModalStyles.container}>
+          <Typography.Title level={3} style={aboutModalStyles.title}>
+            <Typography.Link href={this.props.app.homepage} target='_blank' rel='noreferrer'>
+              {this.props.app.name}
+            </Typography.Link>
+          </Typography.Title>
+          <Typography.Text style={aboutModalStyles.subtitle}>
+            {this.props.app.version}
+          </Typography.Text>
+
+          <div style={aboutModalStyles.section}>
+            <Typography.Text style={aboutModalStyles.label}>Commit Hash</Typography.Text>
+            {renderHashText(slimCommit)}
           </div>
 
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontWeight: 600 }}>Commit Hash</div>
-            <code>{slimCommit ?? 'unknown'}</code>
-          </div>
-
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontWeight: 600 }}>
+          <div style={aboutModalStyles.section}>
+            <Typography.Text style={aboutModalStyles.label}>
               <a
                 href='https://github.com/MGHComputationalPathology/dicom-microscopy-viewer'
                 target='_blank'
@@ -206,17 +271,21 @@ class Header extends React.Component<HeaderProps, HeaderState> {
               >
                 DICOM Microscopy Viewer
               </a>
-            </div>
-            <div>Version {viewerVersion}</div>
-            <code>{viewerCommit ?? 'unknown'}</code>
+            </Typography.Text>
+            <Typography.Text style={aboutModalStyles.bodyText}>
+              Version {viewerVersion}
+            </Typography.Text>
+            {renderHashText(viewerCommit)}
           </div>
 
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontWeight: 600 }}>Current Browser &amp; OS</div>
-            <div>
+          <div style={aboutModalStyles.section}>
+            <Typography.Text style={aboutModalStyles.label}>Current Browser &amp; OS</Typography.Text>
+            <Typography.Text style={aboutModalStyles.bodyText}>
               {environment.browser.name ?? 'Unknown'} {environment.browser.version ?? ''}
-            </div>
-            <div>{environment.os.name ?? 'Unknown OS'}</div>
+            </Typography.Text>
+            <Typography.Text style={aboutModalStyles.bodyText}>
+              {environment.os.name ?? 'Unknown OS'}
+            </Typography.Text>
           </div>
         </div>
       ),

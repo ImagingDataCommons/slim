@@ -350,6 +350,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         activeOpticalPathIdentifiers,
         presentationStates: [],
         loadingFrames: new Set(),
+        selectedSeriesInstanceUID: undefined,
         validXCoordinateRange: [offset[0], offset[0] + size[0]],
         validYCoordinateRange: [offset[1], offset[1] + size[1]]
       })
@@ -632,7 +633,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   loadDerivedDataset = (derivedDataset: dmv.metadata.Dataset): void => {
-    logger.debug('Loading derived dataset')
+    logger.debug('Loading derived dataset:', derivedDataset)
+
     const Comprehensive3DSR = StorageClasses.COMPREHENSIVE_3D_SR
     const ComprehensiveSR = StorageClasses.COMPREHENSIVE_SR
     const MicroscopyBulkSimpleAnnotation = StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION
@@ -645,6 +647,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const PseudocolorSoftcopyPresentationState = StorageClasses.PSEUDOCOLOR_SOFTCOPY_PRESENTATION_STATE
 
     if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === Comprehensive3DSR) {
+      // ROIs don't have seriesInstanceUID property, so we show all ROIs
+      // that match the frame of reference (already filtered during addAnnotations)
       const allRois = this.volumeViewer.getAllROIs()
       allRois.forEach((roi) => {
         this.handleAnnotationVisibilityChange({ roiUID: roi.uid, isVisible: true })
@@ -652,25 +656,40 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       logger.debug('Loading Comprehensive 3D SR')
     } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === MicroscopyBulkSimpleAnnotation) {
       const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups()
-      allAnnotationGroups.forEach((annotationGroup) => {
-        this.handleAnnotationGroupVisibilityChange({ annotationGroupUID: annotationGroup.uid, isVisible: true })
+      const annotationGroup = allAnnotationGroups.find((annotationGroup) => {
+        return annotationGroup.seriesInstanceUID === (derivedDataset as { SeriesInstanceUID: string }).SeriesInstanceUID
       })
+      if (annotationGroup !== undefined) {
+        this.handleAnnotationGroupVisibilityChange({ annotationGroupUID: annotationGroup.uid, isVisible: true })
+      }
       logger.debug('Loading Microscopy Bulk Simple Annotation')
     } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === Segmentation) {
       const allSegments = this.volumeViewer.getAllSegments()
-      allSegments.forEach((segment) => {
+      const derivedSeriesInstanceUID = (derivedDataset as { SeriesInstanceUID: string }).SeriesInstanceUID
+      const matchingSegments = allSegments.filter((segment) => {
+        return segment.seriesInstanceUID === derivedSeriesInstanceUID
+      })
+      matchingSegments.forEach((segment) => {
         this.handleSegmentVisibilityChange({ segmentUID: segment.uid, isVisible: true })
       })
       logger.debug('Loading Segmentation')
     } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === ParametricMap) {
       const allParameterMappings = this.volumeViewer.getAllParameterMappings()
-      allParameterMappings.forEach((parameterMapping) => {
+      const derivedSeriesInstanceUID = (derivedDataset as { SeriesInstanceUID: string }).SeriesInstanceUID
+      const matchingMappings = allParameterMappings.filter((parameterMapping) => {
+        return parameterMapping.seriesInstanceUID === derivedSeriesInstanceUID
+      })
+      matchingMappings.forEach((parameterMapping) => {
         this.handleMappingVisibilityChange({ mappingUID: parameterMapping.uid, isVisible: true })
       })
       logger.debug('Loading Parametric Map')
     } else if ((derivedDataset as { SOPClassUID: string }).SOPClassUID === OpticalPath) {
       const allOpticalPaths = this.volumeViewer.getAllOpticalPaths()
-      allOpticalPaths.forEach((opticalPath) => {
+      const derivedSeriesInstanceUID = (derivedDataset as { SeriesInstanceUID: string }).SeriesInstanceUID
+      const matchingOpticalPaths = allOpticalPaths.filter((opticalPath) => {
+        return opticalPath.seriesInstanceUID === derivedSeriesInstanceUID
+      })
+      matchingOpticalPaths.forEach((opticalPath) => {
         this.handleOpticalPathVisibilityChange({ opticalPathIdentifier: opticalPath.identifier, isVisible: true })
       })
       logger.debug('Loading Optical Path')
@@ -704,6 +723,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       }).then((matchedInstances): void => {
         if (matchedInstances === null || matchedInstances === undefined) {
           matchedInstances = []
+        }
+        if (matchedInstances.length === 0) {
+          resolve()
+          return
         }
         matchedInstances.forEach(i => {
           const { dataset } = dmv.metadata.formatMetadata(i)
@@ -785,7 +808,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                   )
                 }
               })
-
               resolve()
             }).catch((error) => {
               // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -847,6 +869,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         if (matchedSeries === null || matchedSeries === undefined) {
           matchedSeries = []
         }
+        if (matchedSeries.length === 0) {
+          resolve()
+          return
+        }
         matchedSeries.forEach(s => {
           const { dataset } = dmv.metadata.formatMetadata(s)
           const series = dataset as dmv.metadata.Series
@@ -869,6 +895,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             annotations.forEach(ann => {
               try {
                 this.volumeViewer.addAnnotationGroups(ann)
+                resolve()
               } catch (error: unknown) {
                 // eslint-disable-next-line @typescript-eslint/no-floating-promises
                 NotificationMiddleware.onError(
@@ -902,7 +929,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             * interface unless an update is forced.
             */
             this.forceUpdate()
-            resolve()
           }).catch((error) => {
             console.error(error)
             // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -949,6 +975,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         if (matchedSeries === null || matchedSeries === undefined) {
           matchedSeries = []
         }
+        if (matchedSeries.length === 0) {
+          resolve()
+          return
+        }
         matchedSeries.forEach((s, i) => {
           const { dataset } = dmv.metadata.formatMetadata(s)
           const series = dataset as dmv.metadata.Series
@@ -970,6 +1000,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             if (segmentations.length > 0) {
               try {
                 this.volumeViewer.addSegments(segmentations)
+                resolve()
               } catch (error: unknown) {
                 // eslint-disable-next-line @typescript-eslint/no-floating-promises
                 NotificationMiddleware.onError(
@@ -989,8 +1020,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               */
               this.forceUpdate()
             }
-
-            resolve()
           }).catch((error) => {
             console.error(error)
             // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -1036,6 +1065,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         if (matchedSeries === null || matchedSeries === undefined) {
           matchedSeries = []
         }
+        if (matchedSeries.length === 0) {
+          resolve()
+          return
+        }
         matchedSeries.forEach(s => {
           const { dataset } = dmv.metadata.formatMetadata(s)
           const series = dataset as dmv.metadata.Series
@@ -1061,6 +1094,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             if (parametricMaps.length > 0) {
               try {
                 this.volumeViewer.addParameterMappings(parametricMaps)
+                resolve()
               } catch (error: unknown) {
                 // eslint-disable-next-line @typescript-eslint/no-floating-promises
                 NotificationMiddleware.onError(
@@ -1080,7 +1114,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                */
               this.forceUpdate()
             }
-            resolve()
           }).catch((error) => {
             console.error(error)
             // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -1128,51 +1161,25 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.labelViewer.render({ container: this.labelViewportRef.current })
     }
 
-    // State update will also ensure that the component is re-rendered.
     this.setState({ isLoading: false })
 
     this.setDefaultPresentationState()
     this.loadPresentationStates()
 
-    // Handle promises properly with catch blocks
-    void this.addAnnotations()
+    void Promise.allSettled([
+      this.addAnnotations(),
+      this.addAnnotationGroups(),
+      this.addSegmentations(),
+      this.addParametricMaps()
+    ])
       .then(() => {
+        console.debug('Loaded annotations, annotation groups, segmentations, and parametric maps!')
         if (this.props.derivedDataset !== null && this.props.derivedDataset !== undefined) {
           this.loadDerivedDataset(this.props.derivedDataset)
         }
       })
       .catch(error => {
-        console.error('Failed to add annotations:', error)
-      })
-
-    void this.addAnnotationGroups()
-      .then(() => {
-        if (this.props.derivedDataset !== null && this.props.derivedDataset !== undefined) {
-          this.loadDerivedDataset(this.props.derivedDataset)
-        }
-      })
-      .catch(error => {
-        console.error('Failed to add annotation groups:', error)
-      })
-
-    void this.addSegmentations()
-      .then(() => {
-        if (this.props.derivedDataset !== null && this.props.derivedDataset !== undefined) {
-          this.loadDerivedDataset(this.props.derivedDataset)
-        }
-      })
-      .catch(error => {
-        console.error('Failed to add segmentations:', error)
-      })
-
-    void this.addParametricMaps()
-      .then(() => {
-        if (this.props.derivedDataset !== null && this.props.derivedDataset !== undefined) {
-          this.loadDerivedDataset(this.props.derivedDataset)
-        }
-      })
-      .catch(error => {
-        console.error('Failed to add parametric maps:', error)
+        console.error('Failed to add derived data:', error)
       })
   }
 
@@ -1231,11 +1238,25 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   onRoiDoubleClicked = (event: CustomEventInit): void => {
     const selectedRoi = event.detail.payload as dmv.roi.ROI
     if (selectedRoi !== null) {
+      // Check if this is a bulk annotation by checking if the ROI UID starts with any annotation group UID
+      const roiUid = selectedRoi.uid
+      const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups()
+      const isBulkAnnotation = allAnnotationGroups.some(
+        annotationGroup => roiUid?.startsWith(`${String(annotationGroup.uid)}-`)
+      )
+
+      // Don't show modal for bulk annotations
+      if (isBulkAnnotation) {
+        return
+      }
+
       this.setState({
+        selectedRoi,
         isSelectedRoiModalVisible: true
       })
     } else {
       this.setState({
+        selectedRoi: undefined,
         isSelectedRoiModalVisible: false
       })
     }
@@ -1501,7 +1522,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
-  getUpdatedSelectedRois = (newSelectedRoiUid?: string): { selectedRoiUIDs: Set<string>, selectedRoi?: dmv.roi.ROI} => {
+  getUpdatedSelectedRois = (
+    newSelectedRoiUid?: string
+  ): { selectedRoiUIDs: Set<string>, selectedRoi?: dmv.roi.ROI } => {
     const selectedRoiUid = newSelectedRoiUid
     const emptySelection = {
       selectedRoiUIDs: new Set<string>(),
@@ -1562,11 +1585,29 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   onRoiSelected = (event: CustomEventInit): void => {
-    const selectedRoiUid = event.detail?.payload?.uid as string
-    const updatedSelectedRois = this.getUpdatedSelectedRois(selectedRoiUid)
-    this.setState(updatedSelectedRois)
+    const payload = event.detail?.payload
+    const roiPayload = payload as dmv.roi.ROI | { uid?: string } | undefined
+    const isRoiObject = (roiPayload != null) && typeof roiPayload === 'object' && 'uid' in roiPayload && 'scoord3d' in roiPayload
 
-    this.resetUnselectedRoiStyles(updatedSelectedRois)
+    if (isRoiObject) {
+      const selectedRoi = roiPayload
+      const updatedSelectedRois = !this.keysDown.has('Shift')
+        ? {
+            selectedRoiUIDs: new Set([selectedRoi.uid]),
+            selectedRoi
+          }
+        : {
+            selectedRoiUIDs: new Set([...Array.from(this.state.selectedRoiUIDs), selectedRoi.uid]),
+            selectedRoi
+          }
+      this.setState(updatedSelectedRois)
+      this.resetUnselectedRoiStyles(updatedSelectedRois)
+    } else {
+      const selectedRoiUid = (payload as { uid?: string } | undefined)?.uid
+      const updatedSelectedRois = this.getUpdatedSelectedRois(selectedRoiUid)
+      this.setState(updatedSelectedRois)
+      this.resetUnselectedRoiStyles(updatedSelectedRois)
+    }
   }
 
   handleAnnotationSelection = (uid: string): void => {
@@ -3068,7 +3109,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     mappings.push(...this.volumeViewer.getAllParameterMappings())
     const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups()
     const filteredAnnotationGroups = allAnnotationGroups?.filter((annotationGroup) =>
-      annotationGroup.referencedSeriesInstanceUID === this.props.seriesInstanceUID
+      this.props.slide.seriesInstanceUIDs.includes(annotationGroup.referencedSeriesInstanceUID)
     )
     annotationGroups.push(...filteredAnnotationGroups)
 
@@ -3661,14 +3702,17 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private readonly getSelectedRoiInformation = (): React.ReactNode => {
     if (this.state.selectedRoi !== null && this.state.selectedRoi !== undefined) {
+      const allRois = this.volumeViewer.getAllROIs()
+      const roiIndex = allRois.findIndex(roi => roi.uid === this.state.selectedRoi?.uid)
+
       const roiAttributes: Array<{
         name: string
         value: string
         unit?: string
       }> = [
         {
-          name: 'UID',
-          value: this.state.selectedRoi.uid
+          name: '',
+          value: `ROI ${roiIndex >= 0 ? roiIndex + 1 : 'N/A'}`
         }
       ]
       const roiScoordAttributes: Array<{
