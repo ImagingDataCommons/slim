@@ -1,3 +1,10 @@
+## [0.45.1](https://github.com/ImagingDataCommons/slim/compare/v0.45.0...v0.45.1) (2025-12-17)
+
+
+### Bug Fixes
+
+* **about modal:** Address hash + disable select dialog for bulk ann + auto load ([#360](https://github.com/ImagingDataCommons/slim/issues/360)) ([2336601](https://github.com/ImagingDataCommons/slim/commit/2336601924fcc6c450b9478d16cec4d386419757))
+
 # [0.44.0](https://github.com/ImagingDataCommons/slim/compare/v0.43.1...v0.44.0) (2025-10-27)
 
 
