@@ -3631,7 +3631,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           )}
 
           {/* Clustering Settings */}
-          <Menu.Item key='clustering-threshold' style={{ height: 'auto', padding: '0.9rem' }}>
+          <Menu.Item
+            key='clustering-threshold'
+            className='slim-multiline-menu-item'
+            style={{ height: 'auto', padding: '0.9rem' }}
+          >
             <Row justify='start' align='middle' gutter={[8, 8]}>
               <Col span={24}>
                 <div style={{ marginBottom: '0.5rem' }}>
