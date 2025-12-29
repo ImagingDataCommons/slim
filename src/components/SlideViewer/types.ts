@@ -121,4 +121,5 @@ export interface SlideViewerState {
   isParametricMapInterpolationEnabled: boolean
   customizedSegmentColors: { [segmentUID: string]: number[] }
   clusteringPixelSizeThreshold: number
+  isClusteringEnabled: boolean
 }

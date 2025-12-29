@@ -1,7 +1,7 @@
 import React from 'react'
 import debounce from 'lodash/debounce'
 import type { DebouncedFunc } from 'lodash'
-import { Layout, Space, Checkbox, Descriptions, Divider, Select, Tooltip, message, Menu, Row, InputNumber, Col } from 'antd'
+import { Layout, Space, Checkbox, Descriptions, Divider, Select, Tooltip, message, Menu, Row, InputNumber, Col, Switch } from 'antd'
 import { CheckboxChangeEvent } from 'antd/es/checkbox'
 import { UndoOutlined } from '@ant-design/icons'
 import {
@@ -205,7 +205,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       clients: this.props.clients,
       slide: this.props.slide,
       preload: this.props.preload,
-      clusteringPixelSizeThreshold: 0.001 // Default: 0.001 mm (1 micrometer)
+      clusteringPixelSizeThreshold: 0.001 // Default: 0.001 mm (1 micrometer) - enabled by default
     })
     this.volumeViewer = volumeViewer
     this.labelViewer = labelViewer
@@ -264,7 +264,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       isSegmentationInterpolationEnabled: false,
       isParametricMapInterpolationEnabled: true,
       customizedSegmentColors: {},
-      clusteringPixelSizeThreshold: 0.001 // Default: 0.001 mm (1 micrometer)
+      clusteringPixelSizeThreshold: 0.001, // Default: 0.001 mm (1 micrometer)
+      isClusteringEnabled: true // Clustering enabled by default
     }
 
     this.handlePointerMoveDebounced = debounce(
@@ -331,7 +332,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.state.areRoisHidden !== nextState.areRoisHidden ||
       this.state.isICCProfilesEnabled !== nextState.isICCProfilesEnabled ||
       this.state.isSegmentationInterpolationEnabled !== nextState.isSegmentationInterpolationEnabled ||
-      this.state.isParametricMapInterpolationEnabled !== nextState.isParametricMapInterpolationEnabled
+      this.state.isParametricMapInterpolationEnabled !== nextState.isParametricMapInterpolationEnabled ||
+      this.state.isClusteringEnabled !== nextState.isClusteringEnabled ||
+      this.state.clusteringPixelSizeThreshold !== nextState.clusteringPixelSizeThreshold
     ) {
       return true
     }
@@ -369,7 +372,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         clients: this.props.clients,
         slide: this.props.slide,
         preload: this.props.preload,
-        clusteringPixelSizeThreshold: this.state.clusteringPixelSizeThreshold
+        clusteringPixelSizeThreshold: this.state.isClusteringEnabled
+          ? this.state.clusteringPixelSizeThreshold
+          : undefined
       })
       this.volumeViewer = volumeViewer
       this.labelViewer = labelViewer
@@ -3123,14 +3128,50 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   /**
+   * Handler that toggles clustering on/off.
+   */
+  handleClusteringToggle = (checked: boolean): void => {
+    /** Ensure checked is a boolean */
+    const newValue = !!checked
+
+    /** Use functional setState to ensure we have the latest state */
+    this.setState((prevState) => {
+      /** Don't update if the value hasn't actually changed */
+      if (prevState.isClusteringEnabled === newValue) {
+        return null
+      }
+
+      const threshold = newValue ? prevState.clusteringPixelSizeThreshold : undefined
+
+      /**
+       * Update viewer options immediately with the new state
+       * Check if viewer exists and has the method before calling
+       */
+      if (this.volumeViewer !== null && this.volumeViewer !== undefined && typeof (this.volumeViewer as any).setAnnotationOptions === 'function') {
+        try {
+          ;(this.volumeViewer as any).setAnnotationOptions({
+            clusteringPixelSizeThreshold: threshold
+          })
+        } catch (error) {
+          console.error('Failed to update annotation options:', error)
+        }
+      }
+
+      return { isClusteringEnabled: newValue }
+    })
+  }
+
+  /**
    * Handler that updates the global clustering pixel size threshold.
    */
   handleClusteringPixelSizeThresholdChange = (value: number | null): void => {
     const threshold = value !== null ? value : 0.001 // Default fallback
     this.setState({ clusteringPixelSizeThreshold: threshold })
-    ;(this.volumeViewer as any).setAnnotationOptions?.({
-      clusteringPixelSizeThreshold: threshold
-    })
+    if (this.state.isClusteringEnabled) {
+      ;(this.volumeViewer as any).setAnnotationOptions?.({
+        clusteringPixelSizeThreshold: threshold
+      })
+    }
   }
 
   formatAnnotation = (annotation: AnnotationCategoryAndType): void => {
@@ -3676,36 +3717,55 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
           {/* Clustering Settings */}
           <Menu.Item
-            key='clustering-threshold'
+            key='clustering-enabled'
             className='slim-multiline-menu-item'
             style={{ height: 'auto', padding: '0.9rem' }}
           >
             <Row justify='start' align='middle' gutter={[8, 8]}>
               <Col span={24}>
-                <div style={{ marginBottom: '0.5rem' }}>
-                  Clustering Pixel Size Threshold (mm)
-                </div>
-              </Col>
-              <Col span={24}>
-                <InputNumber
-                  min={0}
-                  max={100}
-                  step={0.001}
-                  precision={3}
-                  style={{ width: '100%' }}
-                  value={this.state.clusteringPixelSizeThreshold}
-                  onChange={this.handleClusteringPixelSizeThresholdChange}
-                  placeholder='Auto (zoom-based)'
-                  addonAfter='mm'
-                />
-              </Col>
-              <Col span={24}>
-                <div style={{ fontSize: '0.75rem', color: '#8c8c8c', marginTop: '0.5rem' }}>
-                  When pixel size ≤ threshold, clustering is disabled. Leave empty for zoom-based detection.
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <span>Enable Clustering</span>
+                  <Switch
+                    checked={!!this.state.isClusteringEnabled}
+                    onChange={this.handleClusteringToggle}
+                  />
                 </div>
               </Col>
             </Row>
           </Menu.Item>
+          {this.state.isClusteringEnabled && (
+            <Menu.Item
+              key='clustering-threshold'
+              className='slim-multiline-menu-item'
+              style={{ height: 'auto', padding: '0.9rem' }}
+            >
+              <Row justify='start' align='middle' gutter={[8, 8]}>
+                <Col span={24}>
+                  <div style={{ marginBottom: '0.5rem' }}>
+                    Clustering Pixel Size Threshold (mm)
+                  </div>
+                </Col>
+                <Col span={24}>
+                  <InputNumber
+                    min={0}
+                    max={100}
+                    step={0.001}
+                    precision={3}
+                    style={{ width: '100%' }}
+                    value={this.state.clusteringPixelSizeThreshold}
+                    onChange={this.handleClusteringPixelSizeThresholdChange}
+                    placeholder='Auto (zoom-based)'
+                    addonAfter='mm'
+                  />
+                </Col>
+                <Col span={24}>
+                  <div style={{ fontSize: '0.75rem', color: '#8c8c8c', marginTop: '0.5rem' }}>
+                    When pixel size ≤ threshold, clustering is disabled. Leave empty for zoom-based detection.
+                  </div>
+                </Col>
+              </Row>
+            </Menu.Item>
+          )}
         </Menu.SubMenu>
       )
     }
