@@ -76,6 +76,7 @@ import SegmentList from './SegmentList'
 import MappingList from './MappingList'
 import Btn from './Button'
 import { logger } from '../utils/logger'
+import AnnotationProgress from './AnnotationProgress'
 
 /**
  * React component for interactive viewing of an individual digital slide,
@@ -295,6 +296,49 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
 
     return palette
+  }
+
+  shouldComponentUpdate (
+    nextProps: SlideViewerProps,
+    nextState: SlideViewerState
+  ): boolean {
+    // Only re-render if relevant props or state changed
+    // Skip re-render for frequent state updates that don't affect UI
+    if (
+      this.props.location.pathname !== nextProps.location.pathname ||
+      this.props.studyInstanceUID !== nextProps.studyInstanceUID ||
+      this.props.seriesInstanceUID !== nextProps.seriesInstanceUID ||
+      this.props.slide !== nextProps.slide ||
+      this.props.clients !== nextProps.clients ||
+      this.state.isLoading !== nextState.isLoading ||
+      this.state.isAnnotationModalVisible !== nextState.isAnnotationModalVisible ||
+      this.state.isSelectedRoiModalVisible !== nextState.isSelectedRoiModalVisible ||
+      this.state.isReportModalVisible !== nextState.isReportModalVisible ||
+      this.state.isGoToModalVisible !== nextState.isGoToModalVisible ||
+      this.state.isHoveredRoiTooltipVisible !== nextState.isHoveredRoiTooltipVisible ||
+      this.state.hoveredRoiAttributes.length !== nextState.hoveredRoiAttributes.length ||
+      this.state.visibleRoiUIDs.size !== nextState.visibleRoiUIDs.size ||
+      this.state.visibleSegmentUIDs.size !== nextState.visibleSegmentUIDs.size ||
+      this.state.visibleMappingUIDs.size !== nextState.visibleMappingUIDs.size ||
+      this.state.visibleAnnotationGroupUIDs.size !== nextState.visibleAnnotationGroupUIDs.size ||
+      this.state.selectedRoiUIDs.size !== nextState.selectedRoiUIDs.size ||
+      this.state.selectedRoi !== nextState.selectedRoi ||
+      this.state.selectedFinding !== nextState.selectedFinding ||
+      this.state.selectedEvaluations.length !== nextState.selectedEvaluations.length ||
+      this.state.selectedGeometryType !== nextState.selectedGeometryType ||
+      this.state.selectedMarkup !== nextState.selectedMarkup ||
+      this.state.selectedPresentationStateUID !== nextState.selectedPresentationStateUID ||
+      this.state.areRoisHidden !== nextState.areRoisHidden ||
+      this.state.isICCProfilesEnabled !== nextState.isICCProfilesEnabled ||
+      this.state.isSegmentationInterpolationEnabled !== nextState.isSegmentationInterpolationEnabled ||
+      this.state.isParametricMapInterpolationEnabled !== nextState.isParametricMapInterpolationEnabled
+    ) {
+      return true
+    }
+
+    // Don't re-render for loadingFrames changes (too frequent)
+    // Don't re-render for pixelDataStatistics changes (computed, not directly displayed)
+    return false
   }
 
   componentDidUpdate (
@@ -4042,6 +4086,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             />
             )
           : null}
+
+        <AnnotationProgress
+          annotationGroupUID=''
+          processed={0}
+          total={0}
+          percentage={0}
+        />
       </Layout>
     )
   }
