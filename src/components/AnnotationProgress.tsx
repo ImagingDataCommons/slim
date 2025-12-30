@@ -32,22 +32,20 @@ class AnnotationProgress extends React.Component<AnnotationProgressProps, Annota
 
   componentDidMount (): void {
     const handleProcessingProgress = (event: CustomEvent): void => {
-      const payload = event.detail?.payload ?? event.detail ?? {}
-      const { annotationGroupUID, processed, total, percentage } = payload
+      const detail = event.detail?.payload ?? event.detail
+      const { annotationGroupUID = '', processed = 0, total = 0, percentage = 0 } = (detail != null) ? detail : {}
 
-      if (annotationGroupUID == null || annotationGroupUID === '') {
+      if (annotationGroupUID === undefined || annotationGroupUID === null || annotationGroupUID === '') {
         return
       }
 
       this.setState(prevState => {
         const newMap = new Map(prevState.progressMap)
-        const current = newMap.get(annotationGroupUID) ?? {}
+        const current = (newMap.get(annotationGroupUID) != null) ? newMap.get(annotationGroupUID) : {}
 
         if (processed === total && percentage === 100) {
-          /**
-           * Show completion message and remove after delay
-           */
-          void message.success(`Finished processing ${String(total)} annotations`, 2)
+          // Show completion message and remove after delay
+          void message.success(`Finished processing ${String(total ?? 0)} annotations`, 2)
           setTimeout(() => {
             this.setState(prevState => {
               const updatedMap = new Map(prevState.progressMap)
@@ -71,16 +69,16 @@ class AnnotationProgress extends React.Component<AnnotationProgressProps, Annota
     }
 
     const handleRetrievalProgress = (event: CustomEvent): void => {
-      const payload = event.detail?.payload ?? event.detail ?? {}
-      const { annotationGroupUID, isLoading, description } = payload
+      const detail = event.detail?.payload ?? event.detail
+      const { annotationGroupUID = '', isLoading = false, description = '' } = (detail != null) ? detail : {}
 
-      if (annotationGroupUID == null || annotationGroupUID === '') {
+      if (annotationGroupUID === undefined || annotationGroupUID === null || annotationGroupUID === '') {
         return
       }
 
       this.setState(prevState => {
         const newMap = new Map(prevState.progressMap)
-        const current = newMap.get(annotationGroupUID) ?? {}
+        const current = (newMap.get(annotationGroupUID) != null) ? newMap.get(annotationGroupUID) : {}
 
         if (isLoading === false) {
           /**
@@ -136,7 +134,7 @@ class AnnotationProgress extends React.Component<AnnotationProgressProps, Annota
         zIndex: 1000,
         backgroundColor: 'white',
         padding: '20px 24px',
-        borderRadius: '8px',
+        borderRadius: '0',
         boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
         minWidth: '400px',
         maxWidth: '500px'
@@ -147,7 +145,7 @@ class AnnotationProgress extends React.Component<AnnotationProgressProps, Annota
             {progress.retrieval?.isLoading === true && (
               <div style={{ marginBottom: '12px' }}>
                 <div style={{ marginBottom: '8px', fontSize: '14px', fontWeight: 500, color: '#333' }}>
-                  {(progress.retrieval.description != null && progress.retrieval.description !== '') ? progress.retrieval.description : 'Retrieving annotations...'}
+                  {(progress.retrieval.description !== undefined && progress.retrieval.description !== null && progress.retrieval.description !== '') ? progress.retrieval.description : 'Retrieving annotations...'}
                 </div>
                 <Progress
                   percent={100}
