@@ -76,7 +76,6 @@ import SegmentList from './SegmentList'
 import MappingList from './MappingList'
 import Btn from './Button'
 import { logger } from '../utils/logger'
-import AnnotationProgress from './AnnotationProgress'
 
 /**
  * React component for interactive viewing of an individual digital slide,
@@ -4146,13 +4145,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             />
             )
           : null}
-
-        <AnnotationProgress
-          annotationGroupUID=''
-          processed={0}
-          total={0}
-          percentage={0}
-        />
       </Layout>
     )
   }
