@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { Select, Input, Slider, Typography, Table } from 'antd'
 import { SearchOutlined } from '@ant-design/icons'
 
@@ -35,9 +35,10 @@ interface TableDataItem {
 interface DicomTagBrowserProps {
   clients: { [key: string]: DicomWebManager }
   studyInstanceUID: string
+  seriesInstanceUID?: string
 }
 
-const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): JSX.Element => {
+const DicomTagBrowser = ({ clients, studyInstanceUID, seriesInstanceUID = '' }: DicomTagBrowserProps): JSX.Element => {
   const { slides, isLoading } = useSlides({ clients, studyInstanceUID })
   const [study, setStudy] = useState<Study | undefined>(undefined)
 
@@ -47,6 +48,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
   const [filterValue, setFilterValue] = useState('')
   const [expandedKeys, setExpandedKeys] = useState<string[]>([])
   const [searchInput, setSearchInput] = useState('')
+  const needsInstanceResetRef = useRef(false)
 
   const debouncedSearchValue = useDebounce(searchInput, 300)
 
@@ -153,9 +155,12 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
     setDisplaySets([...displaySets, ...derivedDisplaySets])
   }, [slides, study])
 
+  const sortedDisplaySets = useMemo(() => {
+    return [...displaySets].sort((a, b) => Number(a.SeriesNumber) - Number(b.SeriesNumber))
+  }, [displaySets])
+
   const displaySetList = useMemo(() => {
-    displaySets.sort((a, b) => Number(a.SeriesNumber) - Number(b.SeriesNumber))
-    return displaySets.map((displaySet, index) => {
+    return sortedDisplaySets.map((displaySet, index) => {
       const {
         SeriesDate = '',
         SeriesTime = '',
@@ -173,24 +178,48 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
         description: displayDate
       }
     })
-  }, [displaySets])
+  }, [sortedDisplaySets])
+
+  useEffect(() => {
+    if (sortedDisplaySets.length === 0) return
+
+    if (seriesInstanceUID) {
+      const matchingIndex = sortedDisplaySets.findIndex(
+        (displaySet) => displaySet.SeriesInstanceUID === seriesInstanceUID
+      )
+      if (matchingIndex !== -1) {
+        setSelectedDisplaySetInstanceUID(matchingIndex)
+        setInstanceNumber(1)
+        return
+      }
+    }
+
+    needsInstanceResetRef.current = false
+    setSelectedDisplaySetInstanceUID((currentIndex) => {
+      const needsReset = currentIndex >= sortedDisplaySets.length || currentIndex < 0
+      needsInstanceResetRef.current = needsReset
+      return needsReset ? 0 : currentIndex
+    })
+    if (needsInstanceResetRef.current) {
+      setInstanceNumber(1)
+    }
+  }, [seriesInstanceUID, sortedDisplaySets])
 
   const showInstanceList =
-    displaySets[selectedDisplaySetInstanceUID]?.images.length > 1
+    sortedDisplaySets[selectedDisplaySetInstanceUID]?.images.length > 1
 
   const instanceSliderMarks = useMemo(() => {
-    if (displaySets[selectedDisplaySetInstanceUID] === undefined) return {}
-    const totalInstances = displaySets[selectedDisplaySetInstanceUID].images.length
+    if (sortedDisplaySets[selectedDisplaySetInstanceUID] === undefined) return {}
+    const totalInstances = sortedDisplaySets[selectedDisplaySetInstanceUID].images.length
 
-    // Create marks for first, middle, and last instances
     const marks: Record<number, string> = {
-      1: '1', // First
-      [Math.ceil(totalInstances / 2)]: String(Math.ceil(totalInstances / 2)), // Middle
-      [totalInstances]: String(totalInstances) // Last
+      1: '1',
+      [Math.ceil(totalInstances / 2)]: String(Math.ceil(totalInstances / 2)),
+      [totalInstances]: String(totalInstances)
     }
 
     return marks
-  }, [selectedDisplaySetInstanceUID, displaySets])
+  }, [selectedDisplaySetInstanceUID, sortedDisplaySets])
 
   const columns = [
     {
@@ -242,8 +271,8 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
       })
     }
 
-    if (displaySets[selectedDisplaySetInstanceUID] === undefined) return []
-    const images = displaySets[selectedDisplaySetInstanceUID]?.images
+    if (sortedDisplaySets[selectedDisplaySetInstanceUID] === undefined) return []
+    const images = sortedDisplaySets[selectedDisplaySetInstanceUID]?.images
     const sortedMetadata = Array.isArray(images)
       ? [...images].sort((a, b) => {
           if (a.InstanceNumber !== undefined && b.InstanceNumber !== undefined) {
@@ -255,7 +284,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
     const metadata = sortedMetadata[instanceNumber - 1]
     const tags = getSortedTags(metadata)
     return transformTagsToTableData(tags)
-  }, [instanceNumber, selectedDisplaySetInstanceUID, displaySets])
+  }, [instanceNumber, selectedDisplaySetInstanceUID, sortedDisplaySets])
 
   const filteredData = useMemo(() => {
     if (filterValue === undefined || filterValue === '') return tableData
@@ -272,7 +301,6 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
       )
     }
 
-    // First pass: find all matching nodes and their parent paths
     const findMatchingPaths = (
       node: TableDataItem,
       parentPath: TableDataItem[] = []
@@ -294,10 +322,8 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
       return matchingPaths
     }
 
-    // Find all paths that contain matches
     const matchingPaths = tableData.flatMap(node => findMatchingPaths(node))
 
-    // Second pass: reconstruct the tree with matching paths
     const reconstructTree = (
       paths: TableDataItem[][],
       level = 0
@@ -384,7 +410,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID }: DicomTagBrowserProps): J
               </Typography.Text>
               <Slider
                 min={1}
-                max={displaySets[selectedDisplaySetInstanceUID]?.images.length}
+                max={sortedDisplaySets[selectedDisplaySetInstanceUID]?.images.length}
                 value={instanceNumber}
                 onChange={(value) => setInstanceNumber(value)}
                 marks={instanceSliderMarks}

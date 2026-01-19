@@ -295,12 +295,20 @@ class Header extends React.Component<HeaderProps, HeaderState> {
 
   handleDicomTagBrowserButtonClick = (): void => {
     const width = window.innerWidth - 200
+
+    let seriesInstanceUID = ''
+    if (this.props.location.pathname.includes('series/')) {
+      const seriesFragment = this.props.location.pathname.split('series/')[1]
+      seriesInstanceUID = seriesFragment.includes('/') ? seriesFragment.split('/')[0] : seriesFragment
+    }
+    
     Modal.info({
       title: 'DICOM Tag Browser',
       width,
       content: <DicomTagBrowser
         clients={this.props.clients ?? {}}
         studyInstanceUID={this.props.params.studyInstanceUID ?? ''}
+        seriesInstanceUID={seriesInstanceUID}
                />,
       onOk (): void {}
     })
