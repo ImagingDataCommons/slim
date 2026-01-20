@@ -16,6 +16,7 @@ import CaseViewer from './components/CaseViewer'
 import Header from './components/Header'
 import InfoPage from './components/InfoPage'
 import Worklist from './components/Worklist'
+import MemoryFooter from './components/MemoryFooter'
 import { ValidationProvider } from './contexts/ValidationContext'
 
 import { User, AuthManager } from './auth'
@@ -520,6 +521,7 @@ class App extends React.Component<AppProps, AppState> {
                   <Layout.Content style={layoutContentStyle}>
                     {worklist}
                   </Layout.Content>
+                  <MemoryFooter />
                 </Layout>
               }
             />
@@ -545,6 +547,7 @@ class App extends React.Component<AppProps, AppState> {
                       app={appInfo}
                     />
                   </Layout.Content>
+                  <MemoryFooter />
                 </Layout>
               }
             />
@@ -570,6 +573,7 @@ class App extends React.Component<AppProps, AppState> {
                       app={appInfo}
                     />
                   </Layout.Content>
+                  <MemoryFooter />
                 </Layout>
               }
             />
@@ -587,7 +591,10 @@ class App extends React.Component<AppProps, AppState> {
                     clients={this.state.clients}
                     defaultClients={this.state.defaultClients}
                   />
-                  Logged out
+                  <Layout.Content style={layoutContentStyle}>
+                    Logged out
+                  </Layout.Content>
+                  <MemoryFooter />
                 </Layout>
               }
             />

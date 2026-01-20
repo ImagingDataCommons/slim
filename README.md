@@ -16,6 +16,7 @@ It relies on [DICOMweb](https://www.dicomstandard.org/dicomweb/) RESTful service
   - [Display of images](#display-of-images)
   - [Display of image annotations and analysis results](#display-of-image-annotations-and-analysis-results)
   - [Annotation of images](#annotation-of-images)
+  - [Memory Monitoring](#memory-monitoring)
 - [Authentication and Authorization](#autentication-and-authorization)
 - [Configuration](#configuration)
   - [Server Configuration](#server-configuration)
@@ -104,6 +105,20 @@ In addition to display, _Slim_ provides annotation tools that allow users to cre
 ROIs are stored as 3D spatial coordinates (SCOORD3D) in millimeter unit according to SR template [TID 1410 "Planar ROI Measurements and Qualitative Evaluations"](http://dicom.nema.org/medical/dicom/current/output/chtml/part16/chapter_A.html#sect_TID_1410) together with measurements and qualitative evaluations (labels).
 Specifically, [Image Region](http://dicom.nema.org/medical/dicom/current/output/chtml/part16/chapter_A.html#para_b68aa0a9-d0b1-475c-9630-fbbd48dc581d) is used to store the vector graphic data and [Finding](http://dicom.nema.org/medical/dicom/current/output/chtml/part16/chapter_A.html#para_c4ac1cac-ee86-4a86-865a-8137ebe1bd95) is used to describe what has been annotated using a standard medical terminology such as [SNOMED CT](https://www.snomed.org/).
 The terms that can be chosen by a user can be configured (see [AppConfig.d.ts](src/AppConfig.d.ts)).
+
+### Memory Monitoring
+
+_Slim_ includes automatic memory monitoring to help track browser memory usage when viewing large whole slide images. The memory monitor:
+
+- Displays real-time memory usage in the footer (used memory, heap limit, usage percentage, remaining memory)
+- Automatically monitors memory every 5 seconds using modern browser APIs when available
+- Shows color-coded status indicators (green/orange/red) based on usage levels
+- Issues warnings when memory usage exceeds 80% (high) or 90% (critical)
+- Falls back to Chrome-specific APIs when modern APIs aren't available
+
+The memory footer appears at the bottom of all pages and updates automatically. When memory usage is high, users receive notifications with recommendations to refresh the page or close other tabs.
+
+For technical details, see [Memory Monitoring Documentation](docs/MEMORY_MONITORING.md).
 
 ## Autentication and authorization
 

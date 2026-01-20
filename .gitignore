@@ -9,6 +9,8 @@
 /coverage
 .env
 
+.cursorrules
+
 # production
 /build
 
