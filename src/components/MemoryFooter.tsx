@@ -5,6 +5,10 @@ import NotificationMiddleware, { NotificationMiddlewareEvents } from '../service
 
 const { Text } = Typography
 
+interface MemoryFooterProps {
+  enabled?: boolean
+}
+
 interface MemoryFooterState {
   memoryInfo: MemoryInfo | null
 }
@@ -12,7 +16,7 @@ interface MemoryFooterState {
 /**
  * React component for displaying memory usage information in the footer.
  */
-class MemoryFooter extends React.Component<{}, MemoryFooterState> {
+class MemoryFooter extends React.Component<MemoryFooterProps, MemoryFooterState> {
   private unsubscribeMemory?: () => void
   private lastWarningLevel: 'none' | 'high' | 'critical' = 'none'
 
@@ -24,6 +28,10 @@ class MemoryFooter extends React.Component<{}, MemoryFooterState> {
   }
 
   componentDidMount (): void {
+    if (!this.props.enabled) {
+      return
+    }
+
     this.unsubscribeMemory = memoryMonitor.subscribe((memory: MemoryInfo) => {
       this.setState({ memoryInfo: memory })
 
@@ -64,6 +72,10 @@ class MemoryFooter extends React.Component<{}, MemoryFooterState> {
   }
 
   render (): React.ReactNode {
+    if (!this.props.enabled) {
+      return null
+    }
+
     const { memoryInfo } = this.state
 
     if (memoryInfo === null || memoryInfo.apiMethod === 'unavailable') {

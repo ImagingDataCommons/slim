@@ -106,4 +106,5 @@ export default interface AppConfig {
     enableInProduction?: boolean
     enableInDevelopment?: boolean
   }
+  enableMemoryMonitoring?: boolean
 }

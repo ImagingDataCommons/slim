@@ -62,6 +62,22 @@ If neither API is available, memory monitoring will be disabled and the footer w
 
 ## Configuration
 
+### Enable/Disable Memory Monitoring
+
+Memory monitoring can be enabled or disabled through the application configuration:
+
+```javascript
+window.config = {
+  // ... other config options ...
+  enableMemoryMonitoring: true, // Set to true to enable memory monitoring footer
+};
+```
+
+- **Default**: Memory monitoring is disabled by default (`enableMemoryMonitoring: false` or undefined)
+- **Enable**: Set `enableMemoryMonitoring: true` to show the memory footer and start monitoring
+
+When enabled, the memory footer appears at the bottom of all pages and monitors memory usage every 5 seconds. When disabled, the memory footer will not appear and memory monitoring will not start, reducing overhead.
+
 ### Cross-Origin Isolation Setup
 
 For local development with the modern API, you need to configure HTTP headers. The nginx configuration in `etc/nginx/conf.d/local.conf` should include:

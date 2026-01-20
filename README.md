@@ -118,6 +118,8 @@ _Slim_ includes automatic memory monitoring to help track browser memory usage w
 
 The memory footer appears at the bottom of all pages and updates automatically. When memory usage is high, users receive notifications with recommendations to refresh the page or close other tabs.
 
+Memory monitoring is disabled by default and can be enabled via configuration by setting `enableMemoryMonitoring: true` in the application config.
+
 For technical details, see [Memory Monitoring Documentation](docs/MEMORY_MONITORING.md).
 
 ## Autentication and authorization
@@ -212,6 +214,22 @@ Default values if not specified:
 
 - `duration`: 5 seconds
 - `top`: 100 pixels
+
+### Memory Monitoring Configuration
+
+Memory monitoring can be enabled or disabled through configuration:
+
+```javascript
+window.config = {
+  // ... other config options ...
+  enableMemoryMonitoring: true, // Set to true to enable memory monitoring footer
+};
+```
+
+- **Default**: Memory monitoring is disabled (`enableMemoryMonitoring: false` or undefined)
+- **Enable**: Set `enableMemoryMonitoring: true` to show the memory footer and start monitoring
+
+When enabled, the memory footer appears at the bottom of all pages and monitors memory usage every 5 seconds.
 
 ## Deployment
 

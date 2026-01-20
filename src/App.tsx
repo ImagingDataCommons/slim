@@ -437,6 +437,9 @@ class App extends React.Component<AppProps, AppState> {
     const enableServerSelection = (
       this.props.config.enableServerSelection ?? false
     )
+    const enableMemoryMonitoring = (
+      this.props.config.enableMemoryMonitoring ?? false
+    )
 
     let worklist
     if (enableWorklist) {
@@ -521,7 +524,7 @@ class App extends React.Component<AppProps, AppState> {
                   <Layout.Content style={layoutContentStyle}>
                     {worklist}
                   </Layout.Content>
-                  <MemoryFooter />
+                  {enableMemoryMonitoring && <MemoryFooter enabled={enableMemoryMonitoring} />}
                 </Layout>
               }
             />
@@ -547,7 +550,7 @@ class App extends React.Component<AppProps, AppState> {
                       app={appInfo}
                     />
                   </Layout.Content>
-                  <MemoryFooter />
+                  {enableMemoryMonitoring && <MemoryFooter enabled={enableMemoryMonitoring} />}
                 </Layout>
               }
             />
@@ -573,7 +576,7 @@ class App extends React.Component<AppProps, AppState> {
                       app={appInfo}
                     />
                   </Layout.Content>
-                  <MemoryFooter />
+                  {enableMemoryMonitoring && <MemoryFooter enabled={enableMemoryMonitoring} />}
                 </Layout>
               }
             />
@@ -594,7 +597,7 @@ class App extends React.Component<AppProps, AppState> {
                   <Layout.Content style={layoutContentStyle}>
                     Logged out
                   </Layout.Content>
-                  <MemoryFooter />
+                  {enableMemoryMonitoring && <MemoryFooter enabled={enableMemoryMonitoring} />}
                 </Layout>
               }
             />
