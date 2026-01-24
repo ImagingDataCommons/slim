@@ -69,14 +69,14 @@ Memory monitoring can be enabled or disabled through the application configurati
 ```javascript
 window.config = {
   // ... other config options ...
-  enableMemoryMonitoring: true, // Set to true to enable memory monitoring footer
+  enableMemoryMonitoring: false, // Set to false to disable memory monitoring footer
 };
 ```
 
-- **Default**: Memory monitoring is disabled by default (`enableMemoryMonitoring: false` or undefined)
-- **Enable**: Set `enableMemoryMonitoring: true` to show the memory footer and start monitoring
+- **Default**: Memory monitoring is enabled by default (`enableMemoryMonitoring: true` or undefined)
+- **Disable**: Set `enableMemoryMonitoring: false` to hide the memory footer and stop monitoring
 
-When enabled, the memory footer appears at the bottom of all pages and monitors memory usage every 5 seconds. When disabled, the memory footer will not appear and memory monitoring will not start, reducing overhead.
+The memory footer appears at the bottom of all pages and monitors memory usage every 5 seconds. When disabled, the memory footer will not appear and memory monitoring will not start, reducing overhead.
 
 ### Cross-Origin Isolation Setup
 

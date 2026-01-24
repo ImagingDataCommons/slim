@@ -438,7 +438,7 @@ class App extends React.Component<AppProps, AppState> {
       this.props.config.enableServerSelection ?? false
     )
     const enableMemoryMonitoring = (
-      this.props.config.enableMemoryMonitoring ?? false
+      this.props.config.enableMemoryMonitoring ?? true
     )
 
     let worklist
