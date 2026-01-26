@@ -18,7 +18,7 @@ interface PerformanceMemoryInfo {
 
 interface Performance {
   memory?: PerformanceMemory
-  measureUserAgentSpecificMemory?(): Promise<PerformanceMemoryInfo>
+  measureUserAgentSpecificMemory?: () => Promise<PerformanceMemoryInfo>
 }
 
 interface Window {

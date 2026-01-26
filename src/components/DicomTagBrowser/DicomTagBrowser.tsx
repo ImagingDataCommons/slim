@@ -189,7 +189,7 @@ const DicomTagBrowser = ({ clients, studyInstanceUID, seriesInstanceUID = '' }: 
   useEffect(() => {
     if (sortedDisplaySets.length === 0) return
 
-    if (seriesInstanceUID) {
+    if (seriesInstanceUID !== '') {
       const matchingIndex = sortedDisplaySets.findIndex(
         (displaySet) => displaySet.SeriesInstanceUID === seriesInstanceUID
       )

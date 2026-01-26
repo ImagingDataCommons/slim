@@ -28,7 +28,7 @@ class MemoryFooter extends React.Component<MemoryFooterProps, MemoryFooterState>
   }
 
   componentDidMount (): void {
-    if (!this.props.enabled) {
+    if (this.props.enabled !== true) {
       return
     }
 
@@ -36,7 +36,7 @@ class MemoryFooter extends React.Component<MemoryFooterProps, MemoryFooterState>
       this.setState({ memoryInfo: memory })
 
       const warningLevel = memoryMonitor.getWarningLevel(memory)
-      
+
       // Re-warn for critical to ensure user sees repeated alerts
       if (warningLevel !== this.lastWarningLevel || warningLevel === 'critical') {
         this.lastWarningLevel = warningLevel
@@ -46,7 +46,7 @@ class MemoryFooter extends React.Component<MemoryFooterProps, MemoryFooterState>
             NotificationMiddlewareEvents.OnWarning,
             `Critical memory usage: ${memory.usagePercentage.toFixed(1)}% used. ` +
             `Only ${memoryMonitor.formatBytes(memory.remainingBytes)} remaining. ` +
-            `Consider refreshing the page or closing other tabs.`
+            'Consider refreshing the page or closing other tabs.'
           )
         } else if (warningLevel === 'high' && memory.usagePercentage !== null) {
           NotificationMiddleware.publish(
@@ -62,14 +62,14 @@ class MemoryFooter extends React.Component<MemoryFooterProps, MemoryFooterState>
   }
 
   componentWillUnmount (): void {
-    if (this.unsubscribeMemory) {
+    if (this.unsubscribeMemory != null) {
       this.unsubscribeMemory()
     }
     memoryMonitor.stopMonitoring()
   }
 
   render (): React.ReactNode {
-    if (!this.props.enabled) {
+    if (this.props.enabled !== true) {
       return null
     }
 

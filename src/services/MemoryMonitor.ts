@@ -1,4 +1,4 @@
-type MemoryMeasureUserAgentSpecificMemoryResult = {
+interface MemoryMeasureUserAgentSpecificMemoryResult {
   bytes: number
   breakdown?: Array<{
     bytes: number
@@ -8,7 +8,7 @@ type MemoryMeasureUserAgentSpecificMemoryResult = {
 
 /**
  * Memory monitoring service for tracking browser memory usage.
- * 
+ *
  * Uses modern APIs when available:
  * - performance.measureUserAgentSpecificMemory() (Chrome 89+, requires cross-origin isolation)
  * - performance.memory (Chrome-specific, deprecated but still useful)
@@ -19,42 +19,42 @@ export interface MemoryInfo {
    * Total memory used in bytes (JS heap size)
    */
   usedJSHeapSize: number | null
-  
+
   /**
    * Maximum JS heap size limit in bytes
    */
   jsHeapSizeLimit: number | null
-  
+
   /**
    * Total JS heap size allocated in bytes
    */
   totalJSHeapSize: number | null
-  
+
   /**
    * Memory usage as percentage of limit (0-100)
    */
   usagePercentage: number | null
-  
+
   /**
    * Estimated remaining memory in bytes
    */
   remainingBytes: number | null
-  
+
   /**
    * Whether memory usage is considered high (>80% of limit)
    */
   isHighUsage: boolean
-  
+
   /**
    * Whether memory usage is considered critical (>90% of limit)
    */
   isCriticalUsage: boolean
-  
+
   /**
    * API method used: 'modern', 'chrome', or 'unavailable'
    */
   apiMethod: 'modern' | 'chrome' | 'unavailable'
-  
+
   /**
    * Timestamp of measurement
    */
@@ -66,7 +66,7 @@ export interface MemoryMeasureResult {
    * Memory information
    */
   memory: MemoryInfo
-  
+
   /**
    * Breakdown by context (main thread, workers, etc.)
    * Only available with modern API
@@ -83,7 +83,7 @@ type MemoryUpdateCallback = (memory: MemoryInfo) => void
  * Memory monitoring service
  */
 class MemoryMonitor {
-  private updateCallbacks: Set<MemoryUpdateCallback> = new Set()
+  private readonly updateCallbacks: Set<MemoryUpdateCallback> = new Set()
   private monitoringInterval: ReturnType<typeof setInterval> | null = null
   private readonly updateInterval: number = 5000 // 5 seconds
   private lastMeasurement: MemoryInfo | null = null
@@ -96,7 +96,7 @@ class MemoryMonitor {
   private isModernAPIAvailable (): boolean {
     return typeof performance !== 'undefined' &&
            typeof performance.measureUserAgentSpecificMemory === 'function' &&
-           (window.crossOriginIsolated === true)
+           (window.crossOriginIsolated)
   }
 
   /**
@@ -127,10 +127,10 @@ class MemoryMonitor {
    * Get memory info using modern API from already-fetched result
    */
   private getMemoryModernFromResult (result: MemoryMeasureUserAgentSpecificMemoryResult): MemoryInfo {
-    const bytes = result.bytes || 0
-    
+    const bytes = (result.bytes != null && !isNaN(result.bytes)) ? result.bytes : 0
+
     let jsHeapSizeLimit: number
-    if (this.isChromeAPIAvailable() && performance.memory?.jsHeapSizeLimit) {
+    if (this.isChromeAPIAvailable() && performance.memory?.jsHeapSizeLimit != null && performance.memory.jsHeapSizeLimit > 0) {
       jsHeapSizeLimit = performance.memory.jsHeapSizeLimit
     } else {
       // Fixed heuristic prevents usagePercentage from being stuck at 50% when bytes > 2GB
@@ -160,7 +160,7 @@ class MemoryMonitor {
    */
   private getMemoryChrome (): MemoryInfo {
     const memory = performance.memory
-    if (!memory) {
+    if (memory == null) {
       throw new Error('performance.memory not available')
     }
     const usedJSHeapSize = memory.usedJSHeapSize
@@ -209,16 +209,16 @@ class MemoryMonitor {
 
     if (this.isModernAPIAvailable()) {
       try {
-        if (!performance.measureUserAgentSpecificMemory) {
+        if (performance.measureUserAgentSpecificMemory == null) {
           throw new Error('measureUserAgentSpecificMemory not available')
         }
         const result = await performance.measureUserAgentSpecificMemory()
         memory = this.getMemoryModernFromResult(result)
-        
-        if (result.breakdown) {
+
+        if (result.breakdown != null) {
           breakdown = result.breakdown.map(item => ({
             bytes: item.bytes,
-            userAgentSpecificTypes: item.userAgentSpecificTypes || []
+            userAgentSpecificTypes: item.userAgentSpecificTypes != null ? item.userAgentSpecificTypes : []
           }))
         }
       } catch (error) {
@@ -236,7 +236,7 @@ class MemoryMonitor {
     }
 
     this.lastMeasurement = memory
-    
+
     this.updateCallbacks.forEach(callback => {
       try {
         callback(memory)
@@ -260,7 +260,7 @@ class MemoryMonitor {
    */
   subscribe (callback: MemoryUpdateCallback): () => void {
     this.updateCallbacks.add(callback)
-    
+
     return () => {
       this.updateCallbacks.delete(callback)
     }
@@ -311,14 +311,17 @@ class MemoryMonitor {
     }
 
     if (memory.isCriticalUsage) {
-      return `Critical: ${memory.usagePercentage?.toFixed(1)}% used (${this.formatBytes(memory.remainingBytes)} remaining)`
+      const percentage = memory.usagePercentage != null ? memory.usagePercentage.toFixed(1) : 'N/A'
+      return `Critical: ${percentage}% used (${this.formatBytes(memory.remainingBytes)} remaining)`
     }
 
     if (memory.isHighUsage) {
-      return `High: ${memory.usagePercentage?.toFixed(1)}% used (${this.formatBytes(memory.remainingBytes)} remaining)`
+      const percentage = memory.usagePercentage != null ? memory.usagePercentage.toFixed(1) : 'N/A'
+      return `High: ${percentage}% used (${this.formatBytes(memory.remainingBytes)} remaining)`
     }
 
-    return `Memory: ${memory.usagePercentage?.toFixed(1)}% used (${this.formatBytes(memory.remainingBytes)} remaining)`
+    const percentage = memory.usagePercentage != null ? memory.usagePercentage.toFixed(1) : 'N/A'
+    return `Memory: ${percentage}% used (${this.formatBytes(memory.remainingBytes)} remaining)`
   }
 
   /**

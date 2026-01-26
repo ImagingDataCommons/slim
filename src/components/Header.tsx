@@ -301,7 +301,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       const seriesFragment = this.props.location.pathname.split('series/')[1]
       seriesInstanceUID = seriesFragment.includes('/') ? seriesFragment.split('/')[0] : seriesFragment
     }
-    
+
     Modal.info({
       title: 'DICOM Tag Browser',
       width,
