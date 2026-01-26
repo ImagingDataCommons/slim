@@ -112,8 +112,12 @@ class MemoryMonitor {
    * Format bytes to human-readable string
    */
   formatBytes (bytes: number | null): string {
-    if (bytes === null || bytes === 0) {
+    if (bytes === null || bytes === undefined) {
       return 'N/A'
+    }
+
+    if (bytes === 0) {
+      return '0 Bytes'
     }
 
     const k = 1024
@@ -133,11 +137,9 @@ class MemoryMonitor {
     if (this.isChromeAPIAvailable() && performance.memory?.jsHeapSizeLimit != null && performance.memory.jsHeapSizeLimit > 0) {
       jsHeapSizeLimit = performance.memory.jsHeapSizeLimit
     } else {
-      // Fixed heuristic prevents usagePercentage from being stuck at 50% when bytes > 2GB
-      jsHeapSizeLimit = Math.max(
-        4 * 1024 * 1024 * 1024,
-        8 * 1024 * 1024 * 1024
-      )
+      // Use 8GB as fallback limit for 64-bit browsers when jsHeapSizeLimit unavailable
+      // This prevents usagePercentage from being stuck at 50% when bytes > 2GB
+      jsHeapSizeLimit = 8 * 1024 * 1024 * 1024
     }
 
     const usagePercentage = (bytes / jsHeapSizeLimit) * 100

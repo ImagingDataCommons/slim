@@ -19,6 +19,8 @@ interface MemoryFooterState {
 class MemoryFooter extends React.Component<MemoryFooterProps, MemoryFooterState> {
   private unsubscribeMemory?: () => void
   private lastWarningLevel: 'none' | 'high' | 'critical' = 'none'
+  private lastCriticalWarningTime: number = 0
+  private readonly criticalWarningThrottleMs: number = 30000
 
   constructor (props: MemoryFooterProps) {
     super(props)
@@ -37,17 +39,20 @@ class MemoryFooter extends React.Component<MemoryFooterProps, MemoryFooterState>
 
       const warningLevel = memoryMonitor.getWarningLevel(memory)
 
-      // Re-warn for critical to ensure user sees repeated alerts
-      if (warningLevel !== this.lastWarningLevel || warningLevel === 'critical') {
+      if (warningLevel !== this.lastWarningLevel) {
         this.lastWarningLevel = warningLevel
 
         if (warningLevel === 'critical' && memory.usagePercentage !== null) {
-          NotificationMiddleware.publish(
-            NotificationMiddlewareEvents.OnWarning,
-            `Critical memory usage: ${memory.usagePercentage.toFixed(1)}% used. ` +
-            `Only ${memoryMonitor.formatBytes(memory.remainingBytes)} remaining. ` +
-            'Consider refreshing the page or closing other tabs.'
-          )
+          const now = Date.now()
+          if (now - this.lastCriticalWarningTime >= this.criticalWarningThrottleMs) {
+            this.lastCriticalWarningTime = now
+            NotificationMiddleware.publish(
+              NotificationMiddlewareEvents.OnWarning,
+              `Critical memory usage: ${memory.usagePercentage.toFixed(1)}% used. ` +
+              `Only ${memoryMonitor.formatBytes(memory.remainingBytes)} remaining. ` +
+              'Consider refreshing the page or closing other tabs.'
+            )
+          }
         } else if (warningLevel === 'high' && memory.usagePercentage !== null) {
           NotificationMiddleware.publish(
             NotificationMiddlewareEvents.OnWarning,
