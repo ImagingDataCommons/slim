@@ -20,7 +20,7 @@ class MemoryFooter extends React.Component<MemoryFooterProps, MemoryFooterState>
   private unsubscribeMemory?: () => void
   private lastWarningLevel: 'none' | 'high' | 'critical' = 'none'
 
-  constructor (props: {}) {
+  constructor (props: MemoryFooterProps) {
     super(props)
     this.state = {
       memoryInfo: null
@@ -59,9 +59,6 @@ class MemoryFooter extends React.Component<MemoryFooterProps, MemoryFooterState>
     })
 
     memoryMonitor.startMonitoring()
-    memoryMonitor.measure().catch(error => {
-      console.warn('Failed to measure memory:', error)
-    })
   }
 
   componentWillUnmount (): void {
@@ -84,7 +81,7 @@ class MemoryFooter extends React.Component<MemoryFooterProps, MemoryFooterState>
 
     const warningLevel = memoryMonitor.getWarningLevel(memoryInfo)
 
-    let statusColor: string = 'default'
+    let statusColor: string
     if (warningLevel === 'critical') {
       statusColor = 'red'
     } else if (warningLevel === 'high') {

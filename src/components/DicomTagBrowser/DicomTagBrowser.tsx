@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Select, Input, Slider, Typography, Table } from 'antd'
 import { SearchOutlined } from '@ant-design/icons'
 
@@ -48,7 +48,6 @@ const DicomTagBrowser = ({ clients, studyInstanceUID, seriesInstanceUID = '' }: 
   const [filterValue, setFilterValue] = useState('')
   const [expandedKeys, setExpandedKeys] = useState<string[]>([])
   const [searchInput, setSearchInput] = useState('')
-  const needsInstanceResetRef = useRef(false)
 
   const debouncedSearchValue = useDebounce(searchInput, 300)
 
@@ -156,7 +155,14 @@ const DicomTagBrowser = ({ clients, studyInstanceUID, seriesInstanceUID = '' }: 
   }, [slides, study])
 
   const sortedDisplaySets = useMemo(() => {
-    return [...displaySets].sort((a, b) => Number(a.SeriesNumber) - Number(b.SeriesNumber))
+    return [...displaySets].sort((a, b) => {
+      const aNum = Number(a.SeriesNumber)
+      const bNum = Number(b.SeriesNumber)
+      // Normalize non-numeric/missing values to Infinity to sort them last
+      const aSafe = (isNaN(aNum) || a.SeriesNumber === undefined || a.SeriesNumber === '') ? Infinity : aNum
+      const bSafe = (isNaN(bNum) || b.SeriesNumber === undefined || b.SeriesNumber === '') ? Infinity : bNum
+      return aSafe - bSafe
+    })
   }, [displaySets])
 
   const displaySetList = useMemo(() => {
@@ -194,16 +200,19 @@ const DicomTagBrowser = ({ clients, studyInstanceUID, seriesInstanceUID = '' }: 
       }
     }
 
-    needsInstanceResetRef.current = false
     setSelectedDisplaySetInstanceUID((currentIndex) => {
       const needsReset = currentIndex >= sortedDisplaySets.length || currentIndex < 0
-      needsInstanceResetRef.current = needsReset
       return needsReset ? 0 : currentIndex
     })
-    if (needsInstanceResetRef.current) {
+  }, [seriesInstanceUID, sortedDisplaySets])
+
+  useEffect(() => {
+    const currentIndex = selectedDisplaySetInstanceUID
+    const needsReset = currentIndex >= sortedDisplaySets.length || currentIndex < 0
+    if (needsReset && sortedDisplaySets.length > 0) {
       setInstanceNumber(1)
     }
-  }, [seriesInstanceUID, sortedDisplaySets])
+  }, [selectedDisplaySetInstanceUID, sortedDisplaySets.length])
 
   const showInstanceList =
     sortedDisplaySets[selectedDisplaySetInstanceUID]?.images.length > 1

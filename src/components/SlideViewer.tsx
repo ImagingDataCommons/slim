@@ -204,7 +204,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       clients: this.props.clients,
       slide: this.props.slide,
       preload: this.props.preload,
-      clusteringPixelSizeThreshold: 0.001 // Default: 0.001 mm (1 micrometer) - enabled by default
+      clusteringPixelSizeThreshold: undefined // Auto (zoom-based) by default
     })
     this.volumeViewer = volumeViewer
     this.labelViewer = labelViewer
@@ -263,7 +263,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       isSegmentationInterpolationEnabled: false,
       isParametricMapInterpolationEnabled: true,
       customizedSegmentColors: {},
-      clusteringPixelSizeThreshold: 0.001, // Default: 0.001 mm (1 micrometer)
+      clusteringPixelSizeThreshold: null, // null means auto (zoom-based)
       isClusteringEnabled: true // Clustering enabled by default
     }
 
@@ -316,15 +316,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.state.isReportModalVisible !== nextState.isReportModalVisible ||
       this.state.isGoToModalVisible !== nextState.isGoToModalVisible ||
       this.state.isHoveredRoiTooltipVisible !== nextState.isHoveredRoiTooltipVisible ||
-      this.state.hoveredRoiAttributes.length !== nextState.hoveredRoiAttributes.length ||
-      this.state.visibleRoiUIDs.size !== nextState.visibleRoiUIDs.size ||
-      this.state.visibleSegmentUIDs.size !== nextState.visibleSegmentUIDs.size ||
-      this.state.visibleMappingUIDs.size !== nextState.visibleMappingUIDs.size ||
-      this.state.visibleAnnotationGroupUIDs.size !== nextState.visibleAnnotationGroupUIDs.size ||
-      this.state.selectedRoiUIDs.size !== nextState.selectedRoiUIDs.size ||
+      this.state.hoveredRoiAttributes !== nextState.hoveredRoiAttributes ||
+      this.state.visibleRoiUIDs !== nextState.visibleRoiUIDs ||
+      this.state.visibleSegmentUIDs !== nextState.visibleSegmentUIDs ||
+      this.state.visibleMappingUIDs !== nextState.visibleMappingUIDs ||
+      this.state.visibleAnnotationGroupUIDs !== nextState.visibleAnnotationGroupUIDs ||
+      this.state.selectedRoiUIDs !== nextState.selectedRoiUIDs ||
+      this.state.selectedEvaluations !== nextState.selectedEvaluations ||
       this.state.selectedRoi !== nextState.selectedRoi ||
       this.state.selectedFinding !== nextState.selectedFinding ||
-      this.state.selectedEvaluations.length !== nextState.selectedEvaluations.length ||
       this.state.selectedGeometryType !== nextState.selectedGeometryType ||
       this.state.selectedMarkup !== nextState.selectedMarkup ||
       this.state.selectedPresentationStateUID !== nextState.selectedPresentationStateUID ||
@@ -333,7 +333,20 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.state.isSegmentationInterpolationEnabled !== nextState.isSegmentationInterpolationEnabled ||
       this.state.isParametricMapInterpolationEnabled !== nextState.isParametricMapInterpolationEnabled ||
       this.state.isClusteringEnabled !== nextState.isClusteringEnabled ||
-      this.state.clusteringPixelSizeThreshold !== nextState.clusteringPixelSizeThreshold
+      this.state.clusteringPixelSizeThreshold !== nextState.clusteringPixelSizeThreshold ||
+      this.state.isRoiDrawingActive !== nextState.isRoiDrawingActive ||
+      this.state.isRoiModificationActive !== nextState.isRoiModificationActive ||
+      this.state.isRoiTranslationActive !== nextState.isRoiTranslationActive ||
+      this.state.hoveredRoiTooltipX !== nextState.hoveredRoiTooltipX ||
+      this.state.hoveredRoiTooltipY !== nextState.hoveredRoiTooltipY ||
+      this.state.selectedXCoordinate !== nextState.selectedXCoordinate ||
+      this.state.selectedYCoordinate !== nextState.selectedYCoordinate ||
+      this.state.selectedMagnification !== nextState.selectedMagnification ||
+      this.state.isSelectedXCoordinateValid !== nextState.isSelectedXCoordinateValid ||
+      this.state.isSelectedYCoordinateValid !== nextState.isSelectedYCoordinateValid ||
+      this.state.isSelectedMagnificationValid !== nextState.isSelectedMagnificationValid ||
+      this.state.validXCoordinateRange !== nextState.validXCoordinateRange ||
+      this.state.validYCoordinateRange !== nextState.validYCoordinateRange
     ) {
       return true
     }
@@ -372,7 +385,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         slide: this.props.slide,
         preload: this.props.preload,
         clusteringPixelSizeThreshold: this.state.isClusteringEnabled
-          ? this.state.clusteringPixelSizeThreshold
+          ? (this.state.clusteringPixelSizeThreshold ?? undefined)
           : undefined
       })
       this.volumeViewer = volumeViewer
@@ -3140,7 +3153,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         return null
       }
 
-      const threshold = newValue ? prevState.clusteringPixelSizeThreshold : undefined
+      const threshold = newValue ? (prevState.clusteringPixelSizeThreshold ?? undefined) : undefined
 
       /**
        * Update viewer options immediately with the new state
@@ -3164,11 +3177,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that updates the global clustering pixel size threshold.
    */
   handleClusteringPixelSizeThresholdChange = (value: number | null): void => {
-    const threshold = value !== null ? value : 0.001 // Default fallback
-    this.setState({ clusteringPixelSizeThreshold: threshold })
+    this.setState({ clusteringPixelSizeThreshold: value })
     if (this.state.isClusteringEnabled) {
       ;(this.volumeViewer as any).setAnnotationOptions?.({
-        clusteringPixelSizeThreshold: threshold
+        clusteringPixelSizeThreshold: value ?? undefined
       })
     }
   }
@@ -3751,7 +3763,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                     step={0.001}
                     precision={3}
                     style={{ width: '100%' }}
-                    value={this.state.clusteringPixelSizeThreshold}
+                    value={this.state.clusteringPixelSizeThreshold ?? undefined}
                     onChange={this.handleClusteringPixelSizeThresholdChange}
                     placeholder='Auto (zoom-based)'
                     addonAfter='mm'

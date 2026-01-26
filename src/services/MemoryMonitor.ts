@@ -1,3 +1,11 @@
+type MemoryMeasureUserAgentSpecificMemoryResult = {
+  bytes: number
+  breakdown?: Array<{
+    bytes: number
+    userAgentSpecificTypes: string[]
+  }>
+}
+
 /**
  * Memory monitoring service for tracking browser memory usage.
  * 
@@ -116,39 +124,34 @@ class MemoryMonitor {
   }
 
   /**
-   * Get memory info using modern API
+   * Get memory info using modern API from already-fetched result
    */
-  private async getMemoryModern (): Promise<MemoryInfo> {
-    try {
-      if (!performance.measureUserAgentSpecificMemory) {
-        throw new Error('measureUserAgentSpecificMemory not available')
-      }
-      const result = await performance.measureUserAgentSpecificMemory()
-      const bytes = result.bytes || 0
-      
-      // Estimate limit (typically 2-4GB for 32-bit browsers, 4-8GB+ for 64-bit)
-      // We use a conservative estimate since the API doesn't provide a direct limit
-      const estimatedLimit = Math.max(
-        bytes * 2, // At least 2x current usage
-        4 * 1024 * 1024 * 1024 // Minimum 4GB for modern browsers
+  private getMemoryModernFromResult (result: MemoryMeasureUserAgentSpecificMemoryResult): MemoryInfo {
+    const bytes = result.bytes || 0
+    
+    let jsHeapSizeLimit: number
+    if (this.isChromeAPIAvailable() && performance.memory?.jsHeapSizeLimit) {
+      jsHeapSizeLimit = performance.memory.jsHeapSizeLimit
+    } else {
+      // Fixed heuristic prevents usagePercentage from being stuck at 50% when bytes > 2GB
+      jsHeapSizeLimit = Math.max(
+        4 * 1024 * 1024 * 1024,
+        8 * 1024 * 1024 * 1024
       )
+    }
 
-      const usagePercentage = (bytes / estimatedLimit) * 100
+    const usagePercentage = (bytes / jsHeapSizeLimit) * 100
 
-      return {
-        usedJSHeapSize: bytes,
-        jsHeapSizeLimit: estimatedLimit,
-        totalJSHeapSize: bytes,
-        usagePercentage: Math.min(usagePercentage, 100),
-        remainingBytes: Math.max(0, estimatedLimit - bytes),
-        isHighUsage: usagePercentage > this.highUsageThreshold * 100,
-        isCriticalUsage: usagePercentage > this.criticalUsageThreshold * 100,
-        apiMethod: 'modern',
-        timestamp: Date.now()
-      }
-    } catch (error) {
-      console.warn('Failed to measure memory with modern API:', error)
-      throw error
+    return {
+      usedJSHeapSize: bytes,
+      jsHeapSizeLimit,
+      totalJSHeapSize: bytes,
+      usagePercentage: Math.min(usagePercentage, 100),
+      remainingBytes: Math.max(0, jsHeapSizeLimit - bytes),
+      isHighUsage: usagePercentage > this.highUsageThreshold * 100,
+      isCriticalUsage: usagePercentage > this.criticalUsageThreshold * 100,
+      apiMethod: 'modern',
+      timestamp: Date.now()
     }
   }
 
@@ -210,7 +213,7 @@ class MemoryMonitor {
           throw new Error('measureUserAgentSpecificMemory not available')
         }
         const result = await performance.measureUserAgentSpecificMemory()
-        memory = await this.getMemoryModern()
+        memory = this.getMemoryModernFromResult(result)
         
         if (result.breakdown) {
           breakdown = result.breakdown.map(item => ({
