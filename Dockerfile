@@ -10,7 +10,8 @@ RUN apt-get update && \
     curl \
     dumb-init \
     gnupg \
-    nginx && \
+    nginx \
+    unzip && \
     apt-get clean
 
 RUN curl -fsSL https://deb.nodesource.com/setup_21.x | bash - && \
