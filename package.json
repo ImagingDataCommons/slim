@@ -34,6 +34,7 @@
     ]
   },
   "devDependencies": {
+    "ajv": "6.12.6",
     "@biomejs/biome": "^2.0.0",
     "@babel/preset-env": "^7.15.0",
     "@babel/preset-react": "^7.17.12",
@@ -58,7 +59,7 @@
     "@types/uuid": "^8.3.0",
     "antd": "^4.22.8",
     "classnames": "^2.2.6",
-    "copy-webpack-plugin": "^10.2.4",
+    "copy-webpack-plugin": "9.1.0",
     "craco-less": "^2.0.0",
     "dcmjs": "^0.35.0",
     "detect-browser": "^5.2.1",
@@ -81,7 +82,6 @@
     "react-error-boundary": "^3.1.4"
   },
   "overrides": {
-    "ajv": "6.12.6",
     "nth-check": "2.0.1",
     "wrap-ansi": "7.0.0",
     "make-dir": "3.1.0",
