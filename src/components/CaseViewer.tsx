@@ -221,8 +221,7 @@ function Viewer(props: ViewerProps): JSX.Element | null {
     seriesInstanceUID: string
   }): void => {
     console.info(`switch to series "${seriesInstanceUID}"`)
-    let urlPath =
-      `/studies/${studyInstanceUID}` + `/series/${seriesInstanceUID}`
+    let urlPath = `/studies/${studyInstanceUID}/series/${seriesInstanceUID}`
 
     if (location.pathname.includes('/projects/')) {
       urlPath = location.pathname

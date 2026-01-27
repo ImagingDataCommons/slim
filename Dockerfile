@@ -14,24 +14,22 @@ RUN apt-get update && \
     apt-get clean
 
 RUN curl -fsSL https://deb.nodesource.com/setup_21.x | bash - && \
-    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
-    echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
-    curl -sS https://deb.nodesource.com/setup_21.x | bash - && \
     apt-get update && \
     apt-get install -y --no-install-suggests --no-install-recommends \
-    nodejs \
-    yarn && \
+    nodejs && \
     apt-get clean
+
+# Install Bun (matches packageManager in package.json)
+ENV BUN_INSTALL=/usr/local
+RUN curl -fsSL https://bun.sh/install | bash -
 
 WORKDIR /usr/local/share/mghcomputationalpathology/slim
 
 # Install dependencies first and then include code for efficient caching
 COPY package.json .
-COPY yarn.lock .
+COPY bun.lock .
 
-# There are sometimes weird network errors. Increasing the network timeout
-#  seems to help (see https://github.com/yarnpkg/yarn/issues/5259)
-RUN yarn install --frozen-lockfile --network-timeout 100000
+RUN bun install --frozen-lockfile
 
 COPY craco.config.js .
 COPY tsconfig.json .
@@ -57,7 +55,7 @@ RUN addgroup --system --gid 101 nginx && \
             --shell /bin/false \
             nginx
 
-RUN NODE_OPTIONS=--max_old_space_size=8192 yarn run build && \
+RUN NODE_OPTIONS=--max_old_space_size=8192 bun run build && \
         mkdir -p /var/www/html && \
         cp -R build/* /var/www/html/
 
@@ -82,4 +80,4 @@ RUN useradd -m -s /bin/bash tester && \
 
 USER tester
 
-ENTRYPOINT ["/usr/bin/dumb-init", "--", "yarn", "test"]
+ENTRYPOINT ["/usr/bin/dumb-init", "--", "bun", "run", "test"]
