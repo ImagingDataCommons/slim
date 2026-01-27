@@ -349,7 +349,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.state.validYCoordinateRange !== nextState.validYCoordinateRange ||
       this.state.presentationStates !== nextState.presentationStates ||
       this.state.visibleOpticalPathIdentifiers !== nextState.visibleOpticalPathIdentifiers ||
-      this.state.activeOpticalPathIdentifiers !== nextState.activeOpticalPathIdentifiers
+      this.state.activeOpticalPathIdentifiers !== nextState.activeOpticalPathIdentifiers ||
+      this.state.selectedSeriesInstanceUID !== nextState.selectedSeriesInstanceUID ||
+      this.state.selectedSegmentationSeriesInstanceUID !== nextState.selectedSegmentationSeriesInstanceUID ||
+      this.state.customizedSegmentColors !== nextState.customizedSegmentColors ||
+      this.state.generatedReport !== nextState.generatedReport
     ) {
       return true
     }

@@ -96,6 +96,7 @@ class MemoryMonitor {
   private isModernAPIAvailable (): boolean {
     return typeof performance !== 'undefined' &&
            typeof performance.measureUserAgentSpecificMemory === 'function' &&
+           typeof window !== 'undefined' &&
            (window.crossOriginIsolated)
   }
 
