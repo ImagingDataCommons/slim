@@ -21,6 +21,7 @@ class MemoryFooter extends React.Component<MemoryFooterProps, MemoryFooterState>
   private lastWarningLevel: 'none' | 'high' | 'critical' = 'none'
   private lastCriticalWarningTime: number = 0
   private readonly criticalWarningThrottleMs: number = 30000
+  private didStartMonitoring: boolean = false
 
   constructor (props: MemoryFooterProps) {
     super(props)
@@ -64,13 +65,17 @@ class MemoryFooter extends React.Component<MemoryFooterProps, MemoryFooterState>
     })
 
     memoryMonitor.startMonitoring()
+    this.didStartMonitoring = true
   }
 
   componentWillUnmount (): void {
     if (this.unsubscribeMemory != null) {
       this.unsubscribeMemory()
     }
-    memoryMonitor.stopMonitoring()
+    if (this.didStartMonitoring) {
+      memoryMonitor.stopMonitoring()
+      this.didStartMonitoring = false
+    }
   }
 
   render (): React.ReactNode {

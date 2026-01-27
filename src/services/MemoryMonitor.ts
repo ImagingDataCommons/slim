@@ -84,8 +84,9 @@ type MemoryUpdateCallback = (memory: MemoryInfo) => void
  */
 class MemoryMonitor {
   private readonly updateCallbacks: Set<MemoryUpdateCallback> = new Set()
-  private monitoringInterval: ReturnType<typeof setInterval> | null = null
-  private readonly updateInterval: number = 5000 // 5 seconds
+  private monitoringTimeoutId: ReturnType<typeof setTimeout> | null = null
+  private monitoringActive: boolean = false
+  private readonly updateInterval: number = 5000
   private lastMeasurement: MemoryInfo | null = null
   private readonly highUsageThreshold = 0.80 // 80%
   private readonly criticalUsageThreshold = 0.90 // 90%
@@ -270,31 +271,44 @@ class MemoryMonitor {
   }
 
   /**
-   * Start periodic memory monitoring
+   * Start periodic memory monitoring. Serializes runs so the next tick is scheduled
+   * only after the current measure() finishes, avoiding overlapping executions.
    */
   startMonitoring (interval: number = this.updateInterval): void {
-    if (this.monitoringInterval !== null) {
+    if (this.monitoringTimeoutId != null) {
       this.stopMonitoring()
     }
+    this.monitoringActive = true
 
-    this.measure().catch(error => {
-      console.error('Error in initial memory measurement:', error)
-    })
+    const scheduleNext = (): void => {
+      if (!this.monitoringActive) return
+      this.monitoringTimeoutId = setTimeout(() => {
+        this.monitoringTimeoutId = null
+        this.measure()
+          .then(() => { scheduleNext() })
+          .catch(error => {
+            console.error('Error in periodic memory measurement:', error)
+            scheduleNext()
+          })
+      }, interval)
+    }
 
-    this.monitoringInterval = setInterval(() => {
-      this.measure().catch(error => {
-        console.error('Error in periodic memory measurement:', error)
+    this.measure()
+      .then(() => { scheduleNext() })
+      .catch(error => {
+        console.error('Error in initial memory measurement:', error)
+        scheduleNext()
       })
-    }, interval)
   }
 
   /**
    * Stop periodic memory monitoring
    */
   stopMonitoring (): void {
-    if (this.monitoringInterval !== null) {
-      clearInterval(this.monitoringInterval)
-      this.monitoringInterval = null
+    this.monitoringActive = false
+    if (this.monitoringTimeoutId != null) {
+      clearTimeout(this.monitoringTimeoutId)
+      this.monitoringTimeoutId = null
     }
   }
 
@@ -302,7 +316,7 @@ class MemoryMonitor {
    * Check if monitoring is active
    */
   isMonitoring (): boolean {
-    return this.monitoringInterval !== null
+    return this.monitoringActive
   }
 
   /**
