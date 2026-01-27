@@ -3408,8 +3408,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         return null
       }
 
+      /** When turning ON with Auto (null/undefined), use viewer default so clustering is enabled; undefined means "clustering off" in the viewer */
       const threshold = newValue
-        ? (prevState.clusteringPixelSizeThreshold ?? undefined)
+        ? (prevState.clusteringPixelSizeThreshold ?? 0.001)
         : undefined
 
       /**
