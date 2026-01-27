@@ -1,5 +1,5 @@
-import React from 'react'
 import { Col, InputNumber, Row, Slider } from 'antd'
+import type React from 'react'
 
 interface OpacitySliderProps {
   opacity: number

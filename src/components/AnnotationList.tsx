@@ -1,7 +1,7 @@
-import React from 'react'
-// skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
 import { Menu, Switch } from 'antd'
+// skipcq: JS-C1003
+import type * as dmv from 'dicom-microscopy-viewer'
+import React from 'react'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
 
 import AnnotationItem from './AnnotationItem'
@@ -24,7 +24,10 @@ interface AnnotationListProps {
  * React component representing a list of Region of Interest (ROI)
  * annotations.
  */
-class AnnotationList extends React.Component<AnnotationListProps, {}> {
+class AnnotationList extends React.Component<
+  AnnotationListProps,
+  Record<string, never>
+> {
   constructor(props: AnnotationListProps) {
     super(props)
     this.handleMenuItemSelection = this.handleMenuItemSelection.bind(this)
@@ -33,7 +36,7 @@ class AnnotationList extends React.Component<AnnotationListProps, {}> {
 
   handleVisibilityChange(
     checked: boolean,
-    event: React.MouseEvent<HTMLButtonElement>,
+    _event: React.MouseEvent<HTMLButtonElement>,
   ): void {
     if (checked) {
       this.props.rois.forEach((roi) => {
@@ -46,7 +49,7 @@ class AnnotationList extends React.Component<AnnotationListProps, {}> {
     }
   }
 
-  handleMenuItemSelection(object: any): void {
+  handleMenuItemSelection(object: { key: string }): void {
     this.props.onSelection(object.key)
   }
 

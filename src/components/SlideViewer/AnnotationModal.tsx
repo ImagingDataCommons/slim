@@ -1,5 +1,5 @@
-import React from 'react'
 import { Modal, Space } from 'antd'
+import type React from 'react'
 
 interface AnnotationModalProps {
   isVisible: boolean

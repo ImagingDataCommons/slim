@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react'
-import { FaExclamationTriangle } from 'react-icons/fa'
 import { Tooltip } from 'antd'
-import { useValidation } from '../contexts/ValidationContext'
-import { Slide } from '../data/slides'
 // skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
+import type * as dmv from 'dicom-microscopy-viewer'
+import type React from 'react'
+import { useEffect, useState } from 'react'
+import { FaExclamationTriangle } from 'react-icons/fa'
+import { useValidation } from '../contexts/ValidationContext'
+import type { Slide } from '../data/slides'
 
 interface ValidationWarningProps {
   annotationGroup?: dmv.annotation.AnnotationGroup

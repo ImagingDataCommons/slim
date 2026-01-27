@@ -1,12 +1,11 @@
-import React from 'react'
-// skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
-
-import Item from './Item'
-import { Attribute } from './Description'
+// skipcq: JS-C1003
+import type * as dmv from 'dicom-microscopy-viewer'
+import React from 'react'
 import { SpecimenPreparationStepItems } from '../data/specimens'
+import type { Attribute } from './Description'
+import Item from './Item'
 
 interface SpecimenItemProps {
   index: number
@@ -18,7 +17,10 @@ interface SpecimenItemProps {
  * React component representing a DICOM Specimen Information Entity and
  * displays specimen-related attributes of a DICOM Slide Microscopy image.
  */
-class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
+class SpecimenItem extends React.Component<
+  SpecimenItemProps,
+  Record<string, never>
+> {
   render(): React.ReactNode {
     if (this.props.metadata === undefined) {
       return null
@@ -50,11 +52,14 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
     if (structures !== undefined && structures.length > 0) {
       const modifierSequence = structures.find(
         (s) =>
-          (s as any).PrimaryAnatomicStructureModifierSequence !== undefined,
+          (s as unknown as Record<string, unknown>)
+            .PrimaryAnatomicStructureModifierSequence !== undefined,
       )
       if (modifierSequence != null) {
         const modifiers: dcmjs.sr.coding.CodedConcept[] = (
-          modifierSequence as any
+          modifierSequence as unknown as {
+            PrimaryAnatomicStructureModifierSequence: dcmjs.sr.coding.CodedConcept[]
+          }
         ).PrimaryAnatomicStructureModifierSequence
         if (modifiers.length > 0) {
           attributes.push({
@@ -72,7 +77,7 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
       specimenDescription.SpecimenPreparationSequence ?? []
 
     preparationSteps.forEach(
-      (step: dmv.metadata.SpecimenPreparation, index: number): void => {
+      (step: dmv.metadata.SpecimenPreparation, _index: number): void => {
         step.SpecimenPreparationStepContentItemSequence.forEach(
           (
             item:
@@ -81,7 +86,7 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
               | dcmjs.sr.valueTypes.UIDRefContentItem
               | dcmjs.sr.valueTypes.PNameContentItem
               | dcmjs.sr.valueTypes.DateTimeContentItem,
-            index: number,
+            _index: number,
           ) => {
             const name = new dcmjs.sr.coding.CodedConcept({
               value: item.ConceptNameCodeSequence[0].CodeValue,
@@ -156,11 +161,13 @@ class SpecimenItem extends React.Component<SpecimenItemProps, {}> {
     )
 
     if (
-      (this.props.metadata as any).AdmittingDiagnosesDescription !== undefined
+      (this.props.metadata as unknown as Record<string, unknown>)
+        .AdmittingDiagnosesDescription !== undefined
     ) {
       attributes.push({
         name: 'Admitting Diagnoses',
-        value: (this.props.metadata as any).AdmittingDiagnosesDescription,
+        value: (this.props.metadata as unknown as Record<string, unknown>)
+          .AdmittingDiagnosesDescription as string,
       })
     }
 

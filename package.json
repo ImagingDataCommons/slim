@@ -3,10 +3,11 @@
   "version": "0.45.1",
   "private": true,
   "author": "ImagingDataCommons",
-  "packageManager": "bun@1.1.38",
+  "packageManager": "bun@latest",
   "scripts": {
     "start": "rm -rf ./node_modules/.cache/default-development && ./scripts/set-git-env.sh craco start",
     "dev": "bun run start",
+    "typecheck": "tsc --noEmit",
     "build": "./scripts/set-git-env.sh craco build",
     "build:firebase": "REACT_APP_CONFIG=gcp PUBLIC_URL=/ ./scripts/set-git-env.sh craco build",
     "lint": "biome check .",
@@ -16,7 +17,8 @@
     "test": "biome check . && craco test --watchAll=false",
     "predeploy": "REACT_APP_CONFIG=demo PUBLIC_URL='https://imagingdatacommons.github.io/slim/' ./scripts/set-git-env.sh craco build",
     "deploy": "gh-pages -d build",
-    "clean": "rm -rf ./build ./node_modules"
+    "clean": "rm -rf ./build ./node_modules",
+    "prepare": "husky"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -47,7 +49,7 @@
     "@semantic-release/npm": "^12.0.0",
     "@semantic-release/release-notes-generator": "^13.0.0",
     "@testing-library/jest-dom": "^5.16.4",
-    "@testing-library/react": "^11.2.2",
+    "@testing-library/react": "^14.0.0",
     "@testing-library/user-event": "^7.1.2",
     "@types/jest": "^28.1.3",
     "@types/lodash": "^4.17.20",
@@ -76,7 +78,8 @@
     "retry": "^0.13.1",
     "semantic-release": "21.1.2",
     "sonarqube-scanner": "^4.3.0",
-    "typescript": "^4.7.4"
+    "typescript": "^4.7.4",
+    "husky": "^9.1.7"
   },
   "dependencies": {
     "react-error-boundary": "^3.1.4"

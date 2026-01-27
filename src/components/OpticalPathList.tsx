@@ -1,8 +1,8 @@
-import React from 'react'
-// skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
-import { Button as Btn, Menu, Select, Space, Tooltip } from 'antd'
 import { AppstoreAddOutlined } from '@ant-design/icons'
+import { Button as Btn, Menu, Select, Space, Tooltip } from 'antd'
+// skipcq: JS-C1003
+import type * as dmv from 'dicom-microscopy-viewer'
+import React from 'react'
 
 import OpticalPathItem from './OpticalPathItem'
 
@@ -135,7 +135,7 @@ class OpticalPathList extends React.Component<
               />,
             )
           } else {
-            let title
+            let title: string
             if (description !== '') {
               title = `${id} - ${description}`
             } else {
@@ -151,7 +151,7 @@ class OpticalPathList extends React.Component<
       })
     })
 
-    let opticalPathSelector
+    let opticalPathSelector: React.ReactNode
     if (isSelectable) {
       opticalPathSelector = (
         <Space align="center" size={20} style={{ padding: '14px' }}>

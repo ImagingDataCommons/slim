@@ -1,6 +1,6 @@
-import React from 'react'
 // skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
+import type * as dmv from 'dicom-microscopy-viewer'
+import React from 'react'
 
 import Description from './Description'
 
@@ -11,7 +11,7 @@ interface EquipmentProps {
 /**
  * React component representing a list of DICOM Equipment Entities.
  */
-class Equipment extends React.Component<EquipmentProps, {}> {
+class Equipment extends React.Component<EquipmentProps, Record<string, never>> {
   render(): React.ReactNode {
     if (this.props.metadata === undefined) {
       return null

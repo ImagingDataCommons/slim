@@ -28,7 +28,7 @@ export default class PubSub {
       throw new Error('The provided callback must be a function')
     }
 
-    if (!this[_subscriptions].hasOwnProperty(eventName)) {
+    if (!Object.hasOwn(this[_subscriptions], eventName)) {
       this[_subscriptions][eventName] = {}
     }
 

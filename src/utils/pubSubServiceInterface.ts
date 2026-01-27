@@ -14,18 +14,20 @@ const pubSubInterface = {
 
 export default pubSubInterface
 
+type EventCallback = (data: unknown) => void
+
 /**
  * Subscribe to updates.
  *
  * @param {string} eventName The name of the event
- * @param {Function} callback Events callback
+ * @param {EventCallback} callback Events callback
  * @return {Object} Observable object with actions
  */
 function subscribe(
   this: PubSubService,
   eventName: string,
-  callback: Function,
-): { unsubscribe: () => any } {
+  callback: EventCallback,
+): { unsubscribe: () => void } {
   if (this._isValidEvent(eventName)) {
     const listenerId = generateUUID()
     const subscription = { id: listenerId, callback }
@@ -83,20 +85,20 @@ function _isValidEvent(this: PubSubService, eventName: string): boolean {
  * Broadcasts changes.
  *
  * @param {string} eventName - The event name
- * @param {func} callbackProps - Properties to pass callback
+ * @param {unknown} callbackProps - Properties to pass to callbacks
  * @return void
  */
 function _broadcastEvent(
   this: PubSubService,
   eventName: string,
-  callbackProps: any,
+  callbackProps: unknown,
 ): void {
   const hasListeners = Object.keys(this.listeners).length > 0
   const hasCallbacks = Array.isArray(this.listeners[eventName])
 
   if (hasListeners && hasCallbacks) {
     this.listeners[eventName].forEach(
-      (listener: { id: string; callback: Function }) => {
+      (listener: { id: string; callback: EventCallback }) => {
         listener.callback(callbackProps)
       },
     )
@@ -105,17 +107,17 @@ function _broadcastEvent(
 
 /** Export a PubSubService class to be used instead of the individual items */
 export class PubSubService {
-  EVENTS: any
+  EVENTS: Record<string, string>
   subscribe: (
     eventName: string,
-    callback: Function,
-  ) => { unsubscribe: () => any }
+    callback: EventCallback,
+  ) => { unsubscribe: () => void }
 
-  _broadcastEvent: (eventName: string, callbackProps: any) => void
+  _broadcastEvent: (eventName: string, callbackProps: unknown) => void
   _unsubscribe: (eventName: string, listenerId: string) => void
   _isValidEvent: (eventName: string) => boolean
-  listeners: { [key: string]: Array<{ id: string; callback: Function }> }
-  unsubscriptions: any[]
+  listeners: { [key: string]: Array<{ id: string; callback: EventCallback }> }
+  unsubscriptions: Array<() => void>
   constructor(EVENTS: Record<string, string>) {
     this.EVENTS = EVENTS
     this.subscribe = subscribe
@@ -127,7 +129,9 @@ export class PubSubService {
   }
 
   reset(): void {
-    this.unsubscriptions.forEach((unsub) => unsub())
+    this.unsubscriptions.forEach((unsub) => {
+      unsub()
+    })
     this.unsubscriptions = []
   }
 
@@ -138,8 +142,8 @@ export class PubSubService {
    * @param props - to include in the event
    */
   protected createConsumableEvent(
-    props: Record<string, any>,
-  ): Record<string, any> {
+    props: Record<string, unknown>,
+  ): Record<string, unknown> {
     return {
       ...props,
       isConsumed: false,

@@ -1,6 +1,6 @@
-import React from 'react'
 import { Button as Btn, Divider, Tooltip } from 'antd'
-import { IconType } from 'react-icons'
+import React from 'react'
+import type { IconType } from 'react-icons'
 
 interface ButtonProps {
   icon:
@@ -16,7 +16,7 @@ interface ButtonProps {
 /**
  * React component for a button.
  */
-class Button extends React.Component<ButtonProps, {}> {
+class Button extends React.Component<ButtonProps, Record<string, never>> {
   constructor(props: ButtonProps) {
     super(props)
     this.handleClick = this.handleClick.bind(this)
@@ -34,7 +34,7 @@ class Button extends React.Component<ButtonProps, {}> {
       return null
     }
 
-    let text
+    let text: React.ReactNode
     if (this.props.label != null) {
       text = (
         <>
@@ -44,7 +44,7 @@ class Button extends React.Component<ButtonProps, {}> {
       )
     }
 
-    let button
+    let button: React.ReactNode
     if (this.props.isSelected ?? false) {
       button = (
         <Btn

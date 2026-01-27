@@ -1,6 +1,6 @@
+import { Layout, Space, Tag, Typography } from 'antd'
 import React from 'react'
-import { Layout, Typography, Space, Tag } from 'antd'
-import { memoryMonitor, type MemoryInfo } from '../services/MemoryMonitor'
+import { type MemoryInfo, memoryMonitor } from '../services/MemoryMonitor'
 import NotificationMiddleware, {
   NotificationMiddlewareEvents,
 } from '../services/NotificationMiddleware'

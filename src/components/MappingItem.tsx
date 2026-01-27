@@ -1,8 +1,8 @@
-import React from 'react'
-// skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
-import { Button, Menu, Popover, Space, Switch } from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
+import { Button, Menu, Popover, Space, Switch } from 'antd'
+// skipcq: JS-C1003
+import type * as dmv from 'dicom-microscopy-viewer'
+import React from 'react'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
 
 import Description from './Description'
@@ -56,7 +56,7 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
 
   handleVisibilityChange = (
     checked: boolean,
-    event: React.MouseEvent<HTMLButtonElement>,
+    _event: React.MouseEvent<HTMLButtonElement>,
   ): void => {
     this.props.onVisibilityChange({
       mappingUID: this.props.mapping.uid,
@@ -73,7 +73,7 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
           opacity,
         },
       })
-      this.setState((state) => ({
+      this.setState((_state) => ({
         currentStyle: {
           opacity,
         },

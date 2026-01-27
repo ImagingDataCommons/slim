@@ -1,12 +1,11 @@
-import React from 'react'
 import { Menu, Switch } from 'antd'
 // skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
+import type * as dcmjs from 'dcmjs'
 // skipcq: JS-C1003
-import * as dcmjs from 'dcmjs'
-
-import AnnotationGroupItem from './AnnotationGroupItem'
+import type * as dmv from 'dicom-microscopy-viewer'
+import React from 'react'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
+import AnnotationGroupItem from './AnnotationGroupItem'
 
 interface AnnotationGroupListProps {
   annotationGroups: dmv.annotation.AnnotationGroup[]
@@ -68,7 +67,7 @@ class AnnotationGroupList extends React.Component<
   }
 
   render(): React.ReactNode {
-    const items = this.props.annotationGroups.map((annotationGroup, index) => {
+    const items = this.props.annotationGroups.map((annotationGroup, _index) => {
       const uid = annotationGroup.uid
       return (
         <AnnotationGroupItem

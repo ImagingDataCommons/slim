@@ -1,5 +1,6 @@
-import React, { useCallback } from 'react'
 import { Col, InputNumber, Row, Slider } from 'antd'
+import type React from 'react'
+import { useCallback } from 'react'
 
 interface ColorSliderProps {
   color: number[]

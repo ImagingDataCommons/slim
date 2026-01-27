@@ -1,4 +1,9 @@
-import React from 'react'
+import {
+  DeleteOutlined,
+  EyeInvisibleOutlined,
+  EyeOutlined,
+  SettingOutlined,
+} from '@ant-design/icons'
 import {
   Badge,
   Button,
@@ -13,25 +18,19 @@ import {
   Switch,
   Tooltip,
 } from 'antd'
-import {
-  DeleteOutlined,
-  EyeOutlined,
-  EyeInvisibleOutlined,
-  SettingOutlined,
-} from '@ant-design/icons'
-import Description from './Description'
-import ColorSlider from './ColorSlider'
-import OpacitySlider from './OpacitySlider'
-// skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
-
+// skipcq: JS-C1003
+import type * as dmv from 'dicom-microscopy-viewer'
+import React from 'react'
 import { SpecimenPreparationStepItems } from '../data/specimens'
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../services/NotificationMiddleware'
 import { CustomError, errorTypes } from '../utils/CustomError'
+import ColorSlider from './ColorSlider'
+import Description from './Description'
+import OpacitySlider from './OpacitySlider'
 
 interface OpticalPathItemProps {
   opticalPath: dmv.opticalPath.OpticalPath
@@ -100,7 +99,7 @@ class OpticalPathItem extends React.Component<
 
   componentDidUpdate(
     previousProps: OpticalPathItemProps,
-    previousState: OpticalPathItemState,
+    _previousState: OpticalPathItemState,
   ): void {
     if (this.props.defaultStyle !== previousProps.defaultStyle) {
       this.setState({
@@ -111,7 +110,7 @@ class OpticalPathItem extends React.Component<
 
   handleVisibilityChange = (
     checked: boolean,
-    event: React.MouseEvent<HTMLButtonElement>,
+    _event: React.MouseEvent<HTMLButtonElement>,
   ): void => {
     const identifier = this.props.opticalPath.identifier
     this.setState({
@@ -162,7 +161,7 @@ class OpticalPathItem extends React.Component<
       const r = values[0]
       const g = values[1]
       const b = values[2]
-      return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)
+      return `#${(0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
     }
 
     if (this.props.defaultStyle.paletteColorLookupTable != null) {
@@ -291,7 +290,7 @@ class OpticalPathItem extends React.Component<
         const specimenPreparationSteps: dmv.metadata.SpecimenPreparation[] =
           description.SpecimenPreparationSequence ?? []
         specimenPreparationSteps.forEach(
-          (step: dmv.metadata.SpecimenPreparation, index: number): void => {
+          (step: dmv.metadata.SpecimenPreparation, _index: number): void => {
             step.SpecimenPreparationStepContentItemSequence.forEach(
               (
                 item:
@@ -300,7 +299,7 @@ class OpticalPathItem extends React.Component<
                   | dcmjs.sr.valueTypes.UIDRefContentItem
                   | dcmjs.sr.valueTypes.PNameContentItem
                   | dcmjs.sr.valueTypes.DateTimeContentItem,
-                index: number,
+                _index: number,
               ) => {
                 const name = new dcmjs.sr.coding.CodedConcept({
                   value: item.ConceptNameCodeSequence[0].CodeValue,
@@ -346,22 +345,25 @@ class OpticalPathItem extends React.Component<
           },
         )
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.DCMJS,
-        new CustomError(errorTypes.ENCODINGANDDECODING, error.message),
+        new CustomError(
+          errorTypes.ENCODINGANDDECODING,
+          error instanceof Error ? error.message : String(error),
+        ),
       )
     }
 
-    const maxValue = Math.pow(2, this.props.metadata[0].BitsAllocated) - 1
+    const maxValue = 2 ** this.props.metadata[0].BitsAllocated - 1
 
     const title =
       description != null ? `${identifier}: ${description}` : identifier
-    let settings
-    let item
+    let settings: React.ReactNode
+    let item: React.ReactNode
     if (this.props.opticalPath.isMonochromatic) {
       // monochrome images that can be pseudo-colored
-      let colorSettings
+      let colorSettings: React.ReactNode
       if (this.state.currentStyle.color != null) {
         colorSettings = (
           <>
@@ -382,7 +384,7 @@ class OpticalPathItem extends React.Component<
         )
       }
 
-      let windowSettings
+      let windowSettings: React.ReactNode
       if (this.state.currentStyle.limitValues != null) {
         windowSettings = (
           <>

@@ -133,9 +133,7 @@ const HoveredRoiTooltip = ({
                           {otherAttributes.map(
                             (attr: { name: string; value: string }) => (
                               <div
-                                key={
-                                  String(attr.name) + '-' + String(roi.roiUid)
-                                }
+                                key={`${String(attr.name)}-${String(roi.roiUid)}`}
                               >
                                 {attr.name}:{' '}
                                 <span style={{ fontWeight: 500 }}>

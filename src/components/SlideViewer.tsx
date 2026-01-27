@@ -1,23 +1,29 @@
-import React from 'react'
-import debounce from 'lodash/debounce'
-import type { DebouncedFunc } from 'lodash'
+import { UndoOutlined } from '@ant-design/icons'
 import {
-  Layout,
-  Space,
   Checkbox,
+  Col,
   Descriptions,
   Divider,
-  Select,
-  Tooltip,
-  message,
-  Menu,
-  Row,
   InputNumber,
-  Col,
+  Layout,
+  Menu,
+  message,
+  Row,
+  Select,
+  Space,
   Switch,
+  Tooltip,
 } from 'antd'
-import { CheckboxChangeEvent } from 'antd/es/checkbox'
-import { UndoOutlined } from '@ant-design/icons'
+import type { CheckboxChangeEvent } from 'antd/es/checkbox'
+// skipcq: JS-C1003
+import * as dcmjs from 'dcmjs'
+// skipcq: JS-C1003
+import * as dmv from 'dicom-microscopy-viewer'
+// skipcq: JS-C1003
+import type * as dwc from 'dicomweb-client'
+import type { DebouncedFunc } from 'lodash'
+import debounce from 'lodash/debounce'
+import React from 'react'
 import {
   FaCrosshairs,
   FaDrawPolygon,
@@ -25,74 +31,68 @@ import {
   FaEyeSlash,
   FaHandPaper,
   FaHandPointer,
-  FaTrash,
   FaSave,
+  FaTrash,
 } from 'react-icons/fa'
-// skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
-// skipcq: JS-C1003
-import * as dwc from 'dicomweb-client'
-// skipcq: JS-C1003
-import * as dcmjs from 'dcmjs'
-import { withRouter } from '../utils/router'
+import { runValidations } from '../contexts/ValidationContext'
 import { StorageClasses } from '../data/uids'
-import { CustomError, errorTypes } from '../utils/CustomError'
-import { findContentItemsByName } from '../utils/sr'
+import DicomMetadataStore from '../services/DICOMMetadataStore'
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../services/NotificationMiddleware'
 import { adaptRoiToAnnotation } from '../services/RoiToAnnotationAdapter'
-import {
-  AnnotationSettings,
+import type {
   AnnotationCategoryAndType,
+  AnnotationSettings,
 } from '../types/annotations'
+import { CustomError, errorTypes } from '../utils/CustomError'
+import generateReport from '../utils/generateReport'
+import { logger } from '../utils/logger'
+import { withRouter } from '../utils/router'
+import { getSegmentationType, getSegmentColor } from '../utils/segmentColors'
+import { findContentItemsByName } from '../utils/sr'
+import AnnotationGroupList from './AnnotationGroupList'
+import AnnotationList from './AnnotationList'
+import Btn from './Button'
+import Equipment from './Equipment'
+import HoveredRoiTooltip from './HoveredRoiTooltip'
+import MappingList from './MappingList'
+import OpticalPathList from './OpticalPathList'
+import Report, { MeasurementReport } from './Report'
+import SegmentList from './SegmentList'
 import {
+  DEFAULT_ANNOTATION_COLOR_PALETTE,
+  DEFAULT_ANNOTATION_OPACITY,
+  DEFAULT_ANNOTATION_STROKE_COLOR,
+  DEFAULT_ROI_FILL_COLOR,
+  DEFAULT_ROI_RADIUS,
+  DEFAULT_ROI_STROKE_COLOR,
+  DEFAULT_ROI_STROKE_WIDTH,
+} from './SlideViewer/constants'
+import SlideViewerContent from './SlideViewer/SlideViewerContent'
+import SlideViewerModals from './SlideViewer/SlideViewerModals'
+import SlideViewerSidebar from './SlideViewer/SlideViewerSidebar'
+import type {
+  Evaluation,
+  EvaluationOptions,
+  Measurement,
   SlideViewerProps,
   SlideViewerState,
   StyleOptions,
-  EvaluationOptions,
-  Evaluation,
-  Measurement,
 } from './SlideViewer/types'
-import SlideViewerModals from './SlideViewer/SlideViewerModals'
-import SlideViewerSidebar from './SlideViewer/SlideViewerSidebar'
-import SlideViewerContent from './SlideViewer/SlideViewerContent'
 import {
-  buildKey,
-  getRoiKey,
   areROIsEqual,
+  buildKey,
   formatRoiStyle,
+  getRoiKey,
 } from './SlideViewer/utils/roiUtils'
-import { getSegmentColor, getSegmentationType } from '../utils/segmentColors'
 import {
   constructViewers,
-  implementsTID1500,
-  describesSpecimenSubject,
   containsROIAnnotations,
+  describesSpecimenSubject,
+  implementsTID1500,
 } from './SlideViewer/utils/viewerUtils'
-import {
-  DEFAULT_ROI_STROKE_COLOR,
-  DEFAULT_ROI_FILL_COLOR,
-  DEFAULT_ROI_STROKE_WIDTH,
-  DEFAULT_ROI_RADIUS,
-  DEFAULT_ANNOTATION_OPACITY,
-  DEFAULT_ANNOTATION_STROKE_COLOR,
-  DEFAULT_ANNOTATION_COLOR_PALETTE,
-} from './SlideViewer/constants'
-import AnnotationList from './AnnotationList'
-import AnnotationGroupList from './AnnotationGroupList'
-import Report, { MeasurementReport } from './Report'
-import HoveredRoiTooltip from './HoveredRoiTooltip'
-import generateReport from '../utils/generateReport'
-import { runValidations } from '../contexts/ValidationContext'
-import DicomMetadataStore from '../services/DICOMMetadataStore'
 import SpecimenList from './SpecimenList'
-import Equipment from './Equipment'
-import OpticalPathList from './OpticalPathList'
-import SegmentList from './SegmentList'
-import MappingList from './MappingList'
-import Btn from './Button'
-import { logger } from '../utils/logger'
 
 /**
  * React component for interactive viewing of an individual digital slide,
@@ -327,7 +327,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   componentDidUpdate(
     previousProps: SlideViewerProps,
-    previousState: SlideViewerState,
+    _previousState: SlideViewerState,
   ): void {
     /** Fetch data and update the viewports if the route has changed (
      * i.e., if another series has been selected) or if the client has changed.
@@ -558,7 +558,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             imageItem.ReferencedSOPInstanceUID,
           ) as boolean
           if (isReferenced) {
-            let paletteColorLUT
+            let paletteColorLUT: dmv.color.PaletteColorLookupTable | undefined
             if (
               blendingItem.PaletteColorLookupTableSequence !== null &&
               blendingItem.PaletteColorLookupTableSequence !== undefined
@@ -619,7 +619,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               })
             }
 
-            let limitValues
+            let limitValues: [number, number] | undefined
             if (
               blendingItem.SoftcopyVOILUTSequence !== null &&
               blendingItem.SoftcopyVOILUTSequence !== undefined
@@ -665,7 +665,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       },
       { replace: true },
     )
-    this.setState((state) => ({
+    this.setState((_state) => ({
       activeOpticalPathIdentifiers: selectedOpticalPathIdentifiers,
       visibleOpticalPathIdentifiers: selectedOpticalPathIdentifiers,
       selectedPresentationStateUID: presentationState.SOPInstanceUID,
@@ -1118,7 +1118,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             resolve()
             return
           }
-          matchedSeries.forEach((s, i) => {
+          matchedSeries.forEach((s, _i) => {
             const { dataset } = dmv.metadata.formatMetadata(s)
             const series = dataset as dmv.metadata.Series
             client
@@ -1346,14 +1346,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       })
   }
 
-  onRoiModified = (event: CustomEventInit): void => {
+  onRoiModified = (_event: CustomEventInit): void => {
     // Update state to trigger rendering
     this.setState((state) => ({
       visibleRoiUIDs: new Set(state.visibleRoiUIDs),
     }))
   }
 
-  onWindowResize = (event: Event): void => {
+  onWindowResize = (_event: Event): void => {
     console.info('resize viewports')
     this.volumeViewer.resize()
     if (this.labelViewer !== null && this.labelViewer !== undefined) {
@@ -1542,7 +1542,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               // The last part should be the annotation index
               const lastPart = uidParts[uidParts.length - 1]
               const parsedIndex = parseInt(lastPart, 10)
-              if (!isNaN(parsedIndex)) {
+              if (!Number.isNaN(parsedIndex)) {
                 annotationIndex = parsedIndex
               }
             }
@@ -1893,11 +1893,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
   }
 
-  onLoadingStarted = (event: CustomEventInit): void => {
+  onLoadingStarted = (_event: CustomEventInit): void => {
     this.setState({ isLoading: true })
   }
 
-  onLoadingEnded = (event: CustomEventInit): void => {
+  onLoadingEnded = (_event: CustomEventInit): void => {
     this.setState({ isLoading: false })
   }
 
@@ -1917,7 +1917,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
   }
 
-  onFrameLoadingError = (event: CustomEventInit): void => {
+  onFrameLoadingError = (_event: CustomEventInit): void => {
     console.error('Failed to load frame')
   }
 
@@ -1927,7 +1927,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     console.error(message)
     NotificationMiddleware.onError(
       NotificationMiddlewareContext.SLIM,
-      new CustomError(errorTypes.VISUALIZATION, message) as any,
+      new CustomError(errorTypes.VISUALIZATION, message),
     )
   }
 
@@ -2797,7 +2797,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
 
     /** If color is provided, create a palette color lookup table */
-    let paletteColorLookupTable
+    let paletteColorLookupTable: dmv.color.PaletteColorLookupTable | undefined
     if (styleOptions.color !== undefined) {
       paletteColorLookupTable =
         SlideViewer.createSegmentPaletteColorLookupTable(styleOptions.color)
@@ -3017,7 +3017,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     visibleOpticalPathIdentifiers.forEach((identifier) => {
       this.volumeViewer.showOpticalPath(identifier)
     })
-    this.setState((state) => ({
+    this.setState((_state) => ({
       activeOpticalPathIdentifiers: new Set(visibleOpticalPathIdentifiers),
       visibleOpticalPathIdentifiers: new Set(visibleOpticalPathIdentifiers),
     }))
@@ -3046,7 +3046,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       console.info(
         `select Presentation State instance "${value ?? 'undefined'}"`,
       )
-      let presentationState
+      let presentationState:
+        | (typeof this.state.presentationStates)[number]
+        | undefined
       this.state.presentationStates.forEach((instance) => {
         if (instance.SOPInstanceUID === value) {
           presentationState = instance
@@ -3373,7 +3375,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   ): void => {
     const checked = event.target.checked
     this.setState({ isSegmentationInterpolationEnabled: checked })
-    ;(this.volumeViewer as any).toggleSegmentationInterpolation()
+    ;(
+      this.volumeViewer as { toggleSegmentationInterpolation(): void }
+    ).toggleSegmentationInterpolation()
   }
 
   /**
@@ -3385,7 +3389,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   ): void => {
     const checked = event.target.checked
     this.setState({ isParametricMapInterpolationEnabled: checked })
-    ;(this.volumeViewer as any).toggleParametricMapInterpolation()
+    ;(
+      this.volumeViewer as { toggleParametricMapInterpolation(): void }
+    ).toggleParametricMapInterpolation()
   }
 
   /**
@@ -3413,10 +3419,18 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       if (
         this.volumeViewer !== null &&
         this.volumeViewer !== undefined &&
-        typeof (this.volumeViewer as any).setAnnotationOptions === 'function'
+        typeof (
+          this.volumeViewer as unknown as {
+            setAnnotationOptions?(opts: object): void
+          }
+        ).setAnnotationOptions === 'function'
       ) {
         try {
-          ;(this.volumeViewer as any).setAnnotationOptions({
+          ;(
+            this.volumeViewer as unknown as {
+              setAnnotationOptions(opts: object): void
+            }
+          ).setAnnotationOptions({
             clusteringPixelSizeThreshold: threshold,
           })
         } catch (error) {
@@ -3434,7 +3448,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   handleClusteringPixelSizeThresholdChange = (value: number | null): void => {
     this.setState({ clusteringPixelSizeThreshold: value })
     if (this.state.isClusteringEnabled) {
-      ;(this.volumeViewer as any).setAnnotationOptions?.({
+      ;(
+        this.volumeViewer as unknown as {
+          setAnnotationOptions?(opts: object): void
+        }
+      ).setAnnotationOptions?.({
         clusteringPixelSizeThreshold: value ?? undefined,
       })
     }
@@ -3807,7 +3825,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         [seriesUID: string]: dmv.segment.Segment[]
       } = {}
 
-      segments.forEach((segment, index) => {
+      segments.forEach((segment, _index) => {
         segmentMetadata[segment.uid] = this.volumeViewer.getSegmentMetadata(
           segment.uid,
         )
@@ -3821,8 +3839,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         segmentsBySeries[seriesUID].push(segment)
 
         if (
-          getSegmentationType(segmentMetadata[segment.uid][0] as any) !==
-          'BINARY'
+          getSegmentationType(
+            segmentMetadata[segment.uid][0] as unknown as Record<
+              string,
+              unknown
+            >,
+          ) !== 'BINARY'
         ) {
           const defaultStyle = this.volumeViewer.getSegmentStyle(segment.uid)
           defaultSegmentStyles[segment.uid] = {
@@ -4195,11 +4217,19 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (this.props.enableAnnotationTools) {
       toolbar = (
         <Row justify="start">
-          {annotationTools.map((item, i) => {
-            return <React.Fragment key={i}>{item}</React.Fragment>
+          {annotationTools.map((item) => {
+            return (
+              <React.Fragment key={(item as React.ReactElement).key}>
+                {item}
+              </React.Fragment>
+            )
           })}
-          {controlTools.map((item, i) => {
-            return <React.Fragment key={i}>{item}</React.Fragment>
+          {controlTools.map((item) => {
+            return (
+              <React.Fragment key={(item as React.ReactElement).key}>
+                {item}
+              </React.Fragment>
+            )
           })}
         </Row>
       )
@@ -4306,7 +4336,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         attributes: Array<{ name: string; value: string; unit?: string }>,
       ): React.ReactNode[] => {
         return attributes.map((item) => {
-          let value
+          let value: string
           if (item.unit !== null && item.unit !== undefined) {
             value = `${item.value} [${item.unit}]`
           } else {

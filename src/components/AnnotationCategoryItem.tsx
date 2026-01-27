@@ -1,8 +1,9 @@
-import React from 'react'
-import { Menu, Space, Checkbox, Tooltip, Popover, Button } from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
-import { Category, Type } from './AnnotationCategoryList'
+import { Button, Checkbox, Menu, Popover, Space, Tooltip } from 'antd'
+import type { CheckboxChangeEvent } from 'antd/es/checkbox'
+import type { Category, Type } from './AnnotationCategoryList'
 import ColorSettingsMenu from './ColorSettingsMenu'
+import type { StyleOptions } from './SlideViewer/types'
 
 const AnnotationCategoryItem = ({
   category,
@@ -13,8 +14,8 @@ const AnnotationCategoryItem = ({
   ...props
 }: {
   category: Category
-  onChange: Function
-  onStyleChange: Function
+  onChange: (arg: { roiUID: string; isVisible: boolean }) => void
+  onStyleChange: (arg: { uid: string; styleOptions: StyleOptions }) => void
   defaultAnnotationStyles: {
     [annotationUID: string]: {
       opacity: number
@@ -26,7 +27,7 @@ const AnnotationCategoryItem = ({
 }): JSX.Element => {
   const { types } = category
 
-  const onCheckCategoryChange = (e: any): void => {
+  const onCheckCategoryChange = (e: CheckboxChangeEvent): void => {
     const isVisible = e.target.checked
     types.forEach((type: Type) => {
       handleChangeCheckedType({ type, isVisible })
@@ -78,9 +79,10 @@ const AnnotationCategoryItem = ({
                   <ColorSettingsMenu
                     annotationGroupsUIDs={types.reduce(
                       (acc: string[], type) => {
-                        return [...acc, ...type.uids]
+                        acc.push(...type.uids)
+                        return acc
                       },
-                      [],
+                      [] as string[],
                     )}
                     onStyleChange={onStyleChange}
                     defaultStyle={defaultAnnotationStyles[types[0].uids[0]]}
@@ -123,7 +125,7 @@ const AnnotationCategoryItem = ({
                 <Checkbox
                   indeterminate={indeterminateType}
                   checked={isChecked}
-                  onChange={(e: any) =>
+                  onChange={(e: CheckboxChangeEvent) =>
                     handleChangeCheckedType({
                       type,
                       isVisible: e.target.checked,

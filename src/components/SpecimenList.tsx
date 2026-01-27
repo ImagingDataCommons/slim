@@ -1,7 +1,7 @@
-import React from 'react'
-// skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
 import { List } from 'antd'
+// skipcq: JS-C1003
+import type * as dmv from 'dicom-microscopy-viewer'
+import React from 'react'
 
 import SpecimenItem from './SpecimenItem'
 
@@ -13,7 +13,10 @@ interface SpecimenListProps {
 /**
  * React component representing a list of DICOM Specimen Information Entities.
  */
-class SpecimenList extends React.Component<SpecimenListProps, {}> {
+class SpecimenList extends React.Component<
+  SpecimenListProps,
+  Record<string, never>
+> {
   render(): React.ReactNode {
     if (this.props.metadata === undefined) {
       return null

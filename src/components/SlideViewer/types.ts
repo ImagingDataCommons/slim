@@ -1,11 +1,12 @@
 // skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
+
 // skipcq: JS-C1003
-import * as dcmjs from 'dcmjs'
-import { RouteComponentProps } from '../../utils/router'
-import { Slide } from '../../data/slides'
-import DicomWebManager from '../../DicomWebManager'
-import { AnnotationSettings } from '../../types/annotations'
+import type * as dcmjs from 'dcmjs'
+import type * as dmv from 'dicom-microscopy-viewer'
+import type DicomWebManager from '../../DicomWebManager'
+import type { Slide } from '../../data/slides'
+import type { AnnotationSettings } from '../../types/annotations'
+import type { RouteComponentProps } from '../../utils/router'
 
 /**
  * Style options for ROI annotations

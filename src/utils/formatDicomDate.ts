@@ -15,19 +15,19 @@ export const formatDicomDate = (dateStr: string): string => {
   const [, year, month, day, hour, minute, second] = match
 
   // Validate month and day
-  const monthNum = parseInt(month)
-  const dayNum = parseInt(day)
+  const monthNum = parseInt(month, 10)
+  const dayNum = parseInt(day, 10)
   if (monthNum < 1 || monthNum > 12 || dayNum < 1 || dayNum > 31) {
     return dateStr
   }
 
   const date = new Date(
-    parseInt(year),
+    parseInt(year, 10),
     monthNum - 1, // months are 0-based
     dayNum,
-    parseInt(hour),
-    parseInt(minute),
-    parseInt(second),
+    parseInt(hour, 10),
+    parseInt(minute, 10),
+    parseInt(second, 10),
   )
 
   // Check if the date is invalid or if the month/day combination is invalid

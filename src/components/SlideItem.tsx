@@ -1,18 +1,18 @@
-import React from 'react'
-import { FaSpinner } from 'react-icons/fa'
+import { Menu } from 'antd'
 // skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
-import { Menu } from 'antd'
+import React from 'react'
+import { FaSpinner } from 'react-icons/fa'
 
-import DicomWebManager from '../DicomWebManager'
-import Description from './Description'
-import ValidationWarning from './ValidationWarning'
-import { Slide } from '../data/slides'
+import type DicomWebManager from '../DicomWebManager'
+import type { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../services/NotificationMiddleware'
-import { CustomError } from '../utils/CustomError'
+import type { CustomError } from '../utils/CustomError'
+import Description from './Description'
+import ValidationWarning from './ValidationWarning'
 
 interface SlideItemProps {
   clients: { [key: string]: DicomWebManager }

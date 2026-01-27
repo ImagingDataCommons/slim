@@ -1,4 +1,5 @@
-import React, { useCallback } from 'react'
+import { SettingOutlined } from '@ant-design/icons'
+import type { SelectProps } from 'antd'
 import {
   Badge,
   Button,
@@ -13,19 +14,17 @@ import {
   Space,
   Switch,
 } from 'antd'
-import type { SelectProps } from 'antd'
-import { SettingOutlined } from '@ant-design/icons'
-import { FaEye, FaEyeSlash } from 'react-icons/fa'
-// skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
-
-import Description from './Description'
-import ValidationWarning from './ValidationWarning'
-import ColorSlider from './ColorSlider'
-import OpacitySlider from './OpacitySlider'
+// skipcq: JS-C1003
+import type * as dmv from 'dicom-microscopy-viewer'
+import React, { useCallback } from 'react'
+import { FaEye, FaEyeSlash } from 'react-icons/fa'
 import { rgbToHex } from '../utils/segmentColors'
+import ColorSlider from './ColorSlider'
+import Description from './Description'
+import OpacitySlider from './OpacitySlider'
+import ValidationWarning from './ValidationWarning'
 
 // Helper function components
 function AnnotationGroupControls({
@@ -103,12 +102,19 @@ function AnnotationGroupBadgeDescription({
   )
 
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
       onKeyDown={handleKeyDown}
-      tabIndex={0}
-      role="button"
       aria-label={`Annotation group ${label}`}
+      style={{
+        background: 'none',
+        border: 'none',
+        padding: 0,
+        cursor: 'pointer',
+        textAlign: 'left',
+        width: '100%',
+      }}
     >
       <Badge
         offset={[-20, 20]}
@@ -132,7 +138,7 @@ function AnnotationGroupBadgeDescription({
           hasLongValues
         />
       </Badge>
-    </div>
+    </button>
   )
 }
 
@@ -198,7 +204,7 @@ class AnnotationGroupItem extends React.Component<
 
   handleVisibilityChange = (
     checked: boolean,
-    event: React.MouseEvent<HTMLButtonElement>,
+    _event: React.MouseEvent<HTMLButtonElement>,
   ): void => {
     this.props.onVisibilityChange({
       annotationGroupUID: this.props.annotationGroup.uid,
@@ -244,7 +250,7 @@ class AnnotationGroupItem extends React.Component<
       const r = values[0]
       const g = values[1]
       const b = values[2]
-      return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)
+      return `#${(0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
     }
 
     if (
@@ -454,7 +460,7 @@ class AnnotationGroupItem extends React.Component<
       </Select.Option>,
     )
 
-    let colorSettings
+    let colorSettings: React.ReactNode
     if (
       this.state.currentStyle.color !== null &&
       this.state.currentStyle.color !== undefined &&
@@ -472,8 +478,8 @@ class AnnotationGroupItem extends React.Component<
       )
     }
 
-    let windowSettings
-    let explorationSettings
+    let windowSettings: React.ReactNode
+    let explorationSettings: React.ReactNode
     if (measurementsSequence.length > 0) {
       if (
         this.state.currentStyle.limitValues !== null &&

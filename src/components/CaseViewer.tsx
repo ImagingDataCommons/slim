@@ -1,22 +1,21 @@
-import { Routes, Route, useLocation, useParams } from 'react-router-dom'
 import { Layout, Menu } from 'antd'
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
 import { useEffect, useState } from 'react'
+import { Route, Routes, useLocation, useParams } from 'react-router-dom'
 
-import { AnnotationSettings } from '../AppConfig'
+import type { AnnotationSettings } from '../AppConfig'
+import type { User } from '../auth'
+import type DicomWebManager from '../DicomWebManager'
+import type { Slide } from '../data/slides'
+import { StorageClasses } from '../data/uids'
+import { useSlides } from '../hooks/useSlides'
+import { type RouteComponentProps, withRouter } from '../utils/router'
 import ClinicalTrial from './ClinicalTrial'
-import DicomWebManager from '../DicomWebManager'
 import Patient from './Patient'
-import Study from './Study'
 import SlideList from './SlideList'
 import SlideViewer from './SlideViewer'
-
-import { User } from '../auth'
-import { Slide } from '../data/slides'
-import { RouteComponentProps, withRouter } from '../utils/router'
-import { useSlides } from '../hooks/useSlides'
-import { StorageClasses } from '../data/uids'
+import Study from './Study'
 
 const { naturalizeDataset } = dcmjs.data.DicomMetaDictionary
 
@@ -205,10 +204,7 @@ interface ViewerProps extends RouteComponentProps {
   annotations: AnnotationSettings[]
   enableAnnotationTools: boolean
   preload: boolean
-  user?: {
-    name: string
-    email: string
-  }
+  user?: User
 }
 
 function Viewer(props: ViewerProps): JSX.Element | null {
@@ -271,7 +267,7 @@ function Viewer(props: ViewerProps): JSX.Element | null {
     selectedSeriesInstanceUID = volumeInstances[0].SeriesInstanceUID
   }
 
-  let clinicalTrialMenu
+  let clinicalTrialMenu: React.ReactNode
   if (refImage.ClinicalTrialSponsorName != null) {
     clinicalTrialMenu = (
       <Menu.SubMenu key="clinical-trial" title="Clinical Trial">

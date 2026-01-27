@@ -1,20 +1,19 @@
-import React from 'react'
-import { Button, Input, Space, Table, TablePaginationConfig } from 'antd'
-import { ColumnsType } from 'antd/es/table'
-import { FilterConfirmProps } from 'antd/es/table/interface'
 import { SearchOutlined } from '@ant-design/icons'
-import DicomWebManager from '../DicomWebManager'
-
+import { Button, Input, Space, Table, type TablePaginationConfig } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
+import type { FilterConfirmProps } from 'antd/es/table/interface'
 // skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
+import React from 'react'
+import type DicomWebManager from '../DicomWebManager'
 
 import { StorageClasses } from '../data/uids'
-import { withRouter, RouteComponentProps } from '../utils/router'
-import { parseDate, parseName, parseSex, parseTime } from '../utils/values'
-import { CustomError, errorTypes } from '../utils/CustomError'
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../services/NotificationMiddleware'
+import { CustomError, errorTypes } from '../utils/CustomError'
+import { type RouteComponentProps, withRouter } from '../utils/router'
+import { parseDate, parseName, parseSex, parseTime } from '../utils/values'
 
 // Standalone function for row key generation
 const getRowKey = (record: dmv.metadata.Study): string => {
@@ -46,7 +45,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   }
 
   searchForStudies(): void {
-    const queryParams: { [key: string]: any } = { ModalitiesInStudy: 'SM' }
+    const queryParams: Record<string, string> = { ModalitiesInStudy: 'SM' }
     const searchOptions = { queryParams }
     // TODO: retrieve remaining results
     const client =
@@ -86,7 +85,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   }
 
   handleClick = (
-    event: React.SyntheticEvent,
+    _event: React.SyntheticEvent,
     study: dmv.metadata.Study,
   ): void => {
     this.props.navigate(`/studies/${study.StudyInstanceUID}`)
@@ -101,7 +100,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     limit: number
     searchCriteria?: { [attribute: string]: string }
   }): void => {
-    const queryParams: { [key: string]: any } = {
+    const queryParams: Record<string, string | number> = {
       ModalitiesInStudy: 'SM',
       offset: offset,
       limit: limit,
@@ -142,7 +141,10 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       })
   }
 
-  handleChange = (pagination: TablePaginationConfig, filters: any): void => {
+  handleChange = (
+    pagination: TablePaginationConfig,
+    filters: Record<string, (React.Key | boolean)[] | null>,
+  ): void => {
     this.setState({ isLoading: true })
     let index = pagination.current
     if (index === undefined) {
@@ -157,8 +159,9 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     console.debug(`search for studies of page #${index}...`)
     const searchCriteria: { [attribute: string]: string } = {}
     for (const dataIndex in filters) {
-      if (filters[dataIndex] !== null && filters[dataIndex] !== undefined) {
-        searchCriteria[dataIndex] = filters[dataIndex][0].toString()
+      const value = filters[dataIndex]
+      if (value !== null && value !== undefined && value.length > 0) {
+        searchCriteria[dataIndex] = value[0].toString()
       }
     }
     this.fetchData({ offset, limit, searchCriteria })
@@ -166,9 +169,9 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   }
 
   handleSearch = (
-    selectedKeys: React.Key[],
+    _selectedKeys: React.Key[],
     confirm: (params?: FilterConfirmProps) => void,
-    dataIndex: string,
+    _dataIndex: string,
   ): void => {
     confirm()
   }
@@ -180,7 +183,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   handleRowProps = (record: dmv.metadata.Study): object => {
     return {
       onClick: (event: React.SyntheticEvent): void => {
-        return this.handleClick(event, record)
+        this.handleClick(event, record)
       },
     }
   }

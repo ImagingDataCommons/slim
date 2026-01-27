@@ -1,6 +1,6 @@
-import PubSub from '../utils/PubSub'
 import { notification } from 'antd'
 import { CustomError, errorTypes } from '../utils/CustomError'
+import PubSub from '../utils/PubSub'
 
 export const NotificationMiddlewareEvents = {
   OnError: 'onError',
@@ -64,13 +64,13 @@ class NotificationMiddleware extends PubSub {
       )
     }
 
-    ;(function () {
+    ;(() => {
       const warn = console.warn
-      console.warn = function () {
-        if (!JSON.stringify(arguments).includes('request')) {
-          outerContext(arguments)
+      console.warn = function (...args) {
+        if (!JSON.stringify(args).includes('request')) {
+          outerContext(args)
         }
-        warn.apply(this, Array.prototype.slice.call(arguments))
+        warn.apply(this, args)
       }
     })()
   }

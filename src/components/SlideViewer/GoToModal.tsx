@@ -1,6 +1,7 @@
-import React, { useCallback } from 'react'
-import { Modal, Space, InputNumber } from 'antd'
 import { CheckOutlined, StopOutlined } from '@ant-design/icons'
+import { InputNumber, Modal, Space } from 'antd'
+import type React from 'react'
+import { useCallback } from 'react'
 
 interface GoToModalProps {
   isVisible: boolean

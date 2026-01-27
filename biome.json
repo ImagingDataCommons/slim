@@ -8,9 +8,9 @@
   "files": {
     "includes": [
       "src/**/*.{ts,tsx,js,jsx}",
-      "!src/__mocks__/**",
+      "!src/__mocks__",
       "!src/**/*.test.{ts,tsx}",
-      "!src/**/__tests__/**"
+      "!src/**/__tests__"
     ]
   },
   "formatter": {

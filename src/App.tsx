@@ -1,4 +1,8 @@
+import { Layout, message } from 'antd'
+// skipcq: JS-C1003
+import type * as dwc from 'dicomweb-client'
 import React from 'react'
+import { FaSpinner } from 'react-icons/fa'
 import {
   BrowserRouter,
   Navigate,
@@ -6,28 +10,24 @@ import {
   Routes,
   useParams,
 } from 'react-router-dom'
-import { Layout, message } from 'antd'
-import { FaSpinner } from 'react-icons/fa'
-// skipcq: JS-C1003
-import * as dwc from 'dicomweb-client'
 
-import AppConfig, { ServerSettings, ErrorMessageSettings } from './AppConfig'
+import type AppConfig from './AppConfig'
+import type { ErrorMessageSettings, ServerSettings } from './AppConfig'
+import type { AuthManager, User } from './auth'
+import OidcManager from './auth/OidcManager'
 import CaseViewer from './components/CaseViewer'
 import Header from './components/Header'
 import InfoPage from './components/InfoPage'
-import Worklist from './components/Worklist'
 import MemoryFooter from './components/MemoryFooter'
+import Worklist from './components/Worklist'
 import { ValidationProvider } from './contexts/ValidationContext'
-
-import { User, AuthManager } from './auth'
-import OidcManager from './auth/OidcManager'
-import { StorageClasses } from './data/uids'
 import DicomWebManager from './DicomWebManager'
-import { joinUrl } from './utils/url'
-import { CustomError, errorTypes } from './utils/CustomError'
+import { StorageClasses } from './data/uids'
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from './services/NotificationMiddleware'
+import { CustomError, errorTypes } from './utils/CustomError'
+import { joinUrl } from './utils/url'
 
 function ParametrizedCaseViewer({
   clients,
@@ -46,6 +46,10 @@ function ParametrizedCaseViewer({
   config: AppConfig
 }): JSX.Element {
   const { studyInstanceUID } = useParams()
+
+  if (studyInstanceUID === undefined) {
+    return <Navigate to="/" replace />
+  }
 
   const enableAnnotationTools = !(config.disableAnnotationTools ?? false)
   const preload = config.preload ?? false
@@ -466,7 +470,7 @@ class App extends React.Component<AppProps, AppState> {
     const enableMemoryMonitoring =
       this.props.config.enableMemoryMonitoring ?? true
 
-    let worklist
+    let worklist: React.ReactNode
     if (enableWorklist) {
       worklist = <Worklist clients={this.state.clients} />
     } else {

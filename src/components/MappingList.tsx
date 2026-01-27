@@ -1,7 +1,7 @@
-import React from 'react'
-// skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
 import { Menu } from 'antd'
+// skipcq: JS-C1003
+import type * as dmv from 'dicom-microscopy-viewer'
+import React from 'react'
 
 import MappingItem from './MappingItem'
 
@@ -35,9 +35,12 @@ interface MappingListProps {
 /**
  * React component representing a list of Real World Value Mappings.
  */
-class MappingList extends React.Component<MappingListProps, {}> {
+class MappingList extends React.Component<
+  MappingListProps,
+  Record<string, never>
+> {
   render(): React.ReactNode {
-    const items = this.props.mappings.map((mapping, index) => {
+    const items = this.props.mappings.map((mapping, _index) => {
       const uid = mapping.uid
       return (
         <MappingItem

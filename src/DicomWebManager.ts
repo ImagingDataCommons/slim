@@ -1,18 +1,21 @@
 // skipcq: JS-C1003
-import * as dwc from 'dicomweb-client'
+
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
 // skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
+import * as dwc from 'dicomweb-client'
 
-import { ServerSettings, DicomWebManagerErrorHandler } from './AppConfig'
-import { joinUrl } from './utils/url'
-import getXHRRetryHook from './utils/xhrRetryHook'
-import { CustomError, errorTypes } from './utils/CustomError'
+import type { DicomWebManagerErrorHandler, ServerSettings } from './AppConfig'
+import DicomMetadataStore, {
+  type Instance,
+} from './services/DICOMMetadataStore'
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from './services/NotificationMiddleware'
-import DicomMetadataStore, { Instance } from './services/DICOMMetadataStore'
+import { CustomError, errorTypes } from './utils/CustomError'
+import { joinUrl } from './utils/url'
+import getXHRRetryHook from './utils/xhrRetryHook'
 
 const { naturalizeDataset } = dcmjs.data.DicomMetaDictionary
 
@@ -59,7 +62,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
         )
       }
 
-      let serviceUrl
+      let serviceUrl: string
       if (serverSettings.url !== undefined) {
         serviceUrl = serverSettings.url
       } else if (serverSettings.path !== undefined) {
@@ -71,6 +74,10 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
             errorTypes.COMMUNICATION,
             'Either path or full URL needs to be configured for server.',
           ),
+        )
+        throw new CustomError(
+          errorTypes.COMMUNICATION,
+          'Either path or full URL needs to be configured for server.',
         )
       }
 
@@ -184,7 +191,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
     const studySummaryMetadata =
       await this.stores[0].client.retrieveStudyMetadata(options)
     const naturalized = naturalizeDataset(studySummaryMetadata)
-    DicomMetadataStore.addStudy(naturalized)
+    DicomMetadataStore.addStudy(naturalized as Record<string, unknown>)
     return studySummaryMetadata
   }
 
@@ -194,7 +201,10 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
     const seriesSummaryMetadata =
       await this.stores[0].client.retrieveSeriesMetadata(options)
     const naturalized = seriesSummaryMetadata.map(naturalizeDataset)
-    DicomMetadataStore.addSeriesMetadata(naturalized, true)
+    DicomMetadataStore.addSeriesMetadata(
+      naturalized as Array<Record<string, unknown>>,
+      true,
+    )
     return seriesSummaryMetadata
   }
 

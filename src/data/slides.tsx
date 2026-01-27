@@ -1,9 +1,9 @@
 // skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
-import { CustomError, errorTypes } from '../utils/CustomError'
+import type * as dmv from 'dicom-microscopy-viewer'
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../services/NotificationMiddleware'
+import { CustomError, errorTypes } from '../utils/CustomError'
 
 enum ImageFlavors {
   VOLUME = 'VOLUME',

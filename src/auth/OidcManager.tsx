@@ -1,15 +1,15 @@
-import { UserManager, User as UserData } from 'oidc-client'
+import { type User as UserData, UserManager } from 'oidc-client'
 
-import { OidcSettings } from '../AppConfig'
-import { isAuthorizationCodeInUrl } from '../utils/url'
-import { User, AuthManager, SignInCallback } from './'
+import type { OidcSettings } from '../AppConfig'
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../services/NotificationMiddleware'
 import { CustomError, errorTypes } from '../utils/CustomError'
+import { isAuthorizationCodeInUrl } from '../utils/url'
+import type { AuthManager, SignInCallback, User } from './'
 
 const createUser = (userData: UserData | null): User => {
-  let profile
+  let profile: UserData['profile'] | undefined
   if (userData !== null) {
     profile = userData.profile
   }

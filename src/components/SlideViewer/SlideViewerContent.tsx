@@ -1,5 +1,5 @@
-import React from 'react'
 import { Layout } from 'antd'
+import type React from 'react'
 
 interface SlideViewerContentProps {
   toolbar: React.ReactNode

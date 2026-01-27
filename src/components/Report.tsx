@@ -1,19 +1,18 @@
-import React from 'react'
-// skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
+import { Divider } from 'antd'
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
-import { Divider } from 'antd'
+// skipcq: JS-C1003
+import * as dmv from 'dicom-microscopy-viewer'
+import React from 'react'
 import { v4 as generateUUID } from 'uuid'
-
-import Description from './Description'
-import Patient from './Patient'
-import Study from './Study'
-import { findContentItemsByName } from '../utils/sr'
-import { CustomError, errorTypes } from '../utils/CustomError'
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../services/NotificationMiddleware'
+import { CustomError, errorTypes } from '../utils/CustomError'
+import { findContentItemsByName } from '../utils/sr'
+import Description from './Description'
+import Patient from './Patient'
+import Study from './Study'
 
 export const hasValueType = (
   item: dcmjs.sr.valueTypes.ContentItem,
@@ -184,7 +183,13 @@ const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
       )
     }
     const regionItem = items[0] as dcmjs.sr.valueTypes.Scoord3DContentItem
-    let scoord3d: any
+    let scoord3d:
+      | dmv.scoord3d.Point
+      | dmv.scoord3d.Polygon
+      | dmv.scoord3d.MultiPoint
+      | dmv.scoord3d.Polyline
+      | dmv.scoord3d.Ellipse
+      | dmv.scoord3d.Ellipsoid
     if (regionItem.GraphicType === 'POINT') {
       scoord3d = new dmv.scoord3d.Point({
         frameOfReferenceUID: regionItem.ReferencedFrameOfReferenceUID,
@@ -232,6 +237,7 @@ const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
               'TID 1410 "Planar ROI Measurements and Qualitative Evaluations".',
           ),
         )
+        return
       }
     }
 
@@ -413,7 +419,7 @@ interface ReportProps {
  * React component representing a DICOM SR document that displays the
  * document content (a selected subset of content items).
  */
-class Report extends React.Component<ReportProps, {}> {
+class Report extends React.Component<ReportProps, Record<string, never>> {
   render(): React.ReactNode {
     const report = new MeasurementReport(this.props.dataset)
     const containerAttrs = [

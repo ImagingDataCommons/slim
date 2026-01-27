@@ -23,11 +23,7 @@ export class Logger {
     // Get logger config from global config
     const globalConfig = window.config?.logger
     let configLevel = 'DEBUG'
-    if (
-      globalConfig?.level !== undefined &&
-      globalConfig?.level !== null &&
-      globalConfig?.level !== ''
-    ) {
+    if (globalConfig?.level != null && String(globalConfig.level) !== '') {
       configLevel = globalConfig.level as string
     } else if (process.env.NODE_ENV === 'production') {
       configLevel = 'ERROR'

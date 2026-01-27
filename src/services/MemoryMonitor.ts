@@ -130,7 +130,7 @@ class MemoryMonitor {
     const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
     const i = Math.floor(Math.log(bytes) / Math.log(k))
 
-    return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`
+    return `${(bytes / k ** i).toFixed(2)} ${sizes[i]}`
   }
 
   /**
@@ -140,7 +140,7 @@ class MemoryMonitor {
     result: MemoryMeasureUserAgentSpecificMemoryResult,
   ): MemoryInfo {
     const bytes =
-      result.bytes != null && !isNaN(result.bytes) ? result.bytes : 0
+      result.bytes != null && !Number.isNaN(result.bytes) ? result.bytes : 0
 
     let jsHeapSizeLimit: number
     if (
@@ -241,7 +241,7 @@ class MemoryMonitor {
                 : [],
           }))
         }
-      } catch (error) {
+      } catch (_error) {
         // Modern API failed, try Chrome fallback
         if (this.isChromeAPIAvailable()) {
           memory = this.getMemoryChrome()

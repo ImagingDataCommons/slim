@@ -1,8 +1,8 @@
-import React from 'react'
 import { Checkbox, Divider, Row } from 'antd'
-
+import React from 'react'
 import ColorSlider from './ColorSlider'
 import OpacitySlider from './OpacitySlider'
+import type { StyleOptions } from './SlideViewer/types'
 
 interface ColorSettingsMenuProps {
   annotationGroupsUIDs: string[]
@@ -11,7 +11,7 @@ interface ColorSettingsMenuProps {
     color: number[]
     contourOnly: boolean
   }
-  onStyleChange: Function
+  onStyleChange: (arg: { uid: string; styleOptions: StyleOptions }) => void
 }
 
 interface ColorSettingsMenuState {
@@ -47,7 +47,8 @@ class ColorSettingsMenu extends React.Component<
         uid,
         styleOptions: {
           color,
-          opacity: this.state.currentStyle.opacity,
+          opacity:
+            this.state.currentStyle.opacity ?? this.props.defaultStyle.opacity,
           contourOnly: this.state.currentStyle.contourOnly,
         },
       })
@@ -60,7 +61,8 @@ class ColorSettingsMenu extends React.Component<
         this.props.onStyleChange({
           uid,
           styleOptions: {
-            color: this.state.currentStyle.color,
+            color:
+              this.state.currentStyle.color ?? this.props.defaultStyle.color,
             opacity,
             contourOnly: this.state.currentStyle.contourOnly,
           },
@@ -77,8 +79,9 @@ class ColorSettingsMenu extends React.Component<
       this.props.onStyleChange({
         uid,
         styleOptions: {
-          color: this.state.currentStyle.color,
-          opacity: this.state.currentStyle.opacity,
+          color: this.state.currentStyle.color ?? this.props.defaultStyle.color,
+          opacity:
+            this.state.currentStyle.opacity ?? this.props.defaultStyle.opacity,
           contourOnly: value,
         },
       })
@@ -90,7 +93,7 @@ class ColorSettingsMenu extends React.Component<
       const r = values[0]
       const g = values[1]
       const b = values[2]
-      return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)
+      return `#${(0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
     }
 
     if (
@@ -122,7 +125,7 @@ class ColorSettingsMenu extends React.Component<
   }
 
   render(): React.ReactNode {
-    let colorSettings
+    let colorSettings: React.ReactNode
     if (
       this.state.currentStyle.color !== null &&
       this.state.currentStyle.color !== undefined

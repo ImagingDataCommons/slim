@@ -1,41 +1,42 @@
-import React from 'react'
-import { NavLink } from 'react-router-dom'
 import {
+  ApiOutlined,
+  CheckOutlined,
+  FileSearchOutlined,
+  InfoOutlined,
+  SettingOutlined,
+  StopOutlined,
+  UnorderedListOutlined,
+  UserOutlined,
+} from '@ant-design/icons'
+import {
+  Badge,
   Col,
+  Collapse,
   Dropdown,
   Input,
   Layout,
   Modal,
+  Radio,
   Row,
   Space,
-  Badge,
-  Collapse,
-  Radio,
   Tooltip,
   Typography,
 } from 'antd'
-import {
-  ApiOutlined,
-  CheckOutlined,
-  InfoOutlined,
-  StopOutlined,
-  FileSearchOutlined,
-  UnorderedListOutlined,
-  UserOutlined,
-  SettingOutlined,
-} from '@ant-design/icons'
+import type { RadioChangeEvent } from 'antd/es/radio'
 import { detect } from 'detect-browser'
+import React from 'react'
+import { NavLink } from 'react-router-dom'
+import { v4 as uuidv4 } from 'uuid'
 import appPackageJson from '../../package.json'
-
-import Button from './Button'
-import { RouteComponentProps, withRouter } from '../utils/router'
+import type { User } from '../auth'
+import type DicomWebManager from '../DicomWebManager'
 import NotificationMiddleware, {
   NotificationMiddlewareEvents,
 } from '../services/NotificationMiddleware'
-import { CustomError } from '../utils/CustomError'
-import { v4 as uuidv4 } from 'uuid'
+import type { CustomError } from '../utils/CustomError'
+import { type RouteComponentProps, withRouter } from '../utils/router'
+import Button from './Button'
 import DicomTagBrowser from './DicomTagBrowser/DicomTagBrowser'
-import DicomWebManager from '../DicomWebManager'
 
 const aboutModalCopyTooltips: [React.ReactNode, React.ReactNode] = [
   'Copy hash',
@@ -89,10 +90,7 @@ interface HeaderProps extends RouteComponentProps {
     uid: string
     organization?: string
   }
-  user?: {
-    name: string
-    email: string
-  }
+  user?: User
   clients?: { [key: string]: DicomWebManager }
   defaultClients?: { [key: string]: DicomWebManager }
   showWorklistButton: boolean
@@ -205,7 +203,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     try {
       const urlObj = new URL(trimmedUrl)
       return urlObj.protocol.startsWith('http') && urlObj.pathname.length > 0
-    } catch (TypeError) {
+    } catch (_TypeError) {
       return false
     }
   }
@@ -495,8 +493,8 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     })
   }
 
-  handleServerSelectionModeChange = (e: any): void => {
-    const mode = e.target.value
+  handleServerSelectionModeChange = (e: RadioChangeEvent): void => {
+    const mode = (e.target?.value ?? 'default') as 'default' | 'custom'
     this.setState({ serverSelectionMode: mode })
   }
 
@@ -556,7 +554,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       )
     }
 
-    let worklistButton
+    let worklistButton: React.ReactNode
     if (this.props.showWorklistButton) {
       worklistButton = (
         <NavLink to="/">
@@ -600,7 +598,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       />
     ) : null
 
-    let serverSelectionButton
+    let serverSelectionButton: React.ReactNode
     if (this.props.showServerSelectionButton) {
       serverSelectionButton = (
         <Button
@@ -611,7 +609,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       )
     }
 
-    const logoUrl = process.env.PUBLIC_URL + '/logo.svg'
+    const logoUrl = `${process.env.PUBLIC_URL}/logo.svg`
 
     const selectedServerUrl =
       this.state.serverSelectionMode === 'custom'

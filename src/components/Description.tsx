@@ -1,10 +1,10 @@
+import { Card, Descriptions } from 'antd'
 import React from 'react'
 import { v4 as generateUUID } from 'uuid'
-import { Card, Descriptions } from 'antd'
 
 export interface Attribute {
   name: string
-  value: any
+  value: React.ReactNode
 }
 
 export interface AttributeGroup {
@@ -14,7 +14,7 @@ export interface AttributeGroup {
 
 interface DescriptionProps {
   header?: string
-  icon?: any
+  icon?: React.ComponentType<Record<string, never>>
   attributes: Attribute[]
   selectable?: boolean
   hasLongValues?: boolean
@@ -26,7 +26,10 @@ interface DescriptionProps {
  * React component for a description consisting of a header containing a
  * header and a body containing a list of name-value pairs.
  */
-class Description extends React.Component<DescriptionProps, {}> {
+class Description extends React.Component<
+  DescriptionProps,
+  Record<string, never>
+> {
   render(): React.ReactNode {
     let layout: 'horizontal' | 'vertical' = 'horizontal'
     let labelLineHeight = '14px'
@@ -36,7 +39,7 @@ class Description extends React.Component<DescriptionProps, {}> {
       labelLineHeight = '20px'
     }
     const items = this.props.attributes.map(
-      (item: Attribute, index: number) => {
+      (item: Attribute, _index: number) => {
         const uid = generateUUID()
         return (
           <Descriptions.Item

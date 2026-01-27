@@ -1,17 +1,17 @@
-import { useState, useMemo, useEffect } from 'react'
-import { Select, Input, Slider, Typography, Table } from 'antd'
 import { SearchOutlined } from '@ant-design/icons'
+import { Input, Select, Slider, Table, Typography } from 'antd'
+import { useEffect, useMemo, useState } from 'react'
 
-import DicomWebManager from '../../DicomWebManager'
+import type DicomWebManager from '../../DicomWebManager'
 import './DicomTagBrowser.css'
-import { useSlides } from '../../hooks/useSlides'
-import { getSortedTags } from './dicomTagUtils'
-import { formatDicomDate } from '../../utils/formatDicomDate'
-import DicomMetadataStore, {
-  Series,
-  Study,
-} from '../../services/DICOMMetadataStore'
 import { useDebounce } from '../../hooks/useDebounce'
+import { useSlides } from '../../hooks/useSlides'
+import DicomMetadataStore, {
+  type Series,
+  type Study,
+} from '../../services/DICOMMetadataStore'
+import { formatDicomDate } from '../../utils/formatDicomDate'
+import { getSortedTags, type TagInfo } from './dicomTagUtils'
 
 const { Option } = Select
 
@@ -23,7 +23,7 @@ interface DisplaySet {
   SeriesDescription?: string
   SeriesInstanceUID?: string
   Modality: string
-  images: any[]
+  images: unknown[]
 }
 
 interface TableDataItem {
@@ -69,7 +69,7 @@ const DicomTagBrowser = ({
   }, [debouncedSearchValue])
 
   useEffect(() => {
-    const handler = (event: any): void => {
+    const handler = (_event: unknown): void => {
       const study: Study | undefined = Object.assign(
         {},
         DicomMetadataStore.getStudy(studyInstanceUID),
@@ -105,12 +105,12 @@ const DicomTagBrowser = ({
 
     if (slides.length > 0) {
       displaySets = slides
-        .map((slide): DisplaySet[] => {
+        .flatMap((slide): DisplaySet[] => {
           const slideDisplaySets: DisplaySet[] = []
 
           // Helper function to process any image type
           const processImageType = (
-            images: any[] | undefined,
+            images: unknown[] | undefined,
             imageType: string,
           ): void => {
             if (images?.[0] !== undefined) {
@@ -118,6 +118,7 @@ const DicomTagBrowser = ({
                 `Found ${images.length} ${imageType} image(s) for slide ${slide.containerIdentifier}`,
               )
 
+              const img = images[0] as Record<string, unknown>
               const {
                 SeriesDate,
                 SeriesTime,
@@ -125,18 +126,18 @@ const DicomTagBrowser = ({
                 SeriesInstanceUID,
                 SeriesDescription,
                 Modality,
-              } = images[0]
+              } = img
 
-              processedSeries.push(SeriesInstanceUID)
+              processedSeries.push(SeriesInstanceUID as string)
 
               const ds: DisplaySet = {
                 displaySetInstanceUID: index,
-                SeriesDate,
-                SeriesTime,
-                SeriesInstanceUID,
+                SeriesDate: SeriesDate as string | undefined,
+                SeriesTime: SeriesTime as string | undefined,
+                SeriesInstanceUID: SeriesInstanceUID as string,
                 SeriesNumber: String(SeriesNumber),
-                SeriesDescription,
-                Modality,
+                SeriesDescription: SeriesDescription as string | undefined,
+                Modality: Modality as string,
                 images,
               }
               slideDisplaySets.push(ds)
@@ -151,7 +152,6 @@ const DicomTagBrowser = ({
 
           return slideDisplaySets
         })
-        .flat()
         .filter((set): set is DisplaySet => set !== null && set !== undefined)
     }
 
@@ -183,11 +183,15 @@ const DicomTagBrowser = ({
       const bNum = Number(b.SeriesNumber)
       // Normalize non-numeric/missing values to Infinity to sort them last
       const aSafe =
-        isNaN(aNum) || a.SeriesNumber === undefined || a.SeriesNumber === ''
+        Number.isNaN(aNum) ||
+        a.SeriesNumber === undefined ||
+        a.SeriesNumber === ''
           ? Infinity
           : aNum
       const bSafe =
-        isNaN(bNum) || b.SeriesNumber === undefined || b.SeriesNumber === ''
+        Number.isNaN(bNum) ||
+        b.SeriesNumber === undefined ||
+        b.SeriesNumber === ''
           ? Infinity
           : bNum
       return aSafe - bSafe
@@ -292,7 +296,7 @@ const DicomTagBrowser = ({
 
   const tableData = useMemo(() => {
     const transformTagsToTableData = (
-      tags: any[],
+      tags: TagInfo[],
       parentKey = '',
     ): TableDataItem[] => {
       return tags.map((tag, index) => {

@@ -1,5 +1,5 @@
 // skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
+import type * as dmv from 'dicom-microscopy-viewer'
 
 function parseName(value: dmv.metadata.PersonName | null | undefined): string {
   if (typeof value === 'object' && value !== null && value !== undefined) {

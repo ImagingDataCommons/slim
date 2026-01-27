@@ -1,8 +1,8 @@
 import retry from 'retry'
 
-import {
-  RetryRequestSettings,
+import type {
   DICOMwebClientRequestHookMetadata,
+  RetryRequestSettings,
 } from '../AppConfig'
 
 type RequestHook = (
@@ -81,7 +81,9 @@ export const getXHRRetryHook = (
   ): XMLHttpRequest => {
     const { url, method } = metadata
 
-    function faultTolerantRequestSend(...args: any): void {
+    function faultTolerantRequestSend(
+      ...args: Parameters<XMLHttpRequest['send']>
+    ): void {
       const operation = retry.operation(retryOptions)
 
       operation.attempt(function operationAttempt(currentAttempt) {
@@ -89,10 +91,10 @@ export const getXHRRetryHook = (
 
         /** Overriding/extending XHR function */
         request.onreadystatechange = function onReadyStateChange(
-          ...args: any
+          ev: Event,
         ): void {
           if (originalOnReadyStateChange != null) {
-            originalOnReadyStateChange.apply(request, args)
+            originalOnReadyStateChange.call(request, ev)
           }
 
           if (retryOptions.retryableStatusCodes.includes(request.status)) {

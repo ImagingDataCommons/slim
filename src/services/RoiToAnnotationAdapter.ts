@@ -1,8 +1,9 @@
 // skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
+
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
-import { AnnotationCategoryAndType } from '../components/AnnotationCategoryList'
+import type * as dmv from 'dicom-microscopy-viewer'
+import type { AnnotationCategoryAndType } from '../components/AnnotationCategoryList'
 
 export const adaptRoiToAnnotation = (
   roi: dmv.roi.ROI,

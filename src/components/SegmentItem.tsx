@@ -1,14 +1,13 @@
-import React from 'react'
-// skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
-import { Button, Menu, Popover, Space, Switch, Divider } from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
+import { Button, Divider, Menu, Popover, Space, Switch } from 'antd'
+// skipcq: JS-C1003
+import type * as dmv from 'dicom-microscopy-viewer'
+import React from 'react'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
-
-import Description from './Description'
+import { getSegmentationType, rgbToHex } from '../utils/segmentColors'
 import ColorSlider from './ColorSlider'
+import Description from './Description'
 import OpacitySlider from './OpacitySlider'
-import { rgbToHex, getSegmentationType } from '../utils/segmentColors'
 
 interface SegmentItemProps {
   segment: dmv.segment.Segment
@@ -65,7 +64,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
 
   handleVisibilityChange = (
     checked: boolean,
-    event: React.MouseEvent<HTMLButtonElement>,
+    _event: React.MouseEvent<HTMLButtonElement>,
   ): void => {
     this.props.onVisibilityChange({
       segmentUID: this.props.segment.uid,
@@ -133,14 +132,16 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
     ]
 
     /** Get segmentation type from metadata */
-    const segmentationMetadata = this.props.metadata?.[0] as any
+    const segmentationMetadata = this.props.metadata?.[0] as unknown as
+      | Record<string, unknown>
+      | undefined
     const segmentationType = getSegmentationType(segmentationMetadata)
 
     // Add SegmentationType from metadata if available
     if (segmentationMetadata?.SegmentationType !== undefined) {
       attributes.push({
         name: 'Segmentation Type',
-        value: segmentationMetadata.SegmentationType,
+        value: segmentationMetadata.SegmentationType as string,
       })
     }
 

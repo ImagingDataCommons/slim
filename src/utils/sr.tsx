@@ -1,5 +1,5 @@
 // skipcq: JS-C1003
-import * as dcmjs from 'dcmjs'
+import type * as dcmjs from 'dcmjs'
 
 /**
  * Check whether a DICOM SR content item has a given name.

@@ -2,7 +2,7 @@ import dcmjs from 'dcmjs'
 
 const { DicomMetaDictionary } = dcmjs.data
 
-interface TagInfo {
+export interface TagInfo {
   tag: string
   vr: string
   keyword: string
@@ -14,11 +14,11 @@ interface TagInfo {
 export interface DicomTag {
   name: string
   vr: string
-  Value?: any[]
-  [key: string]: any
+  Value?: unknown[]
+  [key: string]: unknown
 }
 
-const formatValue = (val: any): string => {
+const formatValue = (val: unknown): string => {
   if (typeof val === 'object' && val !== null) {
     return JSON.stringify(val)
   }
@@ -41,7 +41,10 @@ export const formatTagValue = (tag: DicomTag): string => {
  * @param depth - The current depth level for nested sequences (default: 0)
  * @returns Array of processed tag information
  */
-export function getRows(metadata: Record<string, any>, depth = 0): TagInfo[] {
+export function getRows(
+  metadata: Record<string, unknown>,
+  depth = 0,
+): TagInfo[] {
   if (metadata === undefined || metadata === null) return []
   const keywords = Object.keys(metadata).filter((key) => key !== '_vrMap')
 
@@ -120,7 +123,7 @@ export function getRows(metadata: Record<string, any>, depth = 0): TagInfo[] {
  * @param metadata - The DICOM metadata object to process
  * @returns Sorted array of tag information
  */
-export function getSortedTags(metadata: Record<string, any>): TagInfo[] {
+export function getSortedTags(metadata: Record<string, unknown>): TagInfo[] {
   const tagList = getRows(metadata)
 
   // Add bulkdataReferences as a special tag if it exists
@@ -128,7 +131,7 @@ export function getSortedTags(metadata: Record<string, any>): TagInfo[] {
     metadata.bulkdataReferences !== undefined &&
     metadata.bulkdataReferences !== null
   ) {
-    const bulkdataRefs = metadata.bulkdataReferences
+    const bulkdataRefs = metadata.bulkdataReferences as Record<string, unknown>
     const bulkdataTag: TagInfo = {
       tag: 'bulkdataReferences',
       vr: 'OB',

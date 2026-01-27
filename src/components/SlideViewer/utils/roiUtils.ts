@@ -1,7 +1,8 @@
 // skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
+
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
+import type * as dmv from 'dicom-microscopy-viewer'
 import { findContentItemsByName } from '../../../utils/sr'
 
 /**

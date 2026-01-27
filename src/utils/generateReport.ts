@@ -1,11 +1,11 @@
-import { roi, metadata } from 'dicom-microscopy-viewer'
-import { sr, data } from 'dcmjs'
-
-import { CustomError, errorTypes } from './CustomError'
+import { data, sr } from 'dcmjs'
+import type * as dmv from 'dicom-microscopy-viewer'
+import type { roi } from 'dicom-microscopy-viewer'
+import type { User } from '../auth'
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../services/NotificationMiddleware'
-import { User } from '../auth'
+import { CustomError, errorTypes } from './CustomError'
 
 interface AppInfo {
   name: string
@@ -22,13 +22,13 @@ const generateReport = ({
   visibleRoiUIDs,
 }: {
   rois: roi.ROI[]
-  metadata: metadata.VLWholeSlideMicroscopyImage[]
+  metadata: dmv.metadata.VLWholeSlideMicroscopyImage[]
   user: User | undefined
   app: AppInfo
   visibleRoiUIDs: Set<string>
 }): {
   isReportModalVisible: boolean
-  generatedReport: metadata.Comprehensive3DSR
+  generatedReport: dmv.metadata.Comprehensive3DSR
 } => {
   // Metadata should be sorted such that the image with the highest
   // resolution is the last item in the array.
@@ -49,7 +49,7 @@ const generateReport = ({
   const refSpecimen = refImage.SpecimenDescriptionSequence[0]
 
   console.debug('create Observation Context')
-  let observer
+  let observer: sr.templates.PersonObserverIdentifyingAttributes
 
   if (user !== undefined) {
     observer = new sr.templates.PersonObserverIdentifyingAttributes({
@@ -190,7 +190,7 @@ const generateReport = ({
 
   return {
     isReportModalVisible: true,
-    generatedReport: dataset as metadata.Comprehensive3DSR,
+    generatedReport: dataset as dmv.metadata.Comprehensive3DSR,
   }
 }
 

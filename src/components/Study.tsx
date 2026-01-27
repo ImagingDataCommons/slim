@@ -1,9 +1,8 @@
-import React from 'react'
 // skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
-
-import Description from './Description'
+import type * as dmv from 'dicom-microscopy-viewer'
+import React from 'react'
 import { parseDate, parseTime } from '../utils/values'
+import Description from './Description'
 
 interface StudyProps {
   metadata: dmv.metadata.Study | dmv.metadata.SOPClass

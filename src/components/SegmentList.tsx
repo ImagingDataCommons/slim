@@ -1,7 +1,7 @@
-import React from 'react'
-// skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
 import { Menu, Switch } from 'antd'
+// skipcq: JS-C1003
+import type * as dmv from 'dicom-microscopy-viewer'
+import React from 'react'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
 
 import SegmentItem from './SegmentItem'
@@ -40,7 +40,10 @@ interface SegmentListProps {
 /**
  * React component representing a list of Segments.
  */
-class SegmentList extends React.Component<SegmentListProps, {}> {
+class SegmentList extends React.Component<
+  SegmentListProps,
+  Record<string, never>
+> {
   handleVisibilityChange = (checked: boolean): void => {
     if (checked) {
       this.props.segments.forEach((segment) => {
@@ -61,7 +64,7 @@ class SegmentList extends React.Component<SegmentListProps, {}> {
   }
 
   render(): React.ReactNode {
-    const items = this.props.segments.map((segment, index) => {
+    const items = this.props.segments.map((segment, _index) => {
       const uid = segment.uid
       return (
         <SegmentItem

@@ -1,17 +1,18 @@
-import React, {
+import { Modal } from 'antd'
+// skipcq: JS-C1003
+import type * as dmv from 'dicom-microscopy-viewer'
+import type React from 'react'
+import {
   createContext,
-  useContext,
-  useState,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
+  useState,
 } from 'react'
-import { Modal } from 'antd'
+import type DicomWebManager from '../DicomWebManager'
+import type { Slide } from '../data/slides'
 import { useSlides } from '../hooks/useSlides'
-import DicomWebManager from '../DicomWebManager'
-import { Slide } from '../data/slides'
-// skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
 
 interface ValidationResult {
   isValid: boolean

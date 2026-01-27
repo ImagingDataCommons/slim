@@ -1,6 +1,6 @@
-import { Modal, Collapse } from 'antd'
-import { ErrorBoundary, FallbackProps } from 'react-error-boundary'
+import { Collapse, Modal } from 'antd'
 import { useCallback } from 'react'
+import { ErrorBoundary, type FallbackProps } from 'react-error-boundary'
 
 /**
  * React's error boundary component to catch errors during rendering phase
@@ -58,16 +58,22 @@ const CustomErrorBoundary = ({
       <div>
         <p>
           There was an error in loading this page.{' '}
-          <span
-            style={{ cursor: 'pointer', color: '#0077FF' }}
+          <button
+            type="button"
+            style={{
+              cursor: 'pointer',
+              color: '#0077FF',
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              font: 'inherit',
+            }}
             onClick={handleClick}
             onKeyDown={handleKeyDown}
-            tabIndex={0}
-            role="button"
             aria-label="Show error details"
           >
             Click for error details
-          </span>{' '}
+          </button>{' '}
         </p>
       </div>
     )

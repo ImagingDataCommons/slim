@@ -1,16 +1,17 @@
 // skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
-// skipcq: JS-C1003
-import * as dwc from 'dicomweb-client'
+
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
-import { Slide } from '../../../data/slides'
+import * as dmv from 'dicom-microscopy-viewer'
+// skipcq: JS-C1003
+import type * as dwc from 'dicomweb-client'
+import type { Slide } from '../../../data/slides'
 import { StorageClasses } from '../../../data/uids'
-import { CustomError, errorTypes } from '../../../utils/CustomError'
-import { findContentItemsByName } from '../../../utils/sr'
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../../../services/NotificationMiddleware'
+import { CustomError, errorTypes } from '../../../utils/CustomError'
+import { findContentItemsByName } from '../../../utils/sr'
 
 /**
  * Constructs volume and label viewers for the slide
@@ -50,7 +51,7 @@ export const constructViewers = ({
     })
     volumeViewer.activateSelectInteraction({})
 
-    let labelViewer
+    let labelViewer: dmv.viewer.LabelImageViewer | undefined
     if (slide.labelImages.length > 0) {
       console.info(
         'instantiate viewer for LABEL image of slide ' +

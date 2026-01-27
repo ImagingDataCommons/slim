@@ -1,10 +1,11 @@
-import React, { useCallback } from 'react'
 import { Layout, Menu } from 'antd'
 // skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
+import type * as dmv from 'dicom-microscopy-viewer'
+import type React from 'react'
+import { useCallback } from 'react'
+import type { AnnotationCategoryAndType } from '../../types/annotations'
 import AnnotationCategoryList from '../AnnotationCategoryList'
-import { AnnotationCategoryAndType } from '../../types/annotations'
-import { StyleOptions } from './types'
+import type { StyleOptions } from './types'
 
 interface SlideViewerSidebarProps {
   labelViewportRef: React.RefObject<HTMLDivElement>

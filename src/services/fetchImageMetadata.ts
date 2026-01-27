@@ -1,13 +1,13 @@
 // skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
 
-import DicomWebManager from '../DicomWebManager'
+import type DicomWebManager from '../DicomWebManager'
+import { createSlides, type Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
 import { CustomError, errorTypes } from '../utils/CustomError'
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from './NotificationMiddleware'
-import { createSlides, Slide } from '../data/slides'
 
 interface FetchImageMetadataParams {
   clients: { [key: string]: DicomWebManager }

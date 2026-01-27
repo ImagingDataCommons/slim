@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
-import DicomWebManager from '../DicomWebManager'
-import { Slide } from '../data/slides'
+import type DicomWebManager from '../DicomWebManager'
+import type { Slide } from '../data/slides'
 import { fetchImageMetadata } from '../services/fetchImageMetadata'
 
 interface UseSlidesProps {

@@ -1,9 +1,9 @@
-import React from 'react'
-// skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
+import { Menu, Space, Switch } from 'antd'
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
-import { Menu, Space, Switch } from 'antd'
+// skipcq: JS-C1003
+import type * as dmv from 'dicom-microscopy-viewer'
+import React from 'react'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
 
 import Description from './Description'
@@ -24,7 +24,10 @@ interface AnnotationItemProps {
 /**
  * React component representing a Region of Interest (ROI) annotation.
  */
-class AnnotationItem extends React.Component<AnnotationItemProps, {}> {
+class AnnotationItem extends React.Component<
+  AnnotationItemProps,
+  Record<string, never>
+> {
   constructor(props: AnnotationItemProps) {
     super(props)
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
@@ -32,7 +35,7 @@ class AnnotationItem extends React.Component<AnnotationItemProps, {}> {
 
   handleVisibilityChange(
     checked: boolean,
-    event: React.MouseEvent<HTMLButtonElement>,
+    _event: React.MouseEvent<HTMLButtonElement>,
   ): void {
     this.props.onVisibilityChange({
       roiUID: this.props.roi.uid,

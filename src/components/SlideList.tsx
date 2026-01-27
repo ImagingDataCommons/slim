@@ -1,9 +1,9 @@
-import React from 'react'
 import { Menu } from 'antd'
+import React from 'react'
 
-import DicomWebManager from '../DicomWebManager'
+import type DicomWebManager from '../DicomWebManager'
+import type { Slide } from '../data/slides'
 import SlideItem from './SlideItem'
-import { Slide } from '../data/slides'
 
 interface SlideListProps {
   metadata: Slide[]
@@ -52,9 +52,9 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
 
     const handleMenuItemSelection = ({
       key,
-      keyPath,
-      domEvent,
-      selectedKeys,
+      keyPath: _keyPath,
+      domEvent: _domEvent,
+      selectedKeys: _selectedKeys,
     }: {
       key: React.ReactText
       keyPath: React.ReactText[]
@@ -66,7 +66,7 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
       this.props.onSeriesSelection({ seriesInstanceUID: key.toString() })
     }
 
-    let selectedKeys
+    let selectedKeys: string[] = []
     if (
       this.state.selectedSeriesInstanceUID !== null &&
       this.state.selectedSeriesInstanceUID !== undefined

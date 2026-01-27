@@ -1,5 +1,5 @@
-import React from 'react'
 import { Modal } from 'antd'
+import type React from 'react'
 
 interface ReportModalProps {
   isVisible: boolean
