@@ -14,19 +14,19 @@ jobs:
       - name: Checkout to repository
         uses: actions/checkout@v4.2.2
 
-      - name: Setup Node
-        uses: actions/setup-node@v4.4.0
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20.8.1
+          bun-version: latest
 
       - name: Install dependencies
-        run: yarn
+        run: bun install --frozen-lockfile
 
       - name: Build
-        run: yarn build
+        run: bun run build
 
       - name: Lint
-        run: yarn lint
+        run: bun run lint
 
       - name: Test
-        run: yarn test
+        run: bun run test

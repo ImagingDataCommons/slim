@@ -31,7 +31,7 @@ The app is built using [craco](https://github.com/gsoft-inc/craco) (with the [cr
 
 Tests are written and run using the [jest](https://jestjs.io/) framework.
 
-The [yarn](https://yarnpkg.com/) package manager is used to manage dependencies and run scripts specified in `package.json` (`build`, `lint`, `test`, etc.).
+The [Bun](https://bun.sh/) runtime and package manager is used to manage dependencies and run scripts specified in `package.json` (`build`, `lint`, `test`, etc.).
 
 ## Coding style
 
@@ -39,7 +39,7 @@ Source code is linted using [ts-standard](https://github.com/standard/ts-standar
 
 Use the following command to identify potential coding style and type annotation violations:
 
-    $ yarn lint
+    $ bun run lint
 
 
 ### Documentation

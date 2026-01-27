@@ -3,9 +3,10 @@
   "version": "0.45.1",
   "private": true,
   "author": "ImagingDataCommons",
+  "packageManager": "bun@1.1.38",
   "scripts": {
     "start": "rm -rf ./node_modules/.cache/default-development && ./scripts/set-git-env.sh craco start",
-    "dev": "npm run start",
+    "dev": "bun run start",
     "build": "./scripts/set-git-env.sh craco build",
     "build:firebase": "REACT_APP_CONFIG=gcp PUBLIC_URL=/ ./scripts/set-git-env.sh craco build",
     "lint": "ts-standard --env jest 'src/**/*.{tsx,ts}'",
@@ -77,24 +78,12 @@
   "dependencies": {
     "react-error-boundary": "^3.1.4"
   },
-  "resolutions": {
+  "overrides": {
     "nth-check": "2.0.1",
     "wrap-ansi": "7.0.0",
     "make-dir": "3.1.0",
-    "react-scripts/babel-jest/babel-plugin-istanbul/istanbul-lib-instrument/semver": "6.3.1",
-    "@babel/preset-env/babel-plugin-polyfill-corejs2/@babel/helper-define-polyfill-provider/semver": "6.3.1",
-    "make-dir/semver": "6.3.1",
-    "@babel/preset-env/babel-plugin-polyfill-corejs2/semver": "6.3.1",
-    "ts-standard/eslint-plugin-node/semver": "6.3.1",
-    "@craco/craco/semver": "7.5.2",
-    "@typescript-eslint/typescript-estree/semver": "7.5.2",
-    "ts-standard/eslint/semver": "7.5.2",
-    "ts-standard/@typescript-eslint/eslint-plugin/semver": "7.5.2",
-    "react-scripts/postcss-loader/semver": "7.5.2",
-    "react-scripts/css-loader/semver": "7.5.2",
-    "react-scripts/react-dev-utils/fork-ts-checker-webpack-plugin/semver": "7.5.2",
-    "@semantic-release/npm/npm/**/semver": "7.5.2",
     "express": "4.21.0",
-    "rollup": "3.29.5"
+    "rollup": "3.29.5",
+    "semver": "7.5.2"
   }
 }
