@@ -1,7 +1,7 @@
 // skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
 
-function parseName (value: dmv.metadata.PersonName|null|undefined): string {
+function parseName(value: dmv.metadata.PersonName | null | undefined): string {
   if (typeof value === 'object' && value !== null && value !== undefined) {
     if (value.Alphabetic !== undefined) {
       return value.Alphabetic.split('^').join(' ')
@@ -11,7 +11,7 @@ function parseName (value: dmv.metadata.PersonName|null|undefined): string {
   return ''
 }
 
-function parseDate (value: string|null|undefined): string {
+function parseDate(value: string | null | undefined): string {
   if (value !== null && value !== undefined) {
     const year = value.substring(0, 4)
     const month = value.substring(4, 6)
@@ -21,7 +21,7 @@ function parseDate (value: string|null|undefined): string {
   return ''
 }
 
-function parseTime (value: string|null|undefined): string {
+function parseTime(value: string | null | undefined): string {
   if (value !== null && value !== undefined) {
     const hours = value.substring(0, 2)
     const minutes = value.substring(2, 4)
@@ -31,7 +31,7 @@ function parseTime (value: string|null|undefined): string {
   return ''
 }
 
-function parseDateTime (value: string|null|undefined): string {
+function parseDateTime(value: string | null | undefined): string {
   if (value !== null && value !== undefined) {
     const year = value.substring(0, 4)
     const month = value.substring(4, 6)
@@ -44,11 +44,11 @@ function parseDateTime (value: string|null|undefined): string {
   return ''
 }
 
-function parseSex (value: string|null|undefined): string {
+function parseSex(value: string | null | undefined): string {
   const lut: { [key: string]: string } = {
     F: 'Female',
     M: 'Male',
-    O: 'Other'
+    O: 'Other',
   }
   if (value !== null && value !== undefined) {
     return lut[value]

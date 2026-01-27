@@ -30,7 +30,7 @@ export const hexToRgb = (hex: string): number[] => {
     return [
       parseInt(result[1], 16),
       parseInt(result[2], 16),
-      parseInt(result[3], 16)
+      parseInt(result[3], 16),
     ]
   }
   return [0, 0, 0]
@@ -57,16 +57,25 @@ export const getContrastColor = (rgb: number[]): number[] => {
  */
 export const extractSegmentColorFromMetadata = (
   segmentMetadata: Record<string, unknown>,
-  segmentNumber: number
+  segmentNumber: number,
 ): number[] | null => {
   try {
     /** Look for SegmentSequence in the metadata */
-    if (segmentMetadata.SegmentSequence !== undefined && Array.isArray(segmentMetadata.SegmentSequence)) {
-      const segment = (segmentMetadata.SegmentSequence as Array<Record<string, unknown>>).find(
-        (seg: Record<string, unknown>) => seg.SegmentNumber === segmentNumber
+    if (
+      segmentMetadata.SegmentSequence !== undefined &&
+      Array.isArray(segmentMetadata.SegmentSequence)
+    ) {
+      const segment = (
+        segmentMetadata.SegmentSequence as Array<Record<string, unknown>>
+      ).find(
+        (seg: Record<string, unknown>) => seg.SegmentNumber === segmentNumber,
       )
 
-      if (isDefined(segment) && isDefined(segment.RecommendedDisplayCIELabValue) && Array.isArray(segment.RecommendedDisplayCIELabValue)) {
+      if (
+        isDefined(segment) &&
+        isDefined(segment.RecommendedDisplayCIELabValue) &&
+        Array.isArray(segment.RecommendedDisplayCIELabValue)
+      ) {
         /** Convert CIELab to RGB using dcmjs */
         const labValues = segment.RecommendedDisplayCIELabValue as number[]
         if (labValues.length >= 3) {
@@ -77,7 +86,7 @@ export const extractSegmentColorFromMetadata = (
             const result = [
               Math.max(0, Math.min(255, Math.round(rgb[0] * 255))),
               Math.max(0, Math.min(255, Math.round(rgb[1] * 255))),
-              Math.max(0, Math.min(255, Math.round(rgb[2] * 255)))
+              Math.max(0, Math.min(255, Math.round(rgb[2] * 255))),
             ]
             return result
           } catch (error) {
@@ -90,7 +99,10 @@ export const extractSegmentColorFromMetadata = (
     }
   } catch (error) {
     /** Failed to extract color from segment metadata */
-    console.warn(`Failed to extract color from segment ${segmentNumber}:`, error)
+    console.warn(
+      `Failed to extract color from segment ${segmentNumber}:`,
+      error,
+    )
   }
 
   return null
@@ -101,10 +113,13 @@ export const extractSegmentColorFromMetadata = (
  */
 export const getSegmentColor = (
   segmentMetadata: Record<string, unknown>,
-  segmentNumber: number
+  segmentNumber: number,
 ): number[] | null => {
   /** First try to get color from DICOM metadata */
-  const metadataColor = extractSegmentColorFromMetadata(segmentMetadata, segmentNumber)
+  const metadataColor = extractSegmentColorFromMetadata(
+    segmentMetadata,
+    segmentNumber,
+  )
   if (metadataColor !== null) {
     return metadataColor
   }
@@ -116,9 +131,12 @@ export const getSegmentColor = (
  * Returns the SegmentationType from DICOM metadata or defaults to 'BINARY'
  */
 export const getSegmentationType = (
-  segmentMetadata: Record<string, unknown> | undefined | null
+  segmentMetadata: Record<string, unknown> | undefined | null,
 ): string => {
-  if (segmentMetadata?.SegmentationType !== undefined && segmentMetadata?.SegmentationType !== null) {
+  if (
+    segmentMetadata?.SegmentationType !== undefined &&
+    segmentMetadata?.SegmentationType !== null
+  ) {
     return segmentMetadata.SegmentationType as string
   }
   return 'BINARY'

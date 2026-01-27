@@ -37,7 +37,7 @@ export const DEFAULT_ANNOTATION_COLOR_PALETTE = [
   [0, 0, 255],
   [255, 255, 0],
   [0, 255, 255],
-  [0, 0, 0]
+  [0, 0, 0],
 ]
 
 /**

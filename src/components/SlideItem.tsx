@@ -10,7 +10,7 @@ import ValidationWarning from './ValidationWarning'
 import { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
 import NotificationMiddleware, {
-  NotificationMiddlewareContext
+  NotificationMiddlewareContext,
 } from '../services/NotificationMiddleware'
 import { CustomError } from '../utils/CustomError'
 
@@ -37,45 +37,49 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
 
   private overviewViewer?: dmv.viewer.OverviewImageViewer
 
-  constructor (props: SlideItemProps) {
+  constructor(props: SlideItemProps) {
     super(props)
     this.overviewViewer = undefined
   }
 
-  componentDidMount (): void {
+  componentDidMount(): void {
     this.setState({ isLoading: true })
 
     /* Use OVERVIEW if available, otherwise fall back to THUMBNAIL */
-    const previewImages = this.props.slide.overviewImages.length > 0
-      ? this.props.slide.overviewImages
-      : this.props.slide.thumbnailImages
+    const previewImages =
+      this.props.slide.overviewImages.length > 0
+        ? this.props.slide.overviewImages
+        : this.props.slide.thumbnailImages
 
     if (previewImages.length > 0) {
       const metadata = previewImages[0]
-      if (this.overviewViewportRef.current !== null && this.overviewViewportRef.current !== undefined) {
+      if (
+        this.overviewViewportRef.current !== null &&
+        this.overviewViewportRef.current !== undefined
+      ) {
         this.overviewViewportRef.current.innerHTML = ''
-        const imageType = this.props.slide.overviewImages.length > 0 ? 'OVERVIEW' : 'THUMBNAIL'
+        const imageType =
+          this.props.slide.overviewImages.length > 0 ? 'OVERVIEW' : 'THUMBNAIL'
         console.info(
           `instantiate viewer for ${imageType} image of slide ` +
-          `"${metadata.ContainerIdentifier}"`
+            `"${metadata.ContainerIdentifier}"`,
         )
         const resizeFactor = 1
         this.overviewViewer = new dmv.viewer.OverviewImageViewer({
-          client: this.props.clients[
-            StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE
-          ],
+          client:
+            this.props.clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE],
           disableInteractions: true,
           metadata,
           resizeFactor,
           errorInterceptor: (error: CustomError) => {
             NotificationMiddleware.onError(
               NotificationMiddlewareContext.DMV,
-              error
+              error,
             )
-          }
+          },
         })
         this.overviewViewer.render({
-          container: this.overviewViewportRef.current
+          container: this.overviewViewportRef.current,
         })
       }
     }
@@ -83,22 +87,26 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
     this.setState({ isLoading: false })
   }
 
-  render (): React.ReactNode {
+  render(): React.ReactNode {
     if (this.overviewViewer !== undefined) {
       this.overviewViewer.resize()
     }
 
     const attributes = []
     const description = this.props.slide.description
-    if (description !== null && description !== undefined && description !== '') {
+    if (
+      description !== null &&
+      description !== undefined &&
+      description !== ''
+    ) {
       attributes.push({
         name: 'Description',
-        value: description
+        value: description,
       })
     }
 
     if (this.state.isLoading) {
-      return (<FaSpinner />)
+      return <FaSpinner />
     }
 
     /* Properties need to be propagated down to Menu.Item:
@@ -116,15 +124,12 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
           selectable
         >
           <div style={{ position: 'relative', height: '100px' }}>
-            {(this.props.slide.overviewImages.length > 0 || this.props.slide.thumbnailImages.length > 0)
-              ? (
-                <div
-                  ref={this.overviewViewportRef}
-                  style={{ height: '100%' }}
-                />
-                )
-              : (
-                <div style={{
+            {this.props.slide.overviewImages.length > 0 ||
+            this.props.slide.thumbnailImages.length > 0 ? (
+              <div ref={this.overviewViewportRef} style={{ height: '100%' }} />
+            ) : (
+              <div
+                style={{
                   height: '100%',
                   textAlign: 'center',
                   display: 'flex',
@@ -133,12 +138,12 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
                   fontSize: '1.5rem',
                   fontWeight: 300,
                   color: '#8F9BA8',
-                  letterSpacing: '0.1em'
+                  letterSpacing: '0.1em',
                 }}
-                >
-                  SM
-                </div>
-                )}
+              >
+                SM
+              </div>
+            )}
             <ValidationWarning slide={this.props.slide} />
           </div>
         </Description>

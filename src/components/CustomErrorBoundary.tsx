@@ -11,7 +11,7 @@ import { useCallback } from 'react'
  */
 const CustomErrorBoundary = ({
   context,
-  children
+  children,
 }: {
   context: string
   children: JSX.Element
@@ -30,13 +30,13 @@ const CustomErrorBoundary = ({
         content: (
           <>
             <Collapse>
-              <Panel header='Component Stack' key='stack1'>
+              <Panel header="Component Stack" key="stack1">
                 {error.error.stack}
               </Panel>
             </Collapse>
           </>
         ),
-        onOk (): void {}
+        onOk(): void {},
       })
     }, [error.error.message, error.error.stack])
 
@@ -44,12 +44,15 @@ const CustomErrorBoundary = ({
       openModal()
     }, [openModal])
 
-    const handleKeyDown = useCallback((event: React.KeyboardEvent): void => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault()
-        openModal()
-      }
-    }, [openModal])
+    const handleKeyDown = useCallback(
+      (event: React.KeyboardEvent): void => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          openModal()
+        }
+      },
+      [openModal],
+    )
 
     return (
       <div>
@@ -60,8 +63,8 @@ const CustomErrorBoundary = ({
             onClick={handleClick}
             onKeyDown={handleKeyDown}
             tabIndex={0}
-            role='button'
-            aria-label='Show error details'
+            role="button"
+            aria-label="Show error details"
           >
             Click for error details
           </span>{' '}
@@ -74,7 +77,7 @@ const CustomErrorBoundary = ({
     error: Error,
     info: {
       componentStack: string
-    }
+    },
   ): void => {
     // Only log errors in development environment
     if (process.env.NODE_ENV === 'development') {

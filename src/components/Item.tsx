@@ -19,7 +19,7 @@ interface ItemProps {
  * of attributes rendered as name-value pairs.
  */
 class Item extends React.Component<ItemProps, {}> {
-  render (): React.ReactNode {
+  render(): React.ReactNode {
     let groups = null
     if (this.props.groups !== undefined) {
       groups = this.props.groups.map((item, index: number) => (

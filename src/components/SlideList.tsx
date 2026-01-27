@@ -9,9 +9,11 @@ interface SlideListProps {
   metadata: Slide[]
   clients: { [key: string]: DicomWebManager }
   selectedSeriesInstanceUID: string
-  onSeriesSelection: (
-    { seriesInstanceUID }: { seriesInstanceUID: string }
-  ) => void
+  onSeriesSelection: ({
+    seriesInstanceUID,
+  }: {
+    seriesInstanceUID: string
+  }) => void
 }
 
 interface SlideListState {
@@ -23,16 +25,16 @@ interface SlideListState {
  */
 class SlideList extends React.Component<SlideListProps, SlideListState> {
   state = {
-    selectedSeriesInstanceUID: this.props.selectedSeriesInstanceUID
+    selectedSeriesInstanceUID: this.props.selectedSeriesInstanceUID,
   }
 
-  componentDidMount (): void {
+  componentDidMount(): void {
     this.props.onSeriesSelection({
-      seriesInstanceUID: this.state.selectedSeriesInstanceUID
+      seriesInstanceUID: this.state.selectedSeriesInstanceUID,
     })
   }
 
-  render (): React.ReactNode {
+  render(): React.ReactNode {
     const slideList = this.props.metadata
     const slideItemList = []
     for (let i = 0; i < slideList.length; ++i) {
@@ -48,7 +50,12 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
       slideItemList.push(slideItem)
     }
 
-    const handleMenuItemSelection = ({ key, keyPath, domEvent, selectedKeys }: {
+    const handleMenuItemSelection = ({
+      key,
+      keyPath,
+      domEvent,
+      selectedKeys,
+    }: {
       key: React.ReactText
       keyPath: React.ReactText[]
       domEvent: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>
@@ -60,7 +67,10 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
     }
 
     let selectedKeys
-    if (this.state.selectedSeriesInstanceUID !== null && this.state.selectedSeriesInstanceUID !== undefined) {
+    if (
+      this.state.selectedSeriesInstanceUID !== null &&
+      this.state.selectedSeriesInstanceUID !== undefined
+    ) {
       selectedKeys = [this.state.selectedSeriesInstanceUID]
     }
 
@@ -69,7 +79,7 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
         style={{ width: '100%' }}
         selectedKeys={selectedKeys}
         onSelect={handleMenuItemSelection}
-        mode='inline'
+        mode="inline"
         inlineIndent={0}
       >
         {slideItemList}

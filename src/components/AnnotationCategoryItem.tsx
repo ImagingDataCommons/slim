@@ -34,17 +34,17 @@ const AnnotationCategoryItem = ({
   }
 
   const checkAll = types.every((type: Type) =>
-    type.uids.every((uid: string) => checkedAnnotationUids.has(uid))
+    type.uids.every((uid: string) => checkedAnnotationUids.has(uid)),
   )
   const indeterminate =
     !checkAll &&
     types.some((type: Type) =>
-      type.uids.some((uid: string) => checkedAnnotationUids.has(uid))
+      type.uids.some((uid: string) => checkedAnnotationUids.has(uid)),
     )
 
   const handleChangeCheckedType = ({
     type,
-    isVisible
+    isVisible,
   }: {
     type: Type
     isVisible: boolean
@@ -55,13 +55,10 @@ const AnnotationCategoryItem = ({
   }
 
   return (
-    <Menu.Item
-      style={{ height: '100%', paddingLeft: '3px' }}
-      {...props}
-    >
-      <Space align='start'>
+    <Menu.Item style={{ height: '100%', paddingLeft: '3px' }} {...props}>
+      <Space align="start">
         <div style={{ paddingLeft: '14px', color: 'black' }}>
-          <Space direction='vertical' align='end'>
+          <Space direction="vertical" align="end">
             <Checkbox
               indeterminate={indeterminate}
               checked={checkAll}
@@ -74,27 +71,25 @@ const AnnotationCategoryItem = ({
                 {category.CodeMeaning}
               </Tooltip>
               <Popover
-                placement='topLeft'
+                placement="topLeft"
                 overlayStyle={{ width: '350px' }}
-                title='Display Settings'
+                title="Display Settings"
                 content={() => (
                   <ColorSettingsMenu
                     annotationGroupsUIDs={types.reduce(
                       (acc: string[], type) => {
                         return [...acc, ...type.uids]
                       },
-                      []
+                      [],
                     )}
                     onStyleChange={onStyleChange}
-                    defaultStyle={
-                      defaultAnnotationStyles[types[0].uids[0]]
-                    }
+                    defaultStyle={defaultAnnotationStyles[types[0].uids[0]]}
                   />
                 )}
               >
                 <Button
-                  type='primary'
-                  shape='circle'
+                  type="primary"
+                  shape="circle"
                   style={{ marginLeft: '10px' }}
                   icon={<SettingOutlined />}
                 />
@@ -105,9 +100,12 @@ const AnnotationCategoryItem = ({
             const { CodeMeaning, CodingSchemeDesignator, CodeValue, uids } =
               type
             const shortenedCodeMeaning = CodeMeaning.slice(0, 22)
-            const displayCodeMeaning = shortenedCodeMeaning === CodeMeaning ? CodeMeaning : `${shortenedCodeMeaning}...`
+            const displayCodeMeaning =
+              shortenedCodeMeaning === CodeMeaning
+                ? CodeMeaning
+                : `${shortenedCodeMeaning}...`
             const isChecked = uids.every((uid: string) =>
-              checkedAnnotationUids.has(uid)
+              checkedAnnotationUids.has(uid),
             )
             const indeterminateType =
               !isChecked &&
@@ -119,7 +117,7 @@ const AnnotationCategoryItem = ({
                   paddingLeft: '25px',
                   width: '100%',
                   display: 'flex',
-                  flexDirection: 'row'
+                  flexDirection: 'row',
                 }}
               >
                 <Checkbox
@@ -128,8 +126,9 @@ const AnnotationCategoryItem = ({
                   onChange={(e: any) =>
                     handleChangeCheckedType({
                       type,
-                      isVisible: e.target.checked
-                    })}
+                      isVisible: e.target.checked,
+                    })
+                  }
                 />
                 <div style={{ paddingLeft: '5px' }}>
                   <Tooltip
@@ -139,9 +138,9 @@ const AnnotationCategoryItem = ({
                     {displayCodeMeaning}
                   </Tooltip>
                   <Popover
-                    placement='topLeft'
+                    placement="topLeft"
                     overlayStyle={{ width: '350px' }}
-                    title='Display Settings'
+                    title="Display Settings"
                     content={() => (
                       <ColorSettingsMenu
                         annotationGroupsUIDs={type.uids}
@@ -151,8 +150,8 @@ const AnnotationCategoryItem = ({
                     )}
                   >
                     <Button
-                      type='primary'
-                      shape='circle'
+                      type="primary"
+                      shape="circle"
                       style={{ marginLeft: '10px' }}
                       icon={<SettingOutlined />}
                     />

@@ -14,11 +14,17 @@ interface MappingListProps {
   defaultMappingStyles: {
     [mappingUID: string]: { opacity: number }
   }
-  onMappingVisibilityChange: ({ mappingUID, isVisible }: {
+  onMappingVisibilityChange: ({
+    mappingUID,
+    isVisible,
+  }: {
     mappingUID: string
     isVisible: boolean
   }) => void
-  onMappingStyleChange: ({ mappingUID, styleOptions }: {
+  onMappingStyleChange: ({
+    mappingUID,
+    styleOptions,
+  }: {
     mappingUID: string
     styleOptions: {
       opacity?: number
@@ -30,7 +36,7 @@ interface MappingListProps {
  * React component representing a list of Real World Value Mappings.
  */
 class MappingList extends React.Component<MappingListProps, {}> {
-  render (): React.ReactNode {
+  render(): React.ReactNode {
     const items = this.props.mappings.map((mapping, index) => {
       const uid = mapping.uid
       return (
@@ -46,11 +52,7 @@ class MappingList extends React.Component<MappingListProps, {}> {
       )
     })
 
-    return (
-      <Menu selectable={false}>
-        {items}
-      </Menu>
-    )
+    return <Menu selectable={false}>{items}</Menu>
   }
 }
 

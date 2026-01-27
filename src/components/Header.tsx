@@ -12,7 +12,7 @@ import {
   Collapse,
   Radio,
   Tooltip,
-  Typography
+  Typography,
 } from 'antd'
 import {
   ApiOutlined,
@@ -22,58 +22,63 @@ import {
   FileSearchOutlined,
   UnorderedListOutlined,
   UserOutlined,
-  SettingOutlined
+  SettingOutlined,
 } from '@ant-design/icons'
 import { detect } from 'detect-browser'
 import appPackageJson from '../../package.json'
 
 import Button from './Button'
 import { RouteComponentProps, withRouter } from '../utils/router'
-import NotificationMiddleware, { NotificationMiddlewareEvents } from '../services/NotificationMiddleware'
+import NotificationMiddleware, {
+  NotificationMiddlewareEvents,
+} from '../services/NotificationMiddleware'
 import { CustomError } from '../utils/CustomError'
 import { v4 as uuidv4 } from 'uuid'
 import DicomTagBrowser from './DicomTagBrowser/DicomTagBrowser'
 import DicomWebManager from '../DicomWebManager'
 
-const aboutModalCopyTooltips: [React.ReactNode, React.ReactNode] = ['Copy hash', 'Copied!']
+const aboutModalCopyTooltips: [React.ReactNode, React.ReactNode] = [
+  'Copy hash',
+  'Copied!',
+]
 
 const aboutModalStyles: Record<string, React.CSSProperties> = {
   container: {
     textAlign: 'center',
     lineHeight: 1.6,
     paddingRight: 25,
-    fontSize: '1rem'
+    fontSize: '1rem',
   },
   title: {
     fontSize: '1.4rem',
     fontWeight: 700,
-    marginBottom: 4
+    marginBottom: 4,
   },
   subtitle: {
     fontSize: '1.15rem',
     fontWeight: 600,
-    marginBottom: 12
+    marginBottom: 12,
   },
   link: {
     display: 'inline-block',
-    marginBottom: 16
+    marginBottom: 16,
   },
   section: {
-    marginBottom: 12
+    marginBottom: 12,
   },
   label: {
     fontWeight: 600,
     display: 'block',
-    marginBottom: 4
+    marginBottom: 4,
   },
   bodyText: {
-    marginBottom: 4
+    marginBottom: 4,
   },
   code: {
     display: 'inline-block',
     wordBreak: 'break-all',
-    fontSize: '0.85rem'
-  }
+    fontSize: '0.85rem',
+  },
 }
 
 interface HeaderProps extends RouteComponentProps {
@@ -114,10 +119,14 @@ interface HeaderState {
  * React component for the application header.
  */
 class Header extends React.Component<HeaderProps, HeaderState> {
-  constructor (props: HeaderProps) {
+  constructor(props: HeaderProps) {
     super(props)
-    const cachedServerUrl = window.localStorage.getItem('slim_selected_server')?.trim()
-    const cachedMode = window.localStorage.getItem('slim_server_selection_mode') as 'default' | 'custom' | null
+    const cachedServerUrl = window.localStorage
+      .getItem('slim_selected_server')
+      ?.trim()
+    const cachedMode = window.localStorage.getItem(
+      'slim_server_selection_mode',
+    ) as 'default' | 'custom' | null
 
     this.state = {
       errorObj: [],
@@ -126,46 +135,61 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       selectedServerUrl: cachedServerUrl ?? '',
       isServerSelectionModalVisible: false,
       isServerSelectionDisabled: !this.isValidServerUrl(cachedServerUrl),
-      serverSelectionMode: cachedMode === 'custom' && cachedServerUrl !== null && cachedServerUrl !== undefined && cachedServerUrl !== '' ? 'custom' : 'default'
+      serverSelectionMode:
+        cachedMode === 'custom' &&
+        cachedServerUrl !== null &&
+        cachedServerUrl !== undefined &&
+        cachedServerUrl !== ''
+          ? 'custom'
+          : 'default',
     }
 
-    const onErrorHandler = ({ source, error }: {
+    const onErrorHandler = ({
+      source,
+      error,
+    }: {
       source: string
       error: CustomError
     }): void => {
-      this.setState(state => ({
+      this.setState((state) => ({
         ...state,
         errorObj: [...state.errorObj, { ...error, source }],
-        errorCategory: [...state.errorCategory, error.type]
+        errorCategory: [...state.errorCategory, error.type],
       }))
     }
 
     const onWarningHandler = (warning: string): void => {
-      this.setState(state => ({
+      this.setState((state) => ({
         ...state,
-        warnings: [...state.warnings, warning]
+        warnings: [...state.warnings, warning],
       }))
     }
 
     NotificationMiddleware.subscribe(
       NotificationMiddlewareEvents.OnError,
-      onErrorHandler
+      onErrorHandler,
     )
 
     NotificationMiddleware.subscribe(
       NotificationMiddlewareEvents.OnWarning,
-      onWarningHandler
+      onWarningHandler,
     )
   }
 
-  componentDidUpdate (prevProps: Readonly<HeaderProps>, prevState: Readonly<HeaderState>): void {
-    if (((prevState.warnings.length > 0) || (prevState.errorObj.length > 0)) && this.props.location.pathname !== prevProps.location.pathname) {
+  componentDidUpdate(
+    prevProps: Readonly<HeaderProps>,
+    prevState: Readonly<HeaderState>,
+  ): void {
+    if (
+      (prevState.warnings.length > 0 || prevState.errorObj.length > 0) &&
+      this.props.location.pathname !== prevProps.location.pathname
+    ) {
       this.setState({
         isServerSelectionModalVisible: false,
         isServerSelectionDisabled: true,
         errorObj: [],
         errorCategory: [],
-        warnings: []
+        warnings: [],
       })
     }
   }
@@ -198,22 +222,34 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       }
     } = {
       browser: {},
-      os: {}
+      os: {},
     }
     if (browser != null) {
       environment.browser = {
         name: browser.name != null ? browser.name : undefined,
-        version: browser.version != null ? browser.version : undefined
+        version: browser.version != null ? browser.version : undefined,
       }
       environment.os = {
-        name: browser.os != null ? browser.os : undefined
+        name: browser.os != null ? browser.os : undefined,
       }
     }
 
-    const slimCommit = process.env.REACT_APP_GIT_SHA !== undefined && process.env.REACT_APP_GIT_SHA !== '' ? process.env.REACT_APP_GIT_SHA : null
-    const viewerCommit = process.env.REACT_APP_DMV_GIT_SHA !== undefined && process.env.REACT_APP_DMV_GIT_SHA !== '' ? process.env.REACT_APP_DMV_GIT_SHA : null
-    const devDeps = appPackageJson.devDependencies as Record<string, string> | undefined
-    const deps = appPackageJson.dependencies as Record<string, string> | undefined
+    const slimCommit =
+      process.env.REACT_APP_GIT_SHA !== undefined &&
+      process.env.REACT_APP_GIT_SHA !== ''
+        ? process.env.REACT_APP_GIT_SHA
+        : null
+    const viewerCommit =
+      process.env.REACT_APP_DMV_GIT_SHA !== undefined &&
+      process.env.REACT_APP_DMV_GIT_SHA !== ''
+        ? process.env.REACT_APP_DMV_GIT_SHA
+        : null
+    const devDeps = appPackageJson.devDependencies as
+      | Record<string, string>
+      | undefined
+    const deps = appPackageJson.dependencies as
+      | Record<string, string>
+      | undefined
     const viewerVersionRaw =
       devDeps?.['dicom-microscopy-viewer'] ??
       deps?.['dicom-microscopy-viewer'] ??
@@ -234,7 +270,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           style={aboutModalStyles.code}
           copyable={{
             text: hash,
-            tooltips: aboutModalCopyTooltips
+            tooltips: aboutModalCopyTooltips,
           }}
         >
           {hash}
@@ -249,7 +285,11 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       content: (
         <div style={aboutModalStyles.container}>
           <Typography.Title level={3} style={aboutModalStyles.title}>
-            <Typography.Link href={this.props.app.homepage} target='_blank' rel='noreferrer'>
+            <Typography.Link
+              href={this.props.app.homepage}
+              target="_blank"
+              rel="noreferrer"
+            >
               {this.props.app.name}
             </Typography.Link>
           </Typography.Title>
@@ -258,16 +298,18 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           </Typography.Text>
 
           <div style={aboutModalStyles.section}>
-            <Typography.Text style={aboutModalStyles.label}>Commit Hash</Typography.Text>
+            <Typography.Text style={aboutModalStyles.label}>
+              Commit Hash
+            </Typography.Text>
             {renderHashText(slimCommit)}
           </div>
 
           <div style={aboutModalStyles.section}>
             <Typography.Text style={aboutModalStyles.label}>
               <a
-                href='https://github.com/MGHComputationalPathology/dicom-microscopy-viewer'
-                target='_blank'
-                rel='noreferrer'
+                href="https://github.com/MGHComputationalPathology/dicom-microscopy-viewer"
+                target="_blank"
+                rel="noreferrer"
               >
                 DICOM Microscopy Viewer
               </a>
@@ -279,9 +321,12 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           </div>
 
           <div style={aboutModalStyles.section}>
-            <Typography.Text style={aboutModalStyles.label}>Current Browser &amp; OS</Typography.Text>
+            <Typography.Text style={aboutModalStyles.label}>
+              Current Browser &amp; OS
+            </Typography.Text>
             <Typography.Text style={aboutModalStyles.bodyText}>
-              {environment.browser.name ?? 'Unknown'} {environment.browser.version ?? ''}
+              {environment.browser.name ?? 'Unknown'}{' '}
+              {environment.browser.version ?? ''}
             </Typography.Text>
             <Typography.Text style={aboutModalStyles.bodyText}>
               {environment.os.name ?? 'Unknown OS'}
@@ -289,7 +334,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           </div>
         </div>
       ),
-      onOk (): void {}
+      onOk(): void {},
     })
   }
 
@@ -299,18 +344,22 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     let seriesInstanceUID = ''
     if (this.props.location.pathname.includes('series/')) {
       const seriesFragment = this.props.location.pathname.split('series/')[1]
-      seriesInstanceUID = seriesFragment.includes('/') ? seriesFragment.split('/')[0] : seriesFragment
+      seriesInstanceUID = seriesFragment.includes('/')
+        ? seriesFragment.split('/')[0]
+        : seriesFragment
     }
 
     Modal.info({
       title: 'DICOM Tag Browser',
       width,
-      content: <DicomTagBrowser
-        clients={this.props.clients ?? {}}
-        studyInstanceUID={this.props.params.studyInstanceUID ?? ''}
-        seriesInstanceUID={seriesInstanceUID}
-               />,
-      onOk (): void {}
+      content: (
+        <DicomTagBrowser
+          clients={this.props.clients ?? {}}
+          studyInstanceUID={this.props.params.studyInstanceUID ?? ''}
+          seriesInstanceUID={seriesInstanceUID}
+        />
+      ),
+      onOk(): void {},
     })
   }
 
@@ -324,7 +373,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       Authentication: [],
       Communication: [],
       EncodingDecoding: [],
-      Visualization: []
+      Visualization: [],
     }
 
     type ObjectKey = keyof typeof errorMsgs
@@ -333,7 +382,9 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     if (errorNum > 0) {
       for (let i = 0; i < errorNum; i++) {
         const category = this.state.errorCategory[i] as ObjectKey
-        errorMsgs[category].push(`${this.state.errorObj[i].message as string} (Source: ${this.state.errorObj[i].source})`)
+        errorMsgs[category].push(
+          `${this.state.errorObj[i].message as string} (Source: ${this.state.errorObj[i].source})`,
+        )
       }
     }
 
@@ -344,7 +395,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     )
 
     const showWarningCount = (warncount: number): JSX.Element => (
-      <Badge color='green' count={warncount} />
+      <Badge color="green" count={warncount} />
     )
 
     Modal.info({
@@ -353,63 +404,63 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       content: (
         <Collapse>
           <Panel
-            header='Communication Error'
-            key='communicationerror'
+            header="Communication Error"
+            key="communicationerror"
             extra={showErrorCount(errorMsgs.Communication.length)}
           >
             <ol>
-              {errorMsgs.Communication.map(e => (
+              {errorMsgs.Communication.map((e) => (
                 <li key={uuidv4()}>{e}</li>
               ))}
             </ol>
           </Panel>
           <Panel
-            header='Data Encoding/Decoding error'
-            key='encodedecodeerror'
+            header="Data Encoding/Decoding error"
+            key="encodedecodeerror"
             extra={showErrorCount(errorMsgs.EncodingDecoding.length)}
           >
             <ol>
-              {errorMsgs.EncodingDecoding.map(e => (
+              {errorMsgs.EncodingDecoding.map((e) => (
                 <li key={uuidv4()}>{e}</li>
               ))}
             </ol>
           </Panel>
           <Panel
-            header='Visualization error'
-            key='visualizationerror'
+            header="Visualization error"
+            key="visualizationerror"
             extra={showErrorCount(errorMsgs.Visualization.length)}
           >
             <ol>
-              {errorMsgs.Visualization.map(e => (
+              {errorMsgs.Visualization.map((e) => (
                 <li key={uuidv4()}>{e}</li>
               ))}
             </ol>
           </Panel>
           <Panel
-            header='Authentication error'
-            key='autherror'
+            header="Authentication error"
+            key="autherror"
             extra={showErrorCount(errorMsgs.Authentication.length)}
           >
             <ol>
-              {errorMsgs.Authentication.map(e => (
+              {errorMsgs.Authentication.map((e) => (
                 <li key={uuidv4()}>{e}</li>
               ))}
             </ol>
           </Panel>
           <Panel
-            header='Warning'
-            key='warning'
+            header="Warning"
+            key="warning"
             extra={showWarningCount(this.state.warnings.length)}
           >
             <ol>
-              {this.state.warnings.map(warning => (
+              {this.state.warnings.map((warning) => (
                 <li key={uuidv4()}>{warning}</li>
               ))}
             </ol>
           </Panel>
         </Collapse>
       ),
-      onOk (): void {}
+      onOk(): void {},
     })
   }
 
@@ -418,22 +469,29 @@ class Header extends React.Component<HeaderProps, HeaderState> {
   }
 
   handleServerSelectionInput = (
-    event: React.FormEvent<HTMLInputElement>
+    event: React.FormEvent<HTMLInputElement>,
   ): void => {
     const value = event.currentTarget.value.trim()
     this.setState({
       selectedServerUrl: value,
-      isServerSelectionDisabled: !this.isValidServerUrl(value)
+      isServerSelectionDisabled: !this.isValidServerUrl(value),
     })
   }
 
   handleServerSelectionCancellation = (): void => {
-    const cachedServerUrl = window.localStorage.getItem('slim_selected_server')?.trim()
+    const cachedServerUrl = window.localStorage
+      .getItem('slim_selected_server')
+      ?.trim()
     this.setState({
-      serverSelectionMode: cachedServerUrl !== null && cachedServerUrl !== undefined && cachedServerUrl !== '' ? 'custom' : 'default',
+      serverSelectionMode:
+        cachedServerUrl !== null &&
+        cachedServerUrl !== undefined &&
+        cachedServerUrl !== ''
+          ? 'custom'
+          : 'default',
       selectedServerUrl: cachedServerUrl ?? undefined,
       isServerSelectionModalVisible: false,
-      isServerSelectionDisabled: !this.isValidServerUrl(cachedServerUrl)
+      isServerSelectionDisabled: !this.isValidServerUrl(cachedServerUrl),
     })
   }
 
@@ -443,13 +501,16 @@ class Header extends React.Component<HeaderProps, HeaderState> {
   }
 
   handleServerSelection = (): void => {
-    window.localStorage.setItem('slim_server_selection_mode', this.state.serverSelectionMode)
+    window.localStorage.setItem(
+      'slim_server_selection_mode',
+      this.state.serverSelectionMode,
+    )
 
     if (this.state.serverSelectionMode === 'default') {
       this.props.onServerSelection({ url: '' })
       this.setState({
         isServerSelectionModalVisible: false,
-        isServerSelectionDisabled: false
+        isServerSelectionDisabled: false,
       })
       return
     }
@@ -464,33 +525,31 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     }
     this.setState({
       isServerSelectionModalVisible: !closeModal,
-      isServerSelectionDisabled: !closeModal
+      isServerSelectionDisabled: !closeModal,
     })
   }
 
-  render (): React.ReactNode {
+  render(): React.ReactNode {
     let user = null
     if (this.props.user !== undefined) {
       const userMenuItems = []
       if (this.props.onUserLogout !== undefined) {
-        userMenuItems.push(
-          {
-            label: 'Logout',
-            key: 'user-logout',
-            onClick: () => {
-              if (this.props.onUserLogout !== undefined) {
-                this.props.onUserLogout()
-              }
+        userMenuItems.push({
+          label: 'Logout',
+          key: 'user-logout',
+          onClick: () => {
+            if (this.props.onUserLogout !== undefined) {
+              this.props.onUserLogout()
             }
-          }
-        )
+          },
+        })
       }
       const userMenu = { items: userMenuItems }
       user = (
         <Dropdown menu={userMenu} trigger={['click']}>
           <Button
             icon={UserOutlined}
-            onClick={e => e.preventDefault()}
+            onClick={(e) => e.preventDefault()}
             label={`${this.props.user.name} (${this.props.user.email})`}
           />
         </Dropdown>
@@ -500,8 +559,8 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     let worklistButton
     if (this.props.showWorklistButton) {
       worklistButton = (
-        <NavLink to='/'>
-          <Button icon={UnorderedListOutlined} tooltip='Go to worklist' />
+        <NavLink to="/">
+          <Button icon={UnorderedListOutlined} tooltip="Go to worklist" />
         </NavLink>
       )
     }
@@ -509,41 +568,44 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     const infoButton = (
       <Button
         icon={InfoOutlined}
-        tooltip='Get app info'
+        tooltip="Get app info"
         onClick={this.handleInfoButtonClick}
       />
     )
 
     const debugButton = (
       <Badge count={this.state.errorObj.length} style={{ zIndex: 1000 }}>
-        <Badge color='green' count={this.state.warnings.length} style={{ zIndex: 1001 }}>
+        <Badge
+          color="green"
+          count={this.state.warnings.length}
+          style={{ zIndex: 1001 }}
+        >
           <Button
             icon={SettingOutlined}
-            tooltip='Debug info'
+            tooltip="Debug info"
             onClick={this.handleDebugButtonClick}
           />
         </Badge>
       </Badge>
     )
 
-    const showDicomTagBrowser = this.props.location.pathname.includes('/studies/')
+    const showDicomTagBrowser =
+      this.props.location.pathname.includes('/studies/')
 
-    const dicomTagBrowserButton = showDicomTagBrowser
-      ? (
-        <Button
-          icon={FileSearchOutlined}
-          tooltip='Dicom Tag Browser'
-          onClick={this.handleDicomTagBrowserButtonClick}
-        />
-        )
-      : null
+    const dicomTagBrowserButton = showDicomTagBrowser ? (
+      <Button
+        icon={FileSearchOutlined}
+        tooltip="Dicom Tag Browser"
+        onClick={this.handleDicomTagBrowserButtonClick}
+      />
+    ) : null
 
     let serverSelectionButton
     if (this.props.showServerSelectionButton) {
       serverSelectionButton = (
         <Button
           icon={ApiOutlined}
-          tooltip='Select server'
+          tooltip="Select server"
           onClick={this.handleServerSelectionButtonClick}
         />
       )
@@ -551,12 +613,14 @@ class Header extends React.Component<HeaderProps, HeaderState> {
 
     const logoUrl = process.env.PUBLIC_URL + '/logo.svg'
 
-    const selectedServerUrl = this.state.serverSelectionMode === 'custom'
-      ? this.state.selectedServerUrl?.trim()
-      : this.props.clients?.default?.baseURL ?? this.props.defaultClients?.default?.baseURL
+    const selectedServerUrl =
+      this.state.serverSelectionMode === 'custom'
+        ? this.state.selectedServerUrl?.trim()
+        : (this.props.clients?.default?.baseURL ??
+          this.props.defaultClients?.default?.baseURL)
 
-    const urlInfo = selectedServerUrl != null && selectedServerUrl !== ''
-      ? (
+    const urlInfo =
+      selectedServerUrl != null && selectedServerUrl !== '' ? (
         <Tooltip title={selectedServerUrl}>
           <div
             style={{
@@ -564,36 +628,35 @@ class Header extends React.Component<HeaderProps, HeaderState> {
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
               paddingRight: '20px',
-              paddingLeft: '20px'
+              paddingLeft: '20px',
             }}
             title={selectedServerUrl}
           >
             {selectedServerUrl}
           </div>
         </Tooltip>
-        )
-      : null
+      ) : null
 
     return (
       <>
         <Layout.Header style={{ width: '100%', padding: '0 14px' }}>
           <Row style={{ flexWrap: 'nowrap' }}>
             <Col style={{ flexShrink: 0 }}>
-              <Space align='center' direction='horizontal'>
+              <Space align="center" direction="horizontal">
                 <img
                   src={logoUrl}
-                  alt=''
+                  alt=""
                   style={{ height: '64px', margin: '-14px' }}
                 />
               </Space>
             </Col>
-            <Col flex='auto' style={{ minWidth: 0, overflow: 'hidden' }}>
+            <Col flex="auto" style={{ minWidth: 0, overflow: 'hidden' }}>
               <div style={{ width: '100%', overflow: 'hidden' }}>
                 {this.props.showServerSelectionButton ? urlInfo : ''}
               </div>
             </Col>
             <Col style={{ flexShrink: 0 }}>
-              <Space direction='horizontal'>
+              <Space direction="horizontal">
                 {worklistButton}
                 {infoButton}
                 {debugButton}
@@ -607,7 +670,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
 
         <Modal
           open={this.state.isServerSelectionModalVisible}
-          title='Select DICOMweb server'
+          title="Select DICOMweb server"
           onOk={this.handleServerSelection}
           onCancel={this.handleServerSelectionCancellation}
         >
@@ -616,21 +679,23 @@ class Header extends React.Component<HeaderProps, HeaderState> {
             onChange={this.handleServerSelectionModeChange}
             style={{ marginBottom: '16px' }}
           >
-            <Radio value='default'>Use default server</Radio>
-            <Radio value='custom'>Use custom server</Radio>
+            <Radio value="default">Use default server</Radio>
+            <Radio value="custom">Use custom server</Radio>
           </Radio.Group>
 
           {this.state.serverSelectionMode === 'custom' && (
             <Tooltip title={this.state.selectedServerUrl?.trim()}>
               <Input
-                placeholder='Enter base URL of DICOMweb Study Service'
+                placeholder="Enter base URL of DICOMweb Study Service"
                 value={this.state.selectedServerUrl}
                 onChange={this.handleServerSelectionInput}
                 onPressEnter={this.handleServerSelection}
                 addonAfter={
-                this.state.isServerSelectionDisabled
-                  ? <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                  : <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                  this.state.isServerSelectionDisabled ? (
+                    <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                  ) : (
+                    <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                  )
                 }
               />
             </Tooltip>

@@ -25,7 +25,7 @@ const ValidationWarning: React.FC<ValidationWarningProps> = ({
   iconColor = '#e69500',
   iconSize = '1.3em',
   position = { top: '4px', right: '4px' },
-  style
+  style,
 }) => {
   const [show, setShow] = useState(false)
   const [tooltipText, setTooltipText] = useState<string | undefined>(undefined)
@@ -35,7 +35,7 @@ const ValidationWarning: React.FC<ValidationWarningProps> = ({
   useEffect(() => {
     const validationResult = runValidations({
       dialog: false,
-      context: { annotationGroup, slide }
+      context: { annotationGroup, slide },
     })
     if (!validationResult.isValid) {
       setShow(true)
@@ -56,20 +56,22 @@ const ValidationWarning: React.FC<ValidationWarningProps> = ({
 
   return (
     <Tooltip title={tooltipText}>
-      <div style={{
-        ...style,
-        position: 'absolute',
-        top: position.top,
-        right: position.right,
-        zIndex: 2,
-        pointerEvents: 'auto'
-      }}
-      >
-        <FaExclamationTriangle style={{
-          color: iconColor,
-          fontSize: iconSize,
-          textShadow: '0 2px 6px rgba(0,0,0,0.25), 0 0px 2px #fff'
+      <div
+        style={{
+          ...style,
+          position: 'absolute',
+          top: position.top,
+          right: position.right,
+          zIndex: 2,
+          pointerEvents: 'auto',
         }}
+      >
+        <FaExclamationTriangle
+          style={{
+            color: iconColor,
+            fontSize: iconSize,
+            textShadow: '0 2px 6px rgba(0,0,0,0.25), 0 0px 2px #fff',
+          }}
         />
       </div>
     </Tooltip>

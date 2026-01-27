@@ -27,7 +27,7 @@ interface DescriptionProps {
  * header and a body containing a list of name-value pairs.
  */
 class Description extends React.Component<DescriptionProps, {}> {
-  render (): React.ReactNode {
+  render(): React.ReactNode {
     let layout: 'horizontal' | 'vertical' = 'horizontal'
     let labelLineHeight = '14px'
     const contentLineHeight = '14px'
@@ -35,26 +35,28 @@ class Description extends React.Component<DescriptionProps, {}> {
       layout = 'vertical'
       labelLineHeight = '20px'
     }
-    const items = this.props.attributes.map((item: Attribute, index: number) => {
-      const uid = generateUUID()
-      return (
-        <Descriptions.Item
-          key={uid}
-          label={item.name}
-          labelStyle={{
-            lineHeight: labelLineHeight
-          }}
-          contentStyle={{
-            fontWeight: 600,
-            whiteSpace: 'pre-line',
-            lineHeight: contentLineHeight
-          }}
-          span={1}
-        >
-          {item.value}
-        </Descriptions.Item>
-      )
-    })
+    const items = this.props.attributes.map(
+      (item: Attribute, index: number) => {
+        const uid = generateUUID()
+        return (
+          <Descriptions.Item
+            key={uid}
+            label={item.name}
+            labelStyle={{
+              lineHeight: labelLineHeight,
+            }}
+            contentStyle={{
+              fontWeight: 600,
+              whiteSpace: 'pre-line',
+              lineHeight: contentLineHeight,
+            }}
+            span={1}
+          >
+            {item.value}
+          </Descriptions.Item>
+        )
+      },
+    )
     let icon = null
     if (this.props.icon !== undefined) {
       icon = <this.props.icon />
@@ -63,17 +65,12 @@ class Description extends React.Component<DescriptionProps, {}> {
       <Card
         title={this.props.header}
         extra={icon}
-        size='small'
+        size="small"
         hoverable={this.props.selectable}
         bordered={this.props.header !== undefined}
         actions={this.props.methods}
       >
-        <Descriptions
-          column={1}
-          size='small'
-          layout={layout}
-          bordered={false}
-        >
+        <Descriptions column={1} size="small" layout={layout} bordered={false}>
           {items}
         </Descriptions>
         {this.props.children}

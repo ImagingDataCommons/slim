@@ -18,11 +18,17 @@ interface SegmentListProps {
       color?: number[]
     }
   }
-  onSegmentVisibilityChange: ({ segmentUID, isVisible }: {
+  onSegmentVisibilityChange: ({
+    segmentUID,
+    isVisible,
+  }: {
     segmentUID: string
     isVisible: boolean
   }) => void
-  onSegmentStyleChange: ({ segmentUID, styleOptions }: {
+  onSegmentStyleChange: ({
+    segmentUID,
+    styleOptions,
+  }: {
     segmentUID: string
     styleOptions: {
       opacity: number
@@ -40,7 +46,7 @@ class SegmentList extends React.Component<SegmentListProps, {}> {
       this.props.segments.forEach((segment) => {
         this.props.onSegmentVisibilityChange({
           segmentUID: segment.uid,
-          isVisible: checked
+          isVisible: checked,
         })
       })
       return
@@ -49,12 +55,12 @@ class SegmentList extends React.Component<SegmentListProps, {}> {
     this.props.visibleSegmentUIDs.forEach((segmentUID) => {
       this.props.onSegmentVisibilityChange({
         segmentUID,
-        isVisible: checked
+        isVisible: checked,
       })
     })
   }
 
-  render (): React.ReactNode {
+  render(): React.ReactNode {
     const items = this.props.segments.map((segment, index) => {
       const uid = segment.uid
       return (
@@ -76,11 +82,11 @@ class SegmentList extends React.Component<SegmentListProps, {}> {
           style={{
             paddingLeft: '14px',
             paddingTop: '7px',
-            paddingBottom: '7px'
+            paddingBottom: '7px',
           }}
         >
           <Switch
-            size='small'
+            size="small"
             onChange={this.handleVisibilityChange}
             checked={this.props.visibleSegmentUIDs.size > 0}
             checkedChildren={<FaEye />}

@@ -9,13 +9,18 @@ import { StorageClasses } from '../../../data/uids'
 import { CustomError, errorTypes } from '../../../utils/CustomError'
 import { findContentItemsByName } from '../../../utils/sr'
 import NotificationMiddleware, {
-  NotificationMiddlewareContext
+  NotificationMiddlewareContext,
 } from '../../../services/NotificationMiddleware'
 
 /**
  * Constructs volume and label viewers for the slide
  */
-export const constructViewers = ({ clients, slide, preload, clusteringPixelSizeThreshold }: {
+export const constructViewers = ({
+  clients,
+  slide,
+  preload,
+  clusteringPixelSizeThreshold,
+}: {
   clients: { [key: string]: dwc.api.DICOMwebClient }
   slide: Slide
   preload?: boolean
@@ -26,7 +31,7 @@ export const constructViewers = ({ clients, slide, preload, clusteringPixelSizeT
 } => {
   console.info(
     'instantiate viewer for VOLUME images of slide ' +
-    `"${slide.volumeImages[0].ContainerIdentifier}"`
+      `"${slide.volumeImages[0].ContainerIdentifier}"`,
   )
   try {
     const volumeViewer = new dmv.viewer.VolumeImageViewer({
@@ -35,14 +40,13 @@ export const constructViewers = ({ clients, slide, preload, clusteringPixelSizeT
       controls: ['overview', 'position'],
       skipThumbnails: true,
       preload,
-      annotationOptions: clusteringPixelSizeThreshold !== undefined
-        ? { clusteringPixelSizeThreshold }
-        : undefined,
+      annotationOptions:
+        clusteringPixelSizeThreshold !== undefined
+          ? { clusteringPixelSizeThreshold }
+          : undefined,
       errorInterceptor: (error: CustomError) => {
-        NotificationMiddleware.onError(
-          NotificationMiddlewareContext.DMV, error
-        )
-      }
+        NotificationMiddleware.onError(NotificationMiddlewareContext.DMV, error)
+      },
     })
     volumeViewer.activateSelectInteraction({})
 
@@ -50,7 +54,7 @@ export const constructViewers = ({ clients, slide, preload, clusteringPixelSizeT
     if (slide.labelImages.length > 0) {
       console.info(
         'instantiate viewer for LABEL image of slide ' +
-        `"${slide.labelImages[0].ContainerIdentifier}"`
+          `"${slide.labelImages[0].ContainerIdentifier}"`,
       )
       labelViewer = new dmv.viewer.LabelImageViewer({
         client: clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE],
@@ -60,9 +64,9 @@ export const constructViewers = ({ clients, slide, preload, clusteringPixelSizeT
         errorInterceptor: (error: CustomError) => {
           NotificationMiddleware.onError(
             NotificationMiddlewareContext.DMV,
-            error
+            error,
           )
-        }
+        },
       })
     }
 
@@ -71,10 +75,7 @@ export const constructViewers = ({ clients, slide, preload, clusteringPixelSizeT
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     NotificationMiddleware.onError(
       NotificationMiddlewareContext.SLIM,
-      new CustomError(
-        errorTypes.VISUALIZATION,
-        'Failed to instantiate viewer'
-      )
+      new CustomError(errorTypes.VISUALIZATION, 'Failed to instantiate viewer'),
     )
     throw error
   }
@@ -84,7 +85,7 @@ export const constructViewers = ({ clients, slide, preload, clusteringPixelSizeT
  * Checks if a report implements TID1500
  */
 export const implementsTID1500 = (
-  report: dmv.metadata.Comprehensive3DSR
+  report: dmv.metadata.Comprehensive3DSR,
 ): boolean => {
   const templateSeq = report.ContentTemplateSequence
   if (templateSeq.length > 0) {
@@ -100,15 +101,15 @@ export const implementsTID1500 = (
  * Checks if a report describes a specimen subject
  */
 export const describesSpecimenSubject = (
-  report: dmv.metadata.Comprehensive3DSR
+  report: dmv.metadata.Comprehensive3DSR,
 ): boolean => {
   const items = findContentItemsByName({
     content: report.ContentSequence,
     name: new dcmjs.sr.coding.CodedConcept({
       value: '121024',
       schemeDesignator: 'DCM',
-      meaning: 'Subject Class'
-    })
+      meaning: 'Subject Class',
+    }),
   })
   if (items.length === 0) {
     return false
@@ -118,12 +119,12 @@ export const describesSpecimenSubject = (
   const retrievedConcept = new dcmjs.sr.coding.CodedConcept({
     value: subjectClassValue.CodeValue,
     meaning: subjectClassValue.CodeMeaning,
-    schemeDesignator: subjectClassValue.CodingSchemeDesignator
+    schemeDesignator: subjectClassValue.CodingSchemeDesignator,
   })
   const expectedConcept = new dcmjs.sr.coding.CodedConcept({
     value: '121027',
     meaning: 'Specimen',
-    schemeDesignator: 'DCM'
+    schemeDesignator: 'DCM',
   })
   return retrievedConcept.equals(expectedConcept)
 }
@@ -132,15 +133,15 @@ export const describesSpecimenSubject = (
  * Checks if a report contains appropriate graphic ROI annotations.
  */
 export const containsROIAnnotations = (
-  report: dmv.metadata.Comprehensive3DSR
+  report: dmv.metadata.Comprehensive3DSR,
 ): boolean => {
   const measurements = findContentItemsByName({
     content: report.ContentSequence,
     name: new dcmjs.sr.coding.CodedConcept({
       value: '126010',
       schemeDesignator: 'DCM',
-      meaning: 'Imaging Measurements'
-    })
+      meaning: 'Imaging Measurements',
+    }),
   })
   if (measurements.length === 0) {
     return false
@@ -151,8 +152,8 @@ export const containsROIAnnotations = (
     name: new dcmjs.sr.coding.CodedConcept({
       value: '125007',
       schemeDesignator: 'DCM',
-      meaning: 'Measurement Group'
-    })
+      meaning: 'Measurement Group',
+    }),
   })
 
   let foundRegion = false
@@ -163,8 +164,8 @@ export const containsROIAnnotations = (
       name: new dcmjs.sr.coding.CodedConcept({
         value: '111030',
         schemeDesignator: 'DCM',
-        meaning: 'Image Region'
-      })
+        meaning: 'Image Region',
+      }),
     })
     if (regions.length > 0) {
       if (regions[0].ValueType === dcmjs.sr.valueTypes.ValueTypes.SCOORD3D) {

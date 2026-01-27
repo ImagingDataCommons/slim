@@ -7,12 +7,14 @@ interface OpacitySliderProps {
   label?: string
 }
 
-const OpacitySlider: React.FC<OpacitySliderProps> = ({ opacity, onChange, label = 'Opacity' }) => {
+const OpacitySlider: React.FC<OpacitySliderProps> = ({
+  opacity,
+  onChange,
+  label = 'Opacity',
+}) => {
   return (
-    <Row justify='center' align='middle'>
-      <Col span={6}>
-        {label}
-      </Col>
+    <Row justify="center" align="middle">
+      <Col span={6}>{label}</Col>
       <Col span={12}>
         <Slider
           range={false}
@@ -27,7 +29,7 @@ const OpacitySlider: React.FC<OpacitySliderProps> = ({ opacity, onChange, label 
         <InputNumber
           min={0}
           max={1}
-          size='small'
+          size="small"
           step={0.1}
           style={{ width: '65px' }}
           value={opacity}

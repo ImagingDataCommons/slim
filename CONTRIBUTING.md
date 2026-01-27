@@ -35,11 +35,13 @@ The [Bun](https://bun.sh/) runtime and package manager is used to manage depende
 
 ## Coding style
 
-Source code is linted using [ts-standard](https://github.com/standard/ts-standard) (based on [eslint](https://eslint.org/)) and TypeScript is used with [strict type checking compiler options](https://www.typescriptlang.org/tsconfig#Strict_Type_Checking_Options_6173) enabled.
+Source code is linted and formatted using [Biome](https://biomejs.dev/). TypeScript is used with [strict type checking compiler options](https://www.typescriptlang.org/tsconfig#Strict_Type_Checking_Options_6173) enabled. Semicolons are not used at the end of statements (Biome uses `asNeeded`).
 
-Use the following command to identify potential coding style and type annotation violations:
+Use the following commands to check and fix style:
 
-    $ bun run lint
+    $ bun run lint        # check for issues
+    $ bun run lint:fix    # auto-fix issues
+    $ bun run fmt         # format code
 
 
 ### Documentation

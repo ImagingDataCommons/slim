@@ -6,7 +6,7 @@ import Description from './Description'
 import { parseName, parseSex, parseDate } from '../utils/values'
 
 interface PatientProps {
-  metadata: dmv.metadata.Study|dmv.metadata.SOPClass
+  metadata: dmv.metadata.Study | dmv.metadata.SOPClass
 }
 
 /**
@@ -15,32 +15,30 @@ interface PatientProps {
  * DICOM Slide Microscopy images.
  */
 class Patient extends React.Component<PatientProps, {}> {
-  render (): React.ReactNode {
+  render(): React.ReactNode {
     const attributes = [
       {
         name: 'ID',
-        value: this.props.metadata.PatientID
+        value: this.props.metadata.PatientID,
       },
       {
         name: 'Name',
-        value: parseName(this.props.metadata.PatientName)
+        value: parseName(this.props.metadata.PatientName),
       },
       {
         name: 'Sex',
-        value: parseSex(this.props.metadata.PatientSex)
+        value: parseSex(this.props.metadata.PatientSex),
       },
       {
         name: 'Birthdate',
-        value: parseDate(this.props.metadata.PatientBirthDate)
+        value: parseDate(this.props.metadata.PatientBirthDate),
       },
       {
         name: 'Age',
-        value: (this.props.metadata as any).PatientAge
-      }
+        value: (this.props.metadata as any).PatientAge,
+      },
     ]
-    return (
-      <Description attributes={attributes} />
-    )
+    return <Description attributes={attributes} />
   }
 }
 

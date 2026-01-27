@@ -4,7 +4,7 @@ import { CustomError, errorTypes } from '../utils/CustomError'
 
 export const NotificationMiddlewareEvents = {
   OnError: 'onError',
-  OnWarning: 'onWarning'
+  OnWarning: 'onWarning',
 }
 
 export const NotificationMiddlewareContext = {
@@ -12,12 +12,12 @@ export const NotificationMiddlewareContext = {
   DMV: 'dicom-microscopy-viewer',
   DCMJS: 'dcmjs',
   SLIM: 'slim',
-  AUTH: 'authentication'
+  AUTH: 'authentication',
 }
 
 const NotificationType = {
   TOAST: 'toast',
-  CONSOLE: 'console'
+  CONSOLE: 'console',
 }
 
 /* Sources of Error:
@@ -32,36 +32,39 @@ const NotificationSourceDefinition = {
   sources: [
     {
       category: errorTypes.AUTHENTICATION,
-      notificationType: NotificationType.TOAST
+      notificationType: NotificationType.TOAST,
     },
     {
       category: errorTypes.COMMUNICATION,
-      notificationType: NotificationType.TOAST
+      notificationType: NotificationType.TOAST,
     },
     {
       category: errorTypes.VISUALIZATION,
-      notificationType: NotificationType.TOAST
+      notificationType: NotificationType.TOAST,
     },
     {
       category: errorTypes.ENCODINGANDDECODING,
-      notificationType: NotificationType.CONSOLE
+      notificationType: NotificationType.CONSOLE,
     },
     {
       category: 'Warning',
-      notificationType: NotificationType.TOAST
-    }
-  ]
+      notificationType: NotificationType.TOAST,
+    },
+  ],
 }
 
 class NotificationMiddleware extends PubSub {
-  constructor () {
+  constructor() {
     super()
 
     const outerContext = (args) => {
-      this.publish(NotificationMiddlewareEvents.OnWarning, Array.from(args).join(' '))
+      this.publish(
+        NotificationMiddlewareEvents.OnWarning,
+        Array.from(args).join(' '),
+      )
     }
 
-    (function () {
+    ;(function () {
       const warn = console.warn
       console.warn = function () {
         if (!JSON.stringify(arguments).includes('request')) {
@@ -69,7 +72,7 @@ class NotificationMiddleware extends PubSub {
         }
         warn.apply(this, Array.prototype.slice.call(arguments))
       }
-    }())
+    })()
   }
 
   /**
@@ -78,17 +81,17 @@ class NotificationMiddleware extends PubSub {
    * @param source - source of error - dicomweb-client, dmv, dcmjs or slim itself
    * @param error - error object
    */
-  onError (source, error) {
+  onError(source, error) {
     const errorCategory = error.type
     const sourceConfig = NotificationSourceDefinition.sources.find(
-      s => s.category === errorCategory
+      (s) => s.category === errorCategory,
     )
 
     const { notificationType } = sourceConfig
 
     this.publish(NotificationMiddlewareEvents.OnError, {
       source,
-      error
+      error,
     })
 
     let notificationMsg
@@ -107,7 +110,7 @@ class NotificationMiddleware extends PubSub {
         return notification.error({
           message: `${errorCategory} error`,
           description: notificationMsg,
-          duration: 3
+          duration: 3,
         })
 
       case NotificationType.CONSOLE:

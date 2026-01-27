@@ -27,8 +27,8 @@ export const getRoiKey = (roi: dmv.roi.ROI): string | undefined => {
     name: new dcmjs.sr.coding.CodedConcept({
       value: '121071',
       meaning: 'Finding',
-      schemeDesignator: 'DCM'
-    })
+      schemeDesignator: 'DCM',
+    }),
   })
   if (matches.length === 0) {
     console.warn(`no finding found for ROI ${roi.uid}`)
@@ -93,10 +93,10 @@ export const formatRoiStyle = (style: {
 }): dmv.viewer.ROIStyleOptions => {
   const stroke = {
     color: style.stroke?.color ?? [255, 234, 0],
-    width: style.stroke?.width ?? 2
+    width: style.stroke?.width ?? 2,
   }
   const fill = {
-    color: style.fill?.color ?? [255, 234, 0, 0.2]
+    color: style.fill?.color ?? [255, 234, 0, 0.2],
   }
   return {
     stroke,
@@ -105,8 +105,8 @@ export const formatRoiStyle = (style: {
       circle: {
         radius: style.radius ?? Math.max(5 - stroke.width, 1),
         stroke,
-        fill
-      }
-    }
+        fill,
+      },
+    },
   }
 }

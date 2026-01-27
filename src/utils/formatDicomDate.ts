@@ -27,7 +27,7 @@ export const formatDicomDate = (dateStr: string): string => {
     dayNum,
     parseInt(hour),
     parseInt(minute),
-    parseInt(second)
+    parseInt(second),
   )
 
   // Check if the date is invalid or if the month/day combination is invalid

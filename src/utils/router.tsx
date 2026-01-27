@@ -5,7 +5,7 @@ import {
   useLocation,
   useNavigate,
   useParams,
-  Location
+  Location,
 } from 'react-router-dom'
 
 export interface RouteComponentProps {
@@ -14,8 +14,8 @@ export interface RouteComponentProps {
   params: Params<string>
 }
 
-export function withRouter<T> (Component: React.ComponentType<T>): Function {
-  function ComponentWithRouterProp (props: any): JSX.Element {
+export function withRouter<T>(Component: React.ComponentType<T>): Function {
+  function ComponentWithRouterProp(props: any): JSX.Element {
     const location = useLocation()
     const navigate = useNavigate()
     const params = useParams()

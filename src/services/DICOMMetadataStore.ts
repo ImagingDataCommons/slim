@@ -7,7 +7,7 @@ export const EVENTS = {
   STUDY_ADDED: 'event::dicomMetadataStore:studyAdded',
   INSTANCES_ADDED: 'event::dicomMetadataStore:instancesAdded',
   SERIES_ADDED: 'event::dicomMetadataStore:seriesAdded',
-  SERIES_UPDATED: 'event::dicomMetadataStore:seriesUpdated'
+  SERIES_UPDATED: 'event::dicomMetadataStore:seriesUpdated',
 }
 
 export interface Instance {
@@ -57,20 +57,23 @@ interface Model {
 }
 
 const _model: Model = {
-  studies: []
+  studies: [],
 }
 
-function _getStudyInstanceUIDs (): string[] {
+function _getStudyInstanceUIDs(): string[] {
   return _model.studies.map((aStudy) => aStudy.StudyInstanceUID)
 }
 
-function _getStudy (StudyInstanceUID: string): Study | undefined {
+function _getStudy(StudyInstanceUID: string): Study | undefined {
   return _model.studies.find(
-    (aStudy) => aStudy.StudyInstanceUID === StudyInstanceUID
+    (aStudy) => aStudy.StudyInstanceUID === StudyInstanceUID,
   )
 }
 
-function _getSeries (StudyInstanceUID: string, SeriesInstanceUID: string): Series | undefined {
+function _getSeries(
+  StudyInstanceUID: string,
+  SeriesInstanceUID: string,
+): Series | undefined {
   const study = _getStudy(StudyInstanceUID)
 
   if (study == null) {
@@ -78,14 +81,14 @@ function _getSeries (StudyInstanceUID: string, SeriesInstanceUID: string): Serie
   }
 
   return study.series.find(
-    (aSeries) => aSeries.SeriesInstanceUID === SeriesInstanceUID
+    (aSeries) => aSeries.SeriesInstanceUID === SeriesInstanceUID,
   )
 }
 
-function _getInstance (
+function _getInstance(
   StudyInstanceUID: string,
   SeriesInstanceUID: string,
-  SOPInstanceUID: string
+  SOPInstanceUID: string,
 ): Instance | undefined {
   const series = _getSeries(StudyInstanceUID, SeriesInstanceUID)
 
@@ -96,7 +99,7 @@ function _getInstance (
   return series.getInstance(SOPInstanceUID)
 }
 
-function _getInstanceByImageId (imageId: string): Instance | undefined {
+function _getInstanceByImageId(imageId: string): Instance | undefined {
   for (const study of _model.studies) {
     for (const series of study.series) {
       for (const instance of series.instances) {
@@ -115,10 +118,10 @@ function _getInstanceByImageId (imageId: string): Instance | undefined {
  * @param {*} metadata metadata inform of key value pairs
  * @returns
  */
-function _updateMetadataForSeries (
+function _updateMetadataForSeries(
   StudyInstanceUID: string,
   SeriesInstanceUID: string,
-  metadata: Record<string, any>
+  metadata: Record<string, any>,
 ): void {
   const study = _getStudy(StudyInstanceUID)
 
@@ -127,7 +130,7 @@ function _updateMetadataForSeries (
   }
 
   const series = study.series.find(
-    (aSeries) => aSeries.SeriesInstanceUID === SeriesInstanceUID
+    (aSeries) => aSeries.SeriesInstanceUID === SeriesInstanceUID,
   )
 
   if (series == null) {
@@ -149,10 +152,15 @@ function _updateMetadataForSeries (
 interface BaseImplementationType {
   EVENTS: typeof EVENTS
   listeners: Record<string, any>
-  addInstance: (dicomJSONDatasetOrP10ArrayBuffer: ArrayBuffer | Record<string, any>) => void
+  addInstance: (
+    dicomJSONDatasetOrP10ArrayBuffer: ArrayBuffer | Record<string, any>,
+  ) => void
   addInstances: (instances: Instance[], madeInClient?: boolean) => void
   updateSeriesMetadata: (seriesMetadata: Record<string, any>) => void
-  addSeriesMetadata: (seriesSummaryMetadata: Array<Record<string, any>>, madeInClient?: boolean) => void
+  addSeriesMetadata: (
+    seriesSummaryMetadata: Array<Record<string, any>>,
+    madeInClient?: boolean,
+  ) => void
   addStudy: (study: Record<string, any>) => void
   getStudyInstanceUIDs: typeof _getStudyInstanceUIDs
   getStudy: typeof _getStudy
@@ -166,13 +174,13 @@ interface BaseImplementationType {
 const BaseImplementation: BaseImplementationType = {
   EVENTS,
   listeners: {},
-  addInstance (dicomJSONDatasetOrP10ArrayBuffer) {
+  addInstance(dicomJSONDatasetOrP10ArrayBuffer) {
     let dicomJSONDataset
 
     // If Arraybuffer, parse to DICOMJSON before naturalizing.
     if (dicomJSONDatasetOrP10ArrayBuffer instanceof ArrayBuffer) {
       const dicomData = dcmjs.data.DicomMessage.readFile(
-        dicomJSONDatasetOrP10ArrayBuffer
+        dicomJSONDatasetOrP10ArrayBuffer,
       )
 
       dicomJSONDataset = dicomData.dict
@@ -183,8 +191,9 @@ const BaseImplementation: BaseImplementationType = {
     let naturalizedDataset: Instance
 
     if (!('SeriesInstanceUID' in dicomJSONDataset)) {
-      naturalizedDataset =
-        dcmjs.data.DicomMetaDictionary.naturalizeDataset(dicomJSONDataset) as Instance
+      naturalizedDataset = dcmjs.data.DicomMetaDictionary.naturalizeDataset(
+        dicomJSONDataset,
+      ) as Instance
     } else {
       naturalizedDataset = dicomJSONDataset as unknown as Instance
     }
@@ -192,7 +201,7 @@ const BaseImplementation: BaseImplementationType = {
     const { StudyInstanceUID } = naturalizedDataset
 
     let study = _model.studies.find(
-      (study) => study.StudyInstanceUID === StudyInstanceUID
+      (study) => study.StudyInstanceUID === StudyInstanceUID,
     )
 
     if (study == null) {
@@ -202,11 +211,11 @@ const BaseImplementation: BaseImplementationType = {
 
     study.addInstanceToSeries(naturalizedDataset)
   },
-  addInstances (instances, madeInClient = false) {
+  addInstances(instances, madeInClient = false) {
     const { StudyInstanceUID, SeriesInstanceUID } = instances[0]
 
     let study = _model.studies.find(
-      (study) => study.StudyInstanceUID === StudyInstanceUID
+      (study) => study.StudyInstanceUID === StudyInstanceUID,
     )
 
     if (study == null) {
@@ -223,10 +232,10 @@ const BaseImplementation: BaseImplementationType = {
     this._broadcastEvent(EVENTS.INSTANCES_ADDED, {
       StudyInstanceUID,
       SeriesInstanceUID,
-      madeInClient
+      madeInClient,
     })
   },
-  updateSeriesMetadata (seriesMetadata) {
+  updateSeriesMetadata(seriesMetadata) {
     const { StudyInstanceUID, SeriesInstanceUID } = seriesMetadata
     const series = _getSeries(StudyInstanceUID, SeriesInstanceUID)
     if (series == null) {
@@ -238,7 +247,7 @@ const BaseImplementation: BaseImplementationType = {
       study.setSeriesMetadata(SeriesInstanceUID, seriesMetadata)
     }
   },
-  addSeriesMetadata (seriesSummaryMetadata, madeInClient = false) {
+  addSeriesMetadata(seriesSummaryMetadata, madeInClient = false) {
     if (
       seriesSummaryMetadata === undefined ||
       seriesSummaryMetadata.length === 0 ||
@@ -254,7 +263,10 @@ const BaseImplementation: BaseImplementationType = {
       // Will typically be undefined with a compliant DICOMweb server, reset later
       study.StudyDescription = seriesSummaryMetadata[0].StudyDescription
       seriesSummaryMetadata?.forEach((item) => {
-        if (study !== undefined && !study.ModalitiesInStudy?.includes(item.Modality)) {
+        if (
+          study !== undefined &&
+          !study.ModalitiesInStudy?.includes(item.Modality)
+        ) {
           study.ModalitiesInStudy?.push(item.Modality)
         }
       })
@@ -270,14 +282,14 @@ const BaseImplementation: BaseImplementationType = {
     this._broadcastEvent(EVENTS.SERIES_ADDED, {
       StudyInstanceUID,
       seriesSummaryMetadata,
-      madeInClient
+      madeInClient,
     })
   },
-  addStudy (study) {
+  addStudy(study) {
     const { StudyInstanceUID } = study
 
     const existingStudy = _model.studies.find(
-      (study) => study.StudyInstanceUID === StudyInstanceUID
+      (study) => study.StudyInstanceUID === StudyInstanceUID,
     )
 
     if (existingStudy == null) {
@@ -300,19 +312,21 @@ const BaseImplementation: BaseImplementationType = {
   getInstance: _getInstance,
   getInstanceByImageId: _getInstanceByImageId,
   updateMetadataForSeries: _updateMetadataForSeries,
-  _broadcastEvent (eventName: string, data: any): void {
-  }
+  _broadcastEvent(eventName: string, data: any): void {},
 }
 
 interface DicomMetadataStoreType extends BaseImplementationType {
-  subscribe: (event: string, callback: (data: any) => void) => { unsubscribe: () => any }
+  subscribe: (
+    event: string,
+    callback: (data: any) => void,
+  ) => { unsubscribe: () => any }
   unsubscribe: (event: string, callback: (data: any) => void) => void
 }
 
 const DicomMetadataStore = Object.assign(
   {},
   BaseImplementation,
-  pubSubServiceInterface
+  pubSubServiceInterface,
 ) as unknown as DicomMetadataStoreType
 
 export { DicomMetadataStore }

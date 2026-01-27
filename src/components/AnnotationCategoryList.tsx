@@ -24,7 +24,7 @@ const getCategories = (annotations: any): Record<string, Category> => {
   const categories = annotations?.reduce(
     (
       categoriesAcc: Record<string, Category & { types: Record<string, Type> }>,
-      annotation: AnnotationCategoryAndType
+      annotation: AnnotationCategoryAndType,
     ) => {
       const { category, type, uid } = annotation
       const categoryKey = category.CodeMeaning
@@ -32,11 +32,11 @@ const getCategories = (annotations: any): Record<string, Category> => {
 
       const oldCategory = categoriesAcc[categoryKey] ?? {
         ...category,
-        types: {}
+        types: {},
       }
       const oldType = oldCategory.types[typeKey] ?? {
         ...type,
-        uids: []
+        uids: [],
       }
 
       return {
@@ -45,21 +45,19 @@ const getCategories = (annotations: any): Record<string, Category> => {
           ...oldCategory,
           types: {
             ...oldCategory.types,
-            [typeKey]: { ...oldType, uids: [...oldType.uids, uid] }
-          }
-        }
+            [typeKey]: { ...oldType, uids: [...oldType.uids, uid] },
+          },
+        },
       }
     },
-    {}
+    {},
   )
 
   // Normalizing types so that it's an array instead of an object:
   Object.keys(categories).forEach((categoryKey: string) => {
     const category = categories[categoryKey]
     const { types } = category
-    const typesArr = Object.keys(types).map(
-      (typeKey: string) => types[typeKey]
-    )
+    const typesArr = Object.keys(types).map((typeKey: string) => types[typeKey])
     categories[categoryKey].types = typesArr
   })
 
@@ -71,7 +69,7 @@ const AnnotationCategoryList = ({
   onChange,
   onStyleChange,
   defaultAnnotationStyles,
-  checkedAnnotationUids
+  checkedAnnotationUids,
 }: {
   annotations: AnnotationCategoryAndType[]
   onChange: Function
@@ -95,7 +93,11 @@ const AnnotationCategoryList = ({
     const category = categories[categoryKey]
     return (
       <AnnotationCategoryItem
-        key={category.CodeMeaning !== '' ? category.CodeMeaning : `category-${categoryKey}`}
+        key={
+          category.CodeMeaning !== ''
+            ? category.CodeMeaning
+            : `category-${categoryKey}`
+        }
         category={category}
         onChange={onChange}
         onStyleChange={onStyleChange}

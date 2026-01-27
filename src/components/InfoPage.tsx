@@ -9,17 +9,15 @@ interface InfoPageProps {
 
 const InfoPage = ({ title, message }: InfoPageProps): JSX.Element => {
   return (
-    <div style={{
-      height: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }}
+    <div
+      style={{
+        height: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
     >
-      <Result
-        title={title}
-        subTitle={message}
-      />
+      <Result title={title} subTitle={message} />
     </div>
   )
 }

@@ -17,7 +17,7 @@ const SlideViewerContent: React.FC<SlideViewerContentProps> = ({
   toolbarHeight,
   cursor,
   volumeViewportRef,
-  children
+  children,
 }) => {
   return (
     <Layout.Content style={{ height: '100%' }}>
@@ -27,7 +27,7 @@ const SlideViewerContent: React.FC<SlideViewerContentProps> = ({
         style={{
           height: `calc(100% - ${toolbarHeight})`,
           overflow: 'hidden',
-          cursor
+          cursor,
         }}
         ref={volumeViewportRef}
       />

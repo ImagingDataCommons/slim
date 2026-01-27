@@ -10,7 +10,7 @@ import { joinUrl } from './utils/url'
 import getXHRRetryHook from './utils/xhrRetryHook'
 import { CustomError, errorTypes } from './utils/CustomError'
 import NotificationMiddleware, {
-  NotificationMiddlewareContext
+  NotificationMiddlewareContext,
 } from './services/NotificationMiddleware'
 import DicomMetadataStore, { Instance } from './services/DICOMMetadataStore'
 
@@ -28,7 +28,11 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
 
   private readonly handleError: DicomWebManagerErrorHandler
 
-  constructor ({ baseUri, settings, onError }: {
+  constructor({
+    baseUri,
+    settings,
+    onError,
+  }: {
     baseUri: string
     settings: ServerSettings[]
     onError?: DicomWebManagerErrorHandler
@@ -44,14 +48,14 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       }
     }
 
-    settings.forEach(serverSettings => {
+    settings.forEach((serverSettings) => {
       if (serverSettings === undefined) {
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.SLIM,
           new CustomError(
             errorTypes.COMMUNICATION,
-            'At least one server needs to be configured.'
-          )
+            'At least one server needs to be configured.',
+          ),
         )
       }
 
@@ -65,23 +69,26 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
           NotificationMiddlewareContext.SLIM,
           new CustomError(
             errorTypes.COMMUNICATION,
-            'Either path or full URL needs to be configured for server.'
-          )
+            'Either path or full URL needs to be configured for server.',
+          ),
         )
       }
 
-      const hasHttpsUrl = (url?: string): boolean => url?.startsWith('https') ?? false
+      const hasHttpsUrl = (url?: string): boolean =>
+        url?.startsWith('https') ?? false
 
       const clientSettings: dwc.api.DICOMwebClientOptions = {
-        url: serviceUrl
+        url: serviceUrl,
       }
 
-      const shouldUpgradeInsecure = serverSettings.upgradeInsecureRequests === true && [
-        serviceUrl,
-        serverSettings.qidoPathPrefix,
-        serverSettings.wadoPathPrefix,
-        serverSettings.stowPathPrefix
-      ].some(hasHttpsUrl)
+      const shouldUpgradeInsecure =
+        serverSettings.upgradeInsecureRequests === true &&
+        [
+          serviceUrl,
+          serverSettings.qidoPathPrefix,
+          serverSettings.wadoPathPrefix,
+          serverSettings.stowPathPrefix,
+        ].some(hasHttpsUrl)
 
       if (serverSettings.qidoPathPrefix !== undefined) {
         clientSettings.qidoURLPrefix = serverSettings.qidoPathPrefix
@@ -96,7 +103,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       if (shouldUpgradeInsecure) {
         clientSettings.headers = {
           ...clientSettings.headers,
-          'Content-Security-Policy': 'upgrade-insecure-requests'
+          'Content-Security-Policy': 'upgrade-insecure-requests',
         }
       }
 
@@ -104,7 +111,9 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
         clientSettings.requestHooks = [getXHRRetryHook(serverSettings.retry)]
       }
 
-      clientSettings.errorInterceptor = (error: dwc.api.DICOMwebClientError) => {
+      clientSettings.errorInterceptor = (
+        error: dwc.api.DICOMwebClientError,
+      ) => {
         this.handleError(error, serverSettings)
       }
 
@@ -112,7 +121,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
         id: serverSettings.id,
         write: serverSettings.write ?? false,
         read: serverSettings.read ?? true,
-        client: new dwc.api.DICOMwebClient(clientSettings)
+        client: new dwc.api.DICOMwebClient(clientSettings),
       })
     })
 
@@ -121,13 +130,13 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
         NotificationMiddlewareContext.SLIM,
         new CustomError(
           errorTypes.COMMUNICATION,
-          'Only one store is supported for now.'
-        )
+          'Only one store is supported for now.',
+        ),
       )
     }
   }
 
-  get baseURL (): string {
+  get baseURL(): string {
     return this.stores[0].client.baseURL
   }
 
@@ -137,66 +146,66 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
     }
   }
 
-  get headers (): { [name: string]: string } {
+  get headers(): { [name: string]: string } {
     return this.stores[0].client.headers
   }
 
   storeInstances = async (
-    options: dwc.api.StoreInstancesOptions
+    options: dwc.api.StoreInstancesOptions,
   ): Promise<void> => {
     if (this.stores[0].write) {
       return await this.stores[0].client.storeInstances(options)
     } else {
-      return await Promise.reject(
-        new Error('Store is not writable.')
-      )
+      return await Promise.reject(new Error('Store is not writable.'))
     }
   }
 
   searchForStudies = async (
-    options: dwc.api.SearchForStudiesOptions
+    options: dwc.api.SearchForStudiesOptions,
   ): Promise<dwc.api.Study[]> => {
     return await this.stores[0].client.searchForStudies(options)
   }
 
   searchForSeries = async (
-    options: dwc.api.SearchForSeriesOptions
+    options: dwc.api.SearchForSeriesOptions,
   ): Promise<dwc.api.Series[]> => {
     return await this.stores[0].client.searchForSeries(options)
   }
 
   searchForInstances = async (
-    options: dwc.api.SearchForInstancesOptions
+    options: dwc.api.SearchForInstancesOptions,
   ): Promise<dwc.api.Instance[]> => {
     return await this.stores[0].client.searchForInstances(options)
   }
 
   retrieveStudyMetadata = async (
-    options: dwc.api.RetrieveStudyMetadataOptions
+    options: dwc.api.RetrieveStudyMetadataOptions,
   ): Promise<dwc.api.Metadata[]> => {
-    const studySummaryMetadata = await this.stores[0].client.retrieveStudyMetadata(options)
+    const studySummaryMetadata =
+      await this.stores[0].client.retrieveStudyMetadata(options)
     const naturalized = naturalizeDataset(studySummaryMetadata)
     DicomMetadataStore.addStudy(naturalized)
     return studySummaryMetadata
   }
 
   retrieveSeriesMetadata = async (
-    options: dwc.api.RetrieveSeriesMetadataOptions
+    options: dwc.api.RetrieveSeriesMetadataOptions,
   ): Promise<dwc.api.Metadata[]> => {
-    const seriesSummaryMetadata = await this.stores[0].client.retrieveSeriesMetadata(options)
+    const seriesSummaryMetadata =
+      await this.stores[0].client.retrieveSeriesMetadata(options)
     const naturalized = seriesSummaryMetadata.map(naturalizeDataset)
     DicomMetadataStore.addSeriesMetadata(naturalized, true)
     return seriesSummaryMetadata
   }
 
   retrieveInstanceMetadata = async (
-    options: dwc.api.RetrieveInstanceMetadataOptions
+    options: dwc.api.RetrieveInstanceMetadataOptions,
   ): Promise<dwc.api.Metadata[]> => {
     return await this.stores[0].client.retrieveInstanceMetadata(options)
   }
 
   retrieveInstance = async (
-    options: dwc.api.RetrieveInstanceOptions
+    options: dwc.api.RetrieveInstanceOptions,
   ): Promise<dwc.api.Dataset> => {
     const instance = await this.stores[0].client.retrieveInstance(options)
     const data = dcmjs.data.DicomMessage.readFile(instance)
@@ -206,25 +215,25 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   }
 
   retrieveInstanceFrames = async (
-    options: dwc.api.RetrieveInstanceFramesOptions
+    options: dwc.api.RetrieveInstanceFramesOptions,
   ): Promise<dwc.api.Pixeldata[]> => {
     return await this.stores[0].client.retrieveInstanceFrames(options)
   }
 
   retrieveInstanceRendered = async (
-    options: dwc.api.RetrieveInstanceRenderedOptions
+    options: dwc.api.RetrieveInstanceRenderedOptions,
   ): Promise<dwc.api.Pixeldata> => {
     return await this.stores[0].client.retrieveInstanceRendered(options)
   }
 
   retrieveInstanceFramesRendered = async (
-    options: dwc.api.RetrieveInstanceFramesRenderedOptions
+    options: dwc.api.RetrieveInstanceFramesRenderedOptions,
   ): Promise<dwc.api.Pixeldata> => {
     return await this.stores[0].client.retrieveInstanceFramesRendered(options)
   }
 
   retrieveBulkData = async (
-    options: dwc.api.RetrieveBulkDataOptions
+    options: dwc.api.RetrieveBulkDataOptions,
   ): Promise<dwc.api.Bulkdata[]> => {
     return await this.stores[0].client.retrieveBulkData(options)
   }

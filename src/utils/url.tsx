@@ -28,10 +28,10 @@ export const isAuthorizationCodeInUrl = (location: {
 
   return Boolean(
     searchParams.get('code') ??
-    searchParams.get('id_token') ??
-    searchParams.get('session_state') ??
-    hashParams.get('code') ??
-    hashParams.get('id_token') ??
-    hashParams.get('session_state')
+      searchParams.get('id_token') ??
+      searchParams.get('session_state') ??
+      hashParams.get('code') ??
+      hashParams.get('id_token') ??
+      hashParams.get('session_state'),
   )
 }

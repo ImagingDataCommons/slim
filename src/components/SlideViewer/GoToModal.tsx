@@ -30,32 +30,43 @@ const GoToModal: React.FC<GoToModalProps> = ({
   isSelectedMagnificationValid,
   onXCoordinateSelection,
   onYCoordinateSelection,
-  onMagnificationSelection
+  onMagnificationSelection,
 }) => {
-  const handleXCoordinateEnter = useCallback((event: React.KeyboardEvent<HTMLInputElement>): void => {
-    const target = event.target as HTMLInputElement
-    onXCoordinateSelection(target.value !== '' ? Number(target.value) : null)
-  }, [onXCoordinateSelection])
+  const handleXCoordinateEnter = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>): void => {
+      const target = event.target as HTMLInputElement
+      onXCoordinateSelection(target.value !== '' ? Number(target.value) : null)
+    },
+    [onXCoordinateSelection],
+  )
 
-  const handleYCoordinateEnter = useCallback((event: React.KeyboardEvent<HTMLInputElement>): void => {
-    const target = event.target as HTMLInputElement
-    onYCoordinateSelection(target.value !== '' ? Number(target.value) : null)
-  }, [onYCoordinateSelection])
+  const handleYCoordinateEnter = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>): void => {
+      const target = event.target as HTMLInputElement
+      onYCoordinateSelection(target.value !== '' ? Number(target.value) : null)
+    },
+    [onYCoordinateSelection],
+  )
 
-  const handleMagnificationEnter = useCallback((event: React.KeyboardEvent<HTMLInputElement>): void => {
-    const target = event.target as HTMLInputElement
-    onMagnificationSelection(target.value !== '' ? Number(target.value) : null)
-  }, [onMagnificationSelection])
+  const handleMagnificationEnter = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>): void => {
+      const target = event.target as HTMLInputElement
+      onMagnificationSelection(
+        target.value !== '' ? Number(target.value) : null,
+      )
+    },
+    [onMagnificationSelection],
+  )
 
   return (
     <Modal
       open={isVisible}
-      title='Go to slide position'
+      title="Go to slide position"
       onOk={onOk}
       onCancel={onCancel}
-      okText='Select'
+      okText="Select"
     >
-      <Space align='start' direction='vertical'>
+      <Space align="start" direction="vertical">
         <InputNumber
           placeholder={
             '[' +
@@ -64,18 +75,16 @@ const GoToModal: React.FC<GoToModalProps> = ({
             `${validXCoordinateRange[1]}` +
             ']'
           }
-          prefix='X Coordinate [mm]'
+          prefix="X Coordinate [mm]"
           onChange={onXCoordinateSelection}
           onPressEnter={handleXCoordinateEnter}
           controls={false}
           addonAfter={
-            isSelectedXCoordinateValid
-              ? (
-                <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                )
-              : (
-                <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                )
+            isSelectedXCoordinateValid ? (
+              <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+            ) : (
+              <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+            )
           }
         />
         <InputNumber
@@ -86,34 +95,30 @@ const GoToModal: React.FC<GoToModalProps> = ({
             `${validYCoordinateRange[1]}` +
             ']'
           }
-          prefix='Y Coordinate [mm]'
+          prefix="Y Coordinate [mm]"
           onChange={onYCoordinateSelection}
           onPressEnter={handleYCoordinateEnter}
           controls={false}
           addonAfter={
-            isSelectedYCoordinateValid
-              ? (
-                <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                )
-              : (
-                <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                )
+            isSelectedYCoordinateValid ? (
+              <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+            ) : (
+              <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+            )
           }
         />
         <InputNumber
-          placeholder='[0 - 40]'
-          prefix='Magnification'
+          placeholder="[0 - 40]"
+          prefix="Magnification"
           onChange={onMagnificationSelection}
           onPressEnter={handleMagnificationEnter}
           controls={false}
           addonAfter={
-            isSelectedMagnificationValid
-              ? (
-                <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                )
-              : (
-                <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                )
+            isSelectedMagnificationValid ? (
+              <CheckOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+            ) : (
+              <StopOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+            )
           }
         />
       </Space>

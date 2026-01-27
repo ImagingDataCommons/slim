@@ -41,11 +41,11 @@ export const formatTagValue = (tag: DicomTag): string => {
  * @param depth - The current depth level for nested sequences (default: 0)
  * @returns Array of processed tag information
  */
-export function getRows (metadata: Record<string, any>, depth = 0): TagInfo[] {
+export function getRows(metadata: Record<string, any>, depth = 0): TagInfo[] {
   if (metadata === undefined || metadata === null) return []
-  const keywords = Object.keys(metadata).filter(key => key !== '_vrMap')
+  const keywords = Object.keys(metadata).filter((key) => key !== '_vrMap')
 
-  return keywords.flatMap(keyword => {
+  return keywords.flatMap((keyword) => {
     // @ts-expect-error
     const tagInfo = DicomMetaDictionary.nameMap[keyword] as TagInfo | undefined
     let value = metadata[keyword]
@@ -55,13 +55,15 @@ export function getRows (metadata: Record<string, any>, depth = 0): TagInfo[] {
       const regex = /[0-9A-Fa-f]{6}/g
       if (keyword.match(regex) == null) return []
 
-      return [{
-        tag: `(${keyword.substring(0, 4)},${keyword.substring(4, 8)})`,
-        vr: '',
-        keyword: 'Private Tag',
-        value: value?.toString() ?? '',
-        level: depth
-      }]
+      return [
+        {
+          tag: `(${keyword.substring(0, 4)},${keyword.substring(4, 8)})`,
+          vr: '',
+          keyword: 'Private Tag',
+          value: value?.toString() ?? '',
+          level: depth,
+        },
+      ]
     }
 
     // Handle sequence values (SQ VR)
@@ -75,7 +77,7 @@ export function getRows (metadata: Record<string, any>, depth = 0): TagInfo[] {
         keyword,
         value: `Sequence with ${sequenceItems.length} item(s)`,
         level: depth,
-        children: []
+        children: [],
       }
 
       // Create individual nodes for each sequence item
@@ -86,7 +88,7 @@ export function getRows (metadata: Record<string, any>, depth = 0): TagInfo[] {
           keyword: `Item ${index + 1}`,
           value: `Sequence Item ${index + 1}`,
           level: depth + 1,
-          children: getRows(item, depth + 2)
+          children: getRows(item, depth + 2),
         }
         return itemNode
       })
@@ -101,13 +103,15 @@ export function getRows (metadata: Record<string, any>, depth = 0): TagInfo[] {
       value = formatValue(value)
     }
 
-    return [{
-      tag: tagInfo.tag,
-      vr: tagInfo.vr,
-      keyword: keyword.replace('RETIRED_', ''),
-      value: value?.toString() ?? '',
-      level: depth
-    }]
+    return [
+      {
+        tag: tagInfo.tag,
+        vr: tagInfo.vr,
+        keyword: keyword.replace('RETIRED_', ''),
+        value: value?.toString() ?? '',
+        level: depth,
+      },
+    ]
   })
 }
 
@@ -116,11 +120,14 @@ export function getRows (metadata: Record<string, any>, depth = 0): TagInfo[] {
  * @param metadata - The DICOM metadata object to process
  * @returns Sorted array of tag information
  */
-export function getSortedTags (metadata: Record<string, any>): TagInfo[] {
+export function getSortedTags(metadata: Record<string, any>): TagInfo[] {
   const tagList = getRows(metadata)
 
   // Add bulkdataReferences as a special tag if it exists
-  if (metadata.bulkdataReferences !== undefined && metadata.bulkdataReferences !== null) {
+  if (
+    metadata.bulkdataReferences !== undefined &&
+    metadata.bulkdataReferences !== null
+  ) {
     const bulkdataRefs = metadata.bulkdataReferences
     const bulkdataTag: TagInfo = {
       tag: 'bulkdataReferences',
@@ -128,13 +135,13 @@ export function getSortedTags (metadata: Record<string, any>): TagInfo[] {
       keyword: 'bulkdataReferences',
       value: `Object with ${Object.keys(bulkdataRefs).length} bulk data reference(s)`,
       level: 0,
-      children: Object.keys(bulkdataRefs).map(key => ({
+      children: Object.keys(bulkdataRefs).map((key) => ({
         tag: `bulkdataReferences.${key}`,
         vr: 'OB',
         keyword: key,
         value: JSON.stringify(bulkdataRefs[key]),
-        level: 1
-      }))
+        level: 1,
+      })),
     }
     tagList.push(bulkdataTag)
   }

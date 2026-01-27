@@ -23,14 +23,14 @@ interface AnnotationGroupListProps {
   onAnnotationGroupClick: (annotationGroupUID: string) => void
   onAnnotationGroupVisibilityChange: ({
     annotationGroupUID,
-    isVisible
+    isVisible,
   }: {
     annotationGroupUID: string
     isVisible: boolean
   }) => void
   onAnnotationGroupStyleChange: ({
     uid,
-    styleOptions
+    styleOptions,
   }: {
     uid: string
     styleOptions: {
@@ -45,15 +45,15 @@ interface AnnotationGroupListProps {
  * React component representing a list of Annotation Groups.
  */
 class AnnotationGroupList extends React.Component<
-AnnotationGroupListProps,
-unknown
+  AnnotationGroupListProps,
+  unknown
 > {
   handleVisibilityChange = (checked: boolean): void => {
     if (checked) {
       this.props.annotationGroups.forEach((annotationGroup) => {
         this.props.onAnnotationGroupVisibilityChange({
           annotationGroupUID: annotationGroup.uid,
-          isVisible: checked
+          isVisible: checked,
         })
       })
       return
@@ -62,12 +62,12 @@ unknown
     this.props.visibleAnnotationGroupUIDs.forEach((annotationGroupUID) => {
       this.props.onAnnotationGroupVisibilityChange({
         annotationGroupUID,
-        isVisible: checked
+        isVisible: checked,
       })
     })
   }
 
-  render (): React.ReactNode {
+  render(): React.ReactNode {
     const items = this.props.annotationGroups.map((annotationGroup, index) => {
       const uid = annotationGroup.uid
       return (
@@ -90,11 +90,11 @@ unknown
           style={{
             paddingLeft: '14px',
             paddingTop: '7px',
-            paddingBottom: '7px'
+            paddingBottom: '7px',
           }}
         >
           <Switch
-            size='small'
+            size="small"
             onChange={this.handleVisibilityChange}
             checked={this.props.visibleAnnotationGroupUIDs.size > 0}
             checkedChildren={<FaEye />}

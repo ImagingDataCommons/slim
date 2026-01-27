@@ -2,7 +2,7 @@ import createSeriesMetadata from './createSeriesMetadata'
 
 import { Study, Series, Instance } from '../services/DICOMMetadataStore'
 
-function createStudyMetadata (StudyInstanceUID: string): Study {
+function createStudyMetadata(StudyInstanceUID: string): Study {
   return {
     StudyInstanceUID,
     StudyDescription: '',
@@ -33,7 +33,7 @@ function createStudyMetadata (StudyInstanceUID: string): Study {
       }
 
       let series = this.series.find(
-        (s) => s.SeriesInstanceUID === SeriesInstanceUID
+        (s) => s.SeriesInstanceUID === SeriesInstanceUID,
       )
 
       if (series == null) {
@@ -46,10 +46,10 @@ function createStudyMetadata (StudyInstanceUID: string): Study {
 
     setSeriesMetadata: function (
       SeriesInstanceUID: string,
-      seriesMetadata: any
+      seriesMetadata: any,
     ) {
       let existingSeries = this.series.find(
-        (s) => s.SeriesInstanceUID === SeriesInstanceUID
+        (s) => s.SeriesInstanceUID === SeriesInstanceUID,
       )
 
       if (existingSeries != null) {
@@ -58,7 +58,7 @@ function createStudyMetadata (StudyInstanceUID: string): Study {
         const series = createSeriesMetadata(SeriesInstanceUID)
         this.series.push(Object.assign(series, seriesMetadata))
       }
-    }
+    },
   }
 }
 

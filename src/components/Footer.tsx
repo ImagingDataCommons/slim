@@ -14,7 +14,7 @@ interface FooterProps {
  * React component for the application footer.
  */
 class Footer extends React.Component<FooterProps, {}> {
-  render (): React.ReactNode {
+  render(): React.ReactNode {
     return (
       <Layout.Footer style={{ textAlign: 'right', width: '100%' }}>
         {this.props.app.organization}

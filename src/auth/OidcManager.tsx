@@ -3,8 +3,9 @@ import { UserManager, User as UserData } from 'oidc-client'
 import { OidcSettings } from '../AppConfig'
 import { isAuthorizationCodeInUrl } from '../utils/url'
 import { User, AuthManager, SignInCallback } from './'
-import NotificationMiddleware,
-{ NotificationMiddlewareContext } from '../services/NotificationMiddleware'
+import NotificationMiddleware, {
+  NotificationMiddlewareContext,
+} from '../services/NotificationMiddleware'
 import { CustomError, errorTypes } from '../utils/CustomError'
 
 const createUser = (userData: UserData | null): User => {
@@ -19,13 +20,13 @@ const createUser = (userData: UserData | null): User => {
         NotificationMiddlewareContext.AUTH,
         new CustomError(
           errorTypes.AUTHENTICATION,
-          'Failed to obtain user "name" and "email".'
-        )
+          'Failed to obtain user "name" and "email".',
+        ),
       )
     } else {
       return {
         name: profile.name,
-        email: profile.email
+        email: profile.email,
       }
     }
   } else {
@@ -33,20 +34,20 @@ const createUser = (userData: UserData | null): User => {
       NotificationMiddlewareContext.AUTH,
       new CustomError(
         errorTypes.AUTHENTICATION,
-        'Failed to obtain user profile.'
-      )
+        'Failed to obtain user profile.',
+      ),
     )
   }
   return {
     name: undefined,
-    email: undefined
+    email: undefined,
   }
 }
 
 export default class OidcManager implements AuthManager {
   private _oidc: UserManager
 
-  constructor (baseUri: string, settings: OidcSettings) {
+  constructor(baseUri: string, settings: OidcSettings) {
     let responseType = 'code'
     if (settings.grantType !== undefined) {
       if (settings.grantType === 'implicit') {
@@ -62,7 +63,7 @@ export default class OidcManager implements AuthManager {
       loadUserInfo: true,
       automaticSilentRenew: true,
       revokeAccessTokenOnSignout: true,
-      post_logout_redirect_uri: `${baseUri}/logout`
+      post_logout_redirect_uri: `${baseUri}/logout`,
     })
     if (settings.endSessionEndpoint != null) {
       /*
@@ -74,35 +75,40 @@ export default class OidcManager implements AuthManager {
        * metadata, update the metadata, and then reconstruct an object with the
        * updated metadata.
        */
-      this._oidc.metadataService.getMetadata().then(metadata => {
-        if (settings.endSessionEndpoint != null) {
-          metadata.end_session_endpoint = settings.endSessionEndpoint
-          this._oidc = new UserManager({
-            authority: settings.authority,
-            client_id: settings.clientId,
-            redirect_uri: baseUri,
-            scope: settings.scope,
-            response_type: responseType,
-            loadUserInfo: true,
-            automaticSilentRenew: true,
-            revokeAccessTokenOnSignout: true,
-            post_logout_redirect_uri: `${baseUri}/logout`,
-            metadata
-          })
-        }
-      }).catch((error) => {
-        console.error(
-          'failed to get metadata from authorization server: ',
-          error
-        )
-      })
+      this._oidc.metadataService
+        .getMetadata()
+        .then((metadata) => {
+          if (settings.endSessionEndpoint != null) {
+            metadata.end_session_endpoint = settings.endSessionEndpoint
+            this._oidc = new UserManager({
+              authority: settings.authority,
+              client_id: settings.clientId,
+              redirect_uri: baseUri,
+              scope: settings.scope,
+              response_type: responseType,
+              loadUserInfo: true,
+              automaticSilentRenew: true,
+              revokeAccessTokenOnSignout: true,
+              post_logout_redirect_uri: `${baseUri}/logout`,
+              metadata,
+            })
+          }
+        })
+        .catch((error) => {
+          console.error(
+            'failed to get metadata from authorization server: ',
+            error,
+          )
+        })
     }
   }
 
   /**
    * Sign-in to authenticate the user and obtain authorization.
    */
-  signIn = async ({ onSignIn }: {
+  signIn = async ({
+    onSignIn,
+  }: {
     onSignIn?: SignInCallback
   }): Promise<void> => {
     const handleSignIn = (userData: UserData): void => {
@@ -154,7 +160,7 @@ export default class OidcManager implements AuthManager {
   /**
    * Get authorization. Requires prior sign-in.
    */
-  getAuthorization = async (): Promise<string|undefined> => {
+  getAuthorization = async (): Promise<string | undefined> => {
     return await this._oidc.getUser().then((userData) => {
       if (userData !== null && userData !== undefined) {
         return userData.access_token
@@ -163,8 +169,8 @@ export default class OidcManager implements AuthManager {
           NotificationMiddlewareContext.AUTH,
           new CustomError(
             errorTypes.AUTHENTICATION,
-            'Failed to obtain user profile.'
-          )
+            'Failed to obtain user profile.',
+          ),
         )
       }
     })
@@ -180,8 +186,8 @@ export default class OidcManager implements AuthManager {
           NotificationMiddlewareContext.AUTH,
           new CustomError(
             errorTypes.AUTHENTICATION,
-            'Failed to obtain user information.'
-          )
+            'Failed to obtain user information.',
+          ),
         )
       }
       return createUser(userData)

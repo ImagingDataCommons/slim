@@ -5,7 +5,7 @@ import DicomWebManager from '../DicomWebManager'
 import { StorageClasses } from '../data/uids'
 import { CustomError, errorTypes } from '../utils/CustomError'
 import NotificationMiddleware, {
-  NotificationMiddlewareContext
+  NotificationMiddlewareContext,
 } from './NotificationMiddleware'
 import { createSlides, Slide } from '../data/slides'
 
@@ -20,7 +20,7 @@ export const fetchImageMetadata = async ({
   clients,
   studyInstanceUID,
   onSuccess,
-  onError
+  onError,
 }: FetchImageMetadataParams): Promise<void> => {
   try {
     const images: dmv.metadata.VLWholeSlideMicroscopyImage[][] = []
@@ -30,8 +30,8 @@ export const fetchImageMetadata = async ({
     const matchedSeries = await client.searchForSeries({
       queryParams: {
         Modality: 'SM',
-        StudyInstanceUID: studyInstanceUID
-      }
+        StudyInstanceUID: studyInstanceUID,
+      },
     })
 
     await Promise.all(
@@ -39,11 +39,11 @@ export const fetchImageMetadata = async ({
         const { dataset } = dmv.metadata.formatMetadata(s)
         const loadingSeries = dataset as dmv.metadata.Series
         console.info(
-          `retrieve metadata of series "${loadingSeries.SeriesInstanceUID}"`
+          `retrieve metadata of series "${loadingSeries.SeriesInstanceUID}"`,
         )
         const retrievedMetadata = await client.retrieveSeriesMetadata({
           studyInstanceUID: studyInstanceUID,
-          seriesInstanceUID: loadingSeries.SeriesInstanceUID
+          seriesInstanceUID: loadingSeries.SeriesInstanceUID,
         })
 
         const seriesImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
@@ -53,7 +53,7 @@ export const fetchImageMetadata = async ({
             StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE
           ) {
             const image = new dmv.metadata.VLWholeSlideMicroscopyImage({
-              metadata: item
+              metadata: item,
             })
             seriesImages.push(image)
           }
@@ -62,7 +62,7 @@ export const fetchImageMetadata = async ({
         if (seriesImages.length > 0) {
           images.push(seriesImages)
         }
-      })
+      }),
     )
     const newSlides = createSlides(images)
     onSuccess(newSlides)
@@ -70,12 +70,12 @@ export const fetchImageMetadata = async ({
     console.error(err)
     const customError = new CustomError(
       errorTypes.ENCODINGANDDECODING,
-      'Image metadata could not be retrieved or decoded.'
+      'Image metadata could not be retrieved or decoded.',
     )
     onError(customError)
     NotificationMiddleware.onError(
       NotificationMiddlewareContext.SLIM,
-      customError
+      customError,
     )
   }
 }

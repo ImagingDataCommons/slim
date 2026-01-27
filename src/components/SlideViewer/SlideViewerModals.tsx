@@ -70,7 +70,7 @@ const SlideViewerModals: React.FC<SlideViewerModalsProps> = ({
   isReportModalVisible,
   onReportVerification,
   onReportCancellation,
-  report
+  report,
 }) => {
   return (
     <>

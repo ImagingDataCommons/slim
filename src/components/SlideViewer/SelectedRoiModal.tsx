@@ -13,17 +13,17 @@ interface SelectedRoiModalProps {
 const SelectedRoiModal: React.FC<SelectedRoiModalProps> = ({
   isVisible,
   onCancel,
-  children
+  children,
 }) => {
   return (
     <Modal
       open={isVisible}
-      title='Selected ROI'
+      title="Selected ROI"
       onCancel={onCancel}
       maskClosable
       footer={null}
     >
-      <Space align='start' direction='vertical'>
+      <Space align="start" direction="vertical">
         {children}
       </Space>
     </Modal>

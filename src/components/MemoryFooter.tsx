@@ -1,7 +1,9 @@
 import React from 'react'
 import { Layout, Typography, Space, Tag } from 'antd'
 import { memoryMonitor, type MemoryInfo } from '../services/MemoryMonitor'
-import NotificationMiddleware, { NotificationMiddlewareEvents } from '../services/NotificationMiddleware'
+import NotificationMiddleware, {
+  NotificationMiddlewareEvents,
+} from '../services/NotificationMiddleware'
 
 const { Text } = Typography
 
@@ -16,21 +18,24 @@ interface MemoryFooterState {
 /**
  * React component for displaying memory usage information in the footer.
  */
-class MemoryFooter extends React.Component<MemoryFooterProps, MemoryFooterState> {
+class MemoryFooter extends React.Component<
+  MemoryFooterProps,
+  MemoryFooterState
+> {
   private unsubscribeMemory?: () => void
   private lastWarningLevel: 'none' | 'high' | 'critical' = 'none'
   private lastCriticalWarningTime: number = 0
   private readonly criticalWarningThrottleMs: number = 30000
   private didStartMonitoring: boolean = false
 
-  constructor (props: MemoryFooterProps) {
+  constructor(props: MemoryFooterProps) {
     super(props)
     this.state = {
-      memoryInfo: null
+      memoryInfo: null,
     }
   }
 
-  componentDidMount (): void {
+  componentDidMount(): void {
     if (this.props.enabled !== true) {
       return
     }
@@ -45,20 +50,23 @@ class MemoryFooter extends React.Component<MemoryFooterProps, MemoryFooterState>
 
         if (warningLevel === 'critical' && memory.usagePercentage !== null) {
           const now = Date.now()
-          if (now - this.lastCriticalWarningTime >= this.criticalWarningThrottleMs) {
+          if (
+            now - this.lastCriticalWarningTime >=
+            this.criticalWarningThrottleMs
+          ) {
             this.lastCriticalWarningTime = now
             NotificationMiddleware.publish(
               NotificationMiddlewareEvents.OnWarning,
               `Critical memory usage: ${memory.usagePercentage.toFixed(1)}% used. ` +
-              `Only ${memoryMonitor.formatBytes(memory.remainingBytes)} remaining. ` +
-              'Consider refreshing the page or closing other tabs.'
+                `Only ${memoryMonitor.formatBytes(memory.remainingBytes)} remaining. ` +
+                'Consider refreshing the page or closing other tabs.',
             )
           }
         } else if (warningLevel === 'high' && memory.usagePercentage !== null) {
           NotificationMiddleware.publish(
             NotificationMiddlewareEvents.OnWarning,
             `High memory usage: ${memory.usagePercentage.toFixed(1)}% used. ` +
-            `${memoryMonitor.formatBytes(memory.remainingBytes)} remaining.`
+              `${memoryMonitor.formatBytes(memory.remainingBytes)} remaining.`,
           )
         }
       }
@@ -68,7 +76,7 @@ class MemoryFooter extends React.Component<MemoryFooterProps, MemoryFooterState>
     this.didStartMonitoring = true
   }
 
-  componentWillUnmount (): void {
+  componentWillUnmount(): void {
     if (this.unsubscribeMemory != null) {
       this.unsubscribeMemory()
     }
@@ -78,7 +86,7 @@ class MemoryFooter extends React.Component<MemoryFooterProps, MemoryFooterState>
     }
   }
 
-  render (): React.ReactNode {
+  render(): React.ReactNode {
     if (this.props.enabled !== true) {
       return null
     }
@@ -107,28 +115,36 @@ class MemoryFooter extends React.Component<MemoryFooterProps, MemoryFooterState>
           lineHeight: '24px',
           backgroundColor: '#fafafa',
           borderTop: '1px solid #f0f0f0',
-          fontSize: '12px'
+          fontSize: '12px',
         }}
       >
-        <Space split={<span style={{ color: '#d9d9d9' }}>|</span>} size='small' wrap>
-          <Text type='secondary' style={{ fontSize: '12px' }}>
+        <Space
+          split={<span style={{ color: '#d9d9d9' }}>|</span>}
+          size="small"
+          wrap
+        >
+          <Text type="secondary" style={{ fontSize: '12px' }}>
             Memory:
           </Text>
           <Tag color={statusColor} style={{ margin: 0 }}>
             {memoryMonitor.formatBytes(memoryInfo.usedJSHeapSize)}
           </Tag>
-          <Text type='secondary' style={{ fontSize: '12px' }}>
+          <Text type="secondary" style={{ fontSize: '12px' }}>
             of
           </Text>
           <Text style={{ fontSize: '12px' }}>
             {memoryMonitor.formatBytes(memoryInfo.jsHeapSizeLimit)}
           </Text>
-          <Text type='secondary' style={{ fontSize: '12px' }}>
-            ({memoryInfo.usagePercentage !== null ? `${memoryInfo.usagePercentage.toFixed(1)}%` : 'N/A'})
+          <Text type="secondary" style={{ fontSize: '12px' }}>
+            (
+            {memoryInfo.usagePercentage !== null
+              ? `${memoryInfo.usagePercentage.toFixed(1)}%`
+              : 'N/A'}
+            )
           </Text>
           {memoryInfo.remainingBytes !== null && (
             <>
-              <Text type='secondary' style={{ fontSize: '12px' }}>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
                 Remaining:
               </Text>
               <Text style={{ fontSize: '12px' }}>

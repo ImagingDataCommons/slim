@@ -23,11 +23,17 @@ interface OpticalPathListProps {
       paletteColorLookupTable?: dmv.color.PaletteColorLookupTable
     }
   }
-  onOpticalPathVisibilityChange: ({ opticalPathIdentifier, isVisible }: {
+  onOpticalPathVisibilityChange: ({
+    opticalPathIdentifier,
+    isVisible,
+  }: {
     opticalPathIdentifier: string
     isVisible: boolean
   }) => void
-  onOpticalPathStyleChange: ({ opticalPathIdentifier, styleOptions }: {
+  onOpticalPathStyleChange: ({
+    opticalPathIdentifier,
+    styleOptions,
+  }: {
     opticalPathIdentifier: string
     styleOptions: {
       opacity?: number
@@ -35,7 +41,10 @@ interface OpticalPathListProps {
       limitValues?: number[]
     }
   }) => void
-  onOpticalPathActivityChange: ({ opticalPathIdentifier, isActive }: {
+  onOpticalPathActivityChange: ({
+    opticalPathIdentifier,
+    isActive,
+  }: {
     opticalPathIdentifier: string
     isActive: boolean
   }) => void
@@ -49,12 +58,15 @@ interface OpticalPathListState {
 /**
  * React component representing a list of optical paths.
  */
-class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathListState> {
+class OpticalPathList extends React.Component<
+  OpticalPathListProps,
+  OpticalPathListState
+> {
   state = {
-    selectedOpticalPathIdentifier: undefined
+    selectedOpticalPathIdentifier: undefined,
   }
 
-  constructor (props: OpticalPathListProps) {
+  constructor(props: OpticalPathListProps) {
     super(props)
     this.handleItemAddition = this.handleItemAddition.bind(this)
     this.handleItemRemoval = this.handleItemRemoval.bind(this)
@@ -64,37 +76,35 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
   /**
    * Handler that gets called when an optical path should be removed.
    */
-  handleItemRemoval (opticalPathIdentifier: string): void {
+  handleItemRemoval(opticalPathIdentifier: string): void {
     this.props.onOpticalPathActivityChange({
       opticalPathIdentifier,
-      isActive: false
+      isActive: false,
     })
   }
 
   /**
    * Handler that gets called when the selection of an optical path should change.
    */
-  handleItemSelectionChange (
-    value: string
-  ): void {
+  handleItemSelectionChange(value: string): void {
     this.setState({ selectedOpticalPathIdentifier: value })
   }
 
   /**
    * Handler that gets called when an optical path should be added.
    */
-  handleItemAddition (): void {
+  handleItemAddition(): void {
     const identifier = this.state.selectedOpticalPathIdentifier
     if (identifier !== undefined) {
       this.props.onOpticalPathActivityChange({
         opticalPathIdentifier: identifier,
-        isActive: true
+        isActive: true,
       })
       this.setState({ selectedOpticalPathIdentifier: undefined })
     }
   }
 
-  render (): React.ReactNode {
+  render(): React.ReactNode {
     if (this.props.metadata === undefined) {
       return null
     }
@@ -102,11 +112,11 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
     const isSelectable = this.props.opticalPaths.length > 1
     const opticalPathItems: React.ReactNode[] = []
     const optionItems: React.ReactNode[] = []
-    this.props.opticalPaths.forEach(opticalPath => {
+    this.props.opticalPaths.forEach((opticalPath) => {
       const opticalPathIdentifier = opticalPath.identifier
       const images = this.props.metadata[opticalPathIdentifier]
       const seriesInstanceUID = images[0].SeriesInstanceUID
-      images[0].OpticalPathSequence.forEach(opticalPathItem => {
+      images[0].OpticalPathSequence.forEach((opticalPathItem) => {
         const id = opticalPathItem.OpticalPathIdentifier
         const description = opticalPathItem.OpticalPathDescription
         if (opticalPath.identifier === id) {
@@ -122,7 +132,7 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
                 onStyleChange={this.props.onOpticalPathStyleChange}
                 onRemoval={this.handleItemRemoval}
                 isRemovable={isSelectable}
-              />
+              />,
             )
           } else {
             let title
@@ -132,7 +142,9 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
               title = `${id}`
             }
             optionItems.push(
-              <Option key={id} value={id}>{title}</Option>
+              <Option key={id} value={id}>
+                {title}
+              </Option>,
             )
           }
         }
@@ -142,9 +154,9 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
     let opticalPathSelector
     if (isSelectable) {
       opticalPathSelector = (
-        <Space align='center' size={20} style={{ padding: '14px' }}>
+        <Space align="center" size={20} style={{ padding: '14px' }}>
           <Select
-            defaultValue=''
+            defaultValue=""
             style={{ width: 200 }}
             onChange={this.handleItemSelectionChange}
             value={this.state.selectedOpticalPathIdentifier}
@@ -152,10 +164,10 @@ class OpticalPathList extends React.Component<OpticalPathListProps, OpticalPathL
           >
             {optionItems}
           </Select>
-          <Tooltip title='Add'>
+          <Tooltip title="Add">
             <Btn
               icon={<AppstoreAddOutlined />}
-              type='primary'
+              type="primary"
               onClick={this.handleItemAddition}
             />
           </Tooltip>

@@ -26,17 +26,17 @@ interface ColorSettingsMenuState {
  * React component representing an Annotation Group.
  */
 class ColorSettingsMenu extends React.Component<
-ColorSettingsMenuProps,
-ColorSettingsMenuState
+  ColorSettingsMenuProps,
+  ColorSettingsMenuState
 > {
-  constructor (props: ColorSettingsMenuProps) {
+  constructor(props: ColorSettingsMenuProps) {
     super(props)
     this.state = {
       currentStyle: {
         opacity: this.props.defaultStyle.opacity,
         color: this.props.defaultStyle.color,
-        contourOnly: this.props.defaultStyle.contourOnly
-      }
+        contourOnly: this.props.defaultStyle.contourOnly,
+      },
     }
   }
 
@@ -48,8 +48,8 @@ ColorSettingsMenuState
         styleOptions: {
           color,
           opacity: this.state.currentStyle.opacity,
-          contourOnly: this.state.currentStyle.contourOnly
-        }
+          contourOnly: this.state.currentStyle.contourOnly,
+        },
       })
     })
   }
@@ -62,8 +62,8 @@ ColorSettingsMenuState
           styleOptions: {
             color: this.state.currentStyle.color,
             opacity,
-            contourOnly: this.state.currentStyle.contourOnly
-          }
+            contourOnly: this.state.currentStyle.contourOnly,
+          },
         })
       })
       this.updateCurrentStyle({ opacity })
@@ -79,8 +79,8 @@ ColorSettingsMenuState
         styleOptions: {
           color: this.state.currentStyle.color,
           opacity: this.state.currentStyle.opacity,
-          contourOnly: value
-        }
+          contourOnly: value,
+        },
       })
     })
   }
@@ -93,7 +93,10 @@ ColorSettingsMenuState
       return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)
     }
 
-    if (this.state.currentStyle.color !== null && this.state.currentStyle.color !== undefined) {
+    if (
+      this.state.currentStyle.color !== null &&
+      this.state.currentStyle.color !== undefined
+    ) {
       return rgb2hex(this.state.currentStyle.color)
     } else {
       return 'white'
@@ -103,7 +106,7 @@ ColorSettingsMenuState
   updateCurrentStyle = ({
     color,
     opacity,
-    contourOnly
+    contourOnly,
   }: {
     color?: number[]
     opacity?: number
@@ -113,14 +116,17 @@ ColorSettingsMenuState
       currentStyle: {
         opacity: opacity ?? state.currentStyle.opacity,
         color: color ?? state.currentStyle.color,
-        contourOnly: contourOnly ?? state.currentStyle.contourOnly
-      }
+        contourOnly: contourOnly ?? state.currentStyle.contourOnly,
+      },
     }))
   }
 
-  render (): React.ReactNode {
+  render(): React.ReactNode {
     let colorSettings
-    if (this.state.currentStyle.color !== null && this.state.currentStyle.color !== undefined) {
+    if (
+      this.state.currentStyle.color !== null &&
+      this.state.currentStyle.color !== undefined
+    ) {
       colorSettings = (
         <>
           <Divider plain>Color</Divider>
@@ -140,11 +146,12 @@ ColorSettingsMenuState
           opacity={this.state.currentStyle.opacity}
           onChange={this.handleOpacityChange}
         />
-        <Row justify='start' align='middle' gutter={[8, 8]}>
+        <Row justify="start" align="middle" gutter={[8, 8]}>
           <Checkbox
             value={this.state.currentStyle.contourOnly}
             onChange={(event) =>
-              this.handleShowOutlineOnly(event.target.checked)}
+              this.handleShowOutlineOnly(event.target.checked)
+            }
           >
             Show outline only
           </Checkbox>

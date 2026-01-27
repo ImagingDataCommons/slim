@@ -41,22 +41,26 @@ const originalMessage = { ...message }
 const createMessageConfig = (content: string | object): object => {
   const duration = config.messages?.duration ?? 5
 
-  if (typeof content === 'object' && content !== null && content !== undefined) {
+  if (
+    typeof content === 'object' &&
+    content !== null &&
+    content !== undefined
+  ) {
     return {
       ...content,
-      duration
+      duration,
     }
   }
 
   return {
     content,
-    duration
+    duration,
   }
 }
 
 /** Create a proxy to control antd message */
 const messageProxy = new Proxy(originalMessage, {
-  get (target, prop: PropertyKey) {
+  get(target, prop: PropertyKey) {
     // Handle config method separately
     if (prop === 'config') {
       return message.config.bind(message)
@@ -66,7 +70,9 @@ const messageProxy = new Proxy(originalMessage, {
     const method = target[prop as keyof typeof target]
     if (typeof method === 'function') {
       return (...args: any[]) => {
-        const isMessageEnabled = !isMessageTypeDisabled({ type: prop as string })
+        const isMessageEnabled = !isMessageTypeDisabled({
+          type: prop as string,
+        })
         if (isMessageEnabled) {
           const messageConfig = createMessageConfig(args[0])
           return (method as Function).apply(message, [messageConfig])
@@ -77,7 +83,7 @@ const messageProxy = new Proxy(originalMessage, {
 
     // Pass through any other properties
     return Reflect.get(target, prop)
-  }
+  },
 })
 
 // Apply the proxy
@@ -86,7 +92,7 @@ Object.assign(message, messageProxy)
 // Set global config after proxy is in place
 message.config({
   top: config.messages?.top ?? 100,
-  duration: config.messages?.duration ?? 5
+  duration: config.messages?.duration ?? 5,
 })
 
 const container = document.getElementById('root')
@@ -95,14 +101,14 @@ const root = createRoot(container!)
 root.render(
   /// / <React.StrictMode>
   <React.Suspense fallback={<div>Loading application...</div>}>
-    <CustomErrorBoundary context='App'>
+    <CustomErrorBoundary context="App">
       <App
         config={config}
         version={packageInfo.version}
         name={packageInfo.name}
-        homepage='https://github.com/ImagingDataCommons/slim'
+        homepage="https://github.com/ImagingDataCommons/slim"
       />
     </CustomErrorBoundary>
-  </React.Suspense>
-// </React.StrictMode>
+  </React.Suspense>,
+  // </React.StrictMode>
 )

@@ -17,18 +17,18 @@ const AnnotationModal: React.FC<AnnotationModalProps> = ({
   onOk,
   onCancel,
   isOkDisabled,
-  children
+  children,
 }) => {
   return (
     <Modal
       open={isVisible}
-      title='Configure annotations'
+      title="Configure annotations"
       onOk={onOk}
       okButtonProps={{ disabled: isOkDisabled }}
       onCancel={onCancel}
-      okText='Select'
+      okText="Select"
     >
-      <Space align='start' direction='vertical'>
+      <Space align="start" direction="vertical">
         {children}
       </Space>
     </Modal>

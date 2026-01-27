@@ -1,6 +1,9 @@
 import { Instance, Series } from '../services/DICOMMetadataStore'
 
-function createSeriesMetadata (SeriesInstanceUID: string, defaultInstances?: Instance[]): Series {
+function createSeriesMetadata(
+  SeriesInstanceUID: string,
+  defaultInstances?: Instance[],
+): Series {
   const instances: Instance[] = []
   const instancesMap = new Map<string, Instance>()
 
@@ -28,7 +31,7 @@ function createSeriesMetadata (SeriesInstanceUID: string, defaultInstances?: Ins
     },
     getInstance: function (SOPInstanceUID: string) {
       return instancesMap.get(SOPInstanceUID)
-    }
+    },
   }
 }
 

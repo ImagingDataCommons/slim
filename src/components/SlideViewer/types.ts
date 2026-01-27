@@ -89,7 +89,12 @@ export interface SlideViewerState {
   isAnnotationModalVisible: boolean
   isSelectedRoiModalVisible: boolean
   isHoveredRoiTooltipVisible: boolean
-  hoveredRoiAttributes: Array<{index: number, roiUid: string, attributes: Array<{ name: string, value: string }>, seriesDescription?: string}>
+  hoveredRoiAttributes: Array<{
+    index: number
+    roiUid: string
+    attributes: Array<{ name: string; value: string }>
+    seriesDescription?: string
+  }>
   hoveredRoiTooltipX: number
   hoveredRoiTooltipY: number
   isReportModalVisible: boolean

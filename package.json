@@ -9,9 +9,11 @@
     "dev": "bun run start",
     "build": "./scripts/set-git-env.sh craco build",
     "build:firebase": "REACT_APP_CONFIG=gcp PUBLIC_URL=/ ./scripts/set-git-env.sh craco build",
-    "lint": "ts-standard --env jest 'src/**/*.{tsx,ts}'",
-    "fmt": "ts-standard --env jest 'src/**/*.{tsx,ts}' --fix",
-    "test": "ts-standard --env jest 'src/**/*.{tsx,ts}' && craco test --watchAll=false",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write --unsafe .",
+    "fmt": "biome format --write .",
+    "format": "biome format --write .",
+    "test": "biome check . && craco test --watchAll=false",
     "predeploy": "REACT_APP_CONFIG=demo PUBLIC_URL='https://imagingdatacommons.github.io/slim/' ./scripts/set-git-env.sh craco build",
     "deploy": "gh-pages -d build",
     "clean": "rm -rf ./build ./node_modules"
@@ -32,6 +34,7 @@
     ]
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.0.0",
     "@babel/preset-env": "^7.15.0",
     "@babel/preset-react": "^7.17.12",
     "@babel/preset-typescript": "^7.17.12",
@@ -72,7 +75,6 @@
     "retry": "^0.13.1",
     "semantic-release": "21.1.2",
     "sonarqube-scanner": "^4.3.0",
-    "ts-standard": "^11.0.0",
     "typescript": "^4.7.4"
   },
   "dependencies": {
