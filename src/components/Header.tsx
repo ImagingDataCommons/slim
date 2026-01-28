@@ -208,6 +208,10 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     }
   }
 
+  handleUserMenuButtonClick = (e: React.SyntheticEvent): void => {
+    e.preventDefault()
+  }
+
   handleInfoButtonClick = (): void => {
     const browser = detect()
     const environment: {
@@ -222,13 +226,22 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       browser: {},
       os: {},
     }
-    if (browser != null) {
+    if (browser !== null && browser !== undefined) {
       environment.browser = {
-        name: browser.name != null ? browser.name : undefined,
-        version: browser.version != null ? browser.version : undefined,
+        name:
+          browser.name !== null && browser.name !== undefined
+            ? browser.name
+            : undefined,
+        version:
+          browser.version !== null && browser.version !== undefined
+            ? browser.version
+            : undefined,
       }
       environment.os = {
-        name: browser.os != null ? browser.os : undefined,
+        name:
+          browser.os !== null && browser.os !== undefined
+            ? browser.os
+            : undefined,
       }
     }
 
@@ -332,7 +345,9 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           </div>
         </div>
       ),
-      onOk(): void {},
+      onOk: () => {
+        Modal.destroyAll?.()
+      },
     })
   }
 
@@ -357,7 +372,9 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           seriesInstanceUID={seriesInstanceUID}
         />
       ),
-      onOk(): void {},
+      onOk: () => {
+        Modal.destroyAll?.()
+      },
     })
   }
 
@@ -458,7 +475,9 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           </Panel>
         </Collapse>
       ),
-      onOk(): void {},
+      onOk: () => {
+        Modal.destroyAll?.()
+      },
     })
   }
 
@@ -515,7 +534,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
 
     const url = this.state.selectedServerUrl?.trim()
     let closeModal = false
-    if (url != null && url !== '') {
+    if (url !== null && url !== undefined && url !== '') {
       if (url.startsWith('http://') || url.startsWith('https://')) {
         this.props.onServerSelection({ url })
         closeModal = true
@@ -547,7 +566,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
         <Dropdown menu={userMenu} trigger={['click']}>
           <Button
             icon={UserOutlined}
-            onClick={(e) => e.preventDefault()}
+            onClick={this.handleUserMenuButtonClick}
             label={`${this.props.user.name} (${this.props.user.email})`}
           />
         </Dropdown>
@@ -618,7 +637,9 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           this.props.defaultClients?.default?.baseURL)
 
     const urlInfo =
-      selectedServerUrl != null && selectedServerUrl !== '' ? (
+      selectedServerUrl !== null &&
+      selectedServerUrl !== undefined &&
+      selectedServerUrl !== '' ? (
         <Tooltip title={selectedServerUrl}>
           <div
             style={{

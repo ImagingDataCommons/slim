@@ -1322,7 +1322,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.setDefaultPresentationState()
     this.loadPresentationStates()
 
-    void Promise.allSettled([
+    Promise.allSettled([
       this.addAnnotations(),
       this.addAnnotationGroups(),
       this.addSegmentations(),
@@ -1731,7 +1731,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           ({ roi, annotationGroupUID }) =>
             `${roi.uid}:${annotationGroupUID ?? ''}`,
         )
-        .sort()
+        .sort((a, b) => a.localeCompare(b))
         .join('|')
 
       if (
@@ -1831,7 +1831,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const payload = event.detail?.payload
     const roiPayload = payload as dmv.roi.ROI | { uid?: string } | undefined
     const isRoiObject =
-      roiPayload != null &&
+      roiPayload !== null &&
+      roiPayload !== undefined &&
       typeof roiPayload === 'object' &&
       'uid' in roiPayload &&
       'scoord3d' in roiPayload
@@ -3873,7 +3874,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           this.volumeViewer.setSegmentStyle(segment.uid, {
             opacity: defaultSegmentStyles[segment.uid].opacity,
             paletteColorLookupTable:
-              defaultSegmentStyles[segment.uid].color != null
+              defaultSegmentStyles[segment.uid].color !== null &&
+              defaultSegmentStyles[segment.uid].color !== undefined
                 ? SlideViewer.createSegmentPaletteColorLookupTable(
                     defaultSegmentStyles[segment.uid].color as number[],
                   )

@@ -1,6 +1,7 @@
 import { SettingOutlined } from '@ant-design/icons'
 import { Button, Checkbox, Menu, Popover, Space, Tooltip } from 'antd'
 import type { CheckboxChangeEvent } from 'antd/es/checkbox'
+import { useCallback } from 'react'
 import type { Category, Type } from './AnnotationCategoryList'
 import ColorSettingsMenu from './ColorSettingsMenu'
 import type { StyleOptions } from './SlideViewer/types'
@@ -33,6 +34,10 @@ function AnnotationTypeRow({
   const isChecked = uids.every((uid: string) => checkedAnnotationUids.has(uid))
   const indeterminateType =
     !isChecked && uids.some((uid: string) => checkedAnnotationUids.has(uid))
+  const handleChange = useCallback(
+    (e: CheckboxChangeEvent) => onCheckboxChange(type, e),
+    [type, onCheckboxChange],
+  )
   return (
     <div
       style={{
@@ -45,7 +50,7 @@ function AnnotationTypeRow({
       <Checkbox
         indeterminate={indeterminateType}
         checked={isChecked}
-        onChange={onCheckboxChange.bind(null, type)}
+        onChange={handleChange}
       />
       <div style={{ paddingLeft: '5px' }}>
         <Tooltip
@@ -139,54 +144,55 @@ const AnnotationCategoryItem = ({
     />
   )
 
-  const handleCheckboxChangeType = (
-    type: Type,
-    e: CheckboxChangeEvent,
-  ): void => {
+  function handleCheckboxChangeType(type: Type, e: CheckboxChangeEvent): void {
     handleChangeCheckedType({ type, isVisible: e.target.checked })
   }
+
+  const categoryHeader = (
+    <Checkbox
+      indeterminate={indeterminate}
+      checked={checkAll}
+      onChange={onCheckCategoryChange}
+    >
+      <Tooltip
+        title={`${category.CodeValue}:${category.CodingSchemeDesignator}`}
+        mouseEnterDelay={1}
+      >
+        {category.CodeMeaning}
+      </Tooltip>
+      <Popover
+        placement="topLeft"
+        overlayStyle={{ width: '350px' }}
+        title="Display Settings"
+        content={categoryColorSettingsContent}
+      >
+        <Button
+          type="primary"
+          shape="circle"
+          style={{ marginLeft: '10px' }}
+          icon={<SettingOutlined />}
+        />
+      </Popover>
+    </Checkbox>
+  )
 
   return (
     <Menu.Item style={{ height: '100%', paddingLeft: '3px' }} {...props}>
       <Space align="start">
         <div style={{ paddingLeft: '14px', color: 'black' }}>
           <Space direction="vertical" align="end">
-            <Checkbox
-              indeterminate={indeterminate}
-              checked={checkAll}
-              onChange={onCheckCategoryChange}
-            >
-              <Tooltip
-                title={`${category.CodeValue}:${category.CodingSchemeDesignator}`}
-                mouseEnterDelay={1}
-              >
-                {category.CodeMeaning}
-              </Tooltip>
-              <Popover
-                placement="topLeft"
-                overlayStyle={{ width: '350px' }}
-                title="Display Settings"
-                content={categoryColorSettingsContent}
-              >
-                <Button
-                  type="primary"
-                  shape="circle"
-                  style={{ marginLeft: '10px' }}
-                  icon={<SettingOutlined />}
-                />
-              </Popover>
-            </Checkbox>
+            {categoryHeader}
+            {types.map((type: Type) => (
+              <AnnotationTypeRow
+                key={`${type.CodingSchemeDesignator}:${type.CodeMeaning}`}
+                type={type}
+                checkedAnnotationUids={checkedAnnotationUids}
+                onCheckboxChange={handleCheckboxChangeType}
+                onStyleChange={onStyleChange}
+                defaultAnnotationStyles={defaultAnnotationStyles}
+              />
+            ))}
           </Space>
-          {types.map((type: Type) => (
-            <AnnotationTypeRow
-              key={`${type.CodingSchemeDesignator}:${type.CodeMeaning}`}
-              type={type}
-              checkedAnnotationUids={checkedAnnotationUids}
-              onCheckboxChange={handleCheckboxChangeType}
-              onStyleChange={onStyleChange}
-              defaultAnnotationStyles={defaultAnnotationStyles}
-            />
-          ))}
         </div>
       </Space>
     </Menu.Item>

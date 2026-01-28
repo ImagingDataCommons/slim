@@ -24,9 +24,9 @@ class MemoryFooter extends React.Component<
 > {
   private unsubscribeMemory?: () => void
   private lastWarningLevel: 'none' | 'high' | 'critical' = 'none'
-  private lastCriticalWarningTime: number = 0
+  private lastCriticalWarningTime = 0
   private readonly criticalWarningThrottleMs: number = 30000
-  private didStartMonitoring: boolean = false
+  private didStartMonitoring = false
 
   constructor(props: MemoryFooterProps) {
     super(props)
@@ -77,7 +77,10 @@ class MemoryFooter extends React.Component<
   }
 
   componentWillUnmount(): void {
-    if (this.unsubscribeMemory != null) {
+    if (
+      this.unsubscribeMemory !== null &&
+      this.unsubscribeMemory !== undefined
+    ) {
       this.unsubscribeMemory()
     }
     if (this.didStartMonitoring) {

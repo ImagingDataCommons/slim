@@ -109,17 +109,18 @@ const HoveredRoiTooltip = ({
                     >
                       <div style={{ fontWeight: 'bold' }}>
                         ROI {roi.index}
-                        {annotationGroupLabelAttr != null && (
-                          <span
-                            style={{
-                              fontWeight: 500,
-                              marginLeft: '6px',
-                              color: 'rgba(0, 0, 0, 0.7)',
-                            }}
-                          >
-                            - {annotationGroupLabelAttr.value}
-                          </span>
-                        )}
+                        {annotationGroupLabelAttr !== null &&
+                          annotationGroupLabelAttr !== undefined && (
+                            <span
+                              style={{
+                                fontWeight: 500,
+                                marginLeft: '6px',
+                                color: 'rgba(0, 0, 0, 0.7)',
+                              }}
+                            >
+                              - {annotationGroupLabelAttr.value}
+                            </span>
+                          )}
                       </div>
                       {otherAttributes.length > 0 && (
                         <div
