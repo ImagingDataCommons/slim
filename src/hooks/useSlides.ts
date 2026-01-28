@@ -159,7 +159,7 @@ export const useSlides = ({
   }, [clients, studyInstanceUID])
 
   // Memoize the return value to prevent unnecessary re-renders
-  const result = useMemo(
+  return useMemo(
     () => ({
       slides,
       isLoading,
@@ -167,6 +167,4 @@ export const useSlides = ({
     }),
     [slides, isLoading, error],
   )
-
-  return result
 }

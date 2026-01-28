@@ -395,7 +395,7 @@ class App extends React.Component<AppProps, AppState> {
     }
     window.localStorage.removeItem('slim_path')
     window.localStorage.removeItem('slim_search')
-    this.setState({ user: user })
+    this.setState({ user })
   }
 
   signIn(): void {

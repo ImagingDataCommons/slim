@@ -122,7 +122,7 @@ export default class OidcManager implements AuthManager {
       const authorization = `${userData.token_type} ${userData.access_token}`
       if (onSignIn != null) {
         console.info('handling sign-in using provided callback function')
-        onSignIn({ user: user, authorization: authorization })
+        onSignIn({ user, authorization })
       } else {
         console.warn('no callback function was provided to handle sign-in')
       }

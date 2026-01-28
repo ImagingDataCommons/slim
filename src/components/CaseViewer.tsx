@@ -107,8 +107,8 @@ function ParametrizedSlideViewer({
       const findReferencedSlide = async (): Promise<void> => {
         const client = clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
         const derivedSeriesMetadata = await client.retrieveSeriesMetadata({
-          studyInstanceUID: studyInstanceUID,
-          seriesInstanceUID: seriesInstanceUID,
+          studyInstanceUID,
+          seriesInstanceUID,
         })
         const naturalizedDerivedMetadata = naturalizeDataset(
           derivedSeriesMetadata[0],

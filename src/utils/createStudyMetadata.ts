@@ -16,7 +16,7 @@ function createStudyMetadata(StudyInstanceUID: string): Study {
     /**
      * @param {object} instance
      */
-    addInstanceToSeries: function (instance: Instance) {
+    addInstanceToSeries(instance: Instance) {
       this.addInstancesToSeries([instance])
     },
     /**
@@ -24,7 +24,7 @@ function createStudyMetadata(StudyInstanceUID: string): Study {
      * @param {string} instances[].SeriesInstanceUID
      * @param {string} instances[].StudyDescription
      */
-    addInstancesToSeries: function (instances: Instance[]) {
+    addInstancesToSeries(instances: Instance[]) {
       const { SeriesInstanceUID } = instances[0]
 
       if (this.StudyDescription !== '' && this.StudyDescription !== undefined) {
@@ -42,7 +42,7 @@ function createStudyMetadata(StudyInstanceUID: string): Study {
       series.addInstances(instances)
     },
 
-    setSeriesMetadata: function (
+    setSeriesMetadata(
       SeriesInstanceUID: string,
       seriesMetadata: Record<string, unknown>,
     ) {

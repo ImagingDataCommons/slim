@@ -75,7 +75,7 @@ export const getXHRRetryHook = (
    * @param metadata.method - HTTP method
    * @returns - XHR request instance (potentially modified)
    */
-  const xhrRetryHook = (
+  return (
     request: XMLHttpRequest,
     metadata: DICOMwebClientRequestHookMetadata,
   ): XMLHttpRequest => {
@@ -120,8 +120,6 @@ export const getXHRRetryHook = (
 
     return request
   }
-
-  return xhrRetryHook
 }
 
 export default getXHRRetryHook

@@ -102,7 +102,7 @@ class AnnotationItem extends React.Component<
       const value = seq.NumericValue.toPrecision(6)
       const unit = seq.MeasurementUnitsCodeSequence[0].CodeValue
       attributes.push({
-        name: name,
+        name,
         value: `${value} ${unit}`,
       })
     })

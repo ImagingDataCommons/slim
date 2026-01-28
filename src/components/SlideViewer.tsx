@@ -317,12 +317,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       segmentColor /** Segment color */,
     ]
 
-    const palette = dmv.color.buildPaletteColorLookupTable({
+    return dmv.color.buildPaletteColorLookupTable({
       data: paletteData,
       firstValueMapped: 0,
     })
-
-    return palette
   }
 
   componentDidUpdate(
@@ -636,7 +634,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             opticalPathStyles[identifier] = {
               opacity: 1,
               paletteColorLookupTable: paletteColorLUT,
-              limitValues: limitValues,
+              limitValues,
             }
           }
         })
@@ -1549,9 +1547,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
             return {
               index: annotationIndex + 1,
-              roiUid: roiUid,
+              roiUid,
               attributes,
-              seriesDescription: seriesDescription,
+              seriesDescription,
             }
           }
         } catch (error) {
@@ -1606,14 +1604,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               })
             } else {
               attributes.push({
-                name: name,
+                name,
                 value: `${valueMeaning}`,
               })
             }
           } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
             const textContentItem = item as dcmjs.sr.valueTypes.TextContentItem
             attributes.push({
-              name: name,
+              name,
               value: textContentItem.TextValue,
             })
           }
@@ -1994,8 +1992,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             }
           } else {
             stats[opticalPathIdentifier] = {
-              min: min,
-              max: max,
+              min,
+              max,
               numFramesSampled: 1,
             }
           }
@@ -2305,7 +2303,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               this.setState({
                 selectedEvaluations: [
                   ...filteredEvaluations,
-                  { name: name, value: code },
+                  { name, value: code },
                 ],
               })
             }
@@ -2424,7 +2422,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           this.state.selectedXCoordinate,
           this.state.selectedYCoordinate,
         ],
-        level: level,
+        level,
       })
       const point = new dmv.scoord3d.Point({
         coordinates: [
@@ -2703,12 +2701,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const fillColor = styleOptions.contourOnly
       ? [0, 0, 0, 0]
       : strokeColor.map((c) => Math.min(c + 25, 255))
-    const style = formatRoiStyle({
+    return formatRoiStyle({
       fill: { color: [...fillColor, opacity] },
       stroke: { color: [...strokeColor, opacity] },
       radius: this.defaultRoiStyle.stroke?.width,
     })
-    return style
   }
 
   handleRoiStyleChange = ({

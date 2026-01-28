@@ -16,7 +16,7 @@ function createSeriesMetadata(
     SeriesTime: '',
     ...defaultInstances?.[0],
     instances,
-    addInstance: function (newInstance: Instance) {
+    addInstance(newInstance: Instance) {
       this.addInstances([newInstance])
     },
     addInstances: (newInstances: Instance[]) => {

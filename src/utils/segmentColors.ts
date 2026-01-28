@@ -83,12 +83,11 @@ export const extractSegmentColorFromMetadata = (
             /** Use dcmjs's dicomlab2RGB function for accurate DICOM CIELAB to RGB conversion */
             const rgb = dcmjs.data.Colors.dicomlab2RGB(labValues)
             /** Convert from 0-1 range to 0-255 range and round to integers */
-            const result = [
+            return [
               Math.max(0, Math.min(255, Math.round(rgb[0] * 255))),
               Math.max(0, Math.min(255, Math.round(rgb[1] * 255))),
               Math.max(0, Math.min(255, Math.round(rgb[2] * 255))),
             ]
-            return result
           } catch (error) {
             /** Failed to convert CIELab to RGB using dcmjs */
             console.warn('Failed to convert CIELab to RGB using dcmjs:', error)

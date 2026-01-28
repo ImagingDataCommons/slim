@@ -42,7 +42,7 @@ export const fetchImageMetadata = async ({
           `retrieve metadata of series "${loadingSeries.SeriesInstanceUID}"`,
         )
         const retrievedMetadata = await client.retrieveSeriesMetadata({
-          studyInstanceUID: studyInstanceUID,
+          studyInstanceUID,
           seriesInstanceUID: loadingSeries.SeriesInstanceUID,
         })
 

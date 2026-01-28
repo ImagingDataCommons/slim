@@ -102,8 +102,8 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   }): void => {
     const queryParams: Record<string, string | number> = {
       ModalitiesInStudy: 'SM',
-      offset: offset,
-      limit: limit,
+      offset,
+      limit,
     }
     if (searchCriteria !== undefined) {
       for (const key in searchCriteria) {
@@ -165,7 +165,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       }
     }
     this.fetchData({ offset, limit, searchCriteria })
-    this.setState({ isLoading: false, pageSize: pageSize })
+    this.setState({ isLoading: false, pageSize })
   }
 
   handleSearch = (

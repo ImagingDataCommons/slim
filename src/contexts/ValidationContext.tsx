@@ -144,8 +144,7 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
                 }
               ).referencedSOPInstanceUID
 
-          const hasMatchingImage = slide.volumeImages?.some(checkImageMatch)
-          return hasMatchingImage
+          return slide.volumeImages?.some(checkImageMatch)
         }
 
         const hasMatchingSlide = memoizedSlides.some(checkSlideMatch)
