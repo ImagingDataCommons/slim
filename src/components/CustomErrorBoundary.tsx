@@ -36,7 +36,9 @@ const CustomErrorBoundary = ({
             </Collapse>
           </>
         ),
-        onOk(): void {},
+        onOk: () => {
+          Modal.destroyAll()
+        },
       })
     }, [error.error.message, error.error.stack])
 

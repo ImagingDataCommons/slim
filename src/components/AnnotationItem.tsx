@@ -82,14 +82,14 @@ class AnnotationItem extends React.Component<
             })
           } else {
             attributes.push({
-              name: name,
+              name,
               value: `${valueMeaning}`,
             })
           }
         } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
           const textContentItem = item as dcmjs.sr.valueTypes.TextContentItem
           attributes.push({
-            name: name,
+            name,
             value: textContentItem.TextValue,
           })
         }

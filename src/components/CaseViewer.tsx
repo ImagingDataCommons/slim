@@ -127,10 +127,6 @@ function ParametrizedSlideViewer({
             if (referencedSlide !== null && referencedSlide !== undefined) {
               setSelectedSlide(referencedSlide)
               setDerivedDataset(naturalizedDerivedMetadata)
-              console.log(
-                'naturalizedDerivedMetadata',
-                naturalizedDerivedMetadata,
-              )
               return
             }
           }
@@ -143,7 +139,9 @@ function ParametrizedSlideViewer({
         )
         if (
           imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]
-            ?.ReferencedSOPSequence?.[0] != null
+            ?.ReferencedSOPSequence?.[0] !== undefined &&
+          imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]
+            ?.ReferencedSOPSequence?.[0] !== null
         ) {
           const referencedSOPInstanceUID =
             imageLibrary.ContentSequence[0].ContentSequence[0]
@@ -231,7 +229,11 @@ function Viewer(props: ViewerProps): JSX.Element | null {
       }
     }
 
-    if (location.pathname.includes('/series/') && location.search != null) {
+    if (
+      location.pathname.includes('/series/') &&
+      location.search !== null &&
+      location.search !== undefined
+    ) {
       urlPath += location.search
     }
 

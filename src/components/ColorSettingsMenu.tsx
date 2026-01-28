@@ -1,4 +1,5 @@
 import { Checkbox, Divider, Row } from 'antd'
+import type { CheckboxChangeEvent } from 'antd/es/checkbox'
 import React from 'react'
 import ColorSlider from './ColorSlider'
 import OpacitySlider from './OpacitySlider'
@@ -88,6 +89,10 @@ class ColorSettingsMenu extends React.Component<
     })
   }
 
+  handleShowOutlineOnlyCheckbox = (e: CheckboxChangeEvent): void => {
+    this.handleShowOutlineOnly(e.target.checked)
+  }
+
   getCurrentColor = (): string => {
     const rgb2hex = (values: number[]): string => {
       const r = values[0]
@@ -152,9 +157,7 @@ class ColorSettingsMenu extends React.Component<
         <Row justify="start" align="middle" gutter={[8, 8]}>
           <Checkbox
             value={this.state.currentStyle.contourOnly}
-            onChange={(event) =>
-              this.handleShowOutlineOnly(event.target.checked)
-            }
+            onChange={this.handleShowOutlineOnlyCheckbox}
           >
             Show outline only
           </Checkbox>

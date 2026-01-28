@@ -6,7 +6,7 @@ import NotificationMiddleware, {
 } from '../services/NotificationMiddleware'
 import { CustomError, errorTypes } from '../utils/CustomError'
 import { isAuthorizationCodeInUrl } from '../utils/url'
-import type { AuthManager, SignInCallback, User } from './'
+import type { AuthManager, SignInCallback, User } from '.'
 
 const createUser = (userData: UserData | null): User => {
   let profile: UserData['profile'] | undefined
@@ -65,7 +65,10 @@ export default class OidcManager implements AuthManager {
       revokeAccessTokenOnSignout: true,
       post_logout_redirect_uri: `${baseUri}/logout`,
     })
-    if (settings.endSessionEndpoint != null) {
+    if (
+      settings.endSessionEndpoint !== null &&
+      settings.endSessionEndpoint !== undefined
+    ) {
       /*
        * Unfortunately, the end session endpoint alone cannot be provided to
        * the construction of UserManager and the other metadata parameters
@@ -78,7 +81,10 @@ export default class OidcManager implements AuthManager {
       this._oidc.metadataService
         .getMetadata()
         .then((metadata) => {
-          if (settings.endSessionEndpoint != null) {
+          if (
+            settings.endSessionEndpoint !== null &&
+            settings.endSessionEndpoint !== undefined
+          ) {
             metadata.end_session_endpoint = settings.endSessionEndpoint
             this._oidc = new UserManager({
               authority: settings.authority,

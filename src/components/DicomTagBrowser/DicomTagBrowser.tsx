@@ -7,6 +7,7 @@ import './DicomTagBrowser.css'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useSlides } from '../../hooks/useSlides'
 import DicomMetadataStore, {
+  EVENTS,
   type Series,
   type Study,
 } from '../../services/DICOMMetadataStore'
@@ -77,11 +78,11 @@ const DicomTagBrowser = ({
       setStudy(study)
     }
     const seriesAddedSubscription = DicomMetadataStore.subscribe(
-      DicomMetadataStore.EVENTS.SERIES_ADDED,
+      EVENTS.SERIES_ADDED,
       handler,
     )
     const instancesAddedSubscription = DicomMetadataStore.subscribe(
-      DicomMetadataStore.EVENTS.INSTANCES_ADDED,
+      EVENTS.INSTANCES_ADDED,
       handler,
     )
 

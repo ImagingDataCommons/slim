@@ -278,7 +278,7 @@ class App extends React.Component<AppProps, AppState> {
     this.handleServerSelection = this.handleServerSelection.bind(this)
 
     message.config({ duration: 5 })
-    this.addGcpSecondaryAnnotationServer(props.config)
+    App.addGcpSecondaryAnnotationServer(props.config)
 
     const defaultClients = _createClientMapping({
       baseUri,
@@ -296,7 +296,7 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  addGcpSecondaryAnnotationServer(config: AppProps['config']): void {
+  static addGcpSecondaryAnnotationServer(config: AppProps['config']): void {
     const serverId = 'gcp_secondary_annotation_server'
     const urlParams = new URLSearchParams(window.location.search)
     const url = urlParams.get('gcp')
