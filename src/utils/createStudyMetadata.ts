@@ -1,8 +1,7 @@
+import type { Instance, Series, Study } from '../services/DICOMMetadataStore'
 import createSeriesMetadata from './createSeriesMetadata'
 
-import { Study, Series, Instance } from '../services/DICOMMetadataStore'
-
-function createStudyMetadata (StudyInstanceUID: string): Study {
+function createStudyMetadata(StudyInstanceUID: string): Study {
   return {
     StudyInstanceUID,
     StudyDescription: '',
@@ -17,7 +16,7 @@ function createStudyMetadata (StudyInstanceUID: string): Study {
     /**
      * @param {object} instance
      */
-    addInstanceToSeries: function (instance: Instance) {
+    addInstanceToSeries(instance: Instance) {
       this.addInstancesToSeries([instance])
     },
     /**
@@ -25,31 +24,30 @@ function createStudyMetadata (StudyInstanceUID: string): Study {
      * @param {string} instances[].SeriesInstanceUID
      * @param {string} instances[].StudyDescription
      */
-    addInstancesToSeries: function (instances: Instance[]) {
+    addInstancesToSeries(instances: Instance[]) {
       const { SeriesInstanceUID } = instances[0]
 
       if (this.StudyDescription !== '' && this.StudyDescription !== undefined) {
-        this.StudyDescription = instances[0].StudyDescription
+        this.StudyDescription = String(instances[0].StudyDescription ?? '')
       }
 
-      let series = this.series.find(
-        (s) => s.SeriesInstanceUID === SeriesInstanceUID
-      )
+      const seriesUID = String(SeriesInstanceUID)
+      let series = this.series.find((s) => s.SeriesInstanceUID === seriesUID)
 
       if (series == null) {
-        series = createSeriesMetadata(SeriesInstanceUID, instances)
+        series = createSeriesMetadata(seriesUID, instances)
         this.series.push(series)
       }
 
       series.addInstances(instances)
     },
 
-    setSeriesMetadata: function (
+    setSeriesMetadata(
       SeriesInstanceUID: string,
-      seriesMetadata: any
+      seriesMetadata: Record<string, unknown>,
     ) {
       let existingSeries = this.series.find(
-        (s) => s.SeriesInstanceUID === SeriesInstanceUID
+        (s) => s.SeriesInstanceUID === SeriesInstanceUID,
       )
 
       if (existingSeries != null) {
@@ -58,7 +56,7 @@ function createStudyMetadata (StudyInstanceUID: string): Study {
         const series = createSeriesMetadata(SeriesInstanceUID)
         this.series.push(Object.assign(series, seriesMetadata))
       }
-    }
+    },
   }
 }
 

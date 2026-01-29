@@ -1,5 +1,5 @@
 // skipcq: JS-C1003
-import * as dcmjs from 'dcmjs'
+import type * as dcmjs from 'dcmjs'
 
 /**
  * Check whether a DICOM SR content item has a given name.
@@ -10,7 +10,7 @@ import * as dcmjs from 'dcmjs'
  */
 const hasName = (
   item: dcmjs.sr.valueTypes.ContentItem,
-  name: dcmjs.sr.coding.CodedConcept
+  name: dcmjs.sr.coding.CodedConcept,
 ): boolean => {
   const concept = item.ConceptNameCodeSequence[0]
   return (
@@ -28,7 +28,7 @@ const hasName = (
  */
 const hasValueType = (
   item: dcmjs.sr.valueTypes.ContentItem,
-  valueType: dcmjs.sr.valueTypes.ValueTypes
+  valueType: dcmjs.sr.valueTypes.ValueTypes,
 ): boolean => {
   console.log(item.ValueType, valueType)
   return item.ValueType === valueType
@@ -43,14 +43,15 @@ const hasValueType = (
  * @param name - Coded name that should be compared
  * @returns Matched content items
  */
-export const findContentItemsByName = (
-  { content, name }: {
-    content: dcmjs.sr.valueTypes.ContentItem[]
-    name: dcmjs.sr.coding.CodedConcept
-  }
-): dcmjs.sr.valueTypes.ContentItem[] => {
+export const findContentItemsByName = ({
+  content,
+  name,
+}: {
+  content: dcmjs.sr.valueTypes.ContentItem[]
+  name: dcmjs.sr.coding.CodedConcept
+}): dcmjs.sr.valueTypes.ContentItem[] => {
   const items: dcmjs.sr.valueTypes.ContentItem[] = []
-  content.forEach(i => {
+  content.forEach((i) => {
     if (hasName(i, name)) {
       items.push(i)
     }
@@ -67,14 +68,15 @@ export const findContentItemsByName = (
  * @param valueType - Value Type
  * @returns Matched content items
  */
-export const findContentItemsByValueType = (
-  { content, valueType }: {
-    content: dcmjs.sr.valueTypes.ContentItem[]
-    valueType: dcmjs.sr.valueTypes.ValueTypes
-  }
-): dcmjs.sr.valueTypes.ContentItem[] => {
+export const findContentItemsByValueType = ({
+  content,
+  valueType,
+}: {
+  content: dcmjs.sr.valueTypes.ContentItem[]
+  valueType: dcmjs.sr.valueTypes.ValueTypes
+}): dcmjs.sr.valueTypes.ContentItem[] => {
   const items: dcmjs.sr.valueTypes.ContentItem[] = []
-  content.forEach(i => {
+  content.forEach((i) => {
     if (hasValueType(i, valueType)) {
       items.push(i)
     }

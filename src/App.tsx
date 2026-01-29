@@ -1,34 +1,40 @@
+import { Layout, message } from 'antd'
+// skipcq: JS-C1003
+import type * as dwc from 'dicomweb-client'
 import React from 'react'
+import { FaSpinner } from 'react-icons/fa'
 import {
   BrowserRouter,
   Navigate,
   Route,
   Routes,
-  useParams
+  useParams,
 } from 'react-router-dom'
-import { Layout, message } from 'antd'
-import { FaSpinner } from 'react-icons/fa'
-// skipcq: JS-C1003
-import * as dwc from 'dicomweb-client'
 
-import AppConfig, { ServerSettings, ErrorMessageSettings } from './AppConfig'
+import type AppConfig from './AppConfig'
+import type { ErrorMessageSettings, ServerSettings } from './AppConfig'
+import type { AuthManager, User } from './auth'
+import OidcManager from './auth/OidcManager'
 import CaseViewer from './components/CaseViewer'
 import Header from './components/Header'
 import InfoPage from './components/InfoPage'
+import MemoryFooter from './components/MemoryFooter'
 import Worklist from './components/Worklist'
 import { ValidationProvider } from './contexts/ValidationContext'
-
-import { User, AuthManager } from './auth'
-import OidcManager from './auth/OidcManager'
-import { StorageClasses } from './data/uids'
 import DicomWebManager from './DicomWebManager'
-import { joinUrl } from './utils/url'
-import { CustomError, errorTypes } from './utils/CustomError'
+import { StorageClasses } from './data/uids'
 import NotificationMiddleware, {
-  NotificationMiddlewareContext
+  NotificationMiddlewareContext,
 } from './services/NotificationMiddleware'
+import { CustomError, errorTypes } from './utils/CustomError'
+import { joinUrl } from './utils/url'
 
-function ParametrizedCaseViewer ({ clients, user, app, config }: {
+function ParametrizedCaseViewer({
+  clients,
+  user,
+  app,
+  config,
+}: {
   clients: { [key: string]: DicomWebManager }
   user?: User
   app: {
@@ -40,6 +46,10 @@ function ParametrizedCaseViewer ({ clients, user, app, config }: {
   config: AppConfig
 }): JSX.Element {
   const { studyInstanceUID } = useParams()
+
+  if (studyInstanceUID === undefined) {
+    return <Navigate to="/" replace />
+  }
 
   const enableAnnotationTools = !(config.disableAnnotationTools ?? false)
   const preload = config.preload ?? false
@@ -58,21 +68,26 @@ function ParametrizedCaseViewer ({ clients, user, app, config }: {
   )
 }
 
-function _createClientMapping ({ baseUri, gcpBaseUrl, settings, onError }: {
+function _createClientMapping({
+  baseUri,
+  gcpBaseUrl,
+  settings,
+  onError,
+}: {
   baseUri: string
   gcpBaseUrl: string
   settings: ServerSettings[]
   onError: (
     error: dwc.api.DICOMwebClientError,
-    serverSettings: ServerSettings
+    serverSettings: ServerSettings,
   ) => void
 }): { [sopClassUID: string]: DicomWebManager } {
   const storageClassMapping: { [key: string]: number } = { default: 0 }
   const clientMapping: { [sopClassUID: string]: DicomWebManager } = {}
 
-  settings.forEach(serverSettings => {
+  settings.forEach((serverSettings) => {
     if (serverSettings.storageClasses != null) {
-      serverSettings.storageClasses.forEach(sopClassUID => {
+      serverSettings.storageClasses.forEach((sopClassUID) => {
         if (Object.values<string>(StorageClasses).includes(sopClassUID)) {
           if (sopClassUID in storageClassMapping) {
             storageClassMapping[sopClassUID] += 1
@@ -82,7 +97,7 @@ function _createClientMapping ({ baseUri, gcpBaseUrl, settings, onError }: {
         } else {
           console.warn(
             `unknown storage class "${sopClassUID}" specified ` +
-            `for configured server "${serverSettings.id}"`
+              `for configured server "${serverSettings.id}"`,
           )
         }
       })
@@ -97,7 +112,7 @@ function _createClientMapping ({ baseUri, gcpBaseUrl, settings, onError }: {
       clientMapping.default = new DicomWebManager({
         baseUri,
         settings: [serverSettings],
-        onError
+        onError,
       })
     }
   })
@@ -108,8 +123,8 @@ function _createClientMapping ({ baseUri, gcpBaseUrl, settings, onError }: {
       new CustomError(
         errorTypes.COMMUNICATION,
         'Only one default server can be configured without specification ' +
-        'of storage classes.'
-      )
+          'of storage classes.',
+      ),
     )
   }
 
@@ -123,29 +138,29 @@ function _createClientMapping ({ baseUri, gcpBaseUrl, settings, onError }: {
         new CustomError(
           errorTypes.COMMUNICATION,
           'Only one configured server can specify a given storage class. ' +
-          `Storage class "${key}" is specified by more than one ` +
-          'of the configured servers.'
-        )
+            `Storage class "${key}" is specified by more than one ` +
+            'of the configured servers.',
+        ),
       )
     }
   }
 
   if (Object.keys(storageClassMapping).length > 1) {
-    settings.forEach(server => {
+    settings.forEach((server) => {
       const client = new DicomWebManager({
         baseUri,
         settings: [server],
-        onError
+        onError,
       })
       if (server.storageClasses != null) {
-        server.storageClasses.forEach(sopClassUID => {
+        server.storageClasses.forEach((sopClassUID) => {
           clientMapping[sopClassUID] = client
         })
       }
     })
   }
 
-  Object.values(StorageClasses).forEach(sopClassUID => {
+  Object.values(StorageClasses).forEach((sopClassUID) => {
     if (!(sopClassUID in clientMapping)) {
       clientMapping[sopClassUID] = clientMapping.default
     }
@@ -175,7 +190,7 @@ class App extends React.Component<AppProps, AppState> {
 
   private readonly handleDICOMwebError = (
     error: dwc.api.DICOMwebClientError,
-    serverSettings: ServerSettings
+    serverSettings: ServerSettings,
   ): void => {
     if (error.status === 401) {
       this.signIn()
@@ -185,7 +200,8 @@ class App extends React.Component<AppProps, AppState> {
         NotificationMiddlewareContext.DICOMWEB,
         new CustomError(
           errorTypes.COMMUNICATION,
-          'User is not authorized to access DICOMweb resources.')
+          'User is not authorized to access DICOMweb resources.',
+        ),
       )
     }
 
@@ -195,8 +211,8 @@ class App extends React.Component<AppProps, AppState> {
         NotificationMiddlewareContext.DICOMWEB,
         new CustomError(
           errorTypes.COMMUNICATION,
-          'An unexpected server error occured.'
-        )
+          'An unexpected server error occured.',
+        ),
       )
     }
 
@@ -206,8 +222,8 @@ class App extends React.Component<AppProps, AppState> {
           this.setState({
             error: {
               status: error.status,
-              message: setting.message
-            }
+              message: setting.message,
+            },
           })
         } else if (error.status === 500) {
           logServerError()
@@ -218,7 +234,7 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  constructor (props: AppProps) {
+  constructor(props: AppProps) {
     super(props)
 
     // Only log in development environment
@@ -236,7 +252,7 @@ class App extends React.Component<AppProps, AppState> {
       if (process.env.NODE_ENV === 'development') {
         console.info(
           'app uses the following OIDC configuration: ',
-          props.config.oidc
+          props.config.oidc,
         )
       }
       this.auth = new OidcManager(appUri, oidcSettings)
@@ -247,43 +263,45 @@ class App extends React.Component<AppProps, AppState> {
         NotificationMiddlewareContext.SLIM,
         new CustomError(
           errorTypes.COMMUNICATION,
-          'One server needs to be configured.')
+          'One server needs to be configured.',
+        ),
       )
     }
 
     if (process.env.NODE_ENV === 'development') {
       console.info(
         'app uses the following DICOMweb server configuration: ',
-        props.config.servers
+        props.config.servers,
       )
     }
 
     this.handleServerSelection = this.handleServerSelection.bind(this)
 
     message.config({ duration: 5 })
-    this.addGcpSecondaryAnnotationServer(props.config)
+    App.addGcpSecondaryAnnotationServer(props.config)
 
     const defaultClients = _createClientMapping({
       baseUri,
-      gcpBaseUrl: props.config.gcpBaseUrl ?? 'https://healthcare.googleapis.com/v1',
+      gcpBaseUrl:
+        props.config.gcpBaseUrl ?? 'https://healthcare.googleapis.com/v1',
       settings: props.config.servers,
-      onError: this.handleDICOMwebError
+      onError: this.handleDICOMwebError,
     })
 
     this.state = {
       clients: defaultClients,
       defaultClients,
       isLoading: true,
-      wasAuthSuccessful: false
+      wasAuthSuccessful: false,
     }
   }
 
-  addGcpSecondaryAnnotationServer (config: AppProps['config']): void {
+  static addGcpSecondaryAnnotationServer(config: AppProps['config']): void {
     const serverId = 'gcp_secondary_annotation_server'
     const urlParams = new URLSearchParams(window.location.search)
     const url = urlParams.get('gcp')
     const gcpSecondaryAnnotationServer = config.servers.find(
-      (server) => server.id === serverId
+      (server) => server.id === serverId,
     )
     if (gcpSecondaryAnnotationServer === undefined && typeof url === 'string') {
       config.servers.push({
@@ -299,29 +317,34 @@ class App extends React.Component<AppProps, AppState> {
           StorageClasses.ADVANCED_BLENDING_PRESENTATION_STATE,
           StorageClasses.COLOR_SOFTCOPY_PRESENTATION_STATE,
           StorageClasses.GRAYSCALE_SOFTCOPY_PRESENTATION_STATE,
-          StorageClasses.PSEUDOCOLOR_SOFTCOPY_PRESENTATION_STATE
-        ]
+          StorageClasses.PSEUDOCOLOR_SOFTCOPY_PRESENTATION_STATE,
+        ],
       })
     }
   }
 
-  handleServerSelection ({ url }: { url: string }): void {
+  handleServerSelection({ url }: { url: string }): void {
     const trimmedUrl = url.trim()
     console.info('select DICOMweb server: ', trimmedUrl)
-    if (trimmedUrl === '' || window.localStorage.getItem('slim_server_selection_mode') === 'default') {
+    if (
+      trimmedUrl === '' ||
+      window.localStorage.getItem('slim_server_selection_mode') === 'default'
+    ) {
       this.setState({ clients: this.state.defaultClients })
       return
     }
     window.localStorage.setItem('slim_selected_server', trimmedUrl)
     const tmpClient = new DicomWebManager({
       baseUri: '',
-      settings: [{
-        id: 'tmp',
-        url: trimmedUrl,
-        read: true,
-        write: false
-      }],
-      onError: this.handleDICOMwebError
+      settings: [
+        {
+          id: 'tmp',
+          url: trimmedUrl,
+          read: true,
+          write: false,
+        },
+      ],
+      onError: this.handleDICOMwebError,
     })
     tmpClient.updateHeaders(this.state.clients.default.headers)
     /**
@@ -329,7 +352,7 @@ class App extends React.Component<AppProps, AppState> {
      * make this more sophisticated in the future to allow users to override
      * the entire server configuration.
      */
-    this.setState(state => {
+    this.setState((state) => {
       const clients: { [key: string]: DicomWebManager } = {}
       for (const key in state.clients) {
         clients[key] = tmpClient
@@ -347,7 +370,10 @@ class App extends React.Component<AppProps, AppState> {
    * @param user - Information about the user
    * @param authorization - Value of the "Authorization" HTTP header field
    */
-  handleSignIn = ({ user, authorization }: {
+  handleSignIn = ({
+    user,
+    authorization,
+  }: {
     user: User
     authorization: string
   }): void => {
@@ -369,43 +395,47 @@ class App extends React.Component<AppProps, AppState> {
     }
     window.localStorage.removeItem('slim_path')
     window.localStorage.removeItem('slim_search')
-    this.setState({ user: user })
+    this.setState({ user })
   }
 
-  signIn (): void {
+  signIn(): void {
     if (this.auth !== undefined) {
       console.info('try to sign in user')
-      this.auth.signIn({ onSignIn: this.handleSignIn }).then(() => {
-        console.info('sign-in was successful')
-        this.setState({
-          isLoading: false,
-          wasAuthSuccessful: true
+      this.auth
+        .signIn({ onSignIn: this.handleSignIn })
+        .then(() => {
+          console.info('sign-in was successful')
+          this.setState({
+            isLoading: false,
+            wasAuthSuccessful: true,
+          })
         })
-      }).catch((error) => {
-        console.error(error)
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        NotificationMiddleware.onError(
-          NotificationMiddlewareContext.AUTH,
-          new CustomError(
-            errorTypes.AUTHENTICATION,
-            'Could not sign-in user.')
-        )
-        this.setState({
-          isLoading: false,
-          redirectTo: undefined,
-          wasAuthSuccessful: false
+        .catch((error) => {
+          console.error(error)
+          // eslint-disable-next-line @typescript-eslint/no-floating-promises
+          NotificationMiddleware.onError(
+            NotificationMiddlewareContext.AUTH,
+            new CustomError(
+              errorTypes.AUTHENTICATION,
+              'Could not sign-in user.',
+            ),
+          )
+          this.setState({
+            isLoading: false,
+            redirectTo: undefined,
+            wasAuthSuccessful: false,
+          })
         })
-      })
     } else {
       this.setState({
         isLoading: false,
         redirectTo: undefined,
-        wasAuthSuccessful: true
+        wasAuthSuccessful: true,
       })
     }
   }
 
-  componentDidMount (): void {
+  componentDidMount(): void {
     const path = window.localStorage.getItem('slim_path')
     if (path === null || path === undefined || path === '') {
       window.localStorage.setItem('slim_path', window.location.pathname)
@@ -414,30 +444,33 @@ class App extends React.Component<AppProps, AppState> {
 
     // Restore cached server selection if it exists
     const cachedServerUrl = window.localStorage.getItem('slim_selected_server')
-    if (cachedServerUrl !== null && cachedServerUrl !== undefined && cachedServerUrl !== '') {
+    if (
+      cachedServerUrl !== null &&
+      cachedServerUrl !== undefined &&
+      cachedServerUrl !== ''
+    ) {
       this.handleServerSelection({ url: cachedServerUrl })
     }
 
     this.signIn()
   }
 
-  render (): React.ReactNode {
+  render(): React.ReactNode {
     const appInfo = {
       name: this.props.name,
       version: this.props.version,
       homepage: this.props.homepage,
       uid: '1.2.826.0.1.3680043.9.7433.1.5',
-      organization: this.props.config.organization
+      organization: this.props.config.organization,
     }
 
-    const enableWorklist = !(
-      this.props.config.disableWorklist ?? false
-    )
-    const enableServerSelection = (
+    const enableWorklist = !(this.props.config.disableWorklist ?? false)
+    const enableServerSelection =
       this.props.config.enableServerSelection ?? false
-    )
+    const enableMemoryMonitoring =
+      this.props.config.enableMemoryMonitoring ?? true
 
-    let worklist
+    let worklist: React.ReactNode
     if (enableWorklist) {
       worklist = <Worklist clients={this.state.clients} />
     } else {
@@ -492,19 +525,15 @@ class App extends React.Component<AppProps, AppState> {
         </BrowserRouter>
       )
     } else if (!this.state.wasAuthSuccessful) {
-      return (
-        <InfoPage type='error' message='Sign-in failed.' />
-      )
+      return <InfoPage type="error" message="Sign-in failed." />
     } else if (this.state.error != null) {
-      return (
-        <InfoPage type='error' message={this.state.error.message} />
-      )
+      return <InfoPage type="error" message={this.state.error.message} />
     } else {
       return (
         <BrowserRouter basename={this.props.config.path}>
           <Routes>
             <Route
-              path='/'
+              path="/"
               element={
                 <Layout style={layoutStyle}>
                   <Header
@@ -520,11 +549,14 @@ class App extends React.Component<AppProps, AppState> {
                   <Layout.Content style={layoutContentStyle}>
                     {worklist}
                   </Layout.Content>
+                  {enableMemoryMonitoring && (
+                    <MemoryFooter enabled={enableMemoryMonitoring} />
+                  )}
                 </Layout>
               }
             />
             <Route
-              path='/studies/:studyInstanceUID/*'
+              path="/studies/:studyInstanceUID/*"
               element={
                 <Layout style={layoutStyle}>
                   <Header
@@ -545,11 +577,14 @@ class App extends React.Component<AppProps, AppState> {
                       app={appInfo}
                     />
                   </Layout.Content>
+                  {enableMemoryMonitoring && (
+                    <MemoryFooter enabled={enableMemoryMonitoring} />
+                  )}
                 </Layout>
               }
             />
             <Route
-              path='/projects/:project/locations/:location/datasets/:dataset/dicomStores/:dicomStore/study/:studyInstanceUID/*'
+              path="/projects/:project/locations/:location/datasets/:dataset/dicomStores/:dicomStore/study/:studyInstanceUID/*"
               element={
                 <Layout style={layoutStyle}>
                   <Header
@@ -570,11 +605,14 @@ class App extends React.Component<AppProps, AppState> {
                       app={appInfo}
                     />
                   </Layout.Content>
+                  {enableMemoryMonitoring && (
+                    <MemoryFooter enabled={enableMemoryMonitoring} />
+                  )}
                 </Layout>
               }
             />
             <Route
-              path='/logout'
+              path="/logout"
               element={
                 <Layout style={layoutStyle}>
                   <Header
@@ -587,7 +625,12 @@ class App extends React.Component<AppProps, AppState> {
                     clients={this.state.clients}
                     defaultClients={this.state.defaultClients}
                   />
-                  Logged out
+                  <Layout.Content style={layoutContentStyle}>
+                    Logged out
+                  </Layout.Content>
+                  {enableMemoryMonitoring && (
+                    <MemoryFooter enabled={enableMemoryMonitoring} />
+                  )}
                 </Layout>
               }
             />

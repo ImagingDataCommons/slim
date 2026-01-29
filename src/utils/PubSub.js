@@ -8,7 +8,7 @@ const _lastSubscriptionId = Symbol('lastSubscriptionId')
  * @classdesc Enables publishing/subscribing
  */
 export default class PubSub {
-  constructor () {
+  constructor() {
     this[_subscriptions] = {}
     this[_lastSubscriptionId] = 0
   }
@@ -19,7 +19,7 @@ export default class PubSub {
    * @param {Function} callback Function to be executed when event is published
    * @returns {void}
    */
-  subscribe (eventName, callback) {
+  subscribe(eventName, callback) {
     if (eventName === undefined) {
       throw new Error('Trying to subscribe to an inexistent event')
     }
@@ -28,7 +28,7 @@ export default class PubSub {
       throw new Error('The provided callback must be a function')
     }
 
-    if (!this[_subscriptions].hasOwnProperty(eventName)) {
+    if (!Object.hasOwn(this[_subscriptions], eventName)) {
       this[_subscriptions][eventName] = {}
     }
 
@@ -42,7 +42,7 @@ export default class PubSub {
    * @param {Function} [callback] Function to have its subscription removed
    * @returns {void}
    */
-  unsubscribe (eventName, callback) {
+  unsubscribe(eventName, callback) {
     const callbacks = this[_subscriptions][eventName] || {}
     for (const subscriptionId in callbacks) {
       if (!callback) {
@@ -59,7 +59,7 @@ export default class PubSub {
    * @param {any} [payload] Payload that will be passed to the callback fuction
    * @returns {void}
    */
-  publish (eventName, ...payload) {
+  publish(eventName, ...payload) {
     if (eventName === undefined) {
       throw new Error('Trying to publish an inexistent event')
     }
@@ -74,7 +74,7 @@ export default class PubSub {
    * Cleares all subscriptions for current instance
    * @returns {void}
    */
-  unsubscribeFromAll () {
+  unsubscribeFromAll() {
     for (const eventName in this[_subscriptions]) {
       const callbacks = this[_subscriptions][eventName]
       for (const subscriptionId in callbacks) {

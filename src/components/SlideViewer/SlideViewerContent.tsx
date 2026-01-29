@@ -1,5 +1,5 @@
-import React from 'react'
 import { Layout } from 'antd'
+import type React from 'react'
 
 interface SlideViewerContentProps {
   toolbar: React.ReactNode
@@ -17,7 +17,7 @@ const SlideViewerContent: React.FC<SlideViewerContentProps> = ({
   toolbarHeight,
   cursor,
   volumeViewportRef,
-  children
+  children,
 }) => {
   return (
     <Layout.Content style={{ height: '100%' }}>
@@ -27,7 +27,7 @@ const SlideViewerContent: React.FC<SlideViewerContentProps> = ({
         style={{
           height: `calc(100% - ${toolbarHeight})`,
           overflow: 'hidden',
-          cursor
+          cursor,
         }}
         ref={volumeViewportRef}
       />

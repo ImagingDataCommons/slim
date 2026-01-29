@@ -1,8 +1,8 @@
-import React from 'react'
+import type React from 'react'
 import AnnotationModal from './AnnotationModal'
-import SelectedRoiModal from './SelectedRoiModal'
 import GoToModal from './GoToModal'
 import ReportModal from './ReportModal'
+import SelectedRoiModal from './SelectedRoiModal'
 
 interface SlideViewerModalsProps {
   // Annotation Modal
@@ -70,7 +70,7 @@ const SlideViewerModals: React.FC<SlideViewerModalsProps> = ({
   isReportModalVisible,
   onReportVerification,
   onReportCancellation,
-  report
+  report,
 }) => {
   return (
     <>

@@ -16,6 +16,7 @@ It relies on [DICOMweb](https://www.dicomstandard.org/dicomweb/) RESTful service
   - [Display of images](#display-of-images)
   - [Display of image annotations and analysis results](#display-of-image-annotations-and-analysis-results)
   - [Annotation of images](#annotation-of-images)
+  - [Memory Monitoring](#memory-monitoring)
 - [Authentication and Authorization](#autentication-and-authorization)
 - [Configuration](#configuration)
   - [Server Configuration](#server-configuration)
@@ -104,6 +105,22 @@ In addition to display, _Slim_ provides annotation tools that allow users to cre
 ROIs are stored as 3D spatial coordinates (SCOORD3D) in millimeter unit according to SR template [TID 1410 "Planar ROI Measurements and Qualitative Evaluations"](http://dicom.nema.org/medical/dicom/current/output/chtml/part16/chapter_A.html#sect_TID_1410) together with measurements and qualitative evaluations (labels).
 Specifically, [Image Region](http://dicom.nema.org/medical/dicom/current/output/chtml/part16/chapter_A.html#para_b68aa0a9-d0b1-475c-9630-fbbd48dc581d) is used to store the vector graphic data and [Finding](http://dicom.nema.org/medical/dicom/current/output/chtml/part16/chapter_A.html#para_c4ac1cac-ee86-4a86-865a-8137ebe1bd95) is used to describe what has been annotated using a standard medical terminology such as [SNOMED CT](https://www.snomed.org/).
 The terms that can be chosen by a user can be configured (see [AppConfig.d.ts](src/AppConfig.d.ts)).
+
+### Memory Monitoring
+
+_Slim_ includes automatic memory monitoring to help track browser memory usage when viewing large whole slide images. The memory monitor:
+
+- Displays real-time memory usage in the footer (used memory, heap limit, usage percentage, remaining memory)
+- Automatically monitors memory every 5 seconds using modern browser APIs when available
+- Shows color-coded status indicators (green/orange/red) based on usage levels
+- Issues warnings when memory usage exceeds 80% (high) or 90% (critical)
+- Falls back to Chrome-specific APIs when modern APIs aren't available
+
+The memory footer appears at the bottom of all pages and updates automatically. When memory usage is high, users receive notifications with recommendations to refresh the page or close other tabs.
+
+Memory monitoring is enabled by default and can be disabled via configuration by setting `enableMemoryMonitoring: false` in the application config.
+
+For technical details, see [Memory Monitoring Documentation](docs/MEMORY_MONITORING.md).
 
 ## Autentication and authorization
 
@@ -198,13 +215,29 @@ Default values if not specified:
 - `duration`: 5 seconds
 - `top`: 100 pixels
 
+### Memory Monitoring Configuration
+
+Memory monitoring can be enabled or disabled through configuration:
+
+```javascript
+window.config = {
+  // ... other config options ...
+  enableMemoryMonitoring: false, // Set to false to disable memory monitoring footer
+};
+```
+
+- **Default**: Memory monitoring is enabled (`enableMemoryMonitoring: true` or undefined)
+- **Disable**: Set `enableMemoryMonitoring: false` to hide the memory footer and stop monitoring
+
+When enabled, the memory footer appears at the bottom of all pages and monitors memory usage every 5 seconds.
+
 ## Deployment
 
 Download the latest release from [github.com/imagingdatacommons/slim/releases](https://github.com/imagingdatacommons/slim/releases) and then run the following commands to install build dependencies and build the app:
 
 ```none
-yarn install
-PUBLIC_URL=/ yarn build
+bun install
+PUBLIC_URL=/ bun run build
 ```
 
 Once the app has been built, the content of the `build` folder can be directly served by a static web server at the location specified by `PUBLIC_URL` (in this case at `/`).
@@ -341,8 +374,8 @@ For the time being, the legacy implicit grand type has to be used.
 To install requirements and run the app for local development, run the following commands:
 
 ```none
-yarn install
-yarn start
+bun install
+bun run start
 ```
 
 This will serve the app via a development server at [http://localhost:3000](http://localhost:3000) using the default `local` configuration.
@@ -350,48 +383,48 @@ This will serve the app via a development server at [http://localhost:3000](http
 The configuration can be specified using the `REACT_APP_CONFIG` environment variable, which can be set either in the `.env` file or directly in the command line:
 
 ```none
-REACT_APP_CONFIG=local yarn start
+REACT_APP_CONFIG=local bun run start
 ```
 
 ## Linking Slim to a Local dicom-microscopy-viewer Library
 
-If you are developing features or fixing bugs that require changes in both Slim and the underlying [`dicom-microscopy-viewer`](https://github.com/ImagingDataCommons/dicom-microscopy-viewer) library, you can use `yarn link` to connect your local Slim project to a local clone of `dicom-microscopy-viewer`. This allows Slim to immediately use the latest local changes from the library without publishing to npm.
+If you are developing features or fixing bugs that require changes in both Slim and the underlying [`dicom-microscopy-viewer`](https://github.com/ImagingDataCommons/dicom-microscopy-viewer) library, you can use `bun link` to connect your local Slim project to a local clone of `dicom-microscopy-viewer`. This allows Slim to immediately use the latest local changes from the library without publishing to npm.
 
 ### Steps
 
 1. **Clone dicom-microscopy-viewer**  
    If you haven't already, clone the `dicom-microscopy-viewer` repository to your machine.
 
-2. **Set up yarn link in dicom-microscopy-viewer**  
+2. **Set up bun link in dicom-microscopy-viewer**  
    In the root directory of your local `dicom-microscopy-viewer` repository, run:
    ```sh
-   yarn link
+   bun link
    ```
 
 3. **Link dicom-microscopy-viewer in Slim**  
    In the root directory of your Slim project, run:
    ```sh
-   yarn link dicom-microscopy-viewer
+   bun link dicom-microscopy-viewer
    ```
 
 4. **Enable live rebuilding in dicom-microscopy-viewer**  
    To automatically rebuild `dicom-microscopy-viewer` when you make changes, run the following command in the `dicom-microscopy-viewer` directory:
    ```sh
-   yarn webpack:dynamic-import:watch
+   bun run webpack:dynamic-import:watch
    ```
    This will watch for file changes and rebuild the library, so Slim can immediately use the updated code.
 
 5. **Run Slim as usual**  
    In the Slim directory, start the development server:
    ```sh
-   yarn start
+   bun run start
    ```
    Slim will now use your locally linked version of `dicom-microscopy-viewer`.
 
 ### Notes
 
-- If you want to unlink and return to the npm-published version, run `yarn unlink dicom-microscopy-viewer` and `yarn install --force` in the Slim directory.
-- Make sure both projects use compatible Node and Yarn versions to avoid dependency issues.
+- If you want to unlink and return to the npm-published version, run `bun unlink dicom-microscopy-viewer` and `bun install` in the Slim directory.
+- Make sure both projects use compatible Bun versions to avoid dependency issues.
 
 ## Citation
 

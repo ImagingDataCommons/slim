@@ -1,7 +1,7 @@
-import React from 'react'
 import { List } from 'antd'
+import React from 'react'
 
-import Description, { Attribute, AttributeGroup } from './Description'
+import Description, { type Attribute, type AttributeGroup } from './Description'
 
 interface ItemProps {
   uid: string
@@ -18,19 +18,19 @@ interface ItemProps {
  * containing an identifier and a body element containing a description list
  * of attributes rendered as name-value pairs.
  */
-class Item extends React.Component<ItemProps, {}> {
-  render (): React.ReactNode {
-    let groups = null
+class Item extends React.Component<ItemProps, Record<string, never>> {
+  render(): React.ReactNode {
+    let groups: React.ReactNode = null
     if (this.props.groups !== undefined) {
-      groups = this.props.groups.map((item, index: number) => (
+      groups = this.props.groups.map((item) => (
         <Description
-          key={index}
+          key={item.name}
           header={item.name}
           attributes={item.attributes}
         />
       ))
     }
-    let title
+    let title: string
     if (this.props.type !== undefined) {
       title = `${this.props.type}: ${this.props.identifier}`
     } else {

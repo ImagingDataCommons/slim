@@ -1,12 +1,11 @@
-import React from 'react'
 import { Menu, Switch } from 'antd'
 // skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
+import type * as dcmjs from 'dcmjs'
 // skipcq: JS-C1003
-import * as dcmjs from 'dcmjs'
-
-import AnnotationGroupItem from './AnnotationGroupItem'
+import type * as dmv from 'dicom-microscopy-viewer'
+import React from 'react'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
+import AnnotationGroupItem from './AnnotationGroupItem'
 
 interface AnnotationGroupListProps {
   annotationGroups: dmv.annotation.AnnotationGroup[]
@@ -23,14 +22,14 @@ interface AnnotationGroupListProps {
   onAnnotationGroupClick: (annotationGroupUID: string) => void
   onAnnotationGroupVisibilityChange: ({
     annotationGroupUID,
-    isVisible
+    isVisible,
   }: {
     annotationGroupUID: string
     isVisible: boolean
   }) => void
   onAnnotationGroupStyleChange: ({
     uid,
-    styleOptions
+    styleOptions,
   }: {
     uid: string
     styleOptions: {
@@ -45,15 +44,15 @@ interface AnnotationGroupListProps {
  * React component representing a list of Annotation Groups.
  */
 class AnnotationGroupList extends React.Component<
-AnnotationGroupListProps,
-unknown
+  AnnotationGroupListProps,
+  unknown
 > {
   handleVisibilityChange = (checked: boolean): void => {
     if (checked) {
       this.props.annotationGroups.forEach((annotationGroup) => {
         this.props.onAnnotationGroupVisibilityChange({
           annotationGroupUID: annotationGroup.uid,
-          isVisible: checked
+          isVisible: checked,
         })
       })
       return
@@ -62,13 +61,13 @@ unknown
     this.props.visibleAnnotationGroupUIDs.forEach((annotationGroupUID) => {
       this.props.onAnnotationGroupVisibilityChange({
         annotationGroupUID,
-        isVisible: checked
+        isVisible: checked,
       })
     })
   }
 
-  render (): React.ReactNode {
-    const items = this.props.annotationGroups.map((annotationGroup, index) => {
+  render(): React.ReactNode {
+    const items = this.props.annotationGroups.map((annotationGroup, _index) => {
       const uid = annotationGroup.uid
       return (
         <AnnotationGroupItem
@@ -90,11 +89,11 @@ unknown
           style={{
             paddingLeft: '14px',
             paddingTop: '7px',
-            paddingBottom: '7px'
+            paddingBottom: '7px',
           }}
         >
           <Switch
-            size='small'
+            size="small"
             onChange={this.handleVisibilityChange}
             checked={this.props.visibleAnnotationGroupUIDs.size > 0}
             checkedChildren={<FaEye />}

@@ -1,6 +1,6 @@
-import React from 'react'
 // skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
+import type * as dmv from 'dicom-microscopy-viewer'
+import React from 'react'
 
 import Description from './Description'
 
@@ -13,7 +13,7 @@ interface ClinicalTrialProps {
  * common study-level attributes of contained DICOM Slide Microscopy images.
  */
 class ClinicalTrial extends React.Component<ClinicalTrialProps> {
-  render (): React.ReactNode {
+  render(): React.ReactNode {
     const attributes = []
     if (this.props.metadata.ClinicalTrialSponsorName != null) {
       // Attributes of Clinical Trial Subject module
@@ -21,31 +21,29 @@ class ClinicalTrial extends React.Component<ClinicalTrialProps> {
         ...[
           {
             name: 'Sponsor Name',
-            value: this.props.metadata.ClinicalTrialSponsorName
+            value: this.props.metadata.ClinicalTrialSponsorName,
           },
           {
             name: 'Protocol ID',
-            value: this.props.metadata.ClinicalTrialProtocolID
+            value: this.props.metadata.ClinicalTrialProtocolID,
           },
           {
             name: 'Protocol Name',
-            value: this.props.metadata.ClinicalTrialProtocolName
+            value: this.props.metadata.ClinicalTrialProtocolName,
           },
           {
             name: 'Site Name',
-            value: this.props.metadata.ClinicalTrialSiteName
-          }
-        ]
+            value: this.props.metadata.ClinicalTrialSiteName,
+          },
+        ],
       )
     }
     if (this.props.metadata.ClinicalTrialTimePointID != null) {
       // Attributes of Clinical Trial Study module
-      attributes.push(
-        {
-          name: 'Time Point ID',
-          value: this.props.metadata.ClinicalTrialTimePointID
-        }
-      )
+      attributes.push({
+        name: 'Time Point ID',
+        value: this.props.metadata.ClinicalTrialTimePointID,
+      })
     }
     // Attributes of Clinical Trial Subject module
     return <Description attributes={attributes} />

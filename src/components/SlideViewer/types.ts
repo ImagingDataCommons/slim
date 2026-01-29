@@ -1,11 +1,11 @@
-// skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
-// skipcq: JS-C1003
-import * as dcmjs from 'dcmjs'
-import { RouteComponentProps } from '../../utils/router'
-import { Slide } from '../../data/slides'
-import DicomWebManager from '../../DicomWebManager'
-import { AnnotationSettings } from '../../types/annotations'
+// skipcq: JS-C1003 - dcmjs uses nested namespaces (dcmjs.sr.coding.CodedConcept)
+import type * as dcmjs from 'dcmjs'
+// skipcq: JS-C1003 - dmv uses nested namespaces (dmv.metadata, dmv.roi)
+import type * as dmv from 'dicom-microscopy-viewer'
+import type DicomWebManager from '../../DicomWebManager'
+import type { Slide } from '../../data/slides'
+import type { AnnotationSettings } from '../../types/annotations'
+import type { RouteComponentProps } from '../../utils/router'
 
 /**
  * Style options for ROI annotations
@@ -89,7 +89,12 @@ export interface SlideViewerState {
   isAnnotationModalVisible: boolean
   isSelectedRoiModalVisible: boolean
   isHoveredRoiTooltipVisible: boolean
-  hoveredRoiAttributes: Array<{index: number, roiUid: string, attributes: Array<{ name: string, value: string }>, seriesDescription?: string}>
+  hoveredRoiAttributes: Array<{
+    index: number
+    roiUid: string
+    attributes: Array<{ name: string; value: string }>
+    seriesDescription?: string
+  }>
   hoveredRoiTooltipX: number
   hoveredRoiTooltipY: number
   isReportModalVisible: boolean
@@ -120,4 +125,6 @@ export interface SlideViewerState {
   isSegmentationInterpolationEnabled: boolean
   isParametricMapInterpolationEnabled: boolean
   customizedSegmentColors: { [segmentUID: string]: number[] }
+  clusteringPixelSizeThreshold: number | null
+  isClusteringEnabled: boolean
 }

@@ -1,22 +1,21 @@
-import { Routes, Route, useLocation, useParams } from 'react-router-dom'
 import { Layout, Menu } from 'antd'
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
 import { useEffect, useState } from 'react'
+import { Route, Routes, useLocation, useParams } from 'react-router-dom'
 
-import { AnnotationSettings } from '../AppConfig'
+import type { AnnotationSettings } from '../AppConfig'
+import type { User } from '../auth'
+import type DicomWebManager from '../DicomWebManager'
+import type { Slide } from '../data/slides'
+import { StorageClasses } from '../data/uids'
+import { useSlides } from '../hooks/useSlides'
+import { type RouteComponentProps, withRouter } from '../utils/router'
 import ClinicalTrial from './ClinicalTrial'
-import DicomWebManager from '../DicomWebManager'
 import Patient from './Patient'
-import Study from './Study'
 import SlideList from './SlideList'
 import SlideViewer from './SlideViewer'
-
-import { User } from '../auth'
-import { Slide } from '../data/slides'
-import { RouteComponentProps, withRouter } from '../utils/router'
-import { useSlides } from '../hooks/useSlides'
-import { StorageClasses } from '../data/uids'
+import Study from './Study'
 
 const { naturalizeDataset } = dcmjs.data.DicomMetaDictionary
 
@@ -42,7 +41,10 @@ interface NaturalizedInstance {
   }>
 }
 
-const findSeriesSlide = (slides: Slide[], seriesInstanceUID: string): Slide | undefined => {
+const findSeriesSlide = (
+  slides: Slide[],
+  seriesInstanceUID: string,
+): Slide | undefined => {
   return slides.find((slide: Slide) => {
     return slide.seriesInstanceUIDs.find((uid: string) => {
       return uid === seriesInstanceUID
@@ -50,14 +52,14 @@ const findSeriesSlide = (slides: Slide[], seriesInstanceUID: string): Slide | un
   })
 }
 
-function ParametrizedSlideViewer ({
+function ParametrizedSlideViewer({
   clients,
   slides,
   user,
   app,
   preload,
   enableAnnotationTools,
-  annotations
+  annotations,
 }: {
   clients: { [key: string]: DicomWebManager }
   slides: Slide[]
@@ -72,16 +74,29 @@ function ParametrizedSlideViewer ({
   enableAnnotationTools: boolean
   annotations: AnnotationSettings[]
 }): JSX.Element | null {
-  const { studyInstanceUID = '', seriesInstanceUID = '' } = useParams<{ studyInstanceUID: string, seriesInstanceUID: string }>()
+  const { studyInstanceUID = '', seriesInstanceUID = '' } = useParams<{
+    studyInstanceUID: string
+    seriesInstanceUID: string
+  }>()
   const location = useLocation()
 
-  const [selectedSlide, setSelectedSlide] = useState(findSeriesSlide(slides, seriesInstanceUID))
-  const [derivedDataset, setDerivedDataset] = useState<NaturalizedInstance | null>(null)
+  const [selectedSlide, setSelectedSlide] = useState(
+    findSeriesSlide(slides, seriesInstanceUID),
+  )
+  const [derivedDataset, setDerivedDataset] =
+    useState<NaturalizedInstance | null>(null)
 
   useEffect(() => {
-    const currentSlideMatchesSeries = selectedSlide?.seriesInstanceUIDs.some((uid: string) => uid === seriesInstanceUID) ?? false
+    const currentSlideMatchesSeries =
+      selectedSlide?.seriesInstanceUIDs.some(
+        (uid: string) => uid === seriesInstanceUID,
+      ) ?? false
 
-    if (selectedSlide === null || selectedSlide === undefined || !currentSlideMatchesSeries) {
+    if (
+      selectedSlide === null ||
+      selectedSlide === undefined ||
+      !currentSlideMatchesSeries
+    ) {
       const imageSlide = findSeriesSlide(slides, seriesInstanceUID)
       if (imageSlide !== null && imageSlide !== undefined) {
         setSelectedSlide(imageSlide)
@@ -92,10 +107,12 @@ function ParametrizedSlideViewer ({
       const findReferencedSlide = async (): Promise<void> => {
         const client = clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
         const derivedSeriesMetadata = await client.retrieveSeriesMetadata({
-          studyInstanceUID: studyInstanceUID,
-          seriesInstanceUID: seriesInstanceUID
+          studyInstanceUID,
+          seriesInstanceUID,
         })
-        const naturalizedDerivedMetadata = naturalizeDataset(derivedSeriesMetadata[0]) as NaturalizedInstance
+        const naturalizedDerivedMetadata = naturalizeDataset(
+          derivedSeriesMetadata[0],
+        ) as NaturalizedInstance
         if (
           naturalizedDerivedMetadata.ReferencedSeriesSequence != null &&
           naturalizedDerivedMetadata.ReferencedSeriesSequence.length > 0
@@ -103,26 +120,38 @@ function ParametrizedSlideViewer ({
           for (const referencedSeries of naturalizedDerivedMetadata.ReferencedSeriesSequence) {
             const referencedImageSeriesUID = referencedSeries.SeriesInstanceUID
             const referencedSlide = slides.find((slide: Slide) => {
-              return slide.seriesInstanceUIDs.some((uid: string) => uid === referencedImageSeriesUID)
+              return slide.seriesInstanceUIDs.some(
+                (uid: string) => uid === referencedImageSeriesUID,
+              )
             })
             if (referencedSlide !== null && referencedSlide !== undefined) {
               setSelectedSlide(referencedSlide)
               setDerivedDataset(naturalizedDerivedMetadata)
-              console.log('naturalizedDerivedMetadata', naturalizedDerivedMetadata)
               return
             }
           }
         }
         const IMAGE_LIBRARY_CONCEPT_NAME_CODE = '111028'
         const imageLibrary = naturalizedDerivedMetadata.ContentSequence?.find(
-          contentItem => contentItem.ConceptNameCodeSequence[0].CodeValue === IMAGE_LIBRARY_CONCEPT_NAME_CODE
+          (contentItem) =>
+            contentItem.ConceptNameCodeSequence[0].CodeValue ===
+            IMAGE_LIBRARY_CONCEPT_NAME_CODE,
         )
-        if ((imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]?.ReferencedSOPSequence?.[0]) != null) {
-          const referencedSOPInstanceUID = imageLibrary.ContentSequence[0].ContentSequence[0].ReferencedSOPSequence[0].ReferencedSOPInstanceUID
+        if (
+          imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]
+            ?.ReferencedSOPSequence?.[0] !== undefined &&
+          imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]
+            ?.ReferencedSOPSequence?.[0] !== null
+        ) {
+          const referencedSOPInstanceUID =
+            imageLibrary.ContentSequence[0].ContentSequence[0]
+              .ReferencedSOPSequence[0].ReferencedSOPInstanceUID
           const referencedSlide = slides.find((slide: Slide) => {
-            return slide.volumeImages.find((image: { SOPInstanceUID: string }) => {
-              return image.SOPInstanceUID === referencedSOPInstanceUID
-            })
+            return slide.volumeImages.find(
+              (image: { SOPInstanceUID: string }) => {
+                return image.SOPInstanceUID === referencedSOPInstanceUID
+              },
+            )
           })
           setSelectedSlide(referencedSlide)
           setDerivedDataset(naturalizedDerivedMetadata)
@@ -173,35 +202,37 @@ interface ViewerProps extends RouteComponentProps {
   annotations: AnnotationSettings[]
   enableAnnotationTools: boolean
   preload: boolean
-  user?: {
-    name: string
-    email: string
-  }
+  user?: User
 }
 
-function Viewer (props: ViewerProps): JSX.Element | null {
+function Viewer(props: ViewerProps): JSX.Element | null {
   const { clients, studyInstanceUID, location, navigate } = props
   const { slides, isLoading } = useSlides({ clients, studyInstanceUID })
 
-  const handleSeriesSelection = ({ seriesInstanceUID }: { seriesInstanceUID: string }): void => {
+  const handleSeriesSelection = ({
+    seriesInstanceUID,
+  }: {
+    seriesInstanceUID: string
+  }): void => {
     console.info(`switch to series "${seriesInstanceUID}"`)
-    let urlPath = (
-      `/studies/${studyInstanceUID}` +
-      `/series/${seriesInstanceUID}`
-    )
+    let urlPath = `/studies/${studyInstanceUID}/series/${seriesInstanceUID}`
 
     if (location.pathname.includes('/projects/')) {
       urlPath = location.pathname
       if (!location.pathname.includes('/series/')) {
         urlPath += `/series/${seriesInstanceUID}`
       } else {
-        urlPath = urlPath.replace(/\/series\/[^/]+/, `/series/${seriesInstanceUID}`)
+        urlPath = urlPath.replace(
+          /\/series\/[^/]+/,
+          `/series/${seriesInstanceUID}`,
+        )
       }
     }
 
     if (
       location.pathname.includes('/series/') &&
-      location.search != null
+      location.search !== null &&
+      location.search !== undefined
     ) {
       urlPath += location.search
     }
@@ -231,15 +262,17 @@ function Viewer (props: ViewerProps): JSX.Element | null {
   let selectedSeriesInstanceUID: string
   if (location.pathname.includes('series/')) {
     const seriesFragment = location.pathname.split('series/')[1]
-    selectedSeriesInstanceUID = seriesFragment.includes('/') ? seriesFragment.split('/')[0] : seriesFragment
+    selectedSeriesInstanceUID = seriesFragment.includes('/')
+      ? seriesFragment.split('/')[0]
+      : seriesFragment
   } else {
     selectedSeriesInstanceUID = volumeInstances[0].SeriesInstanceUID
   }
 
-  let clinicalTrialMenu
+  let clinicalTrialMenu: React.ReactNode
   if (refImage.ClinicalTrialSponsorName != null) {
     clinicalTrialMenu = (
-      <Menu.SubMenu key='clinical-trial' title='Clinical Trial'>
+      <Menu.SubMenu key="clinical-trial" title="Clinical Trial">
         <ClinicalTrial metadata={refImage} />
       </Menu.SubMenu>
     )
@@ -254,23 +287,23 @@ function Viewer (props: ViewerProps): JSX.Element | null {
           borderRight: 'solid',
           borderRightWidth: 0.25,
           overflow: 'hidden',
-          background: 'none'
+          background: 'none',
         }}
       >
         <Menu
-          mode='inline'
+          mode="inline"
           defaultOpenKeys={['patient', 'study', 'clinical-trial', 'slides']}
           style={{ height: '100%' }}
           inlineIndent={14}
         >
-          <Menu.SubMenu key='patient' title='Patient'>
+          <Menu.SubMenu key="patient" title="Patient">
             <Patient metadata={refImage} />
           </Menu.SubMenu>
-          <Menu.SubMenu key='study' title='Study'>
+          <Menu.SubMenu key="study" title="Study">
             <Study metadata={refImage} />
           </Menu.SubMenu>
           {clinicalTrialMenu}
-          <Menu.SubMenu key='slides' title='Slides'>
+          <Menu.SubMenu key="slides" title="Slides">
             <SlideList
               clients={props.clients}
               metadata={slides}
@@ -283,7 +316,7 @@ function Viewer (props: ViewerProps): JSX.Element | null {
 
       <Routes>
         <Route
-          path='/series/:seriesInstanceUID'
+          path="/series/:seriesInstanceUID"
           element={
             <ParametrizedSlideViewer
               clients={props.clients}

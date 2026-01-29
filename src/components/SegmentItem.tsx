@@ -1,21 +1,13 @@
-import React from 'react'
-// skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
-import {
-  Button,
-  Menu,
-  Popover,
-  Space,
-  Switch,
-  Divider
-} from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
+import { Button, Divider, Menu, Popover, Space, Switch } from 'antd'
+// skipcq: JS-C1003
+import type * as dmv from 'dicom-microscopy-viewer'
+import React from 'react'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
-
-import Description from './Description'
+import { getSegmentationType, rgbToHex } from '../utils/segmentColors'
 import ColorSlider from './ColorSlider'
+import Description from './Description'
 import OpacitySlider from './OpacitySlider'
-import { rgbToHex, getSegmentationType } from '../utils/segmentColors'
 
 interface SegmentItemProps {
   segment: dmv.segment.Segment
@@ -25,11 +17,17 @@ interface SegmentItemProps {
     opacity: number
     color?: number[]
   }
-  onVisibilityChange: ({ segmentUID, isVisible }: {
+  onVisibilityChange: ({
+    segmentUID,
+    isVisible,
+  }: {
     segmentUID: string
     isVisible: boolean
   }) => void
-  onStyleChange: ({ segmentUID, styleOptions }: {
+  onStyleChange: ({
+    segmentUID,
+    styleOptions,
+  }: {
     segmentUID: string
     styleOptions: {
       opacity: number
@@ -50,7 +48,7 @@ interface SegmentItemState {
  * React component representing a Segment.
  */
 class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
-  constructor (props: SegmentItemProps) {
+  constructor(props: SegmentItemProps) {
     super(props)
 
     /** Initialize with default color if not provided */
@@ -59,83 +57,91 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
       isVisible: this.props.isVisible,
       currentStyle: {
         opacity: this.props.defaultStyle.opacity,
-        color: defaultColor
-      }
+        color: defaultColor,
+      },
     }
   }
 
   handleVisibilityChange = (
     checked: boolean,
-    event: React.MouseEvent<HTMLButtonElement>
+    _event: React.MouseEvent<HTMLButtonElement>,
   ): void => {
     this.props.onVisibilityChange({
       segmentUID: this.props.segment.uid,
-      isVisible: checked
+      isVisible: checked,
     })
     this.setState({ isVisible: checked })
   }
 
   handleColorChange = (newColor: number[]): void => {
-    this.setState(prevState => {
-      const newStyle = { ...prevState.currentStyle, color: newColor }
-      return { currentStyle: newStyle }
-    }, () => {
-      this.props.onStyleChange({
-        segmentUID: this.props.segment.uid,
-        styleOptions: {
-          opacity: this.state.currentStyle.opacity,
-          color: newColor
-        }
-      })
-    })
+    this.setState(
+      (prevState) => {
+        const newStyle = { ...prevState.currentStyle, color: newColor }
+        return { currentStyle: newStyle }
+      },
+      () => {
+        this.props.onStyleChange({
+          segmentUID: this.props.segment.uid,
+          styleOptions: {
+            opacity: this.state.currentStyle.opacity,
+            color: newColor,
+          },
+        })
+      },
+    )
   }
 
   handleOpacityChange = (opacity: number | null): void => {
     if (opacity !== null) {
-      this.setState(prevState => {
-        const newStyle = { ...prevState.currentStyle, opacity }
-        return { currentStyle: newStyle }
-      }, () => {
-        this.props.onStyleChange({
-          segmentUID: this.props.segment.uid,
-          styleOptions: {
-            opacity,
-            color: this.state.currentStyle.color
-          }
-        })
-      })
+      this.setState(
+        (prevState) => {
+          const newStyle = { ...prevState.currentStyle, opacity }
+          return { currentStyle: newStyle }
+        },
+        () => {
+          this.props.onStyleChange({
+            segmentUID: this.props.segment.uid,
+            styleOptions: {
+              opacity,
+              color: this.state.currentStyle.color,
+            },
+          })
+        },
+      )
     }
   }
 
-  render (): React.ReactNode {
-    const attributes: Array<{ name: string, value: string }> = [
+  render(): React.ReactNode {
+    const attributes: Array<{ name: string; value: string }> = [
       {
         name: 'Property Type',
-        value: this.props.segment.propertyType.CodeMeaning
+        value: this.props.segment.propertyType.CodeMeaning,
       },
       {
         name: 'Property Category',
-        value: this.props.segment.propertyCategory.CodeMeaning
+        value: this.props.segment.propertyCategory.CodeMeaning,
       },
       {
         name: 'Algorithm Name',
-        value: this.props.segment.algorithmName
+        value: this.props.segment.algorithmName,
       },
       {
         name: 'Algorithm Type',
-        value: this.props.segment.algorithmType
-      }
+        value: this.props.segment.algorithmType,
+      },
     ]
 
     /** Get segmentation type from metadata */
-    const segmentationMetadata = this.props.metadata?.[0] as any
+    const segmentationMetadata = this.props.metadata?.[0] as unknown as
+      | Record<string, unknown>
+      | undefined
     const segmentationType = getSegmentationType(segmentationMetadata)
 
     // Add SegmentationType from metadata if available
     if (segmentationMetadata?.SegmentationType !== undefined) {
       attributes.push({
         name: 'Segmentation Type',
-        value: segmentationMetadata.SegmentationType
+        value: segmentationMetadata.SegmentationType as string,
       })
     }
 
@@ -177,25 +183,25 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
         key={this.props.segment.uid}
         {...otherProps}
       >
-        <Space align='start'>
+        <Space align="start">
           <div style={{ paddingLeft: '14px' }}>
-            <Space direction='vertical' align='center'>
+            <Space direction="vertical" align="center">
               <Switch
-                size='small'
+                size="small"
                 onChange={this.handleVisibilityChange}
                 checked={this.props.isVisible}
                 checkedChildren={<FaEye />}
                 unCheckedChildren={<FaEyeSlash />}
               />
               <Popover
-                placement='left'
+                placement="left"
                 content={settings}
                 overlayStyle={{ width: '350px' }}
-                title='Display Settings'
+                title="Display Settings"
               >
                 <Button
-                  type='primary'
-                  shape='circle'
+                  type="primary"
+                  shape="circle"
                   icon={<SettingOutlined />}
                 />
               </Popover>
@@ -210,7 +216,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
                     borderRadius: '50%',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
                   }}
                   title={`Segment color: ${rgbToHex(this.state.currentStyle.color)}`}
                 />

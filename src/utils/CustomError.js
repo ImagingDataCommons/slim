@@ -2,11 +2,11 @@ const errorTypes = {
   AUTHENTICATION: 'Authentication',
   COMMUNICATION: 'Communication',
   ENCODINGANDDECODING: 'EncodingDecoding',
-  VISUALIZATION: 'Visualization'
+  VISUALIZATION: 'Visualization',
 }
 
 class CustomError extends Error {
-  constructor (type, message) {
+  constructor(type, message) {
     super()
     this.message = message
     this.stack = new Error().stack

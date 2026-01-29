@@ -3,17 +3,23 @@
   "version": "0.45.1",
   "private": true,
   "author": "ImagingDataCommons",
+  "packageManager": "bun@latest",
   "scripts": {
     "start": "rm -rf ./node_modules/.cache/default-development && ./scripts/set-git-env.sh craco start",
-    "dev": "npm run start",
+    "dev": "bun run start",
+    "typecheck": "tsc --noEmit",
     "build": "./scripts/set-git-env.sh craco build",
     "build:firebase": "REACT_APP_CONFIG=gcp PUBLIC_URL=/ ./scripts/set-git-env.sh craco build",
-    "lint": "ts-standard --env jest 'src/**/*.{tsx,ts}'",
-    "fmt": "ts-standard --env jest 'src/**/*.{tsx,ts}' --fix",
-    "test": "ts-standard --env jest 'src/**/*.{tsx,ts}' && craco test --watchAll=false",
+    "lint": "biome check .",
+    "lint:strict": "eslint --config .eslintrc.strict.cjs src/",
+    "lint:fix": "biome check --write --unsafe .",
+    "fmt": "biome format --write .",
+    "format": "biome format --write .",
+    "test": "biome check . && craco test --watchAll=false",
     "predeploy": "REACT_APP_CONFIG=demo PUBLIC_URL='https://imagingdatacommons.github.io/slim/' ./scripts/set-git-env.sh craco build",
     "deploy": "gh-pages -d build",
-    "clean": "rm -rf ./build ./node_modules"
+    "clean": "rm -rf ./build ./node_modules",
+    "prepare": "husky"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -31,6 +37,8 @@
     ]
   },
   "devDependencies": {
+    "ajv": "6.12.6",
+    "@biomejs/biome": "^2.0.0",
     "@babel/preset-env": "^7.15.0",
     "@babel/preset-react": "^7.17.12",
     "@babel/preset-typescript": "^7.17.12",
@@ -42,7 +50,7 @@
     "@semantic-release/npm": "^12.0.0",
     "@semantic-release/release-notes-generator": "^13.0.0",
     "@testing-library/jest-dom": "^5.16.4",
-    "@testing-library/react": "^11.2.2",
+    "@testing-library/react": "^14.0.0",
     "@testing-library/user-event": "^7.1.2",
     "@types/jest": "^28.1.3",
     "@types/lodash": "^4.17.20",
@@ -54,12 +62,14 @@
     "@types/uuid": "^8.3.0",
     "antd": "^4.22.8",
     "classnames": "^2.2.6",
-    "copy-webpack-plugin": "^10.2.4",
+    "copy-webpack-plugin": "9.1.0",
     "craco-less": "^2.0.0",
     "dcmjs": "^0.35.0",
     "detect-browser": "^5.2.1",
-    "dicom-microscopy-viewer": "^0.48.16",
-    "dicomweb-client": "^0.10.3",
+    "dicom-microscopy-viewer": "^0.48.18",
+    "dicomweb-client": "0.10.3",
+    "eslint": "^8.57.0",
+    "eslint-plugin-sonarjs": "^0.25.0",
     "gh-pages": "^5.0.0",
     "oidc-client": "^1.11.5",
     "react": "^18.2.0",
@@ -71,30 +81,18 @@
     "retry": "^0.13.1",
     "semantic-release": "21.1.2",
     "sonarqube-scanner": "^4.3.0",
-    "ts-standard": "^11.0.0",
-    "typescript": "^4.7.4"
+    "typescript": "^4.7.4",
+    "husky": "^9.1.7"
   },
   "dependencies": {
     "react-error-boundary": "^3.1.4"
   },
-  "resolutions": {
+  "overrides": {
     "nth-check": "2.0.1",
     "wrap-ansi": "7.0.0",
     "make-dir": "3.1.0",
-    "react-scripts/babel-jest/babel-plugin-istanbul/istanbul-lib-instrument/semver": "6.3.1",
-    "@babel/preset-env/babel-plugin-polyfill-corejs2/@babel/helper-define-polyfill-provider/semver": "6.3.1",
-    "make-dir/semver": "6.3.1",
-    "@babel/preset-env/babel-plugin-polyfill-corejs2/semver": "6.3.1",
-    "ts-standard/eslint-plugin-node/semver": "6.3.1",
-    "@craco/craco/semver": "7.5.2",
-    "@typescript-eslint/typescript-estree/semver": "7.5.2",
-    "ts-standard/eslint/semver": "7.5.2",
-    "ts-standard/@typescript-eslint/eslint-plugin/semver": "7.5.2",
-    "react-scripts/postcss-loader/semver": "7.5.2",
-    "react-scripts/css-loader/semver": "7.5.2",
-    "react-scripts/react-dev-utils/fork-ts-checker-webpack-plugin/semver": "7.5.2",
-    "@semantic-release/npm/npm/**/semver": "7.5.2",
     "express": "4.21.0",
-    "rollup": "3.29.5"
+    "rollup": "3.29.5",
+    "semver": "7.5.2"
   }
 }

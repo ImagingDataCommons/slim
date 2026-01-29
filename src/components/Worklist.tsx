@@ -1,20 +1,19 @@
-import React from 'react'
-import { Button, Input, Space, Table, TablePaginationConfig } from 'antd'
-import { ColumnsType } from 'antd/es/table'
-import { FilterConfirmProps } from 'antd/es/table/interface'
 import { SearchOutlined } from '@ant-design/icons'
-import DicomWebManager from '../DicomWebManager'
-
+import { Button, Input, Space, Table, type TablePaginationConfig } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
+import type { FilterConfirmProps } from 'antd/es/table/interface'
 // skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
+import React from 'react'
+import type DicomWebManager from '../DicomWebManager'
 
 import { StorageClasses } from '../data/uids'
-import { withRouter, RouteComponentProps } from '../utils/router'
-import { parseDate, parseName, parseSex, parseTime } from '../utils/values'
-import { CustomError, errorTypes } from '../utils/CustomError'
 import NotificationMiddleware, {
-  NotificationMiddlewareContext
+  NotificationMiddlewareContext,
 } from '../services/NotificationMiddleware'
+import { CustomError, errorTypes } from '../utils/CustomError'
+import { type RouteComponentProps, withRouter } from '../utils/router'
+import { parseDate, parseName, parseSex, parseTime } from '../utils/values'
 
 // Standalone function for row key generation
 const getRowKey = (record: dmv.metadata.Study): string => {
@@ -35,32 +34,33 @@ interface WorklistState {
 class Worklist extends React.Component<WorklistProps, WorklistState> {
   private readonly defaultPageSize = 20
 
-  constructor (props: WorklistProps) {
+  constructor(props: WorklistProps) {
     super(props)
     this.state = {
       studies: [],
       isLoading: false,
       numStudies: 0,
-      pageSize: this.defaultPageSize
+      pageSize: this.defaultPageSize,
     }
   }
 
-  searchForStudies (): void {
-    const queryParams: { [key: string]: any } = { ModalitiesInStudy: 'SM' }
+  searchForStudies(): void {
+    const queryParams: Record<string, string> = { ModalitiesInStudy: 'SM' }
     const searchOptions = { queryParams }
     // TODO: retrieve remaining results
-    const client = this.props.clients[
-      StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE
-    ]
-    client.searchForStudies(searchOptions).then((studies) => {
-      this.setState({
-        numStudies: studies.length,
-        studies: studies.slice(0, this.state.pageSize).map(study => {
-          const { dataset } = dmv.metadata.formatMetadata(study)
-          return dataset as dmv.metadata.Study
+    const client =
+      this.props.clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
+    client
+      .searchForStudies(searchOptions)
+      .then((studies) => {
+        this.setState({
+          numStudies: studies.length,
+          studies: studies.slice(0, this.state.pageSize).map((study) => {
+            const { dataset } = dmv.metadata.formatMetadata(study)
+            return dataset as dmv.metadata.Study
+          }),
         })
       })
-    })
       .catch((error) => {
         console.error(error)
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -68,35 +68,42 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
           NotificationMiddlewareContext.DICOMWEB,
           new CustomError(
             errorTypes.COMMUNICATION,
-            'An error occured. Search for studies failed.'
-          )
+            'An error occured. Search for studies failed.',
+          ),
         )
       })
   }
 
-  componentDidMount (): void {
+  componentDidMount(): void {
     this.searchForStudies()
   }
 
-  componentDidUpdate (previousProps: WorklistProps): void {
+  componentDidUpdate(previousProps: WorklistProps): void {
     if (this.props.clients !== previousProps.clients) {
       this.searchForStudies()
     }
   }
 
-  handleClick = (event: React.SyntheticEvent, study: dmv.metadata.Study): void => {
+  handleClick = (
+    _event: React.SyntheticEvent,
+    study: dmv.metadata.Study,
+  ): void => {
     this.props.navigate(`/studies/${study.StudyInstanceUID}`)
   }
 
-  fetchData = ({ offset, limit, searchCriteria }: {
+  fetchData = ({
+    offset,
+    limit,
+    searchCriteria,
+  }: {
     offset: number
     limit: number
     searchCriteria?: { [attribute: string]: string }
   }): void => {
-    const queryParams: { [key: string]: any } = {
+    const queryParams: Record<string, string | number> = {
       ModalitiesInStudy: 'SM',
-      offset: offset,
-      limit: limit
+      offset,
+      limit,
     }
     if (searchCriteria !== undefined) {
       for (const key in searchCriteria) {
@@ -110,32 +117,33 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       queryParams.fuzzymatching = 'true'
     }
     const searchOptions = { queryParams }
-    const client = this.props.clients[
-      StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE
-    ]
-    client.searchForStudies(searchOptions).then((studies) => {
-      this.setState({
-        studies: studies.map(study => {
-          const { dataset } = dmv.metadata.formatMetadata(study)
-          return dataset as dmv.metadata.Study
+    const client =
+      this.props.clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
+    client
+      .searchForStudies(searchOptions)
+      .then((studies) => {
+        this.setState({
+          studies: studies.map((study) => {
+            const { dataset } = dmv.metadata.formatMetadata(study)
+            return dataset as dmv.metadata.Study
+          }),
         })
       })
-    })
       .catch((error) => {
         console.error(error)
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.DICOMWEB,
           new CustomError(
             errorTypes.COMMUNICATION,
-            'Request to search for studies failed.'
-          )
+            'Request to search for studies failed.',
+          ),
         )
       })
   }
 
   handleChange = (
     pagination: TablePaginationConfig,
-    filters: any
+    filters: Record<string, (React.Key | boolean)[] | null>,
   ): void => {
     this.setState({ isLoading: true })
     let index = pagination.current
@@ -151,18 +159,19 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     console.debug(`search for studies of page #${index}...`)
     const searchCriteria: { [attribute: string]: string } = {}
     for (const dataIndex in filters) {
-      if (filters[dataIndex] !== null && filters[dataIndex] !== undefined) {
-        searchCriteria[dataIndex] = filters[dataIndex][0].toString()
+      const value = filters[dataIndex]
+      if (value !== null && value !== undefined && value.length > 0) {
+        searchCriteria[dataIndex] = value[0].toString()
       }
     }
     this.fetchData({ offset, limit, searchCriteria })
-    this.setState({ isLoading: false, pageSize: pageSize })
+    this.setState({ isLoading: false, pageSize })
   }
 
   handleSearch = (
-    selectedKeys: React.Key[],
+    _selectedKeys: React.Key[],
     confirm: (params?: FilterConfirmProps) => void,
-    dataIndex: string
+    _dataIndex: string,
   ): void => {
     confirm()
   }
@@ -174,28 +183,46 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   handleRowProps = (record: dmv.metadata.Study): object => {
     return {
       onClick: (event: React.SyntheticEvent): void => {
-        return this.handleClick(event, record)
-      }
+        this.handleClick(event, record)
+      },
     }
   }
 
-  handlePressEnter = (selectedKeys: React.Key[], confirm: (params?: FilterConfirmProps) => void, dataIndex: string): void => {
+  handlePressEnter = (
+    selectedKeys: React.Key[],
+    confirm: (params?: FilterConfirmProps) => void,
+    dataIndex: string,
+  ): void => {
     this.handleSearch(selectedKeys, confirm, dataIndex)
   }
 
-  static handleInputChange (e: React.ChangeEvent<HTMLInputElement>, setSelectedKeys: (selectedKeys: React.Key[]) => void): void {
+  static handleInputChange(
+    e: React.ChangeEvent<HTMLInputElement>,
+    setSelectedKeys: (selectedKeys: React.Key[]) => void,
+  ): void {
     setSelectedKeys(e.target.value !== undefined ? [e.target.value] : [])
   }
 
-  static getFilterInputChangeHandler (setSelectedKeys: (selectedKeys: React.Key[]) => void) {
-    return (e: React.ChangeEvent<HTMLInputElement>) => Worklist.handleInputChange(e, setSelectedKeys)
+  static getFilterInputChangeHandler(
+    setSelectedKeys: (selectedKeys: React.Key[]) => void,
+  ) {
+    return (e: React.ChangeEvent<HTMLInputElement>) =>
+      Worklist.handleInputChange(e, setSelectedKeys)
   }
 
-  getFilterPressEnterHandler = (selectedKeys: React.Key[], confirm: (params?: FilterConfirmProps) => void, dataIndex: string) => {
+  getFilterPressEnterHandler = (
+    selectedKeys: React.Key[],
+    confirm: (params?: FilterConfirmProps) => void,
+    dataIndex: string,
+  ) => {
     return () => this.handlePressEnter(selectedKeys, confirm, dataIndex)
   }
 
-  getFilterSearchHandler = (selectedKeys: React.Key[], confirm: (params?: FilterConfirmProps) => void, dataIndex: string) => {
+  getFilterSearchHandler = (
+    selectedKeys: React.Key[],
+    confirm: (params?: FilterConfirmProps) => void,
+    dataIndex: string,
+  ) => {
     return () => this.handleSearch(selectedKeys, confirm, dataIndex)
   }
 
@@ -203,53 +230,53 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     return () => this.handleReset(clearFilters)
   }
 
-  render (): React.ReactNode {
+  render(): React.ReactNode {
     const columns: ColumnsType<dmv.metadata.Study> = [
       {
         title: 'Accession Number',
         dataIndex: 'AccessionNumber',
-        ...this.getColumnSearchProps('AccessionNumber')
+        ...this.getColumnSearchProps('AccessionNumber'),
       },
       {
         title: 'Study ID',
         dataIndex: 'StudyID',
-        ...this.getColumnSearchProps('StudyID')
+        ...this.getColumnSearchProps('StudyID'),
       },
       {
         title: 'Study Date',
         dataIndex: 'StudyDate',
-        render: (value: string): string => parseDate(value)
+        render: (value: string): string => parseDate(value),
       },
       {
         title: 'Study Time',
         dataIndex: 'StudyTime',
-        render: (value: string): string => parseTime(value)
+        render: (value: string): string => parseTime(value),
       },
       {
         title: 'Patient ID',
         dataIndex: 'PatientID',
-        ...this.getColumnSearchProps('PatientID')
+        ...this.getColumnSearchProps('PatientID'),
       },
       {
         title: "Patient's Name",
         dataIndex: 'PatientName',
         render: (value: dmv.metadata.PersonName): string => parseName(value),
-        ...this.getColumnSearchProps('PatientName')
+        ...this.getColumnSearchProps('PatientName'),
       },
       {
         title: "Patient's Sex",
         dataIndex: 'PatientSex',
-        render: (value: string): string => parseSex(value)
+        render: (value: string): string => parseSex(value),
       },
       {
         title: "Patient's Birthdate",
         dataIndex: 'PatientBirthDate',
-        render: (value: string): string => parseDate(value)
+        render: (value: string): string => parseDate(value),
       },
       {
         title: "Referring Physician's Name",
         dataIndex: 'ReferringPhysicianName',
-        render: (value: dmv.metadata.PersonName): string => parseName(value)
+        render: (value: dmv.metadata.PersonName): string => parseName(value),
       },
       {
         title: 'Modalities in Study',
@@ -264,8 +291,8 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
           } else {
             return String(value)
           }
-        }
-      }
+        },
+      },
     ]
 
     const pagination = {
@@ -277,7 +304,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       showTotal: (total: number, range: number[]) => {
         return `${range[0]}-${range[1]} of ${total} studies`
       },
-      total: this.state.numStudies
+      total: this.state.numStudies,
     }
 
     return (
@@ -289,7 +316,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
         pagination={pagination}
         onRow={this.handleRowProps}
         onChange={this.handleChange}
-        size='small'
+        size="small"
         loading={this.state.isLoading}
       />
     )
@@ -297,7 +324,12 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
 
   getColumnSearchProps = (dataIndex: string): object => {
     return {
-      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }: {
+      filterDropdown: ({
+        setSelectedKeys,
+        selectedKeys,
+        confirm,
+        clearFilters,
+      }: {
         setSelectedKeys: (selectedKeys: React.Key[]) => void
         selectedKeys: React.Key[]
         confirm: (params?: FilterConfirmProps) => void
@@ -305,25 +337,33 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       }) => (
         <div style={{ padding: 8 }}>
           <Input
-            placeholder='Search'
+            placeholder="Search"
             value={selectedKeys[0]}
             onChange={Worklist.getFilterInputChangeHandler(setSelectedKeys)}
-            onPressEnter={this.getFilterPressEnterHandler(selectedKeys, confirm, dataIndex)}
+            onPressEnter={this.getFilterPressEnterHandler(
+              selectedKeys,
+              confirm,
+              dataIndex,
+            )}
             style={{ width: 188, marginBottom: 8, display: 'block' }}
           />
           <Space>
             <Button
-              type='primary'
-              onClick={this.getFilterSearchHandler(selectedKeys, confirm, dataIndex)}
+              type="primary"
+              onClick={this.getFilterSearchHandler(
+                selectedKeys,
+                confirm,
+                dataIndex,
+              )}
               icon={<SearchOutlined />}
-              size='small'
+              size="small"
               style={{ width: 90 }}
             >
               Search
             </Button>
             <Button
               onClick={this.getFilterResetHandler(clearFilters)}
-              size='small'
+              size="small"
               style={{ width: 90 }}
             >
               Reset
@@ -332,10 +372,8 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
         </div>
       ),
       filterIcon: (filtered: boolean) => (
-        <SearchOutlined
-          style={{ color: filtered ? '#1890ff' : undefined }}
-        />
-      )
+        <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />
+      ),
     }
   }
 }

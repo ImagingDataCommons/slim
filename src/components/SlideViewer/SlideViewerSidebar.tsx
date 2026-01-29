@@ -1,10 +1,11 @@
-import React, { useCallback } from 'react'
 import { Layout, Menu } from 'antd'
 // skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
+import type * as dmv from 'dicom-microscopy-viewer'
+import type React from 'react'
+import { useCallback } from 'react'
+import type { AnnotationCategoryAndType } from '../../types/annotations'
 import AnnotationCategoryList from '../AnnotationCategoryList'
-import { AnnotationCategoryAndType } from '../../types/annotations'
-import { StyleOptions } from './types'
+import type { StyleOptions } from './types'
 
 interface SlideViewerSidebarProps {
   labelViewportRef: React.RefObject<HTMLDivElement>
@@ -23,8 +24,20 @@ interface SlideViewerSidebarProps {
   parametricMapMenu: React.ReactNode
   annotations: AnnotationCategoryAndType[]
   visibleRoiUIDs: Set<string>
-  onAnnotationVisibilityChange: ({ roiUID, isVisible }: { roiUID: string, isVisible: boolean }) => void
-  onRoiStyleChange: ({ uid, styleOptions }: { uid: string, styleOptions: StyleOptions }) => void
+  onAnnotationVisibilityChange: ({
+    roiUID,
+    isVisible,
+  }: {
+    roiUID: string
+    isVisible: boolean
+  }) => void
+  onRoiStyleChange: ({
+    uid,
+    styleOptions,
+  }: {
+    uid: string
+    styleOptions: StyleOptions
+  }) => void
   defaultAnnotationStyles: { [annotationUID: string]: StyleOptions }
 }
 
@@ -50,7 +63,7 @@ const SlideViewerSidebar: React.FC<SlideViewerSidebarProps> = ({
   visibleRoiUIDs,
   onAnnotationVisibilityChange,
   onRoiStyleChange,
-  defaultAnnotationStyles
+  defaultAnnotationStyles,
 }) => {
   const handleMenuOpenChange = useCallback((): void => {
     // Give menu item time to render before updating viewer size
@@ -70,11 +83,11 @@ const SlideViewerSidebar: React.FC<SlideViewerSidebarProps> = ({
         borderLeft: 'solid',
         borderLeftWidth: 0.25,
         overflow: 'hidden',
-        background: 'none'
+        background: 'none',
       }}
     >
       <Menu
-        mode='inline'
+        mode="inline"
         defaultOpenKeys={openSubMenuItems}
         style={{ height: '100%' }}
         inlineIndent={14}
@@ -82,12 +95,9 @@ const SlideViewerSidebar: React.FC<SlideViewerSidebarProps> = ({
         onOpenChange={handleMenuOpenChange}
       >
         {labelViewportRef.current !== null && (
-          <Menu.SubMenu key='label' title='Slide label'>
-            <Menu.Item style={{ height: '100%' }} key='image'>
-              <div
-                style={{ height: '220px' }}
-                ref={labelViewportRef}
-              />
+          <Menu.SubMenu key="label" title="Slide label">
+            <Menu.Item style={{ height: '100%' }} key="image">
+              <div style={{ height: '220px' }} ref={labelViewportRef} />
             </Menu.Item>
           </Menu.SubMenu>
         )}
@@ -98,26 +108,24 @@ const SlideViewerSidebar: React.FC<SlideViewerSidebarProps> = ({
         {equipmentMenu}
         {opticalPathMenu}
         {presentationStateMenu}
-        <Menu.SubMenu key='annotations' title='Annotations'>
+        <Menu.SubMenu key="annotations" title="Annotations">
           {annotationMenuItems}
         </Menu.SubMenu>
         {annotationGroupMenu}
-        {annotations.length === 0
-          ? null
-          : (
-            <Menu.SubMenu
-              key='annotation-categories'
-              title='Annotation Categories'
-            >
-              <AnnotationCategoryList
-                annotations={annotations}
-                onChange={onAnnotationVisibilityChange}
-                checkedAnnotationUids={visibleRoiUIDs}
-                onStyleChange={onRoiStyleChange}
-                defaultAnnotationStyles={defaultAnnotationStyles}
-              />
-            </Menu.SubMenu>
-            )}
+        {annotations.length === 0 ? null : (
+          <Menu.SubMenu
+            key="annotation-categories"
+            title="Annotation Categories"
+          >
+            <AnnotationCategoryList
+              annotations={annotations}
+              onChange={onAnnotationVisibilityChange}
+              checkedAnnotationUids={visibleRoiUIDs}
+              onStyleChange={onRoiStyleChange}
+              defaultAnnotationStyles={defaultAnnotationStyles}
+            />
+          </Menu.SubMenu>
+        )}
         {segmentationMenu}
         {parametricMapMenu}
       </Menu>

@@ -31,15 +31,17 @@ The app is built using [craco](https://github.com/gsoft-inc/craco) (with the [cr
 
 Tests are written and run using the [jest](https://jestjs.io/) framework.
 
-The [yarn](https://yarnpkg.com/) package manager is used to manage dependencies and run scripts specified in `package.json` (`build`, `lint`, `test`, etc.).
+The [Bun](https://bun.sh/) runtime and package manager is used to manage dependencies and run scripts specified in `package.json` (`build`, `lint`, `test`, etc.).
 
 ## Coding style
 
-Source code is linted using [ts-standard](https://github.com/standard/ts-standard) (based on [eslint](https://eslint.org/)) and TypeScript is used with [strict type checking compiler options](https://www.typescriptlang.org/tsconfig#Strict_Type_Checking_Options_6173) enabled.
+Source code is linted and formatted using [Biome](https://biomejs.dev/). TypeScript is used with [strict type checking compiler options](https://www.typescriptlang.org/tsconfig#Strict_Type_Checking_Options_6173) enabled. Semicolons are not used at the end of statements (Biome uses `asNeeded`).
 
-Use the following command to identify potential coding style and type annotation violations:
+Use the following commands to check and fix style:
 
-    $ yarn lint
+    $ bun run lint        # check for issues
+    $ bun run lint:fix    # auto-fix issues
+    $ bun run fmt         # format code
 
 
 ### Documentation

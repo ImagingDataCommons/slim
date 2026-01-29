@@ -7,23 +7,23 @@ export const SpecimenPreparationTypes: {
   COLLECTION: new dcmjs.sr.coding.CodedConcept({
     value: '17636008',
     schemeDesignator: 'SCT',
-    meaning: 'Specimen collection'
+    meaning: 'Specimen collection',
   }),
   SAMPLING: new dcmjs.sr.coding.CodedConcept({
     value: '433465004',
     schemeDesignator: 'SCT',
-    meaning: 'Sampling of tissue specimen'
+    meaning: 'Sampling of tissue specimen',
   }),
   STAINING: new dcmjs.sr.coding.CodedConcept({
     value: '127790008',
     schemeDesignator: 'SCT',
-    meaning: 'Specimen staining'
+    meaning: 'Specimen staining',
   }),
   PROCESSING: new dcmjs.sr.coding.CodedConcept({
     value: '9265001',
     schemeDesignator: 'SCT',
-    meaning: 'Specimen processing'
-  })
+    meaning: 'Specimen processing',
+  }),
 }
 
 export const SpecimenPreparationAdditives: {
@@ -32,13 +32,13 @@ export const SpecimenPreparationAdditives: {
   FIXATIVE: new dcmjs.sr.coding.CodedConcept({
     value: '430864009',
     schemeDesignator: 'SCT',
-    meaning: 'Tissue fixative'
+    meaning: 'Tissue fixative',
   }),
   EMBEDDING_MEDIUM: new dcmjs.sr.coding.CodedConcept({
     value: '430863003',
     schemeDesignator: 'SCT',
-    meaning: 'Embedding medium'
-  })
+    meaning: 'Embedding medium',
+  }),
 }
 
 export const SpecimenPreparationStepItems: {
@@ -47,42 +47,42 @@ export const SpecimenPreparationStepItems: {
   SPECIMEN_IDENTIFIER: new dcmjs.sr.coding.CodedConcept({
     value: '121041',
     schemeDesignator: 'DCM',
-    meaning: 'Specimen identifier'
+    meaning: 'Specimen identifier',
   }),
   PARENT_SPECIMEN_IDENTIFIER: new dcmjs.sr.coding.CodedConcept({
     value: '111705',
     schemeDesignator: 'DCM',
-    meaning: 'Parent specimen identifier'
+    meaning: 'Parent specimen identifier',
   }),
   PROCESSING_TYPE: new dcmjs.sr.coding.CodedConcept({
     value: '111701',
     schemeDesignator: 'DCM',
-    meaning: 'Processing type'
+    meaning: 'Processing type',
   }),
   DATETIME_OF_PROCESSING: new dcmjs.sr.coding.CodedConcept({
     value: '111702',
     schemeDesignator: 'DCM',
-    meaning: 'Datetime of processing'
+    meaning: 'Datetime of processing',
   }),
   PROCESSING_STEP_DESCRIPTION: new dcmjs.sr.coding.CodedConcept({
     value: '111703',
     schemeDesignator: 'DCM',
-    meaning: 'Processing step description'
+    meaning: 'Processing step description',
   }),
   COLLECTION_METHOD: new dcmjs.sr.coding.CodedConcept({
     value: '17636008',
     schemeDesignator: 'SCT',
-    meaning: 'Specimen collection'
+    meaning: 'Specimen collection',
   }),
   SAMPLING_METHOD: new dcmjs.sr.coding.CodedConcept({
     value: '111704',
     schemeDesignator: 'DCM',
-    meaning: 'Sampling method'
+    meaning: 'Sampling method',
   }),
   STAIN: new dcmjs.sr.coding.CodedConcept({
     value: '424361007',
     schemeDesignator: 'SCT',
-    meaning: 'Using substance'
+    meaning: 'Using substance',
   }),
-  ...SpecimenPreparationAdditives
+  ...SpecimenPreparationAdditives,
 }

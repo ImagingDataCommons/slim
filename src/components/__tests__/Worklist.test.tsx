@@ -1,6 +1,6 @@
 import React from 'react'
 import { BrowserRouter } from 'react-router-dom'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, render, waitFor } from '@testing-library/react'
 // skipcq: JS-C1003
 import * as dwc from 'dicomweb-client'
 
@@ -80,14 +80,17 @@ describe('Worklist', () => {
     return await Promise.resolve(searchResults)
   }
 
-  it('should populate one row for each available study', () => {
+  it('should populate one row for each available study', async () => {
     const { queryAllByRole } = render(
       <BrowserRouter>
         <Worklist clients={clientMapping} />
       </BrowserRouter>
     )
 
-    const rows = queryAllByRole('row')
-    expect(rows).toHaveLength(2)
+    await waitFor(() => {
+      const rows = queryAllByRole('row')
+      // Table has 1 header row + one body row per study; searchResults has 3 studies
+      expect(rows.length).toBe(4)
+    })
   })
 })

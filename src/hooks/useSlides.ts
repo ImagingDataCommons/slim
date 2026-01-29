@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
-import DicomWebManager from '../DicomWebManager'
-import { Slide } from '../data/slides'
+import type DicomWebManager from '../DicomWebManager'
+import type { Slide } from '../data/slides'
 import { fetchImageMetadata } from '../services/fetchImageMetadata'
 
 interface UseSlidesProps {
@@ -35,7 +35,12 @@ const cleanupExpiredCache = (): void => {
 
 // Utility functions for cache management
 export const clearSlidesCache = (studyInstanceUID?: string): void => {
-  if (studyInstanceUID !== null && studyInstanceUID !== undefined && studyInstanceUID !== '' && studyInstanceUID.length > 0) {
+  if (
+    studyInstanceUID !== null &&
+    studyInstanceUID !== undefined &&
+    studyInstanceUID !== '' &&
+    studyInstanceUID.length > 0
+  ) {
     slidesCache.delete(studyInstanceUID)
     cacheTimestamps.delete(studyInstanceUID)
     pendingRequests.delete(studyInstanceUID)
@@ -46,7 +51,9 @@ export const clearSlidesCache = (studyInstanceUID?: string): void => {
   }
 }
 
-export const getCachedSlides = (studyInstanceUID: string): Slide[] | undefined => {
+export const getCachedSlides = (
+  studyInstanceUID: string,
+): Slide[] | undefined => {
   return slidesCache.get(studyInstanceUID)
 }
 
@@ -63,7 +70,10 @@ export const isSlidesCached = (studyInstanceUID: string): boolean => {
  * @param props.clients - Map of DICOM web clients keyed by storage class
  * @param props.studyInstanceUID - Study instance UID to fetch slides for
  */
-export const useSlides = ({ clients, studyInstanceUID }: UseSlidesProps = {}): UseSlidesReturn => {
+export const useSlides = ({
+  clients,
+  studyInstanceUID,
+}: UseSlidesProps = {}): UseSlidesReturn => {
   const [slides, setSlides] = useState<Slide[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [error, setError] = useState<Error | null>(null)
@@ -73,7 +83,14 @@ export const useSlides = ({ clients, studyInstanceUID }: UseSlidesProps = {}): U
     cleanupExpiredCache()
 
     // If no arguments provided, return cached slides if available
-    if ((clients === null || clients === undefined) || (studyInstanceUID === null || studyInstanceUID === undefined) || studyInstanceUID === '' || studyInstanceUID.length === 0) {
+    if (
+      clients === null ||
+      clients === undefined ||
+      studyInstanceUID === null ||
+      studyInstanceUID === undefined ||
+      studyInstanceUID === '' ||
+      studyInstanceUID.length === 0
+    ) {
       // Get the most recently cached slides (last entry in the cache)
       const cachedEntries = Array.from(slidesCache.entries())
       if (cachedEntries.length > 0) {
@@ -117,7 +134,7 @@ export const useSlides = ({ clients, studyInstanceUID }: UseSlidesProps = {}): U
             },
             onError: (err) => {
               reject(err)
-            }
+            },
           }).catch((err) => {
             reject(err)
           })
@@ -142,11 +159,12 @@ export const useSlides = ({ clients, studyInstanceUID }: UseSlidesProps = {}): U
   }, [clients, studyInstanceUID])
 
   // Memoize the return value to prevent unnecessary re-renders
-  const result = useMemo(() => ({
-    slides,
-    isLoading,
-    error
-  }), [slides, isLoading, error])
-
-  return result
+  return useMemo(
+    () => ({
+      slides,
+      isLoading,
+      error,
+    }),
+    [slides, isLoading, error],
+  )
 }

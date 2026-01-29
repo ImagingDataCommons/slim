@@ -1,5 +1,5 @@
 // skipcq: JS-C1003
-import * as dcmjs from 'dcmjs'
+import type * as dcmjs from 'dcmjs'
 
 /**
  * Annotation settings configuration

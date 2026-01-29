@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 /**
  * A hook that delays updating a value for the specified time
@@ -8,7 +8,7 @@ import { useState, useEffect } from 'react'
  * @example
  * const debouncedSearchTerm = useDebounce(searchTerm, 300)
  */
-export const useDebounce = <T,>(value: T, delay: number): T => {
+export const useDebounce = <T>(value: T, delay: number): T => {
   const [debouncedValue, setDebouncedValue] = useState<T>(value)
 
   useEffect(() => {

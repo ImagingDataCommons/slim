@@ -1,6 +1,6 @@
-import React from 'react'
 // skipcq: JS-C1003
-import * as dmv from 'dicom-microscopy-viewer'
+import type * as dmv from 'dicom-microscopy-viewer'
+import React from 'react'
 
 import Description from './Description'
 
@@ -11,33 +11,33 @@ interface EquipmentProps {
 /**
  * React component representing a list of DICOM Equipment Entities.
  */
-class Equipment extends React.Component<EquipmentProps, {}> {
-  render (): React.ReactNode {
+class Equipment extends React.Component<EquipmentProps, Record<string, never>> {
+  render(): React.ReactNode {
     if (this.props.metadata === undefined) {
       return null
     }
     const attributes = [
       {
         name: 'Manufacturer',
-        value: this.props.metadata.Manufacturer
+        value: this.props.metadata.Manufacturer,
       },
       {
         name: 'Model Name',
-        value: this.props.metadata.ManufacturerModelName
+        value: this.props.metadata.ManufacturerModelName,
       },
       {
         name: 'Device Serial Number',
-        value: this.props.metadata.DeviceSerialNumber
+        value: this.props.metadata.DeviceSerialNumber,
       },
       {
         name: 'Software Versions',
-        value: this.props.metadata.SoftwareVersions
-      }
+        value: this.props.metadata.SoftwareVersions,
+      },
     ]
     if (this.props.metadata.InstitutionName != null) {
       attributes.push({
         name: 'Institution Name',
-        value: this.props.metadata.InstitutionName
+        value: this.props.metadata.InstitutionName,
       })
     }
     return <Description attributes={attributes} hasLongValues />

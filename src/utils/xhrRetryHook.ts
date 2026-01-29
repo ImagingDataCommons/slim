@@ -1,13 +1,13 @@
 import retry from 'retry'
 
-import {
+import type {
+  DICOMwebClientRequestHookMetadata,
   RetryRequestSettings,
-  DICOMwebClientRequestHookMetadata
 } from '../AppConfig'
 
 type RequestHook = (
   request: XMLHttpRequest,
-  metadata: DICOMwebClientRequestHookMetadata
+  metadata: DICOMwebClientRequestHookMetadata,
 ) => XMLHttpRequest
 
 /**
@@ -30,14 +30,16 @@ type RequestHook = (
  * @param options.retryableStatusCodes HTTP status codes that can trigger a retry
  * @returns Configured retry request function
  */
-export const getXHRRetryHook = (options: RetryRequestSettings = {
-  retries: 5,
-  factor: 3,
-  minTimeout: 1 * 1000,
-  maxTimeout: 60 * 1000,
-  randomize: true,
-  retryableStatusCodes: [429, 500]
-}): RequestHook => {
+export const getXHRRetryHook = (
+  options: RetryRequestSettings = {
+    retries: 5,
+    factor: 3,
+    minTimeout: 1 * 1000,
+    maxTimeout: 60 * 1000,
+    randomize: true,
+    retryableStatusCodes: [429, 500],
+  },
+): RequestHook => {
   const retryOptions = options
 
   if (options.retries != null) {
@@ -73,22 +75,26 @@ export const getXHRRetryHook = (options: RetryRequestSettings = {
    * @param metadata.method - HTTP method
    * @returns - XHR request instance (potentially modified)
    */
-  const xhrRetryHook = (
+  return (
     request: XMLHttpRequest,
-    metadata: DICOMwebClientRequestHookMetadata
+    metadata: DICOMwebClientRequestHookMetadata,
   ): XMLHttpRequest => {
     const { url, method } = metadata
 
-    function faultTolerantRequestSend (...args: any): void {
+    function faultTolerantRequestSend(
+      ...args: Parameters<XMLHttpRequest['send']>
+    ): void {
       const operation = retry.operation(retryOptions)
 
-      operation.attempt(function operationAttempt (currentAttempt) {
+      operation.attempt(function operationAttempt(currentAttempt) {
         const originalOnReadyStateChange = request.onreadystatechange
 
         /** Overriding/extending XHR function */
-        request.onreadystatechange = function onReadyStateChange (...args: any): void {
+        request.onreadystatechange = function onReadyStateChange(
+          ev: Event,
+        ): void {
           if (originalOnReadyStateChange != null) {
-            originalOnReadyStateChange.apply(request, args)
+            originalOnReadyStateChange.call(request, ev)
           }
 
           if (retryOptions.retryableStatusCodes.includes(request.status)) {
@@ -114,8 +120,6 @@ export const getXHRRetryHook = (options: RetryRequestSettings = {
 
     return request
   }
-
-  return xhrRetryHook
 }
 
 export default getXHRRetryHook

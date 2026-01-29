@@ -1,5 +1,5 @@
-import React from 'react'
 import { Modal } from 'antd'
+import type React from 'react'
 
 interface ReportModalProps {
   isVisible: boolean
@@ -15,15 +15,15 @@ const ReportModal: React.FC<ReportModalProps> = ({
   isVisible,
   onOk,
   onCancel,
-  children
+  children,
 }) => {
   return (
     <Modal
       open={isVisible}
-      title='Verify and save report'
+      title="Verify and save report"
       onOk={onOk}
       onCancel={onCancel}
-      okText='Save'
+      okText="Save"
     >
       {children}
     </Modal>
