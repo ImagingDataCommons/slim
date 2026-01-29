@@ -1,7 +1,6 @@
-// skipcq: JS-C1003
-
-// skipcq: JS-C1003
+// skipcq: JS-C1003 - dcmjs uses nested namespaces (dcmjs.sr.coding.CodedConcept)
 import type * as dcmjs from 'dcmjs'
+// skipcq: JS-C1003 - dmv uses nested namespaces (dmv.metadata, dmv.roi)
 import type * as dmv from 'dicom-microscopy-viewer'
 import type DicomWebManager from '../../DicomWebManager'
 import type { Slide } from '../../data/slides'

@@ -1,17 +1,14 @@
 import { UndoOutlined } from '@ant-design/icons'
 import {
   Checkbox,
-  Col,
   Descriptions,
   Divider,
-  InputNumber,
   Layout,
   Menu,
   message,
   Row,
   Select,
   Space,
-  Switch,
   Tooltip,
 } from 'antd'
 import type { CheckboxChangeEvent } from 'antd/es/checkbox'
@@ -54,6 +51,7 @@ import { findContentItemsByName } from '../utils/sr'
 import AnnotationGroupList from './AnnotationGroupList'
 import AnnotationList from './AnnotationList'
 import Btn from './Button'
+import ClusteringSettings from './ClusteringSettings'
 import Equipment from './Equipment'
 import HoveredRoiTooltip from './HoveredRoiTooltip'
 import MappingList from './MappingList'
@@ -1821,7 +1819,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const updatedSelectedRois = this.getUpdatedSelectedRois()
     this.setState(updatedSelectedRois)
 
-    // @ts-expect-error
+    // @ts-expect-error clearSelections method exists but is not typed in dmv.viewer.VolumeImageViewer
     this.volumeViewer.clearSelections()
 
     this.resetUnselectedRoiStyles(updatedSelectedRois)
@@ -1862,7 +1860,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   handleAnnotationSelection = (uid: string): void => {
-    // @ts-expect-error
+    // @ts-expect-error clearSelections method exists but is not typed in dmv.viewer.VolumeImageViewer
     this.volumeViewer.clearSelections()
     const updatedSelectedRois = this.getUpdatedSelectedRois(uid)
     this.setState(updatedSelectedRois)
@@ -2210,7 +2208,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         metadataItem.ICCProfile === undefined
       ) {
         if ('OpticalPathSequence' in image.bulkdataReferences) {
-          // @ts-expect-error
+          // @ts-expect-error bulkdataReferences type does not include OpticalPathSequence property
           const bulkdataItem = image.bulkdataReferences.OpticalPathSequence[0]
           if ('ICCProfile' in bulkdataItem) {
             hasICCProfile = true
@@ -3397,7 +3395,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    */
   handleClusteringToggle = (checked: boolean): void => {
     /** Ensure checked is a boolean */
-    const newValue = !!checked
+    const newValue = Boolean(checked)
 
     /** Use functional setState to ensure we have the latest state */
     this.setState((prevState) => {
@@ -4086,70 +4084,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           )}
 
           {/* Clustering Settings */}
-          <Menu.Item
-            key="clustering-enabled"
-            className="slim-multiline-menu-item"
-            style={{ height: 'auto', padding: '0.9rem' }}
-          >
-            <Row justify="start" align="middle" gutter={[8, 8]}>
-              <Col span={24}>
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '0.5rem',
-                  }}
-                >
-                  <span>Enable Clustering</span>
-                  <Switch
-                    checked={!!this.state.isClusteringEnabled}
-                    onChange={this.handleClusteringToggle}
-                  />
-                </div>
-              </Col>
-            </Row>
-          </Menu.Item>
-          {this.state.isClusteringEnabled && (
-            <Menu.Item
-              key="clustering-threshold"
-              className="slim-multiline-menu-item"
-              style={{ height: 'auto', padding: '0.9rem' }}
-            >
-              <Row justify="start" align="middle" gutter={[8, 8]}>
-                <Col span={24}>
-                  <div style={{ marginBottom: '0.5rem' }}>
-                    Clustering Pixel Size Threshold (mm)
-                  </div>
-                </Col>
-                <Col span={24}>
-                  <InputNumber
-                    min={0}
-                    max={100}
-                    step={0.001}
-                    precision={3}
-                    style={{ width: '100%' }}
-                    value={this.state.clusteringPixelSizeThreshold ?? undefined}
-                    onChange={this.handleClusteringPixelSizeThresholdChange}
-                    placeholder="Auto (zoom-based)"
-                    addonAfter="mm"
-                  />
-                </Col>
-                <Col span={24}>
-                  <div
-                    style={{
-                      fontSize: '0.75rem',
-                      color: '#8c8c8c',
-                      marginTop: '0.5rem',
-                    }}
-                  >
-                    When pixel size ≤ threshold, clustering is disabled. Leave
-                    empty for zoom-based detection.
-                  </div>
-                </Col>
-              </Row>
-            </Menu.Item>
-          )}
+          <ClusteringSettings
+            isClusteringEnabled={this.state.isClusteringEnabled}
+            clusteringPixelSizeThreshold={
+              this.state.clusteringPixelSizeThreshold
+            }
+            onClusteringToggle={this.handleClusteringToggle}
+            onThresholdChange={this.handleClusteringPixelSizeThresholdChange}
+          />
         </Menu.SubMenu>
       )
     }
@@ -4317,7 +4259,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           })
           if (refItems.length > 0) {
             identifier =
-              // @ts-expect-error
+              // @ts-expect-error ReferencedSOPSequence type lacks ReferencedOpticalPathIdentifier property
               refItems[0].ReferencedSOPSequence[0]
                 .ReferencedOpticalPathIdentifier
           }

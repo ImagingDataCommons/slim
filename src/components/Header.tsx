@@ -208,7 +208,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     }
   }
 
-  handleUserMenuButtonClick = (e: React.SyntheticEvent): void => {
+  static handleUserMenuButtonClick(e: React.SyntheticEvent): void {
     e.preventDefault()
   }
 
@@ -566,7 +566,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
         <Dropdown menu={userMenu} trigger={['click']}>
           <Button
             icon={UserOutlined}
-            onClick={this.handleUserMenuButtonClick}
+            onClick={Header.handleUserMenuButtonClick}
             label={`${this.props.user.name} (${this.props.user.email})`}
           />
         </Dropdown>

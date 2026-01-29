@@ -1,7 +1,7 @@
 import { SettingOutlined } from '@ant-design/icons'
 import { Button, Checkbox, Menu, Popover, Space, Tooltip } from 'antd'
 import type { CheckboxChangeEvent } from 'antd/es/checkbox'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import type { Category, Type } from './AnnotationCategoryList'
 import ColorSettingsMenu from './ColorSettingsMenu'
 import type { StyleOptions } from './SlideViewer/types'
@@ -105,12 +105,24 @@ const AnnotationCategoryItem = ({
 }): JSX.Element => {
   const { types } = category
 
-  const onCheckCategoryChange = (e: CheckboxChangeEvent): void => {
-    const isVisible = e.target.checked
-    types.forEach((type: Type) => {
-      handleChangeCheckedType({ type, isVisible })
-    })
-  }
+  const handleChangeCheckedType = useCallback(
+    ({ type, isVisible }: { type: Type; isVisible: boolean }): void => {
+      type.uids.forEach((uid: string) => {
+        onChange({ roiUID: uid, isVisible })
+      })
+    },
+    [onChange],
+  )
+
+  const onCheckCategoryChange = useCallback(
+    (e: CheckboxChangeEvent): void => {
+      const isVisible = e.target.checked
+      types.forEach((type: Type) => {
+        handleChangeCheckedType({ type, isVisible })
+      })
+    },
+    [types, handleChangeCheckedType],
+  )
 
   const checkAll = types.every((type: Type) =>
     type.uids.every((uid: string) => checkedAnnotationUids.has(uid)),
@@ -121,59 +133,64 @@ const AnnotationCategoryItem = ({
       type.uids.some((uid: string) => checkedAnnotationUids.has(uid)),
     )
 
-  const handleChangeCheckedType = ({
-    type,
-    isVisible,
-  }: {
-    type: Type
-    isVisible: boolean
-  }): void => {
-    type.uids.forEach((uid: string) => {
-      onChange({ roiUID: uid, isVisible })
-    })
-  }
-
-  const categoryColorSettingsContent = (
-    <ColorSettingsMenu
-      annotationGroupsUIDs={types.reduce<string[]>((acc, type) => {
-        acc.push(...type.uids)
-        return acc
-      }, [])}
-      onStyleChange={onStyleChange}
-      defaultStyle={defaultAnnotationStyles[types[0].uids[0]]}
-    />
+  const categoryColorSettingsContent = useMemo(
+    () => (
+      <ColorSettingsMenu
+        annotationGroupsUIDs={types.reduce<string[]>((acc, type) => {
+          acc.push(...type.uids)
+          return acc
+        }, [])}
+        onStyleChange={onStyleChange}
+        defaultStyle={defaultAnnotationStyles[types[0].uids[0]]}
+      />
+    ),
+    [types, onStyleChange, defaultAnnotationStyles],
   )
 
-  function handleCheckboxChangeType(type: Type, e: CheckboxChangeEvent): void {
-    handleChangeCheckedType({ type, isVisible: e.target.checked })
-  }
+  const handleCheckboxChangeType = useCallback(
+    (type: Type, e: CheckboxChangeEvent): void => {
+      handleChangeCheckedType({ type, isVisible: e.target.checked })
+    },
+    [handleChangeCheckedType],
+  )
 
-  const categoryHeader = (
-    <Checkbox
-      indeterminate={indeterminate}
-      checked={checkAll}
-      onChange={onCheckCategoryChange}
-    >
-      <Tooltip
-        title={`${category.CodeValue}:${category.CodingSchemeDesignator}`}
-        mouseEnterDelay={1}
+  const categoryHeader = useMemo(
+    () => (
+      <Checkbox
+        indeterminate={indeterminate}
+        checked={checkAll}
+        onChange={onCheckCategoryChange}
       >
-        {category.CodeMeaning}
-      </Tooltip>
-      <Popover
-        placement="topLeft"
-        overlayStyle={{ width: '350px' }}
-        title="Display Settings"
-        content={categoryColorSettingsContent}
-      >
-        <Button
-          type="primary"
-          shape="circle"
-          style={{ marginLeft: '10px' }}
-          icon={<SettingOutlined />}
-        />
-      </Popover>
-    </Checkbox>
+        <Tooltip
+          title={`${category.CodeValue}:${category.CodingSchemeDesignator}`}
+          mouseEnterDelay={1}
+        >
+          {category.CodeMeaning}
+        </Tooltip>
+        <Popover
+          placement="topLeft"
+          overlayStyle={{ width: '350px' }}
+          title="Display Settings"
+          content={categoryColorSettingsContent}
+        >
+          <Button
+            type="primary"
+            shape="circle"
+            style={{ marginLeft: '10px' }}
+            icon={<SettingOutlined />}
+          />
+        </Popover>
+      </Checkbox>
+    ),
+    [
+      indeterminate,
+      checkAll,
+      onCheckCategoryChange,
+      category.CodeValue,
+      category.CodingSchemeDesignator,
+      category.CodeMeaning,
+      categoryColorSettingsContent,
+    ],
   )
 
   return (
