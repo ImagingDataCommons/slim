@@ -3,6 +3,8 @@ import { Layout, Menu } from 'antd'
 import type * as dmv from 'dicom-microscopy-viewer'
 import type React from 'react'
 import { useCallback } from 'react'
+
+import './SlideViewerSidebar.css'
 import type { AnnotationCategoryAndType } from '../../types/annotations'
 import AnnotationCategoryList from '../AnnotationCategoryList'
 import type { StyleOptions } from './types'
@@ -12,12 +14,8 @@ interface SlideViewerSidebarProps {
   labelViewer?: dmv.viewer.LabelImageViewer
   openSubMenuItems: string[]
   specimenMenu: React.ReactNode
-  iccProfilesMenu: React.ReactNode
-  segmentationInterpolationMenu: React.ReactNode
-  parametricMapInterpolationMenu: React.ReactNode
   equipmentMenu: React.ReactNode
   opticalPathMenu: React.ReactNode
-  presentationStateMenu: React.ReactNode
   annotationMenuItems: React.ReactNode
   annotationGroupMenu: React.ReactNode
   segmentationMenu: React.ReactNode
@@ -49,12 +47,8 @@ const SlideViewerSidebar: React.FC<SlideViewerSidebarProps> = ({
   labelViewer,
   openSubMenuItems,
   specimenMenu,
-  iccProfilesMenu,
-  segmentationInterpolationMenu,
-  parametricMapInterpolationMenu,
   equipmentMenu,
   opticalPathMenu,
-  presentationStateMenu,
   annotationMenuItems,
   annotationGroupMenu,
   segmentationMenu,
@@ -79,6 +73,7 @@ const SlideViewerSidebar: React.FC<SlideViewerSidebarProps> = ({
     <Layout.Sider
       width={300}
       reverseArrow
+      className="slide-viewer-sidebar"
       style={{
         borderLeft: 'solid',
         borderLeftWidth: 0.25,
@@ -102,12 +97,8 @@ const SlideViewerSidebar: React.FC<SlideViewerSidebarProps> = ({
           </Menu.SubMenu>
         )}
         {specimenMenu}
-        {iccProfilesMenu}
-        {segmentationInterpolationMenu}
-        {parametricMapInterpolationMenu}
         {equipmentMenu}
         {opticalPathMenu}
-        {presentationStateMenu}
         <Menu.SubMenu key="annotations" title="Annotations">
           {annotationMenuItems}
         </Menu.SubMenu>

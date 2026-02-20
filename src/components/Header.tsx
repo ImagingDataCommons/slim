@@ -1,9 +1,9 @@
 import {
   ApiOutlined,
+  BugOutlined,
   CheckOutlined,
   FileSearchOutlined,
   InfoOutlined,
-  SettingOutlined,
   StopOutlined,
   UnorderedListOutlined,
   UserOutlined,
@@ -29,6 +29,7 @@ import { NavLink } from 'react-router-dom'
 import { v4 as uuidv4 } from 'uuid'
 import appPackageJson from '../../package.json'
 import type { User } from '../auth'
+import { SettingsButton } from '../contexts/SettingsContext'
 import type DicomWebManager from '../DicomWebManager'
 import NotificationMiddleware, {
   NotificationMiddlewareEvents,
@@ -602,7 +603,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           style={{ zIndex: 1001 }}
         >
           <Button
-            icon={SettingOutlined}
+            icon={BugOutlined}
             tooltip="Debug info"
             onClick={this.handleDebugButtonClick}
           />
@@ -683,9 +684,10 @@ class Header extends React.Component<HeaderProps, HeaderState> {
               <Space direction="horizontal">
                 {worklistButton}
                 {infoButton}
-                {debugButton}
                 {dicomTagBrowserButton}
                 {serverSelectionButton}
+                {debugButton}
+                <SettingsButton />
                 {user}
               </Space>
             </Col>

@@ -1,4 +1,4 @@
-import { Menu } from 'antd'
+import { Menu, Typography } from 'antd'
 // skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
@@ -146,6 +146,21 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
             )}
             <ValidationWarning slide={this.props.slide} />
           </div>
+          {this.props.slide.seriesDescription !== undefined &&
+          this.props.slide.seriesDescription !== null &&
+          this.props.slide.seriesDescription !== '' ? (
+            <Typography.Text
+              type="secondary"
+              style={{
+                display: 'block',
+                marginTop: 4,
+                fontSize: '0.75rem',
+                lineHeight: 1.2,
+              }}
+            >
+              {this.props.slide.seriesDescription}
+            </Typography.Text>
+          ) : null}
         </Description>
       </Menu.Item>
     )

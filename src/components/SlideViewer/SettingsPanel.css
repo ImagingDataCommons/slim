@@ -1,0 +1,55 @@
+/* Settings panel - full width, full height, improved text contrast */
+.slim-settings-menu {
+  width: 100%;
+  height: 100%;
+  box-shadow: none;
+  padding: 0;
+}
+
+.slim-settings-menu.ant-menu-inline .ant-menu-item,
+.slim-settings-menu.ant-menu-inline .ant-menu-submenu-title {
+  width: 100%;
+}
+
+/* Remove gap and top border above first section (Drawer header has bottom border) */
+.slim-settings-menu.ant-menu-inline > .ant-menu-submenu:first-child > .ant-menu-submenu-title {
+  margin-top: 0 !important;
+  border-top: none;
+}
+
+.slim-settings-menu.ant-menu-inline > .ant-menu-submenu:first-child {
+  margin-top: 0;
+}
+
+/* Border at the end of the settings sections */
+.slim-settings-menu.ant-menu-inline > .ant-menu-submenu:last-child {
+  border-bottom: 1px solid rgba(0, 126, 163, 0.5);
+}
+
+.slim-settings-menu.ant-menu-inline .ant-menu-sub {
+  max-height: none;
+  overflow: visible;
+}
+
+/* Allow content to expand - override fixed 40px height on menu items */
+.slim-settings-menu.ant-menu-inline .ant-menu-sub .ant-menu-item {
+  height: auto;
+  line-height: 1.5;
+  min-height: 40px;
+  padding: 0;
+  overflow: visible;
+  white-space: normal;
+}
+
+.slim-settings-content {
+  padding: 0.9rem 16px;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+/* Brighter text in settings content */
+.slim-settings-content,
+.slim-settings-content span,
+.slim-settings-content label {
+  color: rgba(0, 0, 0, 0.88);
+}
+

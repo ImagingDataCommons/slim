@@ -37,11 +37,13 @@ interface SlideImageCollection {
   labelImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
   overviewImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
   thumbnailImages: dmv.metadata.VLWholeSlideMicroscopyImage[]
+  seriesDescription?: string
 }
 
 interface SlideOptions {
   images: dmv.metadata.VLWholeSlideMicroscopyImage[]
   description?: string
+  seriesDescription?: string
 }
 
 /**
@@ -50,6 +52,7 @@ interface SlideOptions {
  */
 class Slide {
   readonly description: string
+  readonly seriesDescription: string
   readonly acquisitionUID: string | null | undefined
   readonly frameOfReferenceUID: string
   readonly containerIdentifier: string
@@ -269,6 +272,8 @@ class Slide {
 
     this.description =
       options.description !== undefined ? options.description : ''
+    this.seriesDescription =
+      options.seriesDescription !== undefined ? options.seriesDescription : ''
   }
 }
 
@@ -326,6 +331,11 @@ const createSlides = (
         }
 
         if (slideMetadataIndex === -1) {
+          const seriesDescription =
+            refImage.SeriesDescription !== undefined &&
+            refImage.SeriesDescription !== ''
+              ? refImage.SeriesDescription
+              : ''
           const slideMetadataItem: SlideImageCollection = {
             acquisitionUID: refImage.AcquisitionUID,
             frameOfReferenceUID: refImage.FrameOfReferenceUID,
@@ -334,6 +344,7 @@ const createSlides = (
             labelImages: filteredLabelImages,
             overviewImages: filteredOverviewImages,
             thumbnailImages,
+            seriesDescription,
           }
           slideMetadata.push(slideMetadataItem)
         } else {
@@ -354,6 +365,7 @@ const createSlides = (
         ...item.labelImages,
         ...item.overviewImages,
       ],
+      seriesDescription: item.seriesDescription,
     })
   })
   slides = slides.sort((a, b) => {

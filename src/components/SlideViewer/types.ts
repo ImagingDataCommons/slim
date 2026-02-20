@@ -127,4 +127,5 @@ export interface SlideViewerState {
   customizedSegmentColors: { [segmentUID: string]: number[] }
   clusteringPixelSizeThreshold: number | null
   isClusteringEnabled: boolean
+  isSettingsDrawerOpen: boolean
 }
