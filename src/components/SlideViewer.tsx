@@ -33,6 +33,7 @@ import {
 } from 'react-icons/fa'
 import { runValidations } from '../contexts/ValidationContext'
 import { StorageClasses } from '../data/uids'
+import { ActiveSeriesService } from '../services/ActiveSeriesService'
 import DicomMetadataStore from '../services/DICOMMetadataStore'
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
@@ -321,6 +322,37 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
   }
 
+  /**
+   * Publish active series (image + visible derived data) to ActiveSeriesService
+   * for use by the DICOM Tag Browser to show eye icons.
+   */
+  private publishActiveSeriesToService = (): void => {
+    try {
+      const activeImageSeriesUID = this.props.seriesInstanceUID ?? ''
+      const derivedSet = new Set<string>()
+
+      this.volumeViewer.getAllAnnotationGroups().forEach((ag) => {
+        if (this.state.visibleAnnotationGroupUIDs.has(ag.uid)) {
+          derivedSet.add(ag.seriesInstanceUID)
+        }
+      })
+      this.volumeViewer.getAllSegments().forEach((segment) => {
+        if (this.state.visibleSegmentUIDs.has(segment.uid)) {
+          derivedSet.add(segment.seriesInstanceUID)
+        }
+      })
+      this.volumeViewer.getAllParameterMappings().forEach((mapping) => {
+        if (this.state.visibleMappingUIDs.has(mapping.uid)) {
+          derivedSet.add(mapping.seriesInstanceUID)
+        }
+      })
+
+      ActiveSeriesService.setActiveSeries(activeImageSeriesUID, derivedSet)
+    } catch {
+      // volumeViewer may be in a transitional state
+    }
+  }
+
   componentDidUpdate(
     previousProps: SlideViewerProps,
     _previousState: SlideViewerState,
@@ -391,6 +423,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       })
       this.populateViewports()
     }
+
+    this.publishActiveSeriesToService()
   }
 
   /**
@@ -2128,6 +2162,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   componentWillUnmount = (): void => {
+    ActiveSeriesService.clear()
     this.volumeViewer.cleanup()
     if (this.labelViewer !== null && this.labelViewer !== undefined) {
       this.labelViewer.cleanup()
@@ -2198,6 +2233,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   componentDidMount = (): void => {
     this.componentSetup()
     this.populateViewports()
+    this.publishActiveSeriesToService()
 
     if (!this.props.slide.areVolumeImagesMonochrome) {
       let hasICCProfile = false
