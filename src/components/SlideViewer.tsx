@@ -3736,7 +3736,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     )
   }
 
-  private readonly getPresentationStateContent = (): React.ReactNode => {
+  private readonly getPresentationStateMenu = (): React.ReactNode => {
     if (this.state.presentationStates.length === 0) return undefined
     const presentationStateOptions = []
     this.state.presentationStates.forEach((instance, index) => {
@@ -3770,22 +3770,24 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       </Select.Option>,
     )
     return (
-      <Space align="center" size={20} style={{ padding: '14px' }}>
-        <Select
-          style={{ minWidth: 200, maxWidth: 200 }}
-          onSelect={this.handlePresentationStateSelection}
-          key="presentation-states"
-          value={this.state.selectedPresentationStateUID}
-        >
-          {presentationStateOptions}
-        </Select>
-        <Tooltip title="Reset">
-          <Btn
-            icon={UndoOutlined}
-            onClick={this.handlePresentationStateReset}
-          />
-        </Tooltip>
-      </Space>
+      <Menu.SubMenu key="presentation-states" title="Presentation States">
+        <Space align="center" size={20} style={{ padding: '14px' }}>
+          <Select
+            style={{ minWidth: 200, maxWidth: 200 }}
+            onSelect={this.handlePresentationStateSelection}
+            key="presentation-states"
+            value={this.state.selectedPresentationStateUID}
+          >
+            {presentationStateOptions}
+          </Select>
+          <Tooltip title="Reset">
+            <Btn
+              icon={UndoOutlined}
+              onClick={this.handlePresentationStateReset}
+            />
+          </Tooltip>
+        </Space>
+      </Menu.SubMenu>
     )
   }
 
@@ -4328,22 +4330,26 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   private readonly getICCProfilesMenu = (): React.ReactNode => {
+    const hasICCProfiles =
+      this.volumeViewer !== null &&
+      this.volumeViewer !== undefined &&
+      this.volumeViewer.getICCProfiles().length > 0
     return (
-      this.volumeViewer.getICCProfiles().length > 0 && (
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <span>ICC Profiles</span>
-          <Switch
-            checked={this.state.isICCProfilesEnabled}
-            onChange={this.handleICCProfilesToggle}
-          />
-        </div>
-      )
+      <div
+        className={hasICCProfiles ? undefined : 'slim-settings-disabled'}
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
+        <span>ICC Profiles</span>
+        <Switch
+          checked={this.state.isICCProfilesEnabled}
+          onChange={this.handleICCProfilesToggle}
+          disabled={!hasICCProfiles}
+        />
+      </div>
     )
   }
 
@@ -4371,23 +4377,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   private readonly getSettingsPanelContent = (menus: {
     iccProfilesMenu: React.ReactNode
     segmentationInterpolationMenu: React.ReactNode
-    presentationStateContent: React.ReactNode
   }): React.ReactNode => {
     const menuItems: React.ReactNode[] = []
 
-    if (menus.iccProfilesMenu !== null && menus.iccProfilesMenu !== undefined) {
-      menuItems.push(
-        <Menu.SubMenu key="display" title="Display">
-          <Menu.Item
-            key="display-content"
-            disabled
-            style={{ cursor: 'default' }}
-          >
-            <div className="slim-settings-content">{menus.iccProfilesMenu}</div>
-          </Menu.Item>
-        </Menu.SubMenu>,
-      )
-    }
+    menuItems.push(
+      <Menu.SubMenu key="display" title="Display">
+        <Menu.Item key="display-content" disabled style={{ cursor: 'default' }}>
+          <div className="slim-settings-content">{menus.iccProfilesMenu}</div>
+        </Menu.Item>
+      </Menu.SubMenu>,
+    )
 
     const segmentationItems: React.ReactNode[] = []
     segmentationItems.push(
@@ -4483,25 +4482,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       </Menu.SubMenu>,
     )
 
-    if (
-      menus.presentationStateContent !== null &&
-      menus.presentationStateContent !== undefined
-    ) {
-      menuItems.push(
-        <Menu.SubMenu key="presentation-states" title="Presentation States">
-          <Menu.Item
-            key="presentation-content"
-            disabled
-            style={{ cursor: 'default' }}
-          >
-            <div className="slim-settings-content">
-              {menus.presentationStateContent}
-            </div>
-          </Menu.Item>
-        </Menu.SubMenu>,
-      )
-    }
-
     if (menuItems.length === 0) {
       return (
         <div style={{ padding: 16, color: 'rgba(0,0,0,0.45)' }}>
@@ -4514,12 +4494,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       <Menu
         mode="inline"
         className="slim-settings-menu"
-        defaultOpenKeys={[
-          'display',
-          'segmentation',
-          'parametric-map',
-          'presentation-states',
-        ]}
+        defaultOpenKeys={['display', 'segmentation', 'parametric-map']}
         style={{ border: 'none', width: '100%' }}
         inlineIndent={14}
         selectable={false}
@@ -4550,14 +4525,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const segmentationInterpolationMenu =
       this.getSegmentationInterpolationMenu()
 
-    const presentationStateContent = this.getPresentationStateContent()
+    const presentationStateMenu = this.getPresentationStateMenu()
 
     const settingsPanelContent = this.getSettingsPanelContent({
       iccProfilesMenu,
       segmentationInterpolationMenu,
-      presentationStateContent,
     })
 
+    if (presentationStateMenu !== null && presentationStateMenu !== undefined) {
+      openSubMenuItems.push('presentation-states')
+    }
     if (segmentationMenu !== null && segmentationMenu !== undefined) {
       openSubMenuItems.push('segmentations')
     }
@@ -4628,6 +4605,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           specimenMenu={specimenMenu}
           equipmentMenu={equipmentMenu}
           opticalPathMenu={opticalPathMenu}
+          presentationStateMenu={presentationStateMenu}
           annotationMenuItems={annotationMenuItems}
           annotationGroupMenu={annotationGroupMenu}
           segmentationMenu={segmentationMenu}
@@ -4645,8 +4623,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           onClose={() => this.setState({ isSettingsDrawerOpen: false })}
           open={this.state.isSettingsDrawerOpen}
           width={320}
+          className="slim-settings-drawer"
           bodyStyle={{ padding: 0, minHeight: '100%', overflow: 'auto' }}
-          headerStyle={{ borderBottom: '1px solid rgba(0, 126, 163, 0.3)' }}
         >
           {settingsPanelContent}
         </Drawer>

@@ -16,6 +16,7 @@ interface SlideViewerSidebarProps {
   specimenMenu: React.ReactNode
   equipmentMenu: React.ReactNode
   opticalPathMenu: React.ReactNode
+  presentationStateMenu: React.ReactNode
   annotationMenuItems: React.ReactNode
   annotationGroupMenu: React.ReactNode
   segmentationMenu: React.ReactNode
@@ -49,6 +50,7 @@ const SlideViewerSidebar: React.FC<SlideViewerSidebarProps> = ({
   specimenMenu,
   equipmentMenu,
   opticalPathMenu,
+  presentationStateMenu,
   annotationMenuItems,
   annotationGroupMenu,
   segmentationMenu,
@@ -99,6 +101,7 @@ const SlideViewerSidebar: React.FC<SlideViewerSidebarProps> = ({
         {specimenMenu}
         {equipmentMenu}
         {opticalPathMenu}
+        {presentationStateMenu}
         <Menu.SubMenu key="annotations" title="Annotations">
           {annotationMenuItems}
         </Menu.SubMenu>

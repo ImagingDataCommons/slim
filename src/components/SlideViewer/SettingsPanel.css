@@ -11,14 +11,10 @@
   width: 100%;
 }
 
-/* Remove gap and top border above first section (Drawer header has bottom border) */
+/* First section: no top border (Drawer header provides it), no gap (override antd margin-top: 4px) */
 .slim-settings-menu.ant-menu-inline > .ant-menu-submenu:first-child > .ant-menu-submenu-title {
   margin-top: 0 !important;
   border-top: none;
-}
-
-.slim-settings-menu.ant-menu-inline > .ant-menu-submenu:first-child {
-  margin-top: 0;
 }
 
 /* Border at the end of the settings sections */
@@ -46,10 +42,21 @@
   color: rgba(0, 0, 0, 0.88);
 }
 
+/* Reduce left padding on settings content only (not headers) - rc-menu adds inlineIndent to items */
+.slim-settings-menu .ant-menu-sub .ant-menu-item {
+  padding-left: 0 !important;
+}
+
 /* Brighter text in settings content */
 .slim-settings-content,
 .slim-settings-content span,
 .slim-settings-content label {
   color: rgba(0, 0, 0, 0.88);
+}
+
+/* Disabled state for settings options (e.g. ICC Profiles when unavailable) */
+.slim-settings-content .slim-settings-disabled,
+.slim-settings-content .slim-settings-disabled span {
+  color: rgba(0, 0, 0, 0.25);
 }
 
