@@ -135,6 +135,15 @@ Please refer to the [AppConfig.d.ts](src/AppConfig.d.ts) file for configuration 
 
 The configuration can be changed at build-time using the `REACT_APP_CONFIG` environment variable.
 
+#### Runtime Server Selection
+
+When `enableServerSelection` is enabled in config, users can switch the active DICOMweb server at runtime via the header.
+
+- **Full URLs**: Paste the complete server URL (e.g. `https://healthcare.googleapis.com/v1/projects/.../dicomWeb`).
+- **Path-only (GCP Healthcare)**: Paste a GCP DICOM store path without the domain (e.g. `/projects/my-project/locations/us-central1/datasets/my-dataset/dicomStores/my-store/dicomWeb`). The app prepends `https://healthcare.googleapis.com/v1` automatically.
+
+Authorization is re-applied when switching servers, so a page reload is not needed after changing the active server.
+
 ### Handling Mixed Content and HTTPS
 
 When deploying SLIM with HTTPS, you may encounter mixed content scenarios where your PACS/VNA server returns HTTP URLs in its responses. This commonly occurs when:
