@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [master]
 
+concurrency:
+  group: deploy-gh-pages
+  cancel-in-progress: true
+
 jobs:
   deploy-to-github-pages:
     name: "Deploy to GitHub Pages"
@@ -25,6 +29,6 @@ jobs:
       - name: Build and deploy to GitHub Pages
         run: |
           git remote set-url origin https://git:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
-          bun run deploy -- -u "github-actions-bot <support+actions@github.com>"
+          bun run deploy -- -u "github-actions-bot <support+actions@github.com>" -f
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
