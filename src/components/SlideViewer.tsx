@@ -3,12 +3,15 @@ import {
   Checkbox,
   Descriptions,
   Divider,
+  Drawer,
+  InputNumber,
   Layout,
   Menu,
   message,
   Row,
   Select,
   Space,
+  Switch,
   Tooltip,
 } from 'antd'
 import type { CheckboxChangeEvent } from 'antd/es/checkbox'
@@ -31,6 +34,7 @@ import {
   FaSave,
   FaTrash,
 } from 'react-icons/fa'
+import { SettingsRegistration } from '../contexts/SettingsContext'
 import { runValidations } from '../contexts/ValidationContext'
 import { StorageClasses } from '../data/uids'
 import DicomMetadataStore from '../services/DICOMMetadataStore'
@@ -51,7 +55,6 @@ import { findContentItemsByName } from '../utils/sr'
 import AnnotationGroupList from './AnnotationGroupList'
 import AnnotationList from './AnnotationList'
 import Btn from './Button'
-import ClusteringSettings from './ClusteringSettings'
 import Equipment from './Equipment'
 import HoveredRoiTooltip from './HoveredRoiTooltip'
 import MappingList from './MappingList'
@@ -69,6 +72,7 @@ import {
 } from './SlideViewer/constants'
 import SlideViewerContent from './SlideViewer/SlideViewerContent'
 import SlideViewerModals from './SlideViewer/SlideViewerModals'
+import './SlideViewer/SettingsPanel.css'
 import SlideViewerSidebar from './SlideViewer/SlideViewerSidebar'
 import type {
   Evaluation,
@@ -289,6 +293,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       customizedSegmentColors: {},
       clusteringPixelSizeThreshold: null, // null means auto (zoom-based)
       isClusteringEnabled: true, // Clustering enabled by default
+      isSettingsDrawerOpen: false,
     }
 
     this.handlePointerMoveDebounced = debounce(this.handlePointerMoveEvent, 0, {
@@ -3356,8 +3361,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that will toggle the ICC profile color management, i.e., either
    * enable or disable it, depending on its current state.
    */
-  handleICCProfilesToggle = (event: CheckboxChangeEvent): void => {
-    const checked = event.target.checked
+  handleICCProfilesToggle = (checked: boolean): void => {
     this.setState({ isICCProfilesEnabled: checked })
     this.volumeViewer.toggleICCProfiles()
   }
@@ -3366,10 +3370,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that will toggle the segmentation interpolation, i.e., either
    * enable or disable it, depending on its current state.
    */
-  handleSegmentationInterpolationToggle = (
-    event: CheckboxChangeEvent,
-  ): void => {
-    const checked = event.target.checked
+  handleSegmentationInterpolationToggle = (checked: boolean): void => {
     this.setState({ isSegmentationInterpolationEnabled: checked })
     ;(
       this.volumeViewer as { toggleSegmentationInterpolation(): void }
@@ -3380,10 +3381,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that will toggle the parametric map interpolation, i.e., either
    * enable or disable it, depending on its current state.
    */
-  handleParametricMapInterpolationToggle = (
-    event: CheckboxChangeEvent,
-  ): void => {
-    const checked = event.target.checked
+  handleParametricMapInterpolationToggle = (checked: boolean): void => {
     this.setState({ isParametricMapInterpolationEnabled: checked })
     ;(
       this.volumeViewer as { toggleParametricMapInterpolation(): void }
@@ -3504,7 +3502,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   private static getOpenSubMenuItems(): string[] {
-    return ['specimens', 'optical-paths', 'annotations', 'presentation-states']
+    return ['specimens', 'equipment', 'optical-paths', 'annotations']
   }
 
   private readonly getReport = (): React.ReactNode => {
@@ -3739,60 +3737,58 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   private readonly getPresentationStateMenu = (): React.ReactNode => {
-    if (this.state.presentationStates.length > 0) {
-      const presentationStateOptions = []
-      this.state.presentationStates.forEach((instance, index) => {
-        presentationStateOptions.push(
-          <Select.Option
-            key={
-              instance.SOPInstanceUID !== undefined &&
-              instance.SOPInstanceUID !== ''
-                ? instance.SOPInstanceUID
-                : `presentation-state-${index}`
-            }
-            value={instance.SOPInstanceUID}
-            dropdownMatchSelectWidth={false}
-            size="small"
-          >
-            {instance.ContentDescription !== undefined &&
-            instance.ContentDescription !== ''
-              ? instance.ContentDescription
-              : 'Untitled'}
-          </Select.Option>,
-        )
-      })
+    if (this.state.presentationStates.length === 0) return undefined
+    const presentationStateOptions = []
+    this.state.presentationStates.forEach((instance, index) => {
       presentationStateOptions.push(
         <Select.Option
-          key="default-presentation-state"
-          value={undefined}
+          key={
+            instance.SOPInstanceUID !== undefined &&
+            instance.SOPInstanceUID !== ''
+              ? instance.SOPInstanceUID
+              : `presentation-state-${index}`
+          }
+          value={instance.SOPInstanceUID}
           dropdownMatchSelectWidth={false}
           size="small"
         >
-          {null}
+          {instance.ContentDescription !== undefined &&
+          instance.ContentDescription !== ''
+            ? instance.ContentDescription
+            : 'Untitled'}
         </Select.Option>,
       )
-      return (
-        <Menu.SubMenu key="presentation-states" title="Presentation States">
-          <Space align="center" size={20} style={{ padding: '14px' }}>
-            <Select
-              style={{ minWidth: 200, maxWidth: 200 }}
-              onSelect={this.handlePresentationStateSelection}
-              key="presentation-states"
-              value={this.state.selectedPresentationStateUID}
-            >
-              {presentationStateOptions}
-            </Select>
-            <Tooltip title="Reset">
-              <Btn
-                icon={UndoOutlined}
-                onClick={this.handlePresentationStateReset}
-              />
-            </Tooltip>
-          </Space>
-        </Menu.SubMenu>
-      )
-    }
-    return undefined
+    })
+    presentationStateOptions.push(
+      <Select.Option
+        key="default-presentation-state"
+        value={undefined}
+        dropdownMatchSelectWidth={false}
+        size="small"
+      >
+        {null}
+      </Select.Option>,
+    )
+    return (
+      <Menu.SubMenu key="presentation-states" title="Presentation States">
+        <Space align="center" size={20} style={{ padding: '14px' }}>
+          <Select
+            style={{ minWidth: 200, maxWidth: 200 }}
+            onSelect={this.handlePresentationStateSelection}
+            key="presentation-states"
+            value={this.state.selectedPresentationStateUID}
+          >
+            {presentationStateOptions}
+          </Select>
+          <Tooltip title="Reset">
+            <Btn
+              icon={UndoOutlined}
+              onClick={this.handlePresentationStateReset}
+            />
+          </Tooltip>
+        </Space>
+      </Menu.SubMenu>
+    )
   }
 
   private readonly getSegmentationMenu = (
@@ -4082,16 +4078,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               }
             />
           )}
-
-          {/* Clustering Settings */}
-          <ClusteringSettings
-            isClusteringEnabled={this.state.isClusteringEnabled}
-            clusteringPixelSizeThreshold={
-              this.state.clusteringPixelSizeThreshold
-            }
-            onClusteringToggle={this.handleClusteringToggle}
-            onThresholdChange={this.handleClusteringPixelSizeThresholdChange}
-          />
         </Menu.SubMenu>
       )
     }
@@ -4344,17 +4330,26 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   private readonly getICCProfilesMenu = (): React.ReactNode => {
+    const hasICCProfiles =
+      this.volumeViewer !== null &&
+      this.volumeViewer !== undefined &&
+      this.volumeViewer.getICCProfiles().length > 0
     return (
-      this.volumeViewer.getICCProfiles().length > 0 && (
-        <div style={{ margin: '0.9rem' }}>
-          <Checkbox
-            checked={this.state.isICCProfilesEnabled}
-            onChange={this.handleICCProfilesToggle}
-          >
-            ICC Profiles
-          </Checkbox>
-        </div>
-      )
+      <div
+        className={hasICCProfiles ? undefined : 'slim-settings-disabled'}
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
+        <span>ICC Profiles</span>
+        <Switch
+          checked={this.state.isICCProfilesEnabled}
+          onChange={this.handleICCProfilesToggle}
+          disabled={!hasICCProfiles}
+        />
+      </div>
     )
   }
 
@@ -4362,31 +4357,150 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const segments = this.volumeViewer.getAllSegments()
     return (
       segments.length > 0 && (
-        <div style={{ margin: '0.9rem' }}>
-          <Checkbox
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <span>Interpolation</span>
+          <Switch
             checked={this.state.isSegmentationInterpolationEnabled}
             onChange={this.handleSegmentationInterpolationToggle}
-          >
-            Segmentation Interpolation
-          </Checkbox>
+          />
         </div>
       )
     )
   }
 
-  private readonly getParametricMapInterpolationMenu = (): React.ReactNode => {
-    const mappings = this.volumeViewer.getAllParameterMappings()
-    return (
-      mappings.length > 0 && (
-        <div style={{ margin: '0.9rem' }}>
-          <Checkbox
-            checked={this.state.isParametricMapInterpolationEnabled}
-            onChange={this.handleParametricMapInterpolationToggle}
-          >
-            Parametric Map Interpolation
-          </Checkbox>
+  private readonly getSettingsPanelContent = (menus: {
+    iccProfilesMenu: React.ReactNode
+    segmentationInterpolationMenu: React.ReactNode
+  }): React.ReactNode => {
+    const menuItems: React.ReactNode[] = []
+
+    menuItems.push(
+      <Menu.SubMenu key="display" title="Display">
+        <Menu.Item key="display-content" disabled style={{ cursor: 'default' }}>
+          <div className="slim-settings-content">{menus.iccProfilesMenu}</div>
+        </Menu.Item>
+      </Menu.SubMenu>,
+    )
+
+    const segmentationItems: React.ReactNode[] = []
+    segmentationItems.push(
+      <div
+        key="clustering-enabled"
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '0.5rem',
+        }}
+      >
+        <span>Clustering</span>
+        <Switch
+          checked={Boolean(this.state.isClusteringEnabled)}
+          onChange={this.handleClusteringToggle}
+        />
+      </div>,
+    )
+    segmentationItems.push(
+      <div key="clustering-threshold" style={{ marginBottom: '0.5rem' }}>
+        <div style={{ marginBottom: '0.5rem' }}>
+          Clustering Pixel Size Threshold (mm)
+        </div>
+        <InputNumber
+          min={0}
+          max={100}
+          step={0.001}
+          precision={3}
+          style={{ width: '100%' }}
+          value={this.state.clusteringPixelSizeThreshold ?? undefined}
+          onChange={this.handleClusteringPixelSizeThresholdChange}
+          placeholder="Auto (zoom-based)"
+          addonAfter="mm"
+        />
+        <div
+          style={{
+            fontSize: '0.75rem',
+            color: '#8c8c8c',
+            marginTop: '0.5rem',
+          }}
+        >
+          When pixel size ≤ threshold, clustering is disabled. Leave empty for
+          zoom-based detection.
+        </div>
+      </div>,
+    )
+    if (
+      menus.segmentationInterpolationMenu !== null &&
+      menus.segmentationInterpolationMenu !== undefined
+    ) {
+      segmentationItems.push(menus.segmentationInterpolationMenu)
+    }
+    menuItems.push(
+      <Menu.SubMenu key="segmentation" title="Segmentation">
+        <Menu.Item
+          key="segmentation-content"
+          disabled
+          style={{ cursor: 'default' }}
+        >
+          <div className="slim-settings-content">{segmentationItems}</div>
+        </Menu.Item>
+      </Menu.SubMenu>,
+    )
+
+    const parametricMapItems: React.ReactNode[] = []
+    parametricMapItems.push(
+      <div
+        key="parametric-map-interpolation"
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '0.5rem',
+        }}
+      >
+        <span>Interpolation</span>
+        <Switch
+          checked={this.state.isParametricMapInterpolationEnabled}
+          onChange={this.handleParametricMapInterpolationToggle}
+        />
+      </div>,
+    )
+    menuItems.push(
+      <Menu.SubMenu key="parametric-map" title="Parametric Map">
+        <Menu.Item
+          key="parametric-map-content"
+          disabled
+          style={{ cursor: 'default' }}
+        >
+          <div className="slim-settings-content">{parametricMapItems}</div>
+        </Menu.Item>
+      </Menu.SubMenu>,
+    )
+
+    if (menuItems.length === 0) {
+      return (
+        <div style={{ padding: 16, color: 'rgba(0,0,0,0.45)' }}>
+          No settings available for this slide.
         </div>
       )
+    }
+
+    return (
+      <Menu
+        mode="inline"
+        className="slim-settings-menu"
+        defaultOpenKeys={['display', 'segmentation', 'parametric-map']}
+        style={{ border: 'none', width: '100%' }}
+        inlineIndent={14}
+        selectable={false}
+      >
+        {menuItems}
+      </Menu>
     )
   }
 
@@ -4401,7 +4515,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const specimenMenu = this.getSpecimenMenu()
     const equipmentMenu = this.getEquipmentMenu()
     const opticalPathMenu = this.getOpticalPathMenu()
-    const presentationStateMenu = this.getPresentationStateMenu()
     const segmentationMenu = this.getSegmentationMenu(segments)
     const parametricMapMenu = this.getParametricMapMenu(mappings)
     const annotationGroupMenu = this.getAnnotationGroupMenu(annotationGroups)
@@ -4411,9 +4524,17 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const iccProfilesMenu = this.getICCProfilesMenu()
     const segmentationInterpolationMenu =
       this.getSegmentationInterpolationMenu()
-    const parametricMapInterpolationMenu =
-      this.getParametricMapInterpolationMenu()
 
+    const presentationStateMenu = this.getPresentationStateMenu()
+
+    const settingsPanelContent = this.getSettingsPanelContent({
+      iccProfilesMenu,
+      segmentationInterpolationMenu,
+    })
+
+    if (presentationStateMenu !== null && presentationStateMenu !== undefined) {
+      openSubMenuItems.push('presentation-states')
+    }
     if (segmentationMenu !== null && segmentationMenu !== undefined) {
       openSubMenuItems.push('segmentations')
     }
@@ -4428,6 +4549,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     return (
       <Layout style={{ height: '100%' }} hasSider>
+        <SettingsRegistration
+          onOpenSettings={() => this.setState({ isSettingsDrawerOpen: true })}
+        />
         <SlideViewerContent
           toolbar={toolbar}
           toolbarHeight={toolbarHeight}
@@ -4479,9 +4603,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           labelViewer={this.labelViewer}
           openSubMenuItems={openSubMenuItems}
           specimenMenu={specimenMenu}
-          iccProfilesMenu={iccProfilesMenu}
-          segmentationInterpolationMenu={segmentationInterpolationMenu}
-          parametricMapInterpolationMenu={parametricMapInterpolationMenu}
           equipmentMenu={equipmentMenu}
           opticalPathMenu={opticalPathMenu}
           presentationStateMenu={presentationStateMenu}
@@ -4495,6 +4616,18 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           onRoiStyleChange={this.handleRoiStyleChange}
           defaultAnnotationStyles={this.defaultAnnotationStyles}
         />
+
+        <Drawer
+          title="Settings"
+          placement="right"
+          onClose={() => this.setState({ isSettingsDrawerOpen: false })}
+          open={this.state.isSettingsDrawerOpen}
+          width={320}
+          className="slim-settings-drawer"
+          bodyStyle={{ padding: 0, minHeight: '100%', overflow: 'auto' }}
+        >
+          {settingsPanelContent}
+        </Drawer>
 
         {this.state.isHoveredRoiTooltipVisible &&
         this.state.hoveredRoiAttributes.length > 0 ? (
