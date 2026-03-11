@@ -11,6 +11,7 @@ module.exports = {
             modifyVars: {
               '@layout-header-background': '#007ea3',
               '@primary-color': '#007ea3',
+              '@collapse-header-bg': '#e0f2f7',
               '@processing-color': '#8cb8c6',
               '@success-color': '#3f9c35',
               '@warning-color': '#eeaf30',

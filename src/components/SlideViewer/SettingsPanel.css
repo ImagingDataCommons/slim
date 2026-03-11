@@ -1,0 +1,62 @@
+/* Settings panel - full width, full height, improved text contrast */
+.slim-settings-menu {
+  width: 100%;
+  height: 100%;
+  box-shadow: none;
+  padding: 0;
+}
+
+.slim-settings-menu.ant-menu-inline .ant-menu-item,
+.slim-settings-menu.ant-menu-inline .ant-menu-submenu-title {
+  width: 100%;
+}
+
+/* First section: no top border (Drawer header provides it), no gap (override antd margin-top: 4px) */
+.slim-settings-menu.ant-menu-inline > .ant-menu-submenu:first-child > .ant-menu-submenu-title {
+  margin-top: 0 !important;
+  border-top: none;
+}
+
+/* Border at the end of the settings sections */
+.slim-settings-menu.ant-menu-inline > .ant-menu-submenu:last-child {
+  border-bottom: 1px solid rgba(0, 126, 163, 0.5);
+}
+
+.slim-settings-menu.ant-menu-inline .ant-menu-sub {
+  max-height: none;
+  overflow: visible;
+}
+
+/* Allow content to expand - override fixed 40px height on menu items */
+.slim-settings-menu.ant-menu-inline .ant-menu-sub .ant-menu-item {
+  height: auto;
+  line-height: 1.5;
+  min-height: 40px;
+  padding: 0;
+  overflow: visible;
+  white-space: normal;
+}
+
+.slim-settings-content {
+  padding: 0.9rem 16px;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+/* Reduce left padding on settings content only (not headers) - rc-menu adds inlineIndent to items */
+.slim-settings-menu .ant-menu-sub .ant-menu-item {
+  padding-left: 0 !important;
+}
+
+/* Brighter text in settings content */
+.slim-settings-content,
+.slim-settings-content span,
+.slim-settings-content label {
+  color: rgba(0, 0, 0, 0.88);
+}
+
+/* Disabled state for settings options (e.g. ICC Profiles when unavailable) */
+.slim-settings-content .slim-settings-disabled,
+.slim-settings-content .slim-settings-disabled span {
+  color: rgba(0, 0, 0, 0.25);
+}
+

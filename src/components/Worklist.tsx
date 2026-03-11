@@ -230,67 +230,72 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     return () => this.handleReset(clearFilters)
   }
 
+  static orNbsp(s: string): string {
+    return s !== '' ? s : '\u00A0'
+  }
+
   render(): React.ReactNode {
+    const orNbsp = Worklist.orNbsp
     const columns: ColumnsType<dmv.metadata.Study> = [
       {
         title: 'Accession Number',
         dataIndex: 'AccessionNumber',
+        render: (v: string) => orNbsp(String(v ?? '')),
         ...this.getColumnSearchProps('AccessionNumber'),
       },
       {
         title: 'Study ID',
         dataIndex: 'StudyID',
+        render: (v: string) => orNbsp(String(v ?? '')),
         ...this.getColumnSearchProps('StudyID'),
       },
       {
         title: 'Study Date',
         dataIndex: 'StudyDate',
-        render: (value: string): string => parseDate(value),
+        render: (value: string): string => orNbsp(parseDate(value)),
       },
       {
         title: 'Study Time',
         dataIndex: 'StudyTime',
-        render: (value: string): string => parseTime(value),
+        render: (value: string): string => orNbsp(parseTime(value)),
       },
       {
         title: 'Patient ID',
         dataIndex: 'PatientID',
+        render: (v: string) => orNbsp(String(v ?? '')),
         ...this.getColumnSearchProps('PatientID'),
       },
       {
         title: "Patient's Name",
         dataIndex: 'PatientName',
-        render: (value: dmv.metadata.PersonName): string => parseName(value),
+        render: (value: dmv.metadata.PersonName): string =>
+          orNbsp(parseName(value)),
         ...this.getColumnSearchProps('PatientName'),
       },
       {
         title: "Patient's Sex",
         dataIndex: 'PatientSex',
-        render: (value: string): string => parseSex(value),
+        render: (value: string): string => orNbsp(parseSex(value)),
       },
       {
         title: "Patient's Birthdate",
         dataIndex: 'PatientBirthDate',
-        render: (value: string): string => parseDate(value),
+        render: (value: string): string => orNbsp(parseDate(value)),
       },
       {
         title: "Referring Physician's Name",
         dataIndex: 'ReferringPhysicianName',
-        render: (value: dmv.metadata.PersonName): string => parseName(value),
+        render: (value: dmv.metadata.PersonName): string =>
+          orNbsp(parseName(value)),
       },
       {
         title: 'Modalities in Study',
         dataIndex: 'ModalitiesInStudy',
         render: (value: string[] | string): string => {
           if (value === undefined) {
-            /*
-             * This should not happen, since the attribute is required.
-             * However, some origin servers don't include it.
-             */
-            return ''
-          } else {
-            return String(value)
+            return '\u00A0'
           }
+          return orNbsp(String(value))
         },
       },
     ]
