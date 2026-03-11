@@ -1,9 +1,10 @@
-import { SearchOutlined } from '@ant-design/icons'
+import { EyeOutlined, SearchOutlined } from '@ant-design/icons'
 import { Input, Select, Slider, Table, Typography } from 'antd'
 import { useEffect, useMemo, useState } from 'react'
 
 import type DicomWebManager from '../../DicomWebManager'
 import './DicomTagBrowser.css'
+import { useActiveSeries } from '../../hooks/useActiveSeries'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useSlides } from '../../hooks/useSlides'
 import DicomMetadataStore, {
@@ -48,6 +49,7 @@ const DicomTagBrowser = ({
   seriesInstanceUID = '',
 }: DicomTagBrowserProps): JSX.Element => {
   const { slides, isLoading } = useSlides({ clients, studyInstanceUID })
+  const activeSeriesUIDs = useActiveSeries()
   const [study, setStudy] = useState<Study | undefined>(undefined)
 
   const [displaySets, setDisplaySets] = useState<DisplaySet[]>([])
@@ -207,6 +209,7 @@ const DicomTagBrowser = ({
         SeriesNumber = '',
         SeriesDescription = '',
         Modality = '',
+        SeriesInstanceUID,
       } = displaySet
 
       const dateStr = `${SeriesDate}:${SeriesTime}`.split('.')[0]
@@ -216,6 +219,7 @@ const DicomTagBrowser = ({
         value: index,
         label: `${SeriesNumber} (${Modality}): ${SeriesDescription}`,
         description: displayDate,
+        seriesInstanceUID: SeriesInstanceUID ?? '',
       }
     })
   }, [sortedDisplaySets])
@@ -452,18 +456,54 @@ const DicomTagBrowser = ({
               optionLabelProp="label"
               optionFilterProp="label"
             >
-              {displaySetList.map((item) => (
-                <Option key={item.value} value={item.value} label={item.label}>
-                  <div>
-                    <div>{item.label}</div>
+              {displaySetList.map((item) => {
+                const isActive = item.seriesInstanceUID
+                  ? activeSeriesUIDs.has(item.seriesInstanceUID)
+                  : false
+                return (
+                  <Option
+                    key={item.value}
+                    value={item.value}
+                    label={item.label}
+                  >
                     <div
-                      style={{ fontSize: '12px', color: 'rgba(0, 0, 0, 0.45)' }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 8,
+                        minWidth: 0,
+                      }}
                     >
-                      {item.description}
+                      <span
+                        style={{
+                          width: 16,
+                          flexShrink: 0,
+                          display: 'flex',
+                          justifyContent: 'center',
+                        }}
+                        title={isActive ? 'Active in viewport' : undefined}
+                      >
+                        {isActive ? (
+                          <EyeOutlined
+                            style={{ color: 'rgba(0, 0, 0, 0.65)' }}
+                          />
+                        ) : null}
+                      </span>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div>{item.label}</div>
+                        <div
+                          style={{
+                            fontSize: '12px',
+                            color: 'rgba(0, 0, 0, 0.45)',
+                          }}
+                        >
+                          {item.description}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </Option>
-              ))}
+                  </Option>
+                )
+              })}
             </Select>
           </div>
 
