@@ -27,7 +27,7 @@ import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from './services/NotificationMiddleware'
 import { CustomError, errorTypes } from './utils/CustomError'
-import { joinUrl } from './utils/url'
+import { joinUrl, normalizeServerUrl } from './utils/url'
 
 function ParametrizedCaseViewer({
   clients,
@@ -275,8 +275,6 @@ class App extends React.Component<AppProps, AppState> {
       )
     }
 
-    this.handleServerSelection = this.handleServerSelection.bind(this)
-
     message.config({ duration: 5 })
     App.addGcpSecondaryAnnotationServer(props.config)
 
@@ -323,7 +321,7 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  handleServerSelection({ url }: { url: string }): void {
+  handleServerSelection = async ({ url }: { url: string }): Promise<void> => {
     const trimmedUrl = url.trim()
     console.info('select DICOMweb server: ', trimmedUrl)
     if (
@@ -333,13 +331,14 @@ class App extends React.Component<AppProps, AppState> {
       this.setState({ clients: this.state.defaultClients })
       return
     }
-    window.localStorage.setItem('slim_selected_server', trimmedUrl)
+    const resolvedUrl = normalizeServerUrl(trimmedUrl)
+    window.localStorage.setItem('slim_selected_server', resolvedUrl)
     const tmpClient = new DicomWebManager({
       baseUri: '',
       settings: [
         {
           id: 'tmp',
-          url: trimmedUrl,
+          url: resolvedUrl,
           read: true,
           write: false,
         },
@@ -347,6 +346,13 @@ class App extends React.Component<AppProps, AppState> {
       onError: this.handleDICOMwebError,
     })
     tmpClient.updateHeaders(this.state.clients.default.headers)
+    // Re-apply auth so the new client has the current token (avoids 401 when switching mid-session)
+    if (this.auth != null && this.state.user != null) {
+      const token = await this.auth.getAuthorization()
+      if (token != null) {
+        tmpClient.updateHeaders({ Authorization: `Bearer ${token}` })
+      }
+    }
     /**
      * Use the newly created client for all storage classes. We may want to
      * make this more sophisticated in the future to allow users to override

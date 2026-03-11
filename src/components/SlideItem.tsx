@@ -94,16 +94,13 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
 
     const attributes = []
     const description = this.props.slide.description
-    if (
-      description !== null &&
-      description !== undefined &&
-      description !== ''
-    ) {
-      attributes.push({
-        name: 'Description',
-        value: description,
-      })
-    }
+    attributes.push({
+      name: 'Description',
+      value:
+        description !== null && description !== undefined && description !== ''
+          ? description
+          : '\u2014',
+    })
 
     if (this.state.isLoading) {
       return <FaSpinner />
