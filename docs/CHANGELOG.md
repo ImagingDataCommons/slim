@@ -1,3 +1,10 @@
+## [0.45.2](https://github.com/ImagingDataCommons/slim/compare/v0.45.1...v0.45.2) (2026-03-11)
+
+
+### Bug Fixes
+
+* Address runtime server selection for partial url ([#375](https://github.com/ImagingDataCommons/slim/issues/375)) ([5a7ce80](https://github.com/ImagingDataCommons/slim/commit/5a7ce80d9710bc2b7a06c0c30a2a1b8ddd190eba))
+
 ## [0.45.1](https://github.com/ImagingDataCommons/slim/compare/v0.45.0...v0.45.1) (2025-12-17)
 
 
