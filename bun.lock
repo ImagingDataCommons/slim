@@ -34,6 +34,7 @@
         "@testing-library/jest-dom": "^5.16.4",
         "@testing-library/react": "^14.0.0",
         "@testing-library/user-event": "^7.1.2",
+        "@types/d3-dispatch": "3.0.6",
         "@types/jest": "^28.1.3",
         "@types/lodash": "^4.17.20",
         "@types/node": "^14.14.9",
@@ -58,6 +59,7 @@
     },
   },
   "overrides": {
+    "@types/d3-dispatch": "3.0.6",
     "express": "4.21.0",
     "make-dir": "3.1.0",
     "nth-check": "2.0.1",
@@ -649,6 +651,8 @@
     "@types/connect": ["@types/connect@3.4.35", "", { "dependencies": { "@types/node": "*" } }, "sha512-cdeYyv4KWoEgpBISTxWvqYsVy444DOqehiF3fM3ne10AmJ62RSyNkUnxMJXHQWRQQX2eR94m5y1IZyDwBjV9FQ=="],
 
     "@types/connect-history-api-fallback": ["@types/connect-history-api-fallback@1.3.5", "", { "dependencies": { "@types/express-serve-static-core": "*", "@types/node": "*" } }, "sha512-h8QJa8xSb1WD4fpKBDcATDNGXghFj6/3GRWG6dhmRcu0RX1Ubasur2Uvx5aeEwlf0MwblEC2bMzzMQntxnw/Cw=="],
+
+    "@types/d3-dispatch": ["@types/d3-dispatch@3.0.6", "", {}, "sha512-4fvZhzMeeuBJYZXRXrRIQnvUYfyXwYmLsdiN7XXmVNQKKw1cM8a5WdID0g1hVFZDqT9ZqZEY5pD44p24VS7iZQ=="],
 
     "@types/eslint": ["@types/eslint@8.4.10", "", { "dependencies": { "@types/estree": "*", "@types/json-schema": "*" } }, "sha512-Sl/HOqN8NKPmhWo2VBEPm0nvHnu2LL3v9vKo8MEq0EtbJ4eVzGPl41VNPvn5E1i5poMk4/XD8UriLHpJvEP/Nw=="],
 
@@ -2910,7 +2914,7 @@
 
     "typedarray-to-buffer": ["typedarray-to-buffer@3.1.5", "", { "dependencies": { "is-typedarray": "^1.0.0" } }, "sha512-zdu8XMNEDepKKR+XYOXAVPtWui0ly0NtohUscw+UmaHiAWT8hrV1rr//H6V+0DvJ3OQ19S979M0laLfX8rm82Q=="],
 
-    "typescript": ["typescript@4.9.4", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-Uz+dTXYzxXXbsFpM86Wh3dKCxrQqUcVMxwU54orwlJjOpO3ao8L7j5lH+dWfTwgCwIuM9GQ2kvVotzYJMXTBZg=="],
+    "typescript": ["typescript@4.9.5", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-1FXk9E2Hm+QzZQ7z+McJiHL4NW1F2EzMu9Nq9i3zAaGqibafqYwCVU6WyWAuyQRRzOlxou8xZSyXLEN8oKj24g=="],
 
     "uglify-js": ["uglify-js@3.17.4", "", { "bin": { "uglifyjs": "bin/uglifyjs" } }, "sha512-T9q82TJI9e/C1TAxYvfb16xO120tMVFZrGA3f9/P4424DNu6ypK103y0GPFVa17yotwSyZW5iYXgjYHkGrJW/g=="],
 
