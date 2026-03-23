@@ -32,7 +32,79 @@ export interface DicomTag {
   [key: string]: unknown
 }
 
-const formatValue = (val: unknown): string => {
+const PERSON_NAME_GROUP_KEYS = [
+  'Alphabetic',
+  'Ideographic',
+  'Phonetic',
+] as const
+
+function isPersonNameGroupObject(val: unknown): val is Record<string, unknown> {
+  if (val === null || typeof val !== 'object' || Array.isArray(val)) {
+    return false
+  }
+  const o = val as Record<string, unknown>
+  const keys = Object.keys(o)
+  if (keys.length === 0) {
+    return false
+  }
+  const allowed = new Set<string>(PERSON_NAME_GROUP_KEYS)
+  for (const k of keys) {
+    if (!allowed.has(k) || typeof o[k] !== 'string') {
+      return false
+    }
+  }
+  return true
+}
+
+/** DICOMweb JSON Person Name (PN): one or more component groups (Part 18 F.2.2). */
+function formatPersonNameGroup(o: Record<string, unknown>): string {
+  const parts: string[] = []
+  for (const k of PERSON_NAME_GROUP_KEYS) {
+    const s = o[k]
+    if (typeof s === 'string' && s.length > 0) {
+      parts.push(s)
+    }
+  }
+  return parts.join(' | ')
+}
+
+function formatValue(val: unknown, vr?: string): string {
+  if (val === undefined) {
+    return ''
+  }
+  if (val === null) {
+    return 'null'
+  }
+
+  const pnByVr = vr === 'PN'
+  const pnByShape =
+    (vr === undefined || vr === '') &&
+    (isPersonNameGroupObject(val) ||
+      (Array.isArray(val) &&
+        val.length > 0 &&
+        val.every((item) => isPersonNameGroupObject(item))))
+
+  if (pnByVr || pnByShape) {
+    if (Array.isArray(val)) {
+      return val
+        .map((item) => {
+          if (isPersonNameGroupObject(item)) {
+            return formatPersonNameGroup(item)
+          }
+          if (pnByVr) {
+            return typeof item === 'object' && item !== null
+              ? JSON.stringify(item)
+              : String(item)
+          }
+          return formatValue(item)
+        })
+        .join('\\')
+    }
+    if (isPersonNameGroupObject(val)) {
+      return formatPersonNameGroup(val)
+    }
+  }
+
   if (typeof val === 'object' && val !== null) {
     return JSON.stringify(val)
   }
@@ -43,10 +115,10 @@ export const formatTagValue = (tag: DicomTag): string => {
   if (tag.Value == null) return ''
 
   if (Array.isArray(tag.Value)) {
-    return tag.Value.map(formatValue).join(', ')
+    return tag.Value.map((v) => formatValue(v, tag.vr)).join(', ')
   }
 
-  return formatValue(tag.Value)
+  return formatValue(tag.Value, tag.vr)
 }
 
 /** Normalize to "(GGGG,EEEE)" for dcmjs dictionary lookup. */
@@ -162,9 +234,11 @@ export function getRows(
 
       let displayValue: unknown = value
       if (Array.isArray(displayValue)) {
-        displayValue = displayValue.map(formatValue).join('\\')
+        displayValue = displayValue
+          .map((item) => formatValue(item, entry.vr))
+          .join('\\')
       } else if (typeof displayValue === 'object' && displayValue !== null) {
-        displayValue = formatValue(displayValue)
+        displayValue = formatValue(displayValue, entry.vr)
       }
 
       return [
@@ -203,9 +277,11 @@ export function getRows(
 
       let displayValue: unknown = value
       if (Array.isArray(displayValue)) {
-        displayValue = displayValue.map(formatValue).join('\\')
+        displayValue = displayValue
+          .map((item) => formatValue(item, vrHint))
+          .join('\\')
       } else if (typeof displayValue === 'object' && displayValue !== null) {
-        displayValue = formatValue(displayValue)
+        displayValue = formatValue(displayValue, vrHint)
       }
 
       return [
@@ -228,7 +304,7 @@ export function getRows(
           value === null || value === undefined
             ? ''
             : typeof value === 'object'
-              ? formatValue(value)
+              ? formatValue(value, vrHint)
               : String(value),
         level: depth,
       },
