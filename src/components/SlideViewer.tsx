@@ -48,6 +48,10 @@ import type {
   AnnotationSettings,
 } from '../types/annotations'
 import { CustomError, errorTypes } from '../utils/CustomError'
+import {
+  applyDistinctFractionalSegmentPalettes,
+  applyDistinctParametricMapPalettes,
+} from '../utils/distinctOverlayColormaps'
 import generateReport from '../utils/generateReport'
 import { logger } from '../utils/logger'
 import { withRouter } from '../utils/router'
@@ -1176,6 +1180,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 if (segmentations.length > 0) {
                   try {
                     this.volumeViewer.addSegments(segmentations)
+                    applyDistinctFractionalSegmentPalettes(this.volumeViewer)
                     resolve()
                   } catch (error: unknown) {
                     // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -1280,6 +1285,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 if (parametricMaps.length > 0) {
                   try {
                     this.volumeViewer.addParameterMappings(parametricMaps)
+                    applyDistinctParametricMapPalettes(this.volumeViewer)
                     resolve()
                   } catch (error: unknown) {
                     // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -2833,17 +2839,24 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       }))
     }
 
-    /** If color is provided, create a palette color lookup table */
-    let paletteColorLookupTable: dmv.color.PaletteColorLookupTable | undefined
+    /**
+     * Only pass a palette when the user changed color. Opacity-only updates
+     * must not send a default RGB for fractional segments or distinct
+     * colormaps are replaced by a flat LUT.
+     */
+    const stylePayload: {
+      opacity?: number
+      paletteColorLookupTable?: dmv.color.PaletteColorLookupTable
+    } = {}
+    if (styleOptions.opacity !== undefined) {
+      stylePayload.opacity = styleOptions.opacity
+    }
     if (styleOptions.color !== undefined) {
-      paletteColorLookupTable =
+      stylePayload.paletteColorLookupTable =
         SlideViewer.createSegmentPaletteColorLookupTable(styleOptions.color)
     }
 
-    this.volumeViewer.setSegmentStyle(segmentUID, {
-      opacity: styleOptions.opacity,
-      paletteColorLookupTable,
-    })
+    this.volumeViewer.setSegmentStyle(segmentUID, stylePayload)
   }
 
   /**

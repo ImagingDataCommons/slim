@@ -425,7 +425,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     )
 
     const showWarningCount = (warncount: number): JSX.Element => (
-      <Badge color="green" count={warncount} />
+      <Badge color={warncount > 0 ? 'green' : undefined} count={warncount} />
     )
 
     Modal.info({
@@ -614,7 +614,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     const debugButton = (
       <Badge count={this.state.errorObj.length} style={{ zIndex: 1000 }}>
         <Badge
-          color="green"
+          color={this.state.warnings.length > 0 ? 'green' : undefined}
           count={this.state.warnings.length}
           style={{ zIndex: 1001 }}
         >
