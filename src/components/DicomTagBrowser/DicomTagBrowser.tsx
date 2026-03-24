@@ -13,6 +13,7 @@ import DicomMetadataStore, {
   type Study,
 } from '../../services/DICOMMetadataStore'
 import { formatDicomDate } from '../../utils/formatDicomDate'
+import { logger } from '../../utils/logger'
 import { getSortedTags, type TagInfo } from './dicomTagUtils'
 
 const { Option } = Select
@@ -41,6 +42,16 @@ interface DicomTagBrowserProps {
   clients: { [key: string]: DicomWebManager }
   studyInstanceUID: string
   seriesInstanceUID?: string
+}
+
+function bucketContainsSopInstance(bucket: unknown[], sop: string): boolean {
+  if (sop === '') return false
+  for (const existing of bucket) {
+    if ((existing as Record<string, unknown>).SOPInstanceUID === sop) {
+      return true
+    }
+  }
+  return false
 }
 
 const DicomTagBrowser = ({
@@ -117,7 +128,7 @@ const DicomTagBrowser = ({
             imageType: string,
           ): void => {
             if (images?.[0] === undefined) return
-            console.info(
+            logger.debug(
               `Found ${images.length} ${imageType} image(s) for slide ${slide.containerIdentifier}`,
             )
             for (const image of images) {
@@ -134,14 +145,7 @@ const DicomTagBrowser = ({
 
               const sop =
                 typeof img.SOPInstanceUID === 'string' ? img.SOPInstanceUID : ''
-              const isDup =
-                sop !== '' &&
-                bucket.some(
-                  (existing) =>
-                    (existing as Record<string, unknown>).SOPInstanceUID ===
-                    sop,
-                )
-              if (!isDup) {
+              if (!bucketContainsSopInstance(bucket, sop)) {
                 bucket.push(image)
               }
             }
@@ -394,12 +398,10 @@ const DicomTagBrowser = ({
         matchingPaths.push(currentPath)
       }
 
-      if (node.children != null) {
-        node.children.forEach((child) => {
-          const childPaths = findMatchingPaths(child, currentPath)
-          matchingPaths = [...matchingPaths, ...childPaths]
-        })
-      }
+      node.children?.forEach((child) => {
+        const childPaths = findMatchingPaths(child, currentPath)
+        matchingPaths = [...matchingPaths, ...childPaths]
+      })
 
       return matchingPaths
     }

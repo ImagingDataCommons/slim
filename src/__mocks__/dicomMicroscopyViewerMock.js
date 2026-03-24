@@ -14,6 +14,7 @@ const TAG_TO_KEYWORD = {
   '00201206': 'NumberOfStudyRelatedSeries',
   '00201208': 'NumberOfStudyRelatedInstances',
   '00080061': 'ModalitiesInStudy',
+  '00080060': 'Modality',
   '00080090': 'ReferringPhysicianName',
   '0020000E': 'SeriesInstanceUID'
 }
