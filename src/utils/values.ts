@@ -56,4 +56,59 @@ function parseSex(value: string | null | undefined): string {
   return ''
 }
 
-export { parseDate, parseDateTime, parseName, parseSex, parseTime }
+/**
+ * Human-readable text for a DICOM coded concept: prefer CodeMeaning.
+ * Does not show SNOMED CT numeric codes (SCT) when meaning is absent.
+ */
+function codedConceptDisplayText(item: unknown): string {
+  if (item == null || typeof item !== 'object') return ''
+  const o = item as {
+    CodeValue?: string
+    CodeMeaning?: string
+    CodingSchemeDesignator?: string
+  }
+  const cm = (o.CodeMeaning ?? '').trim()
+  if (cm !== '') return cm
+  const scheme = (o.CodingSchemeDesignator ?? '').toUpperCase()
+  if (scheme === 'SCT') return ''
+  return (o.CodeValue ?? '').trim()
+}
+
+function dedupeStringsPreserveOrder(strings: string[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const s of strings) {
+    const key = s.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(s)
+  }
+  return out
+}
+
+/** (00102202) PatientSpeciesCodeSequence — meanings only; undefined if absent or empty. */
+function formatPatientSpeciesCodeSequence(
+  sequence: unknown,
+): string | undefined {
+  if (!Array.isArray(sequence) || sequence.length === 0) {
+    return undefined
+  }
+  const parts: string[] = []
+  for (const item of sequence) {
+    const part = codedConceptDisplayText(item)
+    if (part !== '') parts.push(part)
+  }
+  const unique = dedupeStringsPreserveOrder(parts)
+  return unique.length > 0 ? unique.join(', ') : undefined
+}
+
+export {
+  codedConceptDisplayText,
+  dedupeStringsPreserveOrder,
+  formatPatientSpeciesCodeSequence,
+  parseDate,
+  parseDateTime,
+  parseName,
+  parseSex,
+  parseTime,
+}
