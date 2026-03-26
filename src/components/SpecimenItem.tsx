@@ -4,10 +4,6 @@ import * as dcmjs from 'dcmjs'
 import type * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
 import { SpecimenPreparationStepItems } from '../data/specimens'
-import {
-  codedConceptDisplayText,
-  dedupeStringsPreserveOrder,
-} from '../utils/values'
 import type { Attribute } from './Description'
 import Item from './Item'
 
@@ -15,35 +11,6 @@ interface SpecimenItemProps {
   index: number
   metadata?: dmv.metadata.VLWholeSlideMicroscopyImage
   showstain: boolean
-}
-
-/** (0008,1080) LO and (0008,1084) SQ — separate DICOM attributes; combine for display. */
-function formatAdmittingDiagnoses(
-  metadata: Record<string, unknown>,
-): string | undefined {
-  const descRaw = metadata.AdmittingDiagnosesDescription
-  const desc = typeof descRaw === 'string' ? descRaw.trim() : ''
-
-  const seq = metadata.AdmittingDiagnosesCodeSequence
-  const codeParts: string[] = []
-  if (Array.isArray(seq)) {
-    for (const item of seq) {
-      const part = codedConceptDisplayText(item)
-      if (part !== '') codeParts.push(part)
-    }
-  }
-  const uniqueCodes = dedupeStringsPreserveOrder(codeParts)
-  const codesJoined = uniqueCodes.join(', ')
-
-  if (desc !== '' && codesJoined !== '') {
-    if (desc.toLowerCase() === codesJoined.toLowerCase()) {
-      return desc
-    }
-    return `${desc}; ${codesJoined}`
-  }
-  if (desc !== '') return desc
-  if (codesJoined !== '') return codesJoined
-  return undefined
 }
 
 /**
@@ -192,16 +159,6 @@ class SpecimenItem extends React.Component<
         )
       },
     )
-
-    const admittingDiagnoses = formatAdmittingDiagnoses(
-      this.props.metadata as unknown as Record<string, unknown>,
-    )
-    if (admittingDiagnoses !== undefined) {
-      attributes.push({
-        name: 'Admitting Diagnoses',
-        value: admittingDiagnoses,
-      })
-    }
 
     const uid = specimenDescription.SpecimenUID
     const identifier = specimenDescription.SpecimenIdentifier

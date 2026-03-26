@@ -2,6 +2,7 @@
 import type * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
 import {
+  formatAdmittingDiagnoses,
   formatPatientSpeciesCodeSequence,
   parseDate,
   parseName,
@@ -20,10 +21,11 @@ interface PatientProps {
  */
 class Patient extends React.Component<PatientProps, Record<string, never>> {
   render(): React.ReactNode {
+    const meta = this.props.metadata as unknown as Record<string, unknown>
     const species = formatPatientSpeciesCodeSequence(
-      (this.props.metadata as unknown as Record<string, unknown>)
-        .PatientSpeciesCodeSequence,
+      meta.PatientSpeciesCodeSequence,
     )
+    const admittingDiagnosis = formatAdmittingDiagnoses(meta)
     const attributes = [
       {
         name: 'ID',
@@ -44,9 +46,11 @@ class Patient extends React.Component<PatientProps, Record<string, never>> {
       },
       {
         name: 'Age',
-        value: (this.props.metadata as unknown as Record<string, unknown>)
-          .PatientAge as string | undefined,
+        value: meta.PatientAge as string | undefined,
       },
+      ...(admittingDiagnosis !== undefined
+        ? [{ name: 'Admitting diagnosis', value: admittingDiagnosis }]
+        : []),
     ]
     return <Description attributes={attributes} />
   }

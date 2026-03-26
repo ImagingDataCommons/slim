@@ -86,6 +86,67 @@ function dedupeStringsPreserveOrder(strings: string[]): string[] {
   return out
 }
 
+/**
+ * (0008,1080) LO + (0008,1084) SQ (standard keywords use plural "Diagnoses").
+ * Also accepts singular / legacy keys (e.g. dcmjs) for interoperability.
+ */
+function formatAdmittingDiagnoses(
+  metadata: Record<string, unknown>,
+): string | undefined {
+  let desc = ''
+  for (const key of [
+    'AdmittingDiagnosesDescription',
+    'AdmittingDiagnosisDescription',
+  ] as const) {
+    const v = metadata[key]
+    if (typeof v === 'string' && v.trim() !== '') {
+      desc = v.trim()
+      break
+    }
+  }
+
+  const codeSeqKeys = [
+    'AdmittingDiagnosesCodeSequence',
+    'AdmittingDiagnosisCodeSequence',
+    'AdmittingDiagnosisCodeSeq',
+  ] as const
+  let seq: unknown[] = []
+  for (const key of codeSeqKeys) {
+    const v = metadata[key]
+    if (Array.isArray(v) && v.length > 0) {
+      seq = v
+      break
+    }
+  }
+  if (seq.length === 0) {
+    for (const key of codeSeqKeys) {
+      const v = metadata[key]
+      if (Array.isArray(v)) {
+        seq = v
+        break
+      }
+    }
+  }
+
+  const codeParts: string[] = []
+  for (const item of seq) {
+    const part = codedConceptDisplayText(item)
+    if (part !== '') codeParts.push(part)
+  }
+  const uniqueCodes = dedupeStringsPreserveOrder(codeParts)
+  const codesJoined = uniqueCodes.join(', ')
+
+  if (desc !== '' && codesJoined !== '') {
+    if (desc.toLowerCase() === codesJoined.toLowerCase()) {
+      return desc
+    }
+    return `${desc}; ${codesJoined}`
+  }
+  if (desc !== '') return desc
+  if (codesJoined !== '') return codesJoined
+  return undefined
+}
+
 /** (00102202) PatientSpeciesCodeSequence — meanings only; undefined if absent or empty. */
 function formatPatientSpeciesCodeSequence(
   sequence: unknown,
@@ -105,6 +166,7 @@ function formatPatientSpeciesCodeSequence(
 export {
   codedConceptDisplayText,
   dedupeStringsPreserveOrder,
+  formatAdmittingDiagnoses,
   formatPatientSpeciesCodeSequence,
   parseDate,
   parseDateTime,
