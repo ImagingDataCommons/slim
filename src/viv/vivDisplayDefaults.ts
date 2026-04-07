@@ -86,6 +86,31 @@ export function computeOrthographicFitViewState(
   }
 }
 
+/**
+ * OrthographicController defaults to unlimited zoom; Tile2D picks tile z using `ceil(viewport.zoom)` (+ offset).
+ * Tiny float drift or extreme zoom can bump tile z and load a different region. Clamp relative to the fit zoom
+ * and pyramid depth so the viewport stays aligned with MultiscaleImageLayer tile indexing.
+ */
+export function orthographicZoomLimits(
+  vw: number,
+  vh: number,
+  slideW: number,
+  slideH: number,
+  pyramidLevelCount: number,
+): { minZoom: number; maxZoom: number } {
+  const w = Math.max(1, vw)
+  const h = Math.max(1, vh)
+  const sw = Math.max(1, slideW)
+  const sh = Math.max(1, slideH)
+  const fitZ = Math.log2(Math.min(w / sw, h / sh))
+  const n = Math.max(1, pyramidLevelCount)
+  // ~one orthographic zoom step per pyramid level toward full-res, then room for magnifying past native tile z=0.
+  return {
+    minZoom: fitZ - 2,
+    maxZoom: fitZ + Math.max(0, n - 1) + 6,
+  }
+}
+
 /** IDC cyclic IF demo (Lin et al.) — channels 8–11 per viv-dicomweb-test. */
 export const IDC_CYCLIC_IF_VIV_SETTINGS: VivSettings = {
   selections: [

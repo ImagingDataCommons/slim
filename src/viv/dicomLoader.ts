@@ -23,18 +23,33 @@ type OpticalPathEntry = {
   }
   layer: {
     getSource: () => {
-      loader_: (level: number, x: number, y: number) => Promise<ArrayBuffer>
+      loader_: (
+        z: number,
+        requestX: number,
+        requestY: number,
+      ) => Promise<ArrayBuffer>
     }
   }
 }
 
 /** OpenLayers DataTileSource sets this asynchronously inside VolumeImageViewer.render(). */
+/**
+ * OpenLayers DataTile passes `(z, requestX, requestY)`. dicom-microscopy-viewer's
+ * `_createTileLoadFunction` names those `(z, y, x)` but builds the frame id as
+ * `${x+1}-${y+1}` → `(requestY+1)-(requestX+1)` in OL terms.
+ */
 function getDataTileLoader(
   source: { loader_?: unknown } | null,
-): ((z: number, y: number, x: number) => Promise<ArrayBuffer>) | undefined {
+):
+  | ((z: number, requestX: number, requestY: number) => Promise<ArrayBuffer>)
+  | undefined {
   const fn = source?.loader_
   return typeof fn === 'function'
-    ? (fn as (z: number, y: number, x: number) => Promise<ArrayBuffer>)
+    ? (fn as (
+        z: number,
+        requestX: number,
+        requestY: number,
+      ) => Promise<ArrayBuffer>)
     : undefined
 }
 
@@ -433,18 +448,69 @@ export class DicomLoader {
     return { data, width: ts, height: ts }
   }
 
-  async getSources(): Promise<DicomPixelSource[]> {
+  async getSources(): Promise<
+    Array<DicomPixelSource | SyntheticDyadicPixelSource>
+  > {
     const levelShapes = await this._getShapes()
     const tileSize = await this._getTileSize()
     const spp = this.samplesPerPixel ?? 1
     const bits = this.bitsAllocated ?? 16
     const dtype: 'Uint8' | 'Uint16' =
       spp === 3 && bits === 8 ? 'Uint8' : 'Uint16'
-    const sources = levelShapes.map(
+    this._warnIfPyramidStepsMismatchDeckGrid()
+    const base = levelShapes.map(
       (shape, i) => new DicomPixelSource(this, i, shape, dtype, tileSize),
     )
-    sources.reverse()
-    return sources
+    base.reverse()
+    return insertSyntheticDyadicLevels(base)
+  }
+
+  /**
+   * Deck.gl Tile2D uses a 2× geometric step between each integer tile z. DICOM pyramids often use ~2×,
+   * but some (more common on certain 8-bit / RGB encodes) use 3×–4× or irregular factors — then Viv’s
+   * multiscale grid no longer lines up with OL tile coordinates and the view “creeps” when zooming.
+   */
+  private _warnIfPyramidStepsMismatchDeckGrid(): void {
+    try {
+      const paths = this._opticalPaths
+      const keys = this._orderedPathKeys
+      if (paths === undefined || keys === undefined || keys.length === 0) {
+        return
+      }
+      const meta = paths[keys[0] ?? '']?.pyramid.metadata
+      if (meta === undefined || meta.length < 2) {
+        return
+      }
+      for (let i = 0; i < meta.length - 1; i++) {
+        const rw =
+          meta[i + 1].TotalPixelMatrixColumns / meta[i].TotalPixelMatrixColumns
+        const rh =
+          meta[i + 1].TotalPixelMatrixRows / meta[i].TotalPixelMatrixRows
+        if (Math.abs(rw - rh) > 0.02) {
+          console.warn(
+            '[Viv] Pyramid row/column ratios differ between levels; multiscale alignment may be wrong when zooming.',
+          )
+          return
+        }
+        const r = rw
+        const near2 = Math.abs(r - 2) <= 0.12
+        const near4 = Math.abs(r - 4) <= 0.2
+        if (!near2 && !near4) {
+          console.warn(
+            `[Viv] Pyramid level step (~${r.toFixed(2)}×) is not ~2× between downsamplings. Deck.gl assumes 2× per zoom level; expect offset when switching resolutions.`,
+          )
+          return
+        }
+        if (near4) {
+          console.warn(
+            '[Viv] ~4× pyramid steps detected; Deck.gl multiscale uses 2× between tile z levels. Zooming may shift the image until tiles match — consider using the OpenLayers viewer for these series.',
+          )
+          return
+        }
+      }
+    } catch {
+      /* ignore */
+    }
   }
 }
 
@@ -475,10 +541,75 @@ function monoTileToUint16(raw: ArrayBuffer | ArrayBufferView): Uint16Array {
   return new Uint16Array(f32)
 }
 
+/** Half-resolution shape aligned to deck’s 2× tile step (one dyadic level between finer and 4× coarser DICOM). */
+function halfShapeForDyadicStep(
+  shape: [number, number, number] | [number, number, number, number],
+): [number, number, number] | [number, number, number, number] {
+  if (shape.length === 4) {
+    const [c, h, w] = shape
+    return [c, Math.ceil(h / 2), Math.ceil(w / 2), 3]
+  }
+  const [c, h, w] = shape
+  return [c, Math.ceil(h / 2), Math.ceil(w / 2)]
+}
+
+/**
+ * Deck.gl multiscale assumes ~2× between each `z` step. DICOM often uses one 4× downsampling
+ * between instances; without an extra Viv “level” the tile grid shifts on deeper zoom.
+ */
+function insertSyntheticDyadicLevels(
+  finestFirst: DicomPixelSource[],
+): Array<DicomPixelSource | SyntheticDyadicPixelSource> {
+  if (finestFirst.length < 2) {
+    return finestFirst
+  }
+  const out: Array<DicomPixelSource | SyntheticDyadicPixelSource> = []
+  for (let i = 0; i < finestFirst.length; i++) {
+    out.push(finestFirst[i])
+    if (i + 1 >= finestFirst.length) {
+      break
+    }
+    const wF = finestFirst[i].shape[2]
+    const wC = finestFirst[i + 1].shape[2]
+    const hF = finestFirst[i].shape[1]
+    const hC = finestFirst[i + 1].shape[1]
+    const rW = wF / wC
+    const rH = hF / hC
+    if (Math.abs(rW - rH) > 0.02) {
+      continue
+    }
+    const r = rW
+    if (r > 3.5 && r < 4.5) {
+      console.info(
+        '[Viv] Inserting synthetic half-resolution pyramid level (DICOM ~4× step) so deck.gl 2× tile alignment matches OpenLayers.',
+      )
+      out.push(
+        new SyntheticDyadicPixelSource(
+          finestFirst[i].loader,
+          finestFirst[i].dicomLevel,
+          halfShapeForDyadicStep(finestFirst[i].shape),
+          finestFirst[i].dtype,
+          finestFirst[i].tileSize,
+        ),
+      )
+    }
+  }
+  return out
+}
+
 export class DicomPixelSource {
   private readonly _loader: DicomLoader
 
   private readonly _level: number
+
+  /** OpenLayers / dicom-microscopy-viewer pyramid index (0 = coarsest, N-1 = finest). */
+  get dicomLevel(): number {
+    return this._level
+  }
+
+  get loader(): DicomLoader {
+    return this._loader
+  }
 
   labels = ['c', 'y', 'x']
 
@@ -553,5 +684,298 @@ export class DicomPixelSource {
 
   onTileError(err: Error): void {
     console.error(err)
+  }
+}
+
+/**
+ * Viv level whose pixel grid is ~2× coarser than `finerDicomLevel` but still uses that
+ * DICOM instance by merging 2×2 native tiles and box-downsampling to `tileSize`.
+ */
+export class SyntheticDyadicPixelSource {
+  private readonly _loader: DicomLoader
+
+  private readonly _finerDicomLevel: number
+
+  labels = ['c', 'y', 'x']
+
+  shape: [number, number, number] | [number, number, number, number]
+
+  dtype: 'Uint8' | 'Uint16'
+
+  tileSize: number
+
+  meta: { photometricInterpretation: number } | null
+
+  constructor(
+    loader: DicomLoader,
+    finerDicomLevel: number,
+    shape: [number, number, number] | [number, number, number, number],
+    dtype: 'Uint8' | 'Uint16',
+    tileSize: number,
+  ) {
+    this._loader = loader
+    this._finerDicomLevel = finerDicomLevel
+    this.shape = shape
+    this.dtype = dtype
+    this.tileSize = tileSize
+    this.meta = shape.length === 4 ? { photometricInterpretation: 2 } : null
+  }
+
+  get loader(): DicomLoader {
+    return this._loader
+  }
+
+  get dicomLevel(): number {
+    return this._finerDicomLevel
+  }
+
+  async getRaster(): Promise<never> {
+    throw new Error('getRaster not supported for synthetic pyramid levels')
+  }
+
+  async getTile({
+    x,
+    y,
+    selection,
+  }: {
+    x: number
+    y: number
+    selection: { c: number; t: number; z: number }
+    signal?: AbortSignal
+  }): Promise<{
+    data: Uint8Array | Uint16Array
+    width: number
+    height: number
+  }> {
+    const pathId = await this._loader.resolveOpticalPathId(selection.c)
+    const lx = 2 * x
+    const ly = 2 * y
+    const tiles = await Promise.all([
+      this._loader.getTile({
+        level: this._finerDicomLevel,
+        channel: pathId,
+        x: lx,
+        y: ly,
+      }),
+      this._loader.getTile({
+        level: this._finerDicomLevel,
+        channel: pathId,
+        x: lx + 1,
+        y: ly,
+      }),
+      this._loader.getTile({
+        level: this._finerDicomLevel,
+        channel: pathId,
+        x: lx,
+        y: ly + 1,
+      }),
+      this._loader.getTile({
+        level: this._finerDicomLevel,
+        channel: pathId,
+        x: lx + 1,
+        y: ly + 1,
+      }),
+    ])
+    return downsampleFourQuadrants(tiles, this.tileSize, this.dtype, this.shape)
+  }
+
+  onTileError(err: Error): void {
+    console.error(err)
+  }
+}
+
+function downsampleFourQuadrants(
+  tiles: Array<{
+    data: Uint8Array | Uint16Array
+    width: number
+    height: number
+  }>,
+  ts: number,
+  dtype: 'Uint8' | 'Uint16',
+  shape: [number, number, number] | [number, number, number, number],
+): {
+  data: Uint8Array | Uint16Array
+  width: number
+  height: number
+} {
+  const bigW = ts * 2
+  const bigH = ts * 2
+  const interleaved = shape.length === 4
+  const ch = interleaved ? 3 : 1
+
+  if (dtype === 'Uint8' && interleaved) {
+    const big = new Uint8Array(bigW * bigH * 3)
+    big.fill(255)
+    blitTileQuadrant(big, bigW, tiles[0], 0, 0, ts, ch)
+    blitTileQuadrant(big, bigW, tiles[1], ts, 0, ts, ch)
+    blitTileQuadrant(big, bigW, tiles[2], 0, ts, ts, ch)
+    blitTileQuadrant(big, bigW, tiles[3], ts, ts, ts, ch)
+    const out = new Uint8Array(ts * ts * 3)
+    out.fill(255)
+    boxDownsampleRgb8(big, bigW, bigH, out, ts)
+    return { data: out, width: ts, height: ts }
+  }
+
+  if (dtype === 'Uint16' && interleaved) {
+    const big = new Uint16Array(bigW * bigH * 3)
+    big.fill(65535)
+    blitTileQuadrantU16(big, bigW, tiles[0], 0, 0, ts, ch)
+    blitTileQuadrantU16(big, bigW, tiles[1], ts, 0, ts, ch)
+    blitTileQuadrantU16(big, bigW, tiles[2], 0, ts, ts, ch)
+    blitTileQuadrantU16(big, bigW, tiles[3], ts, ts, ts, ch)
+    const out = new Uint16Array(ts * ts * 3)
+    out.fill(65535)
+    boxDownsampleRgb16(big, bigW, bigH, out, ts)
+    return { data: out, width: ts, height: ts }
+  }
+
+  const big = new Uint16Array(bigW * bigH)
+  big.fill(0)
+  blitMonoQuadrant(big, bigW, tiles[0], 0, 0, ts)
+  blitMonoQuadrant(big, bigW, tiles[1], ts, 0, ts)
+  blitMonoQuadrant(big, bigW, tiles[2], 0, ts, ts)
+  blitMonoQuadrant(big, bigW, tiles[3], ts, ts, ts)
+  const out = new Uint16Array(ts * ts)
+  boxDownsampleMono16(big, bigW, bigH, out, ts)
+  return { data: out, width: ts, height: ts }
+}
+
+function blitTileQuadrant(
+  dst: Uint8Array,
+  dstStride: number,
+  tile: { data: Uint8Array | Uint16Array; width: number; height: number },
+  ox: number,
+  oy: number,
+  ts: number,
+  ch: number,
+): void {
+  const src = tile.data as Uint8Array
+  for (let row = 0; row < tile.height; row++) {
+    for (let col = 0; col < tile.width; col++) {
+      const si = (row * ts + col) * ch
+      const di = ((oy + row) * dstStride + (ox + col)) * ch
+      for (let k = 0; k < ch; k++) {
+        dst[di + k] = src[si + k]
+      }
+    }
+  }
+}
+
+function blitTileQuadrantU16(
+  dst: Uint16Array,
+  dstStride: number,
+  tile: { data: Uint8Array | Uint16Array; width: number; height: number },
+  ox: number,
+  oy: number,
+  ts: number,
+  ch: number,
+): void {
+  const src = tile.data as Uint16Array
+  for (let row = 0; row < tile.height; row++) {
+    for (let col = 0; col < tile.width; col++) {
+      const si = (row * ts + col) * ch
+      const di = ((oy + row) * dstStride + (ox + col)) * ch
+      for (let k = 0; k < ch; k++) {
+        dst[di + k] = src[si + k]
+      }
+    }
+  }
+}
+
+function blitMonoQuadrant(
+  dst: Uint16Array,
+  dstStride: number,
+  tile: { data: Uint8Array | Uint16Array; width: number; height: number },
+  ox: number,
+  oy: number,
+  ts: number,
+): void {
+  const src = tile.data as Uint16Array
+  for (let row = 0; row < tile.height; row++) {
+    for (let col = 0; col < tile.width; col++) {
+      dst[(oy + row) * dstStride + (ox + col)] = src[row * ts + col]
+    }
+  }
+}
+
+function boxDownsampleRgb8(
+  src: Uint8Array,
+  srcW: number,
+  srcH: number,
+  dst: Uint8Array,
+  dstTs: number,
+): void {
+  for (let dy = 0; dy < dstTs; dy++) {
+    for (let dx = 0; dx < dstTs; dx++) {
+      for (let k = 0; k < 3; k++) {
+        let sum = 0
+        let n = 0
+        for (let j = 0; j < 2; j++) {
+          for (let i = 0; i < 2; i++) {
+            const sy = dy * 2 + j
+            const sx = dx * 2 + i
+            if (sy < srcH && sx < srcW) {
+              sum += src[(sy * srcW + sx) * 3 + k]
+              n++
+            }
+          }
+        }
+        dst[(dy * dstTs + dx) * 3 + k] = n > 0 ? Math.round(sum / n) & 255 : 255
+      }
+    }
+  }
+}
+
+function boxDownsampleRgb16(
+  src: Uint16Array,
+  srcW: number,
+  srcH: number,
+  dst: Uint16Array,
+  dstTs: number,
+): void {
+  for (let dy = 0; dy < dstTs; dy++) {
+    for (let dx = 0; dx < dstTs; dx++) {
+      for (let k = 0; k < 3; k++) {
+        let sum = 0
+        let n = 0
+        for (let j = 0; j < 2; j++) {
+          for (let i = 0; i < 2; i++) {
+            const sy = dy * 2 + j
+            const sx = dx * 2 + i
+            if (sy < srcH && sx < srcW) {
+              sum += src[(sy * srcW + sx) * 3 + k]
+              n++
+            }
+          }
+        }
+        dst[(dy * dstTs + dx) * 3 + k] = n > 0 ? clampU16(sum / n) : 65535
+      }
+    }
+  }
+}
+
+function boxDownsampleMono16(
+  src: Uint16Array,
+  srcW: number,
+  srcH: number,
+  dst: Uint16Array,
+  dstTs: number,
+): void {
+  for (let dy = 0; dy < dstTs; dy++) {
+    for (let dx = 0; dx < dstTs; dx++) {
+      let sum = 0
+      let n = 0
+      for (let j = 0; j < 2; j++) {
+        for (let i = 0; i < 2; i++) {
+          const sy = dy * 2 + j
+          const sx = dx * 2 + i
+          if (sy < srcH && sx < srcW) {
+            sum += src[sy * srcW + sx]
+            n++
+          }
+        }
+      }
+      dst[dy * dstTs + dx] = n > 0 ? clampU16(sum / n) : 0
+    }
   }
 }
