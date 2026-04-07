@@ -12,6 +12,7 @@ import { DicomLoader } from './dicomLoader'
 import {
   buildVivDisplayOptions,
   computeOrthographicFitViewState,
+  orthographicZoomLimits,
 } from './vivDisplayDefaults'
 
 export interface VivSlideViewportProps {
@@ -40,7 +41,11 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
 
   const slotRef = useRef<HTMLDivElement>(null)
   const measureRef = useRef<(() => void) | null>(null)
-  const slideRef = useRef<{ w: number; h: number } | null>(null)
+  const slideRef = useRef<{
+    worldW: number
+    worldH: number
+    levelCount: number
+  } | null>(null)
   const fitDoneRef = useRef(false)
 
   const [size, setSize] = useState({ width: 100, height: 100 })
@@ -50,6 +55,8 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     target: [0, 0, 0],
     zoom: -6,
   })
+  const sizeRef = useRef(size)
+  sizeRef.current = size
 
   useLayoutEffect(() => {
     const el = slotRef.current
@@ -65,12 +72,13 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       if (v?.initialViewState?.zoom != null || !sp || fitDoneRef.current) {
         return
       }
+      const pan = v?.initialViewState?.target
       const fit = computeOrthographicFitViewState(
         w,
         h,
-        sp.w,
-        sp.h,
-        v?.initialViewState?.target,
+        sp.worldW,
+        sp.worldH,
+        pan,
       )
       if (fit) {
         setViewState(fit)
@@ -116,6 +124,12 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           vivSettings,
           bitsAllocated,
         )
+        /*
+         * Non-geospatial TileLayer already uses getScale(z, tileSize) = 2^z * (512 / tileSize), so
+         * 256px DICOM tiles get the right world step. Do not also pass modelMatrix + scaled viewState:
+         * MultiscaleImageLayer derives zoomOffset from modelMatrix, and scaling the camera to match
+         * double-corrects — coarse levels can look fine while the finest z slips vs the pyramid.
+         */
         const layer = new MultiscaleImageLayer({
           id: 'slim-viv-multiscale',
           loader: sources as never,
@@ -125,10 +139,44 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           dtype: sources[0].dtype,
           // Lowest pyramid level is often wider/taller than one tile; ImageLayer would call getRaster and fail.
           excludeBackground: true,
+          // Omit refinementStrategy → Viv uses best-available when opacity=1; smoother hand-off between pyramid levels than no-overlap.
         })
         setLayers([layer as unknown as Layer])
-        slideRef.current = { w: sw, h: sh }
-        setViewState(d.initialViewState)
+        slideRef.current = {
+          worldW: sw,
+          worldH: sh,
+          levelCount: sources.length,
+        }
+
+        if (vivSettings?.initialViewState?.zoom != null) {
+          const el = slotRef.current
+          const vw = el ? Math.max(1, el.clientWidth) : 800
+          const vh = el ? Math.max(1, el.clientHeight) : 600
+          const lim = orthographicZoomLimits(vw, vh, sw, sh, sources.length)
+          const z0 = vivSettings.initialViewState.zoom
+          const z = Math.min(lim.maxZoom, Math.max(lim.minZoom, z0))
+          setViewState({
+            target: d.initialViewState.target,
+            zoom: Number(z.toFixed(5)),
+          })
+        } else {
+          const el = slotRef.current
+          const vw = el ? Math.max(1, el.clientWidth) : 800
+          const vh = el ? Math.max(1, el.clientHeight) : 600
+          const fit = computeOrthographicFitViewState(
+            vw,
+            vh,
+            sw,
+            sh,
+            vivSettings?.initialViewState?.target,
+          )
+          setViewState(
+            fit ?? {
+              target: [sw / 2, sh / 2, 0],
+              zoom: -6,
+            },
+          )
+        }
         requestAnimationFrame(() => {
           if (!cancelled) {
             measureRef.current?.()
@@ -155,6 +203,18 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       cancelled = true
     }
   }, [client, studyInstanceUID, seriesInstanceUID, vivSettings])
+
+  const sp = slideRef.current
+  const orthoZoomClamp =
+    sp && !loading
+      ? orthographicZoomLimits(
+          size.width,
+          size.height,
+          sp.worldW,
+          sp.worldH,
+          sp.levelCount,
+        )
+      : { minZoom: Number.NEGATIVE_INFINITY, maxZoom: Number.POSITIVE_INFINITY }
 
   return (
     <div
@@ -186,7 +246,10 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       <div ref={slotRef} style={{ position: 'absolute', inset: 0 }}>
         <DeckGL
           views={orthographicView}
-          viewState={viewState}
+          viewState={{
+            ...viewState,
+            ...orthoZoomClamp,
+          }}
           onViewStateChange={({ viewState: vs }) => {
             if (
               vs &&
@@ -194,10 +257,32 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
               'zoom' in vs &&
               'target' in vs
             ) {
-              setViewState(vs as ViewState)
+              const sr = slideRef.current
+              if (!sr) {
+                return
+              }
+              const { width: cw, height: ch } = sizeRef.current
+              const lim = orthographicZoomLimits(
+                cw,
+                ch,
+                sr.worldW,
+                sr.worldH,
+                sr.levelCount,
+              )
+              const rawZ = vs.zoom as number
+              const zClamped = Math.min(
+                lim.maxZoom,
+                Math.max(lim.minZoom, rawZ),
+              )
+              const zq = Number(zClamped.toFixed(5))
+              const t = vs.target as [number, number] | [number, number, number]
+              setViewState({
+                target: [t[0], t[1], t[2] ?? 0],
+                zoom: zq,
+              })
             }
           }}
-          controller
+          controller={{ inertia: false }}
           layers={layers}
           width={size.width}
           height={size.height}
