@@ -12,6 +12,8 @@ export function buildVivDisplayOptions(
   fullWidth: number,
   channelCount: number,
   overrides?: VivSettings,
+  /** SM pixel bit depth from DICOM; selects sensible default contrast when overrides omit contrastLimits. */
+  bitsAllocated: 8 | 16 = 16,
 ): {
   selections: Array<{ c: number; t: number; z: number }>
   channelsVisible: boolean[]
@@ -39,9 +41,11 @@ export function buildVivDisplayOptions(
   const channelsVisible =
     overrides?.channelsVisible ?? selections.map(() => true)
 
+  const defaultContrast: [number, number] =
+    bitsAllocated === 8 ? [0, 255] : [1000, 50000]
   const contrastLimits =
     overrides?.contrastLimits ??
-    selections.map(() => [1000, 50000] as [number, number])
+    selections.map(() => [...defaultContrast] as [number, number])
 
   const colors =
     overrides?.colors ??

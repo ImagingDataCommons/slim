@@ -15,14 +15,68 @@ type OpticalPathEntry = {
     metadata: Array<{
       TotalPixelMatrixRows: number
       TotalPixelMatrixColumns: number
+      Columns: number
+      Rows: number
     }>
-    tileSizes: number[]
+    /** Per pyramid level: [Columns, Rows] for that resolution. */
+    tileSizes: Array<[number, number]>
   }
   layer: {
     getSource: () => {
       loader_: (level: number, x: number, y: number) => Promise<ArrayBuffer>
     }
   }
+}
+
+/** OpenLayers DataTileSource sets this asynchronously inside VolumeImageViewer.render(). */
+function getDataTileLoader(
+  source: { loader_?: unknown } | null,
+): ((z: number, y: number, x: number) => Promise<ArrayBuffer>) | undefined {
+  const fn = source?.loader_
+  return typeof fn === 'function'
+    ? (fn as (z: number, y: number, x: number) => Promise<ArrayBuffer>)
+    : undefined
+}
+
+/**
+ * `render()` triggers `forEach(async …)` ICC fetches and only then `setLoader`.
+ * A single rAF returns before loaders exist; wait until every optical path source is ready.
+ */
+async function waitForOpenLayersTileLoaders(
+  opticalPaths: { [key: string]: OpticalPathEntry },
+  timeoutMs: number,
+): Promise<void> {
+  const paths = Object.values(opticalPaths)
+  if (paths.length === 0) {
+    return
+  }
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const ready = paths.every((p) => {
+      const loader = getDataTileLoader(
+        p.layer.getSource() as { loader_?: unknown } | null,
+      )
+      return loader !== undefined
+    })
+    if (ready) {
+      return
+    }
+    await new Promise<void>((r) => {
+      setTimeout(r, 50)
+    })
+  }
+  const missing = Object.entries(opticalPaths)
+    .filter(([, p]) => {
+      return (
+        getDataTileLoader(
+          p.layer.getSource() as { loader_?: unknown } | null,
+        ) === undefined
+      )
+    })
+    .map(([id]) => id)
+  throw new Error(
+    `Timed out waiting for OpenLayers tile loaders (still missing: ${missing.join(', ') || 'unknown'}).`,
+  )
 }
 
 function getOpticalPathsMap(viewer: dmv.viewer.VolumeImageViewer): {
@@ -59,7 +113,21 @@ export class DicomLoader {
     ) => Promise<ArrayBuffer>
   }
 
-  private _shapes?: Array<[number, number, number]>
+  private _shapes?: Array<
+    [number, number, number] | [number, number, number, number]
+  >
+
+  /**
+   * Optical path ids from dicom-microscopy-viewer (DICOM OpticalPathIdentifier),
+   * sorted for stable Viv channel index { c: 0 .. n-1 }.
+   */
+  private _orderedPathKeys?: string[]
+
+  /** Set when the viewer is first built; 8- or 16-bit SM tiles both load as float then convert to Uint16 in getTile. */
+  bitsAllocated?: 8 | 16
+
+  /** Samples per pixel for SM instances (1 = monochrome paths, 3 = RGB color slide). */
+  samplesPerPixel?: number
 
   constructor(client: DicomWebManager, retrieveOptions: DicomRetrieveOptions) {
     this._client = client
@@ -71,19 +139,68 @@ export class DicomLoader {
       const metadata = await this._client.retrieveSeriesMetadata(
         this._retrieveOptions,
       )
-      const volumeImages: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
+      const candidates: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
       metadata.forEach((m) => {
         const image = new dmv.metadata.VLWholeSlideMicroscopyImage({
           metadata: m as unknown as object,
         })
-        if (image.BitsAllocated !== 16) {
-          throw new Error('Viv example path: only 16-bit images are supported')
+        const b = image.BitsAllocated
+        if (b !== 8 && b !== 16) {
+          throw new Error(
+            `Viv path: ${b}-bit pixel data is not supported (only 8 and 16).`,
+          )
         }
         const imageFlavor = image.ImageType[2]
         if (imageFlavor === 'VOLUME' || imageFlavor === 'THUMBNAIL') {
-          volumeImages.push(image)
+          candidates.push(image)
         }
       })
+      /*
+       * THUMBNAIL instances often use a different frame size than VOLUME pyramid
+       * tiles, so pyramid.tileSizes differ across levels. Viv/deck MultiscaleImageLayer
+       * expects one tile grid; mixing THUMBNAIL + VOLUME triggers
+       * "Inconsistent or non-square tile sizes". Prefer VOLUME only when present.
+       */
+      const hasVolume = candidates.some((img) => img.ImageType[2] === 'VOLUME')
+      const volumeImages = candidates.filter((img) =>
+        hasVolume
+          ? img.ImageType[2] === 'VOLUME'
+          : img.ImageType[2] === 'THUMBNAIL',
+      )
+      let bitsAllocated: 8 | 16 | undefined
+      for (const image of volumeImages) {
+        const b = image.BitsAllocated as 8 | 16
+        if (bitsAllocated === undefined) {
+          bitsAllocated = b
+        } else if (bitsAllocated !== b) {
+          throw new Error(
+            'Viv path: mixed 8- and 16-bit instances in one series are not supported.',
+          )
+        }
+      }
+      if (volumeImages.length === 0) {
+        throw new Error(
+          'Viv path: no VOLUME or THUMBNAIL SM instances found for this series.',
+        )
+      }
+      let spp: number | undefined
+      for (const image of volumeImages) {
+        const s = image.SamplesPerPixel
+        if (spp === undefined) {
+          spp = s
+        } else if (spp !== s) {
+          throw new Error(
+            'Viv path: mixed SamplesPerPixel values in one series are not supported.',
+          )
+        }
+      }
+      if (spp !== 1 && spp !== 3) {
+        throw new Error(
+          `Viv path: SamplesPerPixel=${String(spp)} is not supported (only 1 and 3).`,
+        )
+      }
+      this.bitsAllocated = bitsAllocated
+      this.samplesPerPixel = spp
       this._viewer = new dmv.viewer.VolumeImageViewer({
         client: this._client,
         metadata: volumeImages,
@@ -106,20 +223,73 @@ export class DicomLoader {
   private async _getTileSize(): Promise<number> {
     if (this._tileSize === undefined) {
       const opticalPaths = await this._getOpticalPaths()
-      const tileSizes = Object.entries(opticalPaths)
-        .map(([, p]) => p.pyramid.tileSizes)
-        .flat(2)
-      if (tileSizes.length === 0) {
+      const pathList = Object.values(opticalPaths)
+      if (pathList.length === 0) {
         throw new Error('No tile sizes found in optical paths')
       }
-      if (tileSizes.some((s) => s !== tileSizes[0])) {
+      const ref = pathList[0].pyramid.tileSizes
+      if (ref.length === 0) {
+        throw new Error('No tile sizes found in optical paths')
+      }
+      for (let p = 1; p < pathList.length; p++) {
+        const ts = pathList[p].pyramid.tileSizes
+        if (ts.length !== ref.length) {
+          throw new Error(
+            'Viv path: optical paths have different pyramid level counts.',
+          )
+        }
+        for (let L = 0; L < ref.length; L++) {
+          if (ts[L][0] !== ref[L][0] || ts[L][1] !== ref[L][1]) {
+            throw new Error(
+              'Viv path: optical paths disagree on tile size at pyramid level ' +
+                `${L} ([${ref[L]}] vs [${ts[L]}]).`,
+            )
+          }
+        }
+      }
+      const perLevel = ref.map(([cols, rows]) => {
+        if (cols !== rows) {
+          throw new Error(
+            'Viv path: non-square tiles (Columns !== Rows) are not supported.',
+          )
+        }
+        return cols
+      })
+      if (perLevel.some((s) => s !== perLevel[0])) {
         throw new Error(
-          'Inconsistent or non-square tile sizes are not supported',
+          'Viv path: tile size varies by pyramid level; only a uniform tile ' +
+            'grid is supported.',
         )
       }
-      this._tileSize = tileSizes[0]
+      this._tileSize = perLevel[0]
     }
     return this._tileSize
+  }
+
+  private async _ensureOrderedPathKeys(): Promise<string[]> {
+    if (this._orderedPathKeys === undefined) {
+      const opticalPaths = await this._getOpticalPaths()
+      const keys = Object.keys(opticalPaths).sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true }),
+      )
+      if (keys.length === 0) {
+        throw new Error('No optical paths in VolumeImageViewer')
+      }
+      this._orderedPathKeys = keys
+    }
+    return this._orderedPathKeys
+  }
+
+  /** Map Viv / @vivjs 0-based channel index to dicom-microscopy-viewer optical path id. */
+  async resolveOpticalPathId(vivChannelIndex: number): Promise<string> {
+    const keys = await this._ensureOrderedPathKeys()
+    const id = keys[vivChannelIndex]
+    if (id === undefined) {
+      throw new Error(
+        `Viv channel index ${vivChannelIndex} is out of range (${keys.length} optical paths: ${keys.join(', ')})`,
+      )
+    }
+    return id
   }
 
   private async _getLoader(
@@ -128,22 +298,19 @@ export class DicomLoader {
     if (this._loaders === undefined) {
       const viewer = await this._getViewer()
       viewer.render({ container: document.createElement('div') })
-      await new Promise<void>((resolve) => {
-        requestAnimationFrame(() => {
-          resolve()
-        })
-      })
       const opticalPaths = await this._getOpticalPaths()
+      await waitForOpenLayersTileLoaders(opticalPaths, 120_000)
       this._loaders = Object.fromEntries(
         Object.entries(opticalPaths).map(([c, p]) => {
-          const src = p.layer.getSource() as {
-            loader_: (
-              level: number,
-              x: number,
-              y: number,
-            ) => Promise<ArrayBuffer>
+          const loader = getDataTileLoader(
+            p.layer.getSource() as { loader_?: unknown } | null,
+          )
+          if (loader === undefined) {
+            throw new Error(
+              `OpenLayers tile loader missing for optical path "${c}" after render().`,
+            )
           }
-          return [c, src.loader_]
+          return [c, loader]
         }),
       )
     }
@@ -154,22 +321,38 @@ export class DicomLoader {
     return loader
   }
 
-  private async _getShapes(): Promise<Array<[number, number, number]>> {
+  private async _getShapes(): Promise<
+    Array<[number, number, number] | [number, number, number, number]>
+  > {
     if (this._shapes === undefined) {
       const opticalPaths = await this._getOpticalPaths()
-      const first =
-        opticalPaths[0] ?? opticalPaths['0'] ?? Object.values(opticalPaths)[0]
+      const orderedKeys = await this._ensureOrderedPathKeys()
+      const first = opticalPaths[orderedKeys[0] ?? '']
       if (first === undefined) {
         throw new Error('No optical paths available for pyramid shapes')
       }
-      const sizeC = Object.keys(opticalPaths).length
+      const spp = this.samplesPerPixel ?? 1
+      const sizeC = spp === 3 ? 1 : orderedKeys.length
       this._shapes = first.pyramid.metadata.map((m) => {
         const sizeY = m.TotalPixelMatrixRows
         const sizeX = m.TotalPixelMatrixColumns
-        return [sizeC, sizeY, sizeX]
+        if (spp === 3) {
+          return [1, sizeY, sizeX, 3] as [number, number, number, number]
+        }
+        return [sizeC, sizeY, sizeX] as [number, number, number]
       })
     }
     return this._shapes
+  }
+
+  private async _frameLayout(level: number): Promise<{ columns: number }> {
+    const opticalPaths = await this._getOpticalPaths()
+    const orderedKeys = await this._ensureOrderedPathKeys()
+    const meta = opticalPaths[orderedKeys[0] ?? '']?.pyramid.metadata[level]
+    if (meta === undefined) {
+      throw new Error(`Viv path: missing pyramid metadata for level ${level}`)
+    }
+    return { columns: meta.Columns }
   }
 
   async getTile({
@@ -182,14 +365,60 @@ export class DicomLoader {
     channel: string
     x: number
     y: number
-  }): Promise<{ data: Uint16Array; width: number; height: number }> {
+  }): Promise<{
+    data: Uint8Array | Uint16Array
+    width: number
+    height: number
+  }> {
     const loader = await this._getLoader(channel)
-    const floatTile = await loader(level, x, y)
-    const data = new Uint16Array(floatTile)
+    const raw = await loader(level, x, y)
     const shape = (await this._getShapes())[level]
     const ts = await this._getTileSize()
-    const cropX = Math.min(shape[2] - x * ts, ts)
-    const cropY = shape[1] - y * ts
+    const { columns } = await this._frameLayout(level)
+    const validW = Math.min(ts, shape[2] - x * ts)
+    const validH = Math.min(ts, shape[1] - y * ts)
+    const spp = this.samplesPerPixel ?? 1
+    const bits = this.bitsAllocated ?? 16
+
+    if (spp === 3 && bits === 8) {
+      const buf = new Uint8Array(ts * ts * 3)
+      buf.fill(255)
+      if (!(raw instanceof Uint8Array)) {
+        throw new Error(
+          'Viv path: expected Uint8Array RGB tile from decoder (check SamplesPerPixel / BitsAllocated).',
+        )
+      }
+      for (let row = 0; row < validH; row++) {
+        buf.set(
+          raw.subarray(row * columns * 3, row * columns * 3 + validW * 3),
+          row * ts * 3,
+        )
+      }
+      return { data: buf, width: ts, height: ts }
+    }
+
+    if (spp === 3 && bits === 16) {
+      const buf = new Uint16Array(ts * ts * 3)
+      buf.fill(65535)
+      const src =
+        raw instanceof Float32Array ? raw : new Float32Array(raw as ArrayBuffer)
+      for (let row = 0; row < validH; row++) {
+        for (let col = 0; col < validW; col++) {
+          const si = (row * columns + col) * 3
+          const di = (row * ts + col) * 3
+          buf[di] = clampU16(src[si])
+          buf[di + 1] = clampU16(src[si + 1])
+          buf[di + 2] = clampU16(src[si + 2])
+        }
+      }
+      return { data: buf, width: ts, height: ts }
+    }
+
+    const data = monoTileToUint16(
+      raw instanceof ArrayBuffer ? raw : (raw as ArrayBufferView),
+    )
+    const cropX = validW
+    const cropY = validH
     let yy = 0
     for (; yy < ts; yy++) {
       for (let xx = cropX; xx < ts; xx++) {
@@ -207,12 +436,43 @@ export class DicomLoader {
   async getSources(): Promise<DicomPixelSource[]> {
     const levelShapes = await this._getShapes()
     const tileSize = await this._getTileSize()
+    const spp = this.samplesPerPixel ?? 1
+    const bits = this.bitsAllocated ?? 16
+    const dtype: 'Uint8' | 'Uint16' =
+      spp === 3 && bits === 8 ? 'Uint8' : 'Uint16'
     const sources = levelShapes.map(
-      (shape, i) => new DicomPixelSource(this, i, shape, 'Uint16', tileSize),
+      (shape, i) => new DicomPixelSource(this, i, shape, dtype, tileSize),
     )
     sources.reverse()
     return sources
   }
+}
+
+function clampU16(v: number): number {
+  if (!Number.isFinite(v)) {
+    return 0
+  }
+  return Math.max(0, Math.min(65535, Math.round(v)))
+}
+
+/** Same semantics as previous `new Uint16Array(floatTile)` for decoded mono tiles. */
+function monoTileToUint16(raw: ArrayBuffer | ArrayBufferView): Uint16Array {
+  if (raw instanceof ArrayBuffer) {
+    return new Uint16Array(new Float32Array(raw))
+  }
+  if (
+    raw instanceof Float32Array ||
+    raw instanceof Uint16Array ||
+    raw instanceof Uint8Array
+  ) {
+    return new Uint16Array(raw)
+  }
+  const f32 = new Float32Array(
+    raw.buffer,
+    raw.byteOffset,
+    raw.byteLength / Float32Array.BYTES_PER_ELEMENT,
+  )
+  return new Uint16Array(f32)
 }
 
 export class DicomPixelSource {
@@ -222,19 +482,23 @@ export class DicomPixelSource {
 
   labels = ['c', 'y', 'x']
 
-  shape: [number, number, number]
+  shape: [number, number, number] | [number, number, number, number]
 
-  dtype: 'Uint16'
+  dtype: 'Uint8' | 'Uint16'
 
   tileSize: number
 
-  meta: null = null
+  /**
+   * Interleaved RGB tiles use BitmapLayer, which reads `photometricInterpretation` from `meta`.
+   * @vivjs defaults to 2 when unset on ImageLayer; MultiscaleImageLayer still destructures `meta` and requires a non-null object.
+   */
+  meta: { photometricInterpretation: number } | null
 
   constructor(
     loader: DicomLoader,
     level: number,
-    shape: [number, number, number],
-    dtype: 'Uint16',
+    shape: [number, number, number] | [number, number, number, number],
+    dtype: 'Uint8' | 'Uint16',
     tileSize: number,
   ) {
     this._loader = loader
@@ -242,6 +506,7 @@ export class DicomPixelSource {
     this.shape = shape
     this.dtype = dtype
     this.tileSize = tileSize
+    this.meta = shape.length === 4 ? { photometricInterpretation: 2 } : null
   }
 
   async getRaster({
@@ -249,7 +514,14 @@ export class DicomPixelSource {
   }: {
     selection: { c: number; t: number; z: number }
     signal?: AbortSignal
-  }): Promise<{ data: Uint16Array; width: number; height: number }> {
+  }): Promise<{
+    data: Uint8Array | Uint16Array
+    width: number
+    height: number
+  }> {
+    if (this.shape.length === 4) {
+      throw new Error('getRaster not supported for interleaved RGB slides')
+    }
     if (this.shape[1] > this.tileSize || this.shape[2] > this.tileSize) {
       throw new Error('getRaster not supported for multi-tile pyramid levels')
     }
@@ -265,11 +537,15 @@ export class DicomPixelSource {
     y: number
     selection: { c: number; t: number; z: number }
     signal?: AbortSignal
-  }): Promise<{ data: Uint16Array; width: number; height: number }> {
-    const channel = String(selection.c)
+  }): Promise<{
+    data: Uint8Array | Uint16Array
+    width: number
+    height: number
+  }> {
+    const pathId = await this._loader.resolveOpticalPathId(selection.c)
     return await this._loader.getTile({
       level: this._level,
-      channel,
+      channel: pathId,
       x,
       y,
     })
