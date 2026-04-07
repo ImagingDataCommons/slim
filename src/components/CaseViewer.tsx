@@ -4,13 +4,14 @@ import * as dcmjs from 'dcmjs'
 import { useEffect, useState } from 'react'
 import { Route, Routes, useLocation, useParams } from 'react-router-dom'
 
-import type { AnnotationSettings } from '../AppConfig'
+import type { AnnotationSettings, VivSettings } from '../AppConfig'
 import type { User } from '../auth'
 import type DicomWebManager from '../DicomWebManager'
 import type { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
 import { useSlides } from '../hooks/useSlides'
 import { type RouteComponentProps, withRouter } from '../utils/router'
+import VivSlideViewport from '../viv/VivSlideViewport'
 import ClinicalTrial from './ClinicalTrial'
 import Patient from './Patient'
 import SlideList from './SlideList'
@@ -60,6 +61,8 @@ function ParametrizedSlideViewer({
   preload,
   enableAnnotationTools,
   annotations,
+  useViv,
+  vivSettings,
 }: {
   clients: { [key: string]: DicomWebManager }
   slides: Slide[]
@@ -73,6 +76,8 @@ function ParametrizedSlideViewer({
   preload: boolean
   enableAnnotationTools: boolean
   annotations: AnnotationSettings[]
+  useViv: boolean
+  vivSettings?: VivSettings
 }): JSX.Element | null {
   const { studyInstanceUID = '', seriesInstanceUID = '' } = useParams<{
     studyInstanceUID: string
@@ -171,21 +176,38 @@ function ParametrizedSlideViewer({
 
   let viewer = null
   if (selectedSlide != null && selectedSlide !== undefined) {
-    viewer = (
-      <SlideViewer
-        clients={clients}
-        studyInstanceUID={studyInstanceUID}
-        seriesInstanceUID={seriesInstanceUID}
-        selectedPresentationStateUID={presentationStateUID}
-        slide={selectedSlide}
-        preload={preload}
-        annotations={annotations}
-        enableAnnotationTools={enableAnnotationTools}
-        app={app}
-        user={user}
-        derivedDataset={derivedDataset ?? undefined}
-      />
-    )
+    if (useViv) {
+      const microscopyClient =
+        clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE] ??
+        clients.default
+      if (microscopyClient === undefined) {
+        return null
+      }
+      viewer = (
+        <VivSlideViewport
+          client={microscopyClient}
+          studyInstanceUID={studyInstanceUID}
+          seriesInstanceUID={seriesInstanceUID}
+          vivSettings={vivSettings}
+        />
+      )
+    } else {
+      viewer = (
+        <SlideViewer
+          clients={clients}
+          studyInstanceUID={studyInstanceUID}
+          seriesInstanceUID={seriesInstanceUID}
+          selectedPresentationStateUID={presentationStateUID}
+          slide={selectedSlide}
+          preload={preload}
+          annotations={annotations}
+          enableAnnotationTools={enableAnnotationTools}
+          app={app}
+          user={user}
+          derivedDataset={derivedDataset ?? undefined}
+        />
+      )
+    }
   }
   return viewer
 }
@@ -203,6 +225,8 @@ interface ViewerProps extends RouteComponentProps {
   enableAnnotationTools: boolean
   preload: boolean
   user?: User
+  useViv: boolean
+  vivSettings?: VivSettings
 }
 
 function Viewer(props: ViewerProps): JSX.Element | null {
@@ -314,22 +338,34 @@ function Viewer(props: ViewerProps): JSX.Element | null {
         </Menu>
       </Layout.Sider>
 
-      <Routes>
-        <Route
-          path="/series/:seriesInstanceUID"
-          element={
-            <ParametrizedSlideViewer
-              clients={props.clients}
-              slides={slides}
-              preload={props.preload}
-              annotations={props.annotations}
-              enableAnnotationTools={props.enableAnnotationTools}
-              app={props.app}
-              user={props.user}
-            />
-          }
-        />
-      </Routes>
+      <Layout.Content
+        style={{
+          height: '100%',
+          minHeight: 0,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <Routes>
+          <Route
+            path="/series/:seriesInstanceUID"
+            element={
+              <ParametrizedSlideViewer
+                clients={props.clients}
+                slides={slides}
+                preload={props.preload}
+                annotations={props.annotations}
+                enableAnnotationTools={props.enableAnnotationTools}
+                app={props.app}
+                user={props.user}
+                useViv={props.useViv}
+                vivSettings={props.vivSettings}
+              />
+            }
+          />
+        </Routes>
+      </Layout.Content>
     </Layout>
   )
 }

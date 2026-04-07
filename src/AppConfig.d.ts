@@ -77,6 +77,23 @@ export interface OidcSettings {
   endSessionEndpoint?: string
 }
 
+export interface VivChannelSelection {
+  c: number
+  t?: number
+  z?: number
+}
+
+export interface VivSettings {
+  selections?: VivChannelSelection[]
+  channelsVisible?: boolean[]
+  contrastLimits?: Array<[number, number]>
+  colors?: Array<[number, number, number]>
+  initialViewState?: {
+    target: [number, number, number]
+    zoom?: number
+  }
+}
+
 export default interface AppConfig {
   /**
    * Currently, only one server is supported. However, support for multiple
@@ -107,4 +124,11 @@ export default interface AppConfig {
     enableInDevelopment?: boolean
   }
   enableMemoryMonitoring?: boolean
+  /**
+   * When true, the slide viewport uses Viv + Deck.gl (src/viv)
+   * instead of the default OpenLayers-based SlideViewer. Limited feature set.
+   */
+  useViv?: boolean
+  /** Optional display overrides for the Viv viewer path (channels, contrast, etc.). */
+  vivSettings?: VivSettings
 }
