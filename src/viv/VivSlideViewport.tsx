@@ -1,14 +1,14 @@
 import type { Layer } from '@deck.gl/core'
 import { OrthographicView } from '@deck.gl/core'
 import DeckGL from '@deck.gl/react'
-import { MultiscaleImageLayer } from '@hms-dbmi/viv'
+import { MultiscaleImageLayer } from '@vivjs/layers'
 import { message, Spin } from 'antd'
 import type React from 'react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import type { VivSettings } from '../AppConfig'
 import type DicomWebManager from '../DicomWebManager'
-import { DicomLoader } from './dicomLoader'
+import { DicomLoader, isVivDicomTileNetworkCancellation } from './dicomLoader'
 import {
   buildVivDisplayOptions,
   computeOrthographicFitViewState,
@@ -140,6 +140,12 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           // Lowest pyramid level is often wider/taller than one tile; ImageLayer would call getRaster and fail.
           excludeBackground: true,
           // Omit refinementStrategy → Viv uses best-available when opacity=1; smoother hand-off between pyramid levels than no-overlap.
+          onTileError: (err: Error) => {
+            if (isVivDicomTileNetworkCancellation(err)) {
+              return
+            }
+            console.error(err)
+          },
         })
         setLayers([layer as unknown as Layer])
         slideRef.current = {

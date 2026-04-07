@@ -1,8 +1,11 @@
 // Ported from https://github.com/jmuhlich/viv-dicomweb-test (dicomweb.js).
 // Adapts dicom-microscopy-viewer tile loaders to Viv PixelSource.
 
+import { SIGNAL_ABORTED } from '@vivjs/loaders'
 // skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
+// skipcq: JS-C1003
+import type * as dwc from 'dicomweb-client'
 import type DicomWebManager from '../DicomWebManager'
 
 export interface DicomRetrieveOptions {
@@ -94,6 +97,150 @@ async function waitForOpenLayersTileLoaders(
   )
 }
 
+function isXhrLike(req: unknown): req is XMLHttpRequest {
+  if (req === null || typeof req !== 'object') {
+    return false
+  }
+  const r = req as { open?: unknown; abort?: unknown; readyState?: unknown }
+  return (
+    typeof r.open === 'function' &&
+    typeof r.abort === 'function' &&
+    typeof r.readyState === 'number'
+  )
+}
+
+/** Walk `cause` / `errors` (AggregateError); avoid `instanceof XMLHttpRequest` (dev proxies break it). */
+function xhrFromDicomwebErrorDeep(e: unknown): XMLHttpRequest | undefined {
+  let cur: unknown = e
+  const seen = new Set<unknown>()
+  while (cur !== null && typeof cur === 'object' && !seen.has(cur)) {
+    seen.add(cur)
+    const o = cur as {
+      request?: unknown
+      cause?: unknown
+      errors?: unknown[]
+    }
+    if (isXhrLike(o.request)) {
+      return o.request
+    }
+    if (Array.isArray(o.errors)) {
+      for (const sub of o.errors) {
+        const xhr = xhrFromDicomwebErrorDeep(sub)
+        if (xhr !== undefined) {
+          return xhr
+        }
+      }
+    }
+    cur = o.cause
+  }
+  return undefined
+}
+
+/** dicomweb-client rejects with XHR status `0` and message `request failed` after `abort()`. */
+function dicomwebAbortedRequestErrorDeep(e: unknown): boolean {
+  let cur: unknown = e
+  const seen = new Set<unknown>()
+  while (cur !== null && typeof cur === 'object' && !seen.has(cur)) {
+    seen.add(cur)
+    const o = cur as {
+      message?: string
+      status?: number
+      cause?: unknown
+      errors?: unknown[]
+    }
+    if (o.message === 'request failed' && o.status === 0) {
+      return true
+    }
+    if (Array.isArray(o.errors)) {
+      for (const sub of o.errors) {
+        if (dicomwebAbortedRequestErrorDeep(sub)) {
+          return true
+        }
+      }
+    }
+    cur = o.cause
+  }
+  return false
+}
+
+/**
+ * dicom-microscopy-viewer wraps dicomweb failures in `new Error('Failed to load frames…', err)`; some
+ * engines omit `cause` or attach the inner error elsewhere — scan messages on `cause` / `errors`.
+ */
+function requestFailedMessageInErrorTree(e: unknown): boolean {
+  const stack: unknown[] = [e]
+  const seen = new Set<unknown>()
+  while (stack.length > 0) {
+    const cur = stack.pop()
+    if (cur === null || cur === undefined || typeof cur !== 'object') {
+      continue
+    }
+    if (seen.has(cur)) {
+      continue
+    }
+    seen.add(cur)
+    const msg = (cur as Error).message
+    if (typeof msg === 'string' && msg.includes('request failed')) {
+      return true
+    }
+    const c = (cur as { cause?: unknown }).cause
+    if (c !== undefined) {
+      stack.push(c)
+    }
+    const errors = (cur as { errors?: unknown[] }).errors
+    if (Array.isArray(errors)) {
+      for (const sub of errors) {
+        stack.push(sub)
+      }
+    }
+  }
+  return false
+}
+
+/** Bounded search for dicomweb’s `{ message: 'request failed', status: 0 }` on nested properties. */
+function objectGraphHasDicomwebTileAbort(root: unknown): boolean {
+  if (root === null || typeof root !== 'object') {
+    return false
+  }
+  const queue: unknown[] = [root]
+  const seen = new Set<unknown>()
+  let nodes = 0
+  const maxNodes = 48
+  while (queue.length > 0 && nodes < maxNodes) {
+    const v = queue.shift()
+    if (v === null || typeof v !== 'object' || seen.has(v)) {
+      continue
+    }
+    seen.add(v)
+    nodes++
+    const o = v as Record<string, unknown>
+    const msg = o.message
+    const st = o.status
+    const msgStr = typeof msg === 'string' ? msg : ''
+    if (
+      st === 0 &&
+      (msg === 'request failed' || msgStr.includes('request failed'))
+    ) {
+      return true
+    }
+    for (const val of Object.values(o)) {
+      if (val !== null && typeof val === 'object') {
+        queue.push(val)
+      }
+    }
+  }
+  return false
+}
+
+/** True when the OpenLayers→pyramid→dicomweb chain failed due to XHR abort / prune. */
+export function isVivDicomTileNetworkCancellation(e: unknown): boolean {
+  return (
+    dicomwebAbortedRequestErrorDeep(e) ||
+    requestFailedMessageInErrorTree(e) ||
+    objectGraphHasDicomwebTileAbort(e)
+  )
+}
+
 function getOpticalPathsMap(viewer: dmv.viewer.VolumeImageViewer): {
   [key: string]: OpticalPathEntry
 } {
@@ -138,6 +285,24 @@ export class DicomLoader {
    */
   private _orderedPathKeys?: string[]
 
+  private _vivAbortHooksInstalled = false
+
+  /**
+   * Stashed only for the synchronous window before dicomweb-client runs piped
+   * {@link dwc.api.DICOMwebClientOptions.requestHooks} (see viv-dicomweb-test).
+   */
+  private _currentSignal: AbortSignal | undefined
+
+  /**
+   * XHR instances for which we forwarded deck.gl/Viv abort to dicomweb-client.
+   * `bridgedAbort` is set synchronously in the `abort` listener before `xhr.abort()`, so it is
+   * reliable even when `signal.aborted` in `getTile`'s catch is not (microtask ordering).
+   */
+  private readonly _xhrTileAbort = new WeakMap<
+    XMLHttpRequest,
+    { bridgedAbort: boolean }
+  >()
+
   /** Set when the viewer is first built; 8- or 16-bit SM tiles both load as float then convert to Uint16 in getTile. */
   bitsAllocated?: 8 | 16
 
@@ -147,6 +312,87 @@ export class DicomLoader {
   constructor(client: DicomWebManager, retrieveOptions: DicomRetrieveOptions) {
     this._client = client
     this._retrieveOptions = retrieveOptions
+  }
+
+  private _ensureVivAbortHooks(): void {
+    if (this._vivAbortHooksInstalled) {
+      return
+    }
+    this._client.applyToPrimaryDicomwebClient((inner) => {
+      const prevHooks = inner.requestHooks ?? []
+      const vivHook: dwc.api.DICOMwebClientRequestHook = (
+        request,
+        _metadata,
+      ) => {
+        const signal = this._currentSignal
+        if (signal !== undefined) {
+          if (signal.aborted) {
+            this._xhrTileAbort.set(request, { bridgedAbort: true })
+          } else {
+            this._xhrTileAbort.set(request, { bridgedAbort: false })
+            signal.addEventListener(
+              'abort',
+              () => {
+                const meta = this._xhrTileAbort.get(request)
+                if (meta !== undefined) {
+                  meta.bridgedAbort = true
+                }
+                request.abort()
+              },
+              { once: true },
+            )
+          }
+          // dicomweb-client defaults verbose=true and logs console.error on any
+          // non-2xx XHR outcome, including status 0 after abort(). Silence only
+          // prune/cancellation paths we bridged from deck.gl's AbortSignal.
+          const prev = request.onreadystatechange
+          if (typeof prev === 'function') {
+            const tileAbortMap = this._xhrTileAbort
+            request.onreadystatechange = function (
+              this: XMLHttpRequest,
+              ev: Event,
+            ) {
+              if (
+                this.readyState === 4 &&
+                this.status === 0 &&
+                tileAbortMap.get(this)?.bridgedAbort === true
+              ) {
+                const ce = console.error
+                console.error = (): void => {}
+                try {
+                  prev.call(this, ev)
+                } finally {
+                  console.error = ce
+                }
+                return
+              }
+              prev.call(this, ev)
+            }
+          }
+        }
+        this._currentSignal = undefined
+        if (signal?.aborted === true) {
+          request.abort()
+        }
+        return request
+      }
+      inner.requestHooks = [...prevHooks, vivHook]
+
+      const prevErr = inner.errorInterceptor
+      inner.errorInterceptor = (error: dwc.api.DICOMwebClientError) => {
+        const err = error as dwc.api.DICOMwebClientError & { cause?: unknown }
+        if (!Object.hasOwn(err, 'cause') || err.cause === undefined) {
+          err.cause = err
+        }
+        // dicomweb rejects with this shape after XHR.abort(); deck tile prune — skip app error UI.
+        const errMsg = (error as { message?: string }).message
+        if (error.status === 0 && errMsg === 'request failed') {
+          return
+        }
+        prevErr?.(error)
+      }
+    })
+    this._vivAbortHooksInstalled = true
   }
 
   private async _getViewer(): Promise<dmv.viewer.VolumeImageViewer> {
@@ -310,6 +556,7 @@ export class DicomLoader {
   private async _getLoader(
     channel: string,
   ): Promise<(level: number, x: number, y: number) => Promise<ArrayBuffer>> {
+    this._ensureVivAbortHooks()
     if (this._loaders === undefined) {
       const viewer = await this._getViewer()
       viewer.render({ container: document.createElement('div') })
@@ -375,18 +622,46 @@ export class DicomLoader {
     channel,
     x,
     y,
+    signal,
   }: {
     level: number
     channel: string
     x: number
     y: number
+    signal?: AbortSignal
   }): Promise<{
     data: Uint8Array | Uint16Array
     width: number
     height: number
   }> {
     const loader = await this._getLoader(channel)
-    const raw = await loader(level, x, y)
+    if (this._currentSignal !== undefined) {
+      throw new Error('Failure in tile request abort signal management')
+    }
+    this._currentSignal = signal
+    let raw: Awaited<ReturnType<typeof loader>>
+    try {
+      raw = await loader(level, x, y)
+    } catch (e) {
+      const xhr = xhrFromDicomwebErrorDeep(e)
+      const tileMeta =
+        xhr !== undefined ? this._xhrTileAbort.get(xhr) : undefined
+      if (xhr !== undefined) {
+        this._xhrTileAbort.delete(xhr)
+      }
+      const bridged = tileMeta?.bridgedAbort === true
+      const signalPruned = signal?.aborted === true
+      const cancelled =
+        bridged || signalPruned || isVivDicomTileNetworkCancellation(e)
+      // MultiscaleImageLayer only treats __vivSignalAborted as cancellation; map all
+      // deck→dicomweb prune failures to that (see getTileData in @vivjs/layers).
+      if (cancelled) {
+        throw SIGNAL_ABORTED
+      }
+      throw e
+    } finally {
+      this._currentSignal = undefined
+    }
     const shape = (await this._getShapes())[level]
     const ts = await this._getTileSize()
     const { columns } = await this._frameLayout(level)
@@ -642,6 +917,7 @@ export class DicomPixelSource {
 
   async getRaster({
     selection,
+    signal,
   }: {
     selection: { c: number; t: number; z: number }
     signal?: AbortSignal
@@ -656,13 +932,14 @@ export class DicomPixelSource {
     if (this.shape[1] > this.tileSize || this.shape[2] > this.tileSize) {
       throw new Error('getRaster not supported for multi-tile pyramid levels')
     }
-    return await this.getTile({ x: 0, y: 0, selection })
+    return await this.getTile({ x: 0, y: 0, selection, signal })
   }
 
   async getTile({
     x,
     y,
     selection,
+    signal,
   }: {
     x: number
     y: number
@@ -679,11 +956,12 @@ export class DicomPixelSource {
       channel: pathId,
       x,
       y,
+      signal,
     })
   }
 
   onTileError(err: Error): void {
-    console.error(err)
+    console.error(`Tile error: ${err}`)
   }
 }
 
@@ -737,6 +1015,7 @@ export class SyntheticDyadicPixelSource {
     x,
     y,
     selection,
+    signal,
   }: {
     x: number
     y: number
@@ -750,37 +1029,57 @@ export class SyntheticDyadicPixelSource {
     const pathId = await this._loader.resolveOpticalPathId(selection.c)
     const lx = 2 * x
     const ly = 2 * y
-    const tiles = await Promise.all([
-      this._loader.getTile({
-        level: this._finerDicomLevel,
-        channel: pathId,
-        x: lx,
-        y: ly,
-      }),
-      this._loader.getTile({
-        level: this._finerDicomLevel,
-        channel: pathId,
-        x: lx + 1,
-        y: ly,
-      }),
-      this._loader.getTile({
-        level: this._finerDicomLevel,
-        channel: pathId,
-        x: lx,
-        y: ly + 1,
-      }),
-      this._loader.getTile({
-        level: this._finerDicomLevel,
-        channel: pathId,
-        x: lx + 1,
-        y: ly + 1,
-      }),
-    ])
+    let tiles: Array<{
+      data: Uint8Array | Uint16Array
+      width: number
+      height: number
+    }>
+    try {
+      tiles = await Promise.all([
+        this._loader.getTile({
+          level: this._finerDicomLevel,
+          channel: pathId,
+          x: lx,
+          y: ly,
+          signal,
+        }),
+        this._loader.getTile({
+          level: this._finerDicomLevel,
+          channel: pathId,
+          x: lx + 1,
+          y: ly,
+          signal,
+        }),
+        this._loader.getTile({
+          level: this._finerDicomLevel,
+          channel: pathId,
+          x: lx,
+          y: ly + 1,
+          signal,
+        }),
+        this._loader.getTile({
+          level: this._finerDicomLevel,
+          channel: pathId,
+          x: lx + 1,
+          y: ly + 1,
+          signal,
+        }),
+      ])
+    } catch (e) {
+      if (
+        e === SIGNAL_ABORTED ||
+        signal?.aborted === true ||
+        isVivDicomTileNetworkCancellation(e)
+      ) {
+        throw SIGNAL_ABORTED
+      }
+      throw e
+    }
     return downsampleFourQuadrants(tiles, this.tileSize, this.dtype, this.shape)
   }
 
   onTileError(err: Error): void {
-    console.error(err)
+    console.error(`Tile error: ${err}`)
   }
 }
 

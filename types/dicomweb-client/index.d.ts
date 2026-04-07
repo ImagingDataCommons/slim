@@ -136,6 +136,9 @@ declare module 'dicomweb-client' {
     export interface DICOMwebClient {
       headers: { [key: string]: string }
       baseURL: string
+      /** Present on the concrete {@link DICOMwebClient} implementation; used for retries and Viv tile abort. */
+      requestHooks?: DICOMwebClientRequestHook[]
+      errorInterceptor?: (error: DICOMwebClientError) => void
       // STOW-RS
       storeInstances(options: StoreInstancesOptions): Promise<void>
       // QIDO-RS
