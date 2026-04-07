@@ -53,6 +53,47 @@ const findSeriesSlide = (
   })
 }
 
+/** Viv path: main viewport + slim right rail (classic viewer uses ~300px sider). */
+const vivChrome = (main: JSX.Element): JSX.Element => (
+  <div
+    style={{
+      display: 'flex',
+      flex: '1 1 0%',
+      minHeight: 0,
+      minWidth: 0,
+      width: '100%',
+      height: '100%',
+      overflow: 'hidden',
+    }}
+  >
+    <div
+      style={{
+        flex: '1 1 0%',
+        minWidth: 0,
+        minHeight: 0,
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      {main}
+    </div>
+    <aside
+      style={{
+        width: 300,
+        flexShrink: 0,
+        borderLeft: 'solid 0.25px',
+        padding: '10px 12px',
+        fontSize: 12,
+        color: 'rgba(0,0,0,0.55)',
+        overflow: 'auto',
+      }}
+    >
+      Viv preview — classic slide tools are not wired here yet.
+    </aside>
+  </div>
+)
+
 function ParametrizedSlideViewer({
   clients,
   slides,
@@ -183,13 +224,13 @@ function ParametrizedSlideViewer({
       if (microscopyClient === undefined) {
         return null
       }
-      viewer = (
+      viewer = vivChrome(
         <VivSlideViewport
           client={microscopyClient}
           studyInstanceUID={studyInstanceUID}
           seriesInstanceUID={seriesInstanceUID}
           vivSettings={vivSettings}
-        />
+        />,
       )
     } else {
       viewer = (

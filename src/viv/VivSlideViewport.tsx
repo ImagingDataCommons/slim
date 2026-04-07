@@ -4,12 +4,15 @@ import DeckGL from '@deck.gl/react'
 import { MultiscaleImageLayer } from '@hms-dbmi/viv'
 import { message, Spin } from 'antd'
 import type React from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import type { VivSettings } from '../AppConfig'
 import type DicomWebManager from '../DicomWebManager'
 import { DicomLoader } from './dicomLoader'
-import { buildVivDisplayOptions } from './vivDisplayDefaults'
+import {
+  buildVivDisplayOptions,
+  computeOrthographicFitViewState,
+} from './vivDisplayDefaults'
 
 export interface VivSlideViewportProps {
   client: DicomWebManager
@@ -19,6 +22,8 @@ export interface VivSlideViewportProps {
 }
 
 const orthographicView = new OrthographicView()
+
+type ViewState = { target: [number, number, number]; zoom: number }
 
 /**
  * Viv + Deck.gl viewport for DICOM SM (proof-of-concept).
@@ -30,35 +35,62 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
   seriesInstanceUID,
   vivSettings,
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const vivRef = useRef(vivSettings)
+  vivRef.current = vivSettings
+
+  const slotRef = useRef<HTMLDivElement>(null)
+  const measureRef = useRef<(() => void) | null>(null)
+  const slideRef = useRef<{ w: number; h: number } | null>(null)
+  const fitDoneRef = useRef(false)
+
   const [size, setSize] = useState({ width: 100, height: 100 })
   const [layers, setLayers] = useState<Layer[]>([])
   const [loading, setLoading] = useState(true)
-  const [viewState, setViewState] = useState<{
-    target: [number, number, number]
-    zoom: number
-  }>({
+  const [viewState, setViewState] = useState<ViewState>({
     target: [0, 0, 0],
     zoom: -6,
   })
 
-  useEffect(() => {
-    const el = containerRef.current
-    if (el === null) {
+  useLayoutEffect(() => {
+    const el = slotRef.current
+    if (!el) {
       return
     }
-    const ro = new ResizeObserver(() => {
-      setSize({ width: el.clientWidth, height: el.clientHeight })
-    })
+    const tick = (): void => {
+      const w = Math.max(1, el.clientWidth)
+      const h = Math.max(1, el.clientHeight)
+      setSize({ width: w, height: h })
+      const v = vivRef.current
+      const sp = slideRef.current
+      if (v?.initialViewState?.zoom != null || !sp || fitDoneRef.current) {
+        return
+      }
+      const fit = computeOrthographicFitViewState(
+        w,
+        h,
+        sp.w,
+        sp.h,
+        v?.initialViewState?.target,
+      )
+      if (fit) {
+        setViewState(fit)
+        fitDoneRef.current = true
+      }
+    }
+    measureRef.current = tick
+    const ro = new ResizeObserver(tick)
     ro.observe(el)
-    setSize({ width: el.clientWidth, height: el.clientHeight })
+    tick()
     return () => {
       ro.disconnect()
+      measureRef.current = null
     }
   }, [])
 
   useEffect(() => {
     let cancelled = false
+    fitDoneRef.current = false
+    slideRef.current = null
     setLoading(true)
     setLayers([])
 
@@ -75,37 +107,37 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
         if (sources.length === 0) {
           throw new Error('No pyramid levels returned for this series.')
         }
-        const [, height, width] = sources[0].shape
-        const channelCount = sources[0].shape[0]
-        const display = buildVivDisplayOptions(
-          height,
-          width,
-          channelCount,
+        const [, sh, sw] = sources[0].shape
+        const d = buildVivDisplayOptions(
+          sh,
+          sw,
+          sources[0].shape[0],
           vivSettings,
         )
-        // Viv 0.19 MultiscaleImageLayer uses contrast/visibility only; channel
-        // colors come from defaults. `vivSettings.colors` is reserved for future use.
         const layer = new MultiscaleImageLayer({
           id: 'slim-viv-multiscale',
           loader: sources as never,
-          selections: display.selections,
-          channelsVisible: display.channelsVisible,
-          contrastLimits: display.contrastLimits,
+          selections: d.selections,
+          channelsVisible: d.channelsVisible,
+          contrastLimits: d.contrastLimits,
           dtype: 'Uint16',
         })
         setLayers([layer as unknown as Layer])
-        setViewState({
-          target: display.initialViewState.target,
-          zoom: display.initialViewState.zoom,
+        slideRef.current = { w: sw, h: sh }
+        setViewState(d.initialViewState)
+        requestAnimationFrame(() => {
+          if (!cancelled) {
+            measureRef.current?.()
+          }
         })
       } catch (err) {
         console.error(err)
         if (!cancelled) {
-          const text =
+          void message.error(
             err instanceof Error
               ? err.message
-              : 'Failed to open slide in Viv viewer.'
-          void message.error(text)
+              : 'Failed to open slide in Viv viewer.',
+          )
         }
       } finally {
         if (!cancelled) {
@@ -122,51 +154,51 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
 
   return (
     <div
-      ref={containerRef}
       style={{
-        flex: 1,
-        minHeight: 0,
+        flex: '1 1 0%',
+        alignSelf: 'stretch',
+        width: '100%',
+        height: '100%',
         minWidth: 0,
-        display: 'flex',
-        flexDirection: 'column',
+        minHeight: 0,
         position: 'relative',
+        overflow: 'hidden',
       }}
     >
-      {loading && (
+      {loading ? (
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            display: 'grid',
+            placeItems: 'center',
             zIndex: 2,
             background: 'rgba(255,255,255,0.6)',
           }}
         >
           <Spin size="large" tip="Loading Viv…" />
         </div>
-      )}
-      <DeckGL
-        views={orthographicView}
-        viewState={viewState}
-        onViewStateChange={({ viewState: vs }) => {
-          if (
-            vs !== undefined &&
-            typeof vs === 'object' &&
-            'target' in vs &&
-            'zoom' in vs
-          ) {
-            setViewState(
-              vs as { target: [number, number, number]; zoom: number },
-            )
-          }
-        }}
-        controller={true}
-        layers={layers}
-        width={size.width}
-        height={size.height}
-      />
+      ) : null}
+      <div ref={slotRef} style={{ position: 'absolute', inset: 0 }}>
+        <DeckGL
+          views={orthographicView}
+          viewState={viewState}
+          onViewStateChange={({ viewState: vs }) => {
+            if (
+              vs &&
+              typeof vs === 'object' &&
+              'zoom' in vs &&
+              'target' in vs
+            ) {
+              setViewState(vs as ViewState)
+            }
+          }}
+          controller
+          layers={layers}
+          width={size.width}
+          height={size.height}
+        />
+      </div>
     </div>
   )
 }

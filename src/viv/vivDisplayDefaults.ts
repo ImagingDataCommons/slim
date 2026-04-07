@@ -63,6 +63,25 @@ export function buildVivDisplayOptions(
   }
 }
 
+/** Deck orthographic viewState so the full slide fits the viewport (unless zoom is fixed in config). */
+export function computeOrthographicFitViewState(
+  vw: number,
+  vh: number,
+  slideW: number,
+  slideH: number,
+  pan?: [number, number, number],
+): { target: [number, number, number]; zoom: number } | null {
+  const w = Math.max(1, Math.floor(vw))
+  const h = Math.max(1, Math.floor(vh))
+  if (w < 32 || h < 32) {
+    return null
+  }
+  return {
+    target: pan ? [pan[0], pan[1], pan[2] ?? 0] : [slideW / 2, slideH / 2, 0],
+    zoom: Math.log2(Math.min(w / slideW, h / slideH)),
+  }
+}
+
 /** IDC cyclic IF demo (Lin et al.) — channels 8–11 per viv-dicomweb-test. */
 export const IDC_CYCLIC_IF_VIV_SETTINGS: VivSettings = {
   selections: [
