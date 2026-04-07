@@ -12,18 +12,19 @@
         "@deck.gl/mesh-layers": "9.1.15",
         "@deck.gl/react": "9.1.15",
         "@deck.gl/widgets": "9.1.15",
-        "@hms-dbmi/viv": "~0.19.0",
         "@luma.gl/constants": "~9.1.10",
         "@luma.gl/core": "~9.1.10",
         "@luma.gl/engine": "~9.1.10",
         "@luma.gl/shadertools": "~9.1.10",
         "@luma.gl/webgl": "~9.1.10",
+        "@vivjs/layers": "^0.20.0",
+        "@vivjs/loaders": "^0.20.0",
         "antd": "^4.22.8",
         "classnames": "^2.2.6",
         "dcmjs": "^0.35.0",
         "detect-browser": "^5.2.1",
         "dicom-microscopy-viewer": "^0.48.20",
-        "dicomweb-client": "0.10.3",
+        "dicomweb-client": "^0.11.2",
         "oidc-client": "^1.11.5",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
@@ -431,8 +432,6 @@
     "@eslint/js": ["@eslint/js@8.57.1", "", {}, "sha512-d9zaMRSTIKDLhctzH12MtXvJKSSUhaHcjV+2Z+GK+EEY7XKpP5yR4x+N3TAcHTcu963nIr+TMcCb4DBCYX1z6Q=="],
 
     "@gar/promisify": ["@gar/promisify@1.1.3", "", {}, "sha512-k2Ty1JcVojjJFwrg/ThKi2ujJ7XNLYaFGNB/bWT9wGR+oSMJHMa5w+CUq6p/pVrKeNNgA7pCqEcjSnHVoqJQFw=="],
-
-    "@hms-dbmi/viv": ["@hms-dbmi/viv@0.19.0", "", { "dependencies": { "@vivjs/constants": "0.19.0", "@vivjs/extensions": "0.19.0", "@vivjs/layers": "0.19.0", "@vivjs/loaders": "0.19.0", "@vivjs/types": "0.19.0", "@vivjs/viewers": "0.19.0", "@vivjs/views": "0.19.0" } }, "sha512-wH/GBjti9686xwuGnZp9sMwwkE6pLGRaRW3Qc27S/3GRwq5j6C9Fd3du12F4InFfle47GV2nv0X9mWO+wiRwsQ=="],
 
     "@humanwhocodes/config-array": ["@humanwhocodes/config-array@0.13.0", "", { "dependencies": { "@humanwhocodes/object-schema": "^2.0.3", "debug": "^4.3.1", "minimatch": "^3.0.5" } }, "sha512-DZLEEqFWQFiyK6h5YIeynKx7JlvCYWL0cImfSRXZ9l4Sg2efkFGTuFf6vzXjK1cq6IYkU+Eg/JizXw+TD2vRNw=="],
 
@@ -906,19 +905,15 @@
 
     "@ungap/structured-clone": ["@ungap/structured-clone@1.3.0", "", {}, "sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g=="],
 
-    "@vivjs/constants": ["@vivjs/constants@0.19.0", "", { "dependencies": { "@luma.gl/constants": "~9.1.9" } }, "sha512-1X0cKfPGlFNscEgtXBhHsZu7BixMIq2cznZ1hNuvTnCtG7SDW9nsiAa3WrOMowDwYyzMFWkoaWmVcoJSdN0wkg=="],
+    "@vivjs/constants": ["@vivjs/constants@0.20.0", "", { "dependencies": { "@luma.gl/constants": "~9.1.9" } }, "sha512-KzJ38MOZDbehwqInW+MLnWdXCmOhwRMeiPWx5H3iKRhXq/8SXOZMelAaPsIqzfTWMOT4hIseyiI8KHWHmtqJJg=="],
 
-    "@vivjs/extensions": ["@vivjs/extensions@0.19.0", "", { "dependencies": { "@vivjs/constants": "0.19.0" }, "peerDependencies": { "@deck.gl/core": "~9.1.11" } }, "sha512-EHg7Y83+uv720micAaRjBh/Edw9lOq/uAfSQCbK0H4HBv7xUGzeXbCLmN/9ye8UgHWZd1cO6xvGDwBTQ7hp3gg=="],
+    "@vivjs/extensions": ["@vivjs/extensions@0.20.0", "", { "dependencies": { "@vivjs/constants": "0.20.0" }, "peerDependencies": { "@deck.gl/core": "~9.1.11" } }, "sha512-b7kRLsEWaTp65fEZMnfZdb4+l0hLwwf4w0+zUR3mA/c1LMplqHNtlIvq65mFBYKTyy4ia17d19ZgCkBdoAOhVQ=="],
 
-    "@vivjs/layers": ["@vivjs/layers@0.19.0", "", { "dependencies": { "@math.gl/core": "^4.0.1", "@math.gl/culling": "^4.0.1", "@vivjs/constants": "0.19.0", "@vivjs/extensions": "0.19.0", "@vivjs/loaders": "0.19.0", "@vivjs/types": "0.19.0" }, "peerDependencies": { "@deck.gl/core": "~9.1.11", "@deck.gl/geo-layers": "~9.1.11", "@deck.gl/layers": "~9.1.11", "@luma.gl/constants": "~9.1.9", "@luma.gl/core": "~9.1.9", "@luma.gl/engine": "~9.1.9", "@luma.gl/shadertools": "~9.1.9", "@luma.gl/webgl": "~9.1.9" } }, "sha512-M8zdlPsO8zEpESDevBiAnuEg9kv+H25B38XLfpPzTZS78hA6VD4PRw08xh5GjRHlaCV6CVnnKYAQDrvYNufDkg=="],
+    "@vivjs/layers": ["@vivjs/layers@0.20.0", "", { "dependencies": { "@math.gl/core": "^4.0.1", "@math.gl/culling": "^4.0.1", "@vivjs/constants": "0.20.0", "@vivjs/extensions": "0.20.0", "@vivjs/loaders": "0.20.0", "@vivjs/types": "0.20.0" }, "peerDependencies": { "@deck.gl/core": "~9.1.11", "@deck.gl/geo-layers": "~9.1.11", "@deck.gl/layers": "~9.1.11", "@luma.gl/constants": "~9.1.9", "@luma.gl/core": "~9.1.9", "@luma.gl/engine": "~9.1.9", "@luma.gl/shadertools": "~9.1.9", "@luma.gl/webgl": "~9.1.9" } }, "sha512-3lC2QhKtDltSd6qIv9sFbjp4g1KwjNSxUXX95xQCBmkibKZ/p9xq4f25FrlLA9/lDXky/0WLWdYfMobFwfZsZA=="],
 
-    "@vivjs/loaders": ["@vivjs/loaders@0.19.0", "", { "dependencies": { "@vivjs/types": "0.19.0", "geotiff": "^2.0.5", "lzw-tiff-decoder": "^0.1.1", "quickselect": "^2.0.0", "zarrita": "^0.5.4", "zod": "^3.22.4" } }, "sha512-mCE2F8dih42hmIj96qYCPfvUqyNtuYlDKJa/i0LfT3Hrb5SclqgOpUrp4KW+C5Wy68O0P9c0ZIlmvWX0sMGJ8Q=="],
+    "@vivjs/loaders": ["@vivjs/loaders@0.20.0", "", { "dependencies": { "@vivjs/types": "0.20.0", "geotiff": "^2.0.5", "lzw-tiff-decoder": "^0.1.1", "quickselect": "^2.0.0", "zarrita": "^0.5.4", "zod": "^3.22.4" } }, "sha512-iHTw1ERYjdJFMK2ZrdKG5f7Hk72PBlnWTIwYjFOrRs6yBvkuCmq11CcItBtepdn2LHQV1cVyFB6oTkMQQ1R81Q=="],
 
-    "@vivjs/types": ["@vivjs/types@0.19.0", "", { "dependencies": { "@vivjs/constants": "0.19.0", "math.gl": "^4.0.1" } }, "sha512-936eBNXNmgSJUsfQ+iJcrC4oTVJS9vCb6J6I+TiSn7bymO0uKia+3yvLFN6cWGrjQiWo5hSTSh6ZV+ydiE4i5g=="],
-
-    "@vivjs/viewers": ["@vivjs/viewers@0.19.0", "", { "dependencies": { "@vivjs/constants": "0.19.0", "@vivjs/extensions": "0.19.0", "@vivjs/views": "0.19.0", "fast-deep-equal": "^3.1.3" }, "peerDependencies": { "@deck.gl/react": "~9.1.11", "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-Y58b/4F9J3RjZjPG80GciikiWZHFyIncRHFsmVqpIdE/7ubTUJTvzI0ZdrT5Y6NoP7dxjevIrhfSWQGbmjgZJQ=="],
-
-    "@vivjs/views": ["@vivjs/views@0.19.0", "", { "dependencies": { "@math.gl/core": "^4.0.1", "@vivjs/layers": "0.19.0", "@vivjs/loaders": "0.19.0", "math.gl": "^4.0.1" }, "peerDependencies": { "@deck.gl/core": "~9.1.11", "@deck.gl/layers": "~9.1.11" } }, "sha512-2jSH6mfHaFk1ovE5oFvS3fAdUaVqZGr14gY+HlEF7V4lASgALcJoVvA8oVJflHvUZIn8jiwOqfIcoF9t7/m5eg=="],
+    "@vivjs/types": ["@vivjs/types@0.20.0", "", { "dependencies": { "@vivjs/constants": "0.20.0", "math.gl": "^4.0.1" } }, "sha512-ak2npRGoDB5sdelHKoVaw597tLqF5548gSpmH0198s0LuKNvwXIY0996tXTseRbf1vyJhEWufGcjrgjLnEF4qw=="],
 
     "@webassemblyjs/ast": ["@webassemblyjs/ast@1.11.1", "", { "dependencies": { "@webassemblyjs/helper-numbers": "1.11.1", "@webassemblyjs/helper-wasm-bytecode": "1.11.1" } }, "sha512-ukBh14qFLjxTQNTXocdyksN5QdM28S1CxHt2rdskFyL+xFV7VremuBLVbmCePj+URalXBENx/9Lm7lnhihtCSw=="],
 
@@ -1420,7 +1415,7 @@
 
     "dicom-microscopy-viewer": ["dicom-microscopy-viewer@0.48.20", "", { "dependencies": { "@cornerstonejs/codec-charls": "^1.2.3", "@cornerstonejs/codec-libjpeg-turbo-8bit": "^1.2.2", "@cornerstonejs/codec-openjpeg": "^1.2.4", "@cornerstonejs/codec-openjph": "^2.4.5", "@imagingdatacommons/dicomicc": "^0.2.3", "colormap": "^2.3", "dcmjs": "^0.41.0", "dicomweb-client": "0.10.3", "image-type": "^4.1", "mathjs": "^11.2", "ol": "^10.7.0", "uuid": "^9.0" } }, "sha512-YMBCThjzKfRTL43hE2XeDvBCegUwL2WRPPeWtkSZDdmOhTFTkNv8eekdL3BHi57po8clALPw/exvSoDpYxd1Mg=="],
 
-    "dicomweb-client": ["dicomweb-client@0.10.3", "", {}, "sha512-/fHNEAYiz8j+9TNOrNJ0k+hYqirbOT85B7vM7I4VkY8DeDQb4BDUeL3RX6huDVtn6ZQlR91dI+2tejLc5c99wA=="],
+    "dicomweb-client": ["dicomweb-client@0.11.2", "", {}, "sha512-HsjQtmw4XY35ZyrhW5WY7P5ZgGIrY1M1jfLeq2IKANDIqfWoE4QW496VcsbuX4qnTNoeHBauei73vU0WwMYrYg=="],
 
     "didyoumean": ["didyoumean@1.2.2", "", {}, "sha512-gxtyfqMg7GKyhQmb056K7M3xszy/myH8w+B4RT+QXBQsvAOdc3XymqDDPHx1BgPgsdAA5SIifona89YtRATDzw=="],
 
@@ -3625,6 +3620,8 @@
     "detect-port-alt/debug": ["debug@2.6.9", "", { "dependencies": { "ms": "2.0.0" } }, "sha512-bC7ElrdJaJnPbAP+1EotYvqZsb3ecl5wi6Bfi6BJTUcNowp6cvspg0jXznRTKDjm/E7AdgFBVeAPVMNcKGsHMA=="],
 
     "dicom-microscopy-viewer/dcmjs": ["dcmjs@0.41.0", "", { "dependencies": { "@babel/runtime-corejs3": "^7.22.5", "adm-zip": "^0.5.10", "gl-matrix": "^3.1.0", "lodash.clonedeep": "^4.5.0", "loglevel": "^1.8.1", "ndarray": "^1.0.19", "pako": "^2.0.4" } }, "sha512-kr46REomItFeWz+0ck4Wif4uS5VVDWVlwdh5GGaCtTYHWfNQmrcCSiQOkrShc7Dc5zP8vNKrHEdORlZXenlg3w=="],
+
+    "dicom-microscopy-viewer/dicomweb-client": ["dicomweb-client@0.10.3", "", {}, "sha512-/fHNEAYiz8j+9TNOrNJ0k+hYqirbOT85B7vM7I4VkY8DeDQb4BDUeL3RX6huDVtn6ZQlR91dI+2tejLc5c99wA=="],
 
     "domexception/webidl-conversions": ["webidl-conversions@5.0.0", "", {}, "sha512-VlZwKPCkYKxQgeSbH5EyngOmRp7Ww7I9rQLERETtf5ofd9pGeswWiOtogpEO850jziPRarreGxn5QIiTqpb2wA=="],
 
