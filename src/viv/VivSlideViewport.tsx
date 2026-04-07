@@ -108,11 +108,13 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           throw new Error('No pyramid levels returned for this series.')
         }
         const [, sh, sw] = sources[0].shape
+        const bitsAllocated = dicomLoader.bitsAllocated ?? 16
         const d = buildVivDisplayOptions(
           sh,
           sw,
           sources[0].shape[0],
           vivSettings,
+          bitsAllocated,
         )
         const layer = new MultiscaleImageLayer({
           id: 'slim-viv-multiscale',
@@ -120,7 +122,9 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           selections: d.selections,
           channelsVisible: d.channelsVisible,
           contrastLimits: d.contrastLimits,
-          dtype: 'Uint16',
+          dtype: sources[0].dtype,
+          // Lowest pyramid level is often wider/taller than one tile; ImageLayer would call getRaster and fail.
+          excludeBackground: true,
         })
         setLayers([layer as unknown as Layer])
         slideRef.current = { w: sw, h: sh }
@@ -176,7 +180,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
             background: 'rgba(255,255,255,0.6)',
           }}
         >
-          <Spin size="large" tip="Loading Viv…" />
+          <Spin size="large" tip="Loading viv..." />
         </div>
       ) : null}
       <div ref={slotRef} style={{ position: 'absolute', inset: 0 }}>
