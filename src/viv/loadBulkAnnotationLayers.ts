@@ -3,8 +3,7 @@ import type { Layer, Position } from '@deck.gl/core'
 import { PathLayer, ScatterplotLayer } from '@deck.gl/layers'
 import * as dcmjs from 'dcmjs'
 // skipcq: JS-C1003
-import dmvDefault from 'dicom-microscopy-viewer'
-import * as dmvNamespace from 'dicom-microscopy-viewer'
+import dmvDefault, * as dmvNamespace from 'dicom-microscopy-viewer'
 
 import type DicomWebManager from '../DicomWebManager'
 import type { BulkAnnotationGeometryContext } from './dicomLoader'
@@ -56,15 +55,187 @@ function dmvModule(): typeof dmvNamespace {
 
 const dmv = dmvModule()
 
+/** Deck overlays for one bulk simple-annotation group (paths + optional points). */
+export type VivBulkAnnotationLayerSlice = {
+  groupUID: string
+  layers: Layer[]
+}
+
+export type VivBulkAnnotationCatalogPayload = {
+  annotationGroups: dmvNamespace.annotation.AnnotationGroup[]
+  metadataByGroupUID: Record<
+    string,
+    dmvNamespace.metadata.MicroscopyBulkSimpleAnnotations
+  >
+  defaultStylesByGroupUID: Record<
+    string,
+    { opacity: number; color: number[] }
+  >
+}
+
+/** Deferred work: fetch bulk pixel data + build deck layers when a group is toggled visible (OpenLayers parity). */
+export type VivBulkGroupGeometryJob = {
+  annotationGroupUID: string
+  color: [number, number, number]
+  graphicType: string
+  numberOfAnnotations: number
+  annotationGroupWrapper: {
+    annotationGroup: dmvNamespace.annotation.AnnotationGroup
+    style: { opacity: number; color: [number, number, number] }
+    defaultStyle: { opacity: number; color: [number, number, number] }
+    metadata: dmvNamespace.metadata.MicroscopyBulkSimpleAnnotations
+  }
+  metadataItem: object
+  bulkdataItem: object | undefined
+  annotationGroupIndex: number
+  ann: dmvNamespace.metadata.MicroscopyBulkSimpleAnnotations
+  coordinateDimensionality: number
+  commonZCoordinate: number
+}
+
+export type VivBulkAnnotationMetadataResult = VivBulkAnnotationCatalogPayload & {
+  groupGeometryJobs: Record<string, VivBulkGroupGeometryJob>
+}
+
+function emptyMetadataResult(): VivBulkAnnotationMetadataResult {
+  return {
+    annotationGroups: [],
+    metadataByGroupUID: {},
+    defaultStylesByGroupUID: {},
+    groupGeometryJobs: {},
+  }
+}
+
+/**
+ * After metadata catalog is shown, fetch bulkdata + build deck layers for one group.
+ */
+export async function hydrateVivBulkGroupLayerSlice(options: {
+  job: VivBulkGroupGeometryJob
+  geometry: BulkAnnotationGeometryContext
+  fetchClient: DicomWebManager
+}): Promise<VivBulkAnnotationLayerSlice | null> {
+  const { job, geometry, fetchClient } = options
+  const {
+    annotationGroupUID,
+    color,
+    graphicType,
+    numberOfAnnotations,
+    annotationGroupWrapper,
+    metadataItem,
+    bulkdataItem,
+    annotationGroupIndex,
+    ann,
+    coordinateDimensionality,
+    commonZCoordinate,
+  } = job
+
+  const { pyramid, affine, affineInverse, extent } = geometry
+  const featureFn = featureFnForGraphicType(graphicType)
+  if (featureFn === null) {
+    return null
+  }
+
+  const viewMock = {
+    calculateExtent: (): number[] => [...extent],
+  }
+
+  let graphicData: Int32Array | Float32Array
+  let graphicIndex: Int32Array | null
+  try {
+    ;[graphicData, graphicIndex] = await Promise.all([
+      dmv.annotation.fetchGraphicData({
+        metadataItem: metadataItem as object,
+        bulkdataItem,
+        annotationGroupIndex,
+        metadata: ann as unknown as object,
+        client: fetchClient,
+      }),
+      dmv.annotation.fetchGraphicIndex({
+        metadataItem: metadataItem as object,
+        bulkdataItem,
+        annotationGroupIndex,
+        metadata: ann as unknown as object,
+        client: fetchClient,
+      }),
+    ])
+  } catch (e) {
+    console.warn(
+      `${VIV_BULK} fetchGraphicData/Index failed`,
+      { annotationGroupUID, graphicType },
+      e,
+    )
+    return null
+  }
+
+  if (
+    (graphicType === 'POLYGON' || graphicType === 'POLYLINE') &&
+    (graphicIndex === null || graphicIndex === undefined)
+  ) {
+    console.warn(
+      `[Viv] skip bulk group ${annotationGroupUID}: missing LongPrimitivePointIndexList`,
+    )
+    return null
+  }
+
+  let features: unknown[]
+  try {
+    features =
+      resolveBulkSimpleAnnotationsApi().getFeaturesFromBulkAnnotations({
+        graphicType,
+        graphicData,
+        graphicIndex,
+        measurements: [],
+        commonZCoordinate,
+        coordinateDimensionality,
+        numberOfAnnotations,
+        annotationGroupUID,
+        annotationGroup: annotationGroupWrapper,
+        pyramid,
+        affine,
+        affineInverse,
+        view: viewMock,
+        featureFunction: featureFn,
+        isHighResolution: () => false,
+      })
+  } catch (e) {
+    console.warn(
+      `${VIV_BULK} getFeaturesFromBulkAnnotations failed`,
+      { annotationGroupUID, graphicType },
+      e,
+    )
+    return null
+  }
+
+  const deckSlices = featuresToDeckLayers(
+    features,
+    color,
+    `viv-bulk-${annotationGroupUID}`,
+    { groupUID: annotationGroupUID },
+  )
+  console.info(`${VIV_BULK} group → deck (lazy)`, {
+    annotationGroupUID,
+    graphicType,
+    olFeatures: features.length,
+    deckLayers: deckSlices.length,
+  })
+  if (deckSlices.length === 0) {
+    return null
+  }
+  return { groupUID: annotationGroupUID, layers: deckSlices }
+}
+
 function resolveBulkSimpleAnnotationsApi(): BulkSimpleAnnotationsApi {
   const ns = dmv.bulkSimpleAnnotations
   if (isBulkSimpleAnnotationsApi(ns)) {
     return ns
   }
   const root = dmv as unknown as Record<string, unknown>
-  console.error(`${VIV_BULK} missing bulkSimpleAnnotations on resolved DMV module`, {
-    dmvTopKeys: Object.keys(root),
-  })
+  console.error(
+    `${VIV_BULK} missing bulkSimpleAnnotations on resolved DMV module`,
+    {
+      dmvTopKeys: Object.keys(root),
+    },
+  )
   const msg =
     'dicom-microscopy-viewer: no `bulkSimpleAnnotations` in the loaded bundle. ' +
     'Rebuild the linked package: `cd ../dicom-microscopy-viewer && bun run build`, then restart Slim dev.'
@@ -72,7 +243,10 @@ function resolveBulkSimpleAnnotationsApi(): BulkSimpleAnnotationsApi {
   throw new Error(msg)
 }
 
-function pickStr(obj: Record<string, unknown>, ...keys: string[]): string | undefined {
+function pickStr(
+  obj: Record<string, unknown>,
+  ...keys: string[]
+): string | undefined {
   for (const k of keys) {
     const v = obj[k]
     if (v != null && String(v).length > 0) {
@@ -118,16 +292,8 @@ function annotationPropertyCodeFromSequence(
     'CodingSchemeDesignator',
     'codingSchemeDesignator',
   )
-  const version = pickStr(
-    raw,
-    'CodingSchemeVersion',
-    'codingSchemeVersion',
-  )
-  if (
-    value !== undefined &&
-    meaning !== undefined &&
-    scheme !== undefined
-  ) {
+  const version = pickStr(raw, 'CodingSchemeVersion', 'codingSchemeVersion')
+  if (value !== undefined && meaning !== undefined && scheme !== undefined) {
     try {
       return new dcmjs.sr.coding.CodedConcept({
         value,
@@ -197,9 +363,7 @@ function appendOlGeometry(
     const c = g.getCoordinates?.() as number[][]
     if (c?.length) {
       pathRows.push({
-        path: c.map(
-          (p): Position => [p[0], openLayersMapYToVivWorldY(p[1])],
-        ),
+        path: c.map((p): Position => [p[0], openLayersMapYToVivWorldY(p[1])]),
         closed: false,
       })
     }
@@ -306,11 +470,7 @@ function featuresToDeckLayers(
       }) as unknown as Layer,
     )
   }
-  if (
-    logContext != null &&
-    features.length > 0 &&
-    layers.length === 0
-  ) {
+  if (logContext != null && features.length > 0 && layers.length === 0) {
     console.warn(
       `${VIV_BULK} group ${logContext.groupUID}: ${features.length} OL feature(s) but 0 Deck layers`,
       {
@@ -343,31 +503,27 @@ function featureFnForGraphicType(graphicType: string): FeatureBuilder | null {
 }
 
 /**
- * QIDO ANN series, load bulk simple annotation groups that reference
- * `imageSeriesInstanceUID`, decode with DMV, return Deck.gl overlay layers.
+ * QIDO ANN series, retrieve metadata for bulk groups that reference
+ * `imageSeriesInstanceUID` and build the catalog + lazy geometry jobs (no bulkdata fetch yet).
+ * Deck layers are created in {@link hydrateVivBulkGroupLayerSlice} when the user shows a group.
  */
-export async function loadBulkAnnotationDeckLayers(options: {
+export async function loadBulkAnnotationMetadataAndJobs(options: {
   geometry: BulkAnnotationGeometryContext
   studyInstanceUID: string
   imageSeriesInstanceUID: string
   /** Store used for ANN search + metadata (may differ from SM). */
   annotationClient: DicomWebManager
-  /** Bulk byte fetches must use the same client as VolumeImageViewer / SM tiles. */
+  /** Present for API parity with the classic path; bulk byte fetch happens lazily per group. */
   fetchClient: DicomWebManager
-}): Promise<Layer[]> {
-  const {
-    geometry,
-    studyInstanceUID,
-    imageSeriesInstanceUID,
-    annotationClient,
-    fetchClient,
-  } = options
+}): Promise<VivBulkAnnotationMetadataResult> {
+  const { geometry, studyInstanceUID, imageSeriesInstanceUID, annotationClient } =
+    options
 
-  const { pyramid, affine, affineInverse, extent } = geometry
+  const { pyramid, extent } = geometry
   const refImage = pyramid[0]
   if (refImage === undefined) {
     console.warn(`${VIV_BULK} pyramid[0] missing — cannot align annotations`)
-    return []
+    return emptyMetadataResult()
   }
 
   const refMeta = refImage as {
@@ -417,14 +573,22 @@ export async function loadBulkAnnotationDeckLayers(options: {
     console.warn(
       `${VIV_BULK} no ANN series from this store for study — check store / QIDO / Modality`,
     )
-    return []
+    return emptyMetadataResult()
   }
 
-  const viewMock = {
-    calculateExtent: (): number[] => [...extent],
-  }
-
-  const allLayers: Layer[] = []
+  const groupGeometryJobs: Record<string, VivBulkGroupGeometryJob> = {}
+  const annotationGroupsByUid = new Map<
+    string,
+    dmvNamespace.annotation.AnnotationGroup
+  >()
+  const metadataByGroupUID: Record<
+    string,
+    dmvNamespace.metadata.MicroscopyBulkSimpleAnnotations
+  > = {}
+  const defaultStylesByGroupUID: Record<
+    string,
+    { opacity: number; color: number[] }
+  > = {}
 
   for (const s of matched) {
     const { dataset } = dmv.metadata.formatMetadata(s)
@@ -460,9 +624,12 @@ export async function loadBulkAnnotationDeckLayers(options: {
       const refSer = ann.ReferencedSeriesSequence?.[0]
       const refImg = ann.ReferencedImageSequence?.[0]
       if (refSer === undefined || refImg === undefined) {
-        console.info(`${VIV_BULK} skip instance: missing ReferencedSeries/Image`, {
-          annSOP: ann.SOPInstanceUID,
-        })
+        console.info(
+          `${VIV_BULK} skip instance: missing ReferencedSeries/Image`,
+          {
+            annSOP: ann.SOPInstanceUID,
+          },
+        )
         continue
       }
       if (refSer.SeriesInstanceUID !== imageSeriesInstanceUID) {
@@ -558,90 +725,71 @@ export async function loadBulkAnnotationDeckLayers(options: {
         const commonZCoordinate =
           dmv.annotation.getCommonZCoordinate(metadataItem)
 
-        let graphicData: Int32Array | Float32Array
-        let graphicIndex: Int32Array | null
-        try {
-          ;[graphicData, graphicIndex] = await Promise.all([
-            dmv.annotation.fetchGraphicData({
-              metadataItem: metadataItem as object,
-              bulkdataItem,
-              annotationGroupIndex,
-              metadata: ann as unknown as object,
-              client: fetchClient,
-            }),
-            dmv.annotation.fetchGraphicIndex({
-              metadataItem: metadataItem as object,
-              bulkdataItem,
-              annotationGroupIndex,
-              metadata: ann as unknown as object,
-              client: fetchClient,
-            }),
-          ])
-        } catch (e) {
-          console.warn(
-            `${VIV_BULK} fetchGraphicData/Index failed`,
-            { annotationGroupUID, graphicType },
-            e,
-          )
-          continue
+        const colorTriplet: [number, number, number] = [
+          color[0],
+          color[1],
+          color[2],
+        ]
+        const wrapperForJob = {
+          ...annotationGroupWrapper,
+          style: {
+            opacity: annotationGroupWrapper.style.opacity,
+            color: colorTriplet,
+          },
+          defaultStyle: {
+            opacity: annotationGroupWrapper.defaultStyle.opacity,
+            color: colorTriplet,
+          },
         }
 
-        if (
-          (graphicType === 'POLYGON' || graphicType === 'POLYLINE') &&
-          (graphicIndex === null || graphicIndex === undefined)
-        ) {
-          console.warn(
-            `[Viv] skip bulk group ${annotationGroupUID}: missing LongPrimitivePointIndexList`,
-          )
-          continue
-        }
-
-        let features: unknown[]
-        try {
-          features = resolveBulkSimpleAnnotationsApi().getFeaturesFromBulkAnnotations({
-            graphicType,
-            graphicData,
-            graphicIndex,
-            measurements: [],
-            commonZCoordinate,
-            coordinateDimensionality,
-            numberOfAnnotations,
+        if (!annotationGroupsByUid.has(annotationGroupUID)) {
+          annotationGroupsByUid.set(
             annotationGroupUID,
-            annotationGroup: annotationGroupWrapper,
-            pyramid,
-            affine,
-            affineInverse,
-            view: viewMock,
-            featureFunction: featureFn,
-            /* Load all features; Deck + Slim can add viewport filtering later. */
-            isHighResolution: () => false,
-          })
-        } catch (e) {
-          console.warn(
-            `${VIV_BULK} getFeaturesFromBulkAnnotations failed`,
-            { annotationGroupUID, graphicType },
-            e,
+            annotationGroupWrapper.annotationGroup,
           )
-          continue
+          metadataByGroupUID[annotationGroupUID] = ann
+          defaultStylesByGroupUID[annotationGroupUID] = {
+            opacity: annotationGroupWrapper.defaultStyle.opacity,
+            color: [...colorTriplet],
+          }
         }
-
-        const deckSlices = featuresToDeckLayers(
-          features,
-          color,
-          `viv-bulk-${annotationGroupUID}`,
-          { groupUID: annotationGroupUID },
-        )
-        console.info(`${VIV_BULK} group → deck`, {
-          annotationGroupUID,
-          graphicType,
-          olFeatures: features.length,
-          deckLayers: deckSlices.length,
-        })
-        allLayers.push(...deckSlices)
+        if (groupGeometryJobs[annotationGroupUID] === undefined) {
+          groupGeometryJobs[annotationGroupUID] = {
+            annotationGroupUID,
+            color: colorTriplet,
+            graphicType,
+            numberOfAnnotations,
+            annotationGroupWrapper: wrapperForJob,
+            metadataItem,
+            bulkdataItem,
+            annotationGroupIndex,
+            ann,
+            coordinateDimensionality,
+            commonZCoordinate,
+          }
+          console.info(`${VIV_BULK} group → catalog (geometry deferred)`, {
+            annotationGroupUID,
+            graphicType,
+          })
+        }
       }
     }
   }
 
-  console.info(`${VIV_BULK} done: total deck layers`, allLayers.length)
-  return allLayers
+  console.info(`${VIV_BULK} metadata done: lazy geometry jobs`, {
+    groups: Object.keys(groupGeometryJobs).length,
+  })
+  return {
+    annotationGroups: [...annotationGroupsByUid.values()],
+    metadataByGroupUID,
+    defaultStylesByGroupUID,
+    groupGeometryJobs,
+  }
+}
+
+/** @deprecated Prefer {@link loadBulkAnnotationMetadataAndJobs} + lazy hydrate. */
+export async function loadBulkAnnotationDeckLayers(
+  options: Parameters<typeof loadBulkAnnotationMetadataAndJobs>[0],
+): Promise<VivBulkAnnotationMetadataResult> {
+  return loadBulkAnnotationMetadataAndJobs(options)
 }

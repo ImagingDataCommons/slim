@@ -1,6 +1,7 @@
 import type { Layer } from '@deck.gl/core'
 import { OrthographicView } from '@deck.gl/core'
 import DeckGL from '@deck.gl/react'
+import { PathLayer, ScatterplotLayer } from '@deck.gl/layers'
 import { MultiscaleImageLayer } from '@vivjs/layers'
 import { message, Spin } from 'antd'
 import type React from 'react'
@@ -8,8 +9,18 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import type { VivSettings } from '../AppConfig'
 import type DicomWebManager from '../DicomWebManager'
-import { DicomLoader, isVivDicomTileNetworkCancellation } from './dicomLoader'
-import { loadBulkAnnotationDeckLayers } from './loadBulkAnnotationLayers'
+import {
+  DicomLoader,
+  isVivDicomTileNetworkCancellation,
+  type BulkAnnotationGeometryContext,
+} from './dicomLoader'
+import {
+  hydrateVivBulkGroupLayerSlice,
+  loadBulkAnnotationMetadataAndJobs,
+  type VivBulkAnnotationCatalogPayload,
+  type VivBulkAnnotationLayerSlice,
+  type VivBulkGroupGeometryJob,
+} from './loadBulkAnnotationLayers'
 import {
   buildVivDisplayOptions,
   computeOrthographicFitViewState,
@@ -21,14 +32,79 @@ export interface VivSlideViewportProps {
   client: DicomWebManager
   /** ANN series QIDO/metadata; bulk byte fetches still use `client`. Defaults to `client`. */
   bulkAnnotationClient?: DicomWebManager
-  /** When true, QIDO/retrieve bulk ANN overlays after the pyramid loads. Default false (user toggles in panel). */
+  /** When true, QIDO/retrieve bulk ANN overlays after the pyramid loads (matches classic viewer). Default true. */
   loadBulkAnnotations?: boolean
+  /** Which bulk annotation groups are drawn (classic viewer parity). */
+  visibleBulkAnnotationGroupUIDs?: Set<string>
+  /** Per-group opacity/color; keys should cover loaded groups (panel initializes from catalog defaults). */
+  bulkAnnotationGroupStyles?: Record<
+    string,
+    { opacity: number; color: number[] }
+  >
+  /** Fired when bulk ANN metadata is ready for the panel, or when bulk mode clears (geometry loads lazily on toggle). */
+  onBulkAnnotationCatalogChange?: (
+    catalog: VivBulkAnnotationCatalogPayload | null,
+  ) => void
   studyInstanceUID: string
   seriesInstanceUID: string
   vivSettings?: VivSettings
 }
 
+function buildStyledBulkOverlayLayers(
+  slicesByUid: Record<string, VivBulkAnnotationLayerSlice>,
+  visibleUIDs: Set<string>,
+  styles: Record<string, { opacity: number; color: number[] }>,
+  defaultStyles: Record<string, { opacity: number; color: number[] }>,
+): Layer[] {
+  const out: Layer[] = []
+  for (const uid of visibleUIDs) {
+    const slice = slicesByUid[uid]
+    if (slice == null) {
+      continue
+    }
+    const st =
+      styles[uid] ??
+      defaultStyles[uid] ?? {
+        opacity: 1,
+        color: [220, 60, 60],
+      }
+    const a = Math.round(
+      Math.max(0, Math.min(1, st.opacity)) * 220,
+    )
+    const rgba: [number, number, number, number] = [
+      st.color[0] ?? 0,
+      st.color[1] ?? 0,
+      st.color[2] ?? 0,
+      a,
+    ]
+    for (const layer of slice.layers) {
+      const lid = String(layer.id)
+      if (lid.endsWith('-paths')) {
+        out.push(
+          (layer as PathLayer).clone({ getColor: (): typeof rgba => rgba }),
+        )
+      } else if (lid.endsWith('-pts')) {
+        out.push(
+          (layer as ScatterplotLayer).clone({
+            getFillColor: (): typeof rgba => rgba,
+          }),
+        )
+      } else {
+        out.push(layer)
+      }
+    }
+  }
+  return out
+}
+
 const orthographicView = new OrthographicView()
+
+/** Stable empty defaults — avoid `props = new Set()` / `{}` per render. */
+const EMPTY_VISIBLE_BULK_GROUPS = new Set<string>()
+const EMPTY_BULK_GROUP_STYLES: Record<
+  string,
+  { opacity: number; color: number[] }
+> = {}
 
 type ViewState = { target: [number, number, number]; zoom: number }
 
@@ -39,11 +115,17 @@ type ViewState = { target: [number, number, number]; zoom: number }
 const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
   client,
   bulkAnnotationClient,
-  loadBulkAnnotations = false,
+  loadBulkAnnotations = true,
+  visibleBulkAnnotationGroupUIDs = EMPTY_VISIBLE_BULK_GROUPS,
+  bulkAnnotationGroupStyles = EMPTY_BULK_GROUP_STYLES,
+  onBulkAnnotationCatalogChange,
   studyInstanceUID,
   seriesInstanceUID,
   vivSettings,
 }) => {
+  const catalogCbRef = useRef(onBulkAnnotationCatalogChange)
+  catalogCbRef.current = onBulkAnnotationCatalogChange
+
   const vivRef = useRef(vivSettings)
   vivRef.current = vivSettings
 
@@ -57,10 +139,35 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
   const fitDoneRef = useRef(false)
   /** Same loader instance that built `baseLayer` (for geometry + ANN bulk fetches only). */
   const dicomLoaderRef = useRef<DicomLoader | null>(null)
+  const bulkGeometryRef = useRef<BulkAnnotationGeometryContext | null>(null)
+  const bulkGroupJobsRef = useRef<Record<string, VivBulkGroupGeometryJob>>({})
+  const bulkHydrateInFlightRef = useRef<Set<string>>(new Set())
+  const visibleBulkUidsRef = useRef(visibleBulkAnnotationGroupUIDs)
+  visibleBulkUidsRef.current = visibleBulkAnnotationGroupUIDs
+  const slicesByUidRef = useRef<Record<string, VivBulkAnnotationLayerSlice>>({})
 
   const [size, setSize] = useState({ width: 100, height: 100 })
   const [baseLayer, setBaseLayer] = useState<Layer | null>(null)
-  const [annLayers, setAnnLayers] = useState<Layer[]>([])
+  const [bulkSlicesByUid, setBulkSlicesByUid] = useState<
+    Record<string, VivBulkAnnotationLayerSlice>
+  >({})
+  const [bulkDefaultStyles, setBulkDefaultStyles] = useState<
+    Record<string, { opacity: number; color: number[] }>
+  >({})
+  slicesByUidRef.current = bulkSlicesByUid
+  const annLayers = useMemo((): Layer[] => {
+    return buildStyledBulkOverlayLayers(
+      bulkSlicesByUid,
+      visibleBulkAnnotationGroupUIDs,
+      bulkAnnotationGroupStyles,
+      bulkDefaultStyles,
+    )
+  }, [
+    bulkSlicesByUid,
+    visibleBulkAnnotationGroupUIDs,
+    bulkAnnotationGroupStyles,
+    bulkDefaultStyles,
+  ])
   const layers = useMemo((): Layer[] => {
     return baseLayer !== null ? [baseLayer, ...annLayers] : []
   }, [baseLayer, annLayers])
@@ -115,7 +222,12 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     slideRef.current = null
     setLoading(true)
     setBaseLayer(null)
-    setAnnLayers([])
+    setBulkSlicesByUid({})
+    setBulkDefaultStyles({})
+    bulkGeometryRef.current = null
+    bulkGroupJobsRef.current = {}
+    bulkHydrateInFlightRef.current.clear()
+    catalogCbRef.current?.(null)
     dicomLoaderRef.current = null
 
     const run = async (): Promise<void> => {
@@ -233,11 +345,17 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
 
   useEffect(() => {
     if (!loadBulkAnnotations) {
-      setAnnLayers([])
+      setBulkSlicesByUid({})
+      setBulkDefaultStyles({})
+      bulkGeometryRef.current = null
+      bulkGroupJobsRef.current = {}
+      bulkHydrateInFlightRef.current.clear()
+      catalogCbRef.current?.(null)
       return
     }
     if (baseLayer === null) {
-      setAnnLayers([])
+      setBulkSlicesByUid({})
+      setBulkDefaultStyles({})
       return
     }
     const dicomLoader = dicomLoaderRef.current
@@ -249,17 +367,20 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     }
 
     let cancelled = false
-    console.info('[Viv bulk ANN] viewport: loading overlays (image layer unchanged)…', {
-      studyInstanceUID,
-      seriesInstanceUID,
-      usesDedicatedAnnClient:
-        bulkAnnotationClient != null && bulkAnnotationClient !== client,
-    })
+    console.info(
+      '[Viv bulk ANN] viewport: loading overlays (image layer unchanged)…',
+      {
+        studyInstanceUID,
+        seriesInstanceUID,
+        usesDedicatedAnnClient:
+          bulkAnnotationClient != null && bulkAnnotationClient !== client,
+      },
+    )
 
     const run = async (): Promise<void> => {
       try {
         const geometry = await dicomLoader.getBulkAnnotationGeometryContext()
-        const loaded = await loadBulkAnnotationDeckLayers({
+        const loaded = await loadBulkAnnotationMetadataAndJobs({
           geometry,
           studyInstanceUID,
           imageSeriesInstanceUID: seriesInstanceUID,
@@ -267,15 +388,31 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           fetchClient: client,
         })
         if (!cancelled) {
-          setAnnLayers(loaded)
-          console.info('[Viv bulk ANN] viewport: deck overlay layers', {
-            count: loaded.length,
+          const { groupGeometryJobs, ...catalog } = loaded
+          bulkGeometryRef.current = geometry
+          bulkGroupJobsRef.current = groupGeometryJobs
+          bulkHydrateInFlightRef.current.clear()
+          setBulkSlicesByUid({})
+          setBulkDefaultStyles(loaded.defaultStylesByGroupUID)
+          catalogCbRef.current?.(catalog)
+          console.info('[Viv bulk ANN] viewport: metadata catalog ready', {
+            annotationGroups: loaded.annotationGroups.length,
+            lazyGeometryJobs: Object.keys(groupGeometryJobs).length,
           })
         }
       } catch (e) {
         console.warn('[Viv bulk ANN] viewport: overlay load failed', e)
         if (!cancelled) {
-          setAnnLayers([])
+          bulkGeometryRef.current = null
+          bulkGroupJobsRef.current = {}
+          bulkHydrateInFlightRef.current.clear()
+          setBulkSlicesByUid({})
+          setBulkDefaultStyles({})
+          catalogCbRef.current?.({
+            annotationGroups: [],
+            metadataByGroupUID: {},
+            defaultStylesByGroupUID: {},
+          })
         }
       }
     }
@@ -291,6 +428,52 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     client,
     studyInstanceUID,
     seriesInstanceUID,
+  ])
+
+  useEffect(() => {
+    if (!loadBulkAnnotations || baseLayer === null) {
+      return
+    }
+    const geom = bulkGeometryRef.current
+    const jobs = bulkGroupJobsRef.current
+    if (geom == null || Object.keys(jobs).length === 0) {
+      return
+    }
+
+    for (const uid of visibleBulkAnnotationGroupUIDs) {
+      if (slicesByUidRef.current[uid] != null) {
+        continue
+      }
+      if (bulkHydrateInFlightRef.current.has(uid)) {
+        continue
+      }
+      const job = jobs[uid]
+      if (job == null) {
+        continue
+      }
+      bulkHydrateInFlightRef.current.add(uid)
+      void hydrateVivBulkGroupLayerSlice({
+        job,
+        geometry: geom,
+        fetchClient: client,
+      }).then((slice) => {
+        bulkHydrateInFlightRef.current.delete(uid)
+        if (slice == null || !visibleBulkUidsRef.current.has(uid)) {
+          return
+        }
+        setBulkSlicesByUid((prev) => {
+          if (prev[uid] != null) {
+            return prev
+          }
+          return { ...prev, [uid]: slice }
+        })
+      })
+    }
+  }, [
+    loadBulkAnnotations,
+    baseLayer,
+    visibleBulkAnnotationGroupUIDs,
+    client,
   ])
 
   const sp = slideRef.current

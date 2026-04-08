@@ -1,7 +1,9 @@
-import { Layout, Menu, Switch } from 'antd'
+import { Layout, Menu, Select } from 'antd'
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
-import { useEffect, useState, type ReactNode } from 'react'
+// skipcq: JS-C1003
+import type * as dmv from 'dicom-microscopy-viewer'
+import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { Route, Routes, useLocation, useParams } from 'react-router-dom'
 
 import type { AnnotationSettings, VivSettings } from '../AppConfig'
@@ -10,8 +12,11 @@ import type DicomWebManager from '../DicomWebManager'
 import type { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
 import { useSlides } from '../hooks/useSlides'
+import DicomMetadataStore from '../services/DICOMMetadataStore'
 import { type RouteComponentProps, withRouter } from '../utils/router'
+import type { VivBulkAnnotationCatalogPayload } from '../viv/loadBulkAnnotationLayers'
 import VivSlideViewport from '../viv/VivSlideViewport'
+import AnnotationGroupList from './AnnotationGroupList'
 import ClinicalTrial from './ClinicalTrial'
 import Patient from './Patient'
 import SlideList from './SlideList'
@@ -133,7 +138,112 @@ function ParametrizedSlideViewer({
   )
   const [derivedDataset, setDerivedDataset] =
     useState<NaturalizedInstance | null>(null)
-  const [loadVivBulkAnnotations, setLoadVivBulkAnnotations] = useState(false)
+  const [vivBulkCatalog, setVivBulkCatalog] =
+    useState<VivBulkAnnotationCatalogPayload | null>(null)
+  const [vivVisibleAnnotationGroupUIDs, setVivVisibleAnnotationGroupUIDs] =
+    useState<Set<string>>(new Set())
+  const [vivAnnotationGroupStyles, setVivAnnotationGroupStyles] = useState<
+    Record<string, { opacity: number; color: number[] }>
+  >({})
+  const [vivAnnGroupSeriesSelection, setVivAnnGroupSeriesSelection] =
+    useState<string>('all')
+
+  const getVivSeriesDescription = (seriesInstanceUID: string): string => {
+    const study = DicomMetadataStore.getStudy(studyInstanceUID)
+    if (study?.series != null && study !== undefined) {
+      const series = study.series.find(
+        (s) => s.SeriesInstanceUID === seriesInstanceUID,
+      )
+      if (
+        series?.SeriesDescription !== undefined &&
+        series.SeriesDescription !== ''
+      ) {
+        return series.SeriesDescription
+      }
+    }
+    return `Series ${seriesInstanceUID.slice(0, 8)}…`
+  }
+
+  const handleVivBulkCatalogChange = useCallback(
+    (c: VivBulkAnnotationCatalogPayload | null) => {
+      setVivBulkCatalog(c)
+      if (c != null && c.annotationGroups.length > 0) {
+        setVivAnnGroupSeriesSelection('all')
+        setVivVisibleAnnotationGroupUIDs(new Set())
+        setVivAnnotationGroupStyles({ ...c.defaultStylesByGroupUID })
+      } else if (c != null) {
+        setVivVisibleAnnotationGroupUIDs(new Set())
+        setVivAnnotationGroupStyles({})
+      } else {
+        setVivVisibleAnnotationGroupUIDs(new Set())
+        setVivAnnotationGroupStyles({})
+        setVivAnnGroupSeriesSelection('all')
+      }
+    },
+    [],
+  )
+
+  const handleVivAnnotationGroupVisibilityChange = useCallback(
+    ({
+      annotationGroupUID,
+      isVisible,
+    }: {
+      annotationGroupUID: string
+      isVisible: boolean
+    }) => {
+      setVivVisibleAnnotationGroupUIDs((prev) => {
+        const next = new Set(prev)
+        if (isVisible) {
+          next.add(annotationGroupUID)
+        } else {
+          next.delete(annotationGroupUID)
+        }
+        return next
+      })
+    },
+    [],
+  )
+
+  const handleVivAnnotationGroupStyleChange = useCallback(
+    ({
+      uid,
+      styleOptions,
+    }: {
+      uid: string
+      styleOptions: {
+        opacity?: number
+        color?: number[]
+        measurement?: dcmjs.sr.coding.CodedConcept
+        limitValues?: number[]
+      }
+    }) => {
+      setVivAnnotationGroupStyles((prev) => {
+        const base =
+          prev[uid] ??
+          vivBulkCatalog?.defaultStylesByGroupUID[uid] ?? {
+            opacity: 1,
+            color: [220, 60, 60],
+          }
+        return {
+          ...prev,
+          [uid]: {
+            opacity: styleOptions.opacity ?? base.opacity,
+            color: styleOptions.color ?? base.color,
+          },
+        }
+      })
+    },
+    [vivBulkCatalog],
+  )
+
+  const handleVivAnnotationGroupSeriesSelect = useCallback((value: string) => {
+    setVivVisibleAnnotationGroupUIDs(new Set())
+    setVivAnnGroupSeriesSelection(value)
+  }, [])
+
+  const handleVivAnnotationGroupClick = useCallback((_uid: string) => {
+    /* Viv preview: no VolumeImageViewer.zoomToROI equivalent yet */
+  }, [])
 
   useEffect(() => {
     const currentSlideMatchesSeries =
@@ -230,11 +340,129 @@ function ParametrizedSlideViewer({
       const bulkAnnotationClient =
         clients[StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION] ??
         microscopyClient
+
+      let vivAnnotationGroupListSection: ReactNode = null
+      if (
+        vivBulkCatalog != null &&
+        vivBulkCatalog.annotationGroups.length > 0
+      ) {
+        const annotationGroups = vivBulkCatalog.annotationGroups
+        const annotationGroupsBySeries: {
+          [seriesInstanceUID: string]: dmv.annotation.AnnotationGroup[]
+        } = {}
+        for (const ag of annotationGroups) {
+          const seriesUID = ag.seriesInstanceUID
+          if (!(seriesUID in annotationGroupsBySeries)) {
+            annotationGroupsBySeries[seriesUID] = []
+          }
+          annotationGroupsBySeries[seriesUID]?.push(ag)
+        }
+        const dropdownOptions = [
+          { value: 'all', label: 'All' },
+          ...Object.keys(annotationGroupsBySeries).map((seriesUID) => ({
+            value: seriesUID,
+            label: `${getVivSeriesDescription(seriesUID)} (${annotationGroupsBySeries[seriesUID]?.length ?? 0} groups)`,
+          })),
+        ]
+        const selectedSeriesAnnotationGroups =
+          vivAnnGroupSeriesSelection === 'all'
+            ? annotationGroups
+            : (annotationGroupsBySeries[vivAnnGroupSeriesSelection] ?? [])
+
+        vivAnnotationGroupListSection = (
+          <>
+            <div
+              style={{
+                paddingLeft: '14px',
+                paddingRight: '14px',
+                paddingTop: '7px',
+                paddingBottom: '7px',
+              }}
+            >
+              <Select
+                style={{ width: '100%' }}
+                placeholder="Select a series"
+                value={vivAnnGroupSeriesSelection}
+                onChange={(v) => {
+                  handleVivAnnotationGroupSeriesSelect(String(v))
+                }}
+                options={dropdownOptions}
+              />
+            </div>
+            {selectedSeriesAnnotationGroups.length > 0 ? (
+              <AnnotationGroupList
+                annotationGroups={selectedSeriesAnnotationGroups}
+                metadata={vivBulkCatalog.metadataByGroupUID}
+                onAnnotationGroupClick={handleVivAnnotationGroupClick}
+                defaultAnnotationGroupStyles={vivAnnotationGroupStyles}
+                visibleAnnotationGroupUIDs={vivVisibleAnnotationGroupUIDs}
+                onAnnotationGroupVisibilityChange={
+                  handleVivAnnotationGroupVisibilityChange
+                }
+                onAnnotationGroupStyleChange={handleVivAnnotationGroupStyleChange}
+              />
+            ) : null}
+          </>
+        )
+      }
+
+      const padSubmenuBlock = {
+        paddingLeft: '14px' as const,
+        paddingRight: '14px' as const,
+        paddingTop: '7px' as const,
+        paddingBottom: '7px' as const,
+      }
+
+      const vivAnnotationGroupPanel: ReactNode = (
+        <Menu
+          mode="inline"
+          selectable={false}
+          defaultOpenKeys={['annotation-groups']}
+          inlineIndent={14}
+          forceSubMenuRender
+          style={{
+            borderInlineEnd: 0,
+            background: 'none',
+            marginTop: 10,
+          }}
+        >
+          <Menu.SubMenu key="annotation-groups" title="Annotation Groups">
+            {vivBulkCatalog === null ? (
+              <div style={padSubmenuBlock}>
+                <p
+                  style={{
+                    fontSize: 11,
+                    lineHeight: 1.45,
+                    margin: 0,
+                    color: 'rgba(0,0,0,0.75)',
+                  }}
+                >
+                  Loading annotation metadata and geometry…
+                </p>
+              </div>
+            ) : vivBulkCatalog.annotationGroups.length === 0 ? (
+              <div style={padSubmenuBlock}>
+                <p style={{ fontSize: 11, lineHeight: 1.45, margin: 0 }}>
+                  No bulk annotation groups for this slide were returned (or all
+                  were skipped). Filter the console with{' '}
+                  <code style={{ fontSize: 10 }}>[Viv bulk ANN]</code> to see why.
+                </p>
+              </div>
+            ) : (
+              vivAnnotationGroupListSection
+            )}
+          </Menu.SubMenu>
+        </Menu>
+      )
+
       viewer = vivChrome(
         <VivSlideViewport
           client={microscopyClient}
           bulkAnnotationClient={bulkAnnotationClient}
-          loadBulkAnnotations={loadVivBulkAnnotations}
+          loadBulkAnnotations
+          visibleBulkAnnotationGroupUIDs={vivVisibleAnnotationGroupUIDs}
+          bulkAnnotationGroupStyles={vivAnnotationGroupStyles}
+          onBulkAnnotationCatalogChange={handleVivBulkCatalogChange}
           studyInstanceUID={studyInstanceUID}
           seriesInstanceUID={seriesInstanceUID}
           vivSettings={vivSettings}
@@ -247,33 +475,12 @@ function ParametrizedSlideViewer({
               color: 'rgba(0,0,0,0.85)',
             }}
           >
-            Viv preview
+            Viv Preview
           </div>
           <p style={{ marginBottom: 12 }}>
             Classic slide tools are not wired here yet.
           </p>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 8,
-              marginBottom: 6,
-              color: 'rgba(0,0,0,0.85)',
-            }}
-          >
-            <span>Bulk annotations</span>
-            <Switch
-              checked={loadVivBulkAnnotations}
-              onChange={setLoadVivBulkAnnotations}
-              size="small"
-            />
-          </div>
-          <p style={{ fontSize: 11, lineHeight: 1.45 }}>
-            Off by default. Turn on to fetch ANN series and draw overlays after
-            the pyramid loads. Use the browser console filter{' '}
-            <code style={{ fontSize: 10 }}>[Viv bulk ANN]</code> for diagnostics.
-          </p>
+          {vivAnnotationGroupPanel}
         </div>,
       )
     } else {
