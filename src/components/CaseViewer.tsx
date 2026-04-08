@@ -1,4 +1,4 @@
-import { Layout, Menu, Select } from 'antd'
+import { Layout, Menu, Select, Tag } from 'antd'
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
 // skipcq: JS-C1003
@@ -421,7 +421,7 @@ function ParametrizedSlideViewer({
           style={{
             borderInlineEnd: 0,
             background: 'none',
-            marginTop: 10,
+            marginTop: 8,
           }}
         >
           <Menu.SubMenu key="annotation-groups" title="Annotation Groups">
@@ -469,17 +469,55 @@ function ParametrizedSlideViewer({
         <div>
           <div
             style={{
-              fontWeight: 600,
-              marginBottom: 8,
-              color: 'rgba(0,0,0,0.85)',
-              padding: '12px 12px 0 12px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              gap: 14,
+              padding: '22px 14px 18px',
+              borderBottom: '1px solid rgba(0, 0, 0, 0.07)',
             }}
           >
-            viv preview
+            <Tag
+              style={{
+                margin: 0,
+                border: 'none',
+                borderRadius: 999,
+                fontSize: 10,
+                fontWeight: 800,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                padding: '7px 18px',
+                lineHeight: 1.25,
+                height: 'auto',
+                background:
+                  'linear-gradient(140deg, #4338ca 0%, #6d28d9 48%, #7e22ce 100%)',
+                color: '#fff',
+                boxShadow:
+                  'inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 2px 4px rgba(67, 56, 202, 0.18), 0 8px 20px rgba(109, 40, 217, 0.22)',
+              }}
+            >
+              Viv preview
+            </Tag>
+            <p
+              style={{
+                margin: 0,
+                width: '100%',
+                padding: '13px 16px',
+                fontSize: 12,
+                lineHeight: 1.6,
+                color: 'rgba(0, 0, 0, 0.78)',
+                background:
+                  'linear-gradient(100deg, rgba(67, 56, 202, 0.09) 0%, rgba(126, 34, 206, 0.05) 52%, rgba(255, 255, 255, 0) 100%)',
+                borderRadius: 10,
+                border: '1px solid rgba(109, 40, 217, 0.14)',
+                borderLeftWidth: 4,
+                borderLeftColor: '#6d28d9',
+                boxSizing: 'border-box',
+              }}
+            >
+              Only bulk simple annotations are supported in this preview!
+            </p>
           </div>
-          <p style={{ marginBottom: 12, padding: '0 12px 12px 12px' }}>
-            Only bulk simple annotations are supported in this preview!
-          </p>
           {vivAnnotationGroupPanel}
         </div>,
       )
