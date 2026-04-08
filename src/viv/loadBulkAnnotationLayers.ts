@@ -67,10 +67,7 @@ export type VivBulkAnnotationCatalogPayload = {
     string,
     dmvNamespace.metadata.MicroscopyBulkSimpleAnnotations
   >
-  defaultStylesByGroupUID: Record<
-    string,
-    { opacity: number; color: number[] }
-  >
+  defaultStylesByGroupUID: Record<string, { opacity: number; color: number[] }>
 }
 
 /** Deferred work: fetch bulk pixel data + build deck layers when a group is toggled visible (OpenLayers parity). */
@@ -93,9 +90,10 @@ export type VivBulkGroupGeometryJob = {
   commonZCoordinate: number
 }
 
-export type VivBulkAnnotationMetadataResult = VivBulkAnnotationCatalogPayload & {
-  groupGeometryJobs: Record<string, VivBulkGroupGeometryJob>
-}
+export type VivBulkAnnotationMetadataResult =
+  VivBulkAnnotationCatalogPayload & {
+    groupGeometryJobs: Record<string, VivBulkGroupGeometryJob>
+  }
 
 function emptyMetadataResult(): VivBulkAnnotationMetadataResult {
   return {
@@ -179,8 +177,8 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
 
   let features: unknown[]
   try {
-    features =
-      resolveBulkSimpleAnnotationsApi().getFeaturesFromBulkAnnotations({
+    features = resolveBulkSimpleAnnotationsApi().getFeaturesFromBulkAnnotations(
+      {
         graphicType,
         graphicData,
         graphicIndex,
@@ -196,7 +194,8 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
         view: viewMock,
         featureFunction: featureFn,
         isHighResolution: () => false,
-      })
+      },
+    )
   } catch (e) {
     console.warn(
       `${VIV_BULK} getFeaturesFromBulkAnnotations failed`,
@@ -516,8 +515,12 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
   /** Present for API parity with the classic path; bulk byte fetch happens lazily per group. */
   fetchClient: DicomWebManager
 }): Promise<VivBulkAnnotationMetadataResult> {
-  const { geometry, studyInstanceUID, imageSeriesInstanceUID, annotationClient } =
-    options
+  const {
+    geometry,
+    studyInstanceUID,
+    imageSeriesInstanceUID,
+    annotationClient,
+  } = options
 
   const { pyramid, extent } = geometry
   const refImage = pyramid[0]
