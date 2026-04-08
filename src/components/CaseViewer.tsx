@@ -88,15 +88,12 @@ const vivChrome = (main: JSX.Element, rightPanel?: ReactNode): JSX.Element => (
         width: 300,
         flexShrink: 0,
         borderLeft: 'solid 0.25px',
-        padding: '10px 12px',
         fontSize: 12,
         color: 'rgba(0,0,0,0.55)',
         overflow: 'auto',
       }}
     >
-      {rightPanel ?? (
-        <span>Viv preview — classic slide tools are not wired here yet.</span>
-      )}
+      {rightPanel}
     </aside>
   </div>
 )
@@ -475,12 +472,13 @@ function ParametrizedSlideViewer({
               fontWeight: 600,
               marginBottom: 8,
               color: 'rgba(0,0,0,0.85)',
+              padding: '12px 12px 0 12px',
             }}
           >
-            Viv Preview
+            viv preview
           </div>
-          <p style={{ marginBottom: 12 }}>
-            Classic slide tools are not wired here yet.
+          <p style={{ marginBottom: 12, padding: '0 12px 12px 12px' }}>
+            Only bulk simple annotations are supported in this preview!
           </p>
           {vivAnnotationGroupPanel}
         </div>,
