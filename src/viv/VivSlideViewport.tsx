@@ -1,7 +1,7 @@
 import type { Layer } from '@deck.gl/core'
 import { OrthographicView } from '@deck.gl/core'
+import type { PathLayer, ScatterplotLayer } from '@deck.gl/layers'
 import DeckGL from '@deck.gl/react'
-import { PathLayer, ScatterplotLayer } from '@deck.gl/layers'
 import { MultiscaleImageLayer } from '@vivjs/layers'
 import { message, Spin } from 'antd'
 import type React from 'react'
@@ -10,9 +10,9 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { VivSettings } from '../AppConfig'
 import type DicomWebManager from '../DicomWebManager'
 import {
+  type BulkAnnotationGeometryContext,
   DicomLoader,
   isVivDicomTileNetworkCancellation,
-  type BulkAnnotationGeometryContext,
 } from './dicomLoader'
 import {
   hydrateVivBulkGroupLayerSlice,
@@ -62,15 +62,12 @@ function buildStyledBulkOverlayLayers(
     if (slice == null) {
       continue
     }
-    const st =
-      styles[uid] ??
+    const st = styles[uid] ??
       defaultStyles[uid] ?? {
         opacity: 1,
         color: [220, 60, 60],
       }
-    const a = Math.round(
-      Math.max(0, Math.min(1, st.opacity)) * 220,
-    )
+    const a = Math.round(Math.max(0, Math.min(1, st.opacity)) * 220)
     const rgba: [number, number, number, number] = [
       st.color[0] ?? 0,
       st.color[1] ?? 0,
@@ -469,12 +466,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
         })
       })
     }
-  }, [
-    loadBulkAnnotations,
-    baseLayer,
-    visibleBulkAnnotationGroupUIDs,
-    client,
-  ])
+  }, [loadBulkAnnotations, baseLayer, visibleBulkAnnotationGroupUIDs, client])
 
   const sp = slideRef.current
   const orthoZoomClamp =

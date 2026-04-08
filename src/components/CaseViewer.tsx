@@ -218,8 +218,7 @@ function ParametrizedSlideViewer({
       }
     }) => {
       setVivAnnotationGroupStyles((prev) => {
-        const base =
-          prev[uid] ??
+        const base = prev[uid] ??
           vivBulkCatalog?.defaultStylesByGroupUID[uid] ?? {
             opacity: 1,
             color: [220, 60, 60],
@@ -399,7 +398,9 @@ function ParametrizedSlideViewer({
                 onAnnotationGroupVisibilityChange={
                   handleVivAnnotationGroupVisibilityChange
                 }
-                onAnnotationGroupStyleChange={handleVivAnnotationGroupStyleChange}
+                onAnnotationGroupStyleChange={
+                  handleVivAnnotationGroupStyleChange
+                }
               />
             ) : null}
           </>
@@ -445,7 +446,8 @@ function ParametrizedSlideViewer({
                 <p style={{ fontSize: 11, lineHeight: 1.45, margin: 0 }}>
                   No bulk annotation groups for this slide were returned (or all
                   were skipped). Filter the console with{' '}
-                  <code style={{ fontSize: 10 }}>[Viv bulk ANN]</code> to see why.
+                  <code style={{ fontSize: 10 }}>[Viv bulk ANN]</code> to see
+                  why.
                 </p>
               </div>
             ) : (
