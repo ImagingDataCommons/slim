@@ -241,6 +241,71 @@ export function isVivDicomTileNetworkCancellation(e: unknown): boolean {
   )
 }
 
+/** Same slide/map space as OpenLayers VolumeImageViewer (finest pyramid, affine). */
+export interface BulkAnnotationGeometryContext {
+  pyramid: dmv.metadata.VLWholeSlideMicroscopyImage[]
+  affine: number[][]
+  affineInverse: number[][]
+  /** OL map extent [minX, minY, maxX, maxY] for bulk-annotation viewport helpers. */
+  extent: number[]
+}
+
+function readVolumeImageViewerAffine(
+  viewer: dmv.viewer.VolumeImageViewer,
+): number[][] {
+  const v = viewer as unknown as Record<symbol, unknown>
+  const m = v[Symbol.for('affine')]
+  if (!Array.isArray(m)) {
+    throw new Error('VolumeImageViewer: affine transform not available')
+  }
+  return m as number[][]
+}
+
+function readVolumeImageViewerAffineInverse(
+  viewer: dmv.viewer.VolumeImageViewer,
+): number[][] {
+  const sym = Object.getOwnPropertySymbols(viewer).find(
+    (s) => s.description === 'affineInverse',
+  )
+  if (sym === undefined) {
+    throw new Error('VolumeImageViewer: affineInverse symbol not found')
+  }
+  const v = viewer as unknown as Record<symbol, unknown>
+  const m = v[sym]
+  if (!Array.isArray(m)) {
+    throw new Error('VolumeImageViewer: affine inverse not available')
+  }
+  return m as number[][]
+}
+
+function readVolumeImageViewerPyramid(viewer: dmv.viewer.VolumeImageViewer): {
+  metadata: dmv.metadata.VLWholeSlideMicroscopyImage[]
+  extent: number[]
+} {
+  const sym = Object.getOwnPropertySymbols(viewer).find(
+    (s) => s.description === 'pyramid',
+  )
+  if (sym === undefined) {
+    throw new Error('VolumeImageViewer: pyramid symbol not found')
+  }
+  const raw = (
+    viewer as unknown as Record<symbol, { metadata: unknown; extent: unknown }>
+  )[sym]
+  if (
+    raw === null ||
+    typeof raw !== 'object' ||
+    !Array.isArray((raw as { metadata?: unknown }).metadata) ||
+    !Array.isArray((raw as { extent?: unknown }).extent)
+  ) {
+    throw new Error('VolumeImageViewer: invalid pyramid object')
+  }
+  return {
+    metadata: (raw as { metadata: dmv.metadata.VLWholeSlideMicroscopyImage[] })
+      .metadata,
+    extent: (raw as { extent: number[] }).extent,
+  }
+}
+
 function getOpticalPathsMap(viewer: dmv.viewer.VolumeImageViewer): {
   [key: string]: OpticalPathEntry
 } {
@@ -738,6 +803,21 @@ export class DicomLoader {
     )
     base.reverse()
     return insertSyntheticDyadicLevels(base)
+  }
+
+  /**
+   * Pyramid metadata and affine transforms for Microscopy Bulk Simple Annotations,
+   * matching {@link dmv.viewer.VolumeImageViewer} / OpenLayers geometry space.
+   */
+  async getBulkAnnotationGeometryContext(): Promise<BulkAnnotationGeometryContext> {
+    const viewer = await this._getViewer()
+    const { metadata, extent } = readVolumeImageViewerPyramid(viewer)
+    return {
+      pyramid: metadata,
+      affine: readVolumeImageViewerAffine(viewer),
+      affineInverse: readVolumeImageViewerAffineInverse(viewer),
+      extent,
+    }
   }
 
   /**

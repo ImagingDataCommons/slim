@@ -1,7 +1,7 @@
-import { Layout, Menu } from 'antd'
+import { Layout, Menu, Switch } from 'antd'
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Route, Routes, useLocation, useParams } from 'react-router-dom'
 
 import type { AnnotationSettings, VivSettings } from '../AppConfig'
@@ -54,7 +54,7 @@ const findSeriesSlide = (
 }
 
 /** Viv path: main viewport + slim right rail (classic viewer uses ~300px sider). */
-const vivChrome = (main: JSX.Element): JSX.Element => (
+const vivChrome = (main: JSX.Element, rightPanel?: ReactNode): JSX.Element => (
   <div
     style={{
       display: 'flex',
@@ -89,7 +89,9 @@ const vivChrome = (main: JSX.Element): JSX.Element => (
         overflow: 'auto',
       }}
     >
-      Viv preview — classic slide tools are not wired here yet.
+      {rightPanel ?? (
+        <span>Viv preview — classic slide tools are not wired here yet.</span>
+      )}
     </aside>
   </div>
 )
@@ -131,6 +133,7 @@ function ParametrizedSlideViewer({
   )
   const [derivedDataset, setDerivedDataset] =
     useState<NaturalizedInstance | null>(null)
+  const [loadVivBulkAnnotations, setLoadVivBulkAnnotations] = useState(false)
 
   useEffect(() => {
     const currentSlideMatchesSeries =
@@ -224,13 +227,54 @@ function ParametrizedSlideViewer({
       if (microscopyClient === undefined) {
         return null
       }
+      const bulkAnnotationClient =
+        clients[StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION] ??
+        microscopyClient
       viewer = vivChrome(
         <VivSlideViewport
           client={microscopyClient}
+          bulkAnnotationClient={bulkAnnotationClient}
+          loadBulkAnnotations={loadVivBulkAnnotations}
           studyInstanceUID={studyInstanceUID}
           seriesInstanceUID={seriesInstanceUID}
           vivSettings={vivSettings}
         />,
+        <div>
+          <div
+            style={{
+              fontWeight: 600,
+              marginBottom: 8,
+              color: 'rgba(0,0,0,0.85)',
+            }}
+          >
+            Viv preview
+          </div>
+          <p style={{ marginBottom: 12 }}>
+            Classic slide tools are not wired here yet.
+          </p>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 8,
+              marginBottom: 6,
+              color: 'rgba(0,0,0,0.85)',
+            }}
+          >
+            <span>Bulk annotations</span>
+            <Switch
+              checked={loadVivBulkAnnotations}
+              onChange={setLoadVivBulkAnnotations}
+              size="small"
+            />
+          </div>
+          <p style={{ fontSize: 11, lineHeight: 1.45 }}>
+            Off by default. Turn on to fetch ANN series and draw overlays after
+            the pyramid loads. Use the browser console filter{' '}
+            <code style={{ fontSize: 10 }}>[Viv bulk ANN]</code> for diagnostics.
+          </p>
+        </div>,
       )
     } else {
       viewer = (

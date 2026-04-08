@@ -4,11 +4,12 @@ import DeckGL from '@deck.gl/react'
 import { MultiscaleImageLayer } from '@vivjs/layers'
 import { message, Spin } from 'antd'
 import type React from 'react'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import type { VivSettings } from '../AppConfig'
 import type DicomWebManager from '../DicomWebManager'
 import { DicomLoader, isVivDicomTileNetworkCancellation } from './dicomLoader'
+import { loadBulkAnnotationDeckLayers } from './loadBulkAnnotationLayers'
 import {
   buildVivDisplayOptions,
   computeOrthographicFitViewState,
@@ -16,7 +17,12 @@ import {
 } from './vivDisplayDefaults'
 
 export interface VivSlideViewportProps {
+  /** SM / tile store client (same as VolumeImageViewer). */
   client: DicomWebManager
+  /** ANN series QIDO/metadata; bulk byte fetches still use `client`. Defaults to `client`. */
+  bulkAnnotationClient?: DicomWebManager
+  /** When true, QIDO/retrieve bulk ANN overlays after the pyramid loads. Default false (user toggles in panel). */
+  loadBulkAnnotations?: boolean
   studyInstanceUID: string
   seriesInstanceUID: string
   vivSettings?: VivSettings
@@ -32,6 +38,8 @@ type ViewState = { target: [number, number, number]; zoom: number }
  */
 const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
   client,
+  bulkAnnotationClient,
+  loadBulkAnnotations = false,
   studyInstanceUID,
   seriesInstanceUID,
   vivSettings,
@@ -47,9 +55,15 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     levelCount: number
   } | null>(null)
   const fitDoneRef = useRef(false)
+  /** Same loader instance that built `baseLayer` (for geometry + ANN bulk fetches only). */
+  const dicomLoaderRef = useRef<DicomLoader | null>(null)
 
   const [size, setSize] = useState({ width: 100, height: 100 })
-  const [layers, setLayers] = useState<Layer[]>([])
+  const [baseLayer, setBaseLayer] = useState<Layer | null>(null)
+  const [annLayers, setAnnLayers] = useState<Layer[]>([])
+  const layers = useMemo((): Layer[] => {
+    return baseLayer !== null ? [baseLayer, ...annLayers] : []
+  }, [baseLayer, annLayers])
   const [loading, setLoading] = useState(true)
   const [viewState, setViewState] = useState<ViewState>({
     target: [0, 0, 0],
@@ -100,7 +114,9 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     fitDoneRef.current = false
     slideRef.current = null
     setLoading(true)
-    setLayers([])
+    setBaseLayer(null)
+    setAnnLayers([])
+    dicomLoaderRef.current = null
 
     const run = async (): Promise<void> => {
       try {
@@ -108,6 +124,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           studyInstanceUID,
           seriesInstanceUID,
         })
+        dicomLoaderRef.current = dicomLoader
         const sources = await dicomLoader.getSources()
         if (cancelled) {
           return
@@ -147,7 +164,12 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
             console.error(err)
           },
         })
-        setLayers([layer as unknown as Layer])
+
+        if (cancelled) {
+          return
+        }
+
+        setBaseLayer(layer as unknown as Layer)
         slideRef.current = {
           worldW: sw,
           worldH: sh,
@@ -184,9 +206,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           )
         }
         requestAnimationFrame(() => {
-          if (!cancelled) {
-            measureRef.current?.()
-          }
+          measureRef.current?.()
         })
       } catch (err) {
         console.error(err)
@@ -207,8 +227,71 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     void run()
     return () => {
       cancelled = true
+      dicomLoaderRef.current = null
     }
   }, [client, studyInstanceUID, seriesInstanceUID, vivSettings])
+
+  useEffect(() => {
+    if (!loadBulkAnnotations) {
+      setAnnLayers([])
+      return
+    }
+    if (baseLayer === null) {
+      setAnnLayers([])
+      return
+    }
+    const dicomLoader = dicomLoaderRef.current
+    if (dicomLoader === null) {
+      console.warn(
+        '[Viv bulk ANN] viewport: no DicomLoader ref — wait for slide to finish loading',
+      )
+      return
+    }
+
+    let cancelled = false
+    console.info('[Viv bulk ANN] viewport: loading overlays (image layer unchanged)…', {
+      studyInstanceUID,
+      seriesInstanceUID,
+      usesDedicatedAnnClient:
+        bulkAnnotationClient != null && bulkAnnotationClient !== client,
+    })
+
+    const run = async (): Promise<void> => {
+      try {
+        const geometry = await dicomLoader.getBulkAnnotationGeometryContext()
+        const loaded = await loadBulkAnnotationDeckLayers({
+          geometry,
+          studyInstanceUID,
+          imageSeriesInstanceUID: seriesInstanceUID,
+          annotationClient: bulkAnnotationClient ?? client,
+          fetchClient: client,
+        })
+        if (!cancelled) {
+          setAnnLayers(loaded)
+          console.info('[Viv bulk ANN] viewport: deck overlay layers', {
+            count: loaded.length,
+          })
+        }
+      } catch (e) {
+        console.warn('[Viv bulk ANN] viewport: overlay load failed', e)
+        if (!cancelled) {
+          setAnnLayers([])
+        }
+      }
+    }
+
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    loadBulkAnnotations,
+    baseLayer,
+    bulkAnnotationClient,
+    client,
+    studyInstanceUID,
+    seriesInstanceUID,
+  ])
 
   const sp = slideRef.current
   const orthoZoomClamp =
