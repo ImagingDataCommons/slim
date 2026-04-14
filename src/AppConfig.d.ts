@@ -124,11 +124,6 @@ export default interface AppConfig {
     enableInDevelopment?: boolean
   }
   enableMemoryMonitoring?: boolean
-  /**
-   * When true, the slide viewport uses Viv + Deck.gl (src/viv)
-   * instead of the default OpenLayers-based SlideViewer. Limited feature set.
-   */
-  useViv?: boolean
-  /** Optional display overrides for the Viv viewer path (channels, contrast, etc.). */
+  /** Optional display overrides for the Viv slide viewer at `/viv/...` routes (channels, contrast, etc.). */
   vivSettings?: VivSettings
 }

@@ -1,7 +1,13 @@
 // skipcq: JS-C1003
 import type * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
-import { parseDate, parseName, parseSex } from '../utils/values'
+import {
+  formatAdmittingDiagnoses,
+  formatPatientSpeciesCodeSequence,
+  parseDate,
+  parseName,
+  parseSex,
+} from '../utils/values'
 import Description from './Description'
 
 interface PatientProps {
@@ -15,6 +21,11 @@ interface PatientProps {
  */
 class Patient extends React.Component<PatientProps, Record<string, never>> {
   render(): React.ReactNode {
+    const meta = this.props.metadata as unknown as Record<string, unknown>
+    const species = formatPatientSpeciesCodeSequence(
+      meta.PatientSpeciesCodeSequence,
+    )
+    const admittingDiagnosis = formatAdmittingDiagnoses(meta)
     const attributes = [
       {
         name: 'ID',
@@ -24,6 +35,7 @@ class Patient extends React.Component<PatientProps, Record<string, never>> {
         name: 'Name',
         value: parseName(this.props.metadata.PatientName),
       },
+      ...(species !== undefined ? [{ name: 'Species', value: species }] : []),
       {
         name: 'Sex',
         value: parseSex(this.props.metadata.PatientSex),
@@ -34,9 +46,11 @@ class Patient extends React.Component<PatientProps, Record<string, never>> {
       },
       {
         name: 'Age',
-        value: (this.props.metadata as unknown as Record<string, unknown>)
-          .PatientAge as string | undefined,
+        value: meta.PatientAge as string | undefined,
       },
+      ...(admittingDiagnosis !== undefined
+        ? [{ name: 'Admitting diagnosis', value: admittingDiagnosis }]
+        : []),
     ]
     return <Description attributes={attributes} />
   }

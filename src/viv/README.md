@@ -2,7 +2,7 @@
 
 Isolated port of [viv-dicomweb-test](https://github.com/jmuhlich/viv-dicomweb-test) (DICOMweb + [Viv](https://github.com/hms-dbmi/viv) + [dicom-microscopy-viewer](https://github.com/imagingdatacommons/dicom-microscopy-viewer)).
 
-Enable with `useViv: true` in `public/config/*.js` (see `viv_example.js`).
+Use the **`/viv/...` routes** (e.g. `/viv/studies/:studyInstanceUID/...`) for the Viv + Deck.gl slide viewer; optional `vivSettings` in `public/config/*.js` applies there.
 
 ## Local `dicom-microscopy-viewer` (e.g. bulk annotation API)
 

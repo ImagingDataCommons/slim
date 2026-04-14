@@ -94,7 +94,8 @@ function buildStyledBulkOverlayLayers(
   return out
 }
 
-const orthographicView = new OrthographicView()
+// flipY: false aligns Deck world Y with DMV/OpenLayers slide orientation (default true inverts Y vs OL).
+const orthographicView = new OrthographicView({ flipY: false })
 
 /** Stable empty defaults — avoid `props = new Set()` / `{}` per render. */
 const EMPTY_VISIBLE_BULK_GROUPS = new Set<string>()

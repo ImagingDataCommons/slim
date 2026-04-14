@@ -106,7 +106,7 @@ function ParametrizedSlideViewer({
   preload,
   enableAnnotationTools,
   annotations,
-  useViv,
+  isVivRoute,
   vivSettings,
 }: {
   clients: { [key: string]: DicomWebManager }
@@ -121,7 +121,7 @@ function ParametrizedSlideViewer({
   preload: boolean
   enableAnnotationTools: boolean
   annotations: AnnotationSettings[]
-  useViv: boolean
+  isVivRoute: boolean
   vivSettings?: VivSettings
 }): JSX.Element | null {
   const { studyInstanceUID = '', seriesInstanceUID = '' } = useParams<{
@@ -326,7 +326,7 @@ function ParametrizedSlideViewer({
 
   let viewer = null
   if (selectedSlide != null && selectedSlide !== undefined) {
-    if (useViv) {
+    if (isVivRoute) {
       const microscopyClient =
         clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE] ??
         clients.default
@@ -555,7 +555,7 @@ interface ViewerProps extends RouteComponentProps {
   enableAnnotationTools: boolean
   preload: boolean
   user?: User
-  useViv: boolean
+  isVivRoute: boolean
   vivSettings?: VivSettings
 }
 
@@ -569,7 +569,8 @@ function Viewer(props: ViewerProps): JSX.Element | null {
     seriesInstanceUID: string
   }): void => {
     console.info(`switch to series "${seriesInstanceUID}"`)
-    let urlPath = `/studies/${studyInstanceUID}/series/${seriesInstanceUID}`
+    const vivStudiesPrefix = location.pathname.startsWith('/viv/') ? '/viv' : ''
+    let urlPath = `${vivStudiesPrefix}/studies/${studyInstanceUID}/series/${seriesInstanceUID}`
 
     if (location.pathname.includes('/projects/')) {
       urlPath = location.pathname
@@ -689,7 +690,7 @@ function Viewer(props: ViewerProps): JSX.Element | null {
                 enableAnnotationTools={props.enableAnnotationTools}
                 app={props.app}
                 user={props.user}
-                useViv={props.useViv}
+                isVivRoute={props.isVivRoute}
                 vivSettings={props.vivSettings}
               />
             }
