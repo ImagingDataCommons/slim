@@ -13,6 +13,12 @@ export interface DicomRetrieveOptions {
   seriesInstanceUID: string
 }
 
+/** Viv loader options; ICC defaults match {@link dmv.viewer.VolumeImageViewer} (enabled). */
+export interface DicomLoaderOptions {
+  /** When false, tile decode skips ICC transforms (same as OpenLayers viewer toggle). */
+  iccProfilesEnabled?: boolean
+}
+
 type OpticalPathEntry = {
   pyramid: {
     metadata: Array<{
@@ -94,6 +100,61 @@ async function waitForOpenLayersTileLoaders(
     .map(([id]) => id)
   throw new Error(
     `Timed out waiting for OpenLayers tile loaders (still missing: ${missing.join(', ') || 'unknown'}).`,
+  )
+}
+
+/**
+ * After {@link dmv.viewer.VolumeImageViewer.toggleICCProfiles}, DMV flips ICC state
+ * synchronously but replaces `source.loader_` inside async `_getIccProfiles` callbacks.
+ * {@link waitForOpenLayersTileLoaders} is not enough: the old loader stays defined until then.
+ * Poll until each path's loader function reference differs from the pre-toggle snapshot.
+ */
+async function waitForTileLoadersAfterIccToggle(
+  opticalPaths: { [key: string]: OpticalPathEntry },
+  loadersBeforeToggle: Record<
+    string,
+    | ((z: number, requestX: number, requestY: number) => Promise<ArrayBuffer>)
+    | undefined
+  >,
+  timeoutMs: number,
+): Promise<void> {
+  const entries = Object.entries(opticalPaths)
+  if (entries.length === 0) {
+    return
+  }
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const ready = entries.every(([id, p]) => {
+      const curr = getDataTileLoader(
+        p.layer.getSource() as { loader_?: unknown } | null,
+      )
+      const prev = loadersBeforeToggle[id]
+      if (prev === undefined) {
+        return curr !== undefined
+      }
+      return curr !== undefined && curr !== prev
+    })
+    if (ready) {
+      return
+    }
+    await new Promise<void>((r) => {
+      setTimeout(r, 50)
+    })
+  }
+  const stale = entries
+    .filter(([id, p]) => {
+      const curr = getDataTileLoader(
+        p.layer.getSource() as { loader_?: unknown } | null,
+      )
+      const prev = loadersBeforeToggle[id]
+      if (prev === undefined) {
+        return curr === undefined
+      }
+      return curr === undefined || curr === prev
+    })
+    .map(([id]) => id)
+  throw new Error(
+    `Timed out waiting for ICC toggle to refresh OpenLayers tile loaders (still stale: ${stale.join(', ') || 'unknown'}).`,
   )
 }
 
@@ -340,6 +401,15 @@ export class DicomLoader {
     ) => Promise<ArrayBuffer>
   }
 
+  /**
+   * Target ICC setting from app (SlideViewer parity). DMV viewer defaults to ICC on;
+   * we sync with toggleICCProfiles + invalidate cached DataTile loaders.
+   */
+  private _iccTarget: boolean
+
+  /** Last known ICC state after sync (mirrors VolumeImageViewer internal default). */
+  private _iccProfilesEnabled = true
+
   private _shapes?: Array<
     [number, number, number] | [number, number, number, number]
   >
@@ -374,9 +444,89 @@ export class DicomLoader {
   /** Samples per pixel for SM instances (1 = monochrome paths, 3 = RGB color slide). */
   samplesPerPixel?: number
 
-  constructor(client: DicomWebManager, retrieveOptions: DicomRetrieveOptions) {
+  constructor(
+    client: DicomWebManager,
+    retrieveOptions: DicomRetrieveOptions,
+    options?: DicomLoaderOptions,
+  ) {
     this._client = client
     this._retrieveOptions = retrieveOptions
+    this._iccTarget = options?.iccProfilesEnabled ?? true
+    this._iccProfilesEnabled = true
+  }
+
+  /**
+   * Apply ICC on/off (matches SlideViewer → volumeViewer.toggleICCProfiles).
+   * Clears cached tile loader functions so getTile reads fresh loader_ from OL sources.
+   */
+  setIccProfilesEnabled(enabled: boolean): void {
+    if (this._iccTarget === enabled) {
+      return
+    }
+    this._iccTarget = enabled
+    this._loaders = undefined
+  }
+
+  /**
+   * After {@link setIccProfilesEnabled}, rebuild OpenLayers tile loaders so decoded pixels
+   * match the current ICC state. Call before rebuilding a Viv MultiscaleImageLayer; otherwise
+   * Deck may keep serving tiles from the previous loader_ until a tile is refetched.
+   */
+  async warmIccTileLoaders(): Promise<void> {
+    this._ensureVivAbortHooks()
+    this._loaders = undefined
+    const keys = await this._ensureOrderedPathKeys()
+    const first = keys[0]
+    if (first === undefined) {
+      return
+    }
+    await this._getLoader(first)
+  }
+
+  /** Number of ICC profiles available for color correction (0 ⇒ disable toggle in UI). */
+  async getIccProfilesLength(): Promise<number> {
+    this._ensureVivAbortHooks()
+    await this._ensureViewerReadyForTiles()
+    const viewer = await this._getViewer()
+    return viewer.getICCProfiles().length
+  }
+
+  /**
+   * Ensure VolumeImageViewer ICC state matches {@link _iccTarget} (one toggle flips DMV state).
+   */
+  private async _syncIccWithVolumeViewer(
+    viewer: dmv.viewer.VolumeImageViewer,
+    opticalPaths: { [key: string]: OpticalPathEntry },
+  ): Promise<void> {
+    if (this._iccProfilesEnabled === this._iccTarget) {
+      return
+    }
+    const loadersBeforeToggle = Object.fromEntries(
+      Object.entries(opticalPaths).map(([id, p]) => {
+        return [
+          id,
+          getDataTileLoader(
+            p.layer.getSource() as { loader_?: unknown } | null,
+          ),
+        ]
+      }),
+    )
+    viewer.toggleICCProfiles()
+    await waitForTileLoadersAfterIccToggle(
+      opticalPaths,
+      loadersBeforeToggle,
+      120_000,
+    )
+    this._iccProfilesEnabled = this._iccTarget
+  }
+
+  /** Render hidden OL viewer, wait for DataTile loaders, apply ICC target vs DMV. */
+  private async _ensureViewerReadyForTiles(): Promise<void> {
+    const viewer = await this._getViewer()
+    viewer.render({ container: document.createElement('div') })
+    const opticalPaths = await this._getOpticalPaths()
+    await waitForOpenLayersTileLoaders(opticalPaths, 120_000)
+    await this._syncIccWithVolumeViewer(viewer, opticalPaths)
   }
 
   private _ensureVivAbortHooks(): void {
@@ -623,10 +773,8 @@ export class DicomLoader {
   ): Promise<(level: number, x: number, y: number) => Promise<ArrayBuffer>> {
     this._ensureVivAbortHooks()
     if (this._loaders === undefined) {
-      const viewer = await this._getViewer()
-      viewer.render({ container: document.createElement('div') })
+      await this._ensureViewerReadyForTiles()
       const opticalPaths = await this._getOpticalPaths()
-      await waitForOpenLayersTileLoaders(opticalPaths, 120_000)
       this._loaders = Object.fromEntries(
         Object.entries(opticalPaths).map(([c, p]) => {
           const loader = getDataTileLoader(

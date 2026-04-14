@@ -3,7 +3,13 @@ import { Layout, Menu, Select, Tag } from 'antd'
 import * as dcmjs from 'dcmjs'
 // skipcq: JS-C1003
 import type * as dmv from 'dicom-microscopy-viewer'
-import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import {
+  Fragment,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react'
 import { Route, Routes, useLocation, useParams } from 'react-router-dom'
 
 import type { AnnotationSettings, VivSettings } from '../AppConfig'
@@ -22,6 +28,7 @@ import Patient from './Patient'
 import SlideList from './SlideList'
 import SlideViewer from './SlideViewer'
 import Study from './Study'
+import VivSettingsDrawer from './VivSettingsDrawer'
 
 const { naturalizeDataset } = dcmjs.data.DicomMetaDictionary
 
@@ -144,6 +151,13 @@ function ParametrizedSlideViewer({
   >({})
   const [vivAnnGroupSeriesSelection, setVivAnnGroupSeriesSelection] =
     useState<string>('all')
+  const [vivIccProfilesAvailable, setVivIccProfilesAvailable] = useState(true)
+
+  useEffect(() => {
+    setVivIccProfilesAvailable(true)
+    // `seriesInstanceUID` is the dependency: reset ICC availability when the route series changes.
+    void seriesInstanceUID
+  }, [seriesInstanceUID])
 
   const getVivSeriesDescription = (seriesInstanceUID: string): string => {
     const study = DicomMetadataStore.getStudy(studyInstanceUID)
@@ -160,6 +174,10 @@ function ParametrizedSlideViewer({
     }
     return `Series ${seriesInstanceUID.slice(0, 8)}…`
   }
+
+  const handleVivIccAvailability = useCallback((hasIccProfiles: boolean) => {
+    setVivIccProfilesAvailable(hasIccProfiles)
+  }, [])
 
   const handleVivBulkCatalogChange = useCallback(
     (c: VivBulkAnnotationCatalogPayload | null) => {
@@ -455,17 +473,21 @@ function ParametrizedSlideViewer({
       )
 
       viewer = vivChrome(
-        <VivSlideViewport
-          client={microscopyClient}
-          bulkAnnotationClient={bulkAnnotationClient}
-          loadBulkAnnotations
-          visibleBulkAnnotationGroupUIDs={vivVisibleAnnotationGroupUIDs}
-          bulkAnnotationGroupStyles={vivAnnotationGroupStyles}
-          onBulkAnnotationCatalogChange={handleVivBulkCatalogChange}
-          studyInstanceUID={studyInstanceUID}
-          seriesInstanceUID={seriesInstanceUID}
-          vivSettings={vivSettings}
-        />,
+        <Fragment>
+          <VivSettingsDrawer iccProfilesAvailable={vivIccProfilesAvailable} />
+          <VivSlideViewport
+            client={microscopyClient}
+            bulkAnnotationClient={bulkAnnotationClient}
+            loadBulkAnnotations
+            visibleBulkAnnotationGroupUIDs={vivVisibleAnnotationGroupUIDs}
+            bulkAnnotationGroupStyles={vivAnnotationGroupStyles}
+            onBulkAnnotationCatalogChange={handleVivBulkCatalogChange}
+            onIccProfilesAvailabilityChange={handleVivIccAvailability}
+            studyInstanceUID={studyInstanceUID}
+            seriesInstanceUID={seriesInstanceUID}
+            vivSettings={vivSettings}
+          />
+        </Fragment>,
         <div>
           <div
             style={{

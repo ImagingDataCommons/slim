@@ -2,13 +2,27 @@ import type { Layer } from '@deck.gl/core'
 import { OrthographicView } from '@deck.gl/core'
 import type { PathLayer, ScatterplotLayer } from '@deck.gl/layers'
 import DeckGL from '@deck.gl/react'
+import { Matrix4 } from '@math.gl/core'
 import { MultiscaleImageLayer } from '@vivjs/layers'
 import { message, Spin } from 'antd'
 import type React from 'react'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 
 import type { VivSettings } from '../AppConfig'
 import type DicomWebManager from '../DicomWebManager'
+import {
+  getIccProfilesEnabled,
+  setIccProfilesEnabled,
+  subscribeIccProfilesEnabled,
+} from '../preferences/iccProfilesPreference'
 import {
   type BulkAnnotationGeometryContext,
   DicomLoader,
@@ -45,6 +59,8 @@ export interface VivSlideViewportProps {
   onBulkAnnotationCatalogChange?: (
     catalog: VivBulkAnnotationCatalogPayload | null,
   ) => void
+  /** For Viv settings: whether ICC profiles exist on the loaded slide (disables ICC switch when false). */
+  onIccProfilesAvailabilityChange?: (hasIccProfiles: boolean) => void
   studyInstanceUID: string
   seriesInstanceUID: string
   vivSettings?: VivSettings
@@ -94,8 +110,20 @@ function buildStyledBulkOverlayLayers(
   return out
 }
 
-// flipY: false aligns Deck world Y with DMV/OpenLayers slide orientation (default true inverts Y vs OL).
 const orthographicView = new OrthographicView({ flipY: false })
+
+/** Mirror slide in X so Viv matches OpenLayers left–right (Deck vs OL world +X). */
+function vivHorizontalFlipMatrix(worldWidth: number): Matrix4 {
+  return new Matrix4().translate([worldWidth, 0, 0]).scale([-1, 1, 1])
+}
+
+type MultiscaleBuild = {
+  layer: Layer
+  worldW: number
+  worldH: number
+  levelCount: number
+  initialViewTarget: [number, number, number]
+}
 
 /** Stable empty defaults — avoid `props = new Set()` / `{}` per render. */
 const EMPTY_VISIBLE_BULK_GROUPS = new Set<string>()
@@ -117,12 +145,24 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
   visibleBulkAnnotationGroupUIDs = EMPTY_VISIBLE_BULK_GROUPS,
   bulkAnnotationGroupStyles = EMPTY_BULK_GROUP_STYLES,
   onBulkAnnotationCatalogChange,
+  onIccProfilesAvailabilityChange,
   studyInstanceUID,
   seriesInstanceUID,
   vivSettings,
 }) => {
   const catalogCbRef = useRef(onBulkAnnotationCatalogChange)
   catalogCbRef.current = onBulkAnnotationCatalogChange
+
+  const iccAvailCbRef = useRef(onIccProfilesAvailabilityChange)
+  iccAvailCbRef.current = onIccProfilesAvailabilityChange
+
+  const iccProfilesEnabled = useSyncExternalStore(
+    subscribeIccProfilesEnabled,
+    getIccProfilesEnabled,
+    getIccProfilesEnabled,
+  )
+  /** Tracks last-applied ICC value so we only rebuild when the shared preference changes. */
+  const iccPropRef = useRef(iccProfilesEnabled)
 
   const vivRef = useRef(vivSettings)
   vivRef.current = vivSettings
@@ -134,6 +174,8 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     worldH: number
     levelCount: number
   } | null>(null)
+  /** Same transform as the multiscale image (bulk overlays stay aligned). */
+  const slideMatrixRef = useRef<Matrix4 | null>(null)
   const fitDoneRef = useRef(false)
   /** Same loader instance that built `baseLayer` (for geometry + ANN bulk fetches only). */
   const dicomLoaderRef = useRef<DicomLoader | null>(null)
@@ -154,17 +196,23 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
   >({})
   slicesByUidRef.current = bulkSlicesByUid
   const annLayers = useMemo((): Layer[] => {
-    return buildStyledBulkOverlayLayers(
+    const built = buildStyledBulkOverlayLayers(
       bulkSlicesByUid,
       visibleBulkAnnotationGroupUIDs,
       bulkAnnotationGroupStyles,
       bulkDefaultStyles,
     )
+    const m = slideMatrixRef.current
+    if (baseLayer == null || m == null || built.length === 0) {
+      return built
+    }
+    return built.map((layer) => layer.clone({ modelMatrix: m }))
   }, [
     bulkSlicesByUid,
     visibleBulkAnnotationGroupUIDs,
     bulkAnnotationGroupStyles,
     bulkDefaultStyles,
+    baseLayer,
   ])
   const layers = useMemo((): Layer[] => {
     return baseLayer !== null ? [baseLayer, ...annLayers] : []
@@ -176,6 +224,49 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
   })
   const sizeRef = useRef(size)
   sizeRef.current = size
+
+  const createMultiscaleFromLoader = useCallback(
+    async (dicomLoader: DicomLoader): Promise<MultiscaleBuild> => {
+      const sources = await dicomLoader.getSources()
+      if (sources.length === 0) {
+        throw new Error('No pyramid levels returned for this series.')
+      }
+      const [, sh, sw] = sources[0].shape
+      const bitsAllocated = dicomLoader.bitsAllocated ?? 16
+      const d = buildVivDisplayOptions(
+        sh,
+        sw,
+        sources[0].shape[0],
+        vivSettings,
+        bitsAllocated,
+      )
+      const iccOn = getIccProfilesEnabled()
+      const layer = new MultiscaleImageLayer({
+        id: `slim-viv-multiscale-icc-${iccOn ? 'on' : 'off'}`,
+        loader: sources as never,
+        modelMatrix: vivHorizontalFlipMatrix(sw),
+        selections: d.selections,
+        channelsVisible: d.channelsVisible,
+        contrastLimits: d.contrastLimits,
+        dtype: sources[0].dtype,
+        excludeBackground: true,
+        onTileError: (err: Error) => {
+          if (isVivDicomTileNetworkCancellation(err)) {
+            return
+          }
+          console.error(err)
+        },
+      })
+      return {
+        layer: layer as unknown as Layer,
+        worldW: sw,
+        worldH: sh,
+        levelCount: sources.length,
+        initialViewTarget: d.initialViewState.target,
+      }
+    },
+    [vivSettings],
+  )
 
   useLayoutEffect(() => {
     const el = slotRef.current
@@ -218,6 +309,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     let cancelled = false
     fitDoneRef.current = false
     slideRef.current = null
+    slideMatrixRef.current = null
     setLoading(true)
     setBaseLayer(null)
     setBulkSlicesByUid({})
@@ -227,74 +319,55 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     bulkHydrateInFlightRef.current.clear()
     catalogCbRef.current?.(null)
     dicomLoaderRef.current = null
+    // Do not call onIccProfilesAvailabilityChange(false) here — it disabled the Settings
+    // switch until metadata loaded (looked "off"). CaseViewer defaults to true until
+    // we know this slide cannot use ICC (see getIccProfilesLength + spp).
 
     const run = async (): Promise<void> => {
       try {
-        const dicomLoader = new DicomLoader(client, {
-          studyInstanceUID,
-          seriesInstanceUID,
-        })
-        dicomLoaderRef.current = dicomLoader
-        const sources = await dicomLoader.getSources()
-        if (cancelled) {
-          return
-        }
-        if (sources.length === 0) {
-          throw new Error('No pyramid levels returned for this series.')
-        }
-        const [, sh, sw] = sources[0].shape
-        const bitsAllocated = dicomLoader.bitsAllocated ?? 16
-        const d = buildVivDisplayOptions(
-          sh,
-          sw,
-          sources[0].shape[0],
-          vivSettings,
-          bitsAllocated,
-        )
-        /*
-         * Non-geospatial TileLayer already uses getScale(z, tileSize) = 2^z * (512 / tileSize), so
-         * 256px DICOM tiles get the right world step. Do not also pass modelMatrix + scaled viewState:
-         * MultiscaleImageLayer derives zoomOffset from modelMatrix, and scaling the camera to match
-         * double-corrects — coarse levels can look fine while the finest z slips vs the pyramid.
-         */
-        const layer = new MultiscaleImageLayer({
-          id: 'slim-viv-multiscale',
-          loader: sources as never,
-          selections: d.selections,
-          channelsVisible: d.channelsVisible,
-          contrastLimits: d.contrastLimits,
-          dtype: sources[0].dtype,
-          // Lowest pyramid level is often wider/taller than one tile; ImageLayer would call getRaster and fail.
-          excludeBackground: true,
-          // Omit refinementStrategy → Viv uses best-available when opacity=1; smoother hand-off between pyramid levels than no-overlap.
-          onTileError: (err: Error) => {
-            if (isVivDicomTileNetworkCancellation(err)) {
-              return
-            }
-            console.error(err)
+        const iccAtStart = getIccProfilesEnabled()
+        const dicomLoader = new DicomLoader(
+          client,
+          {
+            studyInstanceUID,
+            seriesInstanceUID,
           },
-        })
-
+          { iccProfilesEnabled: iccAtStart },
+        )
+        dicomLoaderRef.current = dicomLoader
+        let built = await createMultiscaleFromLoader(dicomLoader)
         if (cancelled) {
           return
         }
-
-        setBaseLayer(layer as unknown as Layer)
-        slideRef.current = {
-          worldW: sw,
-          worldH: sh,
-          levelCount: sources.length,
+        if (getIccProfilesEnabled() !== iccAtStart) {
+          dicomLoader.setIccProfilesEnabled(getIccProfilesEnabled())
+          await dicomLoader.warmIccTileLoaders()
+          built = await createMultiscaleFromLoader(dicomLoader)
+          if (cancelled) {
+            return
+          }
         }
+
+        setBaseLayer(built.layer)
+        slideRef.current = {
+          worldW: built.worldW,
+          worldH: built.worldH,
+          levelCount: built.levelCount,
+        }
+        slideMatrixRef.current = vivHorizontalFlipMatrix(built.worldW)
+        const sh = built.worldH
+        const sw = built.worldW
+        const sourcesLength = built.levelCount
 
         if (vivSettings?.initialViewState?.zoom != null) {
           const el = slotRef.current
           const vw = el ? Math.max(1, el.clientWidth) : 800
           const vh = el ? Math.max(1, el.clientHeight) : 600
-          const lim = orthographicZoomLimits(vw, vh, sw, sh, sources.length)
+          const lim = orthographicZoomLimits(vw, vh, sw, sh, sourcesLength)
           const z0 = vivSettings.initialViewState.zoom
           const z = Math.min(lim.maxZoom, Math.max(lim.minZoom, z0))
           setViewState({
-            target: d.initialViewState.target,
+            target: built.initialViewTarget,
             zoom: Number(z.toFixed(5)),
           })
         } else {
@@ -318,9 +391,26 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
         requestAnimationFrame(() => {
           measureRef.current?.()
         })
+
+        iccPropRef.current = getIccProfilesEnabled()
+        try {
+          const n = await dicomLoader.getIccProfilesLength()
+          if (!cancelled) {
+            const spp = dicomLoader.samplesPerPixel ?? 1
+            // Match SlideViewer when profiles exist; also allow RGB slides when getICCProfiles()
+            // is still empty (hidden OL viewer timing) so the Settings toggle is usable.
+            iccAvailCbRef.current?.(n > 0 || spp === 3)
+          }
+        } catch {
+          if (!cancelled) {
+            const spp = dicomLoader.samplesPerPixel ?? 1
+            iccAvailCbRef.current?.(spp === 3)
+          }
+        }
       } catch (err) {
         console.error(err)
         if (!cancelled) {
+          iccAvailCbRef.current?.(false)
           void message.error(
             err instanceof Error
               ? err.message
@@ -339,7 +429,82 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       cancelled = true
       dicomLoaderRef.current = null
     }
-  }, [client, studyInstanceUID, seriesInstanceUID, vivSettings])
+  }, [
+    client,
+    studyInstanceUID,
+    seriesInstanceUID,
+    vivSettings,
+    createMultiscaleFromLoader,
+  ])
+
+  useEffect(() => {
+    if (loading) {
+      return
+    }
+    const dl = dicomLoaderRef.current
+    if (dl == null) {
+      return
+    }
+    if (iccPropRef.current === iccProfilesEnabled) {
+      return
+    }
+    const prevIccSynced = iccPropRef.current
+    let cancelled = false
+    void (async () => {
+      dl.setIccProfilesEnabled(iccProfilesEnabled)
+      await dl.warmIccTileLoaders()
+      try {
+        const built = await createMultiscaleFromLoader(dl)
+        if (cancelled) {
+          return
+        }
+        iccPropRef.current = iccProfilesEnabled
+        setBaseLayer(built.layer)
+        slideRef.current = {
+          worldW: built.worldW,
+          worldH: built.worldH,
+          levelCount: built.levelCount,
+        }
+        slideMatrixRef.current = vivHorizontalFlipMatrix(built.worldW)
+        requestAnimationFrame(() => {
+          measureRef.current?.()
+        })
+      } catch (err) {
+        console.error(err)
+        iccPropRef.current = prevIccSynced
+        dl.setIccProfilesEnabled(prevIccSynced)
+        try {
+          await dl.warmIccTileLoaders()
+          const restored = await createMultiscaleFromLoader(dl)
+          if (!cancelled) {
+            setBaseLayer(restored.layer)
+            slideRef.current = {
+              worldW: restored.worldW,
+              worldH: restored.worldH,
+              levelCount: restored.levelCount,
+            }
+            slideMatrixRef.current = vivHorizontalFlipMatrix(restored.worldW)
+            requestAnimationFrame(() => {
+              measureRef.current?.()
+            })
+            setIccProfilesEnabled(prevIccSynced)
+          }
+        } catch (restoreErr) {
+          console.error(restoreErr)
+        }
+        if (!cancelled) {
+          void message.error(
+            err instanceof Error
+              ? err.message
+              : 'Failed to update ICC color management.',
+          )
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [iccProfilesEnabled, loading, createMultiscaleFromLoader])
 
   useEffect(() => {
     if (!loadBulkAnnotations) {
