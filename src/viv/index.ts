@@ -1,3 +1,4 @@
+export type { DicomLoaderOptions } from './dicomLoader'
 export { DicomLoader, DicomPixelSource } from './dicomLoader'
 export type { VivSlideViewportProps } from './VivSlideViewport'
 export { default as VivSlideViewport } from './VivSlideViewport'
