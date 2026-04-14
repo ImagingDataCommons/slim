@@ -13,6 +13,7 @@ import DicomMetadataStore, {
   type Study,
 } from '../../services/DICOMMetadataStore'
 import { formatDicomDate } from '../../utils/formatDicomDate'
+import { logger } from '../../utils/logger'
 import { getSortedTags, type TagInfo } from './dicomTagUtils'
 
 const { Option } = Select
@@ -41,6 +42,16 @@ interface DicomTagBrowserProps {
   clients: { [key: string]: DicomWebManager }
   studyInstanceUID: string
   seriesInstanceUID?: string
+}
+
+function bucketContainsSopInstance(bucket: unknown[], sop: string): boolean {
+  if (sop === '') return false
+  for (const existing of bucket) {
+    if ((existing as Record<string, unknown>).SOPInstanceUID === sop) {
+      return true
+    }
+  }
+  return false
 }
 
 const DicomTagBrowser = ({
@@ -109,50 +120,65 @@ const DicomTagBrowser = ({
     if (slides.length > 0) {
       displaySets = slides
         .flatMap((slide): DisplaySet[] => {
-          const slideDisplaySets: DisplaySet[] = []
+          /** One row per SeriesInstanceUID; volume/overview/label often share a series. */
+          const imagesBySeries = new Map<string, unknown[]>()
 
-          // Helper function to process any image type
-          const processImageType = (
+          const addImages = (
             images: unknown[] | undefined,
             imageType: string,
           ): void => {
-            if (images?.[0] !== undefined) {
-              console.info(
-                `Found ${images.length} ${imageType} image(s) for slide ${slide.containerIdentifier}`,
-              )
+            if (images?.[0] === undefined) return
+            logger.debug(
+              `Found ${images.length} ${imageType} image(s) for slide ${slide.containerIdentifier}`,
+            )
+            for (const image of images) {
+              const img = image as Record<string, unknown>
+              const seriesUID = img.SeriesInstanceUID as string | undefined
+              if (seriesUID === undefined || seriesUID === '') continue
 
-              const img = images[0] as Record<string, unknown>
-              const {
-                SeriesDate,
-                SeriesTime,
-                SeriesNumber,
-                SeriesInstanceUID,
-                SeriesDescription,
-                Modality,
-              } = img
-
-              processedSeries.push(SeriesInstanceUID as string)
-
-              const ds: DisplaySet = {
-                displaySetInstanceUID: index,
-                SeriesDate: SeriesDate as string | undefined,
-                SeriesTime: SeriesTime as string | undefined,
-                SeriesInstanceUID: SeriesInstanceUID as string,
-                SeriesNumber: String(SeriesNumber),
-                SeriesDescription: SeriesDescription as string | undefined,
-                Modality: Modality as string,
-                images,
+              let bucket = imagesBySeries.get(seriesUID)
+              if (bucket === undefined) {
+                processedSeries.push(seriesUID)
+                bucket = []
+                imagesBySeries.set(seriesUID, bucket)
               }
-              slideDisplaySets.push(ds)
-              index++
+
+              const sop =
+                typeof img.SOPInstanceUID === 'string' ? img.SOPInstanceUID : ''
+              if (!bucketContainsSopInstance(bucket, sop)) {
+                bucket.push(image)
+              }
             }
           }
 
-          // Process all image types
-          processImageType(slide.volumeImages, 'volume')
-          processImageType(slide.overviewImages, 'overview')
-          processImageType(slide.labelImages, 'label')
+          addImages(slide.volumeImages, 'volume')
+          addImages(slide.overviewImages, 'overview')
+          addImages(slide.labelImages, 'label')
 
+          const slideDisplaySets: DisplaySet[] = []
+          for (const images of imagesBySeries.values()) {
+            if (images[0] === undefined) continue
+            const img = images[0] as Record<string, unknown>
+            const {
+              SeriesDate,
+              SeriesTime,
+              SeriesNumber,
+              SeriesInstanceUID,
+              SeriesDescription,
+              Modality,
+            } = img
+            slideDisplaySets.push({
+              displaySetInstanceUID: index,
+              SeriesDate: SeriesDate as string | undefined,
+              SeriesTime: SeriesTime as string | undefined,
+              SeriesInstanceUID: SeriesInstanceUID as string,
+              SeriesNumber: String(SeriesNumber),
+              SeriesDescription: SeriesDescription as string | undefined,
+              Modality: Modality as string,
+              images,
+            })
+            index++
+          }
           return slideDisplaySets
         })
         .filter((set): set is DisplaySet => set !== null && set !== undefined)
@@ -372,12 +398,10 @@ const DicomTagBrowser = ({
         matchingPaths.push(currentPath)
       }
 
-      if (node.children != null) {
-        node.children.forEach((child) => {
-          const childPaths = findMatchingPaths(child, currentPath)
-          matchingPaths = [...matchingPaths, ...childPaths]
-        })
-      }
+      node.children?.forEach((child) => {
+        const childPaths = findMatchingPaths(child, currentPath)
+        matchingPaths = [...matchingPaths, ...childPaths]
+      })
 
       return matchingPaths
     }

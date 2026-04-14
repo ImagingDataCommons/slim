@@ -71,13 +71,45 @@ describe('Worklist', () => {
       '00201206': { vr: 'IS', Value: [1] },
       '00201208': { vr: 'IS', Value: [2] },
       '00080061': { vr: 'CS', Value: ['CT'] }
+    },
+    {
+      '0020000D': { vr: 'UI', Value: ['1.2.3.4'] },
+      '00200010': { vr: 'SH', Value: ['study4'] },
+      '00080050': { vr: 'SH', Value: ['accession4'] },
+      '00080020': { vr: 'DA', Value: ['20210301'] },
+      '00080030': { vr: 'TM', Value: ['100000'] },
+      '00100010': { vr: 'PN', Value: [{ Alphabetic: 'fourth^patient' }] },
+      '00100020': { vr: 'LO', Value: ['patient4'] },
+      '00100040': { vr: 'CS', Value: ['F'] },
+      '00100030': { vr: 'DA' },
+      '00201206': { vr: 'IS', Value: [1] },
+      '00201208': { vr: 'IS', Value: [1] }
+    }
+  ]
+
+  const seriesForBackfillStudy = [
+    {
+      '0020000D': { vr: 'UI', Value: ['1.2.3.4'] },
+      '0020000E': { vr: 'UI', Value: ['1.2.4.1'] },
+      '00080060': { vr: 'CS', Value: ['OT'] }
+    },
+    {
+      '0020000D': { vr: 'UI', Value: ['1.2.3.4'] },
+      '0020000E': { vr: 'UI', Value: ['1.2.4.2'] },
+      '00080060': { vr: 'CS', Value: ['SR'] }
     }
   ]
 
   manager.searchForStudies = async (
-    options: dwc.api.SearchForStudiesOptions
+    _options: dwc.api.SearchForStudiesOptions
   ): Promise<dwc.api.Study[]> => {
-    return await Promise.resolve(searchResults)
+    return await Promise.resolve(searchResults as dwc.api.Study[])
+  }
+
+  manager.searchForSeries = async (): Promise<dwc.api.Series[]> => {
+    return await Promise.resolve(
+      seriesForBackfillStudy as unknown as dwc.api.Series[],
+    )
   }
 
   it('should populate one row for each available study', async () => {
@@ -89,8 +121,20 @@ describe('Worklist', () => {
 
     await waitFor(() => {
       const rows = queryAllByRole('row')
-      // Table has 1 header row + one body row per study; searchResults has 3 studies
-      expect(rows.length).toBe(4)
+      // Table has 1 header row + one body row per study; searchResults has 4 studies
+      expect(rows.length).toBe(5)
+    })
+  })
+
+  it('synthesizes ModalitiesInStudy from series when study omits (0008,0061)', async () => {
+    const { getByText } = render(
+      <BrowserRouter>
+        <Worklist clients={clientMapping} />
+      </BrowserRouter>
+    )
+
+    await waitFor(() => {
+      expect(getByText('OT, SR')).toBeTruthy()
     })
   })
 })

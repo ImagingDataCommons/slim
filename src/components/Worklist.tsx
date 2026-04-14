@@ -12,12 +12,43 @@ import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../services/NotificationMiddleware'
 import { CustomError, errorTypes } from '../utils/CustomError'
+import { logger } from '../utils/logger'
 import { type RouteComponentProps, withRouter } from '../utils/router'
 import { parseDate, parseName, parseSex, parseTime } from '../utils/values'
 
 // Standalone function for row key generation
 const getRowKey = (record: dmv.metadata.Study): string => {
   return record.StudyInstanceUID
+}
+
+/** True when QIDO did not return usable (0008,0061) ModalitiesInStudy. */
+function modalitiesNeedBackfill(study: dmv.metadata.Study): boolean {
+  const m = study.ModalitiesInStudy as string | string[] | undefined | null
+  if (m === undefined || m === null) {
+    return true
+  }
+  if (typeof m === 'string') {
+    return m.trim() === ''
+  }
+  if (Array.isArray(m)) {
+    return m.length === 0 || m.every((x) => String(x ?? '').trim() === '')
+  }
+  return true
+}
+
+function formatModalitiesInStudyColumn(
+  value: string[] | string | undefined,
+): string {
+  if (value === undefined || value === null) {
+    return '\u00A0'
+  }
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return '\u00A0'
+    }
+    return value.map(String).join(', ')
+  }
+  return String(value)
 }
 
 interface WorklistProps extends RouteComponentProps {
@@ -33,6 +64,9 @@ interface WorklistState {
 
 class Worklist extends React.Component<WorklistProps, WorklistState> {
   private readonly defaultPageSize = 20
+
+  /** Bumps when a new study list replaces the table; stale modality fetches ignore results. */
+  private modalitiesEnrichmentGeneration = 0
 
   constructor(props: WorklistProps) {
     super(props)
@@ -53,13 +87,16 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     client
       .searchForStudies(searchOptions)
       .then((studies) => {
+        const generation = ++this.modalitiesEnrichmentGeneration
+        const slice = studies.slice(0, this.state.pageSize).map((study) => {
+          const { dataset } = dmv.metadata.formatMetadata(study)
+          return dataset as dmv.metadata.Study
+        })
         this.setState({
           numStudies: studies.length,
-          studies: studies.slice(0, this.state.pageSize).map((study) => {
-            const { dataset } = dmv.metadata.formatMetadata(study)
-            return dataset as dmv.metadata.Study
-          }),
+          studies: slice,
         })
+        void this.runModalitiesEnrichment(client, slice, generation)
       })
       .catch((error) => {
         console.error(error)
@@ -122,12 +159,15 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     client
       .searchForStudies(searchOptions)
       .then((studies) => {
-        this.setState({
-          studies: studies.map((study) => {
-            const { dataset } = dmv.metadata.formatMetadata(study)
-            return dataset as dmv.metadata.Study
-          }),
+        const generation = ++this.modalitiesEnrichmentGeneration
+        const formatted = studies.map((study) => {
+          const { dataset } = dmv.metadata.formatMetadata(study)
+          return dataset as dmv.metadata.Study
         })
+        this.setState({
+          studies: formatted,
+        })
+        void this.runModalitiesEnrichment(client, formatted, generation)
       })
       .catch((error) => {
         console.error(error)
@@ -139,6 +179,69 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
           ),
         )
       })
+  }
+
+  private async collectModalitiesFromSeries(
+    client: DicomWebManager,
+    studyInstanceUID: string,
+  ): Promise<string[]> {
+    const seriesList = await client.searchForSeries({
+      studyInstanceUID,
+    })
+    if (seriesList === null || seriesList === undefined) {
+      return []
+    }
+    const modalities = new Set<string>()
+    for (const raw of seriesList) {
+      const { dataset } = dmv.metadata.formatMetadata(raw)
+      const mod = (dataset as { Modality?: string }).Modality
+      if (mod !== undefined && mod !== null && String(mod).trim() !== '') {
+        modalities.add(String(mod))
+      }
+    }
+    return [...modalities].sort()
+  }
+
+  /**
+   * After the table renders from QIDO, fills ModalitiesInStudy from series
+   * Modality when (0008,0061) was missing. Discarded if a newer study load ran.
+   */
+  private async runModalitiesEnrichment(
+    client: DicomWebManager,
+    studiesSnapshot: dmv.metadata.Study[],
+    generation: number,
+  ): Promise<void> {
+    const need = studiesSnapshot.filter(modalitiesNeedBackfill)
+    if (need.length === 0) {
+      return
+    }
+    const byUid = await Promise.all(
+      need.map(async (study) => {
+        const uid = study.StudyInstanceUID
+        try {
+          const mods = await this.collectModalitiesFromSeries(client, uid)
+          return { uid, mods }
+        } catch {
+          return { uid, mods: [] as string[] }
+        }
+      }),
+    )
+    if (generation !== this.modalitiesEnrichmentGeneration) {
+      return
+    }
+    const uidToMods = new Map(byUid.map(({ uid, mods }) => [uid, mods]))
+    this.setState((prev) => ({
+      studies: prev.studies.map((study) => {
+        const mods = uidToMods.get(study.StudyInstanceUID)
+        if (mods === undefined || mods.length === 0) {
+          return study
+        }
+        if (!modalitiesNeedBackfill(study)) {
+          return study
+        }
+        return { ...study, ModalitiesInStudy: mods }
+      }),
+    }))
   }
 
   handleChange = (
@@ -156,7 +259,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     }
     const offset = pageSize * (index - 1)
     const limit = pageSize
-    console.debug(`search for studies of page #${index}...`)
+    logger.debug(`search for studies of page #${index}...`)
     const searchCriteria: { [attribute: string]: string } = {}
     for (const dataIndex in filters) {
       const value = filters[dataIndex]
@@ -291,12 +394,8 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       {
         title: 'Modalities in Study',
         dataIndex: 'ModalitiesInStudy',
-        render: (value: string[] | string): string => {
-          if (value === undefined) {
-            return '\u00A0'
-          }
-          return orNbsp(String(value))
-        },
+        render: (value: string[] | string): string =>
+          orNbsp(formatModalitiesInStudyColumn(value)),
       },
     ]
 
@@ -343,7 +442,11 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
         <div style={{ padding: 8 }}>
           <Input
             placeholder="Search"
-            value={selectedKeys[0]}
+            value={
+              selectedKeys[0] === undefined || selectedKeys[0] === null
+                ? ''
+                : String(selectedKeys[0])
+            }
             onChange={Worklist.getFilterInputChangeHandler(setSelectedKeys)}
             onPressEnter={this.getFilterPressEnterHandler(
               selectedKeys,

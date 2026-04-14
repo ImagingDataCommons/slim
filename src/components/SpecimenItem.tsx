@@ -160,17 +160,6 @@ class SpecimenItem extends React.Component<
       },
     )
 
-    if (
-      (this.props.metadata as unknown as Record<string, unknown>)
-        .AdmittingDiagnosesDescription !== undefined
-    ) {
-      attributes.push({
-        name: 'Admitting Diagnoses',
-        value: (this.props.metadata as unknown as Record<string, unknown>)
-          .AdmittingDiagnosesDescription as string,
-      })
-    }
-
     const uid = specimenDescription.SpecimenUID
     const identifier = specimenDescription.SpecimenIdentifier
 
