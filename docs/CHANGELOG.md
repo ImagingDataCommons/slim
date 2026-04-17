@@ -1,3 +1,10 @@
+## [0.45.3](https://github.com/ImagingDataCommons/slim/compare/v0.45.2...v0.45.3) (2026-04-14)
+
+
+### Bug Fixes
+
+* **378/327/377/353:** DICOM tag browser, worklist (including Modalities in Study when QIDO omits it), overlay colormaps, header badge behavior, and test/tooling updates ([#379](https://github.com/ImagingDataCommons/slim/issues/379)) ([a7296e7](https://github.com/ImagingDataCommons/slim/commit/a7296e702002aa0b48c2681b3233aa8ccf018662))
+
 ## [0.45.2](https://github.com/ImagingDataCommons/slim/compare/v0.45.1...v0.45.2) (2026-03-11)
 
 
