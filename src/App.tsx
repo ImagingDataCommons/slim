@@ -8,6 +8,7 @@ import {
   Navigate,
   Route,
   Routes,
+  useLocation,
   useParams,
 } from 'react-router-dom'
 
@@ -47,6 +48,8 @@ function ParametrizedCaseViewer({
   config: AppConfig
 }): JSX.Element {
   const { studyInstanceUID } = useParams()
+  const location = useLocation()
+  const isVivRoute = location.pathname.startsWith('/viv/')
 
   if (studyInstanceUID === undefined) {
     return <Navigate to="/" replace />
@@ -64,6 +67,8 @@ function ParametrizedCaseViewer({
         app={app}
         enableAnnotationTools={enableAnnotationTools}
         studyInstanceUID={studyInstanceUID}
+        isVivRoute={isVivRoute}
+        vivSettings={config.vivSettings}
       />
     </ValidationProvider>
   )
@@ -594,6 +599,66 @@ class App extends React.Component<AppProps, AppState> {
             />
             <Route
               path="/projects/:project/locations/:location/datasets/:dataset/dicomStores/:dicomStore/study/:studyInstanceUID/*"
+              element={
+                <SettingsProvider>
+                  <Layout style={layoutStyle}>
+                    <Header
+                      app={appInfo}
+                      user={this.state.user}
+                      showWorklistButton={enableWorklist}
+                      onServerSelection={this.handleServerSelection}
+                      onUserLogout={isLogoutPossible ? onLogout : undefined}
+                      showServerSelectionButton={enableServerSelection}
+                      clients={this.state.clients}
+                      defaultClients={this.state.defaultClients}
+                    />
+                    <Layout.Content style={layoutContentStyle}>
+                      <ParametrizedCaseViewer
+                        clients={this.state.clients}
+                        user={this.state.user}
+                        config={this.props.config}
+                        app={appInfo}
+                      />
+                    </Layout.Content>
+                    {enableMemoryMonitoring && (
+                      <MemoryFooter enabled={enableMemoryMonitoring} />
+                    )}
+                  </Layout>
+                </SettingsProvider>
+              }
+            />
+            <Route
+              path="/viv/studies/:studyInstanceUID/*"
+              element={
+                <SettingsProvider>
+                  <Layout style={layoutStyle}>
+                    <Header
+                      app={appInfo}
+                      user={this.state.user}
+                      showWorklistButton={enableWorklist}
+                      onServerSelection={this.handleServerSelection}
+                      onUserLogout={isLogoutPossible ? onLogout : undefined}
+                      showServerSelectionButton={enableServerSelection}
+                      clients={this.state.clients}
+                      defaultClients={this.state.defaultClients}
+                    />
+                    <Layout.Content style={layoutContentStyle}>
+                      <ParametrizedCaseViewer
+                        clients={this.state.clients}
+                        user={this.state.user}
+                        config={this.props.config}
+                        app={appInfo}
+                      />
+                    </Layout.Content>
+                    {enableMemoryMonitoring && (
+                      <MemoryFooter enabled={enableMemoryMonitoring} />
+                    )}
+                  </Layout>
+                </SettingsProvider>
+              }
+            />
+            <Route
+              path="/viv/projects/:project/locations/:location/datasets/:dataset/dicomStores/:dicomStore/study/:studyInstanceUID/*"
               element={
                 <SettingsProvider>
                   <Layout style={layoutStyle}>
