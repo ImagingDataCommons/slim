@@ -759,16 +759,54 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       MicroscopyBulkSimpleAnnotation
     ) {
       const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups()
-      const annotationGroup = allAnnotationGroups.find((annotationGroup) => {
-        return (
-          annotationGroup.seriesInstanceUID ===
-          (derivedDataset as { SeriesInstanceUID: string }).SeriesInstanceUID
-        )
+      const derivedSeriesInstanceUID = (
+        derivedDataset as { SeriesInstanceUID: string }
+      ).SeriesInstanceUID
+      const matchingAnnotationGroups = allAnnotationGroups.filter(
+        (annotationGroup) => {
+          return annotationGroup.seriesInstanceUID === derivedSeriesInstanceUID
+        },
+      )
+      logger.debug(
+        `auto-load Microscopy Bulk Simple Annotation: found ` +
+          `${matchingAnnotationGroups.length} matching annotation group(s) ` +
+          `out of ${allAnnotationGroups.length} total ` +
+          `for series "${derivedSeriesInstanceUID}"`,
+      )
+      // We bypass handleAnnotationGroupVisibilityChange because it re-throws
+      // dmv errors after showing a notification, which aborts the forEach and
+      // leaves only the first annotation group toggled when any subsequent
+      // group throws. We also short-circuit the per-group runValidations
+      // dialog (which is intended for manual user toggles, not auto-load).
+      // We update state once at the end with all successfully-shown UIDs to
+      // avoid any chance of intermediate setState/re-render interleavings
+      // dropping updates.
+      const shownAnnotationGroupUIDs: string[] = []
+      matchingAnnotationGroups.forEach((annotationGroup) => {
+        try {
+          this.volumeViewer.showAnnotationGroup(annotationGroup.uid)
+          shownAnnotationGroupUIDs.push(annotationGroup.uid)
+        } catch (error) {
+          logger.error(
+            `failed to auto-show annotation group "${annotationGroup.uid}":`,
+            error,
+          )
+        }
       })
-      if (annotationGroup !== undefined) {
-        this.handleAnnotationGroupVisibilityChange({
-          annotationGroupUID: annotationGroup.uid,
-          isVisible: true,
+      logger.debug(
+        `auto-load Microscopy Bulk Simple Annotation: showing ` +
+          `${shownAnnotationGroupUIDs.length}/` +
+          `${matchingAnnotationGroups.length} annotation group(s)`,
+      )
+      if (shownAnnotationGroupUIDs.length > 0) {
+        this.setState((state) => {
+          const visibleAnnotationGroupUIDs = new Set(
+            state.visibleAnnotationGroupUIDs,
+          )
+          shownAnnotationGroupUIDs.forEach((uid) => {
+            visibleAnnotationGroupUIDs.add(uid)
+          })
+          return { visibleAnnotationGroupUIDs }
         })
       }
       logger.debug('Loading Microscopy Bulk Simple Annotation')
@@ -2634,16 +2672,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const style = this.getRoiStyle(key)
       this.volumeViewer.setROIStyle(roi.uid, style)
       this.setState((state) => {
-        const visibleRoiUIDs = state.visibleRoiUIDs
+        const visibleRoiUIDs = new Set(state.visibleRoiUIDs)
         visibleRoiUIDs.add(roi.uid)
         return { visibleRoiUIDs }
       })
     } else {
       logger.log(`hide ROI ${roiUID}`)
       this.setState((state) => {
-        const selectedRoiUIDs = state.selectedRoiUIDs
+        const selectedRoiUIDs = new Set(state.selectedRoiUIDs)
         selectedRoiUIDs.delete(roiUID)
-        const visibleRoiUIDs = state.visibleRoiUIDs
+        const visibleRoiUIDs = new Set(state.visibleRoiUIDs)
         visibleRoiUIDs.delete(roiUID)
         return { visibleRoiUIDs, selectedRoiUIDs }
       })
