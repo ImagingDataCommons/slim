@@ -773,14 +773,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           `out of ${allAnnotationGroups.length} total ` +
           `for series "${derivedSeriesInstanceUID}"`,
       )
-      // We bypass handleAnnotationGroupVisibilityChange because it re-throws
-      // dmv errors after showing a notification, which aborts the forEach and
-      // leaves only the first annotation group toggled when any subsequent
-      // group throws. We also short-circuit the per-group runValidations
-      // dialog (which is intended for manual user toggles, not auto-load).
-      // We update state once at the end with all successfully-shown UIDs to
-      // avoid any chance of intermediate setState/re-render interleavings
-      // dropping updates.
+      /**
+       * We bypass handleAnnotationGroupVisibilityChange because it re-throws
+       * dmv errors after showing a notification, which aborts the forEach
+       * and leaves only the first annotation group toggled when any
+       * subsequent group throws. We also short-circuit the per-group
+       * runValidations dialog (which is intended for manual user toggles,
+       * not auto-load). We update state once at the end with all
+       * successfully-shown UIDs to avoid any chance of intermediate
+       * setState/re-render interleavings dropping updates.
+       */
       const shownAnnotationGroupUIDs: string[] = []
       matchingAnnotationGroups.forEach((annotationGroup) => {
         try {
@@ -820,12 +822,40 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const matchingSegments = allSegments.filter((segment) => {
         return segment.seriesInstanceUID === derivedSeriesInstanceUID
       })
+      logger.debug(
+        `auto-load Segmentation: found ` +
+          `${matchingSegments.length} matching segment(s) ` +
+          `out of ${allSegments.length} total ` +
+          `for series "${derivedSeriesInstanceUID}"`,
+      )
+      /**
+       * Bypass handleSegmentVisibilityChange so that a throw from dmv's
+       * showSegment on any single segment does not abort the forEach and
+       * leave subsequent segments hidden. We batch the state update at
+       * the end with all successfully-shown UIDs.
+       */
+      const shownSegmentUIDs: string[] = []
       matchingSegments.forEach((segment) => {
-        this.handleSegmentVisibilityChange({
-          segmentUID: segment.uid,
-          isVisible: true,
-        })
+        try {
+          this.volumeViewer.showSegment(segment.uid)
+          shownSegmentUIDs.push(segment.uid)
+        } catch (error) {
+          logger.error(`failed to auto-show segment "${segment.uid}":`, error)
+        }
       })
+      logger.debug(
+        `auto-load Segmentation: showing ` +
+          `${shownSegmentUIDs.length}/${matchingSegments.length} segment(s)`,
+      )
+      if (shownSegmentUIDs.length > 0) {
+        this.setState((state) => {
+          const visibleSegmentUIDs = new Set(state.visibleSegmentUIDs)
+          shownSegmentUIDs.forEach((uid) => {
+            visibleSegmentUIDs.add(uid)
+          })
+          return { visibleSegmentUIDs }
+        })
+      }
       logger.debug('Loading Segmentation')
     } else if (
       (derivedDataset as { SOPClassUID: string }).SOPClassUID === ParametricMap
@@ -839,12 +869,37 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           return parameterMapping.seriesInstanceUID === derivedSeriesInstanceUID
         },
       )
+      logger.debug(
+        `auto-load Parametric Map: found ` +
+          `${matchingMappings.length} matching mapping(s) ` +
+          `out of ${allParameterMappings.length} total ` +
+          `for series "${derivedSeriesInstanceUID}"`,
+      )
+      const shownMappingUIDs: string[] = []
       matchingMappings.forEach((parameterMapping) => {
-        this.handleMappingVisibilityChange({
-          mappingUID: parameterMapping.uid,
-          isVisible: true,
-        })
+        try {
+          this.volumeViewer.showParameterMapping(parameterMapping.uid)
+          shownMappingUIDs.push(parameterMapping.uid)
+        } catch (error) {
+          logger.error(
+            `failed to auto-show parameter mapping "${parameterMapping.uid}":`,
+            error,
+          )
+        }
       })
+      logger.debug(
+        `auto-load Parametric Map: showing ` +
+          `${shownMappingUIDs.length}/${matchingMappings.length} mapping(s)`,
+      )
+      if (shownMappingUIDs.length > 0) {
+        this.setState((state) => {
+          const visibleMappingUIDs = new Set(state.visibleMappingUIDs)
+          shownMappingUIDs.forEach((uid) => {
+            visibleMappingUIDs.add(uid)
+          })
+          return { visibleMappingUIDs }
+        })
+      }
       logger.debug('Loading Parametric Map')
     } else if (
       (derivedDataset as { SOPClassUID: string }).SOPClassUID === OpticalPath
@@ -856,12 +911,40 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const matchingOpticalPaths = allOpticalPaths.filter((opticalPath) => {
         return opticalPath.seriesInstanceUID === derivedSeriesInstanceUID
       })
+      logger.debug(
+        `auto-load Optical Path: found ` +
+          `${matchingOpticalPaths.length} matching optical path(s) ` +
+          `out of ${allOpticalPaths.length} total ` +
+          `for series "${derivedSeriesInstanceUID}"`,
+      )
+      const shownOpticalPathIdentifiers: string[] = []
       matchingOpticalPaths.forEach((opticalPath) => {
-        this.handleOpticalPathVisibilityChange({
-          opticalPathIdentifier: opticalPath.identifier,
-          isVisible: true,
-        })
+        try {
+          this.volumeViewer.showOpticalPath(opticalPath.identifier)
+          shownOpticalPathIdentifiers.push(opticalPath.identifier)
+        } catch (error) {
+          logger.error(
+            `failed to auto-show optical path "${opticalPath.identifier}":`,
+            error,
+          )
+        }
       })
+      logger.debug(
+        `auto-load Optical Path: showing ` +
+          `${shownOpticalPathIdentifiers.length}/` +
+          `${matchingOpticalPaths.length} optical path(s)`,
+      )
+      if (shownOpticalPathIdentifiers.length > 0) {
+        this.setState((state) => {
+          const visibleOpticalPathIdentifiers = new Set(
+            state.visibleOpticalPathIdentifiers,
+          )
+          shownOpticalPathIdentifiers.forEach((identifier) => {
+            visibleOpticalPathIdentifiers.add(identifier)
+          })
+          return { visibleOpticalPathIdentifiers }
+        })
+      }
       logger.debug('Loading Optical Path')
     } else if (
       (derivedDataset as { SOPClassUID: string }).SOPClassUID ===
