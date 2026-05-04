@@ -1156,6 +1156,21 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             resolve()
             return
           }
+          /**
+           * Wait for every per-series retrieval to settle before resolving.
+           * Previously resolve() fired inside the per-series success path,
+           * so the outer Promise settled on whichever ANN series finished
+           * first, racing siblings in the same study and causing
+           * loadDerivedDataset to run before the URL-targeted ANN series
+           * had been added to the viewer.
+           */
+          let pendingSeriesCount = matchedSeries.length
+          const finishOne = (): void => {
+            pendingSeriesCount -= 1
+            if (pendingSeriesCount === 0) {
+              resolve()
+            }
+          }
           matchedSeries.forEach((s) => {
             const { dataset } = dmv.metadata.formatMetadata(s)
             const series = dataset as dmv.metadata.Series
@@ -1171,17 +1186,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                       metadata,
                     })
                   })
-                // annotations = annotations.filter(ann => {
-                //   const refImage = this.props.slide.volumeImages[0]
-                //   return (
-                //     ann.FrameOfReferenceUID === refImage.FrameOfReferenceUID &&
-                //     ann.ContainerIdentifier === refImage.ContainerIdentifier
-                //   )
-                // })
                 annotations.forEach((ann) => {
                   try {
                     this.volumeViewer.addAnnotationGroups(ann)
-                    resolve()
                   } catch (error: unknown) {
                     // eslint-disable-next-line @typescript-eslint/no-floating-promises
                     NotificationMiddleware.onError(
@@ -1191,7 +1198,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                         'Microscopy Bulk Simple Annotations cannot be displayed.',
                       ),
                     )
-                    // eslint-disable-next-line @typescript-eslint/no-floating-promises
                     logger.error('failed to add annotation groups:', error)
                   }
                   ann.AnnotationGroupSequence.forEach((item) => {
@@ -1220,6 +1226,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                  * interface unless an update is forced.
                  */
                 this.forceUpdate()
+                finishOne()
               })
               .catch((error) => {
                 console.error(error)
@@ -1232,6 +1239,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                       'instances failed.',
                   ),
                 )
+                finishOne()
               })
           })
         })
@@ -1278,6 +1286,23 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             resolve()
             return
           }
+          /**
+           * Wait for every per-series retrieval to settle before resolving.
+           * Previously resolve() fired inside the per-series success path,
+           * so the outer Promise settled on whichever SEG series finished
+           * first, racing siblings in the same study and causing
+           * loadDerivedDataset to run before the URL-targeted SEG series
+           * had been added to the viewer (observed as
+           * "auto-load Segmentation: found 0 matching segment(s) out of 1
+           * total" when the URL points to a SEG that hadn't loaded yet).
+           */
+          let pendingSeriesCount = matchedSeries.length
+          const finishOne = (): void => {
+            pendingSeriesCount -= 1
+            if (pendingSeriesCount === 0) {
+              resolve()
+            }
+          }
           matchedSeries.forEach((s, _i) => {
             const { dataset } = dmv.metadata.formatMetadata(s)
             const series = dataset as dmv.metadata.Series
@@ -1302,7 +1327,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                   try {
                     this.volumeViewer.addSegments(segmentations)
                     applyDistinctFractionalSegmentPalettes(this.volumeViewer)
-                    resolve()
                   } catch (error: unknown) {
                     // eslint-disable-next-line @typescript-eslint/no-floating-promises
                     NotificationMiddleware.onError(
@@ -1322,6 +1346,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                    */
                   this.forceUpdate()
                 }
+                finishOne()
               })
               .catch((error) => {
                 console.error(error)
@@ -1333,6 +1358,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                     'Retrieval of metadata of Segmentation instances failed.',
                   ),
                 )
+                finishOne()
               })
           })
         })
@@ -1379,6 +1405,21 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             resolve()
             return
           }
+          /**
+           * Wait for every per-series retrieval to settle before resolving.
+           * Previously resolve() fired inside the per-series success path,
+           * so the outer Promise settled on whichever PM series finished
+           * first, racing siblings in the same study and causing
+           * loadDerivedDataset to run before the URL-targeted PM series
+           * had been added to the viewer.
+           */
+          let pendingSeriesCount = matchedSeries.length
+          const finishOne = (): void => {
+            pendingSeriesCount -= 1
+            if (pendingSeriesCount === 0) {
+              resolve()
+            }
+          }
           matchedSeries.forEach((s) => {
             const { dataset } = dmv.metadata.formatMetadata(s)
             const series = dataset as dmv.metadata.Series
@@ -1407,7 +1448,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                   try {
                     this.volumeViewer.addParameterMappings(parametricMaps)
                     applyDistinctParametricMapPalettes(this.volumeViewer)
-                    resolve()
                   } catch (error: unknown) {
                     // eslint-disable-next-line @typescript-eslint/no-floating-promises
                     NotificationMiddleware.onError(
@@ -1427,6 +1467,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                    */
                   this.forceUpdate()
                 }
+                finishOne()
               })
               .catch((error) => {
                 console.error(error)
@@ -1438,6 +1479,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                     'Retrieval of metadata of Parametric Map instances failed.',
                   ),
                 )
+                finishOne()
               })
           })
         })
