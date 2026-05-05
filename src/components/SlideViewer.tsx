@@ -759,16 +759,56 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       MicroscopyBulkSimpleAnnotation
     ) {
       const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups()
-      const annotationGroup = allAnnotationGroups.find((annotationGroup) => {
-        return (
-          annotationGroup.seriesInstanceUID ===
-          (derivedDataset as { SeriesInstanceUID: string }).SeriesInstanceUID
-        )
+      const derivedSeriesInstanceUID = (
+        derivedDataset as { SeriesInstanceUID: string }
+      ).SeriesInstanceUID
+      const matchingAnnotationGroups = allAnnotationGroups.filter(
+        (annotationGroup) => {
+          return annotationGroup.seriesInstanceUID === derivedSeriesInstanceUID
+        },
+      )
+      logger.debug(
+        `auto-load Microscopy Bulk Simple Annotation: found ` +
+          `${matchingAnnotationGroups.length} matching annotation group(s) ` +
+          `out of ${allAnnotationGroups.length} total ` +
+          `for series "${derivedSeriesInstanceUID}"`,
+      )
+      /**
+       * We bypass handleAnnotationGroupVisibilityChange because it re-throws
+       * dmv errors after showing a notification, which aborts the forEach
+       * and leaves only the first annotation group toggled when any
+       * subsequent group throws. We also short-circuit the per-group
+       * runValidations dialog (which is intended for manual user toggles,
+       * not auto-load). We update state once at the end with all
+       * successfully-shown UIDs to avoid any chance of intermediate
+       * setState/re-render interleavings dropping updates.
+       */
+      const shownAnnotationGroupUIDs: string[] = []
+      matchingAnnotationGroups.forEach((annotationGroup) => {
+        try {
+          this.volumeViewer.showAnnotationGroup(annotationGroup.uid)
+          shownAnnotationGroupUIDs.push(annotationGroup.uid)
+        } catch (error) {
+          logger.error(
+            `failed to auto-show annotation group "${annotationGroup.uid}":`,
+            error,
+          )
+        }
       })
-      if (annotationGroup !== undefined) {
-        this.handleAnnotationGroupVisibilityChange({
-          annotationGroupUID: annotationGroup.uid,
-          isVisible: true,
+      logger.debug(
+        `auto-load Microscopy Bulk Simple Annotation: showing ` +
+          `${shownAnnotationGroupUIDs.length}/` +
+          `${matchingAnnotationGroups.length} annotation group(s)`,
+      )
+      if (shownAnnotationGroupUIDs.length > 0) {
+        this.setState((state) => {
+          const visibleAnnotationGroupUIDs = new Set(
+            state.visibleAnnotationGroupUIDs,
+          )
+          shownAnnotationGroupUIDs.forEach((uid) => {
+            visibleAnnotationGroupUIDs.add(uid)
+          })
+          return { visibleAnnotationGroupUIDs }
         })
       }
       logger.debug('Loading Microscopy Bulk Simple Annotation')
@@ -782,12 +822,40 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const matchingSegments = allSegments.filter((segment) => {
         return segment.seriesInstanceUID === derivedSeriesInstanceUID
       })
+      logger.debug(
+        `auto-load Segmentation: found ` +
+          `${matchingSegments.length} matching segment(s) ` +
+          `out of ${allSegments.length} total ` +
+          `for series "${derivedSeriesInstanceUID}"`,
+      )
+      /**
+       * Bypass handleSegmentVisibilityChange so that a throw from dmv's
+       * showSegment on any single segment does not abort the forEach and
+       * leave subsequent segments hidden. We batch the state update at
+       * the end with all successfully-shown UIDs.
+       */
+      const shownSegmentUIDs: string[] = []
       matchingSegments.forEach((segment) => {
-        this.handleSegmentVisibilityChange({
-          segmentUID: segment.uid,
-          isVisible: true,
-        })
+        try {
+          this.volumeViewer.showSegment(segment.uid)
+          shownSegmentUIDs.push(segment.uid)
+        } catch (error) {
+          logger.error(`failed to auto-show segment "${segment.uid}":`, error)
+        }
       })
+      logger.debug(
+        `auto-load Segmentation: showing ` +
+          `${shownSegmentUIDs.length}/${matchingSegments.length} segment(s)`,
+      )
+      if (shownSegmentUIDs.length > 0) {
+        this.setState((state) => {
+          const visibleSegmentUIDs = new Set(state.visibleSegmentUIDs)
+          shownSegmentUIDs.forEach((uid) => {
+            visibleSegmentUIDs.add(uid)
+          })
+          return { visibleSegmentUIDs }
+        })
+      }
       logger.debug('Loading Segmentation')
     } else if (
       (derivedDataset as { SOPClassUID: string }).SOPClassUID === ParametricMap
@@ -801,12 +869,37 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           return parameterMapping.seriesInstanceUID === derivedSeriesInstanceUID
         },
       )
+      logger.debug(
+        `auto-load Parametric Map: found ` +
+          `${matchingMappings.length} matching mapping(s) ` +
+          `out of ${allParameterMappings.length} total ` +
+          `for series "${derivedSeriesInstanceUID}"`,
+      )
+      const shownMappingUIDs: string[] = []
       matchingMappings.forEach((parameterMapping) => {
-        this.handleMappingVisibilityChange({
-          mappingUID: parameterMapping.uid,
-          isVisible: true,
-        })
+        try {
+          this.volumeViewer.showParameterMapping(parameterMapping.uid)
+          shownMappingUIDs.push(parameterMapping.uid)
+        } catch (error) {
+          logger.error(
+            `failed to auto-show parameter mapping "${parameterMapping.uid}":`,
+            error,
+          )
+        }
       })
+      logger.debug(
+        `auto-load Parametric Map: showing ` +
+          `${shownMappingUIDs.length}/${matchingMappings.length} mapping(s)`,
+      )
+      if (shownMappingUIDs.length > 0) {
+        this.setState((state) => {
+          const visibleMappingUIDs = new Set(state.visibleMappingUIDs)
+          shownMappingUIDs.forEach((uid) => {
+            visibleMappingUIDs.add(uid)
+          })
+          return { visibleMappingUIDs }
+        })
+      }
       logger.debug('Loading Parametric Map')
     } else if (
       (derivedDataset as { SOPClassUID: string }).SOPClassUID === OpticalPath
@@ -818,12 +911,40 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const matchingOpticalPaths = allOpticalPaths.filter((opticalPath) => {
         return opticalPath.seriesInstanceUID === derivedSeriesInstanceUID
       })
+      logger.debug(
+        `auto-load Optical Path: found ` +
+          `${matchingOpticalPaths.length} matching optical path(s) ` +
+          `out of ${allOpticalPaths.length} total ` +
+          `for series "${derivedSeriesInstanceUID}"`,
+      )
+      const shownOpticalPathIdentifiers: string[] = []
       matchingOpticalPaths.forEach((opticalPath) => {
-        this.handleOpticalPathVisibilityChange({
-          opticalPathIdentifier: opticalPath.identifier,
-          isVisible: true,
-        })
+        try {
+          this.volumeViewer.showOpticalPath(opticalPath.identifier)
+          shownOpticalPathIdentifiers.push(opticalPath.identifier)
+        } catch (error) {
+          logger.error(
+            `failed to auto-show optical path "${opticalPath.identifier}":`,
+            error,
+          )
+        }
       })
+      logger.debug(
+        `auto-load Optical Path: showing ` +
+          `${shownOpticalPathIdentifiers.length}/` +
+          `${matchingOpticalPaths.length} optical path(s)`,
+      )
+      if (shownOpticalPathIdentifiers.length > 0) {
+        this.setState((state) => {
+          const visibleOpticalPathIdentifiers = new Set(
+            state.visibleOpticalPathIdentifiers,
+          )
+          shownOpticalPathIdentifiers.forEach((identifier) => {
+            visibleOpticalPathIdentifiers.add(identifier)
+          })
+          return { visibleOpticalPathIdentifiers }
+        })
+      }
       logger.debug('Loading Optical Path')
     } else if (
       (derivedDataset as { SOPClassUID: string }).SOPClassUID ===
@@ -1035,6 +1156,21 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             resolve()
             return
           }
+          /**
+           * Wait for every per-series retrieval to settle before resolving.
+           * Previously resolve() fired inside the per-series success path,
+           * so the outer Promise settled on whichever ANN series finished
+           * first, racing siblings in the same study and causing
+           * loadDerivedDataset to run before the URL-targeted ANN series
+           * had been added to the viewer.
+           */
+          let pendingSeriesCount = matchedSeries.length
+          const finishOne = (): void => {
+            pendingSeriesCount -= 1
+            if (pendingSeriesCount === 0) {
+              resolve()
+            }
+          }
           matchedSeries.forEach((s) => {
             const { dataset } = dmv.metadata.formatMetadata(s)
             const series = dataset as dmv.metadata.Series
@@ -1050,17 +1186,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                       metadata,
                     })
                   })
-                // annotations = annotations.filter(ann => {
-                //   const refImage = this.props.slide.volumeImages[0]
-                //   return (
-                //     ann.FrameOfReferenceUID === refImage.FrameOfReferenceUID &&
-                //     ann.ContainerIdentifier === refImage.ContainerIdentifier
-                //   )
-                // })
                 annotations.forEach((ann) => {
                   try {
                     this.volumeViewer.addAnnotationGroups(ann)
-                    resolve()
                   } catch (error: unknown) {
                     // eslint-disable-next-line @typescript-eslint/no-floating-promises
                     NotificationMiddleware.onError(
@@ -1070,7 +1198,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                         'Microscopy Bulk Simple Annotations cannot be displayed.',
                       ),
                     )
-                    // eslint-disable-next-line @typescript-eslint/no-floating-promises
                     logger.error('failed to add annotation groups:', error)
                   }
                   ann.AnnotationGroupSequence.forEach((item) => {
@@ -1099,6 +1226,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                  * interface unless an update is forced.
                  */
                 this.forceUpdate()
+                finishOne()
               })
               .catch((error) => {
                 console.error(error)
@@ -1111,6 +1239,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                       'instances failed.',
                   ),
                 )
+                finishOne()
               })
           })
         })
@@ -1157,6 +1286,23 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             resolve()
             return
           }
+          /**
+           * Wait for every per-series retrieval to settle before resolving.
+           * Previously resolve() fired inside the per-series success path,
+           * so the outer Promise settled on whichever SEG series finished
+           * first, racing siblings in the same study and causing
+           * loadDerivedDataset to run before the URL-targeted SEG series
+           * had been added to the viewer (observed as
+           * "auto-load Segmentation: found 0 matching segment(s) out of 1
+           * total" when the URL points to a SEG that hadn't loaded yet).
+           */
+          let pendingSeriesCount = matchedSeries.length
+          const finishOne = (): void => {
+            pendingSeriesCount -= 1
+            if (pendingSeriesCount === 0) {
+              resolve()
+            }
+          }
           matchedSeries.forEach((s, _i) => {
             const { dataset } = dmv.metadata.formatMetadata(s)
             const series = dataset as dmv.metadata.Series
@@ -1181,7 +1327,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                   try {
                     this.volumeViewer.addSegments(segmentations)
                     applyDistinctFractionalSegmentPalettes(this.volumeViewer)
-                    resolve()
                   } catch (error: unknown) {
                     // eslint-disable-next-line @typescript-eslint/no-floating-promises
                     NotificationMiddleware.onError(
@@ -1201,6 +1346,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                    */
                   this.forceUpdate()
                 }
+                finishOne()
               })
               .catch((error) => {
                 console.error(error)
@@ -1212,6 +1358,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                     'Retrieval of metadata of Segmentation instances failed.',
                   ),
                 )
+                finishOne()
               })
           })
         })
@@ -1258,6 +1405,21 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             resolve()
             return
           }
+          /**
+           * Wait for every per-series retrieval to settle before resolving.
+           * Previously resolve() fired inside the per-series success path,
+           * so the outer Promise settled on whichever PM series finished
+           * first, racing siblings in the same study and causing
+           * loadDerivedDataset to run before the URL-targeted PM series
+           * had been added to the viewer.
+           */
+          let pendingSeriesCount = matchedSeries.length
+          const finishOne = (): void => {
+            pendingSeriesCount -= 1
+            if (pendingSeriesCount === 0) {
+              resolve()
+            }
+          }
           matchedSeries.forEach((s) => {
             const { dataset } = dmv.metadata.formatMetadata(s)
             const series = dataset as dmv.metadata.Series
@@ -1286,7 +1448,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                   try {
                     this.volumeViewer.addParameterMappings(parametricMaps)
                     applyDistinctParametricMapPalettes(this.volumeViewer)
-                    resolve()
                   } catch (error: unknown) {
                     // eslint-disable-next-line @typescript-eslint/no-floating-promises
                     NotificationMiddleware.onError(
@@ -1306,6 +1467,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                    */
                   this.forceUpdate()
                 }
+                finishOne()
               })
               .catch((error) => {
                 console.error(error)
@@ -1317,6 +1479,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                     'Retrieval of metadata of Parametric Map instances failed.',
                   ),
                 )
+                finishOne()
               })
           })
         })
@@ -2634,16 +2797,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const style = this.getRoiStyle(key)
       this.volumeViewer.setROIStyle(roi.uid, style)
       this.setState((state) => {
-        const visibleRoiUIDs = state.visibleRoiUIDs
+        const visibleRoiUIDs = new Set(state.visibleRoiUIDs)
         visibleRoiUIDs.add(roi.uid)
         return { visibleRoiUIDs }
       })
     } else {
       logger.log(`hide ROI ${roiUID}`)
       this.setState((state) => {
-        const selectedRoiUIDs = state.selectedRoiUIDs
+        const selectedRoiUIDs = new Set(state.selectedRoiUIDs)
         selectedRoiUIDs.delete(roiUID)
-        const visibleRoiUIDs = state.visibleRoiUIDs
+        const visibleRoiUIDs = new Set(state.visibleRoiUIDs)
         visibleRoiUIDs.delete(roiUID)
         return { visibleRoiUIDs, selectedRoiUIDs }
       })
