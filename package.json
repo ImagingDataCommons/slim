@@ -1,6 +1,6 @@
 {
   "name": "slim",
-  "version": "0.45.3",
+  "version": "0.45.4",
   "private": true,
   "author": "ImagingDataCommons",
   "packageManager": "bun@latest",
