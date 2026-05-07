@@ -7,6 +7,7 @@ import { MultiscaleImageLayer } from '@vivjs/layers'
 import { message, Spin } from 'antd'
 import type React from 'react'
 import {
+  startTransition,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -35,6 +36,12 @@ import {
   type VivBulkAnnotationLayerSlice,
   type VivBulkGroupGeometryJob,
 } from './loadBulkAnnotationLayers'
+import {
+  vivBulkAnnDebug,
+  vivBulkAnnNow,
+  vivBulkAnnPerf,
+  vivBulkAnnVerboseProgress,
+} from './vivBulkAnnDebug'
 import {
   buildVivDisplayOptions,
   computeOrthographicFitViewState,
@@ -66,6 +73,11 @@ export interface VivSlideViewportProps {
   vivSettings?: VivSettings
 }
 
+/** Direct-decode path uses `${id}-paths` or chunked `${id}-paths-0`, … */
+function isBulkVivPathLayerId(layerId: string): boolean {
+  return /-paths(?:-\d+)?$/.test(layerId)
+}
+
 function buildStyledBulkOverlayLayers(
   slicesByUid: Record<string, VivBulkAnnotationLayerSlice>,
   visibleUIDs: Set<string>,
@@ -92,7 +104,7 @@ function buildStyledBulkOverlayLayers(
     ]
     for (const layer of slice.layers) {
       const lid = String(layer.id)
-      if (lid.endsWith('-paths')) {
+      if (isBulkVivPathLayerId(lid)) {
         out.push(
           (layer as PathLayer).clone({ getColor: (): typeof rgba => rgba }),
         )
@@ -215,7 +227,16 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     baseLayer,
   ])
   const layers = useMemo((): Layer[] => {
-    return baseLayer !== null ? [baseLayer, ...annLayers] : []
+    const t0 = vivBulkAnnNow()
+    const out = baseLayer !== null ? [baseLayer, ...annLayers] : []
+    if (vivBulkAnnVerboseProgress() && annLayers.length > 0) {
+      vivBulkAnnDebug('deck:layers useMemo', {
+        base: baseLayer != null ? 1 : 0,
+        overlayLayers: annLayers.length,
+        ms: Math.round((vivBulkAnnNow() - t0) * 100) / 100,
+      })
+    }
+    return out
   }, [baseLayer, annLayers])
   const [loading, setLoading] = useState(true)
   const [viewState, setViewState] = useState<ViewState>({
@@ -542,7 +563,13 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
 
     const run = async (): Promise<void> => {
       try {
+        const tGeo0 = vivBulkAnnNow()
+        vivBulkAnnDebug('viewport: getBulkAnnotationGeometryContext …')
         const geometry = await dicomLoader.getBulkAnnotationGeometryContext()
+        vivBulkAnnPerf('viewport:getBulkAnnotationGeometryContext', tGeo0, {})
+
+        const tCat0 = vivBulkAnnNow()
+        vivBulkAnnDebug('viewport: loadBulkAnnotationMetadataAndJobs …')
         const loaded = await loadBulkAnnotationMetadataAndJobs({
           geometry,
           studyInstanceUID,
@@ -550,6 +577,13 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           annotationClient: bulkAnnotationClient ?? client,
           fetchClient: client,
         })
+        vivBulkAnnPerf(
+          'viewport:loadBulkAnnotationMetadataAndJobs (full catalog)',
+          tCat0,
+          {
+            groups: loaded.annotationGroups.length,
+          },
+        )
         if (!cancelled) {
           const { groupGeometryJobs, ...catalog } = loaded
           bulkGeometryRef.current = geometry
@@ -615,20 +649,59 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
         continue
       }
       bulkHydrateInFlightRef.current.add(uid)
+      const tHydr0 = vivBulkAnnNow()
+      vivBulkAnnDebug('viewport: hydrateVivBulkGroupLayerSlice dispatched', {
+        uid,
+        graphicType: job.graphicType,
+        numberOfAnnotations: job.numberOfAnnotations,
+      })
       void hydrateVivBulkGroupLayerSlice({
         job,
         geometry: geom,
         fetchClient: client,
       }).then((slice) => {
+        vivBulkAnnPerf(
+          'viewport:promise hydrateVivBulkGroupLayerSlice settled',
+          tHydr0,
+          {
+            uid,
+            stillVisible: visibleBulkUidsRef.current.has(uid),
+            sliceLayers: slice?.layers.length ?? 0,
+          },
+        )
         bulkHydrateInFlightRef.current.delete(uid)
         if (slice == null || !visibleBulkUidsRef.current.has(uid)) {
+          vivBulkAnnDebug('viewport: hydrate result dropped', {
+            uid,
+            sliceNull: slice == null,
+          })
           return
         }
-        setBulkSlicesByUid((prev) => {
-          if (prev[uid] != null) {
-            return prev
-          }
-          return { ...prev, [uid]: slice }
+        const tSet0 = vivBulkAnnNow()
+        const commitSlice = (): void => {
+          setBulkSlicesByUid((prev) => {
+            if (prev[uid] != null) {
+              return prev
+            }
+            return { ...prev, [uid]: slice }
+          })
+        }
+        const large =
+          job.numberOfAnnotations >= 50_000 || (slice.layers?.length ?? 0) > 4
+        if (large) {
+          vivBulkAnnDebug('viewport: setBulkSlicesByUid via startTransition', {
+            uid,
+            numberOfAnnotations: job.numberOfAnnotations,
+            layerCount: slice.layers.length,
+          })
+          startTransition(commitSlice)
+        } else {
+          commitSlice()
+        }
+        vivBulkAnnDebug('viewport: setBulkSlicesByUid scheduled', {
+          uid,
+          scheduleMs: Math.round((vivBulkAnnNow() - tSet0) * 100) / 100,
+          startTransition: large,
         })
       })
     }

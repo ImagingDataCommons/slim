@@ -7,6 +7,11 @@ import * as dmv from 'dicom-microscopy-viewer'
 // skipcq: JS-C1003
 import type * as dwc from 'dicomweb-client'
 import type DicomWebManager from '../DicomWebManager'
+import {
+  vivBulkAnnDebug,
+  vivBulkAnnNow,
+  vivBulkAnnPerf,
+} from './vivBulkAnnDebug'
 
 export interface DicomRetrieveOptions {
   studyInstanceUID: string
@@ -958,12 +963,23 @@ export class DicomLoader {
    * matching {@link dmv.viewer.VolumeImageViewer} / OpenLayers geometry space.
    */
   async getBulkAnnotationGeometryContext(): Promise<BulkAnnotationGeometryContext> {
+    const tViewer0 = vivBulkAnnNow()
+    vivBulkAnnDebug(
+      'dicomLoader: getBulkAnnotationGeometryContext — _getViewer …',
+    )
     const viewer = await this._getViewer()
+    vivBulkAnnPerf('dicomLoader:bulk geometry _getViewer', tViewer0, {})
+    const tRead0 = vivBulkAnnNow()
     const { metadata, extent } = readVolumeImageViewerPyramid(viewer)
+    const affine = readVolumeImageViewerAffine(viewer)
+    const affineInverse = readVolumeImageViewerAffineInverse(viewer)
+    vivBulkAnnPerf('dicomLoader:bulk geometry pyramid+affine read', tRead0, {
+      pyramidLevels: metadata?.length ?? 0,
+    })
     return {
       pyramid: metadata,
-      affine: readVolumeImageViewerAffine(viewer),
-      affineInverse: readVolumeImageViewerAffineInverse(viewer),
+      affine,
+      affineInverse,
       extent,
     }
   }

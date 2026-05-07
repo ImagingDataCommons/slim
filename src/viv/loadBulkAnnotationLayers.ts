@@ -7,9 +7,18 @@ import dmvDefault, * as dmvNamespace from 'dicom-microscopy-viewer'
 
 import type DicomWebManager from '../DicomWebManager'
 import type { BulkAnnotationGeometryContext } from './dicomLoader'
+import {
+  vivBulkAnnDebug,
+  vivBulkAnnNow,
+  vivBulkAnnPerf,
+  vivBulkAnnVerboseProgress,
+} from './vivBulkAnnDebug'
 
 /** Console filter: `Viv bulk ANN` */
 const VIV_BULK = '[Viv bulk ANN]'
+
+/** Smaller Deck PathLayer batches reduce GPU attribute spikes and giant single-layer updates. */
+const VIV_BULK_PATHS_PER_PATH_LAYER = 65_000
 
 type PathRow = { path: Position[]; closed: boolean }
 
@@ -54,6 +63,183 @@ function dmvModule(): typeof dmvNamespace {
 }
 
 const dmv = dmvModule()
+
+/** DMV bundle exports `utils` at runtime; local `.d.ts` may omit — cast at call sites. */
+const dmvAffineUtils = (
+  dmv as unknown as {
+    utils: {
+      buildTransform: (opts: {
+        offset: number[]
+        orientation: number[]
+        spacing: number[]
+      }) => number[][]
+      mapPixelCoordToSlideCoord: (opts: {
+        point: number[]
+        affine: number[][]
+      }) => number[]
+      applyInverseTransform: (opts: {
+        coordinate: number[]
+        affine: number[][]
+      }) => number[]
+    }
+  }
+).utils
+
+/** Match DMV `bulkAnnotations/utils#getAffineBasedOnPyramidLevel` for 2D pixel → slide affine. */
+function readPixelSpacingFromPyramidLevel(
+  level: unknown,
+): [number, number] | null {
+  if (level === null || typeof level !== 'object') {
+    return null
+  }
+  const fgSeq = Reflect.get(level, 'SharedFunctionalGroupsSequence') as
+    | unknown[]
+    | undefined
+  const fg0 = Array.isArray(fgSeq) ? fgSeq[0] : undefined
+  if (fg0 === null || typeof fg0 !== 'object') {
+    return null
+  }
+  const pmSeq = Reflect.get(fg0, 'PixelMeasuresSequence') as
+    | unknown[]
+    | undefined
+  const pm0 = Array.isArray(pmSeq) ? pmSeq[0] : undefined
+  if (pm0 === null || typeof pm0 !== 'object') {
+    return null
+  }
+  const ps = Reflect.get(pm0, 'PixelSpacing')
+  if (!Array.isArray(ps) || ps.length < 2) {
+    return null
+  }
+  return [Number(ps[0]), Number(ps[1])]
+}
+
+function affineForReferencedPyramidLevel(options: {
+  pyramid: BulkAnnotationGeometryContext['pyramid']
+  affineFallback: number[][]
+  wrapper: VivBulkGroupGeometryJob['annotationGroupWrapper']
+}): number[][] {
+  const { pyramid, affineFallback, wrapper } = options
+  const refUid =
+    wrapper.annotationGroup.referencedSOPInstanceUID ??
+    wrapper.metadata.ReferencedImageSequence?.[0]?.ReferencedSOPInstanceUID
+  if (typeof refUid !== 'string' || refUid.length === 0) {
+    return affineFallback
+  }
+  const levelUnknown = pyramid.find(
+    (p) => p.SOPInstanceUID === refUid,
+  ) as unknown
+  if (
+    levelUnknown === null ||
+    typeof levelUnknown !== 'object' ||
+    Reflect.get(levelUnknown, 'ImageOrientationSlide') == null ||
+    Reflect.get(levelUnknown, 'TotalPixelMatrixOriginSequence') == null
+  ) {
+    return affineFallback
+  }
+  const spacing = readPixelSpacingFromPyramidLevel(levelUnknown)
+  if (spacing == null) {
+    return affineFallback
+  }
+  const originSeq = (
+    Reflect.get(levelUnknown, 'TotalPixelMatrixOriginSequence') as
+      | unknown[]
+      | undefined
+  )?.[0] as Record<string, unknown> | undefined
+  if (originSeq === undefined) {
+    return affineFallback
+  }
+  const orientation = Reflect.get(
+    levelUnknown,
+    'ImageOrientationSlide',
+  ) as number[]
+  try {
+    return dmvAffineUtils.buildTransform({
+      offset: [
+        Number(originSeq.XOffsetInSlideCoordinateSystem),
+        Number(originSeq.YOffsetInSlideCoordinateSystem),
+      ],
+      orientation,
+      spacing,
+    })
+  } catch {
+    return affineFallback
+  }
+}
+
+/** 3×3 multiply (same layout as dicom-microscopy-viewer `utils`). */
+function multiplyAffine3x3(a: number[][], b: number[][]): number[][] {
+  const r: number[][] = [
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+  ]
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      r[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j]
+    }
+  }
+  return r
+}
+
+/**
+ * Precomputes `(affineInverse ⊗ pixelToSlide)` when inputs are TMPC pixels (2D), or uses
+ * `affineInverse` alone when `(gx,gy)` are already slide coords — same numeric result as
+ * calling {@link dmvAffineUtils.mapPixelCoordToSlideCoord} + {@link dmvAffineUtils.applyInverseTransform}
+ * per vertex, without function / array churn on millions of points.
+ */
+type BulkDeckLinearCoeffs = readonly [
+  m00: number,
+  m01: number,
+  m02: number,
+  m10: number,
+  m11: number,
+  m12: number,
+]
+
+function bulkDeckCoeffsForFastPath(options: {
+  annotationCoordinateType: string
+  affineInverse: number[][]
+  pixelToSlideAffine: number[][]
+}): BulkDeckLinearCoeffs {
+  const inv = options.affineInverse
+  if (options.annotationCoordinateType === '2D') {
+    const fused = multiplyAffine3x3(inv, options.pixelToSlideAffine)
+    return [
+      fused[0][0],
+      fused[0][1],
+      fused[0][2],
+      fused[1][0],
+      fused[1][1],
+      fused[1][2],
+    ]
+  }
+  return [inv[0][0], inv[0][1], inv[0][2], inv[1][0], inv[1][1], inv[1][2]]
+}
+
+/** Map bulk vertex (gx, gy) → Viv deck XY; coeffs from {@link bulkDeckCoeffsForFastPath}. */
+function bulkVertexToDeckFast(
+  gx: number,
+  gy: number,
+  c: BulkDeckLinearCoeffs,
+): Position {
+  const pcol = c[0] * gx + c[1] * gy + c[2]
+  const prow = c[3] * gx + c[4] * gy + c[5]
+  const olMapY = -(prow + 1)
+  return [pcol, openLayersMapYToVivWorldY(olMapY)]
+}
+
+function readTripleFromGraphicBuffer(
+  graphicData: Int32Array | Float32Array,
+  j: number,
+  commonZCoordinate: number,
+): [number, number, number] {
+  const gx = Number(graphicData[j])
+  const gy = Number(graphicData[j + 1])
+  const gz = Number.isNaN(commonZCoordinate)
+    ? Number(graphicData[j + 2])
+    : Number(commonZCoordinate)
+  return [gx, gy, gz]
+}
 
 /** Deck overlays for one bulk simple-annotation group (paths + optional points). */
 export type VivBulkAnnotationLayerSlice = {
@@ -112,6 +298,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
   geometry: BulkAnnotationGeometryContext
   fetchClient: DicomWebManager
 }): Promise<VivBulkAnnotationLayerSlice | null> {
+  const tHydrate0 = vivBulkAnnNow()
   const { job, geometry, fetchClient } = options
   const {
     annotationGroupUID,
@@ -130,8 +317,19 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
   const { pyramid, affine, affineInverse, extent } = geometry
   const featureFn = featureFnForGraphicType(graphicType)
   if (featureFn === null) {
+    vivBulkAnnDebug('hydrate:unsupported graphicType, skip', {
+      annotationGroupUID,
+      graphicType,
+    })
     return null
   }
+
+  vivBulkAnnDebug('hydrate:enter', {
+    annotationGroupUID,
+    graphicType,
+    numberOfAnnotations,
+    coordinateDimensionality,
+  })
 
   const viewMock = {
     calculateExtent: (): number[] => [...extent],
@@ -139,6 +337,11 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
 
   let graphicData: Int32Array | Float32Array
   let graphicIndex: Int32Array | null
+  const tFetch0 = vivBulkAnnNow()
+  vivBulkAnnDebug('hydrate:fetchGraphicData+Index awaited', {
+    annotationGroupUID,
+    annotationGroupIndex,
+  })
   try {
     ;[graphicData, graphicIndex] = await Promise.all([
       dmv.annotation.fetchGraphicData({
@@ -157,6 +360,11 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
       }),
     ])
   } catch (e) {
+    vivBulkAnnPerf('hydrate:fetchGraphicData+Index FAILED', tFetch0, {
+      annotationGroupUID,
+      graphicType,
+      err: e instanceof Error ? e.message : String(e),
+    })
     console.warn(
       `${VIV_BULK} fetchGraphicData/Index failed`,
       { annotationGroupUID, graphicType },
@@ -164,6 +372,36 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
     )
     return null
   }
+
+  const dataBytes =
+    graphicData?.buffer != null
+      ? graphicData.byteLength
+      : (graphicData?.length ?? 0) * 4
+  const fetchMs = vivBulkAnnNow() - tFetch0
+  vivBulkAnnPerf('hydrate:fetchGraphicData+Index', tFetch0, {
+    annotationGroupUID,
+    graphicType,
+    graphicDataLength: graphicData.length,
+    graphicDataBytes: dataBytes,
+    graphicIndexLength:
+      graphicIndex === null || graphicIndex === undefined
+        ? 0
+        : graphicIndex.length,
+    ...(fetchMs >= 2000 || dataBytes >= 80_000_000
+      ? {
+          bottleneckHint:
+            'Dominated by DICOMweb retrieveBulkData (download + browser finishing XHR/progress on the main thread). Polygon decode is a separate perf line.',
+        }
+      : {}),
+  })
+  vivBulkAnnDebug('hydrate:fetch done', {
+    annotationGroupUID,
+    sample: {
+      d0: graphicData[0],
+      d1: graphicData[1],
+      idx0: graphicIndex?.[0],
+    },
+  })
 
   if (
     (graphicType === 'POLYGON' || graphicType === 'POLYLINE') &&
@@ -176,6 +414,54 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
   }
 
   let features: unknown[]
+  const tDirect0 = vivBulkAnnNow()
+  const annotationCoordinateType = String(
+    job.ann.AnnotationCoordinateType ?? '2D',
+  )
+  const fastResult = fastDeckLayersFromGraphicData({
+    graphicType,
+    graphicData,
+    graphicIndex,
+    coordinateDimensionality,
+    numberOfAnnotations,
+    commonZCoordinate,
+    color,
+    idPrefix: `viv-bulk-${annotationGroupUID}`,
+    annotationCoordinateType,
+    geometry,
+    annotationGroupWrapper: annotationGroupWrapper,
+  })
+  if (fastResult !== null) {
+    const { layers: fastDeckSlices, pathRowCount, pointCount } = fastResult
+    vivBulkAnnPerf('hydrate:directDecode+PathLayer', tDirect0, {
+      annotationGroupUID,
+      graphicType,
+      pathRowCount,
+      pointCount,
+      deckLayers: fastDeckSlices.length,
+    })
+    vivBulkAnnPerf('hydrate:total', tHydrate0, {
+      annotationGroupUID,
+      graphicType,
+      route: 'direct',
+      ok: fastDeckSlices.length > 0,
+    })
+    console.info(`${VIV_BULK} group → deck (lazy, direct decode)`, {
+      annotationGroupUID,
+      graphicType,
+      deckLayers: fastDeckSlices.length,
+      numberOfAnnotations,
+    })
+    return fastDeckSlices.length > 0
+      ? { groupUID: annotationGroupUID, layers: fastDeckSlices }
+      : null
+  }
+
+  vivBulkAnnDebug('hydrate:slow path (OL features)', {
+    annotationGroupUID,
+    graphicType,
+  })
+  const tOl0 = vivBulkAnnNow()
   try {
     features = resolveBulkSimpleAnnotationsApi().getFeaturesFromBulkAnnotations(
       {
@@ -205,12 +491,31 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
     return null
   }
 
+  vivBulkAnnPerf('hydrate:getFeaturesFromBulkAnnotations', tOl0, {
+    annotationGroupUID,
+    graphicType,
+    olFeatures: features.length,
+  })
+
+  const tDeck0 = vivBulkAnnNow()
   const deckSlices = featuresToDeckLayers(
     features,
     color,
     `viv-bulk-${annotationGroupUID}`,
-    { groupUID: annotationGroupUID },
+    {
+      groupUID: annotationGroupUID,
+    },
   )
+  vivBulkAnnPerf('hydrate:featuresToDeckLayers', tDeck0, {
+    annotationGroupUID,
+    deckLayers: deckSlices.length,
+  })
+  vivBulkAnnPerf('hydrate:total', tHydrate0, {
+    annotationGroupUID,
+    graphicType,
+    route: 'ol+dvm',
+    ok: deckSlices.length > 0,
+  })
   console.info(`${VIV_BULK} group → deck (lazy)`, {
     annotationGroupUID,
     graphicType,
@@ -221,6 +526,266 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
     return null
   }
   return { groupUID: annotationGroupUID, layers: deckSlices }
+}
+
+type FastDecodeResult = {
+  layers: Layer[]
+  pathRowCount: number
+  pointCount: number
+}
+
+function fastDeckLayersFromGraphicData(options: {
+  graphicType: string
+  graphicData: Int32Array | Float32Array
+  graphicIndex: Int32Array | null
+  coordinateDimensionality: number
+  numberOfAnnotations: number
+  commonZCoordinate: number
+  color: [number, number, number]
+  idPrefix: string
+  annotationCoordinateType: string
+  geometry: BulkAnnotationGeometryContext
+  annotationGroupWrapper: VivBulkGroupGeometryJob['annotationGroupWrapper']
+}): FastDecodeResult | null {
+  const {
+    graphicType,
+    graphicData,
+    graphicIndex,
+    coordinateDimensionality,
+    numberOfAnnotations,
+    commonZCoordinate,
+    color,
+    idPrefix,
+    annotationCoordinateType,
+    geometry,
+    annotationGroupWrapper,
+  } = options
+  const pixelToSlideAffine = affineForReferencedPyramidLevel({
+    pyramid: geometry.pyramid,
+    affineFallback: geometry.affine,
+    wrapper: annotationGroupWrapper,
+  })
+  const deckCoeffs = bulkDeckCoeffsForFastPath({
+    annotationCoordinateType,
+    affineInverse: geometry.affineInverse,
+    pixelToSlideAffine,
+  })
+  switch (graphicType) {
+    case 'POINT': {
+      const { layers, pointCount } = buildPointLayersFromGraphicData({
+        graphicData,
+        graphicIndex,
+        coordinateDimensionality,
+        numberOfAnnotations,
+        commonZCoordinate,
+        color,
+        idPrefix,
+        deckCoeffs,
+      })
+      return { layers, pathRowCount: 0, pointCount }
+    }
+    case 'POLYGON':
+    case 'POLYLINE': {
+      const built = buildPathLayersFromGraphicData({
+        graphicType,
+        graphicData,
+        graphicIndex,
+        coordinateDimensionality,
+        numberOfAnnotations,
+        commonZCoordinate,
+        color,
+        idPrefix,
+        deckCoeffs,
+      })
+      if (built === null) {
+        return null
+      }
+      return {
+        layers: built.layers,
+        pathRowCount: built.pathRowCount,
+        pointCount: 0,
+      }
+    }
+    default:
+      return null
+  }
+}
+
+function buildPointLayersFromGraphicData(options: {
+  graphicData: Int32Array | Float32Array
+  graphicIndex: Int32Array | null
+  coordinateDimensionality: number
+  numberOfAnnotations: number
+  commonZCoordinate: number
+  color: [number, number, number]
+  idPrefix: string
+  deckCoeffs: BulkDeckLinearCoeffs
+}): { layers: Layer[]; pointCount: number } {
+  const {
+    graphicData,
+    graphicIndex,
+    coordinateDimensionality,
+    numberOfAnnotations,
+    commonZCoordinate,
+    color,
+    idPrefix,
+    deckCoeffs,
+  } = options
+  const points: [number, number][] = []
+  const hasIndex =
+    Array.isArray(graphicIndex) || graphicIndex instanceof Int32Array
+  const verbose = vivBulkAnnVerboseProgress()
+  const PROGRESS_EVERY = 100_000
+  const minRemain = coordinateDimensionality >= 3 ? 3 : 2
+  for (let i = 0; i < numberOfAnnotations; i++) {
+    if (
+      verbose &&
+      numberOfAnnotations > PROGRESS_EVERY &&
+      (i === 0 || i % PROGRESS_EVERY === 0 || i === numberOfAnnotations - 1)
+    ) {
+      vivBulkAnnDebug('directDecode:POINT progress', {
+        annotationIndex: i,
+        total: numberOfAnnotations,
+      })
+    }
+    const offset = hasIndex
+      ? Number(graphicIndex?.[i] ?? 0) - 1
+      : i * coordinateDimensionality
+    if (offset < 0 || offset + minRemain - 1 >= graphicData.length) {
+      continue
+    }
+    const [gx, gy] = readTripleFromGraphicBuffer(
+      graphicData,
+      offset,
+      commonZCoordinate,
+    )
+    const p = bulkVertexToDeckFast(gx, gy, deckCoeffs)
+    points.push([p[0], p[1]])
+  }
+  if (points.length === 0) {
+    return { layers: [], pointCount: 0 }
+  }
+  const rgba: [number, number, number, number] = [
+    color[0],
+    color[1],
+    color[2],
+    220,
+  ]
+  return {
+    layers: [
+      new ScatterplotLayer<[number, number]>({
+        id: `${idPrefix}-pts`,
+        data: points,
+        getPosition: (d) => d,
+        getFillColor: () => rgba,
+        getRadius: () => 4,
+        radiusUnits: 'pixels',
+      }) as unknown as Layer,
+    ],
+    pointCount: points.length,
+  }
+}
+
+function buildPathLayersFromGraphicData(options: {
+  graphicType: 'POLYGON' | 'POLYLINE'
+  graphicData: Int32Array | Float32Array
+  graphicIndex: Int32Array | null
+  coordinateDimensionality: number
+  numberOfAnnotations: number
+  commonZCoordinate: number
+  color: [number, number, number]
+  idPrefix: string
+  deckCoeffs: BulkDeckLinearCoeffs
+}): { layers: Layer[]; pathRowCount: number } | null {
+  const {
+    graphicType,
+    graphicData,
+    graphicIndex,
+    coordinateDimensionality,
+    numberOfAnnotations,
+    commonZCoordinate,
+    color,
+    idPrefix,
+    deckCoeffs,
+  } = options
+  if (graphicIndex === null) {
+    return null
+  }
+  const pathRows: PathRow[] = []
+  const verbose = vivBulkAnnVerboseProgress()
+  const PROGRESS_EVERY = 50_000
+  for (let i = 0; i < numberOfAnnotations; i++) {
+    if (
+      verbose &&
+      numberOfAnnotations > PROGRESS_EVERY &&
+      (i === 0 || i % PROGRESS_EVERY === 0 || i === numberOfAnnotations - 1)
+    ) {
+      vivBulkAnnDebug(`${graphicType} decode progress`, {
+        annotationIndex: i,
+        total: numberOfAnnotations,
+        pathRowsSoFar: pathRows.length,
+      })
+    }
+    const offset = Number(graphicIndex[i] ?? 0) - 1
+    if (offset < 0 || offset >= graphicData.length) {
+      continue
+    }
+    let annotationLength: number
+    if (i < numberOfAnnotations - 1) {
+      annotationLength = Number(graphicIndex[i + 1] ?? 0) - offset
+    } else {
+      annotationLength = Math.max(0, graphicData.length - offset)
+    }
+    const roofExclusive = Math.min(
+      offset + annotationLength,
+      graphicData.length,
+    )
+
+    const path: Position[] = []
+    for (let j = offset; j < roofExclusive; j++) {
+      const readAt =
+        graphicType === 'POLYGON' &&
+        roofExclusive > offset + coordinateDimensionality &&
+        j === roofExclusive - 1
+          ? offset
+          : j
+      if (
+        readAt < 0 ||
+        readAt + coordinateDimensionality - 1 >= graphicData.length
+      ) {
+        j += coordinateDimensionality - 1
+        continue
+      }
+      const [gx, gy] = readTripleFromGraphicBuffer(
+        graphicData,
+        readAt,
+        commonZCoordinate,
+      )
+      if (!gx || !gy) {
+        j += coordinateDimensionality - 1
+        continue
+      }
+      path.push(bulkVertexToDeckFast(gx, gy, deckCoeffs))
+      j += coordinateDimensionality - 1
+    }
+    if (path.length > 1) {
+      pathRows.push({ path, closed: graphicType === 'POLYGON' })
+    }
+  }
+
+  if (pathRows.length === 0) {
+    return { layers: [], pathRowCount: 0 }
+  }
+  const rgba: [number, number, number, number] = [
+    color[0],
+    color[1],
+    color[2],
+    220,
+  ]
+  return {
+    layers: buildChunkedVivPathLayers(idPrefix, pathRows, rgba),
+    pathRowCount: pathRows.length,
+  }
 }
 
 function resolveBulkSimpleAnnotationsApi(): BulkSimpleAnnotationsApi {
@@ -314,6 +879,51 @@ function annotationPropertyCodeFromSequence(
  */
 function openLayersMapYToVivWorldY(mapY: number): number {
   return -mapY - 1
+}
+
+function buildChunkedVivPathLayers(
+  idPrefix: string,
+  pathRows: PathRow[],
+  rgba: [number, number, number, number],
+): Layer[] {
+  if (pathRows.length === 0) {
+    return []
+  }
+  if (pathRows.length <= VIV_BULK_PATHS_PER_PATH_LAYER) {
+    return [
+      new PathLayer<PathRow>({
+        id: `${idPrefix}-paths`,
+        data: pathRows,
+        getPath: (d) => d.path,
+        getColor: () => rgba,
+        getWidth: () => 2,
+        widthUnits: 'pixels',
+        capRounded: true,
+        jointRounded: true,
+      }) as unknown as Layer,
+    ]
+  }
+  const out: Layer[] = []
+  for (
+    let offset = 0, chunk = 0;
+    offset < pathRows.length;
+    offset += VIV_BULK_PATHS_PER_PATH_LAYER, chunk++
+  ) {
+    const data = pathRows.slice(offset, offset + VIV_BULK_PATHS_PER_PATH_LAYER)
+    out.push(
+      new PathLayer<PathRow>({
+        id: `${idPrefix}-paths-${chunk}`,
+        data,
+        getPath: (d) => d.path,
+        getColor: () => rgba,
+        getWidth: () => 2,
+        widthUnits: 'pixels',
+        capRounded: true,
+        jointRounded: true,
+      }) as unknown as Layer,
+    )
+  }
+  return out
 }
 
 function rgbFromLabItem(
@@ -444,18 +1054,7 @@ function featuresToDeckLayers(
     220,
   ]
   if (pathRows.length > 0) {
-    layers.push(
-      new PathLayer<PathRow>({
-        id: `${idPrefix}-paths`,
-        data: pathRows,
-        getPath: (d) => d.path,
-        getColor: () => rgba,
-        getWidth: () => 2,
-        widthUnits: 'pixels',
-        capRounded: true,
-        jointRounded: true,
-      }) as unknown as Layer,
-    )
+    layers.push(...buildChunkedVivPathLayers(idPrefix, pathRows, rgba))
   }
   if (points.length > 0) {
     layers.push(
@@ -543,11 +1142,18 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
     extent,
   })
 
+  const tMeta0 = vivBulkAnnNow()
+  vivBulkAnnDebug('metadata: searchForSeries ANN …', { studyInstanceUID })
+
   let matched = await annotationClient.searchForSeries({
     studyInstanceUID,
     queryParams: {
       Modality: 'ANN',
     },
+  })
+
+  vivBulkAnnPerf('metadata:searchForSeries Modality=ANN', tMeta0, {
+    numSeries: matched?.length ?? 0,
   })
   if (matched === null || matched === undefined) {
     matched = []
@@ -597,12 +1203,24 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
     const { dataset } = dmv.metadata.formatMetadata(s)
     const series = dataset as { SeriesInstanceUID: string }
     let retrieved: object[]
+    const tSeries0 = vivBulkAnnNow()
+    vivBulkAnnDebug('metadata: retrieveSeriesMetadata …', {
+      annSeriesInstanceUID: series.SeriesInstanceUID,
+    })
     try {
       retrieved = await annotationClient.retrieveSeriesMetadata({
         studyInstanceUID,
         seriesInstanceUID: series.SeriesInstanceUID,
       })
+      vivBulkAnnPerf('metadata:retrieveSeriesMetadata', tSeries0, {
+        annSeriesInstanceUID: series.SeriesInstanceUID,
+        numInstances: retrieved.length,
+      })
     } catch (e) {
+      vivBulkAnnPerf('metadata:retrieveSeriesMetadata FAILED', tSeries0, {
+        annSeriesInstanceUID: series.SeriesInstanceUID,
+        err: e instanceof Error ? e.message : String(e),
+      })
       console.warn(
         `${VIV_BULK} retrieveSeriesMetadata failed`,
         { seriesInstanceUID: series.SeriesInstanceUID },
@@ -781,6 +1399,10 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
 
   console.info(`${VIV_BULK} metadata done: lazy geometry jobs`, {
     groups: Object.keys(groupGeometryJobs).length,
+  })
+  vivBulkAnnPerf('metadata:catalog complete (all ANN series)', tMeta0, {
+    lazyGeometryJobs: Object.keys(groupGeometryJobs).length,
+    annotationGroups: annotationGroupsByUid.size,
   })
   return {
     annotationGroups: [...annotationGroupsByUid.values()],
