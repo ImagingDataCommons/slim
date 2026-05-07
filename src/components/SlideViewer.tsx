@@ -37,6 +37,10 @@ import {
 import { SettingsRegistration } from '../contexts/SettingsContext'
 import { runValidations } from '../contexts/ValidationContext'
 import { StorageClasses } from '../data/uids'
+import {
+  getIccProfilesEnabled,
+  setIccProfilesEnabled,
+} from '../preferences/iccProfilesPreference'
 import { ActiveSeriesService } from '../services/ActiveSeriesService'
 import DicomMetadataStore from '../services/DICOMMetadataStore'
 import NotificationMiddleware, {
@@ -292,7 +296,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       pixelDataStatistics: {},
       selectedPresentationStateUID: this.props.selectedPresentationStateUID,
       loadingFrames: new Set(),
-      isICCProfilesEnabled: true,
+      isICCProfilesEnabled: getIccProfilesEnabled(),
       isSegmentationInterpolationEnabled: false,
       isParametricMapInterpolationEnabled: true,
       customizedSegmentColors: {},
@@ -2432,6 +2436,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         message.warning('No ICC Profile was found for color images')
       }
     }
+
+    if (!getIccProfilesEnabled()) {
+      this.volumeViewer.toggleICCProfiles()
+    }
   }
 
   /**
@@ -3574,6 +3582,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * enable or disable it, depending on its current state.
    */
   handleICCProfilesToggle = (checked: boolean): void => {
+    setIccProfilesEnabled(checked)
     this.setState({ isICCProfilesEnabled: checked })
     this.volumeViewer.toggleICCProfiles()
   }

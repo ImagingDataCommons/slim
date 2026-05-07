@@ -77,6 +77,23 @@ export interface OidcSettings {
   endSessionEndpoint?: string
 }
 
+export interface VivChannelSelection {
+  c: number
+  t?: number
+  z?: number
+}
+
+export interface VivSettings {
+  selections?: VivChannelSelection[]
+  channelsVisible?: boolean[]
+  contrastLimits?: Array<[number, number]>
+  colors?: Array<[number, number, number]>
+  initialViewState?: {
+    target: [number, number, number]
+    zoom?: number
+  }
+}
+
 export default interface AppConfig {
   /**
    * Currently, only one server is supported. However, support for multiple
@@ -107,4 +124,6 @@ export default interface AppConfig {
     enableInDevelopment?: boolean
   }
   enableMemoryMonitoring?: boolean
+  /** Optional display overrides for the Viv slide viewer at `/viv/...` routes (channels, contrast, etc.). */
+  vivSettings?: VivSettings
 }
