@@ -20,7 +20,12 @@ const VIV_BULK = '[Viv bulk ANN]'
 /** Smaller Deck PathLayer batches reduce GPU attribute spikes and giant single-layer updates. */
 const VIV_BULK_PATHS_PER_PATH_LAYER = 65_000
 
-type PathRow = { path: Position[]; closed: boolean }
+/** OpenLayers-backed paths; Deck normalizes nested positions per row (`_pathType` unset). */
+type PathRowNested = { path: Position[]; closed: boolean }
+/** Direct-decode paths: flat XY in deck space; use with `_pathType` `'loop'` or `'open'`. */
+type PathRowFlat = { pathFlat: Float64Array }
+
+type PathRow = PathRowNested
 
 type FeatureBuilder = (opts: Record<string, unknown>) => unknown
 
@@ -226,6 +231,21 @@ function bulkVertexToDeckFast(
   const prow = c[3] * gx + c[4] * gy + c[5]
   const olMapY = -(prow + 1)
   return [pcol, openLayersMapYToVivWorldY(olMapY)]
+}
+
+/** Like {@link bulkVertexToDeckFast} but writes into `target[writeIndex]` (x) and `[writeIndex+1]` (y). */
+function bulkVertexToDeckFastWrite(
+  gx: number,
+  gy: number,
+  c: BulkDeckLinearCoeffs,
+  target: Float64Array,
+  writeIndex: number,
+): void {
+  const pcol = c[0] * gx + c[1] * gy + c[2]
+  const prow = c[3] * gx + c[4] * gy + c[5]
+  const olMapY = -(prow + 1)
+  target[writeIndex] = pcol
+  target[writeIndex + 1] = openLayersMapYToVivWorldY(olMapY)
 }
 
 function readTripleFromGraphicBuffer(
@@ -711,7 +731,7 @@ function buildPathLayersFromGraphicData(options: {
   if (graphicIndex === null) {
     return null
   }
-  const pathRows: PathRow[] = []
+  const pathRows: PathRowFlat[] = []
   const verbose = vivBulkAnnVerboseProgress()
   const PROGRESS_EVERY = 50_000
   for (let i = 0; i < numberOfAnnotations; i++) {
@@ -741,7 +761,10 @@ function buildPathLayersFromGraphicData(options: {
       graphicData.length,
     )
 
-    const path: Position[] = []
+    const maxVerts =
+      Math.ceil((roofExclusive - offset) / coordinateDimensionality) + 4
+    const buf = new Float64Array(Math.max(maxVerts * 2, 8))
+    let w = 0
     for (let j = offset; j < roofExclusive; j++) {
       const readAt =
         graphicType === 'POLYGON' &&
@@ -765,11 +788,12 @@ function buildPathLayersFromGraphicData(options: {
         j += coordinateDimensionality - 1
         continue
       }
-      path.push(bulkVertexToDeckFast(gx, gy, deckCoeffs))
+      bulkVertexToDeckFastWrite(gx, gy, deckCoeffs, buf, w)
+      w += 2
       j += coordinateDimensionality - 1
     }
-    if (path.length > 1) {
-      pathRows.push({ path, closed: graphicType === 'POLYGON' })
+    if (w >= 4) {
+      pathRows.push({ pathFlat: buf.slice(0, w) })
     }
   }
 
@@ -783,7 +807,12 @@ function buildPathLayersFromGraphicData(options: {
     220,
   ]
   return {
-    layers: buildChunkedVivPathLayers(idPrefix, pathRows, rgba),
+    layers: buildChunkedVivPathLayersFromFlat(
+      idPrefix,
+      pathRows,
+      rgba,
+      graphicType === 'POLYGON' ? 'loop' : 'open',
+    ),
     pathRowCount: pathRows.length,
   }
 }
@@ -920,6 +949,57 @@ function buildChunkedVivPathLayers(
         widthUnits: 'pixels',
         capRounded: true,
         jointRounded: true,
+      }) as unknown as Layer,
+    )
+  }
+  return out
+}
+
+/**
+ * Chunked PathLayer for direct-decoded flat paths. Sets `_pathType` so Deck skips
+ * normalizePath (avoids re-flattening millions of nested `[x,y]` pairs).
+ */
+function buildChunkedVivPathLayersFromFlat(
+  idPrefix: string,
+  pathRows: PathRowFlat[],
+  rgba: [number, number, number, number],
+  pathType: 'loop' | 'open',
+): Layer[] {
+  if (pathRows.length === 0) {
+    return []
+  }
+  // Flat buffers pack [x,y,…]; default PathLayer assumes XYZ strides (wrong length / garbage).
+  const baseProps = {
+    positionFormat: 'XY' as const,
+    getPath: (d: PathRowFlat) => d.pathFlat,
+    getColor: (): typeof rgba => rgba,
+    getWidth: (): number => 2,
+    widthUnits: 'pixels' as const,
+    capRounded: true,
+    jointRounded: true,
+    _pathType: pathType,
+  }
+  if (pathRows.length <= VIV_BULK_PATHS_PER_PATH_LAYER) {
+    return [
+      new PathLayer<PathRowFlat>({
+        id: `${idPrefix}-paths`,
+        data: pathRows,
+        ...baseProps,
+      }) as unknown as Layer,
+    ]
+  }
+  const out: Layer[] = []
+  for (
+    let offset = 0, chunk = 0;
+    offset < pathRows.length;
+    offset += VIV_BULK_PATHS_PER_PATH_LAYER, chunk++
+  ) {
+    const data = pathRows.slice(offset, offset + VIV_BULK_PATHS_PER_PATH_LAYER)
+    out.push(
+      new PathLayer<PathRowFlat>({
+        id: `${idPrefix}-paths-${chunk}`,
+        data,
+        ...baseProps,
       }) as unknown as Layer,
     )
   }
