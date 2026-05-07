@@ -1,3 +1,10 @@
+## [0.45.4](https://github.com/ImagingDataCommons/slim/compare/v0.45.3...v0.45.4) (2026-05-05)
+
+
+### Bug Fixes
+
+* Address auto toggle of ann group ([#382](https://github.com/ImagingDataCommons/slim/issues/382)) ([3e01b9e](https://github.com/ImagingDataCommons/slim/commit/3e01b9ed7be20511aab28a25c3bcb5258c845849))
+
 ## [0.45.3](https://github.com/ImagingDataCommons/slim/compare/v0.45.2...v0.45.3) (2026-04-14)
 
 
