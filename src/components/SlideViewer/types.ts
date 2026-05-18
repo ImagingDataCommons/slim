@@ -122,6 +122,7 @@ export interface SlideViewerState {
   }
   loadingFrames: Set<string>
   isICCProfilesEnabled: boolean
+  isPaletteDisplayGammaCorrectionEnabled: boolean
   isSegmentationInterpolationEnabled: boolean
   isParametricMapInterpolationEnabled: boolean
   customizedSegmentColors: { [segmentUID: string]: number[] }

@@ -18,6 +18,7 @@ declare module 'dicom-microscopy-viewer' {
       controls: string[]
       annotationOptions?: object
       errorInterceptor?: (error: CustomError) => void
+      paletteDisplayGammaCorrection?: boolean
     }
 
     export interface ROIStyleOptions {
@@ -232,6 +233,8 @@ declare module 'dicom-microscopy-viewer' {
       ): metadata.MicroscopyBulkSimpleAnnotations
       toggleICCProfiles (): void;
       getICCProfiles (): any[];
+      setPaletteDisplayGammaCorrectionEnabled (enabled: boolean): void;
+      getPaletteDisplayGammaCorrectionEnabled (): boolean;
       toggleSegmentationInterpolation (): void;
       toggleParametricMapInterpolation (): void;
     }
@@ -814,11 +817,13 @@ declare module 'dicom-microscopy-viewer' {
       redSegmentedData?: Unit8Array|Unit16Array
       greenSegmentedData?: Unit8Array|Unit16Array
       blueSegmentedData?: Unit8Array|Unit16Array
+      applyDisplayGammaCorrection?: boolean
     }
 
     export interface BuildPaletteColorLookupTableOptions {
       data: number[][]
       firstValueMapped: number
+      applyDisplayGammaCorrection?: boolean
     }
 
     export function buildPaletteColorLookupTable (options: BuildPaletteColorLookupTableOptions): PaletteColorLookupTable
@@ -828,6 +833,8 @@ declare module 'dicom-microscopy-viewer' {
       get uid (): string
       get data (): number[][]
       get firstValueMapped (): number
+      get applyDisplayGammaCorrection (): boolean
+      setApplyDisplayGammaCorrection (enabled: boolean): void
     }
   }
 
