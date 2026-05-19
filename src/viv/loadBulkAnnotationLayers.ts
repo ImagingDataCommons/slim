@@ -6,6 +6,7 @@ import * as dcmjs from 'dcmjs'
 import dmvDefault, * as dmvNamespace from 'dicom-microscopy-viewer'
 
 import type DicomWebManager from '../DicomWebManager'
+import { logger } from '../utils/logger'
 import type { BulkAnnotationGeometryContext } from './dicomLoader'
 import {
   vivBulkAnnDebug,
@@ -14,9 +15,6 @@ import {
   vivBulkAnnPhase,
   vivBulkAnnVerboseProgress,
 } from './vivBulkAnnDebug'
-
-/** Console filter: `Viv bulk ANN` */
-const VIV_BULK = '[Viv bulk ANN]'
 
 /** Smaller Deck PathLayer batches reduce GPU attribute spikes and giant single-layer updates. */
 const VIV_BULK_PATHS_PER_PATH_LAYER = 65_000
@@ -430,8 +428,8 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
       graphicType,
       err: e instanceof Error ? e.message : String(e),
     })
-    console.warn(
-      `${VIV_BULK} fetchGraphicData/Index failed`,
+    logger.warn(
+      `fetchGraphicData/Index failed`,
       { annotationGroupUID, graphicType },
       e,
     )
@@ -483,7 +481,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
     (graphicType === 'POLYGON' || graphicType === 'POLYLINE') &&
     (graphicIndex === null || graphicIndex === undefined)
   ) {
-    console.warn(
+    logger.warn(
       `[Viv] skip bulk group ${annotationGroupUID}: missing LongPrimitivePointIndexList`,
     )
     return null
@@ -539,7 +537,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
       route: 'direct',
       ok: fastDeckSlices.length > 0,
     })
-    console.info(`${VIV_BULK} group → deck (lazy, direct decode)`, {
+    logger.log(`group → deck (lazy, direct decode)`, {
       annotationGroupUID,
       graphicType,
       deckLayers: fastDeckSlices.length,
@@ -585,8 +583,8 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
       graphicType,
       err: e instanceof Error ? e.message : String(e),
     })
-    console.warn(
-      `${VIV_BULK} getFeaturesFromBulkAnnotations failed`,
+    logger.warn(
+      `getFeaturesFromBulkAnnotations failed`,
       { annotationGroupUID, graphicType },
       e,
     )
@@ -630,7 +628,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
     route: 'ol+dvm',
     ok: deckSlices.length > 0,
   })
-  console.info(`${VIV_BULK} group → deck (lazy)`, {
+  logger.log(`group → deck (lazy)`, {
     annotationGroupUID,
     graphicType,
     olFeatures: features.length,
@@ -1074,16 +1072,13 @@ function resolveBulkSimpleAnnotationsApi(): BulkSimpleAnnotationsApi {
     return ns
   }
   const root = dmv as unknown as Record<string, unknown>
-  console.error(
-    `${VIV_BULK} missing bulkSimpleAnnotations on resolved DMV module`,
-    {
-      dmvTopKeys: Object.keys(root),
-    },
-  )
+  logger.error(`missing bulkSimpleAnnotations on resolved DMV module`, {
+    dmvTopKeys: Object.keys(root),
+  })
   const msg =
     'dicom-microscopy-viewer: no `bulkSimpleAnnotations` in the loaded bundle. ' +
     'Rebuild the linked package: `cd ../dicom-microscopy-viewer && bun run build`, then restart Slim dev.'
-  console.error(`${VIV_BULK} ${msg}`)
+  logger.error(`${msg}`)
   throw new Error(msg)
 }
 
@@ -1400,8 +1395,8 @@ function featuresToDeckLayers(
     )
   }
   if (logContext != null && features.length > 0 && layers.length === 0) {
-    console.warn(
-      `${VIV_BULK} group ${logContext.groupUID}: ${features.length} OL feature(s) but 0 Deck layers`,
+    logger.warn(
+      `group ${logContext.groupUID}: ${features.length} OL feature(s) but 0 Deck layers`,
       {
         pathRowCandidates: pathRows.length,
         pointCandidates: points.length,
@@ -1455,7 +1450,7 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
   const { pyramid, extent } = geometry
   const refImage = pyramid[0]
   if (refImage === undefined) {
-    console.warn(`${VIV_BULK} pyramid[0] missing — cannot align annotations`)
+    logger.warn(`pyramid[0] missing — cannot align annotations`)
     return emptyMetadataResult()
   }
 
@@ -1464,7 +1459,7 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
     TotalPixelMatrixColumns?: number
     TotalPixelMatrixRows?: number
   }
-  console.info(`${VIV_BULK} start`, {
+  logger.log(`start`, {
     studyInstanceUID,
     imageSeriesInstanceUID,
     refSOPInstanceUID: refMeta.SOPInstanceUID,
@@ -1512,13 +1507,13 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
       return { SeriesInstanceUID: '(formatMetadata failed)', Modality: '?' }
     }
   })
-  console.info(`${VIV_BULK} QIDO Modality=ANN → ${matched.length} series`, {
+  logger.log(`QIDO Modality=ANN → ${matched.length} series`, {
     series: annSeriesSummaries,
   })
 
   if (matched.length === 0) {
-    console.warn(
-      `${VIV_BULK} no ANN series from this store for study — check store / QIDO / Modality`,
+    logger.warn(
+      `no ANN series from this store for study — check store / QIDO / Modality`,
     )
     return emptyMetadataResult()
   }
@@ -1571,15 +1566,15 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
         annSeriesInstanceUID: series.SeriesInstanceUID,
         err: e instanceof Error ? e.message : String(e),
       })
-      console.warn(
-        `${VIV_BULK} retrieveSeriesMetadata failed`,
+      logger.warn(
+        `retrieveSeriesMetadata failed`,
         { seriesInstanceUID: series.SeriesInstanceUID },
         e,
       )
       continue
     }
 
-    console.info(`${VIV_BULK} retrieved`, {
+    logger.log(`retrieved`, {
       annSeriesInstanceUID: series.SeriesInstanceUID,
       numInstances: retrieved.length,
     })
@@ -1595,16 +1590,13 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
       const refSer = ann.ReferencedSeriesSequence?.[0]
       const refImg = ann.ReferencedImageSequence?.[0]
       if (refSer === undefined || refImg === undefined) {
-        console.info(
-          `${VIV_BULK} skip instance: missing ReferencedSeries/Image`,
-          {
-            annSOP: ann.SOPInstanceUID,
-          },
-        )
+        logger.log(`skip instance: missing ReferencedSeries/Image`, {
+          annSOP: ann.SOPInstanceUID,
+        })
         continue
       }
       if (refSer.SeriesInstanceUID !== imageSeriesInstanceUID) {
-        console.info(`${VIV_BULK} skip instance: references other SM series`, {
+        logger.log(`skip instance: references other SM series`, {
           annSOP: ann.SOPInstanceUID,
           referencedSeries: refSer.SeriesInstanceUID,
           activeSlideSeries: imageSeriesInstanceUID,
@@ -1612,7 +1604,7 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
         continue
       }
 
-      console.info(`${VIV_BULK} instance matches slide`, {
+      logger.log(`instance matches slide`, {
         annSOP: ann.SOPInstanceUID,
         annSeries: ann.SeriesInstanceUID,
         groups: (ann.AnnotationGroupSequence ?? []).length,
@@ -1669,7 +1661,7 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
         const graphicType = metadataItem.GraphicType as string
         const featureFn = featureFnForGraphicType(graphicType)
         if (featureFn === null || numberOfAnnotations <= 0) {
-          console.info(`${VIV_BULK} skip group: graphic type / count`, {
+          logger.log(`skip group: graphic type / count`, {
             annotationGroupUID,
             graphicType,
             numberOfAnnotations,
@@ -1687,7 +1679,7 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
           coordinateDimensionality === 3 &&
           refImage.FrameOfReferenceUID !== ann.FrameOfReferenceUID
         ) {
-          console.warn(
+          logger.warn(
             `[Viv] skip bulk group ${annotationGroupUID}: frame of reference mismatch`,
           )
           continue
@@ -1738,7 +1730,7 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
             coordinateDimensionality,
             commonZCoordinate,
           }
-          console.info(`${VIV_BULK} group → catalog (geometry deferred)`, {
+          logger.log(`group → catalog (geometry deferred)`, {
             annotationGroupUID,
             graphicType,
           })
@@ -1756,7 +1748,7 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
       fetchAllSeriesMs: Math.round((vivBulkAnnNow() - tSeriesAll0) * 10) / 10,
     },
   )
-  console.info(`${VIV_BULK} metadata done: lazy geometry jobs`, {
+  logger.log(`metadata done: lazy geometry jobs`, {
     groups: Object.keys(groupGeometryJobs).length,
   })
   vivBulkAnnPerf('metadata:catalog complete (all ANN series)', tMeta0, {

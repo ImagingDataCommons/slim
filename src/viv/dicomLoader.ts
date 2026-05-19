@@ -7,6 +7,7 @@ import * as dmv from 'dicom-microscopy-viewer'
 // skipcq: JS-C1003
 import type * as dwc from 'dicomweb-client'
 import type DicomWebManager from '../DicomWebManager'
+import { logger } from '../utils/logger'
 import {
   vivBulkAnnDebug,
   vivBulkAnnNow,
@@ -565,6 +566,9 @@ export class DicomLoader {
           // dicomweb-client defaults verbose=true and logs console.error on any
           // non-2xx XHR outcome, including status 0 after abort(). Silence only
           // prune/cancellation paths we bridged from deck.gl's AbortSignal.
+          // NOTE: we monkey-patch the GLOBAL `console.error` here because that's
+          // exactly what dicomweb-client calls internally — replacing this with
+          // our slim logger would have no effect.
           const prev = request.onreadystatechange
           if (typeof prev === 'function') {
             const tileAbortMap = this._xhrTileAbort
@@ -1006,7 +1010,7 @@ export class DicomLoader {
         const rh =
           meta[i + 1].TotalPixelMatrixRows / meta[i].TotalPixelMatrixRows
         if (Math.abs(rw - rh) > 0.02) {
-          console.warn(
+          logger.warn(
             '[Viv] Pyramid row/column ratios differ between levels; multiscale alignment may be wrong when zooming.',
           )
           return
@@ -1015,13 +1019,13 @@ export class DicomLoader {
         const near2 = Math.abs(r - 2) <= 0.12
         const near4 = Math.abs(r - 4) <= 0.2
         if (!near2 && !near4) {
-          console.warn(
+          logger.warn(
             `[Viv] Pyramid level step (~${r.toFixed(2)}×) is not ~2× between downsamplings. Deck.gl assumes 2× per zoom level; expect offset when switching resolutions.`,
           )
           return
         }
         if (near4) {
-          console.warn(
+          logger.warn(
             '[Viv] ~4× pyramid steps detected; Deck.gl multiscale uses 2× between tile z levels. Zooming may shift the image until tiles match — consider using the OpenLayers viewer for these series.',
           )
           return
@@ -1099,7 +1103,7 @@ function insertSyntheticDyadicLevels(
     }
     const r = rW
     if (r > 3.5 && r < 4.5) {
-      console.info(
+      logger.log(
         '[Viv] Inserting synthetic half-resolution pyramid level (DICOM ~4× step) so deck.gl 2× tile alignment matches OpenLayers.',
       )
       out.push(
@@ -1205,7 +1209,7 @@ export class DicomPixelSource {
   }
 
   onTileError(err: Error): void {
-    console.error(`Tile error: ${err}`)
+    logger.error(`Tile error: ${err}`)
   }
 }
 
@@ -1323,7 +1327,7 @@ export class SyntheticDyadicPixelSource {
   }
 
   onTileError(err: Error): void {
-    console.error(`Tile error: ${err}`)
+    logger.error(`Tile error: ${err}`)
   }
 }
 
