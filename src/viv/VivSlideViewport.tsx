@@ -282,6 +282,11 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       cache,
       viewportBounds,
       mode,
+      deckZoom: vs.zoom,
+      viewportWidth: vw,
+      viewportHeight: vh,
+      slideWidth: sr.worldW,
+      slideHeight: sr.worldH,
       deckLoadCenter: deckLoadCenterFromViewTarget(sr.worldW, vs.target),
       shouldContinue: () =>
         visibleBulkUidsRef.current.has(uid) &&

@@ -143,6 +143,128 @@ export function isVivAtFinestPyramidTile(
   return vivDeckTileZFromViewZoom(deckZoom, pyramidLevelCount, zoomOffset) === 0
 }
 
+/**
+ * Nominal on-slide marker diameter for bulk centroids (mm).
+ * ~5 µm — same intent as `dicom-microscopy-viewer` POINT style (their constant
+ * is mislabeled “micrometer” but is used with mm `PixelSpacing`).
+ */
+export const VIV_BULK_CENTROID_DIAMETER_MM = 5e-6
+
+/** Heuristic: WSI `PixelSpacing` values above this are usually µm, not mm. */
+const PIXEL_SPACING_LIKELY_UM_THRESHOLD_MM = 0.02
+
+function normalizePixelSpacingToMm(
+  spacing: [number, number],
+): [number, number] {
+  const a = spacing[0]
+  const b = spacing[1]
+  if (Math.min(a, b) > PIXEL_SPACING_LIKELY_UM_THRESHOLD_MM) {
+    return [a / 1000, b / 1000]
+  }
+  return [a, b]
+}
+
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  if (edge1 <= edge0) {
+    return x >= edge1 ? 1 : 0
+  }
+  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)))
+  return t * t * (3 - 2 * t)
+}
+
+/**
+ * Deck zoom at which finest pyramid tiles load (`ceil(zoom) >= 0` → tile z = 0).
+ * Centroid LOD is shown for zoom strictly below this gate.
+ */
+export function deckZoomHighResGate(): number {
+  return -1
+}
+
+/**
+ * Scatterplot radius (px) for bulk centroids.
+ *
+ * Non-LOD: physical diameter × pixel spacing, in screen pixels (`radius ∝ 2^zoom`).
+ *
+ * LOD overview: same physical size, but clamped with a **continuous** zoom envelope
+ * from “whole slide fits” (`fitZ`) to just before full-resolution paths (`deckZoom ≈ -1`),
+ * so markers stay sparse at overview and grow smoothly through intermediate zoom.
+ */
+export function computeVivBulkCentroidRadiusPixels(options: {
+  deckZoom: number
+  /** Row/column spacing in mm (finest pyramid level), or µm values > 0.02. */
+  pixelSpacingMm: [number, number] | null
+  diameterMm?: number
+  minPx?: number
+  maxPx?: number
+  lodOverview?: boolean
+  viewportWidth?: number
+  viewportHeight?: number
+  slideWidth?: number
+  slideHeight?: number
+}): number {
+  const {
+    deckZoom,
+    pixelSpacingMm,
+    diameterMm = VIV_BULK_CENTROID_DIAMETER_MM,
+    lodOverview = false,
+    viewportWidth,
+    viewportHeight,
+    slideWidth,
+    slideHeight,
+  } = options
+  const minPx = options.minPx ?? 1
+  const maxPx = options.maxPx ?? 8
+
+  if (!Number.isFinite(deckZoom)) {
+    return lodOverview ? 0.45 : minPx
+  }
+
+  let radiusFromPhysics = minPx
+  if (
+    pixelSpacingMm != null &&
+    pixelSpacingMm[0] > 0 &&
+    pixelSpacingMm[1] > 0
+  ) {
+    const [sx, sy] = normalizePixelSpacingToMm(pixelSpacingMm)
+    const spacingMm = Math.min(sx, sy)
+    const radiusSlidePx = diameterMm / (2 * spacingMm)
+    radiusFromPhysics = radiusSlidePx * 2 ** deckZoom
+  }
+
+  if (!lodOverview) {
+    return Math.min(maxPx, Math.max(minPx, radiusFromPhysics))
+  }
+
+  const hasViewport =
+    viewportWidth != null &&
+    viewportHeight != null &&
+    slideWidth != null &&
+    slideHeight != null &&
+    slideWidth > 0 &&
+    slideHeight > 0
+
+  if (!hasViewport) {
+    return Math.min(10, Math.max(0.35, radiusFromPhysics))
+  }
+
+  const vw = Math.max(1, viewportWidth)
+  const vh = Math.max(1, viewportHeight)
+  const fitZ = Math.log2(Math.min(vw / slideWidth, vh / slideHeight))
+  const highResGate = deckZoomHighResGate()
+
+  const t = smoothstep(fitZ, highResGate, deckZoom)
+  const floorPx = 0.35 + t * 2.0
+  const ceilPx = 0.55 + t * 9.45
+
+  let radiusPx = Math.min(ceilPx, Math.max(floorPx, radiusFromPhysics))
+
+  if (deckZoom < fitZ) {
+    radiusPx *= 2 ** (deckZoom - fitZ)
+  }
+
+  return Math.max(0.3, Math.min(10, radiusPx))
+}
+
 /** IDC cyclic IF demo (Lin et al.) — channels 8–11 per viv-dicomweb-test. */
 export const IDC_CYCLIC_IF_VIV_SETTINGS: VivSettings = {
   selections: [
