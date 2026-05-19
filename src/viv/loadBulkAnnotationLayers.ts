@@ -15,7 +15,10 @@ import {
   vivBulkAnnPhase,
   vivBulkAnnVerboseProgress,
 } from './vivBulkAnnDebug'
-import { isVivAtFinestPyramidTile } from './vivDisplayDefaults'
+import {
+  computeVivBulkCentroidRadiusPixels,
+  isVivAtFinestPyramidTile,
+} from './vivDisplayDefaults'
 
 /** Smaller Deck PathLayer batches reduce GPU attribute spikes and giant single-layer updates. */
 const VIV_BULK_PATHS_PER_PATH_LAYER = 65_000
@@ -23,8 +26,8 @@ const VIV_BULK_PATHS_PER_PATH_LAYER = 65_000
 /** OpenLayers enables cluster low-res mode above this count (see DMV viewer.js). */
 const VIV_BULK_LOD_MIN_ANNOTATIONS = 1000
 
-/** Scatter radius for LOD center markers (pixels). */
-const VIV_BULK_CENTER_RADIUS_PX = 2
+/** Fallback scatter radius when zoom / pixel spacing are unavailable. */
+const VIV_BULK_CENTER_RADIUS_FALLBACK_PX = 2
 
 /** Pad viewport bounds when culling so annotations near edges do not pop in/out. */
 const VIV_BULK_VIEWPORT_MARGIN_RATIO = 0.25
@@ -363,6 +366,16 @@ function readAnnotationFirstVertexDeckXY(options: {
     return null
   }
   return bulkVertexToDeckFast(gx, gy, deckCoeffs) as [number, number]
+}
+
+/** Finest-pyramid `PixelSpacing` in mm from VL Whole Slide Microscopy metadata. */
+export function readFinestPyramidPixelSpacingMm(
+  pyramid: BulkAnnotationGeometryContext['pyramid'],
+): [number, number] | null {
+  if (pyramid.length === 0) {
+    return null
+  }
+  return readPixelSpacingFromPyramidLevel(pyramid[0])
 }
 
 type VivPyramidLodTables = {
@@ -1152,6 +1165,14 @@ async function buildPointLayersFromGraphicData(options: {
   deckCoeffs: BulkDeckLinearCoeffs
   deckLoadCenter?: [number, number]
   viewportBounds?: DeckViewportBounds
+  /** Deck orthographic zoom — with pixel spacing, sets physically scaled marker radius. */
+  deckZoom?: number
+  pixelSpacingMm?: [number, number] | null
+  lodOverview?: boolean
+  viewportWidth?: number
+  viewportHeight?: number
+  slideWidth?: number
+  slideHeight?: number
   centerRadiusPx?: number
   /** Emitted once for points (single `ScatterplotLayer`), or per chunk when streaming. */
   onChunk?: VivBulkChunkEmitter
@@ -1167,9 +1188,29 @@ async function buildPointLayersFromGraphicData(options: {
     deckCoeffs,
     deckLoadCenter,
     viewportBounds,
-    centerRadiusPx = VIV_BULK_CENTER_RADIUS_PX,
+    deckZoom,
+    pixelSpacingMm,
+    lodOverview,
+    viewportWidth,
+    viewportHeight,
+    slideWidth,
+    slideHeight,
     onChunk,
   } = options
+  const isLodCentroidLayer = idPrefix.includes('-centers')
+  const centerRadiusPx =
+    options.centerRadiusPx ??
+    (deckZoom != null
+      ? computeVivBulkCentroidRadiusPixels({
+          deckZoom,
+          pixelSpacingMm: pixelSpacingMm ?? null,
+          lodOverview: lodOverview ?? isLodCentroidLayer,
+          viewportWidth,
+          viewportHeight,
+          slideWidth,
+          slideHeight,
+        })
+      : VIV_BULK_CENTER_RADIUS_FALLBACK_PX)
   const tDecode0 = vivBulkAnnNow()
   const annotationOrder =
     deckLoadCenter != null
@@ -1194,7 +1235,7 @@ async function buildPointLayersFromGraphicData(options: {
     color[0],
     color[1],
     color[2],
-    220,
+    isLodCentroidLayer ? 140 : 220,
   ]
 
   const flushPointChunk = async (final: boolean): Promise<void> => {
@@ -1571,11 +1612,26 @@ export async function rebuildVivBulkLayersForViewport(options: {
   cache: VivBulkGraphicCache
   viewportBounds: DeckViewportBounds
   mode: 'centers' | 'full'
+  deckZoom: number
+  viewportWidth: number
+  viewportHeight: number
+  slideWidth: number
+  slideHeight: number
   deckLoadCenter?: [number, number]
   shouldContinue?: () => boolean
 }): Promise<Layer[]> {
-  const { cache, viewportBounds, mode, deckLoadCenter, shouldContinue } =
-    options
+  const {
+    cache,
+    viewportBounds,
+    mode,
+    deckZoom,
+    viewportWidth,
+    viewportHeight,
+    slideWidth,
+    slideHeight,
+    deckLoadCenter,
+    shouldContinue,
+  } = options
   const {
     graphicType,
     graphicData,
@@ -1606,6 +1662,7 @@ export async function rebuildVivBulkLayersForViewport(options: {
     mode,
   })
   if (mode === 'centers') {
+    const pixelSpacingMm = readFinestPyramidPixelSpacingMm(geometry.pyramid)
     const built = await buildPointLayersFromGraphicData({
       graphicData,
       graphicIndex,
@@ -1617,6 +1674,13 @@ export async function rebuildVivBulkLayersForViewport(options: {
       deckCoeffs,
       deckLoadCenter,
       viewportBounds,
+      deckZoom,
+      pixelSpacingMm,
+      lodOverview: true,
+      viewportWidth,
+      viewportHeight,
+      slideWidth,
+      slideHeight,
     })
     vivBulkAnnPerf('lod:viewport rebuild (centers)', t0, {
       annotationGroupUID: job.annotationGroupUID,
@@ -1657,6 +1721,7 @@ export async function rebuildVivBulkLayersForViewport(options: {
 export async function buildVivBulkFullLayersFromGraphicCache(options: {
   cache: VivBulkGraphicCache
   viewportBounds: DeckViewportBounds
+  deckZoom?: number
   deckLoadCenter?: [number, number]
   shouldContinue?: () => boolean
 }): Promise<Layer[]> {
@@ -1664,6 +1729,11 @@ export async function buildVivBulkFullLayersFromGraphicCache(options: {
     cache: options.cache,
     viewportBounds: options.viewportBounds,
     mode: 'full',
+    deckZoom: options.deckZoom ?? 0,
+    viewportWidth: 1,
+    viewportHeight: 1,
+    slideWidth: 1,
+    slideHeight: 1,
     deckLoadCenter: options.deckLoadCenter,
     shouldContinue: options.shouldContinue,
   })
@@ -1992,7 +2062,7 @@ function featuresToDeckLayers(
         data: points,
         getPosition: (d) => d,
         getFillColor: () => rgba,
-        getRadius: () => VIV_BULK_CENTER_RADIUS_PX,
+        getRadius: () => VIV_BULK_CENTER_RADIUS_FALLBACK_PX,
         radiusUnits: 'pixels',
       }) as unknown as Layer,
     )
