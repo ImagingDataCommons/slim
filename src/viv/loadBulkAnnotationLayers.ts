@@ -260,6 +260,75 @@ function readTripleFromGraphicBuffer(
   return [gx, gy, gz]
 }
 
+/**
+ * View target is in Deck world space; bulk paths are built in pre-flip deck XY
+ * (same space as {@link bulkVertexToDeckFast}). With {@link vivHorizontalFlipMatrix},
+ * deck X = worldWidth − worldX.
+ */
+export function deckLoadCenterFromViewTarget(
+  worldWidth: number,
+  target: [number, number] | [number, number, number],
+): [number, number] {
+  return [worldWidth - target[0], target[1]]
+}
+
+/**
+ * Sort annotation indices by distance of each shape's first vertex to `loadCenter`
+ * (deck space). Used so progressive PathLayer chunks appear center-outward.
+ */
+function computeCenterOutAnnotationOrder(options: {
+  numberOfAnnotations: number
+  graphicData: Int32Array | Float32Array
+  graphicIndex: Int32Array | null
+  coordinateDimensionality: number
+  commonZCoordinate: number
+  deckCoeffs: BulkDeckLinearCoeffs
+  loadCenter: [number, number]
+}): Uint32Array {
+  const {
+    numberOfAnnotations,
+    graphicData,
+    graphicIndex,
+    coordinateDimensionality,
+    commonZCoordinate,
+    deckCoeffs,
+    loadCenter,
+  } = options
+  const [cx, cy] = loadCenter
+  const distances = new Float64Array(numberOfAnnotations)
+  const hasIndex = graphicIndex !== null && graphicIndex !== undefined
+  const minRemain = coordinateDimensionality >= 3 ? 3 : 2
+
+  for (let i = 0; i < numberOfAnnotations; i++) {
+    distances[i] = Number.POSITIVE_INFINITY
+    const offset = hasIndex
+      ? Number(graphicIndex[i] ?? 0) - 1
+      : i * coordinateDimensionality
+    if (offset < 0 || offset + minRemain - 1 >= graphicData.length) {
+      continue
+    }
+    const [gx, gy] = readTripleFromGraphicBuffer(
+      graphicData,
+      offset,
+      commonZCoordinate,
+    )
+    if (!gx || !gy) {
+      continue
+    }
+    const [dx, dy] = bulkVertexToDeckFast(gx, gy, deckCoeffs)
+    const ddx = dx - cx
+    const ddy = dy - cy
+    distances[i] = ddx * ddx + ddy * ddy
+  }
+
+  const order = new Uint32Array(numberOfAnnotations)
+  for (let i = 0; i < numberOfAnnotations; i++) {
+    order[i] = i
+  }
+  order.sort((a, b) => distances[a] - distances[b])
+  return order
+}
+
 /** Deck overlays for one bulk simple-annotation group (paths + optional points). */
 export type VivBulkAnnotationLayerSlice = {
   groupUID: string
@@ -349,13 +418,22 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
   job: VivBulkGroupGeometryJob
   geometry: BulkAnnotationGeometryContext
   fetchClient: DicomWebManager
+  /** Deck XY center for center-out decode order (see {@link deckLoadCenterFromViewTarget}). */
+  deckLoadCenter?: [number, number]
   /** Receives Deck layers as soon as each chunk finishes decoding. */
   onChunk?: VivBulkChunkEmitter
   /** Polled between chunks; return `false` to stop emitting (e.g. group toggled off). */
   shouldContinue?: () => boolean
 }): Promise<VivBulkAnnotationLayerSlice | null> {
   const tHydrate0 = vivBulkAnnNow()
-  const { job, geometry, fetchClient, onChunk, shouldContinue } = options
+  const {
+    job,
+    geometry,
+    fetchClient,
+    deckLoadCenter,
+    onChunk,
+    shouldContinue,
+  } = options
   const {
     annotationGroupUID,
     color,
@@ -511,6 +589,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
     annotationCoordinateType,
     geometry,
     annotationGroupWrapper: annotationGroupWrapper,
+    deckLoadCenter,
     onChunk,
     shouldContinue,
   })
@@ -672,6 +751,7 @@ async function fastDeckLayersFromGraphicData(options: {
   annotationCoordinateType: string
   geometry: BulkAnnotationGeometryContext
   annotationGroupWrapper: VivBulkGroupGeometryJob['annotationGroupWrapper']
+  deckLoadCenter?: [number, number]
   onChunk?: VivBulkChunkEmitter
   shouldContinue?: () => boolean
 }): Promise<FastDecodeResult | null> {
@@ -687,6 +767,7 @@ async function fastDeckLayersFromGraphicData(options: {
     annotationCoordinateType,
     geometry,
     annotationGroupWrapper,
+    deckLoadCenter,
     onChunk,
     shouldContinue,
   } = options
@@ -711,6 +792,7 @@ async function fastDeckLayersFromGraphicData(options: {
         color,
         idPrefix,
         deckCoeffs,
+        deckLoadCenter,
         onChunk,
       })
       return { layers, pathRowCount: 0, pointCount }
@@ -727,6 +809,7 @@ async function fastDeckLayersFromGraphicData(options: {
         color,
         idPrefix,
         deckCoeffs,
+        deckLoadCenter,
         onChunk,
         shouldContinue,
       })
@@ -753,7 +836,8 @@ async function buildPointLayersFromGraphicData(options: {
   color: [number, number, number]
   idPrefix: string
   deckCoeffs: BulkDeckLinearCoeffs
-  /** Emitted once for points (single `ScatterplotLayer`). */
+  deckLoadCenter?: [number, number]
+  /** Emitted once for points (single `ScatterplotLayer`), or per chunk when streaming. */
   onChunk?: VivBulkChunkEmitter
 }): Promise<{ layers: Layer[]; pointCount: number }> {
   const {
@@ -765,16 +849,71 @@ async function buildPointLayersFromGraphicData(options: {
     color,
     idPrefix,
     deckCoeffs,
+    deckLoadCenter,
     onChunk,
   } = options
   const tDecode0 = vivBulkAnnNow()
-  const points: [number, number][] = []
+  const annotationOrder =
+    deckLoadCenter != null
+      ? computeCenterOutAnnotationOrder({
+          numberOfAnnotations,
+          graphicData,
+          graphicIndex,
+          coordinateDimensionality,
+          commonZCoordinate,
+          deckCoeffs,
+          loadCenter: deckLoadCenter,
+        })
+      : null
+  const allLayers: Layer[] = []
+  let pointChunk: [number, number][] = []
+  let pointChunkIndex = 0
   const hasIndex =
     Array.isArray(graphicIndex) || graphicIndex instanceof Int32Array
   const verbose = vivBulkAnnVerboseProgress()
   const PROGRESS_EVERY = 100_000
   const minRemain = coordinateDimensionality >= 3 ? 3 : 2
-  for (let i = 0; i < numberOfAnnotations; i++) {
+  const rgba: [number, number, number, number] = [
+    color[0],
+    color[1],
+    color[2],
+    220,
+  ]
+
+  const flushPointChunk = async (final: boolean): Promise<void> => {
+    if (pointChunk.length === 0) {
+      return
+    }
+    const singleLayer = onChunk === undefined && pointChunkIndex === 0 && final
+    const layer = new ScatterplotLayer<[number, number]>({
+      id: singleLayer
+        ? `${idPrefix}-pts`
+        : `${idPrefix}-pts-${pointChunkIndex}`,
+      data: pointChunk,
+      getPosition: (d) => d,
+      getFillColor: () => rgba,
+      getRadius: () => 4,
+      radiusUnits: 'pixels',
+    }) as unknown as Layer
+    allLayers.push(layer)
+    if (onChunk !== undefined) {
+      await onChunk([layer], {
+        chunkIndex: pointChunkIndex,
+        estimatedTotalChunks: Math.max(
+          1,
+          Math.ceil(numberOfAnnotations / VIV_BULK_PATHS_PER_PATH_LAYER),
+        ),
+      })
+      if (!final) {
+        await yieldToBrowser()
+      }
+    }
+    pointChunk = []
+    pointChunkIndex++
+  }
+
+  for (let o = 0; o < numberOfAnnotations; o++) {
+    const i = annotationOrder !== null ? annotationOrder[o] : o
     if (
       verbose &&
       numberOfAnnotations > PROGRESS_EVERY &&
@@ -797,56 +936,37 @@ async function buildPointLayersFromGraphicData(options: {
       commonZCoordinate,
     )
     const p = bulkVertexToDeckFast(gx, gy, deckCoeffs)
-    points.push([p[0], p[1]])
+    pointChunk.push([p[0], p[1]])
+    if (
+      onChunk !== undefined &&
+      pointChunk.length >= VIV_BULK_PATHS_PER_PATH_LAYER
+    ) {
+      await flushPointChunk(false)
+    }
+  }
+  await flushPointChunk(true)
+
+  let pointCount = 0
+  for (const layer of allLayers) {
+    const data = (layer as ScatterplotLayer<[number, number]>).props.data as [
+      number,
+      number,
+    ][]
+    pointCount += data.length
   }
   vivBulkAnnPerf('directDecode:POINT decode', tDecode0, {
     idPrefix,
-    pointCount: points.length,
+    pointCount,
     numberOfAnnotations,
+    centerOut: deckLoadCenter != null,
+    scatterLayers: allLayers.length,
   })
-  if (points.length === 0) {
+  if (pointCount === 0) {
     return { layers: [], pointCount: 0 }
   }
-  const rgba: [number, number, number, number] = [
-    color[0],
-    color[1],
-    color[2],
-    220,
-  ]
-  const tDeck0 = vivBulkAnnNow()
-  vivBulkAnnPhase('directDecode:POINT decode done — DECK BUILD start', {
-    idPrefix,
-    pointCount: points.length,
-    decodeMs: Math.round((vivBulkAnnNow() - tDecode0) * 10) / 10,
-  })
-  const layers: Layer[] = [
-    new ScatterplotLayer<[number, number]>({
-      id: `${idPrefix}-pts`,
-      data: points,
-      getPosition: (d) => d,
-      getFillColor: () => rgba,
-      getRadius: () => 4,
-      radiusUnits: 'pixels',
-    }) as unknown as Layer,
-  ]
-  vivBulkAnnPerf('directDecode:POINT deck build', tDeck0, {
-    idPrefix,
-    pointCount: points.length,
-    deckLayers: layers.length,
-  })
-  if (onChunk !== undefined) {
-    vivBulkAnnPhase('directDecode:POINT chunk emit', {
-      idPrefix,
-      chunkIndex: 0,
-      estimatedTotalChunks: 1,
-      final: true,
-      pointCount: points.length,
-    })
-    await onChunk(layers, { chunkIndex: 0, estimatedTotalChunks: 1 })
-  }
   return {
-    layers,
-    pointCount: points.length,
+    layers: allLayers,
+    pointCount,
   }
 }
 
@@ -860,6 +980,7 @@ async function buildPathLayersFromGraphicData(options: {
   color: [number, number, number]
   idPrefix: string
   deckCoeffs: BulkDeckLinearCoeffs
+  deckLoadCenter?: [number, number]
   /** Stream each chunk's `PathLayer` as soon as it's ready instead of waiting for full decode. */
   onChunk?: VivBulkChunkEmitter
   /** Polled at every chunk boundary; return `false` to abort the remaining decode. */
@@ -875,6 +996,7 @@ async function buildPathLayersFromGraphicData(options: {
     color,
     idPrefix,
     deckCoeffs,
+    deckLoadCenter,
     onChunk,
     shouldContinue,
   } = options
@@ -907,6 +1029,18 @@ async function buildPathLayersFromGraphicData(options: {
     1,
     Math.ceil(numberOfAnnotations / VIV_BULK_PATHS_PER_PATH_LAYER),
   )
+  const annotationOrder =
+    deckLoadCenter != null
+      ? computeCenterOutAnnotationOrder({
+          numberOfAnnotations,
+          graphicData,
+          graphicIndex,
+          coordinateDimensionality,
+          commonZCoordinate,
+          deckCoeffs,
+          loadCenter: deckLoadCenter,
+        })
+      : null
 
   const allLayers: Layer[] = []
   let chunkRows: PathRowFlat[] = []
@@ -960,17 +1094,20 @@ async function buildPathLayersFromGraphicData(options: {
     return true
   }
 
-  for (let i = 0; i < numberOfAnnotations; i++) {
+  for (let o = 0; o < numberOfAnnotations; o++) {
+    const i = annotationOrder !== null ? annotationOrder[o] : o
     if (
       verbose &&
       numberOfAnnotations > PROGRESS_EVERY &&
-      (i === 0 || i % PROGRESS_EVERY === 0 || i === numberOfAnnotations - 1)
+      (o === 0 || o % PROGRESS_EVERY === 0 || o === numberOfAnnotations - 1)
     ) {
       vivBulkAnnDebug(`${graphicType} decode progress`, {
         annotationIndex: i,
+        decodeOrdinal: o,
         total: numberOfAnnotations,
         pathRowsSoFar: totalPathRows,
         chunkIndex,
+        centerOut: annotationOrder !== null,
       })
     }
     const offset = Number(graphicIndex[i] ?? 0) - 1
@@ -1041,6 +1178,7 @@ async function buildPathLayersFromGraphicData(options: {
     numberOfAnnotations,
     chunkCount: chunkIndex,
     cancelled,
+    centerOut: deckLoadCenter != null,
   })
   if (cancelled) {
     vivBulkAnnPhase(`directDecode:${graphicType} cancelled mid-stream`, {
