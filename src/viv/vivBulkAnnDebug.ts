@@ -1,6 +1,7 @@
 /**
  * DevTools: filter by `Viv bulk ANN`.
  * - `console.info` lines with `{ phase, ms }` show where time is spent (default log level).
+ * - `console.info` lines tagged `phase` mark major FETCH ↔ PROCESS ↔ DECK BUILD boundaries.
  * - `console.debug` lines need “Verbose” enabled in Chrome DevTools console.
  * - For long polygon decode progress: `localStorage.setItem('slim:vivBulkAnnDebug', '1')` then reload.
  */
@@ -43,4 +44,16 @@ export function vivBulkAnnPerf(
 ): void {
   const ms = Math.round((vivBulkAnnNow() - t0) * 10) / 10
   console.info(`${VIV_BULK_TAG} perf`, { phase, ms, ...payload })
+}
+
+/**
+ * Major lifecycle boundary marker (FETCH start/done, PROCESS start/done, DECK BUILD start/done).
+ * Always logged at `console.info` so it shows up without enabling Verbose, and is grep-friendly
+ * via `[Viv bulk ANN] phase`.
+ */
+export function vivBulkAnnPhase(
+  phase: string,
+  payload?: Record<string, unknown>,
+): void {
+  console.info(`${VIV_BULK_TAG} phase`, { phase, ...(payload ?? {}) })
 }
