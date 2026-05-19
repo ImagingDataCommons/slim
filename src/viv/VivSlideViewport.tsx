@@ -24,6 +24,8 @@ import {
   setIccProfilesEnabled,
   subscribeIccProfilesEnabled,
 } from '../preferences/iccProfilesPreference'
+import { logger } from '../utils/logger'
+import { CenterOutTileset2D } from './centerOutTileset'
 import {
   type BulkAnnotationGeometryContext,
   DicomLoader,
@@ -272,13 +274,15 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
         contrastLimits: d.contrastLimits,
         dtype: sources[0].dtype,
         excludeBackground: true,
+        // Passed through to deck.gl TileLayer (not in @vivjs/layers types).
+        TilesetClass: CenterOutTileset2D,
         onTileError: (err: Error) => {
           if (isVivDicomTileNetworkCancellation(err)) {
             return
           }
-          console.error(err)
+          logger.error(err)
         },
-      })
+      } as ConstructorParameters<typeof MultiscaleImageLayer>[0])
       return {
         layer: layer as unknown as Layer,
         worldW: sw,
@@ -430,7 +434,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           }
         }
       } catch (err) {
-        console.error(err)
+        logger.error(err)
         if (!cancelled) {
           iccAvailCbRef.current?.(false)
           void message.error(
@@ -492,7 +496,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           measureRef.current?.()
         })
       } catch (err) {
-        console.error(err)
+        logger.error(err)
         iccPropRef.current = prevIccSynced
         dl.setIccProfilesEnabled(prevIccSynced)
         try {
@@ -512,7 +516,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
             setIccProfilesEnabled(prevIccSynced)
           }
         } catch (restoreErr) {
-          console.error(restoreErr)
+          logger.error(restoreErr)
         }
         if (!cancelled) {
           void message.error(
@@ -545,22 +549,19 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     }
     const dicomLoader = dicomLoaderRef.current
     if (dicomLoader === null) {
-      console.warn(
-        '[Viv bulk ANN] viewport: no DicomLoader ref — wait for slide to finish loading',
+      logger.warn(
+        'viewport: no DicomLoader ref — wait for slide to finish loading',
       )
       return
     }
 
     let cancelled = false
-    console.info(
-      '[Viv bulk ANN] viewport: loading overlays (image layer unchanged)…',
-      {
-        studyInstanceUID,
-        seriesInstanceUID,
-        usesDedicatedAnnClient:
-          bulkAnnotationClient != null && bulkAnnotationClient !== client,
-      },
-    )
+    logger.log('viewport: loading overlays (image layer unchanged)…', {
+      studyInstanceUID,
+      seriesInstanceUID,
+      usesDedicatedAnnClient:
+        bulkAnnotationClient != null && bulkAnnotationClient !== client,
+    })
 
     const run = async (): Promise<void> => {
       try {
@@ -605,13 +606,13 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
               totalMs: Math.round((vivBulkAnnNow() - tGeo0) * 10) / 10,
             },
           )
-          console.info('[Viv bulk ANN] viewport: metadata catalog ready', {
+          logger.log('viewport: metadata catalog ready', {
             annotationGroups: loaded.annotationGroups.length,
             lazyGeometryJobs: Object.keys(groupGeometryJobs).length,
           })
         }
       } catch (e) {
-        console.warn('[Viv bulk ANN] viewport: overlay load failed', e)
+        logger.warn('viewport: overlay load failed', e)
         if (!cancelled) {
           bulkGeometryRef.current = null
           bulkGroupJobsRef.current = {}

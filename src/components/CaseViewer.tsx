@@ -460,9 +460,9 @@ function ParametrizedSlideViewer({
               <div style={padSubmenuBlock}>
                 <p style={{ fontSize: 11, lineHeight: 1.45, margin: 0 }}>
                   No bulk annotation groups for this slide were returned (or all
-                  were skipped). Filter the console with{' '}
-                  <code style={{ fontSize: 10 }}>[Viv bulk ANN]</code> to see
-                  why.
+                  were skipped). Check the browser console (filter by{' '}
+                  <code style={{ fontSize: 10 }}>metadata:</code> or{' '}
+                  <code style={{ fontSize: 10 }}>hydrate:</code>) for details.
                 </p>
               </div>
             ) : (

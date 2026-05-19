@@ -1,12 +1,15 @@
 /**
- * DevTools: filter by `Viv bulk ANN`.
- * - `console.info` lines with `{ phase, ms }` show where time is spent (default log level).
- * - `console.info` lines tagged `phase` mark major FETCH ↔ PROCESS ↔ DECK BUILD boundaries.
- * - `console.debug` lines need “Verbose” enabled in Chrome DevTools console.
+ * DevTools: filter console by `phase` (e.g. `hydrate:`, `viewport:`, `metadata:`).
+ * - `logger.log` lines with `{ phase, ms }` show where time is spent (LOG level).
+ * - `vivBulkAnnPhase` marks major FETCH ↔ PROCESS ↔ DECK BUILD boundaries.
+ * - `vivBulkAnnDebug` needs DEBUG level (default in dev; Chrome DevTools “Verbose” filter).
  * - For long polygon decode progress: `localStorage.setItem('slim:vivBulkAnnDebug', '1')` then reload.
+ *
+ * All output is routed through {@link logger} so it honours `window.config.logger.level`
+ * (in production the default level is ERROR, so DEBUG/LOG calls silently no-op).
  */
 
-export const VIV_BULK_TAG = '[Viv bulk ANN]'
+import { logger } from '../utils/logger'
 
 export function vivBulkAnnNow(): number {
   if (
@@ -34,7 +37,7 @@ export function vivBulkAnnDebug(
   phase: string,
   payload?: Record<string, unknown>,
 ): void {
-  console.debug(`${VIV_BULK_TAG} ${phase}`, payload ?? '')
+  logger.debug(phase, payload ?? '')
 }
 
 export function vivBulkAnnPerf(
@@ -43,17 +46,17 @@ export function vivBulkAnnPerf(
   payload?: Record<string, unknown>,
 ): void {
   const ms = Math.round((vivBulkAnnNow() - t0) * 10) / 10
-  console.info(`${VIV_BULK_TAG} perf`, { phase, ms, ...payload })
+  logger.log({ phase, ms, ...payload })
 }
 
 /**
  * Major lifecycle boundary marker (FETCH start/done, PROCESS start/done, DECK BUILD start/done).
- * Always logged at `console.info` so it shows up without enabling Verbose, and is grep-friendly
- * via `[Viv bulk ANN] phase`.
+ * Logged at LOG level so it shows up without enabling Verbose, and is grep-friendly
+ * via the `phase` field in log objects.
  */
 export function vivBulkAnnPhase(
   phase: string,
   payload?: Record<string, unknown>,
 ): void {
-  console.info(`${VIV_BULK_TAG} phase`, { phase, ...(payload ?? {}) })
+  logger.log({ phase, ...(payload ?? {}) })
 }
