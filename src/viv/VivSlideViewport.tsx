@@ -32,6 +32,7 @@ import {
   isVivDicomTileNetworkCancellation,
 } from './dicomLoader'
 import {
+  deckLoadCenterFromViewTarget,
   hydrateVivBulkGroupLayerSlice,
   loadBulkAnnotationMetadataAndJobs,
   type VivBulkAnnotationCatalogPayload,
@@ -81,6 +82,11 @@ function isBulkVivPathLayerId(layerId: string): boolean {
   return /-paths(?:-\d+)?$/.test(layerId)
 }
 
+/** Point groups use `${id}-pts` or chunked `${id}-pts-0`, … */
+function isBulkVivPointLayerId(layerId: string): boolean {
+  return /-pts(?:-\d+)?$/.test(layerId)
+}
+
 function buildStyledBulkOverlayLayers(
   slicesByUid: Record<string, VivBulkAnnotationLayerSlice>,
   visibleUIDs: Set<string>,
@@ -111,7 +117,7 @@ function buildStyledBulkOverlayLayers(
         out.push(
           (layer as PathLayer).clone({ getColor: (): typeof rgba => rgba }),
         )
-      } else if (lid.endsWith('-pts')) {
+      } else if (isBulkVivPointLayerId(lid)) {
         out.push(
           (layer as ScatterplotLayer).clone({
             getFillColor: (): typeof rgba => rgba,
@@ -248,6 +254,8 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
   })
   const sizeRef = useRef(size)
   sizeRef.current = size
+  const viewStateRef = useRef(viewState)
+  viewStateRef.current = viewState
 
   const createMultiscaleFromLoader = useCallback(
     async (dicomLoader: DicomLoader): Promise<MultiscaleBuild> => {
@@ -692,11 +700,17 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           }
         })
       }
+      const sr = slideRef.current
+      const deckLoadCenter =
+        sr != null
+          ? deckLoadCenterFromViewTarget(sr.worldW, viewStateRef.current.target)
+          : undefined
       batchPromises.push(
         hydrateVivBulkGroupLayerSlice({
           job,
           geometry: geom,
           fetchClient: client,
+          deckLoadCenter,
           // Polled at every chunk boundary so hydrate stops decoding the
           // remaining polygons when the user toggles the group off.
           shouldContinue: () => visibleBulkUidsRef.current.has(uid),
