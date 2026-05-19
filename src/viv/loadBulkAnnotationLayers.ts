@@ -15,9 +15,19 @@ import {
   vivBulkAnnPhase,
   vivBulkAnnVerboseProgress,
 } from './vivBulkAnnDebug'
+import { isVivAtFinestPyramidTile } from './vivDisplayDefaults'
 
 /** Smaller Deck PathLayer batches reduce GPU attribute spikes and giant single-layer updates. */
 const VIV_BULK_PATHS_PER_PATH_LAYER = 65_000
+
+/** OpenLayers enables cluster low-res mode above this count (see DMV viewer.js). */
+const VIV_BULK_LOD_MIN_ANNOTATIONS = 1000
+
+/** Scatter radius for LOD center markers (pixels). */
+const VIV_BULK_CENTER_RADIUS_PX = 2
+
+/** Pad viewport bounds when culling so annotations near edges do not pop in/out. */
+const VIV_BULK_VIEWPORT_MARGIN_RATIO = 0.25
 
 /** OpenLayers-backed paths; Deck normalizes nested positions per row (`_pathType` unset). */
 type PathRowNested = { path: Position[]; closed: boolean }
@@ -272,6 +282,196 @@ export function deckLoadCenterFromViewTarget(
   return [worldWidth - target[0], target[1]]
 }
 
+/** Visible region in deck/layer coordinates (pre horizontal-flip `modelMatrix`). */
+export type DeckViewportBounds = {
+  minX: number
+  maxX: number
+  minY: number
+  maxY: number
+}
+
+/**
+ * World-space orthographic viewport converted to deck layer bounds for culling.
+ * Layer X uses pre-flip coords (`worldWidth − worldX`); Y matches world Y.
+ */
+export function deckViewportBoundsFromViewState(
+  worldWidth: number,
+  _worldHeight: number,
+  viewportWidth: number,
+  viewportHeight: number,
+  target: [number, number] | [number, number, number],
+  zoom: number,
+  marginRatio: number = VIV_BULK_VIEWPORT_MARGIN_RATIO,
+): DeckViewportBounds {
+  const halfW = (viewportWidth / 2) * 2 ** -zoom
+  const halfH = (viewportHeight / 2) * 2 ** -zoom
+  const mx = halfW * (1 + marginRatio)
+  const my = halfH * (1 + marginRatio)
+  const worldMinX = target[0] - mx
+  const worldMaxX = target[0] + mx
+  const worldMinY = target[1] - my
+  const worldMaxY = target[1] + my
+  return {
+    minX: worldWidth - worldMaxX,
+    maxX: worldWidth - worldMinX,
+    minY: worldMinY,
+    maxY: worldMaxY,
+  }
+}
+
+export function isDeckPointInViewportBounds(
+  x: number,
+  y: number,
+  bounds: DeckViewportBounds,
+): boolean {
+  return (
+    x >= bounds.minX && x <= bounds.maxX && y >= bounds.minY && y <= bounds.maxY
+  )
+}
+
+function readAnnotationFirstVertexDeckXY(options: {
+  graphicData: Int32Array | Float32Array
+  graphicIndex: Int32Array | null
+  annotationIndex: number
+  coordinateDimensionality: number
+  commonZCoordinate: number
+  deckCoeffs: BulkDeckLinearCoeffs
+  hasIndex: boolean
+}): [number, number] | null {
+  const {
+    graphicData,
+    graphicIndex,
+    annotationIndex,
+    coordinateDimensionality,
+    commonZCoordinate,
+    deckCoeffs,
+    hasIndex,
+  } = options
+  const minRemain = coordinateDimensionality >= 3 ? 3 : 2
+  const offset = hasIndex
+    ? Number(graphicIndex?.[annotationIndex] ?? 0) - 1
+    : annotationIndex * coordinateDimensionality
+  if (offset < 0 || offset + minRemain - 1 >= graphicData.length) {
+    return null
+  }
+  const [gx, gy] = readTripleFromGraphicBuffer(
+    graphicData,
+    offset,
+    commonZCoordinate,
+  )
+  if (!gx || !gy) {
+    return null
+  }
+  return bulkVertexToDeckFast(gx, gy, deckCoeffs) as [number, number]
+}
+
+type VivPyramidLodTables = {
+  resolutions: number[]
+  pixelSpacings: Array<[number, number]>
+}
+
+/** Pyramid resolutions + pixel spacings (same indexing as DMV `computeImagePyramid`). */
+function buildVivPyramidLodTables(
+  pyramid: BulkAnnotationGeometryContext['pyramid'],
+): VivPyramidLodTables | null {
+  if (pyramid.length === 0) {
+    return null
+  }
+  const baseCols = Number(
+    Reflect.get(pyramid[0] as object, 'TotalPixelMatrixColumns'),
+  )
+  if (!Number.isFinite(baseCols) || baseCols <= 0) {
+    return null
+  }
+  const resolutions: number[] = []
+  const pixelSpacings: Array<[number, number]> = []
+  for (const level of pyramid) {
+    const ps = readPixelSpacingFromPyramidLevel(level)
+    if (ps == null) {
+      return null
+    }
+    pixelSpacings.push(ps)
+    const cols = Number(Reflect.get(level as object, 'TotalPixelMatrixColumns'))
+    if (!Number.isFinite(cols) || cols <= 0) {
+      return null
+    }
+    let zoomFactor = baseCols / cols
+    const rounded = Math.round(zoomFactor)
+    zoomFactor = resolutions.includes(rounded)
+      ? parseFloat(zoomFactor.toFixed(2))
+      : rounded
+    resolutions.push(zoomFactor)
+  }
+  return { resolutions, pixelSpacings }
+}
+
+/**
+ * Whether bulk polygons should render as full paths (vs LOD center markers).
+ * True exactly when Viv multiscale tiles are on pyramid level 0 (`tile z === 0`).
+ */
+export function computeVivBulkHighResolution(options: {
+  deckZoom: number
+  pyramid: BulkAnnotationGeometryContext['pyramid']
+  /** Viv `MultiscaleImageLayer` zoomOffset from `modelMatrix` scale (default 0). */
+  zoomOffset?: number
+  /** When set, uses DMV pixel-spacing comparison instead of tile-z alignment. */
+  clusteringPixelSizeThreshold?: number
+}): boolean {
+  const {
+    deckZoom,
+    pyramid,
+    zoomOffset = 0,
+    clusteringPixelSizeThreshold,
+  } = options
+
+  if (clusteringPixelSizeThreshold === undefined) {
+    return isVivAtFinestPyramidTile(deckZoom, pyramid.length, zoomOffset)
+  }
+
+  const tables = buildVivPyramidLodTables(pyramid)
+  if (tables == null) {
+    return true
+  }
+  const { resolutions, pixelSpacings } = tables
+  if (resolutions.length === 0 || pixelSpacings.length === 0) {
+    return true
+  }
+  const currentResolution = 1 / 2 ** deckZoom
+  if (!Number.isFinite(currentResolution) || currentResolution <= 0) {
+    return true
+  }
+  let closestLevelIndex = 0
+  if (resolutions.length >= 2) {
+    let minDiff = Math.abs(resolutions[0] - currentResolution)
+    for (let i = 1; i < resolutions.length; i++) {
+      const diff = Math.abs(resolutions[i] - currentResolution)
+      if (diff < minDiff) {
+        minDiff = diff
+        closestLevelIndex = i
+      }
+    }
+  }
+  const currentPixelSpacing = pixelSpacings[closestLevelIndex]
+  if (currentPixelSpacing === undefined) {
+    return true
+  }
+  const currentPixelSize = Math.min(
+    currentPixelSpacing[0],
+    currentPixelSpacing[1],
+  )
+  return currentPixelSize <= clusteringPixelSizeThreshold
+}
+
+function bulkGraphicSupportsLod(
+  graphicType: string,
+  numberOfAnnotations: number,
+): boolean {
+  return (
+    (graphicType === 'POLYGON' || graphicType === 'POLYLINE') &&
+    numberOfAnnotations > VIV_BULK_LOD_MIN_ANNOTATIONS
+  )
+}
+
 /**
  * Sort annotation indices by distance of each shape's first vertex to `loadCenter`
  * (deck space). Used so progressive PathLayer chunks appear center-outward.
@@ -329,10 +529,62 @@ function computeCenterOutAnnotationOrder(options: {
   return order
 }
 
+/** Cached bulk buffers so full-detail PathLayers can be built lazily on zoom-in. */
+export type VivBulkGraphicCache = {
+  graphicType: string
+  graphicData: Int32Array | Float32Array
+  graphicIndex: Int32Array
+  coordinateDimensionality: number
+  numberOfAnnotations: number
+  commonZCoordinate: number
+  color: [number, number, number]
+  annotationCoordinateType: string
+  idPrefix: string
+  job: VivBulkGroupGeometryJob
+  geometry: BulkAnnotationGeometryContext
+}
+
 /** Deck overlays for one bulk simple-annotation group (paths + optional points). */
 export type VivBulkAnnotationLayerSlice = {
   groupUID: string
+  /** Layers currently drawn (center points or full paths depending on zoom). */
   layers: Layer[]
+  graphicType?: string
+  /** Zoom-based LOD: center scatter when zoomed out, full paths when zoomed in. */
+  supportsLod?: boolean
+}
+
+/** Hydrate may attach bulk buffers once; store in a ref, not React state (avoids retaining ~100MB+ in the tree). */
+export type VivBulkHydrateResult = VivBulkAnnotationLayerSlice & {
+  graphicCache?: VivBulkGraphicCache
+}
+
+function isVivBulkPathLayerId(layerId: string): boolean {
+  return /-paths(?:-\d+)?$/.test(layerId)
+}
+
+function isVivBulkCenterLayerId(layerId: string): boolean {
+  return /-centers(?:-\d+)?$/.test(layerId)
+}
+
+function isVivBulkPointLayerId(layerId: string): boolean {
+  return /-pts(?:-\d+)?$/.test(layerId)
+}
+
+/** Drop layer attribute arrays so PathLayer/ScatterplotLayer GPU buffers can be collected. */
+export function detachVivBulkOverlayLayerData(layers: Layer[]): void {
+  for (const layer of layers) {
+    const lid = String(layer.id)
+    try {
+      if (isVivBulkPathLayerId(lid)) {
+        ;(layer as PathLayer<PathRowFlat>).clone({ data: [] })
+      } else if (isVivBulkCenterLayerId(lid) || isVivBulkPointLayerId(lid)) {
+        ;(layer as ScatterplotLayer<[number, number]>).clone({ data: [] })
+      }
+    } catch {
+      /* best-effort */
+    }
+  }
 }
 
 /**
@@ -424,7 +676,9 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
   onChunk?: VivBulkChunkEmitter
   /** Polled between chunks; return `false` to stop emitting (e.g. group toggled off). */
   shouldContinue?: () => boolean
-}): Promise<VivBulkAnnotationLayerSlice | null> {
+  /** When set, only annotations whose first vertex falls inside these bounds are decoded. */
+  viewportBounds?: DeckViewportBounds
+}): Promise<VivBulkHydrateResult | null> {
   const tHydrate0 = vivBulkAnnNow()
   const {
     job,
@@ -433,6 +687,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
     deckLoadCenter,
     onChunk,
     shouldContinue,
+    viewportBounds,
   } = options
   const {
     annotationGroupUID,
@@ -570,13 +825,67 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
   const annotationCoordinateType = String(
     job.ann.AnnotationCoordinateType ?? '2D',
   )
+  const idPrefix = `viv-bulk-${annotationGroupUID}`
+  const useLod = bulkGraphicSupportsLod(graphicType, numberOfAnnotations)
+
   vivBulkAnnPhase('hydrate:PROCESS start (direct decode fast path)', {
     annotationGroupUID,
     graphicType,
     numberOfAnnotations,
     coordinateDimensionality,
     annotationCoordinateType,
+    useLod,
   })
+
+  if (useLod && graphicIndex !== null && graphicIndex !== undefined) {
+    vivBulkAnnPerf(
+      'hydrate:LOD fetch-only (decode deferred to viewport)',
+      tDirect0,
+      {
+        annotationGroupUID,
+        graphicType,
+        graphicDataBytes: graphicData.byteLength,
+      },
+    )
+    vivBulkAnnPhase('hydrate:PROCESS done (LOD cache only)', {
+      annotationGroupUID,
+      graphicType,
+      numberOfAnnotations,
+      processMs: Math.round((vivBulkAnnNow() - tDirect0) * 10) / 10,
+    })
+    vivBulkAnnPerf('hydrate:total', tHydrate0, {
+      annotationGroupUID,
+      graphicType,
+      route: 'direct-lod-cache',
+      ok: true,
+    })
+    logger.log(`group → deck (lazy, LOD cache)`, {
+      annotationGroupUID,
+      graphicType,
+      numberOfAnnotations,
+    })
+    const graphicCache: VivBulkGraphicCache = {
+      graphicType,
+      graphicData,
+      graphicIndex,
+      coordinateDimensionality,
+      numberOfAnnotations,
+      commonZCoordinate,
+      color,
+      annotationCoordinateType,
+      idPrefix,
+      job,
+      geometry,
+    }
+    return {
+      groupUID: annotationGroupUID,
+      layers: [],
+      graphicType,
+      supportsLod: true,
+      graphicCache,
+    }
+  }
+
   const fastResult = await fastDeckLayersFromGraphicData({
     graphicType,
     graphicData,
@@ -585,13 +894,14 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
     numberOfAnnotations,
     commonZCoordinate,
     color,
-    idPrefix: `viv-bulk-${annotationGroupUID}`,
+    idPrefix,
     annotationCoordinateType,
     geometry,
     annotationGroupWrapper: annotationGroupWrapper,
     deckLoadCenter,
     onChunk,
     shouldContinue,
+    viewportBounds,
   })
   if (fastResult !== null) {
     const { layers: fastDeckSlices, pathRowCount, pointCount } = fastResult
@@ -623,7 +933,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
       numberOfAnnotations,
     })
     return fastDeckSlices.length > 0
-      ? { groupUID: annotationGroupUID, layers: fastDeckSlices }
+      ? { groupUID: annotationGroupUID, layers: fastDeckSlices, graphicType }
       : null
   }
 
@@ -730,7 +1040,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
     })
     await onChunk(deckSlices, { chunkIndex: 0, estimatedTotalChunks: 1 })
   }
-  return { groupUID: annotationGroupUID, layers: deckSlices }
+  return { groupUID: annotationGroupUID, layers: deckSlices, graphicType }
 }
 
 type FastDecodeResult = {
@@ -754,6 +1064,7 @@ async function fastDeckLayersFromGraphicData(options: {
   deckLoadCenter?: [number, number]
   onChunk?: VivBulkChunkEmitter
   shouldContinue?: () => boolean
+  viewportBounds?: DeckViewportBounds
 }): Promise<FastDecodeResult | null> {
   const {
     graphicType,
@@ -770,6 +1081,7 @@ async function fastDeckLayersFromGraphicData(options: {
     deckLoadCenter,
     onChunk,
     shouldContinue,
+    viewportBounds,
   } = options
   const pixelToSlideAffine = affineForReferencedPyramidLevel({
     pyramid: geometry.pyramid,
@@ -793,6 +1105,7 @@ async function fastDeckLayersFromGraphicData(options: {
         idPrefix,
         deckCoeffs,
         deckLoadCenter,
+        viewportBounds,
         onChunk,
       })
       return { layers, pathRowCount: 0, pointCount }
@@ -810,6 +1123,7 @@ async function fastDeckLayersFromGraphicData(options: {
         idPrefix,
         deckCoeffs,
         deckLoadCenter,
+        viewportBounds,
         onChunk,
         shouldContinue,
       })
@@ -837,6 +1151,8 @@ async function buildPointLayersFromGraphicData(options: {
   idPrefix: string
   deckCoeffs: BulkDeckLinearCoeffs
   deckLoadCenter?: [number, number]
+  viewportBounds?: DeckViewportBounds
+  centerRadiusPx?: number
   /** Emitted once for points (single `ScatterplotLayer`), or per chunk when streaming. */
   onChunk?: VivBulkChunkEmitter
 }): Promise<{ layers: Layer[]; pointCount: number }> {
@@ -850,6 +1166,8 @@ async function buildPointLayersFromGraphicData(options: {
     idPrefix,
     deckCoeffs,
     deckLoadCenter,
+    viewportBounds,
+    centerRadiusPx = VIV_BULK_CENTER_RADIUS_PX,
     onChunk,
   } = options
   const tDecode0 = vivBulkAnnNow()
@@ -872,7 +1190,6 @@ async function buildPointLayersFromGraphicData(options: {
     Array.isArray(graphicIndex) || graphicIndex instanceof Int32Array
   const verbose = vivBulkAnnVerboseProgress()
   const PROGRESS_EVERY = 100_000
-  const minRemain = coordinateDimensionality >= 3 ? 3 : 2
   const rgba: [number, number, number, number] = [
     color[0],
     color[1],
@@ -892,7 +1209,7 @@ async function buildPointLayersFromGraphicData(options: {
       data: pointChunk,
       getPosition: (d) => d,
       getFillColor: () => rgba,
-      getRadius: () => 4,
+      getRadius: () => centerRadiusPx,
       radiusUnits: 'pixels',
     }) as unknown as Layer
     allLayers.push(layer)
@@ -901,7 +1218,10 @@ async function buildPointLayersFromGraphicData(options: {
         chunkIndex: pointChunkIndex,
         estimatedTotalChunks: Math.max(
           1,
-          Math.ceil(numberOfAnnotations / VIV_BULK_PATHS_PER_PATH_LAYER),
+          Math.ceil(
+            (viewportBounds != null ? pointChunk.length : numberOfAnnotations) /
+              VIV_BULK_PATHS_PER_PATH_LAYER,
+          ),
         ),
       })
       if (!final) {
@@ -924,19 +1244,25 @@ async function buildPointLayersFromGraphicData(options: {
         total: numberOfAnnotations,
       })
     }
-    const offset = hasIndex
-      ? Number(graphicIndex?.[i] ?? 0) - 1
-      : i * coordinateDimensionality
-    if (offset < 0 || offset + minRemain - 1 >= graphicData.length) {
+    const firstDeck = readAnnotationFirstVertexDeckXY({
+      graphicData,
+      graphicIndex,
+      annotationIndex: i,
+      coordinateDimensionality,
+      commonZCoordinate,
+      deckCoeffs,
+      hasIndex,
+    })
+    if (firstDeck === null) {
       continue
     }
-    const [gx, gy] = readTripleFromGraphicBuffer(
-      graphicData,
-      offset,
-      commonZCoordinate,
-    )
-    const p = bulkVertexToDeckFast(gx, gy, deckCoeffs)
-    pointChunk.push([p[0], p[1]])
+    if (
+      viewportBounds != null &&
+      !isDeckPointInViewportBounds(firstDeck[0], firstDeck[1], viewportBounds)
+    ) {
+      continue
+    }
+    pointChunk.push(firstDeck)
     if (
       onChunk !== undefined &&
       pointChunk.length >= VIV_BULK_PATHS_PER_PATH_LAYER
@@ -959,6 +1285,7 @@ async function buildPointLayersFromGraphicData(options: {
     pointCount,
     numberOfAnnotations,
     centerOut: deckLoadCenter != null,
+    viewportCulled: viewportBounds != null,
     scatterLayers: allLayers.length,
   })
   if (pointCount === 0) {
@@ -985,6 +1312,7 @@ async function buildPathLayersFromGraphicData(options: {
   onChunk?: VivBulkChunkEmitter
   /** Polled at every chunk boundary; return `false` to abort the remaining decode. */
   shouldContinue?: () => boolean
+  viewportBounds?: DeckViewportBounds
 }): Promise<{ layers: Layer[]; pathRowCount: number } | null> {
   const {
     graphicType,
@@ -999,7 +1327,9 @@ async function buildPathLayersFromGraphicData(options: {
     deckLoadCenter,
     onChunk,
     shouldContinue,
+    viewportBounds,
   } = options
+  const hasIndex = true
   if (graphicIndex === null) {
     return null
   }
@@ -1054,9 +1384,11 @@ async function buildPathLayersFromGraphicData(options: {
     if (chunkRows.length === 0) {
       return true
     }
+    const rows = chunkRows
+    chunkRows = []
     const layer = new PathLayer<PathRowFlat>({
       id: `${idPrefix}-paths-${chunkIndex}`,
-      data: chunkRows,
+      data: rows,
       ...baseProps,
     }) as unknown as Layer
     allLayers.push(layer)
@@ -1084,7 +1416,6 @@ async function buildPathLayersFromGraphicData(options: {
         chunkRowCount: chunkRows.length,
       })
     }
-    chunkRows = []
     chunkIndex++
     tChunkDecode0 = vivBulkAnnNow()
     if (shouldContinue !== undefined && shouldContinue() === false) {
@@ -1094,7 +1425,17 @@ async function buildPathLayersFromGraphicData(options: {
     return true
   }
 
+  const SHOULD_CONTINUE_EVERY = 512
   for (let o = 0; o < numberOfAnnotations; o++) {
+    if (
+      shouldContinue !== undefined &&
+      o > 0 &&
+      o % SHOULD_CONTINUE_EVERY === 0 &&
+      shouldContinue() === false
+    ) {
+      cancelled = true
+      break
+    }
     const i = annotationOrder !== null ? annotationOrder[o] : o
     if (
       verbose &&
@@ -1113,6 +1454,23 @@ async function buildPathLayersFromGraphicData(options: {
     const offset = Number(graphicIndex[i] ?? 0) - 1
     if (offset < 0 || offset >= graphicData.length) {
       continue
+    }
+    if (viewportBounds != null) {
+      const firstDeck = readAnnotationFirstVertexDeckXY({
+        graphicData,
+        graphicIndex,
+        annotationIndex: i,
+        coordinateDimensionality,
+        commonZCoordinate,
+        deckCoeffs,
+        hasIndex,
+      })
+      if (
+        firstDeck === null ||
+        !isDeckPointInViewportBounds(firstDeck[0], firstDeck[1], viewportBounds)
+      ) {
+        continue
+      }
     }
     let annotationLength: number
     if (i < numberOfAnnotations - 1) {
@@ -1179,6 +1537,7 @@ async function buildPathLayersFromGraphicData(options: {
     chunkCount: chunkIndex,
     cancelled,
     centerOut: deckLoadCenter != null,
+    viewportCulled: viewportBounds != null,
   })
   if (cancelled) {
     vivBulkAnnPhase(`directDecode:${graphicType} cancelled mid-stream`, {
@@ -1202,6 +1561,112 @@ async function buildPathLayersFromGraphicData(options: {
     layers: allLayers,
     pathRowCount: totalPathRows,
   }
+}
+
+/**
+ * Decode only annotations visible in `viewportBounds` from cached bulk data.
+ * Replaces prior layers on pan/zoom so GPU memory stays bounded by viewport size.
+ */
+export async function rebuildVivBulkLayersForViewport(options: {
+  cache: VivBulkGraphicCache
+  viewportBounds: DeckViewportBounds
+  mode: 'centers' | 'full'
+  deckLoadCenter?: [number, number]
+  shouldContinue?: () => boolean
+}): Promise<Layer[]> {
+  const { cache, viewportBounds, mode, deckLoadCenter, shouldContinue } =
+    options
+  const {
+    graphicType,
+    graphicData,
+    graphicIndex,
+    coordinateDimensionality,
+    numberOfAnnotations,
+    commonZCoordinate,
+    color,
+    annotationCoordinateType,
+    idPrefix,
+    job,
+    geometry,
+  } = cache
+  const pixelToSlideAffine = affineForReferencedPyramidLevel({
+    pyramid: geometry.pyramid,
+    affineFallback: geometry.affine,
+    wrapper: job.annotationGroupWrapper,
+  })
+  const deckCoeffs = bulkDeckCoeffsForFastPath({
+    annotationCoordinateType,
+    affineInverse: geometry.affineInverse,
+    pixelToSlideAffine,
+  })
+  const t0 = vivBulkAnnNow()
+  vivBulkAnnPhase('lod:viewport rebuild start', {
+    annotationGroupUID: job.annotationGroupUID,
+    graphicType,
+    mode,
+  })
+  if (mode === 'centers') {
+    const built = await buildPointLayersFromGraphicData({
+      graphicData,
+      graphicIndex,
+      coordinateDimensionality,
+      numberOfAnnotations,
+      commonZCoordinate,
+      color,
+      idPrefix: `${idPrefix}-centers`,
+      deckCoeffs,
+      deckLoadCenter,
+      viewportBounds,
+    })
+    vivBulkAnnPerf('lod:viewport rebuild (centers)', t0, {
+      annotationGroupUID: job.annotationGroupUID,
+      pointCount: built.pointCount,
+      layers: built.layers.length,
+    })
+    if (shouldContinue !== undefined && shouldContinue() === false) {
+      return []
+    }
+    return built.layers
+  }
+  if (graphicType !== 'POLYGON' && graphicType !== 'POLYLINE') {
+    return []
+  }
+  const built = await buildPathLayersFromGraphicData({
+    graphicType,
+    graphicData,
+    graphicIndex,
+    coordinateDimensionality,
+    numberOfAnnotations,
+    commonZCoordinate,
+    color,
+    idPrefix,
+    deckCoeffs,
+    deckLoadCenter,
+    viewportBounds,
+    shouldContinue,
+  })
+  vivBulkAnnPerf('lod:viewport rebuild (full)', t0, {
+    annotationGroupUID: job.annotationGroupUID,
+    pathLayers: built?.layers.length ?? 0,
+    pathRowCount: built?.pathRowCount ?? 0,
+  })
+  return built?.layers ?? []
+}
+
+/** @deprecated Use {@link rebuildVivBulkLayersForViewport} with viewport bounds. */
+export async function buildVivBulkFullLayersFromGraphicCache(options: {
+  cache: VivBulkGraphicCache
+  viewportBounds: DeckViewportBounds
+  deckLoadCenter?: [number, number]
+  shouldContinue?: () => boolean
+}): Promise<Layer[]> {
+  return rebuildVivBulkLayersForViewport({
+    cache: options.cache,
+    viewportBounds: options.viewportBounds,
+    mode: 'full',
+    deckLoadCenter: options.deckLoadCenter,
+    shouldContinue: options.shouldContinue,
+  })
 }
 
 function resolveBulkSimpleAnnotationsApi(): BulkSimpleAnnotationsApi {
@@ -1527,7 +1992,7 @@ function featuresToDeckLayers(
         data: points,
         getPosition: (d) => d,
         getFillColor: () => rgba,
-        getRadius: () => 4,
+        getRadius: () => VIV_BULK_CENTER_RADIUS_PX,
         radiusUnits: 'pixels',
       }) as unknown as Layer,
     )

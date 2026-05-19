@@ -32,11 +32,16 @@ import {
   isVivDicomTileNetworkCancellation,
 } from './dicomLoader'
 import {
+  computeVivBulkHighResolution,
   deckLoadCenterFromViewTarget,
+  deckViewportBoundsFromViewState,
+  detachVivBulkOverlayLayerData,
   hydrateVivBulkGroupLayerSlice,
   loadBulkAnnotationMetadataAndJobs,
+  rebuildVivBulkLayersForViewport,
   type VivBulkAnnotationCatalogPayload,
   type VivBulkAnnotationLayerSlice,
+  type VivBulkGraphicCache,
   type VivBulkGroupGeometryJob,
 } from './loadBulkAnnotationLayers'
 import {
@@ -87,11 +92,17 @@ function isBulkVivPointLayerId(layerId: string): boolean {
   return /-pts(?:-\d+)?$/.test(layerId)
 }
 
+/** LOD center markers use `${id}-centers` or chunked `${id}-centers-0`, … */
+function isBulkVivCenterLayerId(layerId: string): boolean {
+  return /-centers(?:-\d+)?$/.test(layerId)
+}
+
 function buildStyledBulkOverlayLayers(
   slicesByUid: Record<string, VivBulkAnnotationLayerSlice>,
   visibleUIDs: Set<string>,
   styles: Record<string, { opacity: number; color: number[] }>,
   defaultStyles: Record<string, { opacity: number; color: number[] }>,
+  modelMatrix: Matrix4 | null,
 ): Layer[] {
   const out: Layer[] = []
   for (const uid of visibleUIDs) {
@@ -111,20 +122,27 @@ function buildStyledBulkOverlayLayers(
       st.color[2] ?? 0,
       a,
     ]
+    const matrixProps = modelMatrix != null ? { modelMatrix } : {}
     for (const layer of slice.layers) {
       const lid = String(layer.id)
       if (isBulkVivPathLayerId(lid)) {
         out.push(
-          (layer as PathLayer).clone({ getColor: (): typeof rgba => rgba }),
+          (layer as PathLayer).clone({
+            getColor: rgba,
+            ...matrixProps,
+          }),
         )
-      } else if (isBulkVivPointLayerId(lid)) {
+      } else if (isBulkVivPointLayerId(lid) || isBulkVivCenterLayerId(lid)) {
         out.push(
           (layer as ScatterplotLayer).clone({
-            getFillColor: (): typeof rgba => rgba,
+            getFillColor: rgba,
+            ...matrixProps,
           }),
         )
       } else {
-        out.push(layer)
+        out.push(
+          matrixProps.modelMatrix != null ? layer.clone(matrixProps) : layer,
+        )
       }
     }
   }
@@ -203,6 +221,12 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
   const bulkGeometryRef = useRef<BulkAnnotationGeometryContext | null>(null)
   const bulkGroupJobsRef = useRef<Record<string, VivBulkGroupGeometryJob>>({})
   const bulkHydrateInFlightRef = useRef<Set<string>>(new Set())
+  const bulkViewportRebuildGenRef = useRef<Record<string, number>>({})
+  /** Raw bulk buffers (~tens–100s MB); kept out of React state so path layers can be released independently. */
+  const bulkGraphicCacheByUidRef = useRef<Record<string, VivBulkGraphicCache>>(
+    {},
+  )
+  const VIV_BULK_VIEWPORT_REBUILD_MS = 400
   const visibleBulkUidsRef = useRef(visibleBulkAnnotationGroupUIDs)
   visibleBulkUidsRef.current = visibleBulkAnnotationGroupUIDs
   const slicesByUidRef = useRef<Record<string, VivBulkAnnotationLayerSlice>>({})
@@ -216,24 +240,102 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     Record<string, { opacity: number; color: number[] }>
   >({})
   slicesByUidRef.current = bulkSlicesByUid
+
+  const runBulkViewportRebuildForGroup = useCallback((uid: string) => {
+    const cache = bulkGraphicCacheByUidRef.current[uid]
+    const geom = bulkGeometryRef.current
+    const sr = slideRef.current
+    if (cache == null || geom == null || sr == null) {
+      return
+    }
+    const vs = viewStateRef.current
+    const { width: vw, height: vh } = sizeRef.current
+    const viewportBounds = deckViewportBoundsFromViewState(
+      sr.worldW,
+      sr.worldH,
+      vw,
+      vh,
+      vs.target,
+      vs.zoom,
+    )
+    const highRes = computeVivBulkHighResolution({
+      deckZoom: vs.zoom,
+      pyramid: geom.pyramid,
+    })
+    const mode = highRes ? 'full' : 'centers'
+
+    const prevSlice = slicesByUidRef.current[uid]
+    if (prevSlice != null && prevSlice.layers.length > 0) {
+      detachVivBulkOverlayLayerData(prevSlice.layers)
+    }
+
+    const gen = (bulkViewportRebuildGenRef.current[uid] ?? 0) + 1
+    bulkViewportRebuildGenRef.current[uid] = gen
+
+    vivBulkAnnPhase('viewport:LOD viewport rebuild dispatch', {
+      uid,
+      mode,
+      gen,
+    })
+
+    void rebuildVivBulkLayersForViewport({
+      cache,
+      viewportBounds,
+      mode,
+      deckLoadCenter: deckLoadCenterFromViewTarget(sr.worldW, vs.target),
+      shouldContinue: () =>
+        visibleBulkUidsRef.current.has(uid) &&
+        bulkViewportRebuildGenRef.current[uid] === gen,
+    })
+      .then((layers) => {
+        if (bulkViewportRebuildGenRef.current[uid] !== gen) {
+          return
+        }
+        if (!visibleBulkUidsRef.current.has(uid)) {
+          return
+        }
+        vivBulkAnnPhase('viewport:LOD viewport rebuild done', {
+          uid,
+          mode,
+          layerCount: layers.length,
+        })
+        startTransition(() => {
+          setBulkSlicesByUid((prev) => {
+            const existing = prev[uid]
+            if (existing == null) {
+              return prev
+            }
+            return {
+              ...prev,
+              [uid]: {
+                ...existing,
+                layers,
+              },
+            }
+          })
+        })
+      })
+      .catch((e) => {
+        vivBulkAnnDebug('viewport:LOD viewport rebuild failed', {
+          uid,
+          err: e instanceof Error ? e.message : String(e),
+        })
+      })
+  }, [])
+
   const annLayers = useMemo((): Layer[] => {
-    const built = buildStyledBulkOverlayLayers(
+    return buildStyledBulkOverlayLayers(
       bulkSlicesByUid,
       visibleBulkAnnotationGroupUIDs,
       bulkAnnotationGroupStyles,
       bulkDefaultStyles,
+      slideMatrixRef.current,
     )
-    const m = slideMatrixRef.current
-    if (baseLayer == null || m == null || built.length === 0) {
-      return built
-    }
-    return built.map((layer) => layer.clone({ modelMatrix: m }))
   }, [
     bulkSlicesByUid,
     visibleBulkAnnotationGroupUIDs,
     bulkAnnotationGroupStyles,
     bulkDefaultStyles,
-    baseLayer,
   ])
   const layers = useMemo((): Layer[] => {
     const t0 = vivBulkAnnNow()
@@ -350,6 +452,8 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     setBulkDefaultStyles({})
     bulkGeometryRef.current = null
     bulkGroupJobsRef.current = {}
+    bulkGraphicCacheByUidRef.current = {}
+    bulkViewportRebuildGenRef.current = {}
     bulkHydrateInFlightRef.current.clear()
     catalogCbRef.current?.(null)
     dicomLoaderRef.current = null
@@ -682,28 +786,42 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
         numberOfAnnotations: job.numberOfAnnotations,
       })
       let chunksCommitted = 0
+      const isLodJob =
+        (job.graphicType === 'POLYGON' || job.graphicType === 'POLYLINE') &&
+        job.numberOfAnnotations > 1000
       const appendChunkToSlice = (chunkLayers: Layer[]): void => {
         setBulkSlicesByUid((prev) => {
           const existing = prev[uid]
-          if (existing === undefined) {
-            return {
-              ...prev,
-              [uid]: { groupUID: uid, layers: [...chunkLayers] },
-            }
-          }
+          const layers = existing
+            ? [...existing.layers, ...chunkLayers]
+            : [...chunkLayers]
           return {
             ...prev,
             [uid]: {
-              ...existing,
-              layers: [...existing.layers, ...chunkLayers],
+              groupUID: uid,
+              graphicType: job.graphicType,
+              layers,
             },
           }
         })
       }
       const sr = slideRef.current
+      const vs = viewStateRef.current
+      const { width: vw, height: vh } = sizeRef.current
       const deckLoadCenter =
         sr != null
-          ? deckLoadCenterFromViewTarget(sr.worldW, viewStateRef.current.target)
+          ? deckLoadCenterFromViewTarget(sr.worldW, vs.target)
+          : undefined
+      const viewportBounds =
+        sr != null
+          ? deckViewportBoundsFromViewState(
+              sr.worldW,
+              sr.worldH,
+              vw,
+              vh,
+              vs.target,
+              vs.zoom,
+            )
           : undefined
       batchPromises.push(
         hydrateVivBulkGroupLayerSlice({
@@ -711,6 +829,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           geometry: geom,
           fetchClient: client,
           deckLoadCenter,
+          viewportBounds,
           // Polled at every chunk boundary so hydrate stops decoding the
           // remaining polygons when the user toggles the group off.
           shouldContinue: () => visibleBulkUidsRef.current.has(uid),
@@ -718,35 +837,38 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           // (~65k polygons), it calls back so we can append those layers to the
           // group's slice and let the user see partial coverage while the rest
           // of the decode + transfer is still running.
-          onChunk: (chunkLayers, meta) => {
-            if (!visibleBulkUidsRef.current.has(uid)) {
-              vivBulkAnnDebug('viewport: chunk dropped (no longer visible)', {
-                uid,
-                chunkIndex: meta.chunkIndex,
-              })
-              return
-            }
-            chunksCommitted++
-            const tSet0 = vivBulkAnnNow()
-            vivBulkAnnPhase('viewport:HYDRATE chunk commit', {
-              uid,
-              chunkIndex: meta.chunkIndex,
-              estimatedTotalChunks: meta.estimatedTotalChunks,
-              chunkLayers: chunkLayers.length,
-              sinceDispatchMs: Math.round((vivBulkAnnNow() - tHydr0) * 10) / 10,
-            })
-            // startTransition keeps panning / zooming responsive while later
-            // chunks are still decoding; Deck's layer diff reuses already-uploaded
-            // chunks, so only the new one pays the GPU upload cost on the next paint.
-            startTransition(() => {
-              appendChunkToSlice(chunkLayers)
-            })
-            vivBulkAnnDebug('viewport: chunk scheduled', {
-              uid,
-              chunkIndex: meta.chunkIndex,
-              scheduleMs: Math.round((vivBulkAnnNow() - tSet0) * 100) / 100,
-            })
-          },
+          onChunk: isLodJob
+            ? undefined
+            : (chunkLayers, meta) => {
+                if (!visibleBulkUidsRef.current.has(uid)) {
+                  vivBulkAnnDebug(
+                    'viewport: chunk dropped (no longer visible)',
+                    {
+                      uid,
+                      chunkIndex: meta.chunkIndex,
+                    },
+                  )
+                  return
+                }
+                chunksCommitted++
+                const tSet0 = vivBulkAnnNow()
+                vivBulkAnnPhase('viewport:HYDRATE chunk commit', {
+                  uid,
+                  chunkIndex: meta.chunkIndex,
+                  estimatedTotalChunks: meta.estimatedTotalChunks,
+                  chunkLayers: chunkLayers.length,
+                  sinceDispatchMs:
+                    Math.round((vivBulkAnnNow() - tHydr0) * 10) / 10,
+                })
+                startTransition(() => {
+                  appendChunkToSlice(chunkLayers)
+                })
+                vivBulkAnnDebug('viewport: chunk scheduled', {
+                  uid,
+                  chunkIndex: meta.chunkIndex,
+                  scheduleMs: Math.round((vivBulkAnnNow() - tSet0) * 100) / 100,
+                })
+              },
         }).then((slice) => {
           vivBulkAnnPerf(
             'viewport:promise hydrateVivBulkGroupLayerSlice settled',
@@ -767,6 +889,35 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
             stillVisible: visibleBulkUidsRef.current.has(uid),
             hydrateMs: Math.round((vivBulkAnnNow() - tHydr0) * 10) / 10,
           })
+          if (slice != null && visibleBulkUidsRef.current.has(uid)) {
+            if (slice.graphicCache != null) {
+              bulkGraphicCacheByUidRef.current[uid] = slice.graphicCache
+              startTransition(() => {
+                setBulkSlicesByUid((prev) => ({
+                  ...prev,
+                  [uid]: {
+                    groupUID: uid,
+                    graphicType: job.graphicType,
+                    supportsLod: true,
+                    layers: [],
+                  },
+                }))
+              })
+              runBulkViewportRebuildForGroup(uid)
+            } else {
+              startTransition(() => {
+                setBulkSlicesByUid((prev) => ({
+                  ...prev,
+                  [uid]: {
+                    groupUID: slice.groupUID,
+                    graphicType: slice.graphicType,
+                    supportsLod: slice.supportsLod,
+                    layers: slice.layers,
+                  },
+                }))
+              })
+            }
+          }
           bulkHydrateInFlightRef.current.delete(uid)
         }),
       )
@@ -785,7 +936,90 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
         batchMs: Math.round((vivBulkAnnNow() - tBatch0) * 10) / 10,
       })
     })
-  }, [loadBulkAnnotations, baseLayer, visibleBulkAnnotationGroupUIDs, client])
+  }, [
+    loadBulkAnnotations,
+    baseLayer,
+    visibleBulkAnnotationGroupUIDs,
+    client,
+    runBulkViewportRebuildForGroup,
+  ])
+
+  /** Drop bulk buffers and cancel decodes when a LOD group is hidden. */
+  useEffect(() => {
+    for (const uid of Object.keys(bulkGraphicCacheByUidRef.current)) {
+      if (visibleBulkAnnotationGroupUIDs.has(uid)) {
+        continue
+      }
+      const slice = slicesByUidRef.current[uid]
+      if (slice?.layers.length) {
+        detachVivBulkOverlayLayerData(slice.layers)
+      }
+      delete bulkGraphicCacheByUidRef.current[uid]
+      bulkViewportRebuildGenRef.current[uid] =
+        (bulkViewportRebuildGenRef.current[uid] ?? 0) + 1
+    }
+    setBulkSlicesByUid((prev) => {
+      let next: Record<string, VivBulkAnnotationLayerSlice> | null = null
+      for (const uid of Object.keys(prev)) {
+        if (
+          !visibleBulkAnnotationGroupUIDs.has(uid) &&
+          prev[uid]?.supportsLod === true
+        ) {
+          if (next === null) {
+            next = { ...prev }
+          }
+          delete next[uid]
+        }
+      }
+      return next ?? prev
+    })
+  }, [visibleBulkAnnotationGroupUIDs])
+
+  /** LOD: viewport-culled layers only; debounced pan/zoom rebuild. */
+  useEffect(() => {
+    if (!loadBulkAnnotations || baseLayer === null) {
+      return
+    }
+    const panX = viewState.target[0]
+    const panY = viewState.target[1]
+    const zoom = viewState.zoom
+    const vw = size.width
+    const vh = size.height
+    const timer = window.setTimeout(() => {
+      vivBulkAnnDebug('viewport:LOD debounced rebuild', {
+        panX,
+        panY,
+        zoom,
+        vw,
+        vh,
+        groups: visibleBulkAnnotationGroupUIDs.size,
+      })
+      for (const uid of visibleBulkAnnotationGroupUIDs) {
+        if (bulkGraphicCacheByUidRef.current[uid] == null) {
+          continue
+        }
+        runBulkViewportRebuildForGroup(uid)
+      }
+    }, VIV_BULK_VIEWPORT_REBUILD_MS)
+
+    return () => {
+      window.clearTimeout(timer)
+      for (const uid of Object.keys(bulkViewportRebuildGenRef.current)) {
+        bulkViewportRebuildGenRef.current[uid] =
+          (bulkViewportRebuildGenRef.current[uid] ?? 0) + 1
+      }
+    }
+  }, [
+    loadBulkAnnotations,
+    baseLayer,
+    viewState.target[0],
+    viewState.target[1],
+    viewState.zoom,
+    size.width,
+    size.height,
+    visibleBulkAnnotationGroupUIDs,
+    runBulkViewportRebuildForGroup,
+  ])
 
   const sp = slideRef.current
   const orthoZoomClamp =
