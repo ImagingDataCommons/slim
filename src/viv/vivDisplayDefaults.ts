@@ -111,6 +111,38 @@ export function orthographicZoomLimits(
   }
 }
 
+/**
+ * Tile index `z` for deck.gl `TileLayer` / Viv `MultiscaleImageLayer` at an orthographic zoom.
+ * Matches `getTileIndices` (`Math.ceil(viewport.zoom) + zoomOffset`, then clamped) and Viv
+ * `minZoom: -(loader.length - 1)`, `maxZoom: 0`. Loader resolution is `Math.round(-z)` (0 = finest).
+ */
+export function vivDeckTileZFromViewZoom(
+  deckZoom: number,
+  pyramidLevelCount: number,
+  zoomOffset = 0,
+): number {
+  const n = Math.max(1, pyramidLevelCount)
+  const minZoom = -Math.round(n - 1)
+  const maxZoom = 0
+  let z = Math.ceil(deckZoom) + zoomOffset
+  if (z < minZoom) {
+    z = minZoom
+  }
+  if (z > maxZoom) {
+    z = maxZoom
+  }
+  return z
+}
+
+/** True when multiscale tiles use pyramid level 0 (finest), i.e. tile `z === 0`. */
+export function isVivAtFinestPyramidTile(
+  deckZoom: number,
+  pyramidLevelCount: number,
+  zoomOffset = 0,
+): boolean {
+  return vivDeckTileZFromViewZoom(deckZoom, pyramidLevelCount, zoomOffset) === 0
+}
+
 /** IDC cyclic IF demo (Lin et al.) — channels 8–11 per viv-dicomweb-test. */
 export const IDC_CYCLIC_IF_VIV_SETTINGS: VivSettings = {
   selections: [
