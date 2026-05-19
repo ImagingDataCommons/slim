@@ -40,6 +40,7 @@ import {
   vivBulkAnnDebug,
   vivBulkAnnNow,
   vivBulkAnnPerf,
+  vivBulkAnnPhase,
   vivBulkAnnVerboseProgress,
 } from './vivBulkAnnDebug'
 import {
@@ -564,6 +565,10 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     const run = async (): Promise<void> => {
       try {
         const tGeo0 = vivBulkAnnNow()
+        vivBulkAnnPhase('viewport:METADATA pipeline start', {
+          studyInstanceUID,
+          seriesInstanceUID,
+        })
         vivBulkAnnDebug('viewport: getBulkAnnotationGeometryContext …')
         const geometry = await dicomLoader.getBulkAnnotationGeometryContext()
         vivBulkAnnPerf('viewport:getBulkAnnotationGeometryContext', tGeo0, {})
@@ -592,6 +597,14 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           setBulkSlicesByUid({})
           setBulkDefaultStyles(loaded.defaultStylesByGroupUID)
           catalogCbRef.current?.(catalog)
+          vivBulkAnnPhase(
+            'viewport:METADATA pipeline done — geometry + catalog ready, hydration deferred',
+            {
+              annotationGroups: loaded.annotationGroups.length,
+              lazyGeometryJobs: Object.keys(groupGeometryJobs).length,
+              totalMs: Math.round((vivBulkAnnNow() - tGeo0) * 10) / 10,
+            },
+          )
           console.info('[Viv bulk ANN] viewport: metadata catalog ready', {
             annotationGroups: loaded.annotationGroups.length,
             lazyGeometryJobs: Object.keys(groupGeometryJobs).length,
@@ -637,6 +650,9 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       return
     }
 
+    const dispatchedUids: string[] = []
+    const tBatch0 = vivBulkAnnNow()
+    const batchPromises: Promise<void>[] = []
     for (const uid of visibleBulkAnnotationGroupUIDs) {
       if (slicesByUidRef.current[uid] != null) {
         continue
@@ -649,62 +665,111 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
         continue
       }
       bulkHydrateInFlightRef.current.add(uid)
+      dispatchedUids.push(uid)
       const tHydr0 = vivBulkAnnNow()
-      vivBulkAnnDebug('viewport: hydrateVivBulkGroupLayerSlice dispatched', {
+      vivBulkAnnPhase('viewport:HYDRATE dispatch', {
         uid,
         graphicType: job.graphicType,
         numberOfAnnotations: job.numberOfAnnotations,
       })
-      void hydrateVivBulkGroupLayerSlice({
-        job,
-        geometry: geom,
-        fetchClient: client,
-      }).then((slice) => {
-        vivBulkAnnPerf(
-          'viewport:promise hydrateVivBulkGroupLayerSlice settled',
-          tHydr0,
-          {
-            uid,
-            stillVisible: visibleBulkUidsRef.current.has(uid),
-            sliceLayers: slice?.layers.length ?? 0,
-          },
-        )
-        bulkHydrateInFlightRef.current.delete(uid)
-        if (slice == null || !visibleBulkUidsRef.current.has(uid)) {
-          vivBulkAnnDebug('viewport: hydrate result dropped', {
-            uid,
-            sliceNull: slice == null,
-          })
-          return
-        }
-        const tSet0 = vivBulkAnnNow()
-        const commitSlice = (): void => {
-          setBulkSlicesByUid((prev) => {
-            if (prev[uid] != null) {
-              return prev
+      let chunksCommitted = 0
+      const appendChunkToSlice = (chunkLayers: Layer[]): void => {
+        setBulkSlicesByUid((prev) => {
+          const existing = prev[uid]
+          if (existing === undefined) {
+            return {
+              ...prev,
+              [uid]: { groupUID: uid, layers: [...chunkLayers] },
             }
-            return { ...prev, [uid]: slice }
-          })
-        }
-        const large =
-          job.numberOfAnnotations >= 50_000 || (slice.layers?.length ?? 0) > 4
-        if (large) {
-          vivBulkAnnDebug('viewport: setBulkSlicesByUid via startTransition', {
-            uid,
-            numberOfAnnotations: job.numberOfAnnotations,
-            layerCount: slice.layers.length,
-          })
-          startTransition(commitSlice)
-        } else {
-          commitSlice()
-        }
-        vivBulkAnnDebug('viewport: setBulkSlicesByUid scheduled', {
-          uid,
-          scheduleMs: Math.round((vivBulkAnnNow() - tSet0) * 100) / 100,
-          startTransition: large,
+          }
+          return {
+            ...prev,
+            [uid]: {
+              ...existing,
+              layers: [...existing.layers, ...chunkLayers],
+            },
+          }
         })
-      })
+      }
+      batchPromises.push(
+        hydrateVivBulkGroupLayerSlice({
+          job,
+          geometry: geom,
+          fetchClient: client,
+          // Polled at every chunk boundary so hydrate stops decoding the
+          // remaining polygons when the user toggles the group off.
+          shouldContinue: () => visibleBulkUidsRef.current.has(uid),
+          // Progressive rendering: as soon as hydrate finishes decoding a chunk
+          // (~65k polygons), it calls back so we can append those layers to the
+          // group's slice and let the user see partial coverage while the rest
+          // of the decode + transfer is still running.
+          onChunk: (chunkLayers, meta) => {
+            if (!visibleBulkUidsRef.current.has(uid)) {
+              vivBulkAnnDebug('viewport: chunk dropped (no longer visible)', {
+                uid,
+                chunkIndex: meta.chunkIndex,
+              })
+              return
+            }
+            chunksCommitted++
+            const tSet0 = vivBulkAnnNow()
+            vivBulkAnnPhase('viewport:HYDRATE chunk commit', {
+              uid,
+              chunkIndex: meta.chunkIndex,
+              estimatedTotalChunks: meta.estimatedTotalChunks,
+              chunkLayers: chunkLayers.length,
+              sinceDispatchMs: Math.round((vivBulkAnnNow() - tHydr0) * 10) / 10,
+            })
+            // startTransition keeps panning / zooming responsive while later
+            // chunks are still decoding; Deck's layer diff reuses already-uploaded
+            // chunks, so only the new one pays the GPU upload cost on the next paint.
+            startTransition(() => {
+              appendChunkToSlice(chunkLayers)
+            })
+            vivBulkAnnDebug('viewport: chunk scheduled', {
+              uid,
+              chunkIndex: meta.chunkIndex,
+              scheduleMs: Math.round((vivBulkAnnNow() - tSet0) * 100) / 100,
+            })
+          },
+        }).then((slice) => {
+          vivBulkAnnPerf(
+            'viewport:promise hydrateVivBulkGroupLayerSlice settled',
+            tHydr0,
+            {
+              uid,
+              stillVisible: visibleBulkUidsRef.current.has(uid),
+              sliceLayers: slice?.layers.length ?? 0,
+              chunksCommitted,
+            },
+          )
+          vivBulkAnnPhase('viewport:HYDRATE settled (single group)', {
+            uid,
+            graphicType: job.graphicType,
+            numberOfAnnotations: job.numberOfAnnotations,
+            sliceLayers: slice?.layers.length ?? 0,
+            chunksCommitted,
+            stillVisible: visibleBulkUidsRef.current.has(uid),
+            hydrateMs: Math.round((vivBulkAnnNow() - tHydr0) * 10) / 10,
+          })
+          bulkHydrateInFlightRef.current.delete(uid)
+        }),
+      )
     }
+    if (dispatchedUids.length === 0) {
+      return
+    }
+    vivBulkAnnPhase('viewport:HYDRATE batch start', {
+      dispatched: dispatchedUids.length,
+      uids: dispatchedUids,
+    })
+    void Promise.allSettled(batchPromises).then(() => {
+      vivBulkAnnPhase('viewport:HYDRATE batch done (all visible groups)', {
+        dispatched: dispatchedUids.length,
+        uids: dispatchedUids,
+        batchMs: Math.round((vivBulkAnnNow() - tBatch0) * 10) / 10,
+      })
+    })
   }, [loadBulkAnnotations, baseLayer, visibleBulkAnnotationGroupUIDs, client])
 
   const sp = slideRef.current

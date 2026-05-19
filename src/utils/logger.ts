@@ -1,5 +1,7 @@
 /**
- * Logger utility that wraps console logging and can be configured for different environments
+ * Logger utility that wraps console logging and can be configured for different environments.
+ * API and level names match `dicom-microscopy-viewer` (`options.logger` on the
+ * viewer constructor). Slim calls `dmv.setLogLevel(window.config.logger)` at startup.
  */
 
 export enum LogLevel {
@@ -20,9 +22,15 @@ export class Logger {
   public config: LoggerConfig
 
   constructor() {
-    // Get logger config from global config (browser only; Bun/Jest may run without window)
+    // Get logger config from global config (browser only; Bun/Jest may run without globalThis.config)
     const globalConfig =
-      typeof window !== 'undefined' ? window.config?.logger : undefined
+      typeof globalThis !== 'undefined'
+        ? (
+            globalThis as typeof globalThis & {
+              config?: { logger?: Partial<LoggerConfig> & { level?: string } }
+            }
+          ).config?.logger
+        : undefined
     let configLevel = 'DEBUG'
     if (globalConfig?.level != null && String(globalConfig.level) !== '') {
       configLevel = globalConfig.level as string
@@ -80,7 +88,8 @@ export class Logger {
   }
 
   /**
-   * Log debug messages
+   * Verbose diagnostics (Chrome DevTools “Verbose” / console.debug).
+   * Only emitted when level is DEBUG.
    */
   debug(...args: unknown[]): void {
     if (this.shouldLog(LogLevel.DEBUG)) {

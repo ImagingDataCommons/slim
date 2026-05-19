@@ -1,5 +1,16 @@
 declare module 'dicom-microscopy-viewer' {
 
+  export interface DmvLoggerOptions {
+    level?: 'DEBUG' | 'LOG' | 'WARN' | 'ERROR' | 'NONE'
+    enableInProduction?: boolean
+    enableInDevelopment?: boolean
+  }
+
+  /** Configure DMV logging once at application startup. */
+  export function setLogLevel(
+    levelOrOptions: string | DmvLoggerOptions,
+  ): void
+
   // skipcq: JS-C1003
   import * as dwc from 'dicomweb-client'
   // skipcq: JS-C1003

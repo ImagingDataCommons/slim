@@ -1,8 +1,8 @@
 import { Logger, LogLevel } from './logger'
 
-// Mock window.config
-const mockWindowConfig = (config: any): void => {
-  Object.defineProperty(window, 'config', {
+// Mock globalThis.config (same object as window.config in browsers)
+const mockGlobalConfig = (config: unknown): void => {
+  Object.defineProperty(globalThis, 'config', {
     value: config,
     writable: true,
     configurable: true,
@@ -12,12 +12,11 @@ const mockWindowConfig = (config: any): void => {
 describe('Logger', () => {
   beforeEach(() => {
     // Reset window.config before each test
-    mockWindowConfig(undefined)
+    mockGlobalConfig(undefined)
   })
 
   afterEach(() => {
-    // Clean up
-    delete (window as any).config
+    delete (globalThis as { config?: unknown }).config
   })
 
   it('should use default config when no config is provided', () => {
@@ -27,8 +26,8 @@ describe('Logger', () => {
     expect(testLogger.config.enableInDevelopment).toBe(true)
   })
 
-  it('should read logger config from window.config', () => {
-    mockWindowConfig({
+  it('should read logger config from globalThis.config', () => {
+    mockGlobalConfig({
       logger: {
         level: 'WARN',
         enableInProduction: true,

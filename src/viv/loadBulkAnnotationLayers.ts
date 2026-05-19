@@ -11,6 +11,7 @@ import {
   vivBulkAnnDebug,
   vivBulkAnnNow,
   vivBulkAnnPerf,
+  vivBulkAnnPhase,
   vivBulkAnnVerboseProgress,
 } from './vivBulkAnnDebug'
 
@@ -267,6 +268,32 @@ export type VivBulkAnnotationLayerSlice = {
   layers: Layer[]
 }
 
+/**
+ * Streaming chunk emission callback. Hydrate calls this each time a fresh batch of
+ * Deck layers is ready (typically one `PathLayer` per ~65k polygons), so the viewport
+ * can show partial results while remaining decode/transfer work is still in flight.
+ */
+export type VivBulkChunkEmitter = (
+  chunkLayers: Layer[],
+  meta: {
+    chunkIndex: number
+    /** Best-effort estimate (final chunk may be partial); use for progress UI. */
+    estimatedTotalChunks: number
+  },
+) => void | Promise<void>
+
+/**
+ * Hand control back to the browser so React can commit, Deck can paint, and user
+ * input can be processed before the next decode chunk starts. `setTimeout(0)` is
+ * cross-browser; the ~4 ms minimum delay is the right granularity here (one paint
+ * roughly every chunk while still amortising decode cost across few tasks).
+ */
+async function yieldToBrowser(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, 0)
+  })
+}
+
 export type VivBulkAnnotationCatalogPayload = {
   annotationGroups: dmvNamespace.annotation.AnnotationGroup[]
   metadataByGroupUID: Record<
@@ -312,14 +339,25 @@ function emptyMetadataResult(): VivBulkAnnotationMetadataResult {
 
 /**
  * After metadata catalog is shown, fetch bulkdata + build deck layers for one group.
+ *
+ * When `onChunk` is provided, hydrate streams Deck layers progressively (one
+ * `PathLayer` per ~65k polygons / one `ScatterplotLayer` for points / one batch for
+ * the OL slow path), yielding to the browser between chunks so the user sees partial
+ * coverage within ~70–150 ms of fetch completion instead of waiting for the whole
+ * decode + first-paint cycle. The final return value still contains every emitted
+ * layer for callers that want it.
  */
 export async function hydrateVivBulkGroupLayerSlice(options: {
   job: VivBulkGroupGeometryJob
   geometry: BulkAnnotationGeometryContext
   fetchClient: DicomWebManager
+  /** Receives Deck layers as soon as each chunk finishes decoding. */
+  onChunk?: VivBulkChunkEmitter
+  /** Polled between chunks; return `false` to stop emitting (e.g. group toggled off). */
+  shouldContinue?: () => boolean
 }): Promise<VivBulkAnnotationLayerSlice | null> {
   const tHydrate0 = vivBulkAnnNow()
-  const { job, geometry, fetchClient } = options
+  const { job, geometry, fetchClient, onChunk, shouldContinue } = options
   const {
     annotationGroupUID,
     color,
@@ -358,9 +396,11 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
   let graphicData: Int32Array | Float32Array
   let graphicIndex: Int32Array | null
   const tFetch0 = vivBulkAnnNow()
-  vivBulkAnnDebug('hydrate:fetchGraphicData+Index awaited', {
+  vivBulkAnnPhase('hydrate:FETCH start (graphicData+graphicIndex)', {
     annotationGroupUID,
+    graphicType,
     annotationGroupIndex,
+    numberOfAnnotations,
   })
   try {
     ;[graphicData, graphicIndex] = await Promise.all([
@@ -381,6 +421,11 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
     ])
   } catch (e) {
     vivBulkAnnPerf('hydrate:fetchGraphicData+Index FAILED', tFetch0, {
+      annotationGroupUID,
+      graphicType,
+      err: e instanceof Error ? e.message : String(e),
+    })
+    vivBulkAnnPhase('hydrate:FETCH failed', {
       annotationGroupUID,
       graphicType,
       err: e instanceof Error ? e.message : String(e),
@@ -414,7 +459,18 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
         }
       : {}),
   })
-  vivBulkAnnDebug('hydrate:fetch done', {
+  vivBulkAnnPhase('hydrate:FETCH done — PROCESS about to start', {
+    annotationGroupUID,
+    graphicType,
+    graphicDataLength: graphicData.length,
+    graphicDataBytes: dataBytes,
+    graphicIndexLength:
+      graphicIndex === null || graphicIndex === undefined
+        ? 0
+        : graphicIndex.length,
+    fetchMs: Math.round(fetchMs * 10) / 10,
+  })
+  vivBulkAnnDebug('hydrate:fetch done sample', {
     annotationGroupUID,
     sample: {
       d0: graphicData[0],
@@ -438,7 +494,14 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
   const annotationCoordinateType = String(
     job.ann.AnnotationCoordinateType ?? '2D',
   )
-  const fastResult = fastDeckLayersFromGraphicData({
+  vivBulkAnnPhase('hydrate:PROCESS start (direct decode fast path)', {
+    annotationGroupUID,
+    graphicType,
+    numberOfAnnotations,
+    coordinateDimensionality,
+    annotationCoordinateType,
+  })
+  const fastResult = await fastDeckLayersFromGraphicData({
     graphicType,
     graphicData,
     graphicIndex,
@@ -450,6 +513,8 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
     annotationCoordinateType,
     geometry,
     annotationGroupWrapper: annotationGroupWrapper,
+    onChunk,
+    shouldContinue,
   })
   if (fastResult !== null) {
     const { layers: fastDeckSlices, pathRowCount, pointCount } = fastResult
@@ -459,6 +524,14 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
       pathRowCount,
       pointCount,
       deckLayers: fastDeckSlices.length,
+    })
+    vivBulkAnnPhase('hydrate:PROCESS done (direct decode fast path)', {
+      annotationGroupUID,
+      graphicType,
+      pathRowCount,
+      pointCount,
+      deckLayers: fastDeckSlices.length,
+      processMs: Math.round((vivBulkAnnNow() - tDirect0) * 10) / 10,
     })
     vivBulkAnnPerf('hydrate:total', tHydrate0, {
       annotationGroupUID,
@@ -477,10 +550,14 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
       : null
   }
 
-  vivBulkAnnDebug('hydrate:slow path (OL features)', {
-    annotationGroupUID,
-    graphicType,
-  })
+  vivBulkAnnPhase(
+    'hydrate:PROCESS start (OL slow path — getFeaturesFromBulkAnnotations)',
+    {
+      annotationGroupUID,
+      graphicType,
+      numberOfAnnotations,
+    },
+  )
   const tOl0 = vivBulkAnnNow()
   try {
     features = resolveBulkSimpleAnnotationsApi().getFeaturesFromBulkAnnotations(
@@ -503,6 +580,11 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
       },
     )
   } catch (e) {
+    vivBulkAnnPhase('hydrate:PROCESS failed (OL slow path)', {
+      annotationGroupUID,
+      graphicType,
+      err: e instanceof Error ? e.message : String(e),
+    })
     console.warn(
       `${VIV_BULK} getFeaturesFromBulkAnnotations failed`,
       { annotationGroupUID, graphicType },
@@ -515,6 +597,12 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
     annotationGroupUID,
     graphicType,
     olFeatures: features.length,
+  })
+  vivBulkAnnPhase('hydrate:PROCESS done (OL slow path) — DECK BUILD start', {
+    annotationGroupUID,
+    graphicType,
+    olFeatures: features.length,
+    processMs: Math.round((vivBulkAnnNow() - tOl0) * 10) / 10,
   })
 
   const tDeck0 = vivBulkAnnNow()
@@ -529,6 +617,12 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
   vivBulkAnnPerf('hydrate:featuresToDeckLayers', tDeck0, {
     annotationGroupUID,
     deckLayers: deckSlices.length,
+  })
+  vivBulkAnnPhase('hydrate:DECK BUILD done (OL slow path)', {
+    annotationGroupUID,
+    graphicType,
+    deckLayers: deckSlices.length,
+    deckBuildMs: Math.round((vivBulkAnnNow() - tDeck0) * 10) / 10,
   })
   vivBulkAnnPerf('hydrate:total', tHydrate0, {
     annotationGroupUID,
@@ -545,6 +639,20 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
   if (deckSlices.length === 0) {
     return null
   }
+  // OL slow path doesn't have a natural chunk granularity (features are already
+  // fully built), so emit the whole batch as a single chunk to keep the viewport
+  // accumulation logic uniform with the fast path.
+  if (onChunk !== undefined) {
+    vivBulkAnnPhase('hydrate:slow path chunk emit', {
+      annotationGroupUID,
+      graphicType,
+      chunkIndex: 0,
+      estimatedTotalChunks: 1,
+      final: true,
+      deckLayers: deckSlices.length,
+    })
+    await onChunk(deckSlices, { chunkIndex: 0, estimatedTotalChunks: 1 })
+  }
   return { groupUID: annotationGroupUID, layers: deckSlices }
 }
 
@@ -554,7 +662,7 @@ type FastDecodeResult = {
   pointCount: number
 }
 
-function fastDeckLayersFromGraphicData(options: {
+async function fastDeckLayersFromGraphicData(options: {
   graphicType: string
   graphicData: Int32Array | Float32Array
   graphicIndex: Int32Array | null
@@ -566,7 +674,9 @@ function fastDeckLayersFromGraphicData(options: {
   annotationCoordinateType: string
   geometry: BulkAnnotationGeometryContext
   annotationGroupWrapper: VivBulkGroupGeometryJob['annotationGroupWrapper']
-}): FastDecodeResult | null {
+  onChunk?: VivBulkChunkEmitter
+  shouldContinue?: () => boolean
+}): Promise<FastDecodeResult | null> {
   const {
     graphicType,
     graphicData,
@@ -579,6 +689,8 @@ function fastDeckLayersFromGraphicData(options: {
     annotationCoordinateType,
     geometry,
     annotationGroupWrapper,
+    onChunk,
+    shouldContinue,
   } = options
   const pixelToSlideAffine = affineForReferencedPyramidLevel({
     pyramid: geometry.pyramid,
@@ -592,7 +704,7 @@ function fastDeckLayersFromGraphicData(options: {
   })
   switch (graphicType) {
     case 'POINT': {
-      const { layers, pointCount } = buildPointLayersFromGraphicData({
+      const { layers, pointCount } = await buildPointLayersFromGraphicData({
         graphicData,
         graphicIndex,
         coordinateDimensionality,
@@ -601,12 +713,13 @@ function fastDeckLayersFromGraphicData(options: {
         color,
         idPrefix,
         deckCoeffs,
+        onChunk,
       })
       return { layers, pathRowCount: 0, pointCount }
     }
     case 'POLYGON':
     case 'POLYLINE': {
-      const built = buildPathLayersFromGraphicData({
+      const built = await buildPathLayersFromGraphicData({
         graphicType,
         graphicData,
         graphicIndex,
@@ -616,6 +729,8 @@ function fastDeckLayersFromGraphicData(options: {
         color,
         idPrefix,
         deckCoeffs,
+        onChunk,
+        shouldContinue,
       })
       if (built === null) {
         return null
@@ -631,7 +746,7 @@ function fastDeckLayersFromGraphicData(options: {
   }
 }
 
-function buildPointLayersFromGraphicData(options: {
+async function buildPointLayersFromGraphicData(options: {
   graphicData: Int32Array | Float32Array
   graphicIndex: Int32Array | null
   coordinateDimensionality: number
@@ -640,7 +755,9 @@ function buildPointLayersFromGraphicData(options: {
   color: [number, number, number]
   idPrefix: string
   deckCoeffs: BulkDeckLinearCoeffs
-}): { layers: Layer[]; pointCount: number } {
+  /** Emitted once for points (single `ScatterplotLayer`). */
+  onChunk?: VivBulkChunkEmitter
+}): Promise<{ layers: Layer[]; pointCount: number }> {
   const {
     graphicData,
     graphicIndex,
@@ -650,7 +767,9 @@ function buildPointLayersFromGraphicData(options: {
     color,
     idPrefix,
     deckCoeffs,
+    onChunk,
   } = options
+  const tDecode0 = vivBulkAnnNow()
   const points: [number, number][] = []
   const hasIndex =
     Array.isArray(graphicIndex) || graphicIndex instanceof Int32Array
@@ -682,6 +801,11 @@ function buildPointLayersFromGraphicData(options: {
     const p = bulkVertexToDeckFast(gx, gy, deckCoeffs)
     points.push([p[0], p[1]])
   }
+  vivBulkAnnPerf('directDecode:POINT decode', tDecode0, {
+    idPrefix,
+    pointCount: points.length,
+    numberOfAnnotations,
+  })
   if (points.length === 0) {
     return { layers: [], pointCount: 0 }
   }
@@ -691,22 +815,44 @@ function buildPointLayersFromGraphicData(options: {
     color[2],
     220,
   ]
+  const tDeck0 = vivBulkAnnNow()
+  vivBulkAnnPhase('directDecode:POINT decode done — DECK BUILD start', {
+    idPrefix,
+    pointCount: points.length,
+    decodeMs: Math.round((vivBulkAnnNow() - tDecode0) * 10) / 10,
+  })
+  const layers: Layer[] = [
+    new ScatterplotLayer<[number, number]>({
+      id: `${idPrefix}-pts`,
+      data: points,
+      getPosition: (d) => d,
+      getFillColor: () => rgba,
+      getRadius: () => 4,
+      radiusUnits: 'pixels',
+    }) as unknown as Layer,
+  ]
+  vivBulkAnnPerf('directDecode:POINT deck build', tDeck0, {
+    idPrefix,
+    pointCount: points.length,
+    deckLayers: layers.length,
+  })
+  if (onChunk !== undefined) {
+    vivBulkAnnPhase('directDecode:POINT chunk emit', {
+      idPrefix,
+      chunkIndex: 0,
+      estimatedTotalChunks: 1,
+      final: true,
+      pointCount: points.length,
+    })
+    await onChunk(layers, { chunkIndex: 0, estimatedTotalChunks: 1 })
+  }
   return {
-    layers: [
-      new ScatterplotLayer<[number, number]>({
-        id: `${idPrefix}-pts`,
-        data: points,
-        getPosition: (d) => d,
-        getFillColor: () => rgba,
-        getRadius: () => 4,
-        radiusUnits: 'pixels',
-      }) as unknown as Layer,
-    ],
+    layers,
     pointCount: points.length,
   }
 }
 
-function buildPathLayersFromGraphicData(options: {
+async function buildPathLayersFromGraphicData(options: {
   graphicType: 'POLYGON' | 'POLYLINE'
   graphicData: Int32Array | Float32Array
   graphicIndex: Int32Array | null
@@ -716,7 +862,11 @@ function buildPathLayersFromGraphicData(options: {
   color: [number, number, number]
   idPrefix: string
   deckCoeffs: BulkDeckLinearCoeffs
-}): { layers: Layer[]; pathRowCount: number } | null {
+  /** Stream each chunk's `PathLayer` as soon as it's ready instead of waiting for full decode. */
+  onChunk?: VivBulkChunkEmitter
+  /** Polled at every chunk boundary; return `false` to abort the remaining decode. */
+  shouldContinue?: () => boolean
+}): Promise<{ layers: Layer[]; pathRowCount: number } | null> {
   const {
     graphicType,
     graphicData,
@@ -727,13 +877,91 @@ function buildPathLayersFromGraphicData(options: {
     color,
     idPrefix,
     deckCoeffs,
+    onChunk,
+    shouldContinue,
   } = options
   if (graphicIndex === null) {
     return null
   }
-  const pathRows: PathRowFlat[] = []
+  const tDecode0 = vivBulkAnnNow()
   const verbose = vivBulkAnnVerboseProgress()
   const PROGRESS_EVERY = 50_000
+  const rgba: [number, number, number, number] = [
+    color[0],
+    color[1],
+    color[2],
+    220,
+  ]
+  const pathType: 'loop' | 'open' = graphicType === 'POLYGON' ? 'loop' : 'open'
+  // PathLayer prop shape kept identical to non-streaming path (positionFormat XY + _pathType so
+  // Deck skips normalizePath on millions of vertices).
+  const baseProps = {
+    positionFormat: 'XY' as const,
+    getPath: (d: PathRowFlat) => d.pathFlat,
+    getColor: (): typeof rgba => rgba,
+    getWidth: (): number => 2,
+    widthUnits: 'pixels' as const,
+    capRounded: true,
+    jointRounded: true,
+    _pathType: pathType,
+  }
+  const estimatedTotalChunks = Math.max(
+    1,
+    Math.ceil(numberOfAnnotations / VIV_BULK_PATHS_PER_PATH_LAYER),
+  )
+
+  const allLayers: Layer[] = []
+  let chunkRows: PathRowFlat[] = []
+  let chunkIndex = 0
+  let totalPathRows = 0
+  let cancelled = false
+  let tChunkDecode0 = vivBulkAnnNow()
+
+  /** Build the PathLayer for the current chunk, push to `allLayers`, emit + yield. */
+  const flushChunk = async (final: boolean): Promise<boolean> => {
+    if (chunkRows.length === 0) {
+      return true
+    }
+    const layer = new PathLayer<PathRowFlat>({
+      id: `${idPrefix}-paths-${chunkIndex}`,
+      data: chunkRows,
+      ...baseProps,
+    }) as unknown as Layer
+    allLayers.push(layer)
+    const chunkDecodeMs =
+      Math.round((vivBulkAnnNow() - tChunkDecode0) * 10) / 10
+    if (onChunk !== undefined) {
+      const tEmit0 = vivBulkAnnNow()
+      vivBulkAnnPhase(`directDecode:${graphicType} chunk emit`, {
+        idPrefix,
+        chunkIndex,
+        chunkRowCount: chunkRows.length,
+        estimatedTotalChunks,
+        final,
+        chunkDecodeMs,
+      })
+      await onChunk([layer], { chunkIndex, estimatedTotalChunks })
+      // Yield between chunks so React can commit and Deck can paint before
+      // the next chunk's decode work occupies the main thread.
+      if (!final) {
+        await yieldToBrowser()
+      }
+      vivBulkAnnPerf(`directDecode:${graphicType} chunk emit+yield`, tEmit0, {
+        idPrefix,
+        chunkIndex,
+        chunkRowCount: chunkRows.length,
+      })
+    }
+    chunkRows = []
+    chunkIndex++
+    tChunkDecode0 = vivBulkAnnNow()
+    if (shouldContinue !== undefined && shouldContinue() === false) {
+      cancelled = true
+      return false
+    }
+    return true
+  }
+
   for (let i = 0; i < numberOfAnnotations; i++) {
     if (
       verbose &&
@@ -743,7 +971,8 @@ function buildPathLayersFromGraphicData(options: {
       vivBulkAnnDebug(`${graphicType} decode progress`, {
         annotationIndex: i,
         total: numberOfAnnotations,
-        pathRowsSoFar: pathRows.length,
+        pathRowsSoFar: totalPathRows,
+        chunkIndex,
       })
     }
     const offset = Number(graphicIndex[i] ?? 0) - 1
@@ -793,27 +1022,49 @@ function buildPathLayersFromGraphicData(options: {
       j += coordinateDimensionality - 1
     }
     if (w >= 4) {
-      pathRows.push({ pathFlat: buf.slice(0, w) })
+      chunkRows.push({ pathFlat: buf.slice(0, w) })
+      totalPathRows++
+      if (chunkRows.length >= VIV_BULK_PATHS_PER_PATH_LAYER) {
+        const carryOn = await flushChunk(false)
+        if (!carryOn) {
+          break
+        }
+      }
     }
   }
 
-  if (pathRows.length === 0) {
+  if (!cancelled) {
+    await flushChunk(true)
+  }
+
+  vivBulkAnnPerf(`directDecode:${graphicType} decode+stream`, tDecode0, {
+    idPrefix,
+    pathRowCount: totalPathRows,
+    numberOfAnnotations,
+    chunkCount: chunkIndex,
+    cancelled,
+  })
+  if (cancelled) {
+    vivBulkAnnPhase(`directDecode:${graphicType} cancelled mid-stream`, {
+      idPrefix,
+      decodedSoFar: totalPathRows,
+      total: numberOfAnnotations,
+      chunkCount: chunkIndex,
+    })
+  }
+  if (totalPathRows === 0) {
+    vivBulkAnnPhase(
+      `directDecode:${graphicType} decode done (no path rows) — DECK BUILD skipped`,
+      {
+        idPrefix,
+        numberOfAnnotations,
+      },
+    )
     return { layers: [], pathRowCount: 0 }
   }
-  const rgba: [number, number, number, number] = [
-    color[0],
-    color[1],
-    color[2],
-    220,
-  ]
   return {
-    layers: buildChunkedVivPathLayersFromFlat(
-      idPrefix,
-      pathRows,
-      rgba,
-      graphicType === 'POLYGON' ? 'loop' : 'open',
-    ),
-    pathRowCount: pathRows.length,
+    layers: allLayers,
+    pathRowCount: totalPathRows,
   }
 }
 
@@ -959,7 +1210,7 @@ function buildChunkedVivPathLayers(
  * Chunked PathLayer for direct-decoded flat paths. Sets `_pathType` so Deck skips
  * normalizePath (avoids re-flattening millions of nested `[x,y]` pairs).
  */
-function buildChunkedVivPathLayersFromFlat(
+function _buildChunkedVivPathLayersFromFlat(
   idPrefix: string,
   pathRows: PathRowFlat[],
   rgba: [number, number, number, number],
@@ -1223,7 +1474,10 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
   })
 
   const tMeta0 = vivBulkAnnNow()
-  vivBulkAnnDebug('metadata: searchForSeries ANN …', { studyInstanceUID })
+  vivBulkAnnPhase('metadata:FETCH start (QIDO searchForSeries Modality=ANN)', {
+    studyInstanceUID,
+    imageSeriesInstanceUID,
+  })
 
   let matched = await annotationClient.searchForSeries({
     studyInstanceUID,
@@ -1234,6 +1488,10 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
 
   vivBulkAnnPerf('metadata:searchForSeries Modality=ANN', tMeta0, {
     numSeries: matched?.length ?? 0,
+  })
+  vivBulkAnnPhase('metadata:searchForSeries done', {
+    numSeries: matched?.length ?? 0,
+    searchMs: Math.round((vivBulkAnnNow() - tMeta0) * 10) / 10,
   })
   if (matched === null || matched === undefined) {
     matched = []
@@ -1279,6 +1537,16 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
     { opacity: number; color: number[] }
   > = {}
 
+  const tSeriesAll0 = vivBulkAnnNow()
+  vivBulkAnnPhase(
+    'metadata:FETCH start (retrieveSeriesMetadata for each ANN series)',
+    {
+      annSeriesCount: matched.length,
+    },
+  )
+  let seriesMetadataFetched = 0
+  let seriesMetadataInstances = 0
+
   for (const s of matched) {
     const { dataset } = dmv.metadata.formatMetadata(s)
     const series = dataset as { SeriesInstanceUID: string }
@@ -1292,6 +1560,8 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
         studyInstanceUID,
         seriesInstanceUID: series.SeriesInstanceUID,
       })
+      seriesMetadataFetched++
+      seriesMetadataInstances += retrieved.length
       vivBulkAnnPerf('metadata:retrieveSeriesMetadata', tSeries0, {
         annSeriesInstanceUID: series.SeriesInstanceUID,
         numInstances: retrieved.length,
@@ -1477,6 +1747,15 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
     }
   }
 
+  vivBulkAnnPhase(
+    'metadata:FETCH done (retrieveSeriesMetadata for all ANN series)',
+    {
+      annSeriesAttempted: matched.length,
+      annSeriesFetched: seriesMetadataFetched,
+      totalInstancesFetched: seriesMetadataInstances,
+      fetchAllSeriesMs: Math.round((vivBulkAnnNow() - tSeriesAll0) * 10) / 10,
+    },
+  )
   console.info(`${VIV_BULK} metadata done: lazy geometry jobs`, {
     groups: Object.keys(groupGeometryJobs).length,
   })
@@ -1484,6 +1763,14 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
     lazyGeometryJobs: Object.keys(groupGeometryJobs).length,
     annotationGroups: annotationGroupsByUid.size,
   })
+  vivBulkAnnPhase(
+    'metadata:CATALOG done — geometry jobs deferred until group toggled visible',
+    {
+      lazyGeometryJobs: Object.keys(groupGeometryJobs).length,
+      annotationGroups: annotationGroupsByUid.size,
+      totalMs: Math.round((vivBulkAnnNow() - tMeta0) * 10) / 10,
+    },
+  )
   return {
     annotationGroups: [...annotationGroupsByUid.values()],
     metadataByGroupUID,
