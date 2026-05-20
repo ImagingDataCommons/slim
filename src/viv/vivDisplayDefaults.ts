@@ -262,7 +262,8 @@ export function computeVivBulkCentroidRadiusPixels(options: {
     radiusPx *= 0.75 * 2 ** (deckZoom - fitZ)
   }
 
-  return Math.max(0.1, Math.min(6, radiusPx))
+  // Keep at least ~2px so Deck picking / hover tooltips can hit overview centroids.
+  return Math.max(2, Math.min(6, radiusPx))
 }
 
 /** IDC cyclic IF demo (Lin et al.) — channels 8–11 per viv-dicomweb-test. */

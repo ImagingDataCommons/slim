@@ -1,3 +1,4 @@
+import type { MenuProps } from 'antd'
 import { Drawer, Menu, Switch } from 'antd'
 import type React from 'react'
 import { useState, useSyncExternalStore } from 'react'
@@ -68,17 +69,25 @@ const VivSettingsDrawer: React.FC<VivSettingsDrawerProps> = ({
           style={{ border: 'none', width: '100%' }}
           inlineIndent={14}
           selectable={false}
-        >
-          <Menu.SubMenu key="display" title="Display">
-            <Menu.Item
-              key="display-content"
-              disabled
-              style={{ cursor: 'default' }}
-            >
-              <div className="slim-settings-content">{iccRow}</div>
-            </Menu.Item>
-          </Menu.SubMenu>
-        </Menu>
+          items={
+            [
+              {
+                key: 'display',
+                label: 'Display',
+                children: [
+                  {
+                    key: 'display-content',
+                    label: (
+                      <div className="slim-settings-content">{iccRow}</div>
+                    ),
+                    disabled: true,
+                    style: { height: 'auto', cursor: 'default' },
+                  },
+                ],
+              },
+            ] satisfies MenuProps['items']
+          }
+        />
       </Drawer>
     </>
   )
