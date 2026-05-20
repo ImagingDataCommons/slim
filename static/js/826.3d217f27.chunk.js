@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunkslim=self.webpackChunkslim||[]).push([[826],{8826:(e,u,n)=>{n.r(u),n.d(u,{default:()=>i});var t=n(5671),r=n(3144),s=n(136),c=n(9388),i=function(e){(0,s.Z)(n,e);var u=(0,c.Z)(n);function n(){return(0,t.Z)(this,n),u.apply(this,arguments)}return(0,r.Z)(n,[{key:"decodeBlock",value:function(e){return e}}]),n}(n(9878).Z)}}]);
+//# sourceMappingURL=826.3d217f27.chunk.js.map
