@@ -1,4 +1,5 @@
 import { message } from 'antd'
+import * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 
@@ -17,6 +18,10 @@ declare global {
 const config: AppConfig = window.config
 if (config === undefined) {
   throw Error('No application configuration was provided.')
+}
+
+if (config.logger != null) {
+  dmv.setLogLevel(config.logger)
 }
 
 type AppProps = {
