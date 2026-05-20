@@ -22,12 +22,14 @@ import DicomMetadataStore from '../services/DICOMMetadataStore'
 import { type RouteComponentProps, withRouter } from '../utils/router'
 import type { VivBulkAnnotationCatalogPayload } from '../viv/loadBulkAnnotationLayers'
 import VivSlideViewport from '../viv/VivSlideViewport'
+import { EMPTY_VIV_BULK_LOAD_STATUS } from '../viv/vivBulkLoadStatus'
 import AnnotationGroupList from './AnnotationGroupList'
 import ClinicalTrial from './ClinicalTrial'
 import Patient from './Patient'
 import SlideList from './SlideList'
 import SlideViewer from './SlideViewer'
 import Study from './Study'
+import VivBulkAnnotationLoadIndicator from './VivBulkAnnotationLoadIndicator'
 import VivSettingsDrawer from './VivSettingsDrawer'
 
 const { naturalizeDataset } = dcmjs.data.DicomMetaDictionary
@@ -152,6 +154,9 @@ function ParametrizedSlideViewer({
   const [vivAnnGroupSeriesSelection, setVivAnnGroupSeriesSelection] =
     useState<string>('all')
   const [vivIccProfilesAvailable, setVivIccProfilesAvailable] = useState(true)
+  const [vivBulkLoadStatus, setVivBulkLoadStatus] = useState(
+    EMPTY_VIV_BULK_LOAD_STATUS,
+  )
 
   const getVivSeriesDescription = (seriesInstanceUID: string): string => {
     const study = DicomMetadataStore.getStudy(studyInstanceUID)
@@ -176,6 +181,9 @@ function ParametrizedSlideViewer({
   const handleVivBulkCatalogChange = useCallback(
     (c: VivBulkAnnotationCatalogPayload | null) => {
       setVivBulkCatalog(c)
+      if (c == null) {
+        setVivBulkLoadStatus(EMPTY_VIV_BULK_LOAD_STATUS)
+      }
       if (c != null && c.annotationGroups.length > 0) {
         setVivAnnGroupSeriesSelection('all')
         setVivVisibleAnnotationGroupUIDs(new Set())
@@ -439,7 +447,15 @@ function ParametrizedSlideViewer({
           }}
         >
           <Menu.SubMenu key="annotation-groups" title="Annotation Groups">
-            {vivBulkCatalog === null ? (
+            <div style={padSubmenuBlock}>
+              <VivBulkAnnotationLoadIndicator
+                status={vivBulkLoadStatus}
+                metadataByGroupUID={vivBulkCatalog?.metadataByGroupUID}
+                variant="panel"
+              />
+            </div>
+            {vivBulkCatalog === null &&
+            vivBulkLoadStatus.metadataPhase !== 'loading' ? (
               <div style={padSubmenuBlock}>
                 <p
                   style={{
@@ -452,7 +468,8 @@ function ParametrizedSlideViewer({
                   Loading annotation metadata and geometry…
                 </p>
               </div>
-            ) : vivBulkCatalog.annotationGroups.length === 0 ? (
+            ) : vivBulkCatalog != null &&
+              vivBulkCatalog.annotationGroups.length === 0 ? (
               <div style={padSubmenuBlock}>
                 <p style={{ fontSize: 11, lineHeight: 1.45, margin: 0 }}>
                   No bulk annotation groups for this slide were returned (or all
@@ -478,6 +495,7 @@ function ParametrizedSlideViewer({
             visibleBulkAnnotationGroupUIDs={vivVisibleAnnotationGroupUIDs}
             bulkAnnotationGroupStyles={vivAnnotationGroupStyles}
             onBulkAnnotationCatalogChange={handleVivBulkCatalogChange}
+            onBulkAnnotationLoadStatusChange={setVivBulkLoadStatus}
             onIccProfilesAvailabilityChange={handleVivIccAvailability}
             studyInstanceUID={studyInstanceUID}
             seriesInstanceUID={seriesInstanceUID}

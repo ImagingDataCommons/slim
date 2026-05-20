@@ -7,6 +7,7 @@ import dmvDefault, * as dmvNamespace from 'dicom-microscopy-viewer'
 
 import type DicomWebManager from '../DicomWebManager'
 import { logger } from '../utils/logger'
+import { computeCenterOutAnnotationOrder } from './centerOutAnnotationOrder'
 import type { BulkAnnotationGeometryContext } from './dicomLoader'
 import {
   vivBulkAnnDebug,
@@ -485,63 +486,6 @@ function bulkGraphicSupportsLod(
   )
 }
 
-/**
- * Sort annotation indices by distance of each shape's first vertex to `loadCenter`
- * (deck space). Used so progressive PathLayer chunks appear center-outward.
- */
-function computeCenterOutAnnotationOrder(options: {
-  numberOfAnnotations: number
-  graphicData: Int32Array | Float32Array
-  graphicIndex: Int32Array | null
-  coordinateDimensionality: number
-  commonZCoordinate: number
-  deckCoeffs: BulkDeckLinearCoeffs
-  loadCenter: [number, number]
-}): Uint32Array {
-  const {
-    numberOfAnnotations,
-    graphicData,
-    graphicIndex,
-    coordinateDimensionality,
-    commonZCoordinate,
-    deckCoeffs,
-    loadCenter,
-  } = options
-  const [cx, cy] = loadCenter
-  const distances = new Float64Array(numberOfAnnotations)
-  const hasIndex = graphicIndex !== null && graphicIndex !== undefined
-  const minRemain = coordinateDimensionality >= 3 ? 3 : 2
-
-  for (let i = 0; i < numberOfAnnotations; i++) {
-    distances[i] = Number.POSITIVE_INFINITY
-    const offset = hasIndex
-      ? Number(graphicIndex[i] ?? 0) - 1
-      : i * coordinateDimensionality
-    if (offset < 0 || offset + minRemain - 1 >= graphicData.length) {
-      continue
-    }
-    const [gx, gy] = readTripleFromGraphicBuffer(
-      graphicData,
-      offset,
-      commonZCoordinate,
-    )
-    if (!gx || !gy) {
-      continue
-    }
-    const [dx, dy] = bulkVertexToDeckFast(gx, gy, deckCoeffs)
-    const ddx = dx - cx
-    const ddy = dy - cy
-    distances[i] = ddx * ddx + ddy * ddy
-  }
-
-  const order = new Uint32Array(numberOfAnnotations)
-  for (let i = 0; i < numberOfAnnotations; i++) {
-    order[i] = i
-  }
-  order.sort((a, b) => distances[a] - distances[b])
-  return order
-}
-
 /** Cached bulk buffers so full-detail PathLayers can be built lazily on zoom-in. */
 export type VivBulkGraphicCache = {
   graphicType: string
@@ -584,7 +528,7 @@ function isVivBulkPointLayerId(layerId: string): boolean {
   return /-pts(?:-\d+)?$/.test(layerId)
 }
 
-/** Drop layer attribute arrays so PathLayer/ScatterplotLayer GPU buffers can be collected. */
+/** Drop layer attribute arrays and finalize Deck state so GPU buffers can be collected. */
 export function detachVivBulkOverlayLayerData(layers: Layer[]): void {
   for (const layer of layers) {
     const lid = String(layer.id)
@@ -594,6 +538,8 @@ export function detachVivBulkOverlayLayerData(layers: Layer[]): void {
       } else if (isVivBulkCenterLayerId(lid) || isVivBulkPointLayerId(lid)) {
         ;(layer as ScatterplotLayer<[number, number]>).clone({ data: [] })
       }
+      const internal = layer as Layer & { _finalize?: () => void }
+      internal._finalize?.()
     } catch {
       /* best-effort */
     }
@@ -691,6 +637,8 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
   shouldContinue?: () => boolean
   /** When set, only annotations whose first vertex falls inside these bounds are decoded. */
   viewportBounds?: DeckViewportBounds
+  /** Called after bulk byte retrieve finishes and decode is about to start. */
+  onFetchComplete?: () => void
 }): Promise<VivBulkHydrateResult | null> {
   const tHydrate0 = vivBulkAnnNow()
   const {
@@ -701,6 +649,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
     onChunk,
     shouldContinue,
     viewportBounds,
+    onFetchComplete,
   } = options
   const {
     annotationGroupUID,
@@ -814,6 +763,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
         : graphicIndex.length,
     fetchMs: Math.round(fetchMs * 10) / 10,
   })
+  onFetchComplete?.()
   vivBulkAnnDebug('hydrate:fetch done sample', {
     annotationGroupUID,
     sample: {
@@ -1214,7 +1164,7 @@ async function buildPointLayersFromGraphicData(options: {
   const tDecode0 = vivBulkAnnNow()
   const annotationOrder =
     deckLoadCenter != null
-      ? computeCenterOutAnnotationOrder({
+      ? await computeCenterOutAnnotationOrder({
           numberOfAnnotations,
           graphicData,
           graphicIndex,
@@ -1402,7 +1352,7 @@ async function buildPathLayersFromGraphicData(options: {
   )
   const annotationOrder =
     deckLoadCenter != null
-      ? computeCenterOutAnnotationOrder({
+      ? await computeCenterOutAnnotationOrder({
           numberOfAnnotations,
           graphicData,
           graphicIndex,
@@ -1620,6 +1570,8 @@ export async function rebuildVivBulkLayersForViewport(options: {
   slideHeight: number
   deckLoadCenter?: [number, number]
   shouldContinue?: () => boolean
+  /** Stream center-out chunks during decode (same as non-LOD hydrate). */
+  onChunk?: VivBulkChunkEmitter
 }): Promise<Layer[]> {
   const {
     cache,
@@ -1632,6 +1584,7 @@ export async function rebuildVivBulkLayersForViewport(options: {
     slideHeight,
     deckLoadCenter,
     shouldContinue,
+    onChunk,
   } = options
   const {
     graphicType,
@@ -1682,6 +1635,7 @@ export async function rebuildVivBulkLayersForViewport(options: {
       viewportHeight,
       slideWidth,
       slideHeight,
+      onChunk,
     })
     vivBulkAnnPerf('lod:viewport rebuild (centers)', t0, {
       annotationGroupUID: job.annotationGroupUID,
@@ -1709,6 +1663,7 @@ export async function rebuildVivBulkLayersForViewport(options: {
     deckLoadCenter,
     viewportBounds,
     shouldContinue,
+    onChunk,
   })
   vivBulkAnnPerf('lod:viewport rebuild (full)', t0, {
     annotationGroupUID: job.annotationGroupUID,
