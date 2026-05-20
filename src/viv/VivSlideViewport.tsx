@@ -654,14 +654,16 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
         channelsVisible: d.channelsVisible,
         contrastLimits: d.contrastLimits,
         dtype: sources[0].dtype,
-        // One coarse getRaster when the pyramid fits a single tile (not RGB-only block).
+        /** One coarse getRaster when the pyramid fits a single tile (not RGB-only block). */
         excludeBackground,
         maxRequests: 48,
-        // Viv tile payloads are { data, width, height } without top-level byteLength — do not
-        // set maxCacheByteSize (deck.gl logs errors and cache accounting breaks).
+        /**
+         * Viv tile payloads are { data, width, height } without top-level byteLength — do not
+         * set maxCacheByteSize (deck.gl logs errors and cache accounting breaks).
+         */
         maxCacheSize: 512,
         debounceTime: 0,
-        // Passed through to deck.gl TileLayer (not in @vivjs/layers types).
+        /** Passed through to deck.gl TileLayer (not in @vivjs/layers types). */
         TilesetClass: CenterOutTileset2D,
         onTileError: (err: Error) => {
           if (isVivDicomTileNetworkCancellation(err)) {
@@ -740,9 +742,11 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     clearBulkLoadStatus()
     dicomLoaderRef.current?.dispose()
     dicomLoaderRef.current = null
-    // Do not call onIccProfilesAvailabilityChange(false) here — it disabled the Settings
-    // switch until metadata loaded (looked "off"). CaseViewer defaults to true until
-    // we know this slide cannot use ICC (see getIccProfilesLength + spp).
+    /**
+     * Do not call onIccProfilesAvailabilityChange(false) here — it disabled the Settings
+     * switch until metadata loaded (looked "off"). CaseViewer defaults to true until
+     * we know this slide cannot use ICC (see getIccProfilesLength + spp).
+     */
 
     const run = async (): Promise<void> => {
       try {
@@ -818,8 +822,10 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           const n = await dicomLoader.getIccProfilesLength()
           if (!cancelled) {
             const spp = dicomLoader.samplesPerPixel ?? 1
-            // Match SlideViewer when profiles exist; also allow RGB slides when getICCProfiles()
-            // is still empty (hidden OL viewer timing) so the Settings toggle is usable.
+            /**
+             * Match SlideViewer when profiles exist; also allow RGB slides when getICCProfiles()
+             * is still empty (hidden OL viewer timing) so the Settings toggle is usable.
+             */
             iccAvailCbRef.current?.(n > 0 || spp === 3)
           }
         } catch {
@@ -1162,15 +1168,19 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
               graphicType: job.graphicType,
             })
           },
-          // Polled at every chunk boundary so hydrate stops decoding the
-          // remaining polygons when the user toggles the group off.
+          /**
+           * Polled at every chunk boundary so hydrate stops decoding the
+           * remaining polygons when the user toggles the group off.
+           */
           shouldContinue: () =>
             bulkHydrateGenRef.current === hydrateGen &&
             visibleBulkUidsRef.current.has(uid),
-          // Progressive rendering: as soon as hydrate finishes decoding a chunk
-          // (~65k polygons), it calls back so we can append those layers to the
-          // group's slice and let the user see partial coverage while the rest
-          // of the decode + transfer is still running.
+          /**
+           * Progressive rendering: as soon as hydrate finishes decoding a chunk
+           * (~65k polygons), it calls back so we can append those layers to the
+           * group's slice and let the user see partial coverage while the rest
+           * of the decode + transfer is still running.
+           */
           onChunk: isLodJob
             ? undefined
             : (chunkLayers, meta) => {

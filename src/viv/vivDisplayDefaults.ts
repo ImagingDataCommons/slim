@@ -104,7 +104,7 @@ export function orthographicZoomLimits(
   const sh = Math.max(1, slideH)
   const fitZ = Math.log2(Math.min(w / sw, h / sh))
   const n = Math.max(1, pyramidLevelCount)
-  // ~one orthographic zoom step per pyramid level toward full-res, then room for magnifying past native tile z=0.
+  /** ~one orthographic zoom step per pyramid level toward full-res, then room for magnifying past native tile z=0. */
   return {
     minZoom: fitZ - 2,
     maxZoom: fitZ + Math.max(0, n - 1) + 6,
