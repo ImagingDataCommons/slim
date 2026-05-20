@@ -10,6 +10,6 @@ From the DMV repo: `bun link`. From `slim/`: `bun link dicom-microscopy-viewer`,
 
 ## Limitations (v1)
 
-- 16-bit SM images only; uses private `opticalPaths` access on `VolumeImageViewer`.
-- **Microscopy Bulk Simple Annotations** are drawn via Deck.gl (`PathLayer` / `ScatterplotLayer`) using the same decode path as OpenLayers (`dmv.bulkSimpleAnnotations`, `dmv.annotation.fetchGraphicData`). All instances for matching `ReferencedSeriesSequence` load at once (no pan-based reload yet). No TID1500 SR, SEG, optical-path sidebar, or presentation states in Viv.
+- **8- and 16-bit** SM images; monochrome and RGB (`SamplesPerPixel` 1 or 3). Uses private `opticalPaths` access on `VolumeImageViewer`.
+- **Microscopy Bulk Simple Annotations** are drawn via Deck.gl (`PathLayer` / `ScatterplotLayer`) using the same decode path as OpenLayers (`dmv.bulkSimpleAnnotations`, `dmv.annotation.fetchGraphicData`). Large polygon groups use viewport LOD (centroids when zoomed out, paths when zoomed in). Geometry loads when a group is toggled visible. No TID1500 SR, SEG, optical-path sidebar, or presentation states in Viv.
 - Intended as a rendering experiment alongside the default `SlideViewer`.

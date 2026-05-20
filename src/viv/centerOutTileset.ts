@@ -209,11 +209,16 @@ function centerOutGetTile(
   return tile
 }
 
-;(
-  Tile2DHeader.prototype as unknown as { _loadData: typeof centerOutLoadData }
-)._loadData = centerOutLoadData
-;(
-  CenterOutTileset2D.prototype as unknown as {
-    _getTile: typeof centerOutGetTile
-  }
-)._getTile = centerOutGetTile
+let centerOutTilesetPrototypePatched = false
+
+if (!centerOutTilesetPrototypePatched) {
+  ;(
+    Tile2DHeader.prototype as unknown as { _loadData: typeof centerOutLoadData }
+  )._loadData = centerOutLoadData
+  ;(
+    CenterOutTileset2D.prototype as unknown as {
+      _getTile: typeof centerOutGetTile
+    }
+  )._getTile = centerOutGetTile
+  centerOutTilesetPrototypePatched = true
+}
