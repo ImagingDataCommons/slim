@@ -253,16 +253,16 @@ export function computeVivBulkCentroidRadiusPixels(options: {
   const highResGate = deckZoomHighResGate()
 
   const t = smoothstep(fitZ, highResGate, deckZoom)
-  const floorPx = 0.35 + t * 2.0
-  const ceilPx = 0.55 + t * 9.45
+  const floorPx = 0.12 + t * 1.4
+  const ceilPx = 0.22 + t * 6.5
 
   let radiusPx = Math.min(ceilPx, Math.max(floorPx, radiusFromPhysics))
 
   if (deckZoom < fitZ) {
-    radiusPx *= 2 ** (deckZoom - fitZ)
+    radiusPx *= 0.75 * 2 ** (deckZoom - fitZ)
   }
 
-  return Math.max(0.3, Math.min(10, radiusPx))
+  return Math.max(0.1, Math.min(6, radiusPx))
 }
 
 /** IDC cyclic IF demo (Lin et al.) — channels 8–11 per viv-dicomweb-test. */

@@ -40,6 +40,7 @@ import {
   detachVivBulkOverlayLayerData,
   hydrateVivBulkGroupLayerSlice,
   loadBulkAnnotationMetadataAndJobs,
+  readFinestPyramidPixelSpacingMm,
   rebuildVivBulkLayersForViewport,
   type VivBulkAnnotationCatalogPayload,
   type VivBulkAnnotationLayerSlice,
@@ -64,6 +65,7 @@ import {
 import {
   buildVivDisplayOptions,
   computeOrthographicFitViewState,
+  computeVivBulkCentroidRadiusPixels,
   orthographicZoomLimits,
 } from './vivDisplayDefaults'
 
@@ -111,6 +113,14 @@ function isBulkVivCenterLayerId(layerId: string): boolean {
   return /-centers(?:-\d+)?$/.test(layerId)
 }
 
+type BulkScatterRadiusContext = {
+  pixelSpacingMm: [number, number] | null
+  viewportWidth: number
+  viewportHeight: number
+  slideWidth: number
+  slideHeight: number
+}
+
 type StyledLayerCacheEntry = {
   sourceLayers: Layer[]
   modelMatrix: Matrix4 | null
@@ -132,6 +142,9 @@ function buildStyledBulkOverlayLayers(
   defaultStyles: Record<string, { opacity: number; color: number[] }>,
   modelMatrix: Matrix4 | null,
   cache: Map<string, StyledLayerCacheEntry>,
+  deckZoom: number,
+  readDeckZoom: () => number,
+  radiusContext: BulkScatterRadiusContext | null,
 ): Layer[] {
   const out: Layer[] = []
   for (const uid of visibleUIDs) {
@@ -145,8 +158,13 @@ function buildStyledBulkOverlayLayers(
         color: [220, 60, 60],
       }
     const sk = bulkStyleKey(uid, st)
+    const hasScatterMarkers = slice.layers.some((layer) => {
+      const lid = String(layer.id)
+      return isBulkVivPointLayerId(lid) || isBulkVivCenterLayerId(lid)
+    })
     const cached = cache.get(uid)
     if (
+      !hasScatterMarkers &&
       cached != null &&
       cached.sourceLayers === slice.layers &&
       cached.modelMatrix === modelMatrix &&
@@ -174,9 +192,23 @@ function buildStyledBulkOverlayLayers(
           }),
         )
       } else if (isBulkVivPointLayerId(lid) || isBulkVivCenterLayerId(lid)) {
+        const lodOverview = isBulkVivCenterLayerId(lid)
         uidStyled.push(
           (layer as ScatterplotLayer).clone({
             getFillColor: rgba,
+            getRadius: () =>
+              computeVivBulkCentroidRadiusPixels({
+                deckZoom: readDeckZoom(),
+                pixelSpacingMm: radiusContext?.pixelSpacingMm ?? null,
+                lodOverview,
+                viewportWidth: radiusContext?.viewportWidth,
+                viewportHeight: radiusContext?.viewportHeight,
+                slideWidth: radiusContext?.slideWidth,
+                slideHeight: radiusContext?.slideHeight,
+              }),
+            updateTriggers: {
+              getRadius: deckZoom,
+            },
             ...matrixProps,
           }),
         )
@@ -186,12 +218,14 @@ function buildStyledBulkOverlayLayers(
         )
       }
     }
-    cache.set(uid, {
-      sourceLayers: slice.layers,
-      modelMatrix,
-      styleKey: sk,
-      result: uidStyled,
-    })
+    if (!hasScatterMarkers) {
+      cache.set(uid, {
+        sourceLayers: slice.layers,
+        modelMatrix,
+        styleKey: sk,
+        result: uidStyled,
+      })
+    }
     out.push(...uidStyled)
   }
   for (const uid of cache.keys()) {
@@ -225,6 +259,40 @@ const EMPTY_BULK_GROUP_STYLES: Record<
 > = {}
 
 type ViewState = { target: [number, number, number]; zoom: number }
+
+type ViewportRebuildAnchor = {
+  panX: number
+  panY: number
+  zoom: number
+}
+
+/** Center-marker LOD: skip decode when zoom moved but pan did not meaningfully change. */
+function shouldRebuildCentersViewport(options: {
+  last: ViewportRebuildAnchor | null
+  vs: ViewState
+  slideWorldW: number
+  slideWorldH: number
+}): boolean {
+  const { last, vs, slideWorldW, slideWorldH } = options
+  if (last == null) {
+    return true
+  }
+  if (Math.abs(vs.zoom - last.zoom) > 1e-5) {
+    return false
+  }
+  const worldPerPx = 2 ** -vs.zoom
+  const minPanWorld = Math.max(
+    48 * worldPerPx,
+    Math.max(slideWorldW, slideWorldH) * 2e-5,
+  )
+  const dx = vs.target[0] - last.panX
+  const dy = vs.target[1] - last.panY
+  return dx * dx + dy * dy >= minPanWorld * minPanWorld
+}
+
+function anchorFromViewState(vs: ViewState): ViewportRebuildAnchor {
+  return { panX: vs.target[0], panY: vs.target[1], zoom: vs.zoom }
+}
 
 /**
  * Viv + Deck.gl viewport for DICOM SM (proof-of-concept).
@@ -371,6 +439,10 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
   visibleBulkUidsRef.current = visibleBulkAnnotationGroupUIDs
   const slicesByUidRef = useRef<Record<string, VivBulkAnnotationLayerSlice>>({})
   const styledOverlayCacheRef = useRef(new Map<string, StyledLayerCacheEntry>())
+  /** Tracks centers ↔ paths LOD; rebuild geometry only when this flips, not on every zoom step. */
+  const bulkLodHighResRef = useRef<boolean | null>(null)
+  /** Last viewport geometry rebuild; used to ignore zoom-induced target drift. */
+  const lastViewportRebuildRef = useRef<ViewportRebuildAnchor | null>(null)
 
   const [size, setSize] = useState({ width: 100, height: 100 })
   const [baseLayer, setBaseLayer] = useState<Layer | null>(null)
@@ -381,6 +453,16 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     Record<string, { opacity: number; color: number[] }>
   >({})
   slicesByUidRef.current = bulkSlicesByUid
+
+  const [loading, setLoading] = useState(true)
+  const [viewState, setViewState] = useState<ViewState>({
+    target: [0, 0, 0],
+    zoom: -6,
+  })
+  const sizeRef = useRef(size)
+  sizeRef.current = size
+  const viewStateRef = useRef(viewState)
+  viewStateRef.current = viewState
 
   const runBulkViewportRebuildForGroup = useCallback(
     (uid: string, options?: { quiet?: boolean }) => {
@@ -531,6 +613,9 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           if (!quiet) {
             markGroupLoadDone(uid)
           }
+          lastViewportRebuildRef.current = anchorFromViewState(
+            viewStateRef.current,
+          )
         })
         .catch((e) => {
           vivBulkAnnDebug('viewport:LOD viewport rebuild failed', {
@@ -541,43 +626,6 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     },
     [markGroupLoadDone, reportGroupLoad],
   )
-
-  const annLayers = useMemo((): Layer[] => {
-    return buildStyledBulkOverlayLayers(
-      bulkSlicesByUid,
-      visibleBulkAnnotationGroupUIDs,
-      bulkAnnotationGroupStyles,
-      bulkDefaultStyles,
-      slideMatrixRef.current,
-      styledOverlayCacheRef.current,
-    )
-  }, [
-    bulkSlicesByUid,
-    visibleBulkAnnotationGroupUIDs,
-    bulkAnnotationGroupStyles,
-    bulkDefaultStyles,
-  ])
-  const layers = useMemo((): Layer[] => {
-    const t0 = vivBulkAnnNow()
-    const out = baseLayer !== null ? [baseLayer, ...annLayers] : []
-    if (vivBulkAnnVerboseProgress() && annLayers.length > 0) {
-      vivBulkAnnDebug('deck:layers useMemo', {
-        base: baseLayer != null ? 1 : 0,
-        overlayLayers: annLayers.length,
-        ms: Math.round((vivBulkAnnNow() - t0) * 100) / 100,
-      })
-    }
-    return out
-  }, [baseLayer, annLayers])
-  const [loading, setLoading] = useState(true)
-  const [viewState, setViewState] = useState<ViewState>({
-    target: [0, 0, 0],
-    zoom: -6,
-  })
-  const sizeRef = useRef(size)
-  sizeRef.current = size
-  const viewStateRef = useRef(viewState)
-  viewStateRef.current = viewState
 
   const createMultiscaleFromLoader = useCallback(
     async (dicomLoader: DicomLoader): Promise<MultiscaleBuild> => {
@@ -676,6 +724,8 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     bulkViewportRebuildGenRef.current = {}
     bulkHydrateGenRef.current += 1
     bulkHydrateInFlightRef.current.clear()
+    bulkLodHighResRef.current = null
+    lastViewportRebuildRef.current = null
     styledOverlayCacheRef.current.clear()
     catalogCbRef.current?.(null)
     clearBulkLoadStatus()
@@ -791,6 +841,8 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       cancelled = true
       bulkHydrateGenRef.current += 1
       bulkHydrateInFlightRef.current.clear()
+      bulkLodHighResRef.current = null
+      lastViewportRebuildRef.current = null
       terminateCenterOutAnnotationOrderWorker()
       clearBulkLoadStatus()
       dicomLoaderRef.current?.dispose()
@@ -880,6 +932,8 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       bulkGeometryRef.current = null
       bulkGroupJobsRef.current = {}
       bulkHydrateInFlightRef.current.clear()
+      bulkLodHighResRef.current = null
+      lastViewportRebuildRef.current = null
       catalogCbRef.current?.(null)
       clearBulkLoadStatus()
       return
@@ -1284,21 +1338,92 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     })
   }, [visibleBulkAnnotationGroupUIDs, patchBulkLoadStatus])
 
-  /** LOD: viewport-culled layers only; debounced pan/zoom rebuild. */
+  /** LOD mode flip (centers ↔ paths): rebuild geometry immediately. */
   useEffect(() => {
     if (!loadBulkAnnotations || baseLayer === null) {
       return
     }
-    const panX = viewState.target[0]
-    const panY = viewState.target[1]
-    const zoom = viewState.zoom
+    const geom = bulkGeometryRef.current
+    if (geom == null) {
+      return
+    }
+    const highRes = computeVivBulkHighResolution({
+      deckZoom: viewState.zoom,
+      pyramid: geom.pyramid,
+    })
+    const prev = bulkLodHighResRef.current
+    bulkLodHighResRef.current = highRes
+    if (prev === null || prev === highRes) {
+      return
+    }
+    vivBulkAnnDebug('viewport:LOD mode flip rebuild', {
+      prevHighRes: prev,
+      highRes,
+      zoom: viewState.zoom,
+    })
+    for (const uid of visibleBulkAnnotationGroupUIDs) {
+      if (bulkGraphicCacheByUidRef.current[uid] == null) {
+        continue
+      }
+      runBulkViewportRebuildForGroup(uid, { quiet: true })
+    }
+  }, [
+    loadBulkAnnotations,
+    baseLayer,
+    visibleBulkAnnotationGroupUIDs,
+    runBulkViewportRebuildForGroup,
+    viewState.zoom,
+  ])
+
+  /** Viewport cull rebuild after pan/resize (center markers keep geometry; radius follows zoom). */
+  useEffect(() => {
+    if (!loadBulkAnnotations || baseLayer === null) {
+      return
+    }
+    const scheduledPan = viewState.target
     const vw = size.width
     const vh = size.height
     const timer = window.setTimeout(() => {
-      vivBulkAnnDebug('viewport:LOD debounced rebuild', {
-        panX,
-        panY,
-        zoom,
+      const vs = viewStateRef.current
+      const sr = slideRef.current
+      const geom = bulkGeometryRef.current
+      if (sr == null || geom == null) {
+        return
+      }
+      const highRes = computeVivBulkHighResolution({
+        deckZoom: vs.zoom,
+        pyramid: geom.pyramid,
+      })
+      if (!highRes) {
+        const last = lastViewportRebuildRef.current
+        if (
+          !shouldRebuildCentersViewport({
+            last,
+            vs,
+            slideWorldW: sr.worldW,
+            slideWorldH: sr.worldH,
+          })
+        ) {
+          if (last != null && Math.abs(vs.zoom - last.zoom) > 1e-5) {
+            lastViewportRebuildRef.current = anchorFromViewState(vs)
+          }
+          vivBulkAnnDebug('viewport:LOD skip pan rebuild (zoom-only centers)', {
+            scheduledPanX: scheduledPan[0],
+            scheduledPanY: scheduledPan[1],
+            panX: vs.target[0],
+            panY: vs.target[1],
+            zoom: vs.zoom,
+            last,
+          })
+          return
+        }
+      }
+      vivBulkAnnDebug('viewport:LOD debounced pan rebuild', {
+        scheduledPanX: scheduledPan[0],
+        scheduledPanY: scheduledPan[1],
+        panX: vs.target[0],
+        panY: vs.target[1],
+        highRes,
         vw,
         vh,
         groups: visibleBulkAnnotationGroupUIDs.size,
@@ -1317,14 +1442,102 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
   }, [
     loadBulkAnnotations,
     baseLayer,
-    viewState.target[0],
-    viewState.target[1],
-    viewState.zoom,
+    viewState.target,
     size.width,
     size.height,
     visibleBulkAnnotationGroupUIDs,
     runBulkViewportRebuildForGroup,
   ])
+
+  /** Full path mode: debounced zoom rebuild for viewport culling. */
+  useEffect(() => {
+    if (!loadBulkAnnotations || baseLayer === null) {
+      return
+    }
+    const geom = bulkGeometryRef.current
+    if (geom == null) {
+      return
+    }
+    const highRes = computeVivBulkHighResolution({
+      deckZoom: viewState.zoom,
+      pyramid: geom.pyramid,
+    })
+    if (!highRes) {
+      return
+    }
+    const zoom = viewState.zoom
+    const timer = window.setTimeout(() => {
+      vivBulkAnnDebug('viewport:LOD debounced zoom rebuild (paths)', {
+        zoom,
+        groups: visibleBulkAnnotationGroupUIDs.size,
+      })
+      for (const uid of visibleBulkAnnotationGroupUIDs) {
+        if (bulkGraphicCacheByUidRef.current[uid] == null) {
+          continue
+        }
+        runBulkViewportRebuildForGroup(uid, { quiet: true })
+      }
+    }, VIV_BULK_VIEWPORT_REBUILD_MS)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [
+    loadBulkAnnotations,
+    baseLayer,
+    viewState.zoom,
+    visibleBulkAnnotationGroupUIDs,
+    runBulkViewportRebuildForGroup,
+  ])
+
+  const annLayers = useMemo((): Layer[] => {
+    const geom = bulkGeometryRef.current
+    const sr = slideRef.current
+    const radiusContext: BulkScatterRadiusContext | null =
+      sr != null
+        ? {
+            pixelSpacingMm:
+              geom != null
+                ? readFinestPyramidPixelSpacingMm(geom.pyramid)
+                : null,
+            viewportWidth: size.width,
+            viewportHeight: size.height,
+            slideWidth: sr.worldW,
+            slideHeight: sr.worldH,
+          }
+        : null
+    return buildStyledBulkOverlayLayers(
+      bulkSlicesByUid,
+      visibleBulkAnnotationGroupUIDs,
+      bulkAnnotationGroupStyles,
+      bulkDefaultStyles,
+      slideMatrixRef.current,
+      styledOverlayCacheRef.current,
+      viewState.zoom,
+      () => viewStateRef.current.zoom,
+      radiusContext,
+    )
+  }, [
+    bulkSlicesByUid,
+    visibleBulkAnnotationGroupUIDs,
+    bulkAnnotationGroupStyles,
+    bulkDefaultStyles,
+    viewState.zoom,
+    size.width,
+    size.height,
+  ])
+  const layers = useMemo((): Layer[] => {
+    const t0 = vivBulkAnnNow()
+    const out = baseLayer !== null ? [baseLayer, ...annLayers] : []
+    if (vivBulkAnnVerboseProgress() && annLayers.length > 0) {
+      vivBulkAnnDebug('deck:layers useMemo', {
+        base: baseLayer != null ? 1 : 0,
+        overlayLayers: annLayers.length,
+        ms: Math.round((vivBulkAnnNow() - t0) * 100) / 100,
+      })
+    }
+    return out
+  }, [baseLayer, annLayers])
 
   const sp = slideRef.current
   const orthoZoomClamp =
