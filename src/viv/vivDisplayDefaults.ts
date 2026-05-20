@@ -150,6 +150,9 @@ export function isVivAtFinestPyramidTile(
  */
 export const VIV_BULK_CENTROID_DIAMETER_MM = 5e-6
 
+/** Multiplier on computed scatter radius (overview + point groups). */
+export const VIV_BULK_CENTROID_RADIUS_SCALE = 0.55
+
 /** Heuristic: WSI `PixelSpacing` values above this are usually µm, not mm. */
 const PIXEL_SPACING_LIKELY_UM_THRESHOLD_MM = 0.02
 
@@ -212,11 +215,12 @@ export function computeVivBulkCentroidRadiusPixels(options: {
     slideWidth,
     slideHeight,
   } = options
-  const minPx = options.minPx ?? 1
-  const maxPx = options.maxPx ?? 8
+  const minPx = options.minPx ?? 0.75
+  const maxPx = options.maxPx ?? 5
+  const scale = VIV_BULK_CENTROID_RADIUS_SCALE
 
   if (!Number.isFinite(deckZoom)) {
-    return lodOverview ? 0.45 : minPx
+    return (lodOverview ? 0.35 : minPx) * scale
   }
 
   let radiusFromPhysics = minPx
@@ -232,7 +236,7 @@ export function computeVivBulkCentroidRadiusPixels(options: {
   }
 
   if (!lodOverview) {
-    return Math.min(maxPx, Math.max(minPx, radiusFromPhysics))
+    return Math.min(maxPx, Math.max(minPx, radiusFromPhysics * scale))
   }
 
   const hasViewport =
@@ -244,7 +248,7 @@ export function computeVivBulkCentroidRadiusPixels(options: {
     slideHeight > 0
 
   if (!hasViewport) {
-    return Math.min(10, Math.max(0.35, radiusFromPhysics))
+    return Math.min(4, Math.max(0.25, radiusFromPhysics * scale))
   }
 
   const vw = Math.max(1, viewportWidth)
@@ -253,17 +257,16 @@ export function computeVivBulkCentroidRadiusPixels(options: {
   const highResGate = deckZoomHighResGate()
 
   const t = smoothstep(fitZ, highResGate, deckZoom)
-  const floorPx = 0.12 + t * 1.4
-  const ceilPx = 0.22 + t * 6.5
+  const floorPx = 0.08 + t * 0.65
+  const ceilPx = 0.14 + t * 3.2
 
-  let radiusPx = Math.min(ceilPx, Math.max(floorPx, radiusFromPhysics))
+  let radiusPx = Math.min(ceilPx, Math.max(floorPx, radiusFromPhysics * scale))
 
   if (deckZoom < fitZ) {
     radiusPx *= 0.75 * 2 ** (deckZoom - fitZ)
   }
 
-  // Keep at least ~2px so Deck picking / hover tooltips can hit overview centroids.
-  return Math.max(2, Math.min(6, radiusPx))
+  return Math.max(1, Math.min(3.5, radiusPx))
 }
 
 /** IDC cyclic IF demo (Lin et al.) — channels 8–11 per viv-dicomweb-test. */

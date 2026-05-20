@@ -215,7 +215,7 @@ function buildStyledBulkOverlayLayers(
                 slideWidth: radiusContext?.slideWidth,
                 slideHeight: radiusContext?.slideHeight,
               }),
-            radiusMinPixels: 3,
+            radiusMinPixels: 1,
             updateTriggers: {
               getRadius: deckZoom,
             },
