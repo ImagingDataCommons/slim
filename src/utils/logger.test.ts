@@ -1,6 +1,6 @@
 import { Logger, LogLevel } from './logger'
 
-// Mock globalThis.config (same object as window.config in browsers)
+/** Mock globalThis.config (same object as window.config in browsers). */
 const mockGlobalConfig = (config: unknown): void => {
   Object.defineProperty(globalThis, 'config', {
     value: config,

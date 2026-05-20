@@ -17,7 +17,7 @@ function readStored(): boolean {
     if (v === 'true') {
       return true
     }
-    // v3 missing or invalid: default ICC on. Do not inherit v2/v1 false (product default).
+    /** v3 missing or invalid: default ICC on. Do not inherit v2/v1 false (product default). */
     window.localStorage.removeItem(LEGACY_V1_KEY)
     window.localStorage.removeItem(LEGACY_V2_KEY)
     window.localStorage.setItem(STORAGE_KEY, 'true')

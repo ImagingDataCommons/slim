@@ -1,5 +1,7 @@
-// Ported from https://github.com/jmuhlich/viv-dicomweb-test (dicomweb.js).
-// Adapts dicom-microscopy-viewer tile loaders to Viv PixelSource.
+/**
+ * Ported from https://github.com/jmuhlich/viv-dicomweb-test (dicomweb.js).
+ * Adapts dicom-microscopy-viewer tile loaders to Viv PixelSource.
+ */
 
 import { SIGNAL_ABORTED } from '@vivjs/loaders'
 // skipcq: JS-C1003
@@ -975,8 +977,10 @@ export class DicomLoader {
       const signalPruned = signal?.aborted === true
       const cancelled =
         bridged || signalPruned || isVivDicomTileNetworkCancellation(e)
-      // MultiscaleImageLayer only treats __vivSignalAborted as cancellation; map all
-      // deck→dicomweb prune failures to that (see getTileData in @vivjs/layers).
+      /**
+       * MultiscaleImageLayer only treats __vivSignalAborted as cancellation; map all
+       * deck→dicomweb prune failures to that (see getTileData in @vivjs/layers).
+       */
       if (cancelled) {
         throw SIGNAL_ABORTED
       }

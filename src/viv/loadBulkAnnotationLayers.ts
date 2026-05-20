@@ -989,9 +989,11 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
   if (deckSlices.length === 0) {
     return null
   }
-  // OL slow path doesn't have a natural chunk granularity (features are already
-  // fully built), so emit the whole batch as a single chunk to keep the viewport
-  // accumulation logic uniform with the fast path.
+  /**
+   * OL slow path doesn't have a natural chunk granularity (features are already
+   * fully built), so emit the whole batch as a single chunk to keep the viewport
+   * accumulation logic uniform with the fast path.
+   */
   if (onChunk !== undefined) {
     vivBulkAnnPhase('hydrate:slow path chunk emit', {
       annotationGroupUID,
@@ -1334,8 +1336,10 @@ async function buildPathLayersFromGraphicData(options: {
     220,
   ]
   const pathType: 'loop' | 'open' = graphicType === 'POLYGON' ? 'loop' : 'open'
-  // PathLayer prop shape kept identical to non-streaming path (positionFormat XY + _pathType so
-  // Deck skips normalizePath on millions of vertices).
+  /**
+   * PathLayer prop shape kept identical to non-streaming path (positionFormat XY + _pathType so
+   * Deck skips normalizePath on millions of vertices).
+   */
   const baseProps = {
     positionFormat: 'XY' as const,
     getPath: (d: PathRowFlat) => d.pathFlat,
@@ -1397,8 +1401,10 @@ async function buildPathLayersFromGraphicData(options: {
         chunkDecodeMs,
       })
       await onChunk([layer], { chunkIndex, estimatedTotalChunks })
-      // Yield between chunks so React can commit and Deck can paint before
-      // the next chunk's decode work occupies the main thread.
+      /**
+       * Yield between chunks so React can commit and Deck can paint before
+       * the next chunk's decode work occupies the main thread.
+       */
       if (!final) {
         await yieldToBrowser()
       }
@@ -1843,7 +1849,7 @@ function _buildChunkedVivPathLayersFromFlat(
   if (pathRows.length === 0) {
     return []
   }
-  // Flat buffers pack [x,y,…]; default PathLayer assumes XYZ strides (wrong length / garbage).
+  /** Flat buffers pack [x,y,…]; default PathLayer assumes XYZ strides (wrong length / garbage). */
   const baseProps = {
     positionFormat: 'XY' as const,
     getPath: (d: PathRowFlat) => d.pathFlat,
