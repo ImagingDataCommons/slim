@@ -1,3 +1,4 @@
+import type { MenuProps } from 'antd'
 import { Layout, Menu, Select, Tag } from 'antd'
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
@@ -65,6 +66,26 @@ const findSeriesSlide = (
       return uid === seriesInstanceUID
     })
   })
+}
+
+/** Non-interactive menu row for custom panel content (avoids invalid DOM props). */
+const menuPanelItemStyle: React.CSSProperties = {
+  height: 'auto',
+  cursor: 'default',
+  padding: 0,
+  lineHeight: 'normal',
+}
+
+function menuPanelItem(
+  key: string,
+  label: ReactNode,
+): NonNullable<MenuProps['items']>[number] {
+  return {
+    key,
+    label,
+    disabled: true,
+    style: menuPanelItemStyle,
+  }
 }
 
 /** Viv path: main viewport + slim right rail (classic viewer uses ~300px sider). */
@@ -433,6 +454,65 @@ function ParametrizedSlideViewer({
         paddingBottom: '7px' as const,
       }
 
+      const vivAnnotationGroupChildren: NonNullable<MenuProps['items']> = [
+        menuPanelItem(
+          'bulk-load-indicator',
+          <div style={padSubmenuBlock}>
+            <VivBulkAnnotationLoadIndicator
+              status={vivBulkLoadStatus}
+              metadataByGroupUID={vivBulkCatalog?.metadataByGroupUID}
+              variant="panel"
+            />
+          </div>,
+        ),
+      ]
+      if (
+        vivBulkCatalog === null &&
+        vivBulkLoadStatus.metadataPhase !== 'loading'
+      ) {
+        vivAnnotationGroupChildren.push(
+          menuPanelItem(
+            'loading-hint',
+            <div style={padSubmenuBlock}>
+              <p
+                style={{
+                  fontSize: 11,
+                  lineHeight: 1.45,
+                  margin: 0,
+                  color: 'rgba(0,0,0,0.75)',
+                }}
+              >
+                Loading annotation metadata and geometry…
+              </p>
+            </div>,
+          ),
+        )
+      } else if (
+        vivBulkCatalog != null &&
+        vivBulkCatalog.annotationGroups.length === 0
+      ) {
+        vivAnnotationGroupChildren.push(
+          menuPanelItem(
+            'empty-hint',
+            <div style={padSubmenuBlock}>
+              <p style={{ fontSize: 11, lineHeight: 1.45, margin: 0 }}>
+                No bulk annotation groups for this slide were returned (or all
+                were skipped). Check the browser console (filter by{' '}
+                <code style={{ fontSize: 10 }}>metadata:</code> or{' '}
+                <code style={{ fontSize: 10 }}>hydrate:</code>) for details.
+              </p>
+            </div>,
+          ),
+        )
+      } else if (vivAnnotationGroupListSection != null) {
+        vivAnnotationGroupChildren.push(
+          menuPanelItem(
+            'annotation-groups-list',
+            vivAnnotationGroupListSection,
+          ),
+        )
+      }
+
       const vivAnnotationGroupPanel: ReactNode = (
         <Menu
           mode="inline"
@@ -445,44 +525,14 @@ function ParametrizedSlideViewer({
             background: 'none',
             marginTop: 8,
           }}
-        >
-          <Menu.SubMenu key="annotation-groups" title="Annotation Groups">
-            <div style={padSubmenuBlock}>
-              <VivBulkAnnotationLoadIndicator
-                status={vivBulkLoadStatus}
-                metadataByGroupUID={vivBulkCatalog?.metadataByGroupUID}
-                variant="panel"
-              />
-            </div>
-            {vivBulkCatalog === null &&
-            vivBulkLoadStatus.metadataPhase !== 'loading' ? (
-              <div style={padSubmenuBlock}>
-                <p
-                  style={{
-                    fontSize: 11,
-                    lineHeight: 1.45,
-                    margin: 0,
-                    color: 'rgba(0,0,0,0.75)',
-                  }}
-                >
-                  Loading annotation metadata and geometry…
-                </p>
-              </div>
-            ) : vivBulkCatalog != null &&
-              vivBulkCatalog.annotationGroups.length === 0 ? (
-              <div style={padSubmenuBlock}>
-                <p style={{ fontSize: 11, lineHeight: 1.45, margin: 0 }}>
-                  No bulk annotation groups for this slide were returned (or all
-                  were skipped). Check the browser console (filter by{' '}
-                  <code style={{ fontSize: 10 }}>metadata:</code> or{' '}
-                  <code style={{ fontSize: 10 }}>hydrate:</code>) for details.
-                </p>
-              </div>
-            ) : (
-              vivAnnotationGroupListSection
-            )}
-          </Menu.SubMenu>
-        </Menu>
+          items={[
+            {
+              key: 'annotation-groups',
+              label: 'Annotation Groups',
+              children: vivAnnotationGroupChildren,
+            },
+          ]}
+        />
       )
 
       viewer = vivChrome(
@@ -660,14 +710,49 @@ function Viewer(props: ViewerProps): JSX.Element | null {
     selectedSeriesInstanceUID = volumeInstances[0].SeriesInstanceUID
   }
 
-  let clinicalTrialMenu: React.ReactNode
-  if (refImage.ClinicalTrialSponsorName != null) {
-    clinicalTrialMenu = (
-      <Menu.SubMenu key="clinical-trial" title="Clinical Trial">
-        <ClinicalTrial metadata={refImage} />
-      </Menu.SubMenu>
-    )
-  }
+  const viewerSidebarItems: MenuProps['items'] = [
+    {
+      key: 'patient',
+      label: 'Patient',
+      children: [
+        menuPanelItem('patient-content', <Patient metadata={refImage} />),
+      ],
+    },
+    {
+      key: 'study',
+      label: 'Study',
+      children: [menuPanelItem('study-content', <Study metadata={refImage} />)],
+    },
+    ...(refImage.ClinicalTrialSponsorName != null
+      ? [
+          {
+            key: 'clinical-trial',
+            label: 'Clinical Trial',
+            children: [
+              menuPanelItem(
+                'clinical-trial-content',
+                <ClinicalTrial metadata={refImage} />,
+              ),
+            ],
+          },
+        ]
+      : []),
+    {
+      key: 'slides',
+      label: 'Slides',
+      children: [
+        menuPanelItem(
+          'slides-list',
+          <SlideList
+            clients={props.clients}
+            metadata={slides}
+            selectedSeriesInstanceUID={selectedSeriesInstanceUID}
+            onSeriesSelection={handleSeriesSelection}
+          />,
+        ),
+      ],
+    },
+  ]
 
   return (
     <Layout style={{ height: '100%' }} hasSider>
@@ -686,23 +771,8 @@ function Viewer(props: ViewerProps): JSX.Element | null {
           defaultOpenKeys={['patient', 'study', 'clinical-trial', 'slides']}
           style={{ height: '100%' }}
           inlineIndent={14}
-        >
-          <Menu.SubMenu key="patient" title="Patient">
-            <Patient metadata={refImage} />
-          </Menu.SubMenu>
-          <Menu.SubMenu key="study" title="Study">
-            <Study metadata={refImage} />
-          </Menu.SubMenu>
-          {clinicalTrialMenu}
-          <Menu.SubMenu key="slides" title="Slides">
-            <SlideList
-              clients={props.clients}
-              metadata={slides}
-              selectedSeriesInstanceUID={selectedSeriesInstanceUID}
-              onSeriesSelection={handleSeriesSelection}
-            />
-          </Menu.SubMenu>
-        </Menu>
+          items={viewerSidebarItems}
+        />
       </Layout.Sider>
 
       <Layout.Content

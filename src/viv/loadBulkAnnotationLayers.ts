@@ -581,6 +581,60 @@ export type VivBulkAnnotationCatalogPayload = {
   defaultStylesByGroupUID: Record<string, { opacity: number; color: number[] }>
 }
 
+/** Parse `viv-bulk-{uid}-paths|pts|centers` layer ids from {@link hydrateVivBulkGroupLayerSlice}. */
+export function bulkGroupUidFromDeckLayerId(layerId: string): string | null {
+  const match = /^viv-bulk-(.+?)-(?:paths|pts|centers)(?:-\d+)?$/.exec(
+    String(layerId),
+  )
+  return match?.[1] ?? null
+}
+
+/** Tooltip fields for a bulk group (OpenLayers {@link SlideViewer} parity). */
+export function vivBulkAnnotationHoverAttributes(
+  annotationGroupUID: string,
+  metadata: dmvNamespace.metadata.MicroscopyBulkSimpleAnnotations,
+): Array<{ name: string; value: string }> {
+  const attributes: Array<{ name: string; value: string }> = []
+  const item = metadata.AnnotationGroupSequence?.find(
+    (seqItem) => seqItem.AnnotationGroupUID === annotationGroupUID,
+  )
+  if (item == null) {
+    return attributes
+  }
+  if (
+    item.AnnotationGroupLabel !== undefined &&
+    item.AnnotationGroupLabel !== ''
+  ) {
+    attributes.push({
+      name: 'Annotation Group Label',
+      value: String(item.AnnotationGroupLabel),
+    })
+  }
+  const categorySeq = item.AnnotationPropertyCategoryCodeSequence
+  if (categorySeq != null && categorySeq.length > 0) {
+    const code = categorySeq[0]
+    attributes.push({
+      name: 'Property category',
+      value:
+        code.CodeMeaning !== undefined && code.CodeMeaning !== ''
+          ? String(code.CodeMeaning)
+          : String(code.CodeValue ?? ''),
+    })
+  }
+  const typeSeq = item.AnnotationPropertyTypeCodeSequence
+  if (typeSeq != null && typeSeq.length > 0) {
+    const code = typeSeq[0]
+    attributes.push({
+      name: 'Property type',
+      value:
+        code.CodeMeaning !== undefined && code.CodeMeaning !== ''
+          ? String(code.CodeMeaning)
+          : String(code.CodeValue ?? ''),
+    })
+  }
+  return attributes
+}
+
 /** Deferred work: fetch bulk pixel data + build deck layers when a group is toggled visible (OpenLayers parity). */
 export type VivBulkGroupGeometryJob = {
   annotationGroupUID: string
@@ -1200,9 +1254,11 @@ async function buildPointLayersFromGraphicData(options: {
         ? `${idPrefix}-pts`
         : `${idPrefix}-pts-${pointChunkIndex}`,
       data: pointChunk,
+      pickable: true,
       getPosition: (d) => d,
       getFillColor: () => rgba,
       getRadius: () => centerRadiusPx,
+      radiusMinPixels: 3,
       radiusUnits: 'pixels',
     }) as unknown as Layer
     allLayers.push(layer)
@@ -1562,12 +1618,12 @@ async function buildPathLayersFromGraphicData(options: {
 }
 
 /**
- * Decode only annotations visible in `viewportBounds` from cached bulk data.
- * Replaces prior layers on pan/zoom so GPU memory stays bounded by viewport size.
+ * Decode annotations from cached bulk data. When `viewportBounds` is set, only
+ * annotations in view are decoded; when omitted, all annotations are decoded once.
  */
 export async function rebuildVivBulkLayersForViewport(options: {
   cache: VivBulkGraphicCache
-  viewportBounds: DeckViewportBounds
+  viewportBounds?: DeckViewportBounds
   mode: 'centers' | 'full'
   deckZoom: number
   viewportWidth: number
@@ -1804,6 +1860,7 @@ function buildChunkedVivPathLayers(
       new PathLayer<PathRow>({
         id: `${idPrefix}-paths`,
         data: pathRows,
+        pickable: true,
         getPath: (d) => d.path,
         getColor: () => rgba,
         getWidth: () => 2,
@@ -1824,6 +1881,7 @@ function buildChunkedVivPathLayers(
       new PathLayer<PathRow>({
         id: `${idPrefix}-paths-${chunk}`,
         data,
+        pickable: true,
         getPath: (d) => d.path,
         getColor: () => rgba,
         getWidth: () => 2,
