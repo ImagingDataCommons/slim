@@ -417,6 +417,12 @@ export class DicomLoader {
   }
 
   /**
+   * {@link trimVolumeImageViewerFootprint} runs once per loader cache generation.
+   * Clearing OL tile caches on every {@link getTile} breaks parallel pyramid fetches.
+   */
+  private _openLayersFootprintTrimmed = false
+
+  /**
    * Target ICC setting from app (SlideViewer parity). DMV viewer defaults to ICC on;
    * we sync with toggleICCProfiles + invalidate cached DataTile loaders.
    */
@@ -434,6 +440,29 @@ export class DicomLoader {
    * sorted for stable Viv channel index { c: 0 .. n-1 }.
    */
   private _orderedPathKeys?: string[]
+
+  private readonly _pathIdByChannelIndex = new Map<number, string>()
+
+  /** Frame columns per DICOM pyramid level (index 0 = coarsest). */
+  private _columnsByLevel?: number[]
+
+  private _tileDecodeReady?: Promise<void>
+
+  /**
+   * Decoded tiles keyed by DICOM pyramid level + optical path + tile index.
+   * Speeds zooming back to a previously visited resolution (deck cache is separate).
+   */
+  private readonly _decodedTileCache = new Map<
+    string,
+    {
+      data: Uint8Array | Uint16Array
+      width: number
+      height: number
+      bytes: number
+    }
+  >()
+
+  private _decodedTileCacheBytes = 0
 
   /** Set when the viewer is first built; 8- or 16-bit SM tiles both load as float then convert to Uint16 in getTile. */
   bitsAllocated?: 8 | 16
@@ -462,6 +491,58 @@ export class DicomLoader {
     }
     this._iccTarget = enabled
     this._loaders = undefined
+    this._openLayersFootprintTrimmed = false
+    this._pathIdByChannelIndex.clear()
+    this._columnsByLevel = undefined
+    this._tileDecodeReady = undefined
+    this._clearDecodedTileCache()
+  }
+
+  private _clearDecodedTileCache(): void {
+    this._decodedTileCache.clear()
+    this._decodedTileCacheBytes = 0
+  }
+
+  private _decodedTileCacheKey(
+    level: number,
+    channel: string,
+    x: number,
+    y: number,
+  ): string {
+    return `${level}:${channel}:${x}:${y}`
+  }
+
+  private _rememberDecodedTile(
+    key: string,
+    tile: {
+      data: Uint8Array | Uint16Array
+      width: number
+      height: number
+    },
+  ): void {
+    const bytes = tile.data.byteLength
+    const maxBytes = 384 * 1024 * 1024
+    const prev = this._decodedTileCache.get(key)
+    if (prev !== undefined) {
+      this._decodedTileCacheBytes -= prev.bytes
+      this._decodedTileCache.delete(key)
+    }
+    this._decodedTileCache.set(key, { ...tile, bytes })
+    this._decodedTileCacheBytes += bytes
+    while (
+      this._decodedTileCacheBytes > maxBytes &&
+      this._decodedTileCache.size > 0
+    ) {
+      const oldest = this._decodedTileCache.keys().next().value
+      if (oldest === undefined) {
+        break
+      }
+      const evicted = this._decodedTileCache.get(oldest)
+      if (evicted !== undefined) {
+        this._decodedTileCacheBytes -= evicted.bytes
+      }
+      this._decodedTileCache.delete(oldest)
+    }
   }
 
   /**
@@ -470,6 +551,11 @@ export class DicomLoader {
    */
   dispose(): void {
     this._loaders = undefined
+    this._openLayersFootprintTrimmed = false
+    this._pathIdByChannelIndex.clear()
+    this._columnsByLevel = undefined
+    this._tileDecodeReady = undefined
+    this._clearDecodedTileCache()
     this._opticalPaths = undefined
     this._orderedPathKeys = undefined
     this._shapes = undefined
@@ -494,6 +580,11 @@ export class DicomLoader {
   async warmIccTileLoaders(): Promise<void> {
     this._ensureVivAbortHooks()
     this._loaders = undefined
+    this._openLayersFootprintTrimmed = false
+    this._pathIdByChannelIndex.clear()
+    this._columnsByLevel = undefined
+    this._tileDecodeReady = undefined
+    this._clearDecodedTileCache()
     const keys = await this._ensureOrderedPathKeys()
     const first = keys[0]
     if (first === undefined) {
@@ -721,6 +812,10 @@ export class DicomLoader {
 
   /** Map Viv / @vivjs 0-based channel index to dicom-microscopy-viewer optical path id. */
   async resolveOpticalPathId(vivChannelIndex: number): Promise<string> {
+    const cached = this._pathIdByChannelIndex.get(vivChannelIndex)
+    if (cached !== undefined) {
+      return cached
+    }
     const keys = await this._ensureOrderedPathKeys()
     const id = keys[vivChannelIndex]
     if (id === undefined) {
@@ -728,7 +823,25 @@ export class DicomLoader {
         `Viv channel index ${vivChannelIndex} is out of range (${keys.length} optical paths: ${keys.join(', ')})`,
       )
     }
+    this._pathIdByChannelIndex.set(vivChannelIndex, id)
     return id
+  }
+
+  /** One-time warmup of loader refs + decode layout (avoids per-tile async metadata). */
+  private async _ensureTileDecodeReady(): Promise<void> {
+    if (this._tileDecodeReady !== undefined) {
+      return await this._tileDecodeReady
+    }
+    this._tileDecodeReady = (async () => {
+      const keys = await this._ensureOrderedPathKeys()
+      const first = keys[0]
+      if (first !== undefined) {
+        await this._getLoader(first)
+      }
+      await this._getShapes()
+      await this._getTileSize()
+    })()
+    return await this._tileDecodeReady
   }
 
   private async _getLoader(
@@ -751,12 +864,15 @@ export class DicomLoader {
           return [c, loader]
         }),
       )
+      if (!this._openLayersFootprintTrimmed) {
+        this._trimOpenLayersFootprint()
+        this._openLayersFootprintTrimmed = true
+      }
     }
     const loader = this._loaders[channel]
     if (loader === undefined) {
       throw new Error(`No tile loader for channel "${channel}"`)
     }
-    this._trimOpenLayersFootprint()
     return loader
   }
 
@@ -772,7 +888,9 @@ export class DicomLoader {
       }
       const spp = this.samplesPerPixel ?? 1
       const sizeC = spp === 3 ? 1 : orderedKeys.length
-      this._shapes = first.pyramid.metadata.map((m) => {
+      const meta = first.pyramid.metadata
+      this._columnsByLevel = meta.map((m) => m.Columns)
+      this._shapes = meta.map((m) => {
         const sizeY = m.TotalPixelMatrixRows
         const sizeX = m.TotalPixelMatrixColumns
         if (spp === 3) {
@@ -782,16 +900,6 @@ export class DicomLoader {
       })
     }
     return this._shapes
-  }
-
-  private async _frameLayout(level: number): Promise<{ columns: number }> {
-    const opticalPaths = await this._getOpticalPaths()
-    const orderedKeys = await this._ensureOrderedPathKeys()
-    const meta = opticalPaths[orderedKeys[0] ?? '']?.pyramid.metadata[level]
-    if (meta === undefined) {
-      throw new Error(`Viv path: missing pyramid metadata for level ${level}`)
-    }
-    return { columns: meta.Columns }
   }
 
   async getTile({
@@ -811,7 +919,47 @@ export class DicomLoader {
     width: number
     height: number
   }> {
-    const loader = await this._getLoader(channel)
+    if (signal?.aborted) {
+      throw SIGNAL_ABORTED
+    }
+
+    const cacheKey = this._decodedTileCacheKey(level, channel, x, y)
+    const cached = this._decodedTileCache.get(cacheKey)
+    if (cached !== undefined) {
+      return {
+        data: cached.data,
+        width: cached.width,
+        height: cached.height,
+      }
+    }
+
+    if (this._loaders === undefined) {
+      await this._ensureTileDecodeReady()
+    }
+    const loaders = this._loaders
+    if (loaders === undefined) {
+      throw new Error('DicomLoader: tile loaders not initialized')
+    }
+    const loader = loaders[channel]
+    if (loader === undefined) {
+      throw new Error(`No tile loader for channel "${channel}"`)
+    }
+    const shapes = this._shapes
+    const ts = this._tileSize
+    const columnsByLevel = this._columnsByLevel
+    if (
+      shapes === undefined ||
+      ts === undefined ||
+      columnsByLevel === undefined
+    ) {
+      throw new Error('DicomLoader: pyramid decode layout not initialized')
+    }
+    const shape = shapes[level]
+    const columns = columnsByLevel[level]
+    if (shape === undefined || columns === undefined) {
+      throw new Error(`Viv path: missing pyramid metadata for level ${level}`)
+    }
+
     let raw: Awaited<ReturnType<typeof loader>>
     try {
       raw = await invokeOpenLayersLoaderWithAbortSignal(signal, () =>
@@ -834,9 +982,6 @@ export class DicomLoader {
       }
       throw e
     }
-    const shape = (await this._getShapes())[level]
-    const ts = await this._getTileSize()
-    const { columns } = await this._frameLayout(level)
     const validW = Math.min(ts, shape[2] - x * ts)
     const validH = Math.min(ts, shape[1] - y * ts)
     const spp = this.samplesPerPixel ?? 1
@@ -856,7 +1001,9 @@ export class DicomLoader {
           row * ts * 3,
         )
       }
-      return { data: buf, width: ts, height: ts }
+      const out = { data: buf, width: ts, height: ts }
+      this._rememberDecodedTile(cacheKey, out)
+      return out
     }
 
     if (spp === 3 && bits === 16) {
@@ -873,7 +1020,9 @@ export class DicomLoader {
           buf[di + 2] = clampU16(src[si + 2])
         }
       }
-      return { data: buf, width: ts, height: ts }
+      const out = { data: buf, width: ts, height: ts }
+      this._rememberDecodedTile(cacheKey, out)
+      return out
     }
 
     const data = monoTileToUint16(
@@ -892,7 +1041,9 @@ export class DicomLoader {
         data[yy * ts + xx] = 0
       }
     }
-    return { data, width: ts, height: ts }
+    const out = { data, width: ts, height: ts }
+    this._rememberDecodedTile(cacheKey, out)
+    return out
   }
 
   async getSources(): Promise<
@@ -909,6 +1060,7 @@ export class DicomLoader {
       (shape, i) => new DicomPixelSource(this, i, shape, dtype, tileSize),
     )
     base.reverse()
+    await this._ensureTileDecodeReady()
     return insertSyntheticDyadicLevels(base)
   }
 
@@ -1030,6 +1182,25 @@ function halfShapeForDyadicStep(
  * Deck.gl multiscale assumes ~2× between each `z` step. DICOM often uses one 4× downsampling
  * between instances; without an extra Viv “level” the tile grid shifts on deeper zoom.
  */
+/**
+ * Viv {@link MultiscaleImageLayer} background {@link ImageLayer} uses one {@link getRaster}
+ * call on the coarsest loader. Disabled for synthetic levels or multi-tile pyramids.
+ */
+export function vivCoarsestLevelSupportsBackgroundRaster(
+  sources: Array<DicomPixelSource | SyntheticDyadicPixelSource>,
+): boolean {
+  if (sources.length === 0) {
+    return false
+  }
+  const coarsest = sources[sources.length - 1]
+  if (coarsest instanceof SyntheticDyadicPixelSource) {
+    return false
+  }
+  const rows = coarsest.shape[1]
+  const cols = coarsest.shape[2]
+  return rows <= coarsest.tileSize && cols <= coarsest.tileSize
+}
+
 function insertSyntheticDyadicLevels(
   finestFirst: DicomPixelSource[],
 ): Array<DicomPixelSource | SyntheticDyadicPixelSource> {
@@ -1124,10 +1295,9 @@ export class DicomPixelSource {
     width: number
     height: number
   }> {
-    if (this.shape.length === 4) {
-      throw new Error('getRaster not supported for interleaved RGB slides')
-    }
-    if (this.shape[1] > this.tileSize || this.shape[2] > this.tileSize) {
+    const rows = this.shape[1]
+    const cols = this.shape[2]
+    if (rows > this.tileSize || cols > this.tileSize) {
       throw new Error('getRaster not supported for multi-tile pyramid levels')
     }
     return await this.getTile({ x: 0, y: 0, selection, signal })

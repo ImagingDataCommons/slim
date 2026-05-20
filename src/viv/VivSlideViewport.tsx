@@ -32,6 +32,7 @@ import {
   type BulkAnnotationGeometryContext,
   DicomLoader,
   isVivDicomTileNetworkCancellation,
+  vivCoarsestLevelSupportsBackgroundRaster,
 } from './dicomLoader'
 import {
   computeVivBulkHighResolution,
@@ -643,6 +644,8 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
         bitsAllocated,
       )
       const iccOn = getIccProfilesEnabled()
+      const excludeBackground =
+        !vivCoarsestLevelSupportsBackgroundRaster(sources)
       const layer = new MultiscaleImageLayer({
         id: `slim-viv-multiscale-icc-${iccOn ? 'on' : 'off'}`,
         loader: sources as never,
@@ -651,7 +654,13 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
         channelsVisible: d.channelsVisible,
         contrastLimits: d.contrastLimits,
         dtype: sources[0].dtype,
-        excludeBackground: true,
+        // One coarse getRaster when the pyramid fits a single tile (not RGB-only block).
+        excludeBackground,
+        maxRequests: 48,
+        // Viv tile payloads are { data, width, height } without top-level byteLength — do not
+        // set maxCacheByteSize (deck.gl logs errors and cache accounting breaks).
+        maxCacheSize: 512,
+        debounceTime: 0,
         // Passed through to deck.gl TileLayer (not in @vivjs/layers types).
         TilesetClass: CenterOutTileset2D,
         onTileError: (err: Error) => {
