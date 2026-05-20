@@ -8,6 +8,13 @@ import * as dmv from 'dicom-microscopy-viewer'
 import type * as dwc from 'dicomweb-client'
 import type DicomWebManager from '../DicomWebManager'
 import { logger } from '../utils/logger'
+import { trimVolumeImageViewerFootprint } from './trimVolumeImageViewer'
+import {
+  clearVivXhrTileAbortMeta,
+  installVivDicomwebAbortHooks,
+  invokeOpenLayersLoaderWithAbortSignal,
+  vivXhrTileAbortMeta,
+} from './vivAbortBridge'
 import {
   vivBulkAnnDebug,
   vivBulkAnnNow,
@@ -308,31 +315,7 @@ export function isVivDicomTileNetworkCancellation(e: unknown): boolean {
   )
 }
 
-/**
- * Active AbortSignal for the tile XHR being wired through dicomweb-client requestHooks.
- *
- * Must only be set for the synchronous part of `loader(z,x,y)` (through `xhr.send()`).
- * The old pattern kept the signal until the frame Promise settled, which blocked parallel
- * Deck tile requests and forced a global fetch queue.
- */
-let vivTileAbortSignal: AbortSignal | undefined
-
-const vivXhrTileAbort = new WeakMap<XMLHttpRequest, { bridgedAbort: boolean }>()
-
 const dicomwebClientsWithVivAbortHooks = new WeakSet<dwc.api.DICOMwebClient>()
-
-/** Run `fn` while hooks can read `signal` (cleared before the returned Promise settles). */
-function invokeOpenLayersLoaderWithAbortSignal<T>(
-  signal: AbortSignal | undefined,
-  fn: () => T,
-): T {
-  vivTileAbortSignal = signal
-  try {
-    return fn()
-  } finally {
-    vivTileAbortSignal = undefined
-  }
-}
 
 /** Same slide/map space as OpenLayers VolumeImageViewer (finest pyramid, affine). */
 export interface BulkAnnotationGeometryContext {
@@ -571,81 +554,23 @@ export class DicomLoader {
         return
       }
       dicomwebClientsWithVivAbortHooks.add(inner)
-
-      const prevHooks = inner.requestHooks ?? []
-      const vivHook: dwc.api.DICOMwebClientRequestHook = (
-        request,
-        _metadata,
-      ) => {
-        const signal = vivTileAbortSignal
-        if (signal !== undefined) {
-          if (signal.aborted) {
-            vivXhrTileAbort.set(request, { bridgedAbort: true })
-          } else {
-            vivXhrTileAbort.set(request, { bridgedAbort: false })
-            signal.addEventListener(
-              'abort',
-              () => {
-                const meta = vivXhrTileAbort.get(request)
-                if (meta !== undefined) {
-                  meta.bridgedAbort = true
-                }
-                request.abort()
-              },
-              { once: true },
-            )
-          }
-          // dicomweb-client defaults verbose=true and logs console.error on any
-          // non-2xx XHR outcome, including status 0 after abort(). Silence only
-          // prune/cancellation paths we bridged from deck.gl's AbortSignal.
-          // NOTE: we monkey-patch the GLOBAL `console.error` here because that's
-          // exactly what dicomweb-client calls internally — replacing this with
-          // our slim logger would have no effect.
-          const prev = request.onreadystatechange
-          if (typeof prev === 'function') {
-            request.onreadystatechange = function (
-              this: XMLHttpRequest,
-              ev: Event,
-            ) {
-              if (
-                this.readyState === 4 &&
-                this.status === 0 &&
-                vivXhrTileAbort.get(this)?.bridgedAbort === true
-              ) {
-                const ce = console.error
-                console.error = (): void => {}
-                try {
-                  prev.call(this, ev)
-                } finally {
-                  console.error = ce
-                }
-                return
-              }
-              prev.call(this, ev)
-            }
-          }
-        }
-        if (signal?.aborted === true) {
-          request.abort()
-        }
-        return request
-      }
-      inner.requestHooks = [...prevHooks, vivHook]
-
-      const prevErr = inner.errorInterceptor
-      inner.errorInterceptor = (error: dwc.api.DICOMwebClientError) => {
-        const err = error as dwc.api.DICOMwebClientError & { cause?: unknown }
-        if (!Object.hasOwn(err, 'cause') || err.cause === undefined) {
-          err.cause = err
-        }
-        // dicomweb rejects with this shape after XHR.abort(); deck tile prune — skip app error UI.
-        const errMsg = (error as { message?: string }).message
-        if (error.status === 0 && errMsg === 'request failed') {
-          return
-        }
-        prevErr?.(error)
-      }
+      installVivDicomwebAbortHooks(
+        inner as Parameters<typeof installVivDicomwebAbortHooks>[0],
+      )
     })
+  }
+
+  /** Shrink hidden OL map + drop cached tiles once tile `loader_` refs are cached. */
+  private _trimOpenLayersFootprint(): void {
+    const viewer = this._viewer
+    const opticalPaths = this._opticalPaths
+    if (viewer === undefined || opticalPaths === undefined) {
+      return
+    }
+    trimVolumeImageViewerFootprint(
+      viewer,
+      opticalPaths as Parameters<typeof trimVolumeImageViewerFootprint>[1],
+    )
   }
 
   private async _getViewer(): Promise<dmv.viewer.VolumeImageViewer> {
@@ -831,6 +756,7 @@ export class DicomLoader {
     if (loader === undefined) {
       throw new Error(`No tile loader for channel "${channel}"`)
     }
+    this._trimOpenLayersFootprint()
     return loader
   }
 
@@ -893,9 +819,9 @@ export class DicomLoader {
       )
     } catch (e) {
       const xhr = xhrFromDicomwebErrorDeep(e)
-      const tileMeta = xhr !== undefined ? vivXhrTileAbort.get(xhr) : undefined
+      const tileMeta = xhr !== undefined ? vivXhrTileAbortMeta(xhr) : undefined
       if (xhr !== undefined) {
-        vivXhrTileAbort.delete(xhr)
+        clearVivXhrTileAbortMeta(xhr)
       }
       const bridged = tileMeta?.bridgedAbort === true
       const signalPruned = signal?.aborted === true
