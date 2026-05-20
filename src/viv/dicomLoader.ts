@@ -308,6 +308,32 @@ export function isVivDicomTileNetworkCancellation(e: unknown): boolean {
   )
 }
 
+/**
+ * Active AbortSignal for the tile XHR being wired through dicomweb-client requestHooks.
+ *
+ * Must only be set for the synchronous part of `loader(z,x,y)` (through `xhr.send()`).
+ * The old pattern kept the signal until the frame Promise settled, which blocked parallel
+ * Deck tile requests and forced a global fetch queue.
+ */
+let vivTileAbortSignal: AbortSignal | undefined
+
+const vivXhrTileAbort = new WeakMap<XMLHttpRequest, { bridgedAbort: boolean }>()
+
+const dicomwebClientsWithVivAbortHooks = new WeakSet<dwc.api.DICOMwebClient>()
+
+/** Run `fn` while hooks can read `signal` (cleared before the returned Promise settles). */
+function invokeOpenLayersLoaderWithAbortSignal<T>(
+  signal: AbortSignal | undefined,
+  fn: () => T,
+): T {
+  vivTileAbortSignal = signal
+  try {
+    return fn()
+  } finally {
+    vivTileAbortSignal = undefined
+  }
+}
+
 /** Same slide/map space as OpenLayers VolumeImageViewer (finest pyramid, affine). */
 export interface BulkAnnotationGeometryContext {
   pyramid: dmv.metadata.VLWholeSlideMicroscopyImage[]
@@ -426,24 +452,6 @@ export class DicomLoader {
    */
   private _orderedPathKeys?: string[]
 
-  private _vivAbortHooksInstalled = false
-
-  /**
-   * Stashed only for the synchronous window before dicomweb-client runs piped
-   * {@link dwc.api.DICOMwebClientOptions.requestHooks} (see viv-dicomweb-test).
-   */
-  private _currentSignal: AbortSignal | undefined
-
-  /**
-   * XHR instances for which we forwarded deck.gl/Viv abort to dicomweb-client.
-   * `bridgedAbort` is set synchronously in the `abort` listener before `xhr.abort()`, so it is
-   * reliable even when `signal.aborted` in `getTile`'s catch is not (microtask ordering).
-   */
-  private readonly _xhrTileAbort = new WeakMap<
-    XMLHttpRequest,
-    { bridgedAbort: boolean }
-  >()
-
   /** Set when the viewer is first built; 8- or 16-bit SM tiles both load as float then convert to Uint16 in getTile. */
   bitsAllocated?: 8 | 16
 
@@ -471,6 +479,28 @@ export class DicomLoader {
     }
     this._iccTarget = enabled
     this._loaders = undefined
+  }
+
+  /**
+   * Release the hidden OpenLayers {@link dmv.viewer.VolumeImageViewer} and cached loaders.
+   * Call when the Viv viewport unmounts or the series changes.
+   */
+  dispose(): void {
+    this._loaders = undefined
+    this._opticalPaths = undefined
+    this._orderedPathKeys = undefined
+    this._shapes = undefined
+    this._tileSize = undefined
+    const viewer = this._viewer
+    this._viewer = undefined
+    if (viewer === undefined) {
+      return
+    }
+    try {
+      viewer.cleanup()
+    } catch (err) {
+      logger.warn('DicomLoader: VolumeImageViewer.cleanup failed', err)
+    }
   }
 
   /**
@@ -536,25 +566,27 @@ export class DicomLoader {
   }
 
   private _ensureVivAbortHooks(): void {
-    if (this._vivAbortHooksInstalled) {
-      return
-    }
     this._client.applyToPrimaryDicomwebClient((inner) => {
+      if (dicomwebClientsWithVivAbortHooks.has(inner)) {
+        return
+      }
+      dicomwebClientsWithVivAbortHooks.add(inner)
+
       const prevHooks = inner.requestHooks ?? []
       const vivHook: dwc.api.DICOMwebClientRequestHook = (
         request,
         _metadata,
       ) => {
-        const signal = this._currentSignal
+        const signal = vivTileAbortSignal
         if (signal !== undefined) {
           if (signal.aborted) {
-            this._xhrTileAbort.set(request, { bridgedAbort: true })
+            vivXhrTileAbort.set(request, { bridgedAbort: true })
           } else {
-            this._xhrTileAbort.set(request, { bridgedAbort: false })
+            vivXhrTileAbort.set(request, { bridgedAbort: false })
             signal.addEventListener(
               'abort',
               () => {
-                const meta = this._xhrTileAbort.get(request)
+                const meta = vivXhrTileAbort.get(request)
                 if (meta !== undefined) {
                   meta.bridgedAbort = true
                 }
@@ -571,7 +603,6 @@ export class DicomLoader {
           // our slim logger would have no effect.
           const prev = request.onreadystatechange
           if (typeof prev === 'function') {
-            const tileAbortMap = this._xhrTileAbort
             request.onreadystatechange = function (
               this: XMLHttpRequest,
               ev: Event,
@@ -579,7 +610,7 @@ export class DicomLoader {
               if (
                 this.readyState === 4 &&
                 this.status === 0 &&
-                tileAbortMap.get(this)?.bridgedAbort === true
+                vivXhrTileAbort.get(this)?.bridgedAbort === true
               ) {
                 const ce = console.error
                 console.error = (): void => {}
@@ -594,7 +625,6 @@ export class DicomLoader {
             }
           }
         }
-        this._currentSignal = undefined
         if (signal?.aborted === true) {
           request.abort()
         }
@@ -616,7 +646,6 @@ export class DicomLoader {
         prevErr?.(error)
       }
     })
-    this._vivAbortHooksInstalled = true
   }
 
   private async _getViewer(): Promise<dmv.viewer.VolumeImageViewer> {
@@ -857,19 +886,16 @@ export class DicomLoader {
     height: number
   }> {
     const loader = await this._getLoader(channel)
-    if (this._currentSignal !== undefined) {
-      throw new Error('Failure in tile request abort signal management')
-    }
-    this._currentSignal = signal
     let raw: Awaited<ReturnType<typeof loader>>
     try {
-      raw = await loader(level, x, y)
+      raw = await invokeOpenLayersLoaderWithAbortSignal(signal, () =>
+        loader(level, x, y),
+      )
     } catch (e) {
       const xhr = xhrFromDicomwebErrorDeep(e)
-      const tileMeta =
-        xhr !== undefined ? this._xhrTileAbort.get(xhr) : undefined
+      const tileMeta = xhr !== undefined ? vivXhrTileAbort.get(xhr) : undefined
       if (xhr !== undefined) {
-        this._xhrTileAbort.delete(xhr)
+        vivXhrTileAbort.delete(xhr)
       }
       const bridged = tileMeta?.bridgedAbort === true
       const signalPruned = signal?.aborted === true
@@ -881,8 +907,6 @@ export class DicomLoader {
         throw SIGNAL_ABORTED
       }
       throw e
-    } finally {
-      this._currentSignal = undefined
     }
     const shape = (await this._getShapes())[level]
     const ts = await this._getTileSize()

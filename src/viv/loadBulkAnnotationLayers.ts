@@ -1426,6 +1426,7 @@ async function buildPathLayersFromGraphicData(options: {
       return true
     }
     const rows = chunkRows
+    const rowCount = rows.length
     chunkRows = []
     const layer = new PathLayer<PathRowFlat>({
       id: `${idPrefix}-paths-${chunkIndex}`,
@@ -1440,7 +1441,7 @@ async function buildPathLayersFromGraphicData(options: {
       vivBulkAnnPhase(`directDecode:${graphicType} chunk emit`, {
         idPrefix,
         chunkIndex,
-        chunkRowCount: chunkRows.length,
+        chunkRowCount: rowCount,
         estimatedTotalChunks,
         final,
         chunkDecodeMs,
@@ -1454,7 +1455,7 @@ async function buildPathLayersFromGraphicData(options: {
       vivBulkAnnPerf(`directDecode:${graphicType} chunk emit+yield`, tEmit0, {
         idPrefix,
         chunkIndex,
-        chunkRowCount: chunkRows.length,
+        chunkRowCount: rowCount,
       })
     }
     chunkIndex++

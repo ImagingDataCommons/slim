@@ -221,6 +221,8 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
   const bulkGeometryRef = useRef<BulkAnnotationGeometryContext | null>(null)
   const bulkGroupJobsRef = useRef<Record<string, VivBulkGroupGeometryJob>>({})
   const bulkHydrateInFlightRef = useRef<Set<string>>(new Set())
+  /** Incremented on unmount / series change to ignore in-flight hydrate callbacks. */
+  const bulkHydrateGenRef = useRef(0)
   const bulkViewportRebuildGenRef = useRef<Record<string, number>>({})
   /** Raw bulk buffers (~tens–100s MB); kept out of React state so path layers can be released independently. */
   const bulkGraphicCacheByUidRef = useRef<Record<string, VivBulkGraphicCache>>(
@@ -459,8 +461,10 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     bulkGroupJobsRef.current = {}
     bulkGraphicCacheByUidRef.current = {}
     bulkViewportRebuildGenRef.current = {}
+    bulkHydrateGenRef.current += 1
     bulkHydrateInFlightRef.current.clear()
     catalogCbRef.current?.(null)
+    dicomLoaderRef.current?.dispose()
     dicomLoaderRef.current = null
     // Do not call onIccProfilesAvailabilityChange(false) here — it disabled the Settings
     // switch until metadata loaded (looked "off"). CaseViewer defaults to true until
@@ -570,6 +574,9 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     void run()
     return () => {
       cancelled = true
+      bulkHydrateGenRef.current += 1
+      bulkHydrateInFlightRef.current.clear()
+      dicomLoaderRef.current?.dispose()
       dicomLoaderRef.current = null
     }
   }, [
@@ -748,6 +755,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     void run()
     return () => {
       cancelled = true
+      bulkHydrateGenRef.current += 1
     }
   }, [
     loadBulkAnnotations,
@@ -768,6 +776,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       return
     }
 
+    const hydrateGen = bulkHydrateGenRef.current
     const dispatchedUids: string[] = []
     const tBatch0 = vivBulkAnnNow()
     const batchPromises: Promise<void>[] = []
@@ -837,7 +846,9 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           viewportBounds,
           // Polled at every chunk boundary so hydrate stops decoding the
           // remaining polygons when the user toggles the group off.
-          shouldContinue: () => visibleBulkUidsRef.current.has(uid),
+          shouldContinue: () =>
+            bulkHydrateGenRef.current === hydrateGen &&
+            visibleBulkUidsRef.current.has(uid),
           // Progressive rendering: as soon as hydrate finishes decoding a chunk
           // (~65k polygons), it calls back so we can append those layers to the
           // group's slice and let the user see partial coverage while the rest
@@ -845,7 +856,10 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           onChunk: isLodJob
             ? undefined
             : (chunkLayers, meta) => {
-                if (!visibleBulkUidsRef.current.has(uid)) {
+                if (
+                  bulkHydrateGenRef.current !== hydrateGen ||
+                  !visibleBulkUidsRef.current.has(uid)
+                ) {
                   vivBulkAnnDebug(
                     'viewport: chunk dropped (no longer visible)',
                     {
@@ -875,6 +889,10 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
                 })
               },
         }).then((slice) => {
+          if (bulkHydrateGenRef.current !== hydrateGen) {
+            bulkHydrateInFlightRef.current.delete(uid)
+            return
+          }
           vivBulkAnnPerf(
             'viewport:promise hydrateVivBulkGroupLayerSlice settled',
             tHydr0,
@@ -894,7 +912,11 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
             stillVisible: visibleBulkUidsRef.current.has(uid),
             hydrateMs: Math.round((vivBulkAnnNow() - tHydr0) * 10) / 10,
           })
-          if (slice != null && visibleBulkUidsRef.current.has(uid)) {
+          if (
+            slice != null &&
+            visibleBulkUidsRef.current.has(uid) &&
+            bulkHydrateGenRef.current === hydrateGen
+          ) {
             if (slice.graphicCache != null) {
               bulkGraphicCacheByUidRef.current[uid] = slice.graphicCache
               startTransition(() => {
@@ -935,12 +957,21 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       uids: dispatchedUids,
     })
     void Promise.allSettled(batchPromises).then(() => {
+      if (bulkHydrateGenRef.current !== hydrateGen) {
+        return
+      }
       vivBulkAnnPhase('viewport:HYDRATE batch done (all visible groups)', {
         dispatched: dispatchedUids.length,
         uids: dispatchedUids,
         batchMs: Math.round((vivBulkAnnNow() - tBatch0) * 10) / 10,
       })
     })
+    return () => {
+      bulkHydrateGenRef.current += 1
+      for (const uid of dispatchedUids) {
+        bulkHydrateInFlightRef.current.delete(uid)
+      }
+    }
   }, [
     loadBulkAnnotations,
     baseLayer,
@@ -949,7 +980,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     runBulkViewportRebuildForGroup,
   ])
 
-  /** Drop bulk buffers and cancel decodes when a LOD group is hidden. */
+  /** Drop bulk buffers, GPU layer data, and slice state when a group is hidden. */
   useEffect(() => {
     for (const uid of Object.keys(bulkGraphicCacheByUidRef.current)) {
       if (visibleBulkAnnotationGroupUIDs.has(uid)) {
@@ -962,14 +993,16 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       delete bulkGraphicCacheByUidRef.current[uid]
       bulkViewportRebuildGenRef.current[uid] =
         (bulkViewportRebuildGenRef.current[uid] ?? 0) + 1
+      bulkHydrateInFlightRef.current.delete(uid)
     }
     setBulkSlicesByUid((prev) => {
       let next: Record<string, VivBulkAnnotationLayerSlice> | null = null
       for (const uid of Object.keys(prev)) {
-        if (
-          !visibleBulkAnnotationGroupUIDs.has(uid) &&
-          prev[uid]?.supportsLod === true
-        ) {
+        if (!visibleBulkAnnotationGroupUIDs.has(uid)) {
+          const slice = prev[uid]
+          if (slice?.layers.length) {
+            detachVivBulkOverlayLayerData(slice.layers)
+          }
           if (next === null) {
             next = { ...prev }
           }

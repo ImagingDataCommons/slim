@@ -153,12 +153,6 @@ function ParametrizedSlideViewer({
     useState<string>('all')
   const [vivIccProfilesAvailable, setVivIccProfilesAvailable] = useState(true)
 
-  useEffect(() => {
-    setVivIccProfilesAvailable(true)
-    // `seriesInstanceUID` is the dependency: reset ICC availability when the route series changes.
-    void seriesInstanceUID
-  }, [seriesInstanceUID])
-
   const getVivSeriesDescription = (seriesInstanceUID: string): string => {
     const study = DicomMetadataStore.getStudy(studyInstanceUID)
     if (study?.series != null && study !== undefined) {
@@ -260,6 +254,8 @@ function ParametrizedSlideViewer({
   }, [])
 
   useEffect(() => {
+    setVivIccProfilesAvailable(true)
+
     const currentSlideMatchesSeries =
       selectedSlide?.seriesInstanceUIDs.some(
         (uid: string) => uid === seriesInstanceUID,
