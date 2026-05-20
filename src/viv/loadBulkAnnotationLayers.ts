@@ -28,7 +28,7 @@ const VIV_BULK_PATHS_PER_PATH_LAYER = 65_000
 const VIV_BULK_LOD_MIN_ANNOTATIONS = 1000
 
 /** Fallback scatter radius when zoom / pixel spacing are unavailable. */
-const VIV_BULK_CENTER_RADIUS_FALLBACK_PX = 2
+const VIV_BULK_CENTER_RADIUS_FALLBACK_PX = 1.25
 
 /** Pad viewport bounds when culling so annotations near edges do not pop in/out. */
 const VIV_BULK_VIEWPORT_MARGIN_RATIO = 0.25
@@ -1258,7 +1258,7 @@ async function buildPointLayersFromGraphicData(options: {
       getPosition: (d) => d,
       getFillColor: () => rgba,
       getRadius: () => centerRadiusPx,
-      radiusMinPixels: 3,
+      radiusMinPixels: 1,
       radiusUnits: 'pixels',
     }) as unknown as Layer
     allLayers.push(layer)
