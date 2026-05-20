@@ -1836,57 +1836,6 @@ function buildChunkedVivPathLayers(
   return out
 }
 
-/**
- * Chunked PathLayer for direct-decoded flat paths. Sets `_pathType` so Deck skips
- * normalizePath (avoids re-flattening millions of nested `[x,y]` pairs).
- */
-function _buildChunkedVivPathLayersFromFlat(
-  idPrefix: string,
-  pathRows: PathRowFlat[],
-  rgba: [number, number, number, number],
-  pathType: 'loop' | 'open',
-): Layer[] {
-  if (pathRows.length === 0) {
-    return []
-  }
-  /** Flat buffers pack [x,y,…]; default PathLayer assumes XYZ strides (wrong length / garbage). */
-  const baseProps = {
-    positionFormat: 'XY' as const,
-    getPath: (d: PathRowFlat) => d.pathFlat,
-    getColor: (): typeof rgba => rgba,
-    getWidth: (): number => 2,
-    widthUnits: 'pixels' as const,
-    capRounded: true,
-    jointRounded: true,
-    _pathType: pathType,
-  }
-  if (pathRows.length <= VIV_BULK_PATHS_PER_PATH_LAYER) {
-    return [
-      new PathLayer<PathRowFlat>({
-        id: `${idPrefix}-paths`,
-        data: pathRows,
-        ...baseProps,
-      }) as unknown as Layer,
-    ]
-  }
-  const out: Layer[] = []
-  for (
-    let offset = 0, chunk = 0;
-    offset < pathRows.length;
-    offset += VIV_BULK_PATHS_PER_PATH_LAYER, chunk++
-  ) {
-    const data = pathRows.slice(offset, offset + VIV_BULK_PATHS_PER_PATH_LAYER)
-    out.push(
-      new PathLayer<PathRowFlat>({
-        id: `${idPrefix}-paths-${chunk}`,
-        data,
-        ...baseProps,
-      }) as unknown as Layer,
-    )
-  }
-  return out
-}
-
 function rgbFromLabItem(
   item: { RecommendedDisplayCIELabValue?: number[] },
   fallback: [number, number, number],

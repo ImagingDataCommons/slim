@@ -722,6 +722,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
 
   useEffect(() => {
     let cancelled = false
+    const hydrateInFlight = bulkHydrateInFlightRef.current
     fitDoneRef.current = false
     slideRef.current = null
     slideMatrixRef.current = null
@@ -734,7 +735,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     bulkGraphicCacheByUidRef.current = {}
     bulkViewportRebuildGenRef.current = {}
     bulkHydrateGenRef.current += 1
-    bulkHydrateInFlightRef.current.clear()
+    hydrateInFlight.clear()
     bulkLodHighResRef.current = null
     lastViewportRebuildRef.current = null
     styledOverlayCacheRef.current.clear()
@@ -855,7 +856,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     return () => {
       cancelled = true
       bulkHydrateGenRef.current += 1
-      bulkHydrateInFlightRef.current.clear()
+      hydrateInFlight.clear()
       bulkLodHighResRef.current = null
       lastViewportRebuildRef.current = null
       terminateCenterOutAnnotationOrderWorker()
@@ -1087,6 +1088,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     }
 
     const hydrateGen = bulkHydrateGenRef.current
+    const hydrateInFlight = bulkHydrateInFlightRef.current
     const dispatchedUids: string[] = []
     const tBatch0 = vivBulkAnnNow()
     const batchPromises: Promise<void>[] = []
@@ -1094,14 +1096,14 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       if (slicesByUidRef.current[uid] != null) {
         continue
       }
-      if (bulkHydrateInFlightRef.current.has(uid)) {
+      if (hydrateInFlight.has(uid)) {
         continue
       }
       const job = jobs[uid]
       if (job == null) {
         continue
       }
-      bulkHydrateInFlightRef.current.add(uid)
+      hydrateInFlight.add(uid)
       dispatchedUids.push(uid)
       const tHydr0 = vivBulkAnnNow()
       vivBulkAnnPhase('viewport:HYDRATE dispatch', {
@@ -1223,7 +1225,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
               },
         }).then((slice) => {
           if (bulkHydrateGenRef.current !== hydrateGen) {
-            bulkHydrateInFlightRef.current.delete(uid)
+            hydrateInFlight.delete(uid)
             return
           }
           vivBulkAnnPerf(
@@ -1285,7 +1287,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
               markGroupLoadDone(uid)
             }
           }
-          bulkHydrateInFlightRef.current.delete(uid)
+          hydrateInFlight.delete(uid)
         }),
       )
     }
@@ -1309,7 +1311,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     return () => {
       bulkHydrateGenRef.current += 1
       for (const uid of dispatchedUids) {
-        bulkHydrateInFlightRef.current.delete(uid)
+        hydrateInFlight.delete(uid)
       }
     }
   }, [
