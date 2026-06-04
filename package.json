@@ -3,10 +3,10 @@
   "version": "0.45.4",
   "private": true,
   "author": "ImagingDataCommons",
-  "packageManager": "bun@latest",
+  "packageManager": "pnpm@10.34.1",
   "scripts": {
     "start": "rm -rf ./node_modules/.cache/default-development && ./scripts/set-git-env.sh craco start",
-    "dev": "bun run start",
+    "dev": "pnpm run start",
     "typecheck": "tsc --noEmit",
     "build": "./scripts/set-git-env.sh craco build",
     "build:firebase": "REACT_APP_CONFIG=gcp PUBLIC_URL=/ ./scripts/set-git-env.sh craco build",
@@ -16,7 +16,6 @@
     "fmt": "biome format --write .",
     "format": "biome format --write .",
     "test": "biome check . && craco test --watchAll=false",
-    "test:bun": "bun test",
     "predeploy": "REACT_APP_CONFIG=demo PUBLIC_URL='https://imagingdatacommons.github.io/slim/' ./scripts/set-git-env.sh craco build",
     "deploy": "gh-pages -d build",
     "clean": "rm -rf ./build ./node_modules",
@@ -90,13 +89,20 @@
     "sonarqube-scanner": "^4.3.0",
     "typescript": "^4.7.4"
   },
-  "overrides": {
-    "@types/d3-dispatch": "3.0.6",
-    "nth-check": "2.0.1",
-    "wrap-ansi": "7.0.0",
-    "make-dir": "3.1.0",
-    "express": "4.21.0",
-    "rollup": "3.29.5",
-    "semver": "7.5.2"
+  "pnpm": {
+    "overrides": {
+      "@types/d3-dispatch": "3.0.6",
+      "axios": "1.17.0",
+      "nth-check": "2.0.1",
+      "wrap-ansi": "7.0.0",
+      "make-dir": "3.1.0",
+      "express": "4.21.0",
+      "path-to-regexp": "0.1.13",
+      "rollup": "3.30.0",
+      "semver": "7.5.2",
+      "serialize-javascript": "7.0.5",
+      "tar": "7.5.16",
+      "underscore": "1.13.8"
+    }
   }
 }

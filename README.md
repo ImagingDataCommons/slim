@@ -245,8 +245,8 @@ When enabled, the memory footer appears at the bottom of all pages and monitors 
 Download the latest release from [github.com/imagingdatacommons/slim/releases](https://github.com/imagingdatacommons/slim/releases) and then run the following commands to install build dependencies and build the app:
 
 ```none
-bun install
-PUBLIC_URL=/ bun run build
+pnpm install
+PUBLIC_URL=/ pnpm run build
 ```
 
 Once the app has been built, the content of the `build` folder can be directly served by a static web server at the location specified by `PUBLIC_URL` (in this case at `/`).
@@ -383,8 +383,8 @@ For the time being, the legacy implicit grand type has to be used.
 To install requirements and run the app for local development, run the following commands:
 
 ```none
-bun install
-bun run start
+pnpm install
+pnpm run start
 ```
 
 This will serve the app via a development server at [http://localhost:3000](http://localhost:3000) using the default `local` configuration.
@@ -392,48 +392,47 @@ This will serve the app via a development server at [http://localhost:3000](http
 The configuration can be specified using the `REACT_APP_CONFIG` environment variable, which can be set either in the `.env` file or directly in the command line:
 
 ```none
-REACT_APP_CONFIG=local bun run start
+REACT_APP_CONFIG=local pnpm run start
 ```
 
 ## Linking Slim to a Local dicom-microscopy-viewer Library
 
-If you are developing features or fixing bugs that require changes in both Slim and the underlying [`dicom-microscopy-viewer`](https://github.com/ImagingDataCommons/dicom-microscopy-viewer) library, you can use `bun link` to connect your local Slim project to a local clone of `dicom-microscopy-viewer`. This allows Slim to immediately use the latest local changes from the library without publishing to npm.
+If you are developing features or fixing bugs that require changes in both Slim and the underlying [`dicom-microscopy-viewer`](https://github.com/ImagingDataCommons/dicom-microscopy-viewer) library, you can use `pnpm link` to connect your local Slim project to a local clone of `dicom-microscopy-viewer`. This allows Slim to immediately use the latest local changes from the library without publishing to npm.
 
 ### Steps
 
 1. **Clone dicom-microscopy-viewer**  
    If you haven't already, clone the `dicom-microscopy-viewer` repository to your machine.
 
-2. **Set up bun link in dicom-microscopy-viewer**  
+2. **Set up pnpm link in dicom-microscopy-viewer**  
    In the root directory of your local `dicom-microscopy-viewer` repository, run:
    ```sh
-   bun link
+   pnpm link --global
    ```
 
 3. **Link dicom-microscopy-viewer in Slim**  
    In the root directory of your Slim project, run:
    ```sh
-   bun link dicom-microscopy-viewer
+   pnpm link --global dicom-microscopy-viewer
    ```
 
 4. **Enable live rebuilding in dicom-microscopy-viewer**  
    To automatically rebuild `dicom-microscopy-viewer` when you make changes, run the following command in the `dicom-microscopy-viewer` directory:
    ```sh
-   bun run webpack:dynamic-import:watch
+   pnpm run webpack:dynamic-import:watch
    ```
    This will watch for file changes and rebuild the library, so Slim can immediately use the updated code.
 
 5. **Run Slim as usual**  
    In the Slim directory, start the development server:
    ```sh
-   bun run start
+   pnpm run start
    ```
    Slim will now use your locally linked version of `dicom-microscopy-viewer`.
 
 ### Notes
 
-- If you want to unlink and return to the npm-published version, run `bun unlink dicom-microscopy-viewer` and `bun install` in the Slim directory.
-- Make sure both projects use compatible Bun versions to avoid dependency issues.
+- If you want to unlink and return to the npm-published version, run `pnpm unlink --global dicom-microscopy-viewer` and `pnpm install` in the Slim directory.
 
 ## Citation
 
