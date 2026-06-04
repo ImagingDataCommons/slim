@@ -18,17 +18,23 @@ jobs:
       - name: Checkout to repository
         uses: actions/checkout@v4.2.2
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          bun-version: latest
+          version: 10.34.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4.4.0
+        with:
+          node-version: 20
+          cache: pnpm
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Build and deploy to GitHub Pages
         run: |
           git remote set-url origin https://git:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
-          bun run deploy -- -u "github-actions-bot <support+actions@github.com>" -f
+          pnpm run deploy -- -u "github-actions-bot <support+actions@github.com>" -f
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

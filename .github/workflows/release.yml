@@ -16,16 +16,22 @@ jobs:
           ref: master
           persist-credentials: false
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          bun-version: latest
+          version: 10.34.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4.4.0
+        with:
+          node-version: 20
+          cache: pnpm
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: bun run build
+        run: pnpm run build
 
       - name: Zip build
         run: zip -r build.zip build
@@ -37,4 +43,4 @@ jobs:
           GIT_AUTHOR_EMAIL: ${{ vars.RELEASE_GIT_AUTHOR_EMAIL }}
           GIT_COMMITTER_NAME: ${{ vars.RELEASE_GIT_COMMITTER_NAME }}
           GIT_COMMITTER_EMAIL: ${{ vars.RELEASE_GIT_COMMITTER_EMAIL }}
-        run: bunx semantic-release --branches master
+        run: pnpm exec semantic-release --branches master
