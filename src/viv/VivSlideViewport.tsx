@@ -505,19 +505,15 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
               vs.target,
               vs.zoom,
             )
-      if (prevSlice != null && prevSlice.layers.length > 0) {
-        detachVivBulkOverlayLayerData(prevSlice.layers)
-      }
+      /**
+       * Keep the currently-rendered layers (e.g. the streaming centroid preview,
+       * or the previous LOD layers on pan/zoom) on screen until the first rebuilt
+       * chunk is ready, then swap atomically. Clearing eagerly here is what caused
+       * the brief "everything disappears, then reappears at once" flash. Layers
+       * dropped from the slice on swap are finalized by deck.gl on the next render.
+       */
+      let rebuiltFirstCommit = true
       styledOverlayCacheRef.current.delete(uid)
-      setBulkSlicesByUid((prev) => ({
-        ...prev,
-        [uid]: {
-          groupUID: uid,
-          graphicType: prev[uid]?.graphicType ?? cache.graphicType,
-          supportsLod: prev[uid]?.supportsLod ?? true,
-          layers: [],
-        },
-      }))
 
       const gen = (bulkViewportRebuildGenRef.current[uid] ?? 0) + 1
       bulkViewportRebuildGenRef.current[uid] = gen
@@ -543,11 +539,13 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
 
       let chunksCommitted = 0
       const appendChunkToSlice = (chunkLayers: Layer[]): void => {
+        const isFirst = rebuiltFirstCommit
+        rebuiltFirstCommit = false
         setBulkSlicesByUid((prev) => {
           const existing = prev[uid]
-          const layers = existing
-            ? [...existing.layers, ...chunkLayers]
-            : [...chunkLayers]
+          // First rebuilt chunk replaces the prior layers (swap); rest append.
+          const baseLayers = isFirst ? [] : (existing?.layers ?? [])
+          const layers = [...baseLayers, ...chunkLayers]
           return {
             ...prev,
             [uid]: {
@@ -613,7 +611,10 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
             layerCount: layers.length,
             chunksCommitted,
           })
-          if (chunksCommitted === 0 && layers.length > 0) {
+          if (chunksCommitted === 0) {
+            // No streamed chunks: swap the full result in atomically (or clear
+            // the prior layers if the rebuild produced nothing for this view).
+            // Layers dropped here are finalized by deck.gl on the next render.
             setBulkSlicesByUid((prev) => ({
               ...prev,
               [uid]: {
@@ -1165,6 +1166,16 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
               vs.zoom,
             )
           : undefined
+      const lodPreviewContext =
+        sr != null
+          ? {
+              deckZoom: vs.zoom,
+              viewportWidth: vw,
+              viewportHeight: vh,
+              slideWidth: sr.worldW,
+              slideHeight: sr.worldH,
+            }
+          : undefined
       batchPromises.push(
         hydrateVivBulkGroupLayerSlice({
           job,
@@ -1172,6 +1183,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           fetchClient: client,
           deckLoadCenter,
           viewportBounds,
+          lodPreviewContext,
           onFetchComplete: () => {
             reportGroupLoad(uid, {
               phase: 'processing',
@@ -1291,22 +1303,47 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           ) {
             if (slice.graphicCache != null) {
               bulkGraphicCacheByUidRef.current[uid] = slice.graphicCache
-              reportGroupLoad(uid, {
-                phase: 'processing',
-                detail: 'Bulk data retrieved — preparing viewport…',
-                annotationCount: job.numberOfAnnotations,
-                graphicType: job.graphicType,
-              })
+              /**
+               * Keep the streaming preview layers on screen and flag the slice
+               * as LOD. When the user is zoomed out (centers mode), the streamed
+               * centroid preview already IS the complete overview, so we keep it
+               * as-is and skip the rebuild entirely (no flash, no center-out
+               * re-render). When zoomed in (paths needed), or when no preview was
+               * produced, we run the viewport rebuild, which swaps layers in
+               * atomically once ready.
+               */
               setBulkSlicesByUid((prev) => ({
                 ...prev,
                 [uid]: {
                   groupUID: uid,
                   graphicType: job.graphicType,
                   supportsLod: true,
-                  layers: [],
+                  layers: prev[uid]?.layers ?? [],
                 },
               }))
-              runBulkViewportRebuildForGroup(uid)
+              const geomNow = bulkGeometryRef.current
+              const centersMode =
+                geomNow != null &&
+                !computeVivBulkHighResolution({
+                  deckZoom: viewStateRef.current.zoom,
+                  pyramid: geomNow.pyramid,
+                })
+              if (centersMode && chunksCommitted > 0) {
+                bulkLodHighResRef.current = false
+                vivBulkAnnPhase(
+                  'viewport:HYDRATE keep streamed centroid overview (skip rebuild)',
+                  { uid, streamedChunks: chunksCommitted },
+                )
+                markGroupLoadDone(uid)
+              } else {
+                reportGroupLoad(uid, {
+                  phase: 'processing',
+                  detail: 'Bulk data retrieved — preparing viewport…',
+                  annotationCount: job.numberOfAnnotations,
+                  graphicType: job.graphicType,
+                })
+                runBulkViewportRebuildForGroup(uid, { force: true })
+              }
             } else if (chunksCommitted === 0) {
               startTransition(() => {
                 setBulkSlicesByUid((prev) => ({
