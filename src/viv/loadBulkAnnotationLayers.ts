@@ -10,6 +10,13 @@ import { logger } from '../utils/logger'
 import { computeCenterOutAnnotationOrder } from './centerOutAnnotationOrder'
 import type { BulkAnnotationGeometryContext } from './dicomLoader'
 import {
+  browserSupportsBulkStreaming,
+  getStreamableBulkVrInfo,
+  isMonotonicGraphicIndex,
+  resolveStreamableGraphicDataReference,
+  streamBulkGraphicData,
+} from './fetchBulkAnnotationArrays'
+import {
   vivBulkAnnDebug,
   vivBulkAnnNow,
   vivBulkAnnPerf,
@@ -693,6 +700,8 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
   viewportBounds?: DeckViewportBounds
   /** Called after bulk byte retrieve finishes and decode is about to start. */
   onFetchComplete?: () => void
+  /** Network download progress for the coordinate bulk data (streaming path only). */
+  onFetchProgress?: (loadedBytes: number, totalBytes: number | null) => void
 }): Promise<VivBulkHydrateResult | null> {
   const tHydrate0 = vivBulkAnnNow()
   const {
@@ -704,6 +713,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
     shouldContinue,
     viewportBounds,
     onFetchComplete,
+    onFetchProgress,
   } = options
   const {
     annotationGroupUID,
@@ -743,31 +753,82 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
   let graphicData: Int32Array | Float32Array
   let graphicIndex: Int32Array | null
   const tFetch0 = vivBulkAnnNow()
-  vivBulkAnnPhase('hydrate:FETCH start (graphicData+graphicIndex)', {
+  vivBulkAnnPhase('hydrate:FETCH start (index-first, then graphicData)', {
     annotationGroupUID,
     graphicType,
     annotationGroupIndex,
     numberOfAnnotations,
   })
+
+  // The index (`LongPrimitivePointIndexList`) is small; fetch it first so the
+  // streaming path can map downloaded byte prefixes → fully-present annotations.
   try {
-    ;[graphicData, graphicIndex] = await Promise.all([
-      dmv.annotation.fetchGraphicData({
-        metadataItem: metadataItem as object,
-        bulkdataItem,
-        annotationGroupIndex,
-        metadata: ann as unknown as object,
-        client: fetchClient,
-      }),
-      dmv.annotation.fetchGraphicIndex({
-        metadataItem: metadataItem as object,
-        bulkdataItem,
-        annotationGroupIndex,
-        metadata: ann as unknown as object,
-        client: fetchClient,
-      }),
-    ])
+    graphicIndex = await dmv.annotation.fetchGraphicIndex({
+      metadataItem: metadataItem as object,
+      bulkdataItem,
+      annotationGroupIndex,
+      metadata: ann as unknown as object,
+      client: fetchClient,
+    })
   } catch (e) {
-    vivBulkAnnPerf('hydrate:fetchGraphicData+Index FAILED', tFetch0, {
+    vivBulkAnnPhase('hydrate:FETCH failed (graphicIndex)', {
+      annotationGroupUID,
+      graphicType,
+      err: e instanceof Error ? e.message : String(e),
+    })
+    logger.warn(
+      `fetchGraphicIndex failed`,
+      { annotationGroupUID, graphicType },
+      e,
+    )
+    return null
+  }
+
+  if (
+    (graphicType === 'POLYGON' || graphicType === 'POLYLINE') &&
+    (graphicIndex === null || graphicIndex === undefined)
+  ) {
+    logger.warn(
+      `[Viv] skip bulk group ${annotationGroupUID}: missing LongPrimitivePointIndexList`,
+    )
+    return null
+  }
+
+  // Streaming incremental hydrate: render annotations as their coordinate bytes
+  // arrive, instead of blocking on the full (often hundreds of MB) download.
+  // Returns `null` to signal "not eligible / failed — use monolithic fallback".
+  const streamingOutcome = await tryStreamingBulkHydrate({
+    job,
+    geometry,
+    fetchClient,
+    graphicIndex,
+    onChunk,
+    shouldContinue,
+    viewportBounds,
+    onFetchComplete,
+    onFetchProgress,
+  })
+  if (streamingOutcome !== null) {
+    vivBulkAnnPerf('hydrate:total', tHydrate0, {
+      annotationGroupUID,
+      graphicType,
+      route: 'stream',
+      ok: streamingOutcome.result != null,
+    })
+    return streamingOutcome.result
+  }
+
+  // Fallback: classic monolithic retrieve of the coordinate buffer (index loaded).
+  try {
+    graphicData = await dmv.annotation.fetchGraphicData({
+      metadataItem: metadataItem as object,
+      bulkdataItem,
+      annotationGroupIndex,
+      metadata: ann as unknown as object,
+      client: fetchClient,
+    })
+  } catch (e) {
+    vivBulkAnnPerf('hydrate:fetchGraphicData FAILED', tFetch0, {
       annotationGroupUID,
       graphicType,
       err: e instanceof Error ? e.message : String(e),
@@ -778,7 +839,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
       err: e instanceof Error ? e.message : String(e),
     })
     logger.warn(
-      `fetchGraphicData/Index failed`,
+      `fetchGraphicData failed`,
       { annotationGroupUID, graphicType },
       e,
     )
@@ -1062,6 +1123,305 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
   return { groupUID: annotationGroupUID, layers: deckSlices, graphicType }
 }
 
+/**
+ * Stream the coordinate bulk data and render annotations as their bytes arrive.
+ *
+ * - For LOD polygon/polyline groups (the large slides), emits lightweight
+ *   centroid markers for the growing prefix as a live preview, then returns the
+ *   full {@link VivBulkGraphicCache} so the caller's viewport rebuild takes over.
+ * - For smaller groups, emits full path/point chunks progressively.
+ *
+ * Returns `null` when streaming is not eligible or fails, so the caller falls
+ * back to the classic monolithic retrieve with identical behaviour. A non-null
+ * wrapper means streaming owns the result (its `.result` may itself be `null`
+ * when the group was hidden mid-stream).
+ */
+async function tryStreamingBulkHydrate(options: {
+  job: VivBulkGroupGeometryJob
+  geometry: BulkAnnotationGeometryContext
+  fetchClient: DicomWebManager
+  graphicIndex: Int32Array | null
+  onChunk?: VivBulkChunkEmitter
+  shouldContinue?: () => boolean
+  viewportBounds?: DeckViewportBounds
+  onFetchComplete?: () => void
+  onFetchProgress?: (loadedBytes: number, totalBytes: number | null) => void
+}): Promise<{ result: VivBulkHydrateResult | null } | null> {
+  const {
+    job,
+    geometry,
+    fetchClient,
+    graphicIndex,
+    onChunk,
+    shouldContinue,
+    viewportBounds,
+    onFetchComplete,
+    onFetchProgress,
+  } = options
+  const {
+    annotationGroupUID,
+    color,
+    graphicType,
+    numberOfAnnotations,
+    coordinateDimensionality,
+    commonZCoordinate,
+  } = job
+
+  if (graphicIndex === null || graphicIndex === undefined) {
+    return null
+  }
+  if (!browserSupportsBulkStreaming()) {
+    return null
+  }
+  const ref = resolveStreamableGraphicDataReference({
+    metadataItem: job.metadataItem,
+    bulkdataItem: job.bulkdataItem,
+  })
+  if (ref == null || ref.BulkDataURI == null) {
+    return null
+  }
+  const vr = ref.vr ?? ''
+  if (getStreamableBulkVrInfo(vr) == null) {
+    return null
+  }
+  if (!isMonotonicGraphicIndex(graphicIndex, numberOfAnnotations)) {
+    logger.warn(
+      `[Viv] non-monotonic graphicIndex; streaming disabled for ${annotationGroupUID}`,
+    )
+    return null
+  }
+
+  const idx: Int32Array = graphicIndex
+  const annotationCoordinateType = String(
+    job.ann.AnnotationCoordinateType ?? '2D',
+  )
+  const idPrefix = `viv-bulk-${annotationGroupUID}`
+  const useLod = bulkGraphicSupportsLod(graphicType, numberOfAnnotations)
+  const pixelToSlideAffine = affineForReferencedPyramidLevel({
+    pyramid: geometry.pyramid,
+    affineFallback: geometry.affine,
+    wrapper: job.annotationGroupWrapper,
+  })
+  const deckCoeffs = bulkDeckCoeffsForFastPath({
+    annotationCoordinateType,
+    affineInverse: geometry.affineInverse,
+    pixelToSlideAffine,
+  })
+
+  const estimatedTotalChunks = Math.max(
+    1,
+    Math.ceil(numberOfAnnotations / VIV_BULK_PATHS_PER_PATH_LAYER),
+  )
+  const wantPreview = onChunk != null
+  const allEmitted: Layer[] = []
+  let layerChunkCounter = 0
+  let emitCounter = 0
+  let lastEmittedIndex = -1
+  let cancelledByCaller = false
+  const abortController = new AbortController()
+
+  const t0 = vivBulkAnnNow()
+  vivBulkAnnPhase('hydrate:STREAM start', {
+    annotationGroupUID,
+    graphicType,
+    numberOfAnnotations,
+    vr,
+    useLod,
+    wantPreview,
+  })
+
+  /** Decode annotations `[start, end)` from the (possibly partial) buffer and emit. */
+  const decodeEmitRange = async (
+    graphicData: Int32Array | Float32Array,
+    start: number,
+    end: number,
+  ): Promise<void> => {
+    if (end <= start) {
+      return
+    }
+    if (shouldContinue !== undefined && shouldContinue() === false) {
+      cancelledByCaller = true
+      abortController.abort()
+      return
+    }
+    const chunkIndexOffset = layerChunkCounter
+    let layers: Layer[] = []
+    if (useLod) {
+      const built = await buildPointLayersFromGraphicData({
+        graphicData,
+        graphicIndex: idx,
+        coordinateDimensionality,
+        numberOfAnnotations,
+        commonZCoordinate,
+        color,
+        idPrefix: `${idPrefix}-centers`,
+        deckCoeffs,
+        viewportBounds,
+        startAnnotationIndex: start,
+        endAnnotationIndexExclusive: end,
+        chunkIndexOffset,
+      })
+      layers = built.layers
+    } else if (graphicType === 'POINT') {
+      const built = await buildPointLayersFromGraphicData({
+        graphicData,
+        graphicIndex: idx,
+        coordinateDimensionality,
+        numberOfAnnotations,
+        commonZCoordinate,
+        color,
+        idPrefix,
+        deckCoeffs,
+        viewportBounds,
+        startAnnotationIndex: start,
+        endAnnotationIndexExclusive: end,
+        chunkIndexOffset,
+      })
+      layers = built.layers
+    } else if (graphicType === 'POLYGON' || graphicType === 'POLYLINE') {
+      const built = await buildPathLayersFromGraphicData({
+        graphicType,
+        graphicData,
+        graphicIndex: idx,
+        coordinateDimensionality,
+        numberOfAnnotations,
+        commonZCoordinate,
+        color,
+        idPrefix,
+        deckCoeffs,
+        viewportBounds,
+        startAnnotationIndex: start,
+        endAnnotationIndexExclusive: end,
+        chunkIndexOffset,
+      })
+      layers = built?.layers ?? []
+    }
+    if (layers.length === 0) {
+      return
+    }
+    layerChunkCounter += layers.length
+    allEmitted.push(...layers)
+    if (onChunk != null) {
+      await onChunk(layers, { chunkIndex: emitCounter, estimatedTotalChunks })
+      emitCounter++
+    }
+  }
+
+  let finalGraphicData: Int32Array | Float32Array
+  try {
+    finalGraphicData = await streamBulkGraphicData({
+      url: ref.BulkDataURI,
+      baseUrl: fetchClient.baseURL,
+      headers: fetchClient.headers,
+      vr,
+      graphicIndex: idx,
+      numberOfAnnotations,
+      signal: abortController.signal,
+      onProgress: (loadedBytes, totalBytes) => {
+        if (shouldContinue !== undefined && shouldContinue() === false) {
+          cancelledByCaller = true
+          abortController.abort()
+          return
+        }
+        onFetchProgress?.(loadedBytes, totalBytes)
+      },
+      onPrefix: async ({ completeThroughIndex, done, graphicData }) => {
+        if (done || !wantPreview) {
+          return
+        }
+        if (completeThroughIndex > lastEmittedIndex) {
+          await decodeEmitRange(
+            graphicData,
+            lastEmittedIndex + 1,
+            completeThroughIndex + 1,
+          )
+          lastEmittedIndex = completeThroughIndex
+        }
+      },
+    })
+  } catch (e) {
+    if (cancelledByCaller) {
+      vivBulkAnnPhase('hydrate:STREAM cancelled (group hidden)', {
+        annotationGroupUID,
+        graphicType,
+        emittedLayers: allEmitted.length,
+      })
+      return { result: null }
+    }
+    vivBulkAnnPhase('hydrate:STREAM failed — fallback to monolithic', {
+      annotationGroupUID,
+      graphicType,
+      err: e instanceof Error ? e.message : String(e),
+    })
+    logger.warn(
+      `bulk streaming failed; falling back to monolithic retrieve`,
+      { annotationGroupUID, graphicType },
+      e,
+    )
+    return null
+  }
+
+  onFetchComplete?.()
+  if (cancelledByCaller) {
+    return { result: null }
+  }
+
+  if (useLod) {
+    const graphicCache: VivBulkGraphicCache = {
+      graphicType,
+      graphicData: finalGraphicData,
+      graphicIndex: idx,
+      coordinateDimensionality,
+      numberOfAnnotations,
+      commonZCoordinate,
+      color,
+      annotationCoordinateType,
+      idPrefix,
+      job,
+      geometry,
+    }
+    vivBulkAnnPerf('hydrate:STREAM done (LOD cache + centroid preview)', t0, {
+      annotationGroupUID,
+      graphicType,
+      previewLayers: allEmitted.length,
+    })
+    return {
+      result: {
+        groupUID: annotationGroupUID,
+        layers: [],
+        graphicType,
+        supportsLod: true,
+        graphicCache,
+      },
+    }
+  }
+
+  // Decode any annotations not yet emitted (tail + the always-final last one).
+  await decodeEmitRange(
+    finalGraphicData,
+    lastEmittedIndex + 1,
+    numberOfAnnotations,
+  )
+  if (cancelledByCaller) {
+    return { result: null }
+  }
+  vivBulkAnnPerf('hydrate:STREAM done (progressive full decode)', t0, {
+    annotationGroupUID,
+    graphicType,
+    emittedLayers: allEmitted.length,
+  })
+  if (allEmitted.length === 0) {
+    return { result: null }
+  }
+  return {
+    result: {
+      groupUID: annotationGroupUID,
+      layers: allEmitted,
+      graphicType,
+    },
+  }
+}
+
 type FastDecodeResult = {
   layers: Layer[]
   pathRowCount: number
@@ -1182,6 +1542,11 @@ async function buildPointLayersFromGraphicData(options: {
   centerRadiusPx?: number
   /** Emitted once for points (single `ScatterplotLayer`), or per chunk when streaming. */
   onChunk?: VivBulkChunkEmitter
+  /** Decode only annotations in `[startAnnotationIndex, endAnnotationIndexExclusive)`. */
+  startAnnotationIndex?: number
+  endAnnotationIndexExclusive?: number
+  /** Added to chunk indices so layer ids stay unique across streaming flushes. */
+  chunkIndexOffset?: number
 }): Promise<{ layers: Layer[]; pointCount: number }> {
   const {
     graphicData,
@@ -1203,6 +1568,13 @@ async function buildPointLayersFromGraphicData(options: {
     slideHeight,
     onChunk,
   } = options
+  const rangeStart = Math.max(0, options.startAnnotationIndex ?? 0)
+  const rangeEnd = Math.min(
+    numberOfAnnotations,
+    options.endAnnotationIndexExclusive ?? numberOfAnnotations,
+  )
+  const isSubRange = rangeStart !== 0 || rangeEnd !== numberOfAnnotations
+  const chunkIndexOffset = options.chunkIndexOffset ?? 0
   const isLodCentroidLayer = idPrefix.includes('-centers')
   const centerRadiusPx =
     options.centerRadiusPx ??
@@ -1219,7 +1591,7 @@ async function buildPointLayersFromGraphicData(options: {
       : VIV_BULK_CENTER_RADIUS_FALLBACK_PX)
   const tDecode0 = vivBulkAnnNow()
   const annotationOrder =
-    deckLoadCenter != null
+    deckLoadCenter != null && !isSubRange
       ? await computeCenterOutAnnotationOrder({
           numberOfAnnotations,
           graphicData,
@@ -1248,11 +1620,15 @@ async function buildPointLayersFromGraphicData(options: {
     if (pointChunk.length === 0) {
       return
     }
-    const singleLayer = onChunk === undefined && pointChunkIndex === 0 && final
+    const singleLayer =
+      onChunk === undefined &&
+      pointChunkIndex === 0 &&
+      chunkIndexOffset === 0 &&
+      final
     const layer = new ScatterplotLayer<[number, number]>({
       id: singleLayer
         ? `${idPrefix}-pts`
-        : `${idPrefix}-pts-${pointChunkIndex}`,
+        : `${idPrefix}-pts-${chunkIndexOffset + pointChunkIndex}`,
       data: pointChunk,
       pickable: true,
       getPosition: (d) => d,
@@ -1281,7 +1657,7 @@ async function buildPointLayersFromGraphicData(options: {
     pointChunkIndex++
   }
 
-  for (let o = 0; o < numberOfAnnotations; o++) {
+  for (let o = rangeStart; o < rangeEnd; o++) {
     const i = annotationOrder !== null ? annotationOrder[o] : o
     if (
       verbose &&
@@ -1362,6 +1738,11 @@ async function buildPathLayersFromGraphicData(options: {
   /** Polled at every chunk boundary; return `false` to abort the remaining decode. */
   shouldContinue?: () => boolean
   viewportBounds?: DeckViewportBounds
+  /** Decode only annotations in `[startAnnotationIndex, endAnnotationIndexExclusive)`. */
+  startAnnotationIndex?: number
+  endAnnotationIndexExclusive?: number
+  /** Added to chunk indices so layer ids stay unique across streaming flushes. */
+  chunkIndexOffset?: number
 }): Promise<{ layers: Layer[]; pathRowCount: number } | null> {
   const {
     graphicType,
@@ -1382,6 +1763,13 @@ async function buildPathLayersFromGraphicData(options: {
   if (graphicIndex === null) {
     return null
   }
+  const rangeStart = Math.max(0, options.startAnnotationIndex ?? 0)
+  const rangeEnd = Math.min(
+    numberOfAnnotations,
+    options.endAnnotationIndexExclusive ?? numberOfAnnotations,
+  )
+  const isSubRange = rangeStart !== 0 || rangeEnd !== numberOfAnnotations
+  const chunkIndexOffset = options.chunkIndexOffset ?? 0
   const tDecode0 = vivBulkAnnNow()
   const verbose = vivBulkAnnVerboseProgress()
   const PROGRESS_EVERY = 50_000
@@ -1408,10 +1796,10 @@ async function buildPathLayersFromGraphicData(options: {
   }
   const estimatedTotalChunks = Math.max(
     1,
-    Math.ceil(numberOfAnnotations / VIV_BULK_PATHS_PER_PATH_LAYER),
+    Math.ceil((rangeEnd - rangeStart) / VIV_BULK_PATHS_PER_PATH_LAYER),
   )
   const annotationOrder =
-    deckLoadCenter != null
+    deckLoadCenter != null && !isSubRange
       ? await computeCenterOutAnnotationOrder({
           numberOfAnnotations,
           graphicData,
@@ -1439,7 +1827,7 @@ async function buildPathLayersFromGraphicData(options: {
     const rowCount = rows.length
     chunkRows = []
     const layer = new PathLayer<PathRowFlat>({
-      id: `${idPrefix}-paths-${chunkIndex}`,
+      id: `${idPrefix}-paths-${chunkIndexOffset + chunkIndex}`,
       data: rows,
       ...baseProps,
     }) as unknown as Layer
@@ -1480,10 +1868,10 @@ async function buildPathLayersFromGraphicData(options: {
   }
 
   const SHOULD_CONTINUE_EVERY = 512
-  for (let o = 0; o < numberOfAnnotations; o++) {
+  for (let o = rangeStart; o < rangeEnd; o++) {
     if (
       shouldContinue !== undefined &&
-      o > 0 &&
+      o > rangeStart &&
       o % SHOULD_CONTINUE_EVERY === 0 &&
       shouldContinue() === false
     ) {

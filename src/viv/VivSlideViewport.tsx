@@ -1129,9 +1129,8 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
         graphicType: job.graphicType,
       })
       let chunksCommitted = 0
-      const isLodJob =
-        (job.graphicType === 'POLYGON' || job.graphicType === 'POLYLINE') &&
-        job.numberOfAnnotations > 1000
+      /** Throttle download-progress UI updates (streaming fires very frequently). */
+      let lastProgressReportBytes = 0
       const appendChunkToSlice = (chunkLayers: Layer[]): void => {
         setBulkSlicesByUid((prev) => {
           const existing = prev[uid]
@@ -1182,6 +1181,37 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
             })
           },
           /**
+           * Streaming download progress. Throttled to ~8 MB steps so the bulk
+           * load indicator advances without flooding React with state updates.
+           */
+          onFetchProgress: (loadedBytes, totalBytes) => {
+            if (
+              bulkHydrateGenRef.current !== hydrateGen ||
+              !visibleBulkUidsRef.current.has(uid)
+            ) {
+              return
+            }
+            const atEnd = totalBytes != null && loadedBytes >= totalBytes
+            if (
+              !atEnd &&
+              loadedBytes - lastProgressReportBytes < 8 * 1024 * 1024
+            ) {
+              return
+            }
+            lastProgressReportBytes = loadedBytes
+            const loadedMb = (loadedBytes / (1024 * 1024)).toFixed(1)
+            const totalMb =
+              totalBytes != null && totalBytes > 0
+                ? ` / ${(totalBytes / (1024 * 1024)).toFixed(1)}`
+                : ''
+            reportGroupLoad(uid, {
+              phase: 'fetching',
+              detail: `Downloading annotations… ${loadedMb}${totalMb} MB`,
+              annotationCount: job.numberOfAnnotations,
+              graphicType: job.graphicType,
+            })
+          },
+          /**
            * Polled at every chunk boundary so hydrate stops decoding the
            * remaining polygons when the user toggles the group off.
            */
@@ -1189,51 +1219,47 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
             bulkHydrateGenRef.current === hydrateGen &&
             visibleBulkUidsRef.current.has(uid),
           /**
-           * Progressive rendering: as soon as hydrate finishes decoding a chunk
-           * (~65k polygons), it calls back so we can append those layers to the
-           * group's slice and let the user see partial coverage while the rest
-           * of the decode + transfer is still running.
+           * Progressive rendering: hydrate calls back as soon as a chunk is
+           * decoded — full path/point chunks for smaller groups, or lightweight
+           * centroid markers for large LOD groups streamed as bytes arrive — so
+           * the user sees partial coverage while the rest of the transfer +
+           * decode is still running. For LOD groups these preview layers are
+           * replaced by the viewport rebuild once the full buffer is cached.
            */
-          onChunk: isLodJob
-            ? undefined
-            : (chunkLayers, meta) => {
-                if (
-                  bulkHydrateGenRef.current !== hydrateGen ||
-                  !visibleBulkUidsRef.current.has(uid)
-                ) {
-                  vivBulkAnnDebug(
-                    'viewport: chunk dropped (no longer visible)',
-                    {
-                      uid,
-                      chunkIndex: meta.chunkIndex,
-                    },
-                  )
-                  return
-                }
-                chunksCommitted++
-                const tSet0 = vivBulkAnnNow()
-                vivBulkAnnPhase('viewport:HYDRATE chunk commit', {
-                  uid,
-                  chunkIndex: meta.chunkIndex,
-                  estimatedTotalChunks: meta.estimatedTotalChunks,
-                  chunkLayers: chunkLayers.length,
-                  sinceDispatchMs:
-                    Math.round((vivBulkAnnNow() - tHydr0) * 10) / 10,
-                })
-                reportGroupLoad(uid, {
-                  phase: 'processing',
-                  chunkIndex: meta.chunkIndex,
-                  estimatedChunks: meta.estimatedTotalChunks,
-                  annotationCount: job.numberOfAnnotations,
-                  graphicType: job.graphicType,
-                })
-                appendChunkToSlice(chunkLayers)
-                vivBulkAnnDebug('viewport: chunk scheduled', {
-                  uid,
-                  chunkIndex: meta.chunkIndex,
-                  scheduleMs: Math.round((vivBulkAnnNow() - tSet0) * 100) / 100,
-                })
-              },
+          onChunk: (chunkLayers, meta) => {
+            if (
+              bulkHydrateGenRef.current !== hydrateGen ||
+              !visibleBulkUidsRef.current.has(uid)
+            ) {
+              vivBulkAnnDebug('viewport: chunk dropped (no longer visible)', {
+                uid,
+                chunkIndex: meta.chunkIndex,
+              })
+              return
+            }
+            chunksCommitted++
+            const tSet0 = vivBulkAnnNow()
+            vivBulkAnnPhase('viewport:HYDRATE chunk commit', {
+              uid,
+              chunkIndex: meta.chunkIndex,
+              estimatedTotalChunks: meta.estimatedTotalChunks,
+              chunkLayers: chunkLayers.length,
+              sinceDispatchMs: Math.round((vivBulkAnnNow() - tHydr0) * 10) / 10,
+            })
+            reportGroupLoad(uid, {
+              phase: 'processing',
+              chunkIndex: meta.chunkIndex,
+              estimatedChunks: meta.estimatedTotalChunks,
+              annotationCount: job.numberOfAnnotations,
+              graphicType: job.graphicType,
+            })
+            appendChunkToSlice(chunkLayers)
+            vivBulkAnnDebug('viewport: chunk scheduled', {
+              uid,
+              chunkIndex: meta.chunkIndex,
+              scheduleMs: Math.round((vivBulkAnnNow() - tSet0) * 100) / 100,
+            })
+          },
         }).then((slice) => {
           if (bulkHydrateGenRef.current !== hydrateGen) {
             hydrateInFlight.delete(uid)
