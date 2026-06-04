@@ -31,7 +31,7 @@ The app is built using [craco](https://github.com/gsoft-inc/craco) (with the [cr
 
 Tests are written and run using the [jest](https://jestjs.io/) framework.
 
-The [Bun](https://bun.sh/) runtime and package manager is used to manage dependencies and run scripts specified in `package.json` (`build`, `lint`, `test`, etc.).
+The [pnpm](https://pnpm.io/) package manager is used to manage dependencies and run scripts specified in `package.json` (`build`, `lint`, `test`, etc.).
 
 ## Coding style
 
@@ -39,9 +39,9 @@ Source code is linted and formatted using [Biome](https://biomejs.dev/). TypeScr
 
 Use the following commands to check and fix style:
 
-    $ bun run lint        # check for issues
-    $ bun run lint:fix    # auto-fix issues
-    $ bun run fmt         # format code
+    $ pnpm run lint        # check for issues
+    $ pnpm run lint:fix    # auto-fix issues
+    $ pnpm run fmt         # format code
 
 
 ### Documentation
