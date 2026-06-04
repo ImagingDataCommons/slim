@@ -558,6 +558,15 @@ export function detachVivBulkOverlayLayerData(layers: Layer[]): void {
  * Deck layers is ready (typically one `PathLayer` per ~65k polygons), so the viewport
  * can show partial results while remaining decode/transfer work is still in flight.
  */
+/** Viewport/zoom context so the LOD streaming preview matches the overview rebuild. */
+export type VivBulkLodPreviewContext = {
+  deckZoom: number
+  viewportWidth: number
+  viewportHeight: number
+  slideWidth: number
+  slideHeight: number
+}
+
 export type VivBulkChunkEmitter = (
   chunkLayers: Layer[],
   meta: {
@@ -702,6 +711,13 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
   onFetchComplete?: () => void
   /** Network download progress for the coordinate bulk data (streaming path only). */
   onFetchProgress?: (loadedBytes: number, totalBytes: number | null) => void
+  /**
+   * Zoom/viewport context for the LOD streaming preview. When provided, streamed
+   * centroid markers are sized + decoded exactly like the overview rebuild
+   * (full coverage, zoom-scaled radius) so no follow-up rebuild is needed while
+   * zoomed out.
+   */
+  lodPreviewContext?: VivBulkLodPreviewContext
 }): Promise<VivBulkHydrateResult | null> {
   const tHydrate0 = vivBulkAnnNow()
   const {
@@ -714,6 +730,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
     viewportBounds,
     onFetchComplete,
     onFetchProgress,
+    lodPreviewContext,
   } = options
   const {
     annotationGroupUID,
@@ -807,6 +824,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
     viewportBounds,
     onFetchComplete,
     onFetchProgress,
+    lodPreviewContext,
   })
   if (streamingOutcome !== null) {
     vivBulkAnnPerf('hydrate:total', tHydrate0, {
@@ -1146,6 +1164,7 @@ async function tryStreamingBulkHydrate(options: {
   viewportBounds?: DeckViewportBounds
   onFetchComplete?: () => void
   onFetchProgress?: (loadedBytes: number, totalBytes: number | null) => void
+  lodPreviewContext?: VivBulkLodPreviewContext
 }): Promise<{ result: VivBulkHydrateResult | null } | null> {
   const {
     job,
@@ -1157,6 +1176,7 @@ async function tryStreamingBulkHydrate(options: {
     viewportBounds,
     onFetchComplete,
     onFetchProgress,
+    lodPreviewContext,
   } = options
   const {
     annotationGroupUID,
@@ -1247,6 +1267,9 @@ async function tryStreamingBulkHydrate(options: {
     const chunkIndexOffset = layerChunkCounter
     let layers: Layer[] = []
     if (useLod) {
+      // Render the FULL overview (no viewport cull) with zoom-scaled marker
+      // radius so the streamed preview equals the centers-mode rebuild — the
+      // caller can then keep it as the final result without re-rendering.
       const built = await buildPointLayersFromGraphicData({
         graphicData,
         graphicIndex: idx,
@@ -1256,10 +1279,16 @@ async function tryStreamingBulkHydrate(options: {
         color,
         idPrefix: `${idPrefix}-centers`,
         deckCoeffs,
-        viewportBounds,
         startAnnotationIndex: start,
         endAnnotationIndexExclusive: end,
         chunkIndexOffset,
+        deckZoom: lodPreviewContext?.deckZoom,
+        pixelSpacingMm: readFinestPyramidPixelSpacingMm(geometry.pyramid),
+        lodOverview: true,
+        viewportWidth: lodPreviewContext?.viewportWidth,
+        viewportHeight: lodPreviewContext?.viewportHeight,
+        slideWidth: lodPreviewContext?.slideWidth,
+        slideHeight: lodPreviewContext?.slideHeight,
       })
       layers = built.layers
     } else if (graphicType === 'POINT') {
@@ -1367,6 +1396,23 @@ async function tryStreamingBulkHydrate(options: {
   }
 
   if (useLod) {
+    /**
+     * Emit the tail not yet covered by the throttled streaming prefixes (the
+     * last batch only becomes "complete" on the final read, plus the multipart
+     * trailing-guard bytes). Without this the preview is missing its last one or
+     * two centroid chunks until a viewport rebuild runs.
+     */
+    if (wantPreview && lastEmittedIndex < numberOfAnnotations - 1) {
+      await decodeEmitRange(
+        finalGraphicData,
+        lastEmittedIndex + 1,
+        numberOfAnnotations,
+      )
+      lastEmittedIndex = numberOfAnnotations - 1
+    }
+    if (cancelledByCaller) {
+      return { result: null }
+    }
     const graphicCache: VivBulkGraphicCache = {
       graphicType,
       graphicData: finalGraphicData,
