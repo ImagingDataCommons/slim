@@ -33,8 +33,11 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build and deploy to GitHub Pages
-        run: |
-          git remote set-url origin https://git:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
-          pnpm run deploy -- -u "github-actions-bot <support+actions@github.com>" -f
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions-bot"
+          git config user.email "support+actions@github.com"
+          git remote set-url origin "https://git:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          pnpm run predeploy
+          pnpm exec gh-pages -d build -f
