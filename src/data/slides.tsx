@@ -403,4 +403,4 @@ function _doesImageBelongToSlide(
   return false
 }
 
-export { Slide, createSlides }
+export { createSlides, Slide }
