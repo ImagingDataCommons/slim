@@ -43,6 +43,9 @@ importers:
       oidc-client:
         specifier: ^1.11.5
         version: 1.11.5
+      ol:
+        specifier: ^10.7.0
+        version: 10.9.0
       react:
         specifier: ^18.2.0
         version: 18.3.1
