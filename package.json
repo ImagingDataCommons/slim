@@ -103,8 +103,7 @@
       "semver": "7.5.2",
       "serialize-javascript": "7.0.5",
       "tar": "7.5.16",
-      "underscore": "1.13.8",
-      "dicom-microscopy-viewer": "link:../../../../Library/pnpm/global/5/node_modules/dicom-microscopy-viewer"
+      "underscore": "1.13.8"
     }
   }
 }
