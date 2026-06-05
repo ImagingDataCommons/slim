@@ -39,7 +39,6 @@ export const constructViewers = ({
       clientMapping: clients,
       metadata: slide.volumeImages,
       controls: ['overview', 'position'],
-      skipThumbnails: true,
       preload,
       annotationOptions:
         clusteringPixelSizeThreshold !== undefined
