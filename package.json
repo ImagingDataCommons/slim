@@ -44,6 +44,7 @@
     "dicom-microscopy-viewer": "^0.48.21",
     "dicomweb-client": "0.10.3",
     "oidc-client": "^1.11.5",
+    "ol": "^10.7.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-error-boundary": "^3.1.4",
