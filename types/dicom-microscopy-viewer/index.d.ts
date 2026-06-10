@@ -1,5 +1,16 @@
 declare module 'dicom-microscopy-viewer' {
 
+  export interface DmvLoggerOptions {
+    level?: 'DEBUG' | 'LOG' | 'WARN' | 'ERROR' | 'NONE'
+    enableInProduction?: boolean
+    enableInDevelopment?: boolean
+  }
+
+  /** Configure DMV logging once at application startup. */
+  export function setLogLevel(
+    levelOrOptions: string | DmvLoggerOptions,
+  ): void
+
   // skipcq: JS-C1003
   import * as dwc from 'dicomweb-client'
   // skipcq: JS-C1003
@@ -579,6 +590,12 @@ declare module 'dicom-microscopy-viewer' {
     }
 
     export interface MicroscopyBulkSimpleAnnotations extends SOPClass {
+      ReferencedSeriesSequence?: Array<{
+        SeriesInstanceUID: string
+      }>
+      ReferencedImageSequence?: Array<{
+        ReferencedSOPInstanceUID: string
+      }>
       AnnotationCoordinateType: string
       // Frame of Reference module
       FrameOfReferenceUID: string
@@ -608,6 +625,11 @@ declare module 'dicom-microscopy-viewer' {
           CodeMeaning: string
           CodingSchemeDesignator: string
           CodingSchemeVersion?: string
+        }>
+        RecommendedDisplayCIELabValue?: number[]
+        AnnotationGroupGenerationType?: string
+        AnnotationGroupAlgorithmIdentificationSequence?: Array<{
+          AlgorithmName: string
         }>
         GraphicType: string
         NumberOfAnnotations: number
@@ -744,6 +766,8 @@ declare module 'dicom-microscopy-viewer' {
       studyInstanceUID: string
       seriesInstanceUID: string
       sopInstanceUIDs: string[]
+      referencedSeriesInstanceUID: string
+      referencedSOPInstanceUID: string
     }
 
     export class AnnotationGroup {
@@ -758,7 +782,61 @@ declare module 'dicom-microscopy-viewer' {
       get studyInstanceUID (): string
       get seriesInstanceUID (): string
       get sopInstanceUIDs (): string[]
+      get referencedSeriesInstanceUID (): string
+      get referencedSOPInstanceUID (): string
     }
+
+    export function fetchGraphicData (options: {
+      metadataItem: object
+      bulkdataItem: object | null | undefined
+      annotationGroupIndex: number
+      metadata: object
+      client: dwc.api.DICOMwebClient
+    }): Promise<Int32Array | Float32Array>
+
+    export function fetchGraphicIndex (options: {
+      metadataItem: object
+      bulkdataItem: object | null | undefined
+      annotationGroupIndex: number
+      metadata: object
+      client: dwc.api.DICOMwebClient
+    }): Promise<TypedArray | null>
+
+    export function getCommonZCoordinate (metadataItem: object): number
+
+    export function getCoordinateDimensionality (
+      metadataItem: object,
+      annotationCoordinateType: string
+    ): number
+
+  }
+
+  declare namespace bulkSimpleAnnotations {
+
+    export function getFeaturesFromBulkAnnotations (
+      options: Record<string, unknown>
+    ): unknown[]
+
+    export function getPointFeature (options: Record<string, unknown>): unknown
+
+    export function getPolygonFeature (options: Record<string, unknown>): unknown
+
+    export function getCircleFeature (options: Record<string, unknown>): unknown
+
+    export function getEllipseFeature (options: Record<string, unknown>): unknown
+
+    export function getRectangleFeature (options: Record<string, unknown>): unknown
+
+    export function getViewportBoundingBox (options: Record<string, unknown>): {
+      topLeft: number[]
+      bottomRight: number[]
+    }
+
+    export function isCoordinateInsideBoundingBox (
+      coordinate: number[],
+      topLeft: number[],
+      bottomRight: number[]
+    ): boolean
 
   }
 

@@ -1,21 +1,37 @@
-import { Layout, Menu } from 'antd'
+import type { MenuProps } from 'antd'
+import { Layout, Menu, Select, Tag } from 'antd'
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
-import { useEffect, useState } from 'react'
+// skipcq: JS-C1003
+import type * as dmv from 'dicom-microscopy-viewer'
+import {
+  Fragment,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react'
 import { Route, Routes, useLocation, useParams } from 'react-router-dom'
 
-import type { AnnotationSettings } from '../AppConfig'
+import type { AnnotationSettings, VivSettings } from '../AppConfig'
 import type { User } from '../auth'
 import type DicomWebManager from '../DicomWebManager'
 import type { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
 import { useSlides } from '../hooks/useSlides'
+import DicomMetadataStore from '../services/DICOMMetadataStore'
 import { type RouteComponentProps, withRouter } from '../utils/router'
+import type { VivBulkAnnotationCatalogPayload } from '../viv/loadBulkAnnotationLayers'
+import VivSlideViewport from '../viv/VivSlideViewport'
+import { EMPTY_VIV_BULK_LOAD_STATUS } from '../viv/vivBulkLoadStatus'
+import AnnotationGroupList from './AnnotationGroupList'
 import ClinicalTrial from './ClinicalTrial'
 import Patient from './Patient'
 import SlideList from './SlideList'
 import SlideViewer from './SlideViewer'
 import Study from './Study'
+import VivBulkAnnotationLoadIndicator from './VivBulkAnnotationLoadIndicator'
+import VivSettingsDrawer from './VivSettingsDrawer'
 
 const { naturalizeDataset } = dcmjs.data.DicomMetaDictionary
 
@@ -52,6 +68,66 @@ const findSeriesSlide = (
   })
 }
 
+/** Non-interactive menu row for custom panel content (avoids invalid DOM props). */
+const menuPanelItemStyle: React.CSSProperties = {
+  height: 'auto',
+  cursor: 'default',
+  padding: 0,
+  lineHeight: 'normal',
+}
+
+function menuPanelItem(
+  key: string,
+  label: ReactNode,
+): NonNullable<MenuProps['items']>[number] {
+  return {
+    key,
+    label,
+    disabled: true,
+    style: menuPanelItemStyle,
+  }
+}
+
+/** Viv path: main viewport + slim right rail (classic viewer uses ~300px sider). */
+const vivChrome = (main: JSX.Element, rightPanel?: ReactNode): JSX.Element => (
+  <div
+    style={{
+      display: 'flex',
+      flex: '1 1 0%',
+      minHeight: 0,
+      minWidth: 0,
+      width: '100%',
+      height: '100%',
+      overflow: 'hidden',
+    }}
+  >
+    <div
+      style={{
+        flex: '1 1 0%',
+        minWidth: 0,
+        minHeight: 0,
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      {main}
+    </div>
+    <aside
+      style={{
+        width: 300,
+        flexShrink: 0,
+        borderLeft: 'solid 0.25px',
+        fontSize: 12,
+        color: 'rgba(0,0,0,0.55)',
+        overflow: 'auto',
+      }}
+    >
+      {rightPanel}
+    </aside>
+  </div>
+)
+
 function ParametrizedSlideViewer({
   clients,
   slides,
@@ -60,6 +136,8 @@ function ParametrizedSlideViewer({
   preload,
   enableAnnotationTools,
   annotations,
+  isVivRoute,
+  vivSettings,
 }: {
   clients: { [key: string]: DicomWebManager }
   slides: Slide[]
@@ -73,6 +151,8 @@ function ParametrizedSlideViewer({
   preload: boolean
   enableAnnotationTools: boolean
   annotations: AnnotationSettings[]
+  isVivRoute: boolean
+  vivSettings?: VivSettings
 }): JSX.Element | null {
   const { studyInstanceUID = '', seriesInstanceUID = '' } = useParams<{
     studyInstanceUID: string
@@ -85,8 +165,126 @@ function ParametrizedSlideViewer({
   )
   const [derivedDataset, setDerivedDataset] =
     useState<NaturalizedInstance | null>(null)
+  const [vivBulkCatalog, setVivBulkCatalog] =
+    useState<VivBulkAnnotationCatalogPayload | null>(null)
+  const [vivVisibleAnnotationGroupUIDs, setVivVisibleAnnotationGroupUIDs] =
+    useState<Set<string>>(new Set())
+  const [vivAnnotationGroupStyles, setVivAnnotationGroupStyles] = useState<
+    Record<string, { opacity: number; color: number[] }>
+  >({})
+  const [vivAnnGroupSeriesSelection, setVivAnnGroupSeriesSelection] =
+    useState<string>('all')
+  const [vivIccProfilesAvailable, setVivIccProfilesAvailable] = useState(true)
+  const [vivBulkLoadStatus, setVivBulkLoadStatus] = useState(
+    EMPTY_VIV_BULK_LOAD_STATUS,
+  )
+
+  const getVivSeriesDescription = (seriesInstanceUID: string): string => {
+    const study = DicomMetadataStore.getStudy(studyInstanceUID)
+    if (study?.series != null && study !== undefined) {
+      const series = study.series.find(
+        (s) => s.SeriesInstanceUID === seriesInstanceUID,
+      )
+      if (
+        series?.SeriesDescription !== undefined &&
+        series.SeriesDescription !== ''
+      ) {
+        return series.SeriesDescription
+      }
+    }
+    return `Series ${seriesInstanceUID.slice(0, 8)}…`
+  }
+
+  const handleVivIccAvailability = useCallback((hasIccProfiles: boolean) => {
+    setVivIccProfilesAvailable(hasIccProfiles)
+  }, [])
+
+  const handleVivBulkCatalogChange = useCallback(
+    (c: VivBulkAnnotationCatalogPayload | null) => {
+      setVivBulkCatalog(c)
+      if (c == null) {
+        setVivBulkLoadStatus(EMPTY_VIV_BULK_LOAD_STATUS)
+      }
+      if (c != null && c.annotationGroups.length > 0) {
+        setVivAnnGroupSeriesSelection('all')
+        setVivVisibleAnnotationGroupUIDs(new Set())
+        setVivAnnotationGroupStyles({ ...c.defaultStylesByGroupUID })
+      } else if (c != null) {
+        setVivVisibleAnnotationGroupUIDs(new Set())
+        setVivAnnotationGroupStyles({})
+      } else {
+        setVivVisibleAnnotationGroupUIDs(new Set())
+        setVivAnnotationGroupStyles({})
+        setVivAnnGroupSeriesSelection('all')
+      }
+    },
+    [],
+  )
+
+  const handleVivAnnotationGroupVisibilityChange = useCallback(
+    ({
+      annotationGroupUID,
+      isVisible,
+    }: {
+      annotationGroupUID: string
+      isVisible: boolean
+    }) => {
+      setVivVisibleAnnotationGroupUIDs((prev) => {
+        const next = new Set(prev)
+        if (isVisible) {
+          next.add(annotationGroupUID)
+        } else {
+          next.delete(annotationGroupUID)
+        }
+        return next
+      })
+    },
+    [],
+  )
+
+  const handleVivAnnotationGroupStyleChange = useCallback(
+    ({
+      uid,
+      styleOptions,
+    }: {
+      uid: string
+      styleOptions: {
+        opacity?: number
+        color?: number[]
+        measurement?: dcmjs.sr.coding.CodedConcept
+        limitValues?: number[]
+      }
+    }) => {
+      setVivAnnotationGroupStyles((prev) => {
+        const base = prev[uid] ??
+          vivBulkCatalog?.defaultStylesByGroupUID[uid] ?? {
+            opacity: 1,
+            color: [220, 60, 60],
+          }
+        return {
+          ...prev,
+          [uid]: {
+            opacity: styleOptions.opacity ?? base.opacity,
+            color: styleOptions.color ?? base.color,
+          },
+        }
+      })
+    },
+    [vivBulkCatalog],
+  )
+
+  const handleVivAnnotationGroupSeriesSelect = useCallback((value: string) => {
+    setVivVisibleAnnotationGroupUIDs(new Set())
+    setVivAnnGroupSeriesSelection(value)
+  }, [])
+
+  const handleVivAnnotationGroupClick = useCallback((_uid: string) => {
+    /* Viv preview: no VolumeImageViewer.zoomToROI equivalent yet */
+  }, [])
 
   useEffect(() => {
+    setVivIccProfilesAvailable(true)
+
     const currentSlideMatchesSeries =
       selectedSlide?.seriesInstanceUIDs.some(
         (uid: string) => uid === seriesInstanceUID,
@@ -171,21 +369,261 @@ function ParametrizedSlideViewer({
 
   let viewer = null
   if (selectedSlide != null && selectedSlide !== undefined) {
-    viewer = (
-      <SlideViewer
-        clients={clients}
-        studyInstanceUID={studyInstanceUID}
-        seriesInstanceUID={seriesInstanceUID}
-        selectedPresentationStateUID={presentationStateUID}
-        slide={selectedSlide}
-        preload={preload}
-        annotations={annotations}
-        enableAnnotationTools={enableAnnotationTools}
-        app={app}
-        user={user}
-        derivedDataset={derivedDataset ?? undefined}
-      />
-    )
+    if (isVivRoute) {
+      const microscopyClient =
+        clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE] ??
+        clients.default
+      if (microscopyClient === undefined) {
+        return null
+      }
+      const bulkAnnotationClient =
+        clients[StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION] ??
+        microscopyClient
+
+      let vivAnnotationGroupListSection: ReactNode = null
+      if (
+        vivBulkCatalog != null &&
+        vivBulkCatalog.annotationGroups.length > 0
+      ) {
+        const annotationGroups = vivBulkCatalog.annotationGroups
+        const annotationGroupsBySeries: {
+          [seriesInstanceUID: string]: dmv.annotation.AnnotationGroup[]
+        } = {}
+        for (const ag of annotationGroups) {
+          const seriesUID = ag.seriesInstanceUID
+          if (!(seriesUID in annotationGroupsBySeries)) {
+            annotationGroupsBySeries[seriesUID] = []
+          }
+          annotationGroupsBySeries[seriesUID]?.push(ag)
+        }
+        const dropdownOptions = [
+          { value: 'all', label: 'All' },
+          ...Object.keys(annotationGroupsBySeries).map((seriesUID) => ({
+            value: seriesUID,
+            label: `${getVivSeriesDescription(seriesUID)} (${annotationGroupsBySeries[seriesUID]?.length ?? 0} groups)`,
+          })),
+        ]
+        const selectedSeriesAnnotationGroups =
+          vivAnnGroupSeriesSelection === 'all'
+            ? annotationGroups
+            : (annotationGroupsBySeries[vivAnnGroupSeriesSelection] ?? [])
+
+        vivAnnotationGroupListSection = (
+          <>
+            <div
+              style={{
+                paddingLeft: '14px',
+                paddingRight: '14px',
+                paddingTop: '7px',
+                paddingBottom: '7px',
+              }}
+            >
+              <Select
+                style={{ width: '100%' }}
+                placeholder="Select a series"
+                value={vivAnnGroupSeriesSelection}
+                onChange={(v) => {
+                  handleVivAnnotationGroupSeriesSelect(String(v))
+                }}
+                options={dropdownOptions}
+              />
+            </div>
+            {selectedSeriesAnnotationGroups.length > 0 ? (
+              <AnnotationGroupList
+                annotationGroups={selectedSeriesAnnotationGroups}
+                metadata={vivBulkCatalog.metadataByGroupUID}
+                onAnnotationGroupClick={handleVivAnnotationGroupClick}
+                defaultAnnotationGroupStyles={vivAnnotationGroupStyles}
+                visibleAnnotationGroupUIDs={vivVisibleAnnotationGroupUIDs}
+                onAnnotationGroupVisibilityChange={
+                  handleVivAnnotationGroupVisibilityChange
+                }
+                onAnnotationGroupStyleChange={
+                  handleVivAnnotationGroupStyleChange
+                }
+              />
+            ) : null}
+          </>
+        )
+      }
+
+      const padSubmenuBlock = {
+        paddingLeft: '14px' as const,
+        paddingRight: '14px' as const,
+        paddingTop: '7px' as const,
+        paddingBottom: '7px' as const,
+      }
+
+      const vivAnnotationGroupChildren: NonNullable<MenuProps['items']> = [
+        menuPanelItem(
+          'bulk-load-indicator',
+          <div style={padSubmenuBlock}>
+            <VivBulkAnnotationLoadIndicator
+              status={vivBulkLoadStatus}
+              metadataByGroupUID={vivBulkCatalog?.metadataByGroupUID}
+              variant="panel"
+            />
+          </div>,
+        ),
+      ]
+      if (
+        vivBulkCatalog === null &&
+        vivBulkLoadStatus.metadataPhase !== 'loading'
+      ) {
+        vivAnnotationGroupChildren.push(
+          menuPanelItem(
+            'loading-hint',
+            <div style={padSubmenuBlock}>
+              <p
+                style={{
+                  fontSize: 11,
+                  lineHeight: 1.45,
+                  margin: 0,
+                  color: 'rgba(0,0,0,0.75)',
+                }}
+              >
+                Loading annotation metadata and geometry…
+              </p>
+            </div>,
+          ),
+        )
+      } else if (
+        vivBulkCatalog != null &&
+        vivBulkCatalog.annotationGroups.length === 0
+      ) {
+        vivAnnotationGroupChildren.push(
+          menuPanelItem(
+            'empty-hint',
+            <div style={padSubmenuBlock}>
+              <p style={{ fontSize: 11, lineHeight: 1.45, margin: 0 }}>
+                No bulk annotation groups for this slide were returned (or all
+                were skipped). Check the browser console (filter by{' '}
+                <code style={{ fontSize: 10 }}>metadata:</code> or{' '}
+                <code style={{ fontSize: 10 }}>hydrate:</code>) for details.
+              </p>
+            </div>,
+          ),
+        )
+      } else if (vivAnnotationGroupListSection != null) {
+        vivAnnotationGroupChildren.push(
+          menuPanelItem(
+            'annotation-groups-list',
+            vivAnnotationGroupListSection,
+          ),
+        )
+      }
+
+      const vivAnnotationGroupPanel: ReactNode = (
+        <Menu
+          mode="inline"
+          selectable={false}
+          defaultOpenKeys={['annotation-groups']}
+          inlineIndent={14}
+          forceSubMenuRender
+          style={{
+            borderInlineEnd: 0,
+            background: 'none',
+            marginTop: 8,
+          }}
+          items={[
+            {
+              key: 'annotation-groups',
+              label: 'Annotation Groups',
+              children: vivAnnotationGroupChildren,
+            },
+          ]}
+        />
+      )
+
+      viewer = vivChrome(
+        <Fragment>
+          <VivSettingsDrawer iccProfilesAvailable={vivIccProfilesAvailable} />
+          <VivSlideViewport
+            client={microscopyClient}
+            bulkAnnotationClient={bulkAnnotationClient}
+            loadBulkAnnotations
+            visibleBulkAnnotationGroupUIDs={vivVisibleAnnotationGroupUIDs}
+            bulkAnnotationGroupStyles={vivAnnotationGroupStyles}
+            onBulkAnnotationCatalogChange={handleVivBulkCatalogChange}
+            onBulkAnnotationLoadStatusChange={setVivBulkLoadStatus}
+            onIccProfilesAvailabilityChange={handleVivIccAvailability}
+            studyInstanceUID={studyInstanceUID}
+            seriesInstanceUID={seriesInstanceUID}
+            vivSettings={vivSettings}
+          />
+        </Fragment>,
+        <div>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              gap: 14,
+              padding: '22px 14px 18px',
+              borderBottom: '1px solid rgba(0, 0, 0, 0.07)',
+            }}
+          >
+            <Tag
+              style={{
+                margin: 0,
+                border: 'none',
+                borderRadius: 999,
+                fontSize: 10,
+                fontWeight: 800,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                padding: '7px 18px',
+                lineHeight: 1.25,
+                height: 'auto',
+                background:
+                  'linear-gradient(140deg, #4338ca 0%, #6d28d9 48%, #7e22ce 100%)',
+                color: '#fff',
+                boxShadow:
+                  'inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 2px 4px rgba(67, 56, 202, 0.18), 0 8px 20px rgba(109, 40, 217, 0.22)',
+              }}
+            >
+              Viv preview
+            </Tag>
+            <p
+              style={{
+                margin: 0,
+                width: '100%',
+                padding: '13px 16px',
+                fontSize: 12,
+                lineHeight: 1.6,
+                color: 'rgba(0, 0, 0, 0.78)',
+                background:
+                  'linear-gradient(100deg, rgba(67, 56, 202, 0.09) 0%, rgba(126, 34, 206, 0.05) 52%, rgba(255, 255, 255, 0) 100%)',
+                borderRadius: 10,
+                border: '1px solid rgba(109, 40, 217, 0.14)',
+                borderLeftWidth: 4,
+                borderLeftColor: '#6d28d9',
+                boxSizing: 'border-box',
+              }}
+            >
+              Only bulk simple annotations are supported in this preview!
+            </p>
+          </div>
+          {vivAnnotationGroupPanel}
+        </div>,
+      )
+    } else {
+      viewer = (
+        <SlideViewer
+          clients={clients}
+          studyInstanceUID={studyInstanceUID}
+          seriesInstanceUID={seriesInstanceUID}
+          selectedPresentationStateUID={presentationStateUID}
+          slide={selectedSlide}
+          preload={preload}
+          annotations={annotations}
+          enableAnnotationTools={enableAnnotationTools}
+          app={app}
+          user={user}
+          derivedDataset={derivedDataset ?? undefined}
+        />
+      )
+    }
   }
   return viewer
 }
@@ -203,6 +641,8 @@ interface ViewerProps extends RouteComponentProps {
   enableAnnotationTools: boolean
   preload: boolean
   user?: User
+  isVivRoute: boolean
+  vivSettings?: VivSettings
 }
 
 function Viewer(props: ViewerProps): JSX.Element | null {
@@ -215,7 +655,8 @@ function Viewer(props: ViewerProps): JSX.Element | null {
     seriesInstanceUID: string
   }): void => {
     console.info(`switch to series "${seriesInstanceUID}"`)
-    let urlPath = `/studies/${studyInstanceUID}/series/${seriesInstanceUID}`
+    const vivStudiesPrefix = location.pathname.startsWith('/viv/') ? '/viv' : ''
+    let urlPath = `${vivStudiesPrefix}/studies/${studyInstanceUID}/series/${seriesInstanceUID}`
 
     if (location.pathname.includes('/projects/')) {
       urlPath = location.pathname
@@ -269,14 +710,49 @@ function Viewer(props: ViewerProps): JSX.Element | null {
     selectedSeriesInstanceUID = volumeInstances[0].SeriesInstanceUID
   }
 
-  let clinicalTrialMenu: React.ReactNode
-  if (refImage.ClinicalTrialSponsorName != null) {
-    clinicalTrialMenu = (
-      <Menu.SubMenu key="clinical-trial" title="Clinical Trial">
-        <ClinicalTrial metadata={refImage} />
-      </Menu.SubMenu>
-    )
-  }
+  const viewerSidebarItems: MenuProps['items'] = [
+    {
+      key: 'patient',
+      label: 'Patient',
+      children: [
+        menuPanelItem('patient-content', <Patient metadata={refImage} />),
+      ],
+    },
+    {
+      key: 'study',
+      label: 'Study',
+      children: [menuPanelItem('study-content', <Study metadata={refImage} />)],
+    },
+    ...(refImage.ClinicalTrialSponsorName != null
+      ? [
+          {
+            key: 'clinical-trial',
+            label: 'Clinical Trial',
+            children: [
+              menuPanelItem(
+                'clinical-trial-content',
+                <ClinicalTrial metadata={refImage} />,
+              ),
+            ],
+          },
+        ]
+      : []),
+    {
+      key: 'slides',
+      label: 'Slides',
+      children: [
+        menuPanelItem(
+          'slides-list',
+          <SlideList
+            clients={props.clients}
+            metadata={slides}
+            selectedSeriesInstanceUID={selectedSeriesInstanceUID}
+            onSeriesSelection={handleSeriesSelection}
+          />,
+        ),
+      ],
+    },
+  ]
 
   return (
     <Layout style={{ height: '100%' }} hasSider>
@@ -295,41 +771,38 @@ function Viewer(props: ViewerProps): JSX.Element | null {
           defaultOpenKeys={['patient', 'study', 'clinical-trial', 'slides']}
           style={{ height: '100%' }}
           inlineIndent={14}
-        >
-          <Menu.SubMenu key="patient" title="Patient">
-            <Patient metadata={refImage} />
-          </Menu.SubMenu>
-          <Menu.SubMenu key="study" title="Study">
-            <Study metadata={refImage} />
-          </Menu.SubMenu>
-          {clinicalTrialMenu}
-          <Menu.SubMenu key="slides" title="Slides">
-            <SlideList
-              clients={props.clients}
-              metadata={slides}
-              selectedSeriesInstanceUID={selectedSeriesInstanceUID}
-              onSeriesSelection={handleSeriesSelection}
-            />
-          </Menu.SubMenu>
-        </Menu>
+          items={viewerSidebarItems}
+        />
       </Layout.Sider>
 
-      <Routes>
-        <Route
-          path="/series/:seriesInstanceUID"
-          element={
-            <ParametrizedSlideViewer
-              clients={props.clients}
-              slides={slides}
-              preload={props.preload}
-              annotations={props.annotations}
-              enableAnnotationTools={props.enableAnnotationTools}
-              app={props.app}
-              user={props.user}
-            />
-          }
-        />
-      </Routes>
+      <Layout.Content
+        style={{
+          height: '100%',
+          minHeight: 0,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <Routes>
+          <Route
+            path="/series/:seriesInstanceUID"
+            element={
+              <ParametrizedSlideViewer
+                clients={props.clients}
+                slides={slides}
+                preload={props.preload}
+                annotations={props.annotations}
+                enableAnnotationTools={props.enableAnnotationTools}
+                app={props.app}
+                user={props.user}
+                isVivRoute={props.isVivRoute}
+                vivSettings={props.vivSettings}
+              />
+            }
+          />
+        </Routes>
+      </Layout.Content>
     </Layout>
   )
 }
