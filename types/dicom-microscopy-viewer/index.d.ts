@@ -691,12 +691,12 @@ declare module 'dicom-microscopy-viewer' {
           RedPaletteColorLookupTableDescriptor: number[]
           GreenPaletteColorLookupTableDescriptor: number[]
           BluePaletteColorLookupTableDescriptor: number[]
-          RedPaletteColorLookupTableData?: Uint16Array
-          GreenPaletteColorLookupTableData?: Uint16Array
-          BluePaletteColorLookupTableData?: Uint16Array
-          SegmentedRedPaletteColorLookupTableData?: Uint16Array
-          SegmentedGreenPaletteColorLookupTableData?: Uint16Array
-          SegmentedBluePaletteColorLookupTableData?: Uint16Array
+          RedPaletteColorLookupTableData?: Uint8Array|Uint16Array|ArrayBuffer
+          GreenPaletteColorLookupTableData?: Uint8Array|Uint16Array|ArrayBuffer
+          BluePaletteColorLookupTableData?: Uint8Array|Uint16Array|ArrayBuffer
+          SegmentedRedPaletteColorLookupTableData?: Uint8Array|Uint16Array|ArrayBuffer
+          SegmentedGreenPaletteColorLookupTableData?: Uint8Array|Uint16Array|ArrayBuffer
+          SegmentedBluePaletteColorLookupTableData?: Uint8Array|Uint16Array|ArrayBuffer
           PaletteColorLookupTableUID?: string
         }>
         SoftcopyVOILUTSequence: Array<{
@@ -808,12 +808,12 @@ declare module 'dicom-microscopy-viewer' {
       redDescriptor: number[]
       greenDescriptor: number[]
       blueDescriptor: number[]
-      redData?: Unit8Array|Unit16Array
-      greenData?: Unit8Array|Unit16Array
-      blueData?: Unit8Array|Unit16Array
-      redSegmentedData?: Unit8Array|Unit16Array
-      greenSegmentedData?: Unit8Array|Unit16Array
-      blueSegmentedData?: Unit8Array|Unit16Array
+      redData?: Uint8Array|Uint16Array|ArrayBuffer|number[]
+      greenData?: Uint8Array|Uint16Array|ArrayBuffer|number[]
+      blueData?: Uint8Array|Uint16Array|ArrayBuffer|number[]
+      redSegmentedData?: Uint8Array|Uint16Array|ArrayBuffer|number[]
+      greenSegmentedData?: Uint8Array|Uint16Array|ArrayBuffer|number[]
+      blueSegmentedData?: Uint8Array|Uint16Array|ArrayBuffer|number[]
     }
 
     export interface BuildPaletteColorLookupTableOptions {
