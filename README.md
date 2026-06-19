@@ -140,7 +140,7 @@ The configuration can be changed at build-time using the `REACT_APP_CONFIG` envi
 When `enableServerSelection` is enabled in config, users can switch the active DICOMweb server at runtime via the header.
 
 - **Full URLs**: Paste the complete server URL (e.g. `https://healthcare.googleapis.com/v1/projects/.../dicomWeb`).
-- **Path-only (GCP Healthcare)**: Paste a GCP DICOM store path without the domain (e.g. `/projects/my-project/locations/us-central1/datasets/my-dataset/dicomStores/my-store/dicomWeb`). The app prepends `https://healthcare.googleapis.com/v1` automatically.
+- **Path-only (GCP Healthcare)**: Paste a GCP DICOM store path without the domain (e.g. `/projects/my-project/locations/us-central1/datasets/my-dataset/dicomStores/my-store`). The app prepends `https://healthcare.googleapis.com/v1` and appends `/dicomWeb` automatically.
 
 Authorization is re-applied when switching servers, so a page reload is not needed after changing the active server.
 
