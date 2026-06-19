@@ -803,6 +803,11 @@ declare module 'dicom-microscopy-viewer' {
       bins: number
     }): number[][]
 
+    export function createDistinctColormap (options: {
+      index: number
+      bins: number
+    }): number[][]
+
     export interface PaletteColorLookupTableOptions {
       uid: string
       redDescriptor: number[]

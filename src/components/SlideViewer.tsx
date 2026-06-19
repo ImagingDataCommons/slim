@@ -2078,6 +2078,53 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
   }
 
+  /**
+   * Keep the side-panel segment switch in sync when the overlay's visibility
+   * is toggled from the in-viewport legend (dicom-microscopy-viewer already
+   * applied the change, so we only mirror it into component state).
+   */
+  onSegmentVisibilityChanged = (event: CustomEventInit): void => {
+    const detail = event.detail as
+      | { segmentUID?: string; isVisible?: boolean }
+      | undefined
+    if (detail?.segmentUID == null || detail.isVisible == null) {
+      return
+    }
+    const { segmentUID, isVisible } = detail
+    this.setState((state) => {
+      const visibleSegmentUIDs = new Set(state.visibleSegmentUIDs)
+      if (isVisible) {
+        visibleSegmentUIDs.add(segmentUID)
+      } else {
+        visibleSegmentUIDs.delete(segmentUID)
+      }
+      return { visibleSegmentUIDs }
+    })
+  }
+
+  /**
+   * Keep the side-panel mapping switch in sync when the overlay's visibility
+   * is toggled from the in-viewport legend.
+   */
+  onMappingVisibilityChanged = (event: CustomEventInit): void => {
+    const detail = event.detail as
+      | { mappingUID?: string; isVisible?: boolean }
+      | undefined
+    if (detail?.mappingUID == null || detail.isVisible == null) {
+      return
+    }
+    const { mappingUID, isVisible } = detail
+    this.setState((state) => {
+      const visibleMappingUIDs = new Set(state.visibleMappingUIDs)
+      if (isVisible) {
+        visibleMappingUIDs.add(mappingUID)
+      } else {
+        visibleMappingUIDs.delete(mappingUID)
+      }
+      return { visibleMappingUIDs }
+    })
+  }
+
   onLoadingStarted = (_event: CustomEventInit): void => {
     this.setState({ isLoading: true })
   }
@@ -2250,6 +2297,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       'dicommicroscopyviewer_frame_loading_ended',
       this.onFrameLoadingEnded,
     )
+    document.body.removeEventListener(
+      'dicommicroscopyviewer_segment_visibility_changed',
+      this.onSegmentVisibilityChanged,
+    )
+    document.body.removeEventListener(
+      'dicommicroscopyviewer_parameter_mapping_visibility_changed',
+      this.onMappingVisibilityChanged,
+    )
     document.body.removeEventListener('keyup', this.onKeyUp)
     document.body.removeEventListener('keyup', this.onKeyDown)
     window.removeEventListener('resize', this.onWindowResize)
@@ -2377,6 +2432,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     document.body.addEventListener(
       'dicommicroscopyviewer_frame_loading_error',
       this.onFrameLoadingError,
+    )
+    document.body.addEventListener(
+      'dicommicroscopyviewer_segment_visibility_changed',
+      this.onSegmentVisibilityChanged,
+    )
+    document.body.addEventListener(
+      'dicommicroscopyviewer_parameter_mapping_visibility_changed',
+      this.onMappingVisibilityChanged,
     )
     document.body.addEventListener('keyup', this.onKeyUp)
     document.body.addEventListener('keydown', this.onKeyDown)
