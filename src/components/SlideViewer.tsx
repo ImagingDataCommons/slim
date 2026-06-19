@@ -613,48 +613,28 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 greenDescriptor:
                   cpLUTItem.GreenPaletteColorLookupTableDescriptor,
                 blueDescriptor: cpLUTItem.BluePaletteColorLookupTableDescriptor,
-                redData:
-                  cpLUTItem.RedPaletteColorLookupTableData !== null &&
-                  cpLUTItem.RedPaletteColorLookupTableData !== undefined
-                    ? new Uint16Array(cpLUTItem.RedPaletteColorLookupTableData)
-                    : undefined,
+                // Pass the LUT data through as retrieved. The element size of
+                // Palette Color Lookup Table Data is governed by the third
+                // value of the descriptor (bits per entry), not by the VR, so
+                // dicom-microscopy-viewer reinterprets the bytes accordingly.
+                // In particular, conformant Presentation States encode 8-bit
+                // entries (descriptor [n, first, 8]) byte-packed inside the
+                // OW element; eagerly wrapping in a Uint16Array here would
+                // halve the entry count and break the LUT.
+                redData: cpLUTItem.RedPaletteColorLookupTableData ?? undefined,
                 greenData:
-                  cpLUTItem.GreenPaletteColorLookupTableData !== null &&
-                  cpLUTItem.GreenPaletteColorLookupTableData !== undefined
-                    ? new Uint16Array(
-                        cpLUTItem.GreenPaletteColorLookupTableData,
-                      )
-                    : undefined,
+                  cpLUTItem.GreenPaletteColorLookupTableData ?? undefined,
                 blueData:
-                  cpLUTItem.BluePaletteColorLookupTableData !== null &&
-                  cpLUTItem.BluePaletteColorLookupTableData !== undefined
-                    ? new Uint16Array(cpLUTItem.BluePaletteColorLookupTableData)
-                    : undefined,
+                  cpLUTItem.BluePaletteColorLookupTableData ?? undefined,
                 redSegmentedData:
-                  cpLUTItem.SegmentedRedPaletteColorLookupTableData !== null &&
-                  cpLUTItem.SegmentedRedPaletteColorLookupTableData !==
-                    undefined
-                    ? new Uint16Array(
-                        cpLUTItem.SegmentedRedPaletteColorLookupTableData,
-                      )
-                    : undefined,
+                  cpLUTItem.SegmentedRedPaletteColorLookupTableData ??
+                  undefined,
                 greenSegmentedData:
-                  cpLUTItem.SegmentedGreenPaletteColorLookupTableData !==
-                    null &&
-                  cpLUTItem.SegmentedGreenPaletteColorLookupTableData !==
-                    undefined
-                    ? new Uint16Array(
-                        cpLUTItem.SegmentedGreenPaletteColorLookupTableData,
-                      )
-                    : undefined,
+                  cpLUTItem.SegmentedGreenPaletteColorLookupTableData ??
+                  undefined,
                 blueSegmentedData:
-                  cpLUTItem.SegmentedBluePaletteColorLookupTableData !== null &&
-                  cpLUTItem.SegmentedBluePaletteColorLookupTableData !==
-                    undefined
-                    ? new Uint16Array(
-                        cpLUTItem.SegmentedBluePaletteColorLookupTableData,
-                      )
-                    : undefined,
+                  cpLUTItem.SegmentedBluePaletteColorLookupTableData ??
+                  undefined,
               })
             }
 
