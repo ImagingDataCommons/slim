@@ -1,6 +1,6 @@
 /**
  * ESLint config that approximates DeepSource + SonarQube rules.
- * Run with: bun run lint:strict  (or: bunx eslint --config .eslintrc.strict.cjs src/)
+ * Run with: pnpm run lint:strict  (or: pnpm exec eslint --config .eslintrc.strict.cjs src/)
  *
  * DeepSource's JavaScript analyzer uses ESLint under the hood and supports
  * style_guide (e.g. "standard"). SonarQube rules are available via eslint-plugin-sonarjs.

@@ -82,7 +82,6 @@
     "eslint": "^8.57.0",
     "eslint-plugin-sonarjs": "^0.25.0",
     "gh-pages": "^5.0.0",
-    "happy-dom": "^20.8.7",
     "husky": "^9.1.7",
     "react-scripts": "5.0.0",
     "react-test-renderer": "^18.2.0",
