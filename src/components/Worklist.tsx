@@ -14,6 +14,7 @@ import NotificationMiddleware, {
 import { CustomError, errorTypes } from '../utils/CustomError'
 import { logger } from '../utils/logger'
 import { type RouteComponentProps, withRouter } from '../utils/router'
+import { buildStudyPath } from '../utils/routes'
 import { parseDate, parseName, parseSex, parseTime } from '../utils/values'
 
 // Standalone function for row key generation
@@ -125,7 +126,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     _event: React.SyntheticEvent,
     study: dmv.metadata.Study,
   ): void => {
-    this.props.navigate(`/studies/${study.StudyInstanceUID}`)
+    this.props.navigate(buildStudyPath(study.StudyInstanceUID))
   }
 
   fetchData = ({

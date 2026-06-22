@@ -36,6 +36,11 @@ import NotificationMiddleware, {
 } from '../services/NotificationMiddleware'
 import type { CustomError } from '../utils/CustomError'
 import { type RouteComponentProps, withRouter } from '../utils/router'
+import {
+  isGcpDicomStorePath,
+  isViewerPath,
+  parseSeriesInstanceUID,
+} from '../utils/routes'
 import { normalizeServerUrl } from '../utils/url'
 import Button from './Button'
 import DicomTagBrowser from './DicomTagBrowser/DicomTagBrowser'
@@ -44,8 +49,6 @@ const aboutModalCopyTooltips: [React.ReactNode, React.ReactNode] = [
   'Copy hash',
   'Copied!',
 ]
-
-const DICOM_TAG_BROWSER_PATHS = ['/studies/', '/study/', '/projects/'] as const
 
 const aboutModalStyles: Record<string, React.CSSProperties> = {
   container: {
@@ -213,12 +216,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       }
     }
     const pathNorm = trimmedUrl.startsWith('/') ? trimmedUrl : `/${trimmedUrl}`
-    return (
-      pathNorm.includes('/projects/') &&
-      pathNorm.includes('/locations/') &&
-      pathNorm.includes('/datasets/') &&
-      pathNorm.includes('/dicomStores/')
-    )
+    return isGcpDicomStorePath(pathNorm)
   }
 
   static handleUserMenuButtonClick(e: React.SyntheticEvent): void {
@@ -367,13 +365,9 @@ class Header extends React.Component<HeaderProps, HeaderState> {
   handleDicomTagBrowserButtonClick = (): void => {
     const width = window.innerWidth - 200
 
-    let seriesInstanceUID = ''
-    if (this.props.location.pathname.includes('series/')) {
-      const seriesFragment = this.props.location.pathname.split('series/')[1]
-      seriesInstanceUID = seriesFragment.includes('/')
-        ? seriesFragment.split('/')[0]
-        : seriesFragment
-    }
+    const seriesInstanceUID = parseSeriesInstanceUID(
+      this.props.location.pathname,
+    )
 
     Modal.info({
       title: 'DICOM Tag Browser',
@@ -627,9 +621,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       </Badge>
     )
 
-    const showDicomTagBrowser = DICOM_TAG_BROWSER_PATHS.some((path) =>
-      this.props.location.pathname.includes(path),
-    )
+    const showDicomTagBrowser = isViewerPath(this.props.location.pathname)
 
     const dicomTagBrowserButton = showDicomTagBrowser ? (
       <Button

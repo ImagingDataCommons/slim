@@ -5,6 +5,7 @@ import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../services/NotificationMiddleware'
 import { CustomError, errorTypes } from '../utils/CustomError'
+import { buildLogoutPath } from '../utils/routes'
 import { isAuthorizationCodeInUrl } from '../utils/url'
 import type { AuthManager, SignInCallback, User } from '.'
 
@@ -63,7 +64,7 @@ export default class OidcManager implements AuthManager {
       loadUserInfo: true,
       automaticSilentRenew: true,
       revokeAccessTokenOnSignout: true,
-      post_logout_redirect_uri: `${baseUri}/logout`,
+      post_logout_redirect_uri: buildLogoutPath(baseUri),
     })
     if (
       settings.endSessionEndpoint !== null &&
@@ -95,7 +96,7 @@ export default class OidcManager implements AuthManager {
               loadUserInfo: true,
               automaticSilentRenew: true,
               revokeAccessTokenOnSignout: true,
-              post_logout_redirect_uri: `${baseUri}/logout`,
+              post_logout_redirect_uri: buildLogoutPath(baseUri),
               metadata,
             })
           }
