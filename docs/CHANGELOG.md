@@ -1,3 +1,10 @@
+## [0.45.6](https://github.com/ImagingDataCommons/slim/compare/v0.45.5...v0.45.6) (2026-06-29)
+
+
+### Bug Fixes
+
+* patch form-data CRLF injection (CVE-2026-12143) ([#393](https://github.com/ImagingDataCommons/slim/issues/393)) ([efebe02](https://github.com/ImagingDataCommons/slim/commit/efebe0279f6ef4c56b65ec607bb44ec413d2f3bc)), closes [#175](https://github.com/ImagingDataCommons/slim/issues/175) [#176](https://github.com/ImagingDataCommons/slim/issues/176)
+
 ## [0.45.5](https://github.com/ImagingDataCommons/slim/compare/v0.45.4...v0.45.5) (2026-06-19)
 
 
