@@ -1,0 +1,2523 @@
+/*!
+         *  decimal.js v10.6.0
+         *  An arbitrary-precision Decimal type for JavaScript.
+         *  https://github.com/MikeMcl/decimal.js
+         *  Copyright (c) 2025 Michael Mclaughlin <M8ch88l@gmail.com>
+         *  MIT Licence
+         */
+
+/*!
+       * The buffer module from node.js, for the browser.
+       *
+       * @author   Feross Aboukhadijeh <http://feross.org>
+       * @license  MIT
+       */
+
+/*!
+      Copyright (c) 2011, Yahoo! Inc. All rights reserved.
+      Code licensed under the BSD License:
+      http://developer.yahoo.com/yui/license.html
+      version: 2.9.0
+      */
+
+/*! (c) Stefan Thomas | https://github.com/bitcoinjs/bitcoinjs-lib
+       */
+
+/*! (c) Tom Wu | http://www-cs-students.stanford.edu/~tjw/jsbn/
+       */
+
+/*! ../../../../utils/array.js */
+
+/*! ../../../../utils/is.js */
+
+/*! ../../../../utils/string.js */
+
+/*! ../../../css-loader@6.11.0_webpack@5.107.2/node_modules/css-loader/dist/runtime/api.js */
+
+/*! ../../../css-loader@6.11.0_webpack@5.107.2/node_modules/css-loader/dist/runtime/sourceMaps.js */
+
+/*! ../../../error/DimensionError.js */
+
+/*! ../../../es/array/virtual/for-each */
+
+/*! ../../../es/array/virtual/keys */
+
+/*! ../../../es/array/virtual/values */
+
+/*! ../../../internals/get-built-in-prototype-method */
+
+/*! ../../../modules/es.array.concat */
+
+/*! ../../../modules/es.array.fill */
+
+/*! ../../../modules/es.array.filter */
+
+/*! ../../../modules/es.array.find */
+
+/*! ../../../modules/es.array.find-index */
+
+/*! ../../../modules/es.array.for-each */
+
+/*! ../../../modules/es.array.includes */
+
+/*! ../../../modules/es.array.index-of */
+
+/*! ../../../modules/es.array.iterator */
+
+/*! ../../../modules/es.array.map */
+
+/*! ../../../modules/es.array.push */
+
+/*! ../../../modules/es.array.reduce */
+
+/*! ../../../modules/es.array.reverse */
+
+/*! ../../../modules/es.array.slice */
+
+/*! ../../../modules/es.array.some */
+
+/*! ../../../modules/es.array.sort */
+
+/*! ../../../modules/es.array.splice */
+
+/*! ../../../modules/es.array.unshift */
+
+/*! ../../../modules/es.function.bind */
+
+/*! ../../../modules/es.object.to-string */
+
+/*! ../../../modules/es.string.includes */
+
+/*! ../../../modules/es.string.trim */
+
+/*! ../../../utils/array.js */
+
+/*! ../../../utils/collection.js */
+
+/*! ../../../utils/factory.js */
+
+/*! ../../../utils/is.js */
+
+/*! ../../../utils/number.js */
+
+/*! ../../../utils/object.js */
+
+/*! ../../ImageState.js */
+
+/*! ../../TileRange.js */
+
+/*! ../../TileState.js */
+
+/*! ../../ViewHint.js */
+
+/*! ../../actual/array/from */
+
+/*! ../../actual/array/is-array */
+
+/*! ../../actual/instance/bind */
+
+/*! ../../actual/instance/index-of */
+
+/*! ../../actual/instance/push */
+
+/*! ../../actual/instance/reverse */
+
+/*! ../../actual/instance/slice */
+
+/*! ../../actual/instance/unshift */
+
+/*! ../../actual/map */
+
+/*! ../../actual/object/create */
+
+/*! ../../actual/object/define-property */
+
+/*! ../../actual/object/get-prototype-of */
+
+/*! ../../actual/object/set-prototype-of */
+
+/*! ../../actual/promise */
+
+/*! ../../actual/reflect/construct */
+
+/*! ../../actual/symbol */
+
+/*! ../../actual/symbol/async-iterator */
+
+/*! ../../actual/symbol/iterator */
+
+/*! ../../actual/symbol/to-primitive */
+
+/*! ../../array.js */
+
+/*! ../../asserts.js */
+
+/*! ../../color.js */
+
+/*! ../../colorlike.js */
+
+/*! ../../coordinate.js */
+
+/*! ../../dom.js */
+
+/*! ../../enums */
+
+/*! ../../error/ArgumentsError.js */
+
+/*! ../../error/DimensionError.js */
+
+/*! ../../error/IndexError.js */
+
+/*! ../../es/array/from */
+
+/*! ../../es/array/is-array */
+
+/*! ../../es/date/now */
+
+/*! ../../es/instance/bind */
+
+/*! ../../es/instance/concat */
+
+/*! ../../es/instance/fill */
+
+/*! ../../es/instance/filter */
+
+/*! ../../es/instance/find */
+
+/*! ../../es/instance/find-index */
+
+/*! ../../es/instance/includes */
+
+/*! ../../es/instance/index-of */
+
+/*! ../../es/instance/map */
+
+/*! ../../es/instance/push */
+
+/*! ../../es/instance/reduce */
+
+/*! ../../es/instance/reverse */
+
+/*! ../../es/instance/slice */
+
+/*! ../../es/instance/some */
+
+/*! ../../es/instance/sort */
+
+/*! ../../es/instance/splice */
+
+/*! ../../es/instance/trim */
+
+/*! ../../es/instance/unshift */
+
+/*! ../../es/map */
+
+/*! ../../es/number/is-finite */
+
+/*! ../../es/number/is-integer */
+
+/*! ../../es/number/is-nan */
+
+/*! ../../es/object/assign */
+
+/*! ../../es/object/create */
+
+/*! ../../es/object/define-properties */
+
+/*! ../../es/object/define-property */
+
+/*! ../../es/object/entries */
+
+/*! ../../es/object/freeze */
+
+/*! ../../es/object/get-own-property-descriptor */
+
+/*! ../../es/object/get-own-property-descriptors */
+
+/*! ../../es/object/get-own-property-symbols */
+
+/*! ../../es/object/get-prototype-of */
+
+/*! ../../es/object/keys */
+
+/*! ../../es/object/set-prototype-of */
+
+/*! ../../es/object/values */
+
+/*! ../../es/promise */
+
+/*! ../../es/reflect/construct */
+
+/*! ../../es/set */
+
+/*! ../../es/symbol */
+
+/*! ../../es/symbol/async-iterator */
+
+/*! ../../es/symbol/for */
+
+/*! ../../es/symbol/iterator */
+
+/*! ../../es/symbol/to-primitive */
+
+/*! ../../events.js */
+
+/*! ../../expr/cpu.js */
+
+/*! ../../expr/expression.js */
+
+/*! ../../expr/gpu.js */
+
+/*! ../../extent.js */
+
+/*! ../../extent/Relationship.js */
+
+/*! ../../full/instance/bind */
+
+/*! ../../full/instance/reverse */
+
+/*! ../../full/instance/unshift */
+
+/*! ../../full/object/create */
+
+/*! ../../full/object/define-property */
+
+/*! ../../full/object/get-prototype-of */
+
+/*! ../../full/object/set-prototype-of */
+
+/*! ../../full/promise */
+
+/*! ../../full/symbol */
+
+/*! ../../full/symbol/async-iterator */
+
+/*! ../../full/symbol/iterator */
+
+/*! ../../geom/SimpleGeometry.js */
+
+/*! ../../geom/flat/inflate.js */
+
+/*! ../../geom/flat/length.js */
+
+/*! ../../geom/flat/linechunk.js */
+
+/*! ../../geom/flat/lineoffset.js */
+
+/*! ../../geom/flat/orient.js */
+
+/*! ../../geom/flat/simplify.js */
+
+/*! ../../geom/flat/straightchunk.js */
+
+/*! ../../geom/flat/textpath.js */
+
+/*! ../../geom/flat/transform.js */
+
+/*! ../../has.js */
+
+/*! ../../internals/classof */
+
+/*! ../../internals/has-own-property */
+
+/*! ../../internals/object-is-prototype-of */
+
+/*! ../../internals/path */
+
+/*! ../../internals/well-known-symbol-wrapped */
+
+/*! ../../layer/BaseVector.js */
+
+/*! ../../layer/Property.js */
+
+/*! ../../math.js */
+
+/*! ../../modules/es.aggregate-error */
+
+/*! ../../modules/es.array.concat */
+
+/*! ../../modules/es.array.from */
+
+/*! ../../modules/es.array.is-array */
+
+/*! ../../modules/es.array.iterator */
+
+/*! ../../modules/es.date.now */
+
+/*! ../../modules/es.date.to-primitive */
+
+/*! ../../modules/es.json.to-string-tag */
+
+/*! ../../modules/es.map */
+
+/*! ../../modules/es.map.get-or-insert */
+
+/*! ../../modules/es.map.get-or-insert-computed */
+
+/*! ../../modules/es.map.group-by */
+
+/*! ../../modules/es.math.to-string-tag */
+
+/*! ../../modules/es.number.is-finite */
+
+/*! ../../modules/es.number.is-integer */
+
+/*! ../../modules/es.number.is-nan */
+
+/*! ../../modules/es.object.assign */
+
+/*! ../../modules/es.object.create */
+
+/*! ../../modules/es.object.define-properties */
+
+/*! ../../modules/es.object.define-property */
+
+/*! ../../modules/es.object.entries */
+
+/*! ../../modules/es.object.freeze */
+
+/*! ../../modules/es.object.get-own-property-descriptor */
+
+/*! ../../modules/es.object.get-own-property-descriptors */
+
+/*! ../../modules/es.object.get-prototype-of */
+
+/*! ../../modules/es.object.keys */
+
+/*! ../../modules/es.object.set-prototype-of */
+
+/*! ../../modules/es.object.to-string */
+
+/*! ../../modules/es.object.values */
+
+/*! ../../modules/es.promise */
+
+/*! ../../modules/es.promise.all-settled */
+
+/*! ../../modules/es.promise.any */
+
+/*! ../../modules/es.promise.finally */
+
+/*! ../../modules/es.promise.try */
+
+/*! ../../modules/es.promise.with-resolvers */
+
+/*! ../../modules/es.reflect.construct */
+
+/*! ../../modules/es.reflect.to-string-tag */
+
+/*! ../../modules/es.set */
+
+/*! ../../modules/es.set.difference.v2 */
+
+/*! ../../modules/es.set.intersection.v2 */
+
+/*! ../../modules/es.set.is-disjoint-from.v2 */
+
+/*! ../../modules/es.set.is-subset-of.v2 */
+
+/*! ../../modules/es.set.is-superset-of.v2 */
+
+/*! ../../modules/es.set.symmetric-difference.v2 */
+
+/*! ../../modules/es.set.union.v2 */
+
+/*! ../../modules/es.string.iterator */
+
+/*! ../../modules/es.symbol */
+
+/*! ../../modules/es.symbol.async-dispose */
+
+/*! ../../modules/es.symbol.async-iterator */
+
+/*! ../../modules/es.symbol.description */
+
+/*! ../../modules/es.symbol.dispose */
+
+/*! ../../modules/es.symbol.has-instance */
+
+/*! ../../modules/es.symbol.is-concat-spreadable */
+
+/*! ../../modules/es.symbol.iterator */
+
+/*! ../../modules/es.symbol.match */
+
+/*! ../../modules/es.symbol.match-all */
+
+/*! ../../modules/es.symbol.replace */
+
+/*! ../../modules/es.symbol.search */
+
+/*! ../../modules/es.symbol.species */
+
+/*! ../../modules/es.symbol.split */
+
+/*! ../../modules/es.symbol.to-primitive */
+
+/*! ../../modules/es.symbol.to-string-tag */
+
+/*! ../../modules/es.symbol.unscopables */
+
+/*! ../../modules/esnext.aggregate-error */
+
+/*! ../../modules/esnext.function.metadata */
+
+/*! ../../modules/esnext.map.delete-all */
+
+/*! ../../modules/esnext.map.emplace */
+
+/*! ../../modules/esnext.map.every */
+
+/*! ../../modules/esnext.map.filter */
+
+/*! ../../modules/esnext.map.find */
+
+/*! ../../modules/esnext.map.find-key */
+
+/*! ../../modules/esnext.map.from */
+
+/*! ../../modules/esnext.map.get-or-insert */
+
+/*! ../../modules/esnext.map.get-or-insert-computed */
+
+/*! ../../modules/esnext.map.group-by */
+
+/*! ../../modules/esnext.map.includes */
+
+/*! ../../modules/esnext.map.key-by */
+
+/*! ../../modules/esnext.map.key-of */
+
+/*! ../../modules/esnext.map.map-keys */
+
+/*! ../../modules/esnext.map.map-values */
+
+/*! ../../modules/esnext.map.merge */
+
+/*! ../../modules/esnext.map.of */
+
+/*! ../../modules/esnext.map.reduce */
+
+/*! ../../modules/esnext.map.some */
+
+/*! ../../modules/esnext.map.update */
+
+/*! ../../modules/esnext.map.update-or-insert */
+
+/*! ../../modules/esnext.map.upsert */
+
+/*! ../../modules/esnext.promise.all-settled */
+
+/*! ../../modules/esnext.promise.any */
+
+/*! ../../modules/esnext.promise.try */
+
+/*! ../../modules/esnext.promise.with-resolvers */
+
+/*! ../../modules/esnext.symbol.async-dispose */
+
+/*! ../../modules/esnext.symbol.custom-matcher */
+
+/*! ../../modules/esnext.symbol.dispose */
+
+/*! ../../modules/esnext.symbol.is-registered */
+
+/*! ../../modules/esnext.symbol.is-registered-symbol */
+
+/*! ../../modules/esnext.symbol.is-well-known */
+
+/*! ../../modules/esnext.symbol.is-well-known-symbol */
+
+/*! ../../modules/esnext.symbol.matcher */
+
+/*! ../../modules/esnext.symbol.metadata */
+
+/*! ../../modules/esnext.symbol.metadata-key */
+
+/*! ../../modules/esnext.symbol.observable */
+
+/*! ../../modules/esnext.symbol.pattern-match */
+
+/*! ../../modules/esnext.symbol.replace-all */
+
+/*! ../../modules/web.dom-collections.for-each */
+
+/*! ../../modules/web.dom-collections.iterator */
+
+/*! ../../obj.js */
+
+/*! ../../plain/number/combinations.js */
+
+/*! ../../plain/number/index.js */
+
+/*! ../../proj.js */
+
+/*! ../../render/Event.js */
+
+/*! ../../render/EventType.js */
+
+/*! ../../render/Feature.js */
+
+/*! ../../render/canvas/BuilderGroup.js */
+
+/*! ../../render/canvas/ExecutorGroup.js */
+
+/*! ../../render/canvas/ZIndexContext.js */
+
+/*! ../../render/canvas/hitdetect.js */
+
+/*! ../../render/webgl/MixedGeometryBatch.js */
+
+/*! ../../render/webgl/VectorStyleRenderer.js */
+
+/*! ../../render/webgl/encodeUtil.js */
+
+/*! ../../render/webgl/float64Util.js */
+
+/*! ../../scoord3dUtils */
+
+/*! ../../scoord3dUtils.js */
+
+/*! ../../size.js */
+
+/*! ../../source/VectorEventType.js */
+
+/*! ../../stable/array/from */
+
+/*! ../../stable/array/is-array */
+
+/*! ../../stable/instance/bind */
+
+/*! ../../stable/instance/index-of */
+
+/*! ../../stable/instance/push */
+
+/*! ../../stable/instance/reverse */
+
+/*! ../../stable/instance/slice */
+
+/*! ../../stable/instance/unshift */
+
+/*! ../../stable/map */
+
+/*! ../../stable/object/create */
+
+/*! ../../stable/object/define-property */
+
+/*! ../../stable/object/get-prototype-of */
+
+/*! ../../stable/object/set-prototype-of */
+
+/*! ../../stable/promise */
+
+/*! ../../stable/reflect/construct */
+
+/*! ../../stable/symbol */
+
+/*! ../../stable/symbol/async-iterator */
+
+/*! ../../stable/symbol/iterator */
+
+/*! ../../stable/symbol/to-primitive */
+
+/*! ../../structs/LRUCache.js */
+
+/*! ../../style/Circle.js */
+
+/*! ../../style/Fill.js */
+
+/*! ../../style/Icon.js */
+
+/*! ../../style/RegularShape.js */
+
+/*! ../../style/Stroke.js */
+
+/*! ../../style/Style.js */
+
+/*! ../../style/Text.js */
+
+/*! ../../style/flat.js */
+
+/*! ../../tilecoord.js */
+
+/*! ../../transform.js */
+
+/*! ../../type/matrix/utils/matAlgo01xDSid.js */
+
+/*! ../../type/matrix/utils/matAlgo02xDS0.js */
+
+/*! ../../type/matrix/utils/matAlgo03xDSf.js */
+
+/*! ../../type/matrix/utils/matAlgo04xSidSid.js */
+
+/*! ../../type/matrix/utils/matAlgo05xSfSf.js */
+
+/*! ../../type/matrix/utils/matAlgo06xS0S0.js */
+
+/*! ../../type/matrix/utils/matAlgo07xSSf.js */
+
+/*! ../../type/matrix/utils/matAlgo08xS0Sid.js */
+
+/*! ../../type/matrix/utils/matAlgo09xS0Sf.js */
+
+/*! ../../type/matrix/utils/matAlgo10xSids.js */
+
+/*! ../../type/matrix/utils/matAlgo11xS0s.js */
+
+/*! ../../type/matrix/utils/matAlgo12xSfs.js */
+
+/*! ../../type/matrix/utils/matAlgo14xDs.js */
+
+/*! ../../type/matrix/utils/matrixAlgorithmSuite.js */
+
+/*! ../../util.js */
+
+/*! ../../utils */
+
+/*! ../../utils/applyCallback.js */
+
+/*! ../../utils/array.js */
+
+/*! ../../utils/bignumber/bitwise.js */
+
+/*! ../../utils/bignumber/constants.js */
+
+/*! ../../utils/bignumber/nearlyEqual.js */
+
+/*! ../../utils/collection.js */
+
+/*! ../../utils/complex.js */
+
+/*! ../../utils/customs.js */
+
+/*! ../../utils/factory.js */
+
+/*! ../../utils/function.js */
+
+/*! ../../utils/is.js */
+
+/*! ../../utils/map.js */
+
+/*! ../../utils/noop.js */
+
+/*! ../../utils/number.js */
+
+/*! ../../utils/object.js */
+
+/*! ../../utils/print.js */
+
+/*! ../../utils/product.js */
+
+/*! ../../utils/string.js */
+
+/*! ../../utils/switch.js */
+
+/*! ../../vec/mat4.js */
+
+/*! ../../web/url */
+
+/*! ../../webgl.js */
+
+/*! ../../webgl/Buffer.js */
+
+/*! ../../webgl/Helper.js */
+
+/*! ../../webgl/RenderTarget.js */
+
+/*! ../../webgl/TileTexture.js */
+
+/*! ../../worker/webgl.js */
+
+/*! ../Collection.js */
+
+/*! ../CollectionEventType.js */
+
+/*! ../DataTile.js */
+
+/*! ../Disposable.js */
+
+/*! ../Feature.js */
+
+/*! ../Image.js */
+
+/*! ../ImageState.js */
+
+/*! ../ImageTile.js */
+
+/*! ../Kinetic.js */
+
+/*! ../Layer.js */
+
+/*! ../Map.js */
+
+/*! ../MapBrowserEvent.js */
+
+/*! ../MapBrowserEventType.js */
+
+/*! ../MapEventType.js */
+
+/*! ../MapProperty.js */
+
+/*! ../Object.js */
+
+/*! ../ObjectEventType.js */
+
+/*! ../Observable.js */
+
+/*! ../Overlay.js */
+
+/*! ../Tile.js */
+
+/*! ../TileRange.js */
+
+/*! ../TileState.js */
+
+/*! ../VectorContext.js */
+
+/*! ../View.js */
+
+/*! ../ViewProperty.js */
+
+/*! ../actual/get-iterator-method */
+
+/*! ../annotation */
+
+/*! ../array.js */
+
+/*! ../array/virtual/concat */
+
+/*! ../array/virtual/fill */
+
+/*! ../array/virtual/filter */
+
+/*! ../array/virtual/find */
+
+/*! ../array/virtual/find-index */
+
+/*! ../array/virtual/for-each */
+
+/*! ../array/virtual/includes */
+
+/*! ../array/virtual/index-of */
+
+/*! ../array/virtual/keys */
+
+/*! ../array/virtual/map */
+
+/*! ../array/virtual/push */
+
+/*! ../array/virtual/reduce */
+
+/*! ../array/virtual/reverse */
+
+/*! ../array/virtual/slice */
+
+/*! ../array/virtual/some */
+
+/*! ../array/virtual/sort */
+
+/*! ../array/virtual/splice */
+
+/*! ../array/virtual/unshift */
+
+/*! ../array/virtual/values */
+
+/*! ../asserts.js */
+
+/*! ../canvas.js */
+
+/*! ../canvas/ZIndexContext.js */
+
+/*! ../color.js */
+
+/*! ../colorlike.js */
+
+/*! ../config.js */
+
+/*! ../coordinate.js */
+
+/*! ../core/config.js */
+
+/*! ../core/function/config.js */
+
+/*! ../css.js */
+
+/*! ../dom.js */
+
+/*! ../easing.js */
+
+/*! ../enums */
+
+/*! ../error/DimensionError.js */
+
+/*! ../error/IndexError.js */
+
+/*! ../es/get-iterator-method */
+
+/*! ../es/parse-float */
+
+/*! ../events.js */
+
+/*! ../events/Event.js */
+
+/*! ../events/EventType.js */
+
+/*! ../events/Key.js */
+
+/*! ../events/SnapEvent.js */
+
+/*! ../events/Target.js */
+
+/*! ../events/condition.js */
+
+/*! ../expr/expression.js */
+
+/*! ../expr/gpu.js */
+
+/*! ../extent.js */
+
+/*! ../factoriesAny.js */
+
+/*! ../featureloader.js */
+
+/*! ../full/get-iterator-method */
+
+/*! ../function.js */
+
+/*! ../function/virtual/bind */
+
+/*! ../functions.js */
+
+/*! ../geom/Circle.js */
+
+/*! ../geom/GeometryCollection.js */
+
+/*! ../geom/LineString.js */
+
+/*! ../geom/MultiLineString.js */
+
+/*! ../geom/MultiPoint.js */
+
+/*! ../geom/MultiPolygon.js */
+
+/*! ../geom/Point.js */
+
+/*! ../geom/Polygon.js */
+
+/*! ../geom/SimpleGeometry.js */
+
+/*! ../geom/flat/center.js */
+
+/*! ../geom/flat/interiorpoint.js */
+
+/*! ../geom/flat/interpolate.js */
+
+/*! ../geom/flat/intersectsextent.js */
+
+/*! ../geom/flat/orient.js */
+
+/*! ../geom/flat/segments.js */
+
+/*! ../geom/flat/simplify.js */
+
+/*! ../geom/flat/transform.js */
+
+/*! ../has.js */
+
+/*! ../helpers/regeneratorRuntime */
+
+/*! ../internals/a-callable */
+
+/*! ../internals/a-constructor */
+
+/*! ../internals/a-map */
+
+/*! ../internals/a-possible-prototype */
+
+/*! ../internals/a-set */
+
+/*! ../internals/add-to-unscopables */
+
+/*! ../internals/an-instance */
+
+/*! ../internals/an-object */
+
+/*! ../internals/array-buffer-non-extensible */
+
+/*! ../internals/array-fill */
+
+/*! ../internals/array-for-each */
+
+/*! ../internals/array-from */
+
+/*! ../internals/array-includes */
+
+/*! ../internals/array-iteration */
+
+/*! ../internals/array-method-has-species-support */
+
+/*! ../internals/array-method-is-strict */
+
+/*! ../internals/array-reduce */
+
+/*! ../internals/array-set-length */
+
+/*! ../internals/array-slice */
+
+/*! ../internals/array-sort */
+
+/*! ../internals/array-species-constructor */
+
+/*! ../internals/array-species-create */
+
+/*! ../internals/call-with-safe-iteration-closing */
+
+/*! ../internals/caller */
+
+/*! ../internals/check-correctness-of-iteration */
+
+/*! ../internals/classof */
+
+/*! ../internals/classof-raw */
+
+/*! ../internals/collection */
+
+/*! ../internals/collection-from */
+
+/*! ../internals/collection-of */
+
+/*! ../internals/collection-strong */
+
+/*! ../internals/copy-constructor-properties */
+
+/*! ../internals/correct-is-regexp-logic */
+
+/*! ../internals/correct-prototype-getter */
+
+/*! ../internals/create-iter-result-object */
+
+/*! ../internals/create-non-enumerable-property */
+
+/*! ../internals/create-property */
+
+/*! ../internals/create-property-descriptor */
+
+/*! ../internals/define-built-in */
+
+/*! ../internals/define-built-in-accessor */
+
+/*! ../internals/define-built-ins */
+
+/*! ../internals/define-global-property */
+
+/*! ../internals/delete-property-or-throw */
+
+/*! ../internals/descriptors */
+
+/*! ../internals/document-create-element */
+
+/*! ../internals/does-not-exceed-safe-integer */
+
+/*! ../internals/dom-iterables */
+
+/*! ../internals/enum-bug-keys */
+
+/*! ../internals/environment */
+
+/*! ../internals/environment-ff-version */
+
+/*! ../internals/environment-is-ie-or-edge */
+
+/*! ../internals/environment-is-ios */
+
+/*! ../internals/environment-is-ios-pebble */
+
+/*! ../internals/environment-is-node */
+
+/*! ../internals/environment-is-webos-webkit */
+
+/*! ../internals/environment-user-agent */
+
+/*! ../internals/environment-v8-version */
+
+/*! ../internals/environment-webkit-version */
+
+/*! ../internals/error-stack-clear */
+
+/*! ../internals/error-stack-install */
+
+/*! ../internals/error-stack-installable */
+
+/*! ../internals/export */
+
+/*! ../internals/fails */
+
+/*! ../internals/freezing */
+
+/*! ../internals/function-apply */
+
+/*! ../internals/function-bind */
+
+/*! ../internals/function-bind-context */
+
+/*! ../internals/function-bind-native */
+
+/*! ../internals/function-call */
+
+/*! ../internals/function-name */
+
+/*! ../internals/function-uncurry-this */
+
+/*! ../internals/function-uncurry-this-accessor */
+
+/*! ../internals/function-uncurry-this-clause */
+
+/*! ../internals/get-built-in */
+
+/*! ../internals/get-iterator */
+
+/*! ../internals/get-iterator-direct */
+
+/*! ../internals/get-iterator-method */
+
+/*! ../internals/get-method */
+
+/*! ../internals/get-set-record */
+
+/*! ../internals/global-this */
+
+/*! ../internals/has-own-property */
+
+/*! ../internals/hidden-keys */
+
+/*! ../internals/host-report-errors */
+
+/*! ../internals/html */
+
+/*! ../internals/ie8-dom-define */
+
+/*! ../internals/indexed-object */
+
+/*! ../internals/inspect-source */
+
+/*! ../internals/install-error-cause */
+
+/*! ../internals/internal-metadata */
+
+/*! ../internals/internal-state */
+
+/*! ../internals/is-array */
+
+/*! ../internals/is-array-iterator-method */
+
+/*! ../internals/is-callable */
+
+/*! ../internals/is-constructor */
+
+/*! ../internals/is-forced */
+
+/*! ../internals/is-integral-number */
+
+/*! ../internals/is-null-or-undefined */
+
+/*! ../internals/is-object */
+
+/*! ../internals/is-possible-prototype */
+
+/*! ../internals/is-pure */
+
+/*! ../internals/is-raw-json */
+
+/*! ../internals/is-regexp */
+
+/*! ../internals/is-symbol */
+
+/*! ../internals/iterate */
+
+/*! ../internals/iterate-simple */
+
+/*! ../internals/iterator-close */
+
+/*! ../internals/iterator-create-constructor */
+
+/*! ../internals/iterator-define */
+
+/*! ../internals/iterators */
+
+/*! ../internals/iterators-core */
+
+/*! ../internals/length-of-array-like */
+
+/*! ../internals/map-helpers */
+
+/*! ../internals/map-iterate */
+
+/*! ../internals/map-upsert */
+
+/*! ../internals/math-trunc */
+
+/*! ../internals/microtask */
+
+/*! ../internals/native-raw-json */
+
+/*! ../internals/new-promise-capability */
+
+/*! ../internals/normalize-string-argument */
+
+/*! ../internals/not-a-regexp */
+
+/*! ../internals/number-is-finite */
+
+/*! ../internals/number-parse-float */
+
+/*! ../internals/object-assign */
+
+/*! ../internals/object-create */
+
+/*! ../internals/object-define-properties */
+
+/*! ../internals/object-define-property */
+
+/*! ../internals/object-get-own-property-descriptor */
+
+/*! ../internals/object-get-own-property-names */
+
+/*! ../internals/object-get-own-property-names-external */
+
+/*! ../internals/object-get-own-property-symbols */
+
+/*! ../internals/object-get-prototype-of */
+
+/*! ../internals/object-is-extensible */
+
+/*! ../internals/object-is-prototype-of */
+
+/*! ../internals/object-keys */
+
+/*! ../internals/object-keys-internal */
+
+/*! ../internals/object-property-is-enumerable */
+
+/*! ../internals/object-set-prototype-of */
+
+/*! ../internals/object-to-array */
+
+/*! ../internals/object-to-string */
+
+/*! ../internals/ordinary-to-primitive */
+
+/*! ../internals/own-keys */
+
+/*! ../internals/parse-json-string */
+
+/*! ../internals/path */
+
+/*! ../internals/perform */
+
+/*! ../internals/promise-constructor-detection */
+
+/*! ../internals/promise-native-constructor */
+
+/*! ../internals/promise-resolve */
+
+/*! ../internals/promise-statics-incorrect-iteration */
+
+/*! ../internals/queue */
+
+/*! ../internals/require-object-coercible */
+
+/*! ../internals/safe-get-built-in */
+
+/*! ../internals/same-value-zero */
+
+/*! ../internals/schedulers-fix */
+
+/*! ../internals/set-clone */
+
+/*! ../internals/set-difference */
+
+/*! ../internals/set-helpers */
+
+/*! ../internals/set-intersection */
+
+/*! ../internals/set-is-disjoint-from */
+
+/*! ../internals/set-is-subset-of */
+
+/*! ../internals/set-is-superset-of */
+
+/*! ../internals/set-iterate */
+
+/*! ../internals/set-method-accept-set-like */
+
+/*! ../internals/set-method-get-keys-before-cloning-detection */
+
+/*! ../internals/set-size */
+
+/*! ../internals/set-species */
+
+/*! ../internals/set-symmetric-difference */
+
+/*! ../internals/set-to-string-tag */
+
+/*! ../internals/set-union */
+
+/*! ../internals/shared */
+
+/*! ../internals/shared-key */
+
+/*! ../internals/shared-store */
+
+/*! ../internals/species-constructor */
+
+/*! ../internals/string-multibyte */
+
+/*! ../internals/string-punycode-to-ascii */
+
+/*! ../internals/string-trim */
+
+/*! ../internals/string-trim-forced */
+
+/*! ../internals/symbol-constructor-detection */
+
+/*! ../internals/symbol-define-to-primitive */
+
+/*! ../internals/symbol-is-registered */
+
+/*! ../internals/symbol-is-well-known */
+
+/*! ../internals/symbol-registry-detection */
+
+/*! ../internals/task */
+
+/*! ../internals/to-absolute-index */
+
+/*! ../internals/to-indexed-object */
+
+/*! ../internals/to-integer-or-infinity */
+
+/*! ../internals/to-length */
+
+/*! ../internals/to-object */
+
+/*! ../internals/to-primitive */
+
+/*! ../internals/to-property-key */
+
+/*! ../internals/to-string */
+
+/*! ../internals/to-string-tag-support */
+
+/*! ../internals/try-to-string */
+
+/*! ../internals/uid */
+
+/*! ../internals/url-constructor-detection */
+
+/*! ../internals/use-symbol-as-uid */
+
+/*! ../internals/v8-prototype-define-bug */
+
+/*! ../internals/validate-arguments-length */
+
+/*! ../internals/weak-map-basic-detection */
+
+/*! ../internals/well-known-symbol */
+
+/*! ../internals/well-known-symbol-define */
+
+/*! ../internals/well-known-symbol-wrapped */
+
+/*! ../internals/whitespaces */
+
+/*! ../layer/BaseVector.js */
+
+/*! ../layer/Layer.js */
+
+/*! ../layer/Property.js */
+
+/*! ../layer/Vector.js */
+
+/*! ../loadingstrategy.js */
+
+/*! ../math.js */
+
+/*! ../matrix/apply.js */
+
+/*! ../modules/es.aggregate-error */
+
+/*! ../modules/es.aggregate-error.constructor */
+
+/*! ../modules/es.array.iterator */
+
+/*! ../modules/es.json.stringify */
+
+/*! ../modules/es.map.constructor */
+
+/*! ../modules/es.map.get-or-insert */
+
+/*! ../modules/es.map.get-or-insert-computed */
+
+/*! ../modules/es.map.group-by */
+
+/*! ../modules/es.object.get-own-property-symbols */
+
+/*! ../modules/es.parse-float */
+
+/*! ../modules/es.promise.all */
+
+/*! ../modules/es.promise.all-settled.js */
+
+/*! ../modules/es.promise.any */
+
+/*! ../modules/es.promise.catch */
+
+/*! ../modules/es.promise.constructor */
+
+/*! ../modules/es.promise.race */
+
+/*! ../modules/es.promise.reject */
+
+/*! ../modules/es.promise.resolve */
+
+/*! ../modules/es.promise.try.js */
+
+/*! ../modules/es.promise.with-resolvers */
+
+/*! ../modules/es.set.constructor */
+
+/*! ../modules/es.string.from-code-point */
+
+/*! ../modules/es.string.iterator */
+
+/*! ../modules/es.symbol.async-dispose */
+
+/*! ../modules/es.symbol.constructor */
+
+/*! ../modules/es.symbol.dispose */
+
+/*! ../modules/es.symbol.for */
+
+/*! ../modules/es.symbol.key-for */
+
+/*! ../modules/web.dom-collections.iterator */
+
+/*! ../modules/web.set-interval */
+
+/*! ../modules/web.set-timeout */
+
+/*! ../modules/web.timers */
+
+/*! ../modules/web.url */
+
+/*! ../modules/web.url-search-params */
+
+/*! ../modules/web.url-search-params.constructor */
+
+/*! ../modules/web.url-search-params.delete */
+
+/*! ../modules/web.url-search-params.has */
+
+/*! ../modules/web.url-search-params.size */
+
+/*! ../modules/web.url.can-parse */
+
+/*! ../modules/web.url.constructor */
+
+/*! ../modules/web.url.parse */
+
+/*! ../modules/web.url.to-json */
+
+/*! ../number.js */
+
+/*! ../obj.js */
+
+/*! ../pointer/EventType.js */
+
+/*! ../proj.js */
+
+/*! ../render/Box.js */
+
+/*! ../render/Event.js */
+
+/*! ../render/EventType.js */
+
+/*! ../render/Feature.js */
+
+/*! ../render/canvas.js */
+
+/*! ../render/canvas/style.js */
+
+/*! ../render/webgl/compileUtil.js */
+
+/*! ../renderer/canvas/ImageLayer.js */
+
+/*! ../renderer/canvas/VectorLayer.js */
+
+/*! ../renderer/webgl/TileLayer.js */
+
+/*! ../renderer/webgl/VectorLayer.js */
+
+/*! ../reproj.js */
+
+/*! ../reproj/DataTile.js */
+
+/*! ../reproj/Image.js */
+
+/*! ../reproj/Tile.js */
+
+/*! ../resolution.js */
+
+/*! ../rotationconstraint.js */
+
+/*! ../scoord3dUtils */
+
+/*! ../size.js */
+
+/*! ../source/Vector.js */
+
+/*! ../source/VectorEventType.js */
+
+/*! ../sparse/csIpvec.js */
+
+/*! ../sparse/csLu.js */
+
+/*! ../sparse/csSqr.js */
+
+/*! ../sphere.js */
+
+/*! ../stable/get-iterator-method */
+
+/*! ../string/virtual/includes */
+
+/*! ../string/virtual/trim */
+
+/*! ../structs/RBush.js */
+
+/*! ../style/IconImageCache.js */
+
+/*! ../style/Style.js */
+
+/*! ../styles */
+
+/*! ../tilecoord.js */
+
+/*! ../tilegrid.js */
+
+/*! ../tilegrid/common.js */
+
+/*! ../transform.js */
+
+/*! ../uri.js */
+
+/*! ../util.js */
+
+/*! ../utils */
+
+/*! ../utils/collection.js */
+
+/*! ../utils/factory.js */
+
+/*! ../utils/number.js */
+
+/*! ../vec/mat4.js */
+
+/*! ../vector.js */
+
+/*! ../webgl.js */
+
+/*! ../webgl/Canvas.js */
+
+/*! ../webgl/ContextEventType.js */
+
+/*! ../webgl/PaletteTexture.js */
+
+/*! ./Attribution.js */
+
+/*! ./Base.js */
+
+/*! ./BaseImage.js */
+
+/*! ./BaseTile.js */
+
+/*! ./BaseTileRepresentation.js */
+
+/*! ./BaseVector.js */
+
+/*! ./Buffer.js */
+
+/*! ./Builder.js */
+
+/*! ./Circle.js */
+
+/*! ./Collection.js */
+
+/*! ./CollectionEventType.js */
+
+/*! ./Control.js */
+
+/*! ./DataTile.js */
+
+/*! ./DoubleClickZoom.js */
+
+/*! ./DragBox.js */
+
+/*! ./DragPan.js */
+
+/*! ./DragRotate.js */
+
+/*! ./DragZoom.js */
+
+/*! ./Event.js */
+
+/*! ./Executor.js */
+
+/*! ./Fill.js */
+
+/*! ./Geometry.js */
+
+/*! ./IconImage.js */
+
+/*! ./IconImageCache.js */
+
+/*! ./Image.js */
+
+/*! ./ImageBuilder.js */
+
+/*! ./ImageState.js */
+
+/*! ./ImageTile.js */
+
+/*! ./Immediate.js */
+
+/*! ./Instruction.js */
+
+/*! ./Interaction.js */
+
+/*! ./KeyboardPan.js */
+
+/*! ./KeyboardZoom.js */
+
+/*! ./Layer.js */
+
+/*! ./LineString.js */
+
+/*! ./LineStringBuilder.js */
+
+/*! ./LinearRing.js */
+
+/*! ./Map.js */
+
+/*! ./MapBrowserEvent.js */
+
+/*! ./MapBrowserEventHandler.js */
+
+/*! ./MapBrowserEventType.js */
+
+/*! ./MapEvent.js */
+
+/*! ./MapEventType.js */
+
+/*! ./MapProperty.js */
+
+/*! ./MouseWheelZoom.js */
+
+/*! ./MultiPoint.js */
+
+/*! ./Object.js */
+
+/*! ./ObjectEventType.js */
+
+/*! ./Observable.js */
+
+/*! ./OverloadYield.js */
+
+/*! ./PinchRotate.js */
+
+/*! ./PinchZoom.js */
+
+/*! ./Point.js */
+
+/*! ./Pointer.js */
+
+/*! ./Polygon.js */
+
+/*! ./PolygonBuilder.js */
+
+/*! ./PostProcessingPass.js */
+
+/*! ./Projection.js */
+
+/*! ./Property.js */
+
+/*! ./RegularShape.js */
+
+/*! ./Rotate.js */
+
+/*! ./ShaderBuilder.js */
+
+/*! ./SimpleGeometry.js */
+
+/*! ./Source.js */
+
+/*! ./Stroke.js */
+
+/*! ./TextBuilder.js */
+
+/*! ./Tile.js */
+
+/*! ./TileEventType.js */
+
+/*! ./TileGrid.js */
+
+/*! ./TileLayerBase.js */
+
+/*! ./TileProperty.js */
+
+/*! ./TileQueue.js */
+
+/*! ./TileState.js */
+
+/*! ./Triangulation.js */
+
+/*! ./Units.js */
+
+/*! ./Vector.js */
+
+/*! ./VectorEventType.js */
+
+/*! ./View.js */
+
+/*! ./ViewHint.js */
+
+/*! ./ViewProperty.js */
+
+/*! ./Zoom.js */
+
+/*! ./annotation.js */
+
+/*! ./annotations/_AnnotationManager */
+
+/*! ./array.js */
+
+/*! ./arrayLikeToArray.js */
+
+/*! ./arrayWithHoles.js */
+
+/*! ./arrayWithoutHoles.js */
+
+/*! ./assertThisInitialized.js */
+
+/*! ./asserts.js */
+
+/*! ./bignumber/formatter.js */
+
+/*! ./broadcast.js */
+
+/*! ./bufferUtil.js */
+
+/*! ./bulkAnnotations/getExtendedROI */
+
+/*! ./bulkAnnotations/utils */
+
+/*! ./bulkAnnotations/utils.js */
+
+/*! ./centerconstraint.js */
+
+/*! ./clusterStyles.js */
+
+/*! ./color.js */
+
+/*! ./colorScale */
+
+/*! ./common.js */
+
+/*! ./compareUnits.js */
+
+/*! ./compileUtil.js */
+
+/*! ./configReadonly.js */
+
+/*! ./console.js */
+
+/*! ./constants.js */
+
+/*! ./construct.js */
+
+/*! ./contains.js */
+
+/*! ./control/defaults.js */
+
+/*! ./coordinate.js */
+
+/*! ./csAmd.js */
+
+/*! ./csCounts.js */
+
+/*! ./csDfs.js */
+
+/*! ./csEtree.js */
+
+/*! ./csFkeep.js */
+
+/*! ./csFlip.js */
+
+/*! ./csLeaf.js */
+
+/*! ./csMark.js */
+
+/*! ./csMarked.js */
+
+/*! ./csPermute.js */
+
+/*! ./csPost.js */
+
+/*! ./csReach.js */
+
+/*! ./csSpsolve.js */
+
+/*! ./csTdfs.js */
+
+/*! ./csUnflip.js */
+
+/*! ./css.js */
+
+/*! ./customError */
+
+/*! ./customs.js */
+
+/*! ./decode.js */
+
+/*! ./dictionary */
+
+/*! ./dom.js */
+
+/*! ./easing.js */
+
+/*! ./eigs/complexEigs.js */
+
+/*! ./eigs/realSymetric.js */
+
+/*! ./encodeUtil.js */
+
+/*! ./enums */
+
+/*! ./eventPublisher */
+
+/*! ./events */
+
+/*! ./events.js */
+
+/*! ./events/Event.js */
+
+/*! ./events/EventType.js */
+
+/*! ./events/Target.js */
+
+/*! ./expression.js */
+
+/*! ./extent.js */
+
+/*! ./extent/Relationship.js */
+
+/*! ./flat/area.js */
+
+/*! ./flat/center.js */
+
+/*! ./flat/closest.js */
+
+/*! ./flat/contains.js */
+
+/*! ./flat/deflate.js */
+
+/*! ./flat/inflate.js */
+
+/*! ./flat/interiorpoint.js */
+
+/*! ./flat/interpolate.js */
+
+/*! ./flat/intersectsextent.js */
+
+/*! ./flat/length.js */
+
+/*! ./flat/orient.js */
+
+/*! ./flat/segments.js */
+
+/*! ./flat/simplify.js */
+
+/*! ./flat/transform.js */
+
+/*! ./float64Util.js */
+
+/*! ./floor.js */
+
+/*! ./functions.js */
+
+/*! ./geom/Polygon.js */
+
+/*! ./getPrototypeOf.js */
+
+/*! ./glreproj.js */
+
+/*! ./has.js */
+
+/*! ./interaction/defaults.js */
+
+/*! ./is.js */
+
+/*! ./isNativeFunction.js */
+
+/*! ./isNativeReflectConstruct.js */
+
+/*! ./iterableToArray.js */
+
+/*! ./iterableToArrayLimit.js */
+
+/*! ./layer/Group.js */
+
+/*! ./layer/Layer.js */
+
+/*! ./lib/alea */
+
+/*! ./lib/tychei */
+
+/*! ./lib/xor128 */
+
+/*! ./lib/xor4096 */
+
+/*! ./lib/xorshift7 */
+
+/*! ./lib/xorwow */
+
+/*! ./lruQueue.js */
+
+/*! ./mapping */
+
+/*! ./mapping.js */
+
+/*! ./markers/arrow */
+
+/*! ./markups/_MarkupManager */
+
+/*! ./markups/measurement */
+
+/*! ./markups/textEvaluation */
+
+/*! ./matAlgo13xDD.js */
+
+/*! ./matAlgo14xDs.js */
+
+/*! ./math.js */
+
+/*! ./metadata.js */
+
+/*! ./mod.js */
+
+/*! ./native.js */
+
+/*! ./nonIterableRest.js */
+
+/*! ./nonIterableSpread.js */
+
+/*! ./number.js */
+
+/*! ./obj.js */
+
+/*! ./object.js */
+
+/*! ./opticalPath.js */
+
+/*! ./parse.js */
+
+/*! ./plain/number/index.js */
+
+/*! ./pointer/EventType.js */
+
+/*! ./proj.js */
+
+/*! ./proj/Projection.js */
+
+/*! ./proj/Units.js */
+
+/*! ./proj/epsg3857.js */
+
+/*! ./proj/epsg4326.js */
+
+/*! ./proj/projections.js */
+
+/*! ./proj/transforms.js */
+
+/*! ./proj/utm.js */
+
+/*! ./pyramid.js */
+
+/*! ./regenerator.js */
+
+/*! ./regeneratorAsync.js */
+
+/*! ./regeneratorAsyncGen.js */
+
+/*! ./regeneratorAsyncIterator.js */
+
+/*! ./regeneratorDefine.js */
+
+/*! ./regeneratorKeys.js */
+
+/*! ./regeneratorValues.js */
+
+/*! ./regex.js */
+
+/*! ./render/EventType.js */
+
+/*! ./renderer/Composite.js */
+
+/*! ./renderinstructions.js */
+
+/*! ./resolutionconstraint.js */
+
+/*! ./reverse.js */
+
+/*! ./rng.js */
+
+/*! ./roi.js */
+
+/*! ./rotationconstraint.js */
+
+/*! ./scoord3d.js */
+
+/*! ./scoord3dUtils */
+
+/*! ./seedrandom */
+
+/*! ./segment.js */
+
+/*! ./segments.js */
+
+/*! ./setPrototypeOf.js */
+
+/*! ./sha1.js */
+
+/*! ./size.js */
+
+/*! ./sphere.js */
+
+/*! ./static.js */
+
+/*! ./string.js */
+
+/*! ./stringify.js */
+
+/*! ./structs/PriorityQueue.js */
+
+/*! ./style.js */
+
+/*! ./style/IconImage.js */
+
+/*! ./style/IconImageCache.js */
+
+/*! ./switch.js */
+
+/*! ./tilecoord.js */
+
+/*! ./tilegrid/TileGrid.js */
+
+/*! ./tilegrid/WMTS.js */
+
+/*! ./tilegrid/common.js */
+
+/*! ./toPrimitive.js */
+
+/*! ./toPropertyKey.js */
+
+/*! ./tracing.js */
+
+/*! ./transform.js */
+
+/*! ./trigUnit.js */
+
+/*! ./typeof.js */
+
+/*! ./unsupportedIterableToArray.js */
+
+/*! ./url-search-params */
+
+/*! ./useMatrixForArrayScalar.js */
+
+/*! ./util.js */
+
+/*! ./util/randomMatrix.js */
+
+/*! ./util/seededRNG.js */
+
+/*! ./utils.js */
+
+/*! ./utils/bignumber/constants.js */
+
+/*! ./utils/factory.js */
+
+/*! ./utils/improveErrorMessage.js */
+
+/*! ./utils/solveValidation.js */
+
+/*! ./v35.js */
+
+/*! ./validate.js */
+
+/*! ./vectorUtil.js */
+
+/*! ./version.js */
+
+/*! ./viewer.js */
+
+/*! ./webWorker/webWorkerManager.js */
+
+/*! ./worldUtil.js */
+
+/*! @babel/runtime-corejs3/core-js-stable/array/from */
+
+/*! @babel/runtime-corejs3/core-js-stable/array/is-array */
+
+/*! @babel/runtime-corejs3/core-js-stable/date/now */
+
+/*! @babel/runtime-corejs3/core-js-stable/instance/bind */
+
+/*! @babel/runtime-corejs3/core-js-stable/instance/concat */
+
+/*! @babel/runtime-corejs3/core-js-stable/instance/fill */
+
+/*! @babel/runtime-corejs3/core-js-stable/instance/filter */
+
+/*! @babel/runtime-corejs3/core-js-stable/instance/find */
+
+/*! @babel/runtime-corejs3/core-js-stable/instance/find-index */
+
+/*! @babel/runtime-corejs3/core-js-stable/instance/for-each */
+
+/*! @babel/runtime-corejs3/core-js-stable/instance/includes */
+
+/*! @babel/runtime-corejs3/core-js-stable/instance/index-of */
+
+/*! @babel/runtime-corejs3/core-js-stable/instance/keys */
+
+/*! @babel/runtime-corejs3/core-js-stable/instance/map */
+
+/*! @babel/runtime-corejs3/core-js-stable/instance/reduce */
+
+/*! @babel/runtime-corejs3/core-js-stable/instance/reverse */
+
+/*! @babel/runtime-corejs3/core-js-stable/instance/slice */
+
+/*! @babel/runtime-corejs3/core-js-stable/instance/some */
+
+/*! @babel/runtime-corejs3/core-js-stable/instance/sort */
+
+/*! @babel/runtime-corejs3/core-js-stable/instance/splice */
+
+/*! @babel/runtime-corejs3/core-js-stable/instance/trim */
+
+/*! @babel/runtime-corejs3/core-js-stable/instance/values */
+
+/*! @babel/runtime-corejs3/core-js-stable/map */
+
+/*! @babel/runtime-corejs3/core-js-stable/number/is-finite */
+
+/*! @babel/runtime-corejs3/core-js-stable/number/is-integer */
+
+/*! @babel/runtime-corejs3/core-js-stable/number/is-nan */
+
+/*! @babel/runtime-corejs3/core-js-stable/object/assign */
+
+/*! @babel/runtime-corejs3/core-js-stable/object/define-properties */
+
+/*! @babel/runtime-corejs3/core-js-stable/object/define-property */
+
+/*! @babel/runtime-corejs3/core-js-stable/object/entries */
+
+/*! @babel/runtime-corejs3/core-js-stable/object/freeze */
+
+/*! @babel/runtime-corejs3/core-js-stable/object/get-own-property-descriptor */
+
+/*! @babel/runtime-corejs3/core-js-stable/object/get-own-property-descriptors */
+
+/*! @babel/runtime-corejs3/core-js-stable/object/get-own-property-symbols */
+
+/*! @babel/runtime-corejs3/core-js-stable/object/keys */
+
+/*! @babel/runtime-corejs3/core-js-stable/object/values */
+
+/*! @babel/runtime-corejs3/core-js-stable/parse-float */
+
+/*! @babel/runtime-corejs3/core-js-stable/promise */
+
+/*! @babel/runtime-corejs3/core-js-stable/reflect/construct */
+
+/*! @babel/runtime-corejs3/core-js-stable/set */
+
+/*! @babel/runtime-corejs3/core-js-stable/set-timeout */
+
+/*! @babel/runtime-corejs3/core-js-stable/symbol */
+
+/*! @babel/runtime-corejs3/core-js-stable/symbol/for */
+
+/*! @babel/runtime-corejs3/core-js-stable/url */
+
+/*! @babel/runtime-corejs3/core-js/get-iterator-method */
+
+/*! @babel/runtime-corejs3/helpers/asyncToGenerator */
+
+/*! @babel/runtime-corejs3/helpers/classCallCheck */
+
+/*! @babel/runtime-corejs3/helpers/createClass */
+
+/*! @babel/runtime-corejs3/helpers/defineProperty */
+
+/*! @babel/runtime-corejs3/helpers/getPrototypeOf */
+
+/*! @babel/runtime-corejs3/helpers/inherits */
+
+/*! @babel/runtime-corejs3/helpers/possibleConstructorReturn */
+
+/*! @babel/runtime-corejs3/helpers/slicedToArray */
+
+/*! @babel/runtime-corejs3/helpers/toConsumableArray */
+
+/*! @babel/runtime-corejs3/helpers/typeof */
+
+/*! @babel/runtime-corejs3/helpers/wrapNativeSuper */
+
+/*! @babel/runtime-corejs3/regenerator */
+
+/*! @babel/runtime/helpers/defineProperty */
+
+/*! @babel/runtime/helpers/extends */
+
+/*! CryptoJS v3.1.2 core-fix.js
+       * code.google.com/p/crypto-js
+       * (c) 2009-2013 by Jeff Mott. All rights reserved.
+       * code.google.com/p/crypto-js/wiki/License
+       * THIS IS FIX of 'core.js' to fix Hmac issue.
+       * https://code.google.com/p/crypto-js/issues/detail?id=84
+       * https://crypto-js.googlecode.com/svn-history/r667/branches/3.x/src/core.js
+       */
+
+/*! Mike Samuel (c) 2009 | code.google.com/p/json-sans-eval
+       */
+
+/*! colormap */
+
+/*! complex.js */
+
+/*! core-js-pure/features/array/from.js */
+
+/*! core-js-pure/features/array/is-array.js */
+
+/*! core-js-pure/features/get-iterator-method */
+
+/*! core-js-pure/features/get-iterator-method.js */
+
+/*! core-js-pure/features/instance/bind.js */
+
+/*! core-js-pure/features/instance/index-of.js */
+
+/*! core-js-pure/features/instance/push.js */
+
+/*! core-js-pure/features/instance/reverse.js */
+
+/*! core-js-pure/features/instance/slice.js */
+
+/*! core-js-pure/features/instance/unshift.js */
+
+/*! core-js-pure/features/map/index.js */
+
+/*! core-js-pure/features/object/create.js */
+
+/*! core-js-pure/features/object/define-property.js */
+
+/*! core-js-pure/features/object/get-prototype-of.js */
+
+/*! core-js-pure/features/object/set-prototype-of.js */
+
+/*! core-js-pure/features/promise/index.js */
+
+/*! core-js-pure/features/reflect/construct.js */
+
+/*! core-js-pure/features/symbol/async-iterator.js */
+
+/*! core-js-pure/features/symbol/index.js */
+
+/*! core-js-pure/features/symbol/iterator.js */
+
+/*! core-js-pure/features/symbol/to-primitive.js */
+
+/*! core-js-pure/stable/array/from */
+
+/*! core-js-pure/stable/array/is-array */
+
+/*! core-js-pure/stable/date/now */
+
+/*! core-js-pure/stable/instance/bind */
+
+/*! core-js-pure/stable/instance/concat */
+
+/*! core-js-pure/stable/instance/fill */
+
+/*! core-js-pure/stable/instance/filter */
+
+/*! core-js-pure/stable/instance/find */
+
+/*! core-js-pure/stable/instance/find-index */
+
+/*! core-js-pure/stable/instance/for-each */
+
+/*! core-js-pure/stable/instance/includes */
+
+/*! core-js-pure/stable/instance/index-of */
+
+/*! core-js-pure/stable/instance/keys */
+
+/*! core-js-pure/stable/instance/map */
+
+/*! core-js-pure/stable/instance/reduce */
+
+/*! core-js-pure/stable/instance/reverse */
+
+/*! core-js-pure/stable/instance/slice */
+
+/*! core-js-pure/stable/instance/some */
+
+/*! core-js-pure/stable/instance/sort */
+
+/*! core-js-pure/stable/instance/splice */
+
+/*! core-js-pure/stable/instance/trim */
+
+/*! core-js-pure/stable/instance/values */
+
+/*! core-js-pure/stable/map */
+
+/*! core-js-pure/stable/number/is-finite */
+
+/*! core-js-pure/stable/number/is-integer */
+
+/*! core-js-pure/stable/number/is-nan */
+
+/*! core-js-pure/stable/object/assign */
+
+/*! core-js-pure/stable/object/define-properties */
+
+/*! core-js-pure/stable/object/define-property */
+
+/*! core-js-pure/stable/object/entries */
+
+/*! core-js-pure/stable/object/freeze */
+
+/*! core-js-pure/stable/object/get-own-property-descriptor */
+
+/*! core-js-pure/stable/object/get-own-property-descriptors */
+
+/*! core-js-pure/stable/object/get-own-property-symbols */
+
+/*! core-js-pure/stable/object/keys */
+
+/*! core-js-pure/stable/object/values */
+
+/*! core-js-pure/stable/parse-float */
+
+/*! core-js-pure/stable/promise */
+
+/*! core-js-pure/stable/reflect/construct */
+
+/*! core-js-pure/stable/set */
+
+/*! core-js-pure/stable/set-timeout */
+
+/*! core-js-pure/stable/symbol */
+
+/*! core-js-pure/stable/symbol/for */
+
+/*! core-js-pure/stable/url */
+
+/*! crypto */
+
+/*! dcmjs */
+
+/*! decimal.js */
+
+/*! dicomweb-client */
+
+/*! earcut */
+
+/*! fraction.js */
+
+/*! ieee754. BSD-3-Clause License. Feross Aboukhadijeh <https://feross.org/opensource> */
+
+/*! javascript-natural-sort */
+
+/*! lerp */
+
+/*! lodash */
+
+/*! mathjs */
+
+/*! ol/Collection */
+
+/*! ol/Feature */
+
+/*! ol/Map */
+
+/*! ol/Overlay */
+
+/*! ol/View */
+
+/*! ol/control */
+
+/*! ol/control/FullScreen */
+
+/*! ol/control/MousePosition */
+
+/*! ol/control/OverviewMap */
+
+/*! ol/control/ScaleLine */
+
+/*! ol/extent */
+
+/*! ol/extent.js */
+
+/*! ol/geom/Circle */
+
+/*! ol/geom/Circle.js */
+
+/*! ol/geom/LineString */
+
+/*! ol/geom/Point */
+
+/*! ol/geom/Polygon */
+
+/*! ol/interaction */
+
+/*! ol/interaction/DragPan */
+
+/*! ol/interaction/DragZoom */
+
+/*! ol/interaction/Draw */
+
+/*! ol/interaction/Modify */
+
+/*! ol/interaction/Select */
+
+/*! ol/interaction/Snap */
+
+/*! ol/interaction/Translate */
+
+/*! ol/layer/Image */
+
+/*! ol/layer/Vector */
+
+/*! ol/layer/WebGLTile */
+
+/*! ol/layer/WebGLVector */
+
+/*! ol/ol.css */
+
+/*! ol/proj */
+
+/*! ol/proj/Projection */
+
+/*! ol/source/Cluster */
+
+/*! ol/source/DataTile */
+
+/*! ol/source/ImageStatic */
+
+/*! ol/source/TileDebug */
+
+/*! ol/source/Vector */
+
+/*! ol/source/VectorEventType */
+
+/*! ol/style.js */
+
+/*! ol/style/Circle */
+
+/*! ol/style/Fill */
+
+/*! ol/style/Icon */
+
+/*! ol/style/Stroke */
+
+/*! ol/style/Style */
+
+/*! ol/tilegrid/TileGrid */
+
+/*! ol/webgl/Helper */
+
+/*! pako 2.1.0 https://github.com/nodeca/pako @license (MIT AND Zlib) */
+
+/*! quickselect */
+
+/*! rbush */
+
+/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */
+
+/*! seedrandom */
+
+/*! typed-function */
+
+/*! url */
+
+/*! uuid */
+
+/*!************************************!*\
+        !*** ./dicom-microscopy-viewer.js ***!
+        \************************************/
+
+/**
+                                           * @license
+                                           * Lodash <https://lodash.com/>
+                                           * Copyright OpenJS Foundation and other contributors <https://openjsf.org/>
+                                           * Released under MIT license <https://lodash.com/license>
+                                           * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+                                           * Copyright Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+                                           */
+
+/**
+         * @license Fraction.js v4.3.0 20/08/2023
+         * https://www.xarg.org/2014/03/rational-numbers-in-javascript/
+         *
+         * Copyright (c) 2023, Robert Eisele (robert@raw.org)
+         * Dual licensed under the MIT or GPL Version 2 licenses.
+         **/
+
+/**
+ * @remix-run/router v1.23.3
+ *
+ * Copyright (c) Remix Software Inc.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE.md file in the root directory of this source tree.
+ *
+ * @license MIT
+ */
+
+/**
+ * React Router DOM v6.30.4
+ *
+ * Copyright (c) Remix Software Inc.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE.md file in the root directory of this source tree.
+ *
+ * @license MIT
+ */
+
+/**
+ * React Router v6.30.4
+ *
+ * Copyright (c) Remix Software Inc.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE.md file in the root directory of this source tree.
+ *
+ * @license MIT
+ */
