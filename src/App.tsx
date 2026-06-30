@@ -28,6 +28,7 @@ import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from './services/NotificationMiddleware'
 import { CustomError, errorTypes } from './utils/CustomError'
+import { getProjectStorePath, isProjectsPath, RoutePaths } from './utils/routes'
 import { joinUrl, normalizeServerUrl } from './utils/url'
 
 function ParametrizedCaseViewer({
@@ -103,8 +104,8 @@ function _createClientMapping({
         }
       })
     } else {
-      if (window.location.pathname.includes('/projects/')) {
-        const pathname = window.location.pathname.split('/study/')[0]
+      if (isProjectsPath(window.location.pathname)) {
+        const pathname = getProjectStorePath(window.location.pathname)
         const pathUrl = `${gcpBaseUrl}${pathname}/dicomWeb`
         serverSettings.url = pathUrl
       }
@@ -540,7 +541,7 @@ class App extends React.Component<AppProps, AppState> {
         <BrowserRouter basename={this.props.config.path}>
           <Routes>
             <Route
-              path="/"
+              path={RoutePaths.ROOT}
               element={
                 <Layout style={layoutStyle}>
                   <Header
@@ -563,7 +564,7 @@ class App extends React.Component<AppProps, AppState> {
               }
             />
             <Route
-              path="/studies/:studyInstanceUID/*"
+              path={RoutePaths.STUDY}
               element={
                 <SettingsProvider>
                   <Layout style={layoutStyle}>
@@ -593,7 +594,7 @@ class App extends React.Component<AppProps, AppState> {
               }
             />
             <Route
-              path="/projects/:project/locations/:location/datasets/:dataset/dicomStores/:dicomStore/study/:studyInstanceUID/*"
+              path={RoutePaths.GCP_STUDY}
               element={
                 <SettingsProvider>
                   <Layout style={layoutStyle}>
@@ -623,7 +624,7 @@ class App extends React.Component<AppProps, AppState> {
               }
             />
             <Route
-              path="/logout"
+              path={RoutePaths.LOGOUT}
               element={
                 <Layout style={layoutStyle}>
                   <Header

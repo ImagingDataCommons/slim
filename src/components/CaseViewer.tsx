@@ -11,6 +11,14 @@ import type { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
 import { useSlides } from '../hooks/useSlides'
 import { type RouteComponentProps, withRouter } from '../utils/router'
+import {
+  buildSeriesPath,
+  hasSeriesInPath,
+  isProjectsPath,
+  parseSeriesInstanceUID,
+  RoutePaths,
+  withSeriesInProjectPath,
+} from '../utils/routes'
 import ClinicalTrial from './ClinicalTrial'
 import Patient from './Patient'
 import SlideList from './SlideList'
@@ -215,22 +223,14 @@ function Viewer(props: ViewerProps): JSX.Element | null {
     seriesInstanceUID: string
   }): void => {
     console.info(`switch to series "${seriesInstanceUID}"`)
-    let urlPath = `/studies/${studyInstanceUID}/series/${seriesInstanceUID}`
+    let urlPath = buildSeriesPath(studyInstanceUID, seriesInstanceUID)
 
-    if (location.pathname.includes('/projects/')) {
-      urlPath = location.pathname
-      if (!location.pathname.includes('/series/')) {
-        urlPath += `/series/${seriesInstanceUID}`
-      } else {
-        urlPath = urlPath.replace(
-          /\/series\/[^/]+/,
-          `/series/${seriesInstanceUID}`,
-        )
-      }
+    if (isProjectsPath(location.pathname)) {
+      urlPath = withSeriesInProjectPath(location.pathname, seriesInstanceUID)
     }
 
     if (
-      location.pathname.includes('/series/') &&
+      hasSeriesInPath(location.pathname) &&
       location.search !== null &&
       location.search !== undefined
     ) {
@@ -259,13 +259,8 @@ function Viewer(props: ViewerProps): JSX.Element | null {
    * Otherwise select the first series correspondent to
    * the first slide contained in the study.
    */
-  let selectedSeriesInstanceUID: string
-  if (location.pathname.includes('series/')) {
-    const seriesFragment = location.pathname.split('series/')[1]
-    selectedSeriesInstanceUID = seriesFragment.includes('/')
-      ? seriesFragment.split('/')[0]
-      : seriesFragment
-  } else {
+  let selectedSeriesInstanceUID = parseSeriesInstanceUID(location.pathname)
+  if (selectedSeriesInstanceUID === '') {
     selectedSeriesInstanceUID = volumeInstances[0].SeriesInstanceUID
   }
 
@@ -316,7 +311,7 @@ function Viewer(props: ViewerProps): JSX.Element | null {
 
       <Routes>
         <Route
-          path="/series/:seriesInstanceUID"
+          path={RoutePaths.SERIES}
           element={
             <ParametrizedSlideViewer
               clients={props.clients}
