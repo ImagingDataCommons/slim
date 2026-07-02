@@ -30,7 +30,16 @@ jobs:
       - name: Build
         run: REACT_APP_CONFIG=preview PUBLIC_URL=/ pnpm run build
 
-      - name: Deploy
+      - name: Deploy preview
+        if: github.event_name == 'pull_request'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: "${{ secrets.GITHUB_TOKEN }}"
+          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_SLIM }}"
+          projectId: idc-external-006
+
+      - name: Deploy to live
+        if: github.event_name == 'push'
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
