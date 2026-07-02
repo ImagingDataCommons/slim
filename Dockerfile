@@ -14,18 +14,18 @@ RUN apt-get update && \
     unzip && \
     apt-get clean
 
-RUN curl -fsSL https://deb.nodesource.com/setup_21.x | bash - && \
+RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && \
     apt-get update && \
     apt-get install -y --no-install-suggests --no-install-recommends \
     nodejs && \
     apt-get clean
 
-RUN corepack enable && corepack prepare pnpm@10.34.1 --activate
+RUN corepack enable && corepack prepare pnpm@11.9.0 --activate
 
 WORKDIR /usr/local/share/mghcomputationalpathology/slim
 
 # Install dependencies first and then include code for efficient caching
-COPY package.json pnpm-lock.yaml .npmrc ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 
 RUN pnpm install --frozen-lockfile
 
