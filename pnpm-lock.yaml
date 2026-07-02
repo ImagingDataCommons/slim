@@ -5,15 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@types/minimatch': 5.1.2
   '@types/d3-dispatch': 3.0.6
-  '@deck.gl/core': 9.1.15
-  '@deck.gl/extensions': 9.1.15
-  '@deck.gl/geo-layers': 9.1.15
-  '@deck.gl/layers': 9.1.15
-  '@deck.gl/mesh-layers': 9.1.15
-  '@deck.gl/react': 9.1.15
-  '@deck.gl/widgets': 9.1.15
   axios: 1.17.0
   nth-check: 2.0.1
   wrap-ansi: 7.0.0
@@ -1167,17 +1159,17 @@ packages:
   '@deck.gl/extensions@9.1.15':
     resolution: {integrity: sha512-pH3SArgiEibHwrYwbKTknUurgpUndUFa+O97in+zRVF6KFGNZSLm1AePERh1gQjcpuQ+GwrxJ/ijmVmuH2zOow==}
     peerDependencies:
-      '@deck.gl/core': 9.1.15
+      '@deck.gl/core': ^9.1.0
       '@luma.gl/core': ~9.1.9
       '@luma.gl/engine': ~9.1.9
 
   '@deck.gl/geo-layers@9.1.15':
     resolution: {integrity: sha512-dehvciiUyCnklCfY5v0JgGAgJfbQ0Rn/ml55Maqdw5c5K6fIQzi4xMglu1NdgO3L+MOutWWA1eFD9WLT2X0mkA==}
     peerDependencies:
-      '@deck.gl/core': 9.1.15
-      '@deck.gl/extensions': 9.1.15
-      '@deck.gl/layers': 9.1.15
-      '@deck.gl/mesh-layers': 9.1.15
+      '@deck.gl/core': ^9.1.0
+      '@deck.gl/extensions': ^9.1.0
+      '@deck.gl/layers': ^9.1.0
+      '@deck.gl/mesh-layers': ^9.1.0
       '@loaders.gl/core': ^4.2.0
       '@luma.gl/core': ~9.1.9
       '@luma.gl/engine': ~9.1.9
@@ -1185,7 +1177,7 @@ packages:
   '@deck.gl/layers@9.1.15':
     resolution: {integrity: sha512-4C8LaCXnd/cHGMGwuLu6YUqcf/4dyz82Im+C0IrY56OgJnVOKf2f75zwAKa1Uekq4XEsyPgqg9k5MWEohBzGYw==}
     peerDependencies:
-      '@deck.gl/core': 9.1.15
+      '@deck.gl/core': ^9.1.0
       '@loaders.gl/core': ^4.2.0
       '@luma.gl/core': ~9.1.9
       '@luma.gl/engine': ~9.1.9
@@ -1193,22 +1185,22 @@ packages:
   '@deck.gl/mesh-layers@9.1.15':
     resolution: {integrity: sha512-/GuXxa2Y5Bv/6DSOA6sgPalCZAPN137cTE5SDbOH88yKAY0ggn5FmgcimhGNRcR28tGy+yOCy/PbtIDoba6dpw==}
     peerDependencies:
-      '@deck.gl/core': 9.1.15
+      '@deck.gl/core': ^9.1.0
       '@luma.gl/core': ~9.1.9
       '@luma.gl/engine': ~9.1.9
 
   '@deck.gl/react@9.1.15':
     resolution: {integrity: sha512-QJuCWyX3mBzW/rzFs0Bq/53rDEMMFbP1wDBTpnAeDDda4QLJK3bLReWLKzM/p0Ewoil0re/OHAWnSf1w9ePhDA==}
     peerDependencies:
-      '@deck.gl/core': 9.1.15
-      '@deck.gl/widgets': 9.1.15
+      '@deck.gl/core': ^9.1.0
+      '@deck.gl/widgets': ^9.1.0
       react: '>=16.3.0'
       react-dom: '>=16.3.0'
 
   '@deck.gl/widgets@9.1.15':
     resolution: {integrity: sha512-cSscNelsIlgjNrfVCmgXiXcYQbvJxmFv8iedpUPxTYLrW0hQq/ftZtLVZ8sWsNkn/EM8/KKysO5IXeEVj3iGbQ==}
     peerDependencies:
-      '@deck.gl/core': 9.1.15
+      '@deck.gl/core': ^9.1.0
 
   '@eslint-community/eslint-utils@4.9.1':
     resolution: {integrity: sha512-phrYmNiYppR7znFEdqgfWHXR6NCkZEK7hwWDHZUjit/2/U0r6XvkDl0SYnoM51Hq7FhCGdLDT6zxCCOY1hexsQ==}
@@ -2214,14 +2206,14 @@ packages:
   '@vivjs/extensions@0.20.1':
     resolution: {integrity: sha512-ZWTqVHosSc0NIrteAL0yjQj1CWqpOtsm2K3SK/w3L6nLA/HMCIfbBcgRfkYerLFcUb8hRD86BNkGgV9kN2Iejg==}
     peerDependencies:
-      '@deck.gl/core': 9.1.15
+      '@deck.gl/core': ~9.1.11
 
   '@vivjs/layers@0.20.1':
     resolution: {integrity: sha512-DrB68BgLCTymmX/3sKd0h11K/ubA4x3Vy6TRUUOK3sX83j3a+SAsx0RHr2g/b7ethc0C/ZnQFBFJX6hTXHYzsA==}
     peerDependencies:
-      '@deck.gl/core': 9.1.15
-      '@deck.gl/geo-layers': 9.1.15
-      '@deck.gl/layers': 9.1.15
+      '@deck.gl/core': ~9.1.11
+      '@deck.gl/geo-layers': ~9.1.11
+      '@deck.gl/layers': ~9.1.11
       '@luma.gl/constants': ~9.1.9
       '@luma.gl/core': ~9.1.9
       '@luma.gl/engine': ~9.1.9
@@ -6482,6 +6474,7 @@ packages:
     engines: {node: '>=0.6.0', teleport: '>=0.2.0'}
     deprecated: |-
       You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
+
       (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
 
   qs@6.13.0:
