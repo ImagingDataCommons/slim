@@ -727,7 +727,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           {this.state.serverSelectionMode === 'custom' && (
             <Tooltip title={this.state.selectedServerUrl?.trim()}>
               <Input
-                placeholder="Full URL or GCP path (e.g. /projects/.../dicomStores/.../dicomWeb)"
+                placeholder="Full URL or GCP path (e.g. /projects/.../dicomStores/my-store)"
                 value={this.state.selectedServerUrl}
                 onChange={this.handleServerSelectionInput}
                 onPressEnter={this.handleServerSelection}

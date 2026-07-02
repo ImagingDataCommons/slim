@@ -617,48 +617,28 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 greenDescriptor:
                   cpLUTItem.GreenPaletteColorLookupTableDescriptor,
                 blueDescriptor: cpLUTItem.BluePaletteColorLookupTableDescriptor,
-                redData:
-                  cpLUTItem.RedPaletteColorLookupTableData !== null &&
-                  cpLUTItem.RedPaletteColorLookupTableData !== undefined
-                    ? new Uint16Array(cpLUTItem.RedPaletteColorLookupTableData)
-                    : undefined,
+                // Pass the LUT data through as retrieved. The element size of
+                // Palette Color Lookup Table Data is governed by the third
+                // value of the descriptor (bits per entry), not by the VR, so
+                // dicom-microscopy-viewer reinterprets the bytes accordingly.
+                // In particular, conformant Presentation States encode 8-bit
+                // entries (descriptor [n, first, 8]) byte-packed inside the
+                // OW element; eagerly wrapping in a Uint16Array here would
+                // halve the entry count and break the LUT.
+                redData: cpLUTItem.RedPaletteColorLookupTableData ?? undefined,
                 greenData:
-                  cpLUTItem.GreenPaletteColorLookupTableData !== null &&
-                  cpLUTItem.GreenPaletteColorLookupTableData !== undefined
-                    ? new Uint16Array(
-                        cpLUTItem.GreenPaletteColorLookupTableData,
-                      )
-                    : undefined,
+                  cpLUTItem.GreenPaletteColorLookupTableData ?? undefined,
                 blueData:
-                  cpLUTItem.BluePaletteColorLookupTableData !== null &&
-                  cpLUTItem.BluePaletteColorLookupTableData !== undefined
-                    ? new Uint16Array(cpLUTItem.BluePaletteColorLookupTableData)
-                    : undefined,
+                  cpLUTItem.BluePaletteColorLookupTableData ?? undefined,
                 redSegmentedData:
-                  cpLUTItem.SegmentedRedPaletteColorLookupTableData !== null &&
-                  cpLUTItem.SegmentedRedPaletteColorLookupTableData !==
-                    undefined
-                    ? new Uint16Array(
-                        cpLUTItem.SegmentedRedPaletteColorLookupTableData,
-                      )
-                    : undefined,
+                  cpLUTItem.SegmentedRedPaletteColorLookupTableData ??
+                  undefined,
                 greenSegmentedData:
-                  cpLUTItem.SegmentedGreenPaletteColorLookupTableData !==
-                    null &&
-                  cpLUTItem.SegmentedGreenPaletteColorLookupTableData !==
-                    undefined
-                    ? new Uint16Array(
-                        cpLUTItem.SegmentedGreenPaletteColorLookupTableData,
-                      )
-                    : undefined,
+                  cpLUTItem.SegmentedGreenPaletteColorLookupTableData ??
+                  undefined,
                 blueSegmentedData:
-                  cpLUTItem.SegmentedBluePaletteColorLookupTableData !== null &&
-                  cpLUTItem.SegmentedBluePaletteColorLookupTableData !==
-                    undefined
-                    ? new Uint16Array(
-                        cpLUTItem.SegmentedBluePaletteColorLookupTableData,
-                      )
-                    : undefined,
+                  cpLUTItem.SegmentedBluePaletteColorLookupTableData ??
+                  undefined,
               })
             }
 
@@ -2102,6 +2082,53 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
   }
 
+  /**
+   * Keep the side-panel segment switch in sync when the overlay's visibility
+   * is toggled from the in-viewport legend (dicom-microscopy-viewer already
+   * applied the change, so we only mirror it into component state).
+   */
+  onSegmentVisibilityChanged = (event: CustomEventInit): void => {
+    const detail = event.detail as
+      | { segmentUID?: string; isVisible?: boolean }
+      | undefined
+    if (detail?.segmentUID == null || detail.isVisible == null) {
+      return
+    }
+    const { segmentUID, isVisible } = detail
+    this.setState((state) => {
+      const visibleSegmentUIDs = new Set(state.visibleSegmentUIDs)
+      if (isVisible) {
+        visibleSegmentUIDs.add(segmentUID)
+      } else {
+        visibleSegmentUIDs.delete(segmentUID)
+      }
+      return { visibleSegmentUIDs }
+    })
+  }
+
+  /**
+   * Keep the side-panel mapping switch in sync when the overlay's visibility
+   * is toggled from the in-viewport legend.
+   */
+  onMappingVisibilityChanged = (event: CustomEventInit): void => {
+    const detail = event.detail as
+      | { mappingUID?: string; isVisible?: boolean }
+      | undefined
+    if (detail?.mappingUID == null || detail.isVisible == null) {
+      return
+    }
+    const { mappingUID, isVisible } = detail
+    this.setState((state) => {
+      const visibleMappingUIDs = new Set(state.visibleMappingUIDs)
+      if (isVisible) {
+        visibleMappingUIDs.add(mappingUID)
+      } else {
+        visibleMappingUIDs.delete(mappingUID)
+      }
+      return { visibleMappingUIDs }
+    })
+  }
+
   onLoadingStarted = (_event: CustomEventInit): void => {
     this.setState({ isLoading: true })
   }
@@ -2274,6 +2301,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       'dicommicroscopyviewer_frame_loading_ended',
       this.onFrameLoadingEnded,
     )
+    document.body.removeEventListener(
+      'dicommicroscopyviewer_segment_visibility_changed',
+      this.onSegmentVisibilityChanged,
+    )
+    document.body.removeEventListener(
+      'dicommicroscopyviewer_parameter_mapping_visibility_changed',
+      this.onMappingVisibilityChanged,
+    )
     document.body.removeEventListener('keyup', this.onKeyUp)
     document.body.removeEventListener('keyup', this.onKeyDown)
     window.removeEventListener('resize', this.onWindowResize)
@@ -2401,6 +2436,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     document.body.addEventListener(
       'dicommicroscopyviewer_frame_loading_error',
       this.onFrameLoadingError,
+    )
+    document.body.addEventListener(
+      'dicommicroscopyviewer_segment_visibility_changed',
+      this.onSegmentVisibilityChanged,
+    )
+    document.body.addEventListener(
+      'dicommicroscopyviewer_parameter_mapping_visibility_changed',
+      this.onMappingVisibilityChanged,
     )
     document.body.addEventListener('keyup', this.onKeyUp)
     document.body.addEventListener('keydown', this.onKeyDown)

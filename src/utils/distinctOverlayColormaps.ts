@@ -3,21 +3,18 @@ import * as dmv from 'dicom-microscopy-viewer'
 
 import { getSegmentationType, getSegmentColor } from './segmentColors'
 
-const COLORMAP_ORDER = [
-  dmv.color.ColormapNames.VIRIDIS,
-  dmv.color.ColormapNames.MAGMA,
-  dmv.color.ColormapNames.INFERNO,
-  dmv.color.ColormapNames.HOT,
-  dmv.color.ColormapNames.BLUE_RED,
-  dmv.color.ColormapNames.GRAY,
-  dmv.color.ColormapNames.PHASE,
-  dmv.color.ColormapNames.PORTLAND,
-] as const
-
-function buildPaletteForName(
-  name: (typeof COLORMAP_ORDER)[number],
+/**
+ * Build a perceptually distinct, single-hue palette for the overlay at
+ * `index`. Multi-hue scientific color maps (viridis, magma, inferno, hot, …)
+ * all share a dark → bright-yellow ramp and are therefore hard to tell apart
+ * and to match against the legend; single-hue ramps give each overlay a
+ * clearly different, easily named color.
+ * See https://github.com/ImagingDataCommons/dicom-microscopy-viewer/issues/240.
+ */
+function buildDistinctPalette(
+  index: number,
 ): dmv.color.PaletteColorLookupTable {
-  const data = dmv.color.createColormap({ name, bins: 2 ** 8 })
+  const data = dmv.color.createDistinctColormap({ index, bins: 2 ** 8 })
   return dmv.color.buildPaletteColorLookupTable({
     data,
     firstValueMapped: 0,
@@ -56,9 +53,8 @@ export function applyDistinctFractionalSegmentPalettes(
       return
     }
 
-    const name = COLORMAP_ORDER[paletteIndex % COLORMAP_ORDER.length]
+    const table = buildDistinctPalette(paletteIndex)
     paletteIndex += 1
-    const table = buildPaletteForName(name)
     const style = volumeViewer.getSegmentStyle(seg.uid)
     volumeViewer.setSegmentStyle(seg.uid, {
       opacity: style.opacity,
@@ -79,8 +75,7 @@ export function applyDistinctParametricMapPalettes(
   }
 
   mappings.forEach((mapping, i) => {
-    const name = COLORMAP_ORDER[i % COLORMAP_ORDER.length]
-    const table = buildPaletteForName(name)
+    const table = buildDistinctPalette(i)
     const style = volumeViewer.getParameterMappingStyle(mapping.uid)
     volumeViewer.setParameterMappingStyle(mapping.uid, {
       opacity: style.opacity,

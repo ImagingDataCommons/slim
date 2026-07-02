@@ -22,7 +22,7 @@ export class Logger {
   public config: LoggerConfig
 
   constructor() {
-    /** Get logger config from global config (browser only; Bun/Jest may run without globalThis.config). */
+    /** Get logger config from global config (browser only; Jest may run without window) */
     const globalConfig =
       typeof globalThis !== 'undefined'
         ? (
