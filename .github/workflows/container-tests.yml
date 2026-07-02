@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4.4.0
         with:
-          node-version: 20.8.1
+          node-version: 24
 
       - name: Build and run containers using docker compose
         run: docker compose up -d
