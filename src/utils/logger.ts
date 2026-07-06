@@ -1,7 +1,6 @@
 /**
  * Logger utility that wraps console logging and can be configured for different environments.
- * API and level names match `dicom-microscopy-viewer` (`options.logger` on the
- * viewer constructor). Slim calls `dmv.setLogLevel(window.config.logger)` at startup.
+ * Configured from `window.config.logger` at application startup.
  */
 
 export enum LogLevel {
