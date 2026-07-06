@@ -3,10 +3,7 @@ import React from 'react'
 import type { IconType } from 'react-icons'
 
 interface ButtonProps {
-  icon:
-    | IconType
-    | React.ComponentType<Record<string, never>>
-    | React.ForwardRefExoticComponent<object>
+  icon: IconType | React.ComponentType<Record<string, unknown>>
   tooltip?: string
   label?: string
   onClick?: (options: React.SyntheticEvent) => void

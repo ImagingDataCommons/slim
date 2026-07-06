@@ -1,5 +1,6 @@
 /**
- * Logger utility that wraps console logging and can be configured for different environments
+ * Logger utility that wraps console logging and can be configured for different environments.
+ * Configured from `window.config.logger` at application startup.
  */
 
 export enum LogLevel {
