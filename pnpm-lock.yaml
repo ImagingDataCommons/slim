@@ -108,6 +108,9 @@ importers:
       retry:
         specifier: ^0.13.1
         version: 0.13.1
+      uuid:
+        specifier: ^8.3.2
+        version: 8.3.2
     devDependencies:
       '@babel/preset-env':
         specifier: ^7.15.0
@@ -193,6 +196,9 @@ importers:
       eslint-plugin-sonarjs:
         specifier: ^0.25.0
         version: 0.25.1(eslint@8.57.1)
+      fraction.js:
+        specifier: ^4.3.7
+        version: 4.3.7
       gh-pages:
         specifier: ^5.0.0
         version: 5.0.0
@@ -4053,6 +4059,9 @@ packages:
 
   fraction.js@4.3.4:
     resolution: {integrity: sha512-pwiTgt0Q7t+GHZA4yaLjObx4vXmmdcS0iSJ19o8d/goUGgItX9UZWKWNnLHehxviD8wU2IWRsnR8cD5+yOJP2Q==}
+
+  fraction.js@4.3.7:
+    resolution: {integrity: sha512-ZsDfxO51wGAXREY55a7la9LScWpwv9RxIrYABrlvOFBlH/ShPnrtsXeuUIfXKKOVicNxQ+o8JTbJvjS4M89yew==}
 
   fraction.js@5.3.4:
     resolution: {integrity: sha512-1X1NTtiJphryn/uLQz3whtY6jK3fTqoE3ohKs0tT+Ujr1W59oopxmoEh7Lu5p6vBaPbgoM0bzveAW4Qi5RyWDQ==}
@@ -13122,6 +13131,8 @@ snapshots:
   forwarded@0.2.0: {}
 
   fraction.js@4.3.4: {}
+
+  fraction.js@4.3.7: {}
 
   fraction.js@5.3.4: {}
 
