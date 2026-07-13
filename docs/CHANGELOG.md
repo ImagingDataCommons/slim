@@ -1,3 +1,10 @@
+## [0.45.7](https://github.com/ImagingDataCommons/slim/compare/v0.45.6...v0.45.7) (2026-07-09)
+
+
+### Bug Fixes
+
+* declare uuid and fraction.js dependencies ([#396](https://github.com/ImagingDataCommons/slim/issues/396)) ([ea513cd](https://github.com/ImagingDataCommons/slim/commit/ea513cd84ea5364e45a347eac8cec14bdff30324))
+
 ## [0.45.6](https://github.com/ImagingDataCommons/slim/compare/v0.45.5...v0.45.6) (2026-06-29)
 
 
