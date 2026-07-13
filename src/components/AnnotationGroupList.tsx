@@ -1,3 +1,4 @@
+import type { MenuProps } from 'antd'
 import { Menu, Switch } from 'antd'
 // skipcq: JS-C1003
 import type * as dcmjs from 'dcmjs'
@@ -67,21 +68,26 @@ class AnnotationGroupList extends React.Component<
   }
 
   render(): React.ReactNode {
-    const items = this.props.annotationGroups.map((annotationGroup, _index) => {
-      const uid = annotationGroup.uid
-      return (
-        <AnnotationGroupItem
-          key={annotationGroup.uid}
-          annotationGroup={annotationGroup}
-          onAnnotationGroupClick={this.props.onAnnotationGroupClick}
-          metadata={this.props.metadata[uid]}
-          isVisible={this.props.visibleAnnotationGroupUIDs.has(uid)}
-          defaultStyle={this.props.defaultAnnotationGroupStyles[uid]}
-          onVisibilityChange={this.props.onAnnotationGroupVisibilityChange}
-          onStyleChange={this.props.onAnnotationGroupStyleChange}
-        />
-      )
-    })
+    const items: MenuProps['items'] = this.props.annotationGroups.map(
+      (annotationGroup) => {
+        const uid = annotationGroup.uid
+        return {
+          key: uid,
+          style: { height: '100%', paddingLeft: '3px' },
+          label: (
+            <AnnotationGroupItem
+              annotationGroup={annotationGroup}
+              onAnnotationGroupClick={this.props.onAnnotationGroupClick}
+              metadata={this.props.metadata[uid]}
+              isVisible={this.props.visibleAnnotationGroupUIDs.has(uid)}
+              defaultStyle={this.props.defaultAnnotationGroupStyles[uid]}
+              onVisibilityChange={this.props.onAnnotationGroupVisibilityChange}
+              onStyleChange={this.props.onAnnotationGroupStyleChange}
+            />
+          ),
+        }
+      },
+    )
 
     return (
       <>
@@ -100,7 +106,7 @@ class AnnotationGroupList extends React.Component<
             unCheckedChildren={<FaEyeSlash />}
           />
         </div>
-        <Menu selectable={false}>{items}</Menu>
+        <Menu selectable={false} items={items} />
       </>
     )
   }

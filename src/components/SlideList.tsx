@@ -1,3 +1,4 @@
+import type { MenuProps } from 'antd'
 import { Menu } from 'antd'
 import React from 'react'
 
@@ -35,32 +36,16 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
   }
 
   render(): React.ReactNode {
-    const slideList = this.props.metadata
-    const slideItemList = []
-    for (let i = 0; i < slideList.length; ++i) {
-      const slide = slideList[i]
-      const slideItem = (
-        <SlideItem
-          key={slide.seriesInstanceUIDs[0]}
-          slide={slide}
-          clients={this.props.clients}
-        />
-      )
+    const items: MenuProps['items'] = this.props.metadata.map((slide) => {
+      const key = slide.seriesInstanceUIDs[0]
+      return {
+        key,
+        style: { height: '100%' },
+        label: <SlideItem slide={slide} clients={this.props.clients} />,
+      }
+    })
 
-      slideItemList.push(slideItem)
-    }
-
-    const handleMenuItemSelection = ({
-      key,
-      keyPath: _keyPath,
-      domEvent: _domEvent,
-      selectedKeys: _selectedKeys,
-    }: {
-      key: React.ReactText
-      keyPath: React.ReactText[]
-      domEvent: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>
-      selectedKeys?: React.ReactText[]
-    }): void => {
+    const handleMenuItemSelection: MenuProps['onSelect'] = ({ key }) => {
       console.info(`select slide "${key}"`)
       this.setState({ selectedSeriesInstanceUID: key.toString() })
       this.props.onSeriesSelection({ seriesInstanceUID: key.toString() })
@@ -81,9 +66,8 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
         onSelect={handleMenuItemSelection}
         mode="inline"
         inlineIndent={0}
-      >
-        {slideItemList}
-      </Menu>
+        items={items}
+      />
     )
   }
 }
