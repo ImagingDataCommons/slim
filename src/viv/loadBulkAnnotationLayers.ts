@@ -26,6 +26,7 @@ import {
 import {
   computeVivBulkCentroidRadiusPixels,
   isVivAtFinestPyramidTile,
+  VIV_BULK_DEFAULT_OVERLAY_COLOR,
 } from './vivDisplayDefaults'
 
 /** Smaller Deck PathLayer batches reduce GPU attribute spikes and giant single-layer updates. */
@@ -2867,7 +2868,7 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
 
       for (const item of ann.AnnotationGroupSequence ?? []) {
         const annotationGroupUID = item.AnnotationGroupUID as string
-        const color = rgbFromLabItem(item, [220, 60, 60])
+        const color = rgbFromLabItem(item, VIV_BULK_DEFAULT_OVERLAY_COLOR)
         const annotationGroupIndex = Number(item.AnnotationGroupNumber) - 1
         const metadataItem =
           ann.AnnotationGroupSequence[annotationGroupIndex] ?? item

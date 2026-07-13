@@ -24,6 +24,7 @@ import { type RouteComponentProps, withRouter } from '../utils/router'
 import type { VivBulkAnnotationCatalogPayload } from '../viv/loadBulkAnnotationLayers'
 import VivSlideViewport from '../viv/VivSlideViewport'
 import { EMPTY_VIV_BULK_LOAD_STATUS } from '../viv/vivBulkLoadStatus'
+import { VIV_BULK_DEFAULT_OVERLAY_COLOR } from '../viv/vivDisplayDefaults'
 import AnnotationGroupList from './AnnotationGroupList'
 import ClinicalTrial from './ClinicalTrial'
 import Patient from './Patient'
@@ -259,7 +260,7 @@ function ParametrizedSlideViewer({
         const base = prev[uid] ??
           vivBulkCatalog?.defaultStylesByGroupUID[uid] ?? {
             opacity: 1,
-            color: [220, 60, 60],
+            color: [...VIV_BULK_DEFAULT_OVERLAY_COLOR],
           }
         return {
           ...prev,

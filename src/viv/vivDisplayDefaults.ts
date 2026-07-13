@@ -153,6 +153,11 @@ export const VIV_BULK_CENTROID_DIAMETER_MM = 5e-6
 /** Multiplier on computed scatter radius (overview + point groups). */
 export const VIV_BULK_CENTROID_RADIUS_SCALE = 0.55
 
+/** Fallback RGB when an annotation group has no RecommendedDisplayCIELabValue. */
+export const VIV_BULK_DEFAULT_OVERLAY_COLOR: [number, number, number] = [
+  0, 255, 0,
+]
+
 /**
  * Nominal on-slide polygon / polyline stroke thickness (mm).
  * ~0.625 µm ≈ 2.5 finest-level pixels at typical ~0.25 µm/px WSI spacing.
