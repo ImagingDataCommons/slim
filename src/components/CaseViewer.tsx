@@ -455,85 +455,69 @@ function ParametrizedSlideViewer({
         paddingBottom: '7px' as const,
       }
 
-      const vivAnnotationGroupChildren: NonNullable<MenuProps['items']> = [
-        menuPanelItem(
-          'bulk-load-indicator',
-          <div style={padSubmenuBlock}>
-            <VivBulkAnnotationLoadIndicator
-              status={vivBulkLoadStatus}
-              metadataByGroupUID={vivBulkCatalog?.metadataByGroupUID}
-              variant="panel"
-            />
-          </div>,
-        ),
+      const vivAnnotationGroupChildren: ReactNode[] = [
+        <div key="bulk-load-indicator" style={padSubmenuBlock}>
+          <VivBulkAnnotationLoadIndicator
+            status={vivBulkLoadStatus}
+            metadataByGroupUID={vivBulkCatalog?.metadataByGroupUID}
+            variant="panel"
+          />
+        </div>,
       ]
       if (
         vivBulkCatalog === null &&
         vivBulkLoadStatus.metadataPhase !== 'loading'
       ) {
         vivAnnotationGroupChildren.push(
-          menuPanelItem(
-            'loading-hint',
-            <div style={padSubmenuBlock}>
-              <p
-                style={{
-                  fontSize: 11,
-                  lineHeight: 1.45,
-                  margin: 0,
-                  color: 'rgba(0,0,0,0.75)',
-                }}
-              >
-                Loading annotation metadata and geometry…
-              </p>
-            </div>,
-          ),
+          <div key="loading-hint" style={padSubmenuBlock}>
+            <p
+              style={{
+                fontSize: 11,
+                lineHeight: 1.45,
+                margin: 0,
+                color: 'rgba(0,0,0,0.75)',
+              }}
+            >
+              Loading annotation metadata and geometry…
+            </p>
+          </div>,
         )
       } else if (
         vivBulkCatalog != null &&
         vivBulkCatalog.annotationGroups.length === 0
       ) {
         vivAnnotationGroupChildren.push(
-          menuPanelItem(
-            'empty-hint',
-            <div style={padSubmenuBlock}>
-              <p style={{ fontSize: 11, lineHeight: 1.45, margin: 0 }}>
-                No bulk annotation groups for this slide were returned (or all
-                were skipped). Check the browser console (filter by{' '}
-                <code style={{ fontSize: 10 }}>metadata:</code> or{' '}
-                <code style={{ fontSize: 10 }}>hydrate:</code>) for details.
-              </p>
-            </div>,
-          ),
+          <div key="empty-hint" style={padSubmenuBlock}>
+            <p style={{ fontSize: 11, lineHeight: 1.45, margin: 0 }}>
+              No bulk annotation groups for this slide were returned (or all
+              were skipped). Check the browser console (filter by{' '}
+              <code style={{ fontSize: 10 }}>metadata:</code> or{' '}
+              <code style={{ fontSize: 10 }}>hydrate:</code>) for details.
+            </p>
+          </div>,
         )
       } else if (vivAnnotationGroupListSection != null) {
         vivAnnotationGroupChildren.push(
-          menuPanelItem(
-            'annotation-groups-list',
-            vivAnnotationGroupListSection,
-          ),
+          <div key="annotation-groups-list">
+            {vivAnnotationGroupListSection}
+          </div>,
         )
       }
 
       const vivAnnotationGroupPanel: ReactNode = (
-        <Menu
-          mode="inline"
-          selectable={false}
-          defaultOpenKeys={['annotation-groups']}
-          inlineIndent={14}
-          forceSubMenuRender
-          style={{
-            borderInlineEnd: 0,
-            background: 'none',
-            marginTop: 8,
-          }}
-          items={[
-            {
-              key: 'annotation-groups',
-              label: 'Annotation Groups',
-              children: vivAnnotationGroupChildren,
-            },
-          ]}
-        />
+        <div style={{ marginTop: 8 }}>
+          <div
+            style={{
+              padding: '8px 14px',
+              fontSize: 14,
+              fontWeight: 600,
+              color: 'rgba(0,0,0,0.85)',
+            }}
+          >
+            Annotation Groups
+          </div>
+          {vivAnnotationGroupChildren}
+        </div>
       )
 
       viewer = vivChrome(

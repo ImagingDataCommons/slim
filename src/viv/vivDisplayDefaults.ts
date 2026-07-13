@@ -167,6 +167,12 @@ export const VIV_BULK_PATH_STROKE_WIDTH_MM = 6.25e-4
 /** Fallback stroke in finest-pyramid pixels when `PixelSpacing` is unavailable. */
 export const VIV_BULK_PATH_STROKE_SLIDE_PX = 2.5
 
+/** Screen-pixel clamp for bulk PathLayer stroke (min). */
+export const VIV_BULK_PATH_STROKE_MIN_PX = 1.25
+
+/** Screen-pixel clamp for bulk PathLayer stroke (max). */
+export const VIV_BULK_PATH_STROKE_MAX_PX = 3.5
+
 /** Heuristic: WSI `PixelSpacing` values above this are usually µm, not mm. */
 const PIXEL_SPACING_LIKELY_UM_THRESHOLD_MM = 0.02
 
@@ -306,8 +312,8 @@ export function computeVivBulkPathStrokeWidthPixels(options: {
     strokeWidthMm = VIV_BULK_PATH_STROKE_WIDTH_MM,
     strokeSlidePx = VIV_BULK_PATH_STROKE_SLIDE_PX,
   } = options
-  const minPx = options.minPx ?? 1.25
-  const maxPx = options.maxPx ?? 3.5
+  const minPx = options.minPx ?? VIV_BULK_PATH_STROKE_MIN_PX
+  const maxPx = options.maxPx ?? VIV_BULK_PATH_STROKE_MAX_PX
 
   if (!Number.isFinite(deckZoom)) {
     return minPx

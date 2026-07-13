@@ -399,6 +399,26 @@ function getOpticalPathsMap(viewer: dmv.viewer.VolumeImageViewer): {
   return raw as unknown as { [key: string]: OpticalPathEntry }
 }
 
+/**
+ * DMV `VolumeImageViewer` starts with ICC on. When the app preference is off,
+ * flip the private flag *before* the first `render()` so tile loaders are built
+ * without ICC — avoids `toggleICCProfiles()` which re-downloads every ICC bulk URI.
+ */
+function setVolumeImageViewerIccEnabled(
+  viewer: dmv.viewer.VolumeImageViewer,
+  enabled: boolean,
+): void {
+  const sym = Object.getOwnPropertySymbols(viewer).find(
+    (s) => s.description === 'isICCProfilesEnabled',
+  )
+  if (sym === undefined) {
+    throw new Error(
+      'dicom-microscopy-viewer VolumeImageViewer: isICCProfilesEnabled symbol not found',
+    )
+  }
+  ;(viewer as unknown as Record<symbol, boolean>)[sym] = enabled
+}
+
 export class DicomLoader {
   private readonly _client: DicomWebManager
 
@@ -423,6 +443,12 @@ export class DicomLoader {
    * Clearing OL tile caches on every {@link getTile} breaks parallel pyramid fetches.
    */
   private _openLayersFootprintTrimmed = false
+
+  /**
+   * True after the first successful hidden `VolumeImageViewer.render()` + tile-loader wait.
+   * Re-calling `render()` re-fetches every ICC bulkdata URI (DMV has no hasLoader guard).
+   */
+  private _openLayersTilesPrimed = false
 
   /**
    * Target ICC setting from app (SlideViewer parity). DMV viewer defaults to ICC on;
@@ -498,6 +524,7 @@ export class DicomLoader {
     this._columnsByLevel = undefined
     this._tileDecodeReady = undefined
     this._clearDecodedTileCache()
+    /** Keep `_openLayersTilesPrimed`: toggle refreshes loaders without a second render(). */
   }
 
   private _clearDecodedTileCache(): void {
@@ -554,6 +581,7 @@ export class DicomLoader {
   dispose(): void {
     this._loaders = undefined
     this._openLayersFootprintTrimmed = false
+    this._openLayersTilesPrimed = false
     this._pathIdByChannelIndex.clear()
     this._columnsByLevel = undefined
     this._tileDecodeReady = undefined
@@ -598,6 +626,10 @@ export class DicomLoader {
   /** Number of ICC profiles available for color correction (0 ⇒ disable toggle in UI). */
   async getIccProfilesLength(): Promise<number> {
     this._ensureVivAbortHooks()
+    /**
+     * Do not re-enter `render()` here — that re-downloads every ICC Profile bulk URI.
+     * Tile priming already waited for ICC-backed loaders when present.
+     */
     await this._ensureViewerReadyForTiles()
     const viewer = await this._getViewer()
     return viewer.getICCProfiles().length
@@ -632,12 +664,27 @@ export class DicomLoader {
     this._iccProfilesEnabled = this._iccTarget
   }
 
-  /** Render hidden OL viewer, wait for DataTile loaders, apply ICC target vs DMV. */
+  /**
+   * Render hidden OL viewer once, wait for DataTile loaders, apply ICC target vs DMV.
+   * Subsequent calls only re-sync ICC (toggle) — never re-`render()` (ICC re-fetch storm).
+   */
   private async _ensureViewerReadyForTiles(): Promise<void> {
     const viewer = await this._getViewer()
-    viewer.render({ container: document.createElement('div') })
     const opticalPaths = await this._getOpticalPaths()
-    await waitForOpenLayersTileLoaders(opticalPaths, 120_000)
+    if (!this._openLayersTilesPrimed) {
+      /**
+       * Pref matches DMV default (on): render once, no toggle.
+       * Pref off: set DMV flag before render so loaders skip ICC transforms without
+       * calling `toggleICCProfiles()` (which would re-fetch all ICC bulkdata).
+       */
+      if (!this._iccTarget) {
+        setVolumeImageViewerIccEnabled(viewer, false)
+        this._iccProfilesEnabled = false
+      }
+      viewer.render({ container: document.createElement('div') })
+      await waitForOpenLayersTileLoaders(opticalPaths, 120_000)
+      this._openLayersTilesPrimed = true
+    }
     await this._syncIccWithVolumeViewer(viewer, opticalPaths)
   }
 
@@ -962,11 +1009,15 @@ export class DicomLoader {
       throw new Error(`Viv path: missing pyramid metadata for level ${level}`)
     }
 
-    let raw: Awaited<ReturnType<typeof loader>>
+    let raw: ArrayBuffer | ArrayBufferView
     try {
-      raw = await invokeOpenLayersLoaderWithAbortSignal(signal, () =>
+      /**
+       * OL RGB-8 path returns Uint8Array at runtime; mono often ArrayBuffer/Float32.
+       * Loader typings claim only ArrayBuffer — widen so instanceof narrowing works.
+       */
+      raw = (await invokeOpenLayersLoaderWithAbortSignal(signal, () =>
         loader(level, x, y),
-      )
+      )) as ArrayBuffer | ArrayBufferView
     } catch (e) {
       const xhr = xhrFromDicomwebErrorDeep(e)
       const tileMeta = xhr !== undefined ? vivXhrTileAbortMeta(xhr) : undefined
@@ -1014,7 +1065,15 @@ export class DicomLoader {
       const buf = new Uint16Array(ts * ts * 3)
       buf.fill(65535)
       const src =
-        raw instanceof Float32Array ? raw : new Float32Array(raw as ArrayBuffer)
+        raw instanceof Float32Array
+          ? raw
+          : raw instanceof ArrayBuffer
+            ? new Float32Array(raw)
+            : new Float32Array(
+                raw.buffer,
+                raw.byteOffset,
+                raw.byteLength / Float32Array.BYTES_PER_ELEMENT,
+              )
       for (let row = 0; row < validH; row++) {
         for (let col = 0; col < validW; col++) {
           const si = (row * columns + col) * 3
@@ -1029,9 +1088,7 @@ export class DicomLoader {
       return out
     }
 
-    const data = monoTileToUint16(
-      raw instanceof ArrayBuffer ? raw : (raw as ArrayBufferView),
-    )
+    const data = monoTileToUint16(raw)
     const cropX = validW
     const cropY = validH
     let yy = 0
@@ -1212,6 +1269,7 @@ function insertSyntheticDyadicLevels(
     return finestFirst
   }
   const out: Array<DicomPixelSource | SyntheticDyadicPixelSource> = []
+  let loggedSynthetic = false
   for (let i = 0; i < finestFirst.length; i++) {
     out.push(finestFirst[i])
     if (i + 1 >= finestFirst.length) {
@@ -1228,9 +1286,12 @@ function insertSyntheticDyadicLevels(
     }
     const r = rW
     if (r > 3.5 && r < 4.5) {
-      logger.log(
-        '[Viv] Inserting synthetic half-resolution pyramid level (DICOM ~4× step) so deck.gl 2× tile alignment matches OpenLayers.',
-      )
+      if (!loggedSynthetic) {
+        logger.log(
+          '[Viv] Inserting synthetic half-resolution pyramid level(s) (DICOM ~4× step) so deck.gl 2× tile alignment matches OpenLayers.',
+        )
+        loggedSynthetic = true
+      }
       out.push(
         new SyntheticDyadicPixelSource(
           finestFirst[i].loader,

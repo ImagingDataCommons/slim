@@ -556,16 +556,20 @@ class App extends React.Component<AppProps, AppState> {
 
     const layoutStyle = { height: '100vh' }
     const layoutContentStyle = { height: '100%' }
+    const routerFuture = {
+      v7_startTransition: true,
+      v7_relativeSplatPath: true,
+    } as const
 
     if (this.state.redirectTo !== undefined) {
       return (
-        <BrowserRouter basename={this.props.config.path}>
+        <BrowserRouter basename={this.props.config.path} future={routerFuture}>
           <Navigate to={this.state.redirectTo} replace />
         </BrowserRouter>
       )
     } else if (this.state.isLoading) {
       return (
-        <BrowserRouter basename={this.props.config.path}>
+        <BrowserRouter basename={this.props.config.path} future={routerFuture}>
           <Layout style={layoutStyle}>
             <Header
               app={appInfo}
@@ -588,7 +592,7 @@ class App extends React.Component<AppProps, AppState> {
       return <InfoPage type="error" message={this.state.error.message} />
     } else {
       return (
-        <BrowserRouter basename={this.props.config.path}>
+        <BrowserRouter basename={this.props.config.path} future={routerFuture}>
           <Routes>
             <Route
               path="/"

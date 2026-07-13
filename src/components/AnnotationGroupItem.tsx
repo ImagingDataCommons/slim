@@ -6,7 +6,6 @@ import {
   Col,
   Divider,
   InputNumber,
-  Menu,
   Popover,
   Row,
   Select,
@@ -564,41 +563,25 @@ class AnnotationGroupItem extends React.Component<
     const color = this.getCurrentColor()
     const isBadgeVisible =
       this.state.isVisible && this.state.currentStyle.measurement === null
-    const {
-      annotationGroup,
-      defaultStyle,
-      isVisible,
-      metadata,
-      onVisibilityChange,
-      onStyleChange,
-      onAnnotationGroupClick,
-      ...otherProps
-    } = this.props
     return (
-      <Menu.Item
-        style={{ height: '100%', paddingLeft: '3px' }}
-        key={this.props.annotationGroup.uid}
-        {...otherProps}
-      >
-        <Space align="start">
-          <div style={{ paddingLeft: '14px' }}>
-            <AnnotationGroupControls
-              isVisible={this.props.isVisible}
-              onVisibilityChange={this.handleVisibilityChange}
-              settings={settings}
-              color={this.state.currentStyle.color ?? [255, 255, 255]}
-            />
-          </div>
-          <AnnotationGroupBadgeDescription
-            onClick={this.handleAnnotationGroupClick}
-            annotationGroup={this.props.annotationGroup}
-            isBadgeVisible={isBadgeVisible}
-            color={color}
-            label={this.props.annotationGroup.label}
-            attributes={attributes}
+      <Space align="start">
+        <div style={{ paddingLeft: '14px' }}>
+          <AnnotationGroupControls
+            isVisible={this.props.isVisible}
+            onVisibilityChange={this.handleVisibilityChange}
+            settings={settings}
+            color={this.state.currentStyle.color ?? [255, 255, 255]}
           />
-        </Space>
-      </Menu.Item>
+        </div>
+        <AnnotationGroupBadgeDescription
+          onClick={this.handleAnnotationGroupClick}
+          annotationGroup={this.props.annotationGroup}
+          isBadgeVisible={isBadgeVisible}
+          color={color}
+          label={this.props.annotationGroup.label}
+          attributes={attributes}
+        />
+      </Space>
     )
   }
 }

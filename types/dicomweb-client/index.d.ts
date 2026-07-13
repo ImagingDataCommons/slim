@@ -5,6 +5,8 @@ declare module 'dicomweb-client' {
     export interface DICOMwebClientRequestHookMetadata {
       url: string
       method: string
+      /** Request headers the client will send (e.g. Range on retrieveBulkData). */
+      headers?: Record<string, string>
     }
 
     export type DICOMwebClientRequestHook = (request: XMLHttpRequest, metadata: DICOMwebClientRequestHookMetadata) => XMLHttpRequest
