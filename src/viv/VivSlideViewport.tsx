@@ -2001,8 +2001,9 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
   )
 
   // bulkSlicesByUid / bulkStreamPaintGen invalidate while data is read via refs.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ref-backed slice invalidation
   const annLayers = useMemo((): Layer[] => {
+    void bulkSlicesByUid
+    void bulkStreamPaintGen
     const geom = bulkGeometryRef.current
     const sr = slideRef.current
     const radiusContext: BulkScatterRadiusContext | null =
@@ -2094,17 +2095,22 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       ],
     })
   }, [])
-  const sp = slideRef.current
-  const orthoZoomClamp =
-    sp && !loading
-      ? orthographicZoomLimits(
-          size.width,
-          size.height,
-          sp.worldW,
-          sp.worldH,
-          sp.levelCount,
-        )
-      : { minZoom: Number.NEGATIVE_INFINITY, maxZoom: Number.POSITIVE_INFINITY }
+  const orthoZoomClamp = useMemo(() => {
+    const slide = slideRef.current
+    if (slide != null && !loading) {
+      return orthographicZoomLimits(
+        size.width,
+        size.height,
+        slide.worldW,
+        slide.worldH,
+        slide.levelCount,
+      )
+    }
+    return {
+      minZoom: Number.NEGATIVE_INFINITY,
+      maxZoom: Number.POSITIVE_INFINITY,
+    }
+  }, [loading, size.width, size.height])
 
   const imageLayers = useMemo((): Layer[] => {
     if (baseLayer == null) {
