@@ -74,6 +74,8 @@ import {
   computeVivBulkPathStrokeWidthPixels,
   orthographicZoomLimits,
   VIV_BULK_DEFAULT_OVERLAY_COLOR,
+  VIV_BULK_PATH_STROKE_MAX_PX,
+  VIV_BULK_PATH_STROKE_MIN_PX,
 } from './vivDisplayDefaults'
 
 export interface VivSlideViewportProps {
@@ -240,8 +242,8 @@ function buildStyledBulkOverlayLayers(
             getColor: rgba,
             getWidth: pathStrokeWidth,
             widthUnits: 'pixels',
-            widthMinPixels: 1.25,
-            widthMaxPixels: 3.5,
+            widthMinPixels: VIV_BULK_PATH_STROKE_MIN_PX,
+            widthMaxPixels: VIV_BULK_PATH_STROKE_MAX_PX,
             updateTriggers: {
               getWidth: deckZoom,
               data: (layer as PathLayer).props.updateTriggers?.data,
@@ -569,6 +571,10 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     Record<string, { opacity: number; color: number[] }>
   >({})
   slicesByUidRef.current = bulkSlicesByUid
+  const bulkAnnotationGroupStylesRef = useRef(bulkAnnotationGroupStyles)
+  bulkAnnotationGroupStylesRef.current = bulkAnnotationGroupStyles
+  const bulkDefaultStylesRef = useRef(bulkDefaultStyles)
+  bulkDefaultStylesRef.current = bulkDefaultStyles
 
   const [loading, setLoading] = useState(true)
   const [viewState, setViewState] = useState<ViewState>({
@@ -1369,16 +1375,16 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
             acc.push(...data)
           }
 
-          const st = bulkAnnotationGroupStyles[uid] ??
-            bulkDefaultStyles[uid] ?? {
+          const st = bulkAnnotationGroupStylesRef.current[uid] ??
+            bulkDefaultStylesRef.current[uid] ?? {
               opacity: 1,
               color: [...VIV_BULK_DEFAULT_OVERLAY_COLOR],
             }
           const a = Math.round(Math.max(0, Math.min(1, st.opacity)) * 220)
           const rgba: [number, number, number, number] = [
-            st.color[0] ?? 220,
-            st.color[1] ?? 60,
-            st.color[2] ?? 60,
+            st.color[0] ?? VIV_BULK_DEFAULT_OVERLAY_COLOR[0],
+            st.color[1] ?? VIV_BULK_DEFAULT_OVERLAY_COLOR[1],
+            st.color[2] ?? VIV_BULK_DEFAULT_OVERLAY_COLOR[2],
             a,
           ]
           const geomNow = bulkGeometryRef.current
@@ -1636,6 +1642,31 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
         }).then((slice) => {
           if (bulkHydrateGenRef.current !== hydrateGen) {
             hydrateInFlight.delete(uid)
+            /**
+             * Gen bump aborted this hydrate. If we never installed graphicCache,
+             * clear any mid-stream slice so a later effect can re-dispatch
+             * (skip gate is `slicesByUidRef.current[uid] != null`).
+             */
+            if (bulkGraphicCacheByUidRef.current[uid] == null) {
+              streamingCentroidAccRef.current.delete(uid)
+              setStreamingDeckOverlaysByUid((prev) => {
+                if (prev[uid] == null) {
+                  return prev
+                }
+                const next = { ...prev }
+                delete next[uid]
+                return next
+              })
+              setBulkSlicesByUid((prev) => {
+                if (prev[uid] == null) {
+                  return prev
+                }
+                const next = { ...prev }
+                delete next[uid]
+                slicesByUidRef.current = next
+                return next
+              })
+            }
             return
           }
           vivBulkAnnPerf(
@@ -1644,7 +1675,10 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
             {
               uid,
               stillVisible: visibleBulkUidsRef.current.has(uid),
-              sliceLayers: slice?.layers.length ?? 0,
+              /** LOD stream returns empty layers + graphicCache by design. */
+              returnedSliceLayers: slice?.layers.length ?? 0,
+              hasGraphicCache: slice?.graphicCache != null,
+              committedLayers: slicesByUidRef.current[uid]?.layers.length ?? 0,
               chunksCommitted,
             },
           )
@@ -1652,7 +1686,9 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
             uid,
             graphicType: job.graphicType,
             numberOfAnnotations: job.numberOfAnnotations,
-            sliceLayers: slice?.layers.length ?? 0,
+            returnedSliceLayers: slice?.layers.length ?? 0,
+            hasGraphicCache: slice?.graphicCache != null,
+            committedLayers: slicesByUidRef.current[uid]?.layers.length ?? 0,
             chunksCommitted,
             stillVisible: visibleBulkUidsRef.current.has(uid),
             hydrateMs: Math.round((vivBulkAnnNow() - tHydr0) * 10) / 10,
@@ -1672,8 +1708,12 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
                   pyramid: geomNow.pyramid,
                 })
               const keepStreamedCentroids = !highResNow && chunksCommitted > 0
+              const keptLayerCount =
+                slicesByUidRef.current[uid]?.layers.length ?? 0
               /**
                * Overview: keep streamed centroids as the centers LOD result.
+               * Always clear `streamPreview` so panel color/opacity restyles apply —
+               * `streamPreview` must not stay true as a permanent style bypass.
                * High-res: always rebuild full paths for the current viewport
                * (streaming preview was centroids-only unless the user zoomed in
                * mid-transfer and already received path chunks).
@@ -1685,7 +1725,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
                     groupUID: uid,
                     graphicType: job.graphicType,
                     supportsLod: true,
-                    streamPreview: keepStreamedCentroids,
+                    streamPreview: false,
                     layers: prev[uid]?.layers ?? [],
                   },
                 }
@@ -1701,7 +1741,11 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
                 })
                 vivBulkAnnPhase(
                   'viewport:HYDRATE keep streamed centroid overview (skip rebuild)',
-                  { uid, streamedChunks: chunksCommitted },
+                  {
+                    uid,
+                    streamedChunks: chunksCommitted,
+                    keptLayers: keptLayerCount,
+                  },
                 )
                 markGroupLoadDone(uid)
               } else {
@@ -1781,8 +1825,6 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     markGroupLoadDone,
     paintBulkDeckLayersNow,
     yieldForStreamPaint,
-    bulkAnnotationGroupStyles,
-    bulkDefaultStyles,
   ])
 
   /** Drop bulk buffers, GPU layer data, and slice state when a group is hidden. */

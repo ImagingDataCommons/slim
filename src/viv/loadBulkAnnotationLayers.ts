@@ -27,6 +27,9 @@ import {
   computeVivBulkCentroidRadiusPixels,
   isVivAtFinestPyramidTile,
   VIV_BULK_DEFAULT_OVERLAY_COLOR,
+  VIV_BULK_PATH_STROKE_MAX_PX,
+  VIV_BULK_PATH_STROKE_MIN_PX,
+  VIV_BULK_PATH_STROKE_SLIDE_PX,
 } from './vivDisplayDefaults'
 
 /** Smaller Deck PathLayer batches reduce GPU attribute spikes and giant single-layer updates. */
@@ -1326,9 +1329,13 @@ async function tryStreamingBulkHydrate(options: {
     pixelToSlideAffine,
   })
 
+  /**
+   * Progress units match `onPrefix` decode batches (`VIV_BULK_STREAM_DECODE_BATCH`),
+   * not PathLayer GPU chunk size — otherwise UI shows e.g. "chunk 845 of 7".
+   */
   const estimatedTotalChunks = Math.max(
     1,
-    Math.ceil(numberOfAnnotations / VIV_BULK_PATHS_PER_PATH_LAYER),
+    Math.ceil(numberOfAnnotations / VIV_BULK_STREAM_DECODE_BATCH),
   )
   const wantPreview = onChunk != null
   const allEmitted: Layer[] = []
@@ -1590,7 +1597,13 @@ async function tryStreamingBulkHydrate(options: {
     vivBulkAnnPerf('hydrate:STREAM done (LOD cache + centroid preview)', t0, {
       annotationGroupUID,
       graphicType,
+      previewEmits: emitCounter,
       previewLayers: allEmitted.length,
+      /**
+       * Layers stay on the viewport via progressive `onChunk` commits; this
+       * return only installs `graphicCache` so settle can skip/rebuild by LOD.
+       */
+      returnedLayers: 0,
     })
     return {
       result: {
@@ -2002,10 +2015,10 @@ async function buildPathLayersFromGraphicData(options: {
     positionFormat: 'XY' as const,
     getPath: (d: PathRowFlat) => d.pathFlat,
     getColor: (): typeof rgba => rgba,
-    getWidth: (): number => 2.5,
+    getWidth: (): number => VIV_BULK_PATH_STROKE_SLIDE_PX,
     widthUnits: 'pixels' as const,
-    widthMinPixels: 1.25,
-    widthMaxPixels: 3.5,
+    widthMinPixels: VIV_BULK_PATH_STROKE_MIN_PX,
+    widthMaxPixels: VIV_BULK_PATH_STROKE_MAX_PX,
     capRounded: true,
     jointRounded: true,
     _pathType: pathType,
@@ -2469,10 +2482,10 @@ function buildChunkedVivPathLayers(
         pickable: true,
         getPath: (d) => d.path,
         getColor: () => rgba,
-        getWidth: () => 2.5,
+        getWidth: () => VIV_BULK_PATH_STROKE_SLIDE_PX,
         widthUnits: 'pixels',
-        widthMinPixels: 1.25,
-        widthMaxPixels: 3.5,
+        widthMinPixels: VIV_BULK_PATH_STROKE_MIN_PX,
+        widthMaxPixels: VIV_BULK_PATH_STROKE_MAX_PX,
         capRounded: true,
         jointRounded: true,
       }) as unknown as Layer,
@@ -2492,10 +2505,10 @@ function buildChunkedVivPathLayers(
         pickable: true,
         getPath: (d) => d.path,
         getColor: () => rgba,
-        getWidth: () => 2.5,
+        getWidth: () => VIV_BULK_PATH_STROKE_SLIDE_PX,
         widthUnits: 'pixels',
-        widthMinPixels: 1.25,
-        widthMaxPixels: 3.5,
+        widthMinPixels: VIV_BULK_PATH_STROKE_MIN_PX,
+        widthMaxPixels: VIV_BULK_PATH_STROKE_MAX_PX,
         capRounded: true,
         jointRounded: true,
       }) as unknown as Layer,
