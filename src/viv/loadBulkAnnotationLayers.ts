@@ -31,6 +31,9 @@ import {
 /** Smaller Deck PathLayer batches reduce GPU attribute spikes and giant single-layer updates. */
 const VIV_BULK_PATHS_PER_PATH_LAYER = 65_000
 
+/** Decode + emit at most this many new annotations per streaming prefix tick. */
+const VIV_BULK_STREAM_DECODE_BATCH = 500
+
 /** OpenLayers enables cluster low-res mode above this count (see DMV viewer.js). */
 const VIV_BULK_LOD_MIN_ANNOTATIONS = 1000
 
@@ -39,6 +42,54 @@ const VIV_BULK_CENTER_RADIUS_FALLBACK_PX = 1.25
 
 /** Pad viewport bounds when culling so annotations near edges do not pop in/out. */
 const VIV_BULK_VIEWPORT_MARGIN_RATIO = 0.25
+
+/**
+ * Retry DICOMweb bulk fetches that fail under proxy 429 / transient network errors.
+ * Complements `serverSettings.retry` (XHR hook) for DMV helpers that surface "request failed".
+ */
+async function withBulkFetchRetry<T>(
+  label: string,
+  fn: () => Promise<T>,
+  options?: { retries?: number; minDelayMs?: number },
+): Promise<T> {
+  const retries = options?.retries ?? 6
+  const minDelayMs = options?.minDelayMs ?? 1200
+  let lastError: unknown
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await fn()
+    } catch (e) {
+      lastError = e
+      const msg = e instanceof Error ? e.message : String(e)
+      const status =
+        e != null && typeof e === 'object' && 'status' in e
+          ? Number((e as { status?: number }).status)
+          : Number.NaN
+      const isRetryable =
+        status === 429 ||
+        status === 500 ||
+        status === 502 ||
+        status === 503 ||
+        status === 504 ||
+        /429|Too Many|request failed|Failed to fetch|NetworkError/i.test(msg)
+      if (!isRetryable || attempt === retries) {
+        throw e
+      }
+      const delay = Math.min(
+        45_000,
+        minDelayMs * 2 ** (attempt - 1) * (0.6 + Math.random() * 0.8),
+      )
+      console.warn(
+        `[Viv bulk] ${label} failed (attempt ${attempt}/${retries}); retrying in ${Math.round(delay)}ms`,
+        e,
+      )
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, delay)
+      })
+    }
+  }
+  throw lastError
+}
 
 /** OpenLayers-backed paths; Deck normalizes nested positions per row (`_pathType` unset). */
 type PathRowNested = { path: Position[]; closed: boolean }
@@ -516,6 +567,11 @@ export type VivBulkAnnotationLayerSlice = {
   graphicType?: string
   /** Zoom-based LOD: center scatter when zoomed out, full paths when zoomed in. */
   supportsLod?: boolean
+  /**
+   * Deck-ready overlay layers during bulk byte streaming (matrix + radius applied).
+   * Skips {@link buildStyledBulkOverlayLayers} so partial results paint immediately.
+   */
+  streamPreview?: boolean
 }
 
 /** Hydrate may attach bulk buffers once; store in a ref, not React state (avoids retaining ~100MB+ in the tree). */
@@ -565,6 +621,15 @@ export type VivBulkLodPreviewContext = {
   viewportHeight: number
   slideWidth: number
   slideHeight: number
+  /**
+   * Live LOD gate — re-read on each stream prefix so zooming to finest tiles
+   * during hydrate switches from centroids to full paths.
+   */
+  isHighResolution?: () => boolean
+  /** Live Deck zoom for centroid radius while streaming. */
+  getDeckZoom?: () => number
+  /** Live viewport bounds for path culling while streaming at high res. */
+  getViewportBounds?: () => DeckViewportBounds | undefined
 }
 
 export type VivBulkChunkEmitter = (
@@ -585,6 +650,13 @@ export type VivBulkChunkEmitter = (
 async function yieldToBrowser(): Promise<void> {
   await new Promise<void>((resolve) => {
     setTimeout(resolve, 0)
+  })
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        resolve()
+      })
+    })
   })
 }
 
@@ -780,13 +852,17 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
   // The index (`LongPrimitivePointIndexList`) is small; fetch it first so the
   // streaming path can map downloaded byte prefixes → fully-present annotations.
   try {
-    graphicIndex = await dmv.annotation.fetchGraphicIndex({
-      metadataItem: metadataItem as object,
-      bulkdataItem,
-      annotationGroupIndex,
-      metadata: ann as unknown as object,
-      client: fetchClient,
-    })
+    graphicIndex = await withBulkFetchRetry(
+      `graphicIndex ${annotationGroupUID}`,
+      () =>
+        dmv.annotation.fetchGraphicIndex({
+          metadataItem: metadataItem as object,
+          bulkdataItem,
+          annotationGroupIndex,
+          metadata: ann as unknown as object,
+          client: fetchClient,
+        }),
+    )
   } catch (e) {
     vivBulkAnnPhase('hydrate:FETCH failed (graphicIndex)', {
       annotationGroupUID,
@@ -838,13 +914,17 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
 
   // Fallback: classic monolithic retrieve of the coordinate buffer (index loaded).
   try {
-    graphicData = await dmv.annotation.fetchGraphicData({
-      metadataItem: metadataItem as object,
-      bulkdataItem,
-      annotationGroupIndex,
-      metadata: ann as unknown as object,
-      client: fetchClient,
-    })
+    graphicData = await withBulkFetchRetry(
+      `graphicData ${annotationGroupUID}`,
+      () =>
+        dmv.annotation.fetchGraphicData({
+          metadataItem: metadataItem as object,
+          bulkdataItem,
+          annotationGroupIndex,
+          metadata: ann as unknown as object,
+          client: fetchClient,
+        }),
+    )
   } catch (e) {
     vivBulkAnnPerf('hydrate:fetchGraphicData FAILED', tFetch0, {
       annotationGroupUID,
@@ -1188,9 +1268,17 @@ async function tryStreamingBulkHydrate(options: {
   } = job
 
   if (graphicIndex === null || graphicIndex === undefined) {
+    vivBulkAnnPhase('hydrate:STREAM skip (no graphicIndex)', {
+      annotationGroupUID,
+      graphicType,
+    })
     return null
   }
   if (!browserSupportsBulkStreaming()) {
+    vivBulkAnnPhase('hydrate:STREAM skip (browser)', {
+      annotationGroupUID,
+      graphicType,
+    })
     return null
   }
   const ref = resolveStreamableGraphicDataReference({
@@ -1198,10 +1286,19 @@ async function tryStreamingBulkHydrate(options: {
     bulkdataItem: job.bulkdataItem,
   })
   if (ref == null || ref.BulkDataURI == null) {
+    vivBulkAnnPhase('hydrate:STREAM skip (no BulkDataURI)', {
+      annotationGroupUID,
+      graphicType,
+    })
     return null
   }
   const vr = ref.vr ?? ''
   if (getStreamableBulkVrInfo(vr) == null) {
+    vivBulkAnnPhase('hydrate:STREAM skip (unsupported VR)', {
+      annotationGroupUID,
+      graphicType,
+      vr,
+    })
     return null
   }
   if (!isMonotonicGraphicIndex(graphicIndex, numberOfAnnotations)) {
@@ -1237,6 +1334,8 @@ async function tryStreamingBulkHydrate(options: {
   let layerChunkCounter = 0
   let emitCounter = 0
   let lastEmittedIndex = -1
+  /** Tracks whether stream prefixes were last emitted as paths vs centers. */
+  let lastStreamedAsHighRes = lodPreviewContext?.isHighResolution?.() === true
   let cancelledByCaller = false
   const abortController = new AbortController()
 
@@ -1248,6 +1347,7 @@ async function tryStreamingBulkHydrate(options: {
     vr,
     useLod,
     wantPreview,
+    lastStreamedAsHighRes,
   })
 
   /** Decode annotations `[start, end)` from the (possibly partial) buffer and emit. */
@@ -1267,30 +1367,57 @@ async function tryStreamingBulkHydrate(options: {
     const chunkIndexOffset = layerChunkCounter
     let layers: Layer[] = []
     if (useLod) {
-      // Render the FULL overview (no viewport cull) with zoom-scaled marker
-      // radius so the streamed preview equals the centers-mode rebuild — the
-      // caller can then keep it as the final result without re-rendering.
-      const built = await buildPointLayersFromGraphicData({
-        graphicData,
-        graphicIndex: idx,
-        coordinateDimensionality,
-        numberOfAnnotations,
-        commonZCoordinate,
-        color,
-        idPrefix: `${idPrefix}-centers`,
-        deckCoeffs,
-        startAnnotationIndex: start,
-        endAnnotationIndexExclusive: end,
-        chunkIndexOffset,
-        deckZoom: lodPreviewContext?.deckZoom,
-        pixelSpacingMm: readFinestPyramidPixelSpacingMm(geometry.pyramid),
-        lodOverview: true,
-        viewportWidth: lodPreviewContext?.viewportWidth,
-        viewportHeight: lodPreviewContext?.viewportHeight,
-        slideWidth: lodPreviewContext?.slideWidth,
-        slideHeight: lodPreviewContext?.slideHeight,
-      })
-      layers = built.layers
+      const highResNow = lodPreviewContext?.isHighResolution?.() === true
+      if (
+        highResNow &&
+        (graphicType === 'POLYGON' || graphicType === 'POLYLINE')
+      ) {
+        // Finest tile zoom: emit real paths for annotations already present in
+        // the buffer (viewport-culled). Overview/streaming otherwise uses centers.
+        const bounds =
+          lodPreviewContext?.getViewportBounds?.() ?? viewportBounds
+        const built = await buildPathLayersFromGraphicData({
+          graphicType,
+          graphicData,
+          graphicIndex: idx,
+          coordinateDimensionality,
+          numberOfAnnotations,
+          commonZCoordinate,
+          color,
+          idPrefix,
+          deckCoeffs,
+          viewportBounds: bounds,
+          startAnnotationIndex: start,
+          endAnnotationIndexExclusive: end,
+          chunkIndexOffset,
+        })
+        layers = built?.layers ?? []
+      } else {
+        // Overview: full-slide center markers (no viewport cull) so the streamed
+        // preview matches centers-mode rebuild.
+        const built = await buildPointLayersFromGraphicData({
+          graphicData,
+          graphicIndex: idx,
+          coordinateDimensionality,
+          numberOfAnnotations,
+          commonZCoordinate,
+          color,
+          idPrefix: `${idPrefix}-centers`,
+          deckCoeffs,
+          startAnnotationIndex: start,
+          endAnnotationIndexExclusive: end,
+          chunkIndexOffset,
+          deckZoom:
+            lodPreviewContext?.getDeckZoom?.() ?? lodPreviewContext?.deckZoom,
+          pixelSpacingMm: readFinestPyramidPixelSpacingMm(geometry.pyramid),
+          lodOverview: true,
+          viewportWidth: lodPreviewContext?.viewportWidth,
+          viewportHeight: lodPreviewContext?.viewportHeight,
+          slideWidth: lodPreviewContext?.slideWidth,
+          slideHeight: lodPreviewContext?.slideHeight,
+        })
+        layers = built.layers
+      }
     } else if (graphicType === 'POINT') {
       const built = await buildPointLayersFromGraphicData({
         graphicData,
@@ -1333,6 +1460,7 @@ async function tryStreamingBulkHydrate(options: {
     if (onChunk != null) {
       await onChunk(layers, { chunkIndex: emitCounter, estimatedTotalChunks })
       emitCounter++
+      await yieldToBrowser()
     }
   }
 
@@ -1342,6 +1470,12 @@ async function tryStreamingBulkHydrate(options: {
       url: ref.BulkDataURI,
       baseUrl: fetchClient.baseURL,
       headers: fetchClient.headers,
+      retrieveBulkData: (opts) =>
+        withBulkFetchRetry(
+          `retrieveBulkData ${annotationGroupUID}`,
+          () => fetchClient.retrieveBulkData(opts),
+          { retries: 4, minDelayMs: 800 },
+        ),
       vr,
       graphicIndex: idx,
       numberOfAnnotations,
@@ -1358,13 +1492,39 @@ async function tryStreamingBulkHydrate(options: {
         if (done || !wantPreview) {
           return
         }
+        // Zoom flipped between overview centers and finest-tile paths: re-emit
+        // everything already complete so the canvas matches the LOD rule.
+        const highResNow = lodPreviewContext?.isHighResolution?.() === true
+        if (useLod && highResNow !== lastStreamedAsHighRes) {
+          vivBulkAnnPhase('hydrate:STREAM LOD mode flip mid-transfer', {
+            annotationGroupUID,
+            fromHighRes: lastStreamedAsHighRes,
+            toHighRes: highResNow,
+            completeThroughIndex,
+          })
+          lastStreamedAsHighRes = highResNow
+          lastEmittedIndex = -1
+          layerChunkCounter = 0
+          allEmitted.length = 0
+        }
         if (completeThroughIndex > lastEmittedIndex) {
-          await decodeEmitRange(
-            graphicData,
-            lastEmittedIndex + 1,
-            completeThroughIndex + 1,
-          )
-          lastEmittedIndex = completeThroughIndex
+          const rangeStart = lastEmittedIndex + 1
+          const rangeEnd = completeThroughIndex + 1
+          for (
+            let batchStart = rangeStart;
+            batchStart < rangeEnd;
+            batchStart += VIV_BULK_STREAM_DECODE_BATCH
+          ) {
+            const batchEnd = Math.min(
+              rangeEnd,
+              batchStart + VIV_BULK_STREAM_DECODE_BATCH,
+            )
+            await decodeEmitRange(graphicData, batchStart, batchEnd)
+            lastEmittedIndex = batchEnd - 1
+            if (cancelledByCaller) {
+              return
+            }
+          }
         }
       },
     })
@@ -1671,10 +1831,17 @@ async function buildPointLayersFromGraphicData(options: {
       pointChunkIndex === 0 &&
       chunkIndexOffset === 0 &&
       final
+    const layerId = (() => {
+      if (singleLayer) {
+        return isLodCentroidLayer ? idPrefix : `${idPrefix}-pts`
+      }
+      if (isLodCentroidLayer) {
+        return `${idPrefix}-${chunkIndexOffset + pointChunkIndex}`
+      }
+      return `${idPrefix}-pts-${chunkIndexOffset + pointChunkIndex}`
+    })()
     const layer = new ScatterplotLayer<[number, number]>({
-      id: singleLayer
-        ? `${idPrefix}-pts`
-        : `${idPrefix}-pts-${chunkIndexOffset + pointChunkIndex}`,
+      id: layerId,
       data: pointChunk,
       pickable: true,
       getPosition: (d) => d,
@@ -1844,8 +2011,10 @@ async function buildPathLayersFromGraphicData(options: {
     1,
     Math.ceil((rangeEnd - rangeStart) / VIV_BULK_PATHS_PER_PATH_LAYER),
   )
+  // Viewport-culled path rebuilds: skip full-group center-out sort so the first
+  // visible polygons appear immediately (422k sorts blocked high-zoom upgrades).
   const annotationOrder =
-    deckLoadCenter != null && !isSubRange
+    deckLoadCenter != null && !isSubRange && viewportBounds == null
       ? await computeCenterOutAnnotationOrder({
           numberOfAnnotations,
           graphicData,

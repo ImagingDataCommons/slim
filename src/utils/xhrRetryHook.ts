@@ -40,30 +40,13 @@ export const getXHRRetryHook = (
     retryableStatusCodes: [429, 500],
   },
 ): RequestHook => {
-  const retryOptions = options
-
-  if (options.retries != null) {
-    retryOptions.retries = options.retries
-  }
-
-  if (options.factor != null) {
-    retryOptions.factor = options.factor
-  }
-
-  if (options.minTimeout != null) {
-    retryOptions.minTimeout = options.minTimeout
-  }
-
-  if (options.maxTimeout != null) {
-    retryOptions.maxTimeout = options.maxTimeout
-  }
-
-  if (options.randomize != null) {
-    retryOptions.randomize = options.randomize
-  }
-
-  if (options.retryableStatusCodes != null) {
-    retryOptions.retryableStatusCodes = options.retryableStatusCodes
+  const retryOptions = {
+    retries: options.retries ?? 5,
+    factor: options.factor ?? 3,
+    minTimeout: options.minTimeout ?? 1 * 1000,
+    maxTimeout: options.maxTimeout ?? 60 * 1000,
+    randomize: options.randomize ?? true,
+    retryableStatusCodes: options.retryableStatusCodes ?? [429, 500],
   }
 
   /**
@@ -80,42 +63,64 @@ export const getXHRRetryHook = (
     metadata: DICOMwebClientRequestHookMetadata,
   ): XMLHttpRequest => {
     const { url, method } = metadata
+    const headers = metadata.headers ?? {}
+    const originalRequestSend = request.send
+    /** Captured before open() resets it on retry. */
+    let responseType: XMLHttpRequestResponseType = request.responseType
+    /** dicomweb-client handler installed before this hook runs. */
+    const clientOnReadyStateChange = request.onreadystatechange
 
     function faultTolerantRequestSend(
       ...args: Parameters<XMLHttpRequest['send']>
     ): void {
-      const operation = retry.operation(retryOptions)
+      responseType = request.responseType
+      const operation = retry.operation({
+        retries: retryOptions.retries,
+        factor: retryOptions.factor,
+        minTimeout: retryOptions.minTimeout,
+        maxTimeout: retryOptions.maxTimeout,
+        randomize: retryOptions.randomize,
+      })
 
       operation.attempt(function operationAttempt(currentAttempt) {
-        const originalOnReadyStateChange = request.onreadystatechange
+        if (currentAttempt > 1) {
+          console.warn(`Requesting ${url}... (attempt: ${currentAttempt})`)
+          // open() clears headers / responseType — restore what dicomweb-client set.
+          request.open(method, url, true)
+          request.responseType = responseType
+          for (const key of Object.keys(headers)) {
+            request.setRequestHeader(key, headers[key])
+          }
+        }
 
-        /** Overriding/extending XHR function */
         request.onreadystatechange = function onReadyStateChange(
           ev: Event,
         ): void {
-          if (originalOnReadyStateChange != null) {
-            originalOnReadyStateChange.call(request, ev)
+          if (request.readyState !== XMLHttpRequest.DONE) {
+            return
           }
 
-          if (retryOptions.retryableStatusCodes.includes(request.status)) {
-            const errorMessage = `Attempt to request ${url} failed.`
-            const attemptFailedError = new Error(errorMessage)
-            operation.retry(attemptFailedError)
+          if (
+            retryOptions.retryableStatusCodes.includes(request.status) &&
+            operation.retry(
+              new Error(
+                `Attempt to request ${url} failed (${request.status}).`,
+              ),
+            )
+          ) {
+            // Schedule another attempt; do not surface failure to dicomweb-client yet.
+            return
+          }
+
+          if (clientOnReadyStateChange != null) {
+            clientOnReadyStateChange.call(request, ev)
           }
         }
 
-        /** Call open only on retry (after headers and other things were set in the xhr instance) */
-        if (currentAttempt > 1) {
-          console.warn(`Requesting ${url}... (attempt: ${currentAttempt})`)
-          request.open(method, url, true)
-        }
+        originalRequestSend.apply(request, args)
       })
-
-      originalRequestSend.apply(request, args)
     }
 
-    /** Overriding/extending XHR function */
-    const originalRequestSend = request.send
     request.send = faultTolerantRequestSend
 
     return request
