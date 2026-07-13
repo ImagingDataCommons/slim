@@ -71,6 +71,7 @@ import {
   buildVivDisplayOptions,
   computeOrthographicFitViewState,
   computeVivBulkCentroidRadiusPixels,
+  computeVivBulkPathStrokeWidthPixels,
   orthographicZoomLimits,
 } from './vivDisplayDefaults'
 
@@ -145,6 +146,8 @@ type StyledLayerCacheEntry = {
   sourceLayers: Layer[]
   modelMatrix: Matrix4 | null
   styleKey: string
+  /** Path stroke depends on zoom; scatter cache entries track zoom separately. */
+  deckZoom?: number
   result: Layer[]
   scatterByLayerId?: Map<string, StyledScatterLayerCacheEntry>
 }
@@ -193,13 +196,17 @@ function buildStyledBulkOverlayLayers(
       const lid = String(layer.id)
       return isBulkVivPointLayerId(lid) || isBulkVivCenterLayerId(lid)
     })
+    const hasPathOverlays = slice.layers.some((layer) =>
+      isBulkVivPathLayerId(String(layer.id)),
+    )
     const cached = cache.get(uid)
     if (
       !hasScatterMarkers &&
       cached != null &&
       cached.sourceLayers === slice.layers &&
       cached.modelMatrix === modelMatrix &&
-      cached.styleKey === sk
+      cached.styleKey === sk &&
+      (!hasPathOverlays || cached.deckZoom === deckZoom)
     ) {
       out.push(...cached.result)
       continue
@@ -218,6 +225,11 @@ function buildStyledBulkOverlayLayers(
         ? cached.scatterByLayerId
         : new Map<string, StyledScatterLayerCacheEntry>()
     const activeScatterLayerIds = new Set<string>()
+    const pathStrokeWidth = (): number =>
+      computeVivBulkPathStrokeWidthPixels({
+        deckZoom: readDeckZoom(),
+        pixelSpacingMm: radiusContext?.pixelSpacingMm ?? null,
+      })
     for (const layer of slice.layers) {
       const lid = String(layer.id)
       if (isBulkVivPathLayerId(lid)) {
@@ -225,8 +237,14 @@ function buildStyledBulkOverlayLayers(
           (layer as PathLayer).clone({
             pickable: true,
             getColor: rgba,
-            getWidth: () => (highRes ? 6 : 2),
+            getWidth: pathStrokeWidth,
             widthUnits: 'pixels',
+            widthMinPixels: 1.25,
+            widthMaxPixels: 3.5,
+            updateTriggers: {
+              getWidth: deckZoom,
+              data: (layer as PathLayer).props.updateTriggers?.data,
+            },
             ...matrixProps,
           }),
         )
@@ -290,6 +308,7 @@ function buildStyledBulkOverlayLayers(
         sourceLayers: slice.layers,
         modelMatrix,
         styleKey: sk,
+        deckZoom,
         result: uidStyled,
         scatterByLayerId,
       })
@@ -298,6 +317,7 @@ function buildStyledBulkOverlayLayers(
         sourceLayers: slice.layers,
         modelMatrix,
         styleKey: sk,
+        deckZoom,
         result: uidStyled,
       })
     }

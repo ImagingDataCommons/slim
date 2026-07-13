@@ -153,6 +153,15 @@ export const VIV_BULK_CENTROID_DIAMETER_MM = 5e-6
 /** Multiplier on computed scatter radius (overview + point groups). */
 export const VIV_BULK_CENTROID_RADIUS_SCALE = 0.55
 
+/**
+ * Nominal on-slide polygon / polyline stroke thickness (mm).
+ * ~0.625 µm ≈ 2.5 finest-level pixels at typical ~0.25 µm/px WSI spacing.
+ */
+export const VIV_BULK_PATH_STROKE_WIDTH_MM = 6.25e-4
+
+/** Fallback stroke in finest-pyramid pixels when `PixelSpacing` is unavailable. */
+export const VIV_BULK_PATH_STROKE_SLIDE_PX = 2.5
+
 /** Heuristic: WSI `PixelSpacing` values above this are usually µm, not mm. */
 const PIXEL_SPACING_LIKELY_UM_THRESHOLD_MM = 0.02
 
@@ -267,6 +276,53 @@ export function computeVivBulkCentroidRadiusPixels(options: {
   }
 
   return Math.max(1, Math.min(3.5, radiusPx))
+}
+
+/**
+ * Deck PathLayer stroke width (screen px) for bulk polygon / polyline overlays.
+ *
+ * Converts a physical on-slide thickness (or finest-level pixel stroke) into
+ * screen pixels via `2^deckZoom`, then clamps so outlines stay readable without
+ * turning into thick blobs at high zoom.
+ */
+export function computeVivBulkPathStrokeWidthPixels(options: {
+  deckZoom: number
+  /** Row/column spacing in mm (finest pyramid level), or µm values > 0.02. */
+  pixelSpacingMm?: [number, number] | null
+  strokeWidthMm?: number
+  /** Used when pixel spacing is missing. */
+  strokeSlidePx?: number
+  minPx?: number
+  maxPx?: number
+}): number {
+  const {
+    deckZoom,
+    pixelSpacingMm = null,
+    strokeWidthMm = VIV_BULK_PATH_STROKE_WIDTH_MM,
+    strokeSlidePx = VIV_BULK_PATH_STROKE_SLIDE_PX,
+  } = options
+  const minPx = options.minPx ?? 1.25
+  const maxPx = options.maxPx ?? 3.5
+
+  if (!Number.isFinite(deckZoom)) {
+    return minPx
+  }
+
+  let widthSlidePx = strokeSlidePx
+  if (
+    pixelSpacingMm != null &&
+    pixelSpacingMm[0] > 0 &&
+    pixelSpacingMm[1] > 0
+  ) {
+    const [sx, sy] = normalizePixelSpacingToMm(pixelSpacingMm)
+    const spacingMm = Math.min(sx, sy)
+    if (spacingMm > 0) {
+      widthSlidePx = strokeWidthMm / spacingMm
+    }
+  }
+
+  const widthPx = widthSlidePx * 2 ** deckZoom
+  return Math.min(maxPx, Math.max(minPx, widthPx))
 }
 
 /** IDC cyclic IF demo (Lin et al.) — channels 8–11 per viv-dicomweb-test. */
