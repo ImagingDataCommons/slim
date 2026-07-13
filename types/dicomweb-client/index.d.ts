@@ -83,7 +83,11 @@ declare module 'dicomweb-client' {
 
     export interface RetrieveBulkDataOptions {
       BulkDataURI: string
-      mediaTypes?: string[]
+      mediaTypes?:
+        | string[]
+        | Array<{ mediaType: string; transferSyntaxUID?: string }>
+      /** Start/end byte offsets (inclusive). Only valid with single-part octet-stream. */
+      byteRange?: [number, number] | number[]
     }
 
     export interface RetrieveInstanceFramesRenderedOptions {

@@ -1,7 +1,7 @@
 import type { Layer, PickingInfo } from '@deck.gl/core'
 import { OrthographicView } from '@deck.gl/core'
-import type { PathLayer, ScatterplotLayer } from '@deck.gl/layers'
-import DeckGL from '@deck.gl/react'
+import { type PathLayer, ScatterplotLayer } from '@deck.gl/layers'
+import DeckGL, { type DeckGLRef } from '@deck.gl/react'
 import { Matrix4 } from '@math.gl/core'
 import { MultiscaleImageLayer } from '@vivjs/layers'
 import { message, Spin } from 'antd'
@@ -16,6 +16,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react'
+import { flushSync } from 'react-dom'
 
 import type { VivSettings } from '../AppConfig'
 import HoveredRoiTooltip from '../components/HoveredRoiTooltip'
@@ -109,12 +110,18 @@ function isBulkVivPathLayerId(layerId: string): boolean {
 
 /** Point groups use `${id}-pts` or chunked `${id}-pts-0`, … */
 function isBulkVivPointLayerId(layerId: string): boolean {
-  return /-pts(?:-\d+)?$/.test(layerId)
+  return /-pts(?:-\d+)?$/.test(layerId) && !layerId.includes('-centers-pts')
 }
 
 /** LOD center markers use `${id}-centers` or chunked `${id}-centers-0`, … */
 function isBulkVivCenterLayerId(layerId: string): boolean {
-  return /-centers(?:-\d+)?$/.test(layerId)
+  return (
+    /-centers(?:-\d+)?$/.test(layerId) || /-centers-pts(?:-\d+)?$/.test(layerId)
+  )
+}
+
+function isBulkVivCentroidStreamLayer(layer: Layer): boolean {
+  return isBulkVivCenterLayerId(String(layer.id))
 }
 
 type BulkScatterRadiusContext = {
@@ -125,11 +132,21 @@ type BulkScatterRadiusContext = {
   slideHeight: number
 }
 
+type StyledScatterLayerCacheEntry = {
+  source: Layer
+  styleKey: string
+  modelMatrix: Matrix4 | null
+  deckZoom: number
+  highRes: boolean
+  styled: Layer
+}
+
 type StyledLayerCacheEntry = {
   sourceLayers: Layer[]
   modelMatrix: Matrix4 | null
   styleKey: string
   result: Layer[]
+  scatterByLayerId?: Map<string, StyledScatterLayerCacheEntry>
 }
 
 function bulkStyleKey(
@@ -150,11 +167,20 @@ function buildStyledBulkOverlayLayers(
   readDeckZoom: () => number,
   radiusContext: BulkScatterRadiusContext | null,
   highRes: boolean,
+  /** UIDs whose deck layers are supplied separately during bulk byte streaming. */
+  excludeGroupUIDs?: ReadonlySet<string>,
 ): Layer[] {
   const out: Layer[] = []
   for (const uid of visibleUIDs) {
+    if (excludeGroupUIDs?.has(uid) === true) {
+      continue
+    }
     const slice = slicesByUid[uid]
     if (slice == null) {
+      continue
+    }
+    if (slice.streamPreview === true) {
+      out.push(...slice.layers)
       continue
     }
     const st = styles[uid] ??
@@ -187,6 +213,11 @@ function buildStyledBulkOverlayLayers(
     ]
     const matrixProps = modelMatrix != null ? { modelMatrix } : {}
     const uidStyled: Layer[] = []
+    const scatterByLayerId =
+      hasScatterMarkers && cached?.scatterByLayerId != null
+        ? cached.scatterByLayerId
+        : new Map<string, StyledScatterLayerCacheEntry>()
+    const activeScatterLayerIds = new Set<string>()
     for (const layer of slice.layers) {
       const lid = String(layer.id)
       if (isBulkVivPathLayerId(lid)) {
@@ -200,35 +231,69 @@ function buildStyledBulkOverlayLayers(
           }),
         )
       } else if (isBulkVivPointLayerId(lid) || isBulkVivCenterLayerId(lid)) {
+        activeScatterLayerIds.add(lid)
+        const scatterCached = scatterByLayerId.get(lid)
+        if (
+          scatterCached != null &&
+          scatterCached.source === layer &&
+          scatterCached.styleKey === sk &&
+          scatterCached.modelMatrix === modelMatrix &&
+          scatterCached.deckZoom === deckZoom &&
+          scatterCached.highRes === highRes
+        ) {
+          uidStyled.push(scatterCached.styled)
+          continue
+        }
         const lodOverview = isBulkVivCenterLayerId(lid)
-        uidStyled.push(
-          (layer as ScatterplotLayer).clone({
-            pickable: true,
-            getFillColor: rgba,
-            getRadius: () =>
-              computeVivBulkCentroidRadiusPixels({
-                deckZoom: readDeckZoom(),
-                pixelSpacingMm: radiusContext?.pixelSpacingMm ?? null,
-                lodOverview,
-                viewportWidth: radiusContext?.viewportWidth,
-                viewportHeight: radiusContext?.viewportHeight,
-                slideWidth: radiusContext?.slideWidth,
-                slideHeight: radiusContext?.slideHeight,
-              }),
-            radiusMinPixels: 1,
-            updateTriggers: {
-              getRadius: deckZoom,
-            },
-            ...matrixProps,
-          }),
-        )
+        const styled = (layer as ScatterplotLayer).clone({
+          pickable: true,
+          getFillColor: rgba,
+          getRadius: () =>
+            computeVivBulkCentroidRadiusPixels({
+              deckZoom: readDeckZoom(),
+              pixelSpacingMm: radiusContext?.pixelSpacingMm ?? null,
+              lodOverview,
+              viewportWidth: radiusContext?.viewportWidth,
+              viewportHeight: radiusContext?.viewportHeight,
+              slideWidth: radiusContext?.slideWidth,
+              slideHeight: radiusContext?.slideHeight,
+            }),
+          radiusMinPixels: 1,
+          updateTriggers: {
+            getRadius: deckZoom,
+            data: (layer as ScatterplotLayer).props.updateTriggers?.data,
+          },
+          ...matrixProps,
+        })
+        scatterByLayerId.set(lid, {
+          source: layer,
+          styleKey: sk,
+          modelMatrix,
+          deckZoom,
+          highRes,
+          styled,
+        })
+        uidStyled.push(styled)
       } else {
         uidStyled.push(
           matrixProps.modelMatrix != null ? layer.clone(matrixProps) : layer,
         )
       }
     }
-    if (!hasScatterMarkers) {
+    if (hasScatterMarkers) {
+      for (const lid of scatterByLayerId.keys()) {
+        if (!activeScatterLayerIds.has(lid)) {
+          scatterByLayerId.delete(lid)
+        }
+      }
+      cache.set(uid, {
+        sourceLayers: slice.layers,
+        modelMatrix,
+        styleKey: sk,
+        result: uidStyled,
+        scatterByLayerId,
+      })
+    } else {
       cache.set(uid, {
         sourceLayers: slice.layers,
         modelMatrix,
@@ -442,12 +507,42 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
   visibleBulkUidsRef.current = visibleBulkAnnotationGroupUIDs
   const slicesByUidRef = useRef<Record<string, VivBulkAnnotationLayerSlice>>({})
   const styledOverlayCacheRef = useRef(new Map<string, StyledLayerCacheEntry>())
+  /**
+   * Growing centroid coordinate list per group while bulk bytes stream in.
+   * Merged into one ScatterplotLayer so Deck can paint progressively instead of
+   * waiting for dozens of separate GPU uploads to finish.
+   */
+  const streamingCentroidAccRef = useRef(new Map<string, [number, number][]>())
+  const deckRef = useRef<DeckGLRef>(null)
+  const imageDeckRef = useRef<DeckGLRef>(null)
+  const baseLayerRef = useRef<Layer | null>(null)
   /** Tracks centers ↔ paths LOD; rebuild geometry only when this flips, not on every zoom step. */
   const bulkLodHighResRef = useRef<boolean | null>(null)
+  /**
+   * Last full-path rebuild attempt key per group (`zoomBucket:tx:ty`) so a failed
+   * / empty path rebuild can retry after pan/zoom without looping forever.
+   */
+  const bulkFullPathAttemptKeyRef = useRef<Record<string, string>>({})
   const [size, setSize] = useState({ width: 100, height: 100 })
   const [baseLayer, setBaseLayer] = useState<Layer | null>(null)
+  baseLayerRef.current = baseLayer
+  const baseLayerReady = baseLayer !== null
   const [bulkSlicesByUid, setBulkSlicesByUid] = useState<
     Record<string, VivBulkAnnotationLayerSlice>
+  >({})
+  /** Bumped on each streaming centroid paint so Deck always sees a new layers prop. */
+  const [bulkStreamPaintGen, setBulkStreamPaintGen] = useState(0)
+  /**
+   * True while one or more bulk annotation groups are hydrating — further throttle
+   * Viv tile concurrency so graphicIndex / Range bulkdata share the proxy budget.
+   */
+  const [bulkHydrateTileThrottle, setBulkHydrateTileThrottle] = useState(false)
+  /**
+   * Deck layers for groups actively streaming bulk bytes. Kept separate from
+   * `bulkSlicesByUid` so Viv tile updates on the image Deck cannot clobber them.
+   */
+  const [streamingDeckOverlaysByUid, setStreamingDeckOverlaysByUid] = useState<
+    Record<string, Layer[]>
   >({})
   const [bulkDefaultStyles, setBulkDefaultStyles] = useState<
     Record<string, { opacity: number; color: number[] }>
@@ -511,7 +606,26 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
        * chunk is ready, then swap atomically. Clearing eagerly here is what caused
        * the brief "everything disappears, then reappears at once" flash. Layers
        * dropped from the slice on swap are finalized by deck.gl on the next render.
+       *
+       * Always clear `streamPreview` when entering full paths so the slice is no
+       * longer treated as a locked centroid overlay (which blocked path upgrades).
        */
+      if (mode === 'full' && prevSlice?.streamPreview === true) {
+        const cleared: VivBulkAnnotationLayerSlice = {
+          groupUID: uid,
+          graphicType: prevSlice.graphicType,
+          supportsLod: prevSlice.supportsLod,
+          layers: prevSlice.layers,
+        }
+        slicesByUidRef.current = {
+          ...slicesByUidRef.current,
+          [uid]: cleared,
+        }
+        setBulkSlicesByUid((prev) => ({
+          ...prev,
+          [uid]: cleared,
+        }))
+      }
       let rebuiltFirstCommit = true
       styledOverlayCacheRef.current.delete(uid)
 
@@ -546,14 +660,19 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           // First rebuilt chunk replaces the prior layers (swap); rest append.
           const baseLayers = isFirst ? [] : (existing?.layers ?? [])
           const layers = [...baseLayers, ...chunkLayers]
+          const nextSlice: VivBulkAnnotationLayerSlice = {
+            groupUID: uid,
+            graphicType: existing?.graphicType ?? cache.graphicType,
+            supportsLod: existing?.supportsLod ?? true,
+            layers,
+          }
+          slicesByUidRef.current = {
+            ...slicesByUidRef.current,
+            [uid]: nextSlice,
+          }
           return {
             ...prev,
-            [uid]: {
-              groupUID: uid,
-              graphicType: existing?.graphicType ?? cache.graphicType,
-              supportsLod: existing?.supportsLod ?? true,
-              layers,
-            },
+            [uid]: nextSlice,
           }
         })
       }
@@ -612,18 +731,35 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
             chunksCommitted,
           })
           if (chunksCommitted === 0) {
-            // No streamed chunks: swap the full result in atomically (or clear
-            // the prior layers if the rebuild produced nothing for this view).
-            // Layers dropped here are finalized by deck.gl on the next render.
-            setBulkSlicesByUid((prev) => ({
-              ...prev,
-              [uid]: {
+            // No streamed chunks: swap the full result in atomically — but never
+            // replace an existing centroid overview with an empty path result
+            // (that left high-zoom views with neither centroids nor polygons).
+            setBulkSlicesByUid((prev) => {
+              const existing = prev[uid]
+              if (layers.length === 0 && (existing?.layers.length ?? 0) > 0) {
+                vivBulkAnnDebug(
+                  'viewport:LOD keep prior layers (empty full rebuild)',
+                  { uid, mode, priorLayers: existing?.layers.length ?? 0 },
+                )
+                // Allow the next pan/zoom attempt key to retry this region.
+                delete bulkFullPathAttemptKeyRef.current[uid]
+                return prev
+              }
+              const nextSlice: VivBulkAnnotationLayerSlice = {
                 groupUID: uid,
-                graphicType: prev[uid]?.graphicType ?? cache.graphicType,
-                supportsLod: prev[uid]?.supportsLod ?? true,
+                graphicType: existing?.graphicType ?? cache.graphicType,
+                supportsLod: existing?.supportsLod ?? true,
                 layers,
-              },
-            }))
+              }
+              slicesByUidRef.current = {
+                ...slicesByUidRef.current,
+                [uid]: nextSlice,
+              }
+              return {
+                ...prev,
+                [uid]: nextSlice,
+              }
+            })
           }
           if (!quiet) {
             markGroupLoadDone(uid)
@@ -668,7 +804,11 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
         dtype: sources[0].dtype,
         /** One coarse getRaster when the pyramid fits a single tile (not RGB-only block). */
         excludeBackground,
-        maxRequests: 48,
+        /**
+         * Keep concurrent JP2 tile GETs modest so IDC/GCP proxies do not 429 the
+         * LongPrimitivePointIndexList fetch that must succeed before progressive hydrate.
+         */
+        maxRequests: 12,
         /**
          * Viv tile payloads are { data, width, height } without top-level byteLength — do not
          * set maxCacheByteSize (deck.gl logs errors and cache accounting breaks).
@@ -746,6 +886,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     bulkGroupJobsRef.current = {}
     bulkGraphicCacheByUidRef.current = {}
     bulkViewportRebuildGenRef.current = {}
+    streamingCentroidAccRef.current.clear()
     bulkHydrateGenRef.current += 1
     hydrateInFlight.clear()
     bulkLodHighResRef.current = null
@@ -965,7 +1106,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       clearBulkLoadStatus()
       return
     }
-    if (baseLayer === null) {
+    if (!baseLayerReady) {
       setBulkSlicesByUid({})
       setBulkDefaultStyles({})
       return
@@ -1080,7 +1221,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     }
   }, [
     loadBulkAnnotations,
-    baseLayer,
+    baseLayerReady,
     bulkAnnotationClient,
     client,
     studyInstanceUID,
@@ -1089,8 +1230,30 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     clearBulkLoadStatus,
   ])
 
+  const paintBulkDeckLayersNow = useCallback((): void => {
+    const deck = deckRef.current?.deck
+    if (deck == null) {
+      return
+    }
+    deck.redraw('bulk-stream-chunk')
+  }, [])
+
+  /** Yield a macrotask + frame so Deck can composite before the next decode batch. */
+  const yieldForStreamPaint = useCallback(async (): Promise<void> => {
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0)
+    })
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          resolve()
+        })
+      })
+    })
+  }, [])
+
   useEffect(() => {
-    if (!loadBulkAnnotations || baseLayer === null) {
+    if (!loadBulkAnnotations || !baseLayerReady) {
       return
     }
     const geom = bulkGeometryRef.current
@@ -1116,6 +1279,15 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
         continue
       }
       hydrateInFlight.add(uid)
+      streamingCentroidAccRef.current.delete(uid)
+      setStreamingDeckOverlaysByUid((prev) => {
+        if (prev[uid] == null) {
+          return prev
+        }
+        const next = { ...prev }
+        delete next[uid]
+        return next
+      })
       dispatchedUids.push(uid)
       const tHydr0 = vivBulkAnnNow()
       vivBulkAnnPhase('viewport:HYDRATE dispatch', {
@@ -1130,22 +1302,152 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
         graphicType: job.graphicType,
       })
       let chunksCommitted = 0
+      let fetchUiEnded = false
       /** Throttle download-progress UI updates (streaming fires very frequently). */
       let lastProgressReportBytes = 0
-      const appendChunkToSlice = (chunkLayers: Layer[]): void => {
-        setBulkSlicesByUid((prev) => {
-          const existing = prev[uid]
-          const layers = existing
-            ? [...existing.layers, ...chunkLayers]
-            : [...chunkLayers]
-          return {
-            ...prev,
-            [uid]: {
-              groupUID: uid,
-              graphicType: job.graphicType,
-              layers,
-            },
+      /** flushSync every Nth stream paint so Deck shows growth without locking input. */
+      let streamPaintSerial = 0
+      const appendChunkToSlice = async (
+        chunkLayers: Layer[],
+      ): Promise<void> => {
+        const commitSlice = async (
+          nextSlice: VivBulkAnnotationLayerSlice,
+        ): Promise<void> => {
+          streamPaintSerial += 1
+          const apply = (): void => {
+            const next = { ...slicesByUidRef.current, [uid]: nextSlice }
+            slicesByUidRef.current = next
+            setBulkSlicesByUid(next)
+            setBulkStreamPaintGen((g) => g + 1)
           }
+          // First paint + every 8th: force a frame. Other updates stay async so
+          // wheel/pan on the overlay controller can run between decode batches.
+          if (streamPaintSerial === 1 || streamPaintSerial % 8 === 0) {
+            flushSync(apply)
+          } else {
+            apply()
+          }
+          paintBulkDeckLayersNow()
+          await yieldForStreamPaint()
+        }
+
+        const centroidChunks = chunkLayers.filter(isBulkVivCentroidStreamLayer)
+        const otherChunks = chunkLayers.filter(
+          (layer) => !isBulkVivCentroidStreamLayer(layer),
+        )
+
+        if (centroidChunks.length > 0) {
+          let acc = streamingCentroidAccRef.current.get(uid)
+          if (acc == null) {
+            acc = []
+            streamingCentroidAccRef.current.set(uid, acc)
+          }
+          for (const layer of centroidChunks) {
+            const data = (layer as ScatterplotLayer<[number, number]>).props
+              .data as [number, number][]
+            acc.push(...data)
+          }
+
+          const st = bulkAnnotationGroupStyles[uid] ??
+            bulkDefaultStyles[uid] ?? {
+              opacity: 1,
+              color: [220, 60, 60],
+            }
+          const a = Math.round(Math.max(0, Math.min(1, st.opacity)) * 220)
+          const rgba: [number, number, number, number] = [
+            st.color[0] ?? 220,
+            st.color[1] ?? 60,
+            st.color[2] ?? 60,
+            a,
+          ]
+          const geomNow = bulkGeometryRef.current
+          const srNow = slideRef.current
+          const vsNow = viewStateRef.current
+          const { width: vw, height: vh } = sizeRef.current
+          const radiusPx = computeVivBulkCentroidRadiusPixels({
+            deckZoom: vsNow.zoom,
+            pixelSpacingMm:
+              geomNow != null
+                ? readFinestPyramidPixelSpacingMm(geomNow.pyramid)
+                : null,
+            lodOverview: true,
+            viewportWidth: vw,
+            viewportHeight: vh,
+            slideWidth: srNow?.worldW,
+            slideHeight: srNow?.worldH,
+          })
+          const matrix = slideMatrixRef.current
+          const pointCount = acc.length
+          const deckLayer = new ScatterplotLayer<[number, number]>({
+            id: `viv-bulk-${uid}-centers-${pointCount}`,
+            data: acc.slice(),
+            pickable: true,
+            getPosition: (d) => d,
+            getFillColor: () => rgba,
+            getRadius: () => radiusPx,
+            radiusMinPixels: 1,
+            radiusUnits: 'pixels',
+            updateTriggers: { data: pointCount, getRadius: radiusPx },
+            ...(matrix != null ? { modelMatrix: matrix } : {}),
+          }) as unknown as Layer
+
+          styledOverlayCacheRef.current.delete(uid)
+          setStreamingDeckOverlaysByUid((prev) => ({
+            ...prev,
+            [uid]: [deckLayer],
+          }))
+          await commitSlice({
+            groupUID: uid,
+            graphicType: job.graphicType,
+            supportsLod: true,
+            streamPreview: true,
+            layers: [deckLayer],
+          })
+          return
+        }
+
+        if (otherChunks.length === 0) {
+          return
+        }
+        // Path chunks (high-res LOD upgrade): drop centroid stream overlay and
+        // replace — never append polygons onto a streamPreview centers layer.
+        const existing = slicesByUidRef.current[uid]
+        const existingLayers = existing?.layers
+        const upgradingFromCentroids =
+          existing?.streamPreview === true ||
+          (existingLayers != null &&
+            existingLayers.length > 0 &&
+            existingLayers.every((layer) =>
+              isBulkVivCentroidStreamLayer(layer),
+            ))
+        if (upgradingFromCentroids) {
+          streamingCentroidAccRef.current.delete(uid)
+          setStreamingDeckOverlaysByUid((prev) => {
+            if (prev[uid] == null) {
+              return prev
+            }
+            const next = { ...prev }
+            delete next[uid]
+            return next
+          })
+          await commitSlice({
+            groupUID: uid,
+            graphicType: job.graphicType,
+            supportsLod: true,
+            streamPreview: false,
+            layers: [...otherChunks],
+          })
+          return
+        }
+        const layers = existing
+          ? [...existing.layers, ...otherChunks]
+          : [...otherChunks]
+        await commitSlice({
+          groupUID: uid,
+          graphicType: job.graphicType,
+          supportsLod: true,
+          streamPreview: false,
+          layers,
         })
       }
       const sr = slideRef.current
@@ -1174,6 +1476,35 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
               viewportHeight: vh,
               slideWidth: sr.worldW,
               slideHeight: sr.worldH,
+              getDeckZoom: (): number => viewStateRef.current.zoom,
+              isHighResolution: (): boolean => {
+                const g = bulkGeometryRef.current
+                if (g == null) {
+                  return false
+                }
+                return computeVivBulkHighResolution({
+                  deckZoom: viewStateRef.current.zoom,
+                  pyramid: g.pyramid,
+                })
+              },
+              getViewportBounds: ():
+                | ReturnType<typeof deckViewportBoundsFromViewState>
+                | undefined => {
+                const slide = slideRef.current
+                if (slide == null) {
+                  return undefined
+                }
+                const vsNow = viewStateRef.current
+                const { width: bw, height: bh } = sizeRef.current
+                return deckViewportBoundsFromViewState(
+                  slide.worldW,
+                  slide.worldH,
+                  bw,
+                  bh,
+                  vsNow.target,
+                  vsNow.zoom,
+                )
+              },
             }
           : undefined
       batchPromises.push(
@@ -1238,7 +1569,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
            * decode is still running. For LOD groups these preview layers are
            * replaced by the viewport rebuild once the full buffer is cached.
            */
-          onChunk: (chunkLayers, meta) => {
+          onChunk: async (chunkLayers, meta) => {
             if (
               bulkHydrateGenRef.current !== hydrateGen ||
               !visibleBulkUidsRef.current.has(uid)
@@ -1250,6 +1581,15 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
               return
             }
             chunksCommitted++
+            if (!fetchUiEnded) {
+              fetchUiEnded = true
+              reportGroupLoad(uid, {
+                phase: 'processing',
+                detail: 'Rendering annotations…',
+                annotationCount: job.numberOfAnnotations,
+                graphicType: job.graphicType,
+              })
+            }
             const tSet0 = vivBulkAnnNow()
             vivBulkAnnPhase('viewport:HYDRATE chunk commit', {
               uid,
@@ -1265,7 +1605,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
               annotationCount: job.numberOfAnnotations,
               graphicType: job.graphicType,
             })
-            appendChunkToSlice(chunkLayers)
+            await appendChunkToSlice(chunkLayers)
             vivBulkAnnDebug('viewport: chunk scheduled', {
               uid,
               chunkIndex: meta.chunkIndex,
@@ -1303,42 +1643,61 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           ) {
             if (slice.graphicCache != null) {
               bulkGraphicCacheByUidRef.current[uid] = slice.graphicCache
-              /**
-               * Keep the streaming preview layers on screen and flag the slice
-               * as LOD. When the user is zoomed out (centers mode), the streamed
-               * centroid preview already IS the complete overview, so we keep it
-               * as-is and skip the rebuild entirely (no flash, no center-out
-               * re-render). When zoomed in (paths needed), or when no preview was
-               * produced, we run the viewport rebuild, which swaps layers in
-               * atomically once ready.
-               */
-              setBulkSlicesByUid((prev) => ({
-                ...prev,
-                [uid]: {
-                  groupUID: uid,
-                  graphicType: job.graphicType,
-                  supportsLod: true,
-                  layers: prev[uid]?.layers ?? [],
-                },
-              }))
               const geomNow = bulkGeometryRef.current
-              const centersMode =
+              const highResNow =
                 geomNow != null &&
-                !computeVivBulkHighResolution({
+                computeVivBulkHighResolution({
                   deckZoom: viewStateRef.current.zoom,
                   pyramid: geomNow.pyramid,
                 })
-              if (centersMode && chunksCommitted > 0) {
+              const keepStreamedCentroids = !highResNow && chunksCommitted > 0
+              /**
+               * Overview: keep streamed centroids as the centers LOD result.
+               * High-res: always rebuild full paths for the current viewport
+               * (streaming preview was centroids-only unless the user zoomed in
+               * mid-transfer and already received path chunks).
+               */
+              setBulkSlicesByUid((prev) => {
+                const next = {
+                  ...prev,
+                  [uid]: {
+                    groupUID: uid,
+                    graphicType: job.graphicType,
+                    supportsLod: true,
+                    streamPreview: keepStreamedCentroids,
+                    layers: prev[uid]?.layers ?? [],
+                  },
+                }
+                slicesByUidRef.current = next
+                return next
+              })
+              if (keepStreamedCentroids) {
                 bulkLodHighResRef.current = false
+                setStreamingDeckOverlaysByUid((prev) => {
+                  const next = { ...prev }
+                  delete next[uid]
+                  return next
+                })
                 vivBulkAnnPhase(
                   'viewport:HYDRATE keep streamed centroid overview (skip rebuild)',
                   { uid, streamedChunks: chunksCommitted },
                 )
                 markGroupLoadDone(uid)
               } else {
+                bulkLodHighResRef.current = highResNow
+                setStreamingDeckOverlaysByUid((prev) => {
+                  if (prev[uid] == null) {
+                    return prev
+                  }
+                  const next = { ...prev }
+                  delete next[uid]
+                  return next
+                })
                 reportGroupLoad(uid, {
                   phase: 'processing',
-                  detail: 'Bulk data retrieved — preparing viewport…',
+                  detail: highResNow
+                    ? 'Rendering annotation paths…'
+                    : 'Bulk data retrieved — preparing viewport…',
                   annotationCount: job.numberOfAnnotations,
                   graphicType: job.graphicType,
                 })
@@ -1372,10 +1731,12 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       dispatched: dispatchedUids.length,
       uids: dispatchedUids,
     })
+    setBulkHydrateTileThrottle(true)
     void Promise.allSettled(batchPromises).then(() => {
       if (bulkHydrateGenRef.current !== hydrateGen) {
         return
       }
+      setBulkHydrateTileThrottle(false)
       vivBulkAnnPhase('viewport:HYDRATE batch done (all visible groups)', {
         dispatched: dispatchedUids.length,
         uids: dispatchedUids,
@@ -1384,18 +1745,23 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     })
     return () => {
       bulkHydrateGenRef.current += 1
+      setBulkHydrateTileThrottle(false)
       for (const uid of dispatchedUids) {
         hydrateInFlight.delete(uid)
       }
     }
   }, [
     loadBulkAnnotations,
-    baseLayer,
+    baseLayerReady,
     visibleBulkAnnotationGroupUIDs,
     client,
     runBulkViewportRebuildForGroup,
     reportGroupLoad,
     markGroupLoadDone,
+    paintBulkDeckLayersNow,
+    yieldForStreamPaint,
+    bulkAnnotationGroupStyles,
+    bulkDefaultStyles,
   ])
 
   /** Drop bulk buffers, GPU layer data, and slice state when a group is hidden. */
@@ -1431,11 +1797,23 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       }
       return next ?? prev
     })
+    setStreamingDeckOverlaysByUid((prev) => {
+      let next: Record<string, Layer[]> | null = null
+      for (const uid of Object.keys(prev)) {
+        if (!visibleBulkAnnotationGroupUIDs.has(uid)) {
+          if (next === null) {
+            next = { ...prev }
+          }
+          delete next[uid]
+        }
+      }
+      return next ?? prev
+    })
   }, [visibleBulkAnnotationGroupUIDs, patchBulkLoadStatus])
 
   /** LOD mode flip (centers ↔ paths): rebuild geometry immediately. */
   useEffect(() => {
-    if (!loadBulkAnnotations || baseLayer === null) {
+    if (!loadBulkAnnotations || !baseLayerReady) {
       return
     }
     const geom = bulkGeometryRef.current
@@ -1448,9 +1826,13 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     })
     const prev = bulkLodHighResRef.current
     bulkLodHighResRef.current = highRes
-    if (prev === null || prev === highRes) {
+
+    const modeFlipped = prev !== null && prev !== highRes
+    if (!modeFlipped) {
       return
     }
+    const zoomBucket = Math.round(viewState.zoom * 4) / 4
+    const attemptKey = `${zoomBucket}:${viewState.target[0].toFixed(0)}:${viewState.target[1].toFixed(0)}`
     vivBulkAnnDebug('viewport:LOD mode flip rebuild', {
       prevHighRes: prev,
       highRes,
@@ -1460,14 +1842,83 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       if (bulkGraphicCacheByUidRef.current[uid] == null) {
         continue
       }
+      if (highRes) {
+        // Mark this view so the pan/zoom effect does not immediately rebuild again.
+        bulkFullPathAttemptKeyRef.current[uid] = attemptKey
+      } else {
+        delete bulkFullPathAttemptKeyRef.current[uid]
+      }
       runBulkViewportRebuildForGroup(uid, { quiet: true, force: true })
     }
   }, [
     loadBulkAnnotations,
-    baseLayer,
+    baseLayerReady,
     visibleBulkAnnotationGroupUIDs,
     runBulkViewportRebuildForGroup,
     viewState.zoom,
+    viewState.target,
+  ])
+
+  /**
+   * High-res paths are viewport-culled. Rebuild after pan / fine zoom settles so
+   * newly visible polygons load. Overview centroids cover the whole slide and
+   * do not need this.
+   */
+  useEffect(() => {
+    if (!loadBulkAnnotations || !baseLayerReady) {
+      return
+    }
+    const geom = bulkGeometryRef.current
+    if (geom == null) {
+      return
+    }
+    const highRes = computeVivBulkHighResolution({
+      deckZoom: viewState.zoom,
+      pyramid: geom.pyramid,
+    })
+    if (!highRes) {
+      return
+    }
+
+    const zoomBucket = Math.round(viewState.zoom * 4) / 4
+    const attemptKey = `${zoomBucket}:${viewState.target[0].toFixed(0)}:${viewState.target[1].toFixed(0)}`
+
+    const timer = window.setTimeout(() => {
+      const uids: string[] = []
+      for (const uid of visibleBulkAnnotationGroupUIDs) {
+        if (bulkGraphicCacheByUidRef.current[uid] == null) {
+          continue
+        }
+        // Same view bucket already rebuilt (or in flight) — skip.
+        if (bulkFullPathAttemptKeyRef.current[uid] === attemptKey) {
+          continue
+        }
+        bulkFullPathAttemptKeyRef.current[uid] = attemptKey
+        uids.push(uid)
+      }
+      if (uids.length === 0) {
+        return
+      }
+      vivBulkAnnDebug('viewport:LOD high-res pan/zoom rebuild', {
+        uids: uids.length,
+        attemptKey,
+        zoom: viewStateRef.current.zoom,
+      })
+      for (const uid of uids) {
+        runBulkViewportRebuildForGroup(uid, { quiet: true, force: true })
+      }
+    }, 160)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [
+    loadBulkAnnotations,
+    baseLayerReady,
+    visibleBulkAnnotationGroupUIDs,
+    runBulkViewportRebuildForGroup,
+    viewState.zoom,
+    viewState.target,
   ])
 
   const bulkHighRes = useMemo(() => {
@@ -1481,6 +1932,13 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     })
   }, [viewState.zoom])
 
+  const streamingOverlayUidSet = useMemo(
+    () => new Set(Object.keys(streamingDeckOverlaysByUid)),
+    [streamingDeckOverlaysByUid],
+  )
+
+  // bulkSlicesByUid / bulkStreamPaintGen invalidate while data is read via refs.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ref-backed slice invalidation
   const annLayers = useMemo((): Layer[] => {
     const geom = bulkGeometryRef.current
     const sr = slideRef.current
@@ -1497,8 +1955,8 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
             slideHeight: sr.worldH,
           }
         : null
-    return buildStyledBulkOverlayLayers(
-      bulkSlicesByUid,
+    const styled = buildStyledBulkOverlayLayers(
+      slicesByUidRef.current,
       visibleBulkAnnotationGroupUIDs,
       bulkAnnotationGroupStyles,
       bulkDefaultStyles,
@@ -1508,7 +1966,17 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       () => viewStateRef.current.zoom,
       radiusContext,
       bulkHighRes,
+      streamingOverlayUidSet,
     )
+    const streaming = Object.values(streamingDeckOverlaysByUid).flat()
+    if (vivBulkAnnVerboseProgress() && streaming.length > 0) {
+      vivBulkAnnDebug('deck:streaming overlay layers', {
+        streamingLayerCount: streaming.length,
+        streamingGroups: streamingOverlayUidSet.size,
+        styledLayerCount: styled.length,
+      })
+    }
+    return [...streaming, ...styled]
   }, [
     bulkSlicesByUid,
     visibleBulkAnnotationGroupUIDs,
@@ -1518,7 +1986,18 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     size.width,
     size.height,
     bulkHighRes,
+    bulkStreamPaintGen,
+    streamingDeckOverlaysByUid,
+    streamingOverlayUidSet,
   ])
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: redraw when annLayers identity changes
+  useLayoutEffect(() => {
+    if (!loadBulkAnnotations) {
+      return
+    }
+    deckRef.current?.deck?.redraw('bulk-stream-overlay')
+  }, [annLayers, loadBulkAnnotations, streamingDeckOverlaysByUid])
 
   const handleBulkDeckHover = useCallback((info: PickingInfo) => {
     if (info.layer == null || info.x == null || info.y == null) {
@@ -1552,19 +2031,6 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       ],
     })
   }, [])
-  const layers = useMemo((): Layer[] => {
-    const t0 = vivBulkAnnNow()
-    const out = baseLayer !== null ? [baseLayer, ...annLayers] : []
-    if (vivBulkAnnVerboseProgress() && annLayers.length > 0) {
-      vivBulkAnnDebug('deck:layers useMemo', {
-        base: baseLayer != null ? 1 : 0,
-        overlayLayers: annLayers.length,
-        ms: Math.round((vivBulkAnnNow() - t0) * 100) / 100,
-      })
-    }
-    return out
-  }, [baseLayer, annLayers])
-
   const sp = slideRef.current
   const orthoZoomClamp =
     sp && !loading
@@ -1576,6 +2042,73 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           sp.levelCount,
         )
       : { minZoom: Number.NEGATIVE_INFINITY, maxZoom: Number.POSITIVE_INFINITY }
+
+  const imageLayers = useMemo((): Layer[] => {
+    if (baseLayer == null) {
+      return []
+    }
+    if (!bulkHydrateTileThrottle) {
+      return [baseLayer]
+    }
+    // Deck clone only adjusts concurrency; same loader / cache / selections.
+    // maxRequests is a TileLayer/Viv prop, not on deck.gl's base LayerProps types.
+    return [
+      baseLayer.clone({
+        maxRequests: 4,
+      } as never) as Layer,
+    ]
+  }, [baseLayer, bulkHydrateTileThrottle])
+
+  const sharedViewState = useMemo(
+    () => ({
+      ...viewState,
+      ...orthoZoomClamp,
+    }),
+    [viewState, orthoZoomClamp],
+  )
+
+  const handleViewStateChange = useCallback(
+    ({
+      viewState: vs,
+    }: {
+      viewState:
+        | {
+            zoom?: number
+            target?: [number, number] | [number, number, number]
+          }
+        | Record<string, unknown>
+    }) => {
+      if (
+        vs == null ||
+        typeof vs !== 'object' ||
+        !('zoom' in vs) ||
+        !('target' in vs)
+      ) {
+        return
+      }
+      const sr = slideRef.current
+      if (sr == null) {
+        return
+      }
+      const { width: cw, height: ch } = sizeRef.current
+      const lim = orthographicZoomLimits(
+        cw,
+        ch,
+        sr.worldW,
+        sr.worldH,
+        sr.levelCount,
+      )
+      const rawZ = vs.zoom as number
+      const zClamped = Math.min(lim.maxZoom, Math.max(lim.minZoom, rawZ))
+      const zq = Number(zClamped.toFixed(5))
+      const t = vs.target as [number, number] | [number, number, number]
+      setViewState({
+        target: [t[0], t[1], t[2] ?? 0],
+        zoom: zq,
+      })
+    },
+    [],
+  )
 
   return (
     <div
@@ -1612,50 +2145,41 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       ) : null}
       <div ref={slotRef} style={{ position: 'absolute', inset: 0 }}>
         <DeckGL
+          ref={imageDeckRef}
           views={orthographicView}
-          viewState={{
-            ...viewState,
-            ...orthoZoomClamp,
-          }}
-          onViewStateChange={({ viewState: vs }) => {
-            if (
-              vs &&
-              typeof vs === 'object' &&
-              'zoom' in vs &&
-              'target' in vs
-            ) {
-              const sr = slideRef.current
-              if (!sr) {
-                return
-              }
-              const { width: cw, height: ch } = sizeRef.current
-              const lim = orthographicZoomLimits(
-                cw,
-                ch,
-                sr.worldW,
-                sr.worldH,
-                sr.levelCount,
-              )
-              const rawZ = vs.zoom as number
-              const zClamped = Math.min(
-                lim.maxZoom,
-                Math.max(lim.minZoom, rawZ),
-              )
-              const zq = Number(zClamped.toFixed(5))
-              const t = vs.target as [number, number] | [number, number, number]
-              setViewState({
-                target: [t[0], t[1], t[2] ?? 0],
-                zoom: zq,
-              })
-            }
-          }}
+          viewState={sharedViewState}
+          onViewStateChange={handleViewStateChange}
           controller={{ inertia: false }}
-          layers={layers}
+          layers={imageLayers}
           width={size.width}
           height={size.height}
-          getCursor={({ isHovering }) => (isHovering ? 'pointer' : 'grab')}
-          onHover={handleBulkDeckHover}
+          getCursor={() => 'grab'}
         />
+        {loadBulkAnnotations ? (
+          <DeckGL
+            ref={deckRef}
+            style={{
+              position: 'absolute',
+              left: '0',
+              top: '0',
+              width: '100%',
+              height: '100%',
+              // When layers exist this canvas sits above the image Deck and must
+              // own pan/zoom (controller below) — controller={false} left wheel
+              // events eaten with nowhere to go.
+              pointerEvents: annLayers.length > 0 ? 'auto' : 'none',
+            }}
+            views={orthographicView}
+            viewState={sharedViewState}
+            onViewStateChange={handleViewStateChange}
+            controller={annLayers.length > 0 ? { inertia: false } : false}
+            layers={annLayers}
+            width={size.width}
+            height={size.height}
+            getCursor={({ isHovering }) => (isHovering ? 'pointer' : 'grab')}
+            onHover={handleBulkDeckHover}
+          />
+        ) : null}
       </div>
       {bulkHoverTooltip != null ? (
         <HoveredRoiTooltip
