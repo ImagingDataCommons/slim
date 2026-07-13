@@ -73,6 +73,7 @@ import {
   computeVivBulkCentroidRadiusPixels,
   computeVivBulkPathStrokeWidthPixels,
   orthographicZoomLimits,
+  VIV_BULK_DEFAULT_OVERLAY_COLOR,
 } from './vivDisplayDefaults'
 
 export interface VivSlideViewportProps {
@@ -189,7 +190,7 @@ function buildStyledBulkOverlayLayers(
     const st = styles[uid] ??
       defaultStyles[uid] ?? {
         opacity: 1,
-        color: [220, 60, 60],
+        color: [...VIV_BULK_DEFAULT_OVERLAY_COLOR],
       }
     const sk = bulkStyleKey(uid, st)
     const hasScatterMarkers = slice.layers.some((layer) => {
@@ -1371,7 +1372,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           const st = bulkAnnotationGroupStyles[uid] ??
             bulkDefaultStyles[uid] ?? {
               opacity: 1,
-              color: [220, 60, 60],
+              color: [...VIV_BULK_DEFAULT_OVERLAY_COLOR],
             }
           const a = Math.round(Math.max(0, Math.min(1, st.opacity)) * 220)
           const rgba: [number, number, number, number] = [
