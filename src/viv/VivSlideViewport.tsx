@@ -27,6 +27,12 @@ import {
   setIccProfilesEnabled,
   subscribeIccProfilesEnabled,
 } from '../preferences/iccProfilesPreference'
+import {
+  getVivBulkLodEnabled,
+  getVivBulkLodLevelsFromFinest,
+  resolveVivBulkLodLevelsFromFinest,
+  subscribeVivBulkLodPreference,
+} from '../preferences/vivBulkLodPreference'
 import { logger } from '../utils/logger'
 import { terminateCenterOutAnnotationOrderWorker } from './centerOutAnnotationOrder'
 import { CenterOutTileset2D } from './centerOutTileset'
@@ -501,6 +507,31 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
   /** Tracks last-applied ICC value so we only rebuild when the shared preference changes. */
   const iccPropRef = useRef(iccProfilesEnabled)
 
+  const vivBulkLodEnabled = useSyncExternalStore(
+    subscribeVivBulkLodPreference,
+    getVivBulkLodEnabled,
+    getVivBulkLodEnabled,
+  )
+  const vivBulkLodLevelsFromFinest = useSyncExternalStore(
+    subscribeVivBulkLodPreference,
+    getVivBulkLodLevelsFromFinest,
+    getVivBulkLodLevelsFromFinest,
+  )
+  const isBulkHighRes = useCallback(
+    (deckZoom: number, pyramid: BulkAnnotationGeometryContext['pyramid']) => {
+      return computeVivBulkHighResolution({
+        deckZoom,
+        pyramid,
+        lodEnabled: vivBulkLodEnabled,
+        levelsFromFinest:
+          vivBulkLodLevelsFromFinest ?? resolveVivBulkLodLevelsFromFinest(),
+      })
+    },
+    [vivBulkLodEnabled, vivBulkLodLevelsFromFinest],
+  )
+  const isBulkHighResRef = useRef(isBulkHighRes)
+  isBulkHighResRef.current = isBulkHighRes
+
   const vivRef = useRef(vivSettings)
   vivRef.current = vivSettings
 
@@ -599,10 +630,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       const job = bulkGroupJobsRef.current[uid]
       const vs = viewStateRef.current
       const { width: vw, height: vh } = sizeRef.current
-      const highRes = computeVivBulkHighResolution({
-        deckZoom: vs.zoom,
-        pyramid: geom.pyramid,
-      })
+      const highRes = isBulkHighRes(vs.zoom, geom.pyramid)
       const mode = highRes ? 'full' : 'centers'
 
       const prevSlice = slicesByUidRef.current[uid]
@@ -653,7 +681,6 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           [uid]: cleared,
         }))
       }
-      let rebuiltFirstCommit = true
       styledOverlayCacheRef.current.delete(uid)
 
       const gen = (bulkViewportRebuildGenRef.current[uid] ?? 0) + 1
@@ -679,19 +706,44 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       }
 
       let chunksCommitted = 0
+      /** Outside setState — React may double-invoke updaters in Strict Mode. */
+      let swappedPriorLayers = false
       const appendChunkToSlice = (chunkLayers: Layer[]): void => {
-        const isFirst = rebuiltFirstCommit
-        rebuiltFirstCommit = false
+        /**
+         * Skip empty chunks while still holding the prior LOD overlay. The first
+         * non-empty chunk replaces prior layers; later chunks append.
+         */
+        if (!swappedPriorLayers) {
+          if (chunkLayers.length === 0) {
+            return
+          }
+          swappedPriorLayers = true
+          setBulkSlicesByUid((prev) => {
+            const existing = prev[uid]
+            const nextSlice: VivBulkAnnotationLayerSlice = {
+              groupUID: uid,
+              graphicType: existing?.graphicType ?? cache.graphicType,
+              supportsLod: existing?.supportsLod ?? true,
+              layers: [...chunkLayers],
+            }
+            slicesByUidRef.current = {
+              ...slicesByUidRef.current,
+              [uid]: nextSlice,
+            }
+            return {
+              ...prev,
+              [uid]: nextSlice,
+            }
+          })
+          return
+        }
         setBulkSlicesByUid((prev) => {
           const existing = prev[uid]
-          // First rebuilt chunk replaces the prior layers (swap); rest append.
-          const baseLayers = isFirst ? [] : (existing?.layers ?? [])
-          const layers = [...baseLayers, ...chunkLayers]
           const nextSlice: VivBulkAnnotationLayerSlice = {
             groupUID: uid,
             graphicType: existing?.graphicType ?? cache.graphicType,
             supportsLod: existing?.supportsLod ?? true,
-            layers,
+            layers: [...(existing?.layers ?? []), ...chunkLayers],
           }
           slicesByUidRef.current = {
             ...slicesByUidRef.current,
@@ -799,8 +851,12 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           })
         })
     },
-    [markGroupLoadDone, reportGroupLoad],
+    [markGroupLoadDone, reportGroupLoad, isBulkHighRes],
   )
+  const runBulkViewportRebuildForGroupRef = useRef(
+    runBulkViewportRebuildForGroup,
+  )
+  runBulkViewportRebuildForGroupRef.current = runBulkViewportRebuildForGroup
 
   const createMultiscaleFromLoader = useCallback(
     async (dicomLoader: DicomLoader): Promise<MultiscaleBuild> => {
@@ -1372,7 +1428,18 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           for (const layer of centroidChunks) {
             const data = (layer as ScatterplotLayer<[number, number]>).props
               .data as [number, number][]
-            acc.push(...data)
+            /**
+             * Never `push(...data)` — a Range-ignored paint-once layer can hold
+             * hundreds of thousands of points and blows the call stack / hangs.
+             */
+            const offset = acc.length
+            acc.length = offset + data.length
+            for (let i = 0; i < data.length; i++) {
+              const point = data[i]
+              if (point != null) {
+                acc[offset + i] = point
+              }
+            }
           }
 
           const st = bulkAnnotationGroupStylesRef.current[uid] ??
@@ -1509,10 +1576,10 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
                 if (g == null) {
                   return false
                 }
-                return computeVivBulkHighResolution({
-                  deckZoom: viewStateRef.current.zoom,
-                  pyramid: g.pyramid,
-                })
+                return isBulkHighResRef.current(
+                  viewStateRef.current.zoom,
+                  g.pyramid,
+                )
               },
               getViewportBounds: ():
                 | ReturnType<typeof deckViewportBoundsFromViewState>
@@ -1643,10 +1710,36 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           if (bulkHydrateGenRef.current !== hydrateGen) {
             hydrateInFlight.delete(uid)
             /**
-             * Gen bump aborted this hydrate. If we never installed graphicCache,
-             * clear any mid-stream slice so a later effect can re-dispatch
-             * (skip gate is `slicesByUidRef.current[uid] != null`).
+             * Gen bump aborted this hydrate (e.g. effect re-run). If decode still
+             * finished with a graphicCache, keep it so we do not drop overlays and
+             * force a full re-download — then rebuild for the current LOD.
              */
+            if (
+              slice?.graphicCache != null &&
+              visibleBulkUidsRef.current.has(uid)
+            ) {
+              bulkGraphicCacheByUidRef.current[uid] = slice.graphicCache
+              setBulkSlicesByUid((prev) => {
+                const next = {
+                  ...prev,
+                  [uid]: {
+                    groupUID: uid,
+                    graphicType: job.graphicType,
+                    supportsLod: true,
+                    streamPreview: false,
+                    layers: prev[uid]?.layers ?? [],
+                  },
+                }
+                slicesByUidRef.current = next
+                return next
+              })
+              runBulkViewportRebuildForGroupRef.current(uid, {
+                quiet: true,
+                force: true,
+              })
+              markGroupLoadDone(uid)
+              return
+            }
             if (bulkGraphicCacheByUidRef.current[uid] == null) {
               streamingCentroidAccRef.current.delete(uid)
               setStreamingDeckOverlaysByUid((prev) => {
@@ -1703,10 +1796,10 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
               const geomNow = bulkGeometryRef.current
               const highResNow =
                 geomNow != null &&
-                computeVivBulkHighResolution({
-                  deckZoom: viewStateRef.current.zoom,
-                  pyramid: geomNow.pyramid,
-                })
+                isBulkHighResRef.current(
+                  viewStateRef.current.zoom,
+                  geomNow.pyramid,
+                )
               const keepStreamedCentroids = !highResNow && chunksCommitted > 0
               const keptLayerCount =
                 slicesByUidRef.current[uid]?.layers.length ?? 0
@@ -1766,7 +1859,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
                   annotationCount: job.numberOfAnnotations,
                   graphicType: job.graphicType,
                 })
-                runBulkViewportRebuildForGroup(uid, { force: true })
+                runBulkViewportRebuildForGroupRef.current(uid, { force: true })
               }
             } else if (chunksCommitted === 0) {
               startTransition(() => {
@@ -1815,12 +1908,17 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
         hydrateInFlight.delete(uid)
       }
     }
+    /**
+     * Intentionally omit `runBulkViewportRebuildForGroup` / LOD preference deps.
+     * Threshold edits recreate that callback; putting it here aborted in-flight
+     * hydrates (gen bump) and cleared mid-stream overlays so status looked "done"
+     * while annotations vanished. Rebuild uses `runBulkViewportRebuildForGroupRef`.
+     */
   }, [
     loadBulkAnnotations,
     baseLayerReady,
     visibleBulkAnnotationGroupUIDs,
     client,
-    runBulkViewportRebuildForGroup,
     reportGroupLoad,
     markGroupLoadDone,
     paintBulkDeckLayersNow,
@@ -1883,10 +1981,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     if (geom == null) {
       return
     }
-    const highRes = computeVivBulkHighResolution({
-      deckZoom: viewState.zoom,
-      pyramid: geom.pyramid,
-    })
+    const highRes = isBulkHighRes(viewState.zoom, geom.pyramid)
     const prev = bulkLodHighResRef.current
     bulkLodHighResRef.current = highRes
 
@@ -1920,6 +2015,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     runBulkViewportRebuildForGroup,
     viewState.zoom,
     viewState.target,
+    isBulkHighRes,
   ])
 
   /**
@@ -1935,10 +2031,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     if (geom == null) {
       return
     }
-    const highRes = computeVivBulkHighResolution({
-      deckZoom: viewState.zoom,
-      pyramid: geom.pyramid,
-    })
+    const highRes = isBulkHighRes(viewState.zoom, geom.pyramid)
     if (!highRes) {
       return
     }
@@ -1982,6 +2075,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     runBulkViewportRebuildForGroup,
     viewState.zoom,
     viewState.target,
+    isBulkHighRes,
   ])
 
   const bulkHighRes = useMemo(() => {
@@ -1989,11 +2083,8 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     if (geom == null) {
       return false
     }
-    return computeVivBulkHighResolution({
-      deckZoom: viewState.zoom,
-      pyramid: geom.pyramid,
-    })
-  }, [viewState.zoom])
+    return isBulkHighRes(viewState.zoom, geom.pyramid)
+  }, [viewState.zoom, isBulkHighRes])
 
   const streamingOverlayUidSet = useMemo(
     () => new Set(Object.keys(streamingDeckOverlaysByUid)),

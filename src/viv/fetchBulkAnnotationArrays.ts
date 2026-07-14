@@ -308,33 +308,20 @@ function ownedPayloadBytes(src: Uint8Array): Uint8Array {
 
 /**
  * When the server ignores Range and returns the whole bulk object in one shot,
- * do not discard it for a second full GET. Walk the buffered payload and emit
- * `onPrefix` in annotation steps so Deck can paint between yields.
- *
- * This is still *post-transfer* progressive paint (bytes are already local), but
- * mid-transfer Range paint is impossible when the origin ignores Range.
+ * do not discard it for a second full GET. Skip prefix paint entirely — bytes
+ * are already complete, so hydrate paints all annotations once via the final
+ * decode. Mid-transfer progressive paint still requires real Range support.
  */
-async function paintProgressiveFromCompletePayload(options: {
+function completeFromBufferedPayload(options: {
   payload: Uint8Array
   kind: StreamableBulkKind
   elementByteSize: number
   numberOfAnnotations: number
-  prefixEmitAnnotationStep: number
-  signal?: AbortSignal
   onProgress?: (loadedBytes: number, totalBytes: number | null) => void
-  onPrefix?: (info: BulkPrefixInfo) => void | Promise<void>
   route: string
-}): Promise<StreamableBulkGraphicArray> {
-  const {
-    kind,
-    elementByteSize,
-    numberOfAnnotations,
-    prefixEmitAnnotationStep,
-    signal,
-    onProgress,
-    onPrefix,
-    route,
-  } = options
+}): StreamableBulkGraphicArray {
+  const { kind, elementByteSize, numberOfAnnotations, onProgress, route } =
+    options
   const owned = ownedPayloadBytes(options.payload)
   const loadedBytes = owned.byteLength
   onProgress?.(loadedBytes, loadedBytes)
@@ -342,70 +329,12 @@ async function paintProgressiveFromCompletePayload(options: {
   const finalElementCount = Math.floor(loadedBytes / elementByteSize)
   const finalView = makeGraphicDataView(kind, owned.buffer, finalElementCount)
 
-  if (onPrefix == null || numberOfAnnotations <= 0) {
-    vivBulkAnnDebug('bulkStream:done', {
-      route,
-      loadedBytes,
-      finalElementCount,
-      numberOfAnnotations,
-      progressivePrefixEmits: 0,
-    })
-    return finalView
-  }
-
-  const step = Math.max(1, Math.min(prefixEmitAnnotationStep, 2_000))
-  let emitCount = 0
-  for (
-    let through = Math.min(step - 1, numberOfAnnotations - 1);
-    through < numberOfAnnotations - 1;
-    through = Math.min(through + step, numberOfAnnotations - 1)
-  ) {
-    if (signal?.aborted === true) {
-      throw new DOMException('The operation was aborted.', 'AbortError')
-    }
-    // `done: false` so hydrate's onPrefix paints (it skips done:true prefixes).
-    await onPrefix({
-      graphicData: finalView,
-      completeThroughIndex: through,
-      availableElementCount: finalElementCount,
-      loadedBytes,
-      totalBytes: loadedBytes,
-      done: false,
-    })
-    emitCount++
-    console.info(
-      `[Viv bulk] progressive paint: annotations through ${through + 1}/${numberOfAnnotations} (buffered ${(loadedBytes / (1024 * 1024)).toFixed(1)} MB)`,
-    )
-    await yieldToBrowser()
-    if (through >= numberOfAnnotations - 1) {
-      break
-    }
-  }
-
-  // Final prefix still `done: false` so the last decode batch paints via onPrefix.
-  if (signal?.aborted === true) {
-    throw new DOMException('The operation was aborted.', 'AbortError')
-  }
-  await onPrefix({
-    graphicData: finalView,
-    completeThroughIndex: numberOfAnnotations - 1,
-    availableElementCount: finalElementCount,
-    loadedBytes,
-    totalBytes: loadedBytes,
-    done: false,
-  })
-  emitCount++
-  console.info(
-    `[Viv bulk] progressive paint: annotations through ${numberOfAnnotations}/${numberOfAnnotations} (buffered ${(loadedBytes / (1024 * 1024)).toFixed(1)} MB)`,
-  )
-  await yieldToBrowser()
-
   vivBulkAnnDebug('bulkStream:done', {
     route,
     loadedBytes,
     finalElementCount,
     numberOfAnnotations,
-    progressivePrefixEmits: emitCount,
+    progressivePrefixEmits: 0,
   })
   return finalView
 }
@@ -598,26 +527,25 @@ async function streamBulkGraphicDataViaClientRanges(options: {
   }
   const firstChunk = partToUint8(firstParts[0])
 
-  // Server ignored Range and returned the whole bulk object in one shot.
-  // Use that buffer for progressive decode/paint — do not discard and re-GET.
+  /**
+   * Server ignored Range and returned the whole bulk object in one shot.
+   * Keep the buffer (do not re-GET); hydrate paints once after download.
+   */
   if (firstChunk.byteLength > rangeChunkBytes * 2) {
     vivBulkAnnDebug('bulkStream:client Range ignored (oversized first part)', {
       firstBytes: firstChunk.byteLength,
       rangeChunkBytes,
     })
     console.warn(
-      '[Viv bulk] server ignored HTTP Range (got full body in one response). Mid-transfer paint needs proxy Range support; painting progressively from the buffered payload instead of re-downloading.',
+      '[Viv bulk] server ignored HTTP Range (got full body in one response). Mid-transfer paint needs proxy Range support; painting all annotations once from the buffered payload instead of re-downloading.',
       { firstBytes: firstChunk.byteLength, rangeChunkBytes },
     )
-    return await paintProgressiveFromCompletePayload({
+    return completeFromBufferedPayload({
       payload: firstChunk,
       kind,
       elementByteSize,
       numberOfAnnotations,
-      prefixEmitAnnotationStep,
-      signal,
       onProgress,
-      onPrefix,
       route: 'client-range-ignored-buffered',
     })
   }
