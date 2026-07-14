@@ -6,6 +6,7 @@ import * as dcmjs from 'dcmjs'
 import dmvDefault, * as dmvNamespace from 'dicom-microscopy-viewer'
 
 import type DicomWebManager from '../DicomWebManager'
+import { VIV_BULK_LOD_DEFAULT_LEVELS_FROM_FINEST } from '../preferences/vivBulkLodPreference'
 import { logger } from '../utils/logger'
 import { computeCenterOutAnnotationOrder } from './centerOutAnnotationOrder'
 import type { BulkAnnotationGeometryContext } from './dicomLoader'
@@ -25,11 +26,11 @@ import {
 } from './vivBulkAnnDebug'
 import {
   computeVivBulkCentroidRadiusPixels,
-  isVivAtFinestPyramidTile,
   VIV_BULK_DEFAULT_OVERLAY_COLOR,
   VIV_BULK_PATH_STROKE_MAX_PX,
   VIV_BULK_PATH_STROKE_MIN_PX,
   VIV_BULK_PATH_STROKE_SLIDE_PX,
+  vivDeckTileZFromViewZoom,
 } from './vivDisplayDefaults'
 
 /** Smaller Deck PathLayer batches reduce GPU attribute spikes and giant single-layer updates. */
@@ -441,101 +442,60 @@ export function readFinestPyramidPixelSpacingMm(
   return readPixelSpacingFromPyramidLevel(pyramid[0])
 }
 
-type VivPyramidLodTables = {
-  resolutions: number[]
-  pixelSpacings: Array<[number, number]>
-}
-
-/** Pyramid resolutions + pixel spacings (same indexing as DMV `computeImagePyramid`). */
-function buildVivPyramidLodTables(
-  pyramid: BulkAnnotationGeometryContext['pyramid'],
-): VivPyramidLodTables | null {
-  if (pyramid.length === 0) {
-    return null
-  }
-  const baseCols = Number(
-    Reflect.get(pyramid[0] as object, 'TotalPixelMatrixColumns'),
-  )
-  if (!Number.isFinite(baseCols) || baseCols <= 0) {
-    return null
-  }
-  const resolutions: number[] = []
-  const pixelSpacings: Array<[number, number]> = []
-  for (const level of pyramid) {
-    const ps = readPixelSpacingFromPyramidLevel(level)
-    if (ps == null) {
-      return null
-    }
-    pixelSpacings.push(ps)
-    const cols = Number(Reflect.get(level as object, 'TotalPixelMatrixColumns'))
-    if (!Number.isFinite(cols) || cols <= 0) {
-      return null
-    }
-    let zoomFactor = baseCols / cols
-    const rounded = Math.round(zoomFactor)
-    zoomFactor = resolutions.includes(rounded)
-      ? parseFloat(zoomFactor.toFixed(2))
-      : rounded
-    resolutions.push(zoomFactor)
-  }
-  return { resolutions, pixelSpacings }
-}
-
 /**
  * Whether bulk polygons should render as full paths (vs LOD center markers).
- * True exactly when Viv multiscale tiles are on pyramid level 0 (`tile z === 0`).
+ *
+ * - `lodEnabled === false` → always full paths.
+ * - Otherwise uses Viv multiscale tile `z` (0 = finest): paths when
+ *   `tileZ >= -levelsFromFinest` (0 = finest only, 1 = one level sooner, …).
  */
 export function computeVivBulkHighResolution(options: {
   deckZoom: number
   pyramid: BulkAnnotationGeometryContext['pyramid']
   /** Viv `MultiscaleImageLayer` zoomOffset from `modelMatrix` scale (default 0). */
   zoomOffset?: number
-  /** When set, uses DMV pixel-spacing comparison instead of tile-z alignment. */
+  /**
+   * How many pyramid levels coarser than the finest tile may still show paths.
+   * Default {@link VIV_BULK_LOD_DEFAULT_LEVELS_FROM_FINEST} (`1`).
+   */
+  levelsFromFinest?: number
+  /** When false, always full paths. Default true. */
+  lodEnabled?: boolean
+  /**
+   * @deprecated Prefer {@link levelsFromFinest}. Ignored when levels are set.
+   * Kept so older call sites still type-check during migration.
+   */
   clusteringPixelSizeThreshold?: number
+  /** @deprecated Equivalent to `levelsFromFinest: 0`. */
+  useFinestTileGate?: boolean
 }): boolean {
   const {
     deckZoom,
     pyramid,
     zoomOffset = 0,
-    clusteringPixelSizeThreshold,
+    lodEnabled = true,
+    useFinestTileGate = false,
   } = options
 
-  if (clusteringPixelSizeThreshold === undefined) {
-    return isVivAtFinestPyramidTile(deckZoom, pyramid.length, zoomOffset)
+  if (!lodEnabled) {
+    return true
   }
 
-  const tables = buildVivPyramidLodTables(pyramid)
-  if (tables == null) {
+  const levelsFromFinest = useFinestTileGate
+    ? 0
+    : Math.max(
+        0,
+        Math.floor(
+          options.levelsFromFinest ?? VIV_BULK_LOD_DEFAULT_LEVELS_FROM_FINEST,
+        ),
+      )
+
+  if (pyramid.length === 0) {
     return true
   }
-  const { resolutions, pixelSpacings } = tables
-  if (resolutions.length === 0 || pixelSpacings.length === 0) {
-    return true
-  }
-  const currentResolution = 1 / 2 ** deckZoom
-  if (!Number.isFinite(currentResolution) || currentResolution <= 0) {
-    return true
-  }
-  let closestLevelIndex = 0
-  if (resolutions.length >= 2) {
-    let minDiff = Math.abs(resolutions[0] - currentResolution)
-    for (let i = 1; i < resolutions.length; i++) {
-      const diff = Math.abs(resolutions[i] - currentResolution)
-      if (diff < minDiff) {
-        minDiff = diff
-        closestLevelIndex = i
-      }
-    }
-  }
-  const currentPixelSpacing = pixelSpacings[closestLevelIndex]
-  if (currentPixelSpacing === undefined) {
-    return true
-  }
-  const currentPixelSize = Math.min(
-    currentPixelSpacing[0],
-    currentPixelSpacing[1],
-  )
-  return currentPixelSize <= clusteringPixelSizeThreshold
+
+  const tileZ = vivDeckTileZFromViewZoom(deckZoom, pyramid.length, zoomOffset)
+  return tileZ >= -levelsFromFinest
 }
 
 function bulkGraphicSupportsLod(
@@ -1342,6 +1302,12 @@ async function tryStreamingBulkHydrate(options: {
   let layerChunkCounter = 0
   let emitCounter = 0
   let lastEmittedIndex = -1
+  /**
+   * When the transfer never emitted progressive prefixes (Range ignored → full
+   * buffer), decode the whole group in one tight pass and commit Deck once —
+   * same post-download feel as pre-streaming hydrate.
+   */
+  let paintOnce = false
   /** Tracks whether stream prefixes were last emitted as paths vs centers. */
   let lastStreamedAsHighRes = lodPreviewContext?.isHighResolution?.() === true
   let cancelledByCaller = false
@@ -1380,8 +1346,10 @@ async function tryStreamingBulkHydrate(options: {
         highResNow &&
         (graphicType === 'POLYGON' || graphicType === 'POLYLINE')
       ) {
-        // Finest tile zoom: emit real paths for annotations already present in
-        // the buffer (viewport-culled). Overview/streaming otherwise uses centers.
+        /**
+         * Finest tile zoom: emit real paths for annotations already present in
+         * the buffer (viewport-culled). Overview/streaming otherwise uses centers.
+         */
         const bounds =
           lodPreviewContext?.getViewportBounds?.() ?? viewportBounds
         const built = await buildPathLayersFromGraphicData({
@@ -1401,8 +1369,10 @@ async function tryStreamingBulkHydrate(options: {
         })
         layers = built?.layers ?? []
       } else {
-        // Overview: full-slide center markers (no viewport cull) so the streamed
-        // preview matches centers-mode rebuild.
+        /**
+         * Overview: full-slide center markers (no viewport cull) so the streamed
+         * preview matches centers-mode rebuild.
+         */
         const built = await buildPointLayersFromGraphicData({
           graphicData,
           graphicIndex: idx,
@@ -1465,11 +1435,89 @@ async function tryStreamingBulkHydrate(options: {
     }
     layerChunkCounter += layers.length
     allEmitted.push(...layers)
-    if (onChunk != null) {
+    /**
+     * Progressive Range path: commit each decode batch so Deck paints mid-transfer.
+     * `paintOnce` (Range ignored): accumulate only — {@link commitPaintOnce} paints.
+     */
+    if (onChunk != null && !paintOnce) {
       await onChunk(layers, { chunkIndex: emitCounter, estimatedTotalChunks })
       emitCounter++
       await yieldToBrowser()
     }
+  }
+
+  /**
+   * Decode leftover annotations after the stream. Progressive: batch + paint.
+   * `paintOnce`: large decode batches with cheap macrotask yields only (no
+   * double-rAF), then {@link commitPaintOnce} — fast after download without
+   * freezing the tab on huge groups.
+   */
+  const decodeEmitRemaining = async (
+    graphicData: Int32Array | Float32Array,
+    fromInclusive: number,
+    endExclusive: number,
+  ): Promise<void> => {
+    if (endExclusive <= fromInclusive) {
+      return
+    }
+    if (paintOnce) {
+      /**
+       * Larger than the streaming batch: fewer yields, still cooperative.
+       * Avoids `yieldToBrowser`'s double-rAF (~32ms×N) that made paint-once slow.
+       */
+      const paintOnceBatch = Math.max(VIV_BULK_STREAM_DECODE_BATCH * 16, 8_000)
+      for (
+        let batchStart = fromInclusive;
+        batchStart < endExclusive;
+        batchStart += paintOnceBatch
+      ) {
+        const batchEnd = Math.min(endExclusive, batchStart + paintOnceBatch)
+        await decodeEmitRange(graphicData, batchStart, batchEnd)
+        lastEmittedIndex = batchEnd - 1
+        if (cancelledByCaller) {
+          return
+        }
+        if (batchEnd < endExclusive) {
+          await new Promise<void>((resolve) => {
+            setTimeout(resolve, 0)
+          })
+        }
+      }
+      return
+    }
+    for (
+      let batchStart = fromInclusive;
+      batchStart < endExclusive;
+      batchStart += VIV_BULK_STREAM_DECODE_BATCH
+    ) {
+      const batchEnd = Math.min(
+        endExclusive,
+        batchStart + VIV_BULK_STREAM_DECODE_BATCH,
+      )
+      await decodeEmitRange(graphicData, batchStart, batchEnd)
+      lastEmittedIndex = batchEnd - 1
+      if (cancelledByCaller) {
+        return
+      }
+    }
+  }
+
+  /** Single Deck commit of every layer accumulated under `paintOnce`. */
+  const commitPaintOnce = async (): Promise<void> => {
+    if (!paintOnce || onChunk == null || allEmitted.length === 0) {
+      return
+    }
+    vivBulkAnnPhase('hydrate:STREAM paint-once commit', {
+      annotationGroupUID,
+      graphicType,
+      layers: allEmitted.length,
+      numberOfAnnotations,
+    })
+    await onChunk(allEmitted, {
+      chunkIndex: 0,
+      estimatedTotalChunks: 1,
+    })
+    emitCounter = 1
   }
 
   let finalGraphicData: Int32Array | Float32Array
@@ -1500,8 +1548,10 @@ async function tryStreamingBulkHydrate(options: {
         if (done || !wantPreview) {
           return
         }
-        // Zoom flipped between overview centers and finest-tile paths: re-emit
-        // everything already complete so the canvas matches the LOD rule.
+        /**
+         * Zoom flipped between overview centers and finest-tile paths: re-emit
+         * everything already complete so the canvas matches the LOD rule.
+         */
         const highResNow = lodPreviewContext?.isHighResolution?.() === true
         if (useLod && highResNow !== lastStreamedAsHighRes) {
           vivBulkAnnPhase('hydrate:STREAM LOD mode flip mid-transfer', {
@@ -1558,6 +1608,22 @@ async function tryStreamingBulkHydrate(options: {
     return null
   }
 
+  /**
+   * No mid-transfer prefix paint ⇒ Range was ignored (or body never streamed
+   * progressively). Decode the full buffer in one tight pass; one Deck paint.
+   */
+  paintOnce = lastEmittedIndex < 0
+  if (paintOnce) {
+    vivBulkAnnPhase(
+      'hydrate:STREAM paint-once mode (no progressive prefixes)',
+      {
+        annotationGroupUID,
+        graphicType,
+        numberOfAnnotations,
+      },
+    )
+  }
+
   onFetchComplete?.()
   if (cancelledByCaller) {
     return { result: null }
@@ -1569,15 +1635,18 @@ async function tryStreamingBulkHydrate(options: {
      * last batch only becomes "complete" on the final read, plus the multipart
      * trailing-guard bytes). Without this the preview is missing its last one or
      * two centroid chunks until a viewport rebuild runs.
+     *
+     * Range-ignored (`paintOnce`): one tight decode of the whole group, then a
+     * single `commitPaintOnce` — same post-download speed as pre-streaming.
      */
     if (wantPreview && lastEmittedIndex < numberOfAnnotations - 1) {
-      await decodeEmitRange(
+      await decodeEmitRemaining(
         finalGraphicData,
         lastEmittedIndex + 1,
         numberOfAnnotations,
       )
-      lastEmittedIndex = numberOfAnnotations - 1
     }
+    await commitPaintOnce()
     if (cancelledByCaller) {
       return { result: null }
     }
@@ -1616,12 +1685,16 @@ async function tryStreamingBulkHydrate(options: {
     }
   }
 
-  // Decode any annotations not yet emitted (tail + the always-final last one).
-  await decodeEmitRange(
+  /**
+   * Decode any annotations not yet emitted (progressive tail, or Range-ignored
+   * full buffer via one tight pass when `paintOnce`).
+   */
+  await decodeEmitRemaining(
     finalGraphicData,
     lastEmittedIndex + 1,
     numberOfAnnotations,
   )
+  await commitPaintOnce()
   if (cancelledByCaller) {
     return { result: null }
   }

@@ -196,8 +196,9 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
 }
 
 /**
- * Deck zoom at which finest pyramid tiles load (`ceil(zoom) >= 0` → tile z = 0).
- * Centroid LOD is shown for zoom strictly below this gate.
+ * Deck zoom used as the upper end of the centroid radius smoothstep envelope.
+ * Paths typically appear earlier via the pixel-size threshold (default 0.001 mm);
+ * this gate still marks “near finest tile” for marker size scaling.
  */
 export function deckZoomHighResGate(): number {
   return -1
