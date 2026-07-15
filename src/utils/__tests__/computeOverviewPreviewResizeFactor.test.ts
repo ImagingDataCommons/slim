@@ -5,13 +5,17 @@ import {
 } from '../computeOverviewPreviewResizeFactor'
 
 describe('computeOverviewPreviewResizeFactor', () => {
-  it('scales down large matrices to fit the preview container', () => {
+  it('scales down large matrices to integer viewport dimensions', () => {
+    const cols = 50_000
+    const rows = 40_000
     const factor = computeOverviewPreviewResizeFactor(
-      { TotalPixelMatrixColumns: 50_000, TotalPixelMatrixRows: 40_000 },
+      { TotalPixelMatrixColumns: cols, TotalPixelMatrixRows: rows },
       280,
       100,
     )
-    expect(factor).toBeCloseTo(100 / 40_000, 6)
+    expect(factor).toBe(100 / rows)
+    expect(cols * factor).toBe(125)
+    expect(rows * factor).toBe(100)
   })
 
   it('does not upscale small matrices', () => {
@@ -25,18 +29,32 @@ describe('computeOverviewPreviewResizeFactor', () => {
   })
 
   it('uses fallback dimensions when the container is not yet measured', () => {
+    const cols = 10_000
+    const rows = 8_000
     const factor = computeOverviewPreviewResizeFactor(
-      { TotalPixelMatrixColumns: 10_000, TotalPixelMatrixRows: 8_000 },
+      { TotalPixelMatrixColumns: cols, TotalPixelMatrixRows: rows },
       0,
       0,
     )
-    expect(factor).toBeCloseTo(
-      SLIDE_PREVIEW_HEIGHT_PX / 8_000,
-      6,
+    expect(factor).toBe(SLIDE_PREVIEW_HEIGHT_PX / rows)
+    expect(cols * factor).toBe(
+      (cols * SLIDE_PREVIEW_HEIGHT_PX) / rows,
     )
-    expect(factor).toBeLessThan(
-      SLIDE_PREVIEW_FALLBACK_WIDTH_PX / 10_000,
-    )
+    expect(factor).toBeLessThan(SLIDE_PREVIEW_FALLBACK_WIDTH_PX / cols)
+  })
+
+  it('falls back to 1 when no integer downscale fits the tile', () => {
+    /**
+     * Coprime matrix sizes: only multiples of `rows` keep both viewport axes
+     * integer, so a 100px-tall tile cannot downscale via viewport.
+     */
+    expect(
+      computeOverviewPreviewResizeFactor(
+        { TotalPixelMatrixColumns: 48_001, TotalPixelMatrixRows: 38_300 },
+        280,
+        100,
+      ),
+    ).toBe(1)
   })
 
   it('returns 1 for invalid matrix metadata', () => {

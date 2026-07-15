@@ -9,6 +9,17 @@ export type OverviewPreviewMatrixSize = {
   TotalPixelMatrixRows: number
 }
 
+function gcd(a: number, b: number): number {
+  let x = Math.abs(Math.trunc(a))
+  let y = Math.abs(Math.trunc(b))
+  while (y !== 0) {
+    const t = y
+    y = x % y
+    x = t
+  }
+  return x === 0 ? 1 : x
+}
+
 /**
  * Scale factor for {@link OverviewImageViewer}'s `resizeFactor` so the DICOMweb
  * rendered preview extent matches the slide-list tile and the server returns a
@@ -17,6 +28,11 @@ export type OverviewPreviewMatrixSize = {
  * Without this, THUMBNAIL / large OVERVIEW instances keep the full-slide
  * TotalPixelMatrix extent while the rendered image is much smaller — the preview
  * shows a tiny image in a huge canvas or fails to fit (#399).
+ *
+ * Google Healthcare DICOMweb rejects non-integer `viewport` values (HTTP 400).
+ * DMV builds `viewport` as `cols*factor,rows*factor`, so the factor must yield
+ * integer pixel sizes on both axes. When no such downscale fits the tile, return
+ * `1` (omit viewport; OL fits the full rendered instance).
  */
 export function computeOverviewPreviewResizeFactor(
   metadata: OverviewPreviewMatrixSize,
@@ -34,14 +50,33 @@ export function computeOverviewPreviewResizeFactor(
     return 1
   }
 
-  const width =
-    containerWidth > 0 ? containerWidth : SLIDE_PREVIEW_FALLBACK_WIDTH_PX
-  const height = containerHeight > 0 ? containerHeight : SLIDE_PREVIEW_HEIGHT_PX
-
-  const scale = Math.min(width / cols, height / rows, 1)
-  if (!Number.isFinite(scale) || scale <= 0) {
+  const width = Math.floor(
+    containerWidth > 0 ? containerWidth : SLIDE_PREVIEW_FALLBACK_WIDTH_PX,
+  )
+  const height = Math.floor(
+    containerHeight > 0 ? containerHeight : SLIDE_PREVIEW_HEIGHT_PX,
+  )
+  if (width <= 0 || height <= 0) {
     return 1
   }
-  /** Keep the DICOMweb viewport request at least one pixel per axis. */
-  return Math.max(scale, 1 / cols, 1 / rows)
+
+  const fitScale = Math.min(width / cols, height / rows, 1)
+  if (!Number.isFinite(fitScale) || fitScale <= 0) {
+    return 1
+  }
+  if (fitScale >= 1) {
+    return 1
+  }
+
+  /**
+   * `cols * h / rows` is an integer iff `h` is a multiple of `rows / gcd(cols, rows)`.
+   * Pick the largest such `h` that still fits the container.
+   */
+  const maxTargetH = Math.max(1, Math.floor(rows * fitScale))
+  const step = rows / gcd(cols, rows)
+  const targetH = Math.floor(maxTargetH / step) * step
+  if (targetH < 1) {
+    return 1
+  }
+  return targetH / rows
 }
