@@ -21,6 +21,8 @@ import ValidationWarning from './ValidationWarning'
 interface SlideItemProps {
   clients: { [key: string]: DicomWebManager }
   slide: Slide
+  /** When true, parent is a native button — omit hoverable Card styling. */
+  disableCardHover?: boolean
 }
 
 interface SlideItemState {
@@ -43,18 +45,28 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
 
   private overviewResizeObserver?: ResizeObserver
 
+  private mountFrameId: number | undefined
+
+  private isMountAborted = false
+
   constructor(props: SlideItemProps) {
     super(props)
     this.overviewViewer = undefined
   }
 
   componentDidMount(): void {
+    this.isMountAborted = false
     this.setState({ isLoading: true })
     this.scheduleOverviewViewerMount()
     this.setState({ isLoading: false })
   }
 
   componentWillUnmount(): void {
+    this.isMountAborted = true
+    if (this.mountFrameId !== undefined) {
+      cancelAnimationFrame(this.mountFrameId)
+      this.mountFrameId = undefined
+    }
     this.overviewResizeObserver?.disconnect()
     this.overviewResizeObserver = undefined
     this.overviewViewer?.cleanup()
@@ -67,21 +79,28 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
    */
   private scheduleOverviewViewerMount(): void {
     const tryMount = (): void => {
+      this.mountFrameId = undefined
+      if (this.isMountAborted) {
+        return
+      }
       const container = this.overviewViewportRef.current
       if (container == null) {
         return
       }
       const { clientWidth, clientHeight } = container
       if (clientWidth <= 0 || clientHeight <= 0) {
-        requestAnimationFrame(tryMount)
+        this.mountFrameId = requestAnimationFrame(tryMount)
         return
       }
       this.mountOverviewViewer(container)
     }
-    requestAnimationFrame(tryMount)
+    this.mountFrameId = requestAnimationFrame(tryMount)
   }
 
   private mountOverviewViewer(container: HTMLDivElement): void {
+    if (this.isMountAborted) {
+      return
+    }
     /** Use OVERVIEW if available, otherwise fall back to THUMBNAIL */
     const previewImages =
       this.props.slide.overviewImages.length > 0
@@ -154,7 +173,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
       <Description
         header={this.props.slide.containerIdentifier}
         attributes={attributes}
-        selectable
+        selectable={this.props.disableCardHover !== true}
       >
         <div style={{ position: 'relative', height: SLIDE_PREVIEW_HEIGHT_PX }}>
           {this.props.slide.overviewImages.length > 0 ||

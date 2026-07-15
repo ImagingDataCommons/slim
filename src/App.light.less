@@ -69,6 +69,15 @@
   border: 2px solid @primary-color !important;
 }
 
+/**
+ * Mini-map: same inset from bottom as from left (px). Height clamping for tall
+ * overviews is done in JS ({@link clampOverviewMapInViewport}).
+ */
+.ol-overviewmap {
+  left: 8px;
+  bottom: 8px;
+}
+
 img {
   object-fit: contain;
   max-height: 100%;

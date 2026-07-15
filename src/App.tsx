@@ -504,7 +504,21 @@ class App extends React.Component<AppProps, AppState> {
     }
 
     const layoutStyle = { height: '100vh' }
-    const layoutContentStyle = { height: '100%' }
+    /** Default fill when there is no MemoryFooter below Content. */
+    const layoutContentStyle = { height: '100%' as const }
+    /**
+     * Fill space between Header and Footer. `height: 100%` made Content as tall
+     * as the full Layout and left a larger gap above the memory footer than the
+     * overview mini-map's left inset. Only used on routes that render
+     * MemoryFooter when monitoring is enabled.
+     */
+    const layoutContentWithFooterStyle = enableMemoryMonitoring
+      ? {
+          flex: 1,
+          minHeight: 0,
+          overflow: 'hidden' as const,
+        }
+      : layoutContentStyle
 
     if (this.state.redirectTo !== undefined) {
       return (
@@ -553,7 +567,7 @@ class App extends React.Component<AppProps, AppState> {
                     clients={this.state.clients}
                     defaultClients={this.state.defaultClients}
                   />
-                  <Layout.Content style={layoutContentStyle}>
+                  <Layout.Content style={layoutContentWithFooterStyle}>
                     {worklist}
                   </Layout.Content>
                   {enableMemoryMonitoring && (
@@ -577,7 +591,7 @@ class App extends React.Component<AppProps, AppState> {
                       clients={this.state.clients}
                       defaultClients={this.state.defaultClients}
                     />
-                    <Layout.Content style={layoutContentStyle}>
+                    <Layout.Content style={layoutContentWithFooterStyle}>
                       <ParametrizedCaseViewer
                         clients={this.state.clients}
                         user={this.state.user}
@@ -607,7 +621,7 @@ class App extends React.Component<AppProps, AppState> {
                       clients={this.state.clients}
                       defaultClients={this.state.defaultClients}
                     />
-                    <Layout.Content style={layoutContentStyle}>
+                    <Layout.Content style={layoutContentWithFooterStyle}>
                       <ParametrizedCaseViewer
                         clients={this.state.clients}
                         user={this.state.user}
@@ -636,7 +650,7 @@ class App extends React.Component<AppProps, AppState> {
                     clients={this.state.clients}
                     defaultClients={this.state.defaultClients}
                   />
-                  <Layout.Content style={layoutContentStyle}>
+                  <Layout.Content style={layoutContentWithFooterStyle}>
                     Logged out
                   </Layout.Content>
                   {enableMemoryMonitoring && (
