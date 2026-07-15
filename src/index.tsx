@@ -7,6 +7,7 @@ import './index.css'
 import packageInfo from '../package.json'
 import type AppConfig from './AppConfig'
 import CustomErrorBoundary from './components/CustomErrorBoundary'
+import { logger } from './utils/logger'
 
 declare global {
   interface Window {
@@ -17,6 +18,20 @@ declare global {
 const config: AppConfig = window.config
 if (config === undefined) {
   throw Error('No application configuration was provided.')
+}
+
+if (config.logger != null) {
+  logger.configure({
+    ...(config.logger.level != null
+      ? { level: logger.parseLogLevel(config.logger.level) }
+      : {}),
+    ...(config.logger.enableInProduction != null
+      ? { enableInProduction: config.logger.enableInProduction }
+      : {}),
+    ...(config.logger.enableInDevelopment != null
+      ? { enableInDevelopment: config.logger.enableInDevelopment }
+      : {}),
+  })
 }
 
 type AppProps = {

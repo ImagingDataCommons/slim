@@ -1,5 +1,6 @@
 /**
- * Logger utility that wraps console logging and can be configured for different environments
+ * Logger utility that wraps console logging and can be configured for different environments.
+ * Configured from `window.config.logger` at application startup.
  */
 
 export enum LogLevel {
@@ -20,7 +21,7 @@ export class Logger {
   public config: LoggerConfig
 
   constructor() {
-    // Get logger config from global config (browser only; Bun/Jest may run without window)
+    // Get logger config from global config (browser only; Jest may run without window)
     const globalConfig =
       typeof window !== 'undefined' ? window.config?.logger : undefined
     let configLevel = 'DEBUG'
