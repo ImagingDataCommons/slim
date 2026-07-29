@@ -140,7 +140,7 @@ The configuration can be changed at build-time using the `REACT_APP_CONFIG` envi
 
 #### Runtime Server Selection
 
-When `enableServerSelection` is enabled in config, users can switch the active DICOMweb server at runtime via the header button (API / server icon):
+When `enableServerSelection` is enabled in config (default `false`), users can switch the active DICOMweb server at runtime via the header **Select server** button (`ApiOutlined` icon):
 
 ```js
 window.config = {
@@ -150,9 +150,9 @@ window.config = {
 ```
 
 - **Full URLs**: Paste the complete server URL (e.g. `https://healthcare.googleapis.com/v1/projects/.../dicomWeb`).
-- **Path-only (GCP Healthcare)**: Paste a GCP DICOM store path without the domain (e.g. `/projects/my-project/locations/us-central1/datasets/my-dataset/dicomStores/my-store`). The app prepends `https://healthcare.googleapis.com/v1` and appends `/dicomWeb` automatically.
+- **Path-only (GCP Healthcare)**: Paste a GCP DICOM store path without the domain (e.g. `/projects/my-project/locations/us-central1/datasets/my-dataset/dicomStores/my-store`). The app always prepends `https://healthcare.googleapis.com/v1` and appends `/dicomWeb` (`normalizeServerUrl`; not controlled by `gcpBaseUrl`).
 
-Authorization is re-applied when switching servers, so a page reload is not needed after changing the active server.
+Custom selections are stored in `localStorage`, re-apply the current Bearer token when OIDC is in use, and use a temporary **read-only** client (`write: false`) for all SOP classes until you switch back to the default server.
 
 See [docs/CONFIGURATION.md](docs/CONFIGURATION.md#runtime-server-selection-header-button) for details.
 

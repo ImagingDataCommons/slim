@@ -2,8 +2,10 @@
 
 Single-page documentation for the most important Slim configuration options.
 The app is configured via a JavaScript file under `public/config/` (for example
-`public/config/local.js`). Select the file at build time with the
-`REACT_APP_CONFIG` environment variable.
+`public/config/local.js`). The file is loaded at runtime from
+`public/config/{name}.js` via `public/index.html`. Select `{name}` at build /
+start time with the `REACT_APP_CONFIG` environment variable (defaults to
+`local` via `.env`).
 
 For the full type definitions, see [`src/AppConfig.d.ts`](../src/AppConfig.d.ts).
 Example configs live in [`public/config/`](../public/config/).
@@ -38,9 +40,12 @@ window.config = {
 
 Notes:
 
-- `url` must be the DICOMweb root (QIDO-RS / WADO-RS / STOW-RS base), not a
-  study or series URL.
-- `write: true` enables storing annotations back to that server.
+- Prefer a DICOMweb service root (QIDO-RS / WADO-RS / STOW-RS base), not a
+  study or series URL. Alternatively, `servers[].path` may be a path relative
+  to the Slim origin (resolved by `DicomWebManager`).
+- `write: true` allows Slim’s `DicomWebManager.storeInstances` to call STOW-RS
+  on that server. Today Slim stores verified Comprehensive 3D SR annotation
+  reports this way. dicom-microscopy-viewer itself does not write instances.
 - Optional path prefixes (`qidoPathPrefix`, `wadoPathPrefix`, `stowPathPrefix`)
   and `upgradeInsecureRequests` are documented in the
   [README](../README.md#handling-mixed-content-and-https).
@@ -57,7 +62,7 @@ rebuilding the app. This is the feature described in
 
 ### Enable the header button
 
-Set `enableServerSelection` to `true` in the config:
+Set `enableServerSelection` to `true` in the config (default is `false`):
 
 ```js
 window.config = {
@@ -73,8 +78,8 @@ window.config = {
 }
 ```
 
-When enabled, an **API / server** button appears in the header (Ant Design
-`ApiOutlined` icon; often referred to as the “link” icon in discussions).
+When enabled, a **Select server** button appears in the header (Ant Design
+`ApiOutlined` icon; often called the “link” icon in issue discussions).
 Clicking it opens the **Select DICOMweb server** dialog.
 
 Reference configs that already enable this:
@@ -84,25 +89,43 @@ Reference configs that already enable this:
 
 ### Using the dialog
 
-1. Choose **Use default server** to restore the server from the config file, or
-   **Use custom server** to enter another endpoint.
+1. Choose **Use default server** to restore the clients built from the config
+   file (including any `?gcp=` secondary mapping), or **Use custom server** to
+   enter another endpoint.
 2. For a custom server, paste either:
    - a **full DICOMweb URL**, e.g.
      `https://healthcare.googleapis.com/v1/projects/.../dicomStores/.../dicomWeb`
    - a **GCP Healthcare path** without the domain, e.g.
      `/projects/my-project/locations/us-central1/datasets/my-dataset/dicomStores/my-store`
-     (Slim prepends `https://healthcare.googleapis.com/v1` and appends
-     `/dicomWeb`; override the base with `gcpBaseUrl` if needed)
+     — Slim always prepends `https://healthcare.googleapis.com/v1` and appends
+     `/dicomWeb` via `normalizeServerUrl` (this path does **not** use
+     `gcpBaseUrl`)
 3. Leading/trailing spaces in the URL are trimmed automatically.
 
-The selected custom URL is stored in `localStorage` (`slim_selected_server`) so
-it persists across reloads. Authorization is re-applied when switching servers.
+Persistence and behavior:
+
+- Mode is stored in `localStorage` as `slim_server_selection_mode`
+  (`default` | `custom`).
+- The custom URL is stored as `slim_selected_server`.
+- On a custom switch, Slim creates a temporary client with `read: true` and
+  **`write: false`**, re-applies the current Bearer token when OIDC is in use,
+  and maps **all** SOP-class clients to that single client (so a prior `?gcp=`
+  primary/secondary split is replaced until you switch back to the default
+  server).
+
+### `gcpBaseUrl` (not used by the dialog)
+
+`gcpBaseUrl` (default `https://healthcare.googleapis.com/v1`) is used when a
+**default** server has no `storageClasses` and the browser path looks like a
+GCP Healthcare study URL (`/projects/.../study/...`). It is **not** applied to
+path-only URLs entered in the server-selection dialog, and it is **not**
+applied to the `?gcp=` query parameter.
 
 ## Secondary GCP data source (`gcp` query parameter)
 
-You can load images from the primary configured server and pull annotations /
-derived datasets from a second Google Cloud Healthcare DICOMweb store by adding
-a `gcp` query parameter to the viewer URL:
+You can keep images on the primary configured server and route selected
+derived SOP classes to a second Google Cloud Healthcare DICOMweb store by
+adding a `gcp` query parameter:
 
 ```text
 https://<slim-host>/studies/<StudyInstanceUID>/series/<SeriesInstanceUID>?gcp=https://healthcare.googleapis.com/v1/projects/<project>/locations/<location>/datasets/<dataset>/dicomStores/<store>/dicomWeb
@@ -110,34 +133,40 @@ https://<slim-host>/studies/<StudyInstanceUID>/series/<SeriesInstanceUID>?gcp=ht
 
 Behavior:
 
-- Slim registers a server with id `gcp_secondary_annotation_server`.
-- That secondary server is limited to annotation / derived storage classes
-  (Comprehensive SR, Segmentation, Microscopy Bulk Simple Annotations,
-  Parametric Map, presentation states, etc.).
-- The primary `servers` entry remains the main image data source.
+- Slim registers a server with id `gcp_secondary_annotation_server`,
+  `write: true`, and `url` taken **verbatim** from the query parameter (no
+  `normalizeServerUrl`, no `gcpBaseUrl`).
+- That secondary server is mapped to these storage classes for QIDO/WADO (and
+  STOW when writing those classes):
+  Comprehensive SR, Comprehensive 3D SR, Segmentation, Microscopy Bulk Simple
+  Annotations, Parametric Map, and the listed presentation-state classes.
+- The primary / default server remains the client for VL Whole Slide
+  Microscopy Images.
+- Saving a verified Comprehensive 3D SR annotation report uses the client
+  mapped to Comprehensive 3D SR — i.e. the secondary store when `?gcp=` is
+  present.
 
-Optional: set `gcpBaseUrl` when path-only GCP URLs should resolve against a
-non-default API version (defaults to `https://healthcare.googleapis.com/v1`):
-
-```js
-window.config = {
-  gcpBaseUrl: 'https://healthcare.googleapis.com/v1beta1',
-  // ...
-}
-```
-
-Commented examples appear in [`public/config/example.js`](../public/config/example.js).
+Caveat (dicom-microscopy-viewer): Slim searches/loads ANN **metadata** via the
+secondary client, but dmv’s `addAnnotationGroups` currently fetches ANN
+bulkdata through the VL Whole Slide Microscopy Image client mapping (typically
+the primary store). Absolute `BulkDataURI` values with shared auth often still
+work; relative URIs or P10 fallback may hit the wrong store. SEG and Parametric
+Map loaders correctly use their SOP-class clients.
 
 > Related enhancement request for loading *all* data from both stores:
 > [issue #320](https://github.com/ImagingDataCommons/slim/issues/320).
 
 ## Annotation colors
 
-### Default color per finding (config)
+dicom-microscopy-viewer exposes **two** style models. Slim’s config
+`annotations[].style` matches the ROI / SR path.
 
-Each entry in `annotations` can define a `style` used when drawing ROIs for that
-finding code. Colors are RGBA arrays (`[r, g, b, a]` with channels `0–255` for
-RGB and `0–1` for alpha):
+### Default color per finding (config) — SR ROIs
+
+Each entry in `annotations` can define a `style` used when drawing SR ROIs for
+that finding code. Colors are RGBA-style arrays (`[r, g, b]` or
+`[r, g, b, a]`; RGB channels `0–255`, alpha typically `0–1`). Slim maps these
+into dmv `ROIStyleOptions` via `formatRoiStyle` / `setROIStyle`:
 
 ```js
 window.config = {
@@ -180,32 +209,51 @@ window.config = {
 }
 ```
 
+Styles are keyed by finding as `CodingSchemeDesignator-CodeValue` (see
+`buildKey` in `src/components/SlideViewer/utils/roiUtils.ts`).
+
 See [`public/config/local.js`](../public/config/local.js) for a full working
 example with several findings and colors.
 
-If `style` is omitted for a finding, Slim falls back to the default ROI style
-(yellow stroke) or assigns colors from an internal palette when formatting
-loaded annotations.
+Fallbacks:
 
-### Changing colors in the UI
+1. Finding listed in `config.annotations` **without** `style` → Slim’s default
+   ROI style (yellow stroke `[255, 234, 0]`).
+2. Loaded ROI whose finding is **not** in `config.annotations` → when
+   formatted, Slim assigns a color from `DEFAULT_ANNOTATION_COLOR_PALETTE`.
 
-While viewing a slide, users can change the color / opacity of individual
-annotations (or annotation groups) from the annotation panel. Those runtime
-changes update the on-screen style for the corresponding finding key.
+### Microscopy Bulk Simple Annotations (ANN groups)
 
-### Selection highlight color
+Bulk annotation groups use dmv’s `setAnnotationGroupStyle` /
+`showAnnotationGroup` options: RGB `color` plus a separate `opacity` (not the
+ROI stroke/fill schema). The annotation panel can change group color/opacity
+at runtime; those edits update only that group’s on-screen style and do **not**
+update Slim’s finding-key `roiStyles` map.
 
-The highlight style applied when an ROI is **selected** is currently fixed in
-the viewer code (blue stroke `[0, 153, 255]`) and is **not** configurable via
-`window.config`. Per-finding default colors above control the unselected
-appearance.
+When config styles are applied to groups, Slim currently passes the configured
+`fill.color` as the group `color` (RGB channels only); stroke color and fill
+alpha are not used the same way as for SR ROIs.
+
+### Changing SR ROI colors in the UI
+
+For Comprehensive SR ROIs, the annotation panel can change color / opacity.
+`handleRoiStyleChange` updates `roiStyles` for that finding key and calls
+`setROIStyle` on the edited ROI. Other existing ROIs of the same finding may
+not all restyle immediately.
+
+### Selection / highlight colors
+
+- **Selected SR ROI** highlight is hard-coded in Slim as stroke
+  `[0, 153, 255]` (alpha 1) and is **not** configurable via `window.config`.
+- **Bulk ANN hover highlight** uses dmv’s `highlightColor` (default
+  `[140, 184, 198]`), which is separate from Slim’s ROI selection style.
 
 ## Read-only mode and worklist
 
 ### Disable annotation tools (`disableAnnotationTools`)
 
-Set `disableAnnotationTools: true` for a read-only deployment (view images and
-existing annotations, but hide creation / editing tools):
+Set `disableAnnotationTools: true` to hide the slide toolbar that contains
+annotation creation / editing controls (default is `false`, tools enabled):
 
 ```js
 window.config = {
@@ -214,13 +262,14 @@ window.config = {
 }
 ```
 
-Default is `false` (tools enabled).
+Existing annotations remain viewable. The same flag also hides other controls
+bundled in that toolbar (for example **Go to**), not only draw/edit/save.
 
 ### Disable the worklist (`disableWorklist`)
 
-Set `disableWorklist: true` to skip the study worklist and hide worklist
-navigation. Useful when Slim is embedded with deep links to a specific study or
-series:
+Set `disableWorklist: true` to replace the study worklist on `/` with
+“Worklist has been disabled.” and to hide the worklist navigation button
+(default is `false`):
 
 ```js
 window.config = {
@@ -229,7 +278,7 @@ window.config = {
 }
 ```
 
-Default is `false` (worklist enabled).
+Deep links such as `/studies/...` still work; routes are not removed.
 
 Example combining both flags:
 
@@ -255,11 +304,14 @@ http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs
 ```
 
 That URL is already set in [`public/config/local.js`](../public/config/local.js).
+nginx in the compose stack proxies the dcm4chee DICOMweb paths; Orthanc is not
+part of that stack.
 
 ### Orthanc or another local archive
 
 If you point Slim at Orthanc (or any other DICOMweb server) instead of the
-compose stack, use that server’s DICOMweb root, for example:
+compose stack, use that server’s DICOMweb root. Orthanc’s DICOMweb plugin
+defaults to `/dicom-web` (configurable via `DicomWeb.Root`):
 
 ```js
 servers: [
