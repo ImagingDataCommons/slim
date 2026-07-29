@@ -22,6 +22,7 @@ It relies on [DICOMweb](https://www.dicomstandard.org/dicomweb/) RESTful service
   - [Server Configuration](#server-configuration)
   - [Handling Mixed Content and HTTPS](#handling-mixed-content-and-https)
   - [Messages/Popups Configuration](#messagespopups-configuration)
+  - [Additional configuration topics](#additional-configuration-topics)
 - [Deployment](#deployment)
   - [Local](#local)
   - [Google Cloud Platform](#google-cloud-platform)
@@ -128,21 +129,32 @@ Users can authenticate and authorize the application to access data via [OpenID 
 
 ## Configuration
 
-### Server Configuration
-
 The app can be configured via a `public/config/{name}.js` JavaScript configuration file (see for example the default `public/config/local.js`).
 Please refer to the [AppConfig.d.ts](src/AppConfig.d.ts) file for configuration options.
 
+A single-page guide covering external servers, runtime server selection, the `gcp` secondary data source, annotation colors, and read-only / worklist flags is available in [docs/CONFIGURATION.md](docs/CONFIGURATION.md) and on the [project wiki](https://github.com/ImagingDataCommons/slim/wiki/Configuration).
+
 The configuration can be changed at build-time using the `REACT_APP_CONFIG` environment variable.
+
+### Server Configuration
 
 #### Runtime Server Selection
 
-When `enableServerSelection` is enabled in config, users can switch the active DICOMweb server at runtime via the header.
+When `enableServerSelection` is enabled in config, users can switch the active DICOMweb server at runtime via the header button (API / server icon):
+
+```js
+window.config = {
+  // ...
+  enableServerSelection: true,
+};
+```
 
 - **Full URLs**: Paste the complete server URL (e.g. `https://healthcare.googleapis.com/v1/projects/.../dicomWeb`).
 - **Path-only (GCP Healthcare)**: Paste a GCP DICOM store path without the domain (e.g. `/projects/my-project/locations/us-central1/datasets/my-dataset/dicomStores/my-store`). The app prepends `https://healthcare.googleapis.com/v1` and appends `/dicomWeb` automatically.
 
 Authorization is re-applied when switching servers, so a page reload is not needed after changing the active server.
+
+See [docs/CONFIGURATION.md](docs/CONFIGURATION.md#runtime-server-selection-header-button) for details.
 
 ### Handling Mixed Content and HTTPS
 
@@ -239,6 +251,20 @@ window.config = {
 - **Disable**: Set `enableMemoryMonitoring: false` to hide the memory footer and stop monitoring
 
 When enabled, the memory footer appears at the bottom of all pages and monitors memory usage every 5 seconds.
+
+### Additional configuration topics
+
+The following topics are documented in [docs/CONFIGURATION.md](docs/CONFIGURATION.md):
+
+| Topic | Config / mechanism |
+| --- | --- |
+| External DICOMweb server | `servers[].url` |
+| Runtime server selection (header button) | `enableServerSelection` |
+| Secondary GCP annotation store | `?gcp=<dicomWeb-url>` query parameter |
+| Annotation / finding colors | `annotations[].style` |
+| Read-only annotation UI | `disableAnnotationTools` |
+| Hide study worklist | `disableWorklist` |
+| Local Orthanc / CORS troubleshooting | see [Local deployment tips](docs/CONFIGURATION.md#local-deployment-tips) |
 
 ## Deployment
 
