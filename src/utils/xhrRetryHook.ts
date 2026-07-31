@@ -46,7 +46,9 @@ export const getXHRRetryHook = (
     minTimeout: options.minTimeout ?? 1 * 1000,
     maxTimeout: options.maxTimeout ?? 10 * 1000,
     randomize: options.randomize ?? true,
-    retryableStatusCodes: options.retryableStatusCodes ?? [429, 500],
+    retryableStatusCodes: options.retryableStatusCodes ?? [
+      429, 500, 502, 503, 504,
+    ],
   }
 
   /**
@@ -90,7 +92,7 @@ export const getXHRRetryHook = (
       operation.attempt(function operationAttempt(currentAttempt) {
         if (currentAttempt > 1) {
           console.warn(`Requesting ${url}... (attempt: ${currentAttempt})`)
-          // open() clears headers / responseType — restore what dicomweb-client set.
+          // open() empties author request headers; re-apply those + responseType.
           request.open(method, url, true)
           request.responseType = responseType
           for (const key of Object.keys(headers)) {
