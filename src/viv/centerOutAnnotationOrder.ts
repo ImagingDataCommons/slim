@@ -82,6 +82,14 @@ let centerOutWorkerSeq = 0
 /** In-flight request rejectors so {@link terminateCenterOutAnnotationOrderWorker} can fail them. */
 const pendingWorkerRejects = new Map<number, (err: Error) => void>()
 
+/** Thrown when the shared worker is torn down with requests still pending. */
+export class CenterOutWorkerTerminatedError extends Error {
+  constructor() {
+    super('centerOutAnnotationOrder: worker terminated with requests in flight')
+    this.name = 'CenterOutWorkerTerminatedError'
+  }
+}
+
 function getCenterOutWorker(): Worker {
   if (centerOutWorker != null) {
     return centerOutWorker
@@ -166,15 +174,21 @@ export async function computeCenterOutAnnotationOrder(
   }
   try {
     return await computeCenterOutAnnotationOrderInWorker(options)
-  } catch {
+  } catch (e) {
+    // Unmount termination must not kick off a main-thread mega-sort.
+    if (e instanceof CenterOutWorkerTerminatedError) {
+      throw e
+    }
     return computeCenterOutAnnotationOrderSync(options)
   }
 }
 
 /**
  * Terminate the shared worker (call when the Viv viewport unmounts) and reject
- * any in-flight sort requests so their promises settle (callers fall back to
- * the sync sort) instead of hanging forever.
+ * any in-flight sort requests so their promises settle instead of hanging.
+ * Callers must not fall back to the sync sort for termination rejections —
+ * that would sort tens of thousands of annotations on the main thread during
+ * teardown.
  */
 export function terminateCenterOutAnnotationOrderWorker(): void {
   if (centerOutWorker != null) {
@@ -184,9 +198,7 @@ export function terminateCenterOutAnnotationOrderWorker(): void {
   if (pendingWorkerRejects.size > 0) {
     const pending = Array.from(pendingWorkerRejects.values())
     pendingWorkerRejects.clear()
-    const err = new Error(
-      'centerOutAnnotationOrder: worker terminated with requests in flight',
-    )
+    const err = new CenterOutWorkerTerminatedError()
     for (const reject of pending) {
       reject(err)
     }
