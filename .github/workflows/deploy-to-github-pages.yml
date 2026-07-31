@@ -3,17 +3,21 @@ name: slim/deploy-to-github-pages
 on:
   push:
     branches: [master]
+  pull_request:
+    branches: [master]
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: deploy-gh-pages
-  cancel-in-progress: true
+  group: deploy-gh-pages-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   deploy-to-github-pages:
+    # The check name "Deploy to GitHub Pages" is required by the master ruleset,
+    # so this job must also run (build-only) on pull requests.
     name: "Deploy to GitHub Pages"
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -33,12 +37,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Build and deploy to GitHub Pages
+      - name: Build
+        run: pnpm run predeploy
+
+      # Only pushes to master (and manual runs) publish; pull requests stop
+      # after the build so unmerged code never overwrites the live demo site.
+      - name: Deploy to GitHub Pages
+        if: github.event_name != 'pull_request'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions-bot"
           git config user.email "support+actions@github.com"
           git remote set-url origin "https://git:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          pnpm run predeploy
           pnpm exec gh-pages -d build -f
