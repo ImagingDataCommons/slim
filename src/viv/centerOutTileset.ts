@@ -99,7 +99,40 @@ function abortLoadsNotInNextSelection(
   }
 }
 
+function zRangesEqual(a: ZRange | null, b: ZRange | null): boolean {
+  if (a === null || b === null) {
+    return a === b
+  }
+  return a[0] === b[0] && a[1] === b[1]
+}
+
+function matricesEqual(a: Matrix4 | null, b: Matrix4 | null): boolean {
+  if (a === null || b === null) {
+    return a === b
+  }
+  return a.equals(b)
+}
+
+/** Inputs that determine {@link CenterOutTileset2D.getTileIndices} output. */
+interface TileIndicesCacheEntry {
+  viewport: Viewport
+  maxZoom?: number
+  minZoom?: number
+  zRange: ZRange | null
+  tileSize: number
+  zoomOffset: number
+  modelMatrix: Matrix4 | null
+  result: TileIndex[]
+}
+
 export class CenterOutTileset2D extends Tileset2D {
+  /**
+   * Single-entry memo: `update()` precomputes indices to abort stale loads, then
+   * `super.update()` asks for the same inputs — avoid traversing + sorting twice
+   * per viewport change during pan/zoom.
+   */
+  private _tileIndicesCache?: TileIndicesCacheEntry
+
   override update(
     viewport: Viewport,
     opts?: Parameters<Tileset2D['update']>[1],
@@ -136,19 +169,51 @@ export class CenterOutTileset2D extends Tileset2D {
     modelMatrixInverse?: Matrix4
     zoomOffset?: number
   }): TileIndex[] {
-    const indices = super.getTileIndices(params)
     const tileSize =
       params.tileSize ?? this.opts.tileSize ?? DECK_REFERENCE_TILE_SIZE
+    const zoomOffset = params.zoomOffset ?? 0
+    const zRange = params.zRange ?? null
+    const effectiveModelMatrix =
+      params.modelMatrix ??
+      (this as unknown as Tileset2DInternals)._modelMatrix ??
+      null
+    const cached = this._tileIndicesCache
+    if (
+      cached !== undefined &&
+      cached.viewport === params.viewport &&
+      cached.maxZoom === params.maxZoom &&
+      cached.minZoom === params.minZoom &&
+      zRangesEqual(cached.zRange, zRange) &&
+      cached.tileSize === tileSize &&
+      cached.zoomOffset === zoomOffset &&
+      matricesEqual(cached.modelMatrix, effectiveModelMatrix)
+    ) {
+      return cached.result
+    }
+    const indices = super.getTileIndices(params)
     const modelMatrixInverse =
       params.modelMatrixInverse ??
       (params.modelMatrix
         ? new Matrix4(params.modelMatrix).invert()
         : (this as unknown as Tileset2DInternals)._modelMatrixInverse)
-    return sortTileIndicesCenterOut(
+    const result = sortTileIndicesCenterOut(
       indices,
       params.viewport,
       tileSize,
       modelMatrixInverse,
     )
+    this._tileIndicesCache = {
+      viewport: params.viewport,
+      maxZoom: params.maxZoom,
+      minZoom: params.minZoom,
+      zRange: zRange === null ? null : [zRange[0], zRange[1]],
+      tileSize,
+      zoomOffset,
+      /** Clone: deck may replace or mutate its internal matrix between updates. */
+      modelMatrix:
+        effectiveModelMatrix !== null ? effectiveModelMatrix.clone() : null,
+      result,
+    }
+    return result
   }
 }

@@ -19,7 +19,7 @@ export interface RetryRequestSettings {
   minTimeout?: number
   maxTimeout?: number
   randomize?: boolean
-  retryableStatusCodes: number[]
+  retryableStatusCodes?: number[]
 }
 
 export interface EvaluationSetting {

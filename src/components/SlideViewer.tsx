@@ -431,10 +431,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         presentationStates: [],
         loadingFrames: new Set(),
         selectedSeriesInstanceUID: undefined,
+        isICCProfilesEnabled: getIccProfilesEnabled(),
         validXCoordinateRange: [offset[0], offset[0] + size[0]],
         validYCoordinateRange: [offset[1], offset[1] + size[1]],
       })
       this.populateViewports()
+      this.applyIccPreference()
     }
 
     this.publishActiveSeriesToService()
@@ -2480,6 +2482,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       }
     }
 
+    this.applyIccPreference()
+  }
+
+  /**
+   * Apply the persisted ICC profiles preference to the current volume viewer.
+   * A freshly constructed VolumeImageViewer defaults to ICC on, so this must be
+   * called whenever the viewer is (re)created.
+   */
+  private readonly applyIccPreference = (): void => {
     if (!getIccProfilesEnabled()) {
       this.volumeViewer.toggleICCProfiles()
     }

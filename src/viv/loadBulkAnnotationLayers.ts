@@ -8,6 +8,14 @@ import dmvDefault, * as dmvNamespace from 'dicom-microscopy-viewer'
 import type DicomWebManager from '../DicomWebManager'
 import { VIV_BULK_LOD_DEFAULT_LEVELS_FROM_FINEST } from '../preferences/vivBulkLodPreference'
 import { logger } from '../utils/logger'
+import {
+  type BulkDeckLinearCoeffs,
+  bulkVertexToDeckFastWrite,
+  isFiniteVertexXY,
+  openLayersMapYToVivWorldY,
+  readAnnotationFirstVertexDeckXY,
+  readTripleFromGraphicBuffer,
+} from './annotationCoords'
 import { computeCenterOutAnnotationOrder } from './centerOutAnnotationOrder'
 import type { BulkAnnotationGeometryContext } from './dicomLoader'
 import {
@@ -267,16 +275,8 @@ function multiplyAffine3x3(a: number[][], b: number[][]): number[][] {
  * `affineInverse` alone when `(gx,gy)` are already slide coords — same numeric result as
  * calling {@link dmvAffineUtils.mapPixelCoordToSlideCoord} + {@link dmvAffineUtils.applyInverseTransform}
  * per vertex, without function / array churn on millions of points.
+ * (Coeffs type + per-vertex transforms live in `./annotationCoords`.)
  */
-type BulkDeckLinearCoeffs = readonly [
-  m00: number,
-  m01: number,
-  m02: number,
-  m10: number,
-  m11: number,
-  m12: number,
-]
-
 function bulkDeckCoeffsForFastPath(options: {
   annotationCoordinateType: string
   affineInverse: number[][]
@@ -295,46 +295,6 @@ function bulkDeckCoeffsForFastPath(options: {
     ]
   }
   return [inv[0][0], inv[0][1], inv[0][2], inv[1][0], inv[1][1], inv[1][2]]
-}
-
-/** Map bulk vertex (gx, gy) → Viv deck XY; coeffs from {@link bulkDeckCoeffsForFastPath}. */
-function bulkVertexToDeckFast(
-  gx: number,
-  gy: number,
-  c: BulkDeckLinearCoeffs,
-): Position {
-  const pcol = c[0] * gx + c[1] * gy + c[2]
-  const prow = c[3] * gx + c[4] * gy + c[5]
-  const olMapY = -(prow + 1)
-  return [pcol, openLayersMapYToVivWorldY(olMapY)]
-}
-
-/** Like {@link bulkVertexToDeckFast} but writes into `target[writeIndex]` (x) and `[writeIndex+1]` (y). */
-function bulkVertexToDeckFastWrite(
-  gx: number,
-  gy: number,
-  c: BulkDeckLinearCoeffs,
-  target: Float64Array,
-  writeIndex: number,
-): void {
-  const pcol = c[0] * gx + c[1] * gy + c[2]
-  const prow = c[3] * gx + c[4] * gy + c[5]
-  const olMapY = -(prow + 1)
-  target[writeIndex] = pcol
-  target[writeIndex + 1] = openLayersMapYToVivWorldY(olMapY)
-}
-
-function readTripleFromGraphicBuffer(
-  graphicData: Int32Array | Float32Array,
-  j: number,
-  commonZCoordinate: number,
-): [number, number, number] {
-  const gx = Number(graphicData[j])
-  const gy = Number(graphicData[j + 1])
-  const gz = Number.isNaN(commonZCoordinate)
-    ? Number(graphicData[j + 2])
-    : Number(commonZCoordinate)
-  return [gx, gy, gz]
 }
 
 /**
@@ -394,42 +354,6 @@ export function isDeckPointInViewportBounds(
   return (
     x >= bounds.minX && x <= bounds.maxX && y >= bounds.minY && y <= bounds.maxY
   )
-}
-
-function readAnnotationFirstVertexDeckXY(options: {
-  graphicData: Int32Array | Float32Array
-  graphicIndex: Int32Array | null
-  annotationIndex: number
-  coordinateDimensionality: number
-  commonZCoordinate: number
-  deckCoeffs: BulkDeckLinearCoeffs
-  hasIndex: boolean
-}): [number, number] | null {
-  const {
-    graphicData,
-    graphicIndex,
-    annotationIndex,
-    coordinateDimensionality,
-    commonZCoordinate,
-    deckCoeffs,
-    hasIndex,
-  } = options
-  const minRemain = coordinateDimensionality >= 3 ? 3 : 2
-  const offset = hasIndex
-    ? Number(graphicIndex?.[annotationIndex] ?? 0) - 1
-    : annotationIndex * coordinateDimensionality
-  if (offset < 0 || offset + minRemain - 1 >= graphicData.length) {
-    return null
-  }
-  const [gx, gy] = readTripleFromGraphicBuffer(
-    graphicData,
-    offset,
-    commonZCoordinate,
-  )
-  if (!gx || !gy) {
-    return null
-  }
-  return bulkVertexToDeckFast(gx, gy, deckCoeffs) as [number, number]
 }
 
 /** Finest-pyramid `PixelSpacing` in mm from VL Whole Slide Microscopy metadata. */
@@ -543,28 +467,15 @@ export type VivBulkHydrateResult = VivBulkAnnotationLayerSlice & {
   graphicCache?: VivBulkGraphicCache
 }
 
-function isVivBulkPathLayerId(layerId: string): boolean {
-  return /-paths(?:-\d+)?$/.test(layerId)
-}
-
-function isVivBulkCenterLayerId(layerId: string): boolean {
-  return /-centers(?:-\d+)?$/.test(layerId)
-}
-
-function isVivBulkPointLayerId(layerId: string): boolean {
-  return /-pts(?:-\d+)?$/.test(layerId)
-}
-
-/** Drop layer attribute arrays and finalize Deck state so GPU buffers can be collected. */
+/**
+ * Best-effort finalize of dropped overlay layers so Deck releases their
+ * internal state (GPU attribute buffers etc.). Note this does not mutate the
+ * layers' `data` props — the JS arrays are freed when the layer objects
+ * themselves become unreachable.
+ */
 export function detachVivBulkOverlayLayerData(layers: Layer[]): void {
   for (const layer of layers) {
-    const lid = String(layer.id)
     try {
-      if (isVivBulkPathLayerId(lid)) {
-        ;(layer as PathLayer<PathRowFlat>).clone({ data: [] })
-      } else if (isVivBulkCenterLayerId(lid) || isVivBulkPointLayerId(lid)) {
-        ;(layer as ScatterplotLayer<[number, number]>).clone({ data: [] })
-      }
       const internal = layer as Layer & { _finalize?: () => void }
       internal._finalize?.()
     } catch {
@@ -2218,9 +2129,17 @@ async function buildPathLayersFromGraphicData(options: {
         continue
       }
     }
+    /**
+     * `graphicIndex` holds 1-based start offsets, so annotation `i` owns
+     * exactly `graphicIndex[i+1] − graphicIndex[i]` elements. (Adding 1 here
+     * used to leak the first element of annotation i+1 into every polyline.)
+     * No explicit closing vertex for POLYGON: `_pathType: 'loop'` makes
+     * deck.gl's PathLayer close the ring itself.
+     */
     let annotationLength: number
     if (i < numberOfAnnotations - 1) {
-      annotationLength = Number(graphicIndex[i + 1] ?? 0) - offset
+      annotationLength =
+        Number(graphicIndex[i + 1] ?? 0) - Number(graphicIndex[i] ?? 0)
     } else {
       annotationLength = Math.max(0, graphicData.length - offset)
     }
@@ -2234,25 +2153,16 @@ async function buildPathLayersFromGraphicData(options: {
     const buf = new Float64Array(Math.max(maxVerts * 2, 8))
     let w = 0
     for (let j = offset; j < roofExclusive; j++) {
-      const readAt =
-        graphicType === 'POLYGON' &&
-        roofExclusive > offset + coordinateDimensionality &&
-        j === roofExclusive - 1
-          ? offset
-          : j
-      if (
-        readAt < 0 ||
-        readAt + coordinateDimensionality - 1 >= graphicData.length
-      ) {
+      if (j + coordinateDimensionality - 1 >= graphicData.length) {
         j += coordinateDimensionality - 1
         continue
       }
       const [gx, gy] = readTripleFromGraphicBuffer(
         graphicData,
-        readAt,
+        j,
         commonZCoordinate,
       )
-      if (!gx || !gy) {
+      if (!isFiniteVertexXY(gx, gy)) {
         j += coordinateDimensionality - 1
         continue
       }
@@ -2528,15 +2438,6 @@ function annotationPropertyCodeFromSequence(
     }
   }
   return raw as unknown as dcmjs.sr.coding.CodedConcept
-}
-
-/**
- * OpenLayers pyramid extent uses flipped row axis: Y in [-(rows+1), -1] (see
- * dicom-microscopy-viewer pyramid.js). Viv MultiscaleImageLayer / BitmapLayer
- * use finest-level pixel space with y = 0 at the top row and y increasing down.
- */
-function openLayersMapYToVivWorldY(mapY: number): number {
-  return -mapY - 1
 }
 
 function buildChunkedVivPathLayers(
@@ -2952,12 +2853,22 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
         AnnotationGroupSequence?: object[] | null
       }
 
-      for (const item of ann.AnnotationGroupSequence ?? []) {
+      /**
+       * Index groups by their *sequence position*: `AnnotationGroupNumber`
+       * need not be consecutive or 1-based, and using it as an index made
+       * `bulkdataItem` silently point at a different group's bulk references.
+       * The number stays display-only (wrapper `number` below).
+       */
+      const groupSequence = ann.AnnotationGroupSequence ?? []
+      for (
+        let annotationGroupIndex = 0;
+        annotationGroupIndex < groupSequence.length;
+        annotationGroupIndex++
+      ) {
+        const item = groupSequence[annotationGroupIndex]
         const annotationGroupUID = item.AnnotationGroupUID as string
         const color = rgbFromLabItem(item, VIV_BULK_DEFAULT_OVERLAY_COLOR)
-        const annotationGroupIndex = Number(item.AnnotationGroupNumber) - 1
-        const metadataItem =
-          ann.AnnotationGroupSequence[annotationGroupIndex] ?? item
+        const metadataItem = item
 
         const propertyCategory = annotationPropertyCodeFromSequence(
           item.AnnotationPropertyCategoryCodeSequence,

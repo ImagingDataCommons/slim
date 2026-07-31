@@ -119,12 +119,23 @@ export function installVivDicomwebAbortHooks(inner: {
 
   const prevErr = inner.errorInterceptor
   inner.errorInterceptor = (error) => {
-    const err = error as { cause?: unknown; status?: number; message?: string }
-    if (!Object.hasOwn(err, 'cause') || err.cause === undefined) {
-      err.cause = err
+    const err = error as {
+      status?: number
+      message?: string
+      request?: unknown
     }
-    const errMsg = err.message
-    if (err.status === 0 && errMsg === 'request failed') {
+    /**
+     * Bridged deck tile aborts surface as `{ status: 0, message: 'request failed' }`,
+     * but genuine offline/CORS/network failures look identical. Suppress only
+     * requests our abort hook actually aborted (per-XHR bookkeeping) so real
+     * failures still reach centralized error reporting.
+     */
+    if (
+      err.status === 0 &&
+      err.message === 'request failed' &&
+      isXhrLike(err.request) &&
+      vivXhrTileAbort.get(err.request)?.bridgedAbort === true
+    ) {
       return
     }
     prevErr?.(error)

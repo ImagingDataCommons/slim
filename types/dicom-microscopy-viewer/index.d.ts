@@ -783,13 +783,25 @@ declare module 'dicom-microscopy-viewer' {
       client: dwc.api.DICOMwebClient
     }): Promise<Int32Array | Float32Array>
 
+    type TypedArray =
+      | Uint8Array
+      | Uint16Array
+      | Uint32Array
+      | Int8Array
+      | Int16Array
+      | Int32Array
+      | Float32Array
+      | Float64Array
+
+    // LongPrimitivePointIndexList (0066,0040) is VR OL → Int32Array via
+    // dicom-microscopy-viewer `_fetchBulkdata`.
     export function fetchGraphicIndex (options: {
       metadataItem: object
       bulkdataItem: object | null | undefined
       annotationGroupIndex: number
       metadata: object
       client: dwc.api.DICOMwebClient
-    }): Promise<TypedArray | null>
+    }): Promise<Int32Array | null>
 
     export function getCommonZCoordinate (metadataItem: object): number
 

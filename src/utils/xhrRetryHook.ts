@@ -11,40 +11,40 @@ type RequestHook = (
 ) => XMLHttpRequest
 
 /**
+ * HTTP methods that are safe to retry automatically. Non-idempotent methods
+ * (e.g. STOW POST) are excluded because re-sending them can duplicate
+ * partially stored data on a server that failed mid-request.
+ */
+const RETRYABLE_METHODS = ['GET', 'HEAD', 'OPTIONS']
+
+/**
  * Returns a configured retry request hook function
  * that can be used to add retry functionality to XHR request.
  *
  * Default options:
- *   retries: 5
- *   factor: 3
+ *   retries: 3
+ *   factor: 2
  *   minTimeout: 1 * 1000
- *   maxTimeout: 60 * 1000
+ *   maxTimeout: 10 * 1000
  *   randomize: true
  *
  * @param options
- * @param options.retires - Number of retries
- * @param options.factor - Factor
- * @param options.minTimeout - Min number of seconds to wait before next retry
- * @param options.maxTimeout - Max number of seconds to wait before next retry
+ * @param options.retries - Number of retries
+ * @param options.factor - Exponential backoff factor
+ * @param options.minTimeout - Min number of milliseconds to wait before next retry
+ * @param options.maxTimeout - Max number of milliseconds to wait before next retry
  * @param options.randomize - Whether randomization should be applied
  * @param options.retryableStatusCodes HTTP status codes that can trigger a retry
  * @returns Configured retry request function
  */
 export const getXHRRetryHook = (
-  options: RetryRequestSettings = {
-    retries: 5,
-    factor: 3,
-    minTimeout: 1 * 1000,
-    maxTimeout: 60 * 1000,
-    randomize: true,
-    retryableStatusCodes: [429, 500],
-  },
+  options: RetryRequestSettings = {},
 ): RequestHook => {
   const retryOptions = {
-    retries: options.retries ?? 5,
-    factor: options.factor ?? 3,
+    retries: options.retries ?? 3,
+    factor: options.factor ?? 2,
     minTimeout: options.minTimeout ?? 1 * 1000,
-    maxTimeout: options.maxTimeout ?? 60 * 1000,
+    maxTimeout: options.maxTimeout ?? 10 * 1000,
     randomize: options.randomize ?? true,
     retryableStatusCodes: options.retryableStatusCodes ?? [429, 500],
   }
@@ -63,6 +63,11 @@ export const getXHRRetryHook = (
     metadata: DICOMwebClientRequestHookMetadata,
   ): XMLHttpRequest => {
     const { url, method } = metadata
+
+    if (!RETRYABLE_METHODS.includes(method.toUpperCase())) {
+      return request
+    }
+
     const headers = metadata.headers ?? {}
     const originalRequestSend = request.send
     /** Captured before open() resets it on retry. */

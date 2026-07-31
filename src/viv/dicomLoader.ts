@@ -426,6 +426,23 @@ export class DicomLoader {
 
   private _viewer?: dmv.viewer.VolumeImageViewer
 
+  /**
+   * In-flight viewer construction. Memoizing the promise (not the resolved value)
+   * prevents two concurrent first calls from building two hidden viewers and
+   * leaking one. Cleared on failure so a transient error does not brick the loader.
+   */
+  private _viewerPromise?: Promise<dmv.viewer.VolumeImageViewer>
+
+  /**
+   * Single-flight guard for render/tile-loader priming + ICC sync. Concurrent
+   * callers (e.g. `warmIccTileLoaders` and in-flight `getTile`s) must share one
+   * `toggleICCProfiles()` — two concurrent toggles cancel each other out.
+   */
+  private _viewerReadyPromise?: Promise<void>
+
+  /** Set by {@link dispose}; async chains must never rebuild the viewer afterwards. */
+  private _disposed = false
+
   private _opticalPaths?: { [key: string]: OpticalPathEntry }
 
   private _tileSize?: number
@@ -492,6 +509,12 @@ export class DicomLoader {
 
   private _decodedTileCacheBytes = 0
 
+  /**
+   * Bumped whenever the decoded-tile cache is cleared (e.g. ICC toggle) so tiles
+   * decoded under the previous state cannot poison the fresh cache when they resolve.
+   */
+  private _decodedTileCacheGeneration = 0
+
   /** Set when the viewer is first built; 8- or 16-bit SM tiles both load as float then convert to Uint16 in getTile. */
   bitsAllocated?: 8 | 16
 
@@ -530,6 +553,7 @@ export class DicomLoader {
   private _clearDecodedTileCache(): void {
     this._decodedTileCache.clear()
     this._decodedTileCacheBytes = 0
+    this._decodedTileCacheGeneration++
   }
 
   private _decodedTileCacheKey(
@@ -548,7 +572,12 @@ export class DicomLoader {
       width: number
       height: number
     },
+    generation: number,
   ): void {
+    if (generation !== this._decodedTileCacheGeneration) {
+      /** Tile was decoded under a previous cache state (e.g. old ICC transform). */
+      return
+    }
     const bytes = tile.data.byteLength
     const maxBytes = 384 * 1024 * 1024
     const prev = this._decodedTileCache.get(key)
@@ -579,12 +608,15 @@ export class DicomLoader {
    * Call when the Viv viewport unmounts or the series changes.
    */
   dispose(): void {
+    this._disposed = true
     this._loaders = undefined
     this._openLayersFootprintTrimmed = false
     this._openLayersTilesPrimed = false
     this._pathIdByChannelIndex.clear()
     this._columnsByLevel = undefined
     this._tileDecodeReady = undefined
+    this._viewerReadyPromise = undefined
+    this._viewerPromise = undefined
     this._clearDecodedTileCache()
     this._opticalPaths = undefined
     this._orderedPathKeys = undefined
@@ -615,12 +647,11 @@ export class DicomLoader {
     this._columnsByLevel = undefined
     this._tileDecodeReady = undefined
     this._clearDecodedTileCache()
-    const keys = await this._ensureOrderedPathKeys()
-    const first = keys[0]
-    if (first === undefined) {
-      return
-    }
-    await this._getLoader(first)
+    /**
+     * Share the `_tileDecodeReady` memo with in-flight `getTile` calls so both
+     * observe one ICC sync (see {@link _ensureViewerReadyForTiles} single-flight).
+     */
+    await this._ensureTileDecodeReady()
   }
 
   /** Number of ICC profiles available for color correction (0 ⇒ disable toggle in UI). */
@@ -637,38 +668,59 @@ export class DicomLoader {
 
   /**
    * Ensure VolumeImageViewer ICC state matches {@link _iccTarget} (one toggle flips DMV state).
+   * Only ever runs inside the single-flight {@link _ensureViewerReadyForTiles} path, so no
+   * two toggles can race; the loop converges if `_iccTarget` changes during the loader wait.
    */
   private async _syncIccWithVolumeViewer(
     viewer: dmv.viewer.VolumeImageViewer,
     opticalPaths: { [key: string]: OpticalPathEntry },
   ): Promise<void> {
-    if (this._iccProfilesEnabled === this._iccTarget) {
-      return
+    while (this._iccProfilesEnabled !== this._iccTarget) {
+      const loadersBeforeToggle = Object.fromEntries(
+        Object.entries(opticalPaths).map(([id, p]) => {
+          return [
+            id,
+            getDataTileLoader(
+              p.layer.getSource() as { loader_?: unknown } | null,
+            ),
+          ]
+        }),
+      )
+      viewer.toggleICCProfiles()
+      await waitForTileLoadersAfterIccToggle(
+        opticalPaths,
+        loadersBeforeToggle,
+        120_000,
+      )
+      /** Record what the toggle actually did — `_iccTarget` may have moved mid-wait. */
+      this._iccProfilesEnabled = !this._iccProfilesEnabled
     }
-    const loadersBeforeToggle = Object.fromEntries(
-      Object.entries(opticalPaths).map(([id, p]) => {
-        return [
-          id,
-          getDataTileLoader(
-            p.layer.getSource() as { loader_?: unknown } | null,
-          ),
-        ]
-      }),
-    )
-    viewer.toggleICCProfiles()
-    await waitForTileLoadersAfterIccToggle(
-      opticalPaths,
-      loadersBeforeToggle,
-      120_000,
-    )
-    this._iccProfilesEnabled = this._iccTarget
   }
 
   /**
    * Render hidden OL viewer once, wait for DataTile loaders, apply ICC target vs DMV.
    * Subsequent calls only re-sync ICC (toggle) — never re-`render()` (ICC re-fetch storm).
+   *
+   * Single-flight: concurrent callers share one in-progress promise so
+   * `toggleICCProfiles()` is never invoked twice for the same target (two
+   * toggles cancel out and tiles would render with the wrong ICC transform).
    */
   private async _ensureViewerReadyForTiles(): Promise<void> {
+    if (this._disposed) {
+      throw new Error('DicomLoader: disposed')
+    }
+    if (this._viewerReadyPromise === undefined) {
+      const ready = this._ensureViewerReadyForTilesImpl().finally(() => {
+        if (this._viewerReadyPromise === ready) {
+          this._viewerReadyPromise = undefined
+        }
+      })
+      this._viewerReadyPromise = ready
+    }
+    return await this._viewerReadyPromise
+  }
+
+  private async _ensureViewerReadyForTilesImpl(): Promise<void> {
     const viewer = await this._getViewer()
     const opticalPaths = await this._getOpticalPaths()
     if (!this._openLayersTilesPrimed) {
@@ -714,79 +766,111 @@ export class DicomLoader {
   }
 
   private async _getViewer(): Promise<dmv.viewer.VolumeImageViewer> {
-    if (this._viewer === undefined) {
-      const metadata = await this._client.retrieveSeriesMetadata(
-        this._retrieveOptions,
+    if (this._disposed) {
+      throw new Error(
+        'DicomLoader: disposed — refusing to rebuild hidden VolumeImageViewer',
       )
-      const candidates: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
-      metadata.forEach((m) => {
-        const image = new dmv.metadata.VLWholeSlideMicroscopyImage({
-          metadata: m as unknown as object,
-        })
-        const b = image.BitsAllocated
-        if (b !== 8 && b !== 16) {
-          throw new Error(
-            `Viv path: ${b}-bit pixel data is not supported (only 8 and 16).`,
-          )
+    }
+    if (this._viewerPromise === undefined) {
+      const creation = this._createViewer()
+      this._viewerPromise = creation
+      creation.catch(() => {
+        /** Transient failure (e.g. metadata fetch) must not brick the loader. */
+        if (this._viewerPromise === creation) {
+          this._viewerPromise = undefined
         }
-        const imageFlavor = image.ImageType[2]
-        if (imageFlavor === 'VOLUME' || imageFlavor === 'THUMBNAIL') {
-          candidates.push(image)
-        }
-      })
-      /*
-       * THUMBNAIL instances often use a different frame size than VOLUME pyramid
-       * tiles, so pyramid.tileSizes differ across levels. Viv/deck MultiscaleImageLayer
-       * expects one tile grid; mixing THUMBNAIL + VOLUME triggers
-       * "Inconsistent or non-square tile sizes". Prefer VOLUME only when present.
-       */
-      const hasVolume = candidates.some((img) => img.ImageType[2] === 'VOLUME')
-      const volumeImages = candidates.filter((img) =>
-        hasVolume
-          ? img.ImageType[2] === 'VOLUME'
-          : img.ImageType[2] === 'THUMBNAIL',
-      )
-      let bitsAllocated: 8 | 16 | undefined
-      for (const image of volumeImages) {
-        const b = image.BitsAllocated as 8 | 16
-        if (bitsAllocated === undefined) {
-          bitsAllocated = b
-        } else if (bitsAllocated !== b) {
-          throw new Error(
-            'Viv path: mixed 8- and 16-bit instances in one series are not supported.',
-          )
-        }
-      }
-      if (volumeImages.length === 0) {
-        throw new Error(
-          'Viv path: no VOLUME or THUMBNAIL SM instances found for this series.',
-        )
-      }
-      let spp: number | undefined
-      for (const image of volumeImages) {
-        const s = image.SamplesPerPixel
-        if (spp === undefined) {
-          spp = s
-        } else if (spp !== s) {
-          throw new Error(
-            'Viv path: mixed SamplesPerPixel values in one series are not supported.',
-          )
-        }
-      }
-      if (spp !== 1 && spp !== 3) {
-        throw new Error(
-          `Viv path: SamplesPerPixel=${String(spp)} is not supported (only 1 and 3).`,
-        )
-      }
-      this.bitsAllocated = bitsAllocated
-      this.samplesPerPixel = spp
-      this._viewer = new dmv.viewer.VolumeImageViewer({
-        client: this._client,
-        metadata: volumeImages,
-        controls: [],
       })
     }
-    return this._viewer
+    return await this._viewerPromise
+  }
+
+  private async _createViewer(): Promise<dmv.viewer.VolumeImageViewer> {
+    const metadata = await this._client.retrieveSeriesMetadata(
+      this._retrieveOptions,
+    )
+    const candidates: dmv.metadata.VLWholeSlideMicroscopyImage[] = []
+    metadata.forEach((m) => {
+      const image = new dmv.metadata.VLWholeSlideMicroscopyImage({
+        metadata: m as unknown as object,
+      })
+      const imageFlavor = image.ImageType[2]
+      if (imageFlavor === 'VOLUME' || imageFlavor === 'THUMBNAIL') {
+        candidates.push(image)
+      }
+    })
+    /*
+     * THUMBNAIL instances often use a different frame size than VOLUME pyramid
+     * tiles, so pyramid.tileSizes differ across levels. Viv/deck MultiscaleImageLayer
+     * expects one tile grid; mixing THUMBNAIL + VOLUME triggers
+     * "Inconsistent or non-square tile sizes". Prefer VOLUME only when present.
+     */
+    const hasVolume = candidates.some((img) => img.ImageType[2] === 'VOLUME')
+    const volumeImages = candidates.filter((img) =>
+      hasVolume
+        ? img.ImageType[2] === 'VOLUME'
+        : img.ImageType[2] === 'THUMBNAIL',
+    )
+    let bitsAllocated: 8 | 16 | undefined
+    for (const image of volumeImages) {
+      /**
+       * Validate bit depth only for instances the viewer will actually use —
+       * an unsupported LABEL/OVERVIEW instance must not abort the whole viewer.
+       */
+      const b = image.BitsAllocated
+      if (b !== 8 && b !== 16) {
+        throw new Error(
+          `Viv path: ${b}-bit pixel data is not supported (only 8 and 16).`,
+        )
+      }
+      if (bitsAllocated === undefined) {
+        bitsAllocated = b
+      } else if (bitsAllocated !== b) {
+        throw new Error(
+          'Viv path: mixed 8- and 16-bit instances in one series are not supported.',
+        )
+      }
+    }
+    if (volumeImages.length === 0) {
+      throw new Error(
+        'Viv path: no VOLUME or THUMBNAIL SM instances found for this series.',
+      )
+    }
+    let spp: number | undefined
+    for (const image of volumeImages) {
+      const s = image.SamplesPerPixel
+      if (spp === undefined) {
+        spp = s
+      } else if (spp !== s) {
+        throw new Error(
+          'Viv path: mixed SamplesPerPixel values in one series are not supported.',
+        )
+      }
+    }
+    if (spp !== 1 && spp !== 3) {
+      throw new Error(
+        `Viv path: SamplesPerPixel=${String(spp)} is not supported (only 1 and 3).`,
+      )
+    }
+    const viewer = new dmv.viewer.VolumeImageViewer({
+      client: this._client,
+      metadata: volumeImages,
+      controls: [],
+    })
+    if (this._disposed) {
+      /** dispose() ran while metadata was in flight; do not leak the OL map. */
+      try {
+        viewer.cleanup()
+      } catch (err) {
+        logger.warn('DicomLoader: VolumeImageViewer.cleanup failed', err)
+      }
+      throw new Error(
+        'DicomLoader: disposed — refusing to rebuild hidden VolumeImageViewer',
+      )
+    }
+    this.bitsAllocated = bitsAllocated
+    this.samplesPerPixel = spp
+    this._viewer = viewer
+    return viewer
   }
 
   private async _getOpticalPaths(): Promise<{
@@ -881,7 +965,7 @@ export class DicomLoader {
     if (this._tileDecodeReady !== undefined) {
       return await this._tileDecodeReady
     }
-    this._tileDecodeReady = (async () => {
+    const ready = (async () => {
       const keys = await this._ensureOrderedPathKeys()
       const first = keys[0]
       if (first !== undefined) {
@@ -890,7 +974,16 @@ export class DicomLoader {
       await this._getShapes()
       await this._getTileSize()
     })()
-    return await this._tileDecodeReady
+    this._tileDecodeReady = ready
+    try {
+      await ready
+    } catch (e) {
+      /** Transient warm-up failure must not permanently brick tile loading. */
+      if (this._tileDecodeReady === ready) {
+        this._tileDecodeReady = undefined
+      }
+      throw e
+    }
   }
 
   private async _getLoader(
@@ -973,8 +1066,12 @@ export class DicomLoader {
     }
 
     const cacheKey = this._decodedTileCacheKey(level, channel, x, y)
+    const cacheGeneration = this._decodedTileCacheGeneration
     const cached = this._decodedTileCache.get(cacheKey)
     if (cached !== undefined) {
+      /** Refresh recency (Map insertion order approximates LRU for eviction). */
+      this._decodedTileCache.delete(cacheKey)
+      this._decodedTileCache.set(cacheKey, cached)
       return {
         data: cached.data,
         width: cached.width,
@@ -1057,7 +1154,7 @@ export class DicomLoader {
         )
       }
       const out = { data: buf, width: ts, height: ts }
-      this._rememberDecodedTile(cacheKey, out)
+      this._rememberDecodedTile(cacheKey, out, cacheGeneration)
       return out
     }
 
@@ -1084,7 +1181,7 @@ export class DicomLoader {
         }
       }
       const out = { data: buf, width: ts, height: ts }
-      this._rememberDecodedTile(cacheKey, out)
+      this._rememberDecodedTile(cacheKey, out, cacheGeneration)
       return out
     }
 
@@ -1103,7 +1200,7 @@ export class DicomLoader {
       }
     }
     const out = { data, width: ts, height: ts }
-    this._rememberDecodedTile(cacheKey, out)
+    this._rememberDecodedTile(cacheKey, out, cacheGeneration)
     return out
   }
 
@@ -1299,6 +1396,7 @@ function insertSyntheticDyadicLevels(
           halfShapeForDyadicStep(finestFirst[i].shape),
           finestFirst[i].dtype,
           finestFirst[i].tileSize,
+          finestFirst[i].shape,
         ),
       )
     }
@@ -1407,6 +1505,15 @@ export class SyntheticDyadicPixelSource {
 
   private readonly _finerDicomLevel: number
 
+  /**
+   * Pixel shape of the finer DICOM level backing this synthetic level; used to
+   * clamp 2×2 quadrant fetches so odd tile grids never request tiles past the
+   * finer grid's right/bottom edge (DMV would warn and pollute the tile cache).
+   */
+  private readonly _finerShape?:
+    | [number, number, number]
+    | [number, number, number, number]
+
   labels = ['c', 'y', 'x']
 
   shape: [number, number, number] | [number, number, number, number]
@@ -1423,12 +1530,14 @@ export class SyntheticDyadicPixelSource {
     shape: [number, number, number] | [number, number, number, number],
     dtype: 'Uint8' | 'Uint16',
     tileSize: number,
+    finerShape?: [number, number, number] | [number, number, number, number],
   ) {
     this._loader = loader
     this._finerDicomLevel = finerDicomLevel
     this.shape = shape
     this.dtype = dtype
     this.tileSize = tileSize
+    this._finerShape = finerShape
     this.meta = shape.length === 4 ? { photometricInterpretation: 2 } : null
   }
 
@@ -1462,6 +1571,39 @@ export class SyntheticDyadicPixelSource {
     const pathId = await this._loader.resolveOpticalPathId(selection.c)
     const lx = 2 * x
     const ly = 2 * y
+    /**
+     * On odd finer-level tile grids the `+1` quadrant would index past the grid
+     * (DMV "could not load tile … does not exist" warning + wasted decode).
+     * Substitute a locally generated fill tile for out-of-range quadrants.
+     */
+    const finerShape = this._finerShape
+    const finerTilesX =
+      finerShape !== undefined
+        ? Math.ceil(finerShape[2] / this.tileSize)
+        : Number.POSITIVE_INFINITY
+    const finerTilesY =
+      finerShape !== undefined
+        ? Math.ceil(finerShape[1] / this.tileSize)
+        : Number.POSITIVE_INFINITY
+    const fetchQuadrant = async (
+      qx: number,
+      qy: number,
+    ): Promise<{
+      data: Uint8Array | Uint16Array
+      width: number
+      height: number
+    }> => {
+      if (qx >= finerTilesX || qy >= finerTilesY) {
+        return this._makeFillTile()
+      }
+      return await this._loader.getTile({
+        level: this._finerDicomLevel,
+        channel: pathId,
+        x: qx,
+        y: qy,
+        signal,
+      })
+    }
     let tiles: Array<{
       data: Uint8Array | Uint16Array
       width: number
@@ -1469,34 +1611,10 @@ export class SyntheticDyadicPixelSource {
     }>
     try {
       tiles = await Promise.all([
-        this._loader.getTile({
-          level: this._finerDicomLevel,
-          channel: pathId,
-          x: lx,
-          y: ly,
-          signal,
-        }),
-        this._loader.getTile({
-          level: this._finerDicomLevel,
-          channel: pathId,
-          x: lx + 1,
-          y: ly,
-          signal,
-        }),
-        this._loader.getTile({
-          level: this._finerDicomLevel,
-          channel: pathId,
-          x: lx,
-          y: ly + 1,
-          signal,
-        }),
-        this._loader.getTile({
-          level: this._finerDicomLevel,
-          channel: pathId,
-          x: lx + 1,
-          y: ly + 1,
-          signal,
-        }),
+        fetchQuadrant(lx, ly),
+        fetchQuadrant(lx + 1, ly),
+        fetchQuadrant(lx, ly + 1),
+        fetchQuadrant(lx + 1, ly + 1),
       ])
     } catch (e) {
       if (
@@ -1509,6 +1627,25 @@ export class SyntheticDyadicPixelSource {
       throw e
     }
     return downsampleFourQuadrants(tiles, this.tileSize, this.dtype, this.shape)
+  }
+
+  /** Fill values match the empty-quadrant synthesis in {@link downsampleFourQuadrants}. */
+  private _makeFillTile(): {
+    data: Uint8Array | Uint16Array
+    width: number
+    height: number
+  } {
+    const interleaved = this.shape.length === 4
+    const ch = interleaved ? 3 : 1
+    const n = this.tileSize * this.tileSize * ch
+    if (this.dtype === 'Uint8') {
+      const data = new Uint8Array(n)
+      data.fill(255)
+      return { data, width: this.tileSize, height: this.tileSize }
+    }
+    const data = new Uint16Array(n)
+    data.fill(interleaved ? 65535 : 0)
+    return { data, width: this.tileSize, height: this.tileSize }
   }
 
   onTileError(err: Error): void {

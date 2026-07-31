@@ -8,19 +8,18 @@ const LEGACY_V2_KEY = 'slim_icc_profiles_enabled_v2'
 /** Legacy key; removed when migrating to v3. */
 const LEGACY_V1_KEY = 'slim_icc_profiles_enabled'
 
+/**
+ * Pure read (no writes at import time). v3 supersedes legacy keys: when v3 is
+ * missing or invalid, legacy v1/v2 values are ignored and the default (on)
+ * applies; legacy keys are cleaned up and v3 persisted only on the first
+ * explicit {@link setIccProfilesEnabled} call.
+ */
 function readStored(): boolean {
   try {
     const v = window.localStorage.getItem(STORAGE_KEY)
     if (v === 'false') {
       return false
     }
-    if (v === 'true') {
-      return true
-    }
-    /** v3 missing or invalid: default ICC on. Do not inherit v2/v1 false (product default). */
-    window.localStorage.removeItem(LEGACY_V1_KEY)
-    window.localStorage.removeItem(LEGACY_V2_KEY)
-    window.localStorage.setItem(STORAGE_KEY, 'true')
     return true
   } catch {
     /* ignore */
@@ -41,6 +40,8 @@ export function setIccProfilesEnabled(enabled: boolean): void {
   }
   cached = enabled
   try {
+    window.localStorage.removeItem(LEGACY_V1_KEY)
+    window.localStorage.removeItem(LEGACY_V2_KEY)
     window.localStorage.setItem(STORAGE_KEY, String(enabled))
   } catch {
     /* ignore */
@@ -50,11 +51,17 @@ export function setIccProfilesEnabled(enabled: boolean): void {
   })
 }
 
-export function subscribeIccProfilesEnabled(
-  onStoreChange: () => void,
-): () => void {
-  listeners.add(onStoreChange)
-  const onStorage = (e: StorageEvent): void => {
+/**
+ * One shared `storage` listener for all subscribers (added on first subscribe,
+ * removed with the last one) so N subscribers get one notification per event.
+ */
+let storageListener: ((e: StorageEvent) => void) | null = null
+
+function ensureStorageListener(): void {
+  if (storageListener !== null) {
+    return
+  }
+  storageListener = (e: StorageEvent): void => {
     if (e.key !== STORAGE_KEY) {
       return
     }
@@ -63,9 +70,19 @@ export function subscribeIccProfilesEnabled(
       l()
     })
   }
-  window.addEventListener('storage', onStorage)
+  window.addEventListener('storage', storageListener)
+}
+
+export function subscribeIccProfilesEnabled(
+  onStoreChange: () => void,
+): () => void {
+  listeners.add(onStoreChange)
+  ensureStorageListener()
   return () => {
     listeners.delete(onStoreChange)
-    window.removeEventListener('storage', onStorage)
+    if (listeners.size === 0 && storageListener !== null) {
+      window.removeEventListener('storage', storageListener)
+      storageListener = null
+    }
   }
 }
