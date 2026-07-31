@@ -968,11 +968,14 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   /**
    * Parse a retrieved Comprehensive 3D SR instance and add the ROIs of a
-   * suitable measurement report to the volume viewer.
+   * suitable measurement report to the volume viewer. Returns whether the
+   * report was accepted: ignored documents must not settle the promise in
+   * addAnnotations (matching the pre-refactoring control flow, where the
+   * early returns skipped resolve()).
    */
   private readonly addRetrievedSrRois = (
     retrievedInstance: dwc.api.Dataset,
-  ): void => {
+  ): boolean => {
     const data = dcmjs.data.DicomMessage.readFile(retrievedInstance)
     const { dataset } = dmv.metadata.formatMetadata(data.dict)
     const report = dataset as unknown as dmv.metadata.Comprehensive3DSR
@@ -986,21 +989,21 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           'because it is not structured according to template ' +
           'TID 1500 "MeasurementReport"',
       )
-      return
+      return false
     }
     if (!describesSpecimenSubject(report)) {
       logger.debug(
         `ignore SR document "${report.SOPInstanceUID}" ` +
           'because it does not describe a specimen subject',
       )
-      return
+      return false
     }
     if (!containsROIAnnotations(report)) {
       logger.debug(
         `ignore SR document "${report.SOPInstanceUID}" ` +
           'because it does not contain any suitable ROI annotations',
       )
-      return
+      return false
     }
 
     const content = new MeasurementReport(report)
@@ -1043,6 +1046,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         )
       }
     })
+    return true
   }
 
   /**
@@ -1081,8 +1085,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                   sopInstanceUID: instance.SOPInstanceUID,
                 })
                 .then((retrievedInstance): void => {
-                  this.addRetrievedSrRois(retrievedInstance)
-                  resolve()
+                  if (this.addRetrievedSrRois(retrievedInstance)) {
+                    resolve()
+                  }
                 })
                 .catch((error) => {
                   // eslint-disable-next-line @typescript-eslint/no-floating-promises
