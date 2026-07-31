@@ -533,6 +533,11 @@ export function useVivBulkAnnotations(
         phase: VivBulkGroupLoadPhase
       },
     ) => {
+      // A fresh progress report supersedes any pending done/error auto-clear.
+      if (groupDoneTimersRef.current[groupUID] != null) {
+        window.clearTimeout(groupDoneTimersRef.current[groupUID])
+        delete groupDoneTimersRef.current[groupUID]
+      }
       const startedAtMs =
         patch.startedAtMs ?? groupLoadStartedRef.current[groupUID] ?? Date.now()
       groupLoadStartedRef.current[groupUID] = startedAtMs
@@ -574,7 +579,12 @@ export function useVivBulkAnnotations(
 
   const bulkGeometryRef = useRef<BulkAnnotationGeometryContext | null>(null)
   const bulkGroupJobsRef = useRef<Record<string, VivBulkGroupGeometryJob>>({})
-  const bulkHydrateInFlightRef = useRef<Set<string>>(new Set())
+  /**
+   * In-flight hydrate ownership: uid → dispatch generation. Settle paths only
+   * clear shared state when they still own the entry — a stale hydrate that
+   * settles after a fast hide→show must not wipe the re-dispatched hydrate.
+   */
+  const bulkHydrateInFlightRef = useRef<Map<string, number>>(new Map())
   /**
    * Hydrate cancellation generation per group UID. Bumping only the UIDs that
    * actually became invisible (or a full bump on series/catalog change) means
@@ -583,6 +593,11 @@ export function useVivBulkAnnotations(
   const hydrateGenByUidRef = useRef<Map<string, number>>(new Map())
   /** Overlapping hydrate batches: throttle tiles until the last one settles. */
   const hydrateBatchActiveRef = useRef(0)
+  /**
+   * Bumped on series/catalog reset so a late `allSettled` from an old batch
+   * cannot decrement the throttle counter of a newer series' hydrates.
+   */
+  const hydrateBatchEpochRef = useRef(0)
   const bulkViewportRebuildGenRef = useRef<Record<string, number>>({})
   /** Raw bulk buffers (~tens–100s MB); kept out of React state so path layers can be released independently. */
   const bulkGraphicCacheByUidRef = useRef<Record<string, VivBulkGraphicCache>>(
@@ -666,6 +681,22 @@ export function useVivBulkAnnotations(
       gens.set(uid, gen + 1)
     }
   }, [])
+
+  /**
+   * Drop the in-flight marker only when `hydrateGen` still owns this uid.
+   * Returns true when this settle path may safely mutate shared stream state.
+   */
+  const releaseHydrateIfOwner = useCallback(
+    (uid: string, hydrateGen: number): boolean => {
+      const inFlight = bulkHydrateInFlightRef.current
+      if (inFlight.get(uid) !== hydrateGen) {
+        return false
+      }
+      inFlight.delete(uid)
+      return true
+    },
+    [],
+  )
 
   /** Drop a group's partial streaming artifacts (acc, overlay, slice layers). */
   const clearGroupStreamArtifacts = useCallback(
@@ -943,6 +974,7 @@ export function useVivBulkAnnotations(
     streamingCentroidAccRef.current.clear()
     bumpAllHydrateGens()
     bulkHydrateInFlightRef.current.clear()
+    hydrateBatchEpochRef.current += 1
     hydrateBatchActiveRef.current = 0
     bulkLodHighResRef.current = null
     styledOverlayCacheRef.current.clear()
@@ -957,6 +989,7 @@ export function useVivBulkAnnotations(
     return () => {
       bumpAllHydrateGens()
       bulkHydrateInFlightRef.current.clear()
+      hydrateBatchEpochRef.current += 1
       hydrateBatchActiveRef.current = 0
       bulkViewportRebuildGenRef.current = {}
       bulkLodHighResRef.current = null
@@ -978,6 +1011,7 @@ export function useVivBulkAnnotations(
       setBulkDefaultStyles({})
       bulkGeometryRef.current = null
       bulkGroupJobsRef.current = {}
+      bulkGraphicCacheByUidRef.current = {}
       bumpAllHydrateGens()
       bulkHydrateInFlightRef.current.clear()
       bulkLodHighResRef.current = null
@@ -999,6 +1033,12 @@ export function useVivBulkAnnotations(
       )
       return
     }
+
+    // Invalidate prior catalog immediately so a mid-session client/series
+    // change cannot leave visible groups blank against a stale graphic cache.
+    bulkGraphicCacheByUidRef.current = {}
+    setBulkCatalogReady(false)
+    commitSlices({})
 
     let cancelled = false
     const metadataStartedAtMs = Date.now()
@@ -1173,6 +1213,7 @@ export function useVivBulkAnnotations(
     const dispatchedUids: string[] = []
     const tBatch0 = vivBulkAnnNow()
     const batchPromises: Promise<void>[] = []
+    const batchEpoch = hydrateBatchEpochRef.current
     for (const uid of visibleGroupUIDs) {
       if (slicesByUidRef.current[uid] != null) {
         continue
@@ -1184,9 +1225,9 @@ export function useVivBulkAnnotations(
       if (job == null) {
         continue
       }
-      hydrateInFlight.add(uid)
       const hydrateGen = hydrateGenByUidRef.current.get(uid) ?? 0
       hydrateGenByUidRef.current.set(uid, hydrateGen)
+      hydrateInFlight.set(uid, hydrateGen)
       /** True while this dispatch is still the group's live hydrate. */
       const hydrateGenCurrent = (): boolean =>
         (hydrateGenByUidRef.current.get(uid) ?? 0) === hydrateGen
@@ -1529,12 +1570,18 @@ export function useVivBulkAnnotations(
         })
           .then((slice) => {
             if (!hydrateGenCurrent()) {
-              hydrateInFlight.delete(uid)
               /**
-               * Gen bump aborted this hydrate (group hidden, series/catalog
-               * change). If decode still finished with a graphicCache, keep it
-               * so we do not drop overlays and force a full re-download — then
-               * rebuild for the current LOD.
+               * Gen bump aborted this hydrate. Only mutate shared stream state
+               * when this dispatch still owns the in-flight slot — otherwise a
+               * re-dispatched hydrate (fast hide→show) would be wiped / duplicated.
+               */
+              if (!releaseHydrateIfOwner(uid, hydrateGen)) {
+                return
+              }
+              /**
+               * If decode still finished with a graphicCache, keep it so we do
+               * not drop overlays and force a full re-download — then rebuild
+               * for the current LOD.
                */
               if (
                 slice?.graphicCache != null &&
@@ -1603,7 +1650,9 @@ export function useVivBulkAnnotations(
                * indicator spins forever — and drop partial streamed layers so
                * toggling the group off and on re-dispatches a fresh hydrate.
                */
-              hydrateInFlight.delete(uid)
+              if (!releaseHydrateIfOwner(uid, hydrateGen)) {
+                return
+              }
               clearGroupStreamArtifacts(uid)
               if (visibleBulkUidsRef.current.has(uid)) {
                 markGroupLoadError(uid)
@@ -1702,19 +1751,22 @@ export function useVivBulkAnnotations(
                 markGroupLoadDone(uid)
               }
             }
-            hydrateInFlight.delete(uid)
+            releaseHydrateIfOwner(uid, hydrateGen)
           })
           .catch((e: unknown) => {
             /**
              * A rejected hydrate must not leave the uid stuck in
              * `hydrateInFlight` (blocking all future re-hydration) or the
-             * spinner running forever.
+             * spinner running forever — but only when this dispatch still owns
+             * the slot (a newer hydrate may already be running).
              */
-            hydrateInFlight.delete(uid)
             vivBulkAnnDebug('viewport:HYDRATE failed', {
               uid,
               err: e instanceof Error ? e.message : String(e),
             })
+            if (!releaseHydrateIfOwner(uid, hydrateGen)) {
+              return
+            }
             if (!hydrateGenCurrent()) {
               return
             }
@@ -1743,6 +1795,9 @@ export function useVivBulkAnnotations(
     hydrateBatchActiveRef.current += 1
     setBulkHydrateTileThrottle(true)
     void Promise.allSettled(batchPromises).then(() => {
+      if (hydrateBatchEpochRef.current !== batchEpoch) {
+        return
+      }
       hydrateBatchActiveRef.current = Math.max(
         0,
         hydrateBatchActiveRef.current - 1,
@@ -1777,6 +1832,7 @@ export function useVivBulkAnnotations(
     reportGroupLoad,
     markGroupLoadDone,
     markGroupLoadError,
+    releaseHydrateIfOwner,
     clearGroupStreamArtifacts,
     commitSlices,
     patchBulkLoadStatus,
@@ -1796,7 +1852,7 @@ export function useVivBulkAnnotations(
         hiddenUids.add(uid)
       }
     }
-    for (const uid of bulkHydrateInFlightRef.current) {
+    for (const uid of bulkHydrateInFlightRef.current.keys()) {
       if (!visibleGroupUIDs.has(uid)) {
         hiddenUids.add(uid)
       }

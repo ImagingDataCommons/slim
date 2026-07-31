@@ -46,15 +46,20 @@ function readLevelsFromFinest(): number | null {
   return null
 }
 
-function clearLegacyThresholdMm(): void {
+let legacyThresholdCleared = false
+
+/** Drop the dead legacy threshold key on first explicit preference write. */
+function clearLegacyThresholdMmOnce(): void {
+  if (legacyThresholdCleared) {
+    return
+  }
+  legacyThresholdCleared = true
   try {
     window.localStorage.removeItem(LEGACY_THRESHOLD_MM_KEY)
   } catch {
     /* ignore */
   }
 }
-
-clearLegacyThresholdMm()
 
 let enabledCached = readEnabled()
 let levelsCached = readLevelsFromFinest()
@@ -76,6 +81,7 @@ export function setVivBulkLodEnabled(enabled: boolean): void {
   }
   enabledCached = enabled
   try {
+    clearLegacyThresholdMmOnce()
     window.localStorage.setItem(ENABLED_KEY, String(enabled))
   } catch {
     /* ignore */
@@ -109,6 +115,7 @@ export function setVivBulkLodLevelsFromFinest(value: number | null): void {
   }
   levelsCached = next
   try {
+    clearLegacyThresholdMmOnce()
     if (next === null) {
       window.localStorage.removeItem(LEVELS_KEY)
     } else {
