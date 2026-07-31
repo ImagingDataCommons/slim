@@ -72,7 +72,7 @@ export const getXHRRetryHook = (
 
     const headers = metadata.headers ?? {}
     const originalRequestSend = request.send
-    /** Captured before open() resets it on retry. */
+    /** Captured at send(); re-applied after retry open() for safety. */
     let responseType: XMLHttpRequestResponseType = request.responseType
     /** dicomweb-client handler installed before this hook runs. */
     const clientOnReadyStateChange = request.onreadystatechange
