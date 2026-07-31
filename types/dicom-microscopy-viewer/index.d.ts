@@ -807,8 +807,10 @@ declare module 'dicom-microscopy-viewer' {
       client: dwc.api.DICOMwebClient
     }): Promise<Int32Array | Float32Array>
 
-    // LongPrimitivePointIndexList (0066,0040) is VR OL.
-    // Inline metadata naturalizes as Uint32Array; bulkdata/P10 paths return Int32Array.
+    /**
+     * LongPrimitivePointIndexList (0066,0040) is VR OL.
+     * Inline metadata naturalizes as Uint32Array; bulkdata/P10 paths return Int32Array.
+     */
     export function fetchGraphicIndex (options: {
       metadataItem: object
       bulkdataItem: object | null | undefined
