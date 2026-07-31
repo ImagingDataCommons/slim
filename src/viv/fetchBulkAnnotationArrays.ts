@@ -412,11 +412,23 @@ export async function streamBulkGraphicData(
       if (signal?.aborted === true) {
         throw e
       }
+      /**
+       * dicomweb-client 0.11.x only accepts 200/202/204, so a standards-compliant
+       * 206 Partial Content rejects immediately — fall through to full GET (or
+       * the fetch-based Range debug path) without treating it as a hard failure.
+       */
+      const status =
+        e != null && typeof e === 'object' && 'status' in e
+          ? Number((e as { status?: unknown }).status)
+          : Number.NaN
       vivBulkAnnDebug('bulkStream:client Range failed; trying full GET', {
+        status: Number.isFinite(status) ? status : undefined,
         err: e instanceof Error ? e.message : String(e),
       })
       logger.warn(
-        '[Viv bulk] Range progressive retrieve failed; falling back to full GET (paint after download).',
+        status === 206
+          ? '[Viv bulk] dicomweb-client rejected HTTP 206 Partial Content; falling back to full GET (paint after download).'
+          : '[Viv bulk] Range progressive retrieve failed; falling back to full GET (paint after download).',
         e,
       )
     }
@@ -486,17 +498,17 @@ function partToUint8(part: ArrayBuffer | Uint8Array): Uint8Array {
   return new Uint8Array(part)
 }
 
+/** Fresh read of `aborted` (defeats stale control-flow narrowing after await). */
+function isAbortSignalAborted(signal: AbortSignal | undefined): boolean {
+  return signal?.aborted === true
+}
+
 /**
  * When the total size is an exact multiple of the chunk size, the Range loop
  * issues one request past EOF; servers answer 416 (Range Not Satisfiable) or
  * an empty body, which dicomweb-client surfaces as a rejection. After at least
  * one successful chunk that is normal end-of-stream, not a hard failure.
  */
-/** Fresh read of `aborted` (defeats stale control-flow narrowing after await). */
-function isAbortSignalAborted(signal: AbortSignal | undefined): boolean {
-  return signal?.aborted === true
-}
-
 function isRangeEndOfStreamError(e: unknown): boolean {
   if (e == null) {
     return false

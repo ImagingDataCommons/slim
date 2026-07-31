@@ -78,13 +78,20 @@ async function withBulkFetchRetry<T>(
         e != null && typeof e === 'object' && 'status' in e
           ? Number((e as { status?: number }).status)
           : Number.NaN
-      const isRetryable =
-        status === 429 ||
-        status === 500 ||
-        status === 502 ||
-        status === 503 ||
-        status === 504 ||
-        /429|Too Many|request failed|Failed to fetch|NetworkError/i.test(msg)
+      const hasHttpStatus = Number.isFinite(status)
+      /**
+       * When dicomweb-client attaches an HTTP status, only retry known
+       * transient codes. Its generic "request failed" message also covers
+       * 416 (Range EOF) and 206 (Partial Content the client rejects), which
+       * must not burn multi-second backoff retries.
+       */
+      const isRetryable = hasHttpStatus
+        ? status === 429 ||
+          status === 500 ||
+          status === 502 ||
+          status === 503 ||
+          status === 504
+        : /429|Too Many|Failed to fetch|NetworkError/i.test(msg)
       if (!isRetryable || attempt === retries) {
         throw e
       }
@@ -1515,6 +1522,30 @@ async function tryStreamingBulkHydrate(options: {
         graphicType,
         emittedLayers: allEmitted.length,
       })
+      return { result: null }
+    }
+    /**
+     * Partial progressive paint already committed layers via `onChunk`. Falling
+     * through to monolithic retrieve would re-emit from chunk index 0 and
+     * duplicate Deck layer ids / geometry. Own the failure instead so the
+     * caller clears stream artifacts and surfaces an error (retryable by toggle).
+     */
+    if (lastEmittedIndex >= 0 || allEmitted.length > 0) {
+      vivBulkAnnPhase(
+        'hydrate:STREAM failed after partial emit — skip monolithic',
+        {
+          annotationGroupUID,
+          graphicType,
+          lastEmittedIndex,
+          emittedLayers: allEmitted.length,
+          err: e instanceof Error ? e.message : String(e),
+        },
+      )
+      logger.warn(
+        `bulk streaming failed after partial paint; skipping monolithic fallback to avoid duplicate layers`,
+        { annotationGroupUID, graphicType, lastEmittedIndex },
+        e,
+      )
       return { result: null }
     }
     vivBulkAnnPhase('hydrate:STREAM failed — fallback to monolithic', {
