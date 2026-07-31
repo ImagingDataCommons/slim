@@ -429,6 +429,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         selectedSeriesInstanceUID: undefined,
         validXCoordinateRange: [offset[0], offset[0] + size[0]],
         validYCoordinateRange: [offset[1], offset[1] + size[1]],
+        // A freshly constructed viewer always starts with ICC profiles
+        // enabled; reset the flag so the settings switch stays in sync.
+        isICCProfilesEnabled: true,
       })
       this.populateViewports()
     }
