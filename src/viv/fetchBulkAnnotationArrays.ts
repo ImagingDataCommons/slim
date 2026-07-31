@@ -522,10 +522,13 @@ function isRangeEndOfStreamError(e: unknown): boolean {
   }
   const msg = e instanceof Error ? e.message : String(e)
   /**
-   * Prefer status above; fall back only to explicit Range Not Satisfiable wording
-   * (avoid bare `\b416\b`, which can match offsets/UIDs in unrelated messages).
+   * Prefer status above; fall back to explicit Range Not Satisfiable wording or
+   * dicomweb-client's empty-body rejection (exact-multiple chunk EOF). Avoid bare
+   * `\b416\b`, which can match offsets/UIDs in unrelated messages.
    */
-  return /416\s*range not satisfiable|range not satisfiable/i.test(msg)
+  return /416\s*range not satisfiable|range not satisfiable|empty response/i.test(
+    msg,
+  )
 }
 
 /**

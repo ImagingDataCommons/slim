@@ -1147,7 +1147,15 @@ export function useVivBulkAnnotations(
     void run()
     return () => {
       cancelled = true
+      /**
+       * Mirror series/hide invalidation: bump gens *and* drop ownership so a
+       * stale hydrate settle cannot pass {@link releaseHydrateIfOwner} and
+       * reinstall `graphicCache` after this effect already cleared it.
+       */
       bumpAllHydrateGens()
+      bulkHydrateInFlightRef.current.clear()
+      hydrateBatchEpochRef.current += 1
+      hydrateBatchActiveRef.current = 0
     }
   }, [
     enabled,
