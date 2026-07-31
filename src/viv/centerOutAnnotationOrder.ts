@@ -1,3 +1,5 @@
+import { computeFirstVertexDeckXYArray } from './annotationCoords'
+
 /** Minimum annotation count before offloading center-out sort to a Web Worker. */
 export const CENTER_OUT_ORDER_WORKER_MIN = 25_000
 
@@ -11,74 +13,33 @@ export type CenterOutOrderInput = {
   loadCenter: [number, number]
 }
 
-function openLayersMapYToVivWorldY(mapY: number): number {
-  return -mapY - 1
-}
-
-function bulkVertexToDeckFast(
-  gx: number,
-  gy: number,
-  c: readonly [number, number, number, number, number, number],
-): [number, number] {
-  const pcol = c[0] * gx + c[1] * gy + c[2]
-  const prow = c[3] * gx + c[4] * gy + c[5]
-  const olMapY = -(prow + 1)
-  return [pcol, openLayersMapYToVivWorldY(olMapY)]
-}
-
-function readTripleFromGraphicBuffer(
-  graphicData: Int32Array | Float32Array,
-  j: number,
-  commonZCoordinate: number,
-): [number, number, number] {
-  const gx = Number(graphicData[j])
-  const gy = Number(graphicData[j + 1])
-  const gz = Number.isNaN(commonZCoordinate)
-    ? Number(graphicData[j + 2])
-    : Number(commonZCoordinate)
-  return [gx, gy, gz]
-}
-
-/** Main-thread center-out sort (used for smaller groups and as worker fallback). */
-export function computeCenterOutAnnotationOrderSync(
-  options: CenterOutOrderInput,
+/**
+ * Canonical distance + sort kernel shared by the sync path and the worker.
+ *
+ * `firstVertexXY` is an n×2 array of each annotation's first vertex in deck XY
+ * (non-finite entries mark invalid/missing vertices and sort last). The
+ * function must stay self-contained (globals only, no captured identifiers):
+ * its compiled source is serialized with `toString()` into the worker blob so
+ * the worker and the sync fallback cannot drift.
+ */
+function centerOutOrderFromFirstVertexXY(
+  numberOfAnnotations: number,
+  firstVertexXY: Float64Array,
+  centerX: number,
+  centerY: number,
 ): Uint32Array {
-  const {
-    numberOfAnnotations,
-    graphicData,
-    graphicIndex,
-    coordinateDimensionality,
-    commonZCoordinate,
-    deckCoeffs,
-    loadCenter,
-  } = options
-  const [cx, cy] = loadCenter
   const distances = new Float64Array(numberOfAnnotations)
-  const hasIndex = graphicIndex !== null && graphicIndex !== undefined
-  const minRemain = coordinateDimensionality >= 3 ? 3 : 2
-
   for (let i = 0; i < numberOfAnnotations; i++) {
-    distances[i] = Number.POSITIVE_INFINITY
-    const offset = hasIndex
-      ? Number(graphicIndex[i] ?? 0) - 1
-      : i * coordinateDimensionality
-    if (offset < 0 || offset + minRemain - 1 >= graphicData.length) {
-      continue
+    const x = firstVertexXY[2 * i]
+    const y = firstVertexXY[2 * i + 1]
+    if (Number.isFinite(x) && Number.isFinite(y)) {
+      const dx = x - centerX
+      const dy = y - centerY
+      distances[i] = dx * dx + dy * dy
+    } else {
+      distances[i] = Number.POSITIVE_INFINITY
     }
-    const [gx, gy] = readTripleFromGraphicBuffer(
-      graphicData,
-      offset,
-      commonZCoordinate,
-    )
-    if (!gx || !gy) {
-      continue
-    }
-    const [dx, dy] = bulkVertexToDeckFast(gx, gy, deckCoeffs)
-    const ddx = dx - cx
-    const ddy = dy - cy
-    distances[i] = ddx * ddx + ddy * ddy
   }
-
   const order = new Uint32Array(numberOfAnnotations)
   for (let i = 0; i < numberOfAnnotations; i++) {
     order[i] = i
@@ -87,30 +48,62 @@ export function computeCenterOutAnnotationOrderSync(
   return order
 }
 
+/**
+ * The sort only needs each annotation's first vertex, so extract an n×2
+ * deck-XY array (16 bytes per annotation) instead of touching — or copying —
+ * the full coordinate buffer.
+ */
+function firstVertexXYFromInput(options: CenterOutOrderInput): Float64Array {
+  return computeFirstVertexDeckXYArray({
+    numberOfAnnotations: options.numberOfAnnotations,
+    graphicData: options.graphicData,
+    graphicIndex: options.graphicIndex,
+    coordinateDimensionality: options.coordinateDimensionality,
+    commonZCoordinate: options.commonZCoordinate,
+    deckCoeffs: options.deckCoeffs,
+  })
+}
+
+/** Main-thread center-out sort (used for smaller groups and as worker fallback). */
+export function computeCenterOutAnnotationOrderSync(
+  options: CenterOutOrderInput,
+): Uint32Array {
+  const firstVertexXY = firstVertexXYFromInput(options)
+  return centerOutOrderFromFirstVertexXY(
+    options.numberOfAnnotations,
+    firstVertexXY,
+    options.loadCenter[0],
+    options.loadCenter[1],
+  )
+}
+
 let centerOutWorker: Worker | null = null
 let centerOutWorkerSeq = 0
+/** In-flight request rejectors so {@link terminateCenterOutAnnotationOrderWorker} can fail them. */
+const pendingWorkerRejects = new Map<number, (err: Error) => void>()
 
 function getCenterOutWorker(): Worker {
   if (centerOutWorker != null) {
     return centerOutWorker
   }
-  const blob = new Blob(
-    [
-      `self.onmessage=function(e){var d=e.data,id=d.id,p=d.payload,b=d.buffers;var gd=new Float64Array(b.graphicData);var gi=b.graphicIndex?new Int32Array(b.graphicIndex):null;var n=p.numberOfAnnotations,cx=p.loadCenter[0],cy=p.loadCenter[1],cd=p.coordinateDimensionality,cz=p.commonZCoordinate,c=p.deckCoeffs,minR=cd>=3?3:2,dist=new Float64Array(n);for(var i=0;i<n;i++){dist[i]=Infinity;var off=gi?gi[i]-1:i*cd;if(off<0||off+minR-1>=gd.length)continue;var gx=gd[off],gy=gd[off+1];if(!gx||!gy)continue;var pcol=c[0]*gx+c[1]*gy+c[2],prow=c[3]*gx+c[4]*gy+c[5],olMapY=-(prow+1),dx=pcol,dy=-olMapY-1,ddx=dx-cx,ddy=dy-cy;dist[i]=ddx*ddx+ddy*ddy;}var order=new Uint32Array(n);for(var j=0;j<n;j++)order[j]=j;order.sort(function(a,b){return dist[a]-dist[b];});self.postMessage({id:id,order:order.buffer},[order.buffer]);};`,
-    ],
-    { type: 'application/javascript' },
-  )
-  centerOutWorker = new Worker(URL.createObjectURL(blob))
-  return centerOutWorker
-}
-
-function graphicDataAsFloat64(
-  graphicData: Int32Array | Float32Array,
-): Float64Array {
-  if (graphicData instanceof Float64Array) {
-    return graphicData
+  // Worker source derives from the canonical kernel (single implementation).
+  const workerSource =
+    'var computeOrder=' +
+    centerOutOrderFromFirstVertexXY.toString() +
+    ';self.onmessage=function(e){var d=e.data;' +
+    'var xy=new Float64Array(d.firstVertexXY);' +
+    'var order=computeOrder(d.numberOfAnnotations,xy,d.centerX,d.centerY);' +
+    'self.postMessage({id:d.id,order:order.buffer},[order.buffer]);};'
+  const blob = new Blob([workerSource], { type: 'application/javascript' })
+  const workerUrl = URL.createObjectURL(blob)
+  try {
+    centerOutWorker = new Worker(workerUrl)
+  } finally {
+    // The worker holds its own reference to the loaded script; revoke
+    // immediately so the blob URL does not leak.
+    URL.revokeObjectURL(workerUrl)
   }
-  return new Float64Array(graphicData)
+  return centerOutWorker
 }
 
 function computeCenterOutAnnotationOrderInWorker(
@@ -118,51 +111,48 @@ function computeCenterOutAnnotationOrderInWorker(
 ): Promise<Uint32Array> {
   const worker = getCenterOutWorker()
   const id = ++centerOutWorkerSeq
+  /**
+   * Precompute the n×2 first-vertex array on the main thread (index-driven,
+   * cheap) and transfer only that — copying the whole coordinate buffer to
+   * Float64 transiently cost ~4× the source bytes for exactly the huge groups
+   * this worker targets.
+   */
+  const firstVertexXY = firstVertexXYFromInput(options)
   return new Promise((resolve, reject) => {
+    const settle = (): void => {
+      pendingWorkerRejects.delete(id)
+      worker.removeEventListener('message', onMessage)
+      worker.removeEventListener('error', onError)
+    }
     const onMessage = (
       ev: MessageEvent<{ id: number; order: ArrayBuffer }>,
-    ) => {
+    ): void => {
       if (ev.data.id !== id) {
         return
       }
-      worker.removeEventListener('message', onMessage)
-      worker.removeEventListener('error', onError)
+      settle()
       resolve(new Uint32Array(ev.data.order))
     }
     const onError = (err: ErrorEvent): void => {
-      worker.removeEventListener('message', onMessage)
-      worker.removeEventListener('error', onError)
+      settle()
       reject(err.error ?? new Error(String(err.message)))
     }
     worker.addEventListener('message', onMessage)
     worker.addEventListener('error', onError)
-
-    const graphicDataF64 = new Float64Array(
-      graphicDataAsFloat64(options.graphicData),
-    )
-    const buffers: { graphicData: ArrayBuffer; graphicIndex?: ArrayBuffer } = {
-      graphicData: graphicDataF64.buffer,
-    }
-    const transfer: ArrayBuffer[] = [graphicDataF64.buffer]
-    if (options.graphicIndex != null) {
-      const graphicIndexCopy = new Int32Array(options.graphicIndex)
-      buffers.graphicIndex = graphicIndexCopy.buffer
-      transfer.push(graphicIndexCopy.buffer)
-    }
+    pendingWorkerRejects.set(id, (err) => {
+      settle()
+      reject(err)
+    })
 
     worker.postMessage(
       {
         id,
-        payload: {
-          numberOfAnnotations: options.numberOfAnnotations,
-          coordinateDimensionality: options.coordinateDimensionality,
-          commonZCoordinate: options.commonZCoordinate,
-          deckCoeffs: options.deckCoeffs,
-          loadCenter: options.loadCenter,
-        },
-        buffers,
+        numberOfAnnotations: options.numberOfAnnotations,
+        centerX: options.loadCenter[0],
+        centerY: options.loadCenter[1],
+        firstVertexXY: firstVertexXY.buffer,
       },
-      transfer,
+      [firstVertexXY.buffer],
     )
   })
 }
@@ -181,10 +171,24 @@ export async function computeCenterOutAnnotationOrder(
   }
 }
 
-/** Terminate the shared worker (call when the Viv viewport unmounts). */
+/**
+ * Terminate the shared worker (call when the Viv viewport unmounts) and reject
+ * any in-flight sort requests so their promises settle (callers fall back to
+ * the sync sort) instead of hanging forever.
+ */
 export function terminateCenterOutAnnotationOrderWorker(): void {
   if (centerOutWorker != null) {
     centerOutWorker.terminate()
     centerOutWorker = null
+  }
+  if (pendingWorkerRejects.size > 0) {
+    const pending = Array.from(pendingWorkerRejects.values())
+    pendingWorkerRejects.clear()
+    const err = new Error(
+      'centerOutAnnotationOrder: worker terminated with requests in flight',
+    )
+    for (const reject of pending) {
+      reject(err)
+    }
   }
 }

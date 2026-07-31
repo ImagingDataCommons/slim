@@ -17,16 +17,13 @@ export const VIV_BULK_LOD_DEFAULT_LEVELS_FROM_FINEST = 1
 /** Soft UI cap; pyramids are usually far smaller. */
 export const VIV_BULK_LOD_MAX_LEVELS_FROM_FINEST = 16
 
+/** Pure read (no writes at import time); the key is persisted on explicit set. */
 function readEnabled(): boolean {
   try {
     const v = window.localStorage.getItem(ENABLED_KEY)
     if (v === 'false') {
       return false
     }
-    if (v === 'true') {
-      return true
-    }
-    window.localStorage.setItem(ENABLED_KEY, 'true')
   } catch {
     /* ignore */
   }
@@ -132,11 +129,17 @@ export function resolveVivBulkLodLevelsFromFinest(): number {
   return levelsCached ?? VIV_BULK_LOD_DEFAULT_LEVELS_FROM_FINEST
 }
 
-export function subscribeVivBulkLodPreference(
-  onStoreChange: () => void,
-): () => void {
-  listeners.add(onStoreChange)
-  const onStorage = (e: StorageEvent): void => {
+/**
+ * One shared `storage` listener for all subscribers (added on first subscribe,
+ * removed with the last one) so N subscribers get one notification per event.
+ */
+let storageListener: ((e: StorageEvent) => void) | null = null
+
+function ensureStorageListener(): void {
+  if (storageListener !== null) {
+    return
+  }
+  storageListener = (e: StorageEvent): void => {
     if (e.key !== ENABLED_KEY && e.key !== LEVELS_KEY) {
       return
     }
@@ -144,9 +147,19 @@ export function subscribeVivBulkLodPreference(
     levelsCached = readLevelsFromFinest()
     notify()
   }
-  window.addEventListener('storage', onStorage)
+  window.addEventListener('storage', storageListener)
+}
+
+export function subscribeVivBulkLodPreference(
+  onStoreChange: () => void,
+): () => void {
+  listeners.add(onStoreChange)
+  ensureStorageListener()
   return () => {
     listeners.delete(onStoreChange)
-    window.removeEventListener('storage', onStorage)
+    if (listeners.size === 0 && storageListener !== null) {
+      window.removeEventListener('storage', storageListener)
+      storageListener = null
+    }
   }
 }

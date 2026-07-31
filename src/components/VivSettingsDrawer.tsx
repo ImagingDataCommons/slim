@@ -20,6 +20,17 @@ import {
 } from '../preferences/vivBulkLodPreference'
 import './SlideViewer/SettingsPanel.css'
 
+/**
+ * Non-interactive menu row for panel content. The `.slim-settings-content`
+ * wrapper restores text contrast against antd v4's
+ * `.ant-menu-item-disabled { color: ... !important }` rule.
+ */
+const drawerPanelItemStyle: React.CSSProperties = {
+  height: 'auto',
+  cursor: 'default',
+  color: 'rgba(0, 0, 0, 0.85)',
+}
+
 export interface VivSettingsDrawerProps {
   /** When false, ICC toggle is disabled (no profiles on slide), matching SlideViewer. */
   iccProfilesAvailable: boolean
@@ -190,7 +201,7 @@ const VivSettingsDrawer: React.FC<VivSettingsDrawerProps> = ({
                       <div className="slim-settings-content">{iccRow}</div>
                     ),
                     disabled: true,
-                    style: { height: 'auto', cursor: 'default' },
+                    style: drawerPanelItemStyle,
                   },
                 ],
               },
@@ -202,7 +213,7 @@ const VivSettingsDrawer: React.FC<VivSettingsDrawerProps> = ({
                     key: 'annotations-lod',
                     label: lodContent,
                     disabled: true,
-                    style: { height: 'auto', cursor: 'default' },
+                    style: drawerPanelItemStyle,
                   },
                 ],
               },

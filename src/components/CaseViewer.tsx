@@ -75,6 +75,16 @@ const menuPanelItemStyle: React.CSSProperties = {
   cursor: 'default',
   padding: 0,
   lineHeight: 'normal',
+  color: 'rgba(0, 0, 0, 0.85)',
+}
+
+/**
+ * antd v4 greys disabled items via `.ant-menu-item-disabled { color: ... !important }`,
+ * which beats the inline item style, so restore contrast on a child wrapper
+ * (same idea as `.slim-settings-content` in the classic settings drawer).
+ */
+const menuPanelContentStyle: React.CSSProperties = {
+  color: 'rgba(0, 0, 0, 0.85)',
 }
 
 function menuPanelItem(
@@ -83,7 +93,7 @@ function menuPanelItem(
 ): NonNullable<MenuProps['items']>[number] {
   return {
     key,
-    label,
+    label: <div style={menuPanelContentStyle}>{label}</div>,
     disabled: true,
     style: menuPanelItemStyle,
   }
@@ -285,6 +295,14 @@ function ParametrizedSlideViewer({
 
   useEffect(() => {
     setVivIccProfilesAvailable(true)
+    /* Reset bulk-annotation UI so the previous series' groups/toggles don't
+     * linger while the new catalog loads (mirrors handleVivBulkCatalogChange
+     * for a null catalog). */
+    setVivBulkCatalog(null)
+    setVivVisibleAnnotationGroupUIDs(new Set())
+    setVivAnnotationGroupStyles({})
+    setVivAnnGroupSeriesSelection('all')
+    setVivBulkLoadStatus(EMPTY_VIV_BULK_LOAD_STATUS)
 
     const currentSlideMatchesSeries =
       selectedSlide?.seriesInstanceUIDs.some(

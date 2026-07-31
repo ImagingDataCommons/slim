@@ -30,6 +30,8 @@
  * monolithic `dmv.annotation.fetchGraphicData` path with no behavioural change.
  */
 
+import { logger } from '../utils/logger'
+import { createBulkPrefixEmitter } from './bulkPrefixEmitter'
 import { vivBulkAnnDebug } from './vivBulkAnnDebug'
 
 /** Coordinate buffer element kinds we can stream-decode (4-byte VRs only). */
@@ -113,10 +115,12 @@ export function resolveStreamableGraphicDataReference(options: {
   }
   // DICOM JSON sometimes omits `vr` on BulkDataURI stubs. Infer the standard VR
   // so streaming isn't silently disabled (empty vr → monolithic fallback).
+  // Point Coordinates Data (0066,0016) is OF (32-bit float); Double Point
+  // Coordinates Data (0066,0022) is OD. (OL is the VR of the *index* list.)
   if (ref.vr == null || ref.vr === '') {
     return {
       ...ref,
-      vr: pointRef != null ? 'OL' : 'OD',
+      vr: pointRef != null ? 'OF' : 'OD',
     }
   }
   return ref
@@ -283,19 +287,6 @@ export type StreamBulkGraphicDataOptions = {
   preferByteRange?: boolean
 }
 
-async function yieldToBrowser(): Promise<void> {
-  await new Promise<void>((resolve) => {
-    setTimeout(resolve, 0)
-  })
-  await new Promise<void>((resolve) => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        resolve()
-      })
-    })
-  })
-}
-
 /** Own a tightly-sized buffer so TypedArray views cover only payload bytes. */
 function ownedPayloadBytes(src: Uint8Array): Uint8Array {
   if (src.byteOffset === 0 && src.byteLength === src.buffer.byteLength) {
@@ -406,7 +397,7 @@ export async function streamBulkGraphicData(
       vivBulkAnnDebug('bulkStream:client Range failed; trying full GET', {
         err: e instanceof Error ? e.message : String(e),
       })
-      console.warn(
+      logger.warn(
         '[Viv bulk] Range progressive retrieve failed; falling back to full GET (paint after download).',
         e,
       )
@@ -478,6 +469,27 @@ function partToUint8(part: ArrayBuffer | Uint8Array): Uint8Array {
 }
 
 /**
+ * When the total size is an exact multiple of the chunk size, the Range loop
+ * issues one request past EOF; servers answer 416 (Range Not Satisfiable) or
+ * an empty body, which dicomweb-client surfaces as a rejection. After at least
+ * one successful chunk that is normal end-of-stream, not a hard failure.
+ */
+function isRangeEndOfStreamError(e: unknown): boolean {
+  if (e == null) {
+    return false
+  }
+  if (
+    typeof e === 'object' &&
+    'status' in e &&
+    Number((e as { status?: unknown }).status) === 416
+  ) {
+    return true
+  }
+  const msg = e instanceof Error ? e.message : String(e)
+  return /\b416\b|range not satisfiable|empty response/i.test(msg)
+}
+
+/**
  * Progressive retrieve via dicomweb-client `byteRange` XHR.
  *
  * Returns `null` when the server ignores Range (first response ≫ chunk size)
@@ -513,6 +525,7 @@ async function streamBulkGraphicDataViaClientRanges(options: {
   } = options
 
   const firstEnd = Math.max(0, rangeChunkBytes - 1)
+  const firstRequestedBytes = firstEnd + 1
   const firstParts = await retrieveBulkData({
     BulkDataURI,
     // dicomweb-client expects `{ mediaType }` objects, not bare strings.
@@ -528,15 +541,16 @@ async function streamBulkGraphicDataViaClientRanges(options: {
   const firstChunk = partToUint8(firstParts[0])
 
   /**
-   * Server ignored Range and returned the whole bulk object in one shot.
-   * Keep the buffer (do not re-GET); hydrate paints once after download.
+   * A ranged response can never exceed the requested slice, so a larger body
+   * means the server ignored Range and returned the whole bulk object in one
+   * shot. Keep the buffer (do not re-GET); hydrate paints once after download.
    */
-  if (firstChunk.byteLength > rangeChunkBytes * 2) {
+  if (firstChunk.byteLength > firstRequestedBytes) {
     vivBulkAnnDebug('bulkStream:client Range ignored (oversized first part)', {
       firstBytes: firstChunk.byteLength,
       rangeChunkBytes,
     })
-    console.warn(
+    logger.warn(
       '[Viv bulk] server ignored HTTP Range (got full body in one response). Mid-transfer paint needs proxy Range support; painting all annotations once from the buffered payload instead of re-downloading.',
       { firstBytes: firstChunk.byteLength, rangeChunkBytes },
     )
@@ -555,9 +569,6 @@ async function streamBulkGraphicDataViaClientRanges(options: {
   )
   let payloadLen = 0
   let loadedBytes = 0
-  let completeThroughIndex = -1
-  let lastPrefixPayloadLen = 0
-  let lastPrefixEmittedThrough = -1
   let rangeIndex = 0
 
   const ensureCapacity = (extra: number): void => {
@@ -585,111 +596,25 @@ async function streamBulkGraphicDataViaClientRanges(options: {
     onProgress?.(loadedBytes, null)
   }
 
-  const elementsAvailable = (): number =>
-    Math.floor(payloadLen / elementByteSize)
-
-  const advanceCompleteThrough = (
-    availableElements: number,
-    done: boolean,
-  ): number => {
-    const n = numberOfAnnotations
-    let i = completeThroughIndex
-    while (i + 1 < n) {
-      const next = i + 1
-      const endElement =
-        next + 1 < n
-          ? Number(graphicIndex[next + 1]) - 1
-          : done
-            ? availableElements
-            : Number.POSITIVE_INFINITY
-      if (endElement <= availableElements) {
-        i = next
-      } else {
-        break
-      }
-    }
-    completeThroughIndex = i
-    return i
-  }
-
-  const emitPrefixNow = async (done: boolean): Promise<void> => {
-    if (onPrefix == null) {
-      return
-    }
-    const availableElements = elementsAvailable()
-    const throughIndex = advanceCompleteThrough(availableElements, done)
-    if (!done && throughIndex < 0 && availableElements === 0) {
-      return
-    }
-    const emitThrough = done
-      ? throughIndex
-      : Math.min(
-          throughIndex,
-          lastPrefixEmittedThrough + prefixEmitAnnotationStep,
-        )
-    if (!done && emitThrough <= lastPrefixEmittedThrough) {
-      return
-    }
-    lastPrefixPayloadLen = payloadLen
-    await onPrefix({
-      graphicData: makeGraphicDataView(kind, payload.buffer, availableElements),
-      completeThroughIndex: emitThrough,
-      availableElementCount: availableElements,
-      loadedBytes,
-      totalBytes: null,
-      done,
-    })
-    lastPrefixEmittedThrough = Math.max(lastPrefixEmittedThrough, emitThrough)
-    console.info(
-      `[Viv bulk] progressive paint: annotations through ${emitThrough + 1}/${numberOfAnnotations} (${(loadedBytes / (1024 * 1024)).toFixed(1)} MB retrieved)`,
-    )
-    await yieldToBrowser()
-  }
-
-  const drainDecodablePrefixes = async (done: boolean): Promise<void> => {
-    if (onPrefix == null) {
-      return
-    }
-    for (;;) {
-      const availableElements = elementsAvailable()
-      const beforeThrough = completeThroughIndex
-      advanceCompleteThrough(availableElements, done)
-      const byteDelta = payloadLen - lastPrefixPayloadLen
-      const firstAnnotationReady =
-        lastPrefixEmittedThrough < 0 && completeThroughIndex >= 0
-      const annotationsReady =
-        completeThroughIndex - lastPrefixEmittedThrough >=
-        prefixEmitAnnotationStep
-      const shouldEmit =
-        done ||
-        firstAnnotationReady ||
-        byteDelta >= prefixThrottleBytes ||
-        annotationsReady
-      if (!shouldEmit) {
-        break
-      }
-      const emittedThroughBefore = lastPrefixEmittedThrough
-      await emitPrefixNow(done)
-      if (lastPrefixEmittedThrough === emittedThroughBefore) {
-        break
-      }
-      if (
-        !done &&
-        completeThroughIndex === beforeThrough &&
-        byteDelta < prefixThrottleBytes
-      ) {
-        break
-      }
-      if (done || lastPrefixEmittedThrough >= completeThroughIndex) {
-        break
-      }
-    }
-  }
+  const emitter = createBulkPrefixEmitter({
+    kind,
+    elementByteSize,
+    graphicIndex,
+    numberOfAnnotations,
+    prefixThrottleBytes,
+    prefixEmitAnnotationStep,
+    onPrefix,
+    getPayloadBuffer: () => payload.buffer,
+    getPayloadLength: () => payloadLen,
+    getLoadedBytes: () => loadedBytes,
+    getTotalBytes: () => null,
+    route: 'client-range',
+  })
 
   pushBytes(firstChunk)
   rangeIndex++
   let moreRemaining = firstChunk.byteLength >= rangeChunkBytes
-  await drainDecodablePrefixes(!moreRemaining)
+  await emitter.drain(!moreRemaining)
 
   while (moreRemaining) {
     if (signal?.aborted) {
@@ -697,11 +622,31 @@ async function streamBulkGraphicDataViaClientRanges(options: {
     }
     const start = payloadLen
     const end = start + rangeChunkBytes - 1
-    const parts = await retrieveBulkData({
-      BulkDataURI,
-      mediaTypes: [{ mediaType: 'application/octet-stream' }],
-      byteRange: [start, end],
-    })
+    const requestedBytes = end - start + 1
+    let parts: ArrayBuffer[]
+    try {
+      parts = await retrieveBulkData({
+        BulkDataURI,
+        mediaTypes: [{ mediaType: 'application/octet-stream' }],
+        byteRange: [start, end],
+      })
+    } catch (e) {
+      // (`Boolean(...)`: abort may flip mid-await; avoid stale TS narrowing.)
+      if (Boolean(signal?.aborted)) {
+        throw e
+      }
+      // Exact-multiple total size: the request past EOF gets a 416 — that is
+      // normal end-of-stream after ≥1 successful chunk, not a failure.
+      if (rangeIndex > 0 && isRangeEndOfStreamError(e)) {
+        vivBulkAnnDebug('bulkStream:client Range EOF (past-end request)', {
+          start,
+          end,
+          err: e instanceof Error ? e.message : String(e),
+        })
+        break
+      }
+      throw e
+    }
     if (parts.length === 0 || parts[0] == null) {
       break
     }
@@ -709,37 +654,35 @@ async function streamBulkGraphicDataViaClientRanges(options: {
     if (chunk.byteLength === 0) {
       break
     }
-    // Some servers re-send from 0 when Range is unsupported mid-stream.
-    if (chunk.byteLength > rangeChunkBytes * 2) {
-      console.warn(
-        '[Viv bulk] oversized range response mid-stream; stopping Range loop',
-        { chunkBytes: chunk.byteLength, start, end },
+    /**
+     * Verify the response honors the requested range: a ranged body can never
+     * exceed `end - start + 1` bytes. A larger body means the server dropped
+     * Range support mid-stream and re-sent the whole object from byte 0 —
+     * appending it would duplicate the stored prefix and grow without bound.
+     * Complete from that full body instead.
+     */
+    if (chunk.byteLength > requestedBytes) {
+      logger.warn(
+        '[Viv bulk] server ignored HTTP Range mid-stream (response exceeds requested slice); completing from the returned full body instead of appending.',
+        { chunkBytes: chunk.byteLength, requestedBytes, start, end },
       )
-      break
+      return completeFromBufferedPayload({
+        payload: chunk,
+        kind,
+        elementByteSize,
+        numberOfAnnotations,
+        onProgress,
+        route: 'client-range-ignored-midstream',
+      })
     }
     pushBytes(chunk)
     rangeIndex++
     moreRemaining = chunk.byteLength >= rangeChunkBytes
-    await drainDecodablePrefixes(!moreRemaining)
+    await emitter.drain(!moreRemaining)
   }
 
   const finalElementCount = Math.floor(payloadLen / elementByteSize)
-  completeThroughIndex = numberOfAnnotations - 1
-  await drainDecodablePrefixes(true)
-
-  const finalView = makeGraphicDataView(kind, payload.buffer, finalElementCount)
-  if (onPrefix != null && lastPrefixEmittedThrough < completeThroughIndex) {
-    await onPrefix({
-      graphicData: finalView,
-      completeThroughIndex,
-      availableElementCount: finalElementCount,
-      loadedBytes,
-      totalBytes: loadedBytes,
-      done: true,
-    })
-    lastPrefixEmittedThrough = completeThroughIndex
-    await yieldToBrowser()
-  }
+  const finalView = await emitter.finish(finalElementCount)
 
   onProgress?.(loadedBytes, loadedBytes)
   vivBulkAnnDebug('bulkStream:done', {
@@ -887,9 +830,6 @@ async function tryStreamBulkGraphicDataViaRanges(
   let payload = new Uint8Array(totalBytes)
   let payloadLen = 0
   let loadedBytes = 0
-  let completeThroughIndex = -1
-  let lastPrefixPayloadLen = 0
-  let lastPrefixEmittedThrough = -1
   let rangeRequestCount = 0
 
   const ensureCapacity = (extra: number): void => {
@@ -917,103 +857,20 @@ async function tryStreamBulkGraphicDataViaRanges(
     onProgress?.(loadedBytes, totalBytes)
   }
 
-  const elementsAvailable = (): number =>
-    Math.floor(payloadLen / elementByteSize)
-
-  const advanceCompleteThrough = (
-    availableElements: number,
-    done: boolean,
-  ): number => {
-    const n = numberOfAnnotations
-    let i = completeThroughIndex
-    while (i + 1 < n) {
-      const next = i + 1
-      const endElement =
-        next + 1 < n
-          ? Number(graphicIndex[next + 1]) - 1
-          : done
-            ? availableElements
-            : Number.POSITIVE_INFINITY
-      if (endElement <= availableElements) {
-        i = next
-      } else {
-        break
-      }
-    }
-    completeThroughIndex = i
-    return i
-  }
-
-  const emitPrefixNow = async (done: boolean): Promise<void> => {
-    if (onPrefix == null) {
-      return
-    }
-    const availableElements = elementsAvailable()
-    const throughIndex = advanceCompleteThrough(availableElements, done)
-    if (!done && throughIndex < 0 && availableElements === 0) {
-      return
-    }
-    const emitThrough = done
-      ? throughIndex
-      : Math.min(
-          throughIndex,
-          lastPrefixEmittedThrough + prefixEmitAnnotationStep,
-        )
-    if (!done && emitThrough <= lastPrefixEmittedThrough) {
-      return
-    }
-    lastPrefixPayloadLen = payloadLen
-    await onPrefix({
-      graphicData: makeGraphicDataView(kind, payload.buffer, availableElements),
-      completeThroughIndex: emitThrough,
-      availableElementCount: availableElements,
-      loadedBytes,
-      totalBytes,
-      done,
-    })
-    lastPrefixEmittedThrough = Math.max(lastPrefixEmittedThrough, emitThrough)
-    await yieldToBrowser()
-  }
-
-  const drainDecodablePrefixes = async (done: boolean): Promise<void> => {
-    if (onPrefix == null) {
-      return
-    }
-    for (;;) {
-      const availableElements = elementsAvailable()
-      const beforeThrough = completeThroughIndex
-      advanceCompleteThrough(availableElements, done)
-      const byteDelta = payloadLen - lastPrefixPayloadLen
-      const firstAnnotationReady =
-        lastPrefixEmittedThrough < 0 && completeThroughIndex >= 0
-      const annotationsReady =
-        completeThroughIndex - lastPrefixEmittedThrough >=
-        prefixEmitAnnotationStep
-      const shouldEmit =
-        done ||
-        firstAnnotationReady ||
-        byteDelta >= prefixThrottleBytes ||
-        annotationsReady
-      if (!shouldEmit) {
-        break
-      }
-      const emittedThroughBefore = lastPrefixEmittedThrough
-      await emitPrefixNow(done)
-      if (lastPrefixEmittedThrough === emittedThroughBefore) {
-        break
-      }
-      if (
-        !done &&
-        completeThroughIndex === beforeThrough &&
-        byteDelta < prefixThrottleBytes
-      ) {
-        break
-      }
-      if (done || lastPrefixEmittedThrough >= completeThroughIndex) {
-        break
-      }
-    }
-  }
+  const emitter = createBulkPrefixEmitter({
+    kind,
+    elementByteSize,
+    graphicIndex,
+    numberOfAnnotations,
+    prefixThrottleBytes,
+    prefixEmitAnnotationStep,
+    onPrefix,
+    getPayloadBuffer: () => payload.buffer,
+    getPayloadLength: () => payloadLen,
+    getLoadedBytes: () => loadedBytes,
+    getTotalBytes: () => totalBytes,
+    route: 'range',
+  })
 
   const readResponseIntoPayload = async (response: Response): Promise<void> => {
     if (response.body == null) {
@@ -1038,7 +895,7 @@ async function tryStreamBulkGraphicDataViaRanges(
 
   await readResponseIntoPayload(firstResponse)
   rangeRequestCount++
-  await drainDecodablePrefixes(payloadLen >= totalBytes)
+  await emitter.drain(payloadLen >= totalBytes)
 
   while (payloadLen < totalBytes) {
     if (signal?.aborted === true) {
@@ -1056,33 +913,37 @@ async function tryStreamBulkGraphicDataViaRanges(
       credentials,
       signal,
     })
-    if (response.status !== 206 && response.status !== 200) {
+    if (response.status === 200) {
+      /**
+       * Server dropped Range support mid-stream: the body is the entire
+       * object, not the requested slice. Appending it at `start` would
+       * duplicate the stored prefix and corrupt everything after it —
+       * restart the buffer from zero with the full body instead (the bytes
+       * are the same resource, so already-emitted prefixes stay valid).
+       */
+      logger.warn(
+        '[Viv bulk] server ignored Range mid-stream (HTTP 200); restarting buffer with the full response body.',
+        { start, end },
+      )
+      payloadLen = 0
+      emitter.resetByteBaseline()
+      await readResponseIntoPayload(response)
+      rangeRequestCount++
+      await emitter.drain(payloadLen >= totalBytes)
+      continue
+    }
+    if (response.status !== 206) {
       throw new Error(
         `bulk range HTTP ${response.status} at bytes=${start}-${end}`,
       )
     }
     await readResponseIntoPayload(response)
     rangeRequestCount++
-    await drainDecodablePrefixes(payloadLen >= totalBytes)
+    await emitter.drain(payloadLen >= totalBytes)
   }
 
   const finalElementCount = Math.floor(payloadLen / elementByteSize)
-  completeThroughIndex = numberOfAnnotations - 1
-  await drainDecodablePrefixes(true)
-
-  const finalView = makeGraphicDataView(kind, payload.buffer, finalElementCount)
-  if (onPrefix != null && lastPrefixEmittedThrough < completeThroughIndex) {
-    await onPrefix({
-      graphicData: finalView,
-      completeThroughIndex,
-      availableElementCount: finalElementCount,
-      loadedBytes,
-      totalBytes,
-      done: true,
-    })
-    lastPrefixEmittedThrough = completeThroughIndex
-    await yieldToBrowser()
-  }
+  const finalView = await emitter.finish(finalElementCount)
 
   vivBulkAnnDebug('bulkStream:done', {
     route: 'range',
@@ -1224,114 +1085,27 @@ async function consumeBulkBodyStream(options: {
   }
   const reader = response.body.getReader()
   let loadedBytes = 0
-  let completeThroughIndex = -1
-  let lastPrefixPayloadLen = 0
-  let lastPrefixEmittedThrough = -1
   let readCallCount = 0
   let firstByteMs: number | null = null
   const tHeaders0 =
     typeof performance !== 'undefined' ? performance.now() : Date.now()
   const readChunkSizes: number[] = []
 
-  const elementsAvailable = (): number => {
-    const usable = Math.max(0, payloadLen - trailingGuard)
-    return Math.floor(usable / elementByteSize)
-  }
-
-  const advanceCompleteThrough = (
-    availableElements: number,
-    done: boolean,
-  ): number => {
-    const n = numberOfAnnotations
-    let i = completeThroughIndex
-    while (i + 1 < n) {
-      const next = i + 1
-      const endElement =
-        next + 1 < n
-          ? Number(graphicIndex[next + 1]) - 1
-          : done
-            ? availableElements
-            : Number.POSITIVE_INFINITY
-      if (endElement <= availableElements) {
-        i = next
-      } else {
-        break
-      }
-    }
-    completeThroughIndex = i
-    return i
-  }
-
-  const emitPrefixNow = async (done: boolean): Promise<void> => {
-    if (onPrefix == null) {
-      return
-    }
-    const availableElements = elementsAvailable()
-    const throughIndex = advanceCompleteThrough(availableElements, done)
-    if (!done && throughIndex < 0 && availableElements === 0) {
-      return
-    }
-    const emitThrough = done
-      ? throughIndex
-      : Math.min(
-          throughIndex,
-          lastPrefixEmittedThrough + prefixEmitAnnotationStep,
-        )
-    if (!done && emitThrough <= lastPrefixEmittedThrough) {
-      return
-    }
-    lastPrefixPayloadLen = payloadLen
-    await onPrefix({
-      graphicData: makeGraphicDataView(kind, payload.buffer, availableElements),
-      completeThroughIndex: emitThrough,
-      availableElementCount: availableElements,
-      loadedBytes,
-      totalBytes,
-      done,
-    })
-    lastPrefixEmittedThrough = Math.max(lastPrefixEmittedThrough, emitThrough)
-    await yieldToBrowser()
-  }
-
-  const drainDecodablePrefixes = async (done: boolean): Promise<void> => {
-    if (onPrefix == null) {
-      return
-    }
-    for (;;) {
-      const availableElements = elementsAvailable()
-      const beforeThrough = completeThroughIndex
-      advanceCompleteThrough(availableElements, done)
-      const byteDelta = payloadLen - lastPrefixPayloadLen
-      const firstAnnotationReady =
-        lastPrefixEmittedThrough < 0 && completeThroughIndex >= 0
-      const annotationsReady =
-        completeThroughIndex - lastPrefixEmittedThrough >=
-        prefixEmitAnnotationStep
-      const shouldEmit =
-        done ||
-        firstAnnotationReady ||
-        byteDelta >= prefixThrottleBytes ||
-        annotationsReady
-      if (!shouldEmit) {
-        break
-      }
-      const emittedThroughBefore = lastPrefixEmittedThrough
-      await emitPrefixNow(done)
-      if (lastPrefixEmittedThrough === emittedThroughBefore) {
-        break
-      }
-      if (
-        !done &&
-        completeThroughIndex === beforeThrough &&
-        byteDelta < prefixThrottleBytes
-      ) {
-        break
-      }
-      if (done || lastPrefixEmittedThrough >= completeThroughIndex) {
-        break
-      }
-    }
-  }
+  const emitter = createBulkPrefixEmitter({
+    kind,
+    elementByteSize,
+    graphicIndex,
+    numberOfAnnotations,
+    prefixThrottleBytes,
+    prefixEmitAnnotationStep,
+    onPrefix,
+    getPayloadBuffer: () => payload.buffer,
+    getPayloadLength: () => payloadLen,
+    getLoadedBytes: () => loadedBytes,
+    getTotalBytes: () => totalBytes,
+    trailingGuardBytes: trailingGuard,
+    route,
+  })
 
   try {
     for (;;) {
@@ -1371,7 +1145,7 @@ async function consumeBulkBodyStream(options: {
         pushPayload(value, 0)
       }
 
-      await drainDecodablePrefixes(false)
+      await emitter.drain(false)
     }
   } finally {
     reader.releaseLock?.()
@@ -1386,23 +1160,10 @@ async function consumeBulkBodyStream(options: {
   }
   const finalElementCount = Math.floor(payloadEnd / elementByteSize)
   payloadLen = payloadEnd
-  completeThroughIndex = numberOfAnnotations - 1
 
-  await drainDecodablePrefixes(false)
-
-  const finalView = makeGraphicDataView(kind, payload.buffer, finalElementCount)
-  if (onPrefix != null && lastPrefixEmittedThrough < completeThroughIndex) {
-    await onPrefix({
-      graphicData: finalView,
-      completeThroughIndex,
-      availableElementCount: finalElementCount,
-      loadedBytes,
-      totalBytes,
-      done: true,
-    })
-    lastPrefixEmittedThrough = completeThroughIndex
-    await yieldToBrowser()
-  }
+  const finalView = await emitter.finish(finalElementCount, {
+    finalDrainDone: false,
+  })
 
   const likelyBufferedByProxy =
     readCallCount <= 2 &&
@@ -1424,7 +1185,7 @@ async function consumeBulkBodyStream(options: {
   })
   if (likelyBufferedByProxy) {
     // Loud breadcrumb: this is the “points appear only after download” case.
-    console.warn(
+    logger.warn(
       '[Viv bulk] response looks buffered by origin/proxy (few huge reads after long wait). Prefer Range path; check Network for 206 Partial Content.',
       { route, readCallCount, firstByteMs, totalBytes },
     )

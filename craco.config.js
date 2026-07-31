@@ -133,7 +133,7 @@ module.exports = {
       /* Viv / Deck.gl / Luma ship modern JS; transpile for CRA 5 / webpack 5. */
       config.module.rules.push({
         test: /\.m?js$/,
-        include: /node_modules[\\/](@deck\.gl|@luma\.gl|@math\.gl|@probe\.gl|@hms-dbmi[\\/]viv)[\\/]/,
+        include: /node_modules[\\/](@deck\.gl|@luma\.gl|@math\.gl|@probe\.gl|@vivjs)[\\/]/,
         use: {
           loader: require.resolve('babel-loader'),
           options: {
