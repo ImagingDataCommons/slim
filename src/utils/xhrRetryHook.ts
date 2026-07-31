@@ -15,7 +15,7 @@ type RequestHook = (
  * (e.g. STOW POST) are excluded because re-sending them can duplicate
  * partially stored data on a server that failed mid-request.
  */
-const RETRYABLE_METHODS = ['GET', 'HEAD', 'OPTIONS']
+const RETRYABLE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
 /**
  * Returns a configured retry request hook function
@@ -66,7 +66,7 @@ export const getXHRRetryHook = (
   ): XMLHttpRequest => {
     const { url, method } = metadata
 
-    if (!RETRYABLE_METHODS.includes(method.toUpperCase())) {
+    if (!RETRYABLE_METHODS.has(method.toUpperCase())) {
       return request
     }
 
