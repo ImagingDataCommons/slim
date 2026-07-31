@@ -724,8 +724,10 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
     numberOfAnnotations,
   })
 
-  // The index (`LongPrimitivePointIndexList`) is small; fetch it first so the
-  // streaming path can map downloaded byte prefixes → fully-present annotations.
+  /**
+   * The index (`LongPrimitivePointIndexList`) is small; fetch it first so the
+   * streaming path can map downloaded byte prefixes → fully-present annotations.
+   */
   try {
     const rawIndex = await withBulkFetchRetry(
       `graphicIndex ${annotationGroupUID}`,
@@ -738,7 +740,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
           client: fetchClient,
         }),
     )
-    // Inline OL is Uint32Array; bulkdata/P10 paths return Int32Array.
+    /** Inline OL is Uint32Array; bulkdata/P10 paths return Int32Array. */
     graphicIndex =
       rawIndex == null
         ? null
@@ -769,9 +771,11 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
     return null
   }
 
-  // Streaming incremental hydrate: render annotations as their coordinate bytes
-  // arrive, instead of blocking on the full (often hundreds of MB) download.
-  // Returns `null` to signal "not eligible / failed — use monolithic fallback".
+  /**
+   * Streaming incremental hydrate: render annotations as their coordinate bytes
+   * arrive, instead of blocking on the full (often hundreds of MB) download.
+   * Returns `null` to signal "not eligible / failed — use monolithic fallback".
+   */
   const streamingOutcome = await tryStreamingBulkHydrate({
     job,
     geometry,
@@ -794,7 +798,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
     return streamingOutcome.result
   }
 
-  // Fallback: classic monolithic retrieve of the coordinate buffer (index loaded).
+  /** Fallback: classic monolithic retrieve of the coordinate buffer (index loaded). */
   try {
     graphicData = await withBulkFetchRetry(
       `graphicData ${annotationGroupUID}`,
@@ -2018,8 +2022,10 @@ async function buildPathLayersFromGraphicData(options: {
     1,
     Math.ceil((rangeEnd - rangeStart) / VIV_BULK_PATHS_PER_PATH_LAYER),
   )
-  // Viewport-culled path rebuilds: skip full-group center-out sort so the first
-  // visible polygons appear immediately (422k sorts blocked high-zoom upgrades).
+  /**
+   * Viewport-culled path rebuilds: skip full-group center-out sort so the first
+   * visible polygons appear immediately (422k sorts blocked high-zoom upgrades).
+   */
   const annotationOrder =
     deckLoadCenter != null && !isSubRange && viewportBounds == null
       ? await computeCenterOutAnnotationOrder({

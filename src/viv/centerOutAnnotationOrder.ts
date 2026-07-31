@@ -94,7 +94,7 @@ function getCenterOutWorker(): Worker {
   if (centerOutWorker != null) {
     return centerOutWorker
   }
-  // Worker source derives from the canonical kernel (single implementation).
+  /** Worker source derives from the canonical kernel (single implementation). */
   const workerSource =
     'var computeOrder=' +
     centerOutOrderFromFirstVertexXY.toString() +
@@ -107,8 +107,10 @@ function getCenterOutWorker(): Worker {
   try {
     centerOutWorker = new Worker(workerUrl)
   } finally {
-    // The worker holds its own reference to the loaded script; revoke
-    // immediately so the blob URL does not leak.
+    /**
+     * The worker holds its own reference to the loaded script; revoke
+     * immediately so the blob URL does not leak.
+     */
     URL.revokeObjectURL(workerUrl)
   }
   return centerOutWorker
@@ -175,7 +177,7 @@ export async function computeCenterOutAnnotationOrder(
   try {
     return await computeCenterOutAnnotationOrderInWorker(options)
   } catch (e) {
-    // Unmount termination must not kick off a main-thread mega-sort.
+    /** Unmount termination must not kick off a main-thread mega-sort. */
     if (e instanceof CenterOutWorkerTerminatedError) {
       throw e
     }

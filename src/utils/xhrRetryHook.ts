@@ -92,7 +92,7 @@ export const getXHRRetryHook = (
       operation.attempt(function operationAttempt(currentAttempt) {
         if (currentAttempt > 1) {
           console.warn(`Requesting ${url}... (attempt: ${currentAttempt})`)
-          // open() empties author request headers; re-apply those + responseType.
+          /** open() empties author request headers; re-apply those + responseType. */
           request.open(method, url, true)
           request.responseType = responseType
           for (const key of Object.keys(headers)) {
@@ -115,7 +115,7 @@ export const getXHRRetryHook = (
               ),
             )
           ) {
-            // Schedule another attempt; do not surface failure to dicomweb-client yet.
+            /** Schedule another attempt; do not surface failure to dicomweb-client yet. */
             return
           }
 

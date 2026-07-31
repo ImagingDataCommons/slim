@@ -547,8 +547,10 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     if (!bulkHydrateTileThrottle) {
       return [baseLayer]
     }
-    // Deck clone only adjusts concurrency; same loader / cache / selections.
-    // maxRequests is a TileLayer/Viv prop, not on deck.gl's base LayerProps types.
+    /**
+     * Deck clone only adjusts concurrency; same loader / cache / selections.
+     * maxRequests is a TileLayer/Viv prop, not on deck.gl's base LayerProps types.
+     */
     return [
       baseLayer.clone({
         maxRequests: 4,
@@ -661,9 +663,11 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
               top: '0',
               width: '100%',
               height: '100%',
-              // When layers exist this canvas sits above the image Deck and must
-              // own pan/zoom (controller below) — controller={false} left wheel
-              // events eaten with nowhere to go.
+              /**
+               * When layers exist this canvas sits above the image Deck and must
+               * own pan/zoom (controller below) — controller={false} left wheel
+               * events eaten with nowhere to go.
+               */
               pointerEvents: annLayers.length > 0 ? 'auto' : 'none',
             }}
             views={orthographicView}

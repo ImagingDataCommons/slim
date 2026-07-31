@@ -533,7 +533,7 @@ export function useVivBulkAnnotations(
         phase: VivBulkGroupLoadPhase
       },
     ) => {
-      // A fresh progress report supersedes any pending done/error auto-clear.
+      /** A fresh progress report supersedes any pending done/error auto-clear. */
       if (groupDoneTimersRef.current[groupUID] != null) {
         window.clearTimeout(groupDoneTimersRef.current[groupUID])
         delete groupDoneTimersRef.current[groupUID]
@@ -901,16 +901,18 @@ export function useVivBulkAnnotations(
             chunksCommitted,
           })
           if (chunksCommitted === 0) {
-            // No streamed chunks: swap the full result in atomically — but never
-            // replace an existing centroid overview with an empty path result
-            // (that left high-zoom views with neither centroids nor polygons).
+            /**
+             * No streamed chunks: swap the full result in atomically — but never
+             * replace an existing centroid overview with an empty path result
+             * (that left high-zoom views with neither centroids nor polygons).
+             */
             const existing = slicesByUidRef.current[uid]
             if (layers.length === 0 && (existing?.layers.length ?? 0) > 0) {
               vivBulkAnnDebug(
                 'viewport:LOD keep prior layers (empty full rebuild)',
                 { uid, mode, priorLayers: existing?.layers.length ?? 0 },
               )
-              // Allow the next pan/zoom attempt key to retry this region.
+              /** Allow the next pan/zoom attempt key to retry this region. */
               delete bulkFullPathAttemptKeyRef.current[uid]
             } else {
               const nextSlice: VivBulkAnnotationLayerSlice = {
@@ -937,8 +939,10 @@ export function useVivBulkAnnotations(
           if (bulkViewportRebuildGenRef.current[uid] !== gen) {
             return
           }
-          // A non-quiet rebuild reported 'processing' — settle it as an error
-          // so the load indicator cannot spin forever.
+          /**
+           * A non-quiet rebuild reported 'processing' — settle it as an error
+           * so the load indicator cannot spin forever.
+           */
           if (!quiet && visibleBulkUidsRef.current.has(uid)) {
             markGroupLoadError(uid)
           }
@@ -1034,8 +1038,10 @@ export function useVivBulkAnnotations(
       return
     }
 
-    // Invalidate prior catalog immediately so a mid-session client/series
-    // change cannot leave visible groups blank against a stale graphic cache.
+    /**
+     * Invalidate prior catalog immediately so a mid-session client/series
+     * change cannot leave visible groups blank against a stale graphic cache.
+     */
     bulkGraphicCacheByUidRef.current = {}
     setBulkCatalogReady(false)
     commitSlices({})
@@ -1170,8 +1176,10 @@ export function useVivBulkAnnotations(
     await new Promise<void>((resolve) => {
       setTimeout(resolve, 0)
     })
-    // requestAnimationFrame never fires in hidden tabs — hydrate would stall
-    // indefinitely in the background. Fall back to a short timeout there.
+    /**
+     * requestAnimationFrame never fires in hidden tabs — hydrate would stall
+     * indefinitely in the background. Fall back to a short timeout there.
+     */
     if (document.visibilityState === 'hidden') {
       await new Promise<void>((resolve) => {
         setTimeout(resolve, 16)
@@ -1270,8 +1278,10 @@ export function useVivBulkAnnotations(
             commitSlices({ ...slicesByUidRef.current, [uid]: nextSlice })
             setBulkStreamPaintGen((g) => g + 1)
           }
-          // First paint + every 8th: force a frame. Other updates stay async so
-          // wheel/pan on the overlay controller can run between decode batches.
+          /**
+           * First paint + every 8th: force a frame. Other updates stay async so
+           * wheel/pan on the overlay controller can run between decode batches.
+           */
           if (streamPaintSerial === 1 || streamPaintSerial % 8 === 0) {
             flushSync(apply)
           } else {
@@ -1371,8 +1381,10 @@ export function useVivBulkAnnotations(
         if (otherChunks.length === 0) {
           return
         }
-        // Path chunks (high-res LOD upgrade): drop centroid stream overlay and
-        // replace — never append polygons onto a streamPreview centers layer.
+        /**
+         * Path chunks (high-res LOD upgrade): drop centroid stream overlay and
+         * replace — never append polygons onto a streamPreview centers layer.
+         */
         const existing = slicesByUidRef.current[uid]
         const existingLayers = existing?.layers
         const upgradingFromCentroids =
@@ -1946,7 +1958,7 @@ export function useVivBulkAnnotations(
         continue
       }
       if (highRes) {
-        // Mark this view so the pan/zoom effect does not immediately rebuild again.
+        /** Mark this view so the pan/zoom effect does not immediately rebuild again. */
         bulkFullPathAttemptKeyRef.current[uid] = attemptKey
       } else {
         delete bulkFullPathAttemptKeyRef.current[uid]
@@ -1991,7 +2003,7 @@ export function useVivBulkAnnotations(
         if (bulkGraphicCacheByUidRef.current[uid] == null) {
           continue
         }
-        // Same view bucket already rebuilt (or in flight) — skip.
+        /** Same view bucket already rebuilt (or in flight) — skip. */
         if (bulkFullPathAttemptKeyRef.current[uid] === attemptKey) {
           continue
         }
@@ -2047,7 +2059,7 @@ export function useVivBulkAnnotations(
     [streamingDeckOverlaysByUid],
   )
 
-  // bulkSlicesByUid / bulkStreamPaintGen invalidate while data is read via refs.
+  /** bulkSlicesByUid / bulkStreamPaintGen invalidate while data is read via refs. */
   const annLayers = useMemo((): Layer[] => {
     void bulkSlicesByUid
     void bulkStreamPaintGen
