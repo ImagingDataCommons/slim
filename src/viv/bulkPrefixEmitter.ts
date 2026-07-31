@@ -31,6 +31,44 @@ async function yieldToBrowser(): Promise<void> {
   })
 }
 
+/**
+ * Throw when a finished buffer is shorter than what `graphicIndex` requires,
+ * so callers fall back instead of reporting a truncated group as complete.
+ */
+export function assertBulkStreamElementCount(options: {
+  finalElementCount: number
+  graphicIndex: Int32Array
+  numberOfAnnotations: number
+  route: string
+}): void {
+  const { finalElementCount, graphicIndex, numberOfAnnotations, route } =
+    options
+  if (numberOfAnnotations <= 0 || graphicIndex.length < numberOfAnnotations) {
+    return
+  }
+  const requiredMinElements = Number(graphicIndex[numberOfAnnotations - 1])
+  if (
+    !Number.isFinite(requiredMinElements) ||
+    finalElementCount >= requiredMinElements
+  ) {
+    return
+  }
+  let completeAnnotations = 0
+  for (let i = 0; i + 1 < numberOfAnnotations; i++) {
+    if (Number(graphicIndex[i + 1]) - 1 <= finalElementCount) {
+      completeAnnotations = i + 1
+    } else {
+      break
+    }
+  }
+  logger.warn(
+    `[Viv bulk] bulk coordinate stream ended short: got ${finalElementCount} elements but graphicIndex requires at least ${requiredMinElements}; only ~${completeAnnotations}/${numberOfAnnotations} annotations are complete (route ${route}). Falling back instead of reporting a truncated group as complete.`,
+  )
+  throw new Error(
+    `bulk stream truncated (route ${route}): ${finalElementCount} elements < ${requiredMinElements} required by graphicIndex`,
+  )
+}
+
 export type BulkPrefixEmitter = {
   /**
    * Emit throttled prefixes for annotations that became fully available since
@@ -220,44 +258,16 @@ export function createBulkPrefixEmitter(options: {
     }
   }
 
-  /**
-   * Detect a stream that ended short of what `graphicIndex` implies. The last
-   * index entry is the 1-based start offset of the final annotation's first
-   * coordinate, so the buffer must hold at least that many elements for every
-   * annotation to be (at least partially) present.
-   */
-  const assertStreamComplete = (finalElementCount: number): void => {
-    if (numberOfAnnotations <= 0 || graphicIndex.length < numberOfAnnotations) {
-      return
-    }
-    const requiredMinElements = Number(graphicIndex[numberOfAnnotations - 1])
-    if (
-      !Number.isFinite(requiredMinElements) ||
-      finalElementCount >= requiredMinElements
-    ) {
-      return
-    }
-    let completeAnnotations = 0
-    for (let i = 0; i + 1 < numberOfAnnotations; i++) {
-      if (Number(graphicIndex[i + 1]) - 1 <= finalElementCount) {
-        completeAnnotations = i + 1
-      } else {
-        break
-      }
-    }
-    logger.warn(
-      `[Viv bulk] bulk coordinate stream ended short: got ${finalElementCount} elements but graphicIndex requires at least ${requiredMinElements}; only ~${completeAnnotations}/${numberOfAnnotations} annotations are complete (route ${route}). Falling back instead of reporting a truncated group as complete.`,
-    )
-    throw new Error(
-      `bulk stream truncated (route ${route}): ${finalElementCount} elements < ${requiredMinElements} required by graphicIndex`,
-    )
-  }
-
   const finish = async (
     finalElementCount: number,
     opts?: { finalDrainDone?: boolean },
   ): Promise<StreamableBulkGraphicArray> => {
-    assertStreamComplete(finalElementCount)
+    assertBulkStreamElementCount({
+      finalElementCount,
+      graphicIndex,
+      numberOfAnnotations,
+      route,
+    })
     completeThroughIndex = numberOfAnnotations - 1
     await drain(opts?.finalDrainDone ?? true)
     const finalView = makeView(finalElementCount)

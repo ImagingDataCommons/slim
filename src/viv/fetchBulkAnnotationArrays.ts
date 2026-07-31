@@ -31,7 +31,10 @@
  */
 
 import { logger } from '../utils/logger'
-import { createBulkPrefixEmitter } from './bulkPrefixEmitter'
+import {
+  assertBulkStreamElementCount,
+  createBulkPrefixEmitter,
+} from './bulkPrefixEmitter'
 import { vivBulkAnnDebug } from './vivBulkAnnDebug'
 
 /** Coordinate buffer element kinds we can stream-decode (4-byte VRs only). */
@@ -307,17 +310,30 @@ function completeFromBufferedPayload(options: {
   payload: Uint8Array
   kind: StreamableBulkKind
   elementByteSize: number
+  graphicIndex: Int32Array
   numberOfAnnotations: number
   onProgress?: (loadedBytes: number, totalBytes: number | null) => void
   route: string
 }): StreamableBulkGraphicArray {
-  const { kind, elementByteSize, numberOfAnnotations, onProgress, route } =
-    options
+  const {
+    kind,
+    elementByteSize,
+    graphicIndex,
+    numberOfAnnotations,
+    onProgress,
+    route,
+  } = options
   const owned = ownedPayloadBytes(options.payload)
   const loadedBytes = owned.byteLength
   onProgress?.(loadedBytes, loadedBytes)
 
   const finalElementCount = Math.floor(loadedBytes / elementByteSize)
+  assertBulkStreamElementCount({
+    finalElementCount,
+    graphicIndex,
+    numberOfAnnotations,
+    route,
+  })
   const finalView = makeGraphicDataView(kind, owned.buffer, finalElementCount)
 
   vivBulkAnnDebug('bulkStream:done', {
@@ -474,6 +490,11 @@ function partToUint8(part: ArrayBuffer | Uint8Array): Uint8Array {
  * an empty body, which dicomweb-client surfaces as a rejection. After at least
  * one successful chunk that is normal end-of-stream, not a hard failure.
  */
+/** Fresh read of `aborted` (defeats stale control-flow narrowing after await). */
+function isAbortSignalAborted(signal: AbortSignal | undefined): boolean {
+  return signal?.aborted === true
+}
+
 function isRangeEndOfStreamError(e: unknown): boolean {
   if (e == null) {
     return false
@@ -486,7 +507,9 @@ function isRangeEndOfStreamError(e: unknown): boolean {
     return true
   }
   const msg = e instanceof Error ? e.message : String(e)
-  return /\b416\b|range not satisfiable|empty response/i.test(msg)
+  // Prefer status above; fall back only to explicit Range Not Satisfiable wording
+  // (avoid bare `\b416\b`, which can match offsets/UIDs in unrelated messages).
+  return /416\s*range not satisfiable|range not satisfiable/i.test(msg)
 }
 
 /**
@@ -558,6 +581,7 @@ async function streamBulkGraphicDataViaClientRanges(options: {
       payload: firstChunk,
       kind,
       elementByteSize,
+      graphicIndex,
       numberOfAnnotations,
       onProgress,
       route: 'client-range-ignored-buffered',
@@ -631,8 +655,9 @@ async function streamBulkGraphicDataViaClientRanges(options: {
         byteRange: [start, end],
       })
     } catch (e) {
-      // (`Boolean(...)`: abort may flip mid-await; avoid stale TS narrowing.)
-      if (Boolean(signal?.aborted)) {
+      // Re-read via helper: AbortSignal.aborted can flip mid-await, and TS's
+      // control-flow narrowing from the pre-await check would treat it as false.
+      if (isAbortSignalAborted(signal)) {
         throw e
       }
       // Exact-multiple total size: the request past EOF gets a 416 — that is
@@ -670,6 +695,7 @@ async function streamBulkGraphicDataViaClientRanges(options: {
         payload: chunk,
         kind,
         elementByteSize,
+        graphicIndex,
         numberOfAnnotations,
         onProgress,
         route: 'client-range-ignored-midstream',
@@ -897,6 +923,8 @@ async function tryStreamBulkGraphicDataViaRanges(
   rangeRequestCount++
   await emitter.drain(payloadLen >= totalBytes)
 
+  /** Cap mid-stream HTTP 200 restarts so a short full body cannot loop forever. */
+  let fullBodyRestarts = 0
   while (payloadLen < totalBytes) {
     if (signal?.aborted === true) {
       throw new DOMException('The operation was aborted.', 'AbortError')
@@ -918,9 +946,15 @@ async function tryStreamBulkGraphicDataViaRanges(
        * Server dropped Range support mid-stream: the body is the entire
        * object, not the requested slice. Appending it at `start` would
        * duplicate the stored prefix and corrupt everything after it —
-       * restart the buffer from zero with the full body instead (the bytes
+       * restart the buffer from zero with the full body once (the bytes
        * are the same resource, so already-emitted prefixes stay valid).
        */
+      if (fullBodyRestarts >= 1) {
+        throw new Error(
+          `bulk range: repeated HTTP 200 mid-stream after restart (bytes=${start}-${end}); falling back`,
+        )
+      }
+      fullBodyRestarts += 1
       logger.warn(
         '[Viv bulk] server ignored Range mid-stream (HTTP 200); restarting buffer with the full response body.',
         { start, end },

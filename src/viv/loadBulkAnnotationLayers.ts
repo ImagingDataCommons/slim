@@ -727,7 +727,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
   // The index (`LongPrimitivePointIndexList`) is small; fetch it first so the
   // streaming path can map downloaded byte prefixes → fully-present annotations.
   try {
-    graphicIndex = await withBulkFetchRetry(
+    const rawIndex = await withBulkFetchRetry(
       `graphicIndex ${annotationGroupUID}`,
       () =>
         dmv.annotation.fetchGraphicIndex({
@@ -738,6 +738,13 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
           client: fetchClient,
         }),
     )
+    // Inline OL is Uint32Array; bulkdata/P10 paths return Int32Array.
+    graphicIndex =
+      rawIndex == null
+        ? null
+        : rawIndex instanceof Int32Array
+          ? rawIndex
+          : new Int32Array(rawIndex)
   } catch (e) {
     vivBulkAnnPhase('hydrate:FETCH failed (graphicIndex)', {
       annotationGroupUID,
