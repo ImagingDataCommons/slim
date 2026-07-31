@@ -5,37 +5,49 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 concurrency:
-  group: deploy-gh-pages
-  cancel-in-progress: true
+  group: deploy-gh-pages-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   deploy-to-github-pages:
+    # The check name "Deploy to GitHub Pages" is required by the master ruleset,
+    # so this job must also run (build-only) on pull requests.
     name: "Deploy to GitHub Pages"
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - name: Checkout to repository
-        uses: actions/checkout@v4.2.2
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4.4.0
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 24
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Build and deploy to GitHub Pages
+      - name: Build
+        run: pnpm run predeploy
+
+      # Only pushes to master (and manual runs) publish; pull requests stop
+      # after the build so unmerged code never overwrites the live demo site.
+      - name: Deploy to GitHub Pages
+        if: github.event_name != 'pull_request'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions-bot"
           git config user.email "support+actions@github.com"
           git remote set-url origin "https://git:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          pnpm run predeploy
           pnpm exec gh-pages -d build -f
