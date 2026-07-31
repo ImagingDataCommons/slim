@@ -92,7 +92,7 @@ export function resolveStreamableGraphicDataReference(options: {
   const bulkdataItem = options.bulkdataItem as
     | Record<string, unknown>
     | undefined
-  // Inline coordinates: nothing to stream.
+  /** Inline coordinates: nothing to stream. */
   if (
     'PointCoordinatesData' in metadataItem ||
     'DoublePointCoordinatesData' in metadataItem
@@ -116,10 +116,12 @@ export function resolveStreamableGraphicDataReference(options: {
   ) {
     return null
   }
-  // DICOM JSON sometimes omits `vr` on BulkDataURI stubs. Infer the standard VR
-  // so streaming isn't silently disabled (empty vr → monolithic fallback).
-  // Point Coordinates Data (0066,0016) is OF (32-bit float); Double Point
-  // Coordinates Data (0066,0022) is OD. (OL is the VR of the *index* list.)
+  /**
+   * DICOM JSON sometimes omits `vr` on BulkDataURI stubs. Infer the standard VR
+   * so streaming isn't silently disabled (empty vr → monolithic fallback).
+   * Point Coordinates Data (0066,0016) is OF (32-bit float); Double Point
+   * Coordinates Data (0066,0022) is OD. (OL is the VR of the *index* list.)
+   */
   if (ref.vr == null || ref.vr === '') {
     return {
       ...ref,
@@ -507,8 +509,10 @@ function isRangeEndOfStreamError(e: unknown): boolean {
     return true
   }
   const msg = e instanceof Error ? e.message : String(e)
-  // Prefer status above; fall back only to explicit Range Not Satisfiable wording
-  // (avoid bare `\b416\b`, which can match offsets/UIDs in unrelated messages).
+  /**
+   * Prefer status above; fall back only to explicit Range Not Satisfiable wording
+   * (avoid bare `\b416\b`, which can match offsets/UIDs in unrelated messages).
+   */
   return /416\s*range not satisfiable|range not satisfiable/i.test(msg)
 }
 
@@ -551,7 +555,7 @@ async function streamBulkGraphicDataViaClientRanges(options: {
   const firstRequestedBytes = firstEnd + 1
   const firstParts = await retrieveBulkData({
     BulkDataURI,
-    // dicomweb-client expects `{ mediaType }` objects, not bare strings.
+    /** dicomweb-client expects `{ mediaType }` objects, not bare strings. */
     mediaTypes: [{ mediaType: 'application/octet-stream' }],
     byteRange: [0, firstEnd],
   })
@@ -655,13 +659,17 @@ async function streamBulkGraphicDataViaClientRanges(options: {
         byteRange: [start, end],
       })
     } catch (e) {
-      // Re-read via helper: AbortSignal.aborted can flip mid-await, and TS's
-      // control-flow narrowing from the pre-await check would treat it as false.
+      /**
+       * Re-read via helper: AbortSignal.aborted can flip mid-await, and TS's
+       * control-flow narrowing from the pre-await check would treat it as false.
+       */
       if (isAbortSignalAborted(signal)) {
         throw e
       }
-      // Exact-multiple total size: the request past EOF gets a 416 — that is
-      // normal end-of-stream after ≥1 successful chunk, not a failure.
+      /**
+       * Exact-multiple total size: the request past EOF gets a 416 — that is
+       * normal end-of-stream after ≥1 successful chunk, not a failure.
+       */
       if (rangeIndex > 0 && isRangeEndOfStreamError(e)) {
         vivBulkAnnDebug('bulkStream:client Range EOF (past-end request)', {
           start,
@@ -725,7 +733,7 @@ function parseContentRangeTotal(contentRange: string | null): number | null {
   if (contentRange == null || contentRange.length === 0) {
     return null
   }
-  // e.g. "bytes 0-2097151/52345678" or "bytes */52345678"
+  /** e.g. "bytes 0-2097151/52345678" or "bytes *\/52345678" */
   const match = /bytes\s+(?:\d+-\d+|\*)\/(\d+)/i.exec(contentRange)
   if (match == null) {
     return null
@@ -777,7 +785,7 @@ async function tryStreamBulkGraphicDataViaRanges(
     method: 'GET',
     headers: {
       ...headers,
-      // Range is only valid for single-part octet-stream (dicomweb-client rule).
+      /** Range is only valid for single-part octet-stream (dicomweb-client rule). */
       Accept: 'application/octet-stream',
       Range: `bytes=0-${firstEnd}`,
     },
@@ -786,8 +794,10 @@ async function tryStreamBulkGraphicDataViaRanges(
   })
 
   if (firstResponse.status === 200) {
-    // Server ignored Range and returned the whole object — still usable, but
-    // may be fully buffered before the body becomes readable (same GCP issue).
+    /**
+     * Server ignored Range and returned the whole object — still usable, but
+     * may be fully buffered before the body becomes readable (same GCP issue).
+     */
     vivBulkAnnDebug('bulkStream:range ignored (HTTP 200); reading body', {
       url: resolvedUrl,
     })
@@ -814,7 +824,7 @@ async function tryStreamBulkGraphicDataViaRanges(
       status: firstResponse.status,
       url: resolvedUrl,
     })
-    // Consume/cancel body so the socket can be reused.
+    /** Consume/cancel body so the socket can be reused. */
     try {
       await firstResponse.body?.cancel()
     } catch {
@@ -838,7 +848,7 @@ async function tryStreamBulkGraphicDataViaRanges(
     firstChunkLen > 0 &&
     firstChunkLen < rangeChunkBytes
   ) {
-    // Tiny object returned as a single 206 covering the whole resource.
+    /** Tiny object returned as a single 206 covering the whole resource. */
     totalBytes = firstChunkLen
   }
   if (totalBytes == null || !Number.isFinite(totalBytes) || totalBytes <= 0) {
@@ -1218,7 +1228,7 @@ async function consumeBulkBodyStream(options: {
     likelyBufferedByProxy,
   })
   if (likelyBufferedByProxy) {
-    // Loud breadcrumb: this is the “points appear only after download” case.
+    /** Loud breadcrumb: this is the “points appear only after download” case. */
     logger.warn(
       '[Viv bulk] response looks buffered by origin/proxy (few huge reads after long wait). Prefer Range path; check Network for 206 Partial Content.',
       { route, readCallCount, firstByteMs, totalBytes },
