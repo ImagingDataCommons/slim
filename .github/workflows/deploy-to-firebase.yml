@@ -6,20 +6,31 @@ on:
   push:
     branches: [master]
 
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+concurrency:
+  group: deploy-firebase-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   deploy-firebase:
     name: "Deploy to Firebase"
-    if: "${{ github.event.pull_request.head.repo.full_name == github.repository }}"
+    # Forked PRs cannot access the Firebase service account secret, so skip them.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - name: Checkout to repository
-        uses: actions/checkout@v4.2.2
+      - name: Checkout repository
+        uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4.4.0
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm

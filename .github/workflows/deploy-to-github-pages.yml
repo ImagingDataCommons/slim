@@ -3,8 +3,10 @@ name: slim/deploy-to-github-pages
 on:
   push:
     branches: [master]
-  pull_request:
-    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 concurrency:
   group: deploy-gh-pages
@@ -14,15 +16,16 @@ jobs:
   deploy-to-github-pages:
     name: "Deploy to GitHub Pages"
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - name: Checkout to repository
-        uses: actions/checkout@v4.2.2
+      - name: Checkout repository
+        uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4.4.0
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm

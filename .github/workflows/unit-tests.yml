@@ -6,19 +6,27 @@ on:
   pull_request:
     branches: [master]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build-and-test:
     name: "Build and run unit tests"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Checkout to repository
-        uses: actions/checkout@v4.2.2
+      - name: Checkout repository
+        uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4.4.0
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
@@ -26,11 +34,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build
-        run: pnpm run build
-
       - name: Lint
         run: pnpm run lint
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Build
+        run: pnpm run build
 
       - name: Test
         run: pnpm run test
