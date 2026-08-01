@@ -63,7 +63,7 @@ const applyHook = (
 
 describe('getXHRRetryHook', () => {
   beforeEach(() => {
-    jest.spyOn(console, 'warn').mockImplementation(() => {})
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined)
   })
 
   afterEach(() => {
