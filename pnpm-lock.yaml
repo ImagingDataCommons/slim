@@ -46,8 +46,8 @@ importers:
         specifier: ^5.2.1
         version: 5.3.0
       dicom-microscopy-viewer:
-        specifier: github:ImagingDataCommons/dicom-microscopy-viewer#b9925eb8296f7ac5053a99bcb67c5d770338abfa
-        version: https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/b9925eb8296f7ac5053a99bcb67c5d770338abfa(@loaders.gl/core@4.4.5)(@luma.gl/core@9.1.10)(@luma.gl/engine@9.1.10(@luma.gl/core@9.1.10)(@luma.gl/shadertools@9.1.10(@luma.gl/core@9.1.10)))
+        specifier: github:ImagingDataCommons/dicom-microscopy-viewer#51a7c31c93259f6d710b71eb2155498101571d13
+        version: https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/51a7c31c93259f6d710b71eb2155498101571d13(@loaders.gl/core@4.4.5)(@luma.gl/core@9.1.10)(@luma.gl/engine@9.1.10(@luma.gl/core@9.1.10)(@luma.gl/shadertools@9.1.10(@luma.gl/core@9.1.10)))
       dicomweb-client:
         specifier: 0.10.3
         version: 0.10.3
@@ -2754,8 +2754,8 @@ packages:
     engines: {node: '>= 4.2.1'}
     hasBin: true
 
-  dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/b9925eb8296f7ac5053a99bcb67c5d770338abfa:
-    resolution: {gitHosted: true, tarball: https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/b9925eb8296f7ac5053a99bcb67c5d770338abfa}
+  dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/51a7c31c93259f6d710b71eb2155498101571d13:
+    resolution: {gitHosted: true, tarball: https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/51a7c31c93259f6d710b71eb2155498101571d13}
     version: 0.49.0
 
   dicomweb-client@0.10.3:
@@ -9747,7 +9747,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/b9925eb8296f7ac5053a99bcb67c5d770338abfa(@loaders.gl/core@4.4.5)(@luma.gl/core@9.1.10)(@luma.gl/engine@9.1.10(@luma.gl/core@9.1.10)(@luma.gl/shadertools@9.1.10(@luma.gl/core@9.1.10))):
+  dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/51a7c31c93259f6d710b71eb2155498101571d13(@loaders.gl/core@4.4.5)(@luma.gl/core@9.1.10)(@luma.gl/engine@9.1.10(@luma.gl/core@9.1.10)(@luma.gl/shadertools@9.1.10(@luma.gl/core@9.1.10))):
     dependencies:
       '@cornerstonejs/codec-charls': 1.2.5
       '@cornerstonejs/codec-libjpeg-turbo-8bit': 1.2.4

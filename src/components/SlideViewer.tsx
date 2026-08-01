@@ -3000,7 +3000,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       getAnnotationGroupMeasurementRange?: (
         uid: string,
         measurement?: dcmjs.sr.coding.CodedConcept,
-      ) => { min: number; max: number }
+      ) => { min: number; max: number } | null
     }
     if (typeof viewer.getAnnotationGroupMeasurementRange !== 'function') {
       return null
@@ -3035,7 +3035,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         getAnnotationGroupMeasurementRange?: (
           uid: string,
           measurement?: dcmjs.sr.coding.CodedConcept,
-        ) => { min: number; max: number }
+        ) => { min: number; max: number } | null
       }
       let nextStyle = { ...styleOptions }
       if (
@@ -3043,13 +3043,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         styleOptions.limitValues == null &&
         typeof viewer.getAnnotationGroupMeasurementRange === 'function'
       ) {
+        /** May be null until the viewer has fetched measurement values. */
         const range = viewer.getAnnotationGroupMeasurementRange(
           uid,
           styleOptions.measurement,
         )
-        nextStyle = {
-          ...nextStyle,
-          limitValues: [range.min, range.max],
+        if (range != null) {
+          nextStyle = {
+            ...nextStyle,
+            limitValues: [range.min, range.max],
+          }
         }
       }
       viewer.setAnnotationGroupStyle(uid, nextStyle)
