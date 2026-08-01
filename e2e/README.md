@@ -47,9 +47,10 @@ pnpm run build:e2e && pnpm run serve:e2e     # terminal A
 pnpm run test:e2e                            # terminal B
 ```
 
-The suite uses port **3977** (not 3000) so it never collides with other dev
-servers. Playwright can also start the server itself (`webServer` in
-`playwright.config.ts`) when nothing is on that port.
+`serve:e2e` is a tiny dependency-free SPA static server
+(`scripts/serve-e2e.mjs`) that listens on port **3977** (chosen so it never
+collides with other common `:3000` dev servers). Playwright can also start it
+itself via the `webServer` config when nothing is listening on that port.
 
 ## Screenshot baselines
 
