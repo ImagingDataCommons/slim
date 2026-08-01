@@ -417,6 +417,8 @@ class AnnotationGroupItem extends React.Component<
         uid: this.props.annotationGroup.uid,
         styleOptions: {
           color: this.props.defaultStyle.color,
+          /** Explicitly clear so the viewer deactivates measurement filtering. */
+          measurement: undefined,
         },
       })
       this.setState((state) => ({
