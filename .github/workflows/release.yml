@@ -35,7 +35,9 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts
+        # Dependency build scripts are gated by allowBuilds in pnpm-workspace.yaml.
+        # The git-hosted dicom-microscopy-viewer needs its prepare script to build dist/.
+        run: pnpm install --frozen-lockfile
 
       - name: Build
         run: pnpm run build
