@@ -10,7 +10,8 @@ allowBuilds:
   # updated whenever the dependency pin in package.json changes.
   dicom-microscopy-viewer: true
   dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/51a7c31c93259f6d710b71eb2155498101571d13: set this to true or false
-  'dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/b0fcc0470e5ed5cb511d8c144404c0f656fbca22': true
+  'dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/6041fe04fea92c185ae82c051e356978d42e8b80': true
+  dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/b0fcc0470e5ed5cb511d8c144404c0f656fbca22: set this to true or false
 
 overrides:
   '@types/d3-dispatch': 3.0.6
