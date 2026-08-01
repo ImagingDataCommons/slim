@@ -11,8 +11,9 @@
  * worth the risk of similar peer-dep breakage.
  */
 import { createServer } from 'node:http'
-import { createReadStream, existsSync, statSync } from 'node:fs'
-import { extname, join, normalize, resolve } from 'node:path'
+import { existsSync } from 'node:fs'
+import { open } from 'node:fs/promises'
+import { extname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const HOST = process.env.E2E_HOST ?? '127.0.0.1'
@@ -40,59 +41,96 @@ const MIME = {
   '.wasm': 'application/wasm',
 }
 
+/**
+ * Resolve a request path under ROOT, rejecting anything that escapes it
+ * (including encoded `..` segments and absolute paths).
+ */
 function safeJoin(root, urlPath) {
-  const decoded = decodeURIComponent(urlPath.split('?')[0])
-  const candidate = normalize(join(root, decoded))
-  if (!candidate.startsWith(root)) {
+  const raw = (urlPath.split('?')[0] ?? '/').replace(/^\/+/, '')
+  let decoded
+  try {
+    decoded = decodeURIComponent(raw)
+  } catch {
+    return null
+  }
+  if (decoded.includes('\0')) {
+    return null
+  }
+  const candidate = resolve(root, decoded)
+  const rel = relative(root, candidate)
+  if (rel.startsWith('..') || rel.includes(`..${'/'}`) || rel.includes('..\\')) {
     return null
   }
   return candidate
 }
 
-function sendFile(res, filePath) {
-  const type = MIME[extname(filePath).toLowerCase()] ?? 'application/octet-stream'
-  res.writeHead(200, {
-    'Content-Type': type,
-    'Cache-Control': 'no-store',
-  })
-  createReadStream(filePath).pipe(res)
+/**
+ * Stream a regular file to the response. Returns true on success, false if the
+ * path is missing, not a file, or cannot be opened. Uses open()+fstat so we
+ * never call existsSync/statSync on a user-controlled path (Sonar S6549) and
+ * so directories are rejected cleanly (createReadStream on a dir can hang).
+ */
+async function trySendFile(res, filePath) {
+  let handle
+  try {
+    handle = await open(filePath, 'r')
+    const stats = await handle.stat()
+    if (!stats.isFile()) {
+      await handle.close()
+      handle = undefined
+      return false
+    }
+    const type =
+      MIME[extname(filePath).toLowerCase()] ?? 'application/octet-stream'
+    res.writeHead(200, {
+      'Content-Type': type,
+      'Cache-Control': 'no-store',
+    })
+    // Stream owns the fd (autoClose); clear our handle so we don't double-close.
+    const stream = handle.createReadStream()
+    handle = undefined
+    stream.pipe(res)
+    return true
+  } catch {
+    if (handle != null) {
+      await handle.close().catch(() => undefined)
+    }
+    return false
+  }
 }
 
 if (!existsSync(ROOT)) {
-  console.error(`[serve-e2e] build directory not found: ${ROOT}`)
-  console.error('Run `pnpm run build:e2e` first.')
+  process.stderr.write(`[serve-e2e] build directory not found: ${ROOT}\n`)
+  process.stderr.write('Run `pnpm run build:e2e` first.\n')
   process.exit(1)
 }
 
+const SPA_INDEX = join(ROOT, 'index.html')
+
 const server = createServer((req, res) => {
-  const urlPath = req.url ?? '/'
-  const filePath = safeJoin(ROOT, urlPath)
-  if (filePath == null) {
-    res.writeHead(400).end('Bad Request')
-    return
-  }
+  void (async () => {
+    const urlPath = req.url ?? '/'
+    const filePath = safeJoin(ROOT, urlPath)
+    if (filePath == null) {
+      res.writeHead(400).end('Bad Request')
+      return
+    }
 
-  if (existsSync(filePath) && statSync(filePath).isFile()) {
-    sendFile(res, filePath)
-    return
-  }
+    if (await trySendFile(res, filePath)) {
+      return
+    }
 
-  // Directory index or SPA fallback.
-  const indexInDir = join(filePath, 'index.html')
-  if (existsSync(indexInDir) && statSync(indexInDir).isFile()) {
-    sendFile(res, indexInDir)
-    return
-  }
+    // SPA fallback for client-side routes like /studies/...
+    if (await trySendFile(res, SPA_INDEX)) {
+      return
+    }
 
-  const spa = join(ROOT, 'index.html')
-  if (existsSync(spa)) {
-    sendFile(res, spa)
-    return
-  }
-
-  res.writeHead(404).end('Not Found')
+    res.writeHead(404).end('Not Found')
+  })()
 })
 
 server.listen(PORT, HOST, () => {
-  console.log(`[serve-e2e] serving ${ROOT} at http://${HOST}:${PORT}`)
+  process.stdout.write(
+    `[serve-e2e] serving ${ROOT} at http://${HOST}:${PORT}\n`,
+  )
 })
