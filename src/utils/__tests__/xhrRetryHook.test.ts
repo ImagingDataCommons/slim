@@ -157,4 +157,31 @@ describe('getXHRRetryHook', () => {
     expect(xhr.sendCount).toBe(1)
     expect(clientHandler).toHaveBeenCalledTimes(1)
   })
+
+  it('preserves onreadystatechange wrappers installed after the retry hook', async () => {
+    const xhr = new FakeXHR()
+    xhr.statusQueue = [0]
+    const clientHandler = jest.fn()
+    xhr.onreadystatechange = clientHandler
+    applyHook(xhr, 'GET')
+
+    /**
+     * Mimic a later requestHook (e.g. Viv abort suppress) that wraps the
+     * handler between retry-hook install and send().
+     */
+    const prev = xhr.onreadystatechange
+    const laterWrapper = jest.fn(function (this: FakeXHR, ev: Event) {
+      if (this.readyState === XMLHttpRequest.DONE && this.status === 0) {
+        return
+      }
+      prev?.call(this, ev)
+    })
+    xhr.onreadystatechange = laterWrapper
+
+    xhr.send()
+    await flush()
+
+    expect(laterWrapper).toHaveBeenCalledTimes(1)
+    expect(clientHandler).not.toHaveBeenCalled()
+  })
 })
