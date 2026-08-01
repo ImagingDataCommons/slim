@@ -16,6 +16,11 @@
     "fmt": "biome format --write .",
     "format": "biome format --write .",
     "test": "craco test --watchAll=false",
+    "build:e2e": "REACT_APP_CONFIG=e2e PUBLIC_URL=/ ./scripts/set-git-env.sh craco build",
+    "serve:e2e": "serve -s build -l 3977",
+    "test:e2e": "playwright test",
+    "test:e2e:update": "playwright test --update-snapshots",
+    "test:e2e:update:docker": "./e2e/update-snapshots-docker.sh",
     "predeploy": "REACT_APP_CONFIG=demo PUBLIC_URL='https://imagingdatacommons.github.io/slim/' ./scripts/set-git-env.sh craco build",
     "deploy": "gh-pages -d build",
     "clean": "rm -rf ./build ./node_modules",
@@ -59,6 +64,7 @@
     "@babel/preset-typescript": "^7.17.12",
     "@biomejs/biome": "2.4.16",
     "@craco/craco": "^6.4.0",
+    "@playwright/test": "^1.62.1",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^12.0.0",
     "@semantic-release/git": "^10.0.1",
@@ -88,6 +94,7 @@
     "react-scripts": "5.0.0",
     "react-test-renderer": "^18.2.0",
     "semantic-release": "21.1.2",
+    "serve": "^14.2.6",
     "sonarqube-scanner": "^4.3.0",
     "typescript": "^4.7.4"
   }
