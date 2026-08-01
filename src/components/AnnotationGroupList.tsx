@@ -37,8 +37,13 @@ interface AnnotationGroupListProps {
       opacity?: number
       color?: number[]
       measurement?: dcmjs.sr.coding.CodedConcept
+      limitValues?: number[]
     }
   }) => void
+  getMeasurementRange?: (
+    annotationGroupUID: string,
+    measurement: dcmjs.sr.coding.CodedConcept,
+  ) => { min: number; max: number } | null
 }
 
 /**
@@ -83,6 +88,7 @@ class AnnotationGroupList extends React.Component<
               defaultStyle={this.props.defaultAnnotationGroupStyles[uid]}
               onVisibilityChange={this.props.onAnnotationGroupVisibilityChange}
               onStyleChange={this.props.onAnnotationGroupStyleChange}
+              getMeasurementRange={this.props.getMeasurementRange}
             />
           ),
         }

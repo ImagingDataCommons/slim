@@ -170,6 +170,10 @@ interface AnnotationGroupItemProps {
       measurement?: dcmjs.sr.coding.CodedConcept
     }
   }) => void
+  getMeasurementRange?: (
+    annotationGroupUID: string,
+    measurement: dcmjs.sr.coding.CodedConcept,
+  ) => { min: number; max: number } | null
 }
 
 interface AnnotationGroupItemState {
@@ -369,14 +373,20 @@ class AnnotationGroupItem extends React.Component<
           ? String(option[0].children[0])
           : String(option[0].children),
       })
+      const range = this.props.getMeasurementRange?.(
+        this.props.annotationGroup.uid,
+        measurement,
+      )
+      const limitValues = range != null ? [range.min, range.max] : undefined
       this.props.onStyleChange({
         uid: this.props.annotationGroup.uid,
-        styleOptions: { measurement },
+        styleOptions: { measurement, limitValues },
       })
       this.setState((state) => ({
         currentStyle: {
           opacity: state.currentStyle.opacity,
           measurement,
+          limitValues,
         },
       }))
     } else {

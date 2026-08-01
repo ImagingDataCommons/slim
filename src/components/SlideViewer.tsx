@@ -4,7 +4,6 @@ import {
   Descriptions,
   Divider,
   Drawer,
-  InputNumber,
   Layout,
   Menu,
   message,
@@ -237,7 +236,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       clients: this.props.clients,
       slide: this.props.slide,
       preload: this.props.preload,
-      clusteringPixelSizeThreshold: undefined, // Auto (zoom-based) by default
     })
     this.volumeViewer = volumeViewer
     this.labelViewer = labelViewer
@@ -296,8 +294,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       isSegmentationInterpolationEnabled: false,
       isParametricMapInterpolationEnabled: true,
       customizedSegmentColors: {},
-      clusteringPixelSizeThreshold: null, // null means auto (zoom-based)
-      isClusteringEnabled: true, // Clustering enabled by default
       isSettingsDrawerOpen: false,
     }
 
@@ -396,9 +392,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         clients: this.props.clients,
         slide: this.props.slide,
         preload: this.props.preload,
-        clusteringPixelSizeThreshold: this.state.isClusteringEnabled
-          ? (this.state.clusteringPixelSizeThreshold ?? undefined)
-          : undefined,
       })
       this.volumeViewer = volumeViewer
       this.labelViewer = labelViewer
@@ -2918,6 +2911,29 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   /**
    * Handle change of annotation group style.
    */
+  getAnnotationGroupMeasurementRange = (
+    annotationGroupUID: string,
+    measurement: dcmjs.sr.coding.CodedConcept,
+  ): { min: number; max: number } | null => {
+    const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer & {
+      getAnnotationGroupMeasurementRange?: (
+        uid: string,
+        measurement?: dcmjs.sr.coding.CodedConcept,
+      ) => { min: number; max: number }
+    }
+    if (typeof viewer.getAnnotationGroupMeasurementRange !== 'function') {
+      return null
+    }
+    try {
+      return viewer.getAnnotationGroupMeasurementRange(
+        annotationGroupUID,
+        measurement,
+      )
+    } catch {
+      return null
+    }
+  }
+
   handleAnnotationGroupStyleChange = ({
     uid,
     styleOptions,
@@ -2927,11 +2943,33 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       opacity?: number
       color?: number[]
       measurement?: dcmjs.sr.coding.CodedConcept
+      limitValues?: number[]
     }
   }): void => {
     logger.log(`change style of annotation group ${uid}`)
     try {
-      this.volumeViewer.setAnnotationGroupStyle(uid, styleOptions)
+      const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer & {
+        getAnnotationGroupMeasurementRange?: (
+          uid: string,
+          measurement?: dcmjs.sr.coding.CodedConcept,
+        ) => { min: number; max: number }
+      }
+      let nextStyle = { ...styleOptions }
+      if (
+        styleOptions.measurement != null &&
+        styleOptions.limitValues == null &&
+        typeof viewer.getAnnotationGroupMeasurementRange === 'function'
+      ) {
+        const range = viewer.getAnnotationGroupMeasurementRange(
+          uid,
+          styleOptions.measurement,
+        )
+        nextStyle = {
+          ...nextStyle,
+          limitValues: [range.min, range.max],
+        }
+      }
+      viewer.setAnnotationGroupStyle(uid, nextStyle)
     } catch (error) {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       NotificationMiddleware.onError(
@@ -3643,71 +3681,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     ).toggleParametricMapInterpolation()
   }
 
-  /**
-   * Handler that toggles clustering on/off.
-   */
-  handleClusteringToggle = (checked: boolean): void => {
-    /** Ensure checked is a boolean */
-    const newValue = Boolean(checked)
-
-    /** Use functional setState to ensure we have the latest state */
-    this.setState((prevState) => {
-      /** Don't update if the value hasn't actually changed */
-      if (prevState.isClusteringEnabled === newValue) {
-        return null
-      }
-
-      /** When turning ON with Auto (null/undefined), use viewer default so clustering is enabled; undefined means "clustering off" in the viewer */
-      const threshold = newValue
-        ? (prevState.clusteringPixelSizeThreshold ?? 0.001)
-        : undefined
-
-      /**
-       * Update viewer options immediately with the new state
-       * Check if viewer exists and has the method before calling
-       */
-      if (
-        this.volumeViewer !== null &&
-        this.volumeViewer !== undefined &&
-        typeof (
-          this.volumeViewer as unknown as {
-            setAnnotationOptions?(opts: object): void
-          }
-        ).setAnnotationOptions === 'function'
-      ) {
-        try {
-          ;(
-            this.volumeViewer as unknown as {
-              setAnnotationOptions(opts: object): void
-            }
-          ).setAnnotationOptions({
-            clusteringPixelSizeThreshold: threshold,
-          })
-        } catch (error) {
-          console.error('Failed to update annotation options:', error)
-        }
-      }
-
-      return { isClusteringEnabled: newValue }
-    })
-  }
-
-  /**
-   * Handler that updates the global clustering pixel size threshold.
-   */
-  handleClusteringPixelSizeThresholdChange = (value: number | null): void => {
-    this.setState({ clusteringPixelSizeThreshold: value })
-    if (this.state.isClusteringEnabled) {
-      ;(
-        this.volumeViewer as unknown as {
-          setAnnotationOptions?(opts: object): void
-        }
-      ).setAnnotationOptions?.({
-        clusteringPixelSizeThreshold: value ?? undefined,
-      })
-    }
-  }
-
   formatAnnotation = (annotation: AnnotationCategoryAndType): void => {
     const roi = this.volumeViewer.getROI(annotation.uid)
     const key = getRoiKey(roi) as string
@@ -4331,6 +4304,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               onAnnotationGroupStyleChange={
                 this.handleAnnotationGroupStyleChange
               }
+              getMeasurementRange={this.getAnnotationGroupMeasurementRange}
             />
           )}
         </Menu.SubMenu>
@@ -4644,51 +4618,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     )
 
     const segmentationItems: React.ReactNode[] = []
-    segmentationItems.push(
-      <div
-        key="clustering-enabled"
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '0.5rem',
-        }}
-      >
-        <span>Clustering</span>
-        <Switch
-          checked={Boolean(this.state.isClusteringEnabled)}
-          onChange={this.handleClusteringToggle}
-        />
-      </div>,
-    )
-    segmentationItems.push(
-      <div key="clustering-threshold" style={{ marginBottom: '0.5rem' }}>
-        <div style={{ marginBottom: '0.5rem' }}>
-          Clustering Pixel Size Threshold (mm)
-        </div>
-        <InputNumber
-          min={0}
-          max={100}
-          step={0.001}
-          precision={3}
-          style={{ width: '100%' }}
-          value={this.state.clusteringPixelSizeThreshold ?? undefined}
-          onChange={this.handleClusteringPixelSizeThresholdChange}
-          placeholder="Auto (zoom-based)"
-          addonAfter="mm"
-        />
-        <div
-          style={{
-            fontSize: '0.75rem',
-            color: '#8c8c8c',
-            marginTop: '0.5rem',
-          }}
-        >
-          When pixel size ≤ threshold, clustering is disabled. Leave empty for
-          zoom-based detection.
-        </div>
-      </div>,
-    )
     if (
       menus.segmentationInterpolationMenu !== null &&
       menus.segmentationInterpolationMenu !== undefined
