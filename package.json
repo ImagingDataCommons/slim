@@ -17,7 +17,7 @@
     "format": "biome format --write .",
     "test": "craco test --watchAll=false",
     "build:e2e": "REACT_APP_CONFIG=e2e PUBLIC_URL=/ ./scripts/set-git-env.sh craco build",
-    "serve:e2e": "serve -s build -l 3977",
+    "serve:e2e": "node scripts/serve-e2e.mjs",
     "test:e2e": "playwright test",
     "test:e2e:update": "playwright test --update-snapshots",
     "test:e2e:update:docker": "./e2e/update-snapshots-docker.sh",
@@ -94,7 +94,6 @@
     "react-scripts": "5.0.0",
     "react-test-renderer": "^18.2.0",
     "semantic-release": "21.1.2",
-    "serve": "^14.2.6",
     "sonarqube-scanner": "^4.3.0",
     "typescript": "^4.7.4"
   }
