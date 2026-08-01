@@ -5,6 +5,8 @@ allowBuilds:
   core-js: true
   core-js-pure: true
   dicom-microscopy-viewer: true
+  # Git-hosted tarball (update when dmv SHA changes in package.json)
+  'dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/b9925eb8296f7ac5053a99bcb67c5d770338abfa': true
 
 overrides:
   '@types/d3-dispatch': 3.0.6
