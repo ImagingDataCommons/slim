@@ -48,9 +48,10 @@ export default defineConfig({
        * Tolerate minor antialiasing / tile-decode differences in the WSI
        * background while still catching annotation rendering regressions.
        */
-      maxDiffPixelRatio: 0.02,
+      // Overlay-only screenshots (WSI tiles hidden) are stable; keep this tight.
+      maxDiffPixelRatio: 0.01,
       /** Per-pixel threshold (0-1); higher = more permissive on color. */
-      threshold: 0.2,
+      threshold: 0.15,
     },
   },
   /** One heavy WebGL app instance at a time keeps runs deterministic. */

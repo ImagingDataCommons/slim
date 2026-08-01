@@ -9,6 +9,15 @@ import { type Page, expect } from '@playwright/test'
 export const STUDY_UID =
   process.env.E2E_STUDY_UID ?? '2.25.68803095896966276583382138924964839274'
 
+/**
+ * SM series for slide DX1. Pinning this (instead of relying on slim's default
+ * study→series redirect) keeps the visual baseline pointed at one slide —
+ * this study has four, each with its own ~hundreds-of-thousands Nuclei group.
+ */
+export const SERIES_UID =
+  process.env.E2E_SERIES_UID ??
+  '1.3.6.1.4.1.5962.99.1.1163866303.1057408148.1637546438847.2.0'
+
 /** Name of the annotation group to exercise. */
 export const GROUP_NAME = process.env.E2E_GROUP_NAME ?? 'Nuclei'
 
@@ -253,4 +262,46 @@ export async function waitForAnnotationsCleared(page: Page): Promise<void> {
       intervals: [500, 1000, 2000],
     })
     .toBeLessThan(DRAWN_PIXEL_THRESHOLD)
+}
+
+/**
+ * Hide everything that is not the deck.gl annotation overlay so screenshots
+ * compare only the annotation rendering (and not flaky WSI tile decoding,
+ * the overview map, or the scale bar).
+ *
+ * Mutates the live page; call immediately before toHaveScreenshot.
+ */
+export async function prepareAnnotationScreenshot(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    for (const canvas of document.querySelectorAll('canvas')) {
+      try {
+        if (canvas.getContext('webgl2') == null) {
+          ;(canvas as HTMLElement).style.visibility = 'hidden'
+        }
+      } catch {
+        ;(canvas as HTMLElement).style.visibility = 'hidden'
+      }
+    }
+    for (const selector of [
+      '.ol-overviewmap',
+      '.ol-scale-line',
+      '.ol-zoom',
+      '.ol-attribution',
+    ]) {
+      document.querySelectorAll(selector).forEach((el) => {
+        ;(el as HTMLElement).style.visibility = 'hidden'
+      })
+    }
+    // Slim's custom scale / overview chrome is not always an OL control.
+    document.querySelectorAll('body *').forEach((el) => {
+      const text = (el.textContent ?? '').trim()
+      if (/^\d+(\.\d+)?\s*(µm|mm|cm)$/.test(text)) {
+        ;(el as HTMLElement).style.visibility = 'hidden'
+        const parent = el.parentElement
+        if (parent != null) {
+          parent.style.visibility = 'hidden'
+        }
+      }
+    })
+  })
 }

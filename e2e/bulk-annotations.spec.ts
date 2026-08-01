@@ -2,11 +2,13 @@ import { expect, test } from '@playwright/test'
 
 import {
   GROUP_NAME,
+  SERIES_UID,
   STUDY_UID,
   deckDrawnPixelCount,
   expandAnnotationGroups,
   mapClip,
   setGroupVisibility,
+  prepareAnnotationScreenshot,
   usedHeapMB,
   waitForAnnotationsCleared,
   waitForAnnotationsDrawn,
@@ -29,7 +31,7 @@ import {
  */
 test.describe('bulk annotations (deck.gl overlay)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`/studies/${STUDY_UID}`)
+    await page.goto(`/studies/${STUDY_UID}/series/${SERIES_UID}`)
     await waitForSlide(page)
     await expandAnnotationGroups(page)
   })
@@ -56,19 +58,15 @@ test.describe('bulk annotations (deck.gl overlay)', () => {
       expect(heapAfter).toBeLessThan(1500)
     }
 
-    // The whole-slide fit is fully deterministic (it depends only on the image
-    // dimensions and viewport, not on network/streaming timing or pointer
-    // position), and after full load the overlay renders the entire group via
-    // the centroid/line LOD tiers — so it is a stable visual-regression target.
+    // The whole-slide fit is fully deterministic (image dimensions + viewport).
+    // Hide the WSI tile layers / chrome so the screenshot compares only the
+    // deck.gl overlay — WSI tile decoding is non-deterministic across runs.
     await page
       .waitForLoadState('networkidle', { timeout: 60_000 })
       .catch(() => undefined)
+    await prepareAnnotationScreenshot(page)
     await expect(page).toHaveScreenshot('nuclei-whole-slide.png', {
       clip: await mapClip(page),
-      /**
-       * Playwright waits for two consecutive identical frames; give slow WSI
-       * tile streaming room to finish before the comparison gives up.
-       */
       timeout: 120_000,
     })
   })

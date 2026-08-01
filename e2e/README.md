@@ -24,6 +24,8 @@ POLYGON group).
 Override the target without editing code:
 
 - `E2E_STUDY_UID` — study to open
+- `E2E_SERIES_UID` — SM series to open (pinned so the suite doesn't depend
+  on slim's default study→series redirect; this study has four slides)
 - `E2E_GROUP_NAME` — annotation group name to toggle (default `Nuclei`)
 - `E2E_BASE_URL` — point at an already-running server instead of letting
   Playwright serve the build (e.g. a local dcm4chee-backed deployment)
