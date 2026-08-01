@@ -15,6 +15,11 @@ export const GROUP_NAME = process.env.E2E_GROUP_NAME ?? 'Nuclei'
 /** Non-transparent deck-canvas pixels that count as "annotations drawn". */
 const DRAWN_PIXEL_THRESHOLD = 500
 
+/** Ignore network-idle timeouts; WSI tile streaming rarely goes truly idle. */
+function ignoreNetworkIdleTimeout(): undefined {
+  return undefined
+}
+
 /**
  * Read the deck.gl overlay canvas (the large WebGL2 canvas inside the OL map)
  * and count non-transparent pixels. Returns -1 when the canvas is not found.
@@ -23,11 +28,11 @@ const DRAWN_PIXEL_THRESHOLD = 500
  * overlay rather than a new blank buffer.
  */
 export async function deckDrawnPixelCount(page: Page): Promise<number> {
-  return page.evaluate(() => {
+  return await page.evaluate(() => {
     const canvases = Array.from(document.querySelectorAll('canvas'))
-    const deck = canvases.find((c) => {
+    const deck = canvases.find((canvas) => {
       try {
-        return c.getContext('webgl2') != null && c.width > 200
+        return canvas.getContext('webgl2') != null && canvas.width > 200
       } catch {
         return false
       }
@@ -40,11 +45,11 @@ export async function deckDrawnPixelCount(page: Page): Promise<number> {
       return -1
     }
     const { width, height } = deck
-    const px = new Uint8Array(width * height * 4)
-    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, px)
+    const pixels = new Uint8Array(width * height * 4)
+    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
     let nonTransparent = 0
-    for (let i = 3; i < px.length; i += 4) {
-      if (px[i] !== 0) {
+    for (let i = 3; i < pixels.length; i += 4) {
+      if (pixels[i] !== 0) {
         nonTransparent++
       }
     }
@@ -54,11 +59,13 @@ export async function deckDrawnPixelCount(page: Page): Promise<number> {
 
 /** Current JS heap usage in MB (Chromium only), or -1 when unavailable. */
 export async function usedHeapMB(page: Page): Promise<number> {
-  return page.evaluate(() => {
+  return await page.evaluate(() => {
     const mem = (
       performance as unknown as { memory?: { usedJSHeapSize: number } }
     ).memory
-    return mem != null ? +(mem.usedJSHeapSize / 1048576).toFixed(1) : -1
+    return mem != null
+      ? Number((mem.usedJSHeapSize / 1048576).toFixed(1))
+      : -1
   })
 }
 
@@ -72,10 +79,10 @@ export async function mapClip(page: Page): Promise<{
   const box = await page.evaluate(() => {
     const viewports = Array.from(document.querySelectorAll('.ol-viewport'))
     let best: DOMRect | null = null
-    for (const vp of viewports) {
-      const r = vp.getBoundingClientRect()
-      if (best == null || r.width * r.height > best.width * best.height) {
-        best = r
+    for (const viewport of viewports) {
+      const rect = viewport.getBoundingClientRect()
+      if (best == null || rect.width * rect.height > best.width * best.height) {
+        best = rect
       }
     }
     return best == null
@@ -107,7 +114,7 @@ export async function waitForSlide(page: Page): Promise<void> {
     .waitFor({ timeout: 180_000 })
   await page
     .waitForLoadState('networkidle', { timeout: 30_000 })
-    .catch(() => {})
+    .catch(ignoreNetworkIdleTimeout)
   await page.waitForTimeout(2000)
 }
 
@@ -129,9 +136,9 @@ async function groupSwitchChecked(
   page: Page,
   groupName: string,
 ): Promise<boolean | null> {
-  return page.evaluate((groupName) => {
+  return await page.evaluate((name) => {
     const items = Array.from(document.querySelectorAll('[role="menuitem"]'))
-    const item = items.find((el) => (el.textContent ?? '').includes(groupName))
+    const item = items.find((el) => (el.textContent ?? '').includes(name))
     let container: Element | null | undefined = item
     for (let depth = 0; depth < 6 && container != null; depth++) {
       const sw = container.querySelector('button[role="switch"]')
@@ -159,11 +166,9 @@ export async function setGroupVisibility(
   visible: boolean,
 ): Promise<void> {
   const result = await page.evaluate(
-    ({ groupName, visible }) => {
+    ({ groupName: name, visible: wantVisible }) => {
       const items = Array.from(document.querySelectorAll('[role="menuitem"]'))
-      const item = items.find((el) =>
-        (el.textContent ?? '').includes(groupName),
-      )
+      const item = items.find((el) => (el.textContent ?? '').includes(name))
       let sw: HTMLButtonElement | null = null
       let container: Element | null | undefined = item
       for (let depth = 0; depth < 6 && container != null; depth++) {
@@ -177,7 +182,7 @@ export async function setGroupVisibility(
         return 'switch-not-found'
       }
       const checked = sw.getAttribute('aria-checked') === 'true'
-      if (checked !== visible) {
+      if (checked !== wantVisible) {
         sw.click()
       }
       return 'ok'
@@ -190,7 +195,7 @@ export async function setGroupVisibility(
     )
   }
   await expect
-    .poll(async () => groupSwitchChecked(page, groupName), {
+    .poll(async () => await groupSwitchChecked(page, groupName), {
       timeout: 15_000,
     })
     .toBe(visible)
@@ -216,9 +221,9 @@ export async function waitForAnnotationsDrawn(page: Page): Promise<number> {
  * until it stops changing across consecutive samples.
  *
  * This matters for deterministic screenshots: a group streams in progressively
- * and "zoom to group" fits the *currently loaded* extent, so zooming before
- * streaming completes yields a different (more zoomed) view each run. Waiting
- * for a stable count first makes the fitted extent identical every time.
+ * and the whole-slide overlay only reflects the complete group once streaming
+ * finishes. Waiting for a stable count first makes the screenshot identical
+ * every run.
  */
 export async function waitForAnnotationsStable(page: Page): Promise<void> {
   let previous = -1
@@ -243,7 +248,7 @@ export async function waitForAnnotationsStable(page: Page): Promise<void> {
 /** Poll until the deck overlay is effectively empty (annotations hidden). */
 export async function waitForAnnotationsCleared(page: Page): Promise<void> {
   await expect
-    .poll(async () => deckDrawnPixelCount(page), {
+    .poll(async () => await deckDrawnPixelCount(page), {
       timeout: 60_000,
       intervals: [500, 1000, 2000],
     })

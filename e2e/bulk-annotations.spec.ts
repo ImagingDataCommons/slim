@@ -62,7 +62,7 @@ test.describe('bulk annotations (deck.gl overlay)', () => {
     // the centroid/line LOD tiers — so it is a stable visual-regression target.
     await page
       .waitForLoadState('networkidle', { timeout: 60_000 })
-      .catch(() => {})
+      .catch(() => undefined)
     await expect(page).toHaveScreenshot('nuclei-whole-slide.png', {
       clip: await mapClip(page),
       /**

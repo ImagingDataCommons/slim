@@ -19,7 +19,7 @@ import { defineConfig, devices } from '@playwright/test'
  * locally via the pinned Playwright container. See e2e/README.md.
  */
 
-const isCI = !!process.env.CI
+const isCI = Boolean(process.env.CI)
 
 /**
  * When E2E_BASE_URL is set we assume the caller manages the server (e.g. a
@@ -58,9 +58,7 @@ export default defineConfig({
   workers: 1,
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
-  reporter: isCI
-    ? [['list'], ['html', { open: 'never' }]]
-    : [['list'], ['html', { open: 'never' }]],
+  reporter: [['list'], ['html', { open: 'never' }]],
   /** Keep baselines organized and per-OS so macOS/Linux never clash. */
   snapshotPathTemplate:
     '{testDir}/__screenshots__/{testFilePath}/{arg}-{platform}{ext}',
