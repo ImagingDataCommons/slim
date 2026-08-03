@@ -4,7 +4,6 @@ strictPeerDependencies: false
 allowBuilds:
   core-js: true
   core-js-pure: true
-  # For npm-published versions; git tarball URLs are added dynamically by CI
   dicom-microscopy-viewer: true
 
 overrides:
