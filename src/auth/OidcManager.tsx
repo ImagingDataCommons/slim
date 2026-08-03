@@ -1,8 +1,4 @@
-import {
-  type User as UserData,
-  UserManager,
-  type UserManagerSettings,
-} from 'oidc-client-ts'
+import { type User as UserData, UserManager } from 'oidc-client'
 
 import type { OidcSettings } from '../AppConfig'
 import NotificationMiddleware, {
@@ -100,8 +96,40 @@ const readReturnUrl = (userData: UserData): string | undefined => {
   return undefined
 }
 
+/** Only allow same-origin relative paths (block open redirects). */
+export const isSafeReturnUrl = (returnUrl: string): boolean => {
+  if (!returnUrl.startsWith('/') || returnUrl.startsWith('//')) {
+    return false
+  }
+  try {
+    const parsed = new URL(returnUrl, window.location.origin)
+    return parsed.origin === window.location.origin
+  } catch {
+    return false
+  }
+}
+
 const currentReturnUrl = (): string => {
   return `${window.location.pathname}${window.location.search}`
+}
+
+/**
+ * Complete an OIDC silent-renew callback when this window is an iframe.
+ * Returns true when the caller should skip mounting the React app.
+ */
+export const completeSilentRenewIfFrame = async (): Promise<boolean> => {
+  if (window.parent === window) {
+    return false
+  }
+  if (!isAuthorizationCodeInUrl(window.location)) {
+    return false
+  }
+  try {
+    await new UserManager({}).signinSilentCallback()
+  } catch (error) {
+    console.error('silent renew callback failed', error)
+  }
+  return true
 }
 
 export default class OidcManager implements AuthManager {
@@ -113,10 +141,15 @@ export default class OidcManager implements AuthManager {
     const isImplicit = settings.grantType === 'implicit'
     const responseType = isImplicit ? 'id_token token' : 'code'
     const redirectUri = appUri
-    const silentRedirectUri = joinUrl('silent-renew.html', appUri)
+    /*
+     * Reuse the main redirect_uri for silent renew so existing IdP client
+     * registrations (app root only) keep working. The iframe path is handled
+     * in index.tsx via completeSilentRenewIfFrame() before React mounts.
+     */
+    const silentRedirectUri = redirectUri
     const postLogoutRedirectUri = joinUrl('logout', appUri)
 
-    const baseSettings: UserManagerSettings = {
+    const baseSettings = {
       authority: settings.authority,
       client_id: settings.clientId,
       redirect_uri: redirectUri,
@@ -126,11 +159,9 @@ export default class OidcManager implements AuthManager {
       response_type: responseType,
       loadUserInfo: true,
       automaticSilentRenew: true,
-      revokeTokensOnSignout: true,
+      revokeAccessTokenOnSignout: true,
     }
 
-    // PKCE is the oidc-client-ts default for code flow; leave it enabled.
-    // Implicit grant does not use PKCE.
     this._oidc = new UserManager(baseSettings)
     this._wireInternalEvents()
     this._ready = this._applyOptionalMetadata(baseSettings, settings)
@@ -149,7 +180,7 @@ export default class OidcManager implements AuthManager {
   }
 
   private async _applyOptionalMetadata(
-    baseSettings: UserManagerSettings,
+    baseSettings: ConstructorParameters<typeof UserManager>[0],
     settings: OidcSettings,
   ): Promise<void> {
     const needsMetadataPatch =
@@ -203,10 +234,19 @@ export default class OidcManager implements AuthManager {
   }): Promise<void> => {
     const oidc = await this._ensureReady()
 
-    const handleSignIn = (userData: UserData): void => {
+    const handleSignIn = (
+      userData: UserData,
+      { includeReturnUrl }: { includeReturnUrl: boolean },
+    ): void => {
       const user = createUser(userData)
       const authorization = authorizationFromUser(userData)
-      const resolvedReturnUrl = readReturnUrl(userData)
+      let resolvedReturnUrl: string | undefined
+      if (includeReturnUrl) {
+        const candidate = readReturnUrl(userData)
+        if (candidate != null && isSafeReturnUrl(candidate)) {
+          resolvedReturnUrl = candidate
+        }
+      }
       if (onSignIn != null) {
         console.info('handling sign-in using provided callback function')
         onSignIn({
@@ -228,7 +268,7 @@ export default class OidcManager implements AuthManager {
       const userData = await oidc.signinRedirectCallback()
       clearAuthParamsFromUrl()
       console.info('obtained user data: ', userData)
-      handleSignIn(userData)
+      handleSignIn(userData, { includeReturnUrl: true })
     } else {
       /* Redirect to the authorization server to authenticate the user
        * and authorize the application to obtain user information and access
@@ -244,7 +284,8 @@ export default class OidcManager implements AuthManager {
         })
       } else {
         console.info('user has already been authenticated')
-        handleSignIn(userData)
+        // Do not re-apply persisted returnUrl on warm sessions.
+        handleSignIn(userData, { includeReturnUrl: false })
       }
     }
   }
@@ -256,6 +297,7 @@ export default class OidcManager implements AuthManager {
   signOut = async (): Promise<void> => {
     console.log('signing out user and revoking authorization')
     const oidc = await this._ensureReady()
+    const logoutUri = joinUrl('logout', oidc.settings.redirect_uri ?? '/')
     try {
       const metadata = await oidc.metadataService.getMetadata()
       if (
@@ -263,14 +305,14 @@ export default class OidcManager implements AuthManager {
         metadata.end_session_endpoint === ''
       ) {
         await oidc.removeUser()
-        window.location.assign(joinUrl('logout', oidc.settings.redirect_uri))
+        window.location.assign(logoutUri)
         return
       }
       await oidc.signoutRedirect()
     } catch (error) {
       console.error('sign-out redirect failed; clearing local session', error)
       await oidc.removeUser()
-      window.location.assign(joinUrl('logout', oidc.settings.redirect_uri))
+      window.location.assign(logoutUri)
     }
   }
 
