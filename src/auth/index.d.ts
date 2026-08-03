@@ -10,6 +10,9 @@ export type SignInCallback = ({
 
 export type AuthorizationCallback = (authorization: string) => void
 
+/** Outcome of signIn: redirected means the page is navigating to the IdP. */
+export type SignInOutcome = 'completed' | 'redirected'
+
 export interface User {
   name: string | undefined
   email: string | undefined
@@ -22,7 +25,7 @@ export interface AuthManager {
   }: {
     onSignIn?: SignInCallback
     returnUrl?: string
-  }) => Promise<void>
+  }) => Promise<SignInOutcome>
   signOut: () => Promise<void>
   getAuthorization: () => Promise<string | undefined>
   getUser: () => Promise<User>

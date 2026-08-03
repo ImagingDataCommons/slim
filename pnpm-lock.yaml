@@ -52,7 +52,7 @@ importers:
         specifier: 0.10.3
         version: 0.10.3
       oidc-client:
-        specifier: 1.11.5
+        specifier: ^1.11.5
         version: 1.11.5
       ol:
         specifier: ^10.7.0

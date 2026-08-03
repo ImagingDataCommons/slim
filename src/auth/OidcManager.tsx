@@ -10,6 +10,7 @@ import type {
   AuthManager,
   AuthorizationCallback,
   SignInCallback,
+  SignInOutcome,
   User,
 } from '.'
 
@@ -231,7 +232,7 @@ export default class OidcManager implements AuthManager {
   }: {
     onSignIn?: SignInCallback
     returnUrl?: string
-  }): Promise<void> => {
+  }): Promise<SignInOutcome> => {
     const oidc = await this._ensureReady()
 
     const handleSignIn = (
@@ -269,25 +270,29 @@ export default class OidcManager implements AuthManager {
       clearAuthParamsFromUrl()
       console.info('obtained user data: ', userData)
       handleSignIn(userData, { includeReturnUrl: true })
-    } else {
-      /* Redirect to the authorization server to authenticate the user
-       * and authorize the application to obtain user information and access
-       * the DICOMweb server.
-       */
-      const userData = await oidc.getUser()
-      if (userData === null || userData === undefined || userData.expired) {
-        console.info('authenticating user')
-        await oidc.signinRedirect({
-          state: {
-            returnUrl: returnUrl ?? currentReturnUrl(),
-          },
-        })
-      } else {
-        console.info('user has already been authenticated')
-        // Do not re-apply persisted returnUrl on warm sessions.
-        handleSignIn(userData, { includeReturnUrl: false })
-      }
+      return 'completed'
     }
+
+    /* Redirect to the authorization server to authenticate the user
+     * and authorize the application to obtain user information and access
+     * the DICOMweb server.
+     */
+    const userData = await oidc.getUser()
+    if (userData === null || userData === undefined || userData.expired) {
+      console.info('authenticating user')
+      await oidc.signinRedirect({
+        state: {
+          returnUrl: returnUrl ?? currentReturnUrl(),
+        },
+      })
+      // oidc-client resolves as soon as navigation is assigned; page unload follows.
+      return 'redirected'
+    }
+
+    console.info('user has already been authenticated')
+    // Do not re-apply persisted returnUrl on warm sessions.
+    handleSignIn(userData, { includeReturnUrl: false })
+    return 'completed'
   }
 
   /**

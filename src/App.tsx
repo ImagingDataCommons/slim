@@ -187,6 +187,8 @@ interface AppState {
   redirectTo?: string
   wasAuthSuccessful: boolean
   error?: ErrorMessageSettings
+  /** Bumped after mid-session auth recovery so views remount and refetch. */
+  authRecoveryKey: number
 }
 
 class App extends React.Component<AppProps, AppState> {
@@ -298,6 +300,7 @@ class App extends React.Component<AppProps, AppState> {
       defaultClients,
       isLoading: true,
       wasAuthSuccessful: false,
+      authRecoveryKey: 0,
     }
   }
 
@@ -420,17 +423,29 @@ class App extends React.Component<AppProps, AppState> {
       return
     }
     this.reauthInProgress = true
+    let redirectedToIdp = false
     try {
       const authorization = await this.auth.renewAuthorization()
       if (authorization != null) {
         this.applyAuthorization(authorization)
+        // Remount routed views so in-flight 401 failures refetch with the new token.
+        this.setState((state) => ({
+          authRecoveryKey: state.authRecoveryKey + 1,
+        }))
         return
       }
       console.info('silent renew unavailable; starting interactive sign-in')
-      await this.auth.signIn({
+      const outcome = await this.auth.signIn({
         onSignIn: this.handleSignIn,
         returnUrl: `${window.location.pathname}${window.location.search}`,
       })
+      redirectedToIdp = outcome === 'redirected'
+      if (outcome === 'completed') {
+        // Token was refreshed without leaving the page; remount views to refetch.
+        this.setState((state) => ({
+          authRecoveryKey: state.authRecoveryKey + 1,
+        }))
+      }
     } catch (error) {
       console.error(error)
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -442,7 +457,11 @@ class App extends React.Component<AppProps, AppState> {
         ),
       )
     } finally {
-      this.reauthInProgress = false
+      // oidc-client resolves signinRedirect as soon as navigation is assigned.
+      // Keep the guard set until unload so concurrent 401s cannot start another redirect.
+      if (!redirectedToIdp) {
+        this.reauthInProgress = false
+      }
     }
   }
 
@@ -454,7 +473,10 @@ class App extends React.Component<AppProps, AppState> {
           onSignIn: this.handleSignIn,
           returnUrl: `${window.location.pathname}${window.location.search}`,
         })
-        .then(() => {
+        .then((outcome) => {
+          if (outcome === 'redirected') {
+            return
+          }
           console.info('sign-in was successful')
           this.setState({
             isLoading: false,
@@ -605,7 +627,7 @@ class App extends React.Component<AppProps, AppState> {
     } else {
       return (
         <BrowserRouter basename={this.props.config.path}>
-          <Routes>
+          <Routes key={this.state.authRecoveryKey}>
             <Route
               path={RoutePaths.ROOT}
               element={
