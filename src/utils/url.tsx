@@ -89,3 +89,26 @@ export const isAuthorizationCodeInUrl = (location: {
       hashParams.get('session_state'),
   )
 }
+
+/**
+ * True when the URL looks like an OIDC authorize redirect back to the app
+ * (success or error). Used to detect silent-renew iframe callbacks that must
+ * not boot the React SPA (including `error=login_required` responses that
+ * lack code/id_token/session_state).
+ */
+export const isOidcAuthorizeCallbackUrl = (location: {
+  search: string
+  hash: string
+}): boolean => {
+  if (isAuthorizationCodeInUrl(location)) {
+    return true
+  }
+  const searchParams = new URLSearchParams(location.search)
+  const hashParams = new URLSearchParams(location.hash.replace('#', '?'))
+  return Boolean(
+    searchParams.get('error') ??
+      searchParams.get('access_token') ??
+      hashParams.get('error') ??
+      hashParams.get('access_token'),
+  )
+}

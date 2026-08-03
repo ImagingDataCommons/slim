@@ -5,7 +5,11 @@ import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../services/NotificationMiddleware'
 import { CustomError, errorTypes } from '../utils/CustomError'
-import { isAuthorizationCodeInUrl, joinUrl } from '../utils/url'
+import {
+  isAuthorizationCodeInUrl,
+  isOidcAuthorizeCallbackUrl,
+  joinUrl,
+} from '../utils/url'
 import type {
   AuthManager,
   AuthorizationCallback,
@@ -117,12 +121,17 @@ const currentReturnUrl = (): string => {
 /**
  * Complete an OIDC silent-renew callback when this window is an iframe.
  * Returns true when the caller should skip mounting the React app.
+ *
+ * Must never mount the SPA inside a renew iframe: it shares sessionStorage
+ * with the parent and can corrupt in-flight interactive re-auth. This includes
+ * IdP error redirects such as `error=login_required` that do not carry a code.
  */
 export const completeSilentRenewIfFrame = async (): Promise<boolean> => {
   if (window.parent === window) {
     return false
   }
-  if (!isAuthorizationCodeInUrl(window.location)) {
+  // Embedded Slim (non-OIDC iframe) should still mount; only OIDC callbacks skip it.
+  if (!isOidcAuthorizeCallbackUrl(window.location)) {
     return false
   }
   try {
@@ -130,6 +139,7 @@ export const completeSilentRenewIfFrame = async (): Promise<boolean> => {
   } catch (error) {
     console.error('silent renew callback failed', error)
   }
+  // Always skip SPA mount for OIDC iframe callbacks (success or error).
   return true
 }
 

@@ -147,8 +147,9 @@ const mountApp = (): void => {
 
 /*
  * Silent renew reuses the app redirect_uri (no extra IdP registration).
- * When oidc-client loads that URI in a hidden iframe, complete the callback
- * here and skip mounting React.
+ * When oidc-client loads that URI in a hidden iframe (success or error),
+ * complete the callback here and skip mounting React so the iframe cannot
+ * share/corrupt the parent sessionStorage OIDC state.
  */
 void import('./auth/OidcManager')
   .then(async ({ completeSilentRenewIfFrame }) => {
