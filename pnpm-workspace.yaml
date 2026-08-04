@@ -18,12 +18,12 @@ overrides:
   # Dependabot high: js-yaml quadratic merge-key chains (v3 and v4 lines)
   js-yaml@3: 3.15.1
   js-yaml@4: 4.3.1
-  # Dependabot high: postcss sourceMappingURL path traversal (8.x only; keep 7.x for CRA)
-  postcss@8: 8.5.25
+  # Dependabot high: postcss sourceMappingURL path traversal (no 7.x patch; force 8.x)
+  postcss: 8.5.25
   # Dependabot high: shell-quote parse() quadratic DoS
   shell-quote: 1.9.0
-  # Dependabot high: fast-uri host confusion
-  fast-uri: 3.1.4
+  # Dependabot high: fast-uri host confusion (backslash authority)
+  fast-uri: 3.1.5
   # Dependabot high: SVGO removeScripts (CRA still pulls 1.x via @svgr; no SVG imports in app)
   svgo: 2.8.3
   nth-check: 2.0.1
