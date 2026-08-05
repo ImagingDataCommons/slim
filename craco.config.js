@@ -1,5 +1,34 @@
+const fs = require('fs')
+const path = require('path')
 const CracoLessPlugin = require('craco-less')
 const CopyWebpackPlugin = require('copy-webpack-plugin')
+
+/**
+ * When dicom-microscopy-viewer is pnpm-linked, resolve the real repo path so
+ * webpack can watch DMV dist/ rebuilds. The import alias must stay under
+ * node_modules (CRA ModuleScopePlugin blocks absolute paths outside src/).
+ */
+function getLinkedDmvPaths() {
+  const dmvEntry = path.resolve(
+    __dirname,
+    'node_modules/dicom-microscopy-viewer',
+  )
+  let dmvRoot
+  try {
+    dmvRoot = fs.realpathSync(dmvEntry)
+  } catch {
+    return null
+  }
+
+  const isLinked = !dmvRoot.includes(`${path.sep}.pnpm${path.sep}`)
+  if (!isLinked) {
+    return null
+  }
+
+  const dmvDist = path.join(dmvRoot, 'dist/dynamic-import')
+  const dmvBundle = path.join(dmvDist, 'dicomMicroscopyViewer.min.js')
+  return { dmvRoot, dmvDist, dmvBundle }
+}
 
 module.exports = {
   plugins: [
@@ -26,8 +55,17 @@ module.exports = {
   ],
   webpack: {
     configure: (config, { env, paths }) => {
+      const linkedDmv =
+        env === 'development' ? getLinkedDmvPaths() : null
+      const dmvDist =
+        './node_modules/dicom-microscopy-viewer/dist/dynamic-import'
+      const dmvAlias =
+        'dicom-microscopy-viewer/dist/dynamic-import/dicomMicroscopyViewer.min.js'
+
       config.resolve = {
+        ...config.resolve,
         fallback: {
+          ...config.resolve?.fallback,
           fs: false,
           path: false
         },
@@ -39,8 +77,8 @@ module.exports = {
          * for the viewer.
         */
         alias: {
-          'dicom-microscopy-viewer':
-            'dicom-microscopy-viewer/dist/dynamic-import/dicomMicroscopyViewer.min.js'
+          ...config.resolve?.alias,
+          'dicom-microscopy-viewer': dmvAlias
         }
       }
       config.plugins.push(
@@ -48,7 +86,7 @@ module.exports = {
         new CopyWebpackPlugin({
           patterns: [
             {
-              from: './node_modules/dicom-microscopy-viewer/dist/dynamic-import',
+              from: dmvDist,
               to: './static/js'
             }
           ]
@@ -58,6 +96,40 @@ module.exports = {
       config.experiments = {
         asyncWebAssembly: true
       }
+
+      if (linkedDmv) {
+        config.watchOptions = {
+          ...config.watchOptions,
+          followSymlinks: true,
+        }
+
+        config.snapshot = {
+          ...config.snapshot,
+          managedPaths: [
+            /^(.+?[\\/]node_modules[\\/])(?!dicom-microscopy-viewer)/,
+          ],
+        }
+
+        config.plugins.push({
+          apply: (compiler) => {
+            compiler.hooks.afterCompile.tap('WatchLinkedDmvDist', (compilation) => {
+              compilation.contextDependencies.add(linkedDmv.dmvDist)
+              compilation.fileDependencies.add(linkedDmv.dmvBundle)
+            })
+          },
+        })
+
+        config.devServer = {
+          ...config.devServer,
+          watchFiles: {
+            paths: [`${linkedDmv.dmvDist}/**/*`],
+            options: {
+              followSymlinks: true,
+            },
+          },
+        }
+      }
+
       return config
     }
   },

@@ -463,17 +463,25 @@ If you are developing features or fixing bugs that require changes in both Slim 
    In the root directory of your Slim project, run:
 
    ```bash
-   pnpm link --global dicom-microscopy-viewer
+   pnpm link dicom-microscopy-viewer
+   ```
+
+   Do **not** run `pnpm link dicom-microscopy-viewer` inside the `dicom-microscopy-viewer` repo itself — only `pnpm link --global` belongs there.
+
+   Verify the link points at your local clone (not the registry copy under `.pnpm`):
+
+   ```bash
+   node -e "console.log(require('fs').realpathSync('node_modules/dicom-microscopy-viewer'))"
    ```
 
 4. **Enable live rebuilding in dicom-microscopy-viewer**  
-   To automatically rebuild `dicom-microscopy-viewer` when you make changes, run the following command in the `dicom-microscopy-viewer` directory:
+   In a separate terminal, in the `dicom-microscopy-viewer` directory, run:
 
    ```bash
    pnpm run webpack:dynamic-import:watch
    ```
 
-   This watches for file changes and rebuilds the library so Slim can immediately use the updated code.
+   Slim imports the **built** `dist/dynamic-import` bundle, not `src/` directly. Wait for DMV watch to report `[emitted] dicomMicroscopyViewer.min.js` after each change.
 
 5. **Run Slim as usual**  
    In the Slim directory, start the development server:
@@ -482,11 +490,20 @@ If you are developing features or fixing bugs that require changes in both Slim 
    pnpm run start
    ```
 
-   Slim will now use your locally linked version of `dicom-microscopy-viewer`.
+   When linked, `craco.config.js` registers the DMV `dist/` folder as a webpack watch dependency so Slim rebuilds after DMV watch emits a new bundle. Restart Slim after linking or after changing `craco.config.js`.
 
 ### Notes
 
-- To unlink and return to the npm-published version, run `pnpm unlink --global dicom-microscopy-viewer` and `pnpm install` in the Slim directory.
+- Running `pnpm install` in Slim removes the link — re-run step 3 afterward.
+- Do not add `link:` overrides to `package.json`; the commands above are sufficient.
+- Slim imports OpenLayers CSS directly (`ol/ol.css`), so `ol` is listed as a direct dependency. This keeps linked dev working when DMV's transitive dependencies are not hoisted into Slim's `node_modules`.
+- If Slim still serves a stale DMV bundle, confirm step 3 (realpath must not contain `.pnpm`) and that DMV watch logged `[emitted] dicomMicroscopyViewer.min.js` for your change.
+- To unlink and return to the npm-published version:
+
+  ```bash
+  pnpm unlink dicom-microscopy-viewer
+  pnpm install
+  ```
 
 ## Related projects
 
