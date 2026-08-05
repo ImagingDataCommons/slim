@@ -6,34 +6,52 @@ on:
   push:
     branches: [master]
 
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+concurrency:
+  group: deploy-firebase-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   deploy-firebase:
     name: "Deploy to Firebase"
-    if: "${{ github.event.pull_request.head.repo.full_name == github.repository }}"
+    # Forked PRs cannot access the Firebase service account secret, so skip them.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - name: Checkout to repository
-        uses: actions/checkout@v4.2.2
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.34.1
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4.4.0
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version: 20
+          node-version: 24
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Build
         run: REACT_APP_CONFIG=preview PUBLIC_URL=/ pnpm run build
 
-      - name: Deploy
-        uses: FirebaseExtended/action-hosting-deploy@v0
+      - name: Deploy preview
+        if: github.event_name == 'pull_request'
+        uses: FirebaseExtended/action-hosting-deploy@500ac625ca2dd40cbd15f7659af953801858032a # v0.11.0
+        with:
+          repoToken: "${{ secrets.GITHUB_TOKEN }}"
+          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_SLIM }}"
+          projectId: idc-external-006
+
+      - name: Deploy to live
+        if: github.event_name == 'push'
+        uses: FirebaseExtended/action-hosting-deploy@500ac625ca2dd40cbd15f7659af953801858032a # v0.11.0
         with:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
           firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_SLIM }}"

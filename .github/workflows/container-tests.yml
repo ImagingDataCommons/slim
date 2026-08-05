@@ -6,18 +6,21 @@ on:
   pull_request:
     branches: [master]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build-and-test-containers:
     name: "Build and test containers"
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.2.2
-
-      - name: Setup Node
-        uses: actions/setup-node@v4.4.0
-        with:
-          node-version: 20.8.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Build and run containers using docker compose
         run: docker compose up -d
@@ -29,8 +32,15 @@ jobs:
 
       - name: Test DICOMweb service
         run: |
-          sleep 20
-          curl -sI http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs/studies | grep -o '204 No Content'
+          # Poll instead of a fixed sleep: the archive can take a while to boot.
+          for i in $(seq 1 30); do
+            if curl -sI http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs/studies | grep -o '204 No Content'; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "DICOMweb service did not become ready in time"
+          exit 1
 
       - name: Wildfly internal server.log
         if: always()

@@ -1,4 +1,4 @@
-import { Menu, Typography } from 'antd'
+import { Typography } from 'antd'
 // skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
@@ -106,60 +106,51 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
       return <FaSpinner />
     }
 
-    /* Properties need to be propagated down to Menu.Item:
-     * https://github.com/react-component/menu/issues/142
-     */
     return (
-      <Menu.Item
-        style={{ height: '100%' }}
-        key={this.props.slide.seriesInstanceUIDs[0]}
-        {...this.props}
+      <Description
+        header={this.props.slide.containerIdentifier}
+        attributes={attributes}
+        selectable
       >
-        <Description
-          header={this.props.slide.containerIdentifier}
-          attributes={attributes}
-          selectable
-        >
-          <div style={{ position: 'relative', height: '100px' }}>
-            {this.props.slide.overviewImages.length > 0 ||
-            this.props.slide.thumbnailImages.length > 0 ? (
-              <div ref={this.overviewViewportRef} style={{ height: '100%' }} />
-            ) : (
-              <div
-                style={{
-                  height: '100%',
-                  textAlign: 'center',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '1.5rem',
-                  fontWeight: 300,
-                  color: '#8F9BA8',
-                  letterSpacing: '0.1em',
-                }}
-              >
-                SM
-              </div>
-            )}
-            <ValidationWarning slide={this.props.slide} />
-          </div>
-          {this.props.slide.seriesDescription !== undefined &&
-          this.props.slide.seriesDescription !== null &&
-          this.props.slide.seriesDescription !== '' ? (
-            <Typography.Text
-              type="secondary"
+        <div style={{ position: 'relative', height: '100px' }}>
+          {this.props.slide.overviewImages.length > 0 ||
+          this.props.slide.thumbnailImages.length > 0 ? (
+            <div ref={this.overviewViewportRef} style={{ height: '100%' }} />
+          ) : (
+            <div
               style={{
-                display: 'block',
-                marginTop: 4,
-                fontSize: '0.75rem',
-                lineHeight: 1.2,
+                height: '100%',
+                textAlign: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.5rem',
+                fontWeight: 300,
+                color: '#8F9BA8',
+                letterSpacing: '0.1em',
               }}
             >
-              {this.props.slide.seriesDescription}
-            </Typography.Text>
-          ) : null}
-        </Description>
-      </Menu.Item>
+              SM
+            </div>
+          )}
+          <ValidationWarning slide={this.props.slide} />
+        </div>
+        {this.props.slide.seriesDescription !== undefined &&
+        this.props.slide.seriesDescription !== null &&
+        this.props.slide.seriesDescription !== '' ? (
+          <Typography.Text
+            type="secondary"
+            style={{
+              display: 'block',
+              marginTop: 4,
+              fontSize: '0.75rem',
+              lineHeight: 1.2,
+            }}
+          >
+            {this.props.slide.seriesDescription}
+          </Typography.Text>
+        ) : null}
+      </Description>
     )
   }
 }
