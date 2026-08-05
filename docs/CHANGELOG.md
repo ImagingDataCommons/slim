@@ -1,3 +1,10 @@
+# [0.46.0](https://github.com/ImagingDataCommons/slim/compare/v0.45.7...v0.46.0) (2026-08-05)
+
+
+### Features
+
+* Add gamma correction toggle ([#385](https://github.com/ImagingDataCommons/slim/issues/385)) ([bb99e98](https://github.com/ImagingDataCommons/slim/commit/bb99e98d94338b3314187405bd0f84792955ef92))
+
 ## [0.45.7](https://github.com/ImagingDataCommons/slim/compare/v0.45.6...v0.45.7) (2026-07-09)
 
 
