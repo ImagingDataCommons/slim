@@ -46,8 +46,8 @@ importers:
         specifier: ^5.2.1
         version: 5.3.0
       dicom-microscopy-viewer:
-        specifier: github:ImagingDataCommons/dicom-microscopy-viewer#1023019602f919e0cb79be9f9cf64ab283088d7f
-        version: https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/1023019602f919e0cb79be9f9cf64ab283088d7f
+        specifier: github:ImagingDataCommons/dicom-microscopy-viewer#135ad885ff71b3f38e0446a51a9e2be13d8d7674
+        version: https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/135ad885ff71b3f38e0446a51a9e2be13d8d7674
       dicomweb-client:
         specifier: 0.10.3
         version: 0.10.3
@@ -2749,6 +2749,7 @@ packages:
 
   crypto-js@4.2.0:
     resolution: {integrity: sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q==}
+    deprecated: Active development of CryptoJS has been discontinued. This library is no longer maintained.
 
   crypto-random-string@2.0.0:
     resolution: {integrity: sha512-v1plID3y9r/lPhviJ1wrXpLeyUIGAZ2SHNYTEapm7/8A9nLPoyvVp3RK/EPFqn5kEznyWgYZNsRtYYIWbuG8KA==}
@@ -3012,8 +3013,8 @@ packages:
     engines: {node: '>= 4.2.1'}
     hasBin: true
 
-  dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/1023019602f919e0cb79be9f9cf64ab283088d7f:
-    resolution: {gitHosted: true, integrity: sha512-rp5mj43mvnMOTZTh6CNR3JE00PZ2lFnjYPzeKtJjuJEFsRDW/xyqDJ9bT3g/+sqFys7C0Tdf5G1WthgoeDS8Nw==, tarball: https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/1023019602f919e0cb79be9f9cf64ab283088d7f}
+  dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/135ad885ff71b3f38e0446a51a9e2be13d8d7674:
+    resolution: {gitHosted: true, integrity: sha512-M7sQIB3wA30BwWh4aVgkzS4gZv/+fsZqXHvm2YJ06HowzvHFK5eODKkXLU+p3dhvCWYtUyqUY93NSVifh++wAQ==, tarball: https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/135ad885ff71b3f38e0446a51a9e2be13d8d7674}
     version: 0.48.22
 
   dicomweb-client@0.10.3:
@@ -11053,7 +11054,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/1023019602f919e0cb79be9f9cf64ab283088d7f:
+  dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/135ad885ff71b3f38e0446a51a9e2be13d8d7674:
     dependencies:
       '@cornerstonejs/codec-charls': 1.2.3
       '@cornerstonejs/codec-libjpeg-turbo-8bit': 1.2.2

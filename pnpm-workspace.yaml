@@ -9,9 +9,7 @@ allowBuilds:
   # git-hosted packages by their exact tarball URL, so this entry must be
   # updated whenever the dependency pin in package.json changes.
   dicom-microscopy-viewer: true
-  dicom-microscopy-viewer@0.48.22: true
-  'dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/1023019602f919e0cb79be9f9cf64ab283088d7f': true
-  dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/88d78adfefe3f011d26c644ac268b26feb8da6b4: set this to true or false
+  'dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/135ad885ff71b3f38e0446a51a9e2be13d8d7674': true
 
 overrides:
   '@types/d3-dispatch': 3.0.6
