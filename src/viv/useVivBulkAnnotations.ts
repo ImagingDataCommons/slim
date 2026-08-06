@@ -990,9 +990,10 @@ export function useVivBulkAnnotations(
     setBulkHydrateTileThrottle(false)
     catalogCbRef.current?.(null)
     clearBulkLoadStatus()
+    const bulkHydrateInFlight = bulkHydrateInFlightRef.current
     return () => {
       bumpAllHydrateGens()
-      bulkHydrateInFlightRef.current.clear()
+      bulkHydrateInFlight.clear()
       hydrateBatchEpochRef.current += 1
       hydrateBatchActiveRef.current = 0
       bulkViewportRebuildGenRef.current = {}
@@ -1145,6 +1146,7 @@ export function useVivBulkAnnotations(
     }
 
     void run()
+    const bulkHydrateInFlight = bulkHydrateInFlightRef.current
     return () => {
       cancelled = true
       /**
@@ -1153,7 +1155,7 @@ export function useVivBulkAnnotations(
        * reinstall `graphicCache` after this effect already cleared it.
        */
       bumpAllHydrateGens()
-      bulkHydrateInFlightRef.current.clear()
+      bulkHydrateInFlight.clear()
       hydrateBatchEpochRef.current += 1
       hydrateBatchActiveRef.current = 0
     }
@@ -2131,7 +2133,7 @@ export function useVivBulkAnnotations(
       return
     }
     annotationDeckRef.current?.deck?.redraw('bulk-stream-overlay')
-  }, [annLayers, enabled, streamingDeckOverlaysByUid])
+  }, [annLayers, annotationDeckRef, enabled, streamingDeckOverlaysByUid])
 
   return {
     annLayers,
