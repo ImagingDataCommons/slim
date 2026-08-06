@@ -46,8 +46,8 @@ importers:
         specifier: ^5.2.1
         version: 5.3.0
       dicom-microscopy-viewer:
-        specifier: github:ImagingDataCommons/dicom-microscopy-viewer#1023019602f919e0cb79be9f9cf64ab283088d7f
-        version: https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/1023019602f919e0cb79be9f9cf64ab283088d7f
+        specifier: github:ImagingDataCommons/dicom-microscopy-viewer#03b4732f05fb7d02b6247e2d75e69c73ab5c88ff
+        version: https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/03b4732f05fb7d02b6247e2d75e69c73ab5c88ff
       dicomweb-client:
         specifier: 0.10.3
         version: 0.10.3
@@ -3013,8 +3013,8 @@ packages:
     engines: {node: '>= 4.2.1'}
     hasBin: true
 
-  dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/1023019602f919e0cb79be9f9cf64ab283088d7f:
-    resolution: {gitHosted: true, integrity: sha512-rp5mj43mvnMOTZTh6CNR3JE00PZ2lFnjYPzeKtJjuJEFsRDW/xyqDJ9bT3g/+sqFys7C0Tdf5G1WthgoeDS8Nw==, tarball: https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/1023019602f919e0cb79be9f9cf64ab283088d7f}
+  dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/03b4732f05fb7d02b6247e2d75e69c73ab5c88ff:
+    resolution: {gitHosted: true, integrity: sha512-zEeCQl3Zaa+MJll3mEXRVUcn2CXI21yrRl0PFpFJaYpKMwZI7q1aZ6W1ZWEDnw6c+RCYYF4mUHp5TbuqcG2fOg==, tarball: https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/03b4732f05fb7d02b6247e2d75e69c73ab5c88ff}
     version: 0.48.22
 
   dicomweb-client@0.10.3:
@@ -11054,7 +11054,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/1023019602f919e0cb79be9f9cf64ab283088d7f:
+  dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/03b4732f05fb7d02b6247e2d75e69c73ab5c88ff:
     dependencies:
       '@cornerstonejs/codec-charls': 1.2.3
       '@cornerstonejs/codec-libjpeg-turbo-8bit': 1.2.2
