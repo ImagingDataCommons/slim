@@ -10,7 +10,7 @@ allowBuilds:
   # updated whenever the dependency pin in package.json changes.
   dicom-microscopy-viewer: true
   # Git-hosted tarball (update when dmv SHA changes in package.json)
-  'dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/6041fe04fea92c185ae82c051e356978d42e8b80': true
+  'dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/1b39614eae92e92578d14977f66ced60243e51bc': true
 
 overrides:
   '@types/d3-dispatch': 3.0.6
