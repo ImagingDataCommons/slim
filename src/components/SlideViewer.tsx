@@ -299,6 +299,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       selectedPresentationStateUID: this.props.selectedPresentationStateUID,
       loadingFrames: new Set(),
       isICCProfilesEnabled: true,
+      isPaletteDisplayGammaCorrectionEnabled:
+        volumeViewer.getPaletteDisplayGammaCorrectionEnabled(),
       isSegmentationInterpolationEnabled: false,
       isParametricMapInterpolationEnabled: true,
       customizedSegmentColors: {},
@@ -323,6 +325,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    */
   private static readonly createSegmentPaletteColorLookupTable = (
     segmentColor: number[],
+    applyDisplayGammaCorrection = true,
   ): dmv.color.PaletteColorLookupTable => {
     /** Create a simple palette with the segment color
      * For binary segments, we typically have 2 values: background (0) and segment (1) */
@@ -334,6 +337,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     return dmv.color.buildPaletteColorLookupTable({
       data: paletteData,
       firstValueMapped: 0,
+      applyDisplayGammaCorrection,
     })
   }
 
@@ -408,6 +412,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       })
       this.volumeViewer = volumeViewer
       this.labelViewer = labelViewer
+      this.volumeViewer.setPaletteDisplayGammaCorrectionEnabled(
+        this.state.isPaletteDisplayGammaCorrectionEnabled,
+      )
 
       const activeOpticalPathIdentifiers: Set<string> = new Set()
       const visibleOpticalPathIdentifiers: Set<string> = new Set()
@@ -3080,7 +3087,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
     if (styleOptions.color !== undefined) {
       stylePayload.paletteColorLookupTable =
-        SlideViewer.createSegmentPaletteColorLookupTable(styleOptions.color)
+        SlideViewer.createSegmentPaletteColorLookupTable(
+          styleOptions.color,
+          this.volumeViewer.getPaletteDisplayGammaCorrectionEnabled(),
+        )
     }
 
     this.volumeViewer.setSegmentStyle(segmentUID, stylePayload)
@@ -3643,6 +3653,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   /**
+   * Toggle display gamma compensation for palette-based rendering (optical paths,
+   * segment overlays, parametric maps).
+   */
+  handlePaletteDisplayGammaCorrectionToggle = (checked: boolean): void => {
+    this.setState({ isPaletteDisplayGammaCorrectionEnabled: checked })
+    this.volumeViewer.setPaletteDisplayGammaCorrectionEnabled(checked)
+  }
+
+  /**
    * Handler that will toggle the segmentation interpolation, i.e., either
    * enable or disable it, depending on its current state.
    */
@@ -4148,6 +4167,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               defaultSegmentStyles[segment.uid].color !== undefined
                 ? SlideViewer.createSegmentPaletteColorLookupTable(
                     defaultSegmentStyles[segment.uid].color as number[],
+                    this.volumeViewer.getPaletteDisplayGammaCorrectionEnabled(),
                   )
                 : undefined,
           })
@@ -4629,6 +4649,26 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     )
   }
 
+  private readonly getPaletteDisplayGammaCorrectionMenu =
+    (): React.ReactNode => {
+      return (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: '0.75rem',
+          }}
+        >
+          <span>Gamma correction</span>
+          <Switch
+            checked={this.state.isPaletteDisplayGammaCorrectionEnabled}
+            onChange={this.handlePaletteDisplayGammaCorrectionToggle}
+          />
+        </div>
+      )
+    }
+
   private readonly getSegmentationInterpolationMenu = (): React.ReactNode => {
     const segments = this.volumeViewer.getAllSegments()
     return (
@@ -4652,6 +4692,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private readonly getSettingsPanelContent = (menus: {
     iccProfilesMenu: React.ReactNode
+    gammaCorrectionMenu: React.ReactNode
     segmentationInterpolationMenu: React.ReactNode
   }): React.ReactNode => {
     const menuItems: React.ReactNode[] = []
@@ -4659,7 +4700,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     menuItems.push(
       <Menu.SubMenu key="display" title="Display">
         <Menu.Item key="display-content" disabled style={{ cursor: 'default' }}>
-          <div className="slim-settings-content">{menus.iccProfilesMenu}</div>
+          <div className="slim-settings-content">
+            {menus.iccProfilesMenu}
+            {menus.gammaCorrectionMenu}
+          </div>
         </Menu.Item>
       </Menu.SubMenu>,
     )
@@ -4798,6 +4842,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const cursor = this.getCursor()
     const selectedRoiInformation = this.getSelectedRoiInformation()
     const iccProfilesMenu = this.getICCProfilesMenu()
+    const gammaCorrectionMenu = this.getPaletteDisplayGammaCorrectionMenu()
     const segmentationInterpolationMenu =
       this.getSegmentationInterpolationMenu()
 
@@ -4805,6 +4850,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     const settingsPanelContent = this.getSettingsPanelContent({
       iccProfilesMenu,
+      gammaCorrectionMenu,
       segmentationInterpolationMenu,
     })
 
