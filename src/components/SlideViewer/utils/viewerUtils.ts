@@ -37,7 +37,14 @@ export const constructViewers = ({
       clientMapping: clients,
       metadata: slide.volumeImages,
       controls: ['overview', 'position'],
-      skipThumbnails: true,
+      /**
+       * With THUMBNAIL levels in the pyramid (skipThumbnails unset), DMV would
+       * otherwise lock the OpenLayers view to tile-grid resolutions. That clips
+       * zoom-out so the full slide cannot fit the viewport. Disabling keeps
+       * free zoom / fit-to-extent while still loading the thumbnail for a fast
+       * first paint (see #389).
+       */
+      useTileGridResolutions: false,
       preload,
       errorInterceptor: (error: CustomError) => {
         NotificationMiddleware.onError(NotificationMiddlewareContext.DMV, error)
