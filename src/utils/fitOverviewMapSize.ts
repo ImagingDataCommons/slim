@@ -12,21 +12,35 @@ export const OVERVIEW_EDGE_INSET_PX = 8
 export const OVERVIEW_TOP_HEADROOM_PX = 12
 
 /**
- * Floor for mini-map height so wide/thin slides stay usable (width-first
- * sizing otherwise collapses height with the slide aspect ratio).
+ * Floor for each mini-map side so thin slides stay usable after preferred-box
+ * sizing. Growth to meet this still respects {@link MAX_OVERVIEW_FRACTION}.
  */
-export const MIN_OVERVIEW_HEIGHT_PX = 80
+export const MIN_OVERVIEW_SIDE_PX = 80
+
+/** @deprecated Use {@link MIN_OVERVIEW_SIDE_PX}. */
+export const MIN_OVERVIEW_HEIGHT_PX = MIN_OVERVIEW_SIDE_PX
 
 /**
- * Prefer this fraction of the viewport width before spilling to nearly-full
- * width to satisfy {@link MIN_OVERVIEW_HEIGHT_PX}.
+ * Prefer fitting inside this fraction of the viewport (both axes) before
+ * growing toward the max box to meet {@link MIN_OVERVIEW_SIDE_PX}.
  */
-export const PREFERRED_OVERVIEW_WIDTH_FRACTION = 0.45
+export const PREFERRED_OVERVIEW_FRACTION = 0.45
+
+/** @deprecated Use {@link PREFERRED_OVERVIEW_FRACTION}. */
+export const PREFERRED_OVERVIEW_WIDTH_FRACTION = PREFERRED_OVERVIEW_FRACTION
+
+/**
+ * Hard cap so the mini-map cannot approach the size of the main image (wide
+ * slides used to spill to nearly full viewport width).
+ */
+export const MAX_OVERVIEW_FRACTION = 0.6
 
 export type OverviewMapSizeBounds = {
   maxMapWidth: number
   maxMapHeight: number
   preferredMaxWidth: number
+  preferredMaxHeight: number
+  minMapWidth: number
   minMapHeight: number
 }
 
@@ -41,28 +55,49 @@ export function overviewMapSizeBounds(
   chromeX = 0,
   chromeY = 0,
 ): OverviewMapSizeBounds {
-  const maxMapHeight = Math.max(
+  const insetMaxWidth = Math.max(
+    0,
+    containerWidth - 2 * OVERVIEW_EDGE_INSET_PX - chromeX,
+  )
+  const insetMaxHeight = Math.max(
     0,
     containerHeight -
       OVERVIEW_EDGE_INSET_PX -
       OVERVIEW_TOP_HEADROOM_PX -
       chromeY,
   )
-  const maxMapWidth = Math.max(
-    0,
-    containerWidth - 2 * OVERVIEW_EDGE_INSET_PX - chromeX,
+  const maxMapWidth = Math.min(
+    insetMaxWidth,
+    containerWidth * MAX_OVERVIEW_FRACTION,
+  )
+  const maxMapHeight = Math.min(
+    insetMaxHeight,
+    containerHeight * MAX_OVERVIEW_FRACTION,
   )
   const preferredMaxWidth = Math.min(
     maxMapWidth,
-    containerWidth * PREFERRED_OVERVIEW_WIDTH_FRACTION,
+    containerWidth * PREFERRED_OVERVIEW_FRACTION,
   )
-  const minMapHeight = Math.min(MIN_OVERVIEW_HEIGHT_PX, maxMapHeight)
-  return { maxMapWidth, maxMapHeight, preferredMaxWidth, minMapHeight }
+  const preferredMaxHeight = Math.min(
+    maxMapHeight,
+    containerHeight * PREFERRED_OVERVIEW_FRACTION,
+  )
+  const minMapWidth = Math.min(MIN_OVERVIEW_SIDE_PX, maxMapWidth)
+  const minMapHeight = Math.min(MIN_OVERVIEW_SIDE_PX, maxMapHeight)
+  return {
+    maxMapWidth,
+    maxMapHeight,
+    preferredMaxWidth,
+    preferredMaxHeight,
+    minMapWidth,
+    minMapHeight,
+  }
 }
 
 /**
- * Fit overview map size into the viewport: grow short (wide) maps, shrink tall
- * ones, keep aspect ratio.
+ * Fit overview map size into the viewport symmetrically for wide and tall
+ * slides: contain in the preferred box, grow toward the max box only to meet
+ * minimum side length, then contain in the max box. Aspect ratio is preserved.
  */
 export function fitOverviewMapSize(
   width: number,
@@ -74,35 +109,45 @@ export function fitOverviewMapSize(
   }
 
   const aspect = width / height
-  let nextWidth = width
-  let nextHeight = height
-  const { maxMapWidth, maxMapHeight, preferredMaxWidth, minMapHeight } = bounds
+  const {
+    maxMapWidth,
+    maxMapHeight,
+    preferredMaxWidth,
+    preferredMaxHeight,
+    minMapWidth,
+    minMapHeight,
+  } = bounds
 
-  /** Wide/thin slides: raise height to the floor and let width grow. */
-  if (nextHeight < minMapHeight - 0.5) {
-    nextHeight = minMapHeight
-    nextWidth = nextHeight * aspect
+  if (
+    !(preferredMaxWidth > 0) ||
+    !(preferredMaxHeight > 0) ||
+    !(maxMapWidth > 0) ||
+    !(maxMapHeight > 0)
+  ) {
+    return { width: 0, height: 0 }
   }
 
-  /** Prefer staying within preferred width; if still too short, use full width. */
-  if (nextWidth > preferredMaxWidth + 0.5) {
-    nextWidth = preferredMaxWidth
-    nextHeight = nextWidth / aspect
-    if (nextHeight < minMapHeight - 0.5 && maxMapWidth > preferredMaxWidth) {
-      nextWidth = maxMapWidth
-      nextHeight = nextWidth / aspect
-    }
-  }
+  /** Contain in preferred box. */
+  let nextHeight = Math.min(preferredMaxHeight, preferredMaxWidth / aspect)
+  let nextWidth = nextHeight * aspect
 
-  if (nextHeight > maxMapHeight + 0.5) {
-    nextHeight = maxMapHeight
-    nextWidth = nextHeight * aspect
-  }
+  /** Grow toward max box to meet minimum side lengths. */
+  const scaleUp = Math.max(
+    1,
+    minMapHeight > 0 ? minMapHeight / nextHeight : 1,
+    minMapWidth > 0 ? minMapWidth / nextWidth : 1,
+  )
+  nextWidth *= scaleUp
+  nextHeight *= scaleUp
 
-  if (nextWidth > maxMapWidth + 0.5) {
-    nextWidth = maxMapWidth
-    nextHeight = nextWidth / aspect
-  }
+  /** Contain in max box (never dominate the main viewport). */
+  const scaleDown = Math.min(
+    1,
+    maxMapWidth / nextWidth,
+    maxMapHeight / nextHeight,
+  )
+  nextWidth *= scaleDown
+  nextHeight *= scaleDown
 
   return { width: nextWidth, height: nextHeight }
 }

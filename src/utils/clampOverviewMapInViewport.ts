@@ -73,8 +73,8 @@ export type ClampOverviewMapOptions = {
 }
 
 /**
- * Fit overview map size into the viewport: grow short (wide) maps, shrink tall
- * ones, keep left/bottom insets equal.
+ * Fit overview map size into the viewport symmetrically for wide and tall
+ * slides, keep left/bottom insets equal.
  *
  * Runtime note: Slim applies this because craco loads the published DMV min
  * bundle; local `dicom-microscopy-viewer/src/viewer.js` sizing changes do not
