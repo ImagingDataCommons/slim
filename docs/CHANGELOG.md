@@ -1,3 +1,10 @@
+## [0.46.1](https://github.com/ImagingDataCommons/slim/compare/v0.46.0...v0.46.1) (2026-08-05)
+
+
+### Bug Fixes
+
+* re-enable THUMBNAIL images in the volume pyramid ([#318](https://github.com/ImagingDataCommons/slim/issues/318)) ([d526417](https://github.com/ImagingDataCommons/slim/commit/d5264178f48f53f5289714dffe419b96599a2e33))
+
 # [0.46.0](https://github.com/ImagingDataCommons/slim/compare/v0.45.7...v0.46.0) (2026-08-05)
 
 
