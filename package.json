@@ -1,9 +1,9 @@
 {
   "name": "slim",
-  "version": "0.45.5",
+  "version": "0.46.1",
   "private": true,
   "author": "ImagingDataCommons",
-  "packageManager": "pnpm@10.34.1",
+  "packageManager": "pnpm@11.9.0+sha512.bd682d5d03fe525ef7c9fd6780c6884d1e756ac4c9c9fe00c538782824310dcf90e3ddc4f53835f06dfaebd5085e41855e0bcbb3b60de2ac5bbab89e5036f03b",
   "scripts": {
     "start": "rm -rf ./node_modules/.cache/default-development && ./scripts/set-git-env.sh craco start",
     "dev": "pnpm run start",
@@ -15,7 +15,7 @@
     "lint:fix": "biome check --write --unsafe .",
     "fmt": "biome format --write .",
     "format": "biome format --write .",
-    "test": "biome check . && craco test --watchAll=false",
+    "test": "craco test --watchAll=false",
     "predeploy": "REACT_APP_CONFIG=demo PUBLIC_URL='https://imagingdatacommons.github.io/slim/' ./scripts/set-git-env.sh craco build",
     "deploy": "gh-pages -d build",
     "clean": "rm -rf ./build ./node_modules",
@@ -50,13 +50,14 @@
     "react-error-boundary": "^3.1.4",
     "react-icons": "^3.11.0",
     "react-router-dom": "^6.3.0",
-    "retry": "^0.13.1"
+    "retry": "^0.13.1",
+    "uuid": "^8.3.2"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.15.0",
     "@babel/preset-react": "^7.17.12",
     "@babel/preset-typescript": "^7.17.12",
-    "@biomejs/biome": "^2.0.0",
+    "@biomejs/biome": "2.4.16",
     "@craco/craco": "^6.4.0",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^12.0.0",
@@ -81,6 +82,7 @@
     "craco-less": "^2.0.0",
     "eslint": "^8.57.0",
     "eslint-plugin-sonarjs": "^0.25.0",
+    "fraction.js": "^4.3.7",
     "gh-pages": "^5.0.0",
     "husky": "^9.1.7",
     "react-scripts": "5.0.0",
@@ -88,21 +90,5 @@
     "semantic-release": "21.1.2",
     "sonarqube-scanner": "^4.3.0",
     "typescript": "^4.7.4"
-  },
-  "pnpm": {
-    "overrides": {
-      "@types/d3-dispatch": "3.0.6",
-      "axios": "1.17.0",
-      "nth-check": "2.0.1",
-      "wrap-ansi": "7.0.0",
-      "make-dir": "3.1.0",
-      "express": "4.21.0",
-      "path-to-regexp": "0.1.13",
-      "rollup": "3.30.0",
-      "semver": "7.5.2",
-      "serialize-javascript": "7.0.5",
-      "tar": "7.5.16",
-      "underscore": "1.13.8"
-    }
   }
 }

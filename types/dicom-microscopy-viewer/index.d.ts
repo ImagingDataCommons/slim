@@ -15,9 +15,16 @@ declare module 'dicom-microscopy-viewer' {
       debug?: boolean
       preload?: boolean
       skipThumbnails?: boolean
+      /**
+       * When false, OpenLayers view zoom is not limited to tile-grid resolutions
+       * so the image can fit the viewport (no clipping). Needed when thumbnails
+       * are included in the pyramid; redundant when skipThumbnails is true.
+       */
+      useTileGridResolutions?: boolean
       controls: string[]
       annotationOptions?: object
       errorInterceptor?: (error: CustomError) => void
+      paletteDisplayGammaCorrection?: boolean
     }
 
     export interface ROIStyleOptions {
@@ -232,6 +239,8 @@ declare module 'dicom-microscopy-viewer' {
       ): metadata.MicroscopyBulkSimpleAnnotations
       toggleICCProfiles (): void;
       getICCProfiles (): any[];
+      setPaletteDisplayGammaCorrectionEnabled (enabled: boolean): void;
+      getPaletteDisplayGammaCorrectionEnabled (): boolean;
       toggleSegmentationInterpolation (): void;
       toggleParametricMapInterpolation (): void;
     }
@@ -819,11 +828,13 @@ declare module 'dicom-microscopy-viewer' {
       redSegmentedData?: Uint8Array|Uint16Array|ArrayBuffer|number[]
       greenSegmentedData?: Uint8Array|Uint16Array|ArrayBuffer|number[]
       blueSegmentedData?: Uint8Array|Uint16Array|ArrayBuffer|number[]
+      applyDisplayGammaCorrection?: boolean
     }
 
     export interface BuildPaletteColorLookupTableOptions {
       data: number[][]
       firstValueMapped: number
+      applyDisplayGammaCorrection?: boolean
     }
 
     export function buildPaletteColorLookupTable (options: BuildPaletteColorLookupTableOptions): PaletteColorLookupTable
@@ -833,6 +844,8 @@ declare module 'dicom-microscopy-viewer' {
       get uid (): string
       get data (): number[][]
       get firstValueMapped (): number
+      get applyDisplayGammaCorrection (): boolean
+      setApplyDisplayGammaCorrection (enabled: boolean): void
     }
   }
 

@@ -9,7 +9,6 @@ import {
   UserOutlined,
 } from '@ant-design/icons'
 import {
-  Badge,
   Col,
   Collapse,
   Dropdown,
@@ -87,6 +86,59 @@ const aboutModalStyles: Record<string, React.CSSProperties> = {
     wordBreak: 'break-all',
     fontSize: '0.85rem',
   },
+}
+
+/**
+ * Static count pill that avoids antd Badge → rc-motion `findDOMNode`
+ * (deprecated under React Strict Mode).
+ */
+function HeaderCountBadge({
+  count,
+  color = '#ff4d4f',
+  zIndex,
+  children,
+}: {
+  count: number
+  color?: string
+  zIndex?: number
+  children?: React.ReactNode
+}): JSX.Element {
+  const pill =
+    count > 0 ? (
+      <sup
+        style={{
+          position: children != null ? 'absolute' : 'relative',
+          top: children != null ? -4 : undefined,
+          right: children != null ? -8 : undefined,
+          zIndex,
+          display: 'inline-block',
+          minWidth: 16,
+          height: 16,
+          padding: '0 5px',
+          borderRadius: 8,
+          background: color,
+          color: '#fff',
+          fontSize: 10,
+          lineHeight: '16px',
+          textAlign: 'center',
+          boxShadow: '0 0 0 1px #fff',
+          verticalAlign: children != null ? undefined : 'middle',
+        }}
+      >
+        {count > 99 ? '99+' : count}
+      </sup>
+    ) : null
+
+  if (children == null) {
+    return <>{pill}</>
+  }
+
+  return (
+    <span style={{ position: 'relative', display: 'inline-block' }}>
+      {children}
+      {pill}
+    </span>
+  )
 }
 
 interface HeaderProps extends RouteComponentProps {
@@ -415,11 +467,14 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     const { Panel } = Collapse
 
     const showErrorCount = (errcount: number): JSX.Element => (
-      <Badge count={errcount} />
+      <HeaderCountBadge count={errcount} />
     )
 
     const showWarningCount = (warncount: number): JSX.Element => (
-      <Badge color={warncount > 0 ? 'green' : undefined} count={warncount} />
+      <HeaderCountBadge
+        count={warncount}
+        color={warncount > 0 ? '#52c41a' : '#ff4d4f'}
+      />
     )
 
     Modal.info({
@@ -606,19 +661,63 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     )
 
     const debugButton = (
-      <Badge count={this.state.errorObj.length} style={{ zIndex: 1000 }}>
-        <Badge
-          color={this.state.warnings.length > 0 ? 'green' : undefined}
-          count={this.state.warnings.length}
-          style={{ zIndex: 1001 }}
-        >
-          <Button
-            icon={BugOutlined}
-            tooltip="Debug info"
-            onClick={this.handleDebugButtonClick}
-          />
-        </Badge>
-      </Badge>
+      <span style={{ position: 'relative', display: 'inline-block' }}>
+        <Button
+          icon={BugOutlined}
+          tooltip="Debug info"
+          onClick={this.handleDebugButtonClick}
+        />
+        {this.state.warnings.length > 0 ? (
+          <sup
+            style={{
+              position: 'absolute',
+              top: -4,
+              right: this.state.errorObj.length > 0 ? 10 : -8,
+              zIndex: 1001,
+              display: 'inline-block',
+              minWidth: 16,
+              height: 16,
+              padding: '0 5px',
+              borderRadius: 8,
+              background: '#52c41a',
+              color: '#fff',
+              fontSize: 10,
+              lineHeight: '16px',
+              textAlign: 'center',
+              boxShadow: '0 0 0 1px #fff',
+            }}
+          >
+            {this.state.warnings.length > 99
+              ? '99+'
+              : this.state.warnings.length}
+          </sup>
+        ) : null}
+        {this.state.errorObj.length > 0 ? (
+          <sup
+            style={{
+              position: 'absolute',
+              top: -4,
+              right: -8,
+              zIndex: 1000,
+              display: 'inline-block',
+              minWidth: 16,
+              height: 16,
+              padding: '0 5px',
+              borderRadius: 8,
+              background: '#ff4d4f',
+              color: '#fff',
+              fontSize: 10,
+              lineHeight: '16px',
+              textAlign: 'center',
+              boxShadow: '0 0 0 1px #fff',
+            }}
+          >
+            {this.state.errorObj.length > 99
+              ? '99+'
+              : this.state.errorObj.length}
+          </sup>
+        ) : null}
+      </span>
     )
 
     const showDicomTagBrowser = isViewerPath(this.props.location.pathname)
