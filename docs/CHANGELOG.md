@@ -1,3 +1,40 @@
+## [0.46.1](https://github.com/ImagingDataCommons/slim/compare/v0.46.0...v0.46.1) (2026-08-05)
+
+
+### Bug Fixes
+
+* re-enable THUMBNAIL images in the volume pyramid ([#318](https://github.com/ImagingDataCommons/slim/issues/318)) ([d526417](https://github.com/ImagingDataCommons/slim/commit/d5264178f48f53f5289714dffe419b96599a2e33))
+
+# [0.46.0](https://github.com/ImagingDataCommons/slim/compare/v0.45.7...v0.46.0) (2026-08-05)
+
+
+### Features
+
+* Add gamma correction toggle ([#385](https://github.com/ImagingDataCommons/slim/issues/385)) ([bb99e98](https://github.com/ImagingDataCommons/slim/commit/bb99e98d94338b3314187405bd0f84792955ef92))
+
+## [0.45.7](https://github.com/ImagingDataCommons/slim/compare/v0.45.6...v0.45.7) (2026-07-09)
+
+
+### Bug Fixes
+
+* declare uuid and fraction.js dependencies ([#396](https://github.com/ImagingDataCommons/slim/issues/396)) ([ea513cd](https://github.com/ImagingDataCommons/slim/commit/ea513cd84ea5364e45a347eac8cec14bdff30324))
+
+## [0.45.6](https://github.com/ImagingDataCommons/slim/compare/v0.45.5...v0.45.6) (2026-06-29)
+
+
+### Bug Fixes
+
+* patch form-data CRLF injection (CVE-2026-12143) ([#393](https://github.com/ImagingDataCommons/slim/issues/393)) ([efebe02](https://github.com/ImagingDataCommons/slim/commit/efebe0279f6ef4c56b65ec607bb44ec413d2f3bc)), closes [#175](https://github.com/ImagingDataCommons/slim/issues/175) [#176](https://github.com/ImagingDataCommons/slim/issues/176)
+
+## [0.45.5](https://github.com/ImagingDataCommons/slim/compare/v0.45.4...v0.45.5) (2026-06-19)
+
+
+### Bug Fixes
+
+* **240:** distinct fractional-overlay palettes and legend visibility sync ([#388](https://github.com/ImagingDataCommons/slim/issues/388)) ([064fc12](https://github.com/ImagingDataCommons/slim/commit/064fc12f782a0d897666da21aaeeff9f2d80f77c)), closes [ImagingDataCommons/dicom-microscopy-viewer#240](https://github.com/ImagingDataCommons/dicom-microscopy-viewer/issues/240)
+* add ol as direct dependency for linked DMV builds ([dfcb20b](https://github.com/ImagingDataCommons/slim/commit/dfcb20b4c6946649e8140a8a6a0d6b0adfb34831))
+* render conformant Palette Color LUTs in Advanced Blending Presentation States ([#390](https://github.com/ImagingDataCommons/slim/issues/390)) ([#391](https://github.com/ImagingDataCommons/slim/issues/391)) ([df7e2e3](https://github.com/ImagingDataCommons/slim/commit/df7e2e3ca23361b64ec9ee818376af56a180d3bb))
+
 ## [0.45.4](https://github.com/ImagingDataCommons/slim/compare/v0.45.3...v0.45.4) (2026-05-05)
 
 
