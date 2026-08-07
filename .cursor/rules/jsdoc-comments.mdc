@@ -1,0 +1,35 @@
+---
+description: Prefer JSDoc block comments over line comments
+globs: "**/*.{js,jsx,ts,tsx,mjs,cjs}"
+alwaysApply: false
+---
+
+# Comment style
+
+Use JSDoc-style block comments (`/** */`) for explanatory comments in application and library source. Do not use `//` line comments for explanations.
+
+```js
+// ❌ BAD
+// Re-open the XHR and restore headers before retrying.
+request.open(method, url, true)
+
+// ✅ GOOD
+/** Re-open the XHR and restore headers before retrying. */
+request.open(method, url, true)
+```
+
+Multi-line:
+
+```js
+/**
+ * When Range is ignored, complete from the buffered body instead of
+ * appending — otherwise coordinates duplicate and the loop never ends.
+ */
+```
+
+Exceptions (keep `//`):
+- Tooling directives: `eslint-disable`, `@ts-expect-error`, `biome-ignore`, `prettier-ignore`
+- Temporarily commented-out code
+- Shebang lines
+
+Public APIs should still use proper JSDoc tags (`@param`, `@returns`, etc.) inside `/** */`.
