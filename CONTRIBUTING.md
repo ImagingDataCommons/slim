@@ -37,6 +37,8 @@ The [pnpm](https://pnpm.io/) package manager is used to manage dependencies and 
 
 Source code is linted and formatted using [Biome](https://biomejs.dev/). TypeScript is used with [strict type checking compiler options](https://www.typescriptlang.org/tsconfig#Strict_Type_Checking_Options_6173) enabled. Semicolons are not used at the end of statements (Biome uses `asNeeded`).
 
+Explanatory comments use JSDoc-style block comments (`/** … */`), not `//` line comments. Keep `//` only for tooling directives (`eslint-disable`, `@ts-expect-error`, `biome-ignore`), temporarily commented-out code, and shebang lines.
+
 Use the following commands to check and fix style:
 
     $ pnpm run lint        # check for issues
