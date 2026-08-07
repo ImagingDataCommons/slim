@@ -9,6 +9,8 @@ export type DicomWebManagerErrorHandler = (
 export interface DICOMwebClientRequestHookMetadata {
   url: string
   method: string
+  /** Combined request headers from dicomweb-client (needed to re-apply after retry open()). */
+  headers?: Record<string, string>
 }
 
 export interface RetryRequestSettings {
@@ -17,7 +19,7 @@ export interface RetryRequestSettings {
   minTimeout?: number
   maxTimeout?: number
   randomize?: boolean
-  retryableStatusCodes: number[]
+  retryableStatusCodes?: number[]
 }
 
 export interface EvaluationSetting {

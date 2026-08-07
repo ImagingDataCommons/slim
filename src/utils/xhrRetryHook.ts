@@ -11,59 +11,44 @@ type RequestHook = (
 ) => XMLHttpRequest
 
 /**
+ * HTTP methods that are safe to retry automatically. Non-idempotent methods
+ * (e.g. STOW POST) are excluded because re-sending them can duplicate
+ * partially stored data on a server that failed mid-request.
+ */
+const RETRYABLE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+
+/**
  * Returns a configured retry request hook function
  * that can be used to add retry functionality to XHR request.
  *
  * Default options:
- *   retries: 5
- *   factor: 3
+ *   retries: 3
+ *   factor: 2
  *   minTimeout: 1 * 1000
- *   maxTimeout: 60 * 1000
+ *   maxTimeout: 10 * 1000
  *   randomize: true
  *
  * @param options
- * @param options.retires - Number of retries
- * @param options.factor - Factor
- * @param options.minTimeout - Min number of seconds to wait before next retry
- * @param options.maxTimeout - Max number of seconds to wait before next retry
+ * @param options.retries - Number of retries
+ * @param options.factor - Exponential backoff factor
+ * @param options.minTimeout - Min number of milliseconds to wait before next retry
+ * @param options.maxTimeout - Max number of milliseconds to wait before next retry
  * @param options.randomize - Whether randomization should be applied
  * @param options.retryableStatusCodes HTTP status codes that can trigger a retry
  * @returns Configured retry request function
  */
 export const getXHRRetryHook = (
-  options: RetryRequestSettings = {
-    retries: 5,
-    factor: 3,
-    minTimeout: 1 * 1000,
-    maxTimeout: 60 * 1000,
-    randomize: true,
-    retryableStatusCodes: [429, 500],
-  },
+  options: RetryRequestSettings = {},
 ): RequestHook => {
-  const retryOptions = options
-
-  if (options.retries != null) {
-    retryOptions.retries = options.retries
-  }
-
-  if (options.factor != null) {
-    retryOptions.factor = options.factor
-  }
-
-  if (options.minTimeout != null) {
-    retryOptions.minTimeout = options.minTimeout
-  }
-
-  if (options.maxTimeout != null) {
-    retryOptions.maxTimeout = options.maxTimeout
-  }
-
-  if (options.randomize != null) {
-    retryOptions.randomize = options.randomize
-  }
-
-  if (options.retryableStatusCodes != null) {
-    retryOptions.retryableStatusCodes = options.retryableStatusCodes
+  const retryOptions = {
+    retries: options.retries ?? 3,
+    factor: options.factor ?? 2,
+    minTimeout: options.minTimeout ?? 1 * 1000,
+    maxTimeout: options.maxTimeout ?? 10 * 1000,
+    randomize: options.randomize ?? true,
+    retryableStatusCodes: options.retryableStatusCodes ?? [
+      429, 500, 502, 503, 504,
+    ],
   }
 
   /**
@@ -81,41 +66,72 @@ export const getXHRRetryHook = (
   ): XMLHttpRequest => {
     const { url, method } = metadata
 
+    if (!RETRYABLE_METHODS.has(method.toUpperCase())) {
+      return request
+    }
+
+    const headers = metadata.headers ?? {}
+    const originalRequestSend = request.send
+    /** Captured at send(); re-applied after retry open() for safety. */
+    let responseType: XMLHttpRequestResponseType = request.responseType
+
     function faultTolerantRequestSend(
       ...args: Parameters<XMLHttpRequest['send']>
     ): void {
-      const operation = retry.operation(retryOptions)
+      responseType = request.responseType
+      /**
+       * Capture at send() — not when this hook runs — so later requestHooks
+       * (e.g. Viv's abort suppress wrapper) that wrap onreadystatechange
+       * between hook install and send() stay in the call chain.
+       */
+      const downstreamOnReadyStateChange = request.onreadystatechange
+      const operation = retry.operation({
+        retries: retryOptions.retries,
+        factor: retryOptions.factor,
+        minTimeout: retryOptions.minTimeout,
+        maxTimeout: retryOptions.maxTimeout,
+        randomize: retryOptions.randomize,
+      })
 
       operation.attempt(function operationAttempt(currentAttempt) {
-        const originalOnReadyStateChange = request.onreadystatechange
+        if (currentAttempt > 1) {
+          console.warn(`Requesting ${url}... (attempt: ${currentAttempt})`)
+          /** open() empties author request headers; re-apply those + responseType. */
+          request.open(method, url, true)
+          request.responseType = responseType
+          for (const key of Object.keys(headers)) {
+            request.setRequestHeader(key, headers[key])
+          }
+        }
 
-        /** Overriding/extending XHR function */
         request.onreadystatechange = function onReadyStateChange(
           ev: Event,
         ): void {
-          if (originalOnReadyStateChange != null) {
-            originalOnReadyStateChange.call(request, ev)
+          if (request.readyState !== XMLHttpRequest.DONE) {
+            return
           }
 
-          if (retryOptions.retryableStatusCodes.includes(request.status)) {
-            const errorMessage = `Attempt to request ${url} failed.`
-            const attemptFailedError = new Error(errorMessage)
-            operation.retry(attemptFailedError)
+          if (
+            retryOptions.retryableStatusCodes.includes(request.status) &&
+            operation.retry(
+              new Error(
+                `Attempt to request ${url} failed (${request.status}).`,
+              ),
+            )
+          ) {
+            /** Schedule another attempt; do not surface failure to dicomweb-client yet. */
+            return
+          }
+
+          if (downstreamOnReadyStateChange != null) {
+            downstreamOnReadyStateChange.call(request, ev)
           }
         }
 
-        /** Call open only on retry (after headers and other things were set in the xhr instance) */
-        if (currentAttempt > 1) {
-          console.warn(`Requesting ${url}... (attempt: ${currentAttempt})`)
-          request.open(method, url, true)
-        }
+        originalRequestSend.apply(request, args)
       })
-
-      originalRequestSend.apply(request, args)
     }
 
-    /** Overriding/extending XHR function */
-    const originalRequestSend = request.send
     request.send = faultTolerantRequestSend
 
     return request

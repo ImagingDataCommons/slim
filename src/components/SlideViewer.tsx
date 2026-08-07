@@ -168,9 +168,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     },
   }
 
-  private roiStyles: { [key: string]: dmv.viewer.ROIStyleOptions } = {}
+  private readonly roiStyles: { [key: string]: dmv.viewer.ROIStyleOptions } = {}
 
-  private defaultAnnotationStyles: {
+  private readonly defaultAnnotationStyles: {
     [annotationUID: string]: StyleOptions
   } = {}
 
@@ -442,11 +442,35 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         selectedSeriesInstanceUID: undefined,
         validXCoordinateRange: [offset[0], offset[0] + size[0]],
         validYCoordinateRange: [offset[1], offset[1] + size[1]],
+        /**
+         * A freshly constructed viewer always starts with ICC profiles
+         * enabled; reset the flag so the settings switch stays in sync.
+         */
+        isICCProfilesEnabled: true,
       })
       this.populateViewports()
     }
 
     this.publishActiveSeriesToService()
+  }
+
+  /**
+   * Merge a presentation state into component state, replacing any previously
+   * stored instance with the same SOP Instance UID.
+   */
+  private readonly upsertPresentationState = (
+    presentationState: dmv.metadata.AdvancedBlendingPresentationState,
+  ): void => {
+    this.setState((state) => {
+      const mapping: {
+        [sopInstanceUID: string]: dmv.metadata.AdvancedBlendingPresentationState
+      } = {}
+      state.presentationStates.forEach((instance) => {
+        mapping[instance.SOPInstanceUID] = instance
+      })
+      mapping[presentationState.SOPInstanceUID] = presentationState
+      return { presentationStates: Object.values(mapping) }
+    })
   }
 
   /**
@@ -512,19 +536,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                         this.setPresentationState(presentationState)
                       }
                     }
-                    this.setState((state) => {
-                      const mapping: {
-                        [
-                          sopInstanceUID: string
-                        ]: dmv.metadata.AdvancedBlendingPresentationState
-                      } = {}
-                      state.presentationStates.forEach((instance) => {
-                        mapping[instance.SOPInstanceUID] = instance
-                      })
-                      mapping[presentationState.SOPInstanceUID] =
-                        presentationState
-                      return { presentationStates: Object.values(mapping) }
-                    })
+                    this.upsertPresentationState(presentationState)
                   }
                 } else {
                   logger.log(
@@ -968,6 +980,89 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   /**
+   * Parse a retrieved Comprehensive 3D SR instance and add the ROIs of a
+   * suitable measurement report to the volume viewer. Returns whether the
+   * report was accepted: ignored documents must not settle the promise in
+   * addAnnotations (matching the pre-refactoring control flow, where the
+   * early returns skipped resolve()).
+   */
+  private readonly addRetrievedSrRois = (
+    retrievedInstance: dwc.api.Dataset,
+  ): boolean => {
+    const data = dcmjs.data.DicomMessage.readFile(retrievedInstance)
+    const { dataset } = dmv.metadata.formatMetadata(data.dict)
+    const report = dataset as unknown as dmv.metadata.Comprehensive3DSR
+    /*
+     * Perform a couple of checks to ensure the document content of the
+     * report fullfils the requirements of the application.
+     */
+    if (!implementsTID1500(report)) {
+      logger.debug(
+        `ignore SR document "${report.SOPInstanceUID}" ` +
+          'because it is not structured according to template ' +
+          'TID 1500 "MeasurementReport"',
+      )
+      return false
+    }
+    if (!describesSpecimenSubject(report)) {
+      logger.debug(
+        `ignore SR document "${report.SOPInstanceUID}" ` +
+          'because it does not describe a specimen subject',
+      )
+      return false
+    }
+    if (!containsROIAnnotations(report)) {
+      logger.debug(
+        `ignore SR document "${report.SOPInstanceUID}" ` +
+          'because it does not contain any suitable ROI annotations',
+      )
+      return false
+    }
+
+    const content = new MeasurementReport(report)
+    content.ROIs.forEach((roi) => {
+      logger.log(`add ROI "${roi.uid}"`)
+      const scoord3d = roi.scoord3d
+      const image = this.props.slide.volumeImages[0]
+      if (scoord3d.frameOfReferenceUID === image.FrameOfReferenceUID) {
+        /*
+         * ROIs may get assigned new UIDs upon re-rendering of the
+         * page and we need to ensure that we don't add them twice.
+         * The same ROI may be stored in multiple SR documents and
+         * we don't want them to show up twice.
+         * TODO: We should probably either "merge" measurements and
+         * quantitative evaluations or pick the ROI from the "best"
+         * available report (COMPLETE and VERIFIED).
+         */
+        const doesROIExist = this.volumeViewer
+          .getAllROIs()
+          .some((otherROI: dmv.roi.ROI): boolean => {
+            return areROIsEqual(otherROI, roi)
+          })
+        if (!doesROIExist) {
+          try {
+            // Add ROI without style such that it won't be visible.
+            this.volumeViewer.addROI(roi, {})
+            const roiAsAnnotation = adaptRoiToAnnotation(roi)
+            this.formatAnnotation(roiAsAnnotation)
+          } catch {
+            logger.error(`could not add ROI "${roi.uid}"`)
+          }
+        } else {
+          logger.debug(`skip already existing ROI "${roi.uid}"`)
+        }
+      } else {
+        logger.debug(
+          `skip ROI "${roi.uid}" ` +
+            `of SR document "${report.SOPInstanceUID}"` +
+            'because it is defined in another frame of reference',
+        )
+      }
+    })
+    return true
+  }
+
+  /**
    * Retrieve Structured Report instances that contain regions of interests
    * with 3D spatial coordinates defined in the same frame of reference as the
    * currently selected series and add them to the VOLUME image viewer.
@@ -1003,81 +1098,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                   sopInstanceUID: instance.SOPInstanceUID,
                 })
                 .then((retrievedInstance): void => {
-                  const data =
-                    dcmjs.data.DicomMessage.readFile(retrievedInstance)
-                  const { dataset } = dmv.metadata.formatMetadata(data.dict)
-                  const report =
-                    dataset as unknown as dmv.metadata.Comprehensive3DSR
-                  /*
-                   * Perform a couple of checks to ensure the document content of the
-                   * report fullfils the requirements of the application.
-                   */
-                  if (!implementsTID1500(report)) {
-                    logger.debug(
-                      `ignore SR document "${report.SOPInstanceUID}" ` +
-                        'because it is not structured according to template ' +
-                        'TID 1500 "MeasurementReport"',
-                    )
-                    return
+                  if (this.addRetrievedSrRois(retrievedInstance)) {
+                    resolve()
                   }
-                  if (!describesSpecimenSubject(report)) {
-                    logger.debug(
-                      `ignore SR document "${report.SOPInstanceUID}" ` +
-                        'because it does not describe a specimen subject',
-                    )
-                    return
-                  }
-                  if (!containsROIAnnotations(report)) {
-                    logger.debug(
-                      `ignore SR document "${report.SOPInstanceUID}" ` +
-                        'because it does not contain any suitable ROI annotations',
-                    )
-                    return
-                  }
-
-                  const content = new MeasurementReport(report)
-                  content.ROIs.forEach((roi) => {
-                    logger.log(`add ROI "${roi.uid}"`)
-                    const scoord3d = roi.scoord3d
-                    const image = this.props.slide.volumeImages[0]
-                    if (
-                      scoord3d.frameOfReferenceUID === image.FrameOfReferenceUID
-                    ) {
-                      /*
-                       * ROIs may get assigned new UIDs upon re-rendering of the
-                       * page and we need to ensure that we don't add them twice.
-                       * The same ROI may be stored in multiple SR documents and
-                       * we don't want them to show up twice.
-                       * TODO: We should probably either "merge" measurements and
-                       * quantitative evaluations or pick the ROI from the "best"
-                       * available report (COMPLETE and VERIFIED).
-                       */
-                      const doesROIExist = this.volumeViewer
-                        .getAllROIs()
-                        .some((otherROI: dmv.roi.ROI): boolean => {
-                          return areROIsEqual(otherROI, roi)
-                        })
-                      if (!doesROIExist) {
-                        try {
-                          // Add ROI without style such that it won't be visible.
-                          this.volumeViewer.addROI(roi, {})
-                          const roiAsAnnotation = adaptRoiToAnnotation(roi)
-                          this.formatAnnotation(roiAsAnnotation)
-                        } catch {
-                          logger.error(`could not add ROI "${roi.uid}"`)
-                        }
-                      } else {
-                        logger.debug(`skip already existing ROI "${roi.uid}"`)
-                      }
-                    } else {
-                      logger.debug(
-                        `skip ROI "${roi.uid}" ` +
-                          `of SR document "${report.SOPInstanceUID}"` +
-                          'because it is defined in another frame of reference',
-                      )
-                    }
-                  })
-                  resolve()
                 })
                 .catch((error) => {
                   // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -1122,6 +1145,60 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           )
         })
     })
+  }
+
+  /**
+   * Add retrieved Microscopy Bulk Simple Annotations metadata to the volume
+   * viewer and apply configured styles per annotation group.
+   */
+  private readonly addRetrievedAnnotationGroups = (
+    retrievedMetadata: dwc.api.Metadata[],
+  ): void => {
+    const annotations: dmv.metadata.MicroscopyBulkSimpleAnnotations[] =
+      retrievedMetadata.map((metadata) => {
+        return new dmv.metadata.MicroscopyBulkSimpleAnnotations({
+          metadata,
+        })
+      })
+    annotations.forEach((ann) => {
+      try {
+        this.volumeViewer.addAnnotationGroups(ann)
+      } catch (error: unknown) {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        NotificationMiddleware.onError(
+          NotificationMiddlewareContext.SLIM,
+          new CustomError(
+            errorTypes.VISUALIZATION,
+            'Microscopy Bulk Simple Annotations cannot be displayed.',
+          ),
+        )
+        logger.error('failed to add annotation groups:', error)
+      }
+      ann.AnnotationGroupSequence.forEach((item) => {
+        const annotationGroupUID = item.AnnotationGroupUID
+        const finding = item.AnnotationPropertyTypeCodeSequence[0]
+        const key = buildKey(finding)
+        const style = this.roiStyles[key]
+        // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
+        if (
+          style !== null &&
+          style !== undefined &&
+          style.fill !== null &&
+          style.fill !== undefined
+        ) {
+          this.volumeViewer.setAnnotationGroupStyle(annotationGroupUID, {
+            color: style.fill.color,
+          })
+        }
+      })
+    })
+    /*
+     * React is not aware of the fact that annotation groups have been
+     * added via the viewer (the underlying HTML viewport element is a
+     * ref object) and won't show the annotation groups in the user
+     * interface unless an update is forced.
+     */
+    this.forceUpdate()
   }
 
   /**
@@ -1173,52 +1250,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 seriesInstanceUID: series.SeriesInstanceUID,
               })
               .then((retrievedMetadata): void => {
-                const annotations: dmv.metadata.MicroscopyBulkSimpleAnnotations[] =
-                  retrievedMetadata.map((metadata) => {
-                    return new dmv.metadata.MicroscopyBulkSimpleAnnotations({
-                      metadata,
-                    })
-                  })
-                annotations.forEach((ann) => {
-                  try {
-                    this.volumeViewer.addAnnotationGroups(ann)
-                  } catch (error: unknown) {
-                    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                    NotificationMiddleware.onError(
-                      NotificationMiddlewareContext.SLIM,
-                      new CustomError(
-                        errorTypes.VISUALIZATION,
-                        'Microscopy Bulk Simple Annotations cannot be displayed.',
-                      ),
-                    )
-                    logger.error('failed to add annotation groups:', error)
-                  }
-                  ann.AnnotationGroupSequence.forEach((item) => {
-                    const annotationGroupUID = item.AnnotationGroupUID
-                    const finding = item.AnnotationPropertyTypeCodeSequence[0]
-                    const key = buildKey(finding)
-                    const style = this.roiStyles[key]
-                    // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
-                    if (
-                      style !== null &&
-                      style !== undefined &&
-                      style.fill !== null &&
-                      style.fill !== undefined
-                    ) {
-                      this.volumeViewer.setAnnotationGroupStyle(
-                        annotationGroupUID,
-                        { color: style.fill.color },
-                      )
-                    }
-                  })
-                })
-                /*
-                 * React is not aware of the fact that annotation groups have been
-                 * added via the viewer (the underlying HTML viewport element is a
-                 * ref object) and won't show the annotation groups in the user
-                 * interface unless an update is forced.
-                 */
-                this.forceUpdate()
+                this.addRetrievedAnnotationGroups(retrievedMetadata)
                 finishOne()
               })
               .catch((error) => {
@@ -1260,6 +1292,49 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * frame of reference as the currently selected series and add them to the
    * VOLUME image viewer.
    */
+  /**
+   * Add retrieved Segmentation metadata matching the current slide's frame of
+   * reference and container to the volume viewer.
+   */
+  private readonly addRetrievedSegmentations = (
+    retrievedMetadata: dwc.api.Metadata[],
+  ): void => {
+    const segmentations: dmv.metadata.Segmentation[] = []
+    retrievedMetadata.forEach((metadata) => {
+      const seg = new dmv.metadata.Segmentation({ metadata })
+      const refImage = this.props.slide.volumeImages[0]
+      if (
+        seg.FrameOfReferenceUID === refImage.FrameOfReferenceUID &&
+        seg.ContainerIdentifier === refImage.ContainerIdentifier
+      ) {
+        segmentations.push(seg)
+      }
+    })
+    if (segmentations.length > 0) {
+      try {
+        this.volumeViewer.addSegments(segmentations)
+        applyDistinctFractionalSegmentPalettes(this.volumeViewer)
+      } catch (error: unknown) {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        NotificationMiddleware.onError(
+          NotificationMiddlewareContext.SLIM,
+          new CustomError(
+            errorTypes.VISUALIZATION,
+            'Segmentations cannot be displayed',
+          ),
+        )
+        console.error('failed to add segments: ', error)
+      }
+      /*
+       * React is not aware of the fact that segments have been added via
+       * the viewer (the underlying HTML viewport element is a ref object)
+       * and won't show the segments in the user interface unless an update
+       * is forced.
+       */
+      this.forceUpdate()
+    }
+  }
+
   addSegmentations = async (): Promise<void> => {
     return await new Promise<void>((resolve, reject) => {
       console.info('search for Segmentation instances')
@@ -1305,40 +1380,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 seriesInstanceUID: series.SeriesInstanceUID,
               })
               .then((retrievedMetadata): void => {
-                const segmentations: dmv.metadata.Segmentation[] = []
-                retrievedMetadata.forEach((metadata) => {
-                  const seg = new dmv.metadata.Segmentation({ metadata })
-                  const refImage = this.props.slide.volumeImages[0]
-                  if (
-                    seg.FrameOfReferenceUID === refImage.FrameOfReferenceUID &&
-                    seg.ContainerIdentifier === refImage.ContainerIdentifier
-                  ) {
-                    segmentations.push(seg)
-                  }
-                })
-                if (segmentations.length > 0) {
-                  try {
-                    this.volumeViewer.addSegments(segmentations)
-                    applyDistinctFractionalSegmentPalettes(this.volumeViewer)
-                  } catch (error: unknown) {
-                    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                    NotificationMiddleware.onError(
-                      NotificationMiddlewareContext.SLIM,
-                      new CustomError(
-                        errorTypes.VISUALIZATION,
-                        'Segmentations cannot be displayed',
-                      ),
-                    )
-                    console.error('failed to add segments: ', error)
-                  }
-                  /*
-                   * React is not aware of the fact that segments have been added via
-                   * the viewer (the underlying HTML viewport element is a ref object)
-                   * and won't show the segments in the user interface unless an update
-                   * is forced.
-                   */
-                  this.forceUpdate()
-                }
+                this.addRetrievedSegmentations(retrievedMetadata)
                 finishOne()
               })
               .catch((error) => {
@@ -1379,6 +1421,51 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * frame of reference as the currently selected series and add them to the
    * VOLUME image viewer.
    */
+  /**
+   * Add retrieved Parametric Map metadata matching the current slide's frame
+   * of reference and container to the volume viewer.
+   */
+  private readonly addRetrievedParametricMaps = (
+    retrievedMetadata: dwc.api.Metadata[],
+  ): void => {
+    const parametricMaps: dmv.metadata.ParametricMap[] = []
+    retrievedMetadata.forEach((metadata) => {
+      const pm = new dmv.metadata.ParametricMap({ metadata })
+      const refImage = this.props.slide.volumeImages[0]
+      if (
+        pm.FrameOfReferenceUID === refImage.FrameOfReferenceUID &&
+        pm.ContainerIdentifier === refImage.ContainerIdentifier
+      ) {
+        parametricMaps.push(pm)
+      } else {
+        console.warn(`skip Parametric Map instance "${pm.SOPInstanceUID}"`)
+      }
+    })
+    if (parametricMaps.length > 0) {
+      try {
+        this.volumeViewer.addParameterMappings(parametricMaps)
+        applyDistinctParametricMapPalettes(this.volumeViewer)
+      } catch (error: unknown) {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        NotificationMiddleware.onError(
+          NotificationMiddlewareContext.SLIM,
+          new CustomError(
+            errorTypes.VISUALIZATION,
+            'Parametric Map cannot be displayed',
+          ),
+        )
+        console.error('failed to add mappings: ', error)
+      }
+      /*
+       * React is not aware of the fact that mappings have been added via
+       * the viewer (the underlying HTML viewport element is a ref object)
+       * and won't show the mappings in the user interface unless an update
+       * is forced.
+       */
+      this.forceUpdate()
+    }
+  }
+
   addParametricMaps = async (): Promise<void> => {
     return await new Promise<void>((resolve, reject) => {
       console.info('search for Parametric Map instances')
@@ -1422,44 +1509,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 seriesInstanceUID: series.SeriesInstanceUID,
               })
               .then((retrievedMetadata): void => {
-                const parametricMaps: dmv.metadata.ParametricMap[] = []
-                retrievedMetadata.forEach((metadata) => {
-                  const pm = new dmv.metadata.ParametricMap({ metadata })
-                  const refImage = this.props.slide.volumeImages[0]
-                  if (
-                    pm.FrameOfReferenceUID === refImage.FrameOfReferenceUID &&
-                    pm.ContainerIdentifier === refImage.ContainerIdentifier
-                  ) {
-                    parametricMaps.push(pm)
-                  } else {
-                    console.warn(
-                      `skip Parametric Map instance "${pm.SOPInstanceUID}"`,
-                    )
-                  }
-                })
-                if (parametricMaps.length > 0) {
-                  try {
-                    this.volumeViewer.addParameterMappings(parametricMaps)
-                    applyDistinctParametricMapPalettes(this.volumeViewer)
-                  } catch (error: unknown) {
-                    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                    NotificationMiddleware.onError(
-                      NotificationMiddlewareContext.SLIM,
-                      new CustomError(
-                        errorTypes.VISUALIZATION,
-                        'Parametric Map cannot be displayed',
-                      ),
-                    )
-                    console.error('failed to add mappings: ', error)
-                  }
-                  /*
-                   * React is not aware of the fact that mappings have been added via
-                   * the viewer (the underlying HTML viewport element is a ref object)
-                   * and won't show the mappings in the user interface unless an update
-                   * is forced.
-                   */
-                  this.forceUpdate()
-                }
+                this.addRetrievedParametricMaps(retrievedMetadata)
                 finishOne()
               })
               .catch((error) => {
