@@ -118,6 +118,23 @@ function syncOverviewOpenLayersMap(volumeViewer: object): void {
   }
 }
 
+function syncCollapseButtonLayout(overview: HTMLElement): void {
+  const collapseButton = overview.querySelector(':scope > button')
+  if (!(collapseButton instanceof HTMLElement)) {
+    return
+  }
+  collapseButton.style.margin = '0'
+  if (overview.classList.contains('ol-collapsed')) {
+    collapseButton.style.position = ''
+    collapseButton.style.bottom = ''
+    collapseButton.style.left = ''
+  } else {
+    collapseButton.style.position = 'absolute'
+    collapseButton.style.bottom = '0'
+    collapseButton.style.left = '0'
+  }
+}
+
 export type ClampOverviewMapOptions = {
   /**
    * VolumeImageViewer instance. When provided, retargets the overview view's
@@ -127,12 +144,11 @@ export type ClampOverviewMapOptions = {
 }
 
 /**
- * Fit overview map size into the viewport symmetrically for wide and tall
- * slides, keep left/bottom insets equal.
+ * Fit overview map size into the viewport; keep left/bottom insets equal.
  *
- * Runtime note: Slim applies this because craco loads the published DMV min
- * bundle; local `dicom-microscopy-viewer/src/viewer.js` sizing changes do not
- * ship until that package is published and bumped.
+ * Slim owns runtime inset/size because craco loads the published DMV bundle;
+ * keep constants in sync with DMV `_updateOverviewMapSize` /
+ * {@link fitOverviewMapSize}.
  */
 export function clampOverviewMapInViewport(
   container: HTMLElement,
@@ -156,8 +172,20 @@ export function clampOverviewMapInViewport(
   overview.style.left = `${OVERVIEW_EDGE_INSET_PX}px`
   overview.style.bottom = `${OVERVIEW_EDGE_INSET_PX}px`
   overview.style.top = 'auto'
+  overview.style.right = 'auto'
   overview.style.margin = '0'
+  overview.style.padding = '0'
   mapEl.style.margin = '0'
+  mapEl.style.padding = '0'
+
+  const scale = container.querySelector('.ol-scale-line')
+  if (scale instanceof HTMLElement) {
+    scale.style.bottom = `${OVERVIEW_EDGE_INSET_PX}px`
+    scale.style.right = `${OVERVIEW_EDGE_INSET_PX}px`
+    scale.style.margin = '0'
+  }
+
+  syncCollapseButtonLayout(overview)
 
   const height =
     Number.parseFloat(mapEl.style.height || '') || mapEl.clientHeight
@@ -184,25 +212,12 @@ export function clampOverviewMapInViewport(
       syncOverviewOpenLayersMap(options.volumeViewer)
     }
   }
-
-  /**
-   * Match bottom gap to left gap using the visible map border vs the volume
-   * container.
-   */
-  const containerRect = container.getBoundingClientRect()
-  const mapRect = mapEl.getBoundingClientRect()
-  const leftGap = mapRect.left - containerRect.left
-  const bottomGap = containerRect.bottom - mapRect.bottom
-  if (leftGap >= 0 && bottomGap - leftGap > 0.5) {
-    overview.style.bottom = `${Math.max(0, OVERVIEW_EDGE_INSET_PX - (bottomGap - leftGap))}px`
-  } else if (leftGap >= 0) {
-    overview.style.bottom = `${leftGap}px`
-  }
 }
 
 /**
  * Re-run {@link clampOverviewMapInViewport} when DMV rebuilds or resizes the
- * overview control (it sets inline width/height asynchronously).
+ * overview control. Volume `resize()` runs only from ResizeObserver so mutation
+ * clamping cannot feedback through OL style updates.
  */
 export function observeOverviewMapClamp(
   container: HTMLElement,
@@ -210,6 +225,7 @@ export function observeOverviewMapClamp(
 ): () => void {
   let scheduled = false
   let isClamping = false
+  let resizeScheduled = false
 
   const clamp = (): void => {
     if (scheduled || isClamping) {
@@ -227,6 +243,19 @@ export function observeOverviewMapClamp(
     })
   }
 
+  const onContainerResize = (): void => {
+    if (resizeScheduled) {
+      return
+    }
+    resizeScheduled = true
+    requestAnimationFrame(() => {
+      resizeScheduled = false
+      const viewer = options.volumeViewer as { resize?: () => void } | undefined
+      viewer?.resize?.()
+      clamp()
+    })
+  }
+
   const mutationObserver = new MutationObserver(() => {
     if (isClamping) {
       return
@@ -240,7 +269,7 @@ export function observeOverviewMapClamp(
     attributeFilter: ['style', 'class'],
   })
 
-  const resizeObserver = new ResizeObserver(clamp)
+  const resizeObserver = new ResizeObserver(onContainerResize)
   resizeObserver.observe(container)
 
   clamp()

@@ -1,8 +1,19 @@
 /**
  * Shared overview mini-map sizing (kept in sync with DMV's
- * `_updateOverviewMapSize` intent). Slim applies this client-side because the
- * published `dicom-microscopy-viewer` bundle may not yet include the same fix;
+ * `_updateOverviewMapSize` in dicom-microscopy-viewer/src/viewer.js).
+ * Slim applies this client-side because the published
+ * `dicom-microscopy-viewer` bundle may not yet include the same fix;
  * local DMV `viewer.js` edits are out of band until that package is bumped.
+ *
+ * Keep these constants aligned with DMV when changing either side:
+ * edgeInsetPx=8, topHeadroomPx=12, minOverviewSidePx=48,
+ * preferredBoxPx=150, maxBoxPx=200, preferredFraction=0.25, maxFraction=0.3.
+ *
+ * OpenLayers' native OverviewMap does **not** size by viewport fraction: its
+ * default CSS is a fixed 150×150px box (`.ol-overviewmap-map` in `ol.css`), and
+ * the official custom example uses ~300px width. We follow that model: contain
+ * the slide aspect ratio in a fixed pixel box, with a hard absolute cap so
+ * extreme aspects / large monitors cannot dominate the viewport.
  */
 
 /** Matching inset from the left and bottom edges of the map viewport (px). */
@@ -12,28 +23,47 @@ export const OVERVIEW_EDGE_INSET_PX = 8
 export const OVERVIEW_TOP_HEADROOM_PX = 12
 
 /**
- * Floor for each mini-map side so thin slides stay usable after preferred-box
- * sizing. Growth to meet this still respects {@link MAX_OVERVIEW_FRACTION}.
+ * Floor for each mini-map side so ultra-thin slides stay clickable. Growth to
+ * meet this still respects {@link MAX_OVERVIEW_BOX_PX}.
  */
-export const MIN_OVERVIEW_SIDE_PX = 80
+export const MIN_OVERVIEW_SIDE_PX = 48
 
 /** @deprecated Use {@link MIN_OVERVIEW_SIDE_PX}. */
 export const MIN_OVERVIEW_HEIGHT_PX = MIN_OVERVIEW_SIDE_PX
 
 /**
- * Prefer fitting inside this fraction of the viewport (both axes) before
- * growing toward the max box to meet {@link MIN_OVERVIEW_SIDE_PX}.
+ * Preferred contain box — OpenLayers default `.ol-overviewmap-map` size.
+ * Tall and wide slides share this budget so the footprint stays consistent.
  */
-export const PREFERRED_OVERVIEW_FRACTION = 0.45
+export const PREFERRED_OVERVIEW_BOX_PX = 150
+
+/**
+ * Hard absolute contain box (px). Slightly above the OL default so min-side
+ * growth on extreme aspects has a little room without approaching the OL
+ * custom-example 300px size.
+ */
+export const MAX_OVERVIEW_BOX_PX = 200
+
+/**
+ * @deprecated Viewport fractions are no longer the primary budget; kept so
+ * older imports keep resolving. Prefer {@link PREFERRED_OVERVIEW_BOX_PX}.
+ */
+export const PREFERRED_OVERVIEW_FRACTION = 0.25
 
 /** @deprecated Use {@link PREFERRED_OVERVIEW_FRACTION}. */
 export const PREFERRED_OVERVIEW_WIDTH_FRACTION = PREFERRED_OVERVIEW_FRACTION
 
 /**
- * Hard cap so the mini-map cannot approach the size of the main image (wide
- * slides used to spill to nearly full viewport width).
+ * @deprecated Viewport fractions are no longer the primary budget; kept so
+ * older imports keep resolving. Prefer {@link MAX_OVERVIEW_BOX_PX}.
  */
-export const MAX_OVERVIEW_FRACTION = 0.6
+export const MAX_OVERVIEW_FRACTION = 0.3
+
+/** @deprecated Use {@link PREFERRED_OVERVIEW_BOX_PX}. */
+export const PREFERRED_OVERVIEW_LONG_SIDE_PX = PREFERRED_OVERVIEW_BOX_PX
+
+/** @deprecated Use {@link MAX_OVERVIEW_BOX_PX}. */
+export const MAX_OVERVIEW_LONG_SIDE_PX = MAX_OVERVIEW_BOX_PX
 
 export type OverviewMapSizeBounds = {
   maxMapWidth: number
@@ -66,21 +96,29 @@ export function overviewMapSizeBounds(
       OVERVIEW_TOP_HEADROOM_PX -
       chromeY,
   )
+  /**
+   * Primary budget is the fixed OL-style box; fractions only shrink further on
+   * tiny viewports so the mini-map cannot overflow the slide area.
+   */
   const maxMapWidth = Math.min(
     insetMaxWidth,
     containerWidth * MAX_OVERVIEW_FRACTION,
+    MAX_OVERVIEW_BOX_PX,
   )
   const maxMapHeight = Math.min(
     insetMaxHeight,
     containerHeight * MAX_OVERVIEW_FRACTION,
+    MAX_OVERVIEW_BOX_PX,
   )
   const preferredMaxWidth = Math.min(
     maxMapWidth,
     containerWidth * PREFERRED_OVERVIEW_FRACTION,
+    PREFERRED_OVERVIEW_BOX_PX,
   )
   const preferredMaxHeight = Math.min(
     maxMapHeight,
     containerHeight * PREFERRED_OVERVIEW_FRACTION,
+    PREFERRED_OVERVIEW_BOX_PX,
   )
   const minMapWidth = Math.min(MIN_OVERVIEW_SIDE_PX, maxMapWidth)
   const minMapHeight = Math.min(MIN_OVERVIEW_SIDE_PX, maxMapHeight)
@@ -95,9 +133,9 @@ export function overviewMapSizeBounds(
 }
 
 /**
- * Fit overview map size into the viewport symmetrically for wide and tall
- * slides: contain in the preferred box, grow toward the max box only to meet
- * minimum side length, then contain in the max box. Aspect ratio is preserved.
+ * Fit overview map size into a fixed OL-style box: contain in the preferred
+ * box, grow toward the max box only to meet minimum side length, then contain
+ * in the max box. Aspect ratio is preserved.
  */
 export function fitOverviewMapSize(
   width: number,

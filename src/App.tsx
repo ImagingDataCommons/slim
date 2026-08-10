@@ -15,10 +15,10 @@ import type AppConfig from './AppConfig'
 import type { ErrorMessageSettings, ServerSettings } from './AppConfig'
 import type { AuthManager, User } from './auth'
 import OidcManager from './auth/OidcManager'
+import AppShell from './components/AppShell'
 import CaseViewer from './components/CaseViewer'
 import Header from './components/Header'
 import InfoPage from './components/InfoPage'
-import MemoryFooter from './components/MemoryFooter'
 import Worklist from './components/Worklist'
 import { SettingsProvider } from './contexts/SettingsContext'
 import { ValidationProvider } from './contexts/ValidationContext'
@@ -503,22 +503,20 @@ class App extends React.Component<AppProps, AppState> {
       isLogoutPossible = false
     }
 
-    const layoutStyle = { height: '100vh' }
-    /** Default fill when there is no MemoryFooter below Content. */
-    const layoutContentStyle = { height: '100%' as const }
     /**
-     * Fill space between Header and Footer. `height: 100%` made Content as tall
-     * as the full Layout and left a larger gap above the memory footer than the
-     * overview mini-map's left inset. Only used on routes that render
-     * MemoryFooter when monitoring is enabled.
+     * Fill AppShell's main pane. flex + minHeight:0 keeps ant-layout from
+     * sizing to content and spilling into the in-flow MemoryFooter.
      */
-    const layoutContentWithFooterStyle = enableMemoryMonitoring
-      ? {
-          flex: 1,
-          minHeight: 0,
-          overflow: 'hidden' as const,
-        }
-      : layoutContentStyle
+    const layoutStyle: React.CSSProperties = {
+      flex: '1 1 0%',
+      minHeight: 0,
+      overflow: 'hidden',
+    }
+    const layoutContentStyle: React.CSSProperties = {
+      flex: 1,
+      minHeight: 0,
+      overflow: 'hidden',
+    }
 
     if (this.state.redirectTo !== undefined) {
       return (
@@ -529,20 +527,22 @@ class App extends React.Component<AppProps, AppState> {
     } else if (this.state.isLoading) {
       return (
         <BrowserRouter basename={this.props.config.path}>
-          <Layout style={layoutStyle}>
-            <Header
-              app={appInfo}
-              user={this.state.user}
-              showWorklistButton={false}
-              onServerSelection={this.handleServerSelection}
-              showServerSelectionButton={false}
-              clients={this.state.clients}
-              defaultClients={this.state.defaultClients}
-            />
-            <Layout.Content style={layoutContentStyle}>
-              <FaSpinner />
-            </Layout.Content>
-          </Layout>
+          <AppShell enableMemoryMonitoring={false}>
+            <Layout style={layoutStyle}>
+              <Header
+                app={appInfo}
+                user={this.state.user}
+                showWorklistButton={false}
+                onServerSelection={this.handleServerSelection}
+                showServerSelectionButton={false}
+                clients={this.state.clients}
+                defaultClients={this.state.defaultClients}
+              />
+              <Layout.Content style={layoutContentStyle}>
+                <FaSpinner />
+              </Layout.Content>
+            </Layout>
+          </AppShell>
         </BrowserRouter>
       )
     } else if (!this.state.wasAuthSuccessful) {
@@ -556,53 +556,51 @@ class App extends React.Component<AppProps, AppState> {
             <Route
               path="/"
               element={
-                <Layout style={layoutStyle}>
-                  <Header
-                    app={appInfo}
-                    user={this.state.user}
-                    showWorklistButton={false}
-                    onServerSelection={this.handleServerSelection}
-                    onUserLogout={isLogoutPossible ? onLogout : undefined}
-                    showServerSelectionButton={enableServerSelection}
-                    clients={this.state.clients}
-                    defaultClients={this.state.defaultClients}
-                  />
-                  <Layout.Content style={layoutContentWithFooterStyle}>
-                    {worklist}
-                  </Layout.Content>
-                  {enableMemoryMonitoring && (
-                    <MemoryFooter enabled={enableMemoryMonitoring} />
-                  )}
-                </Layout>
-              }
-            />
-            <Route
-              path="/studies/:studyInstanceUID/*"
-              element={
-                <SettingsProvider>
+                <AppShell enableMemoryMonitoring={enableMemoryMonitoring}>
                   <Layout style={layoutStyle}>
                     <Header
                       app={appInfo}
                       user={this.state.user}
-                      showWorklistButton={enableWorklist}
+                      showWorklistButton={false}
                       onServerSelection={this.handleServerSelection}
                       onUserLogout={isLogoutPossible ? onLogout : undefined}
                       showServerSelectionButton={enableServerSelection}
                       clients={this.state.clients}
                       defaultClients={this.state.defaultClients}
                     />
-                    <Layout.Content style={layoutContentWithFooterStyle}>
-                      <ParametrizedCaseViewer
-                        clients={this.state.clients}
-                        user={this.state.user}
-                        config={this.props.config}
-                        app={appInfo}
-                      />
+                    <Layout.Content style={layoutContentStyle}>
+                      {worklist}
                     </Layout.Content>
-                    {enableMemoryMonitoring && (
-                      <MemoryFooter enabled={enableMemoryMonitoring} />
-                    )}
                   </Layout>
+                </AppShell>
+              }
+            />
+            <Route
+              path="/studies/:studyInstanceUID/*"
+              element={
+                <SettingsProvider>
+                  <AppShell enableMemoryMonitoring={enableMemoryMonitoring}>
+                    <Layout style={layoutStyle}>
+                      <Header
+                        app={appInfo}
+                        user={this.state.user}
+                        showWorklistButton={enableWorklist}
+                        onServerSelection={this.handleServerSelection}
+                        onUserLogout={isLogoutPossible ? onLogout : undefined}
+                        showServerSelectionButton={enableServerSelection}
+                        clients={this.state.clients}
+                        defaultClients={this.state.defaultClients}
+                      />
+                      <Layout.Content style={layoutContentStyle}>
+                        <ParametrizedCaseViewer
+                          clients={this.state.clients}
+                          user={this.state.user}
+                          config={this.props.config}
+                          app={appInfo}
+                        />
+                      </Layout.Content>
+                    </Layout>
+                  </AppShell>
                 </SettingsProvider>
               }
             />
@@ -610,53 +608,51 @@ class App extends React.Component<AppProps, AppState> {
               path="/projects/:project/locations/:location/datasets/:dataset/dicomStores/:dicomStore/study/:studyInstanceUID/*"
               element={
                 <SettingsProvider>
-                  <Layout style={layoutStyle}>
-                    <Header
-                      app={appInfo}
-                      user={this.state.user}
-                      showWorklistButton={enableWorklist}
-                      onServerSelection={this.handleServerSelection}
-                      onUserLogout={isLogoutPossible ? onLogout : undefined}
-                      showServerSelectionButton={enableServerSelection}
-                      clients={this.state.clients}
-                      defaultClients={this.state.defaultClients}
-                    />
-                    <Layout.Content style={layoutContentWithFooterStyle}>
-                      <ParametrizedCaseViewer
-                        clients={this.state.clients}
-                        user={this.state.user}
-                        config={this.props.config}
+                  <AppShell enableMemoryMonitoring={enableMemoryMonitoring}>
+                    <Layout style={layoutStyle}>
+                      <Header
                         app={appInfo}
+                        user={this.state.user}
+                        showWorklistButton={enableWorklist}
+                        onServerSelection={this.handleServerSelection}
+                        onUserLogout={isLogoutPossible ? onLogout : undefined}
+                        showServerSelectionButton={enableServerSelection}
+                        clients={this.state.clients}
+                        defaultClients={this.state.defaultClients}
                       />
-                    </Layout.Content>
-                    {enableMemoryMonitoring && (
-                      <MemoryFooter enabled={enableMemoryMonitoring} />
-                    )}
-                  </Layout>
+                      <Layout.Content style={layoutContentStyle}>
+                        <ParametrizedCaseViewer
+                          clients={this.state.clients}
+                          user={this.state.user}
+                          config={this.props.config}
+                          app={appInfo}
+                        />
+                      </Layout.Content>
+                    </Layout>
+                  </AppShell>
                 </SettingsProvider>
               }
             />
             <Route
               path="/logout"
               element={
-                <Layout style={layoutStyle}>
-                  <Header
-                    app={appInfo}
-                    user={this.state.user}
-                    showWorklistButton={false}
-                    onServerSelection={this.handleServerSelection}
-                    onUserLogout={isLogoutPossible ? onLogout : undefined}
-                    showServerSelectionButton={enableServerSelection}
-                    clients={this.state.clients}
-                    defaultClients={this.state.defaultClients}
-                  />
-                  <Layout.Content style={layoutContentWithFooterStyle}>
-                    Logged out
-                  </Layout.Content>
-                  {enableMemoryMonitoring && (
-                    <MemoryFooter enabled={enableMemoryMonitoring} />
-                  )}
-                </Layout>
+                <AppShell enableMemoryMonitoring={enableMemoryMonitoring}>
+                  <Layout style={layoutStyle}>
+                    <Header
+                      app={appInfo}
+                      user={this.state.user}
+                      showWorklistButton={false}
+                      onServerSelection={this.handleServerSelection}
+                      onUserLogout={isLogoutPossible ? onLogout : undefined}
+                      showServerSelectionButton={enableServerSelection}
+                      clients={this.state.clients}
+                      defaultClients={this.state.defaultClients}
+                    />
+                    <Layout.Content style={layoutContentStyle}>
+                      Logged out
+                    </Layout.Content>
+                  </Layout>
+                </AppShell>
               }
             />
           </Routes>

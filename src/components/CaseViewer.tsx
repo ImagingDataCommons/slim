@@ -362,7 +362,7 @@ function Viewer(props: ViewerProps): JSX.Element | null {
   ]
 
   return (
-    <Layout style={{ height: '100%' }} hasSider>
+    <Layout style={{ height: '100%', minHeight: 0 }} hasSider>
       <Layout.Sider
         width={300}
         style={{

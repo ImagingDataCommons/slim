@@ -4920,7 +4920,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     annotations?.forEach?.(this.formatAnnotation)
 
     return (
-      <Layout style={{ height: '100%' }} hasSider>
+      <Layout style={{ height: '100%', minHeight: 0 }} hasSider>
         <SettingsRegistration
           onOpenSettings={() => this.setState({ isSettingsDrawerOpen: true })}
         />
