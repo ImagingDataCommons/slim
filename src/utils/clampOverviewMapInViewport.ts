@@ -1,10 +1,20 @@
+import { getCenter, getHeight, getWidth } from 'ol/extent'
 import type OlMap from 'ol/Map'
+import type View from 'ol/View'
 
 import {
   fitOverviewMapSize,
   OVERVIEW_EDGE_INSET_PX,
   overviewMapSizeBounds,
 } from './fitOverviewMapSize'
+
+/** OpenLayers View internals used to retarget locked overview resolutions. */
+type OverviewViewInternals = View & {
+  applyOptions_: (options: Record<string, unknown>) => void
+  getUpdatedOptions_: (
+    options: Record<string, unknown>,
+  ) => Record<string, unknown>
+}
 
 function verticalChromePx(mapEl: HTMLElement): number {
   const style = window.getComputedStyle(mapEl)
@@ -37,6 +47,15 @@ function horizontalChromePx(mapEl: HTMLElement): number {
 /**
  * Locate DMV's OverviewMap control via Symbol-keyed private fields (no public
  * API on the published package), then sync OL size + view after CSS resize.
+ *
+ * DMV locks overview `minResolution === maxResolution` and pins the center via
+ * a point `extent` + `constrainOnlyCenter` so OpenLayers' OverviewMap cannot
+ * rezoom/recenter when the main-map box shrinks on zoom (`resetExtent_`).
+ * After Slim shrinks the map for chrome / max-fraction, retarget that locked
+ * resolution to the post-resize map size — and re-apply the center pin.
+ *
+ * Do not `setView(new View)`: DMV bundles its own `ol`, so a Slim `View` fails
+ * `instanceof` and OL treats it as a Promise (`view.then`).
  */
 function syncOverviewOpenLayersMap(volumeViewer: object): void {
   for (const symbol of Object.getOwnPropertySymbols(volumeViewer)) {
@@ -53,21 +72,56 @@ function syncOverviewOpenLayersMap(volumeViewer: object): void {
       value as { getOverviewMap: () => OlMap }
     ).getOverviewMap()
     overviewOlMap.updateSize()
-    const view = overviewOlMap.getView()
+    const view = overviewOlMap.getView() as OverviewViewInternals | undefined
     const projection = view?.getProjection()
     const extent = projection?.getExtent()
     const size = overviewOlMap.getSize()
-    if (extent != null && size != null) {
-      view.fit(extent, { size })
+    if (
+      view == null ||
+      extent == null ||
+      size == null ||
+      !(size[0] > 0) ||
+      !(size[1] > 0) ||
+      typeof view.applyOptions_ !== 'function' ||
+      typeof view.getUpdatedOptions_ !== 'function'
+    ) {
+      return
     }
+
+    const rotation = view.getRotation()
+    const degrees = (rotation / Math.PI) * 180
+    const isRotated = !(
+      Math.abs(degrees - 180) < 0.01 || Math.abs(degrees - 0) < 0.01
+    )
+    /** Same formula as DMV `_updateOverviewMapSize` (height-driven). */
+    const resolution = isRotated
+      ? getWidth(extent) / size[1]
+      : getHeight(extent) / size[1]
+    if (!(resolution > 0) || !Number.isFinite(resolution)) {
+      return
+    }
+
+    const center = getCenter(extent)
+    view.applyOptions_(
+      view.getUpdatedOptions_({
+        minResolution: resolution,
+        maxResolution: resolution,
+        resolution,
+        center,
+        /** Keep the overview pinned to the full-slide center on zoom. */
+        extent: center.concat(center),
+        constrainOnlyCenter: true,
+        showFullExtent: true,
+      }),
+    )
     return
   }
 }
 
 export type ClampOverviewMapOptions = {
   /**
-   * VolumeImageViewer instance. When provided, calls overview `updateSize()`
-   * and `view.fit` after CSS size changes (DOM `resize` events do not do this).
+   * VolumeImageViewer instance. When provided, retargets the overview view's
+   * locked resolution after CSS size changes (DOM `resize` events do not).
    */
   volumeViewer?: object
 }
@@ -120,6 +174,12 @@ export function clampOverviewMapInViewport(
   if (sizeChanged) {
     mapEl.style.width = `${fitted.width}px`
     mapEl.style.height = `${fitted.height}px`
+    /**
+     * Only retarget the locked overview resolution when the CSS size changed.
+     * Zoom updates the overview *box* styles and would otherwise re-enter here
+     * via MutationObserver; repeatedly rewriting view options on every box
+     * paint is unnecessary once size (and thus resolution) is stable.
+     */
     if (options.volumeViewer != null) {
       syncOverviewOpenLayersMap(options.volumeViewer)
     }
