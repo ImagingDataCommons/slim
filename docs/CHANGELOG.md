@@ -1,3 +1,10 @@
+## [0.46.2](https://github.com/ImagingDataCommons/slim/compare/v0.46.1...v0.46.2) (2026-08-07)
+
+
+### Bug Fixes
+
+* make XHR retry hook actually retry and keep ICC switch state in sync ([#402](https://github.com/ImagingDataCommons/slim/issues/402)) ([0f4c725](https://github.com/ImagingDataCommons/slim/commit/0f4c7259a6a3814df00a8ee1900b8562c1543e61))
+
 ## [0.46.1](https://github.com/ImagingDataCommons/slim/compare/v0.46.0...v0.46.1) (2026-08-05)
 
 
