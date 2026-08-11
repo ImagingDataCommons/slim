@@ -15,6 +15,12 @@ declare module 'dicom-microscopy-viewer' {
       debug?: boolean
       preload?: boolean
       skipThumbnails?: boolean
+      /**
+       * When false, OpenLayers view zoom is not limited to tile-grid resolutions
+       * so the image can fit the viewport (no clipping). Needed when thumbnails
+       * are included in the pyramid; redundant when skipThumbnails is true.
+       */
+      useTileGridResolutions?: boolean
       controls: string[]
       annotationOptions?: object
       errorInterceptor?: (error: CustomError) => void
@@ -553,6 +559,10 @@ declare module 'dicom-microscopy-viewer' {
       ImageType: string[]
       SamplesPerPixel: number
       PhotometricInterpretation: string
+      TotalPixelMatrixColumns: number
+      TotalPixelMatrixRows: number
+      Columns: number
+      Rows: number
       // Acquisition
       AcquisitionUID?: string
       // Multi-Resolution Pyramid

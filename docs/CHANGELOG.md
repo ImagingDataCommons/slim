@@ -1,3 +1,24 @@
+## [0.46.3](https://github.com/ImagingDataCommons/slim/compare/v0.46.2...v0.46.3) (2026-08-11)
+
+
+### Bug Fixes
+
+* improve slide-list overview preview sizing ([#399](https://github.com/ImagingDataCommons/slim/issues/399)) ([#400](https://github.com/ImagingDataCommons/slim/issues/400)) ([15ed58b](https://github.com/ImagingDataCommons/slim/commit/15ed58b6c4b61f60eceb8880fbbb12476a9d12a2))
+
+## [0.46.2](https://github.com/ImagingDataCommons/slim/compare/v0.46.1...v0.46.2) (2026-08-07)
+
+
+### Bug Fixes
+
+* make XHR retry hook actually retry and keep ICC switch state in sync ([#402](https://github.com/ImagingDataCommons/slim/issues/402)) ([0f4c725](https://github.com/ImagingDataCommons/slim/commit/0f4c7259a6a3814df00a8ee1900b8562c1543e61))
+
+## [0.46.1](https://github.com/ImagingDataCommons/slim/compare/v0.46.0...v0.46.1) (2026-08-05)
+
+
+### Bug Fixes
+
+* re-enable THUMBNAIL images in the volume pyramid ([#318](https://github.com/ImagingDataCommons/slim/issues/318)) ([d526417](https://github.com/ImagingDataCommons/slim/commit/d5264178f48f53f5289714dffe419b96599a2e33))
+
 # [0.46.0](https://github.com/ImagingDataCommons/slim/compare/v0.45.7...v0.46.0) (2026-08-05)
 
 
