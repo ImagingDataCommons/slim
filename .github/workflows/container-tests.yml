@@ -27,8 +27,20 @@ jobs:
 
       - name: Test web page
         run: |
-          curl -sI http://localhost:8008/ | grep -o '200 OK'
-          curl -s http://localhost:8008/ | grep -o '<title>Slim</title>'
+          # Poll: compose returns as soon as the container process starts,
+          # before nginx is listening (same flake as a bare curl right after up).
+          for i in $(seq 1 30); do
+            if curl -sI http://localhost:8008/ | grep -q '200 OK' \
+              && curl -s http://localhost:8008/ | grep -q '<title>Slim</title>'; then
+              echo "Slim web page ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Slim web page did not become ready in time"
+          docker compose ps || true
+          docker compose logs --tail=80 app || true
+          exit 1
 
       - name: Test DICOMweb service
         run: |

@@ -4,7 +4,12 @@ strictPeerDependencies: false
 allowBuilds:
   core-js: true
   core-js-pure: true
+  # Allow the git-hosted dicom-microscopy-viewer to run its prepare script,
+  # which builds dist/ when installed from a commit tarball. pnpm matches
+  # git-hosted packages by their exact tarball URL, so this entry must be
+  # updated whenever the dependency pin in package.json changes.
   dicom-microscopy-viewer: true
+  'dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/a7ba82aeae68f754f68142506f2e3e812b08edb1': true
 
 overrides:
   '@types/d3-dispatch': 3.0.6

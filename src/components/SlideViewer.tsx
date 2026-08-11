@@ -2155,9 +2155,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Keep the side-panel segment switch in sync when the overlay's visibility
    * is toggled from the in-viewport legend (dicom-microscopy-viewer already
    * applied the change, so we only mirror it into component state).
+   *
+   * DMV's publish() wraps the argument as `detail.payload` (same shape as
+   * ROI / loading events), so read from there — not `detail` itself.
    */
   onSegmentVisibilityChanged = (event: CustomEventInit): void => {
-    const detail = event.detail as
+    const detail = event.detail?.payload as
       | { segmentUID?: string; isVisible?: boolean }
       | undefined
     if (detail?.segmentUID == null || detail.isVisible == null) {
@@ -2180,7 +2183,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * is toggled from the in-viewport legend.
    */
   onMappingVisibilityChanged = (event: CustomEventInit): void => {
-    const detail = event.detail as
+    const detail = event.detail?.payload as
       | { mappingUID?: string; isVisible?: boolean }
       | undefined
     if (detail?.mappingUID == null || detail.isVisible == null) {
