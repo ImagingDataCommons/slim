@@ -7,6 +7,8 @@ interface SlideViewerContentProps {
   toolbarHeight?: string
   cursor: string
   volumeViewportRef: React.RefObject<HTMLDivElement>
+  /** Overlaid on top of the viewport (e.g. a floating load-progress card). */
+  loadIndicator?: React.ReactNode
   children: React.ReactNode
 }
 
@@ -19,6 +21,7 @@ const SlideViewerContent: React.FC<SlideViewerContentProps> = ({
   toolbar,
   cursor,
   volumeViewportRef,
+  loadIndicator,
   children,
 }) => {
   return (
@@ -39,10 +42,18 @@ const SlideViewerContent: React.FC<SlideViewerContentProps> = ({
           minHeight: 0,
           overflow: 'hidden',
           position: 'relative',
-          cursor,
         }}
-        ref={volumeViewportRef}
-      />
+      >
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            cursor,
+          }}
+          ref={volumeViewportRef}
+        />
+        {loadIndicator}
+      </div>
 
       {children}
     </Layout.Content>

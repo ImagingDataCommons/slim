@@ -46,6 +46,10 @@ import type {
   AnnotationCategoryAndType,
   AnnotationSettings,
 } from '../types/annotations'
+import {
+  removeAnnotationGroupLoadState,
+  upsertAnnotationGroupLoadState,
+} from '../utils/annotationGroupLoadStatus'
 import { CustomError, errorTypes } from '../utils/CustomError'
 import {
   clampOverviewMapInViewport,
@@ -61,6 +65,7 @@ import { withRouter } from '../utils/router'
 import { getSegmentationType, getSegmentColor } from '../utils/segmentColors'
 import { findContentItemsByName } from '../utils/sr'
 import AnnotationGroupList from './AnnotationGroupList'
+import AnnotationGroupLoadIndicator from './AnnotationGroupLoadIndicator'
 import AnnotationList from './AnnotationList'
 import Btn from './Button'
 import Equipment from './Equipment'
@@ -122,6 +127,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   private readonly volumeViewportRef: React.RefObject<HTMLDivElement>
 
   private readonly labelViewportRef: React.RefObject<HTMLDivElement>
+
+  /** Auto-dismiss timers for settled (done/error) annotation group load rows. */
+  private readonly annotationGroupLoadDoneTimers: { [uid: string]: number } = {}
 
   private stopOverviewMapClamp: (() => void) | undefined
 
@@ -296,7 +304,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       pixelDataStatistics: {},
       selectedPresentationStateUID: this.props.selectedPresentationStateUID,
       loadingFrames: new Set(),
-      annotationGroupLoadStatus: {},
+      annotationGroupLoadStatus: [],
       isICCProfilesEnabled: true,
       isPaletteDisplayGammaCorrectionEnabled:
         volumeViewer.getPaletteDisplayGammaCorrectionEnabled(),
@@ -424,6 +432,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
       const [offset, size] = this.volumeViewer.boundingBox
 
+      this.clearAllAnnotationGroupLoadDoneTimers()
       this.setState({
         visibleRoiUIDs: new Set(),
         visibleSegmentUIDs: new Set(),
@@ -433,7 +442,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         activeOpticalPathIdentifiers,
         presentationStates: [],
         loadingFrames: new Set(),
-        annotationGroupLoadStatus: {},
+        annotationGroupLoadStatus: [],
         selectedSeriesInstanceUID: undefined,
         validXCoordinateRange: [offset[0], offset[0] + size[0]],
         validYCoordinateRange: [offset[1], offset[1] + size[1]],
@@ -2196,18 +2205,63 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
   }
 
-  onLoadingStarted = (event: CustomEventInit): void => {
-    this.setState({ isLoading: true })
-    const annotationGroupUID: string | undefined =
-      event.detail?.payload?.annotationGroupUID
-    if (annotationGroupUID !== undefined) {
-      this.setState((state) => ({
-        annotationGroupLoadStatus: {
-          ...state.annotationGroupLoadStatus,
-          [annotationGroupUID]: { loadedBytes: 0, totalBytes: null },
-        },
-      }))
+  /** Resolves a human-readable label for the floating load-progress card. */
+  getAnnotationGroupLabel = (uid: string): string => {
+    try {
+      const metadata = this.volumeViewer.getAnnotationGroupMetadata(uid)
+      const item = metadata?.AnnotationGroupSequence?.find(
+        (sequenceItem) => sequenceItem.AnnotationGroupUID === uid,
+      )
+      if (
+        item?.AnnotationGroupLabel != null &&
+        item.AnnotationGroupLabel !== ''
+      ) {
+        return item.AnnotationGroupLabel
+      }
+    } catch {
+      /** Group not registered yet; fall through to the UID-based label. */
     }
+    return `Group …${uid.slice(-8)}`
+  }
+
+  /** Marks a group's load row done/error, then removes it after it lingers. */
+  markAnnotationGroupLoadSettled = (
+    uid: string,
+    phase: 'done' | 'error',
+  ): void => {
+    this.setState((state) => ({
+      annotationGroupLoadStatus: upsertAnnotationGroupLoadState(
+        state.annotationGroupLoadStatus,
+        uid,
+        { phase, finishedAtMs: Date.now() },
+      ),
+    }))
+    if (this.annotationGroupLoadDoneTimers[uid] != null) {
+      window.clearTimeout(this.annotationGroupLoadDoneTimers[uid])
+    }
+    this.annotationGroupLoadDoneTimers[uid] = window.setTimeout(
+      () => {
+        this.setState((state) => ({
+          annotationGroupLoadStatus: removeAnnotationGroupLoadState(
+            state.annotationGroupLoadStatus,
+            uid,
+          ),
+        }))
+        delete this.annotationGroupLoadDoneTimers[uid]
+      },
+      phase === 'error' ? 6000 : 4000,
+    )
+  }
+
+  clearAllAnnotationGroupLoadDoneTimers = (): void => {
+    for (const uid of Object.keys(this.annotationGroupLoadDoneTimers)) {
+      window.clearTimeout(this.annotationGroupLoadDoneTimers[uid])
+      delete this.annotationGroupLoadDoneTimers[uid]
+    }
+  }
+
+  onLoadingStarted = (_event: CustomEventInit): void => {
+    this.setState({ isLoading: true })
   }
 
   onLoadingEnded = (event: CustomEventInit): void => {
@@ -2215,28 +2269,36 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const annotationGroupUID: string | undefined =
       event.detail?.payload?.annotationGroupUID
     if (annotationGroupUID !== undefined) {
-      this.setState((state) => {
-        const annotationGroupLoadStatus = { ...state.annotationGroupLoadStatus }
-        delete annotationGroupLoadStatus[annotationGroupUID]
-        return { annotationGroupLoadStatus }
-      })
+      this.markAnnotationGroupLoadSettled(annotationGroupUID, 'done')
     }
   }
 
   onAnnotationGroupLoadingProgress = (event: CustomEventInit): void => {
     const payload: {
       annotationGroupUID: string
-      loadedBytes: number
-      totalBytes: number | null
+      phase: 'index' | 'data' | 'decoding'
+      loadedBytes?: number
+      totalBytes?: number | null
     } = event.detail.payload
+    if (
+      this.annotationGroupLoadDoneTimers[payload.annotationGroupUID] != null
+    ) {
+      window.clearTimeout(
+        this.annotationGroupLoadDoneTimers[payload.annotationGroupUID],
+      )
+      delete this.annotationGroupLoadDoneTimers[payload.annotationGroupUID]
+    }
     this.setState((state) => ({
-      annotationGroupLoadStatus: {
-        ...state.annotationGroupLoadStatus,
-        [payload.annotationGroupUID]: {
+      annotationGroupLoadStatus: upsertAnnotationGroupLoadState(
+        state.annotationGroupLoadStatus,
+        payload.annotationGroupUID,
+        {
+          phase: payload.phase,
+          label: this.getAnnotationGroupLabel(payload.annotationGroupUID),
           loadedBytes: payload.loadedBytes,
           totalBytes: payload.totalBytes,
         },
-      },
+      ),
     }))
   }
 
@@ -2268,6 +2330,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       NotificationMiddlewareContext.SLIM,
       new CustomError(errorTypes.VISUALIZATION, message),
     )
+    const annotationGroupUID: string | undefined =
+      event.detail?.payload?.annotationGroupUID
+    if (annotationGroupUID !== undefined) {
+      this.markAnnotationGroupLoadSettled(annotationGroupUID, 'error')
+    }
   }
 
   onFrameLoadingEnded = (event: CustomEventInit): void => {
@@ -2493,6 +2560,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.labelViewer.cleanup()
     }
     this.handlePointerMoveDebounced.cancel()
+    this.clearAllAnnotationGroupLoadDoneTimers()
     window.removeEventListener('beforeunload', this.componentCleanup)
   }
 
@@ -4454,7 +4522,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 this.handleAnnotationGroupStyleChange
               }
               getMeasurementRange={this.getAnnotationGroupMeasurementRange}
-              loadStatus={this.state.annotationGroupLoadStatus}
             />
           )}
         </Menu.SubMenu>
@@ -4917,6 +4984,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           toolbarHeight={toolbarHeight}
           cursor={cursor}
           volumeViewportRef={this.volumeViewportRef}
+          loadIndicator={
+            <AnnotationGroupLoadIndicator
+              states={this.state.annotationGroupLoadStatus}
+            />
+          }
         >
           <SlideViewerModals
             isAnnotationModalVisible={this.state.isAnnotationModalVisible}
