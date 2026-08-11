@@ -3,30 +3,42 @@ import type React from 'react'
 
 interface SlideViewerContentProps {
   toolbar: React.ReactNode
-  toolbarHeight: string
+  /** Kept for call-site compatibility; height is flex-based now. */
+  toolbarHeight?: string
   cursor: string
   volumeViewportRef: React.RefObject<HTMLDivElement>
   children: React.ReactNode
 }
 
 /**
- * Main content area component for the SlideViewer
+ * Main content area for the SlideViewer. Viewport flex-fills under the toolbar
+ * so a mismatched toolbarHeight cannot leave empty space below the map (that
+ * gap sat under the minimap/scale and looked like uneven bottom inset).
  */
 const SlideViewerContent: React.FC<SlideViewerContentProps> = ({
   toolbar,
-  toolbarHeight,
   cursor,
   volumeViewportRef,
   children,
 }) => {
   return (
-    <Layout.Content style={{ height: '100%' }}>
+    <Layout.Content
+      style={{
+        height: '100%',
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
       {toolbar}
 
       <div
         style={{
-          height: `calc(100% - ${toolbarHeight})`,
+          flex: '1 1 0%',
+          minHeight: 0,
           overflow: 'hidden',
+          position: 'relative',
           cursor,
         }}
         ref={volumeViewportRef}

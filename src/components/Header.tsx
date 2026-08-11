@@ -91,42 +91,60 @@ const aboutModalStyles: Record<string, React.CSSProperties> = {
 /**
  * Static count pill that avoids antd Badge → rc-motion `findDOMNode`
  * (deprecated under React Strict Mode).
+ *
+ * Layout/CSS mirrors antd Badge (compact): wrapper `line-height: 1` so the
+ * header's 64px line-height cannot inflate the positioning context, and the
+ * count uses `top/right: 0` + `translate(50%, -50%)` to sit on the corner.
+ * Measured repro: without `line-height: 1`, a `top: -4` pill pins to y=0 and
+ * AppShell `overflow: hidden` crops it.
  */
 function HeaderCountBadge({
   count,
   color = '#ff4d4f',
   zIndex,
+  /** Same meaning as antd Badge `offset`: [offsetX, offsetY] in px. */
+  offset = [0, 0],
   children,
 }: {
   count: number
   color?: string
   zIndex?: number
+  offset?: [number, number]
   children?: React.ReactNode
 }): JSX.Element {
+  const [offsetX, offsetY] = offset
   const pill =
     count > 0 ? (
-      <sup
+      <span
         style={{
           position: children != null ? 'absolute' : 'relative',
-          top: children != null ? -4 : undefined,
-          right: children != null ? -8 : undefined,
+          top: children != null ? 0 : undefined,
+          right: children != null ? 0 : undefined,
+          transform:
+            children != null
+              ? `translate(50%, -50%) translate(${offsetX}px, ${offsetY}px)`
+              : undefined,
+          transformOrigin: children != null ? '100% 0%' : undefined,
           zIndex,
           display: 'inline-block',
-          minWidth: 16,
-          height: 16,
-          padding: '0 5px',
-          borderRadius: 8,
+          minWidth: 18,
+          height: 18,
+          padding: '0 6px',
+          borderRadius: 9,
           background: color,
           color: '#fff',
-          fontSize: 10,
-          lineHeight: '16px',
+          fontSize: 12,
+          fontWeight: 'normal',
+          lineHeight: '18px',
+          whiteSpace: 'nowrap',
           textAlign: 'center',
           boxShadow: '0 0 0 1px #fff',
+          pointerEvents: 'none',
           verticalAlign: children != null ? undefined : 'middle',
         }}
       >
         {count > 99 ? '99+' : count}
-      </sup>
+      </span>
     ) : null
 
   if (children == null) {
@@ -134,7 +152,14 @@ function HeaderCountBadge({
   }
 
   return (
-    <span style={{ position: 'relative', display: 'inline-block' }}>
+    <span
+      style={{
+        position: 'relative',
+        display: 'inline-block',
+        lineHeight: 1,
+        verticalAlign: 'middle',
+      }}
+    >
       {children}
       {pill}
     </span>
@@ -661,63 +686,20 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     )
 
     const debugButton = (
-      <span style={{ position: 'relative', display: 'inline-block' }}>
-        <Button
-          icon={BugOutlined}
-          tooltip="Debug info"
-          onClick={this.handleDebugButtonClick}
-        />
-        {this.state.warnings.length > 0 ? (
-          <sup
-            style={{
-              position: 'absolute',
-              top: -4,
-              right: this.state.errorObj.length > 0 ? 10 : -8,
-              zIndex: 1001,
-              display: 'inline-block',
-              minWidth: 16,
-              height: 16,
-              padding: '0 5px',
-              borderRadius: 8,
-              background: '#52c41a',
-              color: '#fff',
-              fontSize: 10,
-              lineHeight: '16px',
-              textAlign: 'center',
-              boxShadow: '0 0 0 1px #fff',
-            }}
-          >
-            {this.state.warnings.length > 99
-              ? '99+'
-              : this.state.warnings.length}
-          </sup>
-        ) : null}
-        {this.state.errorObj.length > 0 ? (
-          <sup
-            style={{
-              position: 'absolute',
-              top: -4,
-              right: -8,
-              zIndex: 1000,
-              display: 'inline-block',
-              minWidth: 16,
-              height: 16,
-              padding: '0 5px',
-              borderRadius: 8,
-              background: '#ff4d4f',
-              color: '#fff',
-              fontSize: 10,
-              lineHeight: '16px',
-              textAlign: 'center',
-              boxShadow: '0 0 0 1px #fff',
-            }}
-          >
-            {this.state.errorObj.length > 99
-              ? '99+'
-              : this.state.errorObj.length}
-          </sup>
-        ) : null}
-      </span>
+      <HeaderCountBadge count={this.state.errorObj.length} zIndex={1000}>
+        <HeaderCountBadge
+          count={this.state.warnings.length}
+          color="#52c41a"
+          zIndex={1001}
+          offset={this.state.errorObj.length > 0 ? [-16, 0] : [0, 0]}
+        >
+          <Button
+            icon={BugOutlined}
+            tooltip="Debug info"
+            onClick={this.handleDebugButtonClick}
+          />
+        </HeaderCountBadge>
+      </HeaderCountBadge>
     )
 
     const showDicomTagBrowser = isViewerPath(this.props.location.pathname)

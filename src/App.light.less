@@ -69,6 +69,36 @@
   border: 2px solid @primary-color !important;
 }
 
+/**
+ * Mini-map / scale insets (px). Slim clamp may reinforce these as inline styles
+ * after DMV render; keep values aligned with OVERVIEW_EDGE_INSET_PX.
+ */
+.ol-overviewmap {
+  left: 8px;
+  bottom: 8px;
+  margin: 0;
+  padding: 0;
+}
+
+.ol-overviewmap:not(.ol-collapsed) button {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  margin: 0;
+}
+
+.ol-overviewmap .ol-overviewmap-map {
+  margin: 0;
+  padding: 0;
+}
+
+.ol-scale-line {
+  right: 8px;
+  bottom: 8px;
+  left: auto;
+  margin: 0;
+}
+
 img {
   object-fit: contain;
   max-height: 100%;
