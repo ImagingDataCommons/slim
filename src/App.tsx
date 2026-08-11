@@ -86,6 +86,8 @@ function _createClientMapping({
   const storageClassMapping: { [key: string]: number } = { default: 0 }
   const clientMapping: { [sopClassUID: string]: DicomWebManager } = {}
 
+  const defaultServers: ServerSettings[] = []
+
   settings.forEach((serverSettings) => {
     if (serverSettings.storageClasses != null) {
       serverSettings.storageClasses.forEach((sopClassUID) => {
@@ -110,6 +112,7 @@ function _createClientMapping({
       }
 
       storageClassMapping.default += 1
+      defaultServers.push(serverSettings)
       clientMapping.default = new DicomWebManager({
         baseUri,
         settings: [serverSettings],
@@ -129,35 +132,34 @@ function _createClientMapping({
     )
   }
 
-  for (const key in storageClassMapping) {
-    if (key === 'default') {
-      continue
-    }
-    if (storageClassMapping[key] > 1) {
-      NotificationMiddleware.onError(
-        NotificationMiddlewareContext.SLIM,
-        new CustomError(
-          errorTypes.COMMUNICATION,
-          'Only one configured server can specify a given storage class. ' +
-            `Storage class "${key}" is specified by more than one ` +
-            'of the configured servers.',
-        ),
-      )
-    }
-  }
-
+  /**
+   * For each storage class explicitly assigned to a non-default server, wrap
+   * BOTH the default server and the specialty server(s) in the same manager.
+   *
+   * This makes derived data (SR/SEG/ANN/PM/PR) load from the primary store
+   * AND the secondary `gcp=` URL store at the same time (GH-320). Without
+   * this, specifying `gcp=` previously caused the default store to be
+   * skipped for those classes and SLIM only saw the secondary's derived data.
+   */
   if (Object.keys(storageClassMapping).length > 1) {
+    const classToServers = new Map<string, ServerSettings[]>()
     settings.forEach((server) => {
-      const client = new DicomWebManager({
-        baseUri,
-        settings: [server],
-        onError,
-      })
       if (server.storageClasses != null) {
         server.storageClasses.forEach((sopClassUID) => {
-          clientMapping[sopClassUID] = client
+          const list = classToServers.get(sopClassUID) ?? []
+          list.push(server)
+          classToServers.set(sopClassUID, list)
         })
       }
+    })
+
+    classToServers.forEach((specialtyServers, sopClassUID) => {
+      const combinedServers = [...defaultServers, ...specialtyServers]
+      clientMapping[sopClassUID] = new DicomWebManager({
+        baseUri,
+        settings: combinedServers,
+        onError,
+      })
     })
   }
 
