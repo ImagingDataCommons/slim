@@ -1,4 +1,4 @@
-import { Col, InputNumber, Row, Slider } from 'antd'
+import { InputNumber, Slider } from 'antd'
 import type React from 'react'
 import { useCallback } from 'react'
 
@@ -29,11 +29,11 @@ const ColorSlider: React.FC<ColorSliderProps> = ({ color, onChange }) => {
   const colorLabels = ['Red', 'Green', 'Blue']
 
   return (
-    <>
+    <div style={{ padding: '0 8px 8px' }}>
       {colorLabels.map((colorLabel, index) => (
-        <Row key={colorLabel} justify="center" align="middle" gutter={[8, 8]}>
-          <Col span={6}>{colorLabel}</Col>
-          <Col span={12}>
+        <div key={colorLabel} style={{ marginBottom: 8 }}>
+          <div style={{ marginBottom: 4 }}>{colorLabel}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Slider
               range={false}
               min={0}
@@ -41,21 +41,20 @@ const ColorSlider: React.FC<ColorSliderProps> = ({ color, onChange }) => {
               step={1}
               value={color[index]}
               onChange={createChangeHandler(index)}
+              style={{ flex: 1, minWidth: 0 }}
             />
-          </Col>
-          <Col span={6}>
             <InputNumber
               min={0}
               max={255}
               size="small"
-              style={{ width: '65px' }}
+              style={{ width: '65px', flexShrink: 0 }}
               value={color[index]}
               onChange={createChangeHandler(index)}
             />
-          </Col>
-        </Row>
+          </div>
+        </div>
       ))}
-    </>
+    </div>
   )
 }
 

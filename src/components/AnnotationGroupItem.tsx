@@ -3,18 +3,13 @@ import type { SelectProps } from 'antd'
 import {
   Badge,
   Button,
-  Col,
   Divider,
   InputNumber,
   Popover,
-  Progress,
-  Row,
   Select,
   Slider,
   Space,
-  Spin,
   Switch,
-  Tooltip,
 } from 'antd'
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
@@ -28,57 +23,12 @@ import Description from './Description'
 import OpacitySlider from './OpacitySlider'
 import ValidationWarning from './ValidationWarning'
 
-/** Formats a byte count as a short human-readable string, e.g. "1.2 MB". */
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) {
-    return `${bytes} B`
-  }
-  const units = ['KB', 'MB', 'GB']
-  let value = bytes / 1024
-  let unitIndex = 0
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024
-    unitIndex += 1
-  }
-  return `${value.toFixed(1)} ${units[unitIndex]}`
-}
-
-/**
- * Loading indicator for an annotation group being retrieved/rendered.
- * Shows byte progress when known (e.g. Range-based streaming reports a
- * total), otherwise an indeterminate spinner.
- */
-function AnnotationGroupLoadIndicator({
-  loadedBytes,
-  totalBytes,
-}: {
-  loadedBytes: number
-  totalBytes: number | null
-}): React.ReactElement {
-  if (totalBytes !== null && totalBytes > 0) {
-    const percent = Math.min(100, Math.round((loadedBytes / totalBytes) * 100))
-    return (
-      <Tooltip
-        title={`Loading annotations: ${formatBytes(loadedBytes)} / ${formatBytes(totalBytes)}`}
-      >
-        <Progress type="circle" percent={percent} width={20} />
-      </Tooltip>
-    )
-  }
-  return (
-    <Tooltip title={`Loading annotations: ${formatBytes(loadedBytes)}`}>
-      <Spin size="small" />
-    </Tooltip>
-  )
-}
-
 // Helper function components
 function AnnotationGroupControls({
   isVisible,
   onVisibilityChange,
   settings,
   color,
-  loadStatus,
 }: {
   isVisible: boolean
   onVisibilityChange: (
@@ -87,10 +37,6 @@ function AnnotationGroupControls({
   ) => void
   settings: React.ReactNode
   color: number[]
-  loadStatus?: {
-    loadedBytes: number
-    totalBytes: number | null
-  }
 }): React.ReactElement {
   return (
     <Space direction="vertical" align="center">
@@ -101,12 +47,6 @@ function AnnotationGroupControls({
         checkedChildren={<FaEye />}
         unCheckedChildren={<FaEyeSlash />}
       />
-      {loadStatus !== undefined && (
-        <AnnotationGroupLoadIndicator
-          loadedBytes={loadStatus.loadedBytes}
-          totalBytes={loadStatus.totalBytes}
-        />
-      )}
       <Popover
         placement="left"
         content={settings}
@@ -236,10 +176,6 @@ interface AnnotationGroupItemProps {
     annotationGroupUID: string,
     measurement: dcmjs.sr.coding.CodedConcept,
   ) => { min: number; max: number } | null
-  loadStatus?: {
-    loadedBytes: number
-    totalBytes: number | null
-  }
 }
 
 interface AnnotationGroupItemState {
@@ -625,18 +561,16 @@ class AnnotationGroupItem extends React.Component<
         windowSettings = (
           <>
             <Divider plain>Values of interest</Divider>
-            <Row justify="center" align="middle" gutter={[8, 8]}>
-              <Col span={6}>
+            <div style={{ padding: '0 8px 8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <InputNumber
                   min={0}
                   max={this.state.currentStyle.limitValues[1]}
                   size="small"
-                  style={{ width: '75px' }}
+                  style={{ width: '75px', flexShrink: 0 }}
                   value={this.state.currentStyle.limitValues[0]}
                   onChange={this.handleLowerLimitChange}
                 />
-              </Col>
-              <Col span={12}>
                 <Slider
                   range
                   min={minValue}
@@ -647,19 +581,18 @@ class AnnotationGroupItem extends React.Component<
                     this.state.currentStyle.limitValues[1],
                   ]}
                   onChange={this.handleLimitChange}
+                  style={{ flex: 1, minWidth: 0 }}
                 />
-              </Col>
-              <Col span={6}>
                 <InputNumber
                   min={this.state.currentStyle.limitValues[0]}
                   max={maxValue}
                   size="small"
-                  style={{ width: '75px' }}
+                  style={{ width: '75px', flexShrink: 0 }}
                   value={this.state.currentStyle.limitValues[1]}
                   onChange={this.handleUpperLimitChange}
                 />
-              </Col>
-            </Row>
+              </div>
+            </div>
           </>
         )
       }
@@ -687,16 +620,21 @@ class AnnotationGroupItem extends React.Component<
       fillSettings = (
         <>
           <Divider plain>Fill</Divider>
-          <Row justify="center" align="middle" gutter={[8, 8]}>
-            <Col span={6}>Filled</Col>
-            <Col span={18}>
-              <Switch
-                size="small"
-                checked={this.state.currentStyle.filled ?? false}
-                onChange={this.handleFilledChange}
-              />
-            </Col>
-          </Row>
+          <div
+            style={{
+              padding: '0 8px 8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            <div>Filled</div>
+            <Switch
+              size="small"
+              checked={this.state.currentStyle.filled ?? false}
+              onChange={this.handleFilledChange}
+            />
+          </div>
           {this.state.currentStyle.filled === true && (
             <OpacitySlider
               label="Fill"
@@ -734,7 +672,6 @@ class AnnotationGroupItem extends React.Component<
             onVisibilityChange={this.handleVisibilityChange}
             settings={settings}
             color={this.state.currentStyle.color ?? [255, 255, 255]}
-            loadStatus={this.props.loadStatus}
           />
         </div>
         <AnnotationGroupBadgeDescription

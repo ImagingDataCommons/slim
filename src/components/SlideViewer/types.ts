@@ -5,6 +5,7 @@ import type * as dmv from 'dicom-microscopy-viewer'
 import type DicomWebManager from '../../DicomWebManager'
 import type { Slide } from '../../data/slides'
 import type { AnnotationSettings } from '../../types/annotations'
+import type { AnnotationGroupLoadState } from '../../utils/annotationGroupLoadStatus'
 import type { RouteComponentProps } from '../../utils/router'
 
 /**
@@ -121,12 +122,7 @@ export interface SlideViewerState {
     }
   }
   loadingFrames: Set<string>
-  annotationGroupLoadStatus: {
-    [annotationGroupUID: string]: {
-      loadedBytes: number
-      totalBytes: number | null
-    }
-  }
+  annotationGroupLoadStatus: AnnotationGroupLoadState[]
   isICCProfilesEnabled: boolean
   isPaletteDisplayGammaCorrectionEnabled: boolean
   isSegmentationInterpolationEnabled: boolean

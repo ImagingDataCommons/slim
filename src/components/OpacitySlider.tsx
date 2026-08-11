@@ -1,4 +1,4 @@
-import { Col, InputNumber, Row, Slider } from 'antd'
+import { InputNumber, Slider } from 'antd'
 import type React from 'react'
 
 interface OpacitySliderProps {
@@ -13,9 +13,9 @@ const OpacitySlider: React.FC<OpacitySliderProps> = ({
   label = 'Opacity',
 }) => {
   return (
-    <Row justify="center" align="middle" gutter={[8, 8]}>
-      <Col span={6}>{label}</Col>
-      <Col span={12}>
+    <div style={{ padding: '0 8px 8px' }}>
+      <div style={{ marginBottom: 4 }}>{label}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Slider
           range={false}
           min={0}
@@ -23,20 +23,19 @@ const OpacitySlider: React.FC<OpacitySliderProps> = ({
           step={0.01}
           value={opacity}
           onChange={onChange}
+          style={{ flex: 1, minWidth: 0 }}
         />
-      </Col>
-      <Col span={6}>
         <InputNumber
           min={0}
           max={1}
           size="small"
           step={0.1}
-          style={{ width: '65px' }}
+          style={{ width: '65px', flexShrink: 0 }}
           value={opacity}
           onChange={onChange}
         />
-      </Col>
-    </Row>
+      </div>
+    </div>
   )
 }
 
