@@ -1,4 +1,4 @@
-import { Layout, Space, Tag, Typography } from 'antd'
+import { Space, Tag, Typography } from 'antd'
 import React from 'react'
 import { type MemoryInfo, memoryMonitor } from '../services/MemoryMonitor'
 import NotificationMiddleware, {
@@ -16,7 +16,8 @@ interface MemoryFooterState {
 }
 
 /**
- * React component for displaying memory usage information in the footer.
+ * In-flow memory usage bar. Parent {@link AppShell} places this below the main
+ * viewer so the map viewport ends above the bar.
  */
 class MemoryFooter extends React.Component<
   MemoryFooterProps,
@@ -76,6 +77,17 @@ class MemoryFooter extends React.Component<
     this.didStartMonitoring = true
   }
 
+  componentDidUpdate(
+    _prevProps: Readonly<MemoryFooterProps>,
+    prevState: Readonly<MemoryFooterState>,
+  ): void {
+    const wasHidden = !MemoryFooter.isVisible(prevState.memoryInfo)
+    const isVisible = MemoryFooter.isVisible(this.state.memoryInfo)
+    if ((wasHidden && isVisible) || (!wasHidden && !isVisible)) {
+      window.dispatchEvent(new Event('resize'))
+    }
+  }
+
   componentWillUnmount(): void {
     if (
       this.unsubscribeMemory !== null &&
@@ -89,6 +101,10 @@ class MemoryFooter extends React.Component<
     }
   }
 
+  private static isVisible(memoryInfo: MemoryInfo | null): boolean {
+    return memoryInfo !== null && memoryInfo.apiMethod !== 'unavailable'
+  }
+
   render(): React.ReactNode {
     if (this.props.enabled !== true) {
       return null
@@ -96,7 +112,7 @@ class MemoryFooter extends React.Component<
 
     const { memoryInfo } = this.state
 
-    if (memoryInfo === null || memoryInfo.apiMethod === 'unavailable') {
+    if (!MemoryFooter.isVisible(memoryInfo) || memoryInfo === null) {
       return null
     }
 
@@ -112,8 +128,13 @@ class MemoryFooter extends React.Component<
     }
 
     return (
-      <Layout.Footer
+      <div
+        data-slim-memory-footer=""
+        role="status"
+        aria-live="polite"
         style={{
+          flexShrink: 0,
+          boxSizing: 'border-box',
           padding: '4px 16px',
           lineHeight: '24px',
           backgroundColor: '#fafafa',
@@ -156,7 +177,7 @@ class MemoryFooter extends React.Component<
             </>
           )}
         </Space>
-      </Layout.Footer>
+      </div>
     )
   }
 }

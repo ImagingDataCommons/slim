@@ -29,6 +29,8 @@ public/config/*
 
 # misc
 .DS_Store
+# Local pnpm store / link artifacts (do not commit)
+.pnpm-store/
 .env.local
 .env.development.local
 .env.test.local

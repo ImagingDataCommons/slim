@@ -11,12 +11,18 @@ import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../services/NotificationMiddleware'
 import type { CustomError } from '../utils/CustomError'
+import {
+  computeOverviewPreviewResizeFactor,
+  SLIDE_PREVIEW_HEIGHT_PX,
+} from '../utils/computeOverviewPreviewResizeFactor'
 import Description from './Description'
 import ValidationWarning from './ValidationWarning'
 
 interface SlideItemProps {
   clients: { [key: string]: DicomWebManager }
   slide: Slide
+  /** When true, parent is a native button — omit hoverable Card styling. */
+  disableCardHover?: boolean
 }
 
 interface SlideItemState {
@@ -37,54 +43,111 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
 
   private overviewViewer?: dmv.viewer.OverviewImageViewer
 
+  private overviewResizeObserver?: ResizeObserver
+
+  private mountFrameId: number | undefined
+
+  private isMountAborted = false
+
   constructor(props: SlideItemProps) {
     super(props)
     this.overviewViewer = undefined
   }
 
   componentDidMount(): void {
+    this.isMountAborted = false
     this.setState({ isLoading: true })
+    this.scheduleOverviewViewerMount()
+    this.setState({ isLoading: false })
+  }
 
-    /* Use OVERVIEW if available, otherwise fall back to THUMBNAIL */
+  componentWillUnmount(): void {
+    this.isMountAborted = true
+    if (this.mountFrameId !== undefined) {
+      cancelAnimationFrame(this.mountFrameId)
+      this.mountFrameId = undefined
+    }
+    this.overviewResizeObserver?.disconnect()
+    this.overviewResizeObserver = undefined
+    this.overviewViewer?.cleanup()
+    this.overviewViewer = undefined
+  }
+
+  /**
+   * Wait until the preview tile has non-zero layout, then mount the overview
+   * viewer with a resize factor that matches container pixels to matrix extent.
+   */
+  private scheduleOverviewViewerMount(): void {
+    const tryMount = (): void => {
+      this.mountFrameId = undefined
+      if (this.isMountAborted) {
+        return
+      }
+      const container = this.overviewViewportRef.current
+      if (container == null) {
+        return
+      }
+      const { clientWidth, clientHeight } = container
+      if (clientWidth <= 0 || clientHeight <= 0) {
+        this.mountFrameId = requestAnimationFrame(tryMount)
+        return
+      }
+      this.mountOverviewViewer(container)
+    }
+    this.mountFrameId = requestAnimationFrame(tryMount)
+  }
+
+  private mountOverviewViewer(container: HTMLDivElement): void {
+    if (this.isMountAborted) {
+      return
+    }
+    /** Use OVERVIEW if available, otherwise fall back to THUMBNAIL */
     const previewImages =
       this.props.slide.overviewImages.length > 0
         ? this.props.slide.overviewImages
         : this.props.slide.thumbnailImages
 
-    if (previewImages.length > 0) {
-      const metadata = previewImages[0]
-      if (
-        this.overviewViewportRef.current !== null &&
-        this.overviewViewportRef.current !== undefined
-      ) {
-        this.overviewViewportRef.current.innerHTML = ''
-        const imageType =
-          this.props.slide.overviewImages.length > 0 ? 'OVERVIEW' : 'THUMBNAIL'
-        console.info(
-          `instantiate viewer for ${imageType} image of slide ` +
-            `"${metadata.ContainerIdentifier}"`,
-        )
-        const resizeFactor = 1
-        this.overviewViewer = new dmv.viewer.OverviewImageViewer({
-          client:
-            this.props.clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE],
-          disableInteractions: true,
-          metadata,
-          resizeFactor,
-          errorInterceptor: (error: CustomError) => {
-            NotificationMiddleware.onError(
-              NotificationMiddlewareContext.DMV,
-              error,
-            )
-          },
-        })
-        this.overviewViewer.render({
-          container: this.overviewViewportRef.current,
-        })
-      }
+    if (previewImages.length === 0) {
+      return
     }
 
-    this.setState({ isLoading: false })
+    const metadata = previewImages[0]
+    container.innerHTML = ''
+    const imageType =
+      this.props.slide.overviewImages.length > 0 ? 'OVERVIEW' : 'THUMBNAIL'
+    console.info(
+      `instantiate viewer for ${imageType} image of slide ` +
+        `"${metadata.ContainerIdentifier}"`,
+    )
+
+    const resizeFactor = computeOverviewPreviewResizeFactor(
+      metadata,
+      container.clientWidth,
+      container.clientHeight,
+    )
+
+    this.overviewViewer?.cleanup()
+    this.overviewViewer = new dmv.viewer.OverviewImageViewer({
+      client:
+        this.props.clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE],
+      disableInteractions: true,
+      metadata,
+      resizeFactor,
+      errorInterceptor: (error: CustomError) => {
+        NotificationMiddleware.onError(NotificationMiddlewareContext.DMV, error)
+      },
+    })
+    this.overviewViewer.render({ container })
+
+    requestAnimationFrame(() => {
+      this.overviewViewer?.resize()
+    })
+
+    this.overviewResizeObserver?.disconnect()
+    this.overviewResizeObserver = new ResizeObserver(() => {
+      this.overviewViewer?.resize()
+    })
+    this.overviewResizeObserver.observe(container)
   }
 
   render(): React.ReactNode {
@@ -110,9 +173,9 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
       <Description
         header={this.props.slide.containerIdentifier}
         attributes={attributes}
-        selectable
+        selectable={this.props.disableCardHover !== true}
       >
-        <div style={{ position: 'relative', height: '100px' }}>
+        <div style={{ position: 'relative', height: SLIDE_PREVIEW_HEIGHT_PX }}>
           {this.props.slide.overviewImages.length > 0 ||
           this.props.slide.thumbnailImages.length > 0 ? (
             <div ref={this.overviewViewportRef} style={{ height: '100%' }} />
