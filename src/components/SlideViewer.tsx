@@ -296,6 +296,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       pixelDataStatistics: {},
       selectedPresentationStateUID: this.props.selectedPresentationStateUID,
       loadingFrames: new Set(),
+      annotationGroupLoadStatus: {},
       isICCProfilesEnabled: true,
       isPaletteDisplayGammaCorrectionEnabled:
         volumeViewer.getPaletteDisplayGammaCorrectionEnabled(),
@@ -432,6 +433,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         activeOpticalPathIdentifiers,
         presentationStates: [],
         loadingFrames: new Set(),
+        annotationGroupLoadStatus: {},
         selectedSeriesInstanceUID: undefined,
         validXCoordinateRange: [offset[0], offset[0] + size[0]],
         validYCoordinateRange: [offset[1], offset[1] + size[1]],
@@ -2194,12 +2196,48 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
   }
 
-  onLoadingStarted = (_event: CustomEventInit): void => {
+  onLoadingStarted = (event: CustomEventInit): void => {
     this.setState({ isLoading: true })
+    const annotationGroupUID: string | undefined =
+      event.detail?.payload?.annotationGroupUID
+    if (annotationGroupUID !== undefined) {
+      this.setState((state) => ({
+        annotationGroupLoadStatus: {
+          ...state.annotationGroupLoadStatus,
+          [annotationGroupUID]: { loadedBytes: 0, totalBytes: null },
+        },
+      }))
+    }
   }
 
-  onLoadingEnded = (_event: CustomEventInit): void => {
+  onLoadingEnded = (event: CustomEventInit): void => {
     this.setState({ isLoading: false })
+    const annotationGroupUID: string | undefined =
+      event.detail?.payload?.annotationGroupUID
+    if (annotationGroupUID !== undefined) {
+      this.setState((state) => {
+        const annotationGroupLoadStatus = { ...state.annotationGroupLoadStatus }
+        delete annotationGroupLoadStatus[annotationGroupUID]
+        return { annotationGroupLoadStatus }
+      })
+    }
+  }
+
+  onAnnotationGroupLoadingProgress = (event: CustomEventInit): void => {
+    const payload: {
+      annotationGroupUID: string
+      loadedBytes: number
+      totalBytes: number | null
+    } = event.detail.payload
+    this.setState((state) => ({
+      annotationGroupLoadStatus: {
+        ...state.annotationGroupLoadStatus,
+        [payload.annotationGroupUID]: {
+          loadedBytes: payload.loadedBytes,
+          totalBytes: payload.totalBytes,
+        },
+      },
+    }))
   }
 
   onFrameLoadingStarted = (event: CustomEventInit): void => {
@@ -2359,6 +2397,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.onLoadingEnded,
     )
     document.body.removeEventListener(
+      'dicommicroscopyviewer_annotation_group_loading_progress',
+      this.onAnnotationGroupLoadingProgress,
+    )
+    document.body.removeEventListener(
       'dicommicroscopyviewer_frame_loading_started',
       this.onFrameLoadingStarted,
     )
@@ -2490,6 +2532,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     document.body.addEventListener(
       'dicommicroscopyviewer_loading_ended',
       this.onLoadingEnded,
+    )
+    document.body.addEventListener(
+      'dicommicroscopyviewer_annotation_group_loading_progress',
+      this.onAnnotationGroupLoadingProgress,
     )
     document.body.addEventListener(
       'dicommicroscopyviewer_loading_error',
@@ -4408,6 +4454,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 this.handleAnnotationGroupStyleChange
               }
               getMeasurementRange={this.getAnnotationGroupMeasurementRange}
+              loadStatus={this.state.annotationGroupLoadStatus}
             />
           )}
         </Menu.SubMenu>

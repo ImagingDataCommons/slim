@@ -48,6 +48,12 @@ interface AnnotationGroupListProps {
     annotationGroupUID: string,
     measurement: dcmjs.sr.coding.CodedConcept,
   ) => { min: number; max: number } | null
+  loadStatus?: {
+    [annotationGroupUID: string]: {
+      loadedBytes: number
+      totalBytes: number | null
+    }
+  }
 }
 
 /**
@@ -93,6 +99,7 @@ class AnnotationGroupList extends React.Component<
               onVisibilityChange={this.props.onAnnotationGroupVisibilityChange}
               onStyleChange={this.props.onAnnotationGroupStyleChange}
               getMeasurementRange={this.props.getMeasurementRange}
+              loadStatus={this.props.loadStatus?.[uid]}
             />
           ),
         }

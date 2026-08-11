@@ -121,6 +121,12 @@ export interface SlideViewerState {
     }
   }
   loadingFrames: Set<string>
+  annotationGroupLoadStatus: {
+    [annotationGroupUID: string]: {
+      loadedBytes: number
+      totalBytes: number | null
+    }
+  }
   isICCProfilesEnabled: boolean
   isPaletteDisplayGammaCorrectionEnabled: boolean
   isSegmentationInterpolationEnabled: boolean
