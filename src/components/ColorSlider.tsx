@@ -32,8 +32,8 @@ const ColorSlider: React.FC<ColorSliderProps> = ({ color, onChange }) => {
     <>
       {colorLabels.map((colorLabel, index) => (
         <Row key={colorLabel} justify="center" align="middle" gutter={[8, 8]}>
-          <Col span={5}>{colorLabel}</Col>
-          <Col span={14}>
+          <Col span={6}>{colorLabel}</Col>
+          <Col span={12}>
             <Slider
               range={false}
               min={0}
@@ -43,7 +43,7 @@ const ColorSlider: React.FC<ColorSliderProps> = ({ color, onChange }) => {
               onChange={createChangeHandler(index)}
             />
           </Col>
-          <Col span={5}>
+          <Col span={6}>
             <InputNumber
               min={0}
               max={255}
