@@ -18,6 +18,8 @@ interface AnnotationGroupListProps {
     [annotationGroupUID: string]: {
       opacity: number
       color: number[]
+      filled?: boolean
+      fillOpacity?: number
     }
   }
   onAnnotationGroupClick: (annotationGroupUID: string) => void
@@ -36,6 +38,8 @@ interface AnnotationGroupListProps {
     styleOptions: {
       opacity?: number
       color?: number[]
+      filled?: boolean
+      fillOpacity?: number
       measurement?: dcmjs.sr.coding.CodedConcept
       limitValues?: number[]
     }

@@ -13,7 +13,7 @@ const OpacitySlider: React.FC<OpacitySliderProps> = ({
   label = 'Opacity',
 }) => {
   return (
-    <Row justify="center" align="middle">
+    <Row justify="center" align="middle" gutter={[8, 8]}>
       <Col span={6}>{label}</Col>
       <Col span={12}>
         <Slider

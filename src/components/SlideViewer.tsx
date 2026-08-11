@@ -3023,6 +3023,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     styleOptions: {
       opacity?: number
       color?: number[]
+      filled?: boolean
+      fillOpacity?: number
       measurement?: dcmjs.sr.coding.CodedConcept
       limitValues?: number[]
     }
@@ -4317,6 +4319,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         [annotationUID: string]: {
           opacity: number
           color: number[]
+          filled?: boolean
+          fillOpacity?: number
         }
       } = {}
       annotationGroups.forEach((annotationGroup) => {

@@ -149,6 +149,8 @@ interface AnnotationGroupItemProps {
   defaultStyle: {
     opacity: number
     color: number[]
+    filled?: boolean
+    fillOpacity?: number
   }
   onAnnotationGroupClick: (annotationGroupUID: string) => void
   onVisibilityChange: ({
@@ -166,6 +168,8 @@ interface AnnotationGroupItemProps {
     styleOptions: {
       opacity?: number
       color?: number[]
+      filled?: boolean
+      fillOpacity?: number
       limitValues?: number[]
       measurement?: dcmjs.sr.coding.CodedConcept
     }
@@ -181,10 +185,18 @@ interface AnnotationGroupItemState {
   currentStyle: {
     opacity: number
     color?: number[]
+    filled?: boolean
+    fillOpacity?: number
     limitValues?: number[]
     measurement?: dcmjs.sr.coding.CodedConcept
   }
 }
+
+/** Graphic types that can be meaningfully filled (closed shapes). */
+const CLOSED_GRAPHIC_TYPES = new Set(['POLYGON', 'RECTANGLE', 'ELLIPSE'])
+
+/** Matches dicom-microscopy-viewer's BULK_DEFAULT_FILL_OPACITY. */
+const DEFAULT_FILL_OPACITY = 0.35
 
 // Class
 /**
@@ -201,6 +213,9 @@ class AnnotationGroupItem extends React.Component<
       currentStyle: {
         opacity: this.props.defaultStyle.opacity,
         color: this.props.defaultStyle.color,
+        filled: this.props.defaultStyle.filled ?? false,
+        fillOpacity:
+          this.props.defaultStyle.fillOpacity ?? DEFAULT_FILL_OPACITY,
       },
     }
   }
@@ -221,6 +236,8 @@ class AnnotationGroupItem extends React.Component<
       currentStyle: {
         color,
         opacity: state.currentStyle.opacity,
+        filled: state.currentStyle.filled,
+        fillOpacity: state.currentStyle.fillOpacity,
         limitValues: state.currentStyle.limitValues,
       },
     }))
@@ -242,9 +259,39 @@ class AnnotationGroupItem extends React.Component<
         currentStyle: {
           opacity,
           color: this.state.currentStyle.color,
+          filled: this.state.currentStyle.filled,
+          fillOpacity: this.state.currentStyle.fillOpacity,
           limitValues: this.state.currentStyle.limitValues,
         },
       })
+    }
+  }
+
+  handleFilledChange = (checked: boolean): void => {
+    this.props.onStyleChange({
+      uid: this.props.annotationGroup.uid,
+      styleOptions: { filled: checked },
+    })
+    this.setState((state) => ({
+      currentStyle: {
+        ...state.currentStyle,
+        filled: checked,
+      },
+    }))
+  }
+
+  handleFillOpacityChange = (fillOpacity: number | null): void => {
+    if (fillOpacity !== null) {
+      this.props.onStyleChange({
+        uid: this.props.annotationGroup.uid,
+        styleOptions: { fillOpacity },
+      })
+      this.setState((state) => ({
+        currentStyle: {
+          ...state.currentStyle,
+          fillOpacity,
+        },
+      }))
     }
   }
 
@@ -278,6 +325,8 @@ class AnnotationGroupItem extends React.Component<
             currentStyle: {
               color: state.currentStyle.color,
               opacity: state.currentStyle.opacity,
+              filled: state.currentStyle.filled,
+              fillOpacity: state.currentStyle.fillOpacity,
               limitValues: [value, state.currentStyle.limitValues[1]],
             },
           }
@@ -286,6 +335,8 @@ class AnnotationGroupItem extends React.Component<
             currentStyle: {
               color: state.currentStyle.color,
               opacity: state.currentStyle.opacity,
+              filled: state.currentStyle.filled,
+              fillOpacity: state.currentStyle.fillOpacity,
               limitValues: state.currentStyle.limitValues,
             },
           }
@@ -312,6 +363,8 @@ class AnnotationGroupItem extends React.Component<
             currentStyle: {
               color: state.currentStyle.color,
               opacity: state.currentStyle.opacity,
+              filled: state.currentStyle.filled,
+              fillOpacity: state.currentStyle.fillOpacity,
               limitValues: [state.currentStyle.limitValues[0], value],
             },
           }
@@ -320,6 +373,8 @@ class AnnotationGroupItem extends React.Component<
             currentStyle: {
               color: state.currentStyle.color,
               opacity: state.currentStyle.opacity,
+              filled: state.currentStyle.filled,
+              fillOpacity: state.currentStyle.fillOpacity,
               limitValues: state.currentStyle.limitValues,
             },
           }
@@ -339,6 +394,8 @@ class AnnotationGroupItem extends React.Component<
       currentStyle: {
         color: state.currentStyle.color,
         opacity: state.currentStyle.opacity,
+        filled: state.currentStyle.filled,
+        fillOpacity: state.currentStyle.fillOpacity,
         limitValues: values,
       },
     }))
@@ -385,6 +442,8 @@ class AnnotationGroupItem extends React.Component<
       this.setState((state) => ({
         currentStyle: {
           opacity: state.currentStyle.opacity,
+          filled: state.currentStyle.filled,
+          fillOpacity: state.currentStyle.fillOpacity,
           measurement,
           limitValues,
         },
@@ -401,6 +460,8 @@ class AnnotationGroupItem extends React.Component<
       this.setState((state) => ({
         currentStyle: {
           opacity: state.currentStyle.opacity,
+          filled: state.currentStyle.filled,
+          fillOpacity: state.currentStyle.fillOpacity,
           color: this.props.defaultStyle.color,
           limitValues: undefined,
         },
@@ -543,11 +604,11 @@ class AnnotationGroupItem extends React.Component<
       explorationSettings = (
         <>
           <Divider plain>Exploration</Divider>
-          <Row justify="start" align="middle" gutter={[8, 8]}>
-            <Col span={8}>Measurement</Col>
-            <Col span={16}>
+          <Row justify="center" align="middle" gutter={[8, 8]}>
+            <Col span={6}>Measurement</Col>
+            <Col span={18}>
               <Select
-                style={{ minWidth: '65px', width: '90%' }}
+                style={{ width: '100%' }}
                 onSelect={this.handleMeasurementSelection}
                 key="annotation-group-measurements"
                 defaultValue={undefined}
@@ -560,14 +621,44 @@ class AnnotationGroupItem extends React.Component<
       )
     }
 
+    const isClosedGraphicType = CLOSED_GRAPHIC_TYPES.has(item.GraphicType)
+    let fillSettings: React.ReactNode
+    if (isClosedGraphicType) {
+      fillSettings = (
+        <>
+          <Divider plain>Fill</Divider>
+          <Row justify="center" align="middle" gutter={[8, 8]}>
+            <Col span={6}>Filled</Col>
+            <Col span={18}>
+              <Switch
+                size="small"
+                checked={this.state.currentStyle.filled ?? false}
+                onChange={this.handleFilledChange}
+              />
+            </Col>
+          </Row>
+          {this.state.currentStyle.filled === true && (
+            <OpacitySlider
+              label="Fill opacity"
+              opacity={
+                this.state.currentStyle.fillOpacity ?? DEFAULT_FILL_OPACITY
+              }
+              onChange={this.handleFillOpacityChange}
+            />
+          )}
+        </>
+      )
+    }
+
     const settings = (
       <div>
         {colorSettings}
-        {windowSettings}
         <OpacitySlider
           opacity={this.state.currentStyle.opacity}
           onChange={this.handleOpacityChange}
         />
+        {fillSettings}
+        {windowSettings}
         {explorationSettings}
       </div>
     )
