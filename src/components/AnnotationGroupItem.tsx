@@ -666,19 +666,17 @@ class AnnotationGroupItem extends React.Component<
       explorationSettings = (
         <>
           <Divider plain>Exploration</Divider>
-          <Row justify="center" align="middle" gutter={[8, 8]}>
-            <Col span={6}>Measurement</Col>
-            <Col span={18}>
-              <Select
-                style={{ width: '100%' }}
-                onSelect={this.handleMeasurementSelection}
-                key="annotation-group-measurements"
-                defaultValue={undefined}
-              >
-                {measurementOptions}
-              </Select>
-            </Col>
-          </Row>
+          <div style={{ padding: '0 8px 8px' }}>
+            <div style={{ marginBottom: 4 }}>Measurement</div>
+            <Select
+              style={{ width: '100%' }}
+              onSelect={this.handleMeasurementSelection}
+              key="annotation-group-measurements"
+              defaultValue={undefined}
+            >
+              {measurementOptions}
+            </Select>
+          </div>
         </>
       )
     }
@@ -701,7 +699,7 @@ class AnnotationGroupItem extends React.Component<
           </Row>
           {this.state.currentStyle.filled === true && (
             <OpacitySlider
-              label="Fill opacity"
+              label="Fill"
               opacity={
                 this.state.currentStyle.fillOpacity ?? DEFAULT_FILL_OPACITY
               }
