@@ -49,6 +49,10 @@ import type {
 } from '../types/annotations'
 import { CustomError, errorTypes } from '../utils/CustomError'
 import {
+  clampOverviewMapInViewport,
+  observeOverviewMapClamp,
+} from '../utils/clampOverviewMapInViewport'
+import {
   applyDistinctFractionalSegmentPalettes,
   applyDistinctParametricMapPalettes,
 } from '../utils/distinctOverlayColormaps'
@@ -119,6 +123,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   private readonly volumeViewportRef: React.RefObject<HTMLDivElement>
 
   private readonly labelViewportRef: React.RefObject<HTMLDivElement>
+
+  private stopOverviewMapClamp: (() => void) | undefined
 
   private volumeViewer: dmv.viewer.VolumeImageViewer
 
@@ -1551,6 +1557,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     if (this.volumeViewportRef.current !== null) {
       this.volumeViewer.render({ container: this.volumeViewportRef.current })
+      this.stopOverviewMapClamp?.()
+      this.stopOverviewMapClamp = observeOverviewMapClamp(
+        this.volumeViewportRef.current,
+        { volumeViewer: this.volumeViewer },
+      )
     }
     if (
       this.labelViewportRef.current !== null &&
@@ -1599,6 +1610,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.volumeViewer.resize()
     if (this.labelViewer !== null && this.labelViewer !== undefined) {
       this.labelViewer.resize()
+    }
+    if (this.volumeViewportRef.current !== null) {
+      clampOverviewMapInViewport(this.volumeViewportRef.current, {
+        volumeViewer: this.volumeViewer,
+      })
     }
   }
 
@@ -2366,6 +2382,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     document.body.removeEventListener('keyup', this.onKeyDown)
     window.removeEventListener('resize', this.onWindowResize)
 
+    this.stopOverviewMapClamp?.()
+    this.stopOverviewMapClamp = undefined
+
     this.volumeViewer.cleanup()
     if (this.labelViewer !== null && this.labelViewer !== undefined) {
       this.labelViewer.cleanup()
@@ -2428,6 +2447,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   componentWillUnmount = (): void => {
+    this.stopOverviewMapClamp?.()
+    this.stopOverviewMapClamp = undefined
     ActiveSeriesService.clear()
     this.volumeViewer.cleanup()
     if (this.labelViewer !== null && this.labelViewer !== undefined) {
@@ -4899,7 +4920,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     annotations?.forEach?.(this.formatAnnotation)
 
     return (
-      <Layout style={{ height: '100%' }} hasSider>
+      <Layout style={{ height: '100%', minHeight: 0 }} hasSider>
         <SettingsRegistration
           onOpenSettings={() => this.setState({ isSettingsDrawerOpen: true })}
         />
