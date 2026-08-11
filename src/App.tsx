@@ -16,10 +16,10 @@ import type AppConfig from './AppConfig'
 import type { ErrorMessageSettings, ServerSettings } from './AppConfig'
 import type { AuthManager, User } from './auth'
 import OidcManager from './auth/OidcManager'
+import AppShell from './components/AppShell'
 import CaseViewer from './components/CaseViewer'
 import Header from './components/Header'
 import InfoPage from './components/InfoPage'
-import MemoryFooter from './components/MemoryFooter'
 import Worklist from './components/Worklist'
 import { SettingsProvider } from './contexts/SettingsContext'
 import { ValidationProvider } from './contexts/ValidationContext'
@@ -91,6 +91,8 @@ function _createClientMapping({
   const storageClassMapping: { [key: string]: number } = { default: 0 }
   const clientMapping: { [sopClassUID: string]: DicomWebManager } = {}
 
+  const defaultServers: ServerSettings[] = []
+
   settings.forEach((serverSettings) => {
     if (serverSettings.storageClasses != null) {
       serverSettings.storageClasses.forEach((sopClassUID) => {
@@ -115,6 +117,7 @@ function _createClientMapping({
       }
 
       storageClassMapping.default += 1
+      defaultServers.push(serverSettings)
       clientMapping.default = new DicomWebManager({
         baseUri,
         settings: [serverSettings],
@@ -134,35 +137,34 @@ function _createClientMapping({
     )
   }
 
-  for (const key in storageClassMapping) {
-    if (key === 'default') {
-      continue
-    }
-    if (storageClassMapping[key] > 1) {
-      NotificationMiddleware.onError(
-        NotificationMiddlewareContext.SLIM,
-        new CustomError(
-          errorTypes.COMMUNICATION,
-          'Only one configured server can specify a given storage class. ' +
-            `Storage class "${key}" is specified by more than one ` +
-            'of the configured servers.',
-        ),
-      )
-    }
-  }
-
+  /**
+   * For each storage class explicitly assigned to a non-default server, wrap
+   * BOTH the default server and the specialty server(s) in the same manager.
+   *
+   * This makes derived data (SR/SEG/ANN/PM/PR) load from the primary store
+   * AND the secondary `gcp=` URL store at the same time (GH-320). Without
+   * this, specifying `gcp=` previously caused the default store to be
+   * skipped for those classes and SLIM only saw the secondary's derived data.
+   */
   if (Object.keys(storageClassMapping).length > 1) {
+    const classToServers = new Map<string, ServerSettings[]>()
     settings.forEach((server) => {
-      const client = new DicomWebManager({
-        baseUri,
-        settings: [server],
-        onError,
-      })
       if (server.storageClasses != null) {
         server.storageClasses.forEach((sopClassUID) => {
-          clientMapping[sopClassUID] = client
+          const list = classToServers.get(sopClassUID) ?? []
+          list.push(server)
+          classToServers.set(sopClassUID, list)
         })
       }
+    })
+
+    classToServers.forEach((specialtyServers, sopClassUID) => {
+      const combinedServers = [...defaultServers, ...specialtyServers]
+      clientMapping[sopClassUID] = new DicomWebManager({
+        baseUri,
+        settings: combinedServers,
+        onError,
+      })
     })
   }
 
@@ -481,34 +483,33 @@ class App extends React.Component<AppProps, AppState> {
     enableMemoryMonitoring: boolean,
     isLogoutPossible: boolean,
     onLogout: () => void,
-    layoutStyle: { height: string },
-    layoutContentStyle: { height: string },
+    layoutStyle: React.CSSProperties,
+    layoutContentStyle: React.CSSProperties,
   ): JSX.Element {
     return (
       <SettingsProvider>
-        <Layout style={layoutStyle}>
-          <Header
-            app={appInfo}
-            user={this.state.user}
-            showWorklistButton={enableWorklist}
-            onServerSelection={this.handleServerSelection}
-            onUserLogout={isLogoutPossible ? onLogout : undefined}
-            showServerSelectionButton={enableServerSelection}
-            clients={this.state.clients}
-            defaultClients={this.state.defaultClients}
-          />
-          <Layout.Content style={layoutContentStyle}>
-            <ParametrizedCaseViewer
-              clients={this.state.clients}
-              user={this.state.user}
-              config={this.props.config}
+        <AppShell enableMemoryMonitoring={enableMemoryMonitoring}>
+          <Layout style={layoutStyle}>
+            <Header
               app={appInfo}
+              user={this.state.user}
+              showWorklistButton={enableWorklist}
+              onServerSelection={this.handleServerSelection}
+              onUserLogout={isLogoutPossible ? onLogout : undefined}
+              showServerSelectionButton={enableServerSelection}
+              clients={this.state.clients}
+              defaultClients={this.state.defaultClients}
             />
-          </Layout.Content>
-          {enableMemoryMonitoring && (
-            <MemoryFooter enabled={enableMemoryMonitoring} />
-          )}
-        </Layout>
+            <Layout.Content style={layoutContentStyle}>
+              <ParametrizedCaseViewer
+                clients={this.state.clients}
+                user={this.state.user}
+                config={this.props.config}
+                app={appInfo}
+              />
+            </Layout.Content>
+          </Layout>
+        </AppShell>
       </SettingsProvider>
     )
   }
@@ -554,8 +555,20 @@ class App extends React.Component<AppProps, AppState> {
       isLogoutPossible = false
     }
 
-    const layoutStyle = { height: '100vh' }
-    const layoutContentStyle = { height: '100%' }
+    /**
+     * Fill AppShell's main pane. flex + minHeight:0 keeps ant-layout from
+     * sizing to content and spilling into the in-flow MemoryFooter.
+     */
+    const layoutStyle: React.CSSProperties = {
+      flex: '1 1 0%',
+      minHeight: 0,
+      overflow: 'hidden',
+    }
+    const layoutContentStyle: React.CSSProperties = {
+      flex: 1,
+      minHeight: 0,
+      overflow: 'hidden',
+    }
     const routerFuture = {
       v7_startTransition: true,
       v7_relativeSplatPath: true,
@@ -570,20 +583,22 @@ class App extends React.Component<AppProps, AppState> {
     } else if (this.state.isLoading) {
       return (
         <BrowserRouter basename={this.props.config.path} future={routerFuture}>
-          <Layout style={layoutStyle}>
-            <Header
-              app={appInfo}
-              user={this.state.user}
-              showWorklistButton={false}
-              onServerSelection={this.handleServerSelection}
-              showServerSelectionButton={false}
-              clients={this.state.clients}
-              defaultClients={this.state.defaultClients}
-            />
-            <Layout.Content style={layoutContentStyle}>
-              <FaSpinner />
-            </Layout.Content>
-          </Layout>
+          <AppShell enableMemoryMonitoring={false}>
+            <Layout style={layoutStyle}>
+              <Header
+                app={appInfo}
+                user={this.state.user}
+                showWorklistButton={false}
+                onServerSelection={this.handleServerSelection}
+                showServerSelectionButton={false}
+                clients={this.state.clients}
+                defaultClients={this.state.defaultClients}
+              />
+              <Layout.Content style={layoutContentStyle}>
+                <FaSpinner />
+              </Layout.Content>
+            </Layout>
+          </AppShell>
         </BrowserRouter>
       )
     } else if (!this.state.wasAuthSuccessful) {
@@ -597,24 +612,23 @@ class App extends React.Component<AppProps, AppState> {
             <Route
               path="/"
               element={
-                <Layout style={layoutStyle}>
-                  <Header
-                    app={appInfo}
-                    user={this.state.user}
-                    showWorklistButton={false}
-                    onServerSelection={this.handleServerSelection}
-                    onUserLogout={isLogoutPossible ? onLogout : undefined}
-                    showServerSelectionButton={enableServerSelection}
-                    clients={this.state.clients}
-                    defaultClients={this.state.defaultClients}
-                  />
-                  <Layout.Content style={layoutContentStyle}>
-                    {worklist}
-                  </Layout.Content>
-                  {enableMemoryMonitoring && (
-                    <MemoryFooter enabled={enableMemoryMonitoring} />
-                  )}
-                </Layout>
+                <AppShell enableMemoryMonitoring={enableMemoryMonitoring}>
+                  <Layout style={layoutStyle}>
+                    <Header
+                      app={appInfo}
+                      user={this.state.user}
+                      showWorklistButton={false}
+                      onServerSelection={this.handleServerSelection}
+                      onUserLogout={isLogoutPossible ? onLogout : undefined}
+                      showServerSelectionButton={enableServerSelection}
+                      clients={this.state.clients}
+                      defaultClients={this.state.defaultClients}
+                    />
+                    <Layout.Content style={layoutContentStyle}>
+                      {worklist}
+                    </Layout.Content>
+                  </Layout>
+                </AppShell>
               }
             />
             <Route
@@ -672,24 +686,23 @@ class App extends React.Component<AppProps, AppState> {
             <Route
               path="/logout"
               element={
-                <Layout style={layoutStyle}>
-                  <Header
-                    app={appInfo}
-                    user={this.state.user}
-                    showWorklistButton={false}
-                    onServerSelection={this.handleServerSelection}
-                    onUserLogout={isLogoutPossible ? onLogout : undefined}
-                    showServerSelectionButton={enableServerSelection}
-                    clients={this.state.clients}
-                    defaultClients={this.state.defaultClients}
-                  />
-                  <Layout.Content style={layoutContentStyle}>
-                    Logged out
-                  </Layout.Content>
-                  {enableMemoryMonitoring && (
-                    <MemoryFooter enabled={enableMemoryMonitoring} />
-                  )}
-                </Layout>
+                <AppShell enableMemoryMonitoring={enableMemoryMonitoring}>
+                  <Layout style={layoutStyle}>
+                    <Header
+                      app={appInfo}
+                      user={this.state.user}
+                      showWorklistButton={false}
+                      onServerSelection={this.handleServerSelection}
+                      onUserLogout={isLogoutPossible ? onLogout : undefined}
+                      showServerSelectionButton={enableServerSelection}
+                      clients={this.state.clients}
+                      defaultClients={this.state.defaultClients}
+                    />
+                    <Layout.Content style={layoutContentStyle}>
+                      Logged out
+                    </Layout.Content>
+                  </Layout>
+                </AppShell>
               }
             />
           </Routes>

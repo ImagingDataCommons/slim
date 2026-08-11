@@ -93,6 +93,8 @@ _Slim_ also supports interactive visualization of image annotations and analysis
 - [DICOM Segmentation](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_A.51.html) instances that contain binary or fractional segmentation masks
 - [DICOM Parametric Map](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_A.75.html) instances that contain saliency maps, attention maps, class activation maps, and similar derived images
 
+Fractional segmentations and parametric maps show an in-viewport color legend when at least one overlay is visible. The legend is collapsible and its per-item visibility toggles stay in sync with the switches in the right-hand panel.
+
 | | DICOM IOD |
 | :-: | :-------- |
 | <img src="docs/screenshots/IDC_CPTAC_C3N-01016-22_segmentation.png" alt="IDC CPTAC Segmentation" width="350"> | Segmentation |

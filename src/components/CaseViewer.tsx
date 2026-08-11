@@ -11,7 +11,13 @@ import {
   useEffect,
   useState,
 } from 'react'
-import { Route, Routes, useLocation, useParams } from 'react-router-dom'
+import {
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useParams,
+} from 'react-router-dom'
 
 import type { AnnotationSettings, VivSettings } from '../AppConfig'
 import type { User } from '../auth'
@@ -20,6 +26,10 @@ import type { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
 import { useSlides } from '../hooks/useSlides'
 import DicomMetadataStore from '../services/DICOMMetadataStore'
+import {
+  findSlideBySeriesInstanceUID,
+  seriesUidFromSlide,
+} from '../utils/recoverSeriesInstanceUID'
 import { type RouteComponentProps, withRouter } from '../utils/router'
 import type { VivBulkAnnotationCatalogPayload } from '../viv/loadBulkAnnotationLayers'
 import VivSlideViewport from '../viv/VivSlideViewport'
@@ -61,43 +71,7 @@ interface NaturalizedInstance {
 const findSeriesSlide = (
   slides: Slide[],
   seriesInstanceUID: string,
-): Slide | undefined => {
-  return slides.find((slide: Slide) => {
-    return slide.seriesInstanceUIDs.find((uid: string) => {
-      return uid === seriesInstanceUID
-    })
-  })
-}
-
-/** Non-interactive menu row for custom panel content (avoids invalid DOM props). */
-const menuPanelItemStyle: React.CSSProperties = {
-  height: 'auto',
-  cursor: 'default',
-  padding: 0,
-  lineHeight: 'normal',
-  color: 'rgba(0, 0, 0, 0.85)',
-}
-
-/**
- * antd v4 greys disabled items via `.ant-menu-item-disabled { color: ... !important }`,
- * which beats the inline item style, so restore contrast on a child wrapper
- * (same idea as `.slim-settings-content` in the classic settings drawer).
- */
-const menuPanelContentStyle: React.CSSProperties = {
-  color: 'rgba(0, 0, 0, 0.85)',
-}
-
-function menuPanelItem(
-  key: string,
-  label: ReactNode,
-): NonNullable<MenuProps['items']>[number] {
-  return {
-    key,
-    label: <div style={menuPanelContentStyle}>{label}</div>,
-    disabled: true,
-    style: menuPanelItemStyle,
-  }
-}
+): Slide | undefined => findSlideBySeriesInstanceUID(slides, seriesInstanceUID)
 
 /** Viv path: main viewport + slim right rail (classic viewer uses ~300px sider). */
 const vivChrome = (main: JSX.Element, rightPanel?: ReactNode): JSX.Element => (
@@ -170,6 +144,7 @@ function ParametrizedSlideViewer({
     seriesInstanceUID: string
   }>()
   const location = useLocation()
+  const navigate = useNavigate()
 
   const [selectedSlide, setSelectedSlide] = useState(
     findSeriesSlide(slides, seriesInstanceUID),
@@ -305,9 +280,10 @@ function ParametrizedSlideViewer({
     setVivBulkLoadStatus(EMPTY_VIV_BULK_LOAD_STATUS)
 
     const currentSlideMatchesSeries =
-      selectedSlide?.seriesInstanceUIDs.some(
-        (uid: string) => uid === seriesInstanceUID,
-      ) ?? false
+      selectedSlide !== null &&
+      selectedSlide !== undefined &&
+      findSlideBySeriesInstanceUID([selectedSlide], seriesInstanceUID) ===
+        selectedSlide
 
     if (
       selectedSlide === null ||
@@ -316,68 +292,104 @@ function ParametrizedSlideViewer({
     ) {
       const imageSlide = findSeriesSlide(slides, seriesInstanceUID)
       if (imageSlide !== null && imageSlide !== undefined) {
+        const resolvedSeriesUID = seriesUidFromSlide(
+          imageSlide,
+          seriesInstanceUID,
+        )
         setSelectedSlide(imageSlide)
         setDerivedDataset(null)
+        if (resolvedSeriesUID !== seriesInstanceUID) {
+          console.warn(
+            `Corrected mangled series UID in route: "${seriesInstanceUID}" → "${resolvedSeriesUID}"`,
+          )
+          navigate(
+            {
+              pathname: location.pathname.replace(
+                `/series/${seriesInstanceUID}`,
+                `/series/${resolvedSeriesUID}`,
+              ),
+              search: location.search,
+            },
+            { replace: true },
+          )
+        }
         return
       }
 
       const findReferencedSlide = async (): Promise<void> => {
-        const client = clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
-        const derivedSeriesMetadata = await client.retrieveSeriesMetadata({
-          studyInstanceUID,
-          seriesInstanceUID,
-        })
-        const naturalizedDerivedMetadata = naturalizeDataset(
-          derivedSeriesMetadata[0],
-        ) as NaturalizedInstance
-        if (
-          naturalizedDerivedMetadata.ReferencedSeriesSequence != null &&
-          naturalizedDerivedMetadata.ReferencedSeriesSequence.length > 0
-        ) {
-          for (const referencedSeries of naturalizedDerivedMetadata.ReferencedSeriesSequence) {
-            const referencedImageSeriesUID = referencedSeries.SeriesInstanceUID
-            const referencedSlide = slides.find((slide: Slide) => {
-              return slide.seriesInstanceUIDs.some(
-                (uid: string) => uid === referencedImageSeriesUID,
-              )
-            })
-            if (referencedSlide !== null && referencedSlide !== undefined) {
-              setSelectedSlide(referencedSlide)
-              setDerivedDataset(naturalizedDerivedMetadata)
-              return
+        try {
+          const client = clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
+          const derivedSeriesMetadata = await client.retrieveSeriesMetadata({
+            studyInstanceUID,
+            seriesInstanceUID,
+          })
+          const naturalizedDerivedMetadata = naturalizeDataset(
+            derivedSeriesMetadata[0],
+          ) as NaturalizedInstance
+          if (
+            naturalizedDerivedMetadata.ReferencedSeriesSequence != null &&
+            naturalizedDerivedMetadata.ReferencedSeriesSequence.length > 0
+          ) {
+            for (const referencedSeries of naturalizedDerivedMetadata.ReferencedSeriesSequence) {
+              const referencedImageSeriesUID =
+                referencedSeries.SeriesInstanceUID
+              const referencedSlide = slides.find((slide: Slide) => {
+                return slide.seriesInstanceUIDs.some(
+                  (uid: string) => uid === referencedImageSeriesUID,
+                )
+              })
+              if (referencedSlide !== null && referencedSlide !== undefined) {
+                setSelectedSlide(referencedSlide)
+                setDerivedDataset(naturalizedDerivedMetadata)
+                return
+              }
             }
           }
-        }
-        const IMAGE_LIBRARY_CONCEPT_NAME_CODE = '111028'
-        const imageLibrary = naturalizedDerivedMetadata.ContentSequence?.find(
-          (contentItem) =>
-            contentItem.ConceptNameCodeSequence[0].CodeValue ===
-            IMAGE_LIBRARY_CONCEPT_NAME_CODE,
-        )
-        if (
-          imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]
-            ?.ReferencedSOPSequence?.[0] !== undefined &&
-          imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]
-            ?.ReferencedSOPSequence?.[0] !== null
-        ) {
-          const referencedSOPInstanceUID =
-            imageLibrary.ContentSequence[0].ContentSequence[0]
-              .ReferencedSOPSequence[0].ReferencedSOPInstanceUID
-          const referencedSlide = slides.find((slide: Slide) => {
-            return slide.volumeImages.find(
-              (image: { SOPInstanceUID: string }) => {
-                return image.SOPInstanceUID === referencedSOPInstanceUID
-              },
-            )
-          })
-          setSelectedSlide(referencedSlide)
-          setDerivedDataset(naturalizedDerivedMetadata)
+          const IMAGE_LIBRARY_CONCEPT_NAME_CODE = '111028'
+          const imageLibrary = naturalizedDerivedMetadata.ContentSequence?.find(
+            (contentItem) =>
+              contentItem.ConceptNameCodeSequence[0].CodeValue ===
+              IMAGE_LIBRARY_CONCEPT_NAME_CODE,
+          )
+          if (
+            imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]
+              ?.ReferencedSOPSequence?.[0] !== undefined &&
+            imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]
+              ?.ReferencedSOPSequence?.[0] !== null
+          ) {
+            const referencedSOPInstanceUID =
+              imageLibrary.ContentSequence[0].ContentSequence[0]
+                .ReferencedSOPSequence[0].ReferencedSOPInstanceUID
+            const referencedSlide = slides.find((slide: Slide) => {
+              return slide.volumeImages.find(
+                (image: { SOPInstanceUID: string }) => {
+                  return image.SOPInstanceUID === referencedSOPInstanceUID
+                },
+              )
+            })
+            setSelectedSlide(referencedSlide)
+            setDerivedDataset(naturalizedDerivedMetadata)
+          }
+        } catch (error) {
+          console.warn(
+            `Failed to resolve referenced slide for series "${seriesInstanceUID}"`,
+            error,
+          )
         }
       }
 
       void findReferencedSlide()
     }
-  }, [slides, clients, studyInstanceUID, seriesInstanceUID, selectedSlide])
+  }, [
+    slides,
+    clients,
+    studyInstanceUID,
+    seriesInstanceUID,
+    selectedSlide,
+    navigate,
+    location.pathname,
+    location.search,
+  ])
 
   const searchParams = new URLSearchParams(location.search)
   let presentationStateUID: string | undefined
@@ -388,6 +400,10 @@ function ParametrizedSlideViewer({
 
   let viewer = null
   if (selectedSlide != null && selectedSlide !== undefined) {
+    const resolvedSeriesInstanceUID = seriesUidFromSlide(
+      selectedSlide,
+      seriesInstanceUID,
+    )
     if (isVivRoute) {
       const microscopyClient =
         clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE] ??
@@ -615,7 +631,7 @@ function ParametrizedSlideViewer({
         <SlideViewer
           clients={clients}
           studyInstanceUID={studyInstanceUID}
-          seriesInstanceUID={seriesInstanceUID}
+          seriesInstanceUID={resolvedSeriesInstanceUID}
           selectedPresentationStateUID={presentationStateUID}
           slide={selectedSlide}
           preload={preload}
@@ -706,25 +722,40 @@ function Viewer(props: ViewerProps): JSX.Element | null {
   let selectedSeriesInstanceUID: string
   if (location.pathname.includes('series/')) {
     const seriesFragment = location.pathname.split('series/')[1]
-    selectedSeriesInstanceUID = seriesFragment.includes('/')
+    const seriesFromPath = seriesFragment.includes('/')
       ? seriesFragment.split('/')[0]
       : seriesFragment
+    const slideForPath = findSeriesSlide(slides, seriesFromPath)
+    selectedSeriesInstanceUID =
+      slideForPath !== undefined
+        ? seriesUidFromSlide(slideForPath, seriesFromPath)
+        : seriesFromPath
   } else {
     selectedSeriesInstanceUID = volumeInstances[0].SeriesInstanceUID
   }
 
-  const viewerSidebarItems: MenuProps['items'] = [
+  const siderMenuItems: MenuProps['items'] = [
     {
       key: 'patient',
       label: 'Patient',
       children: [
-        menuPanelItem('patient-content', <Patient metadata={refImage} />),
+        {
+          key: 'patient-info',
+          style: { cursor: 'default', height: 'auto' },
+          label: <Patient metadata={refImage} />,
+        },
       ],
     },
     {
       key: 'study',
       label: 'Study',
-      children: [menuPanelItem('study-content', <Study metadata={refImage} />)],
+      children: [
+        {
+          key: 'study-info',
+          style: { cursor: 'default', height: 'auto' },
+          label: <Study metadata={refImage} />,
+        },
+      ],
     },
     ...(refImage.ClinicalTrialSponsorName != null
       ? [
@@ -732,49 +763,50 @@ function Viewer(props: ViewerProps): JSX.Element | null {
             key: 'clinical-trial',
             label: 'Clinical Trial',
             children: [
-              menuPanelItem(
-                'clinical-trial-content',
-                <ClinicalTrial metadata={refImage} />,
-              ),
+              {
+                key: 'clinical-trial-info',
+                style: { cursor: 'default', height: 'auto' },
+                label: <ClinicalTrial metadata={refImage} />,
+              },
             ],
           },
         ]
       : []),
-    {
-      key: 'slides',
-      label: 'Slides',
-      children: [
-        menuPanelItem(
-          'slides-list',
-          <SlideList
-            clients={props.clients}
-            metadata={slides}
-            selectedSeriesInstanceUID={selectedSeriesInstanceUID}
-            onSeriesSelection={handleSeriesSelection}
-          />,
-        ),
-      ],
-    },
   ]
 
   return (
-    <Layout style={{ height: '100%' }} hasSider>
+    <Layout style={{ height: '100%', minHeight: 0 }} hasSider>
       <Layout.Sider
         width={300}
         style={{
           height: '100%',
           borderRight: 'solid',
           borderRightWidth: 0.25,
-          overflow: 'hidden',
+          overflow: 'auto',
           background: 'none',
         }}
       >
         <Menu
           mode="inline"
-          defaultOpenKeys={['patient', 'study', 'clinical-trial', 'slides']}
-          style={{ height: '100%' }}
+          defaultOpenKeys={['patient', 'study', 'clinical-trial']}
+          style={{ borderInlineEnd: 'none' }}
           inlineIndent={14}
-          items={viewerSidebarItems}
+          selectable={false}
+          items={siderMenuItems}
+        />
+        <div
+          style={{
+            padding: '8px 14px',
+            fontWeight: 600,
+          }}
+        >
+          Slides
+        </div>
+        <SlideList
+          clients={props.clients}
+          metadata={slides}
+          selectedSeriesInstanceUID={selectedSeriesInstanceUID}
+          onSeriesSelection={handleSeriesSelection}
         />
       </Layout.Sider>
 

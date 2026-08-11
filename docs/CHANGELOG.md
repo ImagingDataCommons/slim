@@ -1,3 +1,24 @@
+## [0.46.4](https://github.com/ImagingDataCommons/slim/compare/v0.46.3...v0.46.4) (2026-08-11)
+
+
+### Bug Fixes
+
+* improve probabilistic SEG legend usability ([#409](https://github.com/ImagingDataCommons/slim/issues/409)) ([#410](https://github.com/ImagingDataCommons/slim/issues/410)) ([f8f3e32](https://github.com/ImagingDataCommons/slim/commit/f8f3e32daf542c805a3f98e20dda19796a81adfa))
+
+## [0.46.3](https://github.com/ImagingDataCommons/slim/compare/v0.46.2...v0.46.3) (2026-08-11)
+
+
+### Bug Fixes
+
+* improve slide-list overview preview sizing ([#399](https://github.com/ImagingDataCommons/slim/issues/399)) ([#400](https://github.com/ImagingDataCommons/slim/issues/400)) ([15ed58b](https://github.com/ImagingDataCommons/slim/commit/15ed58b6c4b61f60eceb8880fbbb12476a9d12a2))
+
+## [0.46.2](https://github.com/ImagingDataCommons/slim/compare/v0.46.1...v0.46.2) (2026-08-07)
+
+
+### Bug Fixes
+
+* make XHR retry hook actually retry and keep ICC switch state in sync ([#402](https://github.com/ImagingDataCommons/slim/issues/402)) ([0f4c725](https://github.com/ImagingDataCommons/slim/commit/0f4c7259a6a3814df00a8ee1900b8562c1543e61))
+
 ## [0.46.1](https://github.com/ImagingDataCommons/slim/compare/v0.46.0...v0.46.1) (2026-08-05)
 
 

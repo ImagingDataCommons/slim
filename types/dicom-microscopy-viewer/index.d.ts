@@ -559,6 +559,10 @@ declare module 'dicom-microscopy-viewer' {
       ImageType: string[]
       SamplesPerPixel: number
       PhotometricInterpretation: string
+      TotalPixelMatrixColumns: number
+      TotalPixelMatrixRows: number
+      Columns: number
+      Rows: number
       // Acquisition
       AcquisitionUID?: string
       // Multi-Resolution Pyramid

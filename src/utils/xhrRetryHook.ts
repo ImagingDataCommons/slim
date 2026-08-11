@@ -15,7 +15,7 @@ type RequestHook = (
  * (e.g. STOW POST) are excluded because re-sending them can duplicate
  * partially stored data on a server that failed mid-request.
  */
-const RETRYABLE_METHODS = ['GET', 'HEAD', 'OPTIONS']
+const RETRYABLE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
 /**
  * Returns a configured retry request hook function
@@ -66,7 +66,7 @@ export const getXHRRetryHook = (
   ): XMLHttpRequest => {
     const { url, method } = metadata
 
-    if (!RETRYABLE_METHODS.includes(method.toUpperCase())) {
+    if (!RETRYABLE_METHODS.has(method.toUpperCase())) {
       return request
     }
 
@@ -74,13 +74,17 @@ export const getXHRRetryHook = (
     const originalRequestSend = request.send
     /** Captured at send(); re-applied after retry open() for safety. */
     let responseType: XMLHttpRequestResponseType = request.responseType
-    /** dicomweb-client handler installed before this hook runs. */
-    const clientOnReadyStateChange = request.onreadystatechange
 
     function faultTolerantRequestSend(
       ...args: Parameters<XMLHttpRequest['send']>
     ): void {
       responseType = request.responseType
+      /**
+       * Capture at send() — not when this hook runs — so later requestHooks
+       * (e.g. Viv's abort suppress wrapper) that wrap onreadystatechange
+       * between hook install and send() stay in the call chain.
+       */
+      const downstreamOnReadyStateChange = request.onreadystatechange
       const operation = retry.operation({
         retries: retryOptions.retries,
         factor: retryOptions.factor,
@@ -119,8 +123,8 @@ export const getXHRRetryHook = (
             return
           }
 
-          if (clientOnReadyStateChange != null) {
-            clientOnReadyStateChange.call(request, ev)
+          if (downstreamOnReadyStateChange != null) {
+            downstreamOnReadyStateChange.call(request, ev)
           }
         }
 
