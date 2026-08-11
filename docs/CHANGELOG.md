@@ -1,3 +1,10 @@
+## [0.46.3](https://github.com/ImagingDataCommons/slim/compare/v0.46.2...v0.46.3) (2026-08-11)
+
+
+### Bug Fixes
+
+* improve slide-list overview preview sizing ([#399](https://github.com/ImagingDataCommons/slim/issues/399)) ([#400](https://github.com/ImagingDataCommons/slim/issues/400)) ([15ed58b](https://github.com/ImagingDataCommons/slim/commit/15ed58b6c4b61f60eceb8880fbbb12476a9d12a2))
+
 ## [0.46.2](https://github.com/ImagingDataCommons/slim/compare/v0.46.1...v0.46.2) (2026-08-07)
 
 
