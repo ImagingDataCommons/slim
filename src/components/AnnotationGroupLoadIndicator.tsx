@@ -38,8 +38,9 @@ function phaseLabel(state: AnnotationGroupLoadState): string {
 
 const wrapStyle: React.CSSProperties = {
   position: 'absolute',
-  left: 12,
+  left: '50%',
   bottom: 12,
+  transform: 'translateX(-50%)',
   zIndex: 10,
   pointerEvents: 'none',
   maxWidth: 300,
