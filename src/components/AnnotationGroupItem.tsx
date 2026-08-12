@@ -1,18 +1,4 @@
-import { SettingOutlined } from '@ant-design/icons'
-import type { SelectProps } from 'antd'
-import {
-  Badge,
-  Button,
-  Col,
-  Divider,
-  InputNumber,
-  Popover,
-  Row,
-  Select,
-  Slider,
-  Space,
-  Switch,
-} from 'antd'
+import { Badge, Space, Switch } from 'antd'
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
 // skipcq: JS-C1003
@@ -21,16 +7,17 @@ import throttle from 'lodash/throttle'
 import React, { useCallback } from 'react'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
 import { rgbToHex } from '../utils/segmentColors'
-import ColorSlider from './ColorSlider'
+import AnnotationGroupDisplaySettings, {
+  type MeasurementOption,
+} from './AnnotationGroupDisplaySettings'
 import Description from './Description'
-import OpacitySlider from './OpacitySlider'
 import ValidationWarning from './ValidationWarning'
 
 // Helper function components
 function AnnotationGroupControls({
   isVisible,
   onVisibilityChange,
-  settings,
+  displaySettings,
   color,
 }: {
   isVisible: boolean
@@ -38,7 +25,7 @@ function AnnotationGroupControls({
     checked: boolean,
     event: React.MouseEvent<HTMLButtonElement>,
   ) => void
-  settings: React.ReactNode
+  displaySettings: React.ReactNode
   color: number[]
 }): React.ReactElement {
   return (
@@ -50,14 +37,7 @@ function AnnotationGroupControls({
         checkedChildren={<FaEye />}
         unCheckedChildren={<FaEyeSlash />}
       />
-      <Popover
-        placement="left"
-        content={settings}
-        overlayStyle={{ width: '350px' }}
-        title="Display Settings"
-      >
-        <Button type="primary" shape="circle" icon={<SettingOutlined />} />
-      </Popover>
+      {displaySettings}
       {/* Color indicator */}
       <div
         style={{
@@ -331,76 +311,6 @@ class AnnotationGroupItem extends React.Component<
     }
   }
 
-  handleLowerLimitChange = (value: number | null): void => {
-    if (
-      value !== null &&
-      value !== undefined &&
-      this.state.currentStyle.limitValues !== undefined
-    ) {
-      this.setState((state) => {
-        if (state.currentStyle.limitValues !== undefined) {
-          return {
-            currentStyle: {
-              color: state.currentStyle.color,
-              opacity: state.currentStyle.opacity,
-              filled: state.currentStyle.filled,
-              fillOpacity: state.currentStyle.fillOpacity,
-              limitValues: [value, state.currentStyle.limitValues[1]],
-            },
-          }
-        } else {
-          return {
-            currentStyle: {
-              color: state.currentStyle.color,
-              opacity: state.currentStyle.opacity,
-              filled: state.currentStyle.filled,
-              fillOpacity: state.currentStyle.fillOpacity,
-              limitValues: state.currentStyle.limitValues,
-            },
-          }
-        }
-      })
-      this.throttledOnStyleChange({
-        limitValues: [value, this.state.currentStyle.limitValues[1]],
-      })
-    }
-  }
-
-  handleUpperLimitChange = (value: number | null): void => {
-    if (
-      value !== null &&
-      value !== undefined &&
-      this.state.currentStyle.limitValues !== undefined
-    ) {
-      this.setState((state) => {
-        if (state.currentStyle.limitValues !== undefined) {
-          return {
-            currentStyle: {
-              color: state.currentStyle.color,
-              opacity: state.currentStyle.opacity,
-              filled: state.currentStyle.filled,
-              fillOpacity: state.currentStyle.fillOpacity,
-              limitValues: [state.currentStyle.limitValues[0], value],
-            },
-          }
-        } else {
-          return {
-            currentStyle: {
-              color: state.currentStyle.color,
-              opacity: state.currentStyle.opacity,
-              filled: state.currentStyle.filled,
-              fillOpacity: state.currentStyle.fillOpacity,
-              limitValues: state.currentStyle.limitValues,
-            },
-          }
-        }
-      })
-      this.throttledOnStyleChange({
-        limitValues: [this.state.currentStyle.limitValues[0], value],
-      })
-    }
-  }
-
   handleLimitChange = (values: number[]): void => {
     this.setState((state) => ({
       currentStyle: {
@@ -418,26 +328,12 @@ class AnnotationGroupItem extends React.Component<
     this.props.onAnnotationGroupClick(this.props.annotationGroup.uid)
   }
 
-  handleMeasurementSelection: SelectProps['onChange'] = (value, option) => {
-    if (
-      value !== null &&
-      value !== undefined &&
-      option !== null &&
-      option !== undefined &&
-      Array.isArray(option) &&
-      option.length > 0 &&
-      option[0] !== null &&
-      option[0] !== undefined &&
-      option[0].children !== null &&
-      option[0].children !== undefined
-    ) {
-      const codeComponents = value.split('-')
+  handleMeasurementChange = (option: MeasurementOption | undefined): void => {
+    if (option != null) {
       const measurement = new dcmjs.sr.coding.CodedConcept({
-        value: codeComponents[1],
-        schemeDesignator: codeComponents[0],
-        meaning: Array.isArray(option[0].children)
-          ? String(option[0].children[0])
-          : String(option[0].children),
+        value: option.codeValue,
+        schemeDesignator: option.schemeDesignator,
+        meaning: option.meaning,
       })
       const range = this.props.getMeasurementRange?.(
         this.props.annotationGroup.uid,
@@ -507,171 +403,58 @@ class AnnotationGroupItem extends React.Component<
     ]
 
     const measurementsSequence = item.MeasurementsSequence ?? []
-    const createMeasurementOption = (measurementItem: {
-      ConceptNameCodeSequence: Array<{
-        CodingSchemeDesignator: string
-        CodeValue: string
-        CodeMeaning: string
-      }>
-    }): React.ReactElement => {
-      const name = measurementItem.ConceptNameCodeSequence[0]
-      const key = `${name.CodingSchemeDesignator}-${name.CodeValue}`
-      return (
-        <Select.Option
-          key={key}
-          value={key}
-          dropdownMatchSelectWidth={false}
-          size="small"
-          disabled={!this.props.isVisible}
-        >
-          {name.CodeMeaning}
-        </Select.Option>
-      )
-    }
-    const measurementOptions = measurementsSequence.map(createMeasurementOption)
-    measurementOptions.push(
-      <Select.Option
-        key="-"
-        value={undefined}
-        dropdownMatchSelectWidth={false}
-        size="small"
-        disabled={!this.props.isVisible}
-      >
-        {null}
-      </Select.Option>,
+    const measurementOptions: MeasurementOption[] = measurementsSequence.map(
+      (measurementItem: {
+        ConceptNameCodeSequence: Array<{
+          CodingSchemeDesignator: string
+          CodeValue: string
+          CodeMeaning: string
+        }>
+      }) => {
+        const name = measurementItem.ConceptNameCodeSequence[0]
+        return {
+          key: `${name.CodingSchemeDesignator}-${name.CodeValue}`,
+          meaning: name.CodeMeaning,
+          schemeDesignator: name.CodingSchemeDesignator,
+          codeValue: name.CodeValue,
+        }
+      },
     )
-
-    let colorSettings: React.ReactNode
-    if (
-      this.state.currentStyle.color !== null &&
-      this.state.currentStyle.color !== undefined &&
-      this.state.currentStyle.color.length === 3
-    ) {
-      colorSettings = (
-        <>
-          <Divider plain>Color</Divider>
-          <ColorSlider
-            color={this.state.currentStyle.color}
-            onChange={this.handleColorChange}
-          />
-          <Divider plain />
-        </>
-      )
-    }
-
-    let windowSettings: React.ReactNode
-    let explorationSettings: React.ReactNode
-    if (measurementsSequence.length > 0) {
-      if (
-        this.state.currentStyle.limitValues !== null &&
-        this.state.currentStyle.limitValues !== undefined
-      ) {
-        // TODO: need to get default min/max values from viewer first
-        const minValue = 0
-        const maxValue = 1000
-        windowSettings = (
-          <>
-            <Divider plain>Values of interest</Divider>
-            <div style={{ padding: '0 8px 8px' }}>
-              <Row gutter={8} align="middle">
-                <Col span={6}>
-                  <InputNumber
-                    min={0}
-                    max={this.state.currentStyle.limitValues[1]}
-                    size="small"
-                    style={{ width: '100%' }}
-                    value={this.state.currentStyle.limitValues[0]}
-                    onChange={this.handleLowerLimitChange}
-                  />
-                </Col>
-                <Col span={12}>
-                  <Slider
-                    range
-                    min={minValue}
-                    max={maxValue}
-                    step={1}
-                    value={[
-                      this.state.currentStyle.limitValues[0],
-                      this.state.currentStyle.limitValues[1],
-                    ]}
-                    onChange={this.handleLimitChange}
-                  />
-                </Col>
-                <Col span={6}>
-                  <InputNumber
-                    min={this.state.currentStyle.limitValues[0]}
-                    max={maxValue}
-                    size="small"
-                    style={{ width: '100%' }}
-                    value={this.state.currentStyle.limitValues[1]}
-                    onChange={this.handleUpperLimitChange}
-                  />
-                </Col>
-              </Row>
-            </div>
-          </>
-        )
-      }
-      explorationSettings = (
-        <>
-          <Divider plain>Exploration</Divider>
-          <div style={{ padding: '0 8px 8px' }}>
-            <div style={{ marginBottom: 4 }}>Measurement</div>
-            <Select
-              style={{ width: '100%' }}
-              onSelect={this.handleMeasurementSelection}
-              key="annotation-group-measurements"
-              defaultValue={undefined}
-            >
-              {measurementOptions}
-            </Select>
-          </div>
-        </>
-      )
-    }
-
+    const selectedMeasurement = this.state.currentStyle.measurement
+    const selectedMeasurementKey =
+      selectedMeasurement != null
+        ? `${selectedMeasurement.schemeDesignator}-${selectedMeasurement.value}`
+        : undefined
+    const limitValues =
+      this.state.currentStyle.limitValues != null
+        ? ([
+            this.state.currentStyle.limitValues[0],
+            this.state.currentStyle.limitValues[1],
+          ] as [number, number])
+        : undefined
     const isClosedGraphicType = CLOSED_GRAPHIC_TYPES.has(item.GraphicType)
-    let fillSettings: React.ReactNode
-    if (isClosedGraphicType) {
-      fillSettings = (
-        <>
-          <Divider plain>Fill</Divider>
-          <div style={{ padding: '0 8px 8px' }}>
-            <Row gutter={8} align="middle">
-              <Col span={18}>Filled</Col>
-              <Col span={6}>
-                <Switch
-                  size="small"
-                  checked={this.state.currentStyle.filled ?? false}
-                  onChange={this.handleFilledChange}
-                />
-              </Col>
-            </Row>
-          </div>
-          {this.state.currentStyle.filled === true && (
-            <OpacitySlider
-              label="Fill"
-              opacity={
-                this.state.currentStyle.fillOpacity ?? DEFAULT_FILL_OPACITY
-              }
-              onChange={this.handleFillOpacityChange}
-            />
-          )}
-        </>
-      )
-    }
 
-    const settings = (
-      <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-        {colorSettings}
-        <OpacitySlider
-          opacity={this.state.currentStyle.opacity}
-          onChange={this.handleOpacityChange}
-        />
-        {fillSettings}
-        {windowSettings}
-        {explorationSettings}
-      </div>
+    const displaySettings = (
+      <AnnotationGroupDisplaySettings
+        color={this.state.currentStyle.color}
+        onColorChange={this.handleColorChange}
+        opacity={this.state.currentStyle.opacity}
+        onOpacityChange={this.handleOpacityChange}
+        isClosedGraphicType={isClosedGraphicType}
+        filled={this.state.currentStyle.filled ?? false}
+        onFilledChange={this.handleFilledChange}
+        fillOpacity={
+          this.state.currentStyle.fillOpacity ?? DEFAULT_FILL_OPACITY
+        }
+        onFillOpacityChange={this.handleFillOpacityChange}
+        measurementOptions={measurementOptions}
+        selectedMeasurementKey={selectedMeasurementKey}
+        onMeasurementChange={this.handleMeasurementChange}
+        limitValues={limitValues}
+        limitBounds={[0, 1000]}
+        onLimitValuesChange={this.handleLimitChange}
+        disabled={!this.props.isVisible}
+      />
     )
 
     const color = this.getCurrentColor()
@@ -683,7 +466,7 @@ class AnnotationGroupItem extends React.Component<
           <AnnotationGroupControls
             isVisible={this.props.isVisible}
             onVisibilityChange={this.handleVisibilityChange}
-            settings={settings}
+            displaySettings={displaySettings}
             color={this.state.currentStyle.color ?? [255, 255, 255]}
           />
         </div>
