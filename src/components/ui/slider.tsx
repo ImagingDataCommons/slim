@@ -23,7 +23,7 @@ const Slider = React.forwardRef<
         <SliderPrimitive.Thumb
           // biome-ignore lint/suspicious/noArrayIndexKey: thumb count is fixed per slider instance
           key={index}
-          className="block h-3.5 w-3.5 shrink-0 border border-[#007ea3] bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007ea3] focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50"
+          className="block h-3.5 w-3.5 shrink-0 border border-[#007ea3] bg-white shadow-sm transition-colors hover:bg-[#e6f2f5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007ea3] focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50"
         />
       ))}
     </SliderPrimitive.Root>
