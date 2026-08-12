@@ -1,0 +1,26 @@
+/**
+ * Entry point for the shadcn/Tailwind-based components (see
+ * AnnotationGroupDisplaySettings.tsx and components/ui/*). `base` is a
+ * no-op here since tailwind.config.js disables preflight — kept for
+ * completeness/future @layer base use.
+ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /**
+   * Tailwind's width/padding/border utilities assume border-box sizing,
+   * which preflight normally sets globally — disabled here so it doesn't
+   * also reset antd's markup. Scope it to just this component tree (applied
+   * on the popover trigger and, separately, the portalled popover content)
+   * instead, otherwise every fixed-width element overflows its container by
+   * its padding + border.
+   */
+  .dmv-ui,
+  .dmv-ui *,
+  .dmv-ui *::before,
+  .dmv-ui *::after {
+    box-sizing: border-box;
+  }
+}
