@@ -1,5 +1,5 @@
 import { CheckCircleOutlined, LoadingOutlined } from '@ant-design/icons'
-import { Spin } from 'antd'
+import { Card, Space, Spin } from 'antd'
 import type React from 'react'
 import { useEffect, useState } from 'react'
 import {
@@ -45,26 +45,6 @@ const wrapStyle: React.CSSProperties = {
   maxWidth: 300,
 }
 
-const cardStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 8,
-  padding: '10px 14px',
-  borderRadius: 10,
-  background: 'rgba(255, 255, 255, 0.95)',
-  border: '1px solid rgba(0, 0, 0, 0.1)',
-  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.18)',
-  fontSize: 12,
-  lineHeight: 1.45,
-  color: 'rgba(0, 0, 0, 0.82)',
-}
-
-const rowStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'flex-start',
-  gap: 10,
-}
-
 interface AnnotationGroupLoadIndicatorProps {
   states: AnnotationGroupLoadState[]
 }
@@ -102,33 +82,46 @@ const AnnotationGroupLoadIndicator: React.FC<
 
   return (
     <div style={wrapStyle}>
-      <div style={cardStyle}>
-        {states.map((state) => {
-          const isSettled = state.phase === 'done' || state.phase === 'error'
-          const elapsed = (state.finishedAtMs ?? nowMs) - state.startedAtMs
-          return (
-            <div key={state.uid} style={rowStyle}>
-              {isSettled ? (
-                <CheckCircleOutlined
-                  style={{
-                    color: state.phase === 'error' ? '#ff4d4f' : '#52c41a',
-                    marginTop: 2,
-                  }}
-                />
-              ) : (
-                <Spin indicator={<LoadingOutlined spin />} size="small" />
-              )}
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 600 }}>{state.label}</div>
-                <div style={{ opacity: 0.85 }}>{phaseLabel(state)}</div>
-                <div style={{ opacity: 0.7, fontSize: 11 }}>
-                  {formatElapsedMs(elapsed)}
+      <Card
+        size="small"
+        bordered
+        style={{
+          borderRadius: 0,
+          pointerEvents: 'auto',
+          background: '#fff',
+          boxShadow:
+            '0 3px 6px -4px rgba(0,0,0,.12), 0 6px 16px 0 rgba(0,0,0,.08), 0 9px 28px 8px rgba(0,0,0,.05)',
+        }}
+        bodyStyle={{ padding: 12, background: '#fff' }}
+      >
+        <Space direction="vertical" size={10} style={{ width: '100%' }}>
+          {states.map((state) => {
+            const isSettled = state.phase === 'done' || state.phase === 'error'
+            const elapsed = (state.finishedAtMs ?? nowMs) - state.startedAtMs
+            return (
+              <Space key={state.uid} align="start" size={10}>
+                {isSettled ? (
+                  <CheckCircleOutlined
+                    style={{
+                      color: state.phase === 'error' ? '#ff4d4f' : '#52c41a',
+                      marginTop: 2,
+                    }}
+                  />
+                ) : (
+                  <Spin indicator={<LoadingOutlined spin />} size="small" />
+                )}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 600 }}>{state.label}</div>
+                  <div>{phaseLabel(state)}</div>
+                  <div style={{ opacity: 0.65, fontSize: 12 }}>
+                    {formatElapsedMs(elapsed)}
+                  </div>
                 </div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
+              </Space>
+            )
+          })}
+        </Space>
+      </Card>
     </div>
   )
 }
