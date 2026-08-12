@@ -1,5 +1,17 @@
+html,
 body {
   margin: 0;
+  /**
+   * The app fills the viewport itself (AppShell: height 100vh, overflow
+   * hidden) and never needs page-level scrolling. Without this, an antd
+   * overlay (Popover, Dropdown, Tooltip) that portals to <body> — a sibling
+   * of AppShell, not a descendant — can grow past the viewport and trigger
+   * a page scrollbar, shifting the whole layout sideways while it's open.
+   */
+  overflow: hidden;
+}
+
+body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;

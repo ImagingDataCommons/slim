@@ -17,6 +17,7 @@ import {
 import * as dcmjs from 'dcmjs'
 // skipcq: JS-C1003
 import type * as dmv from 'dicom-microscopy-viewer'
+import throttle from 'lodash/throttle'
 import React, { useCallback } from 'react'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
 import { rgbToHex } from '../utils/segmentColors'
@@ -220,6 +221,34 @@ class AnnotationGroupItem extends React.Component<
     }
   }
 
+  componentWillUnmount(): void {
+    this.throttledOnStyleChange.cancel()
+  }
+
+  /**
+   * Sliders fire on every pixel of drag; forwarding each tick straight into
+   * the viewer triggers a full layer rebuild and can make dragging itself
+   * feel laggy for large annotation groups. Throttle the expensive call
+   * (leading+trailing so the drag start and final value are never dropped)
+   * while local state below still updates every tick for a responsive UI.
+   */
+  private readonly throttledOnStyleChange = throttle(
+    (styleOptions: {
+      opacity?: number
+      color?: number[]
+      filled?: boolean
+      fillOpacity?: number
+      limitValues?: number[]
+    }): void => {
+      this.props.onStyleChange({
+        uid: this.props.annotationGroup.uid,
+        styleOptions,
+      })
+    },
+    50,
+    { leading: true, trailing: true },
+  )
+
   handleVisibilityChange = (
     checked: boolean,
     _event: React.MouseEvent<HTMLButtonElement>,
@@ -241,20 +270,12 @@ class AnnotationGroupItem extends React.Component<
         limitValues: state.currentStyle.limitValues,
       },
     }))
-    this.props.onStyleChange({
-      uid: this.props.annotationGroup.uid,
-      styleOptions: { color },
-    })
+    this.throttledOnStyleChange({ color })
   }
 
   handleOpacityChange = (opacity: number | null): void => {
     if (opacity !== null) {
-      this.props.onStyleChange({
-        uid: this.props.annotationGroup.uid,
-        styleOptions: {
-          opacity,
-        },
-      })
+      this.throttledOnStyleChange({ opacity })
       this.setState({
         currentStyle: {
           opacity,
@@ -282,10 +303,7 @@ class AnnotationGroupItem extends React.Component<
 
   handleFillOpacityChange = (fillOpacity: number | null): void => {
     if (fillOpacity !== null) {
-      this.props.onStyleChange({
-        uid: this.props.annotationGroup.uid,
-        styleOptions: { fillOpacity },
-      })
+      this.throttledOnStyleChange({ fillOpacity })
       this.setState((state) => ({
         currentStyle: {
           ...state.currentStyle,
@@ -342,11 +360,8 @@ class AnnotationGroupItem extends React.Component<
           }
         }
       })
-      this.props.onStyleChange({
-        uid: this.props.annotationGroup.uid,
-        styleOptions: {
-          limitValues: [value, this.state.currentStyle.limitValues[1]],
-        },
+      this.throttledOnStyleChange({
+        limitValues: [value, this.state.currentStyle.limitValues[1]],
       })
     }
   }
@@ -380,11 +395,8 @@ class AnnotationGroupItem extends React.Component<
           }
         }
       })
-      this.props.onStyleChange({
-        uid: this.props.annotationGroup.uid,
-        styleOptions: {
-          limitValues: [this.state.currentStyle.limitValues[0], value],
-        },
+      this.throttledOnStyleChange({
+        limitValues: [this.state.currentStyle.limitValues[0], value],
       })
     }
   }
@@ -399,10 +411,7 @@ class AnnotationGroupItem extends React.Component<
         limitValues: values,
       },
     }))
-    this.props.onStyleChange({
-      uid: this.props.annotationGroup.uid,
-      styleOptions: { limitValues: values },
-    })
+    this.throttledOnStyleChange({ limitValues: values })
   }
 
   handleAnnotationGroupClick = (): void => {
@@ -653,7 +662,7 @@ class AnnotationGroupItem extends React.Component<
     }
 
     const settings = (
-      <div>
+      <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
         {colorSettings}
         <OpacitySlider
           opacity={this.state.currentStyle.opacity}
