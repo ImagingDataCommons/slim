@@ -3,9 +3,11 @@ import type { SelectProps } from 'antd'
 import {
   Badge,
   Button,
+  Col,
   Divider,
   InputNumber,
   Popover,
+  Row,
   Select,
   Slider,
   Space,
@@ -562,36 +564,41 @@ class AnnotationGroupItem extends React.Component<
           <>
             <Divider plain>Values of interest</Divider>
             <div style={{ padding: '0 8px 8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <InputNumber
-                  min={0}
-                  max={this.state.currentStyle.limitValues[1]}
-                  size="small"
-                  style={{ width: '75px', flexShrink: 0 }}
-                  value={this.state.currentStyle.limitValues[0]}
-                  onChange={this.handleLowerLimitChange}
-                />
-                <Slider
-                  range
-                  min={minValue}
-                  max={maxValue}
-                  step={1}
-                  value={[
-                    this.state.currentStyle.limitValues[0],
-                    this.state.currentStyle.limitValues[1],
-                  ]}
-                  onChange={this.handleLimitChange}
-                  style={{ flex: 1, minWidth: 0 }}
-                />
-                <InputNumber
-                  min={this.state.currentStyle.limitValues[0]}
-                  max={maxValue}
-                  size="small"
-                  style={{ width: '75px', flexShrink: 0 }}
-                  value={this.state.currentStyle.limitValues[1]}
-                  onChange={this.handleUpperLimitChange}
-                />
-              </div>
+              <Row gutter={8} align="middle">
+                <Col span={6}>
+                  <InputNumber
+                    min={0}
+                    max={this.state.currentStyle.limitValues[1]}
+                    size="small"
+                    style={{ width: '100%' }}
+                    value={this.state.currentStyle.limitValues[0]}
+                    onChange={this.handleLowerLimitChange}
+                  />
+                </Col>
+                <Col span={12}>
+                  <Slider
+                    range
+                    min={minValue}
+                    max={maxValue}
+                    step={1}
+                    value={[
+                      this.state.currentStyle.limitValues[0],
+                      this.state.currentStyle.limitValues[1],
+                    ]}
+                    onChange={this.handleLimitChange}
+                  />
+                </Col>
+                <Col span={6}>
+                  <InputNumber
+                    min={this.state.currentStyle.limitValues[0]}
+                    max={maxValue}
+                    size="small"
+                    style={{ width: '100%' }}
+                    value={this.state.currentStyle.limitValues[1]}
+                    onChange={this.handleUpperLimitChange}
+                  />
+                </Col>
+              </Row>
             </div>
           </>
         )
@@ -620,20 +627,17 @@ class AnnotationGroupItem extends React.Component<
       fillSettings = (
         <>
           <Divider plain>Fill</Divider>
-          <div
-            style={{
-              padding: '0 8px 8px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-            }}
-          >
-            <div>Filled</div>
-            <Switch
-              size="small"
-              checked={this.state.currentStyle.filled ?? false}
-              onChange={this.handleFilledChange}
-            />
+          <div style={{ padding: '0 8px 8px' }}>
+            <Row gutter={8} align="middle">
+              <Col span={18}>Filled</Col>
+              <Col span={6}>
+                <Switch
+                  size="small"
+                  checked={this.state.currentStyle.filled ?? false}
+                  onChange={this.handleFilledChange}
+                />
+              </Col>
+            </Row>
           </div>
           {this.state.currentStyle.filled === true && (
             <OpacitySlider
