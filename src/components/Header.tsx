@@ -280,6 +280,32 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     this.setState({ showLogo: false })
   }
 
+  /**
+   * public/logo.svg may be an empty Illustrator placeholder (viewBox only).
+   * It loads without error but still reserves a wide blank slot in the header.
+   */
+  handleLogoLoad = (event: React.SyntheticEvent<HTMLImageElement>): void => {
+    const src = event.currentTarget.currentSrc || event.currentTarget.src
+    void fetch(src)
+      .then(async (response) => {
+        if (!response.ok) {
+          this.setState({ showLogo: false })
+          return
+        }
+        const markup = await response.text()
+        const hasGraphic =
+          /<(?:path|rect|circle|ellipse|polygon|polyline|line|text|image|use|g)\b/i.test(
+            markup,
+          )
+        if (!hasGraphic) {
+          this.setState({ showLogo: false })
+        }
+      })
+      .catch(() => {
+        this.setState({ showLogo: false })
+      })
+  }
+
   isValidServerUrl = (url: string | null | undefined): boolean => {
     if (url == null || url === '') {
       return false
@@ -755,8 +781,8 @@ class Header extends React.Component<HeaderProps, HeaderState> {
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
-              paddingRight: '20px',
-              paddingLeft: '20px',
+              paddingRight: 16,
+              paddingLeft: this.state.showLogo ? 16 : 0,
             }}
             title={selectedServerUrl}
           >
@@ -775,6 +801,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
                   src={logoUrl}
                   alt=""
                   onError={this.handleLogoError}
+                  onLoad={this.handleLogoLoad}
                   style={{
                     display: 'block',
                     height: 40,
