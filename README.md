@@ -306,7 +306,7 @@ The command line interface of the [dicomweb-client Python package](https://dicom
 dicomweb_client -vv --url http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs store instances -h
 ```
 
-The local deployment uses the default configuration file `public/config/local.js`:
+The local deployment uses the default configuration file `public/config/local.js`, which reads the DICOMweb URL from `window.slim.env.SLIM_LOCAL_DICOMWEB_URL` (set in `.env`; see `.env.example`):
 
 ```js
 window.config = {
@@ -314,7 +314,7 @@ window.config = {
   servers: [
     {
       id: "local",
-      url: "http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs",
+      url: window.slim.env.SLIM_LOCAL_DICOMWEB_URL,
       write: true,
     },
   ],
@@ -434,7 +434,7 @@ The configuration can be specified using the `REACT_APP_CONFIG` environment vari
 REACT_APP_CONFIG=local pnpm run start
 ```
 
-Copy [`.env.example`](.env.example) to `.env` (gitignored) and adjust as needed. Without `.env`, start/build defaults to `REACT_APP_CONFIG=local`. Config files may hardcode DICOMweb URLs. Optionally set `SLIM_*` in `.env` and read them as `window.slim.env.SLIM_*` if you want to keep URLs out of the codebase (see `scripts/inject-slim-env.mjs`). Firebase preview builds can pass `SLIM_PREVIEW_DICOMWEB_URL` via a GitHub Actions secret or variable.
+Copy [`.env.example`](.env.example) to `.env` (gitignored) and adjust as needed. Without `.env`, start/build defaults to `REACT_APP_CONFIG=local`. Committed configs under `public/config/` read DICOMweb URLs from `window.slim.env` (`SLIM_LOCAL_DICOMWEB_URL`, `SLIM_DEMO_DICOMWEB_URL`, `SLIM_PREVIEW_DICOMWEB_URL`). Set those in `.env` or CI (see `scripts/inject-slim-env.mjs`).
 
 Useful scripts:
 

@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 /**
  * Writes public/config/env.js from process env + .env.
- * Optional: configs may hardcode values, or read window.slim.env.VAR_NAME.
- * Only SLIM_* keys are exported onto window.slim.env.
+ * Configs read window.slim.env.VAR_NAME. Only SLIM_* keys are exported.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -10,6 +9,12 @@ import { fileURLToPath } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const outPath = path.join(root, 'public/config/env.js')
+
+const requiredUrlByConfig = {
+  local: 'SLIM_LOCAL_DICOMWEB_URL',
+  demo: 'SLIM_DEMO_DICOMWEB_URL',
+  preview: 'SLIM_PREVIEW_DICOMWEB_URL',
+}
 
 function loadDotEnvInto(file, target) {
   if (!fs.existsSync(file)) {
@@ -36,7 +41,6 @@ function loadDotEnvInto(file, target) {
   }
 }
 
-// Existing process.env wins over .env.
 const fileValues = {}
 loadDotEnvInto(path.join(root, '.env'), fileValues)
 
@@ -54,9 +58,10 @@ for (const [key, value] of Object.entries(process.env)) {
 }
 
 const configName = process.env.REACT_APP_CONFIG || 'local'
-if (configName === 'preview' && !slimEnv.SLIM_PREVIEW_DICOMWEB_URL) {
+const requiredKey = requiredUrlByConfig[configName]
+if (requiredKey && !slimEnv[requiredKey]) {
   console.error(
-    'SLIM_PREVIEW_DICOMWEB_URL is required when REACT_APP_CONFIG=preview (set in .env or CI).'
+    `${requiredKey} is required when REACT_APP_CONFIG=${configName} (set in .env or CI).`
   )
   process.exit(1)
 }

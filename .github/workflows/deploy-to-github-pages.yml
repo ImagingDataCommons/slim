@@ -40,6 +40,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build
+        env:
+          # Optional: secret preferred, variable fallback.
+          SLIM_DEMO_DICOMWEB_URL: ${{ secrets.SLIM_DEMO_DICOMWEB_URL || vars.SLIM_DEMO_DICOMWEB_URL }}
         run: pnpm run predeploy
 
       # Only pushes to master (and manual runs) publish; pull requests stop

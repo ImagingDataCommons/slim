@@ -8,14 +8,13 @@ start time with the `REACT_APP_CONFIG` environment variable (defaults to
 `local`).
 
 Copy [`.env.example`](../.env.example) to `.env` (gitignored) and adjust as
-needed. Without `.env`, start/build defaults to `REACT_APP_CONFIG=local`. Using
-`SLIM_*` env vars is optional: config files under `public/config/` may hardcode
-server URLs as usual. If you want to keep URLs out of the codebase, set `SLIM_*`
-in `.env`. Start/build writes them to `public/config/env.js` as
-`window.slim.env` (see `scripts/inject-slim-env.mjs`), and any config can read
-them (for example `url: window.slim.env.SLIM_PREVIEW_DICOMWEB_URL`). Firebase
-deploys can pass `SLIM_PREVIEW_DICOMWEB_URL` via a GitHub Actions secret or
-variable ([deploy-to-firebase](../.github/workflows/deploy-to-firebase.yml)).
+needed. Without `.env`, start/build defaults to `REACT_APP_CONFIG=local`.
+Committed configs under `public/config/` read DICOMweb URLs from
+`window.slim.env` (for example
+`url: window.slim.env.SLIM_LOCAL_DICOMWEB_URL`). Set `SLIM_LOCAL_DICOMWEB_URL`,
+`SLIM_DEMO_DICOMWEB_URL`, and/or `SLIM_PREVIEW_DICOMWEB_URL` in `.env` or CI
+(see `scripts/inject-slim-env.mjs`). Firebase and GitHub Pages deploys can pass
+those via Actions secrets or variables.
 
 For the full type definitions, see [`src/AppConfig.d.ts`](../src/AppConfig.d.ts).
 Example configs live in [`public/config/`](../public/config/).
@@ -33,7 +32,8 @@ Example configs live in [`public/config/`](../public/config/).
 ## External DICOMweb server
 
 Point Slim at any DICOMweb-conformant archive by setting `servers` in the config
-file:
+file. Slim’s committed configs read the URL from `window.slim.env` (set via
+`.env`); custom configs may still hardcode a URL:
 
 ```js
 window.config = {
@@ -41,7 +41,8 @@ window.config = {
   servers: [
     {
       id: 'local',
-      url: 'http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs',
+      url: window.slim.env.SLIM_LOCAL_DICOMWEB_URL,
+      // or: url: 'http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs',
       write: true,
     },
   ],
@@ -313,7 +314,8 @@ DICOMweb at:
 http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs
 ```
 
-That URL is already set in [`public/config/local.js`](../public/config/local.js).
+That URL belongs in `.env` as `SLIM_LOCAL_DICOMWEB_URL` (see `.env.example`).
+`public/config/local.js` reads it from `window.slim.env`.
 nginx in the compose stack proxies the dcm4chee DICOMweb paths; Orthanc is not
 part of that stack.
 
