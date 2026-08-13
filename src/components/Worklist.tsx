@@ -423,7 +423,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
           onChange={this.handleChange}
           size="small"
           loading={this.state.isLoading}
-          scroll={{ y: 'calc(100vh - 220px)' }}
+          scroll={{ y: 'calc(100vh - 280px)' }}
         />
       </div>
     )
