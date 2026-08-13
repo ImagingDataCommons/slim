@@ -20,6 +20,9 @@ else
   export REACT_APP_DMV_GIT_SHA=''
 fi
 
+# Expose SLIM_* env vars to public/config/*.js via window.slim.env
+node "$SCRIPT_DIR/inject-slim-env.mjs" || exit $?
+
 # Execute the command passed as arguments
 exec "$@"
 

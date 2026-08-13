@@ -434,6 +434,8 @@ The configuration can be specified using the `REACT_APP_CONFIG` environment vari
 REACT_APP_CONFIG=local pnpm run start
 ```
 
+Copy [`.env.example`](.env.example) for documented defaults. The repo ships a tracked `.env` with `REACT_APP_CONFIG=local`. Config files may hardcode DICOMweb URLs. Optionally, put `SLIM_*` values in gitignored `.env.local` and read them as `window.slim.env.SLIM_*` (see `scripts/inject-slim-env.mjs`). Slim’s own `preview.js` uses `SLIM_PREVIEW_DICOMWEB_URL` so IDC endpoints stay out of the public repo; set that as a GitHub Actions secret or variable for Firebase deploys.
+
 Useful scripts:
 
 | Command | Description |

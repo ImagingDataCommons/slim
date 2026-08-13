@@ -7,6 +7,17 @@ The app is configured via a JavaScript file under `public/config/` (for example
 start time with the `REACT_APP_CONFIG` environment variable (defaults to
 `local` via `.env`).
 
+Copy [`.env.example`](../.env.example) for documented defaults. The repo ships a
+tracked `.env` with `REACT_APP_CONFIG=local`. Using `SLIM_*` env vars is
+optional: config files under `public/config/` may hardcode server URLs as usual.
+Put private `SLIM_*` values in gitignored `.env.local`. Start/build writes them
+to `public/config/env.js` as `window.slim.env` (see
+`scripts/inject-slim-env.mjs`), and any config can read them (for example
+`url: window.slim.env.SLIM_PREVIEW_DICOMWEB_URL`). Slim’s own `preview.js` uses
+env so IDC DICOMweb URLs are not committed; Firebase deploys pass
+`SLIM_PREVIEW_DICOMWEB_URL` via GitHub Actions secret or variable
+([deploy-to-firebase](../.github/workflows/deploy-to-firebase.yml)).
+
 For the full type definitions, see [`src/AppConfig.d.ts`](../src/AppConfig.d.ts).
 Example configs live in [`public/config/`](../public/config/).
 
