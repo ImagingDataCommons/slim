@@ -10,11 +10,11 @@ Mark items with [x].
 <!--
 Firebase preview can install dicom-microscopy-viewer from a git branch.
 
-Option A — set an explicit branch (wins over matching names):
-  dmv-branch: feat/my-dmv-change
+Option A — set an explicit branch below (wins over matching names).
+  Example value only (do not copy the key into this comment): feat/my-dmv-change
 
 Option B — use the same branch name in Slim and dicom-microscopy-viewer
-  (for example both use feat/my-change). Leave dmv-branch empty.
+  (for example both use feat/my-change). Leave the field empty.
 
 If neither applies, the preview uses the npm pin from package.json.
 Editing this field later retriggers the Firebase preview.

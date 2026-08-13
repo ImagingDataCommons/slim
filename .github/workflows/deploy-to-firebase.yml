@@ -62,7 +62,27 @@ jobs:
           }
 
           # Prefer explicit "dmv-branch: <name>" from the PR body; else same-name branch.
-          EXPLICIT="$(printf '%s\n' "${PR_BODY:-}" | sed -nE 's/^[[:space:]]*dmv-branch:[[:space:]]*//p' | head -n 1 | tr -d '[:space:]')"
+          # Strip HTML comments so PR-template examples cannot be parsed as values.
+          BODY_NO_COMMENTS="$(python3 - <<'PY'
+import os, re
+print(re.sub(r"<!--.*?-->", "", os.environ.get("PR_BODY", ""), flags=re.S))
+PY
+)"
+          # Prefer the last non-empty field (user-filled value wins over blanks).
+          EXPLICIT=""
+          while IFS= read -r line || [ -n "${line}" ]; do
+            case "${line}" in
+              dmv-branch:*)
+                val="${line#dmv-branch:}"
+                val="$(printf '%s' "${val}" | tr -d '[:space:]')"
+                if [ -n "${val}" ]; then
+                  EXPLICIT="${val}"
+                fi
+                ;;
+            esac
+          done <<EOF
+$(printf '%s\n' "${BODY_NO_COMMENTS}" | sed -nE 's/^[[:space:]]*(dmv-branch:.*)$/\1/p')
+EOF
           if [ -n "${EXPLICIT}" ]; then
             BRANCH="${EXPLICIT}"
             SOURCE='dmv-branch'
