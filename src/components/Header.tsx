@@ -760,7 +760,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
 
     return (
       <>
-        <Layout.Header style={{ width: '100%', padding: '0 14px' }}>
+        <Layout.Header style={{ width: '100%', padding: '0 16px' }}>
           <Row style={{ flexWrap: 'nowrap' }}>
             <Col style={{ flexShrink: 0 }}>
               <Space align="center" direction="horizontal">
