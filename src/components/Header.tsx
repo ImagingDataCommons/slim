@@ -812,13 +812,23 @@ class Header extends React.Component<HeaderProps, HeaderState> {
                   alt="Slim"
                   onError={this.handleLogoError}
                   onLoad={this.handleLogoLoad}
-                  style={{
-                    display: 'block',
-                    height: 40,
-                    width: 'auto',
-                    maxWidth: 160,
-                    objectFit: 'contain',
-                  }}
+                  style={
+                    this.state.logoUrl === Header.defaultLogoUrl
+                      ? {
+                          display: 'block',
+                          height: 32,
+                          width: 32,
+                          objectFit: 'contain',
+                        }
+                      : {
+                          // Preserve legacy sizing for deployments with a custom logo.svg
+                          display: 'block',
+                          height: 64,
+                          margin: '-14px',
+                          width: 'auto',
+                          objectFit: 'contain',
+                        }
+                  }
                 />
               </Col>
             ) : null}
