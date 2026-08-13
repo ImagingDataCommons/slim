@@ -1,4 +1,4 @@
-import { Layout, message, Spin } from 'antd'
+import { Layout, message } from 'antd'
 // skipcq: JS-C1003
 import type * as dwc from 'dicomweb-client'
 import React from 'react'
@@ -14,6 +14,7 @@ import type AppConfig from './AppConfig'
 import type { ErrorMessageSettings, ServerSettings } from './AppConfig'
 import type { AuthManager, User } from './auth'
 import OidcManager from './auth/OidcManager'
+import AppLoading from './components/AppLoading'
 import AppShell from './components/AppShell'
 import CaseViewer from './components/CaseViewer'
 import Header from './components/Header'
@@ -548,7 +549,7 @@ class App extends React.Component<AppProps, AppState> {
                   justifyContent: 'center',
                 }}
               >
-                <Spin size="large" tip="Loading" />
+                <AppLoading fullscreen={false} label="Loading Slim" />
               </Layout.Content>
             </Layout>
           </AppShell>

@@ -27,6 +27,14 @@ code {
     Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
 }
 
+.slim-app-loading--inline {
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  padding: 24px;
+}
+
 .slim-app-loading-spinner {
   box-sizing: border-box;
   width: 40px;

@@ -18,6 +18,7 @@ import { CustomError, errorTypes } from '../utils/CustomError'
 import { logger } from '../utils/logger'
 import { type RouteComponentProps, withRouter } from '../utils/router'
 import { parseDate, parseName, parseSex, parseTime } from '../utils/values'
+import { SlimSpinner } from './AppLoading'
 
 // Standalone function for row key generation
 const getRowKey = (record: dmv.metadata.Study): string => {
@@ -480,7 +481,10 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
               onRow={this.handleRowProps}
               onChange={this.handleChange}
               size="small"
-              loading={this.state.isLoading}
+              loading={{
+                spinning: this.state.isLoading,
+                indicator: <SlimSpinner />,
+              }}
               scroll={
                 this.state.tableScrollY === undefined
                   ? undefined

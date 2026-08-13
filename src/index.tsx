@@ -6,6 +6,7 @@ import './index.css'
 
 import packageInfo from '../package.json'
 import type AppConfig from './AppConfig'
+import AppLoading from './components/AppLoading'
 import CustomErrorBoundary from './components/CustomErrorBoundary'
 import { logger } from './utils/logger'
 
@@ -129,14 +130,7 @@ if (container == null) {
 const root = createRoot(container)
 root.render(
   /// / <React.StrictMode>
-  <React.Suspense
-    fallback={
-      <div className="slim-app-loading" role="status" aria-live="polite">
-        <div className="slim-app-loading-spinner" aria-hidden="true" />
-        <p className="slim-app-loading-label">Loading Slim</p>
-      </div>
-    }
-  >
+  <React.Suspense fallback={<AppLoading />}>
     <CustomErrorBoundary context="App">
       <App
         config={config}
