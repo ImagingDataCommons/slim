@@ -518,6 +518,8 @@ class App extends React.Component<AppProps, AppState> {
       flex: 1,
       minHeight: 0,
       overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
     }
 
     if (this.state.redirectTo !== undefined) {

@@ -113,20 +113,16 @@ describe('Worklist', () => {
   }
 
   it('should populate one row for each available study', async () => {
-    const { container } = render(
+    const { queryAllByRole } = render(
       <BrowserRouter>
         <Worklist clients={clientMapping} />
       </BrowserRouter>
     )
 
     await waitFor(() => {
-      // With scroll prop enabled, Ant Design renders the table header in a
-      // separate element, so queryAllByRole('row') no longer includes header rows.
-      // We query body rows directly using Ant Design's class names.
-      // Note: This couples the test to Ant Design's implementation, but is
-      // necessary to accurately test row rendering with scroll enabled.
-      const bodyRows = container.querySelectorAll('.ant-table-tbody tr.ant-table-row')
-      expect(bodyRows.length).toBe(4)
+      const rows = queryAllByRole('row')
+      // Table has 1 header row + one body row per study; searchResults has 4 studies
+      expect(rows.length).toBe(5)
     })
   })
 
