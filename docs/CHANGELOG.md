@@ -1,3 +1,10 @@
+## [0.46.6](https://github.com/ImagingDataCommons/slim/compare/v0.46.5...v0.46.6) (2026-08-13)
+
+
+### Bug Fixes
+
+* remove oidc from preview config ([#415](https://github.com/ImagingDataCommons/slim/issues/415)) ([deeb351](https://github.com/ImagingDataCommons/slim/commit/deeb351e41f159667ccb45cc37caac111f1d9feb))
+
 ## [0.46.5](https://github.com/ImagingDataCommons/slim/compare/v0.46.4...v0.46.5) (2026-08-13)
 
 
