@@ -63,11 +63,7 @@ jobs:
 
           # Prefer explicit "dmv-branch: <name>" from the PR body; else same-name branch.
           # Strip HTML comments so PR-template examples cannot be parsed as values.
-          BODY_NO_COMMENTS="$(python3 - <<'PY'
-import os, re
-print(re.sub(r"<!--.*?-->", "", os.environ.get("PR_BODY", ""), flags=re.S))
-PY
-)"
+          BODY_NO_COMMENTS="$(python3 -c 'import os,re; print(re.sub(r"<!--.*?-->", "", os.environ.get("PR_BODY", ""), flags=re.S))')"
           # Prefer the last non-empty field (user-filled value wins over blanks).
           EXPLICIT=""
           while IFS= read -r line || [ -n "${line}" ]; do
