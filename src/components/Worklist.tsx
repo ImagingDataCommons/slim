@@ -21,6 +21,20 @@ const getRowKey = (record: dmv.metadata.Study): string => {
   return record.StudyInstanceUID
 }
 
+/**
+ * Vertical space reserved for fixed UI elements outside the table body.
+ * This allows the table body to scroll independently while keeping
+ * the header, table header row, pagination, and footer visible.
+ *
+ * Breakdown:
+ * - App header: ~64px
+ * - Table header row: ~39px
+ * - Pagination footer: ~56px
+ * - Memory footer (when visible): ~33px
+ * - Safety margin: ~8px
+ */
+const WORKLIST_SCROLL_OFFSET_PX = 200
+
 /** True when QIDO did not return usable (0008,0061) ModalitiesInStudy. */
 function modalitiesNeedBackfill(study: dmv.metadata.Study): boolean {
   const m = study.ModalitiesInStudy as string | string[] | undefined | null
@@ -422,6 +436,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
         onChange={this.handleChange}
         size="small"
         loading={this.state.isLoading}
+        scroll={{ y: `calc(100vh - ${WORKLIST_SCROLL_OFFSET_PX}px)` }}
       />
     )
   }
