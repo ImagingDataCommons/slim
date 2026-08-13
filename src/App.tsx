@@ -2,7 +2,6 @@ import { Layout, message } from 'antd'
 // skipcq: JS-C1003
 import type * as dwc from 'dicomweb-client'
 import React from 'react'
-import { FaSpinner } from 'react-icons/fa'
 import {
   BrowserRouter,
   Navigate,
@@ -16,6 +15,7 @@ import type AppConfig from './AppConfig'
 import type { ErrorMessageSettings, ServerSettings } from './AppConfig'
 import type { AuthManager, User } from './auth'
 import OidcManager from './auth/OidcManager'
+import AppLoading from './components/AppLoading'
 import AppShell from './components/AppShell'
 import CaseViewer from './components/CaseViewer'
 import Header from './components/Header'
@@ -568,6 +568,8 @@ class App extends React.Component<AppProps, AppState> {
       flex: 1,
       minHeight: 0,
       overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
     }
     const routerFuture = {
       v7_startTransition: true,
@@ -594,8 +596,14 @@ class App extends React.Component<AppProps, AppState> {
                 clients={this.state.clients}
                 defaultClients={this.state.defaultClients}
               />
-              <Layout.Content style={layoutContentStyle}>
-                <FaSpinner />
+              <Layout.Content
+                style={{
+                  ...layoutContentStyle,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <AppLoading fullscreen={false} label="Loading Slim" />
               </Layout.Content>
             </Layout>
           </AppShell>
