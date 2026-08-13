@@ -417,11 +417,13 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
         columns={columns}
         rowKey={getRowKey}
         dataSource={this.state.studies}
-        pagination={pagination}
+        pagination={{ ...pagination, position: ['bottomCenter'] }}
         onRow={this.handleRowProps}
         onChange={this.handleChange}
         size="small"
         loading={this.state.isLoading}
+        sticky
+        scroll={{ y: 'calc(100vh - 180px)' }}
       />
     )
   }
