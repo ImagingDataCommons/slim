@@ -7,6 +7,7 @@ import './tailwind.css'
 
 import packageInfo from '../package.json'
 import type AppConfig from './AppConfig'
+import AppLoading from './components/AppLoading'
 import CustomErrorBoundary from './components/CustomErrorBoundary'
 import { logger } from './utils/logger'
 
@@ -130,7 +131,7 @@ if (container == null) {
 const root = createRoot(container)
 root.render(
   /// / <React.StrictMode>
-  <React.Suspense fallback={<div>Loading application...</div>}>
+  <React.Suspense fallback={<AppLoading />}>
     <CustomErrorBoundary context="App">
       <App
         config={config}
