@@ -72,7 +72,6 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   private readonly defaultPageSize = 20
   private readonly tableAreaRef = React.createRef<HTMLDivElement>()
   private resizeObserver?: ResizeObserver
-  private latestFilters: Record<string, (React.Key | boolean)[] | null> = {}
 
   /** Full QIDO result set; page/pageSize changes only slice this list. */
   private allStudies: dmv.metadata.Study[] = []
@@ -295,7 +294,6 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     _pagination: TablePaginationConfig,
     filters: Record<string, (React.Key | boolean)[] | null>,
   ): void => {
-    this.latestFilters = filters
     const searchCriteria: { [attribute: string]: string } = {}
     for (const dataIndex in filters) {
       const value = filters[dataIndex]
