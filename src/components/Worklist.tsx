@@ -1,7 +1,10 @@
 import { SearchOutlined } from '@ant-design/icons'
-import { Button, Input, Space, Table, type TablePaginationConfig } from 'antd'
+import { Button, Input, Pagination, Space, Table } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import type { FilterConfirmProps } from 'antd/es/table/interface'
+import type {
+  FilterConfirmProps,
+  TablePaginationConfig,
+} from 'antd/es/table/interface'
 // skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
@@ -15,6 +18,7 @@ import { CustomError, errorTypes } from '../utils/CustomError'
 import { logger } from '../utils/logger'
 import { type RouteComponentProps, withRouter } from '../utils/router'
 import { parseDate, parseName, parseSex, parseTime } from '../utils/values'
+import { SlimSpinner } from './AppLoading'
 
 // Standalone function for row key generation
 const getRowKey = (record: dmv.metadata.Study): string => {
@@ -60,10 +64,18 @@ interface WorklistState {
   isLoading: boolean
   numStudies: number
   pageSize: number
+  currentPage: number
+  /** Pixel height for Ant Design Table body scroll area; measured from the table pane. */
+  tableScrollY?: number
 }
 
 class Worklist extends React.Component<WorklistProps, WorklistState> {
   private readonly defaultPageSize = 20
+  private readonly tableAreaRef = React.createRef<HTMLDivElement>()
+  private resizeObserver?: ResizeObserver
+
+  /** Full QIDO result set; page/pageSize changes only slice this list. */
+  private allStudies: dmv.metadata.Study[] = []
 
   /** Bumps when a new study list replaces the table; stale modality fetches ignore results. */
   private modalitiesEnrichmentGeneration = 0
@@ -75,32 +87,55 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       isLoading: false,
       numStudies: 0,
       pageSize: this.defaultPageSize,
+      currentPage: 1,
     }
   }
 
   searchForStudies(): void {
-    const queryParams: Record<string, string> = { ModalitiesInStudy: 'SM' }
-    const searchOptions = { queryParams }
-    // TODO: retrieve remaining results
+    this.fetchStudies()
+  }
+
+  private fetchStudies = (searchCriteria?: {
+    [attribute: string]: string
+  }): void => {
+    this.setState({ isLoading: true })
+    const queryParams: Record<string, string | number | boolean> = {
+      ModalitiesInStudy: 'SM',
+    }
+    if (searchCriteria !== undefined) {
+      for (const key in searchCriteria) {
+        const value = searchCriteria[key]
+        if (key === 'PersonName') {
+          queryParams[key] = `*${value}*`
+        } else {
+          queryParams[key] = value
+        }
+      }
+      queryParams.fuzzymatching = true
+    }
     const client =
       this.props.clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
     client
-      .searchForStudies(searchOptions)
+      .searchForStudies({ queryParams })
       .then((studies) => {
         const generation = ++this.modalitiesEnrichmentGeneration
-        const slice = studies.slice(0, this.state.pageSize).map((study) => {
+        const formatted = studies.map((study) => {
           const { dataset } = dmv.metadata.formatMetadata(study)
           return dataset as dmv.metadata.Study
         })
+        this.allStudies = formatted
+        const pageSize = this.state.pageSize
         this.setState({
-          numStudies: studies.length,
-          studies: slice,
+          isLoading: false,
+          numStudies: formatted.length,
+          currentPage: 1,
+          studies: formatted.slice(0, pageSize),
         })
-        void this.runModalitiesEnrichment(client, slice, generation)
+        void this.runModalitiesEnrichment(client, formatted, generation)
       })
       .catch((error) => {
         console.error(error)
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        this.setState({ isLoading: false })
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.DICOMWEB,
           new CustomError(
@@ -113,11 +148,72 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
 
   componentDidMount(): void {
     this.searchForStudies()
+    this.bindTableHeightObserver()
+    window.addEventListener('resize', this.updateTableScrollY)
   }
 
-  componentDidUpdate(previousProps: WorklistProps): void {
+  componentDidUpdate(
+    previousProps: WorklistProps,
+    previousState: WorklistState,
+  ): void {
     if (this.props.clients !== previousProps.clients) {
       this.searchForStudies()
+    }
+    // Pagination bar can appear/hide (hideOnSinglePage); remeasure the table pane.
+    if (
+      previousState.numStudies !== this.state.numStudies ||
+      previousState.pageSize !== this.state.pageSize ||
+      previousState.isLoading !== this.state.isLoading
+    ) {
+      this.updateTableScrollY()
+    }
+  }
+
+  componentWillUnmount(): void {
+    this.resizeObserver?.disconnect()
+    this.resizeObserver = undefined
+    window.removeEventListener('resize', this.updateTableScrollY)
+  }
+
+  /**
+   * Ant Design only splits header/body when `scroll.y` is set. Pagination lives
+   * in a separate flex row, so measure only the table pane minus thead.
+   */
+  private bindTableHeightObserver = (): void => {
+    const tableArea = this.tableAreaRef.current
+    if (tableArea === null) {
+      return
+    }
+    if (typeof ResizeObserver === 'undefined') {
+      this.updateTableScrollY()
+      return
+    }
+    this.resizeObserver?.disconnect()
+    this.resizeObserver = new ResizeObserver(() => {
+      this.updateTableScrollY()
+    })
+    this.resizeObserver.observe(tableArea)
+    this.updateTableScrollY()
+  }
+
+  private updateTableScrollY = (): void => {
+    const tableArea = this.tableAreaRef.current
+    if (tableArea === null) {
+      return
+    }
+    const areaHeight = tableArea.clientHeight
+    if (areaHeight <= 0) {
+      return
+    }
+
+    const header =
+      tableArea.querySelector('.ant-table-header') ??
+      tableArea.querySelector('.ant-table-thead')
+    const headerHeight = header instanceof HTMLElement ? header.offsetHeight : 0
+
+    const next = Math.max(Math.floor(areaHeight - headerHeight), 50)
+    if (next !== this.state.tableScrollY) {
+      this.setState({ tableScrollY: next })
     }
   }
 
@@ -126,59 +222,6 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     study: dmv.metadata.Study,
   ): void => {
     this.props.navigate(`/studies/${study.StudyInstanceUID}`)
-  }
-
-  fetchData = ({
-    offset,
-    limit,
-    searchCriteria,
-  }: {
-    offset: number
-    limit: number
-    searchCriteria?: { [attribute: string]: string }
-  }): void => {
-    const queryParams: Record<string, string | number> = {
-      ModalitiesInStudy: 'SM',
-      offset,
-      limit,
-    }
-    if (searchCriteria !== undefined) {
-      for (const key in searchCriteria) {
-        const value = searchCriteria[key]
-        if (key === 'PersonName') {
-          queryParams[key] = `*${value}*`
-        } else {
-          queryParams[key] = value
-        }
-      }
-      queryParams.fuzzymatching = 'true'
-    }
-    const searchOptions = { queryParams }
-    const client =
-      this.props.clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
-    client
-      .searchForStudies(searchOptions)
-      .then((studies) => {
-        const generation = ++this.modalitiesEnrichmentGeneration
-        const formatted = studies.map((study) => {
-          const { dataset } = dmv.metadata.formatMetadata(study)
-          return dataset as dmv.metadata.Study
-        })
-        this.setState({
-          studies: formatted,
-        })
-        void this.runModalitiesEnrichment(client, formatted, generation)
-      })
-      .catch((error) => {
-        console.error(error)
-        NotificationMiddleware.onError(
-          NotificationMiddlewareContext.DICOMWEB,
-          new CustomError(
-            errorTypes.COMMUNICATION,
-            'Request to search for studies failed.',
-          ),
-        )
-      })
   }
 
   private async collectModalitiesFromSeries(
@@ -230,8 +273,8 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       return
     }
     const uidToMods = new Map(byUid.map(({ uid, mods }) => [uid, mods]))
-    this.setState((prev) => ({
-      studies: prev.studies.map((study) => {
+    this.setState((prev) => {
+      this.allStudies = this.allStudies.map((study) => {
         const mods = uidToMods.get(study.StudyInstanceUID)
         if (mods === undefined || mods.length === 0) {
           return study
@@ -240,26 +283,18 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
           return study
         }
         return { ...study, ModalitiesInStudy: mods }
-      }),
-    }))
+      })
+      const offset = prev.pageSize * (prev.currentPage - 1)
+      return {
+        studies: this.allStudies.slice(offset, offset + prev.pageSize),
+      }
+    })
   }
 
   handleChange = (
-    pagination: TablePaginationConfig,
+    _pagination: TablePaginationConfig,
     filters: Record<string, (React.Key | boolean)[] | null>,
   ): void => {
-    this.setState({ isLoading: true })
-    let index = pagination.current
-    if (index === undefined) {
-      index = 1
-    }
-    let pageSize = pagination.pageSize
-    if (pageSize === undefined) {
-      pageSize = this.state.pageSize
-    }
-    const offset = pageSize * (index - 1)
-    const limit = pageSize
-    logger.debug(`search for studies of page #${index}...`)
     const searchCriteria: { [attribute: string]: string } = {}
     for (const dataIndex in filters) {
       const value = filters[dataIndex]
@@ -267,8 +302,37 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
         searchCriteria[dataIndex] = value[0].toString()
       }
     }
-    this.fetchData({ offset, limit, searchCriteria })
-    this.setState({ isLoading: false, pageSize })
+    this.fetchStudies(
+      Object.keys(searchCriteria).length > 0 ? searchCriteria : undefined,
+    )
+  }
+
+  /**
+   * Ant Design fires onChange for both page and pageSize changes. Size changes
+   * also fire onShowSizeChange — only handle onChange, and always return to
+   * page 1 when the page size changes so totals/pages stay consistent.
+   */
+  handlePaginationChange = (page: number, pageSize?: number): void => {
+    const nextPageSize = pageSize ?? this.state.pageSize
+    if (nextPageSize !== this.state.pageSize) {
+      this.applyPage(1, nextPageSize)
+      return
+    }
+    this.applyPage(page, nextPageSize)
+  }
+
+  private applyPage = (page: number, pageSize: number): void => {
+    const total = this.allStudies.length
+    const maxPage = Math.max(1, Math.ceil(total / pageSize) || 1)
+    const safePage = Math.min(Math.max(1, page), maxPage)
+    const offset = pageSize * (safePage - 1)
+    logger.debug(`show studies page #${safePage} (size ${pageSize})...`)
+    this.setState({
+      pageSize,
+      currentPage: safePage,
+      numStudies: total,
+      studies: this.allStudies.slice(offset, offset + pageSize),
+    })
   }
 
   handleSearch = (
@@ -399,30 +463,54 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       },
     ]
 
-    const pagination = {
-      defaultPageSize: this.defaultPageSize,
-      pageSize: this.state.pageSize,
-      hideOnSinglePage: true,
-      showSizeChanger: true,
-      showQuickJumper: true,
-      showTotal: (total: number, range: number[]) => {
-        return `${range[0]}-${range[1]} of ${total} studies`
-      },
-      total: this.state.numStudies,
-    }
+    const showPagination = this.state.numStudies > 0
 
     return (
-      <Table<dmv.metadata.Study>
-        style={{ cursor: 'pointer' }}
-        columns={columns}
-        rowKey={getRowKey}
-        dataSource={this.state.studies}
-        pagination={pagination}
-        onRow={this.handleRowProps}
-        onChange={this.handleChange}
-        size="small"
-        loading={this.state.isLoading}
-      />
+      <div className="slim-worklist">
+        <div className="slim-worklist-table-area">
+          <div
+            ref={this.tableAreaRef}
+            className="slim-worklist-table-area-inner"
+          >
+            <Table<dmv.metadata.Study>
+              style={{ cursor: 'pointer' }}
+              columns={columns}
+              rowKey={getRowKey}
+              dataSource={this.state.studies}
+              pagination={false}
+              onRow={this.handleRowProps}
+              onChange={this.handleChange}
+              size="small"
+              loading={{
+                spinning: this.state.isLoading,
+                indicator: <SlimSpinner />,
+              }}
+              scroll={
+                this.state.tableScrollY === undefined
+                  ? undefined
+                  : { y: this.state.tableScrollY }
+              }
+            />
+          </div>
+        </div>
+        {showPagination ? (
+          <div className="slim-worklist-pagination">
+            <Pagination
+              size="small"
+              current={this.state.currentPage}
+              pageSize={this.state.pageSize}
+              pageSizeOptions={['20', '50', '100', '200', '500']}
+              total={this.state.numStudies}
+              showSizeChanger
+              showQuickJumper
+              showTotal={(total: number, range: number[]) =>
+                `${range[0]}-${range[1]} of ${total} studies`
+              }
+              onChange={this.handlePaginationChange}
+            />
+          </div>
+        ) : null}
+      </div>
     )
   }
 

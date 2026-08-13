@@ -104,3 +104,87 @@ img {
   max-height: 100%;
 }
 
+/**
+ * Worklist fills the AppShell content pane. Only the table body scrolls;
+ * column headers and pagination stay pinned above the MemoryFooter.
+ */
+.slim-worklist {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+.slim-worklist-table-area {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Absolute fill so row content cannot inflate the flex height. */
+.slim-worklist-table-area-inner {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.slim-worklist-table-area-inner .ant-table-wrapper,
+.slim-worklist-table-area-inner .ant-spin-nested-loading,
+.slim-worklist-table-area-inner .ant-spin-container {
+  height: 100%;
+}
+
+/* Ant Design only centers .ant-spin-dot; center our shared Slim spinner. */
+.slim-worklist .ant-spin-nested-loading > div > .ant-spin {
+  max-height: none;
+}
+
+.slim-worklist .ant-spin-nested-loading > div > .ant-spin .slim-app-loading-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin-top: -20px;
+  margin-left: -20px;
+}
+
+/* Inset first/last cells so text clears the viewport edge without a table gap. */
+.slim-worklist .ant-table.ant-table-small .ant-table-thead > tr > th:first-child,
+.slim-worklist .ant-table.ant-table-small .ant-table-tbody > tr > td:first-child,
+.slim-worklist .ant-table-thead > tr > th:first-child,
+.slim-worklist .ant-table-tbody > tr > td:first-child {
+  padding-left: 16px;
+}
+
+.slim-worklist .ant-table.ant-table-small .ant-table-thead > tr > th:last-child,
+.slim-worklist .ant-table.ant-table-small .ant-table-tbody > tr > td:last-child,
+.slim-worklist .ant-table-thead > tr > th:last-child,
+.slim-worklist .ant-table-tbody > tr > td:last-child {
+  padding-right: 16px;
+}
+
+.slim-worklist-pagination {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border-top: 1px solid #f0f0f0;
+  background: #fff;
+}
+
+.slim-worklist-pagination .ant-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  row-gap: 8px;
+  column-gap: 8px;
+  margin: 0;
+  width: 100%;
+}
+
+/* Keep the "N-M of T studies" label on the left; controls stay on the right. */
+.slim-worklist-pagination .ant-pagination-total-text {
+  margin-right: auto;
+}
+
