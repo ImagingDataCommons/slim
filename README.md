@@ -451,11 +451,16 @@ Useful scripts:
 
 If you are developing features or fixing bugs that require changes in both Slim and the underlying [`dicom-microscopy-viewer`](https://github.com/ImagingDataCommons/dicom-microscopy-viewer) library, you can use `pnpm link` to connect your local Slim project to a local clone of `dicom-microscopy-viewer`. This allows Slim to immediately use the latest local changes from the library without publishing to npm.
 
-### Firebase preview with a matching DMV branch
+### Firebase preview with a paired DMV branch
 
-When a Slim pull request is opened, the Firebase preview workflow looks for a branch with the **same name** on `ImagingDataCommons/dicom-microscopy-viewer`. If that branch exists, the preview installs DMV from that git ref instead of the npm pin. Otherwise it uses the version in `package.json`.
+When a Slim pull request is opened, the Firebase preview can install
+[`dicom-microscopy-viewer`](https://github.com/ImagingDataCommons/dicom-microscopy-viewer)
+from a git branch instead of the npm pin:
 
-Use the same branch name in both repos (for example `feat/my-change`) when Slim and DMV changes need to be tested together.
+1. Set `dmv-branch: <branch-name>` in the PR description (see the PR template), or
+2. Use the **same branch name** in both repos and leave `dmv-branch` empty.
+
+If neither applies, the preview uses the version in `package.json`. Details are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### Steps
 
@@ -522,7 +527,7 @@ Use the same branch name in both repos (for example `feat/my-change`) when Slim 
 
 ## Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on coding style, documentation, and the development workflow.
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on coding style, documentation, pull requests (including optional DMV preview pairing), and the development workflow.
 
 ## Citation
 

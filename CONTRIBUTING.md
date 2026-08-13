@@ -64,3 +64,26 @@ const checkValues = ({ foo, bar }: { foo: string, bar: number }): boolean => {}
 ```
 
 The types of parameters and return values are omitted in docstring comments, given that type annotations are already available in TypeScript.
+
+## Pull requests
+
+Use the repository pull request template. Include a clear summary, testing notes, and a semantic-release style title (for example `feat(Worklist): …`, `fix(SlideViewer): …`).
+
+### Pairing a Firebase preview with dicom-microscopy-viewer
+
+If your Slim change depends on an unreleased
+[dicom-microscopy-viewer](https://github.com/ImagingDataCommons/dicom-microscopy-viewer)
+branch, the Firebase preview workflow can install that branch automatically:
+
+1. **Explicit:** add a line near the top of the PR body (template field):
+
+   ```text
+   dmv-branch: feat/my-dmv-change
+   ```
+
+2. **Same name:** use the same branch name in both repos (for example both
+   `feat/my-change`) and leave `dmv-branch` empty.
+
+`dmv-branch` wins when set. If it points at a branch that does not exist on DMV,
+the preview job fails. If neither option applies, the preview uses the npm pin
+from `package.json`.

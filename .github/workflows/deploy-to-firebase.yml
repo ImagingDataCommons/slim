@@ -35,21 +35,38 @@ jobs:
           node-version: 24
           cache: pnpm
 
-      - name: Resolve matching DMV branch
+      - name: Resolve DMV branch for preview
         id: dmv
         if: github.event_name == 'pull_request'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           set -euo pipefail
-          BRANCH='${{ github.head_ref }}'
           DMV_REPO='https://github.com/ImagingDataCommons/dicom-microscopy-viewer.git'
-          SHA="$(git ls-remote --heads "$DMV_REPO" "refs/heads/${BRANCH}" | awk '{print $1}')"
+
+          # Prefer explicit "dmv-branch: <name>" from the PR body; else same-name branch.
+          EXPLICIT="$(printf '%s\n' "${PR_BODY:-}" | sed -nE 's/^[[:space:]]*dmv-branch:[[:space:]]*//p' | head -n 1 | tr -d '[:space:]')"
+          if [ -n "${EXPLICIT}" ]; then
+            BRANCH="${EXPLICIT}"
+            SOURCE='dmv-branch'
+          else
+            BRANCH="${HEAD_REF}"
+            SOURCE='matching-branch'
+          fi
+
+          SHA="$(git ls-remote --heads "${DMV_REPO}" "refs/heads/${BRANCH}" | awk '{print $1}')"
           if [ -n "${SHA}" ]; then
-            echo "Found matching DMV branch '${BRANCH}' at ${SHA}"
+            echo "Using DMV branch '${BRANCH}' (${SOURCE}) at ${SHA}"
             {
               echo "use_git=true"
               echo "ref=${BRANCH}"
               echo "sha=${SHA}"
+              echo "source=${SOURCE}"
             } >> "${GITHUB_OUTPUT}"
+          elif [ -n "${EXPLICIT}" ]; then
+            echo "::error::dmv-branch '${EXPLICIT}' was set in the PR body but was not found on dicom-microscopy-viewer"
+            exit 1
           else
             echo "No matching DMV branch '${BRANCH}'; using package.json pin"
             echo "use_git=false" >> "${GITHUB_OUTPUT}"
@@ -82,7 +99,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr comment "${{ github.event.pull_request.number }}" \
-            --body "Firebase preview is building against [\`dicom-microscopy-viewer\`](https://github.com/ImagingDataCommons/dicom-microscopy-viewer) branch [\`${{ steps.dmv.outputs.ref }}\`](https://github.com/ImagingDataCommons/dicom-microscopy-viewer/tree/${{ steps.dmv.outputs.ref }}) (\`${{ steps.dmv.outputs.sha }}\`)."
+            --body "Firebase preview is building against [\`dicom-microscopy-viewer\`](https://github.com/ImagingDataCommons/dicom-microscopy-viewer) branch [\`${{ steps.dmv.outputs.ref }}\`](https://github.com/ImagingDataCommons/dicom-microscopy-viewer/tree/${{ steps.dmv.outputs.ref }}) (\`${{ steps.dmv.outputs.sha }}\`, via \`${{ steps.dmv.outputs.source }}\`)."
 
       - name: Deploy preview
         if: github.event_name == 'pull_request'
