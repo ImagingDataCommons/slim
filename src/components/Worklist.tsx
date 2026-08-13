@@ -74,6 +74,9 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   private resizeObserver?: ResizeObserver
   private latestFilters: Record<string, (React.Key | boolean)[] | null> = {}
 
+  /** Full QIDO result set; page/pageSize changes only slice this list. */
+  private allStudies: dmv.metadata.Study[] = []
+
   /** Bumps when a new study list replaces the table; stale modality fetches ignore results. */
   private modalitiesEnrichmentGeneration = 0
 
@@ -89,28 +92,50 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   }
 
   searchForStudies(): void {
-    const queryParams: Record<string, string> = { ModalitiesInStudy: 'SM' }
-    const searchOptions = { queryParams }
-    // TODO: retrieve remaining results
+    this.fetchStudies()
+  }
+
+  private fetchStudies = (searchCriteria?: {
+    [attribute: string]: string
+  }): void => {
+    this.setState({ isLoading: true })
+    const queryParams: Record<string, string | number | boolean> = {
+      ModalitiesInStudy: 'SM',
+    }
+    if (searchCriteria !== undefined) {
+      for (const key in searchCriteria) {
+        const value = searchCriteria[key]
+        if (key === 'PersonName') {
+          queryParams[key] = `*${value}*`
+        } else {
+          queryParams[key] = value
+        }
+      }
+      queryParams.fuzzymatching = true
+    }
     const client =
       this.props.clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
     client
-      .searchForStudies(searchOptions)
+      .searchForStudies({ queryParams })
       .then((studies) => {
         const generation = ++this.modalitiesEnrichmentGeneration
-        const slice = studies.slice(0, this.state.pageSize).map((study) => {
+        const formatted = studies.map((study) => {
           const { dataset } = dmv.metadata.formatMetadata(study)
           return dataset as dmv.metadata.Study
         })
+        this.allStudies = formatted
+        const pageSize = this.state.pageSize
         this.setState({
-          numStudies: studies.length,
-          studies: slice,
+          isLoading: false,
+          numStudies: formatted.length,
+          currentPage: 1,
+          studies: formatted.slice(0, pageSize),
         })
-        void this.runModalitiesEnrichment(client, slice, generation)
+        void this.runModalitiesEnrichment(client, formatted, generation)
       })
       .catch((error) => {
         console.error(error)
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        this.setState({ isLoading: false })
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.DICOMWEB,
           new CustomError(
@@ -199,59 +224,6 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     this.props.navigate(`/studies/${study.StudyInstanceUID}`)
   }
 
-  fetchData = ({
-    offset,
-    limit,
-    searchCriteria,
-  }: {
-    offset: number
-    limit: number
-    searchCriteria?: { [attribute: string]: string }
-  }): void => {
-    const queryParams: Record<string, string | number> = {
-      ModalitiesInStudy: 'SM',
-      offset,
-      limit,
-    }
-    if (searchCriteria !== undefined) {
-      for (const key in searchCriteria) {
-        const value = searchCriteria[key]
-        if (key === 'PersonName') {
-          queryParams[key] = `*${value}*`
-        } else {
-          queryParams[key] = value
-        }
-      }
-      queryParams.fuzzymatching = 'true'
-    }
-    const searchOptions = { queryParams }
-    const client =
-      this.props.clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
-    client
-      .searchForStudies(searchOptions)
-      .then((studies) => {
-        const generation = ++this.modalitiesEnrichmentGeneration
-        const formatted = studies.map((study) => {
-          const { dataset } = dmv.metadata.formatMetadata(study)
-          return dataset as dmv.metadata.Study
-        })
-        this.setState({
-          studies: formatted,
-        })
-        void this.runModalitiesEnrichment(client, formatted, generation)
-      })
-      .catch((error) => {
-        console.error(error)
-        NotificationMiddleware.onError(
-          NotificationMiddlewareContext.DICOMWEB,
-          new CustomError(
-            errorTypes.COMMUNICATION,
-            'Request to search for studies failed.',
-          ),
-        )
-      })
-  }
-
   private async collectModalitiesFromSeries(
     client: DicomWebManager,
     studyInstanceUID: string,
@@ -301,8 +273,8 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       return
     }
     const uidToMods = new Map(byUid.map(({ uid, mods }) => [uid, mods]))
-    this.setState((prev) => ({
-      studies: prev.studies.map((study) => {
+    this.setState((prev) => {
+      this.allStudies = this.allStudies.map((study) => {
         const mods = uidToMods.get(study.StudyInstanceUID)
         if (mods === undefined || mods.length === 0) {
           return study
@@ -311,8 +283,12 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
           return study
         }
         return { ...study, ModalitiesInStudy: mods }
-      }),
-    }))
+      })
+      const offset = prev.pageSize * (prev.currentPage - 1)
+      return {
+        studies: this.allStudies.slice(offset, offset + prev.pageSize),
+      }
+    })
   }
 
   handleChange = (
@@ -320,22 +296,6 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     filters: Record<string, (React.Key | boolean)[] | null>,
   ): void => {
     this.latestFilters = filters
-    this.loadPage(1, this.state.pageSize, filters)
-  }
-
-  handlePaginationChange = (page: number, pageSize?: number): void => {
-    const nextPageSize = pageSize ?? this.state.pageSize
-    this.loadPage(page, nextPageSize, this.latestFilters)
-  }
-
-  private loadPage = (
-    page: number,
-    pageSize: number,
-    filters: Record<string, (React.Key | boolean)[] | null>,
-  ): void => {
-    this.setState({ isLoading: true })
-    const offset = pageSize * (page - 1)
-    logger.debug(`search for studies of page #${page}...`)
     const searchCriteria: { [attribute: string]: string } = {}
     for (const dataIndex in filters) {
       const value = filters[dataIndex]
@@ -343,11 +303,36 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
         searchCriteria[dataIndex] = value[0].toString()
       }
     }
-    this.fetchData({ offset, limit: pageSize, searchCriteria })
+    this.fetchStudies(
+      Object.keys(searchCriteria).length > 0 ? searchCriteria : undefined,
+    )
+  }
+
+  /**
+   * Ant Design fires onChange for both page and pageSize changes. Size changes
+   * also fire onShowSizeChange — only handle onChange, and always return to
+   * page 1 when the page size changes so totals/pages stay consistent.
+   */
+  handlePaginationChange = (page: number, pageSize?: number): void => {
+    const nextPageSize = pageSize ?? this.state.pageSize
+    if (nextPageSize !== this.state.pageSize) {
+      this.applyPage(1, nextPageSize)
+      return
+    }
+    this.applyPage(page, nextPageSize)
+  }
+
+  private applyPage = (page: number, pageSize: number): void => {
+    const total = this.allStudies.length
+    const maxPage = Math.max(1, Math.ceil(total / pageSize) || 1)
+    const safePage = Math.min(Math.max(1, page), maxPage)
+    const offset = pageSize * (safePage - 1)
+    logger.debug(`show studies page #${safePage} (size ${pageSize})...`)
     this.setState({
-      isLoading: false,
       pageSize,
-      currentPage: page,
+      currentPage: safePage,
+      numStudies: total,
+      studies: this.allStudies.slice(offset, offset + pageSize),
     })
   }
 
@@ -520,7 +505,6 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
                 `${range[0]}-${range[1]} of ${total} studies`
               }
               onChange={this.handlePaginationChange}
-              onShowSizeChange={this.handlePaginationChange}
             />
           </div>
         ) : null}
