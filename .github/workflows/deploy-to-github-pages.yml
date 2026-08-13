@@ -39,9 +39,17 @@ jobs:
         # The git-hosted dicom-microscopy-viewer needs its prepare script to build dist/.
         run: pnpm install --frozen-lockfile
 
+      - name: Require demo DICOMweb URL
+        env:
+          SLIM_DEMO_DICOMWEB_URL: ${{ secrets.SLIM_DEMO_DICOMWEB_URL || vars.SLIM_DEMO_DICOMWEB_URL }}
+        run: |
+          if [ -z "${SLIM_DEMO_DICOMWEB_URL}" ]; then
+            echo "::error::Set Actions secret or variable SLIM_DEMO_DICOMWEB_URL (used by public/config/demo.js via window.slim.env)."
+            exit 1
+          fi
+
       - name: Build
         env:
-          # Optional: secret preferred, variable fallback.
           SLIM_DEMO_DICOMWEB_URL: ${{ secrets.SLIM_DEMO_DICOMWEB_URL || vars.SLIM_DEMO_DICOMWEB_URL }}
         run: pnpm run predeploy
 

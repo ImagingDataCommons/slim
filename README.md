@@ -434,7 +434,16 @@ The configuration can be specified using the `REACT_APP_CONFIG` environment vari
 REACT_APP_CONFIG=local pnpm run start
 ```
 
-Copy [`.env.example`](.env.example) to `.env` (gitignored) and adjust as needed. Without `.env`, start/build defaults to `REACT_APP_CONFIG=local`. Committed configs under `public/config/` read DICOMweb URLs from `window.slim.env` (`SLIM_LOCAL_DICOMWEB_URL`, `SLIM_DEMO_DICOMWEB_URL`, `SLIM_PREVIEW_DICOMWEB_URL`). Set those in `.env` or CI (see `scripts/inject-slim-env.mjs`).
+Copy [`.env.example`](.env.example) to `.env` (gitignored) and adjust as needed. Without `.env`, start/build defaults to `REACT_APP_CONFIG=local` and `SLIM_LOCAL_DICOMWEB_URL` defaults to the docker-compose DICOMweb URL. Committed `demo` / `preview` configs require `SLIM_DEMO_DICOMWEB_URL` / `SLIM_PREVIEW_DICOMWEB_URL` in `.env` or CI (see `scripts/inject-slim-env.mjs`).
+
+### Upgrading from older Slim versions
+
+If you merge this change into a fork or redeploy:
+
+1. Copy `.env.example` to `.env` (or keep your existing `.env`).
+2. Stock `local` builds work without extra setup (localhost DICOMweb default).
+3. Before Firebase / GitHub Pages deploys, set Actions secret or variable `SLIM_PREVIEW_DICOMWEB_URL` and `SLIM_DEMO_DICOMWEB_URL`.
+4. Custom configs with hardcoded `servers[].url` keep working; only Slim’s committed `local` / `demo` / `preview` configs read `window.slim.env`.
 
 Useful scripts:
 

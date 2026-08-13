@@ -10,6 +10,9 @@ import { fileURLToPath } from 'node:url'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const outPath = path.join(root, 'public/config/env.js')
 
+const DEFAULT_LOCAL_DICOMWEB_URL =
+  'http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs'
+
 const requiredUrlByConfig = {
   local: 'SLIM_LOCAL_DICOMWEB_URL',
   demo: 'SLIM_DEMO_DICOMWEB_URL',
@@ -50,6 +53,11 @@ for (const [key, value] of Object.entries(fileValues)) {
   }
 }
 
+// Safe public default for docker-compose / fresh clones / CI unit builds.
+if (!process.env.SLIM_LOCAL_DICOMWEB_URL) {
+  process.env.SLIM_LOCAL_DICOMWEB_URL = DEFAULT_LOCAL_DICOMWEB_URL
+}
+
 const slimEnv = {}
 for (const [key, value] of Object.entries(process.env)) {
   if (key.startsWith('SLIM_') && value !== undefined && value !== '') {
@@ -60,8 +68,13 @@ for (const [key, value] of Object.entries(process.env)) {
 const configName = process.env.REACT_APP_CONFIG || 'local'
 const requiredKey = requiredUrlByConfig[configName]
 if (requiredKey && !slimEnv[requiredKey]) {
+  const ciHint =
+    requiredKey === 'SLIM_DEMO_DICOMWEB_URL' ||
+    requiredKey === 'SLIM_PREVIEW_DICOMWEB_URL'
+      ? ` Set GitHub Actions secret or variable ${requiredKey}, or add it to .env.`
+      : ' Set it in .env (see .env.example).'
   console.error(
-    `${requiredKey} is required when REACT_APP_CONFIG=${configName} (set in .env or CI).`
+    `${requiredKey} is required when REACT_APP_CONFIG=${configName}.${ciHint}`
   )
   process.exit(1)
 }

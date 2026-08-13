@@ -84,11 +84,20 @@ jobs:
             pnpm install --frozen-lockfile
           fi
 
+      - name: Require preview DICOMweb URL
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        env:
+          SLIM_PREVIEW_DICOMWEB_URL: ${{ secrets.SLIM_PREVIEW_DICOMWEB_URL || vars.SLIM_PREVIEW_DICOMWEB_URL }}
+        run: |
+          if [ -z "${SLIM_PREVIEW_DICOMWEB_URL}" ]; then
+            echo "::error::Set Actions secret or variable SLIM_PREVIEW_DICOMWEB_URL (used by public/config/preview.js via window.slim.env)."
+            exit 1
+          fi
+
       - name: Build
         env:
           REACT_APP_CONFIG: preview
           PUBLIC_URL: /
-          # Optional: secret preferred, variable fallback.
           SLIM_PREVIEW_DICOMWEB_URL: ${{ secrets.SLIM_PREVIEW_DICOMWEB_URL || vars.SLIM_PREVIEW_DICOMWEB_URL }}
           REACT_APP_DMV_GIT_SHA: ${{ steps.dmv.outputs.sha }}
         run: pnpm run build
