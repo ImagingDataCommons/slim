@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Writes public/config/env.js from process env + .env / .env.local.
+ * Writes public/config/env.js from process env + .env.
  * Optional: configs may hardcode values, or read window.slim.env.VAR_NAME.
  * Only SLIM_* keys are exported onto window.slim.env.
  */
@@ -36,10 +36,9 @@ function loadDotEnvInto(file, target) {
   }
 }
 
-// Match CRA local file order: .env then .env.local. Existing process.env wins.
+// Existing process.env wins over .env.
 const fileValues = {}
 loadDotEnvInto(path.join(root, '.env'), fileValues)
-loadDotEnvInto(path.join(root, '.env.local'), fileValues)
 
 for (const [key, value] of Object.entries(fileValues)) {
   if (process.env[key] === undefined) {
@@ -57,7 +56,7 @@ for (const [key, value] of Object.entries(process.env)) {
 const configName = process.env.REACT_APP_CONFIG || 'local'
 if (configName === 'preview' && !slimEnv.SLIM_PREVIEW_DICOMWEB_URL) {
   console.error(
-    'SLIM_PREVIEW_DICOMWEB_URL is required when REACT_APP_CONFIG=preview (set in .env.local or CI).'
+    'SLIM_PREVIEW_DICOMWEB_URL is required when REACT_APP_CONFIG=preview (set in .env or CI).'
   )
   process.exit(1)
 }

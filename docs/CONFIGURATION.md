@@ -5,13 +5,13 @@ The app is configured via a JavaScript file under `public/config/` (for example
 `public/config/local.js`). The file is loaded at runtime from
 `public/config/{name}.js` via `public/index.html`. Select `{name}` at build /
 start time with the `REACT_APP_CONFIG` environment variable (defaults to
-`local` via `.env`).
+`local`).
 
-Copy [`.env.example`](../.env.example) for documented defaults. The repo ships a
-tracked `.env` with `REACT_APP_CONFIG=local`. Using `SLIM_*` env vars is
-optional: config files under `public/config/` may hardcode server URLs as usual.
-If you want to keep URLs out of the codebase, put `SLIM_*` values in gitignored
-`.env.local`. Start/build writes them to `public/config/env.js` as
+Copy [`.env.example`](../.env.example) to `.env` (gitignored) and adjust as
+needed. Without `.env`, start/build defaults to `REACT_APP_CONFIG=local`. Using
+`SLIM_*` env vars is optional: config files under `public/config/` may hardcode
+server URLs as usual. If you want to keep URLs out of the codebase, set `SLIM_*`
+in `.env`. Start/build writes them to `public/config/env.js` as
 `window.slim.env` (see `scripts/inject-slim-env.mjs`), and any config can read
 them (for example `url: window.slim.env.SLIM_PREVIEW_DICOMWEB_URL`). Firebase
 deploys can pass `SLIM_PREVIEW_DICOMWEB_URL` via a GitHub Actions secret or

@@ -434,7 +434,7 @@ The configuration can be specified using the `REACT_APP_CONFIG` environment vari
 REACT_APP_CONFIG=local pnpm run start
 ```
 
-Copy [`.env.example`](.env.example) for documented defaults. The repo ships a tracked `.env` with `REACT_APP_CONFIG=local`. Config files may hardcode DICOMweb URLs. Optionally, put `SLIM_*` values in gitignored `.env.local` and read them as `window.slim.env.SLIM_*` if you want to keep URLs out of the codebase (see `scripts/inject-slim-env.mjs`). Firebase preview builds can pass `SLIM_PREVIEW_DICOMWEB_URL` via a GitHub Actions secret or variable.
+Copy [`.env.example`](.env.example) to `.env` (gitignored) and adjust as needed. Without `.env`, start/build defaults to `REACT_APP_CONFIG=local`. Config files may hardcode DICOMweb URLs. Optionally set `SLIM_*` in `.env` and read them as `window.slim.env.SLIM_*` if you want to keep URLs out of the codebase (see `scripts/inject-slim-env.mjs`). Firebase preview builds can pass `SLIM_PREVIEW_DICOMWEB_URL` via a GitHub Actions secret or variable.
 
 Useful scripts:
 
