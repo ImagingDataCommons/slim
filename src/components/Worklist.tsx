@@ -412,20 +412,18 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     }
 
     return (
-      <div className="slim-worklist-container">
-        <Table<dmv.metadata.Study>
-          style={{ cursor: 'pointer' }}
-          columns={columns}
-          rowKey={getRowKey}
-          dataSource={this.state.studies}
-          pagination={pagination}
-          onRow={this.handleRowProps}
-          onChange={this.handleChange}
-          size="small"
-          loading={this.state.isLoading}
-          scroll={{ y: 'calc(100vh - 280px)' }}
-        />
-      </div>
+      <Table<dmv.metadata.Study>
+        style={{ cursor: 'pointer' }}
+        columns={columns}
+        rowKey={getRowKey}
+        dataSource={this.state.studies}
+        pagination={pagination}
+        onRow={this.handleRowProps}
+        onChange={this.handleChange}
+        size="small"
+        loading={this.state.isLoading}
+        scroll={{ y: 'calc(100vh - 250px)' }}
+      />
     )
   }
 
