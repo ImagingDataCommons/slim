@@ -451,6 +451,12 @@ Useful scripts:
 
 If you are developing features or fixing bugs that require changes in both Slim and the underlying [`dicom-microscopy-viewer`](https://github.com/ImagingDataCommons/dicom-microscopy-viewer) library, you can use `pnpm link` to connect your local Slim project to a local clone of `dicom-microscopy-viewer`. This allows Slim to immediately use the latest local changes from the library without publishing to npm.
 
+### Firebase preview with a matching DMV branch
+
+When a Slim pull request is opened, the Firebase preview workflow looks for a branch with the **same name** on `ImagingDataCommons/dicom-microscopy-viewer`. If that branch exists, the preview installs DMV from that git ref instead of the npm pin. Otherwise it uses the version in `package.json`.
+
+Use the same branch name in both repos (for example `feat/my-change`) when Slim and DMV changes need to be tested together.
+
 ### Steps
 
 1. **Clone dicom-microscopy-viewer**  

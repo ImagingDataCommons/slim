@@ -21,7 +21,7 @@ jobs:
     # Forked PRs cannot access the Firebase service account secret, so skip them.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -35,10 +35,37 @@ jobs:
           node-version: 24
           cache: pnpm
 
+      - name: Resolve matching DMV branch
+        id: dmv
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          BRANCH='${{ github.head_ref }}'
+          DMV_REPO='https://github.com/ImagingDataCommons/dicom-microscopy-viewer.git'
+          SHA="$(git ls-remote --heads "$DMV_REPO" "refs/heads/${BRANCH}" | awk '{print $1}')"
+          if [ -n "${SHA}" ]; then
+            echo "Found matching DMV branch '${BRANCH}' at ${SHA}"
+            {
+              echo "use_git=true"
+              echo "ref=${BRANCH}"
+              echo "sha=${SHA}"
+            } >> "${GITHUB_OUTPUT}"
+          else
+            echo "No matching DMV branch '${BRANCH}'; using package.json pin"
+            echo "use_git=false" >> "${GITHUB_OUTPUT}"
+          fi
+
       - name: Install dependencies
         # Dependency build scripts are gated by allowBuilds in pnpm-workspace.yaml.
         # The git-hosted dicom-microscopy-viewer needs its prepare script to build dist/.
-        run: pnpm install --frozen-lockfile
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.dmv.outputs.use_git }}" = "true" ]; then
+            pnpm pkg set "dependencies.dicom-microscopy-viewer=github:ImagingDataCommons/dicom-microscopy-viewer#${{ steps.dmv.outputs.ref }}"
+            pnpm install --no-frozen-lockfile
+          else
+            pnpm install --frozen-lockfile
+          fi
 
       - name: Build
         env:
@@ -46,7 +73,16 @@ jobs:
           PUBLIC_URL: /
           # Optional: secret preferred, variable fallback.
           SLIM_PREVIEW_DICOMWEB_URL: ${{ secrets.SLIM_PREVIEW_DICOMWEB_URL || vars.SLIM_PREVIEW_DICOMWEB_URL }}
+          REACT_APP_DMV_GIT_SHA: ${{ steps.dmv.outputs.sha }}
         run: pnpm run build
+
+      - name: Note DMV source on PR
+        if: github.event_name == 'pull_request' && steps.dmv.outputs.use_git == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --body "Firebase preview is building against [\`dicom-microscopy-viewer\`](https://github.com/ImagingDataCommons/dicom-microscopy-viewer) branch [\`${{ steps.dmv.outputs.ref }}\`](https://github.com/ImagingDataCommons/dicom-microscopy-viewer/tree/${{ steps.dmv.outputs.ref }}) (\`${{ steps.dmv.outputs.sha }}\`)."
 
       - name: Deploy preview
         if: github.event_name == 'pull_request'
