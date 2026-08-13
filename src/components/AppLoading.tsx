@@ -1,4 +1,4 @@
-import type React from 'react'
+import { createElement } from 'react'
 
 interface AppLoadingProps {
   label?: string
@@ -7,23 +7,28 @@ interface AppLoadingProps {
 }
 
 /** Shared Slim brand spinner used by Suspense, app boot, and table loading. */
-export function SlimSpinner(): React.ReactElement {
-  return <div className="slim-app-loading-spinner" aria-hidden="true" />
+export function SlimSpinner(): JSX.Element {
+  return createElement('div', {
+    className: 'slim-app-loading-spinner',
+    'aria-hidden': true,
+  })
 }
 
-const AppLoading: React.FC<AppLoadingProps> = ({
+function AppLoading({
   label = 'Loading Slim',
   fullscreen = true,
-}) => {
+}: AppLoadingProps): JSX.Element {
   const className = fullscreen
     ? 'slim-app-loading'
     : 'slim-app-loading slim-app-loading--inline'
 
-  return (
-    <div className={className} role="status" aria-live="polite">
-      <SlimSpinner />
-      {label !== '' ? <p className="slim-app-loading-label">{label}</p> : null}
-    </div>
+  return createElement(
+    'div',
+    { className, role: 'status', 'aria-live': 'polite' },
+    createElement(SlimSpinner),
+    label !== ''
+      ? createElement('p', { className: 'slim-app-loading-label' }, label)
+      : null,
   )
 }
 
