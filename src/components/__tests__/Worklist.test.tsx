@@ -113,16 +113,16 @@ describe('Worklist', () => {
   }
 
   it('should populate one row for each available study', async () => {
-    const { queryAllByRole } = render(
+    const { container } = render(
       <BrowserRouter>
         <Worklist clients={clientMapping} />
       </BrowserRouter>
     )
 
     await waitFor(() => {
-      const rows = queryAllByRole('row')
-      // Table has 1 header row + one body row per study; searchResults has 4 studies
-      expect(rows.length).toBe(5)
+      // With scroll prop, table body rows are in .ant-table-tbody
+      const bodyRows = container.querySelectorAll('.ant-table-tbody tr.ant-table-row')
+      expect(bodyRows.length).toBe(4)
     })
   })
 
