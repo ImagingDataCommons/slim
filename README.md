@@ -469,7 +469,7 @@ from a git branch instead of the npm pin:
 1. Set `dmv-branch: <branch-name>` in the PR description (see the PR template), or
 2. Use the **same branch name** in both repos and leave `dmv-branch` empty.
 
-If neither applies, the preview uses the version in `package.json`. Details are in [CONTRIBUTING.md](CONTRIBUTING.md).
+If neither applies, the preview uses the version in `package.json`. Editing the PR body to change `dmv-branch:` regenerates the preview. Details are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### Steps
 

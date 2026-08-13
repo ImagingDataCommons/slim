@@ -17,6 +17,7 @@ Option B — use the same branch name in Slim and dicom-microscopy-viewer
   (for example both use feat/my-change). Leave dmv-branch empty.
 
 If neither applies, the preview uses the npm pin from package.json.
+Editing this field later retriggers the Firebase preview.
 -->
 
 dmv-branch:

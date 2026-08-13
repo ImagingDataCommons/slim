@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Writes public/config/env.js from process env + .env.
- * Configs read window.slim.env.VAR_NAME. Only SLIM_* keys are exported.
+ * Configs read window.slim.env.VAR_NAME.
+ * Only an allowlisted set of SLIM_* keys is exported (avoids leaking unrelated secrets).
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -12,6 +13,12 @@ const outPath = path.join(root, 'public/config/env.js')
 
 const DEFAULT_LOCAL_DICOMWEB_URL =
   'http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs'
+
+const ALLOWED_SLIM_ENV_KEYS = [
+  'SLIM_LOCAL_DICOMWEB_URL',
+  'SLIM_DEMO_DICOMWEB_URL',
+  'SLIM_PREVIEW_DICOMWEB_URL',
+]
 
 const requiredUrlByConfig = {
   local: 'SLIM_LOCAL_DICOMWEB_URL',
@@ -59,8 +66,9 @@ if (!process.env.SLIM_LOCAL_DICOMWEB_URL) {
 }
 
 const slimEnv = {}
-for (const [key, value] of Object.entries(process.env)) {
-  if (key.startsWith('SLIM_') && value !== undefined && value !== '') {
+for (const key of ALLOWED_SLIM_ENV_KEYS) {
+  const value = process.env[key]
+  if (value !== undefined && value !== '') {
     slimEnv[key] = value
   }
 }

@@ -87,3 +87,6 @@ branch, the Firebase preview workflow can install that branch automatically:
 `dmv-branch` wins when set. If it points at a branch that does not exist on DMV,
 the preview job fails. If neither option applies, the preview uses the npm pin
 from `package.json`.
+
+Editing the PR description to add or change `dmv-branch:` retriggers the Firebase
+preview workflow (body edits only; title-only edits are ignored).
