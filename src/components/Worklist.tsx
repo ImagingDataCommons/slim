@@ -60,10 +60,14 @@ interface WorklistState {
   isLoading: boolean
   numStudies: number
   pageSize: number
+  /** Pixel height for Ant Design Table body scroll area; measured from the container. */
+  tableScrollY?: number
 }
 
 class Worklist extends React.Component<WorklistProps, WorklistState> {
   private readonly defaultPageSize = 20
+  private readonly containerRef = React.createRef<HTMLDivElement>()
+  private resizeObserver?: ResizeObserver
 
   /** Bumps when a new study list replaces the table; stale modality fetches ignore results. */
   private modalitiesEnrichmentGeneration = 0
@@ -113,11 +117,85 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
 
   componentDidMount(): void {
     this.searchForStudies()
+    this.bindTableHeightObserver()
   }
 
-  componentDidUpdate(previousProps: WorklistProps): void {
+  componentDidUpdate(
+    previousProps: WorklistProps,
+    previousState: WorklistState,
+  ): void {
     if (this.props.clients !== previousProps.clients) {
       this.searchForStudies()
+    }
+    // Pagination can appear/hide (hideOnSinglePage) when the result set changes.
+    if (
+      previousState.studies !== this.state.studies ||
+      previousState.numStudies !== this.state.numStudies ||
+      previousState.pageSize !== this.state.pageSize ||
+      previousState.isLoading !== this.state.isLoading
+    ) {
+      this.updateTableScrollY()
+    }
+  }
+
+  componentWillUnmount(): void {
+    this.resizeObserver?.disconnect()
+    this.resizeObserver = undefined
+  }
+
+  /**
+   * Ant Design only splits header/body when `scroll.y` is set. Measure the
+   * worklist pane (already flex-constrained by AppShell) and reserve space for
+   * thead + pagination so both stay visible while rows scroll.
+   */
+  private bindTableHeightObserver = (): void => {
+    const container = this.containerRef.current
+    if (container === null) {
+      return
+    }
+    if (typeof ResizeObserver === 'undefined') {
+      this.updateTableScrollY()
+      return
+    }
+    this.resizeObserver?.disconnect()
+    this.resizeObserver = new ResizeObserver(() => {
+      this.updateTableScrollY()
+    })
+    this.resizeObserver.observe(container)
+    this.updateTableScrollY()
+  }
+
+  private updateTableScrollY = (): void => {
+    const container = this.containerRef.current
+    if (container === null) {
+      return
+    }
+    const containerHeight = container.clientHeight
+    if (containerHeight <= 0) {
+      return
+    }
+
+    const pagination = container.querySelector('.ant-table-pagination')
+    let paginationSpace = 0
+    if (pagination instanceof HTMLElement) {
+      const style = window.getComputedStyle(pagination)
+      paginationSpace =
+        pagination.offsetHeight +
+        Number.parseFloat(style.marginTop) +
+        Number.parseFloat(style.marginBottom)
+    }
+
+    const header =
+      container.querySelector('.ant-table-header') ??
+      container.querySelector('.ant-table-thead')
+    const headerHeight = header instanceof HTMLElement ? header.offsetHeight : 0
+
+    const next = Math.max(
+      Math.floor(containerHeight - paginationSpace - headerHeight),
+      50,
+    )
+    if (next !== this.state.tableScrollY) {
+      this.setState({ tableScrollY: next })
     }
   }
 
@@ -412,17 +490,32 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     }
 
     return (
-      <Table<dmv.metadata.Study>
-        style={{ cursor: 'pointer' }}
-        columns={columns}
-        rowKey={getRowKey}
-        dataSource={this.state.studies}
-        pagination={pagination}
-        onRow={this.handleRowProps}
-        onChange={this.handleChange}
-        size="small"
-        loading={this.state.isLoading}
-      />
+      <div
+        ref={this.containerRef}
+        style={{
+          flex: 1,
+          minHeight: 0,
+          width: '100%',
+          overflow: 'hidden',
+        }}
+      >
+        <Table<dmv.metadata.Study>
+          style={{ cursor: 'pointer' }}
+          columns={columns}
+          rowKey={getRowKey}
+          dataSource={this.state.studies}
+          pagination={pagination}
+          onRow={this.handleRowProps}
+          onChange={this.handleChange}
+          size="small"
+          loading={this.state.isLoading}
+          scroll={
+            this.state.tableScrollY === undefined
+              ? undefined
+              : { y: this.state.tableScrollY }
+          }
+        />
+      </div>
     )
   }
 
