@@ -104,3 +104,45 @@ img {
   max-height: 100%;
 }
 
+/**
+ * Worklist fills the AppShell content pane. Only the table body scrolls;
+ * column headers and pagination stay pinned above the MemoryFooter.
+ */
+.slim-worklist {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+.slim-worklist-table-area {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.slim-worklist-pagination {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  background: #141414;
+}
+
+.slim-worklist-pagination .ant-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  row-gap: 8px;
+  column-gap: 8px;
+  margin: 0;
+  width: 100%;
+}
+
+/* Keep the "N-M of T studies" label on the left; controls stay on the right. */
+.slim-worklist-pagination .ant-pagination-total-text {
+  margin-right: auto;
+}
+

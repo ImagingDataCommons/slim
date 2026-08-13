@@ -1,7 +1,10 @@
 import { SearchOutlined } from '@ant-design/icons'
-import { Button, Input, Space, Table, type TablePaginationConfig } from 'antd'
+import { Button, Input, Pagination, Space, Table } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import type { FilterConfirmProps } from 'antd/es/table/interface'
+import type {
+  FilterConfirmProps,
+  TablePaginationConfig,
+} from 'antd/es/table/interface'
 // skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
@@ -60,14 +63,16 @@ interface WorklistState {
   isLoading: boolean
   numStudies: number
   pageSize: number
-  /** Pixel height for Ant Design Table body scroll area; measured from the container. */
+  currentPage: number
+  /** Pixel height for Ant Design Table body scroll area; measured from the table pane. */
   tableScrollY?: number
 }
 
 class Worklist extends React.Component<WorklistProps, WorklistState> {
   private readonly defaultPageSize = 20
-  private readonly containerRef = React.createRef<HTMLDivElement>()
+  private readonly tableAreaRef = React.createRef<HTMLDivElement>()
   private resizeObserver?: ResizeObserver
+  private latestFilters: Record<string, (React.Key | boolean)[] | null> = {}
 
   /** Bumps when a new study list replaces the table; stale modality fetches ignore results. */
   private modalitiesEnrichmentGeneration = 0
@@ -79,6 +84,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       isLoading: false,
       numStudies: 0,
       pageSize: this.defaultPageSize,
+      currentPage: 1,
     }
   }
 
@@ -118,6 +124,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   componentDidMount(): void {
     this.searchForStudies()
     this.bindTableHeightObserver()
+    window.addEventListener('resize', this.updateTableScrollY)
   }
 
   componentDidUpdate(
@@ -127,9 +134,8 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     if (this.props.clients !== previousProps.clients) {
       this.searchForStudies()
     }
-    // Pagination can appear/hide (hideOnSinglePage) when the result set changes.
+    // Pagination bar can appear/hide (hideOnSinglePage); remeasure the table pane.
     if (
-      previousState.studies !== this.state.studies ||
       previousState.numStudies !== this.state.numStudies ||
       previousState.pageSize !== this.state.pageSize ||
       previousState.isLoading !== this.state.isLoading
@@ -141,16 +147,16 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   componentWillUnmount(): void {
     this.resizeObserver?.disconnect()
     this.resizeObserver = undefined
+    window.removeEventListener('resize', this.updateTableScrollY)
   }
 
   /**
-   * Ant Design only splits header/body when `scroll.y` is set. Measure the
-   * worklist pane (already flex-constrained by AppShell) and reserve space for
-   * thead + pagination so both stay visible while rows scroll.
+   * Ant Design only splits header/body when `scroll.y` is set. Pagination lives
+   * in a separate flex row, so measure only the table pane minus thead.
    */
   private bindTableHeightObserver = (): void => {
-    const container = this.containerRef.current
-    if (container === null) {
+    const tableArea = this.tableAreaRef.current
+    if (tableArea === null) {
       return
     }
     if (typeof ResizeObserver === 'undefined') {
@@ -161,39 +167,26 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     this.resizeObserver = new ResizeObserver(() => {
       this.updateTableScrollY()
     })
-    this.resizeObserver.observe(container)
+    this.resizeObserver.observe(tableArea)
     this.updateTableScrollY()
   }
 
   private updateTableScrollY = (): void => {
-    const container = this.containerRef.current
-    if (container === null) {
+    const tableArea = this.tableAreaRef.current
+    if (tableArea === null) {
       return
     }
-    const containerHeight = container.clientHeight
-    if (containerHeight <= 0) {
+    const areaHeight = tableArea.clientHeight
+    if (areaHeight <= 0) {
       return
-    }
-
-    const pagination = container.querySelector('.ant-table-pagination')
-    let paginationSpace = 0
-    if (pagination instanceof HTMLElement) {
-      const style = window.getComputedStyle(pagination)
-      paginationSpace =
-        pagination.offsetHeight +
-        Number.parseFloat(style.marginTop) +
-        Number.parseFloat(style.marginBottom)
     }
 
     const header =
-      container.querySelector('.ant-table-header') ??
-      container.querySelector('.ant-table-thead')
+      tableArea.querySelector('.ant-table-header') ??
+      tableArea.querySelector('.ant-table-thead')
     const headerHeight = header instanceof HTMLElement ? header.offsetHeight : 0
 
-    const next = Math.max(
-      Math.floor(containerHeight - paginationSpace - headerHeight),
-      50,
-    )
+    const next = Math.max(Math.floor(areaHeight - headerHeight), 50)
     if (next !== this.state.tableScrollY) {
       this.setState({ tableScrollY: next })
     }
@@ -323,21 +316,26 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
   }
 
   handleChange = (
-    pagination: TablePaginationConfig,
+    _pagination: TablePaginationConfig,
+    filters: Record<string, (React.Key | boolean)[] | null>,
+  ): void => {
+    this.latestFilters = filters
+    this.loadPage(1, this.state.pageSize, filters)
+  }
+
+  handlePaginationChange = (page: number, pageSize?: number): void => {
+    const nextPageSize = pageSize ?? this.state.pageSize
+    this.loadPage(page, nextPageSize, this.latestFilters)
+  }
+
+  private loadPage = (
+    page: number,
+    pageSize: number,
     filters: Record<string, (React.Key | boolean)[] | null>,
   ): void => {
     this.setState({ isLoading: true })
-    let index = pagination.current
-    if (index === undefined) {
-      index = 1
-    }
-    let pageSize = pagination.pageSize
-    if (pageSize === undefined) {
-      pageSize = this.state.pageSize
-    }
-    const offset = pageSize * (index - 1)
-    const limit = pageSize
-    logger.debug(`search for studies of page #${index}...`)
+    const offset = pageSize * (page - 1)
+    logger.debug(`search for studies of page #${page}...`)
     const searchCriteria: { [attribute: string]: string } = {}
     for (const dataIndex in filters) {
       const value = filters[dataIndex]
@@ -345,8 +343,12 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
         searchCriteria[dataIndex] = value[0].toString()
       }
     }
-    this.fetchData({ offset, limit, searchCriteria })
-    this.setState({ isLoading: false, pageSize })
+    this.fetchData({ offset, limit: pageSize, searchCriteria })
+    this.setState({
+      isLoading: false,
+      pageSize,
+      currentPage: page,
+    })
   }
 
   handleSearch = (
@@ -477,44 +479,45 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       },
     ]
 
-    const pagination = {
-      defaultPageSize: this.defaultPageSize,
-      pageSize: this.state.pageSize,
-      hideOnSinglePage: true,
-      showSizeChanger: true,
-      showQuickJumper: true,
-      showTotal: (total: number, range: number[]) => {
-        return `${range[0]}-${range[1]} of ${total} studies`
-      },
-      total: this.state.numStudies,
-    }
+    const showPagination = this.state.numStudies > this.state.pageSize
 
     return (
-      <div
-        ref={this.containerRef}
-        style={{
-          flex: 1,
-          minHeight: 0,
-          width: '100%',
-          overflow: 'hidden',
-        }}
-      >
-        <Table<dmv.metadata.Study>
-          style={{ cursor: 'pointer' }}
-          columns={columns}
-          rowKey={getRowKey}
-          dataSource={this.state.studies}
-          pagination={pagination}
-          onRow={this.handleRowProps}
-          onChange={this.handleChange}
-          size="small"
-          loading={this.state.isLoading}
-          scroll={
-            this.state.tableScrollY === undefined
-              ? undefined
-              : { y: this.state.tableScrollY }
-          }
-        />
+      <div className="slim-worklist">
+        <div ref={this.tableAreaRef} className="slim-worklist-table-area">
+          <Table<dmv.metadata.Study>
+            style={{ cursor: 'pointer' }}
+            columns={columns}
+            rowKey={getRowKey}
+            dataSource={this.state.studies}
+            pagination={false}
+            onRow={this.handleRowProps}
+            onChange={this.handleChange}
+            size="small"
+            loading={this.state.isLoading}
+            scroll={
+              this.state.tableScrollY === undefined
+                ? undefined
+                : { y: this.state.tableScrollY }
+            }
+          />
+        </div>
+        {showPagination ? (
+          <div className="slim-worklist-pagination">
+            <Pagination
+              size="small"
+              current={this.state.currentPage}
+              pageSize={this.state.pageSize}
+              total={this.state.numStudies}
+              showSizeChanger
+              showQuickJumper
+              showTotal={(total: number, range: number[]) =>
+                `${range[0]}-${range[1]} of ${total} studies`
+              }
+              onChange={this.handlePaginationChange}
+              onShowSizeChange={this.handlePaginationChange}
+            />
+          </div>
+        ) : null}
       </div>
     )
   }
