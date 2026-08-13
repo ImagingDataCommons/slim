@@ -517,7 +517,7 @@ class App extends React.Component<AppProps, AppState> {
     const layoutContentStyle: React.CSSProperties = {
       flex: 1,
       minHeight: 0,
-      overflow: 'hidden',
+      overflow: 'auto',
     }
 
     if (this.state.redirectTo !== undefined) {
