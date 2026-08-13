@@ -1,3 +1,10 @@
+## [0.46.7](https://github.com/ImagingDataCommons/slim/compare/v0.46.6...v0.46.7) (2026-08-13)
+
+
+### Bug Fixes
+
+* make worklist table body scrollable while keeping header/footer fixed ([#417](https://github.com/ImagingDataCommons/slim/issues/417)) ([1d8e85e](https://github.com/ImagingDataCommons/slim/commit/1d8e85e780fb1699ba161959a3ad27977f7e54f1))
+
 ## [0.46.6](https://github.com/ImagingDataCommons/slim/compare/v0.46.5...v0.46.6) (2026-08-13)
 
 
