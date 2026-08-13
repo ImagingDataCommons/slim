@@ -192,6 +192,8 @@ interface HeaderState {
   errorCategory: string[]
   warnings: string[]
   serverSelectionMode: 'default' | 'custom'
+  /** False when public/logo.svg is missing or fails to load. */
+  showLogo: boolean
 }
 
 /**
@@ -221,6 +223,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
         cachedServerUrl !== ''
           ? 'custom'
           : 'default',
+      showLogo: true,
     }
 
     const onErrorHandler = ({
@@ -271,6 +274,10 @@ class Header extends React.Component<HeaderProps, HeaderState> {
         warnings: [],
       })
     }
+  }
+
+  handleLogoError = (): void => {
+    this.setState({ showLogo: false })
   }
 
   isValidServerUrl = (url: string | null | undefined): boolean => {
@@ -761,16 +768,23 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     return (
       <>
         <Layout.Header style={{ width: '100%', padding: '0 16px' }}>
-          <Row style={{ flexWrap: 'nowrap' }}>
-            <Col style={{ flexShrink: 0 }}>
-              <Space align="center" direction="horizontal">
+          <Row style={{ flexWrap: 'nowrap' }} align="middle">
+            {this.state.showLogo ? (
+              <Col style={{ flexShrink: 0 }}>
                 <img
                   src={logoUrl}
                   alt=""
-                  style={{ height: '64px', margin: '-14px' }}
+                  onError={this.handleLogoError}
+                  style={{
+                    display: 'block',
+                    height: 40,
+                    width: 'auto',
+                    maxWidth: 160,
+                    objectFit: 'contain',
+                  }}
                 />
-              </Space>
-            </Col>
+              </Col>
+            ) : null}
             <Col flex="auto" style={{ minWidth: 0, overflow: 'hidden' }}>
               <div style={{ width: '100%', overflow: 'hidden' }}>
                 {this.props.showServerSelectionButton ? urlInfo : ''}

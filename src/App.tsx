@@ -1,8 +1,7 @@
-import { Layout, message } from 'antd'
+import { Layout, message, Spin } from 'antd'
 // skipcq: JS-C1003
 import type * as dwc from 'dicomweb-client'
 import React from 'react'
-import { FaSpinner } from 'react-icons/fa'
 import {
   BrowserRouter,
   Navigate,
@@ -542,8 +541,14 @@ class App extends React.Component<AppProps, AppState> {
                 clients={this.state.clients}
                 defaultClients={this.state.defaultClients}
               />
-              <Layout.Content style={layoutContentStyle}>
-                <FaSpinner />
+              <Layout.Content
+                style={{
+                  ...layoutContentStyle,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Spin size="large" tip="Loading" />
               </Layout.Content>
             </Layout>
           </AppShell>

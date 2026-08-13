@@ -115,8 +115,6 @@ img {
   min-height: 0;
   width: 100%;
   overflow: hidden;
-  padding: 0 16px;
-  box-sizing: border-box;
 }
 
 .slim-worklist-table-area {
@@ -139,9 +137,24 @@ img {
   height: 100%;
 }
 
+/* Inset first/last cells so text clears the viewport edge without a table gap. */
+.slim-worklist .ant-table.ant-table-small .ant-table-thead > tr > th:first-child,
+.slim-worklist .ant-table.ant-table-small .ant-table-tbody > tr > td:first-child,
+.slim-worklist .ant-table-thead > tr > th:first-child,
+.slim-worklist .ant-table-tbody > tr > td:first-child {
+  padding-left: 16px;
+}
+
+.slim-worklist .ant-table.ant-table-small .ant-table-thead > tr > th:last-child,
+.slim-worklist .ant-table.ant-table-small .ant-table-tbody > tr > td:last-child,
+.slim-worklist .ant-table-thead > tr > th:last-child,
+.slim-worklist .ant-table-tbody > tr > td:last-child {
+  padding-right: 16px;
+}
+
 .slim-worklist-pagination {
   flex-shrink: 0;
-  padding: 8px 0;
+  padding: 8px 16px;
   border-top: 1px solid #f0f0f0;
   background: #fff;
 }

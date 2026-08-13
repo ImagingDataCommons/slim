@@ -129,7 +129,14 @@ if (container == null) {
 const root = createRoot(container)
 root.render(
   /// / <React.StrictMode>
-  <React.Suspense fallback={<div>Loading application...</div>}>
+  <React.Suspense
+    fallback={
+      <div className="slim-app-loading" role="status" aria-live="polite">
+        <div className="slim-app-loading-spinner" aria-hidden="true" />
+        <p className="slim-app-loading-label">Loading Slim</p>
+      </div>
+    }
+  >
     <CustomErrorBoundary context="App">
       <App
         config={config}
