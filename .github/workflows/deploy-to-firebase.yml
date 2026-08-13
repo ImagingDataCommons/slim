@@ -44,7 +44,7 @@ jobs:
         env:
           REACT_APP_CONFIG: preview
           PUBLIC_URL: /
-          # Prefer secret; fall back to variable. Keeps IDC DICOMweb URL out of source.
+          # Optional: secret preferred, variable fallback.
           SLIM_PREVIEW_DICOMWEB_URL: ${{ secrets.SLIM_PREVIEW_DICOMWEB_URL || vars.SLIM_PREVIEW_DICOMWEB_URL }}
         run: pnpm run build
 
