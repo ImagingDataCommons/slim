@@ -1,3 +1,10 @@
+## [0.46.5](https://github.com/ImagingDataCommons/slim/compare/v0.46.4...v0.46.5) (2026-08-13)
+
+
+### Bug Fixes
+
+* enable scrolling on worklist content area ([#414](https://github.com/ImagingDataCommons/slim/issues/414)) ([2f7ea79](https://github.com/ImagingDataCommons/slim/commit/2f7ea7968cfa09e36795cc8d4fdb9572af1892e1))
+
 ## [0.46.4](https://github.com/ImagingDataCommons/slim/compare/v0.46.3...v0.46.4) (2026-08-11)
 
 
