@@ -195,6 +195,9 @@ interface HeaderState {
   errorCategory: string[]
   warnings: string[]
   serverSelectionMode: 'default' | 'custom'
+  /** False only when both custom logo.svg and favicon.ico fail. */
+  showLogo: boolean
+  logoUrl: string
 }
 
 /**
@@ -224,6 +227,8 @@ class Header extends React.Component<HeaderProps, HeaderState> {
         cachedServerUrl !== ''
           ? 'custom'
           : 'default',
+      showLogo: true,
+      logoUrl: `${process.env.PUBLIC_URL}/logo.svg`,
     }
 
     const onErrorHandler = ({
@@ -274,6 +279,46 @@ class Header extends React.Component<HeaderProps, HeaderState> {
         warnings: [],
       })
     }
+  }
+
+  private static readonly defaultLogoUrl =
+    `${process.env.PUBLIC_URL}/favicon.ico`
+
+  handleLogoError = (): void => {
+    if (this.state.logoUrl !== Header.defaultLogoUrl) {
+      this.setState({ logoUrl: Header.defaultLogoUrl })
+      return
+    }
+    this.setState({ showLogo: false })
+  }
+
+  /**
+   * public/logo.svg may be an empty Illustrator placeholder (viewBox only).
+   * Fall back to favicon.ico, the default Slim brand mark.
+   */
+  handleLogoLoad = (event: React.SyntheticEvent<HTMLImageElement>): void => {
+    const src = event.currentTarget.currentSrc || event.currentTarget.src
+    if (!src.includes('logo.svg')) {
+      return
+    }
+    void fetch(src)
+      .then(async (response) => {
+        if (!response.ok) {
+          this.setState({ logoUrl: Header.defaultLogoUrl })
+          return
+        }
+        const markup = await response.text()
+        const hasGraphic =
+          /<(?:path|rect|circle|ellipse|polygon|polyline|line|text|image|use|g)\b/i.test(
+            markup,
+          )
+        if (!hasGraphic) {
+          this.setState({ logoUrl: Header.defaultLogoUrl })
+        }
+      })
+      .catch(() => {
+        this.setState({ logoUrl: Header.defaultLogoUrl })
+      })
   }
 
   isValidServerUrl = (url: string | null | undefined): boolean => {
@@ -723,8 +768,6 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       )
     }
 
-    const logoUrl = `${process.env.PUBLIC_URL}/logo.svg`
-
     const selectedServerUrl =
       this.props.clients?.default?.baseURL ??
       this.props.defaultClients?.default?.baseURL ??
@@ -740,8 +783,8 @@ class Header extends React.Component<HeaderProps, HeaderState> {
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
-              paddingRight: '20px',
-              paddingLeft: '20px',
+              paddingRight: 16,
+              paddingLeft: this.state.showLogo ? 16 : 0,
             }}
             title={selectedServerUrl}
           >
@@ -752,17 +795,35 @@ class Header extends React.Component<HeaderProps, HeaderState> {
 
     return (
       <>
-        <Layout.Header style={{ width: '100%', padding: '0 14px' }}>
-          <Row style={{ flexWrap: 'nowrap' }}>
-            <Col style={{ flexShrink: 0 }}>
-              <Space align="center" direction="horizontal">
+        <Layout.Header style={{ width: '100%', padding: '0 16px' }}>
+          <Row style={{ flexWrap: 'nowrap' }} align="middle">
+            {this.state.showLogo ? (
+              <Col style={{ flexShrink: 0 }}>
                 <img
-                  src={logoUrl}
-                  alt=""
-                  style={{ height: '64px', margin: '-14px' }}
+                  src={this.state.logoUrl}
+                  alt="Slim"
+                  onError={this.handleLogoError}
+                  onLoad={this.handleLogoLoad}
+                  style={
+                    this.state.logoUrl === Header.defaultLogoUrl
+                      ? {
+                          display: 'block',
+                          height: 32,
+                          width: 32,
+                          objectFit: 'contain',
+                        }
+                      : {
+                          // Preserve legacy sizing for deployments with a custom logo.svg
+                          display: 'block',
+                          height: 64,
+                          margin: '-14px',
+                          width: 'auto',
+                          objectFit: 'contain',
+                        }
+                  }
                 />
-              </Space>
-            </Col>
+              </Col>
+            ) : null}
             <Col flex="auto" style={{ minWidth: 0, overflow: 'hidden' }}>
               <div style={{ width: '100%', overflow: 'hidden' }}>
                 {this.props.showServerSelectionButton ? urlInfo : ''}
