@@ -120,7 +120,21 @@ img {
 .slim-worklist-table-area {
   flex: 1;
   min-height: 0;
+  position: relative;
   overflow: hidden;
+}
+
+/* Absolute fill so row content cannot inflate the flex height. */
+.slim-worklist-table-area-inner {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.slim-worklist-table-area-inner .ant-table-wrapper,
+.slim-worklist-table-area-inner .ant-spin-nested-loading,
+.slim-worklist-table-area-inner .ant-spin-container {
+  height: 100%;
 }
 
 .slim-worklist-pagination {

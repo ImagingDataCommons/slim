@@ -479,27 +479,32 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
       },
     ]
 
-    const showPagination = this.state.numStudies > this.state.pageSize
+    const showPagination = this.state.numStudies > 0
 
     return (
       <div className="slim-worklist">
-        <div ref={this.tableAreaRef} className="slim-worklist-table-area">
-          <Table<dmv.metadata.Study>
-            style={{ cursor: 'pointer' }}
-            columns={columns}
-            rowKey={getRowKey}
-            dataSource={this.state.studies}
-            pagination={false}
-            onRow={this.handleRowProps}
-            onChange={this.handleChange}
-            size="small"
-            loading={this.state.isLoading}
-            scroll={
-              this.state.tableScrollY === undefined
-                ? undefined
-                : { y: this.state.tableScrollY }
-            }
-          />
+        <div className="slim-worklist-table-area">
+          <div
+            ref={this.tableAreaRef}
+            className="slim-worklist-table-area-inner"
+          >
+            <Table<dmv.metadata.Study>
+              style={{ cursor: 'pointer' }}
+              columns={columns}
+              rowKey={getRowKey}
+              dataSource={this.state.studies}
+              pagination={false}
+              onRow={this.handleRowProps}
+              onChange={this.handleChange}
+              size="small"
+              loading={this.state.isLoading}
+              scroll={
+                this.state.tableScrollY === undefined
+                  ? undefined
+                  : { y: this.state.tableScrollY }
+              }
+            />
+          </div>
         </div>
         {showPagination ? (
           <div className="slim-worklist-pagination">
@@ -507,6 +512,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
               size="small"
               current={this.state.currentPage}
               pageSize={this.state.pageSize}
+              pageSizeOptions={['20', '50', '100', '200', '500']}
               total={this.state.numStudies}
               showSizeChanger
               showQuickJumper
