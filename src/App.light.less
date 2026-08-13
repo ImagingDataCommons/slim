@@ -137,6 +137,19 @@ img {
   height: 100%;
 }
 
+/* Ant Design only centers .ant-spin-dot; center our shared Slim spinner. */
+.slim-worklist .ant-spin-nested-loading > div > .ant-spin {
+  max-height: none;
+}
+
+.slim-worklist .ant-spin-nested-loading > div > .ant-spin .slim-app-loading-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin-top: -20px;
+  margin-left: -20px;
+}
+
 /* Inset first/last cells so text clears the viewport edge without a table gap. */
 .slim-worklist .ant-table.ant-table-small .ant-table-thead > tr > th:first-child,
 .slim-worklist .ant-table.ant-table-small .ant-table-tbody > tr > td:first-child,
