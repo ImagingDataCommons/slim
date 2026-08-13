@@ -192,8 +192,9 @@ interface HeaderState {
   errorCategory: string[]
   warnings: string[]
   serverSelectionMode: 'default' | 'custom'
-  /** False when public/logo.svg is missing or fails to load. */
+  /** False only when both custom logo.svg and favicon.ico fail. */
   showLogo: boolean
+  logoUrl: string
 }
 
 /**
@@ -224,6 +225,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           ? 'custom'
           : 'default',
       showLogo: true,
+      logoUrl: `${process.env.PUBLIC_URL}/logo.svg`,
     }
 
     const onErrorHandler = ({
@@ -276,20 +278,30 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     }
   }
 
+  private static readonly defaultLogoUrl =
+    `${process.env.PUBLIC_URL}/favicon.ico`
+
   handleLogoError = (): void => {
+    if (this.state.logoUrl !== Header.defaultLogoUrl) {
+      this.setState({ logoUrl: Header.defaultLogoUrl })
+      return
+    }
     this.setState({ showLogo: false })
   }
 
   /**
    * public/logo.svg may be an empty Illustrator placeholder (viewBox only).
-   * It loads without error but still reserves a wide blank slot in the header.
+   * Fall back to favicon.ico, the default Slim brand mark.
    */
   handleLogoLoad = (event: React.SyntheticEvent<HTMLImageElement>): void => {
     const src = event.currentTarget.currentSrc || event.currentTarget.src
+    if (!src.includes('logo.svg')) {
+      return
+    }
     void fetch(src)
       .then(async (response) => {
         if (!response.ok) {
-          this.setState({ showLogo: false })
+          this.setState({ logoUrl: Header.defaultLogoUrl })
           return
         }
         const markup = await response.text()
@@ -298,11 +310,11 @@ class Header extends React.Component<HeaderProps, HeaderState> {
             markup,
           )
         if (!hasGraphic) {
-          this.setState({ showLogo: false })
+          this.setState({ logoUrl: Header.defaultLogoUrl })
         }
       })
       .catch(() => {
-        this.setState({ showLogo: false })
+        this.setState({ logoUrl: Header.defaultLogoUrl })
       })
   }
 
@@ -764,8 +776,6 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       )
     }
 
-    const logoUrl = `${process.env.PUBLIC_URL}/logo.svg`
-
     const selectedServerUrl =
       this.props.clients?.default?.baseURL ??
       this.props.defaultClients?.default?.baseURL ??
@@ -798,8 +808,8 @@ class Header extends React.Component<HeaderProps, HeaderState> {
             {this.state.showLogo ? (
               <Col style={{ flexShrink: 0 }}>
                 <img
-                  src={logoUrl}
-                  alt=""
+                  src={this.state.logoUrl}
+                  alt="Slim"
                   onError={this.handleLogoError}
                   onLoad={this.handleLogoLoad}
                   style={{
