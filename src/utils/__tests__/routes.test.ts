@@ -95,6 +95,10 @@ describe('getProjectStorePath', () => {
   it('returns the store path up to the study segment', () => {
     expect(getProjectStorePath(`${gcpStorePath}/study/1.2.3`)).toBe(gcpStorePath)
   })
+
+  it('returns the full pathname when /study/ is not present', () => {
+    expect(getProjectStorePath('/studies/1.2.3')).toBe('/studies/1.2.3')
+  })
 })
 
 describe('withSeriesInProjectPath', () => {

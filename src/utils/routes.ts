@@ -55,7 +55,9 @@ export const RoutePaths = {
   LOGOUT: `/${Segments.logout}`,
 } as const
 
+// Without leading slash - for splitting/checking strings that may appear mid-path.
 const SERIES_PREFIX = `${Segments.series}/`
+// With leading slash - for path segment manipulation where we need the full segment.
 const SERIES_PATH_PREFIX = `/${Segments.series}/`
 const PROJECTS_PATH_PREFIX = `/${Segments.projects}/`
 const STUDY_PATH_PREFIX = `/${Segments.study}/`
@@ -101,6 +103,9 @@ export const parseSeriesInstanceUID = (pathname: string): string => {
 /**
  * Returns the portion of a GCP project pathname up to (but excluding) the
  * `/study/` segment. Used to derive the DICOMweb base URL from the URL.
+ *
+ * If the pathname does not contain `/study/`, returns the full pathname
+ * unchanged (no-op for non-GCP paths).
  */
 export const getProjectStorePath = (pathname: string): string =>
   pathname.split(STUDY_PATH_PREFIX)[0]
@@ -123,7 +128,7 @@ export const withSeriesInProjectPath = (
 }
 
 /** Path prefixes for which the DICOM Tag Browser button is shown. */
-export const DICOM_TAG_BROWSER_PATHS = [
+const DICOM_TAG_BROWSER_PATHS = [
   `/${Segments.studies}/`,
   `/${Segments.study}/`,
   `/${Segments.projects}/`,
