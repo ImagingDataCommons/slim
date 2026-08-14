@@ -1,6 +1,7 @@
 // skipcq: JS-C1003
 import type { Layer, Position } from '@deck.gl/core'
 import { PathLayer, ScatterplotLayer } from '@deck.gl/layers'
+// skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
 // skipcq: JS-C1003
 import dmvDefault, * as dmvNamespace from 'dicom-microscopy-viewer'
@@ -134,10 +135,10 @@ function isBulkSimpleAnnotationsApi(x: unknown): x is BulkSimpleAnnotationsApi {
   if (x === null || typeof x !== 'object') {
     return false
   }
-  const o = x as BulkSimpleAnnotationsApi
+  const api = x as BulkSimpleAnnotationsApi
   return (
-    typeof o.getPolygonFeature === 'function' &&
-    typeof o.getFeaturesFromBulkAnnotations === 'function'
+    typeof api.getPolygonFeature === 'function' &&
+    typeof api.getFeaturesFromBulkAnnotations === 'function'
   )
 }
 
@@ -264,17 +265,17 @@ function affineForReferencedPyramidLevel(options: {
 
 /** 3×3 multiply (same layout as dicom-microscopy-viewer `utils`). */
 function multiplyAffine3x3(a: number[][], b: number[][]): number[][] {
-  const r: number[][] = [
+  const result: number[][] = [
     [0, 0, 0],
     [0, 0, 0],
     [0, 0, 0],
   ]
   for (let i = 0; i < 3; i++) {
     for (let j = 0; j < 3; j++) {
-      r[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j]
+      result[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j]
     }
   }
-  return r
+  return result
 }
 
 /**
@@ -649,6 +650,7 @@ function emptyMetadataResult(): VivBulkAnnotationMetadataResult {
  * decode + first-paint cycle. The final return value still contains every emitted
  * layer for callers that want it.
  */
+// skipcq: JS-R1005 - complexity is acceptable for bulk annotation hydration dispatch
 export async function hydrateVivBulkGroupLayerSlice(options: {
   job: VivBulkGroupGeometryJob
   geometry: BulkAnnotationGeometryContext
@@ -761,7 +763,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
       err: e instanceof Error ? e.message : String(e),
     })
     logger.warn(
-      `fetchGraphicIndex failed`,
+      'fetchGraphicIndex failed',
       { annotationGroupUID, graphicType },
       e,
     )
@@ -830,7 +832,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
       err: e instanceof Error ? e.message : String(e),
     })
     logger.warn(
-      `fetchGraphicData failed`,
+      'fetchGraphicData failed',
       { annotationGroupUID, graphicType },
       e,
     )
@@ -928,7 +930,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
       route: 'direct-lod-cache',
       ok: true,
     })
-    logger.log(`group → deck (lazy, LOD cache)`, {
+    logger.log('group → deck (lazy, LOD cache)', {
       annotationGroupUID,
       graphicType,
       numberOfAnnotations,
@@ -966,7 +968,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
     idPrefix,
     annotationCoordinateType,
     geometry,
-    annotationGroupWrapper: annotationGroupWrapper,
+    annotationGroupWrapper,
     deckLoadCenter,
     onChunk,
     shouldContinue,
@@ -995,7 +997,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
       route: 'direct',
       ok: fastDeckSlices.length > 0,
     })
-    logger.log(`group → deck (lazy, direct decode)`, {
+    logger.log('group → deck (lazy, direct decode)', {
       annotationGroupUID,
       graphicType,
       deckLayers: fastDeckSlices.length,
