@@ -3008,6 +3008,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       opacity?: number
       color?: number[]
       measurement?: dcmjs.sr.coding.CodedConcept
+      fill?: boolean
+      fillOpacity?: number
     }
   }): void => {
     logger.log(`change style of annotation group ${uid}`)
