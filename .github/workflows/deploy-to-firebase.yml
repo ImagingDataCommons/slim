@@ -58,6 +58,7 @@ jobs:
         env:
           DMV_USE_GIT: ${{ steps.dmv.outputs.use_git }}
           DMV_REF: ${{ steps.dmv.outputs.ref }}
+          DMV_SHA: ${{ steps.dmv.outputs.sha }}
         run: |
           set -euo pipefail
           if [ "${DMV_USE_GIT}" = "true" ]; then
@@ -68,6 +69,19 @@ jobs:
                 ;;
             esac
             pnpm pkg set 'dependencies["dicom-microscopy-viewer"]'"=github:ImagingDataCommons/dicom-microscopy-viewer#${DMV_REF}"
+            # Dynamically allow builds for the resolved tarball URL so pnpm's
+            # dependency status check passes during `pnpm run build`
+            TARBALL_KEY="dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/${DMV_SHA}"
+            node -e "
+              const fs = require('fs');
+              const content = fs.readFileSync('pnpm-workspace.yaml', 'utf8');
+              // Insert the tarball allowBuilds entry after 'dicom-microscopy-viewer: true'
+              const updated = content.replace(
+                /(allowBuilds:[\s\S]*?dicom-microscopy-viewer: true)/,
+                \"\$1\\n  '\" + process.argv[1] + \"': true\"
+              );
+              fs.writeFileSync('pnpm-workspace.yaml', updated);
+            " "${TARBALL_KEY}"
             pnpm install --no-frozen-lockfile --ignore-scripts
           else
             pnpm install --frozen-lockfile --ignore-scripts
