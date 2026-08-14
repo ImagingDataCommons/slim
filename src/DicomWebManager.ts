@@ -291,6 +291,20 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   }
 
   /**
+   * Run a callback on the primary {@link dwc.api.DICOMwebClient} (the store used for reads).
+   * Used e.g. to append Viv tile {@link dwc.api.DICOMwebClientOptions.requestHooks} that must
+   * see the same XHR pipeline as {@link dmv.viewer.VolumeImageViewer}.
+   */
+  applyToPrimaryDicomwebClient(
+    fn: (client: dwc.api.DICOMwebClient) => void,
+  ): void {
+    if (this.stores.length === 0) {
+      return
+    }
+    fn(this.stores[0].client)
+  }
+
+  /**
    * Store new instances in the first writable configured store. Picking the
    * first writable (rather than always store[0]) keeps backwards compatibility
    * with single-store deployments while letting STOW route to the secondary

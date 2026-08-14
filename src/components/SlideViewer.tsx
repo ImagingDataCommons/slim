@@ -37,6 +37,10 @@ import {
 import { SettingsRegistration } from '../contexts/SettingsContext'
 import { runValidations } from '../contexts/ValidationContext'
 import { StorageClasses } from '../data/uids'
+import {
+  getIccProfilesEnabled,
+  setIccProfilesEnabled,
+} from '../preferences/iccProfilesPreference'
 import { ActiveSeriesService } from '../services/ActiveSeriesService'
 import DicomMetadataStore from '../services/DICOMMetadataStore'
 import NotificationMiddleware, {
@@ -298,7 +302,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       pixelDataStatistics: {},
       selectedPresentationStateUID: this.props.selectedPresentationStateUID,
       loadingFrames: new Set(),
-      isICCProfilesEnabled: true,
+      isICCProfilesEnabled: getIccProfilesEnabled(),
       isPaletteDisplayGammaCorrectionEnabled:
         volumeViewer.getPaletteDisplayGammaCorrectionEnabled(),
       isSegmentationInterpolationEnabled: false,
@@ -440,15 +444,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         presentationStates: [],
         loadingFrames: new Set(),
         selectedSeriesInstanceUID: undefined,
+        isICCProfilesEnabled: getIccProfilesEnabled(),
         validXCoordinateRange: [offset[0], offset[0] + size[0]],
         validYCoordinateRange: [offset[1], offset[1] + size[1]],
-        /**
-         * A freshly constructed viewer always starts with ICC profiles
-         * enabled; reset the flag so the settings switch stays in sync.
-         */
-        isICCProfilesEnabled: true,
       })
       this.populateViewports()
+      this.applyIccPreference()
     }
 
     this.publishActiveSeriesToService()
@@ -2556,6 +2557,19 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         message.warning('No ICC Profile was found for color images')
       }
     }
+
+    this.applyIccPreference()
+  }
+
+  /**
+   * Apply the persisted ICC profiles preference to the current volume viewer.
+   * A freshly constructed VolumeImageViewer defaults to ICC on, so this must be
+   * called whenever the viewer is (re)created.
+   */
+  private readonly applyIccPreference = (): void => {
+    if (!getIccProfilesEnabled()) {
+      this.volumeViewer.toggleICCProfiles()
+    }
   }
 
   /**
@@ -3701,6 +3715,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * enable or disable it, depending on its current state.
    */
   handleICCProfilesToggle = (checked: boolean): void => {
+    setIccProfilesEnabled(checked)
     this.setState({ isICCProfilesEnabled: checked })
     this.volumeViewer.toggleICCProfiles()
   }

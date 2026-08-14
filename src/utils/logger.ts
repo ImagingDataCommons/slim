@@ -21,9 +21,15 @@ export class Logger {
   public config: LoggerConfig
 
   constructor() {
-    // Get logger config from global config (browser only; Jest may run without window)
+    /** Get logger config from global config (browser only; Jest may run without window) */
     const globalConfig =
-      typeof window !== 'undefined' ? window.config?.logger : undefined
+      typeof globalThis !== 'undefined'
+        ? (
+            globalThis as typeof globalThis & {
+              config?: { logger?: Partial<LoggerConfig> & { level?: string } }
+            }
+          ).config?.logger
+        : undefined
     let configLevel = 'DEBUG'
     if (globalConfig?.level != null && String(globalConfig.level) !== '') {
       configLevel = globalConfig.level as string
@@ -81,7 +87,8 @@ export class Logger {
   }
 
   /**
-   * Log debug messages
+   * Verbose diagnostics (Chrome DevTools “Verbose” / console.debug).
+   * Only emitted when level is DEBUG.
    */
   debug(...args: unknown[]): void {
     if (this.shouldLog(LogLevel.DEBUG)) {

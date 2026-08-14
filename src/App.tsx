@@ -7,6 +7,7 @@ import {
   Navigate,
   Route,
   Routes,
+  useLocation,
   useParams,
 } from 'react-router-dom'
 
@@ -47,6 +48,8 @@ function ParametrizedCaseViewer({
   config: AppConfig
 }): JSX.Element {
   const { studyInstanceUID } = useParams()
+  const location = useLocation()
+  const isVivRoute = location.pathname.startsWith('/viv/')
 
   if (studyInstanceUID === undefined) {
     return <Navigate to="/" replace />
@@ -64,6 +67,8 @@ function ParametrizedCaseViewer({
         app={app}
         enableAnnotationTools={enableAnnotationTools}
         studyInstanceUID={studyInstanceUID}
+        isVivRoute={isVivRoute}
+        vivSettings={config.vivSettings}
       />
     </ValidationProvider>
   )
@@ -464,6 +469,51 @@ class App extends React.Component<AppProps, AppState> {
     this.signIn()
   }
 
+  /** Shared layout for study viewer routes (classic and `/viv/...`). */
+  private renderCaseViewerShell(
+    appInfo: {
+      name: string
+      version: string
+      homepage: string
+      uid: string
+      organization?: string
+    },
+    enableWorklist: boolean,
+    enableServerSelection: boolean,
+    enableMemoryMonitoring: boolean,
+    isLogoutPossible: boolean,
+    onLogout: () => void,
+    layoutStyle: React.CSSProperties,
+    layoutContentStyle: React.CSSProperties,
+  ): JSX.Element {
+    return (
+      <SettingsProvider>
+        <AppShell enableMemoryMonitoring={enableMemoryMonitoring}>
+          <Layout style={layoutStyle}>
+            <Header
+              app={appInfo}
+              user={this.state.user}
+              showWorklistButton={enableWorklist}
+              onServerSelection={this.handleServerSelection}
+              onUserLogout={isLogoutPossible ? onLogout : undefined}
+              showServerSelectionButton={enableServerSelection}
+              clients={this.state.clients}
+              defaultClients={this.state.defaultClients}
+            />
+            <Layout.Content style={layoutContentStyle}>
+              <ParametrizedCaseViewer
+                clients={this.state.clients}
+                user={this.state.user}
+                config={this.props.config}
+                app={appInfo}
+              />
+            </Layout.Content>
+          </Layout>
+        </AppShell>
+      </SettingsProvider>
+    )
+  }
+
   render(): React.ReactNode {
     const appInfo = {
       name: this.props.name,
@@ -521,16 +571,20 @@ class App extends React.Component<AppProps, AppState> {
       display: 'flex',
       flexDirection: 'column',
     }
+    const routerFuture = {
+      v7_startTransition: true,
+      v7_relativeSplatPath: true,
+    } as const
 
     if (this.state.redirectTo !== undefined) {
       return (
-        <BrowserRouter basename={this.props.config.path}>
+        <BrowserRouter basename={this.props.config.path} future={routerFuture}>
           <Navigate to={this.state.redirectTo} replace />
         </BrowserRouter>
       )
     } else if (this.state.isLoading) {
       return (
-        <BrowserRouter basename={this.props.config.path}>
+        <BrowserRouter basename={this.props.config.path} future={routerFuture}>
           <AppShell enableMemoryMonitoring={false}>
             <Layout style={layoutStyle}>
               <Header
@@ -561,7 +615,7 @@ class App extends React.Component<AppProps, AppState> {
       return <InfoPage type="error" message={this.state.error.message} />
     } else {
       return (
-        <BrowserRouter basename={this.props.config.path}>
+        <BrowserRouter basename={this.props.config.path} future={routerFuture}>
           <Routes>
             <Route
               path="/"
@@ -587,61 +641,55 @@ class App extends React.Component<AppProps, AppState> {
             />
             <Route
               path="/studies/:studyInstanceUID/*"
-              element={
-                <SettingsProvider>
-                  <AppShell enableMemoryMonitoring={enableMemoryMonitoring}>
-                    <Layout style={layoutStyle}>
-                      <Header
-                        app={appInfo}
-                        user={this.state.user}
-                        showWorklistButton={enableWorklist}
-                        onServerSelection={this.handleServerSelection}
-                        onUserLogout={isLogoutPossible ? onLogout : undefined}
-                        showServerSelectionButton={enableServerSelection}
-                        clients={this.state.clients}
-                        defaultClients={this.state.defaultClients}
-                      />
-                      <Layout.Content style={layoutContentStyle}>
-                        <ParametrizedCaseViewer
-                          clients={this.state.clients}
-                          user={this.state.user}
-                          config={this.props.config}
-                          app={appInfo}
-                        />
-                      </Layout.Content>
-                    </Layout>
-                  </AppShell>
-                </SettingsProvider>
-              }
+              element={this.renderCaseViewerShell(
+                appInfo,
+                enableWorklist,
+                enableServerSelection,
+                enableMemoryMonitoring,
+                isLogoutPossible,
+                onLogout,
+                layoutStyle,
+                layoutContentStyle,
+              )}
             />
             <Route
               path="/projects/:project/locations/:location/datasets/:dataset/dicomStores/:dicomStore/study/:studyInstanceUID/*"
-              element={
-                <SettingsProvider>
-                  <AppShell enableMemoryMonitoring={enableMemoryMonitoring}>
-                    <Layout style={layoutStyle}>
-                      <Header
-                        app={appInfo}
-                        user={this.state.user}
-                        showWorklistButton={enableWorklist}
-                        onServerSelection={this.handleServerSelection}
-                        onUserLogout={isLogoutPossible ? onLogout : undefined}
-                        showServerSelectionButton={enableServerSelection}
-                        clients={this.state.clients}
-                        defaultClients={this.state.defaultClients}
-                      />
-                      <Layout.Content style={layoutContentStyle}>
-                        <ParametrizedCaseViewer
-                          clients={this.state.clients}
-                          user={this.state.user}
-                          config={this.props.config}
-                          app={appInfo}
-                        />
-                      </Layout.Content>
-                    </Layout>
-                  </AppShell>
-                </SettingsProvider>
-              }
+              element={this.renderCaseViewerShell(
+                appInfo,
+                enableWorklist,
+                enableServerSelection,
+                enableMemoryMonitoring,
+                isLogoutPossible,
+                onLogout,
+                layoutStyle,
+                layoutContentStyle,
+              )}
+            />
+            <Route
+              path="/viv/studies/:studyInstanceUID/*"
+              element={this.renderCaseViewerShell(
+                appInfo,
+                enableWorklist,
+                enableServerSelection,
+                enableMemoryMonitoring,
+                isLogoutPossible,
+                onLogout,
+                layoutStyle,
+                layoutContentStyle,
+              )}
+            />
+            <Route
+              path="/viv/projects/:project/locations/:location/datasets/:dataset/dicomStores/:dicomStore/study/:studyInstanceUID/*"
+              element={this.renderCaseViewerShell(
+                appInfo,
+                enableWorklist,
+                enableServerSelection,
+                enableMemoryMonitoring,
+                isLogoutPossible,
+                onLogout,
+                layoutStyle,
+                layoutContentStyle,
+              )}
             />
             <Route
               path="/logout"
