@@ -16,11 +16,11 @@ function isXhrLike(req: unknown): req is XMLHttpRequest {
   if (req === null || typeof req !== 'object') {
     return false
   }
-  const r = req as { open?: unknown; abort?: unknown; readyState?: unknown }
+  const obj = req as { open?: unknown; abort?: unknown; readyState?: unknown }
   return (
-    typeof r.open === 'function' &&
-    typeof r.abort === 'function' &&
-    typeof r.readyState === 'number'
+    typeof obj.open === 'function' &&
+    typeof obj.abort === 'function' &&
+    typeof obj.readyState === 'number'
   )
 }
 
