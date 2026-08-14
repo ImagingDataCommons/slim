@@ -66,7 +66,7 @@ jobs:
                 exit 1
                 ;;
             esac
-            pnpm pkg set "dependencies.dicom-microscopy-viewer=github:ImagingDataCommons/dicom-microscopy-viewer#${DMV_REF}"
+            pnpm pkg set 'dependencies["dicom-microscopy-viewer"]'"=github:ImagingDataCommons/dicom-microscopy-viewer#${DMV_REF}"
             pnpm install --no-frozen-lockfile --ignore-scripts
           else
             pnpm install --frozen-lockfile --ignore-scripts
