@@ -139,11 +139,11 @@ export function isMonotonicGraphicIndex(
   const n = Math.min(numberOfAnnotations, graphicIndex.length)
   let prev = -Infinity
   for (let i = 0; i < n; i++) {
-    const v = Number(graphicIndex[i])
-    if (v < prev) {
+    const indexValue = Number(graphicIndex[i])
+    if (indexValue < prev) {
       return false
     }
-    prev = v
+    prev = indexValue
   }
   return true
 }
@@ -358,6 +358,7 @@ function completeFromBufferedPayload(options: {
  * sees any bytes. Preferred path: sequential `byteRange` via dicomweb-client
  * XHR (same CORS stack as graphicIndex). Falls back to a full multipart stream.
  */
+// skipcq: JS-R1005 - complexity is acceptable for streaming bulk data dispatch
 export async function streamBulkGraphicData(
   options: StreamBulkGraphicDataOptions,
 ): Promise<StreamableBulkGraphicArray> {
@@ -1065,6 +1066,7 @@ async function streamBulkGraphicDataFullGet(
   })
 }
 
+// skipcq: JS-R1005 - complexity is acceptable for streaming body consumption
 async function consumeBulkBodyStream(options: {
   response: Response
   kind: StreamableBulkKind
