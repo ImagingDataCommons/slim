@@ -2068,8 +2068,7 @@ export function useVivBulkAnnotations(
     [streamingDeckOverlaysByUid],
   )
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- bulkSlicesByUid/bulkStreamPaintGen invalidate while data is read via refs
-  // biome-ignore lint/correctness/useExhaustiveDependencies: same
+  // biome-ignore lint/correctness/useExhaustiveDependencies: bulkSlicesByUid/bulkStreamPaintGen invalidate while data is read via refs
   const annLayers = useMemo((): Layer[] => {
     const geom = bulkGeometryRef.current
     const sr = slideRef.current
@@ -2108,6 +2107,7 @@ export function useVivBulkAnnotations(
       })
     }
     return [...streaming, ...styled]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- bulkSlicesByUid/bulkStreamPaintGen invalidate while data is read via refs
   }, [
     bulkSlicesByUid,
     visibleGroupUIDs,
