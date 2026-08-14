@@ -1769,6 +1769,7 @@ async function fastDeckLayersFromGraphicData(options: {
   }
 }
 
+// skipcq: JS-R1005 - complexity is acceptable for point layer construction with LOD
 async function buildPointLayersFromGraphicData(options: {
   graphicData: Int32Array | Float32Array
   graphicIndex: Int32Array | null
@@ -1978,6 +1979,7 @@ async function buildPointLayersFromGraphicData(options: {
   }
 }
 
+// skipcq: JS-R1005 - complexity is acceptable for path layer construction with streaming
 async function buildPathLayersFromGraphicData(options: {
   graphicType: 'POLYGON' | 'POLYLINE'
   graphicData: Int32Array | Float32Array
@@ -2648,13 +2650,13 @@ function featuresToDeckLayers(
       unknownGeom++
       continue
     }
-    const g = geom as { getType?: () => string }
-    const t = g.getType?.()
+    const typedGeom = geom as { getType?: () => string }
+    const geomType = typedGeom.getType?.()
     if (
-      t !== 'Point' &&
-      t !== 'LineString' &&
-      t !== 'Polygon' &&
-      t !== 'Circle'
+      geomType !== 'Point' &&
+      geomType !== 'LineString' &&
+      geomType !== 'Polygon' &&
+      geomType !== 'Circle'
     ) {
       unknownGeom++
     }
@@ -2696,19 +2698,19 @@ function featuresToDeckLayers(
 }
 
 function featureFnForGraphicType(graphicType: string): FeatureBuilder | null {
-  const b = resolveBulkSimpleAnnotationsApi()
+  const bulkApi = resolveBulkSimpleAnnotationsApi()
   switch (graphicType) {
     case 'POINT':
-      return b.getPointFeature as FeatureBuilder
+      return bulkApi.getPointFeature as FeatureBuilder
     case 'POLYGON':
     case 'POLYLINE':
-      return b.getPolygonFeature as FeatureBuilder
+      return bulkApi.getPolygonFeature as FeatureBuilder
     case 'RECTANGLE':
-      return b.getRectangleFeature as FeatureBuilder
+      return bulkApi.getRectangleFeature as FeatureBuilder
     case 'ELLIPSE':
-      return b.getEllipseFeature as FeatureBuilder
+      return bulkApi.getEllipseFeature as FeatureBuilder
     case 'CIRCLE':
-      return b.getCircleFeature as FeatureBuilder
+      return bulkApi.getCircleFeature as FeatureBuilder
     default:
       return null
   }
@@ -2719,6 +2721,7 @@ function featureFnForGraphicType(graphicType: string): FeatureBuilder | null {
  * `imageSeriesInstanceUID` and build the catalog + lazy geometry jobs (no bulkdata fetch yet).
  * Deck layers are created in {@link hydrateVivBulkGroupLayerSlice} when the user shows a group.
  */
+// skipcq: JS-R1005 - complexity is acceptable for metadata loading orchestration
 export async function loadBulkAnnotationMetadataAndJobs(options: {
   geometry: BulkAnnotationGeometryContext
   studyInstanceUID: string
@@ -2738,7 +2741,7 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
   const { pyramid, extent } = geometry
   const refImage = pyramid[0]
   if (refImage === undefined) {
-    logger.warn(`pyramid[0] missing — cannot align annotations`)
+    logger.warn('pyramid[0] missing — cannot align annotations')
     return emptyMetadataResult()
   }
 
@@ -2747,7 +2750,7 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
     TotalPixelMatrixColumns?: number
     TotalPixelMatrixRows?: number
   }
-  logger.log(`start`, {
+  logger.log('start', {
     studyInstanceUID,
     imageSeriesInstanceUID,
     refSOPInstanceUID: refMeta.SOPInstanceUID,
@@ -2783,13 +2786,13 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
   const annSeriesSummaries = matched.map((raw) => {
     try {
       const { dataset } = dmv.metadata.formatMetadata(raw)
-      const d = dataset as {
+      const typedDataset = dataset as {
         SeriesInstanceUID?: string
         Modality?: string
       }
       return {
-        SeriesInstanceUID: d.SeriesInstanceUID,
-        Modality: d.Modality,
+        SeriesInstanceUID: typedDataset.SeriesInstanceUID,
+        Modality: typedDataset.Modality,
       }
     } catch {
       return { SeriesInstanceUID: '(formatMetadata failed)', Modality: '?' }
@@ -2801,7 +2804,7 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
 
   if (matched.length === 0) {
     logger.warn(
-      `no ANN series from this store for study — check store / QIDO / Modality`,
+      'no ANN series from this store for study — check store / QIDO / Modality',
     )
     return emptyMetadataResult()
   }
@@ -2855,14 +2858,14 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
         err: e instanceof Error ? e.message : String(e),
       })
       logger.warn(
-        `retrieveSeriesMetadata failed`,
+        'retrieveSeriesMetadata failed',
         { seriesInstanceUID: series.SeriesInstanceUID },
         e,
       )
       continue
     }
 
-    logger.log(`retrieved`, {
+    logger.log('retrieved', {
       annSeriesInstanceUID: series.SeriesInstanceUID,
       numInstances: retrieved.length,
     })
@@ -2878,13 +2881,13 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
       const refSer = ann.ReferencedSeriesSequence?.[0]
       const refImg = ann.ReferencedImageSequence?.[0]
       if (refSer === undefined || refImg === undefined) {
-        logger.log(`skip instance: missing ReferencedSeries/Image`, {
+        logger.log('skip instance: missing ReferencedSeries/Image', {
           annSOP: ann.SOPInstanceUID,
         })
         continue
       }
       if (refSer.SeriesInstanceUID !== imageSeriesInstanceUID) {
-        logger.log(`skip instance: references other SM series`, {
+        logger.log('skip instance: references other SM series', {
           annSOP: ann.SOPInstanceUID,
           referencedSeries: refSer.SeriesInstanceUID,
           activeSlideSeries: imageSeriesInstanceUID,
