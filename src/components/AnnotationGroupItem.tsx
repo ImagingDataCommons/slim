@@ -243,11 +243,8 @@ class AnnotationGroupItem extends React.Component<
   handleColorChange = (color: number[]): void => {
     this.setState((state) => ({
       currentStyle: {
+        ...state.currentStyle,
         color,
-        opacity: state.currentStyle.opacity,
-        filled: state.currentStyle.filled,
-        fillOpacity: state.currentStyle.fillOpacity,
-        limitValues: state.currentStyle.limitValues,
       },
     }))
     this.throttledOnStyleChange({ color })
@@ -256,15 +253,12 @@ class AnnotationGroupItem extends React.Component<
   handleOpacityChange = (opacity: number | null): void => {
     if (opacity !== null) {
       this.throttledOnStyleChange({ opacity })
-      this.setState({
+      this.setState((state) => ({
         currentStyle: {
+          ...state.currentStyle,
           opacity,
-          color: this.state.currentStyle.color,
-          filled: this.state.currentStyle.filled,
-          fillOpacity: this.state.currentStyle.fillOpacity,
-          limitValues: this.state.currentStyle.limitValues,
         },
-      })
+      }))
     }
   }
 

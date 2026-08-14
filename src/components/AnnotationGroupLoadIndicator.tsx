@@ -67,7 +67,7 @@ const AnnotationGroupLoadIndicator: React.FC<
 
   useEffect(() => {
     if (!isActive) {
-      return
+      return undefined
     }
     const id = window.setInterval(() => {
       setNowMs(Date.now())

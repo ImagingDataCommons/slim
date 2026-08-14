@@ -1,12 +1,12 @@
-import * as React from 'react'
+import { forwardRef, type HTMLAttributes, type ReactNode } from 'react'
 import { cn } from '../../lib/utils'
 
-interface SeparatorProps extends React.HTMLAttributes<HTMLDivElement> {
-  label?: React.ReactNode
+interface SeparatorProps extends HTMLAttributes<HTMLDivElement> {
+  label?: ReactNode
 }
 
 /** Plain divider, optionally with a centered label — sharp corners, compact. */
-const Separator = React.forwardRef<HTMLDivElement, SeparatorProps>(
+const Separator = forwardRef<HTMLDivElement, SeparatorProps>(
   ({ className, label, ...props }, ref) => {
     if (label == null) {
       return (
