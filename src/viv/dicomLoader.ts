@@ -1558,7 +1558,7 @@ export class SyntheticDyadicPixelSource {
     return this._finerDicomLevel
   }
 
-  // skipcq: JS-0116 - async for interface compliance, throws synchronously
+  // skipcq: JS-0105, JS-0116 - instance method for interface compliance
   getRaster(): Promise<never> {
     return Promise.reject(
       new Error('getRaster not supported for synthetic pyramid levels'),

@@ -964,12 +964,12 @@ export function useVivBulkAnnotations(
   )
   runBulkViewportRebuildForGroupRef.current = runBulkViewportRebuildForGroup
 
-  /** Reset all bulk state on mount and whenever the slide/series changes. */
+  /**
+   * Reset all bulk state on mount and whenever the slide/series changes.
+   * Dependencies: client, studyInstanceUID, seriesInstanceUID trigger re-runs.
+   */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional reset on slide identity change
   useEffect(() => {
-    /** Referenced so the reset re-runs whenever the slide identity changes. */
-    void client
-    void studyInstanceUID
-    void seriesInstanceUID
     bulkGeometryRef.current = null
     bulkGroupJobsRef.current = {}
     bulkGraphicCacheByUidRef.current = {}
@@ -1215,9 +1215,8 @@ export function useVivBulkAnnotations(
     })
   }, [])
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: hydrateRetryNonce triggers re-dispatch on gen-mismatch cleanup
   useEffect(() => {
-    /** Referenced so gen-mismatch cleanups can force a re-dispatch pass. */
-    void hydrateRetryNonce
     if (!enabled || !baseLayerReady || !bulkCatalogReady) {
       return
     }
@@ -2069,10 +2068,8 @@ export function useVivBulkAnnotations(
     [streamingDeckOverlaysByUid],
   )
 
-  /** bulkSlicesByUid / bulkStreamPaintGen invalidate while data is read via refs. */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: bulkSlicesByUid/bulkStreamPaintGen invalidate while data is read via refs
   const annLayers = useMemo((): Layer[] => {
-    void bulkSlicesByUid
-    void bulkStreamPaintGen
     const geom = bulkGeometryRef.current
     const sr = slideRef.current
     const radiusContext: BulkScatterRadiusContext | null =
