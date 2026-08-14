@@ -91,7 +91,7 @@ jobs:
           # Build DMV if dist files are missing (git dependency in package.json)
           if [ ! -f "node_modules/dicom-microscopy-viewer/dist/dynamic-import/dicomMicroscopyViewer.min.js" ]; then
             echo "DMV dist files missing - building from git dependency"
-            pnpm --filter dicom-microscopy-viewer run build
+            (cd node_modules/dicom-microscopy-viewer && pnpm run build)
           fi
 
       - name: Require preview DICOMweb URL
