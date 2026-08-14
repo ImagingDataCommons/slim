@@ -97,16 +97,47 @@ jobs:
           REACT_APP_DMV_GIT_SHA: ${{ steps.dmv.outputs.sha }}
         run: pnpm run build
 
-      - name: Note DMV source on PR
-        if: github.event_name == 'pull_request' && steps.dmv.outputs.use_git == 'true'
+      - name: Comment DMV status on PR
+        if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          DMV_USE_GIT: ${{ steps.dmv.outputs.use_git }}
           DMV_REF: ${{ steps.dmv.outputs.ref }}
           DMV_SHA: ${{ steps.dmv.outputs.sha }}
           DMV_SOURCE: ${{ steps.dmv.outputs.source }}
         run: |
-          gh pr comment "${PR_NUMBER}" --body "Firebase preview uses dicom-microscopy-viewer branch ${DMV_REF} (${DMV_SHA}, via ${DMV_SOURCE})."
+          if [ "${DMV_USE_GIT}" = "true" ]; then
+            BODY="$(cat <<EOF
+          ## 🔗 Firebase Preview - Linked to DMV Branch
+
+          This preview is using a **linked** \`dicom-microscopy-viewer\` branch:
+
+          | | |
+          |---|---|
+          | **Branch** | [\`${DMV_REF}\`](https://github.com/ImagingDataCommons/dicom-microscopy-viewer/tree/${DMV_REF}) |
+          | **Commit** | [\`${DMV_SHA:0:7}\`](https://github.com/ImagingDataCommons/dicom-microscopy-viewer/commit/${DMV_SHA}) |
+          | **Source** | \`${DMV_SOURCE}\` |
+
+          > To change the DMV branch, edit \`dmv-branch: <branch-name>\` in the PR description.
+          EOF
+          )"
+          else
+            DMV_VERSION="$(node -p "require('./package.json').dependencies['dicom-microscopy-viewer']")"
+            BODY="$(cat <<EOF
+          ## 📦 Firebase Preview - Using Published DMV
+
+          This preview is using the **published** \`dicom-microscopy-viewer\` from package.json:
+
+          | | |
+          |---|---|
+          | **Version** | \`${DMV_VERSION}\` |
+
+          > To link a DMV branch for testing, add \`dmv-branch: <branch-name>\` to the PR description (requires an open PR in DMV).
+          EOF
+          )"
+          fi
+          gh pr comment "${PR_NUMBER}" --body "${BODY}"
 
       - name: Deploy preview
         if: github.event_name == 'pull_request'
