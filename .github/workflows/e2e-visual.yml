@@ -14,10 +14,13 @@ name: slim/e2e-visual-regression
 on:
   pull_request:
     branches: [master]
+    # edited: re-run when the PR body changes (e.g. add/update dmv-branch:)
+    types: [opened, synchronize, reopened, edited]
   workflow_dispatch:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -26,6 +29,8 @@ concurrency:
 jobs:
   visual:
     name: "Bulk annotation visual regression"
+    # Skip re-run on PR body edit unless the body actually changed (dmv-branch updates)
+    if: github.event.action != 'edited' || github.event.changes.body != null
     runs-on: ubuntu-latest
     timeout-minutes: 45
     container:
@@ -38,10 +43,56 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
 
+      - name: Resolve DMV branch for preview
+        id: dmv
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: ./scripts/resolve-dmv-preview-branch.sh
+
       - name: Install dependencies
         # Dependency build scripts are gated by allowBuilds in pnpm-workspace.yaml.
         # The git-hosted dicom-microscopy-viewer needs its prepare script to build dist/.
-        run: pnpm install --frozen-lockfile
+        env:
+          DMV_USE_GIT: ${{ steps.dmv.outputs.use_git }}
+          DMV_REF: ${{ steps.dmv.outputs.ref }}
+          DMV_SHA: ${{ steps.dmv.outputs.sha }}
+        run: |
+          set -euo pipefail
+          if [ "${DMV_USE_GIT:-}" = "true" ]; then
+            case "${DMV_REF}" in
+              ''|*[!A-Za-z0-9._/-]*|.*|*.)
+                echo "::error::Unsafe DMV_REF rejected"
+                exit 1
+                ;;
+            esac
+            pnpm pkg set 'dependencies["dicom-microscopy-viewer"]'"=github:ImagingDataCommons/dicom-microscopy-viewer#${DMV_REF}"
+            # Dynamically allow builds for the resolved tarball URL so pnpm's
+            # dependency status check passes during `pnpm run build`
+            TARBALL_KEY="dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/${DMV_SHA}"
+            node -e "
+              const fs = require('fs');
+              const content = fs.readFileSync('pnpm-workspace.yaml', 'utf8');
+              // Insert the tarball allowBuilds entry after 'dicom-microscopy-viewer: true'
+              const updated = content.replace(
+                /(allowBuilds:[\s\S]*?dicom-microscopy-viewer: true)/,
+                \"\$1\\n  '\" + process.argv[1] + \"': true\"
+              );
+              fs.writeFileSync('pnpm-workspace.yaml', updated);
+            " "${TARBALL_KEY}"
+            pnpm install --no-frozen-lockfile --ignore-scripts
+          else
+            pnpm install --frozen-lockfile --ignore-scripts
+          fi
+          # allowBuilds in pnpm-workspace.yaml: core-js(+pure) and dicom-microscopy-viewer
+          pnpm rebuild dicom-microscopy-viewer core-js core-js-pure
+          # Build DMV if dist files are missing (git dependency in package.json)
+          if [ ! -f "node_modules/dicom-microscopy-viewer/dist/dynamic-import/dicomMicroscopyViewer.min.js" ]; then
+            echo "DMV dist files missing - building from git dependency"
+            (cd node_modules/dicom-microscopy-viewer && pnpm run build)
+          fi
 
       - name: Build (e2e config)
         run: pnpm run build:e2e
