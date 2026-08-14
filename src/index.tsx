@@ -3,6 +3,7 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 
 import './index.css'
+import './tailwind.css'
 
 import packageInfo from '../package.json'
 import type AppConfig from './AppConfig'

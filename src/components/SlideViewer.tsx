@@ -4,7 +4,6 @@ import {
   Descriptions,
   Divider,
   Drawer,
-  InputNumber,
   Layout,
   Menu,
   message,
@@ -47,6 +46,10 @@ import type {
   AnnotationCategoryAndType,
   AnnotationSettings,
 } from '../types/annotations'
+import {
+  removeAnnotationGroupLoadState,
+  upsertAnnotationGroupLoadState,
+} from '../utils/annotationGroupLoadStatus'
 import { CustomError, errorTypes } from '../utils/CustomError'
 import {
   clampOverviewMapInViewport,
@@ -62,6 +65,7 @@ import { withRouter } from '../utils/router'
 import { getSegmentationType, getSegmentColor } from '../utils/segmentColors'
 import { findContentItemsByName } from '../utils/sr'
 import AnnotationGroupList from './AnnotationGroupList'
+import AnnotationGroupLoadIndicator from './AnnotationGroupLoadIndicator'
 import AnnotationList from './AnnotationList'
 import Btn from './Button'
 import Equipment from './Equipment'
@@ -123,6 +127,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   private readonly volumeViewportRef: React.RefObject<HTMLDivElement>
 
   private readonly labelViewportRef: React.RefObject<HTMLDivElement>
+
+  /** Auto-dismiss timers for settled (done/error) annotation group load rows. */
+  private readonly annotationGroupLoadDoneTimers: { [uid: string]: number } = {}
 
   private stopOverviewMapClamp: (() => void) | undefined
 
@@ -243,7 +250,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       clients: this.props.clients,
       slide: this.props.slide,
       preload: this.props.preload,
-      clusteringPixelSizeThreshold: undefined, // Auto (zoom-based) by default
     })
     this.volumeViewer = volumeViewer
     this.labelViewer = labelViewer
@@ -298,14 +304,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       pixelDataStatistics: {},
       selectedPresentationStateUID: this.props.selectedPresentationStateUID,
       loadingFrames: new Set(),
+      annotationGroupLoadStatus: [],
       isICCProfilesEnabled: true,
       isPaletteDisplayGammaCorrectionEnabled:
         volumeViewer.getPaletteDisplayGammaCorrectionEnabled(),
       isSegmentationInterpolationEnabled: false,
       isParametricMapInterpolationEnabled: true,
       customizedSegmentColors: {},
-      clusteringPixelSizeThreshold: null, // null means auto (zoom-based)
-      isClusteringEnabled: true, // Clustering enabled by default
       isSettingsDrawerOpen: false,
     }
 
@@ -406,9 +411,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         clients: this.props.clients,
         slide: this.props.slide,
         preload: this.props.preload,
-        clusteringPixelSizeThreshold: this.state.isClusteringEnabled
-          ? (this.state.clusteringPixelSizeThreshold ?? undefined)
-          : undefined,
       })
       this.volumeViewer = volumeViewer
       this.labelViewer = labelViewer
@@ -430,6 +432,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
       const [offset, size] = this.volumeViewer.boundingBox
 
+      this.clearAllAnnotationGroupLoadDoneTimers()
       this.setState({
         visibleRoiUIDs: new Set(),
         visibleSegmentUIDs: new Set(),
@@ -439,6 +442,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         activeOpticalPathIdentifiers,
         presentationStates: [],
         loadingFrames: new Set(),
+        annotationGroupLoadStatus: [],
         selectedSeriesInstanceUID: undefined,
         validXCoordinateRange: [offset[0], offset[0] + size[0]],
         validYCoordinateRange: [offset[1], offset[1] + size[1]],
@@ -2201,12 +2205,104 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
   }
 
+  /** Resolves a human-readable label for the floating load-progress card. */
+  getAnnotationGroupLabel = (uid: string): string => {
+    try {
+      const metadata = this.volumeViewer.getAnnotationGroupMetadata(uid)
+      const item = metadata?.AnnotationGroupSequence?.find(
+        (sequenceItem) => sequenceItem.AnnotationGroupUID === uid,
+      )
+      if (
+        item?.AnnotationGroupLabel != null &&
+        item.AnnotationGroupLabel !== ''
+      ) {
+        return item.AnnotationGroupLabel
+      }
+    } catch {
+      /** Group not registered yet; fall through to the UID-based label. */
+    }
+    return `Group …${uid.slice(-8)}`
+  }
+
+  /** Marks a group's load row done/error, then removes it after it lingers. */
+  markAnnotationGroupLoadSettled = (
+    uid: string,
+    phase: 'done' | 'error',
+  ): void => {
+    this.setState((state) => ({
+      annotationGroupLoadStatus: upsertAnnotationGroupLoadState(
+        state.annotationGroupLoadStatus,
+        uid,
+        { phase, finishedAtMs: Date.now() },
+      ),
+    }))
+    if (this.annotationGroupLoadDoneTimers[uid] != null) {
+      window.clearTimeout(this.annotationGroupLoadDoneTimers[uid])
+    }
+    this.annotationGroupLoadDoneTimers[uid] = window.setTimeout(
+      () => {
+        this.setState((state) => ({
+          annotationGroupLoadStatus: removeAnnotationGroupLoadState(
+            state.annotationGroupLoadStatus,
+            uid,
+          ),
+        }))
+        // skipcq: JS-0320
+        delete this.annotationGroupLoadDoneTimers[uid]
+      },
+      phase === 'error' ? 6000 : 4000,
+    )
+  }
+
+  clearAllAnnotationGroupLoadDoneTimers = (): void => {
+    for (const uid of Object.keys(this.annotationGroupLoadDoneTimers)) {
+      window.clearTimeout(this.annotationGroupLoadDoneTimers[uid])
+      // skipcq: JS-0320
+      delete this.annotationGroupLoadDoneTimers[uid]
+    }
+  }
+
   onLoadingStarted = (_event: CustomEventInit): void => {
     this.setState({ isLoading: true })
   }
 
-  onLoadingEnded = (_event: CustomEventInit): void => {
+  onLoadingEnded = (event: CustomEventInit): void => {
     this.setState({ isLoading: false })
+    const annotationGroupUID: string | undefined =
+      event.detail?.payload?.annotationGroupUID
+    if (annotationGroupUID !== undefined) {
+      this.markAnnotationGroupLoadSettled(annotationGroupUID, 'done')
+    }
+  }
+
+  onAnnotationGroupLoadingProgress = (event: CustomEventInit): void => {
+    const payload: {
+      annotationGroupUID: string
+      phase: 'index' | 'data' | 'decoding'
+      loadedBytes?: number
+      totalBytes?: number | null
+    } = event.detail.payload
+    if (
+      this.annotationGroupLoadDoneTimers[payload.annotationGroupUID] != null
+    ) {
+      window.clearTimeout(
+        this.annotationGroupLoadDoneTimers[payload.annotationGroupUID],
+      )
+      // skipcq: JS-0320
+      delete this.annotationGroupLoadDoneTimers[payload.annotationGroupUID]
+    }
+    this.setState((state) => ({
+      annotationGroupLoadStatus: upsertAnnotationGroupLoadState(
+        state.annotationGroupLoadStatus,
+        payload.annotationGroupUID,
+        {
+          phase: payload.phase,
+          label: this.getAnnotationGroupLabel(payload.annotationGroupUID),
+          loadedBytes: payload.loadedBytes,
+          totalBytes: payload.totalBytes,
+        },
+      ),
+    }))
   }
 
   onFrameLoadingStarted = (event: CustomEventInit): void => {
@@ -2237,6 +2333,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       NotificationMiddlewareContext.SLIM,
       new CustomError(errorTypes.VISUALIZATION, message),
     )
+    const annotationGroupUID: string | undefined =
+      event.detail?.payload?.annotationGroupUID
+    if (annotationGroupUID !== undefined) {
+      this.markAnnotationGroupLoadSettled(annotationGroupUID, 'error')
+    }
   }
 
   onFrameLoadingEnded = (event: CustomEventInit): void => {
@@ -2366,6 +2467,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.onLoadingEnded,
     )
     document.body.removeEventListener(
+      'dicommicroscopyviewer_annotation_group_loading_progress',
+      this.onAnnotationGroupLoadingProgress,
+    )
+    document.body.removeEventListener(
       'dicommicroscopyviewer_frame_loading_started',
       this.onFrameLoadingStarted,
     )
@@ -2458,6 +2563,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.labelViewer.cleanup()
     }
     this.handlePointerMoveDebounced.cancel()
+    this.clearAllAnnotationGroupLoadDoneTimers()
     window.removeEventListener('beforeunload', this.componentCleanup)
   }
 
@@ -2497,6 +2603,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     document.body.addEventListener(
       'dicommicroscopyviewer_loading_ended',
       this.onLoadingEnded,
+    )
+    document.body.addEventListener(
+      'dicommicroscopyviewer_annotation_group_loading_progress',
+      this.onAnnotationGroupLoadingProgress,
     )
     document.body.addEventListener(
       'dicommicroscopyviewer_loading_error',
@@ -2999,6 +3109,29 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   /**
    * Handle change of annotation group style.
    */
+  getAnnotationGroupMeasurementRange = (
+    annotationGroupUID: string,
+    measurement: dcmjs.sr.coding.CodedConcept,
+  ): { min: number; max: number } | null => {
+    const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer & {
+      getAnnotationGroupMeasurementRange?: (
+        uid: string,
+        measurement?: dcmjs.sr.coding.CodedConcept,
+      ) => { min: number; max: number } | null
+    }
+    if (typeof viewer.getAnnotationGroupMeasurementRange !== 'function') {
+      return null
+    }
+    try {
+      return viewer.getAnnotationGroupMeasurementRange(
+        annotationGroupUID,
+        measurement,
+      )
+    } catch {
+      return null
+    }
+  }
+
   handleAnnotationGroupStyleChange = ({
     uid,
     styleOptions,
@@ -3007,12 +3140,39 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     styleOptions: {
       opacity?: number
       color?: number[]
+      filled?: boolean
+      fillOpacity?: number
       measurement?: dcmjs.sr.coding.CodedConcept
+      limitValues?: number[]
     }
   }): void => {
     logger.log(`change style of annotation group ${uid}`)
     try {
-      this.volumeViewer.setAnnotationGroupStyle(uid, styleOptions)
+      const viewer = this.volumeViewer as dmv.viewer.VolumeImageViewer & {
+        getAnnotationGroupMeasurementRange?: (
+          uid: string,
+          measurement?: dcmjs.sr.coding.CodedConcept,
+        ) => { min: number; max: number } | null
+      }
+      let nextStyle = { ...styleOptions }
+      if (
+        styleOptions.measurement != null &&
+        styleOptions.limitValues == null &&
+        typeof viewer.getAnnotationGroupMeasurementRange === 'function'
+      ) {
+        /** May be null until the viewer has fetched measurement values. */
+        const range = viewer.getAnnotationGroupMeasurementRange(
+          uid,
+          styleOptions.measurement,
+        )
+        if (range != null) {
+          nextStyle = {
+            ...nextStyle,
+            limitValues: [range.min, range.max],
+          }
+        }
+      }
+      viewer.setAnnotationGroupStyle(uid, nextStyle)
     } catch (error) {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       NotificationMiddleware.onError(
@@ -3736,71 +3896,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     ).toggleParametricMapInterpolation()
   }
 
-  /**
-   * Handler that toggles clustering on/off.
-   */
-  handleClusteringToggle = (checked: boolean): void => {
-    /** Ensure checked is a boolean */
-    const newValue = Boolean(checked)
-
-    /** Use functional setState to ensure we have the latest state */
-    this.setState((prevState) => {
-      /** Don't update if the value hasn't actually changed */
-      if (prevState.isClusteringEnabled === newValue) {
-        return null
-      }
-
-      /** When turning ON with Auto (null/undefined), use viewer default so clustering is enabled; undefined means "clustering off" in the viewer */
-      const threshold = newValue
-        ? (prevState.clusteringPixelSizeThreshold ?? 0.001)
-        : undefined
-
-      /**
-       * Update viewer options immediately with the new state
-       * Check if viewer exists and has the method before calling
-       */
-      if (
-        this.volumeViewer !== null &&
-        this.volumeViewer !== undefined &&
-        typeof (
-          this.volumeViewer as unknown as {
-            setAnnotationOptions?(opts: object): void
-          }
-        ).setAnnotationOptions === 'function'
-      ) {
-        try {
-          ;(
-            this.volumeViewer as unknown as {
-              setAnnotationOptions(opts: object): void
-            }
-          ).setAnnotationOptions({
-            clusteringPixelSizeThreshold: threshold,
-          })
-        } catch (error) {
-          console.error('Failed to update annotation options:', error)
-        }
-      }
-
-      return { isClusteringEnabled: newValue }
-    })
-  }
-
-  /**
-   * Handler that updates the global clustering pixel size threshold.
-   */
-  handleClusteringPixelSizeThresholdChange = (value: number | null): void => {
-    this.setState({ clusteringPixelSizeThreshold: value })
-    if (this.state.isClusteringEnabled) {
-      ;(
-        this.volumeViewer as unknown as {
-          setAnnotationOptions?(opts: object): void
-        }
-      ).setAnnotationOptions?.({
-        clusteringPixelSizeThreshold: value ?? undefined,
-      })
-    }
-  }
-
   formatAnnotation = (annotation: AnnotationCategoryAndType): void => {
     const roi = this.volumeViewer.getROI(annotation.uid)
     const key = getRoiKey(roi) as string
@@ -4341,6 +4436,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         [annotationUID: string]: {
           opacity: number
           color: number[]
+          filled?: boolean
+          fillOpacity?: number
         }
       } = {}
       annotationGroups.forEach((annotationGroup) => {
@@ -4425,6 +4522,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               onAnnotationGroupStyleChange={
                 this.handleAnnotationGroupStyleChange
               }
+              getMeasurementRange={this.getAnnotationGroupMeasurementRange}
             />
           )}
         </Menu.SubMenu>
@@ -4762,51 +4860,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     )
 
     const segmentationItems: React.ReactNode[] = []
-    segmentationItems.push(
-      <div
-        key="clustering-enabled"
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '0.5rem',
-        }}
-      >
-        <span>Clustering</span>
-        <Switch
-          checked={Boolean(this.state.isClusteringEnabled)}
-          onChange={this.handleClusteringToggle}
-        />
-      </div>,
-    )
-    segmentationItems.push(
-      <div key="clustering-threshold" style={{ marginBottom: '0.5rem' }}>
-        <div style={{ marginBottom: '0.5rem' }}>
-          Clustering Pixel Size Threshold (mm)
-        </div>
-        <InputNumber
-          min={0}
-          max={100}
-          step={0.001}
-          precision={3}
-          style={{ width: '100%' }}
-          value={this.state.clusteringPixelSizeThreshold ?? undefined}
-          onChange={this.handleClusteringPixelSizeThresholdChange}
-          placeholder="Auto (zoom-based)"
-          addonAfter="mm"
-        />
-        <div
-          style={{
-            fontSize: '0.75rem',
-            color: '#8c8c8c',
-            marginTop: '0.5rem',
-          }}
-        >
-          When pixel size ≤ threshold, clustering is disabled. Leave empty for
-          zoom-based detection.
-        </div>
-      </div>,
-    )
     if (
       menus.segmentationInterpolationMenu !== null &&
       menus.segmentationInterpolationMenu !== undefined
@@ -4932,6 +4985,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           toolbarHeight={toolbarHeight}
           cursor={cursor}
           volumeViewportRef={this.volumeViewportRef}
+          loadIndicator={
+            <AnnotationGroupLoadIndicator
+              states={this.state.annotationGroupLoadStatus}
+            />
+          }
         >
           <SlideViewerModals
             isAnnotationModalVisible={this.state.isAnnotationModalVisible}
