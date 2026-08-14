@@ -4,7 +4,10 @@ strictPeerDependencies: false
 allowBuilds:
   core-js: true
   core-js-pure: true
-  # For npm-published versions; git tarball URLs are added dynamically by CI
+  # Allow the git-hosted dicom-microscopy-viewer to run its prepare script,
+  # which builds dist/ when installed from a commit tarball. pnpm matches
+  # git-hosted packages by their exact tarball URL, so this entry must be
+  # updated whenever the dependency pin in package.json changes.
   dicom-microscopy-viewer: true
   # Git-hosted tarball (update when dmv SHA changes in package.json)
   'dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/1b39614eae92e92578d14977f66ced60243e51bc': true

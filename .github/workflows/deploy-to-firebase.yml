@@ -58,7 +58,6 @@ jobs:
         env:
           DMV_USE_GIT: ${{ steps.dmv.outputs.use_git }}
           DMV_REF: ${{ steps.dmv.outputs.ref }}
-          DMV_SHA: ${{ steps.dmv.outputs.sha }}
         run: |
           set -euo pipefail
           if [ "${DMV_USE_GIT:-}" = "true" ]; then
