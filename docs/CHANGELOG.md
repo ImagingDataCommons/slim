@@ -1,3 +1,10 @@
+## [0.46.9](https://github.com/ImagingDataCommons/slim/compare/v0.46.8...v0.46.9) (2026-08-14)
+
+
+### Bug Fixes
+
+* **ci:** require open PR for matching DMV branch detection ([#421](https://github.com/ImagingDataCommons/slim/issues/421)) ([09b41e8](https://github.com/ImagingDataCommons/slim/commit/09b41e87dca7bc4530f9a339f0a8d5b748a57bac))
+
 ## [0.46.8](https://github.com/ImagingDataCommons/slim/compare/v0.46.7...v0.46.8) (2026-08-14)
 
 
