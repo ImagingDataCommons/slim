@@ -116,6 +116,7 @@ function bulkStyleKey(
   return `${uid}:${st.opacity}:${st.color[0]},${st.color[1]},${st.color[2]}`
 }
 
+// skipcq: JS-R1005 - complexity is acceptable for styled layer construction with caching
 function buildStyledBulkOverlayLayers(
   slicesByUid: Record<string, VivBulkAnnotationLayerSlice>,
   visibleUIDs: Set<string>,
@@ -168,12 +169,12 @@ function buildStyledBulkOverlayLayers(
       out.push(...cached.result)
       continue
     }
-    const a = Math.round(Math.max(0, Math.min(1, st.opacity)) * 220)
+    const alpha = Math.round(Math.max(0, Math.min(1, st.opacity)) * 220)
     const rgba: [number, number, number, number] = [
       st.color[0] ?? 0,
       st.color[1] ?? 0,
       st.color[2] ?? 0,
-      a,
+      alpha,
     ]
     const matrixProps = modelMatrix != null ? { modelMatrix } : {}
     const uidStyled: Layer[] = []
@@ -489,7 +490,9 @@ export function useVivBulkAnnotations(
         patchBulkLoadStatus((prev) =>
           removeVivBulkGroupLoadState(prev, groupUID),
         )
+        // skipcq: JS-0320 - cleanup of ref-tracked timers by dynamic key
         delete groupDoneTimersRef.current[groupUID]
+        // skipcq: JS-0320 - cleanup of ref-tracked load state by dynamic key
         delete groupLoadStartedRef.current[groupUID]
       }, 4000)
     },
@@ -519,7 +522,9 @@ export function useVivBulkAnnotations(
         patchBulkLoadStatus((prev) =>
           removeVivBulkGroupLoadState(prev, groupUID),
         )
+        // skipcq: JS-0320 - cleanup of ref-tracked timers by dynamic key
         delete groupDoneTimersRef.current[groupUID]
+        // skipcq: JS-0320 - cleanup of ref-tracked load state by dynamic key
         delete groupLoadStartedRef.current[groupUID]
       }, 6000)
     },
@@ -536,6 +541,7 @@ export function useVivBulkAnnotations(
       /** A fresh progress report supersedes any pending done/error auto-clear. */
       if (groupDoneTimersRef.current[groupUID] != null) {
         window.clearTimeout(groupDoneTimersRef.current[groupUID])
+        // skipcq: JS-0320 - cleanup of ref-tracked timers by dynamic key
         delete groupDoneTimersRef.current[groupUID]
       }
       const startedAtMs =
@@ -707,6 +713,7 @@ export function useVivBulkAnnotations(
           return prev
         }
         const next = { ...prev }
+        // skipcq: JS-0320 - cleanup of streaming overlays by dynamic uid
         delete next[uid]
         return next
       })
@@ -717,6 +724,7 @@ export function useVivBulkAnnotations(
           detachVivBulkOverlayLayerData(slice.layers)
         }
         const next = { ...current }
+        // skipcq: JS-0320 - cleanup of slice layers by dynamic uid
         delete next[uid]
         commitSlices(next)
       }

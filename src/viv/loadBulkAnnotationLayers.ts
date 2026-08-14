@@ -2895,7 +2895,7 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
         continue
       }
 
-      logger.log(`instance matches slide`, {
+      logger.log('instance matches slide', {
         annSOP: ann.SOPInstanceUID,
         annSeries: ann.SeriesInstanceUID,
         groups: (ann.AnnotationGroupSequence ?? []).length,
@@ -2962,7 +2962,7 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
         const graphicType = metadataItem.GraphicType as string
         const featureFn = featureFnForGraphicType(graphicType)
         if (featureFn === null || numberOfAnnotations <= 0) {
-          logger.log(`skip group: graphic type / count`, {
+          logger.log('skip group: graphic type / count', {
             annotationGroupUID,
             graphicType,
             numberOfAnnotations,
@@ -3031,7 +3031,7 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
             coordinateDimensionality,
             commonZCoordinate,
           }
-          logger.log(`group → catalog (geometry deferred)`, {
+          logger.log('group → catalog (geometry deferred)', {
             annotationGroupUID,
             graphicType,
           })
@@ -3049,7 +3049,7 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
       fetchAllSeriesMs: Math.round((vivBulkAnnNow() - tSeriesAll0) * 10) / 10,
     },
   )
-  logger.log(`metadata done: lazy geometry jobs`, {
+  logger.log('metadata done: lazy geometry jobs', {
     groups: Object.keys(groupGeometryJobs).length,
   })
   vivBulkAnnPerf('metadata:catalog complete (all ANN series)', tMeta0, {
@@ -3073,7 +3073,8 @@ export async function loadBulkAnnotationMetadataAndJobs(options: {
 }
 
 /** @deprecated Prefer {@link loadBulkAnnotationMetadataAndJobs} + lazy hydrate. */
-export async function loadBulkAnnotationDeckLayers(
+// skipcq: JS-0116 - async kept for API compatibility, delegates to async function
+export function loadBulkAnnotationDeckLayers(
   options: Parameters<typeof loadBulkAnnotationMetadataAndJobs>[0],
 ): Promise<VivBulkAnnotationMetadataResult> {
   return loadBulkAnnotationMetadataAndJobs(options)
