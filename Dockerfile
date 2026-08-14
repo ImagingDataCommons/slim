@@ -42,7 +42,11 @@ RUN chmod +x scripts/*.sh
 FROM lib AS app
 
 ARG REACT_APP_CONFIG=local
-ENV PUBLIC_URL=/
+# Public default for docker-compose DICOMweb; override at build time if needed.
+ARG SLIM_LOCAL_DICOMWEB_URL=http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs
+ENV PUBLIC_URL=/ \
+    REACT_APP_CONFIG=${REACT_APP_CONFIG} \
+    SLIM_LOCAL_DICOMWEB_URL=${SLIM_LOCAL_DICOMWEB_URL}
 
 RUN addgroup --system --gid 101 nginx && \
     adduser --system \

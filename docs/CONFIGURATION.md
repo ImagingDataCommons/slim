@@ -5,7 +5,14 @@ The app is configured via a JavaScript file under `public/config/` (for example
 `public/config/local.js`). The file is loaded at runtime from
 `public/config/{name}.js` via `public/index.html`. Select `{name}` at build /
 start time with the `REACT_APP_CONFIG` environment variable (defaults to
-`local` via `.env`).
+`local`).
+
+Copy [`.env.example`](../.env.example) to `.env` (gitignored) and adjust as
+needed. Without `.env`, start/build defaults to `REACT_APP_CONFIG=local` and
+`SLIM_LOCAL_DICOMWEB_URL` defaults to the docker-compose DICOMweb URL.
+Committed `demo` / `preview` configs require `SLIM_DEMO_DICOMWEB_URL` /
+`SLIM_PREVIEW_DICOMWEB_URL` in `.env` or as GitHub Actions secrets/variables
+(see `scripts/inject-slim-env.mjs`).
 
 For the full type definitions, see [`src/AppConfig.d.ts`](../src/AppConfig.d.ts).
 Example configs live in [`public/config/`](../public/config/).
@@ -23,7 +30,8 @@ Example configs live in [`public/config/`](../public/config/).
 ## External DICOMweb server
 
 Point Slim at any DICOMweb-conformant archive by setting `servers` in the config
-file:
+file. Slim’s committed configs read the URL from `window.slim.env` (set via
+`.env`); custom configs may still hardcode a URL:
 
 ```js
 window.config = {
@@ -31,7 +39,8 @@ window.config = {
   servers: [
     {
       id: 'local',
-      url: 'http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs',
+      url: window.slim.env.SLIM_LOCAL_DICOMWEB_URL,
+      // or: url: 'http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs',
       write: true,
     },
   ],
@@ -303,7 +312,8 @@ DICOMweb at:
 http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs
 ```
 
-That URL is already set in [`public/config/local.js`](../public/config/local.js).
+That URL belongs in `.env` as `SLIM_LOCAL_DICOMWEB_URL` (see `.env.example`).
+`public/config/local.js` reads it from `window.slim.env`.
 nginx in the compose stack proxies the dcm4chee DICOMweb paths; Orthanc is not
 part of that stack.
 

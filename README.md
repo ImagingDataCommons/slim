@@ -306,7 +306,7 @@ The command line interface of the [dicomweb-client Python package](https://dicom
 dicomweb_client -vv --url http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs store instances -h
 ```
 
-The local deployment uses the default configuration file `public/config/local.js`:
+The local deployment uses the default configuration file `public/config/local.js`, which reads the DICOMweb URL from `window.slim.env.SLIM_LOCAL_DICOMWEB_URL` (set in `.env`; see `.env.example`):
 
 ```js
 window.config = {
@@ -314,7 +314,7 @@ window.config = {
   servers: [
     {
       id: "local",
-      url: "http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs",
+      url: window.slim.env.SLIM_LOCAL_DICOMWEB_URL,
       write: true,
     },
   ],
@@ -434,6 +434,17 @@ The configuration can be specified using the `REACT_APP_CONFIG` environment vari
 REACT_APP_CONFIG=local pnpm run start
 ```
 
+Copy [`.env.example`](.env.example) to `.env` (gitignored) and adjust as needed. Without `.env`, start/build defaults to `REACT_APP_CONFIG=local` and `SLIM_LOCAL_DICOMWEB_URL` defaults to the docker-compose DICOMweb URL. Committed `demo` / `preview` configs require `SLIM_DEMO_DICOMWEB_URL` / `SLIM_PREVIEW_DICOMWEB_URL` in `.env` or CI (see `scripts/inject-slim-env.mjs`).
+
+### Upgrading from older Slim versions
+
+If you merge this change into a fork or redeploy:
+
+1. Copy `.env.example` to `.env` (or keep your existing `.env`).
+2. Stock `local` builds work without extra setup (localhost DICOMweb default).
+3. Before Firebase / GitHub Pages deploys, set Actions secret or variable `SLIM_PREVIEW_DICOMWEB_URL` and `SLIM_DEMO_DICOMWEB_URL`.
+4. Custom configs with hardcoded `servers[].url` keep working; only Slim’s committed `local` / `demo` / `preview` configs read `window.slim.env`.
+
 Useful scripts:
 
 | Command | Description |
@@ -448,6 +459,17 @@ Useful scripts:
 ## Linking Slim to a local dicom-microscopy-viewer library
 
 If you are developing features or fixing bugs that require changes in both Slim and the underlying [`dicom-microscopy-viewer`](https://github.com/ImagingDataCommons/dicom-microscopy-viewer) library, you can use `pnpm link` to connect your local Slim project to a local clone of `dicom-microscopy-viewer`. This allows Slim to immediately use the latest local changes from the library without publishing to npm.
+
+### Firebase preview with a paired DMV branch
+
+When a Slim pull request is opened, the Firebase preview can install
+[`dicom-microscopy-viewer`](https://github.com/ImagingDataCommons/dicom-microscopy-viewer)
+from a git branch instead of the npm pin:
+
+1. Set `dmv-branch: <branch-name>` in the PR description (see the PR template), or
+2. Use the **same branch name** in both repos and leave `dmv-branch` empty.
+
+If neither applies, the preview uses the version in `package.json`. Editing the PR body to change `dmv-branch:` regenerates the preview. Details are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### Steps
 
@@ -514,7 +536,7 @@ If you are developing features or fixing bugs that require changes in both Slim 
 
 ## Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on coding style, documentation, and the development workflow.
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on coding style, documentation, pull requests (including optional DMV preview pairing), and the development workflow.
 
 ## Citation
 
