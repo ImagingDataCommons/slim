@@ -95,13 +95,7 @@ function getCenterOutWorker(): Worker {
     return centerOutWorker
   }
   /** Worker source derives from the canonical kernel (single implementation). */
-  const workerSource =
-    'var computeOrder=' +
-    centerOutOrderFromFirstVertexXY.toString() +
-    ';self.onmessage=function(e){var d=e.data;' +
-    'var xy=new Float64Array(d.firstVertexXY);' +
-    'var order=computeOrder(d.numberOfAnnotations,xy,d.centerX,d.centerY);' +
-    'self.postMessage({id:d.id,order:order.buffer},[order.buffer]);};'
+  const workerSource = `var computeOrder=${centerOutOrderFromFirstVertexXY.toString()};self.onmessage=function(e){var d=e.data;var xy=new Float64Array(d.firstVertexXY);var order=computeOrder(d.numberOfAnnotations,xy,d.centerX,d.centerY);self.postMessage({id:d.id,order:order.buffer},[order.buffer]);};`
   const blob = new Blob([workerSource], { type: 'application/javascript' })
   const workerUrl = URL.createObjectURL(blob)
   try {
@@ -129,11 +123,6 @@ function computeCenterOutAnnotationOrderInWorker(
    */
   const firstVertexXY = firstVertexXYFromInput(options)
   return new Promise((resolve, reject) => {
-    const settle = (): void => {
-      pendingWorkerRejects.delete(id)
-      worker.removeEventListener('message', onMessage)
-      worker.removeEventListener('error', onError)
-    }
     const onMessage = (
       ev: MessageEvent<{ id: number; order: ArrayBuffer }>,
     ): void => {
@@ -146,6 +135,11 @@ function computeCenterOutAnnotationOrderInWorker(
     const onError = (err: ErrorEvent): void => {
       settle()
       reject(err.error ?? new Error(String(err.message)))
+    }
+    const settle = (): void => {
+      pendingWorkerRejects.delete(id)
+      worker.removeEventListener('message', onMessage)
+      worker.removeEventListener('error', onError)
     }
     worker.addEventListener('message', onMessage)
     worker.addEventListener('error', onError)

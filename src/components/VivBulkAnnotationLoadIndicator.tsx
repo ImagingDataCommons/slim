@@ -79,7 +79,7 @@ const VivBulkAnnotationLoadIndicator: React.FC<
 
   useEffect(() => {
     if (!active) {
-      return
+      return undefined
     }
     const id = window.setInterval(() => {
       setNowMs(Date.now())

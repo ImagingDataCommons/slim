@@ -20,10 +20,8 @@ export const VIV_BULK_LOD_MAX_LEVELS_FROM_FINEST = 16
 /** Pure read (no writes at import time); the key is persisted on explicit set. */
 function readEnabled(): boolean {
   try {
-    const v = window.localStorage.getItem(ENABLED_KEY)
-    if (v === 'false') {
-      return false
-    }
+    const stored = window.localStorage.getItem(ENABLED_KEY)
+    return stored !== 'false'
   } catch {
     /* ignore */
   }
@@ -32,13 +30,13 @@ function readEnabled(): boolean {
 
 function readLevelsFromFinest(): number | null {
   try {
-    const v = window.localStorage.getItem(LEVELS_KEY)
-    if (v == null || v === '') {
+    const stored = window.localStorage.getItem(LEVELS_KEY)
+    if (stored == null || stored === '') {
       return null
     }
-    const n = Number(v)
-    if (Number.isFinite(n) && n >= 0) {
-      return Math.min(VIV_BULK_LOD_MAX_LEVELS_FROM_FINEST, Math.floor(n))
+    const parsed = Number(stored)
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      return Math.min(VIV_BULK_LOD_MAX_LEVELS_FROM_FINEST, Math.floor(parsed))
     }
   } catch {
     /* ignore */
