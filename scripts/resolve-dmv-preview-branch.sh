@@ -2,12 +2,22 @@
 set -euo pipefail
 
 DMV_REPO='https://github.com/ImagingDataCommons/dicom-microscopy-viewer.git'
+DMV_REPO_SLUG='ImagingDataCommons/dicom-microscopy-viewer'
 
 is_safe_ref() {
   case "$1" in
     ''|*[!A-Za-z0-9._/-]*|.*|*.) return 1 ;;
     *) return 0 ;;
   esac
+}
+
+# Check if there's an open PR for a branch in DMV repo.
+# Returns 0 (true) if an open PR exists, 1 (false) otherwise.
+has_open_pr() {
+  local branch="$1"
+  local count
+  count="$(gh pr list --repo "${DMV_REPO_SLUG}" --head "${branch}" --state open --json number --jq 'length' 2>/dev/null || echo 0)"
+  [ "${count}" -gt 0 ]
 }
 
 # Strip HTML comments so PR-template examples cannot be parsed as values.
@@ -45,16 +55,24 @@ if [ -n "${SHA}" ]; then
   case "${SHA}" in
     *[!0-9a-fA-F]*|'' ) echo "::error::Unexpected git SHA from ls-remote"; exit 1 ;;
   esac
-  echo "Using DMV branch '${BRANCH}' (${SOURCE}) at ${SHA}"
-  {
-    echo "use_git=true"
-    echo "ref=${BRANCH}"
-    echo "sha=${SHA}"
-    echo "source=${SOURCE}"
-  } >> "${GITHUB_OUTPUT}"
+
+  # Require an open PR in DMV for both matching branches and explicit dmv-branch:.
+  # This prevents picking up stale/merged branches that weren't deleted.
+  if ! has_open_pr "${BRANCH}"; then
+    echo "DMV branch '${BRANCH}' (${SOURCE}) exists but has no open PR; using package.json pin"
+    echo "use_git=false" >> "${GITHUB_OUTPUT}"
+  else
+    echo "Using DMV branch '${BRANCH}' (${SOURCE}) at ${SHA}"
+    {
+      echo "use_git=true"
+      echo "ref=${BRANCH}"
+      echo "sha=${SHA}"
+      echo "source=${SOURCE}"
+    } >> "${GITHUB_OUTPUT}"
+  fi
 elif [ -n "${EXPLICIT}" ]; then
-  echo "::error::dmv-branch '${EXPLICIT}' was set in the PR body but was not found on dicom-microscopy-viewer"
-  exit 1
+  echo "dmv-branch '${EXPLICIT}' was set but branch not found in DMV; using package.json pin"
+  echo "use_git=false" >> "${GITHUB_OUTPUT}"
 else
   echo "No matching DMV branch '${BRANCH}'; using package.json pin"
   echo "use_git=false" >> "${GITHUB_OUTPUT}"
