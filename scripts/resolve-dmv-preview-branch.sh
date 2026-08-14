@@ -56,10 +56,10 @@ if [ -n "${SHA}" ]; then
     *[!0-9a-fA-F]*|'' ) echo "::error::Unexpected git SHA from ls-remote"; exit 1 ;;
   esac
 
-  # For matching branches (not explicit dmv-branch:), require an open PR in DMV.
+  # Require an open PR in DMV for both matching branches and explicit dmv-branch:.
   # This prevents picking up stale/merged branches that weren't deleted.
-  if [ "${SOURCE}" = "matching-branch" ] && ! has_open_pr "${BRANCH}"; then
-    echo "Matching DMV branch '${BRANCH}' exists but has no open PR; using package.json pin"
+  if ! has_open_pr "${BRANCH}"; then
+    echo "DMV branch '${BRANCH}' (${SOURCE}) exists but has no open PR; using package.json pin"
     echo "use_git=false" >> "${GITHUB_OUTPUT}"
   else
     echo "Using DMV branch '${BRANCH}' (${SOURCE}) at ${SHA}"
@@ -71,8 +71,8 @@ if [ -n "${SHA}" ]; then
     } >> "${GITHUB_OUTPUT}"
   fi
 elif [ -n "${EXPLICIT}" ]; then
-  echo "::error::dmv-branch '${EXPLICIT}' was set in the PR body but was not found on dicom-microscopy-viewer"
-  exit 1
+  echo "dmv-branch '${EXPLICIT}' was set but branch not found in DMV; using package.json pin"
+  echo "use_git=false" >> "${GITHUB_OUTPUT}"
 else
   echo "No matching DMV branch '${BRANCH}'; using package.json pin"
   echo "use_git=false" >> "${GITHUB_OUTPUT}"
