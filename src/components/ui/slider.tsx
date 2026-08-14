@@ -1,3 +1,4 @@
+// skipcq: JS-C1003 - Radix primitives are designed to be used with namespace imports
 import * as SliderPrimitive from '@radix-ui/react-slider'
 import {
   type ComponentPropsWithoutRef,

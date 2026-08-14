@@ -1,3 +1,4 @@
+// skipcq: JS-C1003 - Radix primitives are designed to be used with namespace imports
 import * as SwitchPrimitive from '@radix-ui/react-switch'
 import {
   type ComponentPropsWithoutRef,
