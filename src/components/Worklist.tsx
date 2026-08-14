@@ -153,18 +153,15 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     window.addEventListener('resize', this.updateTableScrollY)
   }
 
-  componentDidUpdate(
-    previousProps: WorklistProps,
-    previousState: WorklistState,
-  ): void {
-    if (this.props.clients !== previousProps.clients) {
+  componentDidUpdate(prevProps: WorklistProps, prevState: WorklistState): void {
+    if (this.props.clients !== prevProps.clients) {
       this.searchForStudies()
     }
     // Pagination bar can appear/hide (hideOnSinglePage); remeasure the table pane.
     if (
-      previousState.numStudies !== this.state.numStudies ||
-      previousState.pageSize !== this.state.pageSize ||
-      previousState.isLoading !== this.state.isLoading
+      prevState.numStudies !== this.state.numStudies ||
+      prevState.pageSize !== this.state.pageSize ||
+      prevState.isLoading !== this.state.isLoading
     ) {
       this.updateTableScrollY()
     }

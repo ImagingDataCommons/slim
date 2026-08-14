@@ -33,6 +33,7 @@ import {
 import ClinicalTrial from './ClinicalTrial'
 import Patient from './Patient'
 import SlideList from './SlideList'
+// skipcq: JS-W1028 - SlideViewer has a default export
 import SlideViewer from './SlideViewer'
 import Study from './Study'
 
@@ -200,6 +201,7 @@ function ParametrizedSlideViewer({
         }
       }
 
+      // skipcq: JS-0098 - void operator intentionally discards the Promise
       void findReferencedSlide()
     }
   }, [
