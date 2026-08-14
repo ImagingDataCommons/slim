@@ -2247,6 +2247,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             uid,
           ),
         }))
+        // skipcq: JS-0320
         delete this.annotationGroupLoadDoneTimers[uid]
       },
       phase === 'error' ? 6000 : 4000,
@@ -2256,6 +2257,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   clearAllAnnotationGroupLoadDoneTimers = (): void => {
     for (const uid of Object.keys(this.annotationGroupLoadDoneTimers)) {
       window.clearTimeout(this.annotationGroupLoadDoneTimers[uid])
+      // skipcq: JS-0320
       delete this.annotationGroupLoadDoneTimers[uid]
     }
   }
@@ -2286,6 +2288,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       window.clearTimeout(
         this.annotationGroupLoadDoneTimers[payload.annotationGroupUID],
       )
+      // skipcq: JS-0320
       delete this.annotationGroupLoadDoneTimers[payload.annotationGroupUID]
     }
     this.setState((state) => ({
