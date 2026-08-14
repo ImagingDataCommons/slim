@@ -91,8 +91,8 @@ importers:
         specifier: ^0.48.23
         version: 0.48.23
       dicomweb-client:
-        specifier: ^0.11.2
-        version: 0.11.2
+        specifier: 0.11.3
+        version: 0.11.3
       oidc-client:
         specifier: ^1.11.5
         version: 1.11.5
@@ -2997,11 +2997,8 @@ packages:
   dicom-microscopy-viewer@0.48.23:
     resolution: {integrity: sha512-ZC3evLO0EEQyp8E6rT6VVsL5VJLqxyyPUZct2y4MBi2MTkHkR/yWEJn7wu8pTas8uC93ULWDxim5xqRa0s4/eQ==}
 
-  dicomweb-client@0.10.3:
-    resolution: {integrity: sha512-/fHNEAYiz8j+9TNOrNJ0k+hYqirbOT85B7vM7I4VkY8DeDQb4BDUeL3RX6huDVtn6ZQlR91dI+2tejLc5c99wA==}
-
-  dicomweb-client@0.11.2:
-    resolution: {integrity: sha512-HsjQtmw4XY35ZyrhW5WY7P5ZgGIrY1M1jfLeq2IKANDIqfWoE4QW496VcsbuX4qnTNoeHBauei73vU0WwMYrYg==}
+  dicomweb-client@0.11.3:
+    resolution: {integrity: sha512-7t1Rc/01fyFnKlQeNPW9Pvxvmsx8R/BgB2n7BxTuWirRFwlTC5upEeLeS3vO72P+n6/SQZ3+5ij0bgaWDHQG/A==}
 
   didyoumean@1.2.2:
     resolution: {integrity: sha512-gxtyfqMg7GKyhQmb056K7M3xszy/myH8w+B4RT+QXBQsvAOdc3XymqDDPHx1BgPgsdAA5SIifona89YtRATDzw==}
@@ -10428,9 +10425,7 @@ snapshots:
       ol: 10.9.0
       uuid: 9.0.1
 
-  dicomweb-client@0.10.3: {}
-
-  dicomweb-client@0.11.2: {}
+  dicomweb-client@0.11.3: {}
 
   didyoumean@1.2.2: {}
 
