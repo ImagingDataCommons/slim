@@ -177,6 +177,55 @@ function asciiBytes(s: string): Uint8Array {
   return out
 }
 
+/** Creates a growable buffer manager for streaming payload data. */
+function createPayloadBuffer(initialSize: number): {
+  getBuffer: () => Uint8Array
+  getLength: () => number
+  ensureCapacity: (extra: number) => void
+  setLength: (len: number) => void
+  push: (chunk: Uint8Array) => void
+  pushFrom: (chunk: Uint8Array, from: number) => void
+} {
+  let payload = new Uint8Array(initialSize)
+  let payloadLen = 0
+
+  const ensureCapacity = (extra: number): void => {
+    const needed = payloadLen + extra
+    if (needed <= payload.length) {
+      return
+    }
+    let next = payload.length * 2
+    while (next < needed) {
+      next *= 2
+    }
+    const grown = new Uint8Array(next)
+    grown.set(payload.subarray(0, payloadLen))
+    payload = grown
+  }
+
+  return {
+    getBuffer: () => payload,
+    getLength: () => payloadLen,
+    ensureCapacity,
+    setLength: (len: number) => {
+      payloadLen = len
+    },
+    push: (chunk: Uint8Array) => {
+      if (chunk.length === 0) return
+      ensureCapacity(chunk.length)
+      payload.set(chunk, payloadLen)
+      payloadLen += chunk.length
+    },
+    pushFrom: (chunk: Uint8Array, from: number) => {
+      const len = chunk.length - from
+      if (len <= 0) return
+      ensureCapacity(len)
+      payload.set(from === 0 ? chunk : chunk.subarray(from), payloadLen)
+      payloadLen += len
+    },
+  }
+}
+
 /** Index of `needle` within `haystack[0..hayLen)`, or -1. */
 function indexOfSubarray(
   haystack: Uint8Array,
@@ -608,34 +657,17 @@ async function streamBulkGraphicDataViaClientRanges(options: {
     })
   }
 
-  let payload = new Uint8Array(
+  const payloadBuf = createPayloadBuffer(
     Math.max(rangeChunkBytes * 4, firstChunk.byteLength),
   )
-  let payloadLen = 0
   let loadedBytes = 0
   let rangeIndex = 0
-
-  const ensureCapacity = (extra: number): void => {
-    const needed = payloadLen + extra
-    if (needed <= payload.length) {
-      return
-    }
-    let next = payload.length * 2
-    while (next < needed) {
-      next *= 2
-    }
-    const grown = new Uint8Array(next)
-    grown.set(payload.subarray(0, payloadLen))
-    payload = grown
-  }
 
   const pushBytes = (chunk: Uint8Array): void => {
     if (chunk.length === 0) {
       return
     }
-    ensureCapacity(chunk.length)
-    payload.set(chunk, payloadLen)
-    payloadLen += chunk.length
+    payloadBuf.push(chunk)
     loadedBytes += chunk.length
     onProgress?.(loadedBytes, null)
   }
@@ -648,8 +680,8 @@ async function streamBulkGraphicDataViaClientRanges(options: {
     prefixThrottleBytes,
     prefixEmitAnnotationStep,
     onPrefix,
-    getPayloadBuffer: () => payload.buffer,
-    getPayloadLength: () => payloadLen,
+    getPayloadBuffer: () => payloadBuf.getBuffer().buffer,
+    getPayloadLength: () => payloadBuf.getLength(),
     getLoadedBytes: () => loadedBytes,
     getTotalBytes: () => null,
     route: 'client-range',
@@ -664,7 +696,7 @@ async function streamBulkGraphicDataViaClientRanges(options: {
     if (signal?.aborted) {
       throw new DOMException('The operation was aborted.', 'AbortError')
     }
-    const start = payloadLen
+    const start = payloadBuf.getLength()
     const end = start + rangeChunkBytes - 1
     const requestedBytes = end - start + 1
     let parts: ArrayBuffer[]
@@ -731,7 +763,7 @@ async function streamBulkGraphicDataViaClientRanges(options: {
     await emitter.drain(!moreRemaining)
   }
 
-  const finalElementCount = Math.floor(payloadLen / elementByteSize)
+  const finalElementCount = Math.floor(payloadBuf.getLength() / elementByteSize)
   const finalView = await emitter.finish(finalElementCount)
 
   onProgress?.(loadedBytes, loadedBytes)
@@ -879,32 +911,15 @@ async function tryStreamBulkGraphicDataViaRanges(
     return null
   }
 
-  let payload = new Uint8Array(totalBytes)
-  let payloadLen = 0
+  const payloadBuf = createPayloadBuffer(totalBytes)
   let loadedBytes = 0
   let rangeRequestCount = 0
-
-  const ensureCapacity = (extra: number): void => {
-    const needed = payloadLen + extra
-    if (needed <= payload.length) {
-      return
-    }
-    let next = payload.length * 2
-    while (next < needed) {
-      next *= 2
-    }
-    const grown = new Uint8Array(next)
-    grown.set(payload.subarray(0, payloadLen))
-    payload = grown
-  }
 
   const pushBytes = (chunk: Uint8Array): void => {
     if (chunk.length === 0) {
       return
     }
-    ensureCapacity(chunk.length)
-    payload.set(chunk, payloadLen)
-    payloadLen += chunk.length
+    payloadBuf.push(chunk)
     loadedBytes += chunk.length
     onProgress?.(loadedBytes, totalBytes)
   }
@@ -917,8 +932,8 @@ async function tryStreamBulkGraphicDataViaRanges(
     prefixThrottleBytes,
     prefixEmitAnnotationStep,
     onPrefix,
-    getPayloadBuffer: () => payload.buffer,
-    getPayloadLength: () => payloadLen,
+    getPayloadBuffer: () => payloadBuf.getBuffer().buffer,
+    getPayloadLength: () => payloadBuf.getLength(),
     getLoadedBytes: () => loadedBytes,
     getTotalBytes: () => totalBytes,
     route: 'range',
@@ -947,15 +962,15 @@ async function tryStreamBulkGraphicDataViaRanges(
 
   await readResponseIntoPayload(firstResponse)
   rangeRequestCount++
-  await emitter.drain(payloadLen >= totalBytes)
+  await emitter.drain(payloadBuf.getLength() >= totalBytes)
 
   /** Cap mid-stream HTTP 200 restarts so a short full body cannot loop forever. */
   let fullBodyRestarts = 0
-  while (payloadLen < totalBytes) {
+  while (payloadBuf.getLength() < totalBytes) {
     if (signal?.aborted === true) {
       throw new DOMException('The operation was aborted.', 'AbortError')
     }
-    const start = payloadLen
+    const start = payloadBuf.getLength()
     const end = Math.min(totalBytes - 1, start + rangeChunkBytes - 1)
     const response = await fetch(resolvedUrl, {
       method: 'GET',
@@ -985,11 +1000,11 @@ async function tryStreamBulkGraphicDataViaRanges(
         '[Viv bulk] server ignored Range mid-stream (HTTP 200); restarting buffer with the full response body.',
         { start, end },
       )
-      payloadLen = 0
+      payloadBuf.setLength(0)
       emitter.resetByteBaseline()
       await readResponseIntoPayload(response)
       rangeRequestCount++
-      await emitter.drain(payloadLen >= totalBytes)
+      await emitter.drain(payloadBuf.getLength() >= totalBytes)
       continue
     }
     if (response.status !== 206) {
@@ -999,10 +1014,10 @@ async function tryStreamBulkGraphicDataViaRanges(
     }
     await readResponseIntoPayload(response)
     rangeRequestCount++
-    await emitter.drain(payloadLen >= totalBytes)
+    await emitter.drain(payloadBuf.getLength() >= totalBytes)
   }
 
-  const finalElementCount = Math.floor(payloadLen / elementByteSize)
+  const finalElementCount = Math.floor(payloadBuf.getLength() / elementByteSize)
   const finalView = await emitter.finish(finalElementCount)
 
   vivBulkAnnDebug('bulkStream:done', {
@@ -1090,9 +1105,11 @@ async function consumeBulkBodyStream(options: {
     prefixEmitAnnotationStep,
     onProgress,
     onPrefix,
-    expectMultipart,
+    // expectMultipart is kept in signature for API compatibility but boundary detection is authoritative
+    expectMultipart: _expectMultipart,
     route,
   } = options
+  void _expectMultipart
 
   const contentType = response.headers.get('Content-Type') ?? ''
   const contentLengthRaw = response.headers.get('Content-Length')
@@ -1101,42 +1118,18 @@ async function consumeBulkBodyStream(options: {
       ? Number(contentLengthRaw)
       : null
   const boundary = extractMultipartBoundary(contentType)
-  const isMultipart = expectMultipart ? boundary != null : boundary != null
+  const isMultipart = boundary != null
 
   const closingDelimiter =
     boundary != null ? asciiBytes(`\r\n--${boundary}`) : new Uint8Array(0)
   const trailingGuard = isMultipart ? closingDelimiter.length + 8 : 0
   const headerTerminator = asciiBytes('\r\n\r\n')
 
-  let payload =
+  const initialSize =
     totalBytes != null && Number.isFinite(totalBytes) && totalBytes > 0
-      ? new Uint8Array(totalBytes)
-      : new Uint8Array(4 * 1024 * 1024)
-  let payloadLen = 0
-
-  const ensureCapacity = (extra: number): void => {
-    const needed = payloadLen + extra
-    if (needed <= payload.length) {
-      return
-    }
-    let next = payload.length * 2
-    while (next < needed) {
-      next *= 2
-    }
-    const grown = new Uint8Array(next)
-    grown.set(payload.subarray(0, payloadLen))
-    payload = grown
-  }
-
-  const pushPayload = (chunk: Uint8Array, from: number): void => {
-    const len = chunk.length - from
-    if (len <= 0) {
-      return
-    }
-    ensureCapacity(len)
-    payload.set(from === 0 ? chunk : chunk.subarray(from), payloadLen)
-    payloadLen += len
-  }
+      ? totalBytes
+      : 4 * 1024 * 1024
+  const payloadBuf = createPayloadBuffer(initialSize)
 
   let headerFound = !isMultipart
   let headerBytes = new Uint8Array(0)
@@ -1160,8 +1153,8 @@ async function consumeBulkBodyStream(options: {
     prefixThrottleBytes,
     prefixEmitAnnotationStep,
     onPrefix,
-    getPayloadBuffer: () => payload.buffer,
-    getPayloadLength: () => payloadLen,
+    getPayloadBuffer: () => payloadBuf.getBuffer().buffer,
+    getPayloadLength: () => payloadBuf.getLength(),
     getLoadedBytes: () => loadedBytes,
     getTotalBytes: () => totalBytes,
     trailingGuardBytes: trailingGuard,
@@ -1201,9 +1194,9 @@ async function consumeBulkBodyStream(options: {
         }
         headerFound = true
         headerBytes = new Uint8Array(0)
-        pushPayload(merged, term + headerTerminator.length)
+        payloadBuf.pushFrom(merged, term + headerTerminator.length)
       } else {
-        pushPayload(value, 0)
+        payloadBuf.pushFrom(value, 0)
       }
 
       await emitter.drain(false)
@@ -1212,15 +1205,19 @@ async function consumeBulkBodyStream(options: {
     reader.releaseLock?.()
   }
 
-  let payloadEnd = payloadLen
+  let payloadEnd = payloadBuf.getLength()
   if (isMultipart) {
-    const found = lastIndexOfSubarray(payload, payloadLen, closingDelimiter)
+    const found = lastIndexOfSubarray(
+      payloadBuf.getBuffer(),
+      payloadBuf.getLength(),
+      closingDelimiter,
+    )
     if (found >= 0) {
       payloadEnd = found
     }
   }
   const finalElementCount = Math.floor(payloadEnd / elementByteSize)
-  payloadLen = payloadEnd
+  payloadBuf.setLength(payloadEnd)
 
   const finalView = await emitter.finish(finalElementCount, {
     finalDrainDone: false,

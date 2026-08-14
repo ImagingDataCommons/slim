@@ -96,10 +96,11 @@ async function withBulkFetchRetry<T>(
       if (!isRetryable || attempt === retries) {
         throw e
       }
-      const delay = Math.min(
-        45_000,
-        minDelayMs * 2 ** (attempt - 1) * (0.6 + Math.random() * 0.8),
-      )
+      // Jitter factor for retry backoff (not security-sensitive)
+      const jitterArray = new Uint32Array(1)
+      crypto.getRandomValues(jitterArray)
+      const jitter = 0.6 + (jitterArray[0] / 0xffffffff) * 0.8
+      const delay = Math.min(45_000, minDelayMs * 2 ** (attempt - 1) * jitter)
       console.warn(
         `[Viv bulk] ${label} failed (attempt ${attempt}/${retries}); retrying in ${Math.round(delay)}ms`,
         e,
@@ -1044,7 +1045,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
       err: e instanceof Error ? e.message : String(e),
     })
     logger.warn(
-      `getFeaturesFromBulkAnnotations failed`,
+      'getFeaturesFromBulkAnnotations failed',
       { annotationGroupUID, graphicType },
       e,
     )
@@ -1088,7 +1089,7 @@ export async function hydrateVivBulkGroupLayerSlice(options: {
     route: 'ol+dvm',
     ok: deckSlices.length > 0,
   })
-  logger.log(`group → deck (lazy)`, {
+  logger.log('group → deck (lazy)', {
     annotationGroupUID,
     graphicType,
     olFeatures: features.length,
@@ -1544,7 +1545,7 @@ async function tryStreamingBulkHydrate(options: {
         },
       )
       logger.warn(
-        `bulk streaming failed after partial paint; skipping monolithic fallback to avoid duplicate layers`,
+        'bulk streaming failed after partial paint; skipping monolithic fallback to avoid duplicate layers',
         { annotationGroupUID, graphicType, lastEmittedIndex },
         e,
       )
@@ -1556,7 +1557,7 @@ async function tryStreamingBulkHydrate(options: {
       err: e instanceof Error ? e.message : String(e),
     })
     logger.warn(
-      `bulk streaming failed; falling back to monolithic retrieve`,
+      'bulk streaming failed; falling back to monolithic retrieve',
       { annotationGroupUID, graphicType },
       e,
     )
@@ -2197,7 +2198,7 @@ async function buildPathLayersFromGraphicData(options: {
     const maxVerts =
       Math.ceil((roofExclusive - offset) / coordinateDimensionality) + 4
     const buf = new Float64Array(Math.max(maxVerts * 2, 8))
-    let w = 0
+    let writeIdx = 0
     for (let j = offset; j < roofExclusive; j++) {
       if (j + coordinateDimensionality - 1 >= graphicData.length) {
         j += coordinateDimensionality - 1
@@ -2212,12 +2213,12 @@ async function buildPathLayersFromGraphicData(options: {
         j += coordinateDimensionality - 1
         continue
       }
-      bulkVertexToDeckFastWrite(gx, gy, deckCoeffs, buf, w)
-      w += 2
+      bulkVertexToDeckFastWrite(gx, gy, deckCoeffs, buf, writeIdx)
+      writeIdx += 2
       j += coordinateDimensionality - 1
     }
-    if (w >= 4) {
-      chunkRows.push({ pathFlat: buf.slice(0, w) })
+    if (writeIdx >= 4) {
+      chunkRows.push({ pathFlat: buf.slice(0, writeIdx) })
       totalPathRows++
       if (chunkRows.length >= VIV_BULK_PATHS_PER_PATH_LAYER) {
         const carryOn = await flushChunk(false)
@@ -2384,7 +2385,7 @@ export async function rebuildVivBulkLayersForViewport(options: {
 }
 
 /** @deprecated Use {@link rebuildVivBulkLayersForViewport} with viewport bounds. */
-export async function buildVivBulkFullLayersFromGraphicCache(options: {
+export function buildVivBulkFullLayersFromGraphicCache(options: {
   cache: VivBulkGraphicCache
   viewportBounds: DeckViewportBounds
   deckZoom?: number
@@ -2411,13 +2412,13 @@ function resolveBulkSimpleAnnotationsApi(): BulkSimpleAnnotationsApi {
     return ns
   }
   const root = dmv as unknown as Record<string, unknown>
-  logger.error(`missing bulkSimpleAnnotations on resolved DMV module`, {
+  logger.error('missing bulkSimpleAnnotations on resolved DMV module', {
     dmvTopKeys: Object.keys(root),
   })
   const msg =
     'dicom-microscopy-viewer: no `bulkSimpleAnnotations` in the loaded bundle. ' +
     'Rebuild the linked package: `cd ../dicom-microscopy-viewer && bun run build`, then restart Slim dev.'
-  logger.error(`${msg}`)
+  logger.error(msg)
   throw new Error(msg)
 }
 
@@ -2425,10 +2426,10 @@ function pickStr(
   obj: Record<string, unknown>,
   ...keys: string[]
 ): string | undefined {
-  for (const k of keys) {
-    const v = obj[k]
-    if (v != null && String(v).length > 0) {
-      return String(v)
+  for (const key of keys) {
+    const val = obj[key]
+    if (val != null && String(val).length > 0) {
+      return String(val)
     }
   }
   return undefined
@@ -2565,37 +2566,39 @@ function appendOlGeometry(
   if (geom === null || typeof geom !== 'object') {
     return
   }
-  const g = geom as {
+  const geometry = geom as {
     getType?: () => string
     getCoordinates?: () => unknown
     getCenter?: () => number[]
     getRadius?: () => number
   }
-  const t = g.getType?.()
-  if (t === 'Point') {
-    const c = g.getCoordinates?.() as number[]
-    if (c?.length >= 2) {
-      points.push([c[0], openLayersMapYToVivWorldY(c[1])])
+  const geometryType = geometry.getType?.()
+  if (geometryType === 'Point') {
+    const coords = geometry.getCoordinates?.() as number[]
+    if (coords?.length >= 2) {
+      points.push([coords[0], openLayersMapYToVivWorldY(coords[1])])
     }
     return
   }
-  if (t === 'LineString') {
-    const c = g.getCoordinates?.() as number[][]
-    if (c?.length) {
+  if (geometryType === 'LineString') {
+    const coords = geometry.getCoordinates?.() as number[][]
+    if (coords?.length) {
       pathRows.push({
-        path: c.map((p): Position => [p[0], openLayersMapYToVivWorldY(p[1])]),
+        path: coords.map(
+          (pt): Position => [pt[0], openLayersMapYToVivWorldY(pt[1])],
+        ),
         closed: false,
       })
     }
     return
   }
-  if (t === 'Polygon') {
-    const rings = g.getCoordinates?.() as number[][][]
+  if (geometryType === 'Polygon') {
+    const rings = geometry.getCoordinates?.() as number[][][]
     if (rings) {
       for (const ring of rings) {
         pathRows.push({
           path: ring.map(
-            (p): Position => [p[0], openLayersMapYToVivWorldY(p[1])],
+            (pt): Position => [pt[0], openLayersMapYToVivWorldY(pt[1])],
           ),
           closed: true,
         })
@@ -2603,24 +2606,24 @@ function appendOlGeometry(
     }
     return
   }
-  if (t === 'Circle') {
-    const center = g.getCenter?.()
-    const r = g.getRadius?.()
+  if (geometryType === 'Circle') {
+    const center = geometry.getCenter?.()
+    const radius = geometry.getRadius?.()
     if (
       center != null &&
       center.length >= 2 &&
-      typeof r === 'number' &&
-      r > 0
+      typeof radius === 'number' &&
+      radius > 0
     ) {
-      const n = 48
+      const segmentCount = 48
       const path: Position[] = []
-      const cx = center[0]
-      const cy = center[1]
-      for (let i = 0; i <= n; i++) {
-        const a = (i / n) * Math.PI * 2
+      const centerX = center[0]
+      const centerY = center[1]
+      for (let i = 0; i <= segmentCount; i++) {
+        const angle = (i / segmentCount) * Math.PI * 2
         path.push([
-          cx + r * Math.cos(a),
-          openLayersMapYToVivWorldY(cy + r * Math.sin(a)),
+          centerX + radius * Math.cos(angle),
+          openLayersMapYToVivWorldY(centerY + radius * Math.sin(angle)),
         ])
       }
       pathRows.push({ path, closed: true })
