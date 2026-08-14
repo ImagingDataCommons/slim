@@ -43,9 +43,15 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
 
+      - name: Install GitHub CLI
+        # The Playwright container doesn't include gh CLI, needed for DMV branch resolution
+        run: |
+          apt-get update && apt-get install -y gh
+
       - name: Resolve DMV branch for preview
         id: dmv
         if: github.event_name == 'pull_request'
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_BODY: ${{ github.event.pull_request.body }}
@@ -55,6 +61,7 @@ jobs:
       - name: Install dependencies
         # Dependency build scripts are gated by allowBuilds in pnpm-workspace.yaml.
         # The git-hosted dicom-microscopy-viewer needs its prepare script to build dist/.
+        shell: bash
         env:
           DMV_USE_GIT: ${{ steps.dmv.outputs.use_git }}
           DMV_REF: ${{ steps.dmv.outputs.ref }}
