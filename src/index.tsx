@@ -151,6 +151,7 @@ const mountApp = (): void => {
  * complete the callback here and skip mounting React so the iframe cannot
  * share/corrupt the parent sessionStorage OIDC state.
  */
+// skipcq: JS-0098 - fire-and-forget async auth bootstrap with internal error handling
 void import('./auth/OidcManager')
   .then(async ({ completeSilentRenewIfFrame }) => {
     const handled = await completeSilentRenewIfFrame()

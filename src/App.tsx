@@ -378,10 +378,10 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   applyAuthorization = (authorization: string): void => {
-    for (const key in this.state.clients) {
+    for (const key of Object.keys(this.state.clients)) {
       this.state.clients[key].updateHeaders({ Authorization: authorization })
     }
-    for (const key in this.state.defaultClients) {
+    for (const key of Object.keys(this.state.defaultClients)) {
       this.state.defaultClients[key].updateHeaders({
         Authorization: authorization,
       })
