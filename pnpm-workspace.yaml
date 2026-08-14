@@ -41,3 +41,4 @@ overrides:
 
 minimumReleaseAgeExclude:
   - dicom-microscopy-viewer@0.48.23
+  - dicomweb-client@0.11.3
