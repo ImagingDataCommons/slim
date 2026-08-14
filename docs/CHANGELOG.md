@@ -1,3 +1,10 @@
+## [0.46.8](https://github.com/ImagingDataCommons/slim/compare/v0.46.7...v0.46.8) (2026-08-14)
+
+
+### Bug Fixes
+
+* **ci:** escape hyphens in pnpm pkg set property path ([#420](https://github.com/ImagingDataCommons/slim/issues/420)) ([1f25a1b](https://github.com/ImagingDataCommons/slim/commit/1f25a1b4fd89b8c29ae815c434b634f6618e2649))
+
 ## [0.46.7](https://github.com/ImagingDataCommons/slim/compare/v0.46.6...v0.46.7) (2026-08-13)
 
 
