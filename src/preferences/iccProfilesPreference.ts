@@ -16,11 +16,8 @@ const LEGACY_V1_KEY = 'slim_icc_profiles_enabled'
  */
 function readStored(): boolean {
   try {
-    const v = window.localStorage.getItem(STORAGE_KEY)
-    if (v === 'false') {
-      return false
-    }
-    return true
+    const stored = window.localStorage.getItem(STORAGE_KEY)
+    return stored !== 'false'
   } catch {
     /* ignore */
   }

@@ -177,11 +177,15 @@ function isXhrLike(req: unknown): req is XMLHttpRequest {
   if (req === null || typeof req !== 'object') {
     return false
   }
-  const r = req as { open?: unknown; abort?: unknown; readyState?: unknown }
+  const candidate = req as {
+    open?: unknown
+    abort?: unknown
+    readyState?: unknown
+  }
   return (
-    typeof r.open === 'function' &&
-    typeof r.abort === 'function' &&
-    typeof r.readyState === 'number'
+    typeof candidate.open === 'function' &&
+    typeof candidate.abort === 'function' &&
+    typeof candidate.readyState === 'number'
   )
 }
 
@@ -191,23 +195,23 @@ function xhrFromDicomwebErrorDeep(e: unknown): XMLHttpRequest | undefined {
   const seen = new Set<unknown>()
   while (cur !== null && typeof cur === 'object' && !seen.has(cur)) {
     seen.add(cur)
-    const o = cur as {
+    const errObj = cur as {
       request?: unknown
       cause?: unknown
       errors?: unknown[]
     }
-    if (isXhrLike(o.request)) {
-      return o.request
+    if (isXhrLike(errObj.request)) {
+      return errObj.request
     }
-    if (Array.isArray(o.errors)) {
-      for (const sub of o.errors) {
+    if (Array.isArray(errObj.errors)) {
+      for (const sub of errObj.errors) {
         const xhr = xhrFromDicomwebErrorDeep(sub)
         if (xhr !== undefined) {
           return xhr
         }
       }
     }
-    cur = o.cause
+    cur = errObj.cause
   }
   return undefined
 }
@@ -218,23 +222,23 @@ function dicomwebAbortedRequestErrorDeep(e: unknown): boolean {
   const seen = new Set<unknown>()
   while (cur !== null && typeof cur === 'object' && !seen.has(cur)) {
     seen.add(cur)
-    const o = cur as {
+    const errObj = cur as {
       message?: string
       status?: number
       cause?: unknown
       errors?: unknown[]
     }
-    if (o.message === 'request failed' && o.status === 0) {
+    if (errObj.message === 'request failed' && errObj.status === 0) {
       return true
     }
-    if (Array.isArray(o.errors)) {
-      for (const sub of o.errors) {
+    if (Array.isArray(errObj.errors)) {
+      for (const sub of errObj.errors) {
         if (dicomwebAbortedRequestErrorDeep(sub)) {
           return true
         }
       }
     }
-    cur = o.cause
+    cur = errObj.cause
   }
   return false
 }
@@ -259,9 +263,9 @@ function requestFailedMessageInErrorTree(e: unknown): boolean {
     if (typeof msg === 'string' && msg.includes('request failed')) {
       return true
     }
-    const c = (cur as { cause?: unknown }).cause
-    if (c !== undefined) {
-      stack.push(c)
+    const cause = (cur as { cause?: unknown }).cause
+    if (cause !== undefined) {
+      stack.push(cause)
     }
     const errors = (cur as { errors?: unknown[] }).errors
     if (Array.isArray(errors)) {
@@ -283,23 +287,23 @@ function objectGraphHasDicomwebTileAbort(root: unknown): boolean {
   let nodes = 0
   const maxNodes = 48
   while (queue.length > 0 && nodes < maxNodes) {
-    const v = queue.shift()
-    if (v === null || typeof v !== 'object' || seen.has(v)) {
+    const item = queue.shift()
+    if (item === null || typeof item !== 'object' || seen.has(item)) {
       continue
     }
-    seen.add(v)
+    seen.add(item)
     nodes++
-    const o = v as Record<string, unknown>
-    const msg = o.message
-    const st = o.status
+    const obj = item as Record<string, unknown>
+    const msg = obj.message
+    const statusCode = obj.status
     const msgStr = typeof msg === 'string' ? msg : ''
     if (
-      st === 0 &&
+      statusCode === 0 &&
       (msg === 'request failed' || msgStr.includes('request failed'))
     ) {
       return true
     }
-    for (const val of Object.values(o)) {
+    for (const val of Object.values(obj)) {
       if (val !== null && typeof val === 'object') {
         queue.push(val)
       }
