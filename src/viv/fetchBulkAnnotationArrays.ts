@@ -1106,6 +1106,7 @@ async function consumeBulkBodyStream(options: {
     onProgress,
     onPrefix,
     // expectMultipart is kept in signature for API compatibility but boundary detection is authoritative
+    // skipcq: JS-0098 - _expectMultipart kept for API compatibility, boundary detection is authoritative
     expectMultipart: _expectMultipart,
     route,
   } = options
