@@ -75,14 +75,14 @@ export function computeOrthographicFitViewState(
   slideH: number,
   pan?: [number, number, number],
 ): { target: [number, number, number]; zoom: number } | null {
-  const w = Math.max(1, Math.floor(vw))
-  const h = Math.max(1, Math.floor(vh))
-  if (w < 32 || h < 32) {
+  const width = Math.max(1, Math.floor(vw))
+  const height = Math.max(1, Math.floor(vh))
+  if (width < 32 || height < 32) {
     return null
   }
   return {
     target: pan ? [pan[0], pan[1], pan[2] ?? 0] : [slideW / 2, slideH / 2, 0],
-    zoom: Math.log2(Math.min(w / slideW, h / slideH)),
+    zoom: Math.log2(Math.min(width / slideW, height / slideH)),
   }
 }
 
@@ -98,11 +98,11 @@ export function orthographicZoomLimits(
   slideH: number,
   pyramidLevelCount: number,
 ): { minZoom: number; maxZoom: number } {
-  const w = Math.max(1, vw)
-  const h = Math.max(1, vh)
+  const width = Math.max(1, vw)
+  const height = Math.max(1, vh)
   const sw = Math.max(1, slideW)
   const sh = Math.max(1, slideH)
-  const fitZ = Math.log2(Math.min(w / sw, h / sh))
+  const fitZ = Math.log2(Math.min(width / sw, height / sh))
   const n = Math.max(1, pyramidLevelCount)
   /** ~one orthographic zoom step per pyramid level toward full-res, then room for magnifying past native tile z=0. */
   return {
@@ -121,17 +121,17 @@ export function vivDeckTileZFromViewZoom(
   pyramidLevelCount: number,
   zoomOffset = 0,
 ): number {
-  const n = Math.max(1, pyramidLevelCount)
-  const minZoom = -Math.round(n - 1)
+  const levelCount = Math.max(1, pyramidLevelCount)
+  const minZoom = -Math.round(levelCount - 1)
   const maxZoom = 0
-  let z = Math.ceil(deckZoom) + zoomOffset
-  if (z < minZoom) {
-    z = minZoom
+  let tileZ = Math.ceil(deckZoom) + zoomOffset
+  if (tileZ < minZoom) {
+    tileZ = minZoom
   }
-  if (z > maxZoom) {
-    z = maxZoom
+  if (tileZ > maxZoom) {
+    tileZ = maxZoom
   }
-  return z
+  return tileZ
 }
 
 /** True when multiscale tiles use pyramid level 0 (finest), i.e. tile `z === 0`. */
@@ -179,20 +179,20 @@ const PIXEL_SPACING_LIKELY_UM_THRESHOLD_MM = 0.02
 function normalizePixelSpacingToMm(
   spacing: [number, number],
 ): [number, number] {
-  const a = spacing[0]
-  const b = spacing[1]
-  if (Math.min(a, b) > PIXEL_SPACING_LIKELY_UM_THRESHOLD_MM) {
-    return [a / 1000, b / 1000]
+  const spacingX = spacing[0]
+  const spacingY = spacing[1]
+  if (Math.min(spacingX, spacingY) > PIXEL_SPACING_LIKELY_UM_THRESHOLD_MM) {
+    return [spacingX / 1000, spacingY / 1000]
   }
-  return [a, b]
+  return [spacingX, spacingY]
 }
 
 function smoothstep(edge0: number, edge1: number, x: number): number {
   if (edge1 <= edge0) {
     return x >= edge1 ? 1 : 0
   }
-  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)))
-  return t * t * (3 - 2 * t)
+  const ratio = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)))
+  return ratio * ratio * (3 - 2 * ratio)
 }
 
 /**
@@ -277,9 +277,9 @@ export function computeVivBulkCentroidRadiusPixels(options: {
   const fitZ = Math.log2(Math.min(vw / slideWidth, vh / slideHeight))
   const highResGate = deckZoomHighResGate()
 
-  const t = smoothstep(fitZ, highResGate, deckZoom)
-  const floorPx = 0.08 + t * 0.65
-  const ceilPx = 0.14 + t * 3.2
+  const factor = smoothstep(fitZ, highResGate, deckZoom)
+  const floorPx = 0.08 + factor * 0.65
+  const ceilPx = 0.14 + factor * 3.2
 
   let radiusPx = Math.min(ceilPx, Math.max(floorPx, radiusFromPhysics * scale))
 

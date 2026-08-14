@@ -1940,6 +1940,7 @@ export function useVivBulkAnnotations(
         if (nextSlices === null) {
           nextSlices = { ...currentSlices }
         }
+        // skipcq: JS-0320 - cleanup of layer slices by dynamic uid
         delete nextSlices[uid]
       }
     }
@@ -1953,6 +1954,7 @@ export function useVivBulkAnnotations(
           if (next === null) {
             next = { ...prev }
           }
+          // skipcq: JS-0320 - cleanup of streaming overlays by dynamic uid
           delete next[uid]
         }
       }
@@ -1992,6 +1994,7 @@ export function useVivBulkAnnotations(
         /** Mark this view so the pan/zoom effect does not immediately rebuild again. */
         bulkFullPathAttemptKeyRef.current[uid] = attemptKey
       } else {
+        // skipcq: JS-0320 - cleanup of path attempt key by dynamic uid
         delete bulkFullPathAttemptKeyRef.current[uid]
       }
       runBulkViewportRebuildForGroup(uid, { quiet: true, force: true })
@@ -2054,6 +2057,7 @@ export function useVivBulkAnnotations(
       }
     }, 160)
 
+    // skipcq: JS-0045 - cleanup function returning undefined is valid in useEffect
     return () => {
       window.clearTimeout(timer)
     }
