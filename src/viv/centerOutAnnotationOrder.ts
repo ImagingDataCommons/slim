@@ -123,7 +123,17 @@ function computeCenterOutAnnotationOrderInWorker(
    */
   const firstVertexXY = firstVertexXYFromInput(options)
   return new Promise((resolve, reject) => {
-    const onMessage = (
+    // skipcq: JS-0357 - settle must be defined before onMessage/onError reference it
+    let onMessage: (
+      ev: MessageEvent<{ id: number; order: ArrayBuffer }>,
+    ) => void
+    let onError: (err: ErrorEvent) => void
+    const settle = (): void => {
+      pendingWorkerRejects.delete(id)
+      worker.removeEventListener('message', onMessage)
+      worker.removeEventListener('error', onError)
+    }
+    onMessage = (
       ev: MessageEvent<{ id: number; order: ArrayBuffer }>,
     ): void => {
       if (ev.data.id !== id) {
@@ -132,14 +142,9 @@ function computeCenterOutAnnotationOrderInWorker(
       settle()
       resolve(new Uint32Array(ev.data.order))
     }
-    const onError = (err: ErrorEvent): void => {
+    onError = (err: ErrorEvent): void => {
       settle()
       reject(err.error ?? new Error(String(err.message)))
-    }
-    const settle = (): void => {
-      pendingWorkerRejects.delete(id)
-      worker.removeEventListener('message', onMessage)
-      worker.removeEventListener('error', onError)
     }
     worker.addEventListener('message', onMessage)
     worker.addEventListener('error', onError)

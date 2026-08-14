@@ -335,29 +335,29 @@ export interface BulkAnnotationGeometryContext {
 function readVolumeImageViewerAffine(
   viewer: dmv.viewer.VolumeImageViewer,
 ): number[][] {
-  const v = viewer as unknown as Record<symbol, unknown>
-  const m = v[Symbol.for('affine')]
-  if (!Array.isArray(m)) {
+  const viewerRecord = viewer as unknown as Record<symbol, unknown>
+  const affineMatrix = viewerRecord[Symbol.for('affine')]
+  if (!Array.isArray(affineMatrix)) {
     throw new Error('VolumeImageViewer: affine transform not available')
   }
-  return m as number[][]
+  return affineMatrix as number[][]
 }
 
 function readVolumeImageViewerAffineInverse(
   viewer: dmv.viewer.VolumeImageViewer,
 ): number[][] {
   const sym = Object.getOwnPropertySymbols(viewer).find(
-    (s) => s.description === 'affineInverse',
+    (symbolRef) => symbolRef.description === 'affineInverse',
   )
   if (sym === undefined) {
     throw new Error('VolumeImageViewer: affineInverse symbol not found')
   }
-  const v = viewer as unknown as Record<symbol, unknown>
-  const m = v[sym]
-  if (!Array.isArray(m)) {
+  const viewerRecord = viewer as unknown as Record<symbol, unknown>
+  const affineInverseMatrix = viewerRecord[sym]
+  if (!Array.isArray(affineInverseMatrix)) {
     throw new Error('VolumeImageViewer: affine inverse not available')
   }
-  return m as number[][]
+  return affineInverseMatrix as number[][]
 }
 
 function readVolumeImageViewerPyramid(viewer: dmv.viewer.VolumeImageViewer): {
@@ -560,6 +560,7 @@ export class DicomLoader {
     this._decodedTileCacheGeneration++
   }
 
+  // skipcq: JS-0105 - method kept as instance method for consistency with cache operations
   private _decodedTileCacheKey(
     level: number,
     channel: string,
@@ -820,15 +821,15 @@ export class DicomLoader {
        * Validate bit depth only for instances the viewer will actually use —
        * an unsupported LABEL/OVERVIEW instance must not abort the whole viewer.
        */
-      const b = image.BitsAllocated
-      if (b !== 8 && b !== 16) {
+      const imageBits = image.BitsAllocated
+      if (imageBits !== 8 && imageBits !== 16) {
         throw new Error(
-          `Viv path: ${b}-bit pixel data is not supported (only 8 and 16).`,
+          `Viv path: ${imageBits}-bit pixel data is not supported (only 8 and 16).`,
         )
       }
       if (bitsAllocated === undefined) {
-        bitsAllocated = b
-      } else if (bitsAllocated !== b) {
+        bitsAllocated = imageBits
+      } else if (bitsAllocated !== imageBits) {
         throw new Error(
           'Viv path: mixed 8- and 16-bit instances in one series are not supported.',
         )
@@ -841,10 +842,10 @@ export class DicomLoader {
     }
     let spp: number | undefined
     for (const image of volumeImages) {
-      const s = image.SamplesPerPixel
+      const imageSpp = image.SamplesPerPixel
       if (spp === undefined) {
-        spp = s
-      } else if (spp !== s) {
+        spp = imageSpp
+      } else if (spp !== imageSpp) {
         throw new Error(
           'Viv path: mixed SamplesPerPixel values in one series are not supported.',
         )
@@ -964,6 +965,7 @@ export class DicomLoader {
     return id
   }
 
+  // skipcq: JS-0045 - explicit return undefined at end satisfies linter for async void
   /** One-time warmup of loader refs + decode layout (avoids per-tile async metadata). */
   private async _ensureTileDecodeReady(): Promise<void> {
     if (this._tileDecodeReady !== undefined) {
@@ -988,6 +990,7 @@ export class DicomLoader {
       }
       throw e
     }
+    return undefined
   }
 
   private async _getLoader(
@@ -1048,6 +1051,7 @@ export class DicomLoader {
     return this._shapes
   }
 
+  // skipcq: JS-R1005 - complexity is acceptable for tile decode dispatch logic
   async getTile({
     level,
     channel,
@@ -1279,12 +1283,12 @@ export class DicomLoader {
           )
           return
         }
-        const r = rw
-        const near2 = Math.abs(r - 2) <= 0.12
-        const near4 = Math.abs(r - 4) <= 0.2
+        const ratio = rw
+        const near2 = Math.abs(ratio - 2) <= 0.12
+        const near4 = Math.abs(ratio - 4) <= 0.2
         if (!near2 && !near4) {
           logger.warn(
-            `[Viv] Pyramid level step (~${r.toFixed(2)}×) is not ~2× between downsamplings. Deck.gl assumes 2× per zoom level; expect offset when switching resolutions.`,
+            `[Viv] Pyramid level step (~${ratio.toFixed(2)}×) is not ~2× between downsamplings. Deck.gl assumes 2× per zoom level; expect offset when switching resolutions.`,
           )
           return
         }
@@ -1385,8 +1389,8 @@ function insertSyntheticDyadicLevels(
     if (Math.abs(rW - rH) > 0.02) {
       continue
     }
-    const r = rW
-    if (r > 3.5 && r < 4.5) {
+    const ratio = rW
+    if (ratio > 3.5 && ratio < 4.5) {
       if (!loggedSynthetic) {
         logger.log(
           '[Viv] Inserting synthetic half-resolution pyramid level(s) (DICOM ~4× step) so deck.gl 2× tile alignment matches OpenLayers.',
@@ -1495,6 +1499,7 @@ export class DicomPixelSource {
     })
   }
 
+  // skipcq: JS-0105 - method kept as instance for Viv PixelSource interface compliance
   onTileError(err: Error): void {
     logger.error(`Tile error: ${err}`)
   }
@@ -1553,8 +1558,11 @@ export class SyntheticDyadicPixelSource {
     return this._finerDicomLevel
   }
 
-  async getRaster(): Promise<never> {
-    throw new Error('getRaster not supported for synthetic pyramid levels')
+  // skipcq: JS-0116 - async for interface compliance, throws synchronously
+  getRaster(): Promise<never> {
+    return Promise.reject(
+      new Error('getRaster not supported for synthetic pyramid levels'),
+    )
   }
 
   async getTile({
@@ -1652,6 +1660,7 @@ export class SyntheticDyadicPixelSource {
     return { data, width: this.tileSize, height: this.tileSize }
   }
 
+  // skipcq: JS-0105 - method kept as instance for Viv PixelSource interface compliance
   onTileError(err: Error): void {
     logger.error(`Tile error: ${err}`)
   }
