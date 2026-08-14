@@ -1,3 +1,10 @@
+## [0.46.10](https://github.com/ImagingDataCommons/slim/compare/v0.46.9...v0.46.10) (2026-08-14)
+
+
+### Bug Fixes
+
+* **ci:** build DMV when using git dependency from package.json ([#422](https://github.com/ImagingDataCommons/slim/issues/422)) ([3589c1a](https://github.com/ImagingDataCommons/slim/commit/3589c1adf77e39daf984426e33431d3bc9cc07b7))
+
 ## [0.46.9](https://github.com/ImagingDataCommons/slim/compare/v0.46.8...v0.46.9) (2026-08-14)
 
 
