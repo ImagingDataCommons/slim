@@ -3,6 +3,8 @@ name: slim/deploy-to-firebase
 on:
   pull_request:
     branches: [master]
+    # edited: re-run when the PR body changes (e.g. add/update dmv-branch:)
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [master]
 
@@ -19,9 +21,15 @@ jobs:
   deploy-firebase:
     name: "Deploy to Firebase"
     # Forked PRs cannot access the Firebase service account secret, so skip them.
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    # On pull_request edited, only re-run when the body changed (dmv-branch updates).
+    if: >
+      github.event_name == 'push' ||
+      (
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        (github.event.action != 'edited' || github.event.changes.body != null)
+      )
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -35,13 +43,64 @@ jobs:
           node-version: 24
           cache: pnpm
 
+      - name: Resolve DMV branch for preview
+        id: dmv
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: ./scripts/resolve-dmv-preview-branch.sh
+
       - name: Install dependencies
-        # Dependency build scripts are gated by allowBuilds in pnpm-workspace.yaml.
-        # The git-hosted dicom-microscopy-viewer needs its prepare script to build dist/.
-        run: pnpm install --frozen-lockfile
+        # Install without lifecycle scripts, then rebuild only packages that need prepare
+        # (dicom-microscopy-viewer dist/). Keeps Sonar happy while still building DMV.
+        env:
+          DMV_USE_GIT: ${{ steps.dmv.outputs.use_git }}
+          DMV_REF: ${{ steps.dmv.outputs.ref }}
+        run: |
+          set -euo pipefail
+          if [ "${DMV_USE_GIT}" = "true" ]; then
+            case "${DMV_REF}" in
+              ''|*[!A-Za-z0-9._/-]*|.*|*.)
+                echo "::error::Unsafe DMV_REF rejected"
+                exit 1
+                ;;
+            esac
+            pnpm pkg set "dependencies.dicom-microscopy-viewer=github:ImagingDataCommons/dicom-microscopy-viewer#${DMV_REF}"
+            pnpm install --no-frozen-lockfile --ignore-scripts
+          else
+            pnpm install --frozen-lockfile --ignore-scripts
+          fi
+          # allowBuilds in pnpm-workspace.yaml: core-js(+pure) and dicom-microscopy-viewer
+          pnpm rebuild dicom-microscopy-viewer core-js core-js-pure
+
+      - name: Require preview DICOMweb URL
+        env:
+          SLIM_PREVIEW_DICOMWEB_URL: ${{ secrets.SLIM_PREVIEW_DICOMWEB_URL || vars.SLIM_PREVIEW_DICOMWEB_URL }}
+        run: |
+          if [ -z "${SLIM_PREVIEW_DICOMWEB_URL}" ]; then
+            echo "::error::Set Actions secret or variable SLIM_PREVIEW_DICOMWEB_URL (used by public/config/preview.js via window.slim.env)."
+            exit 1
+          fi
 
       - name: Build
-        run: REACT_APP_CONFIG=preview PUBLIC_URL=/ pnpm run build
+        env:
+          REACT_APP_CONFIG: preview
+          PUBLIC_URL: /
+          SLIM_PREVIEW_DICOMWEB_URL: ${{ secrets.SLIM_PREVIEW_DICOMWEB_URL || vars.SLIM_PREVIEW_DICOMWEB_URL }}
+          REACT_APP_DMV_GIT_SHA: ${{ steps.dmv.outputs.sha }}
+        run: pnpm run build
+
+      - name: Note DMV source on PR
+        if: github.event_name == 'pull_request' && steps.dmv.outputs.use_git == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          DMV_REF: ${{ steps.dmv.outputs.ref }}
+          DMV_SHA: ${{ steps.dmv.outputs.sha }}
+          DMV_SOURCE: ${{ steps.dmv.outputs.source }}
+        run: |
+          gh pr comment "${PR_NUMBER}" --body "Firebase preview uses dicom-microscopy-viewer branch ${DMV_REF} (${DMV_SHA}, via ${DMV_SOURCE})."
 
       - name: Deploy preview
         if: github.event_name == 'pull_request'
