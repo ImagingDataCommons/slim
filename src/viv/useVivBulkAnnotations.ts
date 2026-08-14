@@ -855,6 +855,7 @@ export function useVivBulkAnnotations(
         })
       }
 
+      // skipcq: JS-0098 - fire-and-forget async viewport rebuild with state checks
       void rebuildVivBulkLayersForViewport({
         cache,
         viewportBounds,
@@ -921,6 +922,7 @@ export function useVivBulkAnnotations(
                 { uid, mode, priorLayers: existing?.layers.length ?? 0 },
               )
               /** Allow the next pan/zoom attempt key to retry this region. */
+              // skipcq: JS-0320 - cleanup of path attempt key by dynamic uid
               delete bulkFullPathAttemptKeyRef.current[uid]
             } else {
               const nextSlice: VivBulkAnnotationLayerSlice = {
@@ -1153,8 +1155,10 @@ export function useVivBulkAnnotations(
       }
     }
 
+    // skipcq: JS-0098 - fire-and-forget async hydration with internal cancellation
     void run()
     const bulkHydrateInFlight = bulkHydrateInFlightRef.current
+    // skipcq: JS-0045 - cleanup function returning undefined is valid in useEffect
     return () => {
       cancelled = true
       /**
@@ -1262,6 +1266,7 @@ export function useVivBulkAnnotations(
           return prev
         }
         const next = { ...prev }
+        // skipcq: JS-0320 - cleanup of streaming overlays by dynamic uid
         delete next[uid]
         return next
       })
@@ -1330,12 +1335,12 @@ export function useVivBulkAnnotations(
               opacity: 1,
               color: [...VIV_BULK_DEFAULT_OVERLAY_COLOR],
             }
-          const a = Math.round(Math.max(0, Math.min(1, st.opacity)) * 220)
+          const alpha = Math.round(Math.max(0, Math.min(1, st.opacity)) * 220)
           const rgba: [number, number, number, number] = [
             st.color[0] ?? VIV_BULK_DEFAULT_OVERLAY_COLOR[0],
             st.color[1] ?? VIV_BULK_DEFAULT_OVERLAY_COLOR[1],
             st.color[2] ?? VIV_BULK_DEFAULT_OVERLAY_COLOR[2],
-            a,
+            alpha,
           ]
           const geomNow = bulkGeometryRef.current
           const srNow = slideRef.current
@@ -1418,6 +1423,7 @@ export function useVivBulkAnnotations(
               return prev
             }
             const next = { ...prev }
+            // skipcq: JS-0320 - cleanup of streaming overlays by dynamic uid
             delete next[uid]
             return next
           })
@@ -1469,13 +1475,13 @@ export function useVivBulkAnnotations(
               slideHeight: sr.worldH,
               getDeckZoom: (): number => viewStateRef.current.zoom,
               isHighResolution: (): boolean => {
-                const g = bulkGeometryRef.current
-                if (g == null) {
+                const geom = bulkGeometryRef.current
+                if (geom == null) {
                   return false
                 }
                 return isBulkHighResRef.current(
                   viewStateRef.current.zoom,
-                  g.pyramid,
+                  geom.pyramid,
                 )
               },
               getViewportBounds: ():
@@ -1689,6 +1695,7 @@ export function useVivBulkAnnotations(
                 patchBulkLoadStatus((prev) =>
                   removeVivBulkGroupLoadState(prev, uid),
                 )
+                // skipcq: JS-0320 - cleanup of load start timestamp by dynamic uid
                 delete groupLoadStartedRef.current[uid]
               }
               return
@@ -1728,6 +1735,7 @@ export function useVivBulkAnnotations(
                   bulkLodHighResRef.current = false
                   setStreamingDeckOverlaysByUid((prev) => {
                     const next = { ...prev }
+                    // skipcq: JS-0320 - cleanup of streaming overlays by dynamic uid
                     delete next[uid]
                     return next
                   })
@@ -1747,6 +1755,7 @@ export function useVivBulkAnnotations(
                       return prev
                     }
                     const next = { ...prev }
+                    // skipcq: JS-0320 - cleanup of streaming overlays by dynamic uid
                     delete next[uid]
                     return next
                   })
@@ -1809,6 +1818,7 @@ export function useVivBulkAnnotations(
               patchBulkLoadStatus((prev) =>
                 removeVivBulkGroupLoadState(prev, uid),
               )
+              // skipcq: JS-0320 - cleanup of load start timestamp by dynamic uid
               delete groupLoadStartedRef.current[uid]
             }
           }),
@@ -1823,6 +1833,7 @@ export function useVivBulkAnnotations(
     })
     hydrateBatchActiveRef.current += 1
     setBulkHydrateTileThrottle(true)
+    // skipcq: JS-0098 - fire-and-forget batch settle with epoch check
     void Promise.allSettled(batchPromises).then(() => {
       if (hydrateBatchEpochRef.current !== batchEpoch) {
         return
@@ -1899,6 +1910,7 @@ export function useVivBulkAnnotations(
       if (slice?.layers.length) {
         detachVivBulkOverlayLayerData(slice.layers)
       }
+      // skipcq: JS-0320 - cleanup of graphic cache by dynamic uid
       delete bulkGraphicCacheByUidRef.current[uid]
       bulkViewportRebuildGenRef.current[uid] =
         (bulkViewportRebuildGenRef.current[uid] ?? 0) + 1
@@ -1912,9 +1924,11 @@ export function useVivBulkAnnotations(
       }
       streamingCentroidAccRef.current.delete(uid)
       patchBulkLoadStatus((prev) => removeVivBulkGroupLoadState(prev, uid))
+      // skipcq: JS-0320 - cleanup of load start timestamp by dynamic uid
       delete groupLoadStartedRef.current[uid]
       if (groupDoneTimersRef.current[uid] != null) {
         window.clearTimeout(groupDoneTimersRef.current[uid])
+        // skipcq: JS-0320 - cleanup of ref-tracked timers by dynamic uid
         delete groupDoneTimersRef.current[uid]
       }
     }
