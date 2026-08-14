@@ -73,20 +73,33 @@ Use the repository pull request template. Include a clear summary, testing notes
 
 If your Slim change depends on an unreleased
 [dicom-microscopy-viewer](https://github.com/ImagingDataCommons/dicom-microscopy-viewer)
-branch, the Firebase preview workflow can install that branch automatically:
+branch, the Firebase preview workflow can install that branch automatically.
 
-1. **Explicit:** add a line near the top of the PR body (template field):
+There are **two ways** to link a DMV branch (both require an open PR in DMV):
+
+1. **Explicit `dmv-branch:`** — add a line near the top of the PR body:
 
    ```text
    dmv-branch: feat/my-dmv-change
    ```
 
-2. **Same name:** use the same branch name in both repos (for example both
-   `feat/my-change`) and leave `dmv-branch` empty.
+2. **Matching branch name** — use the same branch name in both repos (for example
+   `feat/my-change` in both Slim and DMV). No configuration needed — the workflow
+   detects matching branches automatically.
 
-`dmv-branch` wins when set. If it points at a branch that does not exist on DMV,
-the preview job fails. If neither option applies, the preview uses the npm pin
-from `package.json`.
+If both methods apply, `dmv-branch:` takes priority. If neither applies, the
+preview uses the published npm version from `package.json`.
+
+#### PR comments
+
+The workflow automatically posts a comment on your PR indicating which DMV
+version the Firebase preview is using:
+
+- **Linked to DMV Branch** — shows the branch name, commit SHA, and source
+  (explicit `dmv-branch:` or matching branch name)
+- **Using Published DMV** — shows the version from `package.json`
+
+#### Retriggering the preview
 
 Editing the PR description to add or change `dmv-branch:` retriggers the Firebase
 preview workflow (body edits only; title-only edits are ignored).

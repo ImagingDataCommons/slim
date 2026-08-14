@@ -133,7 +133,9 @@ jobs:
           |---|---|
           | **Version** | \`${DMV_VERSION}\` |
 
-          > To link a DMV branch for testing, add \`dmv-branch: <branch-name>\` to the PR description (requires an open PR in DMV).
+          > **To link a DMV branch for testing** (requires an open PR in DMV):
+          > - Add \`dmv-branch: <branch-name>\` to the PR description, OR
+          > - Use the same branch name in both repos (automatic matching)
           EOF
           )"
           fi
