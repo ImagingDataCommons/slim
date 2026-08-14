@@ -177,7 +177,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       }
       const [, sh, sw] = sources[0].shape
       const bitsAllocated = dicomLoader.bitsAllocated ?? 16
-      const d = buildVivDisplayOptions(
+      const displayOpts = buildVivDisplayOptions(
         sh,
         sw,
         sources[0].shape[0],
@@ -192,9 +192,9 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
         pickable: false,
         loader: sources as never,
         modelMatrix: vivHorizontalFlipMatrix(sw),
-        selections: d.selections,
-        channelsVisible: d.channelsVisible,
-        contrastLimits: d.contrastLimits,
+        selections: displayOpts.selections,
+        channelsVisible: displayOpts.channelsVisible,
+        contrastLimits: displayOpts.contrastLimits,
         dtype: sources[0].dtype,
         /** One coarse getRaster when the pyramid fits a single tile (not RGB-only block). */
         excludeBackground,
@@ -223,7 +223,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
         worldW: sw,
         worldH: sh,
         levelCount: sources.length,
-        initialViewTarget: d.initialViewState.target,
+        initialViewTarget: displayOpts.initialViewState.target,
       }
     },
     [],
@@ -235,18 +235,18 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       return
     }
     const tick = (): void => {
-      const w = Math.max(1, el.clientWidth)
-      const h = Math.max(1, el.clientHeight)
-      setSize({ width: w, height: h })
-      const v = vivRef.current
+      const width = Math.max(1, el.clientWidth)
+      const height = Math.max(1, el.clientHeight)
+      setSize({ width, height })
+      const viv = vivRef.current
       const sp = slideRef.current
-      if (v?.initialViewState?.zoom != null || !sp || fitDoneRef.current) {
+      if (viv?.initialViewState?.zoom != null || !sp || fitDoneRef.current) {
         return
       }
-      const pan = v?.initialViewState?.target
+      const pan = viv?.initialViewState?.target
       const fit = computeOrthographicFitViewState(
-        w,
-        h,
+        width,
+        height,
         sp.worldW,
         sp.worldH,
         pan,
@@ -260,6 +260,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     const ro = new ResizeObserver(tick)
     ro.observe(el)
     tick()
+    // skipcq: JS-0045 - cleanup function returning undefined is valid in useLayoutEffect
     return () => {
       ro.disconnect()
       measureRef.current = null
@@ -324,10 +325,10 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           const vh = el ? Math.max(1, el.clientHeight) : 600
           const lim = orthographicZoomLimits(vw, vh, sw, sh, sourcesLength)
           const z0 = vivRef.current.initialViewState.zoom
-          const z = Math.min(lim.maxZoom, Math.max(lim.minZoom, z0))
+          const zoom = Math.min(lim.maxZoom, Math.max(lim.minZoom, z0))
           setViewState({
             target: built.initialViewTarget,
-            zoom: Number(z.toFixed(5)),
+            zoom: Number(zoom.toFixed(5)),
           })
         } else {
           const el = slotRef.current
@@ -372,6 +373,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
         logger.error(err)
         if (!cancelled) {
           iccAvailCbRef.current?.(false)
+          // skipcq: JS-0098 - fire-and-forget antd message notification
           void message.error(
             err instanceof Error
               ? err.message
@@ -385,6 +387,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       }
     }
 
+    // skipcq: JS-0098 - fire-and-forget async loader initialization with cancellation
     void run()
     return () => {
       cancelled = true
@@ -406,6 +409,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
     }
     const prevIccSynced = iccPropRef.current
     let cancelled = false
+    // skipcq: JS-0098 - fire-and-forget ICC toggle with internal error handling
     void (async () => {
       dl.setIccProfilesEnabled(iccProfilesEnabled)
       await dl.warmIccTileLoaders()
@@ -449,6 +453,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
           logger.error(restoreErr)
         }
         if (!cancelled) {
+          // skipcq: JS-0098 - fire-and-forget antd message notification
           void message.error(
             err instanceof Error
               ? err.message
@@ -457,6 +462,7 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
         }
       }
     })()
+    // skipcq: JS-0045 - cleanup function returning undefined is valid in useEffect
     return () => {
       cancelled = true
     }
@@ -600,9 +606,9 @@ const VivSlideViewport: React.FC<VivSlideViewportProps> = ({
       const rawZ = vs.zoom as number
       const zClamped = Math.min(lim.maxZoom, Math.max(lim.minZoom, rawZ))
       const zq = Number(zClamped.toFixed(5))
-      const t = vs.target as [number, number] | [number, number, number]
+      const tgt = vs.target as [number, number] | [number, number, number]
       setViewState({
-        target: [t[0], t[1], t[2] ?? 0],
+        target: [tgt[0], tgt[1], tgt[2] ?? 0],
         zoom: zq,
       })
     },
