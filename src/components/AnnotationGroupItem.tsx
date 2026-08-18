@@ -149,6 +149,8 @@ interface AnnotationGroupItemProps {
   defaultStyle: {
     opacity: number
     color: number[]
+    fill?: boolean
+    fillOpacity?: number
   }
   onAnnotationGroupClick: (annotationGroupUID: string) => void
   onVisibilityChange: ({
@@ -168,6 +170,8 @@ interface AnnotationGroupItemProps {
       color?: number[]
       limitValues?: number[]
       measurement?: dcmjs.sr.coding.CodedConcept
+      fill?: boolean
+      fillOpacity?: number
     }
   }) => void
 }
@@ -179,6 +183,8 @@ interface AnnotationGroupItemState {
     color?: number[]
     limitValues?: number[]
     measurement?: dcmjs.sr.coding.CodedConcept
+    fill?: boolean
+    fillOpacity?: number
   }
 }
 
@@ -197,6 +203,8 @@ class AnnotationGroupItem extends React.Component<
       currentStyle: {
         opacity: this.props.defaultStyle.opacity,
         color: this.props.defaultStyle.color,
+        fill: this.props.defaultStyle.fill ?? false,
+        fillOpacity: this.props.defaultStyle.fillOpacity ?? 0.5,
       },
     }
   }
@@ -215,9 +223,8 @@ class AnnotationGroupItem extends React.Component<
   handleColorChange = (color: number[]): void => {
     this.setState((state) => ({
       currentStyle: {
+        ...state.currentStyle,
         color,
-        opacity: state.currentStyle.opacity,
-        limitValues: state.currentStyle.limitValues,
       },
     }))
     this.props.onStyleChange({
@@ -234,13 +241,44 @@ class AnnotationGroupItem extends React.Component<
           opacity,
         },
       })
-      this.setState({
+      this.setState((state) => ({
         currentStyle: {
+          ...state.currentStyle,
           opacity,
-          color: this.state.currentStyle.color,
-          limitValues: this.state.currentStyle.limitValues,
+        },
+      }))
+    }
+  }
+
+  handleFillChange = (checked: boolean): void => {
+    this.props.onStyleChange({
+      uid: this.props.annotationGroup.uid,
+      styleOptions: {
+        fill: checked,
+      },
+    })
+    this.setState((state) => ({
+      currentStyle: {
+        ...state.currentStyle,
+        fill: checked,
+      },
+    }))
+  }
+
+  handleFillOpacityChange = (fillOpacity: number | null): void => {
+    if (fillOpacity !== null) {
+      this.props.onStyleChange({
+        uid: this.props.annotationGroup.uid,
+        styleOptions: {
+          fillOpacity,
         },
       })
+      this.setState((state) => ({
+        currentStyle: {
+          ...state.currentStyle,
+          fillOpacity,
+        },
+      }))
     }
   }
 
@@ -272,19 +310,12 @@ class AnnotationGroupItem extends React.Component<
         if (state.currentStyle.limitValues !== undefined) {
           return {
             currentStyle: {
-              color: state.currentStyle.color,
-              opacity: state.currentStyle.opacity,
+              ...state.currentStyle,
               limitValues: [value, state.currentStyle.limitValues[1]],
             },
           }
         } else {
-          return {
-            currentStyle: {
-              color: state.currentStyle.color,
-              opacity: state.currentStyle.opacity,
-              limitValues: state.currentStyle.limitValues,
-            },
-          }
+          return { currentStyle: state.currentStyle }
         }
       })
       this.props.onStyleChange({
@@ -306,19 +337,12 @@ class AnnotationGroupItem extends React.Component<
         if (state.currentStyle.limitValues !== undefined) {
           return {
             currentStyle: {
-              color: state.currentStyle.color,
-              opacity: state.currentStyle.opacity,
+              ...state.currentStyle,
               limitValues: [state.currentStyle.limitValues[0], value],
             },
           }
         } else {
-          return {
-            currentStyle: {
-              color: state.currentStyle.color,
-              opacity: state.currentStyle.opacity,
-              limitValues: state.currentStyle.limitValues,
-            },
-          }
+          return { currentStyle: state.currentStyle }
         }
       })
       this.props.onStyleChange({
@@ -333,8 +357,7 @@ class AnnotationGroupItem extends React.Component<
   handleLimitChange = (values: number[]): void => {
     this.setState((state) => ({
       currentStyle: {
-        color: state.currentStyle.color,
-        opacity: state.currentStyle.opacity,
+        ...state.currentStyle,
         limitValues: values,
       },
     }))
@@ -375,7 +398,7 @@ class AnnotationGroupItem extends React.Component<
       })
       this.setState((state) => ({
         currentStyle: {
-          opacity: state.currentStyle.opacity,
+          ...state.currentStyle,
           measurement,
         },
       }))
@@ -388,7 +411,7 @@ class AnnotationGroupItem extends React.Component<
       })
       this.setState((state) => ({
         currentStyle: {
-          opacity: state.currentStyle.opacity,
+          ...state.currentStyle,
           color: this.props.defaultStyle.color,
           limitValues: undefined,
         },
@@ -548,6 +571,60 @@ class AnnotationGroupItem extends React.Component<
       )
     }
 
+    // Fill settings for POLYGON, RECTANGLE, ELLIPSE graphic types
+    let fillSettings: React.ReactNode
+    if (
+      item.GraphicType === 'POLYGON' ||
+      item.GraphicType === 'RECTANGLE' ||
+      item.GraphicType === 'ELLIPSE'
+    ) {
+      fillSettings = (
+        <>
+          <Divider plain>Fill</Divider>
+          <Row justify="start" align="middle" gutter={[8, 8]}>
+            <Col span={8}>Enable fill</Col>
+            <Col span={16}>
+              <Switch
+                size="small"
+                checked={this.state.currentStyle.fill ?? false}
+                onChange={this.handleFillChange}
+              />
+            </Col>
+          </Row>
+          <Row
+            justify="start"
+            align="middle"
+            gutter={[8, 8]}
+            style={{ marginTop: '8px' }}
+          >
+            <Col span={8}>Fill opacity</Col>
+            <Col span={12}>
+              <Slider
+                min={0}
+                max={1}
+                step={0.01}
+                value={this.state.currentStyle.fillOpacity ?? 0.5}
+                onChange={this.handleFillOpacityChange}
+                disabled={!this.state.currentStyle.fill}
+              />
+            </Col>
+            <Col span={4}>
+              <InputNumber
+                min={0}
+                max={1}
+                step={0.01}
+                size="small"
+                style={{ width: '55px' }}
+                value={this.state.currentStyle.fillOpacity ?? 0.5}
+                onChange={this.handleFillOpacityChange}
+                disabled={!this.state.currentStyle.fill}
+              />
+            </Col>
+          </Row>
+        </>
+      )
+    }
+
     const settings = (
       <div>
         {colorSettings}
@@ -556,6 +633,7 @@ class AnnotationGroupItem extends React.Component<
           opacity={this.state.currentStyle.opacity}
           onChange={this.handleOpacityChange}
         />
+        {fillSettings}
         {explorationSettings}
       </div>
     )
