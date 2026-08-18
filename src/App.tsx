@@ -187,17 +187,22 @@ interface AppState {
   redirectTo?: string
   wasAuthSuccessful: boolean
   error?: ErrorMessageSettings
+  /** Bumped after mid-session auth recovery so views remount and refetch. */
+  authRecoveryKey: number
 }
 
 class App extends React.Component<AppProps, AppState> {
   private readonly auth?: AuthManager
+  private reauthInProgress = false
+  private unsubscribeAuthorization?: () => void
 
   private readonly handleDICOMwebError = (
     error: dwc.api.DICOMwebClientError,
     serverSettings: ServerSettings,
   ): void => {
     if (error.status === 401) {
-      this.signIn()
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      this.ensureAuthorized()
     } else if (error.status === 403) {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       NotificationMiddleware.onError(
@@ -295,6 +300,7 @@ class App extends React.Component<AppProps, AppState> {
       defaultClients,
       isLoading: true,
       wasAuthSuccessful: false,
+      authRecoveryKey: 0,
     }
   }
 
@@ -352,9 +358,9 @@ class App extends React.Component<AppProps, AppState> {
     tmpClient.updateHeaders(this.state.clients.default.headers)
     // Re-apply auth so the new client has the current token (avoids 401 when switching mid-session)
     if (this.auth != null && this.state.user != null) {
-      const token = await this.auth.getAuthorization()
-      if (token != null) {
-        tmpClient.updateHeaders({ Authorization: `Bearer ${token}` })
+      const authorization = await this.auth.getAuthorization()
+      if (authorization != null) {
+        tmpClient.updateHeaders({ Authorization: authorization })
       }
     }
     /**
@@ -371,49 +377,106 @@ class App extends React.Component<AppProps, AppState> {
     })
   }
 
+  applyAuthorization = (authorization: string): void => {
+    for (const key of Object.keys(this.state.clients)) {
+      this.state.clients[key].updateHeaders({ Authorization: authorization })
+    }
+    for (const key of Object.keys(this.state.defaultClients)) {
+      this.state.defaultClients[key].updateHeaders({
+        Authorization: authorization,
+      })
+    }
+  }
+
   /**
    * Handle successful authentication event.
    *
    * Authorizes the DICOMweb client to access the DICOMweb server and directs
-   * the user back to the App.
-   *
-   * @param user - Information about the user
-   * @param authorization - Value of the "Authorization" HTTP header field
+   * the user back to the pre-login route (via OIDC state).
    */
   handleSignIn = ({
     user,
     authorization,
+    returnUrl,
   }: {
     user: User
     authorization: string
+    returnUrl?: string
   }): void => {
-    for (const key in this.state.clients) {
-      const client = this.state.clients[key]
-      client.updateHeaders({ Authorization: authorization })
-    }
-    const storedPath = window.localStorage.getItem('slim_path')
-    const storedSearch = window.localStorage.getItem('slim_search')
-    if (storedPath !== null && storedPath !== '') {
-      const currentPath = window.location.pathname
-      if (storedPath !== currentPath) {
-        let path = storedPath
-        if (storedSearch !== null && storedSearch !== '') {
-          path += storedSearch
-        }
-        window.location.href = path
+    this.applyAuthorization(authorization)
+    this.setState({ user })
+
+    if (returnUrl != null && returnUrl !== '') {
+      const current = `${window.location.pathname}${window.location.search}`
+      if (returnUrl !== current) {
+        window.location.assign(returnUrl)
       }
     }
-    window.localStorage.removeItem('slim_path')
-    window.localStorage.removeItem('slim_search')
-    this.setState({ user })
+  }
+
+  /**
+   * Recover from an expired/missing access token without losing the route.
+   * Tries silent renew first; falls back to interactive redirect with returnUrl.
+   */
+  ensureAuthorized = async (): Promise<void> => {
+    if (this.auth == null || this.reauthInProgress) {
+      return
+    }
+    this.reauthInProgress = true
+    let redirectedToIdp = false
+    try {
+      const authorization = await this.auth.renewAuthorization()
+      if (authorization != null) {
+        this.applyAuthorization(authorization)
+        // Remount routed views so in-flight 401 failures refetch with the new token.
+        this.setState((state) => ({
+          authRecoveryKey: state.authRecoveryKey + 1,
+        }))
+        return
+      }
+      console.info('silent renew unavailable; starting interactive sign-in')
+      const outcome = await this.auth.signIn({
+        onSignIn: this.handleSignIn,
+        returnUrl: `${window.location.pathname}${window.location.search}`,
+      })
+      redirectedToIdp = outcome === 'redirected'
+      if (outcome === 'completed') {
+        // Token was refreshed without leaving the page; remount views to refetch.
+        this.setState((state) => ({
+          authRecoveryKey: state.authRecoveryKey + 1,
+        }))
+      }
+    } catch (error) {
+      console.error(error)
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.AUTH,
+        new CustomError(
+          errorTypes.AUTHENTICATION,
+          'Could not renew authorization.',
+        ),
+      )
+    } finally {
+      // oidc-client resolves signinRedirect as soon as navigation is assigned.
+      // Keep the guard set until unload so concurrent 401s cannot start another redirect.
+      if (!redirectedToIdp) {
+        this.reauthInProgress = false
+      }
+    }
   }
 
   signIn(): void {
     if (this.auth !== undefined) {
       console.info('try to sign in user')
       this.auth
-        .signIn({ onSignIn: this.handleSignIn })
-        .then(() => {
+        .signIn({
+          onSignIn: this.handleSignIn,
+          returnUrl: `${window.location.pathname}${window.location.search}`,
+        })
+        .then((outcome) => {
+          if (outcome === 'redirected') {
+            return
+          }
           console.info('sign-in was successful')
           this.setState({
             isLoading: false,
@@ -446,12 +509,6 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   componentDidMount(): void {
-    const path = window.localStorage.getItem('slim_path')
-    if (path === null || path === undefined || path === '') {
-      window.localStorage.setItem('slim_path', window.location.pathname)
-      window.localStorage.setItem('slim_search', window.location.search)
-    }
-
     // Restore cached server selection if it exists
     const cachedServerUrl = window.localStorage.getItem('slim_selected_server')
     if (
@@ -459,10 +516,23 @@ class App extends React.Component<AppProps, AppState> {
       cachedServerUrl !== undefined &&
       cachedServerUrl !== ''
     ) {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       this.handleServerSelection({ url: cachedServerUrl })
     }
 
+    if (this.auth != null) {
+      this.unsubscribeAuthorization = this.auth.onAuthorizationChange(
+        (authorization) => {
+          this.applyAuthorization(authorization)
+        },
+      )
+    }
+
     this.signIn()
+  }
+
+  componentWillUnmount(): void {
+    this.unsubscribeAuthorization?.()
   }
 
   render(): React.ReactNode {
@@ -489,16 +559,10 @@ class App extends React.Component<AppProps, AppState> {
 
     let isLogoutPossible = false
     let onLogout: () => void
-    if (
-      // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
-      this.props.config.oidc != null &&
-      this.props.config.oidc.endSessionEndpoint != null
-    ) {
+    if (this.auth != null) {
       onLogout = (): void => {
-        if (this.auth != null) {
-          // eslint-disable-next-line @typescript-eslint/no-floating-promises
-          this.auth.signOut()
-        }
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        this.auth?.signOut()
       }
       isLogoutPossible = true
     } else {
@@ -563,7 +627,7 @@ class App extends React.Component<AppProps, AppState> {
     } else {
       return (
         <BrowserRouter basename={this.props.config.path}>
-          <Routes>
+          <Routes key={this.state.authRecoveryKey}>
             <Route
               path={RoutePaths.ROOT}
               element={

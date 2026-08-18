@@ -1,4 +1,9 @@
-import { GCP_HEALTHCARE_V1_BASE, normalizeServerUrl } from '../url'
+import {
+  GCP_HEALTHCARE_V1_BASE,
+  isAuthorizationCodeInUrl,
+  isOidcAuthorizeCallbackUrl,
+  normalizeServerUrl,
+} from '../url'
 
 const storePath =
   '/projects/idc-sandbox-000/locations/us-central1/datasets/fedorov-dev-healthcare/dicomStores/sardana-lut-test'
@@ -59,5 +64,44 @@ describe('normalizeServerUrl', () => {
     const proxyUrl =
       'https://proxy.imaging.datacommons.cancer.gov/current/viewer-only-no-downloads-see-tinyurl-dot-com-slash-3j3d9jyp/dicomWeb'
     expect(normalizeServerUrl(proxyUrl)).toBe(proxyUrl)
+  })
+})
+
+describe('isOidcAuthorizeCallbackUrl', () => {
+  it('detects authorization code and implicit success responses', () => {
+    expect(
+      isOidcAuthorizeCallbackUrl({ search: '?code=abc&state=s', hash: '' }),
+    ).toBe(true)
+    expect(
+      isAuthorizationCodeInUrl({ search: '?code=abc&state=s', hash: '' }),
+    ).toBe(true)
+    expect(
+      isOidcAuthorizeCallbackUrl({
+        search: '',
+        hash: '#access_token=tok&token_type=Bearer',
+      }),
+    ).toBe(true)
+  })
+
+  it('detects IdP error responses without code/id_token (silent renew failure)', () => {
+    expect(
+      isOidcAuthorizeCallbackUrl({
+        search: '?error=login_required&state=s',
+        hash: '',
+      }),
+    ).toBe(true)
+    expect(
+      isAuthorizationCodeInUrl({
+        search: '?error=login_required&state=s',
+        hash: '',
+      }),
+    ).toBe(false)
+  })
+
+  it('ignores ordinary app URLs', () => {
+    expect(
+      isOidcAuthorizeCallbackUrl({ search: '?state=presentation', hash: '' }),
+    ).toBe(false)
+    expect(isOidcAuthorizeCallbackUrl({ search: '', hash: '' })).toBe(false)
   })
 })

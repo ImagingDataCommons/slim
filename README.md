@@ -408,9 +408,13 @@ window.config = {
 
 #### OAuth 2.0 configuration
 
-Create an [OIDC client ID for web application](https://developers.google.com/identity/sign-in/web/sign-in).
+Create an [OIDC client ID for web application](https://developers.google.com/identity/sign-in/web/sign-in) and register the app origin as an authorized redirect URI (same value as Slim's `path` / app root).
 
-Note that Google's OIDC implementation does not currently support the authorization code grant type with PKCE challenge for private clients. For the time being, the legacy implicit grant type has to be used.
+Existing configs continue to work without changes:
+- `grantType: "implicit"` (common for Google Cloud Healthcare setups) remains supported
+- Omitting `grantType` uses the authorization code response type (`code`)
+
+Deep links are restored after login through the OIDC `state` parameter (not `localStorage`). Silent token renewal reuses the same registered redirect URI (no additional IdP redirect URI is required).
 
 ## Development
 
