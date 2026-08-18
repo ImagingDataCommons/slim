@@ -40,5 +40,5 @@ overrides:
   underscore: 1.13.8
 
 minimumReleaseAgeExclude:
-  - dicom-microscopy-viewer@0.48.23
+  - dicom-microscopy-viewer@0.48.23 || 0.48.24
   - dicomweb-client@0.11.3

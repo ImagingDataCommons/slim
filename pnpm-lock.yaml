@@ -46,8 +46,8 @@ importers:
         specifier: ^5.2.1
         version: 5.3.0
       dicom-microscopy-viewer:
-        specifier: ^0.48.22
-        version: 0.48.23
+        specifier: ^0.48.24
+        version: 0.48.24
       dicomweb-client:
         specifier: 0.10.3
         version: 0.10.3
@@ -2637,11 +2637,14 @@ packages:
     engines: {node: '>= 4.2.1'}
     hasBin: true
 
-  dicom-microscopy-viewer@0.48.23:
-    resolution: {integrity: sha512-ZC3evLO0EEQyp8E6rT6VVsL5VJLqxyyPUZct2y4MBi2MTkHkR/yWEJn7wu8pTas8uC93ULWDxim5xqRa0s4/eQ==}
+  dicom-microscopy-viewer@0.48.24:
+    resolution: {integrity: sha512-016o/23eNqXMxgX5EjnDmFz1ROSMQmU7vmRlTVPUgshl6NaBrZzEyWkzq4BNaFFPfrE274AWdR5crW51cWh+9g==}
 
   dicomweb-client@0.10.3:
     resolution: {integrity: sha512-/fHNEAYiz8j+9TNOrNJ0k+hYqirbOT85B7vM7I4VkY8DeDQb4BDUeL3RX6huDVtn6ZQlR91dI+2tejLc5c99wA==}
+
+  dicomweb-client@0.11.3:
+    resolution: {integrity: sha512-7t1Rc/01fyFnKlQeNPW9Pvxvmsx8R/BgB2n7BxTuWirRFwlTC5upEeLeS3vO72P+n6/SQZ3+5ij0bgaWDHQG/A==}
 
   didyoumean@1.2.2:
     resolution: {integrity: sha512-gxtyfqMg7GKyhQmb056K7M3xszy/myH8w+B4RT+QXBQsvAOdc3XymqDDPHx1BgPgsdAA5SIifona89YtRATDzw==}
@@ -9422,7 +9425,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  dicom-microscopy-viewer@0.48.23:
+  dicom-microscopy-viewer@0.48.24:
     dependencies:
       '@cornerstonejs/codec-charls': 1.2.3
       '@cornerstonejs/codec-libjpeg-turbo-8bit': 1.2.2
@@ -9431,13 +9434,15 @@ snapshots:
       '@imagingdatacommons/dicomicc': 0.2.3
       colormap: 2.3.2
       dcmjs: 0.41.0
-      dicomweb-client: 0.10.3
+      dicomweb-client: 0.11.3
       image-type: 4.1.0
       mathjs: 11.12.0
       ol: 10.9.0
       uuid: 9.0.1
 
   dicomweb-client@0.10.3: {}
+
+  dicomweb-client@0.11.3: {}
 
   didyoumean@1.2.2: {}
 
