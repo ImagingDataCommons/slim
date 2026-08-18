@@ -6,7 +6,6 @@ import './index.css'
 
 import packageInfo from '../package.json'
 import type AppConfig from './AppConfig'
-import AppLoading from './components/AppLoading'
 import CustomErrorBoundary from './components/CustomErrorBoundary'
 import { logger } from './utils/logger'
 
