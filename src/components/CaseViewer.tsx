@@ -22,9 +22,18 @@ import {
   seriesUidFromSlide,
 } from '../utils/recoverSeriesInstanceUID'
 import { type RouteComponentProps, withRouter } from '../utils/router'
+import {
+  buildSeriesPath,
+  hasSeriesInPath,
+  isProjectsPath,
+  parseSeriesInstanceUID,
+  RoutePaths,
+  withSeriesInProjectPath,
+} from '../utils/routes'
 import ClinicalTrial from './ClinicalTrial'
 import Patient from './Patient'
 import SlideList from './SlideList'
+// skipcq: JS-W1028 - SlideViewer has a default export
 import SlideViewer from './SlideViewer'
 import Study from './Study'
 
@@ -192,6 +201,7 @@ function ParametrizedSlideViewer({
         }
       }
 
+      // skipcq: JS-0098 - void operator intentionally discards the Promise
       void findReferencedSlide()
     }
   }, [
@@ -262,22 +272,14 @@ function Viewer(props: ViewerProps): JSX.Element | null {
     seriesInstanceUID: string
   }): void => {
     console.info(`switch to series "${seriesInstanceUID}"`)
-    let urlPath = `/studies/${studyInstanceUID}/series/${seriesInstanceUID}`
+    let urlPath = buildSeriesPath(studyInstanceUID, seriesInstanceUID)
 
-    if (location.pathname.includes('/projects/')) {
-      urlPath = location.pathname
-      if (!location.pathname.includes('/series/')) {
-        urlPath += `/series/${seriesInstanceUID}`
-      } else {
-        urlPath = urlPath.replace(
-          /\/series\/[^/]+/,
-          `/series/${seriesInstanceUID}`,
-        )
-      }
+    if (isProjectsPath(location.pathname)) {
+      urlPath = withSeriesInProjectPath(location.pathname, seriesInstanceUID)
     }
 
     if (
-      location.pathname.includes('/series/') &&
+      hasSeriesInPath(location.pathname) &&
       location.search !== null &&
       location.search !== undefined
     ) {
@@ -307,11 +309,8 @@ function Viewer(props: ViewerProps): JSX.Element | null {
    * the first slide contained in the study.
    */
   let selectedSeriesInstanceUID: string
-  if (location.pathname.includes('series/')) {
-    const seriesFragment = location.pathname.split('series/')[1]
-    const seriesFromPath = seriesFragment.includes('/')
-      ? seriesFragment.split('/')[0]
-      : seriesFragment
+  const seriesFromPath = parseSeriesInstanceUID(location.pathname)
+  if (seriesFromPath !== '') {
     const slideForPath = findSeriesSlide(slides, seriesFromPath)
     selectedSeriesInstanceUID =
       slideForPath !== undefined
@@ -399,7 +398,7 @@ function Viewer(props: ViewerProps): JSX.Element | null {
 
       <Routes>
         <Route
-          path="/series/:seriesInstanceUID"
+          path={RoutePaths.SERIES}
           element={
             <ParametrizedSlideViewer
               clients={props.clients}

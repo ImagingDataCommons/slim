@@ -17,6 +17,7 @@ import NotificationMiddleware, {
 import { CustomError, errorTypes } from '../utils/CustomError'
 import { logger } from '../utils/logger'
 import { type RouteComponentProps, withRouter } from '../utils/router'
+import { buildStudyPath } from '../utils/routes'
 import { parseDate, parseName, parseSex, parseTime } from '../utils/values'
 import { SlimSpinner } from './AppLoading'
 
@@ -152,18 +153,15 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     window.addEventListener('resize', this.updateTableScrollY)
   }
 
-  componentDidUpdate(
-    previousProps: WorklistProps,
-    previousState: WorklistState,
-  ): void {
-    if (this.props.clients !== previousProps.clients) {
+  componentDidUpdate(prevProps: WorklistProps, prevState: WorklistState): void {
+    if (this.props.clients !== prevProps.clients) {
       this.searchForStudies()
     }
     // Pagination bar can appear/hide (hideOnSinglePage); remeasure the table pane.
     if (
-      previousState.numStudies !== this.state.numStudies ||
-      previousState.pageSize !== this.state.pageSize ||
-      previousState.isLoading !== this.state.isLoading
+      prevState.numStudies !== this.state.numStudies ||
+      prevState.pageSize !== this.state.pageSize ||
+      prevState.isLoading !== this.state.isLoading
     ) {
       this.updateTableScrollY()
     }
@@ -221,7 +219,7 @@ class Worklist extends React.Component<WorklistProps, WorklistState> {
     _event: React.SyntheticEvent,
     study: dmv.metadata.Study,
   ): void => {
-    this.props.navigate(`/studies/${study.StudyInstanceUID}`)
+    this.props.navigate(buildStudyPath(study.StudyInstanceUID))
   }
 
   private async collectModalitiesFromSeries(
