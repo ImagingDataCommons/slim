@@ -301,12 +301,13 @@ class App extends React.Component<AppProps, AppState> {
 
     message.config({ duration: 5 })
 
-    /** Snapshot before `?gcp=` appends a runtime, URL-supplied server. */
-    this.configuredOrigins = new Set(
-      props.config.servers
-        .map((server) => (server.url != null ? getOrigin(server.url) : baseUri))
-        .filter((origin): origin is string => origin !== undefined),
-    )
+    /**
+     * Hold the servers that came from the configuration file, before `?gcp=`
+     * appends a runtime, URL-supplied one. These are references, not copies:
+     * `_createClientMapping` rewrites `url` in place on `/projects/` routes, so
+     * the origins are read afterwards to capture the effective value.
+     */
+    const configuredServers = [...props.config.servers]
 
     App.addGcpSecondaryAnnotationServer(props.config)
 
@@ -317,6 +318,12 @@ class App extends React.Component<AppProps, AppState> {
       settings: props.config.servers,
       onError: this.handleDICOMwebError,
     })
+
+    this.configuredOrigins = new Set(
+      configuredServers
+        .map((server) => (server.url != null ? getOrigin(server.url) : baseUri))
+        .filter((origin): origin is string => origin !== undefined),
+    )
     this.applyAuthorizationPolicy(defaultClients)
 
     this.state = {

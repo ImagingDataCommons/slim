@@ -41,8 +41,10 @@ interface Store {
   authMode: AuthorizationMode
   /** Whether the token may currently be attached to this store. */
   authGranted: boolean
-  /** Set once escalation has been refused, so genuine errors surface again. */
+  /** Set once escalation has been refused, so it is not attempted again. */
   authRefused: boolean
+  /** Set once the withheld-credential notice was shown, to report it once. */
+  authRefusalReported: boolean
   client: dwc.api.DICOMwebClient
   settings: ServerSettings
 }
@@ -326,12 +328,13 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
         error: dwc.api.DICOMwebClientError,
       ) => {
         const store = this.stores[storeIndex]
-        if (store !== undefined && this.isAuthChallenge(store, error)) {
+        if (store !== undefined && this.isAnonymousChallenge(store, error)) {
           /**
            * The store was queried anonymously and the server asked for
-           * credentials. This is an expected step of the escalation flow, not a
-           * failure to report: `callStore` will obtain consent and retry, and
-           * reports the error itself if escalation does not happen.
+           * credentials. `callStore` owns this case: it escalates if it can and
+           * reports the withheld credential if it cannot. Passing it to the
+           * general handler would additionally trigger the expired-token
+           * recovery, which does not apply here.
            */
           return
         }
@@ -353,6 +356,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
         authMode,
         authGranted: authMode === 'always',
         authRefused: false,
+        authRefusalReported: false,
         client: new dwc.api.DICOMwebClient(clientSettings),
         settings: serverSettings,
       })
@@ -400,10 +404,17 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   }
 
   /**
-   * Whether an error is a server asking for credentials this store has not sent
-   * yet, as opposed to a genuine authorization failure or an expired token.
+   * Whether a server refused a request that we deliberately sent without
+   * credentials.
+   *
+   * This is distinct from a 401 against a credentialed store, which means the
+   * token expired. These must not be conflated: the application responds to the
+   * latter by renewing the session, up to an interactive redirect to the
+   * identity provider. Doing that here would drag the user through a sign-in
+   * they may have just declined, and could not help anyway — the request failed
+   * because the credential was withheld, not because it was stale.
    */
-  private readonly isAuthChallenge = (
+  private readonly isAnonymousChallenge = (
     store: Store,
     error: unknown,
   ): boolean => {
@@ -411,10 +422,39 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
     return (
       status !== undefined &&
       AUTH_CHALLENGE_STATUSES.has(status) &&
-      store.authMode === 'auto' &&
-      !store.authGranted &&
-      !store.authRefused &&
-      this.authorizationPolicy !== undefined
+      store.authMode !== 'always' &&
+      !store.authGranted
+    )
+  }
+
+  /**
+   * Whether such a challenge can still be escalated from, i.e. the store is
+   * negotiating, has not already been refused, and a policy exists to ask.
+   */
+  private readonly isAuthChallenge = (store: Store, error: unknown): boolean =>
+    this.isAnonymousChallenge(store, error) &&
+    store.authMode === 'auto' &&
+    !store.authRefused &&
+    this.authorizationPolicy !== undefined
+
+  /**
+   * Tell the user their token was withheld from a server that wants it, once
+   * per store. Reported directly rather than through the DICOMweb error
+   * handler, which would treat the 401 as an expired session and start a
+   * pointless re-authentication.
+   */
+  private readonly reportWithheldAuthorization = (store: Store): void => {
+    if (store.authRefusalReported) {
+      return
+    }
+    store.authRefusalReported = true
+    NotificationMiddleware.onError(
+      NotificationMiddlewareContext.DICOMWEB,
+      new CustomError(
+        errorTypes.COMMUNICATION,
+        `The DICOMweb server at ${store.origin} requires sign-in, but your ` +
+          'access token was not sent to it.',
+      ),
     )
   }
 
@@ -457,17 +497,21 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       return await call(store.client)
     } catch (error: unknown) {
       if (!this.isAuthChallenge(store, error)) {
+        if (this.isAnonymousChallenge(store, error)) {
+          /**
+           * Already refused, or configured `sendAuthorization: false` against a
+           * server that wants credentials. The interceptor stayed quiet, so say
+           * so here.
+           */
+          this.reportWithheldAuthorization(store)
+        }
         throw error
       }
       const authorization = await this.resolveAuthorization(store)
       if (authorization === undefined) {
-        /**
-         * Consent was refused or no token exists. Stop treating this store as a
-         * candidate so later failures are reported normally, and report the
-         * error the interceptor suppressed while escalation was pending.
-         */
+        /** Consent refused, or no token exists to send. */
         store.authRefused = true
-        this.handleError(error as dwc.api.DICOMwebClientError, store.settings)
+        this.reportWithheldAuthorization(store)
         throw error
       }
       store.authGranted = true

@@ -552,6 +552,113 @@ describe('DicomWebManager - authorization escalation', () => {
     expect(policy.requestAuthorization).toHaveBeenCalledTimes(1)
   })
 
+  it('does not route a refused challenge through the DICOMweb error handler', async () => {
+    const onError = jest.fn()
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'untrusted', url: 'https://untrusted.test/dicomWeb', write: false },
+      ],
+      onError,
+    })
+    manager.setAuthorizationPolicy(consentPolicy(false))
+
+    const stub = makeStubClient('untrusted')
+    stubManagerClients(manager, [stub])
+
+    stub.searchForStudies.mockRejectedValue(httpError(401))
+
+    await manager.searchForStudies({})
+
+    /**
+     * The app reacts to a 401 here by renewing the session, up to an
+     * interactive redirect. Declining to disclose the token must not drag the
+     * user through a sign-in that cannot fix anything.
+     */
+    expect(onError).not.toHaveBeenCalled()
+  })
+
+  it('does not re-attempt escalation on later requests once refused', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'untrusted', url: 'https://untrusted.test/dicomWeb', write: false },
+      ],
+    })
+    const policy = consentPolicy(false)
+    manager.setAuthorizationPolicy(policy)
+
+    const stub = makeStubClient('untrusted')
+    stubManagerClients(manager, [stub])
+
+    stub.searchForStudies.mockRejectedValue(httpError(401))
+
+    await manager.searchForStudies({})
+    await manager.searchForStudies({})
+    await manager.searchForStudies({})
+
+    // Asked once; the answer stands for the rest of the session.
+    expect(policy.requestAuthorization).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not route an unauthorized sendAuthorization: false store through the error handler', async () => {
+    const onError = jest.fn()
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        {
+          id: 'open',
+          url: 'https://open.test/dicomWeb',
+          write: false,
+          sendAuthorization: false,
+        },
+      ],
+      onError,
+    })
+    manager.setAuthorizationPolicy(consentPolicy(true))
+
+    const stub = makeStubClient('open')
+    stubManagerClients(manager, [stub])
+
+    stub.searchForStudies.mockRejectedValue(httpError(401))
+
+    await manager.searchForStudies({})
+
+    expect(onError).not.toHaveBeenCalled()
+  })
+
+  it('does not escalate a 401 from a store that already sent the token', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        {
+          id: 'gcp',
+          url: 'https://gcp.test/dicomWeb',
+          write: false,
+          sendAuthorization: true,
+        },
+      ],
+    })
+    const policy = allowAllPolicy()
+    manager.setAuthorizationPolicy(policy)
+
+    const stub = makeStubClient('gcp')
+    stubManagerClients(manager, [stub])
+    manager.updateHeaders({ Authorization: 'Bearer stale' })
+
+    stub.searchForStudies.mockRejectedValue(httpError(401))
+
+    await manager.searchForStudies({})
+
+    /**
+     * The credential was sent and rejected, so this is an expired session, not
+     * a withheld token. Escalation cannot help, and the error is left to the
+     * normal handler to drive re-authentication.
+     */
+    expect(stub.searchForStudies).toHaveBeenCalledTimes(1)
+    expect(policy.requestAuthorization).not.toHaveBeenCalled()
+  })
+
   it('does not retry a 404, which is not an authorization challenge', async () => {
     const manager = new DicomWebManager({
       baseUri,
