@@ -84,14 +84,32 @@ The sequence for each server:
      `?gcp=`) — Slim asks the user first: *"Send your access token to this
      server?"* Nothing is disclosed unless they agree.
 3. **Remember the answer per origin** in `localStorage` under
-   `slim_authorization_policy`. Each server is negotiated once per browser, not
-   once per session; an approved origin is credentialed from its first request
+   `slim_authorization_policy`. Each server is negotiated once rather than once
+   per session; an approved origin is credentialed from its first request
    thereafter.
 
 The consent prompt exists because escalation is triggered by the server. Without
 it, any endpoint could obtain a live cloud credential simply by replying `401`
 to an anonymous request — which is a realistic risk for a URL pasted into the
 selector.
+
+Two rules constrain what can be approved:
+
+- **Grants expire after 30 days; denials do not.** Consent is durable authority
+  rather than a credential: on a shared computer a decision left behind by one
+  user would otherwise apply to the next user's token. Forgetting a grant costs
+  one extra prompt, whereas forgetting a denial silently widens disclosure, so
+  the two are not treated symmetrically.
+- **The token is never sent over an insecure connection.** Escalation to an
+  `http://` origin is refused outright, with no prompt offered, since no consent
+  makes a bearer token safe in cleartext. Loopback hosts (`localhost`,
+  `127.0.0.1`) are exempt, matching the browser's own definition of a secure
+  context. An operator who needs this anyway can force it with
+  `sendAuthorization: true`, which bypasses negotiation entirely.
+
+To reset every remembered decision, clear the `slim_authorization_policy` key
+from `localStorage`; `clearAuthorizationDecisions()` in
+[`src/utils/authPolicy.ts`](../src/utils/authPolicy.ts) does the same from code.
 
 #### Overriding the negotiation
 

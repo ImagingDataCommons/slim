@@ -30,6 +30,7 @@ import NotificationMiddleware, {
 } from './services/NotificationMiddleware'
 import {
   getOrigin,
+  isSecureOrigin,
   readAuthorizationDecision,
   writeAuthorizationDecision,
 } from './utils/authPolicy'
@@ -381,37 +382,76 @@ class App extends React.Component<AppProps, AppState> {
       if (this.auth == null) {
         return undefined
       }
+      if (!isSecureOrigin(origin)) {
+        /**
+         * Refuse rather than warn. A bearer token sent over plain HTTP is
+         * readable by anything on the path, and no consent dialog makes that
+         * safe. An operator who has a reason to do it anyway can still say so
+         * explicitly with `sendAuthorization: true`, which never reaches here.
+         */
+        console.warn(
+          `refusing to send access token to ${origin} over an insecure ` +
+            'connection; set sendAuthorization on the server configuration ' +
+            'to override',
+        )
+        NotificationMiddleware.onError(
+          NotificationMiddlewareContext.AUTH,
+          new CustomError(
+            errorTypes.AUTHENTICATION,
+            `Not sending your access token to ${origin}: the connection is ` +
+              'not secure.',
+          ),
+        )
+        return undefined
+      }
       const remembered = readAuthorizationDecision(origin)
       if (remembered === 'denied') {
         return undefined
       }
       if (remembered !== 'granted' && !this.configuredOrigins.has(origin)) {
-        const approved = await App.confirmAuthorizationDisclosure(origin)
+        const approved = await App.confirmAuthorizationDisclosure(
+          origin,
+          this.props.config.oidc?.authority,
+        )
         writeAuthorizationDecision(origin, approved ? 'granted' : 'denied')
+        console.info(
+          `${approved ? 'approved' : 'declined'} disclosure of access token ` +
+            `to ${origin} (user decision)`,
+        )
         if (!approved) {
-          console.info(`declined to send access token to ${origin}`)
           return undefined
         }
       } else {
         writeAuthorizationDecision(origin, 'granted')
+        console.info(
+          `approved disclosure of access token to ${origin} ` +
+            '(origin present in the deployed configuration)',
+        )
       }
 
       const authorization = await this.auth.getAuthorization()
       if (authorization == null) {
         return undefined
       }
-      console.info(`sending access token to ${origin}`)
       return authorization
     },
   }
 
   /**
    * Ask the user before disclosing their access token to a server that is not
-   * part of the deployed configuration. The answer is remembered per origin, so
-   * this is asked at most once per server.
+   * part of the deployed configuration.
+   *
+   * Names the identity provider that issued the token, since "your access
+   * token" alone does not tell the user what is actually at stake — the answer
+   * differs a great deal between a hospital SSO and a personal Google account.
+   *
+   * @param origin - Origin of the server that asked for credentials
+   * @param authority - Issuer of the token, from the OIDC configuration
+   * @returns Whether the user agreed to disclose the token
    */
   private static async confirmAuthorizationDisclosure(
     origin: string,
+    authority?: string,
   ): Promise<boolean> {
     return await new Promise<boolean>((resolve) => {
       Modal.confirm({
@@ -423,10 +463,12 @@ class App extends React.Component<AppProps, AppState> {
               asking you to sign in.
             </p>
             <p>
-              Slim can forward your access token so this server can identify
-              you. Only allow this if you trust the server — the token grants
-              access to your data on the identity provider that issued it.
+              Slim can forward the access token issued to you by{' '}
+              <strong>{authority ?? 'your identity provider'}</strong> so this
+              server can identify you. Anyone holding that token can act as you
+              against that provider for as long as it remains valid.
             </p>
+            <p>Only allow this if you trust {origin}.</p>
           </>
         ),
         okText: 'Send token',
