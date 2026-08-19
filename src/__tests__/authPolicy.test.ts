@@ -100,6 +100,36 @@ describe('authPolicy - remembered decisions', () => {
     expect(readAuthorizationDecision('https://yes.test')).toBeUndefined()
   })
 
+  it('honours a decision pre-seeded by an automation script', () => {
+    /**
+     * Contract relied on by headless test harnesses, which seed this before the
+     * app loads so an unattended run is never blocked by the consent prompt.
+     * Documented in docs/CONFIGURATION.md — keep the key and shape stable.
+     */
+    window.localStorage.setItem(
+      'slim_authorization_policy',
+      JSON.stringify({
+        'https://archive.test': { decision: 'granted' },
+        'https://untrusted.test': { decision: 'denied' },
+      }),
+    )
+
+    expect(readAuthorizationDecision('https://archive.test')).toBe('granted')
+    expect(readAuthorizationDecision('https://untrusted.test')).toBe('denied')
+  })
+
+  it('never expires a pre-seeded grant that omits an expiry', () => {
+    // A long-lived browser profile must not start prompting mid-campaign.
+    window.localStorage.setItem(
+      'slim_authorization_policy',
+      JSON.stringify({ 'https://archive.test': { decision: 'granted' } }),
+    )
+
+    expect(readAuthorizationDecision('https://archive.test', 1e15)).toBe(
+      'granted',
+    )
+  })
+
   it('ignores a corrupted storage entry rather than throwing', () => {
     window.localStorage.setItem('slim_authorization_policy', 'not json')
 

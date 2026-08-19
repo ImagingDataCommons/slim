@@ -111,6 +111,39 @@ To reset every remembered decision, clear the `slim_authorization_policy` key
 from `localStorage`; `clearAuthorizationDecisions()` in
 [`src/utils/authPolicy.ts`](../src/utils/authPolicy.ts) does the same from code.
 
+#### Automated and headless runs
+
+The consent prompt only appears when **all** of these hold: an `oidc` block is
+configured, the server answers `401`/`403`, its origin is not listed in
+`servers`, and no decision is remembered. A harness pointed at open endpoints
+never reaches it. When a run might, seed the decision before the app loads —
+the storage key and shape below are a supported contract, covered by tests:
+
+```js
+// Playwright: runs before any page script, so the decision is already there.
+await context.addInitScript(() => {
+  window.localStorage.setItem(
+    'slim_authorization_policy',
+    JSON.stringify({
+      'https://archive.example.org': { decision: 'granted' },
+      'https://untrusted.example.org': { decision: 'denied' },
+    }),
+  )
+})
+```
+
+Omit `expiresAt`, as above, and the decision never expires — worth doing for a
+long-lived browser profile, which would otherwise start prompting once the
+default 30-day grant lifetime elapsed mid-campaign.
+
+`'denied'` is as useful as `'granted'` here: it asserts that a run must fail
+rather than quietly authenticate, which is what you want when the point of the
+test is to prove an endpoint is reachable anonymously.
+
+A prompt that does appear in an unattended run does not hang the browser. The
+DICOMweb request that triggered it stays pending until the harness times out, so
+the failure surfaces as an unrendered slide rather than a stalled process.
+
 #### Overriding the negotiation
 
 Set `sendAuthorization` on a server to bypass runtime detection:
