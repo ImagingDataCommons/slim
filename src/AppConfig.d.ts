@@ -68,6 +68,25 @@ export interface ServerSettings {
   errorMessages?: ErrorMessageSettings[]
   storageClasses?: string[]
   upgradeInsecureRequests?: boolean
+  /**
+   * Whether the OIDC access token is attached as an "Authorization" header to
+   * requests sent to this server.
+   *
+   * Leave unset (the default) to let Slim decide at runtime: requests start
+   * anonymous, and the token is sent only if the server answers 401/403. This
+   * needs no redeployment when servers change, keeps requests CORS-simple —
+   * "Authorization" is not a safelisted request header, so sending it forces an
+   * OPTIONS preflight that many public DICOMweb endpoints answer incorrectly —
+   * and means an open server never sees the token at all.
+   *
+   * Set explicitly to override that negotiation:
+   * - `false` never sends the token, even if the server asks for it.
+   * - `true` sends it from the first request, skipping the anonymous attempt.
+   *   Use this for a server that responds 200 with fewer results instead of 401
+   *   when unauthenticated, which runtime detection cannot distinguish from an
+   *   open server.
+   */
+  sendAuthorization?: boolean
 }
 
 export interface OidcSettings {

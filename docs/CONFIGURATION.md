@@ -62,6 +62,72 @@ Notes:
   [GCP deployment section](../README.md#google-cloud-platform) in the README
   (includes OIDC settings).
 
+### How the access token is sent to servers
+
+When an `oidc` block is present, Slim does **not** attach the token to every
+server. Requests start anonymous and the token is sent only to servers that
+actually ask for it. This is negotiated at runtime, so adding or swapping
+DICOMweb endpoints needs no redeployment — which matters because two of the
+three ways to introduce a server (the header's server-selection dialog and the
+`?gcp=` URL parameter) never appear in this file at all.
+
+The sequence for each server:
+
+1. **Try anonymously.** The first request carries only safelisted headers, so
+   the browser sends no `OPTIONS` preflight. An open server answers `200` and
+   the exchange ends here — it never sees your token.
+2. **On `401`/`403`, escalate.** The server has asked for credentials. What
+   happens next depends on where the server came from:
+   - **Listed in `servers` in this config file** — the operator has vouched for
+     it, so Slim attaches the token and retries silently.
+   - **Anywhere else** (typed into the server-selection dialog, or supplied via
+     `?gcp=`) — Slim asks the user first: *"Send your access token to this
+     server?"* Nothing is disclosed unless they agree.
+3. **Remember the answer per origin** in `localStorage` under
+   `slim_authorization_policy`. Each server is negotiated once per browser, not
+   once per session; an approved origin is credentialed from its first request
+   thereafter.
+
+The consent prompt exists because escalation is triggered by the server. Without
+it, any endpoint could obtain a live cloud credential simply by replying `401`
+to an anonymous request — which is a realistic risk for a URL pasted into the
+selector.
+
+#### Overriding the negotiation
+
+Set `sendAuthorization` on a server to bypass runtime detection:
+
+```js
+window.config = {
+  path: '/',
+  servers: [
+    {
+      // Sends the token from the first request; skips the anonymous attempt.
+      id: 'gcp',
+      url: 'https://healthcare.googleapis.com/v1/projects/.../dicomWeb',
+      write: true,
+      sendAuthorization: true,
+    },
+    {
+      // Never sends the token, even if this server returns 401.
+      id: 'public-proxy',
+      url: 'https://example.org/dicomWeb',
+      write: false,
+      sendAuthorization: false,
+    },
+  ],
+  oidc: { /* ... */ },
+}
+```
+
+`sendAuthorization: true` is worth setting for a server that answers `200` with
+*fewer results* rather than `401` when unauthenticated. Runtime detection cannot
+tell that apart from an open server, so Slim would silently under-report studies.
+
+Note that none of this affects whether OIDC sign-in happens. Sign-in only ever
+obtains a token for DICOMweb requests — it is not required to serve or load the
+Slim application itself. If no server needs a token, omit the `oidc` block.
+
 ## Runtime server selection (header button)
 
 Slim can let users change the active DICOMweb endpoint at runtime without

@@ -13,18 +13,68 @@ import DicomMetadataStore, {
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from './services/NotificationMiddleware'
+import { getOrigin } from './utils/authPolicy'
 import { CustomError, errorTypes } from './utils/CustomError'
 import { joinUrl } from './utils/url'
 import getXHRRetryHook from './utils/xhrRetryHook'
 
 const { naturalizeDataset } = dcmjs.data.DicomMetaDictionary
 
+/**
+ * How the OIDC access token is handled for a store.
+ *
+ * - `always`: attach it to every request (`sendAuthorization: true`).
+ * - `never`: never attach it (`sendAuthorization: false`).
+ * - `auto`:  start anonymous and escalate only if the server answers 401/403.
+ *
+ * `auto` is the default. Staying anonymous until challenged keeps requests
+ * CORS-simple and means an open server never sees the token at all.
+ */
+type AuthorizationMode = 'always' | 'never' | 'auto'
+
 interface Store {
   id: string
   read: boolean
   write: boolean
+  /** Origin of the service URL; the unit at which consent is recorded. */
+  origin: string
+  authMode: AuthorizationMode
+  /** Whether the token may currently be attached to this store. */
+  authGranted: boolean
+  /** Set once escalation has been refused, so genuine errors surface again. */
+  authRefused: boolean
   client: dwc.api.DICOMwebClient
   settings: ServerSettings
+}
+
+/**
+ * Decides whether the user's access token may be sent to a given origin.
+ * Implemented by the application, which owns the remembered decisions and the
+ * consent prompt; the manager only asks.
+ */
+export interface AuthorizationPolicy {
+  /** Whether this origin was already approved, so no request need be refused first. */
+  isPreAuthorized: (origin: string) => boolean
+  /**
+   * Obtain a token for this origin after a 401/403, prompting the user if the
+   * origin is not already trusted. Resolves to undefined if the token must not
+   * be sent.
+   */
+  requestAuthorization: (origin: string) => Promise<string | undefined>
+}
+
+/**
+ * Headers that carry the user's OIDC credentials and are therefore subject to
+ * the per-store authorization mode rather than propagated unconditionally.
+ */
+const AUTH_HEADER_NAMES = new Set(['authorization'])
+
+/** Statuses that indicate a server wants credentials we have not yet sent. */
+const AUTH_CHALLENGE_STATUSES = new Set([401, 403])
+
+const getErrorStatus = (error: unknown): number | undefined => {
+  const status = (error as { status?: unknown } | null)?.status
+  return typeof status === 'number' ? status : undefined
 }
 
 /** DICOM JSON tag keys used for cross-store deduplication of search results. */
@@ -158,6 +208,21 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
 
   private readonly handleError: DicomWebManagerErrorHandler
 
+  private authorizationPolicy?: AuthorizationPolicy
+
+  /** Most recent token, retained so a later grant can be applied immediately. */
+  private currentAuthorization?: string
+
+  /**
+   * In-flight escalations keyed by origin. Parallel requests to the same server
+   * routinely fail together; without this the user would face one consent
+   * prompt per failed request instead of one per server.
+   */
+  private readonly pendingAuthorizations = new Map<
+    string,
+    Promise<string | undefined>
+  >()
+
   constructor({
     baseUri,
     settings,
@@ -197,6 +262,9 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
           ),
         )
       }
+
+      /** Index this store will occupy; lets the interceptor find its state. */
+      const storeIndex = this.stores.length
 
       let serviceUrl: string
       if (serverSettings.url !== undefined) {
@@ -257,13 +325,34 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       clientSettings.errorInterceptor = (
         error: dwc.api.DICOMwebClientError,
       ) => {
+        const store = this.stores[storeIndex]
+        if (store !== undefined && this.isAuthChallenge(store, error)) {
+          /**
+           * The store was queried anonymously and the server asked for
+           * credentials. This is an expected step of the escalation flow, not a
+           * failure to report: `callStore` will obtain consent and retry, and
+           * reports the error itself if escalation does not happen.
+           */
+          return
+        }
         this.handleError(error, serverSettings)
+      }
+
+      let authMode: AuthorizationMode = 'auto'
+      if (serverSettings.sendAuthorization === true) {
+        authMode = 'always'
+      } else if (serverSettings.sendAuthorization === false) {
+        authMode = 'never'
       }
 
       this.stores.push({
         id: serverSettings.id,
         write: serverSettings.write ?? false,
         read: serverSettings.read ?? true,
+        origin: getOrigin(serviceUrl) ?? serviceUrl,
+        authMode,
+        authGranted: authMode === 'always',
+        authRefused: false,
         client: new dwc.api.DICOMwebClient(clientSettings),
         settings: serverSettings,
       })
@@ -275,12 +364,137 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   }
 
   /**
+   * Install the policy that decides which origins may receive the access token.
+   * Stores whose origin was already approved in an earlier session pick the
+   * token up immediately, so those servers never see an anonymous request.
+   */
+  setAuthorizationPolicy = (policy: AuthorizationPolicy): void => {
+    this.authorizationPolicy = policy
+    if (this.currentAuthorization !== undefined) {
+      this.updateHeaders({ Authorization: this.currentAuthorization })
+    }
+  }
+
+  /**
+   * Whether the token may be attached to this store right now.
+   *
+   * For `auto` stores this consults the policy, so an origin the user approved
+   * in an earlier session is credentialed from the first request rather than
+   * after another refusal.
+   */
+  private readonly mayAttachAuthorization = (store: Store): boolean => {
+    if (store.authMode === 'always') {
+      return true
+    }
+    if (store.authMode === 'never' || store.authRefused) {
+      return false
+    }
+    if (store.authGranted) {
+      return true
+    }
+    if (this.authorizationPolicy?.isPreAuthorized(store.origin) === true) {
+      store.authGranted = true
+      return true
+    }
+    return false
+  }
+
+  /**
+   * Whether an error is a server asking for credentials this store has not sent
+   * yet, as opposed to a genuine authorization failure or an expired token.
+   */
+  private readonly isAuthChallenge = (
+    store: Store,
+    error: unknown,
+  ): boolean => {
+    const status = getErrorStatus(error)
+    return (
+      status !== undefined &&
+      AUTH_CHALLENGE_STATUSES.has(status) &&
+      store.authMode === 'auto' &&
+      !store.authGranted &&
+      !store.authRefused &&
+      this.authorizationPolicy !== undefined
+    )
+  }
+
+  /**
+   * Ask the policy for a token for this store's origin, collapsing concurrent
+   * requests so the user is prompted once per server rather than once per
+   * failed DICOMweb call.
+   */
+  private readonly resolveAuthorization = async (
+    store: Store,
+  ): Promise<string | undefined> => {
+    const policy = this.authorizationPolicy
+    if (policy === undefined) {
+      return undefined
+    }
+    const pending = this.pendingAuthorizations.get(store.origin)
+    if (pending !== undefined) {
+      return await pending
+    }
+    const request = policy
+      .requestAuthorization(store.origin)
+      .finally(() => this.pendingAuthorizations.delete(store.origin))
+    this.pendingAuthorizations.set(store.origin, request)
+    return await request
+  }
+
+  /**
+   * Run a DICOMweb call against one store, escalating from anonymous to
+   * authenticated if the server demands credentials and the user allows it.
+   *
+   * The call is retried at most once, and only after a 401/403 — so nothing was
+   * stored or returned on the first attempt and re-sending is safe even for
+   * STOW-RS.
+   */
+  private readonly callStore = async <T>(
+    store: Store,
+    call: (client: dwc.api.DICOMwebClient) => Promise<T>,
+  ): Promise<T> => {
+    try {
+      return await call(store.client)
+    } catch (error: unknown) {
+      if (!this.isAuthChallenge(store, error)) {
+        throw error
+      }
+      const authorization = await this.resolveAuthorization(store)
+      if (authorization === undefined) {
+        /**
+         * Consent was refused or no token exists. Stop treating this store as a
+         * candidate so later failures are reported normally, and report the
+         * error the interceptor suppressed while escalation was pending.
+         */
+        store.authRefused = true
+        this.handleError(error as dwc.api.DICOMwebClientError, store.settings)
+        throw error
+      }
+      store.authGranted = true
+      this.currentAuthorization = authorization
+      store.client.headers.Authorization = authorization
+      return await call(store.client)
+    }
+  }
+
+  /**
    * Update auth (or other) headers on every wrapped store so token refreshes
    * propagate to the primary AND secondary endpoints.
+   *
+   * Credential headers are filtered per store: a server configured as open, or
+   * one that has not yet been approved for this origin, keeps receiving
+   * anonymous requests. Non-credential headers propagate to every store.
    */
   updateHeaders = (fields: { [name: string]: string }): void => {
     for (const f in fields) {
+      const isAuthHeader = AUTH_HEADER_NAMES.has(f.toLowerCase())
+      if (isAuthHeader) {
+        this.currentAuthorization = fields[f]
+      }
       for (const store of this.stores) {
+        if (isAuthHeader && !this.mayAttachAuthorization(store)) {
+          continue
+        }
         store.client.headers[f] = fields[f]
       }
     }
@@ -303,7 +517,10 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
     if (writable === undefined) {
       return await Promise.reject(new Error('Store is not writable.'))
     }
-    return await writable.client.storeInstances(options)
+    return await this.callStore(
+      writable,
+      async (client) => await client.storeInstances(options),
+    )
   }
 
   searchForStudies = async (
@@ -313,9 +530,13 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       this.stores,
       [STUDY_INSTANCE_UID_TAG],
       async (store) =>
-        (await store.client.searchForStudies(
-          options,
-        )) as unknown as DicomJsonObject[],
+        await this.callStore(
+          store,
+          async (client) =>
+            (await client.searchForStudies(
+              options,
+            )) as unknown as DicomJsonObject[],
+        ),
     )
     return merged as unknown as dwc.api.Study[]
   }
@@ -327,9 +548,13 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       this.stores,
       [STUDY_INSTANCE_UID_TAG, SERIES_INSTANCE_UID_TAG],
       async (store) =>
-        (await store.client.searchForSeries(
-          options,
-        )) as unknown as DicomJsonObject[],
+        await this.callStore(
+          store,
+          async (client) =>
+            (await client.searchForSeries(
+              options,
+            )) as unknown as DicomJsonObject[],
+        ),
     )
     return merged as unknown as dwc.api.Series[]
   }
@@ -341,9 +566,13 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       this.stores,
       [STUDY_INSTANCE_UID_TAG, SERIES_INSTANCE_UID_TAG, SOP_INSTANCE_UID_TAG],
       async (store) =>
-        (await store.client.searchForInstances(
-          options,
-        )) as unknown as DicomJsonObject[],
+        await this.callStore(
+          store,
+          async (client) =>
+            (await client.searchForInstances(
+              options,
+            )) as unknown as DicomJsonObject[],
+        ),
     )
     return merged as unknown as dwc.api.Instance[]
   }
@@ -353,7 +582,11 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   ): Promise<dwc.api.Metadata[]> => {
     const studySummaryMetadata = await retrieveWithFallback(
       this.stores,
-      async (store) => await store.client.retrieveStudyMetadata(options),
+      async (store) =>
+        await this.callStore(
+          store,
+          async (client) => await client.retrieveStudyMetadata(options),
+        ),
     )
     const naturalized = naturalizeDataset(studySummaryMetadata)
     DicomMetadataStore.addStudy(naturalized as Record<string, unknown>)
@@ -365,7 +598,11 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   ): Promise<dwc.api.Metadata[]> => {
     const seriesSummaryMetadata = await retrieveWithFallback(
       this.stores,
-      async (store) => await store.client.retrieveSeriesMetadata(options),
+      async (store) =>
+        await this.callStore(
+          store,
+          async (client) => await client.retrieveSeriesMetadata(options),
+        ),
     )
     const naturalized = seriesSummaryMetadata.map(naturalizeDataset)
     DicomMetadataStore.addSeriesMetadata(
@@ -380,7 +617,11 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   ): Promise<dwc.api.Metadata[]> => {
     return await retrieveWithFallback(
       this.stores,
-      async (store) => await store.client.retrieveInstanceMetadata(options),
+      async (store) =>
+        await this.callStore(
+          store,
+          async (client) => await client.retrieveInstanceMetadata(options),
+        ),
     )
   }
 
@@ -389,7 +630,11 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   ): Promise<dwc.api.Dataset> => {
     const instance = await retrieveWithFallback(
       this.stores,
-      async (store) => await store.client.retrieveInstance(options),
+      async (store) =>
+        await this.callStore(
+          store,
+          async (client) => await client.retrieveInstance(options),
+        ),
     )
     const data = dcmjs.data.DicomMessage.readFile(instance)
     const { dataset } = dmv.metadata.formatMetadata(data.dict)
@@ -402,7 +647,11 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   ): Promise<dwc.api.Pixeldata[]> => {
     return await retrieveWithFallback(
       this.stores,
-      async (store) => await store.client.retrieveInstanceFrames(options),
+      async (store) =>
+        await this.callStore(
+          store,
+          async (client) => await client.retrieveInstanceFrames(options),
+        ),
     )
   }
 
@@ -411,7 +660,11 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   ): Promise<dwc.api.Pixeldata> => {
     return await retrieveWithFallback(
       this.stores,
-      async (store) => await store.client.retrieveInstanceRendered(options),
+      async (store) =>
+        await this.callStore(
+          store,
+          async (client) => await client.retrieveInstanceRendered(options),
+        ),
     )
   }
 
@@ -421,7 +674,11 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
     return await retrieveWithFallback(
       this.stores,
       async (store) =>
-        await store.client.retrieveInstanceFramesRendered(options),
+        await this.callStore(
+          store,
+          async (client) =>
+            await client.retrieveInstanceFramesRendered(options),
+        ),
     )
   }
 
@@ -430,7 +687,11 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   ): Promise<dwc.api.Bulkdata[]> => {
     return await retrieveWithFallback(
       this.stores,
-      async (store) => await store.client.retrieveBulkData(options),
+      async (store) =>
+        await this.callStore(
+          store,
+          async (client) => await client.retrieveBulkData(options),
+        ),
     )
   }
 }
