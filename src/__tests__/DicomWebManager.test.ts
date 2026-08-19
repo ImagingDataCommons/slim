@@ -63,6 +63,58 @@ const stubManagerClients = (
 
 const baseUri = 'https://example.test'
 
+/** Error shaped like the one dicomweb-client rejects with. */
+const httpError = (status: number): Error & { status: number } =>
+  Object.assign(new Error(`request failed (${status})`), { status })
+
+/** Policy that treats every origin as already approved. */
+const allowAllPolicy = (
+  token = 'Bearer abc',
+): {
+  isPreAuthorized: jest.Mock
+  requestAuthorization: jest.Mock
+} => ({
+  isPreAuthorized: jest.fn().mockReturnValue(true),
+  requestAuthorization: jest.fn().mockResolvedValue(token),
+})
+
+/** Policy that grants only when challenged, mimicking the consent prompt. */
+const consentPolicy = (
+  approved: boolean,
+  token = 'Bearer abc',
+): {
+  isPreAuthorized: jest.Mock
+  requestAuthorization: jest.Mock
+} => ({
+  isPreAuthorized: jest.fn().mockReturnValue(false),
+  requestAuthorization: jest
+    .fn()
+    .mockResolvedValue(approved ? token : undefined),
+})
+
+/**
+ * Policy that records a grant per origin, as the real one does by persisting
+ * the decision. Needed to exercise propagation: once an origin is approved,
+ * every store on it becomes eligible, not just the one that was refused.
+ */
+const recordingPolicy = (
+  token = 'Bearer abc',
+): {
+  isPreAuthorized: jest.Mock
+  requestAuthorization: jest.Mock
+  granted: Set<string>
+} => {
+  const granted = new Set<string>()
+  return {
+    granted,
+    isPreAuthorized: jest.fn((origin: string) => granted.has(origin)),
+    requestAuthorization: jest.fn(async (origin: string) => {
+      granted.add(origin)
+      return await Promise.resolve(token)
+    }),
+  }
+}
+
 describe('DicomWebManager - multi-store search', () => {
   it('merges searchForSeries results across stores and de-duplicates by SeriesInstanceUID', async () => {
     const manager = new DicomWebManager({
@@ -323,6 +375,7 @@ describe('DicomWebManager - storeInstances and headers', () => {
         { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: false },
       ],
     })
+    manager.setAuthorizationPolicy(allowAllPolicy())
 
     const primaryStub = makeStubClient('primary')
     const secondaryStub = makeStubClient('secondary')
@@ -332,5 +385,455 @@ describe('DicomWebManager - storeInstances and headers', () => {
 
     expect(primaryStub.headers.Authorization).toBe('Bearer abc')
     expect(secondaryStub.headers.Authorization).toBe('Bearer abc')
+  })
+
+  it('withholds the Authorization header from stores with sendAuthorization: false', () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        {
+          id: 'open',
+          url: 'https://open.test/dicomWeb',
+          write: false,
+          sendAuthorization: false,
+        },
+      ],
+    })
+    // The primary is in auto mode; approve its origin so it carries the token.
+    manager.setAuthorizationPolicy(allowAllPolicy())
+
+    const primaryStub = makeStubClient('primary')
+    const openStub = makeStubClient('open')
+    stubManagerClients(manager, [primaryStub, openStub])
+
+    manager.updateHeaders({
+      Authorization: 'Bearer abc',
+      'X-Custom': 'value',
+    })
+
+    expect(primaryStub.headers.Authorization).toBe('Bearer abc')
+    expect(openStub.headers.Authorization).toBeUndefined()
+    // Non-credential headers are still propagated to the open store.
+    expect(openStub.headers['X-Custom']).toBe('value')
+  })
+
+  it('withholds the token from an unchallenged server until it asks', () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [{ id: 'open', url: 'https://open.test/dicomWeb', write: false }],
+    })
+    manager.setAuthorizationPolicy(consentPolicy(true))
+
+    const openStub = makeStubClient('open')
+    stubManagerClients(manager, [openStub])
+
+    manager.updateHeaders({ Authorization: 'Bearer abc' })
+
+    // Nothing has returned 401, so the server never sees the credential.
+    expect(openStub.headers.Authorization).toBeUndefined()
+  })
+
+  it('credentials a store immediately when its origin was already approved', () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [{ id: 'gcp', url: 'https://gcp.test/dicomWeb', write: false }],
+    })
+    const policy = allowAllPolicy()
+    manager.setAuthorizationPolicy(policy)
+
+    const gcpStub = makeStubClient('gcp')
+    stubManagerClients(manager, [gcpStub])
+
+    manager.updateHeaders({ Authorization: 'Bearer abc' })
+
+    expect(policy.isPreAuthorized).toHaveBeenCalledWith('https://gcp.test')
+    expect(gcpStub.headers.Authorization).toBe('Bearer abc')
+  })
+})
+
+describe('DicomWebManager - authorization escalation', () => {
+  it('escalates to an authenticated retry after a 401 and returns the result', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [{ id: 'gcp', url: 'https://gcp.test/dicomWeb', write: false }],
+    })
+    const policy = consentPolicy(true)
+    manager.setAuthorizationPolicy(policy)
+
+    const gcpStub = makeStubClient('gcp')
+    stubManagerClients(manager, [gcpStub])
+
+    const study = { '0020000D': { Value: ['1.2.3'] } }
+    gcpStub.searchForStudies
+      .mockRejectedValueOnce(httpError(401))
+      .mockResolvedValueOnce([study])
+
+    const result = await manager.searchForStudies({})
+
+    expect(result).toEqual([study])
+    expect(gcpStub.searchForStudies).toHaveBeenCalledTimes(2)
+    expect(policy.requestAuthorization).toHaveBeenCalledWith('https://gcp.test')
+    expect(gcpStub.headers.Authorization).toBe('Bearer abc')
+  })
+
+  it('escalates on 403 as well as 401', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [{ id: 'gcp', url: 'https://gcp.test/dicomWeb', write: false }],
+    })
+    manager.setAuthorizationPolicy(consentPolicy(true))
+
+    const gcpStub = makeStubClient('gcp')
+    stubManagerClients(manager, [gcpStub])
+
+    gcpStub.retrieveInstance
+      .mockRejectedValueOnce(httpError(403))
+      .mockResolvedValueOnce(new ArrayBuffer(0))
+
+    await manager
+      .retrieveInstance({} as dwc.api.RetrieveInstanceOptions)
+      .catch(() => undefined)
+
+    expect(gcpStub.retrieveInstance).toHaveBeenCalledTimes(2)
+    expect(gcpStub.headers.Authorization).toBe('Bearer abc')
+  })
+
+  it('never sends the token when consent is refused', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'untrusted', url: 'https://untrusted.test/dicomWeb', write: false },
+      ],
+    })
+    manager.setAuthorizationPolicy(consentPolicy(false))
+
+    const stub = makeStubClient('untrusted')
+    stubManagerClients(manager, [stub])
+
+    stub.searchForStudies.mockRejectedValue(httpError(401))
+
+    const result = await manager.searchForStudies({})
+
+    expect(result).toEqual([])
+    // One attempt only: no retry, and the credential was never attached.
+    expect(stub.searchForStudies).toHaveBeenCalledTimes(1)
+    expect(stub.headers.Authorization).toBeUndefined()
+  })
+
+  it('does not escalate a store configured with sendAuthorization: false', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        {
+          id: 'open',
+          url: 'https://open.test/dicomWeb',
+          write: false,
+          sendAuthorization: false,
+        },
+      ],
+    })
+    const policy = consentPolicy(true)
+    manager.setAuthorizationPolicy(policy)
+
+    const stub = makeStubClient('open')
+    stubManagerClients(manager, [stub])
+
+    stub.searchForStudies.mockRejectedValue(httpError(401))
+
+    await manager.searchForStudies({})
+
+    expect(policy.requestAuthorization).not.toHaveBeenCalled()
+    expect(stub.headers.Authorization).toBeUndefined()
+  })
+
+  it('asks once per origin when concurrent requests are refused together', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [{ id: 'gcp', url: 'https://gcp.test/dicomWeb', write: false }],
+    })
+    const policy = consentPolicy(true)
+    manager.setAuthorizationPolicy(policy)
+
+    const gcpStub = makeStubClient('gcp')
+    stubManagerClients(manager, [gcpStub])
+
+    gcpStub.searchForStudies.mockRejectedValueOnce(httpError(401))
+    gcpStub.searchForSeries.mockRejectedValueOnce(httpError(401))
+    gcpStub.searchForInstances.mockRejectedValueOnce(httpError(401))
+    gcpStub.searchForStudies.mockResolvedValue([])
+    gcpStub.searchForSeries.mockResolvedValue([])
+    gcpStub.searchForInstances.mockResolvedValue([])
+
+    await Promise.all([
+      manager.searchForStudies({}),
+      manager.searchForSeries({}),
+      manager.searchForInstances({}),
+    ])
+
+    // Three simultaneous challenges, one consent prompt.
+    expect(policy.requestAuthorization).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not route a refused challenge through the DICOMweb error handler', async () => {
+    const onError = jest.fn()
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'untrusted', url: 'https://untrusted.test/dicomWeb', write: false },
+      ],
+      onError,
+    })
+    manager.setAuthorizationPolicy(consentPolicy(false))
+
+    const stub = makeStubClient('untrusted')
+    stubManagerClients(manager, [stub])
+
+    stub.searchForStudies.mockRejectedValue(httpError(401))
+
+    await manager.searchForStudies({})
+
+    /**
+     * The app reacts to a 401 here by renewing the session, up to an
+     * interactive redirect. Declining to disclose the token must not drag the
+     * user through a sign-in that cannot fix anything.
+     */
+    expect(onError).not.toHaveBeenCalled()
+  })
+
+  it('does not re-attempt escalation on later requests once refused', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'untrusted', url: 'https://untrusted.test/dicomWeb', write: false },
+      ],
+    })
+    const policy = consentPolicy(false)
+    manager.setAuthorizationPolicy(policy)
+
+    const stub = makeStubClient('untrusted')
+    stubManagerClients(manager, [stub])
+
+    stub.searchForStudies.mockRejectedValue(httpError(401))
+
+    await manager.searchForStudies({})
+    await manager.searchForStudies({})
+    await manager.searchForStudies({})
+
+    // Asked once; the answer stands for the rest of the session.
+    expect(policy.requestAuthorization).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not route an unauthorized sendAuthorization: false store through the error handler', async () => {
+    const onError = jest.fn()
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        {
+          id: 'open',
+          url: 'https://open.test/dicomWeb',
+          write: false,
+          sendAuthorization: false,
+        },
+      ],
+      onError,
+    })
+    manager.setAuthorizationPolicy(consentPolicy(true))
+
+    const stub = makeStubClient('open')
+    stubManagerClients(manager, [stub])
+
+    stub.searchForStudies.mockRejectedValue(httpError(401))
+
+    await manager.searchForStudies({})
+
+    expect(onError).not.toHaveBeenCalled()
+  })
+
+  it('does not escalate a 401 from a store that already sent the token', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        {
+          id: 'gcp',
+          url: 'https://gcp.test/dicomWeb',
+          write: false,
+          sendAuthorization: true,
+        },
+      ],
+    })
+    const policy = allowAllPolicy()
+    manager.setAuthorizationPolicy(policy)
+
+    const stub = makeStubClient('gcp')
+    stubManagerClients(manager, [stub])
+    manager.updateHeaders({ Authorization: 'Bearer stale' })
+
+    stub.searchForStudies.mockRejectedValue(httpError(401))
+
+    await manager.searchForStudies({})
+
+    /**
+     * The credential was sent and rejected, so this is an expired session, not
+     * a withheld token. Escalation cannot help, and the error is left to the
+     * normal handler to drive re-authentication.
+     */
+    expect(stub.searchForStudies).toHaveBeenCalledTimes(1)
+    expect(policy.requestAuthorization).not.toHaveBeenCalled()
+  })
+
+  it('credentials sibling stores on the same origin without refusing each first', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://gcp.test/a/dicomWeb', write: false },
+        { id: 'secondary', url: 'https://gcp.test/b/dicomWeb', write: false },
+      ],
+    })
+    manager.setAuthorizationPolicy(recordingPolicy())
+
+    const primaryStub = makeStubClient('primary')
+    const secondaryStub = makeStubClient('secondary')
+    stubManagerClients(manager, [primaryStub, secondaryStub])
+
+    // Only the primary is challenged.
+    primaryStub.searchForStudies
+      .mockRejectedValueOnce(httpError(401))
+      .mockResolvedValue([])
+    secondaryStub.searchForStudies.mockResolvedValue([])
+
+    await manager.searchForStudies({})
+
+    expect(primaryStub.headers.Authorization).toBe('Bearer abc')
+    // Same origin, same grant: no need to be refused once on its own account.
+    expect(secondaryStub.headers.Authorization).toBe('Bearer abc')
+  })
+
+  it('does not spread a grant to a store on a different origin', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'gcp', url: 'https://gcp.test/dicomWeb', write: false },
+        { id: 'other', url: 'https://other.test/dicomWeb', write: false },
+      ],
+    })
+    manager.setAuthorizationPolicy(recordingPolicy())
+
+    const gcpStub = makeStubClient('gcp')
+    const otherStub = makeStubClient('other')
+    stubManagerClients(manager, [gcpStub, otherStub])
+
+    gcpStub.searchForStudies
+      .mockRejectedValueOnce(httpError(401))
+      .mockResolvedValue([])
+    otherStub.searchForStudies.mockResolvedValue([])
+
+    await manager.searchForStudies({})
+
+    expect(gcpStub.headers.Authorization).toBe('Bearer abc')
+    // Consent is per origin; this one was never approved.
+    expect(otherStub.headers.Authorization).toBeUndefined()
+  })
+
+  it('does not spread a grant to a sendAuthorization: false store on the same origin', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://gcp.test/a/dicomWeb', write: false },
+        {
+          id: 'open',
+          url: 'https://gcp.test/b/dicomWeb',
+          write: false,
+          sendAuthorization: false,
+        },
+      ],
+    })
+    manager.setAuthorizationPolicy(recordingPolicy())
+
+    const primaryStub = makeStubClient('primary')
+    const openStub = makeStubClient('open')
+    stubManagerClients(manager, [primaryStub, openStub])
+
+    primaryStub.searchForStudies
+      .mockRejectedValueOnce(httpError(401))
+      .mockResolvedValue([])
+    openStub.searchForStudies.mockResolvedValue([])
+
+    await manager.searchForStudies({})
+
+    expect(primaryStub.headers.Authorization).toBe('Bearer abc')
+    // An explicit operator override outranks a grant for the same origin.
+    expect(openStub.headers.Authorization).toBeUndefined()
+  })
+
+  it('does not retry a 404, which is not an authorization challenge', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [{ id: 'gcp', url: 'https://gcp.test/dicomWeb', write: false }],
+    })
+    const policy = consentPolicy(true)
+    manager.setAuthorizationPolicy(policy)
+
+    const gcpStub = makeStubClient('gcp')
+    stubManagerClients(manager, [gcpStub])
+
+    gcpStub.searchForStudies.mockRejectedValue(httpError(404))
+
+    await manager.searchForStudies({})
+
+    expect(gcpStub.searchForStudies).toHaveBeenCalledTimes(1)
+    expect(policy.requestAuthorization).not.toHaveBeenCalled()
+  })
+
+  it('leaves a store permanently anonymous when no policy is installed', () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [{ id: 'gcp', url: 'https://gcp.test/dicomWeb', write: false }],
+    })
+
+    const gcpStub = makeStubClient('gcp')
+    stubManagerClients(manager, [gcpStub])
+
+    manager.updateHeaders({ Authorization: 'Bearer abc' })
+
+    expect(gcpStub.headers.Authorization).toBeUndefined()
+  })
+
+  it('reapplies the current token to stores approved after the fact', () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [{ id: 'gcp', url: 'https://gcp.test/dicomWeb', write: false }],
+    })
+
+    const gcpStub = makeStubClient('gcp')
+    stubManagerClients(manager, [gcpStub])
+
+    // Token arrives before the policy is installed.
+    manager.updateHeaders({ Authorization: 'Bearer abc' })
+    expect(gcpStub.headers.Authorization).toBeUndefined()
+
+    manager.setAuthorizationPolicy(allowAllPolicy())
+    expect(gcpStub.headers.Authorization).toBe('Bearer abc')
+  })
+
+  it('matches the Authorization header case-insensitively when withholding it', () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        {
+          id: 'open',
+          url: 'https://open.test/dicomWeb',
+          write: false,
+          sendAuthorization: false,
+        },
+      ],
+    })
+
+    const openStub = makeStubClient('open')
+    stubManagerClients(manager, [openStub])
+
+    manager.updateHeaders({ authorization: 'Bearer abc' })
+
+    expect(openStub.headers.authorization).toBeUndefined()
   })
 })

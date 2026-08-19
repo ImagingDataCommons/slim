@@ -62,6 +62,123 @@ Notes:
   [GCP deployment section](../README.md#google-cloud-platform) in the README
   (includes OIDC settings).
 
+### How the access token is sent to servers
+
+When an `oidc` block is present, Slim does **not** attach the token to every
+server. Requests start anonymous and the token is sent only to servers that
+actually ask for it. This is negotiated at runtime, so adding or swapping
+DICOMweb endpoints needs no redeployment — which matters because two of the
+three ways to introduce a server (the header's server-selection dialog and the
+`?gcp=` URL parameter) never appear in this file at all.
+
+The sequence for each server:
+
+1. **Try anonymously.** The first request carries only safelisted headers, so
+   the browser sends no `OPTIONS` preflight. An open server answers `200` and
+   the exchange ends here — it never sees your token.
+2. **On `401`/`403`, escalate.** The server has asked for credentials. What
+   happens next depends on where the server came from:
+   - **Listed in `servers` in this config file** — the operator has vouched for
+     it, so Slim attaches the token and retries silently.
+   - **Anywhere else** (typed into the server-selection dialog, or supplied via
+     `?gcp=`) — Slim asks the user first: *"Send your access token to this
+     server?"* Nothing is disclosed unless they agree.
+3. **Remember the answer per origin** in `localStorage` under
+   `slim_authorization_policy`. Each server is negotiated once rather than once
+   per session; an approved origin is credentialed from its first request
+   thereafter.
+
+The consent prompt exists because escalation is triggered by the server. Without
+it, any endpoint could obtain a live cloud credential simply by replying `401`
+to an anonymous request — which is a realistic risk for a URL pasted into the
+selector.
+
+Two rules constrain what can be approved:
+
+- **Grants expire after 30 days; denials do not.** Consent is durable authority
+  rather than a credential: on a shared computer a decision left behind by one
+  user would otherwise apply to the next user's token. Forgetting a grant costs
+  one extra prompt, whereas forgetting a denial silently widens disclosure, so
+  the two are not treated symmetrically.
+- **The token is never sent over an insecure connection.** Escalation to an
+  `http://` origin is refused outright, with no prompt offered, since no consent
+  makes a bearer token safe in cleartext. Loopback hosts (`localhost`,
+  `127.0.0.1`) are exempt, matching the browser's own definition of a secure
+  context. An operator who needs this anyway can force it with
+  `sendAuthorization: true`, which bypasses negotiation entirely.
+
+To reset every remembered decision, clear the `slim_authorization_policy` key
+from `localStorage`; `clearAuthorizationDecisions()` in
+[`src/utils/authPolicy.ts`](../src/utils/authPolicy.ts) does the same from code.
+
+#### Automated and headless runs
+
+The consent prompt only appears when **all** of these hold: an `oidc` block is
+configured, the server answers `401`/`403`, its origin is not listed in
+`servers`, and no decision is remembered. A harness pointed at open endpoints
+never reaches it. When a run might, seed the decision before the app loads —
+the storage key and shape below are a supported contract, covered by tests:
+
+```js
+// Playwright: runs before any page script, so the decision is already there.
+await context.addInitScript(() => {
+  window.localStorage.setItem(
+    'slim_authorization_policy',
+    JSON.stringify({
+      'https://archive.example.org': { decision: 'granted' },
+      'https://untrusted.example.org': { decision: 'denied' },
+    }),
+  )
+})
+```
+
+Omit `expiresAt`, as above, and the decision never expires — worth doing for a
+long-lived browser profile, which would otherwise start prompting once the
+default 30-day grant lifetime elapsed mid-campaign.
+
+`'denied'` is as useful as `'granted'` here: it asserts that a run must fail
+rather than quietly authenticate, which is what you want when the point of the
+test is to prove an endpoint is reachable anonymously.
+
+A prompt that does appear in an unattended run does not hang the browser. The
+DICOMweb request that triggered it stays pending until the harness times out, so
+the failure surfaces as an unrendered slide rather than a stalled process.
+
+#### Overriding the negotiation
+
+Set `sendAuthorization` on a server to bypass runtime detection:
+
+```js
+window.config = {
+  path: '/',
+  servers: [
+    {
+      // Sends the token from the first request; skips the anonymous attempt.
+      id: 'gcp',
+      url: 'https://healthcare.googleapis.com/v1/projects/.../dicomWeb',
+      write: true,
+      sendAuthorization: true,
+    },
+    {
+      // Never sends the token, even if this server returns 401.
+      id: 'public-proxy',
+      url: 'https://example.org/dicomWeb',
+      write: false,
+      sendAuthorization: false,
+    },
+  ],
+  oidc: { /* ... */ },
+}
+```
+
+`sendAuthorization: true` is worth setting for a server that answers `200` with
+*fewer results* rather than `401` when unauthenticated. Runtime detection cannot
+tell that apart from an open server, so Slim would silently under-report studies.
+
+Note that none of this affects whether OIDC sign-in happens. Sign-in only ever
+obtains a token for DICOMweb requests — it is not required to serve or load the
+Slim application itself. If no server needs a token, omit the `oidc` block.
+
 ## Runtime server selection (header button)
 
 Slim can let users change the active DICOMweb endpoint at runtime without

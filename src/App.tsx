@@ -1,4 +1,4 @@
-import { Layout, message } from 'antd'
+import { Layout, Modal, message } from 'antd'
 // skipcq: JS-C1003
 import type * as dwc from 'dicomweb-client'
 import React from 'react'
@@ -22,13 +22,21 @@ import InfoPage from './components/InfoPage'
 import Worklist from './components/Worklist'
 import { SettingsProvider } from './contexts/SettingsContext'
 import { ValidationProvider } from './contexts/ValidationContext'
+import type { AuthorizationPolicy } from './DicomWebManager'
 import DicomWebManager from './DicomWebManager'
 import { StorageClasses } from './data/uids'
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from './services/NotificationMiddleware'
+import {
+  getOrigin,
+  isSecureOrigin,
+  readAuthorizationDecision,
+  writeAuthorizationDecision,
+} from './utils/authPolicy'
 import { CustomError, errorTypes } from './utils/CustomError'
 import { getProjectStorePath, isProjectsPath, RoutePaths } from './utils/routes'
+import { createSingleFlight } from './utils/singleFlight'
 import { joinUrl, normalizeServerUrl } from './utils/url'
 
 function ParametrizedCaseViewer({
@@ -196,6 +204,21 @@ class App extends React.Component<AppProps, AppState> {
   private reauthInProgress = false
   private unsubscribeAuthorization?: () => void
 
+  /**
+   * Origins that came from the deployed configuration file. Putting a server
+   * there is the operator stating they trust it, so a 401 from one of these
+   * escalates without troubling the user. Servers introduced at runtime — the
+   * "Select server" dialog, the `?gcp=` parameter — are not on this list and
+   * require explicit consent before the token is sent.
+   */
+  private readonly configuredOrigins: Set<string>
+
+  /**
+   * Collapses consent negotiations by origin, so simultaneous challenges from
+   * different managers share a single prompt.
+   */
+  private readonly disclosureGate = createSingleFlight<string | undefined>()
+
   private readonly handleDICOMwebError = (
     error: dwc.api.DICOMwebClientError,
     serverSettings: ServerSettings,
@@ -285,6 +308,15 @@ class App extends React.Component<AppProps, AppState> {
     }
 
     message.config({ duration: 5 })
+
+    /**
+     * Hold the servers that came from the configuration file, before `?gcp=`
+     * appends a runtime, URL-supplied one. These are references, not copies:
+     * `_createClientMapping` rewrites `url` in place on `/projects/` routes, so
+     * the origins are read afterwards to capture the effective value.
+     */
+    const configuredServers = [...props.config.servers]
+
     App.addGcpSecondaryAnnotationServer(props.config)
 
     const defaultClients = _createClientMapping({
@@ -294,6 +326,13 @@ class App extends React.Component<AppProps, AppState> {
       settings: props.config.servers,
       onError: this.handleDICOMwebError,
     })
+
+    this.configuredOrigins = new Set(
+      configuredServers
+        .map((server) => (server.url != null ? getOrigin(server.url) : baseUri))
+        .filter((origin): origin is string => origin !== undefined),
+    )
+    this.applyAuthorizationPolicy(defaultClients)
 
     this.state = {
       clients: defaultClients,
@@ -331,6 +370,173 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
+  /**
+   * Policy handed to every DicomWebManager: it decides which origins may
+   * receive the user's access token.
+   *
+   * Slim sends no token until a server answers 401/403. At that point an origin
+   * from the configuration file is credentialed silently, while any other
+   * origin needs the user to say yes — otherwise a server could obtain a live
+   * cloud credential just by claiming to want one.
+   */
+  private readonly authorizationPolicy: AuthorizationPolicy = {
+    isPreAuthorized: (origin: string): boolean =>
+      readAuthorizationDecision(origin) === 'granted',
+
+    /**
+     * Collapsed per origin across the whole app. Each DicomWebManager already
+     * dedupes its own concurrent challenges, but a storage class gets its own
+     * manager, so a single page load can challenge one server from several of
+     * them at once. Without this the user is asked once per manager.
+     */
+    requestAuthorization: async (origin: string): Promise<string | undefined> =>
+      await this.disclosureGate(
+        origin,
+        async () => await this.negotiateDisclosure(origin),
+      ),
+  }
+
+  /**
+   * Decide whether the access token may be disclosed to an origin, prompting
+   * the user when the origin is not part of the deployed configuration, and
+   * return the token if so.
+   *
+   * Always call this through `authorizationPolicy.requestAuthorization`, which
+   * collapses concurrent callers onto one negotiation — this method itself will
+   * open a modal every time it is invoked.
+   *
+   * @param origin - Origin of the server that asked for credentials
+   * @returns The token to send, or undefined if it must be withheld
+   */
+  private readonly negotiateDisclosure = async (
+    origin: string,
+  ): Promise<string | undefined> => {
+    try {
+      if (this.auth == null) {
+        return undefined
+      }
+      if (!isSecureOrigin(origin)) {
+        /**
+         * Refuse rather than warn. A bearer token sent over plain HTTP is
+         * readable by anything on the path, and no consent dialog makes that
+         * safe. An operator who has a reason to do it anyway can still say so
+         * explicitly with `sendAuthorization: true`, which never reaches here.
+         */
+        console.warn(
+          `refusing to send access token to ${origin} over an insecure ` +
+            'connection; set sendAuthorization on the server configuration ' +
+            'to override',
+        )
+        NotificationMiddleware.onError(
+          NotificationMiddlewareContext.AUTH,
+          new CustomError(
+            errorTypes.AUTHENTICATION,
+            `Not sending your access token to ${origin}: the connection is ` +
+              'not secure.',
+          ),
+        )
+        return undefined
+      }
+      const remembered = readAuthorizationDecision(origin)
+      if (remembered === 'denied') {
+        return undefined
+      }
+      if (remembered !== 'granted' && !this.configuredOrigins.has(origin)) {
+        const approved = await App.confirmAuthorizationDisclosure(
+          origin,
+          this.props.config.oidc?.authority,
+        )
+        writeAuthorizationDecision(origin, approved ? 'granted' : 'denied')
+        console.info(
+          `${approved ? 'approved' : 'declined'} disclosure of access token ` +
+            `to ${origin} (user decision)`,
+        )
+        if (!approved) {
+          return undefined
+        }
+      } else {
+        writeAuthorizationDecision(origin, 'granted')
+        console.info(
+          `approved disclosure of access token to ${origin} ` +
+            '(origin present in the deployed configuration)',
+        )
+      }
+
+      const authorization = await this.auth.getAuthorization()
+      if (authorization == null) {
+        return undefined
+      }
+      /**
+       * The grant is recorded per origin, but each storage class has its own
+       * manager. Push the token across all of them so stores on this origin in
+       * a sibling manager are credentialed now, rather than each having to be
+       * refused once before it asks. Every manager re-applies its own per-store
+       * filtering, so this cannot widen disclosure beyond the recorded grants.
+       */
+      this.applyAuthorization(authorization)
+      return authorization
+    } catch (error) {
+      /**
+       * Never let a failed negotiation reject: callers are inside a DICOMweb
+       * error path already, and a rejection here would replace the underlying
+       * server error with a less useful one.
+       */
+      console.error('could not negotiate token disclosure', error)
+      return undefined
+    }
+  }
+
+  /**
+   * Ask the user before disclosing their access token to a server that is not
+   * part of the deployed configuration.
+   *
+   * Names the identity provider that issued the token, since "your access
+   * token" alone does not tell the user what is actually at stake — the answer
+   * differs a great deal between a hospital SSO and a personal Google account.
+   *
+   * @param origin - Origin of the server that asked for credentials
+   * @param authority - Issuer of the token, from the OIDC configuration
+   * @returns Whether the user agreed to disclose the token
+   */
+  private static async confirmAuthorizationDisclosure(
+    origin: string,
+    authority?: string,
+  ): Promise<boolean> {
+    return await new Promise<boolean>((resolve) => {
+      Modal.confirm({
+        title: 'Send your access token to this server?',
+        content: (
+          <>
+            <p>
+              <strong>{origin}</strong> refused an anonymous request and is
+              asking you to sign in.
+            </p>
+            <p>
+              Slim can forward the access token issued to you by{' '}
+              <strong>{authority ?? 'your identity provider'}</strong> so this
+              server can identify you. Anyone holding that token can act as you
+              against that provider for as long as it remains valid.
+            </p>
+            <p>Only allow this if you trust {origin}.</p>
+          </>
+        ),
+        okText: 'Send token',
+        cancelText: "Don't send",
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false),
+      })
+    })
+  }
+
+  /** Install the authorization policy on every distinct manager in a mapping. */
+  private applyAuthorizationPolicy(clients: {
+    [key: string]: DicomWebManager
+  }): void {
+    for (const client of new Set(Object.values(clients))) {
+      client.setAuthorizationPolicy(this.authorizationPolicy)
+    }
+  }
+
   handleServerSelection = async ({ url }: { url: string }): Promise<void> => {
     const trimmedUrl = url.trim()
     console.info('select DICOMweb server: ', trimmedUrl)
@@ -355,11 +561,23 @@ class App extends React.Component<AppProps, AppState> {
       ],
       onError: this.handleDICOMwebError,
     })
-    tmpClient.updateHeaders(this.state.clients.default.headers)
-    // Re-apply auth so the new client has the current token (avoids 401 when switching mid-session)
+    tmpClient.setAuthorizationPolicy(this.authorizationPolicy)
+    /**
+     * Carry over non-credential headers only. The token is deliberately not
+     * forwarded here: this URL was typed by the user and has not been vetted by
+     * anyone. If the server actually needs credentials it will answer 401, and
+     * the authorization policy will ask before anything is disclosed.
+     */
+    const { Authorization: _omitted, ...inheritedHeaders } =
+      this.state.clients.default.headers
+    tmpClient.updateHeaders(inheritedHeaders)
     if (this.auth != null && this.state.user != null) {
       const authorization = await this.auth.getAuthorization()
       if (authorization != null) {
+        /**
+         * Offered, not forced: `updateHeaders` attaches it only if this origin
+         * has already been approved.
+         */
         tmpClient.updateHeaders({ Authorization: authorization })
       }
     }
