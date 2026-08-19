@@ -92,6 +92,29 @@ const consentPolicy = (
     .mockResolvedValue(approved ? token : undefined),
 })
 
+/**
+ * Policy that records a grant per origin, as the real one does by persisting
+ * the decision. Needed to exercise propagation: once an origin is approved,
+ * every store on it becomes eligible, not just the one that was refused.
+ */
+const recordingPolicy = (
+  token = 'Bearer abc',
+): {
+  isPreAuthorized: jest.Mock
+  requestAuthorization: jest.Mock
+  granted: Set<string>
+} => {
+  const granted = new Set<string>()
+  return {
+    granted,
+    isPreAuthorized: jest.fn((origin: string) => granted.has(origin)),
+    requestAuthorization: jest.fn(async (origin: string) => {
+      granted.add(origin)
+      return await Promise.resolve(token)
+    }),
+  }
+}
+
 describe('DicomWebManager - multi-store search', () => {
   it('merges searchForSeries results across stores and de-duplicates by SeriesInstanceUID', async () => {
     const manager = new DicomWebManager({
@@ -657,6 +680,90 @@ describe('DicomWebManager - authorization escalation', () => {
      */
     expect(stub.searchForStudies).toHaveBeenCalledTimes(1)
     expect(policy.requestAuthorization).not.toHaveBeenCalled()
+  })
+
+  it('credentials sibling stores on the same origin without refusing each first', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://gcp.test/a/dicomWeb', write: false },
+        { id: 'secondary', url: 'https://gcp.test/b/dicomWeb', write: false },
+      ],
+    })
+    manager.setAuthorizationPolicy(recordingPolicy())
+
+    const primaryStub = makeStubClient('primary')
+    const secondaryStub = makeStubClient('secondary')
+    stubManagerClients(manager, [primaryStub, secondaryStub])
+
+    // Only the primary is challenged.
+    primaryStub.searchForStudies
+      .mockRejectedValueOnce(httpError(401))
+      .mockResolvedValue([])
+    secondaryStub.searchForStudies.mockResolvedValue([])
+
+    await manager.searchForStudies({})
+
+    expect(primaryStub.headers.Authorization).toBe('Bearer abc')
+    // Same origin, same grant: no need to be refused once on its own account.
+    expect(secondaryStub.headers.Authorization).toBe('Bearer abc')
+  })
+
+  it('does not spread a grant to a store on a different origin', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'gcp', url: 'https://gcp.test/dicomWeb', write: false },
+        { id: 'other', url: 'https://other.test/dicomWeb', write: false },
+      ],
+    })
+    manager.setAuthorizationPolicy(recordingPolicy())
+
+    const gcpStub = makeStubClient('gcp')
+    const otherStub = makeStubClient('other')
+    stubManagerClients(manager, [gcpStub, otherStub])
+
+    gcpStub.searchForStudies
+      .mockRejectedValueOnce(httpError(401))
+      .mockResolvedValue([])
+    otherStub.searchForStudies.mockResolvedValue([])
+
+    await manager.searchForStudies({})
+
+    expect(gcpStub.headers.Authorization).toBe('Bearer abc')
+    // Consent is per origin; this one was never approved.
+    expect(otherStub.headers.Authorization).toBeUndefined()
+  })
+
+  it('does not spread a grant to a sendAuthorization: false store on the same origin', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://gcp.test/a/dicomWeb', write: false },
+        {
+          id: 'open',
+          url: 'https://gcp.test/b/dicomWeb',
+          write: false,
+          sendAuthorization: false,
+        },
+      ],
+    })
+    manager.setAuthorizationPolicy(recordingPolicy())
+
+    const primaryStub = makeStubClient('primary')
+    const openStub = makeStubClient('open')
+    stubManagerClients(manager, [primaryStub, openStub])
+
+    primaryStub.searchForStudies
+      .mockRejectedValueOnce(httpError(401))
+      .mockResolvedValue([])
+    openStub.searchForStudies.mockResolvedValue([])
+
+    await manager.searchForStudies({})
+
+    expect(primaryStub.headers.Authorization).toBe('Bearer abc')
+    // An explicit operator override outranks a grant for the same origin.
+    expect(openStub.headers.Authorization).toBeUndefined()
   })
 
   it('does not retry a 404, which is not an authorization challenge', async () => {

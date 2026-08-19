@@ -433,6 +433,14 @@ class App extends React.Component<AppProps, AppState> {
       if (authorization == null) {
         return undefined
       }
+      /**
+       * The grant is recorded per origin, but each storage class has its own
+       * manager. Push the token across all of them so stores on this origin in
+       * a sibling manager are credentialed now, rather than each having to be
+       * refused once before it asks. Every manager re-applies its own per-store
+       * filtering, so this cannot widen disclosure beyond the recorded grants.
+       */
+      this.applyAuthorization(authorization)
       return authorization
     },
   }

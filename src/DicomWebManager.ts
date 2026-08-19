@@ -515,8 +515,15 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
         throw error
       }
       store.authGranted = true
-      this.currentAuthorization = authorization
-      store.client.headers.Authorization = authorization
+      /**
+       * Apply through the normal path rather than writing this one client's
+       * header. The grant is recorded per origin, so every other store the
+       * policy now permits — a sibling on the same origin, or one approved
+       * earlier — picks the token up here instead of each having to be refused
+       * once first. Per-store filtering still applies, so an open or refused
+       * store is untouched.
+       */
+      this.updateHeaders({ Authorization: authorization })
       return await call(store.client)
     }
   }
