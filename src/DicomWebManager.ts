@@ -15,6 +15,7 @@ import NotificationMiddleware, {
 } from './services/NotificationMiddleware'
 import { getOrigin } from './utils/authPolicy'
 import { CustomError, errorTypes } from './utils/CustomError'
+import { createSingleFlight } from './utils/singleFlight'
 import { joinUrl } from './utils/url'
 import getXHRRetryHook from './utils/xhrRetryHook'
 
@@ -216,14 +217,12 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   private currentAuthorization?: string
 
   /**
-   * In-flight escalations keyed by origin. Parallel requests to the same server
-   * routinely fail together; without this the user would face one consent
-   * prompt per failed request instead of one per server.
+   * Collapses escalations by origin. Parallel requests to the same server
+   * routinely fail together; without this the policy would be asked once per
+   * failed request instead of once per server. The policy collapses across
+   * managers too, since each storage class has its own.
    */
-  private readonly pendingAuthorizations = new Map<
-    string,
-    Promise<string | undefined>
-  >()
+  private readonly authorizationGate = createSingleFlight<string | undefined>()
 
   constructor({
     baseUri,
@@ -470,15 +469,10 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
     if (policy === undefined) {
       return undefined
     }
-    const pending = this.pendingAuthorizations.get(store.origin)
-    if (pending !== undefined) {
-      return await pending
-    }
-    const request = policy
-      .requestAuthorization(store.origin)
-      .finally(() => this.pendingAuthorizations.delete(store.origin))
-    this.pendingAuthorizations.set(store.origin, request)
-    return await request
+    return await this.authorizationGate(
+      store.origin,
+      async () => await policy.requestAuthorization(store.origin),
+    )
   }
 
   /**

@@ -36,6 +36,7 @@ import {
 } from './utils/authPolicy'
 import { CustomError, errorTypes } from './utils/CustomError'
 import { getProjectStorePath, isProjectsPath, RoutePaths } from './utils/routes'
+import { createSingleFlight } from './utils/singleFlight'
 import { joinUrl, normalizeServerUrl } from './utils/url'
 
 function ParametrizedCaseViewer({
@@ -212,6 +213,12 @@ class App extends React.Component<AppProps, AppState> {
    */
   private readonly configuredOrigins: Set<string>
 
+  /**
+   * Collapses consent negotiations by origin, so simultaneous challenges from
+   * different managers share a single prompt.
+   */
+  private readonly disclosureGate = createSingleFlight<string | undefined>()
+
   private readonly handleDICOMwebError = (
     error: dwc.api.DICOMwebClientError,
     serverSettings: ServerSettings,
@@ -376,9 +383,35 @@ class App extends React.Component<AppProps, AppState> {
     isPreAuthorized: (origin: string): boolean =>
       readAuthorizationDecision(origin) === 'granted',
 
-    requestAuthorization: async (
-      origin: string,
-    ): Promise<string | undefined> => {
+    /**
+     * Collapsed per origin across the whole app. Each DicomWebManager already
+     * dedupes its own concurrent challenges, but a storage class gets its own
+     * manager, so a single page load can challenge one server from several of
+     * them at once. Without this the user is asked once per manager.
+     */
+    requestAuthorization: async (origin: string): Promise<string | undefined> =>
+      await this.disclosureGate(
+        origin,
+        async () => await this.negotiateDisclosure(origin),
+      ),
+  }
+
+  /**
+   * Decide whether the access token may be disclosed to an origin, prompting
+   * the user when the origin is not part of the deployed configuration, and
+   * return the token if so.
+   *
+   * Always call this through `authorizationPolicy.requestAuthorization`, which
+   * collapses concurrent callers onto one negotiation — this method itself will
+   * open a modal every time it is invoked.
+   *
+   * @param origin - Origin of the server that asked for credentials
+   * @returns The token to send, or undefined if it must be withheld
+   */
+  private readonly negotiateDisclosure = async (
+    origin: string,
+  ): Promise<string | undefined> => {
+    try {
       if (this.auth == null) {
         return undefined
       }
@@ -442,7 +475,15 @@ class App extends React.Component<AppProps, AppState> {
        */
       this.applyAuthorization(authorization)
       return authorization
-    },
+    } catch (error) {
+      /**
+       * Never let a failed negotiation reject: callers are inside a DICOMweb
+       * error path already, and a rejection here would replace the underlying
+       * server error with a less useful one.
+       */
+      console.error('could not negotiate token disclosure', error)
+      return undefined
+    }
   }
 
   /**
