@@ -1,0 +1,37 @@
+{
+  "files": {
+    "main.css": "https://imagingdatacommons.github.io/slim/static/css/main.ad89401e.css",
+    "main.js": "https://imagingdatacommons.github.io/slim/static/js/main.8d33d190.js",
+    "static/css/251.d20470f1.chunk.css": "https://imagingdatacommons.github.io/slim/static/css/251.d20470f1.chunk.css",
+    "static/js/251.cd666aeb.chunk.js": "https://imagingdatacommons.github.io/slim/static/js/251.cd666aeb.chunk.js",
+    "static/css/100.149bf93b.chunk.css": "https://imagingdatacommons.github.io/slim/static/css/100.149bf93b.chunk.css",
+    "static/js/100.cdd6cac4.chunk.js": "https://imagingdatacommons.github.io/slim/static/js/100.cdd6cac4.chunk.js",
+    "static/js/403.6e87ac2f.chunk.js": "https://imagingdatacommons.github.io/slim/static/js/403.6e87ac2f.chunk.js",
+    "static/js/531.2657bc89.chunk.js": "https://imagingdatacommons.github.io/slim/static/js/531.2657bc89.chunk.js",
+    "static/js/42.621ee606.chunk.js": "https://imagingdatacommons.github.io/slim/static/js/42.621ee606.chunk.js",
+    "static/js/654.a15e0645.chunk.js": "https://imagingdatacommons.github.io/slim/static/js/654.a15e0645.chunk.js",
+    "static/js/dicomMicroscopyViewer.min.js.map": "https://imagingdatacommons.github.io/slim/static/js/dicomMicroscopyViewer.min.js.map",
+    "static/js/dicomMicroscopyViewer.min.js": "https://imagingdatacommons.github.io/slim/static/js/dicomMicroscopyViewer.min.js",
+    "static/js/dataLoader.worker.min.js.map": "https://imagingdatacommons.github.io/slim/static/js/dataLoader.worker.min.js.map",
+    "static/js/dataLoader.worker.min.js": "https://imagingdatacommons.github.io/slim/static/js/dataLoader.worker.min.js",
+    "static/js/openjpegwasm_decode.wasm": "https://imagingdatacommons.github.io/slim/static/js/openjpegwasm_decode.wasm",
+    "static/js/dicomiccwasm.wasm": "https://imagingdatacommons.github.io/slim/static/js/dicomiccwasm.wasm",
+    "static/js/libjpegturbowasm_decode.wasm": "https://imagingdatacommons.github.io/slim/static/js/libjpegturbowasm_decode.wasm",
+    "static/js/charlswasm_decode.wasm": "https://imagingdatacommons.github.io/slim/static/js/charlswasm_decode.wasm",
+    "index.html": "https://imagingdatacommons.github.io/slim/index.html",
+    "main.ad89401e.css.map": "https://imagingdatacommons.github.io/slim/static/css/main.ad89401e.css.map",
+    "main.8d33d190.js.map": "https://imagingdatacommons.github.io/slim/static/js/main.8d33d190.js.map",
+    "251.d20470f1.chunk.css.map": "https://imagingdatacommons.github.io/slim/static/css/251.d20470f1.chunk.css.map",
+    "251.cd666aeb.chunk.js.map": "https://imagingdatacommons.github.io/slim/static/js/251.cd666aeb.chunk.js.map",
+    "100.149bf93b.chunk.css.map": "https://imagingdatacommons.github.io/slim/static/css/100.149bf93b.chunk.css.map",
+    "100.cdd6cac4.chunk.js.map": "https://imagingdatacommons.github.io/slim/static/js/100.cdd6cac4.chunk.js.map",
+    "403.6e87ac2f.chunk.js.map": "https://imagingdatacommons.github.io/slim/static/js/403.6e87ac2f.chunk.js.map",
+    "531.2657bc89.chunk.js.map": "https://imagingdatacommons.github.io/slim/static/js/531.2657bc89.chunk.js.map",
+    "42.621ee606.chunk.js.map": "https://imagingdatacommons.github.io/slim/static/js/42.621ee606.chunk.js.map",
+    "654.a15e0645.chunk.js.map": "https://imagingdatacommons.github.io/slim/static/js/654.a15e0645.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.ad89401e.css",
+    "static/js/main.8d33d190.js"
+  ]
+}
