@@ -2023,6 +2023,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
+  handleMouseLeaveViewport = (): void => {
+    this.lastHoveredRoiSignature = null
+    this.setState({
+      isHoveredRoiTooltipVisible: false,
+    })
+  }
+
   getUpdatedSelectedRois = (
     newSelectedRoiUid?: string,
   ): { selectedRoiUIDs: Set<string>; selectedRoi?: dmv.roi.ROI } => {
@@ -2250,7 +2257,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         // skipcq: JS-0320
         delete this.annotationGroupLoadDoneTimers[uid]
       },
-      phase === 'error' ? 6000 : 4000,
+      phase === 'error' ? 4000 : 1500,
     )
   }
 
@@ -4990,6 +4997,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               states={this.state.annotationGroupLoadStatus}
             />
           }
+          onMouseLeaveViewport={this.handleMouseLeaveViewport}
         >
           <SlideViewerModals
             isAnnotationModalVisible={this.state.isAnnotationModalVisible}

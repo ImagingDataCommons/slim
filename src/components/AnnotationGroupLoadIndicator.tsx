@@ -50,20 +50,30 @@ interface AnnotationGroupLoadIndicatorProps {
   states: AnnotationGroupLoadState[]
 }
 
+/** Maximum number of individual entries to show before collapsing. */
+const MAX_VISIBLE_ENTRIES = 3
+
 /**
  * Floating card (bottom-left of the viewport) reporting bulk annotation
  * group hydrate progress: fetching the graphic index, retrieving coordinate
  * data (with byte progress when the server reports a length), and decoding
  * & rendering. A group's row lingers briefly with a checkmark after it
  * finishes, then the caller removes it.
+ *
+ * When more than MAX_VISIBLE_ENTRIES groups are loading, displays a summary
+ * to prevent the card from growing excessively tall.
  */
 const AnnotationGroupLoadIndicator: React.FC<
   AnnotationGroupLoadIndicatorProps
 > = ({ states }) => {
   const [nowMs, setNowMs] = useState(() => Date.now())
-  const isActive = states.some(
+  const activeStates = states.filter(
     (state) => state.phase !== 'done' && state.phase !== 'error',
   )
+  const settledStates = states.filter(
+    (state) => state.phase === 'done' || state.phase === 'error',
+  )
+  const isActive = activeStates.length > 0
 
   useEffect(() => {
     if (!isActive) {
@@ -81,13 +91,34 @@ const AnnotationGroupLoadIndicator: React.FC<
     return null
   }
 
+  // Determine which entries to show individually vs as a summary.
+  // Prioritize active (loading) entries, then fill remaining slots with settled.
+  const shouldCollapse = states.length > MAX_VISIBLE_ENTRIES
+  let visibleStates: AnnotationGroupLoadState[]
+  let hiddenActiveCount = 0
+  let hiddenSettledCount = 0
+
+  if (shouldCollapse) {
+    const visibleActive = activeStates.slice(0, MAX_VISIBLE_ENTRIES)
+    const remainingSlots = MAX_VISIBLE_ENTRIES - visibleActive.length
+    const visibleSettled = settledStates.slice(0, remainingSlots)
+    visibleStates = [...visibleActive, ...visibleSettled]
+    hiddenActiveCount = Math.max(0, activeStates.length - visibleActive.length)
+    hiddenSettledCount = Math.max(
+      0,
+      settledStates.length - visibleSettled.length,
+    )
+  } else {
+    visibleStates = states
+  }
+
   return (
     <div style={wrapStyle}>
       <Card
         size="small"
         bordered
         style={{
-          borderRadius: 0,
+          borderRadius: '4px',
           pointerEvents: 'auto',
           background: '#fff',
           boxShadow:
@@ -96,7 +127,7 @@ const AnnotationGroupLoadIndicator: React.FC<
         bodyStyle={{ padding: 12, background: '#fff' }}
       >
         <Space direction="vertical" size={10} style={{ width: '100%' }}>
-          {states.map((state) => {
+          {visibleStates.map((state) => {
             const isSettled = state.phase === 'done' || state.phase === 'error'
             const elapsed = (state.finishedAtMs ?? nowMs) - state.startedAtMs
             return (
@@ -121,6 +152,17 @@ const AnnotationGroupLoadIndicator: React.FC<
               </Space>
             )
           })}
+          {(hiddenActiveCount > 0 || hiddenSettledCount > 0) && (
+            <div style={{ opacity: 0.65, fontSize: 12, paddingLeft: 24 }}>
+              {hiddenActiveCount > 0 && (
+                <span>+{hiddenActiveCount} more loading</span>
+              )}
+              {hiddenActiveCount > 0 && hiddenSettledCount > 0 && ', '}
+              {hiddenSettledCount > 0 && (
+                <span>{hiddenSettledCount} completed</span>
+              )}
+            </div>
+          )}
         </Space>
       </Card>
     </div>

@@ -227,7 +227,7 @@ function AnnotationGroupDisplaySettings({
               <Separator label="Exploration" />
               <span className="text-xs text-neutral-500">Measurement</span>
               <select
-                className="h-7 w-full border border-neutral-300 bg-white px-1.5 text-xs text-neutral-800 shadow-sm outline-none focus-visible:border-[#007ea3] focus-visible:ring-1 focus-visible:ring-[#007ea3] disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-7 w-full rounded border border-neutral-300 bg-white px-1.5 text-xs text-neutral-800 shadow-sm outline-none focus-visible:border-[#007ea3] focus-visible:ring-1 focus-visible:ring-[#007ea3] disabled:cursor-not-allowed disabled:opacity-50"
                 value={selectedMeasurementKey ?? ''}
                 disabled={disabled}
                 onChange={(event) => {

@@ -22,7 +22,7 @@ const PopoverContent = forwardRef<
       sideOffset={sideOffset}
       collisionPadding={8}
       className={cn(
-        'dmv-ui z-50 border border-neutral-200 bg-white text-neutral-800 shadow-[0_3px_6px_-4px_rgba(0,0,0,.12),0_6px_16px_0_rgba(0,0,0,.08),0_9px_28px_8px_rgba(0,0,0,.05)] outline-none',
+        'dmv-ui z-50 rounded border border-neutral-200 bg-white text-neutral-800 shadow-[0_3px_6px_-4px_rgba(0,0,0,.12),0_6px_16px_0_rgba(0,0,0,.08),0_9px_28px_8px_rgba(0,0,0,.05)] outline-none',
         className,
       )}
       {...props}
