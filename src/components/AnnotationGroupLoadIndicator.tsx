@@ -91,8 +91,10 @@ const AnnotationGroupLoadIndicator: React.FC<
     return null
   }
 
-  // Determine which entries to show individually vs as a summary.
-  // Prioritize active (loading) entries, then fill remaining slots with settled.
+  /**
+   * Determine which entries to show individually vs as a summary.
+   * Prioritize active (loading) entries, then fill remaining slots with settled.
+   */
   const shouldCollapse = states.length > MAX_VISIBLE_ENTRIES
   let visibleStates: AnnotationGroupLoadState[]
   let hiddenActiveCount = 0
