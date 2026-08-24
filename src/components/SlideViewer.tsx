@@ -3147,11 +3147,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     styleOptions: {
       opacity?: number
       color?: number[]
-      filled?: boolean
-      fillOpacity?: number
-      measurement?: dcmjs.sr.coding.CodedConcept
       fill?: boolean
       fillOpacity?: number
+      measurement?: dcmjs.sr.coding.CodedConcept
       limitValues?: number[]
     }
   }): void => {
