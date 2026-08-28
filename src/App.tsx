@@ -755,16 +755,72 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
+  /**
+   * Parses cached OIDC config from localStorage.
+   * Handles both JSON and JavaScript object notation (unquoted keys).
+   */
+  private parseCachedOidcConfig(): OidcSettings | undefined {
+    const cachedOidcConfig = window.localStorage.getItem('slim_oidc_config')
+    if (cachedOidcConfig == null || cachedOidcConfig.trim() === '') {
+      return undefined
+    }
+    try {
+      /** Convert JS object notation to JSON (quote unquoted keys) */
+      const normalized = cachedOidcConfig
+        .trim()
+        .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)(\s*:)/g, '$1"$2"$3')
+      const parsed = JSON.parse(normalized)
+      if (
+        typeof parsed === 'object' &&
+        parsed !== null &&
+        typeof parsed.authority === 'string' &&
+        typeof parsed.clientId === 'string' &&
+        typeof parsed.scope === 'string'
+      ) {
+        return {
+          authority: parsed.authority,
+          clientId: parsed.clientId,
+          scope: parsed.scope,
+          grantType: parsed.grantType,
+          authorizationEndpoint: parsed.authorizationEndpoint,
+          endSessionEndpoint: parsed.endSessionEndpoint,
+        }
+      }
+    } catch {
+      /** Invalid format, ignore cached config */
+    }
+    return undefined
+  }
+
   componentDidMount(): void {
-    // Restore cached server selection if it exists
+    /** Restore cached OIDC config and server selection if they exist */
+    const cachedOidcConfig = this.parseCachedOidcConfig()
     const cachedServerUrl = window.localStorage.getItem('slim_selected_server')
+    const cachedMode = window.localStorage.getItem('slim_server_selection_mode')
+
+    /**
+     * Apply cached OIDC config if present (even for default server mode).
+     * This allows users to configure OIDC once and have it persist.
+     */
+    if (cachedOidcConfig != null) {
+      console.info('restoring cached OIDC configuration')
+      const { protocol, host } = window.location
+      const baseUri = `${protocol}//${host}`
+      const appUri = joinUrl(this.props.config.path, baseUri)
+      this.auth = new OidcManager(appUri, cachedOidcConfig)
+    }
+
     if (
+      cachedMode === 'custom' &&
       cachedServerUrl !== null &&
       cachedServerUrl !== undefined &&
       cachedServerUrl !== ''
     ) {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      this.handleServerSelection({ url: cachedServerUrl })
+      this.handleServerSelection({
+        url: cachedServerUrl,
+        oidc: cachedOidcConfig,
+      })
     }
 
     if (this.auth != null) {

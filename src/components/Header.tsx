@@ -361,15 +361,25 @@ class Header extends React.Component<HeaderProps, HeaderState> {
   }
 
   /**
-   * Validates OIDC config JSON string.
-   * Returns true if empty (optional) or if valid JSON with required fields.
+   * Converts JavaScript object notation to valid JSON by quoting unquoted keys.
+   * Handles cases like { authority: "value" } -> { "authority": "value" }
+   */
+  normalizeToJson = (str: string): string => {
+    /** Match unquoted keys followed by colon */
+    return str.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)(\s*:)/g, '$1"$2"$3')
+  }
+
+  /**
+   * Validates OIDC config string (JSON or JS object notation).
+   * Returns true if empty (optional) or if valid with required fields.
    */
   isValidOidcConfig = (jsonStr: string | null | undefined): boolean => {
     if (jsonStr == null || jsonStr.trim() === '') {
       return true
     }
     try {
-      const parsed = JSON.parse(jsonStr.trim())
+      const normalized = this.normalizeToJson(jsonStr.trim())
+      const parsed = JSON.parse(normalized)
       return (
         typeof parsed === 'object' &&
         parsed !== null &&
@@ -386,7 +396,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
   }
 
   /**
-   * Parses OIDC config JSON string into OidcSettings object.
+   * Parses OIDC config string (JSON or JS object notation) into OidcSettings.
    * Returns undefined if empty or invalid.
    */
   parseOidcConfig = (
@@ -396,7 +406,8 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       return undefined
     }
     try {
-      const parsed = JSON.parse(jsonStr.trim())
+      const normalized = this.normalizeToJson(jsonStr.trim())
+      const parsed = JSON.parse(normalized)
       if (
         typeof parsed === 'object' &&
         parsed !== null &&
@@ -414,7 +425,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
         }
       }
     } catch {
-      /** Invalid JSON */
+      /** Invalid format */
     }
     return undefined
   }
