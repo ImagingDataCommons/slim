@@ -11,7 +11,11 @@ import {
 } from 'react-router-dom'
 
 import type AppConfig from './AppConfig'
-import type { ErrorMessageSettings, ServerSettings } from './AppConfig'
+import type {
+  ErrorMessageSettings,
+  OidcSettings,
+  ServerSettings,
+} from './AppConfig'
 import type { AuthManager, User } from './auth'
 import OidcManager from './auth/OidcManager'
 import AppLoading from './components/AppLoading'
@@ -200,7 +204,7 @@ interface AppState {
 }
 
 class App extends React.Component<AppProps, AppState> {
-  private readonly auth?: AuthManager
+  private auth?: AuthManager
   private reauthInProgress = false
   private unsubscribeAuthorization?: () => void
 
@@ -537,9 +541,34 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  handleServerSelection = async ({ url }: { url: string }): Promise<void> => {
+  handleServerSelection = async ({
+    url,
+    oidc,
+  }: {
+    url: string
+    oidc?: OidcSettings
+  }): Promise<void> => {
     const trimmedUrl = url.trim()
     console.info('select DICOMweb server: ', trimmedUrl)
+
+    /** Handle OIDC configuration change */
+    if (oidc != null) {
+      console.info('applying custom OIDC configuration')
+      const { protocol, host } = window.location
+      const baseUri = `${protocol}//${host}`
+      const appUri = joinUrl(this.props.config.path, baseUri)
+      this.auth = new OidcManager(appUri, oidc)
+      /** Re-subscribe to authorization changes */
+      if (this.unsubscribeAuthorization != null) {
+        this.unsubscribeAuthorization()
+      }
+      this.unsubscribeAuthorization = this.auth.onAuthorizationChange(
+        (authorization) => {
+          this.applyAuthorization(authorization)
+        },
+      )
+    }
+
     if (
       trimmedUrl === '' ||
       window.localStorage.getItem('slim_server_selection_mode') === 'default'

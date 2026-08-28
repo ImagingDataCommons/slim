@@ -3,6 +3,7 @@ import {
   BugOutlined,
   CheckOutlined,
   FileSearchOutlined,
+  InfoCircleOutlined,
   InfoOutlined,
   StopOutlined,
   UnorderedListOutlined,
@@ -27,6 +28,7 @@ import React from 'react'
 import { NavLink } from 'react-router-dom'
 import { v4 as uuidv4 } from 'uuid'
 import appPackageJson from '../../package.json'
+import type { OidcSettings } from '../AppConfig'
 import type { User } from '../auth'
 import { SettingsButton } from '../contexts/SettingsContext'
 import type DicomWebManager from '../DicomWebManager'
@@ -43,6 +45,8 @@ import {
 import { normalizeServerUrl } from '../utils/url'
 import Button from './Button'
 import DicomTagBrowser from './DicomTagBrowser/DicomTagBrowser'
+
+const { TextArea } = Input
 
 const aboutModalCopyTooltips: [React.ReactNode, React.ReactNode] = [
   'Copy hash',
@@ -178,7 +182,13 @@ interface HeaderProps extends RouteComponentProps {
   clients?: { [key: string]: DicomWebManager }
   defaultClients?: { [key: string]: DicomWebManager }
   showWorklistButton: boolean
-  onServerSelection: ({ url }: { url: string }) => void
+  onServerSelection: ({
+    url,
+    oidc,
+  }: {
+    url: string
+    oidc?: OidcSettings
+  }) => void
   onUserLogout?: () => void
   showServerSelectionButton: boolean
 }
@@ -198,6 +208,10 @@ interface HeaderState {
   /** False only when both custom logo.svg and favicon.ico fail. */
   showLogo: boolean
   logoUrl: string
+  /** Optional OIDC config JSON string entered by user */
+  oidcConfigInput: string
+  /** Whether the OIDC config JSON is valid */
+  isOidcConfigValid: boolean
 }
 
 /**
@@ -212,6 +226,9 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     const cachedMode = window.localStorage.getItem(
       'slim_server_selection_mode',
     ) as 'default' | 'custom' | null
+
+    const cachedOidcConfig =
+      window.localStorage.getItem('slim_oidc_config') ?? ''
 
     this.state = {
       errorObj: [],
@@ -229,6 +246,8 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           : 'default',
       showLogo: true,
       logoUrl: `${process.env.PUBLIC_URL}/logo.svg`,
+      oidcConfigInput: cachedOidcConfig,
+      isOidcConfigValid: this.isValidOidcConfig(cachedOidcConfig),
     }
 
     const onErrorHandler = ({
@@ -339,6 +358,75 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     }
     const pathNorm = trimmedUrl.startsWith('/') ? trimmedUrl : `/${trimmedUrl}`
     return isGcpDicomStorePath(pathNorm)
+  }
+
+  /**
+   * Validates OIDC config JSON string.
+   * Returns true if empty (optional) or if valid JSON with required fields.
+   */
+  isValidOidcConfig = (jsonStr: string | null | undefined): boolean => {
+    if (jsonStr == null || jsonStr.trim() === '') {
+      return true
+    }
+    try {
+      const parsed = JSON.parse(jsonStr.trim())
+      return (
+        typeof parsed === 'object' &&
+        parsed !== null &&
+        typeof parsed.authority === 'string' &&
+        parsed.authority.length > 0 &&
+        typeof parsed.clientId === 'string' &&
+        parsed.clientId.length > 0 &&
+        typeof parsed.scope === 'string' &&
+        parsed.scope.length > 0
+      )
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * Parses OIDC config JSON string into OidcSettings object.
+   * Returns undefined if empty or invalid.
+   */
+  parseOidcConfig = (
+    jsonStr: string | null | undefined,
+  ): OidcSettings | undefined => {
+    if (jsonStr == null || jsonStr.trim() === '') {
+      return undefined
+    }
+    try {
+      const parsed = JSON.parse(jsonStr.trim())
+      if (
+        typeof parsed === 'object' &&
+        parsed !== null &&
+        typeof parsed.authority === 'string' &&
+        typeof parsed.clientId === 'string' &&
+        typeof parsed.scope === 'string'
+      ) {
+        return {
+          authority: parsed.authority,
+          clientId: parsed.clientId,
+          scope: parsed.scope,
+          grantType: parsed.grantType,
+          authorizationEndpoint: parsed.authorizationEndpoint,
+          endSessionEndpoint: parsed.endSessionEndpoint,
+        }
+      }
+    } catch {
+      /** Invalid JSON */
+    }
+    return undefined
+  }
+
+  handleOidcConfigInput = (
+    event: React.ChangeEvent<HTMLTextAreaElement>,
+  ): void => {
+    const value = event.currentTarget.value
+    this.setState({
+      oidcConfigInput: value,
+      isOidcConfigValid: this.isValidOidcConfig(value),
+    })
   }
 
   static handleUserMenuButtonClick(e: React.SyntheticEvent): void {
@@ -633,6 +721,8 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     const cachedServerUrl = window.localStorage
       .getItem('slim_selected_server')
       ?.trim()
+    const cachedOidcConfig =
+      window.localStorage.getItem('slim_oidc_config') ?? ''
     this.setState({
       serverSelectionMode:
         cachedServerUrl !== null &&
@@ -643,6 +733,8 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       selectedServerUrl: cachedServerUrl ?? undefined,
       isServerSelectionModalVisible: false,
       isServerSelectionDisabled: !this.isValidServerUrl(cachedServerUrl),
+      oidcConfigInput: cachedOidcConfig,
+      isOidcConfigValid: this.isValidOidcConfig(cachedOidcConfig),
     })
   }
 
@@ -657,8 +749,19 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       this.state.serverSelectionMode,
     )
 
+    /** Save OIDC config to localStorage */
+    const oidcConfig = this.parseOidcConfig(this.state.oidcConfigInput)
+    if (oidcConfig != null) {
+      window.localStorage.setItem(
+        'slim_oidc_config',
+        this.state.oidcConfigInput.trim(),
+      )
+    } else {
+      window.localStorage.removeItem('slim_oidc_config')
+    }
+
     if (this.state.serverSelectionMode === 'default') {
-      this.props.onServerSelection({ url: '' })
+      this.props.onServerSelection({ url: '', oidc: oidcConfig })
       this.setState({
         isServerSelectionModalVisible: false,
         isServerSelectionDisabled: false,
@@ -672,7 +775,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     if (url !== null && url !== undefined && url !== '') {
       if (this.isValidServerUrl(url)) {
         resolvedUrl = normalizeServerUrl(url)
-        this.props.onServerSelection({ url: resolvedUrl })
+        this.props.onServerSelection({ url: resolvedUrl, oidc: oidcConfig })
         closeModal = true
       }
     }
@@ -875,6 +978,63 @@ class Header extends React.Component<HeaderProps, HeaderState> {
               />
             </Tooltip>
           )}
+
+          <div style={{ marginTop: '16px' }}>
+            <Typography.Text>
+              OIDC Configuration (optional)
+              <Tooltip
+                title={
+                  <div
+                    style={{
+                      whiteSpace: 'pre-wrap',
+                      fontFamily: 'monospace',
+                      fontSize: '11px',
+                    }}
+                  >
+                    {`Example JSON format:
+{
+  "authority": "https://accounts.google.com",
+  "clientId": "your-client-id.apps.googleusercontent.com",
+  "scope": "email profile openid https://www.googleapis.com/auth/cloud-healthcare",
+  "grantType": "implicit"
+}`}
+                  </div>
+                }
+                overlayStyle={{ maxWidth: '450px' }}
+              >
+                <InfoCircleOutlined
+                  style={{
+                    marginLeft: '8px',
+                    color: 'rgba(0,0,0,.45)',
+                    cursor: 'help',
+                  }}
+                />
+              </Tooltip>
+            </Typography.Text>
+            <TextArea
+              placeholder='{"authority": "https://...", "clientId": "...", "scope": "..."}'
+              value={this.state.oidcConfigInput}
+              onChange={this.handleOidcConfigInput}
+              rows={4}
+              style={{
+                marginTop: '8px',
+                fontFamily: 'monospace',
+                fontSize: '12px',
+                borderColor:
+                  this.state.oidcConfigInput.trim() !== '' &&
+                  !this.state.isOidcConfigValid
+                    ? '#ff4d4f'
+                    : undefined,
+              }}
+            />
+            {this.state.oidcConfigInput.trim() !== '' &&
+              !this.state.isOidcConfigValid && (
+                <Typography.Text type="danger" style={{ fontSize: '12px' }}>
+                  Invalid JSON format. Required fields: authority, clientId,
+                  scope
+                </Typography.Text>
+              )}
+          </div>
         </Modal>
       </>
     )
