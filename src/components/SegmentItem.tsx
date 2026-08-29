@@ -99,11 +99,15 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
           return { currentStyle: newStyle }
         },
         () => {
+          /**
+           * Only send opacity - do not include color. For FRACTIONAL segments,
+           * sending color would replace the distinct colormap with a flat LUT.
+           * Color changes are handled separately by handleColorChange.
+           */
           this.props.onStyleChange({
             segmentUID: this.props.segment.uid,
             styleOptions: {
               opacity,
-              color: this.state.currentStyle.color,
             },
           })
         },
