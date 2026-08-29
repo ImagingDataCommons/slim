@@ -206,6 +206,72 @@ const retrieveWithFallback = async <T>(
     : new Error(String(lastError as unknown))
 }
 
+/**
+ * Cache mapping series UIDs to the store that successfully served them.
+ * Keyed by "studyInstanceUID/seriesInstanceUID".
+ */
+const seriesStoreCache = new Map<string, Store>()
+
+/**
+ * Build the cache key for a series.
+ */
+const buildSeriesCacheKey = (
+  studyInstanceUID: string,
+  seriesInstanceUID: string,
+): string => `${studyInstanceUID}/${seriesInstanceUID}`
+
+/**
+ * Try stores in an optimized order: if a cached store exists for the given
+ * series, try it first to avoid 404s on other stores. Falls back to the
+ * standard order if the cached store fails or no cache exists.
+ *
+ * On success, caches the store for subsequent requests to the same series.
+ */
+const retrieveWithCachedFallback = async <T>(
+  stores: Store[],
+  call: (store: Store) => Promise<T>,
+  cacheKey?: string,
+): Promise<T> => {
+  const readable = stores.filter((s) => s.read)
+  if (readable.length === 0) {
+    throw new CustomError(
+      errorTypes.COMMUNICATION,
+      'No readable DICOMweb store is configured.',
+    )
+  }
+
+  /** Reorder stores to try the cached one first if available. */
+  let orderedStores = readable
+  const cachedStore = cacheKey != null ? seriesStoreCache.get(cacheKey) : null
+  if (cachedStore != null && readable.includes(cachedStore)) {
+    orderedStores = [cachedStore, ...readable.filter((s) => s !== cachedStore)]
+  }
+
+  let lastError: unknown
+  for (const store of orderedStores) {
+    try {
+      const result = await call(store)
+      /** Cache the successful store for future requests to this series. */
+      if (cacheKey != null) {
+        seriesStoreCache.set(cacheKey, store)
+      }
+      return result
+    } catch (error: unknown) {
+      lastError = error
+      if (process.env.NODE_ENV === 'development') {
+        console.debug(
+          `retrieve against store "${store.id}" failed; ` +
+            'falling back to the next configured store',
+          error,
+        )
+      }
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(String(lastError as unknown))
+}
+
 export default class DicomWebManager implements dwc.api.DICOMwebClient {
   private readonly stores: Store[] = []
 
@@ -641,13 +707,18 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   retrieveSeriesMetadata = async (
     options: dwc.api.RetrieveSeriesMetadataOptions,
   ): Promise<dwc.api.Metadata[]> => {
-    const seriesSummaryMetadata = await retrieveWithFallback(
+    const cacheKey = buildSeriesCacheKey(
+      options.studyInstanceUID,
+      options.seriesInstanceUID,
+    )
+    const seriesSummaryMetadata = await retrieveWithCachedFallback(
       this.stores,
       async (store) =>
         await this.callStore(
           store,
           async (client) => await client.retrieveSeriesMetadata(options),
         ),
+      cacheKey,
     )
     const naturalized = seriesSummaryMetadata.map(naturalizeDataset)
     DicomMetadataStore.addSeriesMetadata(
@@ -660,26 +731,36 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   retrieveInstanceMetadata = async (
     options: dwc.api.RetrieveInstanceMetadataOptions,
   ): Promise<dwc.api.Metadata[]> => {
-    return await retrieveWithFallback(
+    const cacheKey = buildSeriesCacheKey(
+      options.studyInstanceUID,
+      options.seriesInstanceUID,
+    )
+    return await retrieveWithCachedFallback(
       this.stores,
       async (store) =>
         await this.callStore(
           store,
           async (client) => await client.retrieveInstanceMetadata(options),
         ),
+      cacheKey,
     )
   }
 
   retrieveInstance = async (
     options: dwc.api.RetrieveInstanceOptions,
   ): Promise<dwc.api.Dataset> => {
-    const instance = await retrieveWithFallback(
+    const cacheKey = buildSeriesCacheKey(
+      options.studyInstanceUID,
+      options.seriesInstanceUID,
+    )
+    const instance = await retrieveWithCachedFallback(
       this.stores,
       async (store) =>
         await this.callStore(
           store,
           async (client) => await client.retrieveInstance(options),
         ),
+      cacheKey,
     )
     const data = dcmjs.data.DicomMessage.readFile(instance)
     const { dataset } = dmv.metadata.formatMetadata(data.dict)
@@ -690,33 +771,47 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   retrieveInstanceFrames = async (
     options: dwc.api.RetrieveInstanceFramesOptions,
   ): Promise<dwc.api.Pixeldata[]> => {
-    return await retrieveWithFallback(
+    const cacheKey = buildSeriesCacheKey(
+      options.studyInstanceUID,
+      options.seriesInstanceUID,
+    )
+    return await retrieveWithCachedFallback(
       this.stores,
       async (store) =>
         await this.callStore(
           store,
           async (client) => await client.retrieveInstanceFrames(options),
         ),
+      cacheKey,
     )
   }
 
   retrieveInstanceRendered = async (
     options: dwc.api.RetrieveInstanceRenderedOptions,
   ): Promise<dwc.api.Pixeldata> => {
-    return await retrieveWithFallback(
+    const cacheKey = buildSeriesCacheKey(
+      options.studyInstanceUID,
+      options.seriesInstanceUID,
+    )
+    return await retrieveWithCachedFallback(
       this.stores,
       async (store) =>
         await this.callStore(
           store,
           async (client) => await client.retrieveInstanceRendered(options),
         ),
+      cacheKey,
     )
   }
 
   retrieveInstanceFramesRendered = async (
     options: dwc.api.RetrieveInstanceFramesRenderedOptions,
   ): Promise<dwc.api.Pixeldata> => {
-    return await retrieveWithFallback(
+    const cacheKey = buildSeriesCacheKey(
+      options.studyInstanceUID,
+      options.seriesInstanceUID,
+    )
+    return await retrieveWithCachedFallback(
       this.stores,
       async (store) =>
         await this.callStore(
@@ -724,6 +819,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
           async (client) =>
             await client.retrieveInstanceFramesRendered(options),
         ),
+      cacheKey,
     )
   }
 
