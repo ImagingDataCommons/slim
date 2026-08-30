@@ -759,7 +759,7 @@ class App extends React.Component<AppProps, AppState> {
    * Parses cached OIDC config from localStorage.
    * Handles both JSON and JavaScript object notation (unquoted keys).
    */
-  private parseCachedOidcConfig(): OidcSettings | undefined {
+  private static parseCachedOidcConfig(): OidcSettings | undefined {
     const cachedOidcConfig = window.localStorage.getItem('slim_oidc_config')
     if (cachedOidcConfig == null || cachedOidcConfig.trim() === '') {
       return undefined
@@ -794,7 +794,7 @@ class App extends React.Component<AppProps, AppState> {
 
   componentDidMount(): void {
     /** Restore cached OIDC config and server selection if they exist */
-    const cachedOidcConfig = this.parseCachedOidcConfig()
+    const cachedOidcConfig = App.parseCachedOidcConfig()
     const cachedServerUrl = window.localStorage.getItem('slim_selected_server')
     const cachedMode = window.localStorage.getItem('slim_server_selection_mode')
 

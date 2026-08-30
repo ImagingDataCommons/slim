@@ -364,7 +364,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
    * Converts JavaScript object notation to valid JSON by quoting unquoted keys.
    * Handles cases like { authority: "value" } -> { "authority": "value" }
    */
-  normalizeToJson = (str: string): string => {
+  static normalizeToJson(str: string): string {
     /** Match unquoted keys followed by colon */
     return str.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)(\s*:)/g, '$1"$2"$3')
   }
@@ -378,7 +378,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       return true
     }
     try {
-      const normalized = this.normalizeToJson(jsonStr.trim())
+      const normalized = Header.normalizeToJson(jsonStr.trim())
       const parsed = JSON.parse(normalized)
       return (
         typeof parsed === 'object' &&
@@ -406,7 +406,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       return undefined
     }
     try {
-      const normalized = this.normalizeToJson(jsonStr.trim())
+      const normalized = Header.normalizeToJson(jsonStr.trim())
       const parsed = JSON.parse(normalized)
       if (
         typeof parsed === 'object' &&
