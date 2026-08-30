@@ -247,7 +247,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       showLogo: true,
       logoUrl: `${process.env.PUBLIC_URL}/logo.svg`,
       oidcConfigInput: cachedOidcConfig,
-      isOidcConfigValid: this.isValidOidcConfig(cachedOidcConfig),
+      isOidcConfigValid: Header.isValidOidcConfig(cachedOidcConfig),
     }
 
     const onErrorHandler = ({
@@ -373,7 +373,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
    * Validates OIDC config string (JSON or JS object notation).
    * Returns true if empty (optional) or if valid with required fields.
    */
-  isValidOidcConfig = (jsonStr: string | null | undefined): boolean => {
+  static isValidOidcConfig(jsonStr: string | null | undefined): boolean {
     if (jsonStr == null || jsonStr.trim() === '') {
       return true
     }
@@ -399,9 +399,9 @@ class Header extends React.Component<HeaderProps, HeaderState> {
    * Parses OIDC config string (JSON or JS object notation) into OidcSettings.
    * Returns undefined if empty or invalid.
    */
-  parseOidcConfig = (
+  static parseOidcConfig(
     jsonStr: string | null | undefined,
-  ): OidcSettings | undefined => {
+  ): OidcSettings | undefined {
     if (jsonStr == null || jsonStr.trim() === '') {
       return undefined
     }
@@ -436,7 +436,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     const value = event.currentTarget.value
     this.setState({
       oidcConfigInput: value,
-      isOidcConfigValid: this.isValidOidcConfig(value),
+      isOidcConfigValid: Header.isValidOidcConfig(value),
     })
   }
 
@@ -745,7 +745,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       isServerSelectionModalVisible: false,
       isServerSelectionDisabled: !this.isValidServerUrl(cachedServerUrl),
       oidcConfigInput: cachedOidcConfig,
-      isOidcConfigValid: this.isValidOidcConfig(cachedOidcConfig),
+      isOidcConfigValid: Header.isValidOidcConfig(cachedOidcConfig),
     })
   }
 
@@ -761,7 +761,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     )
 
     /** Save OIDC config to localStorage */
-    const oidcConfig = this.parseOidcConfig(this.state.oidcConfigInput)
+    const oidcConfig = Header.parseOidcConfig(this.state.oidcConfigInput)
     if (oidcConfig != null) {
       window.localStorage.setItem(
         'slim_oidc_config',
