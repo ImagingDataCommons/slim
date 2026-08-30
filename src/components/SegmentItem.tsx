@@ -180,7 +180,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
       metadata,
       onVisibilityChange,
       onStyleChange,
-      onClick,
+      onClick: _onClick,
       ...otherProps
     } = this.props
     return (
