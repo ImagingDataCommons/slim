@@ -734,6 +734,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const MicroscopyBulkSimpleAnnotation =
       StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION
     const Segmentation = StorageClasses.SEGMENTATION
+    const LabelmapSegmentation = StorageClasses.LABELMAP_SEGMENTATION
     const ParametricMap = StorageClasses.PARAMETRIC_MAP
     const OpticalPath = StorageClasses.OPTICAL_PATH
     const AdvancedBlendingPresentationState =
@@ -818,7 +819,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       }
       logger.debug('Loading Microscopy Bulk Simple Annotation')
     } else if (
-      (derivedDataset as { SOPClassUID: string }).SOPClassUID === Segmentation
+      (derivedDataset as { SOPClassUID: string }).SOPClassUID ===
+        Segmentation ||
+      (derivedDataset as { SOPClassUID: string }).SOPClassUID ===
+        LabelmapSegmentation
     ) {
       const allSegments = this.volumeViewer.getAllSegments()
       const derivedSeriesInstanceUID = (
@@ -3102,6 +3106,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
+  handleSegmentClick = (segmentUID: string): void => {
+    this.volumeViewer.zoomToSegment(segmentUID)
+  }
+
   /**
    * Handle change of segment style.
    */
@@ -4288,6 +4296,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               visibleSegmentUIDs={this.state.visibleSegmentUIDs}
               onSegmentVisibilityChange={this.handleSegmentVisibilityChange}
               onSegmentStyleChange={this.handleSegmentStyleChange}
+              onSegmentClick={this.handleSegmentClick}
             />
           )}
         </Menu.SubMenu>
