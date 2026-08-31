@@ -162,6 +162,27 @@ Custom selections are stored in `localStorage`, re-apply the current Bearer toke
 
 See [docs/CONFIGURATION.md](docs/CONFIGURATION.md#runtime-server-selection-header-button) for details.
 
+#### Runtime OIDC Configuration
+
+When `enableServerSelection` is enabled, users can also configure OIDC authentication settings at runtime through the server selection modal. This allows connecting to servers that require different authentication providers without redeploying the application.
+
+To use a custom OIDC provider, enter a JSON configuration in the OIDC config field:
+
+```json
+{
+  "authority": "https://accounts.google.com",
+  "clientId": "your-client-id.apps.googleusercontent.com",
+  "scope": "email profile openid https://www.googleapis.com/auth/cloud-healthcare",
+  "grantType": "implicit"
+}
+```
+
+Required fields: `authority`, `clientId`, `scope`
+
+Optional fields: `grantType`, `authorizationEndpoint`, `endSessionEndpoint`
+
+The OIDC configuration is cached in localStorage. If not provided, the deployment's default OIDC settings are used.
+
 ### Handling mixed content and HTTPS
 
 When deploying Slim with HTTPS, you may encounter mixed content scenarios where your PACS/VNA server returns HTTP URLs in its responses. This commonly occurs when:
