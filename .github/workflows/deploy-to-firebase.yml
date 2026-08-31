@@ -30,6 +30,9 @@ jobs:
       )
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # Skip pnpm's dependency status check which fails on @parcel/watcher build scripts
+      PNPM_SKIP_DEPS_STATUS_CHECK: "true"
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
