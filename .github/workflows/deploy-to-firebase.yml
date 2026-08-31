@@ -43,8 +43,10 @@ jobs:
           node-version: 24
           cache: pnpm
 
-      - name: Approve pnpm builds
-        run: pnpm config set strict-dep-builds false --location project
+      - name: Disable strict dep builds check globally
+        run: |
+          pnpm config set strict-dep-builds false --global
+          echo "strict-dep-builds=false" >> ~/.npmrc
 
       - name: Resolve DMV branch for preview
         id: dmv
