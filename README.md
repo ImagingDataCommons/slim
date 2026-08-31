@@ -90,10 +90,12 @@ _Slim_ also supports interactive visualization of image annotations and analysis
 
 **Raster graphics:**
 
-- [DICOM Segmentation](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_A.51.html) instances that contain binary or fractional segmentation masks
+- [DICOM Segmentation](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_A.51.html) instances that contain binary or fractional segmentation masks, including TILED_SPARSE segmentations at non-standard resolution levels (e.g., segmentations created from rescaled image patches that don't match any pyramid level)
 - [DICOM Parametric Map](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_A.75.html) instances that contain saliency maps, attention maps, class activation maps, and similar derived images
 
 Fractional segmentations and parametric maps show an in-viewport color legend when at least one overlay is visible. The legend is collapsible and its per-item visibility toggles stay in sync with the switches in the right-hand panel.
+
+Clicking on a segment label in the right-hand panel zooms the viewport to that segment's bounding box, providing quick navigation to regions of interest.
 
 | | DICOM IOD |
 | :-: | :-------- |
@@ -161,6 +163,27 @@ window.config = {
 Custom selections are stored in `localStorage`, re-apply the current Bearer token when OIDC is in use, and use a temporary **read-only** client (`write: false`) for all SOP classes until you switch back to the default server.
 
 See [docs/CONFIGURATION.md](docs/CONFIGURATION.md#runtime-server-selection-header-button) for details.
+
+#### Runtime OIDC Configuration
+
+When `enableServerSelection` is enabled, users can also configure OIDC authentication settings at runtime through the server selection modal. This allows connecting to servers that require different authentication providers without redeploying the application.
+
+To use a custom OIDC provider, enter a JSON configuration in the OIDC config field:
+
+```json
+{
+  "authority": "https://accounts.google.com",
+  "clientId": "your-client-id.apps.googleusercontent.com",
+  "scope": "email profile openid https://www.googleapis.com/auth/cloud-healthcare",
+  "grantType": "implicit"
+}
+```
+
+Required fields: `authority`, `clientId`, `scope`
+
+Optional fields: `grantType`, `authorizationEndpoint`, `endSessionEndpoint`
+
+The OIDC configuration is cached in localStorage. If not provided, the deployment's default OIDC settings are used.
 
 ### Handling mixed content and HTTPS
 

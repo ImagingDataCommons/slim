@@ -3102,6 +3102,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
   }
 
+  handleSegmentClick = (segmentUID: string): void => {
+    this.volumeViewer.zoomToSegment(segmentUID)
+  }
+
   /**
    * Handle change of segment style.
    */
@@ -4288,6 +4292,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               visibleSegmentUIDs={this.state.visibleSegmentUIDs}
               onSegmentVisibilityChange={this.handleSegmentVisibilityChange}
               onSegmentStyleChange={this.handleSegmentStyleChange}
+              onSegmentClick={this.handleSegmentClick}
             />
           )}
         </Menu.SubMenu>
