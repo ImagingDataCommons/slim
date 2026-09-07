@@ -34,6 +34,7 @@ interface SegmentItemProps {
       color?: number[]
     }
   }) => void
+  onClick: (segmentUID: string) => void
 }
 
 interface SegmentItemState {
@@ -111,6 +112,10 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
     }
   }
 
+  handleClick = (): void => {
+    this.props.onClick(this.props.segment.uid)
+  }
+
   render(): React.ReactNode {
     const attributes: Array<{ name: string; value: string }> = [
       {
@@ -175,6 +180,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
       metadata,
       onVisibilityChange,
       onStyleChange,
+      onClick: _onClick,
       ...otherProps
     } = this.props
     return (
@@ -223,14 +229,26 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
               )}
             </Space>
           </div>
-          <div style={{ flex: 1 }}>
+          <button
+            type="button"
+            style={{
+              flex: 1,
+              cursor: 'pointer',
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              textAlign: 'left',
+            }}
+            onClick={this.handleClick}
+            title="Click to zoom to segment"
+          >
             <Description
               header={this.props.segment.label}
               attributes={attributes}
               selectable
               hasLongValues
             />
-          </div>
+          </button>
         </Space>
       </Menu.Item>
     )

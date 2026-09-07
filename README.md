@@ -91,6 +91,7 @@ _Slim_ also supports interactive visualization of image annotations and analysis
 **Raster graphics:**
 
 - [DICOM Segmentation](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_A.51.html) instances that contain binary or fractional segmentation masks
+- [DICOM Labelmap Segmentation](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_A.89.html) instances (Supplement 243) that contain multi-class label maps where each pixel value corresponds to a distinct segment
 - [DICOM Parametric Map](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_A.75.html) instances that contain saliency maps, attention maps, class activation maps, and similar derived images
 
 Fractional segmentations and parametric maps show an in-viewport color legend when at least one overlay is visible. The legend is collapsible and its per-item visibility toggles stay in sync with the switches in the right-hand panel.

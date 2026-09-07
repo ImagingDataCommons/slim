@@ -3,6 +3,14 @@ export enum StorageClasses {
   COMPREHENSIVE_SR = '1.2.840.10008.5.1.4.1.1.88.33',
   COMPREHENSIVE_3D_SR = '1.2.840.10008.5.1.4.1.1.88.34',
   SEGMENTATION = '1.2.840.10008.5.1.4.1.1.66.4',
+  /**
+   * DICOM Labelmap Segmentation Storage (Supplement 243).
+   *
+   * TODO: When implementing LABELMAP creation in Slim, ensure PixelPaddingValue
+   * (0028,0120) is populated to identify the background segment. This allows
+   * viewers to distinguish background from foreground segments.
+   */
+  LABELMAP_SEGMENTATION = '1.2.840.10008.5.1.4.1.1.66.7',
   MICROSCOPY_BULK_SIMPLE_ANNOTATION = '1.2.840.10008.5.1.4.1.1.91.1',
   PARAMETRIC_MAP = '1.2.840.10008.5.1.4.1.1.30',
   ADVANCED_BLENDING_PRESENTATION_STATE = '1.2.840.10008.5.1.4.1.1.11.8',

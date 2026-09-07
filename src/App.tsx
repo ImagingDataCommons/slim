@@ -359,6 +359,7 @@ class App extends React.Component<AppProps, AppState> {
           StorageClasses.COMPREHENSIVE_SR,
           StorageClasses.COMPREHENSIVE_3D_SR,
           StorageClasses.SEGMENTATION,
+          StorageClasses.LABELMAP_SEGMENTATION,
           StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION,
           StorageClasses.PARAMETRIC_MAP,
           StorageClasses.ADVANCED_BLENDING_PRESENTATION_STATE,
