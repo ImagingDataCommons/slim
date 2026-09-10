@@ -245,6 +245,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
             type="button"
             style={{
               flex: 1,
+              minWidth: 0,
               cursor: isAbsent ? 'default' : 'pointer',
               background: 'none',
               border: 'none',
@@ -260,22 +261,29 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
                 : 'Click to zoom to segment'
             }
           >
-            <Space align="start" size={8}>
-              <Description
-                header={this.props.segment.label}
-                attributes={attributes}
-                selectable={!isAbsent}
-                hasLongValues
-              />
-              {isAbsent && (
-                <Tag
-                  color="default"
-                  title="Listed in Segment Sequence but no frames contain this segment"
-                >
-                  Absent
-                </Tag>
-              )}
-            </Space>
+            <Description
+              header={
+                isAbsent ? (
+                  <div
+                    style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
+                  >
+                    <span>{this.props.segment.label}</span>
+                    <Tag
+                      color="default"
+                      style={{ margin: 0, alignSelf: 'flex-start' }}
+                      title="Listed in Segment Sequence but no frames contain this segment"
+                    >
+                      Absent
+                    </Tag>
+                  </div>
+                ) : (
+                  this.props.segment.label
+                )
+              }
+              attributes={attributes}
+              selectable={!isAbsent}
+              hasLongValues
+            />
           </button>
         </Space>
       </Menu.Item>
