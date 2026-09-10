@@ -1,5 +1,5 @@
 import { SettingOutlined } from '@ant-design/icons'
-import { Button, Divider, Menu, Popover, Space, Switch } from 'antd'
+import { Button, Divider, Menu, Popover, Space, Switch, Tag } from 'antd'
 // skipcq: JS-C1003
 import type * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
@@ -34,6 +34,7 @@ interface SegmentItemProps {
       color?: number[]
     }
   }) => void
+  onClick: (segmentUID: string) => void
 }
 
 interface SegmentItemState {
@@ -52,7 +53,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
     super(props)
 
     /** Initialize with default color if not provided */
-    const defaultColor = this.props.defaultStyle.color ?? [255, 255, 0] // Default yellow
+    const defaultColor = this.props.defaultStyle.color ?? [255, 255, 0]
     this.state = {
       isVisible: this.props.isVisible,
       currentStyle: {
@@ -66,6 +67,9 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
     checked: boolean,
     _event: React.MouseEvent<HTMLButtonElement>,
   ): void => {
+    if (this.props.segment.isAbsent) {
+      return
+    }
     this.props.onVisibilityChange({
       segmentUID: this.props.segment.uid,
       isVisible: checked,
@@ -111,7 +115,15 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
     }
   }
 
+  handleClick = (): void => {
+    if (this.props.segment.isAbsent) {
+      return
+    }
+    this.props.onClick(this.props.segment.uid)
+  }
+
   render(): React.ReactNode {
+    const isAbsent = this.props.segment.isAbsent === true
     const attributes: Array<{ name: string; value: string }> = [
       {
         name: 'Property Type',
@@ -137,7 +149,6 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
       | undefined
     const segmentationType = getSegmentationType(segmentationMetadata)
 
-    // Add SegmentationType from metadata if available
     if (segmentationMetadata?.SegmentationType !== undefined) {
       attributes.push({
         name: 'Segmentation Type',
@@ -175,6 +186,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
       metadata,
       onVisibilityChange,
       onStyleChange,
+      onClick: _onClick,
       ...otherProps
     } = this.props
     return (
@@ -189,9 +201,15 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
               <Switch
                 size="small"
                 onChange={this.handleVisibilityChange}
-                checked={this.props.isVisible}
+                checked={!isAbsent && this.props.isVisible}
+                disabled={isAbsent}
                 checkedChildren={<FaEye />}
                 unCheckedChildren={<FaEyeSlash />}
+                title={
+                  isAbsent
+                    ? 'Segment has no pixel data'
+                    : 'Toggle segment visibility'
+                }
               />
               <Popover
                 placement="left"
@@ -203,10 +221,10 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
                   type="primary"
                   shape="circle"
                   icon={<SettingOutlined />}
+                  disabled={isAbsent}
                 />
               </Popover>
-              {/* Color indicator - only show for non-fractional segmentation */}
-              {segmentationType !== 'FRACTIONAL' && (
+              {segmentationType !== 'FRACTIONAL' && !isAbsent && (
                 <div
                   style={{
                     width: '20px',
@@ -223,14 +241,50 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
               )}
             </Space>
           </div>
-          <div style={{ flex: 1 }}>
+          <button
+            type="button"
+            style={{
+              flex: 1,
+              minWidth: 0,
+              cursor: isAbsent ? 'default' : 'pointer',
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              textAlign: 'left',
+              opacity: isAbsent ? 0.75 : 1,
+            }}
+            onClick={this.handleClick}
+            disabled={isAbsent}
+            title={
+              isAbsent
+                ? 'Segment is absent (no pixel data found)'
+                : 'Click to zoom to segment'
+            }
+          >
             <Description
-              header={this.props.segment.label}
+              header={
+                isAbsent ? (
+                  <div
+                    style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
+                  >
+                    <span>{this.props.segment.label}</span>
+                    <Tag
+                      color="default"
+                      style={{ margin: 0, alignSelf: 'flex-start' }}
+                      title="Listed in Segment Sequence but no frames contain this segment"
+                    >
+                      Absent
+                    </Tag>
+                  </div>
+                ) : (
+                  this.props.segment.label
+                )
+              }
               attributes={attributes}
-              selectable
+              selectable={!isAbsent}
               hasLongValues
             />
-          </div>
+          </button>
         </Space>
       </Menu.Item>
     )

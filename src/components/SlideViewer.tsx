@@ -841,6 +841,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
        */
       const shownSegmentUIDs: string[] = []
       matchingSegments.forEach((segment) => {
+        if (segment.isAbsent) {
+          logger.debug(
+            `auto-load Segmentation: skipping absent segment "${segment.uid}"`,
+          )
+          return
+        }
         try {
           this.volumeViewer.showSegment(segment.uid)
           shownSegmentUIDs.push(segment.uid)
@@ -3082,6 +3088,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     segmentUID: string
     isVisible: boolean
   }): void => {
+    const segment = this.volumeViewer
+      .getAllSegments()
+      .find((item) => item.uid === segmentUID)
+    if (segment?.isAbsent) {
+      logger.debug(`ignore visibility change for absent segment ${segmentUID}`)
+      return
+    }
     logger.log(`change visibility of segment ${segmentUID}`)
     if (isVisible) {
       logger.log(`show segment ${segmentUID}`)
@@ -3100,6 +3113,16 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         return { visibleSegmentUIDs }
       })
     }
+  }
+
+  handleSegmentClick = (segmentUID: string): void => {
+    const segment = this.volumeViewer
+      .getAllSegments()
+      .find((item) => item.uid === segmentUID)
+    if (segment?.isAbsent) {
+      return
+    }
+    this.volumeViewer.zoomToSegment(segmentUID)
   }
 
   /**
@@ -4288,6 +4311,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               visibleSegmentUIDs={this.state.visibleSegmentUIDs}
               onSegmentVisibilityChange={this.handleSegmentVisibilityChange}
               onSegmentStyleChange={this.handleSegmentStyleChange}
+              onSegmentClick={this.handleSegmentClick}
             />
           )}
         </Menu.SubMenu>
