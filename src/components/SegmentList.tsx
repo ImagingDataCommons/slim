@@ -35,6 +35,7 @@ interface SegmentListProps {
       color?: number[]
     }
   }) => void
+  onSegmentClick: (segmentUID: string) => void
 }
 
 /**
@@ -47,6 +48,9 @@ class SegmentList extends React.Component<
   handleVisibilityChange = (checked: boolean): void => {
     if (checked) {
       this.props.segments.forEach((segment) => {
+        if (segment.isAbsent) {
+          return
+        }
         this.props.onSegmentVisibilityChange({
           segmentUID: segment.uid,
           isVisible: checked,
@@ -75,6 +79,7 @@ class SegmentList extends React.Component<
           defaultStyle={this.props.defaultSegmentStyles[uid]}
           onVisibilityChange={this.props.onSegmentVisibilityChange}
           onStyleChange={this.props.onSegmentStyleChange}
+          onClick={this.props.onSegmentClick}
         />
       )
     })

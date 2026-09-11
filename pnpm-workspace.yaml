@@ -2,6 +2,7 @@ shamefullyHoist: true
 strictPeerDependencies: false
 
 allowBuilds:
+  '@parcel/watcher': true
   core-js: true
   core-js-pure: true
   dicom-microscopy-viewer: true
