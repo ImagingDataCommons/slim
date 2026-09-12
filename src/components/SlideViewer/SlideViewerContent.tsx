@@ -7,6 +7,10 @@ interface SlideViewerContentProps {
   toolbarHeight?: string
   cursor: string
   volumeViewportRef: React.RefObject<HTMLDivElement>
+  /** Overlaid on top of the viewport (e.g. a floating load-progress card). */
+  loadIndicator?: React.ReactNode
+  /** Called when the mouse leaves the viewport area. */
+  onMouseLeaveViewport?: () => void
   children: React.ReactNode
 }
 
@@ -19,6 +23,8 @@ const SlideViewerContent: React.FC<SlideViewerContentProps> = ({
   toolbar,
   cursor,
   volumeViewportRef,
+  loadIndicator,
+  onMouseLeaveViewport,
   children,
 }) => {
   return (
@@ -39,10 +45,20 @@ const SlideViewerContent: React.FC<SlideViewerContentProps> = ({
           minHeight: 0,
           overflow: 'hidden',
           position: 'relative',
-          cursor,
         }}
-        ref={volumeViewportRef}
-      />
+      >
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: onMouseLeave is passive (hides tooltip), not interactive */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            cursor,
+          }}
+          ref={volumeViewportRef}
+          onMouseLeave={onMouseLeaveViewport}
+        />
+        {loadIndicator}
+      </div>
 
       {children}
     </Layout.Content>

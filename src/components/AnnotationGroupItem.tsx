@@ -174,6 +174,10 @@ interface AnnotationGroupItemProps {
       fillOpacity?: number
     }
   }) => void
+  getMeasurementRange?: (
+    annotationGroupUID: string,
+    measurement: dcmjs.sr.coding.CodedConcept,
+  ) => { min: number; max: number } | null
 }
 
 interface AnnotationGroupItemState {
@@ -392,14 +396,20 @@ class AnnotationGroupItem extends React.Component<
           ? String(option[0].children[0])
           : String(option[0].children),
       })
+      const range = this.props.getMeasurementRange?.(
+        this.props.annotationGroup.uid,
+        measurement,
+      )
+      const limitValues = range != null ? [range.min, range.max] : undefined
       this.props.onStyleChange({
         uid: this.props.annotationGroup.uid,
-        styleOptions: { measurement },
+        styleOptions: { measurement, limitValues },
       })
       this.setState((state) => ({
         currentStyle: {
           ...state.currentStyle,
           measurement,
+          limitValues,
         },
       }))
     } else {
@@ -407,6 +417,8 @@ class AnnotationGroupItem extends React.Component<
         uid: this.props.annotationGroup.uid,
         styleOptions: {
           color: this.props.defaultStyle.color,
+          /** Explicitly clear so the viewer deactivates measurement filtering. */
+          measurement: undefined,
         },
       })
       this.setState((state) => ({
@@ -513,18 +525,16 @@ class AnnotationGroupItem extends React.Component<
         windowSettings = (
           <>
             <Divider plain>Values of interest</Divider>
-            <Row justify="center" align="middle" gutter={[8, 8]}>
-              <Col span={6}>
+            <div style={{ padding: '0 8px 8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <InputNumber
                   min={0}
                   max={this.state.currentStyle.limitValues[1]}
                   size="small"
-                  style={{ width: '75px' }}
+                  style={{ width: '75px', flexShrink: 0 }}
                   value={this.state.currentStyle.limitValues[0]}
                   onChange={this.handleLowerLimitChange}
                 />
-              </Col>
-              <Col span={12}>
                 <Slider
                   range
                   min={minValue}
@@ -535,19 +545,18 @@ class AnnotationGroupItem extends React.Component<
                     this.state.currentStyle.limitValues[1],
                   ]}
                   onChange={this.handleLimitChange}
+                  style={{ flex: 1, minWidth: 0 }}
                 />
-              </Col>
-              <Col span={6}>
                 <InputNumber
                   min={this.state.currentStyle.limitValues[0]}
                   max={maxValue}
                   size="small"
-                  style={{ width: '75px' }}
+                  style={{ width: '75px', flexShrink: 0 }}
                   value={this.state.currentStyle.limitValues[1]}
                   onChange={this.handleUpperLimitChange}
                 />
-              </Col>
-            </Row>
+              </div>
+            </div>
           </>
         )
       }
