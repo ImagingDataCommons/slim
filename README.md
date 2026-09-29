@@ -186,6 +186,8 @@ Optional fields: `grantType`, `authorizationEndpoint`, `endSessionEndpoint`
 
 The OIDC configuration is cached in localStorage. If not provided, the deployment's default OIDC settings are used.
 
+Applying a configuration starts sign-in with the new provider right away. If sign-in with a cached configuration fails, the configuration is cleared and a reload uses the deployment's settings again. If the identity provider itself rejects the configuration (for example, an unknown client ID) and keeps showing its error page, open Slim with `?resetOidc` in the URL (for example, `https://slim.example.com/?resetOidc`) to discard the cached configuration.
+
 ### Handling mixed content and HTTPS
 
 When deploying Slim with HTTPS, you may encounter mixed content scenarios where your PACS/VNA server returns HTTP URLs in its responses. This commonly occurs when:

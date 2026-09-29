@@ -18,7 +18,11 @@ import type {
 } from './AppConfig'
 import type { AuthManager, User } from './auth'
 import OidcManager from './auth/OidcManager'
-import { readCachedOidcConfig } from './auth/oidcConfig'
+import {
+  clearCachedOidcConfig,
+  readCachedOidcConfig,
+  resetCachedOidcConfigFromUrl,
+} from './auth/oidcConfig'
 import AppLoading from './components/AppLoading'
 import AppShell from './components/AppShell'
 import CaseViewer from './components/CaseViewer'
@@ -199,6 +203,7 @@ interface AppState {
   isLoading: boolean
   redirectTo?: string
   wasAuthSuccessful: boolean
+  signInFailureMessage?: string
   error?: ErrorMessageSettings
   /** Bumped after mid-session auth recovery so views remount and refetch. */
   authRecoveryKey: number
@@ -206,6 +211,8 @@ interface AppState {
 
 class App extends React.Component<AppProps, AppState> {
   private auth?: AuthManager
+  /** Whether `auth` was built from the OIDC config cached by server selection */
+  private usesCachedOidcConfig = false
   private reauthInProgress = false
   private unsubscribeAuthorization?: () => void
 
@@ -283,8 +290,11 @@ class App extends React.Component<AppProps, AppState> {
     const { protocol, host } = window.location
     const baseUri = `${protocol}//${host}`
 
+    resetCachedOidcConfigFromUrl()
     /** OIDC config entered in server selection overrides the deployment one */
-    const oidcSettings = readCachedOidcConfig() ?? props.config.oidc
+    const cachedOidcSettings = readCachedOidcConfig()
+    this.usesCachedOidcConfig = cachedOidcSettings !== undefined
+    const oidcSettings = cachedOidcSettings ?? props.config.oidc
     if (oidcSettings !== undefined) {
       if (process.env.NODE_ENV === 'development') {
         console.info(
@@ -558,6 +568,7 @@ class App extends React.Component<AppProps, AppState> {
       this.unsubscribeAuthorization?.()
       this.auth?.dispose()
       this.auth = App.createAuthManager(this.props.config.path, oidc)
+      this.usesCachedOidcConfig = true
       this.subscribeToAuthorization()
       this.signIn()
     }
@@ -733,10 +744,22 @@ class App extends React.Component<AppProps, AppState> {
               'Could not sign-in user.',
             ),
           )
+          /**
+           * The failure page has no header, so a broken custom config could
+           * not be changed from the UI and would be reused on every load.
+           */
+          let signInFailureMessage: string | undefined
+          if (this.usesCachedOidcConfig) {
+            clearCachedOidcConfig()
+            this.usesCachedOidcConfig = false
+            signInFailureMessage =
+              'Sign-in with the custom OIDC configuration failed. It has been cleared; reload the page to use the default configuration.'
+          }
           this.setState({
             isLoading: false,
             redirectTo: undefined,
             wasAuthSuccessful: false,
+            signInFailureMessage,
           })
         })
     } else {
@@ -871,7 +894,12 @@ class App extends React.Component<AppProps, AppState> {
         </BrowserRouter>
       )
     } else if (!this.state.wasAuthSuccessful) {
-      return <InfoPage type="error" message="Sign-in failed." />
+      return (
+        <InfoPage
+          type="error"
+          message={this.state.signInFailureMessage ?? 'Sign-in failed.'}
+        />
+      )
     } else if (this.state.error != null) {
       return <InfoPage type="error" message={this.state.error.message} />
     } else {

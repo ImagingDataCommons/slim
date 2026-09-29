@@ -3,6 +3,7 @@ import {
   OIDC_CONFIG_STORAGE_KEY,
   parseOidcConfig,
   readCachedOidcConfig,
+  resetCachedOidcConfigFromUrl,
 } from '../oidcConfig'
 
 const settings = {
@@ -79,5 +80,36 @@ describe('readCachedOidcConfig', () => {
 
   it('returns undefined when nothing is cached', () => {
     expect(readCachedOidcConfig()).toBeUndefined()
+  })
+})
+
+describe('resetCachedOidcConfigFromUrl', () => {
+  beforeEach(() => {
+    window.localStorage.setItem(
+      OIDC_CONFIG_STORAGE_KEY,
+      JSON.stringify(settings),
+    )
+  })
+
+  afterEach(() => {
+    window.localStorage.removeItem(OIDC_CONFIG_STORAGE_KEY)
+    window.history.replaceState(null, '', '/')
+  })
+
+  it('clears the cache and drops the parameter when it is present', () => {
+    window.history.replaceState(null, '', '/studies?resetOidc&tab=2')
+
+    expect(resetCachedOidcConfigFromUrl()).toBe(true)
+    expect(readCachedOidcConfig()).toBeUndefined()
+    expect(window.location.pathname).toBe('/studies')
+    expect(window.location.search).toBe('?tab=2')
+  })
+
+  it('keeps the cache when the parameter is absent', () => {
+    window.history.replaceState(null, '', '/studies?tab=2')
+
+    expect(resetCachedOidcConfigFromUrl()).toBe(false)
+    expect(readCachedOidcConfig()).toEqual(settings)
+    expect(window.location.search).toBe('?tab=2')
   })
 })

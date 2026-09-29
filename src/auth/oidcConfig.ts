@@ -3,6 +3,9 @@ import type { OidcSettings } from '../AppConfig'
 /** localStorage key for the OIDC config entered in server selection */
 export const OIDC_CONFIG_STORAGE_KEY = 'slim_oidc_config'
 
+/** URL query parameter that discards the cached OIDC config, e.g. `?resetOidc` */
+export const OIDC_RESET_PARAM = 'resetOidc'
+
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value !== ''
 
@@ -54,3 +57,23 @@ export const isValidOidcConfig = (input: string | null | undefined): boolean =>
 
 export const readCachedOidcConfig = (): OidcSettings | undefined =>
   parseOidcConfig(window.localStorage.getItem(OIDC_CONFIG_STORAGE_KEY))
+
+export const clearCachedOidcConfig = (): void => {
+  window.localStorage.removeItem(OIDC_CONFIG_STORAGE_KEY)
+}
+
+/**
+ * Clear the cached config when the URL has `?resetOidc`, then drop the
+ * parameter from the URL. This is the way out when a cached config sends the
+ * user straight to an identity provider error page on every load.
+ */
+export const resetCachedOidcConfigFromUrl = (): boolean => {
+  const url = new URL(window.location.href)
+  if (!url.searchParams.has(OIDC_RESET_PARAM)) {
+    return false
+  }
+  clearCachedOidcConfig()
+  url.searchParams.delete(OIDC_RESET_PARAM)
+  window.history.replaceState(window.history.state, '', url.toString())
+  return true
+}
