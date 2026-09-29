@@ -50,7 +50,7 @@ describe('parseOidcConfig', () => {
 describe('isValidOidcConfig', () => {
   it('accepts an empty config because OIDC is optional', () => {
     expect(isValidOidcConfig('')).toBe(true)
-    expect(isValidOidcConfig(undefined)).toBe(true)
+    expect(isValidOidcConfig(null)).toBe(true)
   })
 
   it('accepts a complete config', () => {

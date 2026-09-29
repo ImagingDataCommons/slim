@@ -398,8 +398,12 @@ export default class OidcManager implements AuthManager {
    */
   dispose = (): void => {
     this._authorizationListeners.clear()
-    void this._ready.then(() => {
-      this._oidc.stopSilentRenew()
-    })
+    this._ready
+      .then(() => {
+        this._oidc.stopSilentRenew()
+      })
+      .catch((error: unknown) => {
+        console.error('Failed to stop OIDC silent renew:', error)
+      })
   }
 }
