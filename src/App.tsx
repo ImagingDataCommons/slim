@@ -18,6 +18,7 @@ import type {
 } from './AppConfig'
 import type { AuthManager, User } from './auth'
 import OidcManager from './auth/OidcManager'
+import { readCachedOidcConfig } from './auth/oidcConfig'
 import AppLoading from './components/AppLoading'
 import AppShell from './components/AppShell'
 import CaseViewer from './components/CaseViewer'
@@ -281,17 +282,17 @@ class App extends React.Component<AppProps, AppState> {
 
     const { protocol, host } = window.location
     const baseUri = `${protocol}//${host}`
-    const appUri = joinUrl(props.config.path, baseUri)
 
-    const oidcSettings = props.config.oidc
+    /** OIDC config entered in server selection overrides the deployment one */
+    const oidcSettings = readCachedOidcConfig() ?? props.config.oidc
     if (oidcSettings !== undefined) {
       if (process.env.NODE_ENV === 'development') {
         console.info(
           'app uses the following OIDC configuration: ',
-          props.config.oidc,
+          oidcSettings,
         )
       }
-      this.auth = new OidcManager(appUri, oidcSettings)
+      this.auth = App.createAuthManager(props.config.path, oidcSettings)
     }
 
     if (props.config.servers.length === 0) {
@@ -552,22 +553,12 @@ class App extends React.Component<AppProps, AppState> {
     const trimmedUrl = url.trim()
     console.info('select DICOMweb server: ', trimmedUrl)
 
-    /** Handle OIDC configuration change */
     if (oidc != null) {
       console.info('applying custom OIDC configuration')
-      const { protocol, host } = window.location
-      const baseUri = `${protocol}//${host}`
-      const appUri = joinUrl(this.props.config.path, baseUri)
-      this.auth = new OidcManager(appUri, oidc)
-      /** Re-subscribe to authorization changes */
-      if (this.unsubscribeAuthorization != null) {
-        this.unsubscribeAuthorization()
-      }
-      this.unsubscribeAuthorization = this.auth.onAuthorizationChange(
-        (authorization) => {
-          this.applyAuthorization(authorization)
-        },
-      )
+      this.unsubscribeAuthorization?.()
+      this.auth?.dispose()
+      this.auth = App.createAuthManager(this.props.config.path, oidc)
+      this.subscribeToAuthorization()
     }
 
     if (
@@ -756,82 +747,36 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  /**
-   * Parses cached OIDC config from localStorage.
-   * Handles both JSON and JavaScript object notation (unquoted keys).
-   */
-  private static parseCachedOidcConfig(): OidcSettings | undefined {
-    const cachedOidcConfig = window.localStorage.getItem('slim_oidc_config')
-    if (cachedOidcConfig == null || cachedOidcConfig.trim() === '') {
-      return undefined
-    }
-    try {
-      /** Convert JS object notation to JSON (quote unquoted keys) */
-      const normalized = cachedOidcConfig
-        .trim()
-        .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)(\s*:)/g, '$1"$2"$3')
-      const parsed = JSON.parse(normalized)
-      if (
-        typeof parsed === 'object' &&
-        parsed !== null &&
-        typeof parsed.authority === 'string' &&
-        typeof parsed.clientId === 'string' &&
-        typeof parsed.scope === 'string'
-      ) {
-        return {
-          authority: parsed.authority,
-          clientId: parsed.clientId,
-          scope: parsed.scope,
-          grantType: parsed.grantType,
-          authorizationEndpoint: parsed.authorizationEndpoint,
-          endSessionEndpoint: parsed.endSessionEndpoint,
-        }
-      }
-    } catch {
-      /** Invalid format, ignore cached config */
-    }
-    return undefined
+  private static createAuthManager(
+    path: string,
+    settings: OidcSettings,
+  ): AuthManager {
+    const { protocol, host } = window.location
+    const appUri = joinUrl(path, `${protocol}//${host}`)
+    return new OidcManager(appUri, settings)
+  }
+
+  private subscribeToAuthorization(): void {
+    this.unsubscribeAuthorization = this.auth?.onAuthorizationChange(
+      (authorization) => {
+        this.applyAuthorization(authorization)
+      },
+    )
   }
 
   componentDidMount(): void {
-    /** Restore cached OIDC config and server selection if they exist */
-    const cachedOidcConfig = App.parseCachedOidcConfig()
+    // Restore cached server selection if it exists
     const cachedServerUrl = window.localStorage.getItem('slim_selected_server')
-    const cachedMode = window.localStorage.getItem('slim_server_selection_mode')
-
-    /**
-     * Apply cached OIDC config if present (even for default server mode).
-     * This allows users to configure OIDC once and have it persist.
-     */
-    if (cachedOidcConfig != null) {
-      console.info('restoring cached OIDC configuration')
-      const { protocol, host } = window.location
-      const baseUri = `${protocol}//${host}`
-      const appUri = joinUrl(this.props.config.path, baseUri)
-      this.auth = new OidcManager(appUri, cachedOidcConfig)
-    }
-
     if (
-      cachedMode === 'custom' &&
       cachedServerUrl !== null &&
       cachedServerUrl !== undefined &&
       cachedServerUrl !== ''
     ) {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      this.handleServerSelection({
-        url: cachedServerUrl,
-        oidc: cachedOidcConfig,
-      })
+      this.handleServerSelection({ url: cachedServerUrl })
     }
 
-    if (this.auth != null) {
-      this.unsubscribeAuthorization = this.auth.onAuthorizationChange(
-        (authorization) => {
-          this.applyAuthorization(authorization)
-        },
-      )
-    }
-
+    this.subscribeToAuthorization()
     this.signIn()
   }
 

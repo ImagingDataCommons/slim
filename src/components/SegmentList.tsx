@@ -48,9 +48,6 @@ class SegmentList extends React.Component<
   handleVisibilityChange = (checked: boolean): void => {
     if (checked) {
       this.props.segments.forEach((segment) => {
-        if (segment.isAbsent) {
-          return
-        }
         this.props.onSegmentVisibilityChange({
           segmentUID: segment.uid,
           isVisible: checked,

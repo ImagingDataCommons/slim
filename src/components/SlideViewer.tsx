@@ -3130,12 +3130,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   handleSegmentClick = (segmentUID: string): void => {
-    const segment = this.volumeViewer
-      .getAllSegments()
-      .find((item) => item.uid === segmentUID)
-    if (segment?.isAbsent) {
-      return
-    }
     this.volumeViewer.zoomToSegment(segmentUID)
   }
 

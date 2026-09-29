@@ -30,6 +30,11 @@ import { v4 as uuidv4 } from 'uuid'
 import appPackageJson from '../../package.json'
 import type { OidcSettings } from '../AppConfig'
 import type { User } from '../auth'
+import {
+  isValidOidcConfig,
+  OIDC_CONFIG_STORAGE_KEY,
+  parseOidcConfig,
+} from '../auth/oidcConfig'
 import { SettingsButton } from '../contexts/SettingsContext'
 import type DicomWebManager from '../DicomWebManager'
 import NotificationMiddleware, {
@@ -228,7 +233,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     ) as 'default' | 'custom' | null
 
     const cachedOidcConfig =
-      window.localStorage.getItem('slim_oidc_config') ?? ''
+      window.localStorage.getItem(OIDC_CONFIG_STORAGE_KEY) ?? ''
 
     this.state = {
       errorObj: [],
@@ -247,7 +252,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       showLogo: true,
       logoUrl: `${process.env.PUBLIC_URL}/logo.svg`,
       oidcConfigInput: cachedOidcConfig,
-      isOidcConfigValid: Header.isValidOidcConfig(cachedOidcConfig),
+      isOidcConfigValid: isValidOidcConfig(cachedOidcConfig),
     }
 
     const onErrorHandler = ({
@@ -360,83 +365,13 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     return isGcpDicomStorePath(pathNorm)
   }
 
-  /**
-   * Converts JavaScript object notation to valid JSON by quoting unquoted keys.
-   * Handles cases like { authority: "value" } -> { "authority": "value" }
-   */
-  static normalizeToJson(str: string): string {
-    /** Match unquoted keys followed by colon */
-    return str.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)(\s*:)/g, '$1"$2"$3')
-  }
-
-  /**
-   * Validates OIDC config string (JSON or JS object notation).
-   * Returns true if empty (optional) or if valid with required fields.
-   */
-  static isValidOidcConfig(jsonStr: string | null | undefined): boolean {
-    if (jsonStr == null || jsonStr.trim() === '') {
-      return true
-    }
-    try {
-      const normalized = Header.normalizeToJson(jsonStr.trim())
-      const parsed = JSON.parse(normalized)
-      return (
-        typeof parsed === 'object' &&
-        parsed !== null &&
-        typeof parsed.authority === 'string' &&
-        parsed.authority.length > 0 &&
-        typeof parsed.clientId === 'string' &&
-        parsed.clientId.length > 0 &&
-        typeof parsed.scope === 'string' &&
-        parsed.scope.length > 0
-      )
-    } catch {
-      return false
-    }
-  }
-
-  /**
-   * Parses OIDC config string (JSON or JS object notation) into OidcSettings.
-   * Returns undefined if empty or invalid.
-   */
-  static parseOidcConfig(
-    jsonStr: string | null | undefined,
-  ): OidcSettings | undefined {
-    if (jsonStr == null || jsonStr.trim() === '') {
-      return undefined
-    }
-    try {
-      const normalized = Header.normalizeToJson(jsonStr.trim())
-      const parsed = JSON.parse(normalized)
-      if (
-        typeof parsed === 'object' &&
-        parsed !== null &&
-        typeof parsed.authority === 'string' &&
-        typeof parsed.clientId === 'string' &&
-        typeof parsed.scope === 'string'
-      ) {
-        return {
-          authority: parsed.authority,
-          clientId: parsed.clientId,
-          scope: parsed.scope,
-          grantType: parsed.grantType,
-          authorizationEndpoint: parsed.authorizationEndpoint,
-          endSessionEndpoint: parsed.endSessionEndpoint,
-        }
-      }
-    } catch {
-      /** Invalid format */
-    }
-    return undefined
-  }
-
   handleOidcConfigInput = (
     event: React.ChangeEvent<HTMLTextAreaElement>,
   ): void => {
     const value = event.currentTarget.value
     this.setState({
       oidcConfigInput: value,
-      isOidcConfigValid: Header.isValidOidcConfig(value),
+      isOidcConfigValid: isValidOidcConfig(value),
     })
   }
 
@@ -733,7 +668,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       .getItem('slim_selected_server')
       ?.trim()
     const cachedOidcConfig =
-      window.localStorage.getItem('slim_oidc_config') ?? ''
+      window.localStorage.getItem(OIDC_CONFIG_STORAGE_KEY) ?? ''
     this.setState({
       serverSelectionMode:
         cachedServerUrl !== null &&
@@ -745,7 +680,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       isServerSelectionModalVisible: false,
       isServerSelectionDisabled: !this.isValidServerUrl(cachedServerUrl),
       oidcConfigInput: cachedOidcConfig,
-      isOidcConfigValid: Header.isValidOidcConfig(cachedOidcConfig),
+      isOidcConfigValid: isValidOidcConfig(cachedOidcConfig),
     })
   }
 
@@ -761,14 +696,14 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     )
 
     /** Save OIDC config to localStorage */
-    const oidcConfig = Header.parseOidcConfig(this.state.oidcConfigInput)
+    const oidcConfig = parseOidcConfig(this.state.oidcConfigInput)
     if (oidcConfig != null) {
       window.localStorage.setItem(
-        'slim_oidc_config',
+        OIDC_CONFIG_STORAGE_KEY,
         this.state.oidcConfigInput.trim(),
       )
     } else {
-      window.localStorage.removeItem('slim_oidc_config')
+      window.localStorage.removeItem(OIDC_CONFIG_STORAGE_KEY)
     }
 
     if (this.state.serverSelectionMode === 'default') {

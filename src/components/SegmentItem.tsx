@@ -67,9 +67,6 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
     checked: boolean,
     _event: React.MouseEvent<HTMLButtonElement>,
   ): void => {
-    if (this.props.segment.isAbsent) {
-      return
-    }
     this.props.onVisibilityChange({
       segmentUID: this.props.segment.uid,
       isVisible: checked,
@@ -120,9 +117,6 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
   }
 
   handleClick = (): void => {
-    if (this.props.segment.isAbsent) {
-      return
-    }
     this.props.onClick(this.props.segment.uid)
   }
 
