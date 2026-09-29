@@ -1,4 +1,8 @@
-import { type User as UserData, UserManager } from 'oidc-client'
+import {
+  type OidcMetadata,
+  type User as UserData,
+  UserManager,
+} from 'oidc-client'
 
 import type { OidcSettings } from '../AppConfig'
 import NotificationMiddleware, {
@@ -173,9 +177,31 @@ export default class OidcManager implements AuthManager {
       revokeAccessTokenOnSignout: true,
     }
 
-    this._oidc = new UserManager(baseSettings)
+    const needsMetadataPatch =
+      (settings.endSessionEndpoint != null &&
+        settings.endSessionEndpoint !== '') ||
+      (settings.authorizationEndpoint != null &&
+        settings.authorizationEndpoint !== '')
+
+    /**
+     * With a metadata override, this first manager only fetches discovery
+     * metadata. oidc-client cannot stop a session monitor once started, so the
+     * manager that renews tokens and monitors the session is created only
+     * after the override is applied.
+     */
+    this._oidc = new UserManager(
+      needsMetadataPatch
+        ? {
+            ...baseSettings,
+            automaticSilentRenew: false,
+            monitorSession: false,
+          }
+        : baseSettings,
+    )
     this._wireInternalEvents()
-    this._ready = this._applyOptionalMetadata(baseSettings, settings)
+    this._ready = needsMetadataPatch
+      ? this._applyMetadataOverride(baseSettings, settings)
+      : Promise.resolve()
   }
 
   private _wireInternalEvents(): void {
@@ -190,22 +216,13 @@ export default class OidcManager implements AuthManager {
     }
   }
 
-  private async _applyOptionalMetadata(
+  private async _applyMetadataOverride(
     baseSettings: ConstructorParameters<typeof UserManager>[0],
     settings: OidcSettings,
   ): Promise<void> {
-    const needsMetadataPatch =
-      (settings.endSessionEndpoint != null &&
-        settings.endSessionEndpoint !== '') ||
-      (settings.authorizationEndpoint != null &&
-        settings.authorizationEndpoint !== '')
-
-    if (!needsMetadataPatch) {
-      return
-    }
-
+    let metadata: OidcMetadata | undefined
     try {
-      const metadata = await this._oidc.metadataService.getMetadata()
+      metadata = await this._oidc.metadataService.getMetadata()
       if (
         settings.endSessionEndpoint != null &&
         settings.endSessionEndpoint !== ''
@@ -218,15 +235,13 @@ export default class OidcManager implements AuthManager {
       ) {
         metadata.authorization_endpoint = settings.authorizationEndpoint
       }
-      this._oidc.stopSilentRenew()
-      this._oidc = new UserManager({
-        ...baseSettings,
-        metadata,
-      })
-      this._wireInternalEvents()
     } catch (error) {
       console.error('failed to get metadata from authorization server: ', error)
     }
+    this._oidc = new UserManager(
+      metadata == null ? baseSettings : { ...baseSettings, metadata },
+    )
+    this._wireInternalEvents()
   }
 
   private async _ensureReady(): Promise<UserManager> {

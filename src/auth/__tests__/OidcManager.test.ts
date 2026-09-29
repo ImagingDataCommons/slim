@@ -12,35 +12,60 @@ const settings = {
   scope: 'openid',
 }
 
-describe('OidcManager', () => {
-  beforeEach(() => {
-    MockUserManager.mockImplementation(() => ({
-      events: { addUserLoaded: jest.fn() },
-      metadataService: { getMetadata: jest.fn().mockResolvedValue({}) },
-      stopSilentRenew: jest.fn(),
-      getUser: jest.fn().mockResolvedValue({ profile: {} }),
-    }))
-  })
+const mockUserManagers = (getMetadata: jest.Mock): void => {
+  MockUserManager.mockImplementation(() => ({
+    events: { addUserLoaded: jest.fn() },
+    metadataService: { getMetadata },
+    getUser: jest.fn().mockResolvedValue({ profile: {} }),
+  }))
+}
 
-  it('keeps a single UserManager when no metadata override is set', async () => {
+const constructorSettings = (): Array<Record<string, unknown>> =>
+  MockUserManager.mock.calls.map(([options]) => options)
+
+describe('OidcManager', () => {
+  it('creates a single renewing manager when no metadata override is set', async () => {
+    mockUserManagers(jest.fn().mockResolvedValue({}))
     const manager = new OidcManager('https://app.example.com', settings)
     await manager.getUser()
 
-    expect(MockUserManager).toHaveBeenCalledTimes(1)
-    const [first] = MockUserManager.mock.results
-    expect(first.value.stopSilentRenew).not.toHaveBeenCalled()
+    const [only, ...rest] = constructorSettings()
+    expect(rest).toHaveLength(0)
+    expect(only.automaticSilentRenew).toBe(true)
+    expect(only.monitorSession).toBeUndefined()
   })
 
-  it('stops silent renew on the replaced UserManager after a metadata override', async () => {
+  it('renews and monitors only on the manager built with the override', async () => {
+    mockUserManagers(jest.fn().mockResolvedValue({}))
     const manager = new OidcManager('https://app.example.com', {
       ...settings,
       endSessionEndpoint: 'https://idp.example.com/logout',
     })
     await manager.getUser()
 
-    expect(MockUserManager).toHaveBeenCalledTimes(2)
-    const [first, second] = MockUserManager.mock.results
-    expect(first.value.stopSilentRenew).toHaveBeenCalledTimes(1)
-    expect(second.value.stopSilentRenew).not.toHaveBeenCalled()
+    const [discovery, active, ...rest] = constructorSettings()
+    expect(rest).toHaveLength(0)
+    expect(discovery.automaticSilentRenew).toBe(false)
+    expect(discovery.monitorSession).toBe(false)
+    expect(active.automaticSilentRenew).toBe(true)
+    expect(active.monitorSession).toBeUndefined()
+    expect(active.metadata).toEqual({
+      end_session_endpoint: 'https://idp.example.com/logout',
+    })
+  })
+
+  it('falls back to a renewing manager without metadata when discovery fails', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {})
+    mockUserManagers(jest.fn().mockRejectedValue(new Error('offline')))
+    const manager = new OidcManager('https://app.example.com', {
+      ...settings,
+      authorizationEndpoint: 'https://idp.example.com/authorize',
+    })
+    await manager.getUser()
+
+    const [, active, ...rest] = constructorSettings()
+    expect(rest).toHaveLength(0)
+    expect(active.automaticSilentRenew).toBe(true)
+    expect(active.metadata).toBeUndefined()
   })
 })
