@@ -135,7 +135,9 @@ function ParametrizedSlideViewer({
   const [derivedDataset, setDerivedDataset] =
     useState<NaturalizedInstance | null>(null)
   /** Series from the URL that resolved to no slide of this study */
-  const [unresolvedSeriesUID, setUnresolvedSeriesUID] = useState<string>()
+  const [unresolvedSeriesUID, setUnresolvedSeriesUID] = useState<string | null>(
+    null,
+  )
 
   useEffect(() => {
     const currentSlideMatchesSeries =
@@ -157,7 +159,7 @@ function ParametrizedSlideViewer({
         )
         setSelectedSlide(imageSlide)
         setDerivedDataset(null)
-        setUnresolvedSeriesUID(undefined)
+        setUnresolvedSeriesUID(null)
         if (resolvedSeriesUID !== seriesInstanceUID) {
           console.warn(
             `Corrected mangled series UID in route: "${seriesInstanceUID}" → "${resolvedSeriesUID}"`,
@@ -201,7 +203,7 @@ function ParametrizedSlideViewer({
               if (referencedSlide !== null && referencedSlide !== undefined) {
                 setSelectedSlide(referencedSlide)
                 setDerivedDataset(naturalizedDerivedMetadata)
-                setUnresolvedSeriesUID(undefined)
+                setUnresolvedSeriesUID(null)
                 return
               }
             }
@@ -231,7 +233,7 @@ function ParametrizedSlideViewer({
             if (referencedSlide !== undefined) {
               setSelectedSlide(referencedSlide)
               setDerivedDataset(naturalizedDerivedMetadata)
-              setUnresolvedSeriesUID(undefined)
+              setUnresolvedSeriesUID(null)
               return
             }
           }

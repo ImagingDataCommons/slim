@@ -24,8 +24,9 @@ const slide = { volumeImages: [{}] } as unknown as Slide
 
 /** Resolve every fetch with the given slides */
 const respondWith = (slides: Slide[]): void => {
-  mockedFetch.mockImplementation(async ({ onSuccess }) => {
+  mockedFetch.mockImplementation(({ onSuccess }) => {
     onSuccess(slides)
+    return Promise.resolve()
   })
 }
 
@@ -72,8 +73,9 @@ describe('useSlides', () => {
   })
 
   it('reports a failed fetch and loads the study on retry', async () => {
-    mockedFetch.mockImplementation(async ({ onError }) => {
+    mockedFetch.mockImplementation(({ onError }) => {
       onError(new Error('unreachable'))
+      return Promise.resolve()
     })
     const clients = clientsFor('https://a.test/dicomWeb')
     const { result } = renderHook(() =>
