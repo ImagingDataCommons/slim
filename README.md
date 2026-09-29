@@ -91,6 +91,7 @@ _Slim_ also supports interactive visualization of image annotations and analysis
 **Raster graphics:**
 
 - [DICOM Segmentation](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_A.51.html) instances that contain binary or fractional segmentation masks
+- [DICOM Labelmap Segmentation](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_A.89.html) instances (Supplement 243) that contain multi-class label maps where each pixel value corresponds to a distinct segment
 - [DICOM Parametric Map](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_A.75.html) instances that contain saliency maps, attention maps, class activation maps, and similar derived images
 
 Fractional segmentations and parametric maps show an in-viewport color legend when at least one overlay is visible. The legend is collapsible and its per-item visibility toggles stay in sync with the switches in the right-hand panel.
@@ -480,21 +481,12 @@ If neither applies, the preview uses the version in `package.json`. Editing the 
 1. **Clone dicom-microscopy-viewer**  
    If you have not already, clone the `dicom-microscopy-viewer` repository to your machine.
 
-2. **Set up pnpm link in dicom-microscopy-viewer**  
-   In the root directory of your local `dicom-microscopy-viewer` repository, run:
-
-   ```bash
-   pnpm link --global
-   ```
-
-3. **Link dicom-microscopy-viewer in Slim**  
+2. **Link dicom-microscopy-viewer in Slim**
    In the root directory of your Slim project, run:
 
    ```bash
-   pnpm link dicom-microscopy-viewer
+   pnpm link <path-to-dicom-microscopy-viewer>
    ```
-
-   Do **not** run `pnpm link dicom-microscopy-viewer` inside the `dicom-microscopy-viewer` repo itself — only `pnpm link --global` belongs there.
 
    Verify the link points at your local clone (not the registry copy under `.pnpm`):
 
@@ -502,7 +494,7 @@ If neither applies, the preview uses the version in `package.json`. Editing the 
    node -e "console.log(require('fs').realpathSync('node_modules/dicom-microscopy-viewer'))"
    ```
 
-4. **Enable live rebuilding in dicom-microscopy-viewer**  
+3. **Enable live rebuilding in dicom-microscopy-viewer**
    In a separate terminal, in the `dicom-microscopy-viewer` directory, run:
 
    ```bash
@@ -511,7 +503,7 @@ If neither applies, the preview uses the version in `package.json`. Editing the 
 
    Slim imports the **built** `dist/dynamic-import` bundle, not `src/` directly. Wait for DMV watch to report `[emitted] dicomMicroscopyViewer.min.js` after each change.
 
-5. **Run Slim as usual**  
+4. **Run Slim as usual**
    In the Slim directory, start the development server:
 
    ```bash

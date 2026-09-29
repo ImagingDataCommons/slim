@@ -14,21 +14,23 @@ overrides:
   # Dependabot high: axios inherited-proxy after interceptor cloning
   axios: 1.18.0
   # Dependabot high: adm-zip unbounded memory on crafted ZIP
-  adm-zip: 0.6.0
+  adm-zip: 0.6.1
   # Dependabot high: brace-expansion DoS (v1 and v2 lines)
   brace-expansion@1: 1.1.18
   brace-expansion@2: 2.1.4
   # Dependabot high: js-yaml quadratic merge-key chains (v3 and v4 lines)
-  js-yaml@3: 3.15.1
-  js-yaml@4: 4.3.1
+  js-yaml@3: 3.15.2
+  js-yaml@4: 4.3.2
   # Dependabot high: postcss sourceMappingURL path traversal (no 7.x patch; force 8.x)
   postcss: 8.5.25
   # Dependabot high: shell-quote parse() quadratic DoS
   shell-quote: 1.9.0
-  # Dependabot high: fast-uri host confusion (backslash authority)
-  fast-uri: 3.1.5
+  # Dependabot high: fast-uri authority injection & host confusion (CVE-2026-84292, CVE-2026-84394)
+  fast-uri: 3.1.8
   # Dependabot high: SVGO removeScripts (CRA still pulls 1.x via @svgr; no SVG imports in app)
-  svgo: 2.8.3
+  svgo: 2.8.4
+  # Dependabot high: browserslist RegExp ReDoS
+  browserslist: 4.28.7
   nth-check: 2.0.1
   wrap-ansi: 7.0.0
   make-dir: 3.1.0
@@ -43,5 +45,5 @@ overrides:
   underscore: 1.13.8
 
 minimumReleaseAgeExclude:
-  - dicom-microscopy-viewer@0.48.23 || 0.48.24
+  - dicom-microscopy-viewer@0.48.23 || 0.48.24 || 0.48.25 || 0.48.26
   - dicomweb-client@0.11.3

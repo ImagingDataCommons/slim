@@ -35,6 +35,7 @@ interface SegmentListProps {
       color?: number[]
     }
   }) => void
+  onSegmentClick: (segmentUID: string) => void
 }
 
 /**
@@ -75,6 +76,7 @@ class SegmentList extends React.Component<
           defaultStyle={this.props.defaultSegmentStyles[uid]}
           onVisibilityChange={this.props.onSegmentVisibilityChange}
           onStyleChange={this.props.onSegmentStyleChange}
+          onClick={this.props.onSegmentClick}
         />
       )
     })
