@@ -53,7 +53,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
     super(props)
 
     /** Initialize with default color if not provided */
-    const defaultColor = this.props.defaultStyle.color ?? [255, 255, 0]
+    const defaultColor = this.props.defaultStyle.color ?? [255, 255, 0] // Default yellow
     this.state = {
       isVisible: this.props.isVisible,
       currentStyle: {
@@ -147,6 +147,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
       | undefined
     const segmentationType = getSegmentationType(segmentationMetadata)
 
+    // Add SegmentationType from metadata if available
     if (segmentationMetadata?.SegmentationType !== undefined) {
       attributes.push({
         name: 'Segmentation Type',
@@ -222,6 +223,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
                   disabled={isAbsent}
                 />
               </Popover>
+              {/* Color indicator - only show for non-fractional segmentation */}
               {segmentationType !== 'FRACTIONAL' && !isAbsent && (
                 <div
                   style={{

@@ -690,6 +690,11 @@ class Header extends React.Component<HeaderProps, HeaderState> {
   }
 
   handleServerSelection = (): void => {
+    /** Keep the modal open so an invalid entry cannot wipe the cached config */
+    if (!this.state.isOidcConfigValid) {
+      return
+    }
+
     window.localStorage.setItem(
       'slim_server_selection_mode',
       this.state.serverSelectionMode,
@@ -896,6 +901,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           open={this.state.isServerSelectionModalVisible}
           title="Select DICOMweb server"
           onOk={this.handleServerSelection}
+          okButtonProps={{ disabled: !this.state.isOidcConfigValid }}
           onCancel={this.handleServerSelectionCancellation}
         >
           <Radio.Group
