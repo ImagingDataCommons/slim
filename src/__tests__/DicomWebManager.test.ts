@@ -203,6 +203,29 @@ describe('DicomWebManager - multi-store search', () => {
     ).toBe('1.2.3.B')
   })
 
+  it('throws the last error when every store fails a search', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: false },
+      ],
+    })
+
+    const primaryStub = makeStubClient('primary')
+    const secondaryStub = makeStubClient('secondary')
+    stubManagerClients(manager, [primaryStub, secondaryStub])
+
+    primaryStub.searchForSeries.mockRejectedValue(new Error('first'))
+    secondaryStub.searchForSeries.mockRejectedValue(new Error('second'))
+
+    await expect(
+      manager.searchForSeries({
+        studyInstanceUID: '1.2.3',
+      } as dwc.api.SearchForSeriesOptions),
+    ).rejects.toThrow()
+  })
+
   it('skips stores marked as not readable during searches', async () => {
     const manager = new DicomWebManager({
       baseUri,
@@ -513,9 +536,9 @@ describe('DicomWebManager - authorization escalation', () => {
 
     stub.searchForStudies.mockRejectedValue(httpError(401))
 
-    const result = await manager.searchForStudies({})
-
-    expect(result).toEqual([])
+    await expect(manager.searchForStudies({})).rejects.toMatchObject({
+      status: 401,
+    })
     // One attempt only: no retry, and the credential was never attached.
     expect(stub.searchForStudies).toHaveBeenCalledTimes(1)
     expect(stub.headers.Authorization).toBeUndefined()
@@ -541,7 +564,9 @@ describe('DicomWebManager - authorization escalation', () => {
 
     stub.searchForStudies.mockRejectedValue(httpError(401))
 
-    await manager.searchForStudies({})
+    await expect(manager.searchForStudies({})).rejects.toMatchObject({
+      status: 401,
+    })
 
     expect(policy.requestAuthorization).not.toHaveBeenCalled()
     expect(stub.headers.Authorization).toBeUndefined()
@@ -591,7 +616,9 @@ describe('DicomWebManager - authorization escalation', () => {
 
     stub.searchForStudies.mockRejectedValue(httpError(401))
 
-    await manager.searchForStudies({})
+    await expect(manager.searchForStudies({})).rejects.toMatchObject({
+      status: 401,
+    })
 
     /**
      * The app reacts to a 401 here by renewing the session, up to an
@@ -616,9 +643,11 @@ describe('DicomWebManager - authorization escalation', () => {
 
     stub.searchForStudies.mockRejectedValue(httpError(401))
 
-    await manager.searchForStudies({})
-    await manager.searchForStudies({})
-    await manager.searchForStudies({})
+    for (let i = 0; i < 3; i++) {
+      await expect(manager.searchForStudies({})).rejects.toMatchObject({
+        status: 401,
+      })
+    }
 
     // Asked once; the answer stands for the rest of the session.
     expect(policy.requestAuthorization).toHaveBeenCalledTimes(1)
@@ -645,7 +674,9 @@ describe('DicomWebManager - authorization escalation', () => {
 
     stub.searchForStudies.mockRejectedValue(httpError(401))
 
-    await manager.searchForStudies({})
+    await expect(manager.searchForStudies({})).rejects.toMatchObject({
+      status: 401,
+    })
 
     expect(onError).not.toHaveBeenCalled()
   })
@@ -671,7 +702,9 @@ describe('DicomWebManager - authorization escalation', () => {
 
     stub.searchForStudies.mockRejectedValue(httpError(401))
 
-    await manager.searchForStudies({})
+    await expect(manager.searchForStudies({})).rejects.toMatchObject({
+      status: 401,
+    })
 
     /**
      * The credential was sent and rejected, so this is an expired session, not
@@ -779,7 +812,9 @@ describe('DicomWebManager - authorization escalation', () => {
 
     gcpStub.searchForStudies.mockRejectedValue(httpError(404))
 
-    await manager.searchForStudies({})
+    await expect(manager.searchForStudies({})).rejects.toMatchObject({
+      status: 404,
+    })
 
     expect(gcpStub.searchForStudies).toHaveBeenCalledTimes(1)
     expect(policy.requestAuthorization).not.toHaveBeenCalled()
