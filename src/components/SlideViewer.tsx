@@ -734,6 +734,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const MicroscopyBulkSimpleAnnotation =
       StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION
     const Segmentation = StorageClasses.SEGMENTATION
+    const LabelmapSegmentation = StorageClasses.LABELMAP_SEGMENTATION
     const ParametricMap = StorageClasses.PARAMETRIC_MAP
     const OpticalPath = StorageClasses.OPTICAL_PATH
     const AdvancedBlendingPresentationState =
@@ -818,7 +819,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       }
       logger.debug('Loading Microscopy Bulk Simple Annotation')
     } else if (
-      (derivedDataset as { SOPClassUID: string }).SOPClassUID === Segmentation
+      (derivedDataset as { SOPClassUID: string }).SOPClassUID ===
+        Segmentation ||
+      (derivedDataset as { SOPClassUID: string }).SOPClassUID ===
+        LabelmapSegmentation
     ) {
       const allSegments = this.volumeViewer.getAllSegments()
       const derivedSeriesInstanceUID = (
@@ -838,12 +842,22 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
        * showSegment on any single segment does not abort the forEach and
        * leave subsequent segments hidden. We batch the state update at
        * the end with all successfully-shown UIDs.
+       *
+       * Skip background segments - they are identified by PixelPaddingValue
+       * or Segmented Property Type (DCM, 125040, "Background"). Background
+       * segments remain in the panel but are not auto-shown.
        */
       const shownSegmentUIDs: string[] = []
       matchingSegments.forEach((segment) => {
         if (segment.isAbsent) {
           logger.debug(
             `auto-load Segmentation: skipping absent segment "${segment.uid}"`,
+          )
+          return
+        }
+        if (segment.isBackground === true) {
+          logger.debug(
+            `skipping auto-show for background segment "${segment.uid}"`,
           )
           return
         }
