@@ -559,6 +559,7 @@ class App extends React.Component<AppProps, AppState> {
       this.auth?.dispose()
       this.auth = App.createAuthManager(this.props.config.path, oidc)
       this.subscribeToAuthorization()
+      this.signIn()
     }
 
     if (
