@@ -604,7 +604,8 @@ class App extends React.Component<AppProps, AppState> {
     const { Authorization: _omitted, ...inheritedHeaders } =
       this.state.clients.default.headers
     tmpClient.updateHeaders(inheritedHeaders)
-    if (this.auth != null && this.state.user != null) {
+    /** A new OIDC config has no token yet; sign-in with it is under way */
+    if (oidc == null && this.auth != null && this.state.user != null) {
       const authorization = await this.auth.getAuthorization()
       if (authorization != null) {
         /**

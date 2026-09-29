@@ -31,6 +31,7 @@ import appPackageJson from '../../package.json'
 import type { OidcSettings } from '../AppConfig'
 import type { User } from '../auth'
 import {
+  getOidcConfigToApply,
   isValidOidcConfig,
   OIDC_CONFIG_STORAGE_KEY,
   parseOidcConfig,
@@ -700,19 +701,23 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       this.state.serverSelectionMode,
     )
 
-    /** Save OIDC config to localStorage */
-    const oidcConfig = parseOidcConfig(this.state.oidcConfigInput)
-    if (oidcConfig != null) {
-      window.localStorage.setItem(
-        OIDC_CONFIG_STORAGE_KEY,
-        this.state.oidcConfigInput.trim(),
-      )
-    } else {
-      window.localStorage.removeItem(OIDC_CONFIG_STORAGE_KEY)
+    const oidcConfigInput = this.state.oidcConfigInput.trim()
+    const oidcConfigToApply = getOidcConfigToApply(
+      oidcConfigInput,
+      window.localStorage.getItem(OIDC_CONFIG_STORAGE_KEY),
+    )
+    /** Cache the config only once a selection is actually applied */
+    const selectServer = (url: string): void => {
+      if (parseOidcConfig(oidcConfigInput) != null) {
+        window.localStorage.setItem(OIDC_CONFIG_STORAGE_KEY, oidcConfigInput)
+      } else {
+        window.localStorage.removeItem(OIDC_CONFIG_STORAGE_KEY)
+      }
+      this.props.onServerSelection({ url, oidc: oidcConfigToApply })
     }
 
     if (this.state.serverSelectionMode === 'default') {
-      this.props.onServerSelection({ url: '', oidc: oidcConfig })
+      selectServer('')
       this.setState({
         isServerSelectionModalVisible: false,
         isServerSelectionDisabled: false,
@@ -726,7 +731,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     if (url !== null && url !== undefined && url !== '') {
       if (this.isValidServerUrl(url)) {
         resolvedUrl = normalizeServerUrl(url)
-        this.props.onServerSelection({ url: resolvedUrl, oidc: oidcConfig })
+        selectServer(resolvedUrl)
         closeModal = true
       }
     }

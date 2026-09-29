@@ -55,6 +55,21 @@ export const parseOidcConfig = (
 export const isValidOidcConfig = (input: string | null | undefined): boolean =>
   input == null || input.trim() === '' || parseOidcConfig(input) != null
 
+/**
+ * Settings to apply when server selection is confirmed. The field is
+ * prefilled from the cache, so an unchanged or empty entry returns undefined.
+ */
+export const getOidcConfigToApply = (
+  input: string,
+  cachedInput: string | null,
+): OidcSettings | undefined => {
+  const settings = parseOidcConfig(input)
+  if (settings == null || input.trim() === (cachedInput ?? '')) {
+    return undefined
+  }
+  return settings
+}
+
 export const readCachedOidcConfig = (): OidcSettings | undefined =>
   parseOidcConfig(window.localStorage.getItem(OIDC_CONFIG_STORAGE_KEY))
 

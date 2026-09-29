@@ -1,4 +1,5 @@
 import {
+  getOidcConfigToApply,
   isValidOidcConfig,
   OIDC_CONFIG_STORAGE_KEY,
   parseOidcConfig,
@@ -62,6 +63,28 @@ describe('isValidOidcConfig', () => {
     expect(
       isValidOidcConfig(JSON.stringify({ ...settings, authority: '' })),
     ).toBe(false)
+  })
+})
+
+describe('getOidcConfigToApply', () => {
+  const input = JSON.stringify(settings)
+
+  it('applies a new config', () => {
+    expect(getOidcConfigToApply(input, null)).toEqual(settings)
+  })
+
+  it('applies a config that differs from the cached one', () => {
+    const cached = JSON.stringify({ ...settings, clientId: 'other' })
+    expect(getOidcConfigToApply(input, cached)).toEqual(settings)
+  })
+
+  it('skips the config that is already cached', () => {
+    expect(getOidcConfigToApply(`  ${input}\n`, input)).toBeUndefined()
+  })
+
+  it('skips an empty or invalid entry', () => {
+    expect(getOidcConfigToApply('', input)).toBeUndefined()
+    expect(getOidcConfigToApply('{ authority: ', null)).toBeUndefined()
   })
 })
 
