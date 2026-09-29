@@ -218,6 +218,7 @@ export default class OidcManager implements AuthManager {
       ) {
         metadata.authorization_endpoint = settings.authorizationEndpoint
       }
+      this._oidc.stopSilentRenew()
       this._oidc = new UserManager({
         ...baseSettings,
         metadata,
