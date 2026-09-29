@@ -55,7 +55,7 @@ describe('OidcManager', () => {
   })
 
   it('falls back to a renewing manager without metadata when discovery fails', async () => {
-    jest.spyOn(console, 'error').mockImplementation(() => {})
+    jest.spyOn(console, 'error').mockImplementation(jest.fn())
     mockUserManagers(jest.fn().mockRejectedValue(new Error('offline')))
     const manager = new OidcManager('https://app.example.com', {
       ...settings,
