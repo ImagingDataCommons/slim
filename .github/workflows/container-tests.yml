@@ -5,6 +5,7 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -55,7 +56,7 @@ jobs:
           exit 1
 
       - name: Wildfly internal server.log
-        if: always()
+        if: failure()
         run: |
           docker cp dcm4chee-arc:/opt/wildfly/standalone/log/server.log ./server.log || echo "Log not found"
           cat ./server.log || echo "Log not found"
