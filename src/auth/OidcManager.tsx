@@ -401,9 +401,11 @@ export default class OidcManager implements AuthManager {
     this._ready
       .then(() => {
         this._oidc.stopSilentRenew()
+        /** Stops the session monitor, which has no public stop method */
+        this._oidc.events.unload()
       })
       .catch((error: unknown) => {
-        console.error('Failed to stop OIDC silent renew:', error)
+        console.error('Failed to stop OIDC user manager:', error)
       })
   }
 }

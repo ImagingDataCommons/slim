@@ -31,10 +31,10 @@ import appPackageJson from '../../package.json'
 import type { OidcSettings } from '../AppConfig'
 import type { User } from '../auth'
 import {
+  cacheOidcConfigInput,
   getOidcConfigToApply,
   isValidOidcConfig,
-  OIDC_CONFIG_STORAGE_KEY,
-  parseOidcConfig,
+  readCachedOidcConfigInput,
 } from '../auth/oidcConfig'
 import { SettingsButton } from '../contexts/SettingsContext'
 import type DicomWebManager from '../DicomWebManager'
@@ -193,7 +193,8 @@ interface HeaderProps extends RouteComponentProps {
     oidc,
   }: {
     url: string
-    oidc?: OidcSettings
+    /** New settings, null to fall back to the deployment config */
+    oidc?: OidcSettings | null
   }) => void
   onUserLogout?: () => void
   showServerSelectionButton: boolean
@@ -233,8 +234,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       'slim_server_selection_mode',
     ) as 'default' | 'custom' | null
 
-    const cachedOidcConfig =
-      window.localStorage.getItem(OIDC_CONFIG_STORAGE_KEY) ?? ''
+    const cachedOidcConfig = readCachedOidcConfigInput()
 
     this.state = {
       errorObj: [],
@@ -668,8 +668,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     const cachedServerUrl = window.localStorage
       .getItem('slim_selected_server')
       ?.trim()
-    const cachedOidcConfig =
-      window.localStorage.getItem(OIDC_CONFIG_STORAGE_KEY) ?? ''
+    const cachedOidcConfig = readCachedOidcConfigInput()
     this.setState({
       serverSelectionMode:
         cachedServerUrl !== null &&
@@ -701,18 +700,13 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       this.state.serverSelectionMode,
     )
 
-    const oidcConfigInput = this.state.oidcConfigInput.trim()
     const oidcConfigToApply = getOidcConfigToApply(
-      oidcConfigInput,
-      window.localStorage.getItem(OIDC_CONFIG_STORAGE_KEY),
+      this.state.oidcConfigInput,
+      readCachedOidcConfigInput(),
     )
     /** Cache the config only once a selection is actually applied */
     const selectServer = (url: string): void => {
-      if (parseOidcConfig(oidcConfigInput) != null) {
-        window.localStorage.setItem(OIDC_CONFIG_STORAGE_KEY, oidcConfigInput)
-      } else {
-        window.localStorage.removeItem(OIDC_CONFIG_STORAGE_KEY)
-      }
+      cacheOidcConfigInput(this.state.oidcConfigInput)
       this.props.onServerSelection({ url, oidc: oidcConfigToApply })
     }
 

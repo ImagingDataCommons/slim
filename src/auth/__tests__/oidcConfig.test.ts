@@ -1,9 +1,16 @@
 import {
+  clearAuthorizationDecisions,
+  readAuthorizationDecision,
+  writeAuthorizationDecision,
+} from '../../utils/authPolicy'
+import {
+  cacheOidcConfigInput,
   getOidcConfigToApply,
   isValidOidcConfig,
   OIDC_CONFIG_STORAGE_KEY,
   parseOidcConfig,
   readCachedOidcConfig,
+  readCachedOidcConfigInput,
   resetCachedOidcConfigFromUrl,
 } from '../oidcConfig'
 
@@ -25,6 +32,14 @@ describe('parseOidcConfig', () => {
     expect(parseOidcConfig(input)).toEqual({
       ...settings,
       grantType: 'implicit',
+    })
+  })
+
+  it('keeps JSON string values that look like unquoted keys', () => {
+    const input = JSON.stringify({ ...settings, scope: 'openid,profile:read' })
+    expect(parseOidcConfig(input)).toEqual({
+      ...settings,
+      scope: 'openid,profile:read',
     })
   })
 
@@ -70,7 +85,7 @@ describe('getOidcConfigToApply', () => {
   const input = JSON.stringify(settings)
 
   it('applies a new config', () => {
-    expect(getOidcConfigToApply(input, null)).toEqual(settings)
+    expect(getOidcConfigToApply(input, '')).toEqual(settings)
   })
 
   it('applies a config that differs from the cached one', () => {
@@ -82,9 +97,54 @@ describe('getOidcConfigToApply', () => {
     expect(getOidcConfigToApply(`  ${input}\n`, input)).toBeUndefined()
   })
 
-  it('skips an empty or invalid entry', () => {
-    expect(getOidcConfigToApply('', input)).toBeUndefined()
-    expect(getOidcConfigToApply('{ authority: ', null)).toBeUndefined()
+  it('skips an invalid entry', () => {
+    expect(getOidcConfigToApply('{ authority: ', '')).toBeUndefined()
+  })
+
+  it('falls back to the deployment config when the entry is emptied', () => {
+    expect(getOidcConfigToApply('  ', input)).toBeNull()
+  })
+
+  it('does nothing when the entry stays empty', () => {
+    expect(getOidcConfigToApply('', '')).toBeUndefined()
+  })
+})
+
+describe('cacheOidcConfigInput', () => {
+  const input = JSON.stringify(settings)
+  const origin = 'https://dicomweb.example.com'
+
+  beforeEach(() => {
+    writeAuthorizationDecision(origin, 'granted')
+  })
+
+  afterEach(() => {
+    window.localStorage.removeItem(OIDC_CONFIG_STORAGE_KEY)
+    clearAuthorizationDecisions()
+  })
+
+  it('caches a valid entry and forgets grants made for another provider', () => {
+    cacheOidcConfigInput(`  ${input}\n`)
+
+    expect(readCachedOidcConfigInput()).toBe(input)
+    expect(readAuthorizationDecision(origin)).toBeUndefined()
+  })
+
+  it('keeps grants when the provider does not change', () => {
+    window.localStorage.setItem(OIDC_CONFIG_STORAGE_KEY, input)
+
+    cacheOidcConfigInput(input)
+
+    expect(readAuthorizationDecision(origin)).toBe('granted')
+  })
+
+  it('drops the cache and grants when the entry is emptied', () => {
+    window.localStorage.setItem(OIDC_CONFIG_STORAGE_KEY, input)
+
+    cacheOidcConfigInput('')
+
+    expect(readCachedOidcConfigInput()).toBe('')
+    expect(readAuthorizationDecision(origin)).toBeUndefined()
   })
 })
 

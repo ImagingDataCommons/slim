@@ -3691,7 +3691,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const newVisibleSegmentUIDs = new Set<string>()
     if (hadVisibleSegments && selectedSeriesSegments.length > 0) {
       selectedSeriesSegments.forEach((segment) => {
-        newVisibleSegmentUIDs.add(segment.uid)
+        if (!segment.isAbsent) {
+          newVisibleSegmentUIDs.add(segment.uid)
+        }
       })
     }
 

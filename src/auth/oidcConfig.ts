@@ -1,4 +1,5 @@
 import type { OidcSettings } from '../AppConfig'
+import { clearAuthorizationDecisions } from '../utils/authPolicy'
 
 /** localStorage key for the OIDC config entered in server selection */
 export const OIDC_CONFIG_STORAGE_KEY = 'slim_oidc_config'
@@ -17,6 +18,18 @@ const normalizeToJson = (input: string): string =>
   input.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)(\s*:)/g, '$1"$2"$3')
 
 /**
+ * Strict JSON is parsed as-is, because quoting keys would also rewrite string
+ * values that contain `,word:`.
+ */
+const parseObjectNotation = (input: string): unknown => {
+  try {
+    return JSON.parse(input)
+  } catch {
+    return JSON.parse(normalizeToJson(input))
+  }
+}
+
+/**
  * Parse an OIDC config string (JSON or JavaScript object notation).
  * Returns undefined when empty, malformed, or missing authority, clientId,
  * or scope.
@@ -27,28 +40,34 @@ export const parseOidcConfig = (
   if (input == null || input.trim() === '') {
     return undefined
   }
+  let parsed: unknown
   try {
-    const parsed = JSON.parse(normalizeToJson(input.trim()))
-    if (
-      typeof parsed === 'object' &&
-      parsed !== null &&
-      isNonEmptyString(parsed.authority) &&
-      isNonEmptyString(parsed.clientId) &&
-      isNonEmptyString(parsed.scope)
-    ) {
-      return {
-        authority: parsed.authority,
-        clientId: parsed.clientId,
-        scope: parsed.scope,
-        grantType: parsed.grantType,
-        authorizationEndpoint: parsed.authorizationEndpoint,
-        endSessionEndpoint: parsed.endSessionEndpoint,
-      }
-    }
+    parsed = parseObjectNotation(input.trim())
   } catch {
-    /** Invalid format */
+    return undefined
   }
-  return undefined
+  if (typeof parsed !== 'object' || parsed === null) {
+    return undefined
+  }
+  const { authority, clientId, scope, ...optional } = parsed as Record<
+    string,
+    unknown
+  >
+  if (
+    !isNonEmptyString(authority) ||
+    !isNonEmptyString(clientId) ||
+    !isNonEmptyString(scope)
+  ) {
+    return undefined
+  }
+  return {
+    authority,
+    clientId,
+    scope,
+    grantType: optional.grantType as OidcSettings['grantType'],
+    authorizationEndpoint: optional.authorizationEndpoint as string | undefined,
+    endSessionEndpoint: optional.endSessionEndpoint as string | undefined,
+  }
 }
 
 /** An empty config is valid because OIDC is optional */
@@ -57,24 +76,58 @@ export const isValidOidcConfig = (input: string | null | undefined): boolean =>
 
 /**
  * Settings to apply when server selection is confirmed. The field is
- * prefilled from the cache, so an unchanged or empty entry returns undefined.
+ * prefilled from the cache, so an unchanged entry returns undefined. Emptying
+ * the field returns null: the cached config is dropped in favor of the
+ * deployment one.
  */
 export const getOidcConfigToApply = (
   input: string,
-  cachedInput: string | null,
-): OidcSettings | undefined => {
-  const settings = parseOidcConfig(input)
-  if (settings == null || input.trim() === (cachedInput ?? '')) {
+  cachedInput: string,
+): OidcSettings | null | undefined => {
+  const trimmedInput = input.trim()
+  if (trimmedInput === cachedInput) {
     return undefined
   }
-  return settings
+  if (trimmedInput === '') {
+    return null
+  }
+  return parseOidcConfig(trimmedInput)
 }
 
+/** The raw cached entry, or an empty string when there is none */
+export const readCachedOidcConfigInput = (): string =>
+  window.localStorage.getItem(OIDC_CONFIG_STORAGE_KEY) ?? ''
+
 export const readCachedOidcConfig = (): OidcSettings | undefined =>
-  parseOidcConfig(window.localStorage.getItem(OIDC_CONFIG_STORAGE_KEY))
+  parseOidcConfig(readCachedOidcConfigInput())
+
+/**
+ * Token grants are recorded per origin without the issuer, so they are
+ * forgotten whenever the identity provider changes. Otherwise a token from the
+ * new provider would reach origins that were only approved for the old one.
+ */
+const replaceCachedOidcConfigInput = (input: string): void => {
+  if (input === readCachedOidcConfigInput()) {
+    return
+  }
+  clearAuthorizationDecisions()
+  if (input === '') {
+    window.localStorage.removeItem(OIDC_CONFIG_STORAGE_KEY)
+  } else {
+    window.localStorage.setItem(OIDC_CONFIG_STORAGE_KEY, input)
+  }
+}
+
+/** Cache a valid config entry, or drop the cache when the entry is not one */
+export const cacheOidcConfigInput = (input: string): void => {
+  const trimmedInput = input.trim()
+  replaceCachedOidcConfigInput(
+    parseOidcConfig(trimmedInput) != null ? trimmedInput : '',
+  )
+}
 
 export const clearCachedOidcConfig = (): void => {
-  window.localStorage.removeItem(OIDC_CONFIG_STORAGE_KEY)
+  replaceCachedOidcConfigInput('')
 }
 
 /**

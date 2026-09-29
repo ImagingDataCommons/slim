@@ -213,6 +213,8 @@ class App extends React.Component<AppProps, AppState> {
   private auth?: AuthManager
   /** Whether `auth` was built from the OIDC config cached by server selection */
   private usesCachedOidcConfig = false
+  /** Issuer of the tokens `auth` hands out */
+  private oidcAuthority?: string
   private reauthInProgress = false
   private unsubscribeAuthorization?: () => void
 
@@ -303,6 +305,7 @@ class App extends React.Component<AppProps, AppState> {
         )
       }
       this.auth = App.createAuthManager(props.config.path, oidcSettings)
+      this.oidcAuthority = oidcSettings.authority
     }
 
     if (props.config.servers.length === 0) {
@@ -460,7 +463,7 @@ class App extends React.Component<AppProps, AppState> {
       if (remembered !== 'granted' && !this.configuredOrigins.has(origin)) {
         const approved = await App.confirmAuthorizationDisclosure(
           origin,
-          this.props.config.oidc?.authority,
+          this.oidcAuthority,
         )
         writeAuthorizationDecision(origin, approved ? 'granted' : 'denied')
         console.info(
@@ -558,30 +561,45 @@ class App extends React.Component<AppProps, AppState> {
     oidc,
   }: {
     url: string
-    oidc?: OidcSettings
+    /** New settings, null to fall back to the deployment config */
+    oidc?: OidcSettings | null
   }): Promise<void> => {
     const trimmedUrl = url.trim()
     console.info('select DICOMweb server: ', trimmedUrl)
 
-    if (oidc != null) {
+    const resolvedUrl =
+      trimmedUrl === '' ||
+      window.localStorage.getItem('slim_server_selection_mode') === 'default'
+        ? undefined
+        : normalizeServerUrl(trimmedUrl)
+    if (resolvedUrl !== undefined) {
+      window.localStorage.setItem('slim_selected_server', resolvedUrl)
+    }
+
+    if (oidc === null) {
+      /**
+       * Clients already hold headers and the user from the custom provider,
+       * and the deployment may not configure OIDC at all, so start over.
+       */
+      console.info('removing custom OIDC configuration')
+      window.location.reload()
+      return
+    }
+    if (oidc !== undefined) {
       console.info('applying custom OIDC configuration')
       this.unsubscribeAuthorization?.()
       this.auth?.dispose()
       this.auth = App.createAuthManager(this.props.config.path, oidc)
       this.usesCachedOidcConfig = true
+      this.oidcAuthority = oidc.authority
       this.subscribeToAuthorization()
       this.signIn()
     }
 
-    if (
-      trimmedUrl === '' ||
-      window.localStorage.getItem('slim_server_selection_mode') === 'default'
-    ) {
+    if (resolvedUrl === undefined) {
       this.setState({ clients: this.state.defaultClients })
       return
     }
-    const resolvedUrl = normalizeServerUrl(trimmedUrl)
-    window.localStorage.setItem('slim_selected_server', resolvedUrl)
     const tmpClient = new DicomWebManager({
       baseUri: '',
       settings: [
