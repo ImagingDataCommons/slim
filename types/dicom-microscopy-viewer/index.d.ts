@@ -156,9 +156,11 @@ declare module 'dicom-microscopy-viewer' {
         segmentUID: string,
         styleOptions?: {
           opacity?: number
-        }
+        },
+        shouldZoomIn?: boolean
       ): void
       hideSegment (segmentUID: string): void
+      zoomToSegment (segmentUID: string): void
       setSegmentStyle (
         segmentUID: string,
         styleOptions: {
