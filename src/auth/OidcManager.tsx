@@ -391,21 +391,4 @@ export default class OidcManager implements AuthManager {
       this._authorizationListeners.delete(callback)
     }
   }
-
-  /**
-   * Stop silent renew and drop listeners when this manager is replaced.
-   * Waits for the optional metadata patch, which swaps the UserManager.
-   */
-  dispose = (): void => {
-    this._authorizationListeners.clear()
-    this._ready
-      .then(() => {
-        this._oidc.stopSilentRenew()
-        /** Stops the session monitor, which has no public stop method */
-        this._oidc.events.unload()
-      })
-      .catch((error: unknown) => {
-        console.error('Failed to stop OIDC user manager:', error)
-      })
-  }
 }

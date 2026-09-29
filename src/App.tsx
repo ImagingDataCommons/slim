@@ -210,11 +210,11 @@ interface AppState {
 }
 
 class App extends React.Component<AppProps, AppState> {
-  private auth?: AuthManager
+  private readonly auth?: AuthManager
   /** Whether `auth` was built from the OIDC config cached by server selection */
   private usesCachedOidcConfig = false
   /** Issuer of the tokens `auth` hands out */
-  private oidcAuthority?: string
+  private readonly oidcAuthority?: string
   private reauthInProgress = false
   private unsubscribeAuthorization?: () => void
 
@@ -291,6 +291,7 @@ class App extends React.Component<AppProps, AppState> {
 
     const { protocol, host } = window.location
     const baseUri = `${protocol}//${host}`
+    const appUri = joinUrl(props.config.path, baseUri)
 
     resetCachedOidcConfigFromUrl()
     /** OIDC config entered in server selection overrides the deployment one */
@@ -304,7 +305,7 @@ class App extends React.Component<AppProps, AppState> {
           oidcSettings,
         )
       }
-      this.auth = App.createAuthManager(props.config.path, oidcSettings)
+      this.auth = new OidcManager(appUri, oidcSettings)
       this.oidcAuthority = oidcSettings.authority
     }
 
@@ -576,24 +577,19 @@ class App extends React.Component<AppProps, AppState> {
       window.localStorage.setItem('slim_selected_server', resolvedUrl)
     }
 
-    if (oidc === null) {
+    if (oidc !== undefined) {
       /**
-       * Clients already hold headers and the user from the custom provider,
-       * and the deployment may not configure OIDC at all, so start over.
+       * Start over with the cached config, which the constructor reads and
+       * mount signs in with. Clients keep token grants and headers from the
+       * previous provider in memory, and the deployment may have no OIDC.
        */
-      console.info('removing custom OIDC configuration')
+      console.info(
+        oidc === null
+          ? 'removing custom OIDC configuration'
+          : 'applying custom OIDC configuration',
+      )
       window.location.reload()
       return
-    }
-    if (oidc !== undefined) {
-      console.info('applying custom OIDC configuration')
-      this.unsubscribeAuthorization?.()
-      this.auth?.dispose()
-      this.auth = App.createAuthManager(this.props.config.path, oidc)
-      this.usesCachedOidcConfig = true
-      this.oidcAuthority = oidc.authority
-      this.subscribeToAuthorization()
-      this.signIn()
     }
 
     if (resolvedUrl === undefined) {
@@ -622,8 +618,7 @@ class App extends React.Component<AppProps, AppState> {
     const { Authorization: _omitted, ...inheritedHeaders } =
       this.state.clients.default.headers
     tmpClient.updateHeaders(inheritedHeaders)
-    /** A new OIDC config has no token yet; sign-in with it is under way */
-    if (oidc == null && this.auth != null && this.state.user != null) {
+    if (this.auth != null && this.state.user != null) {
       const authorization = await this.auth.getAuthorization()
       if (authorization != null) {
         /**
@@ -790,23 +785,6 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  private static createAuthManager(
-    path: string,
-    settings: OidcSettings,
-  ): AuthManager {
-    const { protocol, host } = window.location
-    const appUri = joinUrl(path, `${protocol}//${host}`)
-    return new OidcManager(appUri, settings)
-  }
-
-  private subscribeToAuthorization(): void {
-    this.unsubscribeAuthorization = this.auth?.onAuthorizationChange(
-      (authorization) => {
-        this.applyAuthorization(authorization)
-      },
-    )
-  }
-
   componentDidMount(): void {
     // Restore cached server selection if it exists
     const cachedServerUrl = window.localStorage.getItem('slim_selected_server')
@@ -819,7 +797,14 @@ class App extends React.Component<AppProps, AppState> {
       this.handleServerSelection({ url: cachedServerUrl })
     }
 
-    this.subscribeToAuthorization()
+    if (this.auth != null) {
+      this.unsubscribeAuthorization = this.auth.onAuthorizationChange(
+        (authorization) => {
+          this.applyAuthorization(authorization)
+        },
+      )
+    }
+
     this.signIn()
   }
 

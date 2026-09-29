@@ -33,6 +33,4 @@ export interface AuthManager {
   renewAuthorization: () => Promise<string | undefined>
   /** Subscribe to authorization updates (e.g. after silent renew). */
   onAuthorizationChange: (callback: AuthorizationCallback) => () => void
-  /** Release background work (e.g. silent renew) when replaced. */
-  dispose: () => void
 }

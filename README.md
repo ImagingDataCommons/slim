@@ -186,7 +186,7 @@ Optional fields: `grantType`, `authorizationEndpoint`, `endSessionEndpoint`
 
 The OIDC configuration is cached in localStorage. If not provided, the deployment's default OIDC settings are used.
 
-Applying a configuration starts sign-in with the new provider right away. If sign-in with a cached configuration fails, the configuration is cleared and a reload uses the deployment's settings again. If the identity provider itself rejects the configuration (for example, an unknown client ID) and keeps showing its error page, open Slim with `?resetOidc` in the URL (for example, `https://slim.example.com/?resetOidc`) to discard the cached configuration.
+Applying a configuration reloads Slim and starts sign-in with the new provider right away. If sign-in with a cached configuration fails, the configuration is cleared and a reload uses the deployment's settings again. If the identity provider itself rejects the configuration (for example, an unknown client ID) and keeps showing its error page, open Slim with `?resetOidc` in the URL (for example, `https://slim.example.com/?resetOidc`) to discard the cached configuration.
 
 Emptying the field reloads Slim with the deployment's settings. Changing or removing the configuration also forgets which servers you allowed to receive your access token, so Slim asks again before sending a token from the new provider.
 
