@@ -43,6 +43,11 @@ jobs:
           node-version: 24
           cache: pnpm
 
+      # Preparing a git DMV dependency runs a nested pnpm install that ignores
+      # this workspace's allowBuilds (e.g. @parcel/watcher).
+      - name: Allow dependency build scripts
+        run: pnpm config set strict-dep-builds false --global
+
       - name: Resolve DMV branch for preview
         id: dmv
         if: github.event_name == 'pull_request'
