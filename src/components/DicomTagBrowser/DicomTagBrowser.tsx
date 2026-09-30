@@ -1,12 +1,10 @@
-import { EyeOutlined, SearchOutlined } from '@ant-design/icons'
-import { Input, Select, Slider, Table, Typography } from 'antd'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import type DicomWebManager from '../../DicomWebManager'
-import './DicomTagBrowser.css'
 import { useActiveSeries } from '../../hooks/useActiveSeries'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useSlides } from '../../hooks/useSlides'
+import { cn } from '../../lib/utils'
 import DicomMetadataStore, {
   EVENTS,
   type Series,
@@ -14,9 +12,15 @@ import DicomMetadataStore, {
 } from '../../services/DICOMMetadataStore'
 import { formatDicomDate } from '../../utils/formatDicomDate'
 import { logger } from '../../utils/logger'
+import { Icon } from '../ui/icon'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select'
 import { getSortedTags, type TagInfo } from './dicomTagUtils'
-
-const { Option } = Select
 
 interface DisplaySet {
   displaySetInstanceUID: number
@@ -42,6 +46,8 @@ interface DicomTagBrowserProps {
   clients: { [key: string]: DicomWebManager }
   studyInstanceUID: string
   seriesInstanceUID?: string
+  /** Called by the footer "Done" button */
+  onDone?: () => void
 }
 
 function bucketContainsSopInstance(bucket: unknown[], sop: string): boolean {
@@ -54,10 +60,115 @@ function bucketContainsSopInstance(bucket: unknown[], sop: string): boolean {
   return false
 }
 
+const TAG_GRID_COLUMNS = 'grid-cols-[150px_52px_minmax(0,1fr)_minmax(0,1.4fr)]'
+
+/** Recursive tag row with expandable sequence items */
+interface TagRowProps {
+  item: TableDataItem
+  depth: number
+  expandedKeys: Set<string>
+  onToggle: (key: string) => void
+}
+
+const TagRow = ({
+  item,
+  depth,
+  expandedKeys,
+  onToggle,
+}: TagRowProps): JSX.Element => {
+  const hasChildren = item.children !== undefined && item.children.length > 0
+  const isExpanded = expandedKeys.has(item.key)
+
+  const rowClassName = cn(
+    'grid min-h-[34px] w-full items-center gap-3 border-b border-line-row px-5 text-left hover:bg-selected',
+    TAG_GRID_COLUMNS,
+    depth > 0 ? 'bg-subtle/60' : 'bg-panel',
+    hasChildren ? 'cursor-pointer' : 'cursor-default',
+  )
+  const cells = (
+    <>
+      <span
+        className="flex items-center gap-0.5 font-mono text-[12px] text-ink-secondary"
+        style={{ paddingLeft: depth * 18 }}
+      >
+        <span className="w-4 flex-none text-ink-muted">
+          {hasChildren && (
+            <Icon
+              name={isExpanded ? 'expand_more' : 'chevron_right'}
+              size={16}
+            />
+          )}
+        </span>
+        {item.tag}
+      </span>
+      <span>
+        {item.vr !== '' && (
+          <span className="rounded bg-chip px-[5px] py-0.5 font-mono text-[11px] font-medium text-chip-foreground">
+            {item.vr}
+          </span>
+        )}
+      </span>
+      <span className="truncate font-medium text-ink">{item.keyword}</span>
+      <span className="break-all py-1.5 font-mono text-[12px] text-ink-body">
+        {item.value}
+      </span>
+    </>
+  )
+
+  return (
+    <>
+      {hasChildren ? (
+        <button
+          type="button"
+          aria-expanded={isExpanded}
+          onClick={() => onToggle(item.key)}
+          className={rowClassName}
+        >
+          {cells}
+        </button>
+      ) : (
+        <div className={rowClassName}>{cells}</div>
+      )}
+      {hasChildren &&
+        isExpanded &&
+        item.children?.map((child) => (
+          <TagRow
+            key={child.key}
+            item={child}
+            depth={depth + 1}
+            expandedKeys={expandedKeys}
+            onToggle={onToggle}
+          />
+        ))}
+    </>
+  )
+}
+
+function collectExpandableKeys(items: TableDataItem[]): string[] {
+  return items.flatMap((item) =>
+    item.children !== undefined && item.children.length > 0
+      ? [item.key, ...collectExpandableKeys(item.children)]
+      : [],
+  )
+}
+
+function countRows(items: TableDataItem[], expandedKeys: Set<string>): number {
+  return items.reduce(
+    (total, item) =>
+      total +
+      1 +
+      (item.children !== undefined && expandedKeys.has(item.key)
+        ? countRows(item.children, expandedKeys)
+        : 0),
+    0,
+  )
+}
+
 const DicomTagBrowser = ({
   clients,
   studyInstanceUID,
   seriesInstanceUID = '',
+  onDone,
 }: DicomTagBrowserProps): JSX.Element => {
   const { slides, isLoading } = useSlides({ clients, studyInstanceUID })
   const activeSeriesUIDs = useActiveSeries()
@@ -68,7 +179,7 @@ const DicomTagBrowser = ({
     useState(0)
   const [instanceNumber, setInstanceNumber] = useState(1)
   const [filterValue, setFilterValue] = useState('')
-  const [expandedKeys, setExpandedKeys] = useState<string[]>([])
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set())
   const [searchInput, setSearchInput] = useState('')
 
   const debouncedSearchValue = useDebounce(searchInput, 300)
@@ -76,7 +187,7 @@ const DicomTagBrowser = ({
   useEffect(() => {
     if (debouncedSearchValue === '') {
       setFilterValue('')
-      setExpandedKeys([])
+      setExpandedKeys(new Set())
     } else {
       setFilterValue(debouncedSearchValue)
     }
@@ -210,7 +321,7 @@ const DicomTagBrowser = ({
     return [...displaySets].sort((a, b) => {
       const aNum = Number(a.SeriesNumber)
       const bNum = Number(b.SeriesNumber)
-      // Normalize non-numeric/missing values to Infinity to sort them last
+      /** Normalize non-numeric/missing values to Infinity to sort them last */
       const aSafe =
         Number.isNaN(aNum) ||
         a.SeriesNumber === undefined ||
@@ -283,47 +394,9 @@ const DicomTagBrowser = ({
   const showInstanceList =
     sortedDisplaySets[selectedDisplaySetInstanceUID]?.images.length > 1
 
-  const instanceSliderMarks = useMemo(() => {
-    if (sortedDisplaySets[selectedDisplaySetInstanceUID] === undefined)
-      return {}
-    const totalInstances =
-      sortedDisplaySets[selectedDisplaySetInstanceUID].images.length
-
-    const marks: Record<number, string> = {
-      1: '1',
-      [Math.ceil(totalInstances / 2)]: String(Math.ceil(totalInstances / 2)),
-      [totalInstances]: String(totalInstances),
-    }
-
-    return marks
+  const totalInstances = useMemo(() => {
+    return sortedDisplaySets[selectedDisplaySetInstanceUID]?.images.length ?? 1
   }, [selectedDisplaySetInstanceUID, sortedDisplaySets])
-
-  const columns = [
-    {
-      title: 'Tag',
-      dataIndex: 'tag',
-      key: 'tag',
-      width: '30%',
-    },
-    {
-      title: 'VR',
-      dataIndex: 'vr',
-      key: 'vr',
-      width: '5%',
-    },
-    {
-      title: 'Keyword',
-      dataIndex: 'keyword',
-      key: 'keyword',
-      width: '30%',
-    },
-    {
-      title: 'Value',
-      dataIndex: 'value',
-      key: 'value',
-      width: '40%',
-    },
-  ]
 
   const tableData = useMemo(() => {
     const transformTagsToTableData = (
@@ -331,7 +404,7 @@ const DicomTagBrowser = ({
       parentKey = '',
     ): TableDataItem[] => {
       return tags.map((tag, index) => {
-        // Create a unique key using tag value if available, otherwise use index
+        /** Create a unique key using tag value if available, otherwise use index */
         const keyBase: string =
           tag.tag !== '' ? tag.tag.replace(/[(),]/g, '') : index.toString()
         const currentKey: string =
@@ -364,7 +437,7 @@ const DicomTagBrowser = ({
           ) {
             return Number(a.InstanceNumber) - Number(b.InstanceNumber)
           }
-          return 0 // keep original order if either is missing InstanceNumber
+          return 0
         })
       : []
     const metadata = sortedMetadata[instanceNumber - 1]
@@ -445,137 +518,216 @@ const DicomTagBrowser = ({
     }
 
     const filtered = reconstructTree(matchingPaths)
-    setExpandedKeys(Array.from(matchedKeys))
+    setExpandedKeys(matchedKeys)
 
     return filtered
   }, [tableData, filterValue])
 
-  if (isLoading) {
-    return <div>Loading...</div>
-  }
+  const handleToggleExpand = useCallback((key: string) => {
+    setExpandedKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) {
+        next.delete(key)
+      } else {
+        next.add(key)
+      }
+      return next
+    })
+  }, [])
+
+  const currentInstance = useMemo(():
+    | { columns?: number; rows?: number }
+    | undefined => {
+    const images = sortedDisplaySets[selectedDisplaySetInstanceUID]?.images
+    if (!Array.isArray(images)) return undefined
+    const sorted = [...images].sort(
+      (a, b) =>
+        Number((a as Record<string, unknown>).InstanceNumber ?? 0) -
+        Number((b as Record<string, unknown>).InstanceNumber ?? 0),
+    )
+    const metadata = sorted[instanceNumber - 1] as
+      | Record<string, unknown>
+      | undefined
+    if (metadata === undefined) return undefined
+    const columns = Number(
+      metadata.TotalPixelMatrixColumns ?? metadata.Columns ?? Number.NaN,
+    )
+    const rows = Number(
+      metadata.TotalPixelMatrixRows ?? metadata.Rows ?? Number.NaN,
+    )
+    return {
+      columns: Number.isFinite(columns) ? columns : undefined,
+      rows: Number.isFinite(rows) ? rows : undefined,
+    }
+  }, [instanceNumber, selectedDisplaySetInstanceUID, sortedDisplaySets])
+
+  const formatCount = (value: number): string =>
+    value.toLocaleString('en-US').replace(/,/g, ' ')
+
+  const instanceLabel =
+    currentInstance?.columns !== undefined && currentInstance.rows !== undefined
+      ? `${formatCount(currentInstance.columns)} × ${formatCount(currentInstance.rows)} px`
+      : ''
+
+  const selectedModality =
+    sortedDisplaySets[selectedDisplaySetInstanceUID]?.Modality ?? ''
 
   return (
-    <div className="dicom-tag-browser">
-      <div
-        style={{
-          width: '100%',
-          padding: '16px 20px 20px',
-        }}
-      >
-        <div style={{ display: 'flex', gap: '24px', marginBottom: '32px' }}>
-          <div style={{ flex: 1 }}>
-            <Typography.Text
-              strong
-              style={{ display: 'block', marginBottom: '8px' }}
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="grid flex-none grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] gap-3 border-b border-line-soft px-5 py-3.5">
+        <div className="flex min-w-0 flex-col gap-1.5 text-[12px] text-ink-muted">
+          <span id="tag-browser-series-label">Series</span>
+          <Select
+            value={String(selectedDisplaySetInstanceUID)}
+            onValueChange={(value) => {
+              setSelectedDisplaySetInstanceUID(Number(value))
+              setInstanceNumber(1)
+            }}
+            disabled={isLoading || displaySetList.length === 0}
+          >
+            <SelectTrigger
+              className="h-9"
+              aria-labelledby="tag-browser-series-label"
             >
-              Series
-            </Typography.Text>
-            <Select
-              style={{ width: '100%' }}
-              value={selectedDisplaySetInstanceUID}
-              onChange={(value) => {
-                setSelectedDisplaySetInstanceUID(value)
-                setInstanceNumber(1)
-              }}
-              optionLabelProp="label"
-              optionFilterProp="label"
-            >
+              <span className="flex min-w-0 items-center gap-2">
+                {selectedModality !== '' && (
+                  <span className="rounded bg-chip px-[5px] py-0.5 font-mono text-[11px] font-semibold text-chip-foreground">
+                    {selectedModality}
+                  </span>
+                )}
+                <span className="truncate">
+                  <SelectValue
+                    placeholder={
+                      isLoading ? 'Loading series…' : 'Select a series'
+                    }
+                  />
+                </span>
+              </span>
+            </SelectTrigger>
+            <SelectContent className="max-w-[560px]">
               {displaySetList.map((item) => {
-                const isActive = item.seriesInstanceUID
-                  ? activeSeriesUIDs.has(item.seriesInstanceUID)
-                  : false
+                const isActive =
+                  item.seriesInstanceUID !== '' &&
+                  activeSeriesUIDs.has(item.seriesInstanceUID)
                 return (
-                  <Option
-                    key={item.value}
-                    value={item.value}
-                    label={item.label}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: 8,
-                        minWidth: 0,
-                      }}
-                    >
-                      <span
-                        style={{
-                          width: 16,
-                          flexShrink: 0,
-                          display: 'flex',
-                          justifyContent: 'center',
-                        }}
-                        title={isActive ? 'Active in viewport' : undefined}
-                      >
-                        {isActive ? (
-                          <EyeOutlined
-                            style={{ color: 'rgba(0, 0, 0, 0.65)' }}
-                          />
-                        ) : null}
+                  <SelectItem key={item.value} value={String(item.value)}>
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate">
+                        {item.label}
+                        {item.description !== ''
+                          ? ` — ${item.description}`
+                          : ''}
                       </span>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div>{item.label}</div>
-                        <div
-                          style={{
-                            fontSize: '12px',
-                            color: 'rgba(0, 0, 0, 0.45)',
-                          }}
-                        >
-                          {item.description}
-                        </div>
-                      </div>
-                    </div>
-                  </Option>
+                      {isActive && (
+                        <Icon
+                          name="visibility"
+                          size={15}
+                          className="text-ink-muted"
+                          title="Active in viewport"
+                        />
+                      )}
+                    </span>
+                  </SelectItem>
                 )
               })}
-            </Select>
-          </div>
-
-          {showInstanceList && (
-            <div style={{ flex: 1 }}>
-              <Typography.Text
-                strong
-                style={{ display: 'block', marginBottom: '8px' }}
-              >
-                Instance Number: {instanceNumber}
-              </Typography.Text>
-              <Slider
-                min={1}
-                max={
-                  sortedDisplaySets[selectedDisplaySetInstanceUID]?.images
-                    .length
-                }
-                value={instanceNumber}
-                onChange={(value) => setInstanceNumber(value)}
-                marks={instanceSliderMarks}
-                tooltip={{
-                  formatter: (value: number | undefined) =>
-                    value !== undefined ? `Instance ${value}` : '',
-                }}
-              />
-            </div>
-          )}
+            </SelectContent>
+          </Select>
         </div>
 
-        <Input
-          style={{ marginBottom: '20px' }}
-          placeholder="Search DICOM tags..."
-          prefix={<SearchOutlined />}
-          onChange={(e) => setSearchInput(e.target.value)}
-          value={searchInput}
-        />
+        <label className="flex min-w-0 flex-col gap-1.5 text-[12px] text-ink-muted">
+          <span className="flex justify-between gap-2">
+            Instance
+            <span className="truncate font-mono text-[11.5px] font-medium text-ink-secondary">
+              {instanceLabel}
+            </span>
+          </span>
+          <div className="flex h-9 min-w-0 items-center gap-2.5">
+            <input
+              type="range"
+              min={1}
+              max={totalInstances}
+              value={instanceNumber}
+              disabled={!showInstanceList}
+              onChange={(event) =>
+                setInstanceNumber(Number(event.target.value))
+              }
+              className="min-w-[80px] flex-1"
+            />
+            <span className="flex-none font-mono text-[12px] font-medium text-ink">
+              {instanceNumber} / {totalInstances}
+            </span>
+          </div>
+        </label>
 
-        <Table
-          columns={columns}
-          dataSource={filteredData}
-          pagination={false}
-          expandable={{
-            expandedRowKeys: expandedKeys,
-            onExpandedRowsChange: (keys) => setExpandedKeys(keys as string[]),
-          }}
-          size="small"
-          scroll={{ y: 500 }}
-        />
+        <label className="flex min-w-0 flex-col gap-1.5 text-[12px] text-ink-muted">
+          Filter
+          <div className="flex h-9 items-center gap-2 rounded-lg border border-line-input px-2.5 focus-within:border-primary">
+            <Icon name="search" size={18} className="text-ink-muted" />
+            <input
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder="Tag, keyword or value"
+              className="min-w-0 flex-1 border-0 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-fainter"
+            />
+          </div>
+        </label>
+      </div>
+
+      <div
+        className={cn(
+          'grid h-9 flex-none items-center gap-3 border-b border-line bg-subtle px-5 text-[11px] font-semibold uppercase leading-none tracking-[0.05em] text-ink-muted',
+          TAG_GRID_COLUMNS,
+        )}
+      >
+        <div>Tag</div>
+        <div>VR</div>
+        <div>Keyword</div>
+        <div>Value</div>
+      </div>
+
+      <div className="h-[52vh] min-h-0 flex-1 overflow-auto">
+        {isLoading ? (
+          <div className="px-5 py-16 text-center text-ink-muted">Loading…</div>
+        ) : filteredData.length === 0 ? (
+          <div className="px-5 py-16 text-center text-ink-muted">
+            {filterValue !== ''
+              ? 'No matching tags found'
+              : 'No tags available'}
+          </div>
+        ) : (
+          filteredData.map((item) => (
+            <TagRow
+              key={item.key}
+              item={item}
+              depth={0}
+              expandedKeys={expandedKeys}
+              onToggle={handleToggleExpand}
+            />
+          ))
+        )}
+      </div>
+
+      <div className="flex flex-none items-center gap-2 border-t border-line-soft bg-subtle py-2.5 pl-5 pr-4 text-[12px] text-ink-muted">
+        <span>{countRows(filteredData, expandedKeys)} attributes</span>
+        <span className="flex-1" />
+        <button
+          type="button"
+          onClick={() =>
+            setExpandedKeys(new Set(collectExpandableKeys(filteredData)))
+          }
+          className="h-[34px] rounded-lg border border-line-input bg-panel px-3.5 text-[13px] font-medium text-ink hover:bg-subtle"
+        >
+          Expand all
+        </button>
+        {onDone !== undefined && (
+          <button
+            type="button"
+            onClick={onDone}
+            className="h-[34px] rounded-lg bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+          >
+            Done
+          </button>
+        )}
       </div>
     </div>
   )

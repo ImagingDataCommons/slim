@@ -1,4 +1,3 @@
-import { Modal } from 'antd'
 // skipcq: JS-C1003
 import type * as dmv from 'dicom-microscopy-viewer'
 import type React from 'react'
@@ -10,9 +9,19 @@ import {
   useMemo,
   useState,
 } from 'react'
+import { Button } from '../components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  SlimDialogFooter,
+} from '../components/ui/dialog'
+import { Icon } from '../components/ui/icon'
 import type DicomWebManager from '../DicomWebManager'
 import type { Slide } from '../data/slides'
 import { useSlides } from '../hooks/useSlides'
+import { cn } from '../lib/utils'
 
 interface ValidationResult {
   isValid: boolean
@@ -79,14 +88,16 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
     useState<ValidationResult | null>(null)
   const { slides } = useSlides({ clients, studyInstanceUID })
 
-  // Memoize slides to prevent unnecessary re-renders when slides array reference changes but content is the same
+  /** Memoize slides to prevent unnecessary re-renders when slides array reference changes but content is the same */
   const memoizedSlides = useMemo(() => {
-    // Only update if slides actually changed (deep comparison would be expensive, so we use a simple approach)
-    // For now, we'll use the slides directly but memoize the validation functions more efficiently
+    /**
+     * Only update if slides actually changed (deep comparison would be expensive, so we use a simple approach)
+     * For now, we'll use the slides directly but memoize the validation functions more efficiently
+     */
     return slides
   }, [slides])
 
-  // Memoize the slides length and existence to avoid unnecessary validation function recreations
+  /** Memoize the slides length and existence to avoid unnecessary validation function recreations */
   const slidesInfo = useMemo(() => {
     const slidesLength = slides?.length
     let hasSlides = false
@@ -216,20 +227,16 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
     setCurrentValidationResult(null)
   }, [])
 
-  function getModalType(type: ValidationResult['type']): {
-    error?: boolean
-    warning?: boolean
-    info?: boolean
-  } {
+  const getDialogVariant = (
+    type: ValidationResult['type'],
+  ): 'default' | 'destructive' => {
     switch (type) {
       case 'error':
-        return { error: true }
+        return 'destructive'
       case 'warning':
-        return { warning: true }
       case 'info':
-        return { info: true }
       default:
-        return { info: true }
+        return 'default'
     }
   }
 
@@ -242,17 +249,48 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
       {children}
       {currentValidationResult !== null &&
         currentValidationResult !== undefined && (
-          <Modal
-            open={isDialogVisible}
-            onCancel={handleDialogClose}
-            onOk={handleDialogClose}
-            title={`Validation ${currentValidationResult.type.charAt(0).toUpperCase() + currentValidationResult.type.slice(1)}`}
-            okText="OK"
-            cancelButtonProps={{ style: { display: 'none' } }}
-            {...getModalType(currentValidationResult.type)}
-          >
-            <p>{currentValidationResult.message}</p>
-          </Modal>
+          <Dialog open={isDialogVisible} onOpenChange={setIsDialogVisible}>
+            <DialogContent className="max-w-[420px]">
+              <div className="flex gap-3 px-5 pb-5 pt-[18px]">
+                <span
+                  className={cn(
+                    'grid h-[34px] w-[34px] flex-none place-items-center rounded-[9px]',
+                    currentValidationResult.type === 'error'
+                      ? 'bg-destructive-soft text-destructive-text'
+                      : currentValidationResult.type === 'warning'
+                        ? 'bg-warning-soft text-warning-text'
+                        : 'bg-primary-soft text-primary',
+                  )}
+                >
+                  <Icon
+                    name={
+                      currentValidationResult.type === 'info'
+                        ? 'info'
+                        : 'warning'
+                    }
+                    size={20}
+                    filled
+                  />
+                </span>
+                <div className="flex min-w-0 flex-1 flex-col gap-1 pt-1.5">
+                  <DialogTitle>
+                    {`Validation ${currentValidationResult.type.charAt(0).toUpperCase() + currentValidationResult.type.slice(1)}`}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {currentValidationResult.message}
+                  </DialogDescription>
+                </div>
+              </div>
+              <SlimDialogFooter>
+                <Button
+                  variant={getDialogVariant(currentValidationResult.type)}
+                  onClick={handleDialogClose}
+                >
+                  OK
+                </Button>
+              </SlimDialogFooter>
+            </DialogContent>
+          </Dialog>
         )}
     </ValidationContext.Provider>
   )

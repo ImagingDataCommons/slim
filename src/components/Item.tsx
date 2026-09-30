@@ -1,5 +1,4 @@
-import { List } from 'antd'
-import React from 'react'
+import type React from 'react'
 
 import Description, { type Attribute, type AttributeGroup } from './Description'
 
@@ -8,47 +7,39 @@ interface ItemProps {
   identifier: string
   attributes: Attribute[]
   groups?: AttributeGroup[]
-  children?: React.ReactElement[]
+  children?: React.ReactNode
   type?: string
-  hasLongValues?: boolean
 }
 
 /**
- * React component for a list item that consists of a header element
- * containing an identifier and a body element containing a description list
- * of attributes rendered as name-value pairs.
+ * Titled panel card with a key/value grid, optional nested attribute groups
+ * and trailing content.
  */
-class Item extends React.Component<ItemProps, Record<string, never>> {
-  render(): React.ReactNode {
-    let groups: React.ReactNode = null
-    if (this.props.groups !== undefined) {
-      groups = this.props.groups.map((item) => (
-        <Description
-          key={item.name}
-          header={item.name}
-          attributes={item.attributes}
-        />
-      ))
-    }
-    let title: string
-    if (this.props.type !== undefined) {
-      title = `${this.props.type}: ${this.props.identifier}`
-    } else {
-      title = this.props.identifier
-    }
-    return (
-      <List.Item key={this.props.uid}>
-        <Description
-          header={title}
-          attributes={this.props.attributes}
-          hasLongValues={this.props.hasLongValues}
+function Item({
+  uid,
+  identifier,
+  attributes,
+  groups,
+  children,
+  type,
+}: ItemProps): React.ReactElement {
+  const title = type !== undefined ? `${type}: ${identifier}` : identifier
+  return (
+    <Description key={uid} header={title} attributes={attributes}>
+      {groups?.map((group) => (
+        <div
+          key={group.name}
+          className="mt-2.5 border-t border-line-soft pt-2.5"
         >
-          {groups}
-        </Description>
-        {this.props.children}
-      </List.Item>
-    )
-  }
+          <div className="mb-1.5 text-[12px] font-medium text-ink-secondary">
+            {group.name}
+          </div>
+          <Description attributes={group.attributes} />
+        </div>
+      ))}
+      {children}
+    </Description>
+  )
 }
 
 export default Item

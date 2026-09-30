@@ -1,8 +1,6 @@
-import type { MenuProps } from 'antd'
-import { Layout, Menu } from 'antd'
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Route,
   Routes,
@@ -13,10 +11,13 @@ import {
 
 import type { AnnotationSettings } from '../AppConfig'
 import type { User } from '../auth'
+import { useStudySummary } from '../contexts/StudySummaryContext'
 import type DicomWebManager from '../DicomWebManager'
 import type { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
 import { useSlides } from '../hooks/useSlides'
+import { cn } from '../lib/utils'
+import { formatDisplayDate, formatPersonName } from '../utils/displayFormat'
 import {
   findSlideBySeriesInstanceUID,
   seriesUidFromSlide,
@@ -36,6 +37,11 @@ import SlideList from './SlideList'
 // skipcq: JS-W1028 - SlideViewer has a default export
 import SlideViewer from './SlideViewer'
 import Study from './Study'
+import {
+  CountBadge,
+  PanelDivider,
+  SlimCollapsibleSection,
+} from './slim/SlimCollapsibleSection'
 
 const { naturalizeDataset } = dcmjs.data.DicomMetaDictionary
 
@@ -73,7 +79,10 @@ function ParametrizedSlideViewer({
   app,
   preload,
   enableAnnotationTools,
+  enableMemoryMonitoring,
   annotations,
+  isLeftPanelOpen,
+  onToggleLeftPanel,
 }: {
   clients: { [key: string]: DicomWebManager }
   slides: Slide[]
@@ -86,7 +95,10 @@ function ParametrizedSlideViewer({
   }
   preload: boolean
   enableAnnotationTools: boolean
+  enableMemoryMonitoring: boolean
   annotations: AnnotationSettings[]
+  isLeftPanelOpen: boolean
+  onToggleLeftPanel: () => void
 }): JSX.Element | null {
   const { studyInstanceUID = '', seriesInstanceUID = '' } = useParams<{
     studyInstanceUID: string
@@ -238,9 +250,12 @@ function ParametrizedSlideViewer({
         preload={preload}
         annotations={annotations}
         enableAnnotationTools={enableAnnotationTools}
+        enableMemoryMonitoring={enableMemoryMonitoring}
         app={app}
         user={user}
         derivedDataset={derivedDataset ?? undefined}
+        isLeftPanelOpen={isLeftPanelOpen}
+        onToggleLeftPanel={onToggleLeftPanel}
       />
     )
   }
@@ -258,13 +273,50 @@ interface ViewerProps extends RouteComponentProps {
   }
   annotations: AnnotationSettings[]
   enableAnnotationTools: boolean
+  enableMemoryMonitoring: boolean
   preload: boolean
   user?: User
+}
+
+/** "S24-01542 · 12 Sep 2026" for the header breadcrumb. */
+function formatStudyLabel(
+  studyID: string | undefined,
+  accessionNumber: string | undefined,
+  studyDate: string | undefined,
+): string {
+  const identifier =
+    studyID !== undefined && studyID !== '' ? studyID : accessionNumber
+  return [identifier, formatDisplayDate(studyDate)]
+    .filter((part) => part !== undefined && part !== '')
+    .join(' · ')
 }
 
 function Viewer(props: ViewerProps): JSX.Element | null {
   const { clients, studyInstanceUID, location, navigate } = props
   const { slides, isLoading } = useSlides({ clients, studyInstanceUID })
+  const { setSummary } = useStudySummary()
+  const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true)
+  const toggleLeftPanel = useCallback(
+    () => setIsLeftPanelOpen((isOpen) => !isOpen),
+    [],
+  )
+
+  const summaryImage = slides[0]?.volumeImages[0]
+  useEffect(() => {
+    if (summaryImage === undefined) {
+      setSummary(null)
+      return
+    }
+    setSummary({
+      patientName: formatPersonName(summaryImage.PatientName),
+      studyLabel: formatStudyLabel(
+        summaryImage.StudyID,
+        summaryImage.AccessionNumber,
+        summaryImage.StudyDate,
+      ),
+    })
+  }, [summaryImage, setSummary])
+  useEffect(() => () => setSummary(null), [setSummary])
 
   const handleSeriesSelection = ({
     seriesInstanceUID,
@@ -304,7 +356,8 @@ function Viewer(props: ViewerProps): JSX.Element | null {
   }
   const refImage = volumeInstances[0]
 
-  /* If a series is encoded in the path, route the viewer to this series.
+  /**
+   * If a series is encoded in the path, route the viewer to this series.
    * Otherwise select the first series correspondent to
    * the first slide contained in the study.
    */
@@ -320,99 +373,73 @@ function Viewer(props: ViewerProps): JSX.Element | null {
     selectedSeriesInstanceUID = volumeInstances[0].SeriesInstanceUID
   }
 
-  const siderMenuItems: MenuProps['items'] = [
-    {
-      key: 'patient',
-      label: 'Patient',
-      children: [
-        {
-          key: 'patient-info',
-          style: { cursor: 'default', height: 'auto' },
-          label: <Patient metadata={refImage} />,
-        },
-      ],
-    },
-    {
-      key: 'study',
-      label: 'Study',
-      children: [
-        {
-          key: 'study-info',
-          style: { cursor: 'default', height: 'auto' },
-          label: <Study metadata={refImage} />,
-        },
-      ],
-    },
-    ...(refImage.ClinicalTrialSponsorName != null
-      ? [
-          {
-            key: 'clinical-trial',
-            label: 'Clinical Trial',
-            children: [
-              {
-                key: 'clinical-trial-info',
-                style: { cursor: 'default', height: 'auto' },
-                label: <ClinicalTrial metadata={refImage} />,
-              },
-            ],
-          },
-        ]
-      : []),
-  ]
-
   return (
-    <Layout style={{ height: '100%', minHeight: 0 }} hasSider>
-      <Layout.Sider
-        width={300}
-        style={{
-          height: '100%',
-          borderRight: 'solid',
-          borderRightWidth: 0.25,
-          overflow: 'auto',
-          background: 'none',
-        }}
+    <div className="flex h-full min-h-0">
+      <aside
+        aria-label="Study panel"
+        className={cn(
+          'flex min-h-0 w-sidebar flex-none flex-col border-r border-line bg-panel',
+          !isLeftPanelOpen && 'hidden',
+        )}
       >
-        <Menu
-          mode="inline"
-          defaultOpenKeys={['patient', 'study', 'clinical-trial']}
-          style={{ borderInlineEnd: 'none' }}
-          inlineIndent={14}
-          selectable={false}
-          items={siderMenuItems}
-        />
-        <div
-          style={{
-            padding: '8px 14px',
-            fontWeight: 600,
-          }}
-        >
-          Slides
-        </div>
-        <SlideList
-          clients={props.clients}
-          metadata={slides}
-          selectedSeriesInstanceUID={selectedSeriesInstanceUID}
-          onSeriesSelection={handleSeriesSelection}
-        />
-      </Layout.Sider>
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+          <SlimCollapsibleSection title="Patient" padding="indent">
+            <Patient metadata={refImage} />
+          </SlimCollapsibleSection>
+          <SlimCollapsibleSection title="Study" padding="indent">
+            <Study metadata={refImage} />
+          </SlimCollapsibleSection>
+          {refImage.ClinicalTrialSponsorName != null && (
+            <SlimCollapsibleSection
+              title="Clinical trial"
+              padding="indent"
+              defaultOpen={false}
+              divider={false}
+            >
+              <ClinicalTrial metadata={refImage} />
+            </SlimCollapsibleSection>
+          )}
+          {refImage.ClinicalTrialSponsorName != null && (
+            <PanelDivider className="mb-1" />
+          )}
 
-      <Routes>
-        <Route
-          path={RoutePaths.SERIES}
-          element={
-            <ParametrizedSlideViewer
-              clients={props.clients}
-              slides={slides}
-              preload={props.preload}
-              annotations={props.annotations}
-              enableAnnotationTools={props.enableAnnotationTools}
-              app={props.app}
-              user={props.user}
-            />
-          }
-        />
-      </Routes>
-    </Layout>
+          <div className="flex items-center gap-2 px-4 pb-2.5 pt-3">
+            <span className="text-[11px] font-semibold uppercase leading-none tracking-[0.06em] text-ink-secondary">
+              Slides
+            </span>
+            <CountBadge count={slides.length} />
+          </div>
+          <SlideList
+            clients={props.clients}
+            metadata={slides}
+            selectedSeriesInstanceUID={selectedSeriesInstanceUID}
+            onSeriesSelection={handleSeriesSelection}
+          />
+        </div>
+      </aside>
+
+      <main className="flex min-w-0 flex-1 overflow-hidden">
+        <Routes>
+          <Route
+            path={RoutePaths.SERIES}
+            element={
+              <ParametrizedSlideViewer
+                clients={props.clients}
+                slides={slides}
+                preload={props.preload}
+                annotations={props.annotations}
+                enableAnnotationTools={props.enableAnnotationTools}
+                enableMemoryMonitoring={props.enableMemoryMonitoring}
+                app={props.app}
+                user={props.user}
+                isLeftPanelOpen={isLeftPanelOpen}
+                onToggleLeftPanel={toggleLeftPanel}
+              />
+            }
+          />
+        </Routes>
+      </main>
+    </div>
   )
 }
 

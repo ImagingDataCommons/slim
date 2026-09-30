@@ -1,20 +1,3 @@
-import { UndoOutlined } from '@ant-design/icons'
-import {
-  Checkbox,
-  Descriptions,
-  Divider,
-  Drawer,
-  InputNumber,
-  Layout,
-  Menu,
-  message,
-  Row,
-  Select,
-  Space,
-  Switch,
-  Tooltip,
-} from 'antd'
-import type { CheckboxChangeEvent } from 'antd/es/checkbox'
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
 // skipcq: JS-C1003
@@ -23,20 +6,16 @@ import * as dmv from 'dicom-microscopy-viewer'
 import type * as dwc from 'dicomweb-client'
 import type { DebouncedFunc } from 'lodash'
 import debounce from 'lodash/debounce'
+import type OlMap from 'ol/Map'
 import React from 'react'
-import {
-  FaCrosshairs,
-  FaDrawPolygon,
-  FaEye,
-  FaEyeSlash,
-  FaHandPaper,
-  FaHandPointer,
-  FaSave,
-  FaTrash,
-} from 'react-icons/fa'
-import { SettingsRegistration } from '../contexts/SettingsContext'
 import { runValidations } from '../contexts/ValidationContext'
 import { StorageClasses } from '../data/uids'
+import { ViewerFooter } from '../features/viewer/components/ViewerFooter'
+import {
+  type ActiveRoiTool,
+  ViewerToolbar,
+} from '../features/viewer/components/ViewerToolbar'
+import { ViewportOverlays } from '../features/viewer/components/ViewportOverlays'
 import { ActiveSeriesService } from '../services/ActiveSeriesService'
 import DicomMetadataStore from '../services/DICOMMetadataStore'
 import NotificationMiddleware, {
@@ -61,15 +40,16 @@ import { logger } from '../utils/logger'
 import { withRouter } from '../utils/router'
 import { getSegmentationType, getSegmentColor } from '../utils/segmentColors'
 import { findContentItemsByName } from '../utils/sr'
+import AnnotationCategoryList from './AnnotationCategoryList'
 import AnnotationGroupList from './AnnotationGroupList'
 import AnnotationList from './AnnotationList'
-import Btn from './Button'
 import Equipment from './Equipment'
 import HoveredRoiTooltip from './HoveredRoiTooltip'
 import MappingList from './MappingList'
 import OpticalPathList from './OpticalPathList'
 import Report, { MeasurementReport } from './Report'
 import SegmentList from './SegmentList'
+import { getSlideShortId, getSlideStainInfo } from './SlideItem'
 import {
   DEFAULT_ANNOTATION_COLOR_PALETTE,
   DEFAULT_ANNOTATION_OPACITY,
@@ -81,7 +61,6 @@ import {
 } from './SlideViewer/constants'
 import SlideViewerContent from './SlideViewer/SlideViewerContent'
 import SlideViewerModals from './SlideViewer/SlideViewerModals'
-import './SlideViewer/SettingsPanel.css'
 import SlideViewerSidebar from './SlideViewer/SlideViewerSidebar'
 import type {
   Evaluation,
@@ -104,6 +83,18 @@ import {
   implementsTID1500,
 } from './SlideViewer/utils/viewerUtils'
 import SpecimenList from './SpecimenList'
+import { SlimCollapsibleSection } from './slim/SlimCollapsibleSection'
+import { SlimKeyValueGrid } from './slim/SlimKeyValueGrid'
+import { Button } from './ui/button'
+import { Checkbox } from './ui/checkbox'
+import { Icon } from './ui/icon'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select'
 
 /**
  * React component for interactive viewing of an individual digital slide,
@@ -305,8 +296,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       isParametricMapInterpolationEnabled: true,
       customizedSegmentColors: {},
       clusteringPixelSizeThreshold: null, // null means auto (zoom-based)
-      isClusteringEnabled: true, // Clustering enabled by default
-      isSettingsDrawerOpen: false,
+      isClusteringEnabled: true,
+      isRightPanelOpen: true,
     }
 
     this.handlePointerMoveDebounced = debounce(this.handlePointerMoveEvent, 0, {
@@ -1620,7 +1611,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   onWindowResize = (_event: Event): void => {
-    console.info('resize viewports')
+    this.onViewportResize()
+  }
+
+  onViewportResize = (): void => {
     this.volumeViewer.resize()
     if (this.labelViewer !== null && this.labelViewer !== undefined) {
       this.labelViewer.resize()
@@ -2566,8 +2560,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         hasICCProfile = true
       }
       if (!hasICCProfile) {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        message.warning('No ICC Profile was found for color images')
+        console.warn('No ICC Profile was found for color images')
       }
     }
   }
@@ -2611,10 +2604,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
    * Handler that gets called when measurements have been selected for
    * annotation.
    */
-  handleAnnotationMeasurementActivation = (
-    event: CheckboxChangeEvent,
-  ): void => {
-    const active: boolean = event.target.checked
+  handleAnnotationMeasurementActivation = (checked: boolean): void => {
+    const active: boolean = checked
     if (active) {
       this.setState({ selectedMarkup: 'measurement' })
     } else {
@@ -2888,7 +2879,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             ).write(),
           ],
         })
-        .then(() => message.info('Annotations were saved.'))
+        .then(() => console.log('Annotations were saved.'))
         .catch((error) => {
           logger.error(error)
           // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -3558,14 +3549,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (this.state.selectedRoiUIDs.size > 0) {
       this.state.selectedRoiUIDs.forEach((uid) => {
         if (uid === undefined) {
-          // eslint-disable-next-line @typescript-eslint/no-floating-promises
-          message.warning('No annotation was selected for removal')
+          console.warn('No annotation was selected for removal')
           return
         }
         console.info(`remove ROI "${uid}"`)
         this.volumeViewer.removeROI(uid)
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        message.info('Annotation was removed')
+        console.log('Annotation was removed')
       })
       this.setState({
         selectedRoiUIDs: new Set(),
@@ -3869,10 +3858,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     return { rois, segments, mappings, annotationGroups, annotations }
   }
 
-  private static getOpenSubMenuItems(): string[] {
-    return ['specimens', 'equipment', 'optical-paths', 'annotations']
-  }
-
   private readonly getReport = (): React.ReactNode => {
     const dataset = this.state.generatedReport
     if (dataset !== undefined) {
@@ -3881,79 +3866,101 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     return undefined
   }
 
-  private readonly getAnnotationMenuItems = (
-    rois: dmv.roi.ROI[],
-  ): React.ReactNode => {
-    if (rois.length > 0) {
-      return (
-        <AnnotationList
-          rois={rois}
-          selectedRoiUIDs={this.state.selectedRoiUIDs}
-          visibleRoiUIDs={this.state.visibleRoiUIDs}
-          onSelection={this.handleAnnotationSelection}
-          onVisibilityChange={this.handleAnnotationVisibilityChange}
-        />
-      )
+  private readonly getRoiColor = (roi: dmv.roi.ROI): string => {
+    const style = this.volumeViewer.getROIStyle(roi.uid) as
+      | dmv.viewer.ROIStyleOptions
+      | undefined
+    const color = style?.stroke?.color
+    if (color === undefined || color.length < 3) {
+      return 'rgb(var(--primary))'
     }
-    return undefined
+    return `rgb(${color[0]}, ${color[1]}, ${color[2]})`
   }
 
-  private readonly getFindingOptions = (): React.ReactNode[] => {
-    return this.findingOptions.map((finding, index) => {
-      return (
-        <Select.Option
-          key={
-            finding.CodeValue !== undefined && finding.CodeValue !== ''
-              ? finding.CodeValue
-              : `finding-${index}`
-          }
-          value={finding.CodeValue}
-        >
-          {finding.CodeMeaning}
-        </Select.Option>
-      )
-    })
+  private readonly getAnnotationMenu = (
+    rois: dmv.roi.ROI[],
+  ): React.ReactNode => {
+    if (rois.length === 0 && !this.props.enableAnnotationTools) {
+      return undefined
+    }
+    return (
+      <SlimCollapsibleSection
+        key="annotations"
+        title="Annotations"
+        count={rois.length}
+        countTone="primary"
+        padding="none"
+        contentClassName="px-2 pb-3 pt-0.5"
+      >
+        {rois.length > 0 ? (
+          <AnnotationList
+            rois={rois}
+            selectedRoiUIDs={this.state.selectedRoiUIDs}
+            visibleRoiUIDs={this.state.visibleRoiUIDs}
+            getRoiColor={this.getRoiColor}
+            onSelection={this.handleAnnotationSelection}
+            onVisibilityChange={this.handleAnnotationVisibilityChange}
+          />
+        ) : (
+          <p className="px-2 py-1 text-[12px] text-ink-muted">
+            No ROIs yet. Use Draw to annotate the slide.
+          </p>
+        )}
+      </SlimCollapsibleSection>
+    )
+  }
+
+  private readonly getAnnotationCategoryMenu = (
+    annotations: AnnotationCategoryAndType[],
+  ): React.ReactNode => {
+    if (annotations.length === 0) {
+      return undefined
+    }
+    return (
+      <SlimCollapsibleSection
+        key="annotation-categories"
+        title="Annotation categories"
+        defaultOpen={false}
+        padding="indent"
+      >
+        <AnnotationCategoryList
+          annotations={annotations}
+          onChange={this.handleAnnotationVisibilityChange}
+          checkedAnnotationUids={this.state.visibleRoiUIDs}
+          onStyleChange={this.handleRoiStyleChange}
+          defaultAnnotationStyles={this.defaultAnnotationStyles}
+        />
+      </SlimCollapsibleSection>
+    )
+  }
+
+  private readonly getFindingOptions = (): Array<{
+    value: string
+    label: string
+  }> => {
+    return this.findingOptions.map((finding, index) => ({
+      value:
+        finding.CodeValue !== undefined && finding.CodeValue !== ''
+          ? finding.CodeValue
+          : `finding-${index}`,
+      label: finding.CodeMeaning,
+    }))
   }
 
   private static getGeometryTypeOptionsMapping(): {
-    [key: string]: React.ReactNode
+    [key: string]: { value: string; label: string }
   } {
     return {
-      point: (
-        <Select.Option key="point" value="point">
-          Point
-        </Select.Option>
-      ),
-      circle: (
-        <Select.Option key="circle" value="circle">
-          Circle
-        </Select.Option>
-      ),
-      box: (
-        <Select.Option key="box" value="box">
-          Box
-        </Select.Option>
-      ),
-      polygon: (
-        <Select.Option key="polygon" value="polygon">
-          Polygon
-        </Select.Option>
-      ),
-      line: (
-        <Select.Option key="line" value="line">
-          Line
-        </Select.Option>
-      ),
-      freehandpolygon: (
-        <Select.Option key="freehandpolygon" value="freehandpolygon">
-          Polygon (freehand)
-        </Select.Option>
-      ),
-      freehandline: (
-        <Select.Option key="freehandline" value="freehandline">
-          Line (freehand)
-        </Select.Option>
-      ),
+      point: { value: 'point', label: 'Point' },
+      circle: { value: 'circle', label: 'Circle' },
+      box: { value: 'box', label: 'Box' },
+      polygon: { value: 'polygon', label: 'Polygon' },
+      line: { value: 'line', label: 'Line' },
+      freehandpolygon: {
+        value: 'freehandpolygon',
+        label: 'Polygon (freehand)',
+      },
+      freehandline: { value: 'freehandline', label: 'Line (freehand)' },
     }
   }
 
@@ -3963,73 +3970,108 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       SlideViewer.getGeometryTypeOptionsMapping()
 
     const annotationConfigurations: React.ReactNode[] = [
-      <Select
-        style={{ minWidth: 130 }}
-        onSelect={this.handleAnnotationFindingSelection}
-        key="annotation-finding"
-        defaultActiveFirstOption
-        placeholder="Select finding"
-      >
-        {findingOptions}
-      </Select>,
+      <div key="annotation-finding" className="flex flex-col gap-1.5">
+        <span className="text-[12px] text-ink-muted">Finding</span>
+        <Select
+          onValueChange={(value) =>
+            this.handleAnnotationFindingSelection(value, { label: null })
+          }
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select finding" />
+          </SelectTrigger>
+          <SelectContent>
+            {findingOptions.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>,
     ]
     const selectedFinding = this.state.selectedFinding
     if (selectedFinding !== undefined) {
       const key = buildKey(selectedFinding)
       this.evaluationOptions[key].forEach((evaluation, index) => {
-        const evaluationOptions = evaluation.values.map((code) => {
-          return (
-            <Select.Option
-              key={
-                code.CodeValue !== undefined && code.CodeValue !== ''
-                  ? code.CodeValue
-                  : `evaluation-${index}`
-              }
-              value={code.CodeValue}
-              label={evaluation.name}
-            >
-              {code.CodeMeaning}
-            </Select.Option>
-          )
-        })
+        const evaluationOptions = evaluation.values.map((code) => ({
+          value:
+            code.CodeValue !== undefined && code.CodeValue !== ''
+              ? code.CodeValue
+              : `evaluation-${index}`,
+          label: code.CodeMeaning,
+          name: evaluation.name,
+        }))
         annotationConfigurations.push(
-          <>
-            {evaluation.name.CodeMeaning}
+          <div
+            key={`eval-${evaluation.name.CodeValue}`}
+            className="flex flex-col gap-1.5"
+          >
+            <span className="text-[12px] text-ink-muted">
+              {evaluation.name.CodeMeaning}
+            </span>
             <Select
-              style={{ minWidth: 130 }}
-              onSelect={this.handleAnnotationEvaluationSelection}
-              allowClear
-              onClear={this.handleAnnotationEvaluationClearance}
-              defaultActiveFirstOption={false}
+              onValueChange={(value) => {
+                const opt = evaluationOptions.find((o) => o.value === value)
+                if (opt) {
+                  this.handleAnnotationEvaluationSelection(value, {
+                    label: opt.name,
+                  })
+                }
+              }}
             >
-              {evaluationOptions}
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select…" />
+              </SelectTrigger>
+              <SelectContent>
+                {evaluationOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
-          </>,
+          </div>,
         )
       })
       const geometryTypeOptions = this.geometryTypeOptions[key].map((name) => {
         return geometryTypeOptionsMapping[name]
       })
       annotationConfigurations.push(
-        <>
-          ROI geometry type
+        <div key="geometry-type" className="flex flex-col gap-1.5">
+          <span className="text-[12px] text-ink-muted">ROI geometry</span>
           <Select
-            style={{ minWidth: 130 }}
-            onSelect={this.handleAnnotationGeometryTypeSelection}
-            key="annotation-geometry-type"
-            placeholder="Select geometry type"
+            onValueChange={(value) =>
+              this.handleAnnotationGeometryTypeSelection(value, {
+                label: value,
+              })
+            }
           >
-            {geometryTypeOptions}
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select geometry type" />
+            </SelectTrigger>
+            <SelectContent>
+              {geometryTypeOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
-        </>,
+        </div>,
       )
       annotationConfigurations.push(
-        <Checkbox
-          onChange={this.handleAnnotationMeasurementActivation}
+        <label
           key="annotation-measurement"
+          htmlFor="measure-checkbox"
+          className="flex cursor-pointer items-center gap-2 pt-1 text-[13px] text-ink"
         >
-          measure
-        </Checkbox>,
+          <Checkbox
+            id="measure-checkbox"
+            onCheckedChange={this.handleAnnotationMeasurementActivation}
+          />
+          Measure length or area while drawing
+        </label>,
       )
     }
 
@@ -4038,20 +4080,29 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private readonly getSpecimenMenu = (): React.ReactNode => {
     return (
-      <Menu.SubMenu key="specimens" title="Specimens">
-        <SpecimenList
-          metadata={this.props.slide.volumeImages[0]}
-          showstain={false}
-        />
-      </Menu.SubMenu>
+      <SlimCollapsibleSection
+        key="specimens"
+        title="Specimens"
+        count={
+          this.props.slide.volumeImages[0]?.SpecimenDescriptionSequence
+            ?.length ?? 0
+        }
+      >
+        <SpecimenList metadata={this.props.slide.volumeImages[0]} showstain />
+      </SlimCollapsibleSection>
     )
   }
 
   private readonly getEquipmentMenu = (): React.ReactNode => {
     return (
-      <Menu.SubMenu key="equipment" title="Equipment">
+      <SlimCollapsibleSection
+        key="equipment"
+        title="Equipment"
+        defaultOpen={false}
+        padding="indent"
+      >
         <Equipment metadata={this.props.slide.volumeImages[0]} />
-      </Menu.SubMenu>
+      </SlimCollapsibleSection>
     )
   }
 
@@ -4086,7 +4137,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       opticalPathStyles[identifier] = style
     })
     return (
-      <Menu.SubMenu key="optical-paths" title="Optical Paths">
+      <SlimCollapsibleSection
+        key="optical-paths"
+        title="Optical paths"
+        count={opticalPaths.length}
+      >
         <OpticalPathList
           metadata={opticalPathMetadata}
           opticalPaths={opticalPaths}
@@ -4099,63 +4154,90 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           onOpticalPathStyleChange={this.handleOpticalPathStyleChange}
           onOpticalPathActivityChange={this.handleOpticalPathActivityChange}
           selectedPresentationStateUID={this.state.selectedPresentationStateUID}
+          hasIccProfiles={this.volumeViewer.getICCProfiles().length > 0}
+          displaySettings={{
+            iccProfileEnabled: this.state.isICCProfilesEnabled,
+            gammaEnabled: this.state.isPaletteDisplayGammaCorrectionEnabled,
+          }}
+          onDisplaySettingsChange={(settings) => {
+            if (
+              settings.iccProfileEnabled !== this.state.isICCProfilesEnabled
+            ) {
+              this.handleICCProfilesToggle(settings.iccProfileEnabled)
+            }
+            if (
+              settings.gammaEnabled !==
+              this.state.isPaletteDisplayGammaCorrectionEnabled
+            ) {
+              this.handlePaletteDisplayGammaCorrectionToggle(
+                settings.gammaEnabled,
+              )
+            }
+          }}
         />
-      </Menu.SubMenu>
+      </SlimCollapsibleSection>
     )
   }
 
   private readonly getPresentationStateMenu = (): React.ReactNode => {
     if (this.state.presentationStates.length === 0) return undefined
-    const presentationStateOptions = []
+    const presentationStateOptions: Array<{ value: string; label: string }> = []
     this.state.presentationStates.forEach((instance, index) => {
-      presentationStateOptions.push(
-        <Select.Option
-          key={
-            instance.SOPInstanceUID !== undefined &&
-            instance.SOPInstanceUID !== ''
-              ? instance.SOPInstanceUID
-              : `presentation-state-${index}`
-          }
-          value={instance.SOPInstanceUID}
-          dropdownMatchSelectWidth={false}
-          size="small"
-        >
-          {instance.ContentDescription !== undefined &&
+      presentationStateOptions.push({
+        value:
+          instance.SOPInstanceUID !== undefined &&
+          instance.SOPInstanceUID !== ''
+            ? instance.SOPInstanceUID
+            : `presentation-state-${index}`,
+        label:
+          instance.ContentDescription !== undefined &&
           instance.ContentDescription !== ''
             ? instance.ContentDescription
-            : 'Untitled'}
-        </Select.Option>,
-      )
+            : 'Untitled',
+      })
     })
-    presentationStateOptions.push(
-      <Select.Option
-        key="default-presentation-state"
-        value={undefined}
-        dropdownMatchSelectWidth={false}
-        size="small"
-      >
-        {null}
-      </Select.Option>,
-    )
+    presentationStateOptions.push({
+      value: '__default__',
+      label: 'Default',
+    })
     return (
-      <Menu.SubMenu key="presentation-states" title="Presentation States">
-        <Space align="center" size={20} style={{ padding: '14px' }}>
+      <SlimCollapsibleSection
+        key="presentation-states"
+        title="Presentation states"
+        defaultOpen={false}
+      >
+        <div className="flex gap-1.5">
           <Select
-            style={{ minWidth: 200, maxWidth: 200 }}
-            onSelect={this.handlePresentationStateSelection}
-            key="presentation-states"
-            value={this.state.selectedPresentationStateUID}
+            value={this.state.selectedPresentationStateUID ?? '__default__'}
+            onValueChange={(value) =>
+              this.handlePresentationStateSelection(
+                value === '__default__' ? undefined : value,
+                undefined,
+              )
+            }
           >
-            {presentationStateOptions}
+            <SelectTrigger className="min-w-0 flex-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {presentationStateOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
-          <Tooltip title="Reset">
-            <Btn
-              icon={UndoOutlined}
-              onClick={this.handlePresentationStateReset}
-            />
-          </Tooltip>
-        </Space>
-      </Menu.SubMenu>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            title="Reset"
+            aria-label="Reset presentation state"
+            onClick={this.handlePresentationStateReset}
+          >
+            <Icon name="undo" size={18} />
+          </Button>
+        </div>
+      </SlimCollapsibleSection>
     )
   }
 
@@ -4277,39 +4359,68 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               ] ?? [])
             : []
 
+      const threshold = this.state.clusteringPixelSizeThreshold
       return (
-        <Menu.SubMenu key="segmentations" title="Segmentations">
-          {/* Series Selection Dropdown */}
-          <div
-            style={{
-              paddingLeft: '14px',
-              paddingRight: '14px',
-              paddingTop: '7px',
-              paddingBottom: '7px',
-            }}
-          >
+        <SlimCollapsibleSection key="segmentations" title="Segmentations">
+          {Object.keys(segmentsBySeries).length > 1 && (
             <Select
-              style={{ width: '100%' }}
-              placeholder="Select a series"
-              value={this.state.selectedSegmentationSeriesInstanceUID}
-              onChange={this.handleSegmentationSeriesSelection}
-              options={dropdownOptions}
-            />
-          </div>
-
-          {/* Display segments for the selected series */}
-          {selectedSeriesSegments.length > 0 && (
-            <SegmentList
-              segments={selectedSeriesSegments}
-              metadata={segmentMetadata}
-              defaultSegmentStyles={defaultSegmentStyles}
-              visibleSegmentUIDs={this.state.visibleSegmentUIDs}
-              onSegmentVisibilityChange={this.handleSegmentVisibilityChange}
-              onSegmentStyleChange={this.handleSegmentStyleChange}
-              onSegmentClick={this.handleSegmentClick}
-            />
+              value={this.state.selectedSegmentationSeriesInstanceUID ?? 'all'}
+              onValueChange={this.handleSegmentationSeriesSelection}
+            >
+              <SelectTrigger className="mb-2 w-full">
+                <SelectValue placeholder="Select a series" />
+              </SelectTrigger>
+              <SelectContent>
+                {dropdownOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
-        </Menu.SubMenu>
+          <SegmentList
+            segments={selectedSeriesSegments}
+            metadata={segmentMetadata}
+            defaultSegmentStyles={defaultSegmentStyles}
+            visibleSegmentUIDs={this.state.visibleSegmentUIDs}
+            onSegmentVisibilityChange={this.handleSegmentVisibilityChange}
+            onSegmentStyleChange={this.handleSegmentStyleChange}
+            onSegmentClick={this.handleSegmentClick}
+            displaySettings={{
+              clusteringEnabled: Boolean(this.state.isClusteringEnabled),
+              interpolationEnabled:
+                this.state.isSegmentationInterpolationEnabled,
+              clusteringThreshold: threshold === null ? '' : String(threshold),
+            }}
+            onDisplaySettingsChange={(settings) => {
+              if (
+                settings.clusteringEnabled !==
+                Boolean(this.state.isClusteringEnabled)
+              ) {
+                this.handleClusteringToggle(settings.clusteringEnabled)
+              }
+              if (
+                settings.interpolationEnabled !==
+                this.state.isSegmentationInterpolationEnabled
+              ) {
+                this.handleSegmentationInterpolationToggle(
+                  settings.interpolationEnabled,
+                )
+              }
+              const nextThreshold =
+                settings.clusteringThreshold.trim() === ''
+                  ? null
+                  : Number.parseFloat(settings.clusteringThreshold)
+              if (
+                nextThreshold !== threshold &&
+                (nextThreshold === null || Number.isFinite(nextThreshold))
+              ) {
+                this.handleClusteringPixelSizeThresholdChange(nextThreshold)
+              }
+            }}
+          />
+        </SlimCollapsibleSection>
       )
     }
     return undefined
@@ -4334,7 +4445,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           this.volumeViewer.getParameterMappingMetadata(mapping.uid)
       })
       return (
-        <Menu.SubMenu key="parmetric-maps" title="Parametric Maps">
+        <SlimCollapsibleSection
+          key="parametric-maps"
+          title="Parametric maps"
+          defaultOpen={false}
+          divider={false}
+        >
           <MappingList
             mappings={mappings}
             metadata={mappingMetadata}
@@ -4342,8 +4458,17 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             visibleMappingUIDs={this.state.visibleMappingUIDs}
             onMappingVisibilityChange={this.handleMappingVisibilityChange}
             onMappingStyleChange={this.handleMappingStyleChange}
+            displaySettings={{
+              interpolationEnabled:
+                this.state.isParametricMapInterpolationEnabled,
+            }}
+            onDisplaySettingsChange={(settings) => {
+              this.handleParametricMapInterpolationToggle(
+                settings.interpolationEnabled,
+              )
+            }}
           />
-        </Menu.SubMenu>
+        </SlimCollapsibleSection>
       )
     }
     return undefined
@@ -4413,128 +4538,61 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             : []
 
       return (
-        <Menu.SubMenu key="annotation-groups" title="Annotation Groups">
-          {/* Series Selection Dropdown */}
-          <div
-            style={{
-              paddingLeft: '14px',
-              paddingRight: '14px',
-              paddingTop: '7px',
-              paddingBottom: '7px',
-            }}
-          >
+        <SlimCollapsibleSection
+          key="annotation-groups"
+          title="Annotation groups"
+          defaultOpen={false}
+        >
+          {Object.keys(annotationGroupsBySeries).length > 1 && (
             <Select
-              style={{ width: '100%' }}
-              placeholder="Select a series"
-              value={this.state.selectedSeriesInstanceUID}
-              onChange={this.handleAnnotationGroupSelection}
-              options={dropdownOptions}
-            />
-          </div>
-
-          {/* Display annotation groups for the selected series */}
-          {selectedSeriesAnnotationGroups.length > 0 && (
-            <AnnotationGroupList
-              annotationGroups={selectedSeriesAnnotationGroups}
-              metadata={annotationGroupMetadata}
-              onAnnotationGroupClick={this.handleAnnotationGroupClick}
-              defaultAnnotationGroupStyles={defaultAnnotationGroupStyles}
-              visibleAnnotationGroupUIDs={this.state.visibleAnnotationGroupUIDs}
-              onAnnotationGroupVisibilityChange={
-                this.handleAnnotationGroupVisibilityChange
-              }
-              onAnnotationGroupStyleChange={
-                this.handleAnnotationGroupStyleChange
-              }
-            />
+              value={this.state.selectedSeriesInstanceUID ?? 'all'}
+              onValueChange={this.handleAnnotationGroupSelection}
+            >
+              <SelectTrigger className="mb-2 w-full">
+                <SelectValue placeholder="Select a series" />
+              </SelectTrigger>
+              <SelectContent>
+                {dropdownOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
-        </Menu.SubMenu>
+          <AnnotationGroupList
+            annotationGroups={selectedSeriesAnnotationGroups}
+            metadata={annotationGroupMetadata}
+            onAnnotationGroupClick={this.handleAnnotationGroupClick}
+            defaultAnnotationGroupStyles={defaultAnnotationGroupStyles}
+            visibleAnnotationGroupUIDs={this.state.visibleAnnotationGroupUIDs}
+            onAnnotationGroupVisibilityChange={
+              this.handleAnnotationGroupVisibilityChange
+            }
+            onAnnotationGroupStyleChange={this.handleAnnotationGroupStyleChange}
+          />
+        </SlimCollapsibleSection>
       )
     }
     return undefined
   }
 
-  private readonly getToolbar = (): {
-    toolbar: React.ReactNode
-    toolbarHeight: string
-  } => {
-    const annotationTools = [
-      <Btn
-        tooltip="Draw ROI [Alt+D]"
-        icon={FaDrawPolygon}
-        onClick={this.handleRoiDrawing}
-        isSelected={this.state.isRoiDrawingActive}
-        key="draw-roi-button"
-      />,
-      <Btn
-        tooltip="Modify ROIs [Alt+M]"
-        icon={FaHandPointer}
-        onClick={this.handleRoiModification}
-        isSelected={this.state.isRoiModificationActive}
-        key="modify-roi-button"
-      />,
-      <Btn
-        tooltip="Translate ROIs [Alt+T]"
-        icon={FaHandPaper}
-        onClick={this.handleRoiTranslation}
-        isSelected={this.state.isRoiTranslationActive}
-        key="translate-roi-button"
-      />,
-      <Btn
-        tooltip="Remove selected ROI [Alt+R]"
-        onClick={this.handleRoiRemoval}
-        icon={FaTrash}
-        key="remove-roi-button"
-      />,
-      <Btn
-        tooltip="Show/Hide ROIs [Alt+V]"
-        icon={this.state.areRoisHidden ? FaEye : FaEyeSlash}
-        onClick={this.handleRoiVisibilityChange}
-        isSelected={this.state.areRoisHidden}
-        key="toggle-roi-visibility-button"
-      />,
-      <Btn
-        tooltip="Save ROIs [Alt+S]"
-        icon={FaSave}
-        onClick={this.handleReportGeneration}
-        key="generate-report-button"
-      />,
-    ]
-    const controlTools = [
-      <Btn
-        tooltip="Go to [Alt+G]"
-        icon={FaCrosshairs}
-        onClick={this.handleGoTo}
-        key="go-to-slide-position-button"
-      />,
-    ]
+  private readonly getActiveRoiTool = (): ActiveRoiTool => {
+    if (this.state.isRoiDrawingActive) return 'draw'
+    if (this.state.isRoiModificationActive) return 'modify'
+    if (this.state.isRoiTranslationActive) return 'translate'
+    return null
+  }
 
-    let toolbar: React.ReactNode
-    let toolbarHeight = '0px'
-
-    if (this.props.enableAnnotationTools) {
-      toolbar = (
-        <Row justify="start">
-          {annotationTools.map((item) => {
-            return (
-              <React.Fragment key={(item as React.ReactElement).key}>
-                {item}
-              </React.Fragment>
-            )
-          })}
-          {controlTools.map((item) => {
-            return (
-              <React.Fragment key={(item as React.ReactElement).key}>
-                {item}
-              </React.Fragment>
-            )
-          })}
-        </Row>
-      )
-      toolbarHeight = '50px'
+  private readonly getVolumeMap = (): OlMap | undefined => {
+    const viewer = this.volumeViewer as unknown as {
+      getMap?: () => OlMap | undefined
     }
+    return viewer.getMap?.()
+  }
 
-    return { toolbar, toolbarHeight }
+  private readonly handleRightPanelToggle = (): void => {
+    this.setState((state) => ({ isRightPanelOpen: !state.isRightPanelOpen }))
   }
 
   private readonly getCursor = (): string => {
@@ -4632,7 +4690,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       })
       const createRoiDescription = (
         attributes: Array<{ name: string; value: string; unit?: string }>,
-      ): React.ReactNode[] => {
+      ): Array<{ label: string; value: React.ReactNode }> => {
         return attributes.map((item) => {
           let value: string
           if (item.unit !== null && item.unit !== undefined) {
@@ -4640,11 +4698,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           } else {
             value = item.value
           }
-          return (
-            <Descriptions.Item key={item.name} label={item.name}>
-              {value}
-            </Descriptions.Item>
-          )
+          return { label: item.name, value }
         })
       }
       const roiDescriptions = createRoiDescription(roiAttributes)
@@ -4652,307 +4706,102 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const roiEvaluationDescriptions = createRoiDescription(
         roiEvaluationAttributes,
       )
-      const roiMeasurementDescriptions = []
+      const roiMeasurementDescriptions: React.ReactNode[] = []
       for (const identifier in roiMeasurmentAttributesPerOpticalPath) {
         const descriptions = createRoiDescription(
           roiMeasurmentAttributesPerOpticalPath[identifier],
         )
         if (identifier === 'default') {
-          roiMeasurementDescriptions.push(descriptions)
+          roiMeasurementDescriptions.push(
+            <SlimKeyValueGrid key={identifier} items={descriptions} />,
+          )
         } else {
           roiMeasurementDescriptions.push(
-            <>
-              <Divider orientation="left" orientationMargin={0} dashed plain>
+            <div key={identifier} className="mt-2">
+              <div className="mb-1.5 font-mono text-[11px] text-ink-muted">
                 {identifier}
-              </Divider>
-              {descriptions}
-            </>,
+              </div>
+              <SlimKeyValueGrid items={descriptions} />
+            </div>,
           )
         }
       }
+      const sectionTitle =
+        'mb-2 border-b border-line-soft pb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-secondary'
       return (
-        <>
-          <Descriptions layout="horizontal" column={1}>
-            {roiDescriptions}
-          </Descriptions>
-          <Divider orientation="left" orientationMargin={0}>
-            Spatial coordinates
-          </Divider>
-          <Descriptions layout="horizontal" column={1}>
-            {roiScoordDescriptions}
-          </Descriptions>
-          <Divider orientation="left" orientationMargin={0}>
-            Evaluations
-          </Divider>
-          <Descriptions layout="horizontal" column={1}>
-            {roiEvaluationDescriptions}
-          </Descriptions>
-          <Divider orientation="left" orientationMargin={0}>
-            Measurements
-          </Divider>
-          <Descriptions layout="horizontal" column={1}>
+        <div className="flex flex-col gap-4">
+          <SlimKeyValueGrid items={roiDescriptions} />
+          <div>
+            <div className={sectionTitle}>Spatial coordinates</div>
+            <SlimKeyValueGrid items={roiScoordDescriptions} />
+          </div>
+          <div>
+            <div className={sectionTitle}>Evaluations</div>
+            <SlimKeyValueGrid items={roiEvaluationDescriptions} />
+          </div>
+          <div>
+            <div className={sectionTitle}>Measurements</div>
             {roiMeasurementDescriptions}
-          </Descriptions>
-        </>
+          </div>
+        </div>
       )
     }
     return undefined
-  }
-
-  private readonly getICCProfilesMenu = (): React.ReactNode => {
-    const hasICCProfiles =
-      this.volumeViewer !== null &&
-      this.volumeViewer !== undefined &&
-      this.volumeViewer.getICCProfiles().length > 0
-    return (
-      <div
-        className={hasICCProfiles ? undefined : 'slim-settings-disabled'}
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}
-      >
-        <span>ICC Profiles</span>
-        <Switch
-          checked={this.state.isICCProfilesEnabled}
-          onChange={this.handleICCProfilesToggle}
-          disabled={!hasICCProfiles}
-        />
-      </div>
-    )
-  }
-
-  private readonly getPaletteDisplayGammaCorrectionMenu =
-    (): React.ReactNode => {
-      return (
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginTop: '0.75rem',
-          }}
-        >
-          <span>Gamma correction</span>
-          <Switch
-            checked={this.state.isPaletteDisplayGammaCorrectionEnabled}
-            onChange={this.handlePaletteDisplayGammaCorrectionToggle}
-          />
-        </div>
-      )
-    }
-
-  private readonly getSegmentationInterpolationMenu = (): React.ReactNode => {
-    const segments = this.volumeViewer.getAllSegments()
-    return (
-      segments.length > 0 && (
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <span>Interpolation</span>
-          <Switch
-            checked={this.state.isSegmentationInterpolationEnabled}
-            onChange={this.handleSegmentationInterpolationToggle}
-          />
-        </div>
-      )
-    )
-  }
-
-  private readonly getSettingsPanelContent = (menus: {
-    iccProfilesMenu: React.ReactNode
-    gammaCorrectionMenu: React.ReactNode
-    segmentationInterpolationMenu: React.ReactNode
-  }): React.ReactNode => {
-    const menuItems: React.ReactNode[] = []
-
-    menuItems.push(
-      <Menu.SubMenu key="display" title="Display">
-        <Menu.Item key="display-content" disabled style={{ cursor: 'default' }}>
-          <div className="slim-settings-content">
-            {menus.iccProfilesMenu}
-            {menus.gammaCorrectionMenu}
-          </div>
-        </Menu.Item>
-      </Menu.SubMenu>,
-    )
-
-    const segmentationItems: React.ReactNode[] = []
-    segmentationItems.push(
-      <div
-        key="clustering-enabled"
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '0.5rem',
-        }}
-      >
-        <span>Clustering</span>
-        <Switch
-          checked={Boolean(this.state.isClusteringEnabled)}
-          onChange={this.handleClusteringToggle}
-        />
-      </div>,
-    )
-    segmentationItems.push(
-      <div key="clustering-threshold" style={{ marginBottom: '0.5rem' }}>
-        <div style={{ marginBottom: '0.5rem' }}>
-          Clustering Pixel Size Threshold (mm)
-        </div>
-        <InputNumber
-          min={0}
-          max={100}
-          step={0.001}
-          precision={3}
-          style={{ width: '100%' }}
-          value={this.state.clusteringPixelSizeThreshold ?? undefined}
-          onChange={this.handleClusteringPixelSizeThresholdChange}
-          placeholder="Auto (zoom-based)"
-          addonAfter="mm"
-        />
-        <div
-          style={{
-            fontSize: '0.75rem',
-            color: '#8c8c8c',
-            marginTop: '0.5rem',
-          }}
-        >
-          When pixel size ≤ threshold, clustering is disabled. Leave empty for
-          zoom-based detection.
-        </div>
-      </div>,
-    )
-    if (
-      menus.segmentationInterpolationMenu !== null &&
-      menus.segmentationInterpolationMenu !== undefined
-    ) {
-      segmentationItems.push(menus.segmentationInterpolationMenu)
-    }
-    menuItems.push(
-      <Menu.SubMenu key="segmentation" title="Segmentation">
-        <Menu.Item
-          key="segmentation-content"
-          disabled
-          style={{ cursor: 'default' }}
-        >
-          <div className="slim-settings-content">{segmentationItems}</div>
-        </Menu.Item>
-      </Menu.SubMenu>,
-    )
-
-    const parametricMapItems: React.ReactNode[] = []
-    parametricMapItems.push(
-      <div
-        key="parametric-map-interpolation"
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '0.5rem',
-        }}
-      >
-        <span>Interpolation</span>
-        <Switch
-          checked={this.state.isParametricMapInterpolationEnabled}
-          onChange={this.handleParametricMapInterpolationToggle}
-        />
-      </div>,
-    )
-    menuItems.push(
-      <Menu.SubMenu key="parametric-map" title="Parametric Map">
-        <Menu.Item
-          key="parametric-map-content"
-          disabled
-          style={{ cursor: 'default' }}
-        >
-          <div className="slim-settings-content">{parametricMapItems}</div>
-        </Menu.Item>
-      </Menu.SubMenu>,
-    )
-
-    if (menuItems.length === 0) {
-      return (
-        <div style={{ padding: 16, color: 'rgba(0,0,0,0.45)' }}>
-          No settings available for this slide.
-        </div>
-      )
-    }
-
-    return (
-      <Menu
-        mode="inline"
-        className="slim-settings-menu"
-        defaultOpenKeys={['display', 'segmentation', 'parametric-map']}
-        style={{ border: 'none', width: '100%' }}
-        inlineIndent={14}
-        selectable={false}
-      >
-        {menuItems}
-      </Menu>
-    )
   }
 
   render = (): React.ReactNode => {
     const { rois, segments, mappings, annotationGroups, annotations } =
       this.getDataFromViewer()
 
-    const openSubMenuItems = SlideViewer.getOpenSubMenuItems()
     const report = this.getReport()
-    const annotationMenuItems = this.getAnnotationMenuItems(rois)
     const annotationConfigurations = this.getAnnotationConfigurations()
-    const specimenMenu = this.getSpecimenMenu()
-    const equipmentMenu = this.getEquipmentMenu()
-    const opticalPathMenu = this.getOpticalPathMenu()
-    const segmentationMenu = this.getSegmentationMenu(segments)
-    const parametricMapMenu = this.getParametricMapMenu(mappings)
-    const annotationGroupMenu = this.getAnnotationGroupMenu(annotationGroups)
-    const { toolbar, toolbarHeight } = this.getToolbar()
     const cursor = this.getCursor()
     const selectedRoiInformation = this.getSelectedRoiInformation()
-    const iccProfilesMenu = this.getICCProfilesMenu()
-    const gammaCorrectionMenu = this.getPaletteDisplayGammaCorrectionMenu()
-    const segmentationInterpolationMenu =
-      this.getSegmentationInterpolationMenu()
-
-    const presentationStateMenu = this.getPresentationStateMenu()
-
-    const settingsPanelContent = this.getSettingsPanelContent({
-      iccProfilesMenu,
-      gammaCorrectionMenu,
-      segmentationInterpolationMenu,
-    })
-
-    if (presentationStateMenu !== null && presentationStateMenu !== undefined) {
-      openSubMenuItems.push('presentation-states')
-    }
-    if (segmentationMenu !== null && segmentationMenu !== undefined) {
-      openSubMenuItems.push('segmentations')
-    }
-    if (parametricMapMenu !== null && parametricMapMenu !== undefined) {
-      openSubMenuItems.push('parametric-maps')
-    }
-    if (annotationGroupMenu !== null && annotationGroupMenu !== undefined) {
-      openSubMenuItems.push('annotationGroups')
-    }
 
     annotations?.forEach?.(this.formatAnnotation)
 
+    const viewerKey = `${this.props.studyInstanceUID}/${this.props.seriesInstanceUID}`
+    const slideDescription = getSlideStainInfo(this.props.slide)
+
     return (
-      <Layout style={{ height: '100%', minHeight: 0 }} hasSider>
-        <SettingsRegistration
-          onOpenSettings={() => this.setState({ isSettingsDrawerOpen: true })}
-        />
+      <div className="flex h-full min-h-0 min-w-0 flex-1">
         <SlideViewerContent
-          toolbar={toolbar}
-          toolbarHeight={toolbarHeight}
+          toolbar={
+            <ViewerToolbar
+              isLeftPanelOpen={this.props.isLeftPanelOpen ?? true}
+              onToggleLeftPanel={this.props.onToggleLeftPanel}
+              isRightPanelOpen={this.state.isRightPanelOpen}
+              onToggleRightPanel={this.handleRightPanelToggle}
+              enableAnnotationTools={this.props.enableAnnotationTools}
+              activeTool={this.getActiveRoiTool()}
+              areRoisHidden={this.state.areRoisHidden}
+              onDraw={this.handleRoiDrawing}
+              onModify={this.handleRoiModification}
+              onTranslate={this.handleRoiTranslation}
+              onRemove={this.handleRoiRemoval}
+              onToggleRoiVisibility={this.handleRoiVisibilityChange}
+              onSave={this.handleReportGeneration}
+              onGoTo={this.handleGoTo}
+            />
+          }
+          overlays={
+            <ViewportOverlays
+              key={viewerKey}
+              getMap={this.getVolumeMap}
+              slideId={getSlideShortId(this.props.slide)}
+              slideDescription={slideDescription}
+            />
+          }
+          footer={
+            <ViewerFooter
+              key={viewerKey}
+              enableMemoryMonitoring={this.props.enableMemoryMonitoring ?? true}
+            />
+          }
           cursor={cursor}
+          isFluorescence={this.props.slide.areVolumeImagesMonochrome}
           volumeViewportRef={this.volumeViewportRef}
+          onViewportResize={this.onViewportResize}
         >
           <SlideViewerModals
             isAnnotationModalVisible={this.state.isAnnotationModalVisible}
@@ -4995,35 +4844,19 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         </SlideViewerContent>
 
         <SlideViewerSidebar
+          isOpen={this.state.isRightPanelOpen}
           labelViewportRef={this.labelViewportRef}
           labelViewer={this.labelViewer}
-          openSubMenuItems={openSubMenuItems}
-          specimenMenu={specimenMenu}
-          equipmentMenu={equipmentMenu}
-          opticalPathMenu={opticalPathMenu}
-          presentationStateMenu={presentationStateMenu}
-          annotationMenuItems={annotationMenuItems}
-          annotationGroupMenu={annotationGroupMenu}
-          segmentationMenu={segmentationMenu}
-          parametricMapMenu={parametricMapMenu}
-          annotations={annotations}
-          visibleRoiUIDs={this.state.visibleRoiUIDs}
-          onAnnotationVisibilityChange={this.handleAnnotationVisibilityChange}
-          onRoiStyleChange={this.handleRoiStyleChange}
-          defaultAnnotationStyles={this.defaultAnnotationStyles}
+          specimenMenu={this.getSpecimenMenu()}
+          equipmentMenu={this.getEquipmentMenu()}
+          opticalPathMenu={this.getOpticalPathMenu()}
+          presentationStateMenu={this.getPresentationStateMenu()}
+          annotationMenu={this.getAnnotationMenu(rois)}
+          annotationGroupMenu={this.getAnnotationGroupMenu(annotationGroups)}
+          annotationCategoryMenu={this.getAnnotationCategoryMenu(annotations)}
+          segmentationMenu={this.getSegmentationMenu(segments)}
+          parametricMapMenu={this.getParametricMapMenu(mappings)}
         />
-
-        <Drawer
-          title="Settings"
-          placement="right"
-          onClose={() => this.setState({ isSettingsDrawerOpen: false })}
-          open={this.state.isSettingsDrawerOpen}
-          width={320}
-          className="slim-settings-drawer"
-          bodyStyle={{ padding: 0, minHeight: '100%', overflow: 'auto' }}
-        >
-          {settingsPanelContent}
-        </Drawer>
 
         {this.state.isHoveredRoiTooltipVisible &&
         this.state.hoveredRoiAttributes.length > 0 ? (
@@ -5033,7 +4866,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             rois={this.state.hoveredRoiAttributes}
           />
         ) : null}
-      </Layout>
+      </div>
     )
   }
 }

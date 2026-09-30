@@ -1,5 +1,6 @@
-import { Col, InputNumber, Row, Slider } from 'antd'
 import type React from 'react'
+import { Input } from './ui/input'
+import { Slider } from './ui/slider'
 
 interface OpacitySliderProps {
   opacity: number
@@ -12,31 +13,39 @@ const OpacitySlider: React.FC<OpacitySliderProps> = ({
   onChange,
   label = 'Opacity',
 }) => {
+  const handleSliderChange = (values: number[]): void => {
+    onChange(values[0])
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const value = parseFloat(e.target.value)
+    if (!Number.isNaN(value)) {
+      onChange(Math.min(1, Math.max(0, value)))
+    }
+  }
+
   return (
-    <Row justify="center" align="middle">
-      <Col span={6}>{label}</Col>
-      <Col span={12}>
+    <div className="flex items-center justify-center gap-2">
+      <div className="w-16 shrink-0 text-[12px] text-ink-muted">{label}</div>
+      <div className="flex-1">
         <Slider
-          range={false}
           min={0}
           max={1}
           step={0.01}
-          value={opacity}
-          onChange={onChange}
+          value={[opacity]}
+          onValueChange={handleSliderChange}
         />
-      </Col>
-      <Col span={6}>
-        <InputNumber
-          min={0}
-          max={1}
-          size="small"
-          step={0.1}
-          style={{ width: '65px' }}
-          value={opacity}
-          onChange={onChange}
-        />
-      </Col>
-    </Row>
+      </div>
+      <Input
+        type="number"
+        min={0}
+        max={1}
+        step={0.1}
+        className="h-8 w-16 font-mono text-[12px]"
+        value={opacity}
+        onChange={handleInputChange}
+      />
+    </div>
   )
 }
 

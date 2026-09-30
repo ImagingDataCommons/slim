@@ -1,9 +1,8 @@
-import { Checkbox, Divider, Row } from 'antd'
-import type { CheckboxChangeEvent } from 'antd/es/checkbox'
 import React from 'react'
 import ColorSlider from './ColorSlider'
 import OpacitySlider from './OpacitySlider'
 import type { StyleOptions } from './SlideViewer/types'
+import { Switch } from './ui/switch'
 
 interface ColorSettingsMenuProps {
   annotationGroupsUIDs: string[]
@@ -89,8 +88,8 @@ class ColorSettingsMenu extends React.Component<
     })
   }
 
-  handleShowOutlineOnlyCheckbox = (e: CheckboxChangeEvent): void => {
-    this.handleShowOutlineOnly(e.target.checked)
+  handleShowOutlineOnlyCheckbox = (checked: boolean): void => {
+    this.handleShowOutlineOnly(checked)
   }
 
   getCurrentColor = (): string => {
@@ -136,32 +135,34 @@ class ColorSettingsMenu extends React.Component<
       this.state.currentStyle.color !== undefined
     ) {
       colorSettings = (
-        <>
-          <Divider plain>Color</Divider>
+        <div className="flex flex-col gap-2">
+          <span className="text-[12px] text-ink-muted">Color</span>
           <ColorSlider
             color={this.state.currentStyle.color}
             onChange={this.handleColorChange}
           />
-          <Divider plain />
-        </>
+        </div>
       )
     }
 
     return (
-      <div>
+      <div className="flex flex-col gap-4">
         {colorSettings}
         <OpacitySlider
           opacity={this.state.currentStyle.opacity}
           onChange={this.handleOpacityChange}
         />
-        <Row justify="start" align="middle" gutter={[8, 8]}>
-          <Checkbox
-            value={this.state.currentStyle.contourOnly}
-            onChange={this.handleShowOutlineOnlyCheckbox}
-          >
-            Show outline only
-          </Checkbox>
-        </Row>
+        <div className="flex items-center justify-between">
+          <span className="text-[12.5px] font-medium text-ink">
+            Outline only
+          </span>
+          <Switch
+            size="sm"
+            checked={this.state.currentStyle.contourOnly}
+            onCheckedChange={this.handleShowOutlineOnlyCheckbox}
+            aria-label="Show outline only"
+          />
+        </div>
       </div>
     )
   }

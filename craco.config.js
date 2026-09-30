@@ -1,7 +1,15 @@
 const fs = require('fs')
 const path = require('path')
-const CracoLessPlugin = require('craco-less')
 const CopyWebpackPlugin = require('copy-webpack-plugin')
+
+/**
+ * PostCSS configuration for Tailwind CSS
+ */
+const postcssConfig = {
+  postcssOptions: {
+    plugins: [require('tailwindcss'), require('autoprefixer')],
+  },
+}
 
 /**
  * When dicom-microscopy-viewer is pnpm-linked, resolve the real repo path so
@@ -31,28 +39,10 @@ function getLinkedDmvPaths() {
 }
 
 module.exports = {
-  plugins: [
-    {
-      plugin: CracoLessPlugin,
-      options: {
-        lessLoaderOptions: {
-          lessOptions: {
-            modifyVars: {
-              '@layout-header-background': '#007ea3',
-              '@primary-color': '#007ea3',
-              '@collapse-header-bg': '#e0f2f7',
-              '@processing-color': '#8cb8c6',
-              '@success-color': '#3f9c35',
-              '@warning-color': '#eeaf30',
-              '@error-color': '#96172e',
-              '@font-size-base': '14px'
-            },
-            javascriptEnabled: true
-          }
-        }
-      }
-    }
-  ],
+  style: {
+    postcss: postcssConfig,
+  },
+  plugins: [],
   webpack: {
     configure: (config, { env, paths }) => {
       const linkedDmv =
@@ -142,7 +132,7 @@ module.exports = {
         '^.+\\.[t|j]sx?$': 'babel-jest'
       }
       config.transformIgnorePatterns = [
-        'node_modules/(?!(ol|dicom-microscopy-viewer|dicomweb-client|@cornerstonejs|dicomicc|rbush|color-rgba|color-parse|color-name|color-space|quickselect|earcut)/)'
+        'node_modules/(?!(ol|dicom-microscopy-viewer|dicomweb-client|@cornerstonejs|dicomicc|rbush|color-rgba|color-parse|color-name|color-space|quickselect|earcut|@radix-ui|@tanstack)/)'
       ]
       config.moduleNameMapper = {
         'dicom-microscopy-viewer': '<rootDir>/src/__mocks__/dicomMicroscopyViewerMock.js',
@@ -151,7 +141,8 @@ module.exports = {
         '@cornerstonejs/codec-charls/decodewasmjs': '@cornerstonejs/codec-charls/dist/charlswasm_decode.js',
         '@cornerstonejs/codec-charls/decodewasm': '@cornerstonejs/codec-charls/dist/charlswasm_decode.wasm',
         '@cornerstonejs/codec-openjpeg/decodewasmjs': '@cornerstonejs/codec-openjpeg/dist/openjpegwasm_decode.js',
-        '@cornerstonejs/codec-openjpeg/decodewasm': '@cornerstonejs/codec-openjpeg/dist/openjpegwasm_decode.wasm'
+        '@cornerstonejs/codec-openjpeg/decodewasm': '@cornerstonejs/codec-openjpeg/dist/openjpegwasm_decode.wasm',
+        '@radix-ui/primitive/is-development': '<rootDir>/src/__mocks__/radixPrimitiveMock.js'
       }
       config.setupFilesAfterEnv = ['<rootDir>/src/setupTests.tsx']
       config.testEnvironment = 'jsdom'

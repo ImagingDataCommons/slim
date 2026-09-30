@@ -1,5 +1,4 @@
-import { List } from 'antd'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
 
@@ -21,7 +20,7 @@ class SpecimenList extends React.Component<
     if (this.props.metadata === undefined) {
       return null
     }
-    /*
+    /**
      * Specimen Description Sequence is a type 1 attribute. However, it is
      * nevertheless missing in some data sets. This is a violation of the
      * standard, but it may be better to facilitate display of the data.
@@ -39,7 +38,7 @@ class SpecimenList extends React.Component<
         )
       },
     )
-    return <List style={{ overflowY: 'auto' }}>{items}</List>
+    return <div className="flex flex-col gap-1.5">{items}</div>
   }
 }
 

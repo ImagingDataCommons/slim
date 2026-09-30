@@ -1,4 +1,3 @@
-import { Menu } from 'antd'
 import AnnotationCategoryItem from './AnnotationCategoryItem'
 import type { StyleOptions } from './SlideViewer/types'
 
@@ -47,7 +46,7 @@ const getCategories = (
     cat.types[typeKey].uids.push(uid)
   }
 
-  // Normalizing types so that it's an array instead of an object:
+  /** Normalizing types so that it's an array instead of an object: */
   const result: Record<string, Category> = {}
   for (const categoryKey of Object.keys(categories)) {
     const category = categories[categoryKey]
@@ -103,6 +102,6 @@ const AnnotationCategoryList = ({
     )
   })
 
-  return <Menu selectable={false}>{items}</Menu>
+  return <div className="flex flex-wrap gap-1.5">{items}</div>
 }
 export default AnnotationCategoryList

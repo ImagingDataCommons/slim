@@ -1,47 +1,34 @@
 // skipcq: JS-C1003
 import type * as dmv from 'dicom-microscopy-viewer'
-import React from 'react'
+import type React from 'react'
 
-import Description from './Description'
+import { type KeyValueItem, SlimKeyValueGrid } from './slim/SlimKeyValueGrid'
 
 interface EquipmentProps {
   metadata?: dmv.metadata.VLWholeSlideMicroscopyImage
 }
 
-/**
- * React component representing a list of DICOM Equipment Entities.
- */
-class Equipment extends React.Component<EquipmentProps, Record<string, never>> {
-  render(): React.ReactNode {
-    if (this.props.metadata === undefined) {
-      return null
-    }
-    const attributes = [
-      {
-        name: 'Manufacturer',
-        value: this.props.metadata.Manufacturer,
-      },
-      {
-        name: 'Model Name',
-        value: this.props.metadata.ManufacturerModelName,
-      },
-      {
-        name: 'Device Serial Number',
-        value: this.props.metadata.DeviceSerialNumber,
-      },
-      {
-        name: 'Software Versions',
-        value: this.props.metadata.SoftwareVersions,
-      },
-    ]
-    if (this.props.metadata.InstitutionName != null) {
-      attributes.push({
-        name: 'Institution Name',
-        value: this.props.metadata.InstitutionName,
-      })
-    }
-    return <Description attributes={attributes} hasLongValues />
+/** General Equipment module of the slide's volume image. */
+function Equipment({ metadata }: EquipmentProps): React.ReactElement | null {
+  if (metadata === undefined) {
+    return null
   }
+  const softwareVersions = metadata.SoftwareVersions as unknown
+  const items: KeyValueItem[] = [
+    { label: 'Manufacturer', value: metadata.Manufacturer },
+    { label: 'Model', value: metadata.ManufacturerModelName },
+    { label: 'Serial #', value: metadata.DeviceSerialNumber },
+    {
+      label: 'Software',
+      value: Array.isArray(softwareVersions)
+        ? softwareVersions.join(', ')
+        : (softwareVersions as React.ReactNode),
+    },
+  ]
+  if (metadata.InstitutionName != null) {
+    items.push({ label: 'Institution', value: metadata.InstitutionName })
+  }
+  return <SlimKeyValueGrid items={items} labelWidth={104} />
 }
 
 export default Equipment

@@ -1,112 +1,123 @@
-import { SettingOutlined } from '@ant-design/icons'
-import { Button, Checkbox, Menu, Popover, Space, Tooltip } from 'antd'
-import type { CheckboxChangeEvent } from 'antd/es/checkbox'
-import { useCallback, useMemo } from 'react'
+import type React from 'react'
+import { useCallback } from 'react'
+
+import { cn } from '../lib/utils'
+import { rgbToHex } from '../utils/segmentColors'
 import type { Category, Type } from './AnnotationCategoryList'
 import ColorSettingsMenu from './ColorSettingsMenu'
 import type { StyleOptions } from './SlideViewer/types'
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
+import { Switch } from './ui/switch'
 
-function AnnotationTypeRow({
+interface AnnotationStyleMap {
+  [annotationUID: string]: {
+    opacity: number
+    color: number[]
+    contourOnly: boolean
+  }
+}
+
+/** One annotation type as a pill chip; clicking opens visibility and color settings. */
+function AnnotationTypeChip({
+  category,
   type,
   checkedAnnotationUids,
-  onCheckboxChange,
+  onVisibilityChange,
   onStyleChange,
   defaultAnnotationStyles,
 }: {
+  category: Category
   type: Type
   checkedAnnotationUids: Set<string>
-  onCheckboxChange: (type: Type, e: CheckboxChangeEvent) => void
+  onVisibilityChange: (type: Type, isVisible: boolean) => void
   onStyleChange: (arg: { uid: string; styleOptions: StyleOptions }) => void
-  defaultAnnotationStyles: {
-    [annotationUID: string]: {
-      opacity: number
-      color: number[]
-      contourOnly: boolean
-    }
-  }
-}): JSX.Element {
+  defaultAnnotationStyles: AnnotationStyleMap
+}): React.ReactElement {
   const { CodeMeaning, CodingSchemeDesignator, CodeValue, uids } = type
-  const shortenedCodeMeaning = CodeMeaning.slice(0, 22)
-  const displayCodeMeaning =
-    shortenedCodeMeaning === CodeMeaning
-      ? CodeMeaning
-      : `${shortenedCodeMeaning}...`
-  const isChecked = uids.every((uid: string) => checkedAnnotationUids.has(uid))
-  const indeterminateType =
-    !isChecked && uids.some((uid: string) => checkedAnnotationUids.has(uid))
-  const handleChange = useCallback(
-    (e: CheckboxChangeEvent) => onCheckboxChange(type, e),
-    [type, onCheckboxChange],
+  const visibleCount = uids.filter((uid) =>
+    checkedAnnotationUids.has(uid),
+  ).length
+  const isVisible = visibleCount > 0
+  const style = defaultAnnotationStyles[uids[0]]
+  const color = style !== undefined ? rgbToHex(style.color) : undefined
+  const handleVisibilityChange = useCallback(
+    (checked: boolean) => onVisibilityChange(type, checked),
+    [type, onVisibilityChange],
   )
+
   return (
-    <div
-      style={{
-        paddingLeft: '25px',
-        width: '100%',
-        display: 'flex',
-        flexDirection: 'row',
-      }}
-    >
-      <Checkbox
-        indeterminate={indeterminateType}
-        checked={isChecked}
-        onChange={handleChange}
-      />
-      <div style={{ paddingLeft: '5px' }}>
-        <Tooltip
-          title={`${CodeValue}:${CodingSchemeDesignator}`}
-          mouseEnterDelay={1}
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          title={`${category.CodeMeaning} · ${CodeMeaning}`}
+          className={cn(
+            'flex items-center gap-1.5 rounded-full border border-line py-1 pl-2 pr-2.5 text-[12px] text-ink transition-colors hover:border-line-hover',
+            !isVisible && 'text-ink-muted',
+          )}
         >
-          {displayCodeMeaning}
-        </Tooltip>
-        <Popover
-          placement="topLeft"
-          overlayStyle={{ width: '350px' }}
-          title="Display Settings"
-          content={
-            <ColorSettingsMenu
-              annotationGroupsUIDs={type.uids}
-              onStyleChange={onStyleChange}
-              defaultStyle={defaultAnnotationStyles[type.uids[0]]}
-            />
-          }
-        >
-          <Button
-            type="primary"
-            shape="circle"
-            style={{ marginLeft: '10px' }}
-            icon={<SettingOutlined />}
+          <span
+            className={cn(
+              'h-2 w-2 flex-none rounded-full',
+              !isVisible && 'opacity-40',
+            )}
+            style={{ background: color ?? 'rgb(var(--ink-faint))' }}
           />
-        </Popover>
-      </div>
-    </div>
+          <span className="max-w-[140px] truncate">{CodeMeaning}</span>
+          <span className="text-ink-muted">{uids.length}</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="left" align="start" className="w-80">
+        <div className="flex flex-col gap-4">
+          <div>
+            <div className="text-[12.5px] font-semibold text-ink">
+              {CodeMeaning}
+            </div>
+            <div className="mt-0.5 font-mono text-[11px] text-ink-muted">
+              {category.CodeMeaning} · {CodeValue}:{CodingSchemeDesignator}
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[12.5px] font-medium text-ink">
+              Visible
+              <span className="ml-1.5 font-normal text-ink-muted">
+                {visibleCount} / {uids.length}
+              </span>
+            </span>
+            <Switch
+              size="sm"
+              checked={isVisible}
+              onCheckedChange={handleVisibilityChange}
+              aria-label={`Show ${CodeMeaning}`}
+            />
+          </div>
+          <ColorSettingsMenu
+            annotationGroupsUIDs={uids}
+            onStyleChange={onStyleChange}
+            defaultStyle={style}
+          />
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 
+/** Chips for all annotation types of one category. */
 const AnnotationCategoryItem = ({
   category,
   onChange,
   checkedAnnotationUids,
   onStyleChange,
   defaultAnnotationStyles,
-  ...props
 }: {
   category: Category
   onChange: (arg: { roiUID: string; isVisible: boolean }) => void
   onStyleChange: (arg: { uid: string; styleOptions: StyleOptions }) => void
-  defaultAnnotationStyles: {
-    [annotationUID: string]: {
-      opacity: number
-      color: number[]
-      contourOnly: boolean
-    }
-  }
+  defaultAnnotationStyles: AnnotationStyleMap
   checkedAnnotationUids: Set<string>
-}): JSX.Element => {
-  const { types } = category
-
-  const handleChangeCheckedType = useCallback(
-    ({ type, isVisible }: { type: Type; isVisible: boolean }): void => {
+}): React.ReactElement => {
+  const handleVisibilityChange = useCallback(
+    (type: Type, isVisible: boolean): void => {
       type.uids.forEach((uid: string) => {
         onChange({ roiUID: uid, isVisible })
       })
@@ -114,105 +125,20 @@ const AnnotationCategoryItem = ({
     [onChange],
   )
 
-  const onCheckCategoryChange = useCallback(
-    (e: CheckboxChangeEvent): void => {
-      const isVisible = e.target.checked
-      types.forEach((type: Type) => {
-        handleChangeCheckedType({ type, isVisible })
-      })
-    },
-    [types, handleChangeCheckedType],
-  )
-
-  const checkAll = types.every((type: Type) =>
-    type.uids.every((uid: string) => checkedAnnotationUids.has(uid)),
-  )
-  const indeterminate =
-    !checkAll &&
-    types.some((type: Type) =>
-      type.uids.some((uid: string) => checkedAnnotationUids.has(uid)),
-    )
-
-  const categoryColorSettingsContent = useMemo(
-    () => (
-      <ColorSettingsMenu
-        annotationGroupsUIDs={types.reduce<string[]>((acc, type) => {
-          acc.push(...type.uids)
-          return acc
-        }, [])}
-        onStyleChange={onStyleChange}
-        defaultStyle={defaultAnnotationStyles[types[0].uids[0]]}
-      />
-    ),
-    [types, onStyleChange, defaultAnnotationStyles],
-  )
-
-  const handleCheckboxChangeType = useCallback(
-    (type: Type, e: CheckboxChangeEvent): void => {
-      handleChangeCheckedType({ type, isVisible: e.target.checked })
-    },
-    [handleChangeCheckedType],
-  )
-
-  const categoryHeader = useMemo(
-    () => (
-      <Checkbox
-        indeterminate={indeterminate}
-        checked={checkAll}
-        onChange={onCheckCategoryChange}
-      >
-        <Tooltip
-          title={`${category.CodeValue}:${category.CodingSchemeDesignator}`}
-          mouseEnterDelay={1}
-        >
-          {category.CodeMeaning}
-        </Tooltip>
-        <Popover
-          placement="topLeft"
-          overlayStyle={{ width: '350px' }}
-          title="Display Settings"
-          content={categoryColorSettingsContent}
-        >
-          <Button
-            type="primary"
-            shape="circle"
-            style={{ marginLeft: '10px' }}
-            icon={<SettingOutlined />}
-          />
-        </Popover>
-      </Checkbox>
-    ),
-    [
-      indeterminate,
-      checkAll,
-      onCheckCategoryChange,
-      category.CodeValue,
-      category.CodingSchemeDesignator,
-      category.CodeMeaning,
-      categoryColorSettingsContent,
-    ],
-  )
-
   return (
-    <Menu.Item style={{ height: '100%', paddingLeft: '3px' }} {...props}>
-      <Space align="start">
-        <div style={{ paddingLeft: '14px', color: 'black' }}>
-          <Space direction="vertical" align="end">
-            {categoryHeader}
-            {types.map((type: Type) => (
-              <AnnotationTypeRow
-                key={`${type.CodingSchemeDesignator}:${type.CodeMeaning}`}
-                type={type}
-                checkedAnnotationUids={checkedAnnotationUids}
-                onCheckboxChange={handleCheckboxChangeType}
-                onStyleChange={onStyleChange}
-                defaultAnnotationStyles={defaultAnnotationStyles}
-              />
-            ))}
-          </Space>
-        </div>
-      </Space>
-    </Menu.Item>
+    <>
+      {category.types.map((type: Type) => (
+        <AnnotationTypeChip
+          key={`${type.CodingSchemeDesignator}:${type.CodeValue}:${type.CodeMeaning}`}
+          category={category}
+          type={type}
+          checkedAnnotationUids={checkedAnnotationUids}
+          onVisibilityChange={handleVisibilityChange}
+          onStyleChange={onStyleChange}
+          defaultAnnotationStyles={defaultAnnotationStyles}
+        />
+      ))}
+    </>
   )
 }
 

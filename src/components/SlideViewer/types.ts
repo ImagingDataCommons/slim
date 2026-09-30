@@ -64,6 +64,9 @@ export interface SlideViewerProps extends RouteComponentProps {
   }
   selectedPresentationStateUID?: string
   derivedDataset?: dmv.metadata.Dataset
+  isLeftPanelOpen?: boolean
+  onToggleLeftPanel?: () => void
+  enableMemoryMonitoring?: boolean
 }
 
 /**
@@ -128,5 +131,5 @@ export interface SlideViewerState {
   customizedSegmentColors: { [segmentUID: string]: number[] }
   clusteringPixelSizeThreshold: number | null
   isClusteringEnabled: boolean
-  isSettingsDrawerOpen: boolean
+  isRightPanelOpen: boolean
 }

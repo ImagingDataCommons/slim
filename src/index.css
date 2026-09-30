@@ -1,58 +1,69 @@
+@import './styles/globals.css';
+
+@import 'ol/ol.css';
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'Roboto', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+  font-family: 'IBM Plex Mono', ui-monospace, Menlo, Monaco, Consolas,
     monospace;
 }
 
-.slim-app-loading {
-  box-sizing: border-box;
-  min-height: 100vh;
+/* OpenLayers: DMV overview map rendered as the bottom-right viewport card */
+.ol-overviewmap,
+.ol-overviewmap:hover,
+.ol-overviewmap:not(.ol-collapsed) {
+  right: 14px;
+  bottom: 14px;
+  left: auto;
+  top: auto;
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  background: #f5f5f5;
-  color: rgba(0, 0, 0, 0.65);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
-    Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  padding: 6px !important;
+  border-radius: 10px;
+  background: rgb(var(--panel));
+  border: 1px solid rgb(var(--line));
+  box-shadow: 0 2px 8px rgb(var(--shadow-color) / 0.08);
 }
 
-.slim-app-loading--inline {
-  min-height: 0;
-  width: 100%;
-  height: 100%;
+.ol-overviewmap > button {
+  display: none !important;
+}
+
+/* DMV writes an inline black border and translucent white background */
+.ol-overviewmap .ol-overviewmap-map {
+  margin: 0;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgb(var(--viewport)) !important;
+}
+
+.ol-overviewmap-box {
+  border: 2px solid rgb(var(--primary)) !important;
+  border-radius: 2px;
+  background: rgb(var(--primary) / 0.08);
+}
+
+/* Scale and cursor position are rendered by Slim's viewport overlays */
+.ol-scale-line,
+.ol-mouse-position,
+.ol-unselectable:has(> .-inner),
+.-inner {
+  display: none !important;
+}
+
+.ol-viewport {
   background: transparent;
-  padding: 24px;
 }
 
-.slim-app-loading-spinner {
-  box-sizing: border-box;
-  width: 40px;
-  height: 40px;
-  border: 3px solid rgba(0, 126, 163, 0.2);
-  border-top-color: #007ea3;
-  border-radius: 50%;
-  animation: slim-app-loading-spin 0.8s linear infinite;
-}
-
-.slim-app-loading-label {
-  margin: 0;
-  font-size: 14px;
-  letter-spacing: 0.02em;
-}
-
-@keyframes slim-app-loading-spin {
-  to {
-    transform: rotate(360deg);
-  }
+img {
+  object-fit: contain;
+  max-height: 100%;
 }

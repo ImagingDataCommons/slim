@@ -1,13 +1,12 @@
-import { SettingOutlined } from '@ant-design/icons'
-import { Button, Divider, Menu, Popover, Space, Switch } from 'antd'
 // skipcq: JS-C1003
 import type * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
-import { FaEye, FaEyeSlash } from 'react-icons/fa'
+import { cn } from '../lib/utils'
 import { getSegmentationType, rgbToHex } from '../utils/segmentColors'
 import ColorSlider from './ColorSlider'
-import Description from './Description'
-import OpacitySlider from './OpacitySlider'
+import { Icon } from './ui/icon'
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
+import { Slider } from './ui/slider'
 
 interface SegmentItemProps {
   segment: dmv.segment.Segment
@@ -53,7 +52,8 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
     super(props)
 
     /** Initialize with default color if not provided */
-    const defaultColor = this.props.defaultStyle.color ?? [255, 255, 0] // Default yellow
+    /** Yellow when the segment has no recommended display color */
+    const defaultColor = this.props.defaultStyle.color ?? [255, 255, 0]
     this.state = {
       isVisible: this.props.isVisible,
       currentStyle: {
@@ -63,10 +63,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
     }
   }
 
-  handleVisibilityChange = (
-    checked: boolean,
-    _event: React.MouseEvent<HTMLButtonElement>,
-  ): void => {
+  handleVisibilityChange = (checked: boolean): void => {
     this.props.onVisibilityChange({
       segmentUID: this.props.segment.uid,
       isVisible: checked,
@@ -121,140 +118,111 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
   }
 
   render(): React.ReactNode {
-    const attributes: Array<{ name: string; value: string }> = [
-      {
-        name: 'Property Type',
-        value: this.props.segment.propertyType.CodeMeaning,
-      },
-      {
-        name: 'Property Category',
-        value: this.props.segment.propertyCategory.CodeMeaning,
-      },
-      {
-        name: 'Algorithm Name',
-        value: this.props.segment.algorithmName,
-      },
-      {
-        name: 'Algorithm Type',
-        value: this.props.segment.algorithmType,
-      },
-    ]
-
-    /** Get segmentation type from metadata */
+    const { segment } = this.props
     const segmentationMetadata = this.props.metadata?.[0] as unknown as
       | Record<string, unknown>
       | undefined
     const segmentationType = getSegmentationType(segmentationMetadata)
+    const isFractional = segmentationType === 'FRACTIONAL'
+    const typeLabel =
+      segmentationType.charAt(0) + segmentationType.slice(1).toLowerCase()
+    const meta = [typeLabel, segment.algorithmName]
+      .filter((part) => part !== undefined && part !== '')
+      .join(' · ')
+    const details = [
+      `Property type: ${segment.propertyType.CodeMeaning}`,
+      `Property category: ${segment.propertyCategory.CodeMeaning}`,
+      `Algorithm: ${segment.algorithmName} (${segment.algorithmType})`,
+    ].join('\n')
+    const opacity = this.state.currentStyle.opacity
 
-    // Add SegmentationType from metadata if available
-    if (segmentationMetadata?.SegmentationType !== undefined) {
-      attributes.push({
-        name: 'Segmentation Type',
-        value: segmentationMetadata.SegmentationType as string,
-      })
-    }
-
-    const settings = (
-      <div>
-        {segmentationType !== 'FRACTIONAL' && (
-          <>
-            <Divider plain>Color</Divider>
-            <ColorSlider
-              color={this.state.currentStyle.color}
-              onChange={this.handleColorChange}
-            />
-            <Divider plain />
-          </>
-        )}
-        <OpacitySlider
-          opacity={this.state.currentStyle.opacity}
-          onChange={this.handleOpacityChange}
-        />
-      </div>
-    )
-
-    /**
-     * This hack is required for Menu.Item to work properly:
-     * https://github.com/react-component/menu/issues/142
-     */
-    const {
-      defaultStyle,
-      isVisible,
-      segment,
-      metadata,
-      onVisibilityChange,
-      onStyleChange,
-      onClick: _onClick,
-      ...otherProps
-    } = this.props
     return (
-      <Menu.Item
-        style={{ height: '100%', paddingLeft: '3px' }}
-        key={this.props.segment.uid}
-        {...otherProps}
-      >
-        <Space align="start">
-          <div style={{ paddingLeft: '14px' }}>
-            <Space direction="vertical" align="center">
-              <Switch
-                size="small"
-                onChange={this.handleVisibilityChange}
-                checked={this.props.isVisible}
-                checkedChildren={<FaEye />}
-                unCheckedChildren={<FaEyeSlash />}
-              />
-              <Popover
-                placement="left"
-                content={settings}
-                overlayStyle={{ width: '350px' }}
-                title="Display Settings"
-              >
-                <Button
-                  type="primary"
-                  shape="circle"
-                  icon={<SettingOutlined />}
-                />
-              </Popover>
-              {/* Color indicator - only show for non-fractional segmentation */}
-              {segmentationType !== 'FRACTIONAL' && (
-                <div
-                  style={{
-                    width: '20px',
-                    height: '20px',
-                    backgroundColor: rgbToHex(this.state.currentStyle.color),
-                    border: '1px solid #d9d9d9',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                  title={`Segment color: ${rgbToHex(this.state.currentStyle.color)}`}
-                />
-              )}
-            </Space>
-          </div>
+      <div className="flex flex-col gap-2.5 rounded-lg border border-line px-3 py-2.5">
+        <div className="flex items-center gap-2">
+          <span
+            className="h-3 w-3 flex-none rounded-[3px]"
+            style={{
+              background: isFractional
+                ? 'linear-gradient(90deg,#2c1b6b,#1f6fb0,#2fb08a,#e6d94a)'
+                : rgbToHex(this.state.currentStyle.color),
+            }}
+          />
           <button
             type="button"
-            style={{
-              flex: 1,
-              cursor: 'pointer',
-              background: 'none',
-              border: 'none',
-              padding: 0,
-              textAlign: 'left',
-            }}
+            className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
             onClick={this.handleClick}
-            title="Click to zoom to segment"
+            title={`${details}\n\nClick to zoom to segment`}
           >
-            <Description
-              header={this.props.segment.label}
-              attributes={attributes}
-              selectable
-              hasLongValues
+            <span className="truncate font-semibold text-ink">
+              {segment.label}
+            </span>
+            {meta !== '' && (
+              <span className="truncate text-[12px] text-ink-muted">
+                {meta}
+              </span>
+            )}
+          </button>
+          {!isFractional && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  title="Segment color"
+                  aria-label={`Color for ${segment.label}`}
+                  className="grid h-7 w-7 flex-none place-items-center rounded-md text-ink-secondary transition-colors hover:bg-segmented"
+                >
+                  <Icon name="palette" size={17} />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="left" align="start" className="w-80">
+                <div className="flex flex-col gap-2">
+                  <span className="text-[12.5px] font-semibold text-ink">
+                    Color
+                  </span>
+                  <ColorSlider
+                    color={this.state.currentStyle.color}
+                    onChange={this.handleColorChange}
+                  />
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+          <button
+            type="button"
+            title="Show/hide"
+            aria-label={
+              this.props.isVisible
+                ? `Hide ${segment.label}`
+                : `Show ${segment.label}`
+            }
+            onClick={() => this.handleVisibilityChange(!this.props.isVisible)}
+            className={cn(
+              'grid h-7 w-7 flex-none place-items-center rounded-md transition-colors hover:bg-segmented',
+              this.props.isVisible ? 'text-ink-secondary' : 'text-ink-fainter',
+            )}
+          >
+            <Icon
+              name={this.props.isVisible ? 'visibility' : 'visibility_off'}
+              size={18}
             />
           </button>
-        </Space>
-      </Menu.Item>
+        </div>
+        <div className="flex items-center gap-2 text-[11.5px] text-ink-muted">
+          Opacity
+          <Slider
+            className="flex-1"
+            min={0}
+            max={1}
+            step={0.01}
+            value={[opacity]}
+            onValueChange={(values) => this.handleOpacityChange(values[0])}
+            aria-label={`Opacity of ${segment.label}`}
+          />
+          <span className="w-9 text-right font-mono text-ink-body">
+            {Math.round(opacity * 100)}%
+          </span>
+        </div>
+      </div>
     )
   }
 }

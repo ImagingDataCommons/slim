@@ -1,11 +1,9 @@
-import type { MenuProps } from 'antd'
-import { Menu, Switch } from 'antd'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dcmjs from 'dcmjs'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
-import { FaEye, FaEyeSlash } from 'react-icons/fa'
+
 import AnnotationGroupItem from './AnnotationGroupItem'
 
 interface AnnotationGroupListProps {
@@ -52,34 +50,14 @@ class AnnotationGroupList extends React.Component<
   AnnotationGroupListProps,
   unknown
 > {
-  handleVisibilityChange = (checked: boolean): void => {
-    if (checked) {
-      this.props.annotationGroups.forEach((annotationGroup) => {
-        this.props.onAnnotationGroupVisibilityChange({
-          annotationGroupUID: annotationGroup.uid,
-          isVisible: checked,
-        })
-      })
-      return
-    }
-
-    this.props.visibleAnnotationGroupUIDs.forEach((annotationGroupUID) => {
-      this.props.onAnnotationGroupVisibilityChange({
-        annotationGroupUID,
-        isVisible: checked,
-      })
-    })
-  }
-
   render(): React.ReactNode {
-    const items: MenuProps['items'] = this.props.annotationGroups.map(
-      (annotationGroup) => {
-        const uid = annotationGroup.uid
-        return {
-          key: uid,
-          style: { height: '100%', paddingLeft: '3px' },
-          label: (
+    return (
+      <div className="flex flex-col gap-1.5">
+        {this.props.annotationGroups.map((annotationGroup) => {
+          const uid = annotationGroup.uid
+          return (
             <AnnotationGroupItem
+              key={uid}
               annotationGroup={annotationGroup}
               onAnnotationGroupClick={this.props.onAnnotationGroupClick}
               metadata={this.props.metadata[uid]}
@@ -88,30 +66,9 @@ class AnnotationGroupList extends React.Component<
               onVisibilityChange={this.props.onAnnotationGroupVisibilityChange}
               onStyleChange={this.props.onAnnotationGroupStyleChange}
             />
-          ),
-        }
-      },
-    )
-
-    return (
-      <>
-        <div
-          style={{
-            paddingLeft: '14px',
-            paddingTop: '7px',
-            paddingBottom: '7px',
-          }}
-        >
-          <Switch
-            size="small"
-            onChange={this.handleVisibilityChange}
-            checked={this.props.visibleAnnotationGroupUIDs.size > 0}
-            checkedChildren={<FaEye />}
-            unCheckedChildren={<FaEyeSlash />}
-          />
-        </div>
-        <Menu selectable={false} items={items} />
-      </>
+          )
+        })}
+      </div>
     )
   }
 }

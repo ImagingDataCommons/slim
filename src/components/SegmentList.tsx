@@ -1,10 +1,14 @@
-import { Menu, Switch } from 'antd'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
-import { FaEye, FaEyeSlash } from 'react-icons/fa'
-
 import SegmentItem from './SegmentItem'
+import { type DisplayOption, DisplayOptionsPanel } from './slim'
+
+interface SegmentDisplaySettings {
+  clusteringEnabled: boolean
+  interpolationEnabled: boolean
+  clusteringThreshold: string
+}
 
 interface SegmentListProps {
   segments: dmv.segment.Segment[]
@@ -36,6 +40,10 @@ interface SegmentListProps {
     }
   }) => void
   onSegmentClick: (segmentUID: string) => void
+  /** Display settings for clustering and interpolation */
+  displaySettings?: SegmentDisplaySettings
+  /** Callback when display settings change */
+  onDisplaySettingsChange?: (settings: SegmentDisplaySettings) => void
 }
 
 /**
@@ -45,25 +53,6 @@ class SegmentList extends React.Component<
   SegmentListProps,
   Record<string, never>
 > {
-  handleVisibilityChange = (checked: boolean): void => {
-    if (checked) {
-      this.props.segments.forEach((segment) => {
-        this.props.onSegmentVisibilityChange({
-          segmentUID: segment.uid,
-          isVisible: checked,
-        })
-      })
-      return
-    }
-
-    this.props.visibleSegmentUIDs.forEach((segmentUID) => {
-      this.props.onSegmentVisibilityChange({
-        segmentUID,
-        isVisible: checked,
-      })
-    })
-  }
-
   render(): React.ReactNode {
     const items = this.props.segments.map((segment, _index) => {
       const uid = segment.uid
@@ -81,25 +70,71 @@ class SegmentList extends React.Component<
       )
     })
 
+    /** Display options for clustering and interpolation */
+    const { displaySettings, onDisplaySettingsChange } = this.props
+    const displayOptions: DisplayOption[] = []
+
+    if (
+      displaySettings !== undefined &&
+      onDisplaySettingsChange !== undefined
+    ) {
+      displayOptions.push({
+        id: 'clustering',
+        label: 'Clustering',
+        description: 'Group dense segments at low zoom.',
+        enabled: displaySettings.clusteringEnabled,
+        onChange: (enabled) => {
+          onDisplaySettingsChange({
+            ...displaySettings,
+            clusteringEnabled: enabled,
+          })
+        },
+      })
+
+      displayOptions.push({
+        id: 'interpolation',
+        label: 'Segment interpolation',
+        shortLabel: 'Interp.',
+        description: 'Smooth segment edges when zoomed in.',
+        enabled: displaySettings.interpolationEnabled,
+        onChange: (enabled) => {
+          onDisplaySettingsChange({
+            ...displaySettings,
+            interpolationEnabled: enabled,
+          })
+        },
+      })
+    }
+
+    /** Additional input for clustering threshold */
+    const clusteringThresholdInput =
+      displaySettings !== undefined && onDisplaySettingsChange !== undefined
+        ? {
+            label: 'Clustering pixel size threshold',
+            description:
+              'At or below this pixel size, clustering turns off. Leave empty for zoom-based detection.',
+            value: displaySettings.clusteringThreshold,
+            placeholder: 'Auto (zoom-based)',
+            unit: 'mm',
+            onChange: (value: string) => {
+              onDisplaySettingsChange({
+                ...displaySettings,
+                clusteringThreshold: value,
+              })
+            },
+          }
+        : undefined
+
     return (
-      <>
-        <div
-          style={{
-            paddingLeft: '14px',
-            paddingTop: '7px',
-            paddingBottom: '7px',
-          }}
-        >
-          <Switch
-            size="small"
-            onChange={this.handleVisibilityChange}
-            checked={this.props.visibleSegmentUIDs.size > 0}
-            checkedChildren={<FaEye />}
-            unCheckedChildren={<FaEyeSlash />}
+      <div className="flex flex-col gap-1.5">
+        {items}
+        {displayOptions.length > 0 && (
+          <DisplayOptionsPanel
+            options={displayOptions}
+            additionalInput={clusteringThresholdInput}
           />
-        </div>
-        <Menu selectable={false}>{items}</Menu>
-      </>
+        )}
+      </div>
     )
   }
 }

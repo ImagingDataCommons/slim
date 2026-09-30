@@ -1,36 +1,29 @@
-import { Tooltip } from 'antd'
 // skipcq: JS-C1003
 import type * as dmv from 'dicom-microscopy-viewer'
 import type React from 'react'
 import { useEffect, useState } from 'react'
-import { FaExclamationTriangle } from 'react-icons/fa'
+
 import { useValidation } from '../contexts/ValidationContext'
 import type { Slide } from '../data/slides'
+import { cn } from '../lib/utils'
+import { Icon } from './ui/icon'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 
 interface ValidationWarningProps {
   annotationGroup?: dmv.annotation.AnnotationGroup
-  onEvent?: () => void
   slide?: Slide
-  iconColor?: string
-  iconSize?: string
-  style?: React.CSSProperties
-  position?: {
-    top?: string
-    right?: string
-  }
+  size?: number
+  className?: string
 }
 
+/** Inline warning icon shown when the slide or annotation group fails validation. */
 const ValidationWarning: React.FC<ValidationWarningProps> = ({
   slide,
   annotationGroup,
-  iconColor = '#e69500',
-  iconSize = '1.3em',
-  position = { top: '4px', right: '4px' },
-  style,
+  size = 16,
+  className,
 }) => {
-  const [show, setShow] = useState(false)
   const [tooltipText, setTooltipText] = useState<string | undefined>(undefined)
-
   const { runValidations } = useValidation()
 
   useEffect(() => {
@@ -39,42 +32,31 @@ const ValidationWarning: React.FC<ValidationWarningProps> = ({
       context: { annotationGroup, slide },
     })
     if (!validationResult.isValid) {
-      setShow(true)
-      setTooltipText(validationResult.message)
-      // Only log warnings in development environment
+      setTooltipText(validationResult.message ?? 'Validation warning')
       if (process.env.NODE_ENV === 'development') {
         console.warn(validationResult.message)
       }
     } else {
-      setShow(false)
       setTooltipText(undefined)
     }
   }, [slide, annotationGroup, runValidations])
 
-  if (!show) {
+  if (tooltipText === undefined) {
     return null
   }
 
   return (
-    <Tooltip title={tooltipText}>
-      <div
-        style={{
-          ...style,
-          position: 'absolute',
-          top: position.top,
-          right: position.right,
-          zIndex: 2,
-          pointerEvents: 'auto',
-        }}
-      >
-        <FaExclamationTriangle
-          style={{
-            color: iconColor,
-            fontSize: iconSize,
-            textShadow: '0 2px 6px rgba(0,0,0,0.25), 0 0px 2px #fff',
-          }}
-        />
-      </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          role="img"
+          aria-label={tooltipText}
+          className={cn('inline-flex flex-none text-warning', className)}
+        >
+          <Icon name="warning" size={size} filled />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-[280px]">{tooltipText}</TooltipContent>
     </Tooltip>
   )
 }

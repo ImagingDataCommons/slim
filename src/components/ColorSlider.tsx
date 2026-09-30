@@ -1,6 +1,7 @@
-import { Col, InputNumber, Row, Slider } from 'antd'
 import type React from 'react'
 import { useCallback } from 'react'
+import { Input } from './ui/input'
+import { Slider } from './ui/slider'
 
 interface ColorSliderProps {
   color: number[]
@@ -19,9 +20,21 @@ const ColorSlider: React.FC<ColorSliderProps> = ({ color, onChange }) => {
     [color, onChange],
   )
 
-  const createChangeHandler = useCallback(
+  const createSliderChangeHandler = useCallback(
     (index: number) => {
-      return (value: number | null) => handleColorChange(index, value)
+      return (values: number[]) => handleColorChange(index, values[0])
+    },
+    [handleColorChange],
+  )
+
+  const createInputChangeHandler = useCallback(
+    (index: number) => {
+      return (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = parseInt(e.target.value, 10)
+        if (!Number.isNaN(value)) {
+          handleColorChange(index, Math.min(255, Math.max(0, value)))
+        }
+      }
     },
     [handleColorChange],
   )
@@ -29,33 +42,35 @@ const ColorSlider: React.FC<ColorSliderProps> = ({ color, onChange }) => {
   const colorLabels = ['Red', 'Green', 'Blue']
 
   return (
-    <>
+    <div className="flex flex-col gap-2">
       {colorLabels.map((colorLabel, index) => (
-        <Row key={colorLabel} justify="center" align="middle" gutter={[8, 8]}>
-          <Col span={5}>{colorLabel}</Col>
-          <Col span={14}>
+        <div
+          key={colorLabel}
+          className="flex items-center justify-center gap-2"
+        >
+          <div className="w-12 shrink-0 text-[12px] text-ink-muted">
+            {colorLabel}
+          </div>
+          <div className="flex-1">
             <Slider
-              range={false}
               min={0}
               max={255}
               step={1}
-              value={color[index]}
-              onChange={createChangeHandler(index)}
+              value={[color[index]]}
+              onValueChange={createSliderChangeHandler(index)}
             />
-          </Col>
-          <Col span={5}>
-            <InputNumber
-              min={0}
-              max={255}
-              size="small"
-              style={{ width: '65px' }}
-              value={color[index]}
-              onChange={createChangeHandler(index)}
-            />
-          </Col>
-        </Row>
+          </div>
+          <Input
+            type="number"
+            min={0}
+            max={255}
+            className="h-8 w-16 font-mono text-[12px]"
+            value={color[index]}
+            onChange={createInputChangeHandler(index)}
+          />
+        </div>
       ))}
-    </>
+    </div>
   )
 }
 

@@ -1,129 +1,80 @@
-import { Layout, Menu } from 'antd'
-// skipcq: JS-C1003
 import type * as dmv from 'dicom-microscopy-viewer'
 import type React from 'react'
 import { useCallback } from 'react'
 
-import './SlideViewerSidebar.css'
-import type { AnnotationCategoryAndType } from '../../types/annotations'
-import AnnotationCategoryList from '../AnnotationCategoryList'
-import type { StyleOptions } from './types'
+import { cn } from '../../lib/utils'
+import { SlimCollapsibleSection } from '../slim/SlimCollapsibleSection'
 
 interface SlideViewerSidebarProps {
+  isOpen: boolean
   labelViewportRef: React.RefObject<HTMLDivElement>
   labelViewer?: dmv.viewer.LabelImageViewer
-  openSubMenuItems: string[]
   specimenMenu: React.ReactNode
   equipmentMenu: React.ReactNode
   opticalPathMenu: React.ReactNode
   presentationStateMenu: React.ReactNode
-  annotationMenuItems: React.ReactNode
+  annotationMenu: React.ReactNode
   annotationGroupMenu: React.ReactNode
+  annotationCategoryMenu: React.ReactNode
   segmentationMenu: React.ReactNode
   parametricMapMenu: React.ReactNode
-  annotations: AnnotationCategoryAndType[]
-  visibleRoiUIDs: Set<string>
-  onAnnotationVisibilityChange: ({
-    roiUID,
-    isVisible,
-  }: {
-    roiUID: string
-    isVisible: boolean
-  }) => void
-  onRoiStyleChange: ({
-    uid,
-    styleOptions,
-  }: {
-    uid: string
-    styleOptions: StyleOptions
-  }) => void
-  defaultAnnotationStyles: { [annotationUID: string]: StyleOptions }
 }
 
 /**
- * Sidebar component for the SlideViewer containing all menu items
+ * Right "slide" panel: label, specimens, equipment, optical paths,
+ * presentation states, annotations, groups, categories, segmentations and
+ * parametric maps. Kept mounted while hidden so the DMV label viewer and
+ * item state survive panel toggles.
  */
 const SlideViewerSidebar: React.FC<SlideViewerSidebarProps> = ({
+  isOpen,
   labelViewportRef,
   labelViewer,
-  openSubMenuItems,
   specimenMenu,
   equipmentMenu,
   opticalPathMenu,
   presentationStateMenu,
-  annotationMenuItems,
+  annotationMenu,
   annotationGroupMenu,
+  annotationCategoryMenu,
   segmentationMenu,
   parametricMapMenu,
-  annotations,
-  visibleRoiUIDs,
-  onAnnotationVisibilityChange,
-  onRoiStyleChange,
-  defaultAnnotationStyles,
 }) => {
-  const handleMenuOpenChange = useCallback((): void => {
-    // Give menu item time to render before updating viewer size
-    const resizeViewer = (): void => {
-      if (labelViewer !== null && labelViewer !== undefined) {
-        labelViewer.resize()
-      }
-    }
-    setTimeout(resizeViewer, 100)
+  const handleLabelOpenChange = useCallback((): void => {
+    requestAnimationFrame(() => labelViewer?.resize())
   }, [labelViewer])
 
   return (
-    <Layout.Sider
-      width={300}
-      reverseArrow
-      className="slide-viewer-sidebar"
-      style={{
-        borderLeft: 'solid',
-        borderLeftWidth: 0.25,
-        overflow: 'hidden',
-        background: 'none',
-      }}
+    <aside
+      aria-label="Slide panel"
+      className={cn(
+        'flex min-h-0 w-sidebar-right flex-none flex-col border-l border-line bg-panel',
+        !isOpen && 'hidden',
+      )}
     >
-      <Menu
-        mode="inline"
-        defaultOpenKeys={openSubMenuItems}
-        style={{ height: '100%' }}
-        inlineIndent={14}
-        forceSubMenuRender
-        onOpenChange={handleMenuOpenChange}
-      >
-        {labelViewportRef.current !== null && (
-          <Menu.SubMenu key="label" title="Slide label">
-            <Menu.Item style={{ height: '100%' }} key="image">
-              <div style={{ height: '220px' }} ref={labelViewportRef} />
-            </Menu.Item>
-          </Menu.SubMenu>
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-4">
+        {labelViewer !== undefined && (
+          <SlimCollapsibleSection
+            title="Slide label"
+            keepMounted
+            onOpenChange={handleLabelOpenChange}
+          >
+            <div className="slim-stripes relative h-[120px] overflow-hidden rounded-lg border border-line">
+              <div ref={labelViewportRef} className="absolute inset-0" />
+            </div>
+          </SlimCollapsibleSection>
         )}
         {specimenMenu}
         {equipmentMenu}
         {opticalPathMenu}
         {presentationStateMenu}
-        <Menu.SubMenu key="annotations" title="Annotations">
-          {annotationMenuItems}
-        </Menu.SubMenu>
+        {annotationMenu}
         {annotationGroupMenu}
-        {annotations.length === 0 ? null : (
-          <Menu.SubMenu
-            key="annotation-categories"
-            title="Annotation Categories"
-          >
-            <AnnotationCategoryList
-              annotations={annotations}
-              onChange={onAnnotationVisibilityChange}
-              checkedAnnotationUids={visibleRoiUIDs}
-              onStyleChange={onRoiStyleChange}
-              defaultAnnotationStyles={defaultAnnotationStyles}
-            />
-          </Menu.SubMenu>
-        )}
+        {annotationCategoryMenu}
         {segmentationMenu}
         {parametricMapMenu}
-      </Menu>
-    </Layout.Sider>
+      </div>
+    </aside>
   )
 }
 

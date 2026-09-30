@@ -1,6 +1,7 @@
-import { Card, Descriptions } from 'antd'
-import React from 'react'
-import { v4 as generateUUID } from 'uuid'
+import type React from 'react'
+
+import { cn } from '../lib/utils'
+import { type KeyValueItem, SlimKeyValueGrid } from './slim/SlimKeyValueGrid'
 
 export interface Attribute {
   name: string
@@ -14,72 +15,54 @@ export interface AttributeGroup {
 
 interface DescriptionProps {
   header?: string
-  icon?: React.ComponentType<Record<string, never>>
   attributes: Attribute[]
-  selectable?: boolean
-  hasLongValues?: boolean
+  /** Label column width of the key/value grid */
+  labelWidth?: 96 | 104
   methods?: React.ReactNode[]
   children?: React.ReactNode
+  className?: string
 }
 
 /**
- * React component for a description consisting of a header containing a
- * header and a body containing a list of name-value pairs.
+ * Key/value description. With a `header` it renders as a bordered panel card
+ * (specimens, groups); without, as a bare grid.
  */
-class Description extends React.Component<
-  DescriptionProps,
-  Record<string, never>
-> {
-  render(): React.ReactNode {
-    let layout: 'horizontal' | 'vertical' = 'horizontal'
-    let labelLineHeight = '14px'
-    const contentLineHeight = '14px'
-    if (this.props.hasLongValues !== undefined && this.props.hasLongValues) {
-      layout = 'vertical'
-      labelLineHeight = '20px'
-    }
-    const items = this.props.attributes.map(
-      (item: Attribute, _index: number) => {
-        const uid = generateUUID()
-        return (
-          <Descriptions.Item
-            key={uid}
-            label={item.name}
-            labelStyle={{
-              lineHeight: labelLineHeight,
-            }}
-            contentStyle={{
-              fontWeight: 600,
-              whiteSpace: 'pre-line',
-              lineHeight: contentLineHeight,
-            }}
-            span={1}
-          >
-            {item.value}
-          </Descriptions.Item>
-        )
-      },
-    )
-    let icon = null
-    if (this.props.icon !== undefined) {
-      icon = <this.props.icon />
-    }
+function Description({
+  header,
+  attributes,
+  labelWidth = 104,
+  methods,
+  children,
+  className,
+}: DescriptionProps): React.ReactElement {
+  const items: KeyValueItem[] = attributes.map((item) => ({
+    label: item.name,
+    value: item.value,
+  }))
+
+  if (header === undefined) {
     return (
-      <Card
-        title={this.props.header}
-        extra={icon}
-        size="small"
-        hoverable={this.props.selectable}
-        bordered={this.props.header !== undefined}
-        actions={this.props.methods}
-      >
-        <Descriptions column={1} size="small" layout={layout} bordered={false}>
-          {items}
-        </Descriptions>
-        {this.props.children}
-      </Card>
+      <div className={className}>
+        {items.length > 0 && (
+          <SlimKeyValueGrid items={items} labelWidth={labelWidth} />
+        )}
+        {children}
+      </div>
     )
   }
+
+  return (
+    <div className={cn('rounded-lg border border-line px-3 py-2.5', className)}>
+      <div className="mb-2 break-words font-semibold text-ink">{header}</div>
+      {items.length > 0 && (
+        <SlimKeyValueGrid items={items} labelWidth={labelWidth} />
+      )}
+      {children}
+      {methods !== undefined && methods.length > 0 && (
+        <div className="mt-2.5 flex justify-end gap-2">{methods}</div>
+      )}
+    </div>
+  )
 }
 
 export default Description

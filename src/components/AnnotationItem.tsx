@@ -1,17 +1,67 @@
-import { Menu, Space, Switch } from 'antd'
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
 // skipcq: JS-C1003
 import type * as dmv from 'dicom-microscopy-viewer'
-import React from 'react'
-import { FaEye, FaEyeSlash } from 'react-icons/fa'
+import type React from 'react'
 
-import Description from './Description'
+import { cn } from '../lib/utils'
+import { Icon } from './ui/icon'
+
+const FINDING_CODE_VALUES = new Set(['121071', '276214006'])
+
+const UNIT_LABELS: Record<string, string> = {
+  mm2: 'mm²',
+  um2: 'µm²',
+  mm: 'mm',
+  um: 'µm',
+}
+
+const GRAPHIC_TYPE_LABELS: Record<string, string> = {
+  POINT: 'Point',
+  MULTIPOINT: 'Points',
+  POLYLINE: 'Line',
+  POLYGON: 'Polygon',
+  ELLIPSE: 'Ellipse',
+  ELLIPSOID: 'Ellipsoid',
+}
+
+/** "Polygon · Tumor" from the ROI geometry and its finding evaluation. */
+export function describeRoiType(roi: dmv.roi.ROI): string {
+  const graphicType = roi.scoord3d?.graphicType ?? ''
+  const geometry = GRAPHIC_TYPE_LABELS[graphicType] ?? graphicType
+  const finding = roi.evaluations.find(
+    (item) =>
+      item.ValueType === dcmjs.sr.valueTypes.ValueTypes.CODE &&
+      FINDING_CODE_VALUES.has(item.ConceptNameCodeSequence[0].CodeValue),
+  ) as dcmjs.sr.valueTypes.CodeContentItem | undefined
+  const findingLabel = finding?.ConceptCodeSequence[0]?.CodeMeaning
+  return [geometry, findingLabel]
+    .filter((part) => part !== undefined && part !== '')
+    .join(' · ')
+}
+
+/** "Area 2.41 mm²" from the first ROI measurement. */
+export function describeRoiMeasurement(roi: dmv.roi.ROI): string | undefined {
+  const measurement = roi.measurements[0]
+  if (measurement === undefined) return undefined
+  const name = measurement.ConceptNameCodeSequence[0]?.CodeMeaning ?? ''
+  const measuredValue = measurement.MeasuredValueSequence[0]
+  if (measuredValue === undefined) return name
+  const value = Number(Number(measuredValue.NumericValue).toPrecision(3))
+  const unitCode =
+    measuredValue.MeasurementUnitsCodeSequence[0]?.CodeValue ?? ''
+  const unit = UNIT_LABELS[unitCode] ?? unitCode
+  const label = name.charAt(0).toUpperCase() + name.slice(1)
+  return `${label} ${value} ${unit}`.trim()
+}
 
 interface AnnotationItemProps {
   roi: dmv.roi.ROI
   index: number
+  color: string
+  isSelected: boolean
   isVisible: boolean
+  onSelection: (uid: string) => void
   onVisibilityChange: ({
     roiUID,
     isVisible,
@@ -21,117 +71,69 @@ interface AnnotationItemProps {
   }) => void
 }
 
-/**
- * React component representing a Region of Interest (ROI) annotation.
- */
-class AnnotationItem extends React.Component<
-  AnnotationItemProps,
-  Record<string, never>
-> {
-  constructor(props: AnnotationItemProps) {
-    super(props)
-    this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
-  }
+/** One ROI row in the Annotations section. */
+function AnnotationItem({
+  roi,
+  index,
+  color,
+  isSelected,
+  isVisible,
+  onSelection,
+  onVisibilityChange,
+}: AnnotationItemProps): React.ReactElement {
+  const label = `ROI ${index + 1}`
+  const type = describeRoiType(roi)
+  const measurement = describeRoiMeasurement(roi)
 
-  handleVisibilityChange(
-    checked: boolean,
-    _event: React.MouseEvent<HTMLButtonElement>,
-  ): void {
-    this.props.onVisibilityChange({
-      roiUID: this.props.roi.uid,
-      isVisible: checked,
-    })
-  }
-
-  render(): React.ReactNode {
-    const identifier = `ROI ${this.props.index + 1}`
-    const attributes: Array<{ name: string; value: string }> = []
-    /**
-     * This hack is required for Menu.Item to work properly:
-     * https://github.com/react-component/menu/issues/142
-     */
-    const { isVisible, onVisibilityChange, ...otherProps } = this.props
-    this.props.roi.evaluations.forEach(
-      (
-        item:
-          | dcmjs.sr.valueTypes.TextContentItem
-          | dcmjs.sr.valueTypes.CodeContentItem,
-      ) => {
-        const nameValue = item.ConceptNameCodeSequence[0].CodeValue
-        const nameMeaning = item.ConceptNameCodeSequence[0].CodeMeaning
-        const name = `${nameMeaning}`
-        if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.CODE) {
-          const codeContentItem = item as dcmjs.sr.valueTypes.CodeContentItem
-          const valueMeaning =
-            codeContentItem.ConceptCodeSequence[0].CodeMeaning
-          // For consistency with Segment and Annotation Group
-          if (nameValue === '276214006') {
-            attributes.push({
-              name: 'Property category',
-              value: `${valueMeaning}`,
-            })
-          } else if (nameValue === '121071') {
-            attributes.push({
-              name: 'Property type',
-              value: `${valueMeaning}`,
-            })
-          } else if (nameValue === '111001') {
-            attributes.push({
-              name: 'Algorithm Name',
-              value: `${valueMeaning}`,
-            })
-          } else {
-            attributes.push({
-              name,
-              value: `${valueMeaning}`,
-            })
-          }
-        } else if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT) {
-          const textContentItem = item as dcmjs.sr.valueTypes.TextContentItem
-          attributes.push({
-            name,
-            value: textContentItem.TextValue,
-          })
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-2.5 rounded-lg p-2 transition-colors hover:bg-selected',
+        isSelected && 'bg-selected',
+      )}
+    >
+      <button
+        type="button"
+        aria-pressed={isSelected}
+        onClick={() => onSelection(roi.uid)}
+        className="flex min-w-0 flex-1 items-stretch gap-2.5 text-left focus-visible:outline-none"
+      >
+        <span
+          className="w-1 flex-none rounded-sm"
+          style={{ background: color }}
+        />
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="flex items-baseline gap-1.5">
+            <span className="flex-none font-semibold text-ink">{label}</span>
+            {type !== '' && (
+              <span className="truncate text-[12px] text-ink-muted">
+                {type}
+              </span>
+            )}
+          </span>
+          {measurement !== undefined && (
+            <span className="font-mono text-[11.5px] text-ink-secondary">
+              {measurement}
+            </span>
+          )}
+        </span>
+      </button>
+      <button
+        type="button"
+        title="Show/hide"
+        aria-label={isVisible ? `Hide ${label}` : `Show ${label}`}
+        onClick={() =>
+          onVisibilityChange({ roiUID: roi.uid, isVisible: !isVisible })
         }
-      },
-    )
-    this.props.roi.measurements.forEach((item) => {
-      const nameMeaning = item.ConceptNameCodeSequence[0].CodeMeaning
-      const name = `${nameMeaning}`
-      const seq = item.MeasuredValueSequence[0]
-      const value = seq.NumericValue.toPrecision(6)
-      const unit = seq.MeasurementUnitsCodeSequence[0].CodeValue
-      attributes.push({
-        name,
-        value: `${value} ${unit}`,
-      })
-    })
-    return (
-      <Space align="start">
-        <div style={{ paddingLeft: '14px' }}>
-          <Switch
-            size="small"
-            onChange={this.handleVisibilityChange}
-            checked={this.props.isVisible}
-            checkedChildren={<FaEye />}
-            unCheckedChildren={<FaEyeSlash />}
-          />
-        </div>
-        <Menu.Item
-          style={{ height: '100%', paddingLeft: '3px' }}
-          key={this.props.roi.uid}
-          {...otherProps}
-        >
-          <Description
-            header={identifier}
-            attributes={attributes}
-            selectable
-            hasLongValues
-          />
-        </Menu.Item>
-      </Space>
-    )
-  }
+        className={cn(
+          'grid h-7 w-7 flex-none place-items-center rounded-md transition-colors hover:bg-segmented',
+          isVisible ? 'text-ink-secondary' : 'text-ink-fainter',
+        )}
+      >
+        <Icon name={isVisible ? 'visibility' : 'visibility_off'} size={18} />
+      </button>
+    </div>
+  )
 }
 
 export default AnnotationItem

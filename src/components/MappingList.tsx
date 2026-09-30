@@ -1,9 +1,12 @@
-import { Menu } from 'antd'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
-
 import MappingItem from './MappingItem'
+import { type DisplayOption, DisplayOptionsPanel } from './slim'
+
+interface MappingDisplaySettings {
+  interpolationEnabled: boolean
+}
 
 interface MappingListProps {
   mappings: dmv.mapping.ParameterMapping[]
@@ -30,6 +33,10 @@ interface MappingListProps {
       opacity?: number
     }
   }) => void
+  /** Display settings for interpolation */
+  displaySettings?: MappingDisplaySettings
+  /** Callback when display settings change */
+  onDisplaySettingsChange?: (settings: MappingDisplaySettings) => void
 }
 
 /**
@@ -55,7 +62,32 @@ class MappingList extends React.Component<
       )
     })
 
-    return <Menu selectable={false}>{items}</Menu>
+    /** Display options for interpolation */
+    const displayOptions: DisplayOption[] = []
+
+    if (this.props.displaySettings && this.props.onDisplaySettingsChange) {
+      displayOptions.push({
+        id: 'interpolation',
+        label: 'Interpolation',
+        shortLabel: 'Interp.',
+        description: 'Smooth values between pixels.',
+        enabled: this.props.displaySettings.interpolationEnabled,
+        onChange: (enabled) => {
+          this.props.onDisplaySettingsChange?.({
+            interpolationEnabled: enabled,
+          })
+        },
+      })
+    }
+
+    return (
+      <div className="flex flex-col gap-1.5">
+        {items}
+        {displayOptions.length > 0 && (
+          <DisplayOptionsPanel options={displayOptions} />
+        )}
+      </div>
+    )
   }
 }
 

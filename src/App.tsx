@@ -1,4 +1,3 @@
-import { Layout, Modal, message } from 'antd'
 // skipcq: JS-C1003
 import type * as dwc from 'dicomweb-client'
 import React from 'react'
@@ -17,10 +16,10 @@ import OidcManager from './auth/OidcManager'
 import AppLoading from './components/AppLoading'
 import AppShell from './components/AppShell'
 import CaseViewer from './components/CaseViewer'
+import { showConfirmDialog } from './components/ConfirmDialog'
 import Header from './components/Header'
 import InfoPage from './components/InfoPage'
 import Worklist from './components/Worklist'
-import { SettingsProvider } from './contexts/SettingsContext'
 import { ValidationProvider } from './contexts/ValidationContext'
 import type { AuthorizationPolicy } from './DicomWebManager'
 import DicomWebManager from './DicomWebManager'
@@ -72,6 +71,7 @@ function ParametrizedCaseViewer({
         preload={preload}
         app={app}
         enableAnnotationTools={enableAnnotationTools}
+        enableMemoryMonitoring={config.enableMemoryMonitoring ?? true}
         studyInstanceUID={studyInstanceUID}
       />
     </ValidationProvider>
@@ -144,11 +144,6 @@ function _createClientMapping({
   /**
    * For each storage class explicitly assigned to a non-default server, wrap
    * BOTH the default server and the specialty server(s) in the same manager.
-   *
-   * This makes derived data (SR/SEG/ANN/PM/PR) load from the primary store
-   * AND the secondary `gcp=` URL store at the same time (GH-320). Without
-   * this, specifying `gcp=` previously caused the default store to be
-   * skipped for those classes and SLIM only saw the secondary's derived data.
    */
   if (Object.keys(storageClassMapping).length > 1) {
     const classToServers = new Map<string, ServerSettings[]>()
@@ -195,7 +190,6 @@ interface AppState {
   redirectTo?: string
   wasAuthSuccessful: boolean
   error?: ErrorMessageSettings
-  /** Bumped after mid-session auth recovery so views remount and refetch. */
   authRecoveryKey: number
 }
 
@@ -203,20 +197,7 @@ class App extends React.Component<AppProps, AppState> {
   private readonly auth?: AuthManager
   private reauthInProgress = false
   private unsubscribeAuthorization?: () => void
-
-  /**
-   * Origins that came from the deployed configuration file. Putting a server
-   * there is the operator stating they trust it, so a 401 from one of these
-   * escalates without troubling the user. Servers introduced at runtime — the
-   * "Select server" dialog, the `?gcp=` parameter — are not on this list and
-   * require explicit consent before the token is sent.
-   */
   private readonly configuredOrigins: Set<string>
-
-  /**
-   * Collapses consent negotiations by origin, so simultaneous challenges from
-   * different managers share a single prompt.
-   */
   private readonly disclosureGate = createSingleFlight<string | undefined>()
 
   private readonly handleDICOMwebError = (
@@ -269,7 +250,6 @@ class App extends React.Component<AppProps, AppState> {
   constructor(props: AppProps) {
     super(props)
 
-    // Only log in development environment
     if (process.env.NODE_ENV === 'development') {
       console.info('instatiate app')
       console.info(`app is located at "${props.config.path}"`)
@@ -307,16 +287,7 @@ class App extends React.Component<AppProps, AppState> {
       )
     }
 
-    message.config({ duration: 5 })
-
-    /**
-     * Hold the servers that came from the configuration file, before `?gcp=`
-     * appends a runtime, URL-supplied one. These are references, not copies:
-     * `_createClientMapping` rewrites `url` in place on `/projects/` routes, so
-     * the origins are read afterwards to capture the effective value.
-     */
     const configuredServers = [...props.config.servers]
-
     App.addGcpSecondaryAnnotationServer(props.config)
 
     const defaultClients = _createClientMapping({
@@ -371,25 +342,10 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  /**
-   * Policy handed to every DicomWebManager: it decides which origins may
-   * receive the user's access token.
-   *
-   * Slim sends no token until a server answers 401/403. At that point an origin
-   * from the configuration file is credentialed silently, while any other
-   * origin needs the user to say yes — otherwise a server could obtain a live
-   * cloud credential just by claiming to want one.
-   */
   private readonly authorizationPolicy: AuthorizationPolicy = {
     isPreAuthorized: (origin: string): boolean =>
       readAuthorizationDecision(origin) === 'granted',
 
-    /**
-     * Collapsed per origin across the whole app. Each DicomWebManager already
-     * dedupes its own concurrent challenges, but a storage class gets its own
-     * manager, so a single page load can challenge one server from several of
-     * them at once. Without this the user is asked once per manager.
-     */
     requestAuthorization: async (origin: string): Promise<string | undefined> =>
       await this.disclosureGate(
         origin,
@@ -397,18 +353,6 @@ class App extends React.Component<AppProps, AppState> {
       ),
   }
 
-  /**
-   * Decide whether the access token may be disclosed to an origin, prompting
-   * the user when the origin is not part of the deployed configuration, and
-   * return the token if so.
-   *
-   * Always call this through `authorizationPolicy.requestAuthorization`, which
-   * collapses concurrent callers onto one negotiation — this method itself will
-   * open a modal every time it is invoked.
-   *
-   * @param origin - Origin of the server that asked for credentials
-   * @returns The token to send, or undefined if it must be withheld
-   */
   private readonly negotiateDisclosure = async (
     origin: string,
   ): Promise<string | undefined> => {
@@ -417,12 +361,6 @@ class App extends React.Component<AppProps, AppState> {
         return undefined
       }
       if (!isSecureOrigin(origin)) {
-        /**
-         * Refuse rather than warn. A bearer token sent over plain HTTP is
-         * readable by anything on the path, and no consent dialog makes that
-         * safe. An operator who has a reason to do it anyway can still say so
-         * explicitly with `sendAuthorization: true`, which never reaches here.
-         */
         console.warn(
           `refusing to send access token to ${origin} over an insecure ` +
             'connection; set sendAuthorization on the server configuration ' +
@@ -467,69 +405,42 @@ class App extends React.Component<AppProps, AppState> {
       if (authorization == null) {
         return undefined
       }
-      /**
-       * The grant is recorded per origin, but each storage class has its own
-       * manager. Push the token across all of them so stores on this origin in
-       * a sibling manager are credentialed now, rather than each having to be
-       * refused once before it asks. Every manager re-applies its own per-store
-       * filtering, so this cannot widen disclosure beyond the recorded grants.
-       */
       this.applyAuthorization(authorization)
       return authorization
     } catch (error) {
-      /**
-       * Never let a failed negotiation reject: callers are inside a DICOMweb
-       * error path already, and a rejection here would replace the underlying
-       * server error with a less useful one.
-       */
       console.error('could not negotiate token disclosure', error)
       return undefined
     }
   }
 
-  /**
-   * Ask the user before disclosing their access token to a server that is not
-   * part of the deployed configuration.
-   *
-   * Names the identity provider that issued the token, since "your access
-   * token" alone does not tell the user what is actually at stake — the answer
-   * differs a great deal between a hospital SSO and a personal Google account.
-   *
-   * @param origin - Origin of the server that asked for credentials
-   * @param authority - Issuer of the token, from the OIDC configuration
-   * @returns Whether the user agreed to disclose the token
-   */
   private static async confirmAuthorizationDisclosure(
     origin: string,
     authority?: string,
   ): Promise<boolean> {
-    return await new Promise<boolean>((resolve) => {
-      Modal.confirm({
-        title: 'Send your access token to this server?',
-        content: (
-          <>
-            <p>
-              <strong>{origin}</strong> refused an anonymous request and is
-              asking you to sign in.
-            </p>
-            <p>
-              Slim can forward the access token issued to you by{' '}
-              <strong>{authority ?? 'your identity provider'}</strong> so this
-              server can identify you. Anyone holding that token can act as you
-              against that provider for as long as it remains valid.
-            </p>
-            <p>Only allow this if you trust {origin}.</p>
-          </>
-        ),
-        okText: 'Send token',
-        cancelText: "Don't send",
-        onOk: () => resolve(true),
-        onCancel: () => resolve(false),
-      })
+    return await showConfirmDialog({
+      title: 'Send your access token to this server?',
+      description: (
+        <div className="space-y-3 text-sm">
+          <p>
+            <strong className="font-semibold">{origin}</strong> refused an
+            anonymous request and is asking you to sign in.
+          </p>
+          <p>
+            Slim can forward the access token issued to you by{' '}
+            <strong className="font-semibold">
+              {authority ?? 'your identity provider'}
+            </strong>{' '}
+            so this server can identify you. Anyone holding that token can act
+            as you against that provider for as long as it remains valid.
+          </p>
+          <p>Only allow this if you trust {origin}.</p>
+        </div>
+      ),
+      confirmLabel: 'Send token',
+      cancelLabel: "Don't send",
     })
   }
 
-  /** Install the authorization policy on every distinct manager in a mapping. */
   private applyAuthorizationPolicy(clients: {
     [key: string]: DicomWebManager
   }): void {
@@ -563,30 +474,15 @@ class App extends React.Component<AppProps, AppState> {
       onError: this.handleDICOMwebError,
     })
     tmpClient.setAuthorizationPolicy(this.authorizationPolicy)
-    /**
-     * Carry over non-credential headers only. The token is deliberately not
-     * forwarded here: this URL was typed by the user and has not been vetted by
-     * anyone. If the server actually needs credentials it will answer 401, and
-     * the authorization policy will ask before anything is disclosed.
-     */
     const { Authorization: _omitted, ...inheritedHeaders } =
       this.state.clients.default.headers
     tmpClient.updateHeaders(inheritedHeaders)
     if (this.auth != null && this.state.user != null) {
       const authorization = await this.auth.getAuthorization()
       if (authorization != null) {
-        /**
-         * Offered, not forced: `updateHeaders` attaches it only if this origin
-         * has already been approved.
-         */
         tmpClient.updateHeaders({ Authorization: authorization })
       }
     }
-    /**
-     * Use the newly created client for all storage classes. We may want to
-     * make this more sophisticated in the future to allow users to override
-     * the entire server configuration.
-     */
     this.setState((state) => {
       const clients: { [key: string]: DicomWebManager } = {}
       for (const key in state.clients) {
@@ -607,12 +503,6 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  /**
-   * Handle successful authentication event.
-   *
-   * Authorizes the DICOMweb client to access the DICOMweb server and directs
-   * the user back to the pre-login route (via OIDC state).
-   */
   handleSignIn = ({
     user,
     authorization,
@@ -633,10 +523,6 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  /**
-   * Recover from an expired/missing access token without losing the route.
-   * Tries silent renew first; falls back to interactive redirect with returnUrl.
-   */
   ensureAuthorized = async (): Promise<void> => {
     if (this.auth == null || this.reauthInProgress) {
       return
@@ -647,7 +533,6 @@ class App extends React.Component<AppProps, AppState> {
       const authorization = await this.auth.renewAuthorization()
       if (authorization != null) {
         this.applyAuthorization(authorization)
-        // Remount routed views so in-flight 401 failures refetch with the new token.
         this.setState((state) => ({
           authRecoveryKey: state.authRecoveryKey + 1,
         }))
@@ -660,7 +545,6 @@ class App extends React.Component<AppProps, AppState> {
       })
       redirectedToIdp = outcome === 'redirected'
       if (outcome === 'completed') {
-        // Token was refreshed without leaving the page; remount views to refetch.
         this.setState((state) => ({
           authRecoveryKey: state.authRecoveryKey + 1,
         }))
@@ -676,8 +560,6 @@ class App extends React.Component<AppProps, AppState> {
         ),
       )
     } finally {
-      // oidc-client resolves signinRedirect as soon as navigation is assigned.
-      // Keep the guard set until unload so concurrent 401s cannot start another redirect.
       if (!redirectedToIdp) {
         this.reauthInProgress = false
       }
@@ -728,7 +610,6 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   componentDidMount(): void {
-    // Restore cached server selection if it exists
     const cachedServerUrl = window.localStorage.getItem('slim_selected_server')
     if (
       cachedServerUrl !== null &&
@@ -766,14 +647,15 @@ class App extends React.Component<AppProps, AppState> {
     const enableWorklist = !(this.props.config.disableWorklist ?? false)
     const enableServerSelection =
       this.props.config.enableServerSelection ?? false
-    const enableMemoryMonitoring =
-      this.props.config.enableMemoryMonitoring ?? true
-
     let worklist: React.ReactNode
     if (enableWorklist) {
       worklist = <Worklist clients={this.state.clients} />
     } else {
-      worklist = <div>Worklist has been disabled.</div>
+      worklist = (
+        <div className="flex items-center justify-center h-full text-muted-foreground">
+          Worklist has been disabled.
+        </div>
+      )
     }
 
     let isLogoutPossible = false
@@ -789,23 +671,6 @@ class App extends React.Component<AppProps, AppState> {
       isLogoutPossible = false
     }
 
-    /**
-     * Fill AppShell's main pane. flex + minHeight:0 keeps ant-layout from
-     * sizing to content and spilling into the in-flow MemoryFooter.
-     */
-    const layoutStyle: React.CSSProperties = {
-      flex: '1 1 0%',
-      minHeight: 0,
-      overflow: 'hidden',
-    }
-    const layoutContentStyle: React.CSSProperties = {
-      flex: 1,
-      minHeight: 0,
-      overflow: 'hidden',
-      display: 'flex',
-      flexDirection: 'column',
-    }
-
     if (this.state.redirectTo !== undefined) {
       return (
         <BrowserRouter basename={this.props.config.path}>
@@ -815,8 +680,8 @@ class App extends React.Component<AppProps, AppState> {
     } else if (this.state.isLoading) {
       return (
         <BrowserRouter basename={this.props.config.path}>
-          <AppShell enableMemoryMonitoring={false}>
-            <Layout style={layoutStyle}>
+          <AppShell>
+            <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
               <Header
                 app={appInfo}
                 user={this.state.user}
@@ -826,16 +691,10 @@ class App extends React.Component<AppProps, AppState> {
                 clients={this.state.clients}
                 defaultClients={this.state.defaultClients}
               />
-              <Layout.Content
-                style={{
-                  ...layoutContentStyle,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
+              <div className="flex-1 min-h-0 overflow-hidden flex flex-col items-center justify-center">
                 <AppLoading fullscreen={false} label="Loading Slim" />
-              </Layout.Content>
-            </Layout>
+              </div>
+            </div>
           </AppShell>
         </BrowserRouter>
       )
@@ -850,88 +709,84 @@ class App extends React.Component<AppProps, AppState> {
             <Route
               path={RoutePaths.ROOT}
               element={
-                <AppShell enableMemoryMonitoring={enableMemoryMonitoring}>
-                  <Layout style={layoutStyle}>
+                <AppShell>
+                  <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
                     <Header
                       app={appInfo}
                       user={this.state.user}
-                      showWorklistButton={false}
+                      showWorklistButton={enableWorklist}
                       onServerSelection={this.handleServerSelection}
                       onUserLogout={isLogoutPossible ? onLogout : undefined}
                       showServerSelectionButton={enableServerSelection}
                       clients={this.state.clients}
                       defaultClients={this.state.defaultClients}
                     />
-                    <Layout.Content style={layoutContentStyle}>
+                    <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
                       {worklist}
-                    </Layout.Content>
-                  </Layout>
+                    </div>
+                  </div>
                 </AppShell>
               }
             />
             <Route
               path={RoutePaths.STUDY}
               element={
-                <SettingsProvider>
-                  <AppShell enableMemoryMonitoring={enableMemoryMonitoring}>
-                    <Layout style={layoutStyle}>
-                      <Header
-                        app={appInfo}
-                        user={this.state.user}
-                        showWorklistButton={enableWorklist}
-                        onServerSelection={this.handleServerSelection}
-                        onUserLogout={isLogoutPossible ? onLogout : undefined}
-                        showServerSelectionButton={enableServerSelection}
+                <AppShell>
+                  <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                    <Header
+                      app={appInfo}
+                      user={this.state.user}
+                      showWorklistButton={enableWorklist}
+                      onServerSelection={this.handleServerSelection}
+                      onUserLogout={isLogoutPossible ? onLogout : undefined}
+                      showServerSelectionButton={enableServerSelection}
+                      clients={this.state.clients}
+                      defaultClients={this.state.defaultClients}
+                    />
+                    <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+                      <ParametrizedCaseViewer
                         clients={this.state.clients}
-                        defaultClients={this.state.defaultClients}
+                        user={this.state.user}
+                        config={this.props.config}
+                        app={appInfo}
                       />
-                      <Layout.Content style={layoutContentStyle}>
-                        <ParametrizedCaseViewer
-                          clients={this.state.clients}
-                          user={this.state.user}
-                          config={this.props.config}
-                          app={appInfo}
-                        />
-                      </Layout.Content>
-                    </Layout>
-                  </AppShell>
-                </SettingsProvider>
+                    </div>
+                  </div>
+                </AppShell>
               }
             />
             <Route
               path={RoutePaths.GCP_STUDY}
               element={
-                <SettingsProvider>
-                  <AppShell enableMemoryMonitoring={enableMemoryMonitoring}>
-                    <Layout style={layoutStyle}>
-                      <Header
-                        app={appInfo}
-                        user={this.state.user}
-                        showWorklistButton={enableWorklist}
-                        onServerSelection={this.handleServerSelection}
-                        onUserLogout={isLogoutPossible ? onLogout : undefined}
-                        showServerSelectionButton={enableServerSelection}
+                <AppShell>
+                  <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                    <Header
+                      app={appInfo}
+                      user={this.state.user}
+                      showWorklistButton={enableWorklist}
+                      onServerSelection={this.handleServerSelection}
+                      onUserLogout={isLogoutPossible ? onLogout : undefined}
+                      showServerSelectionButton={enableServerSelection}
+                      clients={this.state.clients}
+                      defaultClients={this.state.defaultClients}
+                    />
+                    <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+                      <ParametrizedCaseViewer
                         clients={this.state.clients}
-                        defaultClients={this.state.defaultClients}
+                        user={this.state.user}
+                        config={this.props.config}
+                        app={appInfo}
                       />
-                      <Layout.Content style={layoutContentStyle}>
-                        <ParametrizedCaseViewer
-                          clients={this.state.clients}
-                          user={this.state.user}
-                          config={this.props.config}
-                          app={appInfo}
-                        />
-                      </Layout.Content>
-                    </Layout>
-                  </AppShell>
-                </SettingsProvider>
+                    </div>
+                  </div>
+                </AppShell>
               }
             />
             <Route
               path={RoutePaths.LOGOUT}
               element={
-                <AppShell enableMemoryMonitoring={enableMemoryMonitoring}>
-                  <Layout style={layoutStyle}>
+                <AppShell>
+                  <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
                     <Header
                       app={appInfo}
                       user={this.state.user}
@@ -942,10 +797,10 @@ class App extends React.Component<AppProps, AppState> {
                       clients={this.state.clients}
                       defaultClients={this.state.defaultClients}
                     />
-                    <Layout.Content style={layoutContentStyle}>
+                    <div className="flex-1 min-h-0 overflow-hidden flex flex-col items-center justify-center text-muted-foreground">
                       Logged out
-                    </Layout.Content>
-                  </Layout>
+                    </div>
+                  </div>
                 </AppShell>
               }
             />

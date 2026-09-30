@@ -1,4 +1,3 @@
-import { Divider } from 'antd'
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
 // skipcq: JS-C1003
@@ -52,7 +51,7 @@ const findEvaluationItems = ({
 }
 
 const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
-  // TID 1500 Measurement Report
+  /** TID 1500 Measurement Report */
   const matches = findContentItemsByName({
     content: report.ContentSequence,
     name: new dcmjs.sr.coding.CodedConcept({
@@ -74,7 +73,7 @@ const getROIs = (report: dmv.metadata.Comprehensive3DSR): dmv.roi.ROI[] => {
   }
   const measurementsItem =
     matches[0] as dcmjs.sr.valueTypes.ContainerContentItem
-  // TID 1410 Planar ROI Measurements and Qualitative Evaluations
+  /** TID 1410 Planar ROI Measurements and Qualitative Evaluations */
   const measurementGroupItems = findContentItemsByName({
     content: measurementsItem.ContentSequence,
     name: new dcmjs.sr.coding.CodedConcept({
@@ -416,6 +415,18 @@ interface ReportProps {
 }
 
 /**
+ * A section divider component with a label
+ */
+const SectionDivider: React.FC<{ label: string }> = ({ label }) => (
+  <div className="flex items-center gap-4 my-4">
+    <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+      {label}
+    </span>
+    <div className="h-px flex-1 bg-border" />
+  </div>
+)
+
+/**
  * React component representing a DICOM SR document that displays the
  * document content (a selected subset of content items).
  */
@@ -469,17 +480,17 @@ class Report extends React.Component<ReportProps, Record<string, never>> {
 
     return (
       <div>
-        <Divider orientation="left">Patient</Divider>
+        <SectionDivider label="Patient" />
         <Patient metadata={this.props.dataset} />
-        <Divider orientation="left">Case</Divider>
+        <SectionDivider label="Case" />
         <Study metadata={this.props.dataset} />
-        <Divider orientation="left">Slide</Divider>
+        <SectionDivider label="Slide" />
         <Description attributes={containerAttrs} />
-        <Divider orientation="left">Specimen</Divider>
+        <SectionDivider label="Specimen" />
         <Description attributes={specimenAttrs} />
-        <Divider orientation="left">Observer</Divider>
+        <SectionDivider label="Observer" />
         <Description attributes={observerAttrs} />
-        <Divider orientation="left">Annotations</Divider>
+        <SectionDivider label="Annotations" />
         {annotations}
       </div>
     )

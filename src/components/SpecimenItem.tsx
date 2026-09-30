@@ -42,7 +42,7 @@ class SpecimenItem extends React.Component<
       if (specimenDescription.PrimaryAnatomicStructureSequence.length > 0) {
         const structures = specimenDescription.PrimaryAnatomicStructureSequence
         attributes.push({
-          name: 'Anatomical structure',
+          name: 'Anatomy',
           value: structures.map((item) => item.CodeMeaning).join(', '),
         })
       }
@@ -63,7 +63,7 @@ class SpecimenItem extends React.Component<
         ).PrimaryAnatomicStructureModifierSequence
         if (modifiers.length > 0) {
           attributes.push({
-            name: 'Primary Anatomic Structure Modifier',
+            name: 'Modifier',
             value: modifiers
               .map((item: dcmjs.sr.coding.CodedConcept) => item.CodeMeaning)
               .join(', '),
@@ -72,7 +72,7 @@ class SpecimenItem extends React.Component<
       }
     }
 
-    // TID 8001 "Specimen Preparation"
+    /** TID 8001 "Specimen Preparation" */
     const preparationSteps: dmv.metadata.SpecimenPreparation[] =
       specimenDescription.SpecimenPreparationSequence ?? []
 
@@ -109,19 +109,19 @@ class SpecimenItem extends React.Component<
                   name.equals(SpecimenPreparationStepItems.COLLECTION_METHOD)
                 ) {
                   attributes.push({
-                    name: 'Collection method',
+                    name: 'Collection',
                     value: value.CodeMeaning,
                   })
                 } else if (name.equals(SpecimenPreparationStepItems.FIXATIVE)) {
                   attributes.push({
-                    name: 'Tissue fixative',
+                    name: 'Fixation',
                     value: value.CodeMeaning,
                   })
                 } else if (
                   name.equals(SpecimenPreparationStepItems.EMBEDDING_MEDIUM)
                 ) {
                   attributes.push({
-                    name: 'Tissue embedding medium',
+                    name: 'Embedding',
                     value: value.CodeMeaning,
                   })
                 } else if (
@@ -129,7 +129,7 @@ class SpecimenItem extends React.Component<
                   this.props.showstain
                 ) {
                   attributes.push({
-                    name: 'Tissue stain',
+                    name: 'Staining',
                     value: value.CodeMeaning,
                   })
                 }
@@ -141,7 +141,7 @@ class SpecimenItem extends React.Component<
                 this.props.showstain
               ) {
                 attributes.push({
-                  name: 'Tissue stain',
+                  name: 'Staining',
                   value: item.TextValue,
                 })
               } else if (
@@ -150,7 +150,7 @@ class SpecimenItem extends React.Component<
                 )
               ) {
                 attributes.push({
-                  name: 'Parent specimen',
+                  name: 'Parent',
                   value: item.TextValue,
                 })
               }
@@ -169,7 +169,6 @@ class SpecimenItem extends React.Component<
         key={uid}
         identifier={identifier}
         attributes={attributes}
-        hasLongValues
       />
     )
   }

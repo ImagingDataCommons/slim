@@ -1,51 +1,71 @@
-import { Layout } from 'antd'
 import type React from 'react'
+import { useEffect } from 'react'
+
+import { cn } from '../../lib/utils'
 
 interface SlideViewerContentProps {
   toolbar: React.ReactNode
-  /** Kept for call-site compatibility; height is flex-based now. */
-  toolbarHeight?: string
+  overlays: React.ReactNode
+  footer: React.ReactNode
   cursor: string
+  isFluorescence: boolean
   volumeViewportRef: React.RefObject<HTMLDivElement>
+  /** Called (once per animation frame) when the viewport box changes size */
+  onViewportResize: () => void
   children: React.ReactNode
 }
 
 /**
- * Main content area for the SlideViewer. Viewport flex-fills under the toolbar
- * so a mismatched toolbarHeight cannot leave empty space below the map (that
- * gap sat under the minimap/scale and looked like uneven bottom inset).
+ * Center column of the viewer: toolbar, the DMV viewport with its floating
+ * overlays, and the status footer.
  */
 const SlideViewerContent: React.FC<SlideViewerContentProps> = ({
   toolbar,
+  overlays,
+  footer,
   cursor,
+  isFluorescence,
   volumeViewportRef,
+  onViewportResize,
   children,
 }) => {
+  useEffect(() => {
+    const element = volumeViewportRef.current
+    if (element === null || typeof ResizeObserver === 'undefined') return
+    let frameId: number | undefined
+    const observer = new ResizeObserver(() => {
+      if (frameId !== undefined) return
+      frameId = requestAnimationFrame(() => {
+        frameId = undefined
+        onViewportResize()
+      })
+    })
+    observer.observe(element)
+    return () => {
+      observer.disconnect()
+      if (frameId !== undefined) cancelAnimationFrame(frameId)
+    }
+  }, [volumeViewportRef, onViewportResize])
+
   return (
-    <Layout.Content
-      style={{
-        height: '100%',
-        minHeight: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-      }}
-    >
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col">
       {toolbar}
-
       <div
-        style={{
-          flex: '1 1 0%',
-          minHeight: 0,
-          overflow: 'hidden',
-          position: 'relative',
-          cursor,
-        }}
-        ref={volumeViewportRef}
-      />
-
+        className={cn(
+          'relative min-h-0 flex-1 overflow-hidden',
+          isFluorescence ? 'bg-viewport-fluorescence' : 'bg-viewport',
+        )}
+      >
+        <div
+          className="absolute inset-0"
+          style={{ cursor }}
+          ref={volumeViewportRef}
+        />
+        {overlays}
+      </div>
+      {footer}
       {children}
-    </Layout.Content>
+    </section>
   )
 }
 

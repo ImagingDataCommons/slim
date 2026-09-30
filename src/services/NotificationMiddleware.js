@@ -1,4 +1,3 @@
-import { notification } from 'antd'
 import { CustomError, errorTypes } from '../utils/CustomError'
 import PubSub from '../utils/PubSub'
 
@@ -20,14 +19,15 @@ const NotificationType = {
   CONSOLE: 'console',
 }
 
-/* Sources of Error:
-  1. 'dicomweb-client': Error while requesting/fetching data, tagged as 'Communication'
-  2. 'slim' and 'dicom-microscopy-viewer' library: Error related to dicom data encoding/decoding,
-  could directly/indirectly impact image-related visualization, tagged as 'Visualization' or
-  'Encoding/Decoding' accordingly
-  3. 'dcmjs' library: Data parsing error, tagged as 'DICOMError'
-  4. 'authentication': Error during user authentication, tagged as 'Authentication'
-  */
+/**
+ * Sources of Error:
+ * 1. 'dicomweb-client': Error while requesting/fetching data, tagged as 'Communication'
+ * 2. 'slim' and 'dicom-microscopy-viewer' library: Error related to dicom data encoding/decoding,
+ * could directly/indirectly impact image-related visualization, tagged as 'Visualization' or
+ * 'Encoding/Decoding' accordingly
+ * 3. 'dcmjs' library: Data parsing error, tagged as 'DICOMError'
+ * 4. 'authentication': Error during user authentication, tagged as 'Authentication'
+ */
 const NotificationSourceDefinition = {
   sources: [
     {
@@ -103,18 +103,19 @@ class NotificationMiddleware extends PubSub {
 
     switch (notificationType) {
       case NotificationType.TOAST:
-        // Only log errors in development environment
+        /** Only log errors in development environment */
         if (process.env.NODE_ENV === 'development') {
           console.error(`A ${errorCategory} error occurred: `, error)
         }
-        return notification.error({
-          message: `${errorCategory} error`,
-          description: notificationMsg,
-          duration: 3,
-        })
+        /**
+         * Publish error event for the new notification system to handle.
+         * The NotificationProvider will subscribe to this and display appropriate toast.
+         */
+        console.error(`[${errorCategory}] ${notificationMsg}`)
+        break
 
       case NotificationType.CONSOLE:
-        // Only log errors in development environment
+        /** Only log errors in development environment */
         if (process.env.NODE_ENV === 'development') {
           console.error(`A ${errorCategory} error occurred: `, error)
         }

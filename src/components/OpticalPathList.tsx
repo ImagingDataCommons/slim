@@ -1,12 +1,22 @@
-import { AppstoreAddOutlined } from '@ant-design/icons'
-import { Button as Btn, Menu, Select, Space, Tooltip } from 'antd'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
-
 import OpticalPathItem from './OpticalPathItem'
+import { type DisplayOption, DisplayOptionsPanel } from './slim'
+import { Button } from './ui/button'
+import { Icon } from './ui/icon'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select'
 
-const { Option } = Select
+interface DisplaySettings {
+  iccProfileEnabled: boolean
+  gammaEnabled: boolean
+}
 
 interface OpticalPathListProps {
   opticalPaths: dmv.opticalPath.OpticalPath[]
@@ -49,6 +59,12 @@ interface OpticalPathListProps {
     isActive: boolean
   }) => void
   selectedPresentationStateUID?: string
+  /** Display settings for ICC profiles and gamma correction */
+  displaySettings?: DisplaySettings
+  /** Callback when display settings change */
+  onDisplaySettingsChange?: (settings: DisplaySettings) => void
+  /** Whether ICC profiles are available for this slide */
+  hasIccProfiles?: boolean
 }
 
 interface OpticalPathListState {
@@ -73,9 +89,7 @@ class OpticalPathList extends React.Component<
     this.handleItemSelectionChange = this.handleItemSelectionChange.bind(this)
   }
 
-  /**
-   * Handler that gets called when an optical path should be removed.
-   */
+  /** Handler that gets called when an optical path should be removed. */
   handleItemRemoval(opticalPathIdentifier: string): void {
     this.props.onOpticalPathActivityChange({
       opticalPathIdentifier,
@@ -83,16 +97,12 @@ class OpticalPathList extends React.Component<
     })
   }
 
-  /**
-   * Handler that gets called when the selection of an optical path should change.
-   */
+  /** Handler that gets called when the selection of an optical path should change. */
   handleItemSelectionChange(value: string): void {
     this.setState({ selectedOpticalPathIdentifier: value })
   }
 
-  /**
-   * Handler that gets called when an optical path should be added.
-   */
+  /** Handler that gets called when an optical path should be added. */
   handleItemAddition(): void {
     const identifier = this.state.selectedOpticalPathIdentifier
     if (identifier !== undefined) {
@@ -111,7 +121,7 @@ class OpticalPathList extends React.Component<
 
     const isSelectable = this.props.opticalPaths.length > 1
     const opticalPathItems: React.ReactNode[] = []
-    const optionItems: React.ReactNode[] = []
+    const optionItems: { id: string; title: string }[] = []
     this.props.opticalPaths.forEach((opticalPath) => {
       const opticalPathIdentifier = opticalPath.identifier
       const images = this.props.metadata[opticalPathIdentifier]
@@ -132,54 +142,100 @@ class OpticalPathList extends React.Component<
                 onStyleChange={this.props.onOpticalPathStyleChange}
                 onRemoval={this.handleItemRemoval}
                 isRemovable={isSelectable}
+                hasIccProfile={this.props.hasIccProfiles}
               />,
             )
           } else {
-            let title: string
-            if (description !== '') {
-              title = `${id} - ${description}`
-            } else {
-              title = `${id}`
-            }
-            optionItems.push(
-              <Option key={id} value={id}>
-                {title}
-              </Option>,
-            )
+            const title =
+              description !== '' ? `${id} - ${description}` : `${id}`
+            optionItems.push({ id, title })
           }
         }
       })
     })
 
     let opticalPathSelector: React.ReactNode
-    if (isSelectable) {
+    if (isSelectable && optionItems.length > 0) {
       opticalPathSelector = (
-        <Space align="center" size={20} style={{ padding: '14px' }}>
+        <div className="flex gap-1.5">
           <Select
-            defaultValue=""
-            style={{ width: 200 }}
-            onChange={this.handleItemSelectionChange}
-            value={this.state.selectedOpticalPathIdentifier}
-            allowClear
+            value={this.state.selectedOpticalPathIdentifier ?? ''}
+            onValueChange={this.handleItemSelectionChange}
           >
-            {optionItems}
+            <SelectTrigger className="min-w-0 flex-1">
+              <SelectValue placeholder="Add optical path" />
+            </SelectTrigger>
+            <SelectContent>
+              {optionItems.map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
-          <Tooltip title="Add">
-            <Btn
-              icon={<AppstoreAddOutlined />}
-              type="primary"
-              onClick={this.handleItemAddition}
-            />
-          </Tooltip>
-        </Space>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            title="Add optical path"
+            aria-label="Add optical path"
+            disabled={this.state.selectedOpticalPathIdentifier === undefined}
+            onClick={this.handleItemAddition}
+          >
+            <Icon name="add" size={18} />
+          </Button>
+        </div>
       )
     }
 
+    /** Display options for ICC profiles and gamma correction */
+    const { displaySettings, onDisplaySettingsChange } = this.props
+    const displayOptions: DisplayOption[] = []
+
+    if (
+      displaySettings !== undefined &&
+      onDisplaySettingsChange !== undefined
+    ) {
+      displayOptions.push({
+        id: 'icc',
+        label: 'ICC profiles',
+        shortLabel: 'ICC',
+        description:
+          this.props.hasIccProfiles === false
+            ? 'This slide has no ICC profiles.'
+            : 'Apply the embedded color profile for accurate stain color.',
+        enabled: displaySettings.iccProfileEnabled,
+        disabled: this.props.hasIccProfiles === false,
+        onChange: (enabled) => {
+          onDisplaySettingsChange({
+            ...displaySettings,
+            iccProfileEnabled: enabled,
+          })
+        },
+      })
+
+      displayOptions.push({
+        id: 'gamma',
+        label: 'Gamma correction',
+        shortLabel: 'Gamma',
+        description: 'Correct palette display for monitor gamma.',
+        enabled: displaySettings.gammaEnabled,
+        onChange: (enabled) => {
+          onDisplaySettingsChange({
+            ...displaySettings,
+            gammaEnabled: enabled,
+          })
+        },
+      })
+    }
+
     return (
-      <Menu selectable={false}>
+      <div className="flex flex-col gap-1.5">
         {opticalPathItems}
         {opticalPathSelector}
-      </Menu>
+        {displayOptions.length > 0 && (
+          <DisplayOptionsPanel options={displayOptions} className="mt-2" />
+        )}
+      </div>
     )
   }
 }

@@ -24,11 +24,7 @@ function seriesUidForSlide(slide: Slide): string {
 }
 
 /**
- * React component representing a list of DICOM Series Information Entities.
- *
- * Intentionally not an antd Menu: nesting Menu inside the case sider Menu is
- * invalid HTML (ul>ul) and DICOM UIDs as Menu keys have caused mangled routes
- * (e.g. series UID + ".0" → 404 metadata requests).
+ * React component representing a list of slides in the redesigned card layout.
  */
 class SlideList extends React.Component<SlideListProps, SlideListState> {
   state = {
@@ -60,14 +56,7 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
 
   render(): React.ReactNode {
     return (
-      <ul
-        style={{
-          listStyle: 'none',
-          margin: 0,
-          padding: 0,
-          width: '100%',
-        }}
-      >
+      <div className="flex flex-col gap-2 px-3 pb-4">
         {this.props.metadata.map((slide) => {
           const seriesInstanceUID = seriesUidForSlide(slide)
           const isSelected =
@@ -76,36 +65,16 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
               this.state.selectedSeriesInstanceUID,
             )
           return (
-            <li key={seriesInstanceUID} style={{ width: '100%' }}>
-              <button
-                type="button"
-                aria-pressed={isSelected}
-                onClick={() => {
-                  this.handleSlideClick(seriesInstanceUID)
-                }}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  margin: 0,
-                  padding: 0,
-                  border: 'none',
-                  background: isSelected
-                    ? 'rgba(24, 144, 255, 0.1)'
-                    : 'transparent',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <SlideItem
-                  slide={slide}
-                  clients={this.props.clients}
-                  disableCardHover
-                />
-              </button>
-            </li>
+            <SlideItem
+              key={seriesInstanceUID}
+              slide={slide}
+              clients={this.props.clients}
+              isSelected={isSelected}
+              onClick={() => this.handleSlideClick(seriesInstanceUID)}
+            />
           )
         })}
-      </ul>
+      </div>
     )
   }
 }

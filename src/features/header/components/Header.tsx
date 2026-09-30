@@ -1,0 +1,295 @@
+import type * as React from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
+
+import type { User } from '../../../auth'
+import { Icon } from '../../../components/ui/icon'
+import { useStudySummary } from '../../../contexts/StudySummaryContext'
+import type DicomWebManager from '../../../DicomWebManager'
+import { cn } from '../../../lib/utils'
+import { isViewerPath, parseSeriesInstanceUID } from '../../../utils/routes'
+import { useNotifications } from '../hooks/useNotifications'
+import { useServerSelection } from '../hooks/useServerSelection'
+import { DebugDialog } from './dialogs/DebugDialog'
+import { DicomTagBrowserDialog } from './dialogs/DicomTagBrowserDialog'
+import type { PreferencesTab } from './dialogs/PreferencesDialog'
+import { PreferencesDialog } from './dialogs/PreferencesDialog'
+import { ServerSelectionDialog } from './dialogs/ServerSelectionDialog'
+import { UserMenu } from './UserMenu'
+
+export interface HeaderAppInfo {
+  name: string
+  version: string
+  homepage: string
+  uid: string
+  organization?: string
+}
+
+interface HeaderProps {
+  app: HeaderAppInfo
+  user?: User
+  clients?: { [key: string]: DicomWebManager }
+  defaultClients?: { [key: string]: DicomWebManager }
+  showWorklistButton: boolean
+  onServerSelection: (params: { url: string }) => void
+  onUserLogout?: () => void
+  showServerSelectionButton: boolean
+}
+
+function HeaderIconButton({
+  icon,
+  title,
+  onClick,
+  badge,
+}: {
+  icon: string
+  title: string
+  onClick: () => void
+  badge?: number
+}): React.ReactElement {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      onClick={onClick}
+      className="relative grid h-9 w-9 place-items-center rounded-lg text-ink-secondary transition-colors hover:bg-app hover:text-ink"
+    >
+      <Icon name={icon} size={20} />
+      {badge !== undefined && badge > 0 && (
+        <span className="absolute right-[3px] top-1 h-4 min-w-[16px] rounded-lg bg-destructive px-1 text-[10px] font-semibold leading-4 text-white shadow-[0_0_0_2px_rgb(var(--panel))]">
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
+    </button>
+  )
+}
+
+function HeaderDivider({
+  className,
+}: {
+  className?: string
+}): React.ReactElement {
+  return <div className={cn('h-[22px] w-px flex-none bg-line', className)} />
+}
+
+export function Header({
+  app,
+  user,
+  clients,
+  defaultClients,
+  showWorklistButton,
+  onServerSelection,
+  onUserLogout,
+  showServerSelectionButton,
+}: HeaderProps): React.ReactElement {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const params = useParams<{ studyInstanceUID?: string }>()
+  const { summary } = useStudySummary()
+
+  const {
+    serverUrl,
+    mode: serverMode,
+    isDialogOpen: isServerDialogOpen,
+    isValid: isServerUrlValid,
+    openDialog: openServerDialog,
+    cancelDialog: cancelServerDialog,
+    setServerUrl,
+    setMode: setServerMode,
+    submitSelection: submitServerSelection,
+  } = useServerSelection({ onServerSelection })
+
+  const {
+    errors,
+    errorCategories,
+    warnings,
+    errorCount,
+    warningCount,
+    clearNotifications,
+  } = useNotifications()
+
+  const [isDebugDialogOpen, setIsDebugDialogOpen] = useState(false)
+  const [isTagBrowserOpen, setIsTagBrowserOpen] = useState(false)
+  const [preferencesTab, setPreferencesTab] = useState<PreferencesTab | null>(
+    null,
+  )
+
+  const previousPathname = useRef(location.pathname)
+  useEffect(() => {
+    if (location.pathname !== previousPathname.current) {
+      if (errorCount > 0 || warningCount > 0) {
+        clearNotifications()
+      }
+      previousPathname.current = location.pathname
+    }
+  }, [location.pathname, errorCount, warningCount, clearNotifications])
+
+  const currentServerUrl =
+    clients?.default?.baseURL ?? defaultClients?.default?.baseURL ?? serverUrl
+  const defaultServerUrl = defaultClients?.default?.baseURL
+  const isInViewer = isViewerPath(location.pathname)
+  const studyInstanceUID = params.studyInstanceUID
+  const issueCount = errorCount + warningCount
+
+  const serverPillContent = (
+    <>
+      <span className="h-[7px] w-[7px] flex-none rounded-full bg-success" />
+      <span className="truncate font-mono text-[12px]">{currentServerUrl}</span>
+    </>
+  )
+  const serverPillClassName =
+    'flex min-w-0 max-w-[420px] items-center gap-2 rounded-full border border-line bg-subtle py-[5px] pl-2 pr-2.5 text-ink-secondary'
+
+  return (
+    <>
+      <header className="flex h-header flex-none items-center gap-4 border-b border-line bg-panel pl-4 pr-3">
+        <div className="flex flex-none items-center gap-2.5">
+          <div className="grid h-7 w-7 place-items-center rounded-[7px] bg-primary text-[14px] font-bold leading-none text-white">
+            S
+          </div>
+          <div className="text-[15px] font-semibold leading-none tracking-[-0.01em] text-ink">
+            Slim
+          </div>
+          <div className="rounded border border-line px-1.5 py-[3px] font-mono text-[11px] font-medium leading-none text-ink-muted">
+            v{app.version}
+          </div>
+        </div>
+
+        <HeaderDivider />
+
+        <nav className="flex min-w-0 items-center gap-1.5 text-[13px]">
+          {showWorklistButton && (
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="flex flex-none items-center gap-1.5 rounded-md px-2 py-1.5 font-medium text-ink-secondary transition-colors hover:bg-app hover:text-ink"
+            >
+              <Icon name="format_list_bulleted" size={18} />
+              Worklist
+            </button>
+          )}
+          {isInViewer && summary !== null && (
+            <>
+              {showWorklistButton && (
+                <Icon
+                  name="chevron_right"
+                  size={16}
+                  className="text-ink-fainter"
+                />
+              )}
+              {summary.patientName !== undefined && (
+                <span className="truncate whitespace-nowrap font-semibold text-ink">
+                  {summary.patientName}
+                </span>
+              )}
+              {summary.studyLabel !== undefined && (
+                <span className="whitespace-nowrap font-mono text-[12px] text-ink-muted">
+                  {summary.studyLabel}
+                </span>
+              )}
+            </>
+          )}
+        </nav>
+
+        <div className="flex min-w-0 flex-1 justify-center">
+          {currentServerUrl !== undefined &&
+            currentServerUrl !== '' &&
+            (showServerSelectionButton ? (
+              <button
+                type="button"
+                title="Select server"
+                onClick={openServerDialog}
+                className={cn(serverPillClassName, 'hover:border-line-hover')}
+              >
+                {serverPillContent}
+              </button>
+            ) : (
+              <div className={serverPillClassName} title={currentServerUrl}>
+                {serverPillContent}
+              </div>
+            ))}
+        </div>
+
+        <div className="flex flex-none items-center gap-0.5">
+          <HeaderIconButton
+            icon="bug_report"
+            title="Debug info"
+            badge={issueCount}
+            onClick={() => setIsDebugDialogOpen(true)}
+          />
+          {isInViewer &&
+            studyInstanceUID !== undefined &&
+            clients !== undefined && (
+              <HeaderIconButton
+                icon="manage_search"
+                title="DICOM tag browser"
+                onClick={() => setIsTagBrowserOpen(true)}
+              />
+            )}
+          {showServerSelectionButton && (
+            <HeaderIconButton
+              icon="dns"
+              title="Select server"
+              onClick={openServerDialog}
+            />
+          )}
+          <HeaderDivider className="mx-2" />
+          <UserMenu
+            user={user}
+            organization={app.organization}
+            onOpenPreferences={setPreferencesTab}
+            onLogout={onUserLogout}
+          />
+        </div>
+      </header>
+
+      <PreferencesDialog
+        open={preferencesTab !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreferencesTab(null)
+        }}
+        app={app}
+        initialTab={preferencesTab ?? 'general'}
+      />
+
+      <DebugDialog
+        open={isDebugDialogOpen}
+        onOpenChange={setIsDebugDialogOpen}
+        errors={errors}
+        errorCategories={errorCategories}
+        warnings={warnings}
+      />
+
+      {isInViewer &&
+        studyInstanceUID !== undefined &&
+        clients !== undefined && (
+          <DicomTagBrowserDialog
+            open={isTagBrowserOpen}
+            onOpenChange={setIsTagBrowserOpen}
+            clients={clients}
+            studyInstanceUID={studyInstanceUID}
+            seriesInstanceUID={parseSeriesInstanceUID(location.pathname)}
+            subtitle={[summary?.patientName, summary?.studyLabel]
+              .filter((part) => part !== undefined && part !== '')
+              .join(' · ')}
+          />
+        )}
+
+      <ServerSelectionDialog
+        open={isServerDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) cancelServerDialog()
+        }}
+        serverUrl={serverUrl}
+        defaultServerUrl={defaultServerUrl}
+        mode={serverMode}
+        isValid={isServerUrlValid}
+        onServerUrlChange={setServerUrl}
+        onModeChange={setServerMode}
+        onSubmit={submitServerSelection}
+        onCancel={cancelServerDialog}
+      />
+    </>
+  )
+}

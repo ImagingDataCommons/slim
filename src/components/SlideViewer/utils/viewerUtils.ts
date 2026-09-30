@@ -38,7 +38,7 @@ export const constructViewers = ({
     const volumeViewer = new dmv.viewer.VolumeImageViewer({
       clientMapping: clients,
       metadata: slide.volumeImages,
-      controls: ['overview', 'position'],
+      controls: ['overview'],
       /**
        * With THUMBNAIL levels in the pyramid (skipThumbnails unset), DMV would
        * otherwise lock the OpenLayers view to tile-grid resolutions. That clips

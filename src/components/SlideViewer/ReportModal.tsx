@@ -1,5 +1,12 @@
-import { Modal } from 'antd'
 import type React from 'react'
+
+import { Button } from '../ui/button'
+import {
+  Dialog,
+  DialogContent,
+  SlimDialogFooter,
+  SlimDialogHeader,
+} from '../ui/dialog'
 
 interface ReportModalProps {
   isVisible: boolean
@@ -8,9 +15,7 @@ interface ReportModalProps {
   children: React.ReactNode
 }
 
-/**
- * Modal component for verifying and saving reports
- */
+/** Modal for verifying the structured report before saving ROIs. */
 const ReportModal: React.FC<ReportModalProps> = ({
   isVisible,
   onOk,
@@ -18,15 +23,24 @@ const ReportModal: React.FC<ReportModalProps> = ({
   children,
 }) => {
   return (
-    <Modal
-      open={isVisible}
-      title="Verify and save report"
-      onOk={onOk}
-      onCancel={onCancel}
-      okText="Save"
-    >
-      {children}
-    </Modal>
+    <Dialog open={isVisible} onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent className="max-w-[640px]">
+        <SlimDialogHeader
+          icon="save"
+          title="Save annotations"
+          subtitle="Verify the report before storing it on the server"
+        />
+        <div className="flex min-h-0 flex-col gap-4 overflow-y-auto px-5 pb-5 pt-[18px]">
+          {children}
+        </div>
+        <SlimDialogFooter>
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button onClick={onOk}>Save</Button>
+        </SlimDialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

@@ -2,11 +2,18 @@ import { getCenter, getHeight, getWidth } from 'ol/extent'
 import type OlMap from 'ol/Map'
 import type View from 'ol/View'
 
-import {
-  fitOverviewMapSize,
-  OVERVIEW_EDGE_INSET_PX,
-  overviewMapSizeBounds,
-} from './fitOverviewMapSize'
+import type { OverviewMapSizeBounds } from './fitOverviewMapSize'
+import { fitOverviewMapSize, overviewMapSizeBounds } from './fitOverviewMapSize'
+
+/** Overview card offset from the right/bottom viewport edges (px). */
+const OVERVIEW_CARD_INSET_PX = 14
+
+/** Card padding (6px) and border (1px) on both sides of the mini-map (px). */
+const OVERVIEW_CARD_CHROME_PX = 14
+
+/** Inner mini-map box of the 200px-wide overview card (px). */
+const OVERVIEW_CARD_MAP_WIDTH_PX = 186
+const OVERVIEW_CARD_MAP_HEIGHT_PX = 120
 
 /** OpenLayers View internals used to retarget locked overview resolutions. */
 type OverviewViewInternals = View & {
@@ -144,7 +151,7 @@ export type ClampOverviewMapOptions = {
 }
 
 /**
- * Fit overview map size into the viewport; keep left/bottom insets equal.
+ * Fit overview map size into the bottom-right overview card of the viewport.
  *
  * Slim owns runtime inset/size because craco loads the published DMV bundle;
  * keep constants in sync with DMV `_updateOverviewMapSize` /
@@ -160,30 +167,36 @@ export function clampOverviewMapInViewport(
     return
   }
 
-  const chromeY = verticalChromePx(mapEl)
-  const chromeX = horizontalChromePx(mapEl)
-  const bounds = overviewMapSizeBounds(
+  const chromeY = verticalChromePx(mapEl) + OVERVIEW_CARD_CHROME_PX
+  const chromeX = horizontalChromePx(mapEl) + OVERVIEW_CARD_CHROME_PX
+  const baseBounds = overviewMapSizeBounds(
     container.clientWidth,
     container.clientHeight,
     chromeX,
     chromeY,
   )
+  const maxMapWidth = Math.min(
+    baseBounds.maxMapWidth,
+    OVERVIEW_CARD_MAP_WIDTH_PX,
+  )
+  const bounds: OverviewMapSizeBounds = {
+    ...baseBounds,
+    maxMapWidth,
+    preferredMaxWidth: maxMapWidth,
+    preferredMaxHeight: Math.min(
+      baseBounds.maxMapHeight,
+      OVERVIEW_CARD_MAP_HEIGHT_PX,
+    ),
+    minMapWidth: Math.min(baseBounds.minMapWidth, maxMapWidth),
+  }
 
-  overview.style.left = `${OVERVIEW_EDGE_INSET_PX}px`
-  overview.style.bottom = `${OVERVIEW_EDGE_INSET_PX}px`
+  overview.style.right = `${OVERVIEW_CARD_INSET_PX}px`
+  overview.style.bottom = `${OVERVIEW_CARD_INSET_PX}px`
   overview.style.top = 'auto'
-  overview.style.right = 'auto'
+  overview.style.left = 'auto'
   overview.style.margin = '0'
-  overview.style.padding = '0'
   mapEl.style.margin = '0'
   mapEl.style.padding = '0'
-
-  const scale = container.querySelector('.ol-scale-line')
-  if (scale instanceof HTMLElement) {
-    scale.style.bottom = `${OVERVIEW_EDGE_INSET_PX}px`
-    scale.style.right = `${OVERVIEW_EDGE_INSET_PX}px`
-    scale.style.margin = '0'
-  }
 
   syncCollapseButtonLayout(overview)
 

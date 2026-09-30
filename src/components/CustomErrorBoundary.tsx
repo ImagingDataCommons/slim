@@ -1,6 +1,14 @@
-import { Collapse, Modal } from 'antd'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary'
+
+import { Button } from './ui/button'
+import {
+  Dialog,
+  DialogContent,
+  SlimDialogFooter,
+  SlimDialogHeader,
+} from './ui/dialog'
+import { Icon } from './ui/icon'
 
 /**
  * React's error boundary component to catch errors during rendering phase
@@ -16,31 +24,12 @@ const CustomErrorBoundary = ({
   context: string
   children: JSX.Element
 }): JSX.Element => {
-  const { Panel } = Collapse
   const ErrorFallback = (error: FallbackProps): JSX.Element => {
+    const [isOpen, setIsOpen] = useState(false)
+
     const openModal = useCallback((): void => {
-      Modal.error({
-        title: (
-          <>
-            <h1>An unexpected error occured in the {context} component</h1>
-            <p>{error.error.message}</p>
-          </>
-        ),
-        width: 800,
-        content: (
-          <>
-            <Collapse>
-              <Panel header="Component Stack" key="stack1">
-                {error.error.stack}
-              </Panel>
-            </Collapse>
-          </>
-        ),
-        onOk: () => {
-          Modal.destroyAll()
-        },
-      })
-    }, [error.error.message, error.error.stack])
+      setIsOpen(true)
+    }, [])
 
     const handleClick = useCallback((): void => {
       openModal()
@@ -58,25 +47,46 @@ const CustomErrorBoundary = ({
 
     return (
       <div>
-        <p>
+        <p className="text-sm">
           There was an error in loading this page.{' '}
           <button
             type="button"
-            style={{
-              cursor: 'pointer',
-              color: '#0077FF',
-              background: 'none',
-              border: 'none',
-              padding: 0,
-              font: 'inherit',
-            }}
+            className="text-primary hover:underline cursor-pointer bg-transparent border-none p-0 font-inherit"
             onClick={handleClick}
             onKeyDown={handleKeyDown}
             aria-label="Show error details"
           >
             Click for error details
-          </button>{' '}
+          </button>
         </p>
+
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+          <DialogContent className="max-w-3xl">
+            <SlimDialogHeader
+              icon="error"
+              title={`Unexpected error in the ${context} component`}
+              subtitle={error.error.message}
+            />
+            <div className="min-h-0 overflow-y-auto px-5 pb-5 pt-[18px]">
+              <details className="group rounded-lg border border-line">
+                <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-[12.5px] font-semibold text-ink">
+                  <Icon
+                    name="chevron_right"
+                    size={18}
+                    className="text-ink-muted transition-transform group-open:rotate-90"
+                  />
+                  Component stack
+                </summary>
+                <pre className="max-h-64 overflow-auto whitespace-pre-wrap border-t border-line-soft bg-subtle p-3 font-mono text-[11.5px] text-ink-body">
+                  {error.error.stack}
+                </pre>
+              </details>
+            </div>
+            <SlimDialogFooter>
+              <Button onClick={() => setIsOpen(false)}>OK</Button>
+            </SlimDialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     )
   }
@@ -87,11 +97,11 @@ const CustomErrorBoundary = ({
       componentStack: string
     },
   ): void => {
-    // Only log errors in development environment
+    /** Only log errors in development environment */
     if (process.env.NODE_ENV === 'development') {
       console.error('Error caught by boundary:', error, info)
     }
-    // In production, you might want to send this to an error reporting service
+    /** In production, you might want to send this to an error reporting service */
   }
 
   return (

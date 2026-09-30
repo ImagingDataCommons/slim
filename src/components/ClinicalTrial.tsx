@@ -1,53 +1,34 @@
 // skipcq: JS-C1003
 import type * as dmv from 'dicom-microscopy-viewer'
-import React from 'react'
+import type React from 'react'
 
-import Description from './Description'
+import { type KeyValueItem, SlimKeyValueGrid } from './slim/SlimKeyValueGrid'
 
 interface ClinicalTrialProps {
   metadata: dmv.metadata.SOPClass
 }
 
 /**
- * React component representing a DICOM ClinicalTrial Information Entity that displays
- * common study-level attributes of contained DICOM Slide Microscopy images.
+ * Clinical trial information entity (Clinical Trial Subject and Clinical
+ * Trial Study modules).
  */
-class ClinicalTrial extends React.Component<ClinicalTrialProps> {
-  render(): React.ReactNode {
-    const attributes = []
-    if (this.props.metadata.ClinicalTrialSponsorName != null) {
-      // Attributes of Clinical Trial Subject module
-      attributes.push(
-        ...[
-          {
-            name: 'Sponsor Name',
-            value: this.props.metadata.ClinicalTrialSponsorName,
-          },
-          {
-            name: 'Protocol ID',
-            value: this.props.metadata.ClinicalTrialProtocolID,
-          },
-          {
-            name: 'Protocol Name',
-            value: this.props.metadata.ClinicalTrialProtocolName,
-          },
-          {
-            name: 'Site Name',
-            value: this.props.metadata.ClinicalTrialSiteName,
-          },
-        ],
-      )
-    }
-    if (this.props.metadata.ClinicalTrialTimePointID != null) {
-      // Attributes of Clinical Trial Study module
-      attributes.push({
-        name: 'Time Point ID',
-        value: this.props.metadata.ClinicalTrialTimePointID,
-      })
-    }
-    // Attributes of Clinical Trial Subject module
-    return <Description attributes={attributes} />
+function ClinicalTrial({ metadata }: ClinicalTrialProps): React.ReactElement {
+  const items: KeyValueItem[] = []
+  if (metadata.ClinicalTrialSponsorName != null) {
+    items.push(
+      { label: 'Sponsor', value: metadata.ClinicalTrialSponsorName },
+      { label: 'Protocol ID', value: metadata.ClinicalTrialProtocolID },
+      { label: 'Protocol', value: metadata.ClinicalTrialProtocolName },
+      { label: 'Site', value: metadata.ClinicalTrialSiteName },
+    )
   }
+  if (metadata.ClinicalTrialTimePointID != null) {
+    items.push({
+      label: 'Time point',
+      value: metadata.ClinicalTrialTimePointID,
+    })
+  }
+  return <SlimKeyValueGrid items={items} />
 }
 
 export default ClinicalTrial

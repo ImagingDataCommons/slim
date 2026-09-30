@@ -1,42 +1,33 @@
-import {
-  DeleteOutlined,
-  EyeInvisibleOutlined,
-  EyeOutlined,
-  SettingOutlined,
-} from '@ant-design/icons'
-import {
-  Badge,
-  Button,
-  Col,
-  Divider,
-  InputNumber,
-  Menu,
-  Popover,
-  Row,
-  Slider,
-  Space,
-  Switch,
-  Tooltip,
-} from 'antd'
-// skipcq: JS-C1003
-import * as dcmjs from 'dcmjs'
 // skipcq: JS-C1003
 import type * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
-import { SpecimenPreparationStepItems } from '../data/specimens'
-import NotificationMiddleware, {
-  NotificationMiddlewareContext,
-} from '../services/NotificationMiddleware'
-import { CustomError, errorTypes } from '../utils/CustomError'
+
 import ColorSlider from './ColorSlider'
-import Description from './Description'
 import OpacitySlider from './OpacitySlider'
+import { Icon } from './ui/icon'
+import { Input } from './ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
+import { Slider } from './ui/slider'
+import { Switch } from './ui/switch'
+
+/** Display name: description, else "Brightfield" for RGB, else identifier. */
+export function getOpticalPathName(opticalPath: {
+  identifier: string
+  description?: string
+  isMonochromatic: boolean
+}): string {
+  const description = opticalPath.description?.trim() ?? ''
+  if (description !== '') return description
+  if (!opticalPath.isMonochromatic) return 'Brightfield'
+  return opticalPath.identifier
+}
 
 interface OpticalPathItemProps {
   opticalPath: dmv.opticalPath.OpticalPath
   metadata: dmv.metadata.VLWholeSlideMicroscopyImage[]
   isVisible: boolean
   isRemovable: boolean
+  hasIccProfile?: boolean
   defaultStyle: {
     opacity: number
     color?: number[]
@@ -108,10 +99,7 @@ class OpticalPathItem extends React.Component<
     }
   }
 
-  handleVisibilityChange = (
-    checked: boolean,
-    _event: React.MouseEvent<HTMLButtonElement>,
-  ): void => {
+  handleVisibilityChange = (checked: boolean): void => {
     const identifier = this.props.opticalPath.identifier
     this.setState({
       isVisible: checked,
@@ -174,9 +162,11 @@ class OpticalPathItem extends React.Component<
     }
   }
 
-  handleLowerLimitChange = (value: number | null): void => {
+  handleLowerLimitChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const value = parseInt(e.target.value, 10)
+    if (Number.isNaN(value)) return
     const identifier = this.props.opticalPath.identifier
-    if (value != null && this.state.currentStyle.limitValues !== undefined) {
+    if (this.state.currentStyle.limitValues !== undefined) {
       this.setState((state) => {
         if (state.currentStyle.limitValues !== undefined) {
           return {
@@ -209,9 +199,11 @@ class OpticalPathItem extends React.Component<
     }
   }
 
-  handleUpperLimitChange = (value: number | null): void => {
+  handleUpperLimitChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const value = parseInt(e.target.value, 10)
+    if (Number.isNaN(value)) return
     const identifier = this.props.opticalPath.identifier
-    if (value != null && this.state.currentStyle.limitValues !== undefined) {
+    if (this.state.currentStyle.limitValues !== undefined) {
       this.setState((state) => {
         if (state.currentStyle.limitValues !== undefined) {
           return {
@@ -265,279 +257,157 @@ class OpticalPathItem extends React.Component<
     this.props.onRemoval(identifier)
   }
 
-  render(): React.ReactNode {
-    const identifier = this.props.opticalPath.identifier
-    const description = this.props.opticalPath.description
-    const attributes: Array<{ name: string; value: string }> = []
-    if (this.props.opticalPath.illuminationWaveLength !== undefined) {
-      attributes.push({
-        name: 'Illumination wavelength',
-        value: `${this.props.opticalPath.illuminationWaveLength} nm`,
-      })
+  private getSwatchBackground(): string {
+    if (!this.props.opticalPath.isMonochromatic) {
+      return 'linear-gradient(135deg,#e04a4a,#3fb56b,#3a6cf0)'
     }
-    if (this.props.opticalPath.illuminationColor !== undefined) {
-      attributes.push({
-        name: 'Illumination color',
-        value: this.props.opticalPath.illuminationColor.CodeMeaning,
-      })
+    const colors = this.getCurrentColors()
+    if (this.props.defaultStyle.paletteColorLookupTable != null) {
+      return `linear-gradient(90deg, ${colors.join(', ')})`
     }
+    return colors[colors.length - 1]
+  }
 
-    // TID 8001 "Specimen Preparation"
-    const specimenDescriptions: dmv.metadata.SpecimenDescription[] =
-      this.props.metadata[0].SpecimenDescriptionSequence ?? []
-    try {
-      specimenDescriptions.forEach((description) => {
-        const specimenPreparationSteps: dmv.metadata.SpecimenPreparation[] =
-          description.SpecimenPreparationSequence ?? []
-        specimenPreparationSteps.forEach(
-          (step: dmv.metadata.SpecimenPreparation, _index: number): void => {
-            step.SpecimenPreparationStepContentItemSequence.forEach(
-              (
-                item:
-                  | dcmjs.sr.valueTypes.CodeContentItem
-                  | dcmjs.sr.valueTypes.TextContentItem
-                  | dcmjs.sr.valueTypes.UIDRefContentItem
-                  | dcmjs.sr.valueTypes.PNameContentItem
-                  | dcmjs.sr.valueTypes.DateTimeContentItem,
-                _index: number,
-              ) => {
-                const name = new dcmjs.sr.coding.CodedConcept({
-                  value: item.ConceptNameCodeSequence[0].CodeValue,
-                  schemeDesignator:
-                    item.ConceptNameCodeSequence[0].CodingSchemeDesignator,
-                  meaning: item.ConceptNameCodeSequence[0].CodeMeaning,
-                })
-                if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.CODE) {
-                  item = item as dcmjs.sr.valueTypes.CodeContentItem
-                  const value = new dcmjs.sr.coding.CodedConcept({
-                    value: item.ConceptCodeSequence[0].CodeValue,
-                    schemeDesignator:
-                      item.ConceptCodeSequence[0].CodingSchemeDesignator,
-                    meaning: item.ConceptCodeSequence[0].CodeMeaning,
-                  })
-                  if (
-                    !name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)
-                  ) {
-                    if (name.equals(SpecimenPreparationStepItems.STAIN)) {
-                      attributes.push({
-                        name: 'Tissue stain',
-                        value: value.CodeMeaning,
-                      })
-                    }
-                  }
-                } else if (
-                  item.ValueType === dcmjs.sr.valueTypes.ValueTypes.TEXT
-                ) {
-                  item = item as dcmjs.sr.valueTypes.TextContentItem
-                  if (
-                    !name.equals(SpecimenPreparationStepItems.PROCESSING_TYPE)
-                  ) {
-                    if (name.equals(SpecimenPreparationStepItems.STAIN)) {
-                      attributes.push({
-                        name: 'Tissue stain',
-                        value: item.TextValue,
-                      })
-                    }
-                  }
-                }
-              },
-            )
-          },
-        )
-      })
-    } catch (error: unknown) {
-      NotificationMiddleware.onError(
-        NotificationMiddlewareContext.DCMJS,
-        new CustomError(
-          errorTypes.ENCODINGANDDECODING,
-          error instanceof Error ? error.message : String(error),
-        ),
-      )
+  private getMeta(): string {
+    const { opticalPath } = this.props
+    if (!opticalPath.isMonochromatic) {
+      return this.props.hasIccProfile === true ? 'RGB · ICC profile' : 'RGB'
     }
-
-    const maxValue = 2 ** this.props.metadata[0].BitsAllocated - 1
-
-    const title =
-      description != null ? `${identifier}: ${description}` : identifier
-    let settings: React.ReactNode
-    let item: React.ReactNode
-    if (this.props.opticalPath.isMonochromatic) {
-      // monochrome images that can be pseudo-colored
-      let colorSettings: React.ReactNode
-      if (this.state.currentStyle.color != null) {
-        colorSettings = (
-          <>
-            <Divider plain>Color</Divider>
-            <ColorSlider
-              color={this.state.currentStyle.color}
-              onChange={this.handleColorChange}
-            />
-          </>
-        )
-      } else {
-        colorSettings = (
-          <>
-            <Divider plain>Color</Divider>
-            Custom pseudo-coloring is disabled because pixels are colorized via
-            a provided palette color lookup table.
-          </>
-        )
-      }
-
-      let windowSettings: React.ReactNode
-      if (this.state.currentStyle.limitValues != null) {
-        windowSettings = (
-          <>
-            <Divider plain>Values of interest</Divider>
-            <Row justify="center" align="middle" gutter={[8, 8]}>
-              <Col span={6}>
-                <InputNumber
-                  min={0}
-                  max={this.state.currentStyle.limitValues[1]}
-                  size="small"
-                  style={{ width: '75px' }}
-                  value={this.state.currentStyle.limitValues[0]}
-                  onChange={this.handleLowerLimitChange}
-                />
-              </Col>
-              <Col span={12}>
-                <Slider
-                  range
-                  min={0}
-                  max={maxValue}
-                  step={1}
-                  value={[
-                    this.state.currentStyle.limitValues[0],
-                    this.state.currentStyle.limitValues[1],
-                  ]}
-                  onChange={this.handleLimitChange}
-                />
-              </Col>
-              <Col span={6}>
-                <InputNumber
-                  min={this.state.currentStyle.limitValues[0]}
-                  max={maxValue}
-                  size="small"
-                  style={{ width: '75px' }}
-                  value={this.state.currentStyle.limitValues[1]}
-                  onChange={this.handleUpperLimitChange}
-                />
-              </Col>
-            </Row>
-          </>
-        )
-      }
-      settings = (
-        <div>
-          {windowSettings}
-          {colorSettings}
-          <Divider plain />
-          <OpacitySlider
-            opacity={this.state.currentStyle.opacity}
-            onChange={this.handleOpacityChange}
-          />
-        </div>
-      )
-      const colors = this.getCurrentColors()
-      item = (
-        <Badge
-          offset={[-20, 20]}
-          count={' '}
-          style={{
-            borderStyle: 'solid',
-            borderWidth: '1px',
-            borderColor: 'gray',
-            visibility: this.state.isVisible ? 'visible' : 'hidden',
-            backgroundImage: `linear-gradient(to right, ${colors.toString()})`,
-          }}
-        >
-          <Description
-            header={title}
-            attributes={attributes}
-            selectable
-            hasLongValues
-          />
-        </Badge>
-      )
-    } else {
-      // color images
-      settings = (
-        <div>
-          <OpacitySlider
-            opacity={this.state.currentStyle.opacity}
-            onChange={this.handleOpacityChange}
-          />
-        </div>
-      )
-      item = (
-        <Description
-          header={title}
-          attributes={attributes}
-          selectable
-          hasLongValues
-        />
-      )
+    if (opticalPath.illuminationWaveLength !== undefined) {
+      return `${opticalPath.illuminationWaveLength} nm`
     }
+    return opticalPath.illuminationColor?.CodeMeaning ?? ''
+  }
 
-    const buttons = []
-    if (this.props.isRemovable) {
-      buttons.push(
-        <Tooltip title="Remove Optical Path">
-          <Button
-            type="default"
-            shape="circle"
-            icon={<DeleteOutlined />}
-            onClick={this.handleRemoval}
-          />
-        </Tooltip>,
-      )
-    }
-
-    const {
-      defaultStyle,
-      isRemovable,
-      isVisible,
-      metadata,
-      onVisibilityChange,
-      onStyleChange,
-      onRemoval,
-      opticalPath,
-      ...otherProps
-    } = this.props
+  private renderSettings(maxValue: number): React.ReactNode {
+    const { currentStyle } = this.state
+    const isMonochromatic = this.props.opticalPath.isMonochromatic
     return (
-      <Menu.Item
-        style={{ height: '100%', paddingLeft: '3px' }}
-        key={this.props.opticalPath.identifier}
-        {...otherProps}
-      >
-        <Space align="start">
-          <div style={{ paddingLeft: '14px' }}>
-            <Space direction="vertical" align="end">
-              <Switch
-                size="small"
-                checked={this.state.isVisible}
-                onChange={this.handleVisibilityChange}
-                checkedChildren={<EyeOutlined />}
-                unCheckedChildren={<EyeInvisibleOutlined />}
+      <div className="flex w-72 flex-col gap-4">
+        <div className="text-[12.5px] font-semibold text-ink">
+          Display settings
+        </div>
+        {isMonochromatic && currentStyle.limitValues != null && (
+          <div className="flex flex-col gap-2">
+            <div className="text-[12px] text-ink-muted">Values of interest</div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={0}
+                max={currentStyle.limitValues[1]}
+                className="h-8 w-20 font-mono text-[12px]"
+                value={currentStyle.limitValues[0]}
+                onChange={this.handleLowerLimitChange}
               />
-              <Popover
-                placement="left"
-                content={settings}
-                overlayStyle={{ width: '350px' }}
-                title="Display Settings"
-              >
-                <Button
-                  type="primary"
-                  shape="circle"
-                  icon={<SettingOutlined />}
-                />
-              </Popover>
-              {buttons}
-            </Space>
+              <span className="text-ink-faint">–</span>
+              <Input
+                type="number"
+                min={currentStyle.limitValues[0]}
+                max={maxValue}
+                className="h-8 w-20 font-mono text-[12px]"
+                value={currentStyle.limitValues[1]}
+                onChange={this.handleUpperLimitChange}
+              />
+            </div>
           </div>
-          {item}
-        </Space>
-      </Menu.Item>
+        )}
+        {isMonochromatic && (
+          <div className="flex flex-col gap-2">
+            <div className="text-[12px] text-ink-muted">Color</div>
+            {currentStyle.color != null ? (
+              <ColorSlider
+                color={currentStyle.color}
+                onChange={this.handleColorChange}
+              />
+            ) : (
+              <p className="text-[12px] text-ink-secondary">
+                Pixels are colorized by the embedded palette color lookup table,
+                so custom pseudo-coloring is disabled.
+              </p>
+            )}
+          </div>
+        )}
+        <OpacitySlider
+          opacity={currentStyle.opacity}
+          onChange={this.handleOpacityChange}
+        />
+      </div>
+    )
+  }
+
+  render(): React.ReactNode {
+    const { opticalPath } = this.props
+    const name = getOpticalPathName(opticalPath)
+    const meta = this.getMeta()
+    const maxValue = 2 ** this.props.metadata[0].BitsAllocated - 1
+    const limitValues = this.state.currentStyle.limitValues
+
+    return (
+      <div className="flex flex-col gap-2 rounded-lg border border-line px-3 py-2.5">
+        <div className="flex items-center gap-2">
+          <span
+            className="h-3 w-3 flex-none rounded-[3px] border border-ink/[0.12]"
+            style={{ background: this.getSwatchBackground() }}
+          />
+          <span
+            className="min-w-0 truncate font-semibold text-ink"
+            title={name}
+          >
+            {name}
+          </span>
+          {meta !== '' && (
+            <span className="flex-none text-[12px] text-ink-muted">{meta}</span>
+          )}
+          <span className="ml-auto flex flex-none items-center gap-0.5">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  title="Display settings"
+                  aria-label={`Display settings for ${name}`}
+                  className="grid h-7 w-7 place-items-center rounded-md text-ink-secondary transition-colors hover:bg-segmented"
+                >
+                  <Icon name="tune" size={17} />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="left" align="start" className="w-auto">
+                {this.renderSettings(maxValue)}
+              </PopoverContent>
+            </Popover>
+            {this.props.isRemovable && (
+              <button
+                type="button"
+                title="Remove optical path"
+                aria-label={`Remove ${name}`}
+                onClick={this.handleRemoval}
+                className="grid h-7 w-7 place-items-center rounded-md text-ink-secondary transition-colors hover:bg-segmented"
+              >
+                <Icon name="close" size={17} />
+              </button>
+            )}
+            <Switch
+              size="sm"
+              className="ml-1"
+              checked={this.state.isVisible}
+              onCheckedChange={this.handleVisibilityChange}
+              aria-label={`Show ${name}`}
+            />
+          </span>
+        </div>
+        {opticalPath.isMonochromatic && limitValues != null && (
+          <div className="flex items-center gap-2 text-[11.5px] text-ink-muted">
+            Window
+            <Slider
+              className="flex-1"
+              min={0}
+              max={maxValue}
+              step={1}
+              value={[limitValues[0], limitValues[1]]}
+              onValueChange={this.handleLimitChange}
+            />
+          </div>
+        )}
+      </div>
     )
   }
 }
