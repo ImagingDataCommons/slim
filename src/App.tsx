@@ -26,13 +26,13 @@ import AppLoading from './components/AppLoading'
 import AppShell from './components/AppShell'
 import CaseViewer from './components/CaseViewer'
 import { showConfirmDialog } from './components/ConfirmDialog'
-import Header from './components/Header'
 import InfoPage from './components/InfoPage'
-import Worklist from './components/Worklist'
 import { ValidationProvider } from './contexts/ValidationContext'
 import type { AuthorizationPolicy } from './DicomWebManager'
 import DicomWebManager from './DicomWebManager'
 import { StorageClasses } from './data/uids'
+import { Header } from './features/header'
+import { Worklist } from './features/worklist'
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from './services/NotificationMiddleware'
@@ -44,8 +44,9 @@ import {
 } from './utils/authPolicy'
 import { CustomError, errorTypes } from './utils/CustomError'
 import { getProjectStorePath, isProjectsPath, RoutePaths } from './utils/routes'
-import { readStorage, writeStorage } from './utils/safeStorage'
+import { getLocalStorage, readStorage, writeStorage } from './utils/safeStorage'
 import {
+  loadServerSelection,
   SERVER_MODE_STORAGE_KEY,
   SERVER_URL_STORAGE_KEY,
 } from './utils/serverSelectionStorage'
@@ -158,6 +159,11 @@ function _createClientMapping({
   /**
    * For each storage class explicitly assigned to a non-default server, wrap
    * BOTH the default server and the specialty server(s) in the same manager.
+   *
+   * This makes derived data (SR/SEG/ANN/PM/PR) load from the primary store
+   * AND the secondary `gcp=` URL store at the same time (GH-320). Without
+   * this, specifying `gcp=` previously caused the default store to be
+   * skipped for those classes and SLIM only saw the secondary's derived data.
    */
   if (Object.keys(storageClassMapping).length > 1) {
     const classToServers = new Map<string, ServerSettings[]>()
@@ -205,6 +211,7 @@ interface AppState {
   wasAuthSuccessful: boolean
   signInFailureMessage?: string
   error?: ErrorMessageSettings
+  /** Bumped after mid-session auth recovery so views remount and refetch. */
   authRecoveryKey: number
 }
 
@@ -216,7 +223,20 @@ class App extends React.Component<AppProps, AppState> {
   private readonly oidcAuthority?: string
   private reauthInProgress = false
   private unsubscribeAuthorization?: () => void
+
+  /**
+   * Origins that came from the deployed configuration file. Putting a server
+   * there is the operator stating they trust it, so a 401 from one of these
+   * escalates without troubling the user. Servers introduced at runtime — the
+   * "Select server" dialog, the `?gcp=` parameter — are not on this list and
+   * require explicit consent before the token is sent.
+   */
   private readonly configuredOrigins: Set<string>
+
+  /**
+   * Collapses consent negotiations by origin, so simultaneous challenges from
+   * different managers share a single prompt.
+   */
   private readonly disclosureGate = createSingleFlight<string | undefined>()
 
   private readonly handleDICOMwebError = (
@@ -224,10 +244,8 @@ class App extends React.Component<AppProps, AppState> {
     serverSettings: ServerSettings,
   ): void => {
     if (error.status === 401) {
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      this.ensureAuthorized()
+      void this.ensureAuthorized()
     } else if (error.status === 403) {
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.DICOMWEB,
         new CustomError(
@@ -238,7 +256,6 @@ class App extends React.Component<AppProps, AppState> {
     }
 
     const logServerError = (): void => {
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.DICOMWEB,
         new CustomError(
@@ -311,6 +328,12 @@ class App extends React.Component<AppProps, AppState> {
       )
     }
 
+    /**
+     * Hold the servers that came from the configuration file, before `?gcp=`
+     * appends a runtime, URL-supplied one. These are references, not copies:
+     * `_createClientMapping` rewrites `url` in place on `/projects/` routes, so
+     * the origins are read afterwards to capture the effective value.
+     */
     const configuredServers = [...props.config.servers]
     App.addGcpSecondaryAnnotationServer(props.config)
 
@@ -366,10 +389,25 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
+  /**
+   * Policy handed to every DicomWebManager: it decides which origins may
+   * receive the user's access token.
+   *
+   * Slim sends no token until a server answers 401/403. At that point an origin
+   * from the configuration file is credentialed silently, while any other
+   * origin needs the user to say yes — otherwise a server could obtain a live
+   * cloud credential just by claiming to want one.
+   */
   private readonly authorizationPolicy: AuthorizationPolicy = {
     isPreAuthorized: (origin: string): boolean =>
       readAuthorizationDecision(origin) === 'granted',
 
+    /**
+     * Collapsed per origin across the whole app. Each DicomWebManager already
+     * dedupes its own concurrent challenges, but a storage class gets its own
+     * manager, so a single page load can challenge one server from several of
+     * them at once. Without this the user is asked once per manager.
+     */
     requestAuthorization: async (origin: string): Promise<string | undefined> =>
       await this.disclosureGate(
         origin,
@@ -377,6 +415,18 @@ class App extends React.Component<AppProps, AppState> {
       ),
   }
 
+  /**
+   * Decide whether the access token may be disclosed to an origin, prompting
+   * the user when the origin is not part of the deployed configuration, and
+   * return the token if so.
+   *
+   * Always call this through `authorizationPolicy.requestAuthorization`, which
+   * collapses concurrent callers onto one negotiation — this method itself will
+   * open a dialog every time it is invoked.
+   *
+   * @param origin - Origin of the server that asked for credentials
+   * @returns The token to send, or undefined if it must be withheld
+   */
   private readonly negotiateDisclosure = async (
     origin: string,
   ): Promise<string | undefined> => {
@@ -385,6 +435,12 @@ class App extends React.Component<AppProps, AppState> {
         return undefined
       }
       if (!isSecureOrigin(origin)) {
+        /**
+         * Refuse rather than warn. A bearer token sent over plain HTTP is
+         * readable by anything on the path, and no consent dialog makes that
+         * safe. An operator who has a reason to do it anyway can still say so
+         * explicitly with `sendAuthorization: true`, which never reaches here.
+         */
         console.warn(
           `refusing to send access token to ${origin} over an insecure ` +
             'connection; set sendAuthorization on the server configuration ' +
@@ -429,14 +485,38 @@ class App extends React.Component<AppProps, AppState> {
       if (authorization == null) {
         return undefined
       }
+      /**
+       * The grant is recorded per origin, but each storage class has its own
+       * manager. Push the token across all of them so stores on this origin in
+       * a sibling manager are credentialed now, rather than each having to be
+       * refused once before it asks. Every manager re-applies its own per-store
+       * filtering, so this cannot widen disclosure beyond the recorded grants.
+       */
       this.applyAuthorization(authorization)
       return authorization
     } catch (error) {
+      /**
+       * Never let a failed negotiation reject: callers are inside a DICOMweb
+       * error path already, and a rejection here would replace the underlying
+       * server error with a less useful one.
+       */
       console.error('could not negotiate token disclosure', error)
       return undefined
     }
   }
 
+  /**
+   * Ask the user before disclosing their access token to a server that is not
+   * part of the deployed configuration.
+   *
+   * Names the identity provider that issued the token, since "your access
+   * token" alone does not tell the user what is actually at stake — the answer
+   * differs a great deal between a hospital SSO and a personal Google account.
+   *
+   * @param origin - Origin of the server that asked for credentials
+   * @param authority - Issuer of the token, from the OIDC configuration
+   * @returns Whether the user agreed to disclose the token
+   */
   private static async confirmAuthorizationDisclosure(
     origin: string,
     authority?: string,
@@ -465,6 +545,7 @@ class App extends React.Component<AppProps, AppState> {
     })
   }
 
+  /** Install the authorization policy on every distinct manager in a mapping. */
   private applyAuthorizationPolicy(clients: {
     [key: string]: DicomWebManager
   }): void {
@@ -524,15 +605,30 @@ class App extends React.Component<AppProps, AppState> {
       onError: this.handleDICOMwebError,
     })
     tmpClient.setAuthorizationPolicy(this.authorizationPolicy)
+    /**
+     * Carry over non-credential headers only. The token is deliberately not
+     * forwarded here: this URL was typed by the user and has not been vetted by
+     * anyone. If the server actually needs credentials it will answer 401, and
+     * the authorization policy will ask before anything is disclosed.
+     */
     const { Authorization: _omitted, ...inheritedHeaders } =
       this.state.clients.default.headers
     tmpClient.updateHeaders(inheritedHeaders)
     if (this.auth != null && this.state.user != null) {
       const authorization = await this.auth.getAuthorization()
       if (authorization != null) {
+        /**
+         * Offered, not forced: `updateHeaders` attaches it only if this origin
+         * has already been approved.
+         */
         tmpClient.updateHeaders({ Authorization: authorization })
       }
     }
+    /**
+     * Use the newly created client for all storage classes. We may want to
+     * make this more sophisticated in the future to allow users to override
+     * the entire server configuration.
+     */
     this.setState((state) => {
       const clients: { [key: string]: DicomWebManager } = {}
       for (const key in state.clients) {
@@ -553,6 +649,12 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
+  /**
+   * Handle successful authentication event.
+   *
+   * Authorizes the DICOMweb client to access the DICOMweb server and directs
+   * the user back to the pre-login route (via OIDC state).
+   */
   handleSignIn = ({
     user,
     authorization,
@@ -573,6 +675,10 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
+  /**
+   * Recover from an expired/missing access token without losing the route.
+   * Tries silent renew first; falls back to interactive redirect with returnUrl.
+   */
   ensureAuthorized = async (): Promise<void> => {
     if (this.auth == null || this.reauthInProgress) {
       return
@@ -583,6 +689,7 @@ class App extends React.Component<AppProps, AppState> {
       const authorization = await this.auth.renewAuthorization()
       if (authorization != null) {
         this.applyAuthorization(authorization)
+        /** Remount routed views so in-flight 401 failures refetch with the new token. */
         this.setState((state) => ({
           authRecoveryKey: state.authRecoveryKey + 1,
         }))
@@ -595,13 +702,13 @@ class App extends React.Component<AppProps, AppState> {
       })
       redirectedToIdp = outcome === 'redirected'
       if (outcome === 'completed') {
+        /** Token was refreshed without leaving the page; remount views to refetch. */
         this.setState((state) => ({
           authRecoveryKey: state.authRecoveryKey + 1,
         }))
       }
     } catch (error) {
       console.error(error)
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.AUTH,
         new CustomError(
@@ -610,6 +717,11 @@ class App extends React.Component<AppProps, AppState> {
         ),
       )
     } finally {
+      /**
+       * oidc-client resolves signinRedirect as soon as navigation is assigned.
+       * Keep the guard set until unload so concurrent 401s cannot start another
+       * redirect.
+       */
       if (!redirectedToIdp) {
         this.reauthInProgress = false
       }
@@ -636,7 +748,6 @@ class App extends React.Component<AppProps, AppState> {
         })
         .catch((error) => {
           console.error(error)
-          // eslint-disable-next-line @typescript-eslint/no-floating-promises
           NotificationMiddleware.onError(
             NotificationMiddlewareContext.AUTH,
             new CustomError(
@@ -672,14 +783,9 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   componentDidMount(): void {
-    const cachedServerUrl = readStorage(SERVER_URL_STORAGE_KEY)
-    if (
-      cachedServerUrl !== null &&
-      cachedServerUrl !== undefined &&
-      cachedServerUrl !== ''
-    ) {
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      this.handleServerSelection({ url: cachedServerUrl })
+    const cachedSelection = loadServerSelection(getLocalStorage())
+    if (cachedSelection.mode === 'custom') {
+      void this.handleServerSelection({ url: cachedSelection.url })
     }
 
     if (this.auth != null) {
@@ -724,8 +830,7 @@ class App extends React.Component<AppProps, AppState> {
     let onLogout: () => void
     if (this.auth != null) {
       onLogout = (): void => {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        this.auth?.signOut()
+        void this.auth?.signOut()
       }
       isLogoutPossible = true
     } else {

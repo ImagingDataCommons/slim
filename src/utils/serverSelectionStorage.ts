@@ -14,14 +14,18 @@ export interface ServerSelection {
   mode: ServerSelectionMode
 }
 
-/** Custom mode only applies when a custom URL was actually stored. */
+/**
+ * Custom mode only applies when a custom URL was actually stored. A URL stored
+ * without any mode predates the mode key and was always applied as custom.
+ */
 export function parseServerSelection(
   rawUrl: string | null,
   rawMode: string | null,
 ): ServerSelection {
   const url = rawUrl?.trim() ?? ''
+  const isCustom = rawMode === 'custom' || rawMode === null
   const mode: ServerSelectionMode =
-    rawMode === 'custom' && url !== '' ? 'custom' : 'default'
+    isCustom && url !== '' ? 'custom' : 'default'
   return { url, mode }
 }
 

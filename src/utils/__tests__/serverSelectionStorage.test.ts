@@ -28,6 +28,20 @@ describe('parseServerSelection', () => {
       mode: 'default',
     })
   })
+
+  it('treats a URL stored without a mode as a legacy custom selection', () => {
+    expect(parseServerSelection('https://a.org/rs', null)).toEqual({
+      url: 'https://a.org/rs',
+      mode: 'custom',
+    })
+  })
+
+  it('keeps an explicit default mode even when a URL is stored', () => {
+    expect(parseServerSelection('https://a.org/rs', 'default')).toEqual({
+      url: 'https://a.org/rs',
+      mode: 'default',
+    })
+  })
 })
 
 describe('loadServerSelection / saveServerSelection', () => {
@@ -50,9 +64,7 @@ describe('loadServerSelection / saveServerSelection', () => {
     window.localStorage.setItem(SERVER_URL_STORAGE_KEY, 'https://a.org/rs')
     saveServerSelection(window.localStorage, { url: '', mode: 'default' })
     expect(window.localStorage.getItem(SERVER_URL_STORAGE_KEY)).toBeNull()
-    expect(window.localStorage.getItem(SERVER_MODE_STORAGE_KEY)).toBe(
-      'default',
-    )
+    expect(window.localStorage.getItem(SERVER_MODE_STORAGE_KEY)).toBe('default')
   })
 
   it('falls back to defaults without storage', () => {
