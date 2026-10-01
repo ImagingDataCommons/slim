@@ -32,6 +32,7 @@ const config: AppConfig | undefined = window.config
 const configProblems = findConfigProblems(
   config,
   import.meta.env.REACT_APP_CONFIG ?? 'local',
+  window.location.pathname,
 )
 
 if (config?.logger != null) {

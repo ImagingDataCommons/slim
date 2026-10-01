@@ -58,4 +58,40 @@ describe('findConfigProblems', () => {
       'Set "url" or "path" for this server in config/custom.js.',
     )
   })
+
+  describe('on a Google Cloud store route', () => {
+    const projectsPath =
+      '/projects/p/locations/l/datasets/d/dicomStores/s/study/1.2.3'
+
+    it('accepts a default server without a URL', () => {
+      expect(
+        findConfigProblems({ servers: [server({})] }, 'gcp', projectsPath),
+      ).toEqual([])
+    })
+
+    it('still reports a storage-class server without a URL', () => {
+      const problems = findConfigProblems(
+        {
+          servers: [
+            server({}),
+            server({
+              id: 'ann',
+              storageClasses: ['1.2.840.10008.5.1.4.1.1.91.1'],
+            }),
+          ],
+        },
+        'gcp',
+        projectsPath,
+      )
+      expect(problems.map((problem) => problem.message)).toEqual([
+        'The DICOMweb server "ann" has no URL.',
+      ])
+    })
+
+    it('reports the default server on other routes', () => {
+      expect(
+        findConfigProblems({ servers: [server({})] }, 'gcp', '/studies/1.2.3'),
+      ).toHaveLength(1)
+    })
+  })
 })

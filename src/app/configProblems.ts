@@ -1,4 +1,5 @@
 import type AppConfig from '../AppConfig'
+import { isProjectsPath } from '../utils/routes'
 
 export interface ConfigProblem {
   message: string
@@ -19,11 +20,14 @@ const isBlank = (value: string | undefined): boolean =>
 /**
  * Problems that keep Slim from starting, phrased for the person deploying it.
  * `config` is whatever `config/<configName>.js` assigned to `window.config`,
- * so it is checked defensively.
+ * so it is checked defensively. On `/projects/.../dicomStores/...` routes the
+ * default server (no `storageClasses`) gets its URL from the route, so it
+ * may leave `url` and `path` empty.
  */
 export function findConfigProblems(
   config: Pick<AppConfig, 'servers'> | undefined,
   configName: string,
+  pathname: string = '',
 ): ConfigProblem[] {
   const file = `config/${configName}.js`
   if (config === undefined) {
@@ -43,8 +47,10 @@ export function findConfigProblems(
     ]
   }
   const envKey = ENV_URL_KEY_BY_CONFIG.get(configName)
+  const isUrlFromRoute = isProjectsPath(pathname)
   return config.servers
     .filter((server) => isBlank(server.url) && isBlank(server.path))
+    .filter((server) => !(isUrlFromRoute && server.storageClasses == null))
     .map((server) => ({
       message: `The DICOMweb server "${server.id}" has no URL.`,
       hint:
