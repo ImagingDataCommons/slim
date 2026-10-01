@@ -28,8 +28,14 @@ export interface WorklistTableProps {
   onPaginationChange: (pagination: PaginationState) => void
   /** Rendered under the rows (pagination bar) */
   footer?: React.ReactNode
+  /** Study UIDs on the current page, after sorting */
+  onPageRowsChange?: (studyUids: readonly string[]) => void
+  /** Small status drawn in the row's left gutter */
+  renderRowMarker?: (study: dmv.metadata.Study) => React.ReactNode
   className?: string
 }
+
+const NO_ROWS: readonly string[] = []
 
 const SKELETON_MAX_ROWS = 12
 
@@ -105,6 +111,8 @@ export function WorklistTable({
   pagination,
   onPaginationChange,
   footer,
+  onPageRowsChange,
+  renderRowMarker,
   className,
 }: WorklistTableProps): React.ReactElement {
   /**
@@ -134,6 +142,16 @@ export function WorklistTable({
     getRowId: (row) => row.StudyInstanceUID,
   })
 
+  const pageRowsKey = isLoading
+    ? ''
+    : table
+        .getRowModel()
+        .rows.map((row) => row.id)
+        .join('|')
+  React.useEffect(() => {
+    onPageRowsChange?.(pageRowsKey === '' ? NO_ROWS : pageRowsKey.split('|'))
+  }, [pageRowsKey, onPageRowsChange])
+
   let body: React.ReactNode
   if (isLoading) {
     body = (
@@ -161,11 +179,16 @@ export function WorklistTable({
         role="row"
         onClick={() => onRowClick(row.original)}
         className={cn(
-          'grid cursor-pointer items-center gap-3 border-b border-line-soft px-5 text-ink-body transition-colors focus-within:bg-selected hover:bg-selected',
+          'relative grid cursor-pointer items-center gap-3 border-b border-line-soft px-5 text-ink-body transition-colors focus-within:bg-selected hover:bg-selected',
           WORKLIST_GRID_COLUMNS,
           isCompact ? 'h-8' : 'h-9',
         )}
       >
+        {renderRowMarker !== undefined && (
+          <td className="absolute left-1.5 top-1/2 flex -translate-y-1/2">
+            {renderRowMarker(row.original)}
+          </td>
+        )}
         {row.getVisibleCells().map((cell) => (
           <td key={cell.id} role="cell" className="min-w-0">
             {flexRender(cell.column.columnDef.cell, cell.getContext())}
