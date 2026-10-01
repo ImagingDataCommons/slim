@@ -84,6 +84,29 @@ describe('PreferencesDialog', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
+  it('saves which viewport overlays are shown', () => {
+    renderDialog('general')
+    for (const name of [
+      'Overview map',
+      'Scale and position',
+      'Slide name',
+      'Zoom controls',
+    ]) {
+      const toggle = screen.getByRole('switch', { name })
+      expect(toggle).toBeChecked()
+      fireEvent.click(toggle)
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Save preferences' }))
+    expect(loadPreferences()).toEqual(
+      expect.objectContaining({
+        showOverviewMap: false,
+        showViewportInfo: false,
+        showSlideLabel: false,
+        showZoomControls: false,
+      }),
+    )
+  })
+
   it('lists every keyboard shortcut', () => {
     renderDialog('keys')
     expect(screen.getByText('Draw ROI')).toBeInTheDocument()

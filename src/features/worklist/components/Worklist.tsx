@@ -2,25 +2,15 @@ import type { PaginationState } from '@tanstack/react-table'
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import type * as React from 'react'
-import {
-  useCallback,
-  useDeferredValue,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
+import { useCallback, useDeferredValue, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 
 import type DicomWebManager from '../../../DicomWebManager'
 import { cn } from '../../../lib/utils'
 import { buildStudyPath } from '../../../utils/routes'
-import { getLocalStorage } from '../../../utils/safeStorage'
 import { usePreferences } from '../../preferences'
 import { useStudies } from '../hooks/useStudies'
-import { loadStoredFilters, saveStoredFilters } from '../utils/filterStorage'
 import {
-  type DateFilter,
-  filterStudiesByDateRange,
   filterStudiesBySearchText,
   getEmptyStudiesMessage,
 } from '../utils/filters'
@@ -34,7 +24,7 @@ export interface WorklistProps {
   className?: string
 }
 
-/** Studies worklist: title bar, search, date filter and paginated grid. */
+/** Studies worklist: title bar, search and paginated grid. */
 export function Worklist({
   clients,
   className,
@@ -44,56 +34,24 @@ export function Worklist({
   const preferences = usePreferences()
   const [searchText, setSearchText] = useState('')
   const deferredSearchText = useDeferredValue(searchText)
-  const [dateFilter, setDateFilter] = useState<DateFilter>(
-    () =>
-      loadStoredFilters(getLocalStorage(), preferences.rememberFilters)
-        .dateFilter,
-  )
   const [requestedPagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 20,
   })
 
   const filteredStudies = useMemo(
-    () =>
-      filterStudiesBySearchText(
-        filterStudiesByDateRange(studies, dateFilter),
-        deferredSearchText,
-      ),
-    [studies, dateFilter, deferredSearchText],
+    () => filterStudiesBySearchText(studies, deferredSearchText),
+    [studies, deferredSearchText],
   )
   const pagination = clampPagination(
     requestedPagination,
     filteredStudies.length,
   )
 
-  useEffect(() => {
-    saveStoredFilters(
-      getLocalStorage(),
-      { dateFilter },
-      preferences.rememberFilters,
-    )
-  }, [preferences.rememberFilters, dateFilter])
-
-  const resetPage = useCallback((): void => {
+  const handleSearchChange = useCallback((value: string): void => {
+    setSearchText(value)
     setPagination((previous) => ({ ...previous, pageIndex: 0 }))
   }, [])
-
-  const handleSearchChange = useCallback(
-    (value: string): void => {
-      setSearchText(value)
-      resetPage()
-    },
-    [resetPage],
-  )
-
-  const handleDateFilterChange = useCallback(
-    (value: DateFilter): void => {
-      setDateFilter(value)
-      resetPage()
-    },
-    [resetPage],
-  )
 
   const handleRowClick = useCallback(
     (study: dmv.metadata.Study) => {
@@ -105,7 +63,7 @@ export function Worklist({
   return (
     <main
       className={cn(
-        'flex h-full min-h-0 flex-col gap-4 px-5 pb-5 pt-6',
+        'flex h-full min-h-0 flex-col gap-3 px-5 pb-4 pt-4',
         className,
       )}
     >
@@ -114,14 +72,12 @@ export function Worklist({
         isLoading={isLoading}
         searchText={searchText}
         onSearchChange={handleSearchChange}
-        dateFilter={dateFilter}
-        onDateFilterChange={handleDateFilterChange}
       />
       <WorklistTable
         className="flex-1"
         data={filteredStudies}
         isLoading={isLoading}
-        emptyMessage={getEmptyStudiesMessage(dateFilter, deferredSearchText)}
+        emptyMessage={getEmptyStudiesMessage(deferredSearchText)}
         isCompact={preferences.compactRows}
         onRowClick={handleRowClick}
         pagination={pagination}

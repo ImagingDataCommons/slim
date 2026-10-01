@@ -9,6 +9,7 @@ interface SlideViewerContentProps {
   footer: React.ReactNode
   cursor: string
   isFluorescence: boolean
+  showOverviewMap: boolean
   volumeViewportRef: React.RefObject<HTMLDivElement | null>
   /** Called (once per animation frame) when the viewport box changes size */
   onViewportResize: () => void
@@ -25,6 +26,7 @@ const SlideViewerContent: React.FC<SlideViewerContentProps> = ({
   footer,
   cursor,
   isFluorescence,
+  showOverviewMap,
   volumeViewportRef,
   onViewportResize,
   children,
@@ -51,6 +53,7 @@ const SlideViewerContent: React.FC<SlideViewerContentProps> = ({
     <section className="flex min-h-0 min-w-0 flex-1 flex-col">
       {toolbar}
       <div
+        data-overview-map={showOverviewMap ? undefined : 'hidden'}
         className={cn(
           'relative min-h-0 flex-1 overflow-hidden',
           isFluorescence ? 'bg-viewport-fluorescence' : 'bg-viewport',

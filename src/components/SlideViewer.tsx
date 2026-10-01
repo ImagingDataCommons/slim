@@ -291,6 +291,9 @@ function SlideViewer({
               slideAffine={slideAffine}
               slideId={getSlideDisplayId(slide)}
               slideDescription={getSlideStainInfo(slide)}
+              showSlideLabel={preferences.showSlideLabel}
+              showZoomControls={preferences.showZoomControls}
+              showViewportInfo={preferences.showViewportInfo}
             />
             <ViewportLoadingIndicator
               isVisible={viewportLoading.isWaitingForFirstImage}
@@ -307,6 +310,7 @@ function SlideViewer({
         }
         cursor={viewportLoading.isLoading ? 'progress' : 'default'}
         isFluorescence={slide.areVolumeImagesMonochrome}
+        showOverviewMap={preferences.showOverviewMap}
         volumeViewportRef={volumeViewportRef}
         onViewportResize={onViewportResize}
       >

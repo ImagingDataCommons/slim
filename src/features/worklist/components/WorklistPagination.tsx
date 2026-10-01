@@ -27,7 +27,7 @@ export interface WorklistPaginationProps {
 
 const ARROW_BUTTON = 'disabled:opacity-100 disabled:text-ink-fainter'
 
-/** 48px table footer: range summary, rows-per-page and page buttons. */
+/** 40px table footer: range summary, rows-per-page and page buttons. */
 export function WorklistPagination({
   pagination,
   totalCount,
@@ -51,7 +51,7 @@ export function WorklistPagination({
   return (
     <div
       className={cn(
-        'flex h-12 flex-none items-center gap-3 border-t border-line pl-5 pr-4 text-12.5 text-ink-muted',
+        'flex h-10 flex-none items-center gap-3 border-t border-line pl-5 pr-4 text-12.5 text-ink-muted',
         className,
       )}
     >

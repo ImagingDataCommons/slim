@@ -7,11 +7,31 @@ export type MeasurementUnit = 'µm' | 'mm'
 export interface UserPreferences {
   units: MeasurementUnit
   compactRows: boolean
-  rememberFilters: boolean
   strokeColor: string
   strokeWidth: number
   confirmRoiRemoval: boolean
+  /** Slide thumbnail in the bottom-right corner of the viewport */
+  showOverviewMap: boolean
+  /** Scale bar, magnification and cursor position in the bottom-left corner */
+  showViewportInfo: boolean
+  /** Active slide name in the top-left corner */
+  showSlideLabel: boolean
+  /** Zoom in, zoom out and fit buttons in the top-right corner */
+  showZoomControls: boolean
 }
+
+type BooleanPreference = {
+  [K in keyof UserPreferences]: UserPreferences[K] extends boolean ? K : never
+}[keyof UserPreferences]
+
+const BOOLEAN_PREFERENCES: readonly BooleanPreference[] = [
+  'compactRows',
+  'confirmRoiRemoval',
+  'showOverviewMap',
+  'showViewportInfo',
+  'showSlideLabel',
+  'showZoomControls',
+]
 
 export const PREFERENCES_STORAGE_KEY = 'slim-preferences'
 
@@ -32,10 +52,13 @@ export const STROKE_COLORS = [
 export const DEFAULT_PREFERENCES: UserPreferences = {
   units: 'µm',
   compactRows: false,
-  rememberFilters: true,
   strokeColor: STROKE_COLORS[0],
   strokeWidth: 2,
   confirmRoiRemoval: true,
+  showOverviewMap: true,
+  showViewportInfo: true,
+  showSlideLabel: true,
+  showZoomControls: true,
 }
 
 /** Merge stored JSON over defaults, ignoring unknown or mistyped fields. */
@@ -48,10 +71,9 @@ export function parsePreferences(stored: string | null): UserPreferences {
     const result: UserPreferences = { ...DEFAULT_PREFERENCES }
     if (parsed.units === 'µm' || parsed.units === 'mm')
       result.units = parsed.units
-    if (typeof parsed.compactRows === 'boolean')
-      result.compactRows = parsed.compactRows
-    if (typeof parsed.rememberFilters === 'boolean') {
-      result.rememberFilters = parsed.rememberFilters
+    for (const key of BOOLEAN_PREFERENCES) {
+      const value = parsed[key]
+      if (typeof value === 'boolean') result[key] = value
     }
     if (
       typeof parsed.strokeColor === 'string' &&
@@ -66,9 +88,6 @@ export function parsePreferences(stored: string | null): UserPreferences {
       parsed.strokeWidth <= 6
     ) {
       result.strokeWidth = parsed.strokeWidth
-    }
-    if (typeof parsed.confirmRoiRemoval === 'boolean') {
-      result.confirmRoiRemoval = parsed.confirmRoiRemoval
     }
     return result
   } catch {

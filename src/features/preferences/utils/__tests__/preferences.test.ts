@@ -22,19 +22,36 @@ describe('parsePreferences', () => {
     const stored = JSON.stringify({
       units: 'mm',
       compactRows: true,
-      rememberFilters: false,
       strokeColor: '#D9453B',
       strokeWidth: 4,
       confirmRoiRemoval: false,
+      showOverviewMap: false,
+      showViewportInfo: false,
+      showSlideLabel: false,
+      showZoomControls: false,
     })
     expect(parsePreferences(stored)).toEqual({
       units: 'mm',
       compactRows: true,
-      rememberFilters: false,
       strokeColor: '#D9453B',
       strokeWidth: 4,
       confirmRoiRemoval: false,
+      showOverviewMap: false,
+      showViewportInfo: false,
+      showSlideLabel: false,
+      showZoomControls: false,
     })
+  })
+
+  it('shows every viewport overlay by default', () => {
+    expect(parsePreferences(JSON.stringify({ compactRows: true }))).toEqual(
+      expect.objectContaining({
+        showOverviewMap: true,
+        showViewportInfo: true,
+        showSlideLabel: true,
+        showZoomControls: true,
+      }),
+    )
   })
 
   it('ignores mistyped and unknown fields', () => {
@@ -42,7 +59,9 @@ describe('parsePreferences', () => {
       units: 'inch',
       compactRows: 'yes',
       confirmRoiRemoval: 1,
+      showOverviewMap: 'no',
       showRoiLabels: true,
+      rememberFilters: false,
     })
     expect(parsePreferences(stored)).toEqual(DEFAULT_PREFERENCES)
   })

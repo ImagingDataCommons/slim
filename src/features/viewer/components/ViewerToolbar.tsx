@@ -58,9 +58,9 @@ function PanelToggle({
       aria-controls={controls}
       onClick={onClick}
       disabled={onClick === undefined}
-      className="grid h-control w-control flex-none place-items-center rounded-lg text-ink-secondary transition-colors hover:bg-app disabled:pointer-events-none disabled:opacity-40"
+      className="grid size-8 flex-none place-items-center rounded-lg text-ink-secondary transition-colors hover:bg-app disabled:pointer-events-none disabled:opacity-40"
     >
-      <Icon name={icon} size={20} />
+      <Icon name={icon} size={19} />
     </button>
   )
 }
@@ -88,21 +88,21 @@ function ToolButton({
       aria-pressed={isActive}
       onClick={onClick}
       className={cn(
-        'flex h-8 flex-none items-center gap-1.5 rounded-[7px] text-12.5 font-medium transition-colors hover:text-ink',
-        isCompact ? 'px-2' : 'px-2.5',
+        'flex h-7 flex-none items-center gap-1.5 rounded-md text-12.5 font-medium transition-colors hover:text-ink',
+        isCompact ? 'px-1.5' : 'px-2',
         isActive
           ? 'bg-panel text-primary shadow-tool hover:text-primary'
           : 'text-ink-secondary',
       )}
     >
-      <Icon name={icon} size={19} />
+      <Icon name={icon} size={17} />
       {!isCompact && label}
     </button>
   )
 }
 
 /**
- * 48px viewer toolbar: study/slide panel toggles on the edges and the ROI
+ * 40px viewer toolbar: study/slide panel toggles on the edges and the ROI
  * tool pill centered between them.
  */
 export function ViewerToolbar({
@@ -200,9 +200,9 @@ export function ViewerToolbar({
         controls={STUDY_PANEL_ID}
         onClick={onToggleLeftPanel}
       />
-      <div className="h-[22px] w-px flex-none bg-line" />
+      <div className="h-5 w-px flex-none bg-line" />
       <div className="flex min-w-0 flex-1 justify-center overflow-hidden">
-        <div className="flex min-w-0 items-center gap-0.5 rounded-card bg-app p-[3px]">
+        <div className="flex min-w-0 items-center gap-0.5 rounded-lg bg-app p-0.5">
           {tools.map((tool) => (
             <ToolButton
               key={tool.key}
@@ -215,7 +215,7 @@ export function ViewerToolbar({
             />
           ))}
           {tools.length > 0 && (
-            <div className="mx-1 h-5 w-px flex-none bg-line-input" />
+            <div className="mx-1 h-4 w-px flex-none bg-line-input" />
           )}
           <ToolButton
             icon="my_location"
@@ -227,7 +227,7 @@ export function ViewerToolbar({
           />
         </div>
       </div>
-      <div className="h-[22px] w-px flex-none bg-line" />
+      <div className="h-5 w-px flex-none bg-line" />
       <PanelToggle
         icon={isRightPanelOpen ? 'right_panel_close' : 'right_panel_open'}
         title="Toggle slide panel"

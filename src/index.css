@@ -17,11 +17,19 @@
   left: auto;
   top: auto;
   margin: 0;
-  padding: 6px !important;
-  border-radius: 10px;
+  padding: 2px !important;
+  border-radius: 8px;
   background: rgb(var(--panel));
   border: 1px solid rgb(var(--line));
   box-shadow: 0 2px 8px rgb(var(--shadow-color) / 0.08);
+}
+
+/*
+ * Hidden from Preferences. Kept in layout so OpenLayers keeps a valid map
+ * size and the overview renders right away when it is shown again.
+ */
+[data-overview-map='hidden'] .ol-overviewmap {
+  visibility: hidden;
 }
 
 .ol-overviewmap > button {

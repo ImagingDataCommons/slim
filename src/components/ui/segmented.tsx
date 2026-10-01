@@ -13,8 +13,6 @@ export interface SegmentedControlProps<T extends string> {
   options: Array<SegmentedOption<T>>
   value: T
   onChange: (value: T) => void
-  /** `worklist` uses the darker track from the studies filter */
-  tone?: 'default' | 'worklist'
   size?: 'default' | 'sm'
   /** Stretch options to fill the container width */
   fill?: boolean
@@ -27,7 +25,6 @@ export function SegmentedControl<T extends string>({
   options,
   value,
   onChange,
-  tone = 'default',
   size = 'default',
   fill = false,
   className,
@@ -38,9 +35,8 @@ export function SegmentedControl<T extends string>({
     <fieldset
       aria-label={ariaLabel}
       className={cn(
-        'm-0 flex min-w-0 rounded-lg border-0 p-[3px]',
+        'm-0 flex min-w-0 rounded-lg border-0 bg-app p-[3px]',
         size === 'sm' ? 'gap-0.5' : 'gap-1',
-        tone === 'worklist' ? 'bg-segmented' : 'bg-app',
         className,
       )}
     >

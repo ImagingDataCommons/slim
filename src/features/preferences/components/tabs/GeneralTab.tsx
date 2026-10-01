@@ -12,6 +12,38 @@ const THEME_OPTIONS: Array<{ value: Theme; label: string }> = [
   { value: 'system', label: 'System' },
 ]
 
+const VIEWPORT_OVERLAYS: Array<{
+  key:
+    | 'showOverviewMap'
+    | 'showViewportInfo'
+    | 'showSlideLabel'
+    | 'showZoomControls'
+  label: string
+  description: string
+}> = [
+  {
+    key: 'showOverviewMap',
+    label: 'Overview map',
+    description: 'Slide thumbnail in the bottom-right corner',
+  },
+  {
+    key: 'showViewportInfo',
+    label: 'Scale and position',
+    description:
+      'Scale bar, magnification and cursor position in the bottom-left corner',
+  },
+  {
+    key: 'showSlideLabel',
+    label: 'Slide name',
+    description: 'Active slide name in the top-left corner',
+  },
+  {
+    key: 'showZoomControls',
+    label: 'Zoom controls',
+    description: 'Zoom and fit buttons in the top-right corner',
+  },
+]
+
 export interface GeneralTabProps {
   theme: Theme
   onThemeChange: (theme: Theme) => void
@@ -55,19 +87,19 @@ export function GeneralTab({
           />
         )}
       </PreferenceRow>
-      <PreferenceRow
-        label="Remember filters"
-        description="Keep the date filter between sessions"
-      >
-        {(controlProps) => (
-          <Switch
-            {...controlProps}
-            size="lg"
-            checked={draft.rememberFilters}
-            onCheckedChange={(value) => onChange('rememberFilters', value)}
-          />
-        )}
-      </PreferenceRow>
+      <SectionLabel>Viewer</SectionLabel>
+      {VIEWPORT_OVERLAYS.map(({ key, label, description }) => (
+        <PreferenceRow key={key} label={label} description={description}>
+          {(controlProps) => (
+            <Switch
+              {...controlProps}
+              size="lg"
+              checked={draft[key]}
+              onCheckedChange={(value) => onChange(key, value)}
+            />
+          )}
+        </PreferenceRow>
+      ))}
     </>
   )
 }

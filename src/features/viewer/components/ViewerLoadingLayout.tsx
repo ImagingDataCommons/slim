@@ -89,16 +89,16 @@ export function ViewerLoadingLayout({
       <main className="flex min-w-0 flex-1 overflow-hidden">
         <section className="flex min-h-0 min-w-0 flex-1 flex-col">
           <div className="flex h-toolbar flex-none items-center gap-2 border-b border-line bg-panel px-2.5">
-            <span className="grid h-control w-control flex-none place-items-center text-ink-secondary opacity-40">
-              <Icon name="left_panel_close" size={20} />
+            <span className="grid size-8 flex-none place-items-center text-ink-secondary opacity-40">
+              <Icon name="left_panel_close" size={19} />
             </span>
-            <div className="h-[22px] w-px flex-none bg-line" />
+            <div className="h-5 w-px flex-none bg-line" />
             <div className="flex min-w-0 flex-1 justify-center">
-              <Skeleton className="h-[38px] w-[min(520px,70%)] rounded-card bg-app" />
+              <Skeleton className="h-8 w-[min(480px,70%)] rounded-lg bg-app" />
             </div>
-            <div className="h-[22px] w-px flex-none bg-line" />
-            <span className="grid h-control w-control flex-none place-items-center text-ink-secondary opacity-40">
-              <Icon name="right_panel_close" size={20} />
+            <div className="h-5 w-px flex-none bg-line" />
+            <span className="grid size-8 flex-none place-items-center text-ink-secondary opacity-40">
+              <Icon name="right_panel_close" size={19} />
             </span>
           </div>
           <div className="relative min-h-0 flex-1 overflow-hidden bg-viewport">

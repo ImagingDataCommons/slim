@@ -11,10 +11,10 @@ import {
 /** Overview card offset from the right/bottom viewport edges (px). */
 const OVERVIEW_CARD_INSET_PX = 14
 
-/** Card padding (6px) and border (1px) on both sides of the mini-map (px). */
-const OVERVIEW_CARD_CHROME_PX = 14
+/** Card padding (2px) and border (1px) on both sides of the mini-map (px). */
+const OVERVIEW_CARD_CHROME_PX = 6
 
-/** Inner mini-map box of the 200px-wide overview card (px). */
+/** Inner mini-map box of the 192px-wide overview card (px). */
 const OVERVIEW_CARD_MAP_WIDTH_PX = 186
 const OVERVIEW_CARD_MAP_HEIGHT_PX = 120
 

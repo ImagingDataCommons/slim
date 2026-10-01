@@ -65,7 +65,7 @@ function WorklistSkeletonRows({
           className={cn(
             'grid items-center gap-3 border-b border-line-soft px-5',
             WORKLIST_GRID_COLUMNS,
-            isCompact ? 'h-10' : 'h-12',
+            isCompact ? 'h-8' : 'h-9',
           )}
           style={{ opacity: 1 - rowIndex / (rowCount + 4) }}
         >
@@ -95,7 +95,7 @@ function WorklistSkeletonRows({
   )
 }
 
-/** Studies grid: sticky uppercase header, 48px rows, footer slot. */
+/** Studies grid: sticky uppercase header, 36px rows (32px compact), footer slot. */
 export function WorklistTable({
   data,
   isLoading,
@@ -163,7 +163,7 @@ export function WorklistTable({
         className={cn(
           'grid cursor-pointer items-center gap-3 border-b border-line-soft px-5 text-ink-body transition-colors focus-within:bg-selected hover:bg-selected',
           WORKLIST_GRID_COLUMNS,
-          isCompact ? 'h-10' : 'h-12',
+          isCompact ? 'h-8' : 'h-9',
         )}
       >
         {row.getVisibleCells().map((cell) => (
@@ -189,7 +189,7 @@ export function WorklistTable({
               key={headerGroup.id}
               role="row"
               className={cn(
-                'grid h-10 items-center gap-3 border-b border-line bg-subtle px-5 text-11 font-semibold uppercase leading-none tracking-wider text-ink-muted',
+                'grid h-8 items-center gap-3 border-b border-line bg-subtle px-5 text-11 font-semibold uppercase leading-none tracking-wider text-ink-muted',
                 WORKLIST_GRID_COLUMNS,
               )}
             >

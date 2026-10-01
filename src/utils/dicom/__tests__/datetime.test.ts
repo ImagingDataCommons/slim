@@ -50,6 +50,8 @@ describe('parseDicomDate', () => {
 
   it('returns null for invalid dates', () => {
     expect(parseDicomDate('20260231')).toBeNull()
+    expect(parseDicomDate('2026.0912')).toBeNull()
+    expect(parseDicomDate('')).toBeNull()
     expect(parseDicomDate(undefined)).toBeNull()
   })
 })
