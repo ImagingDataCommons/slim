@@ -59,6 +59,8 @@ The script uses the installed Google Chrome. Set `PLAYWRIGHT_CHANNEL=` to use Pl
 
 The site is hosted on Firebase Hosting in the `slim-website` project, at <https://slim-website.web.app>. `website/firebase.json` targets that project's default site, so the app's root `firebase.json` is unaffected.
 
+The same project hosts the Slim viewer the site links to, at <https://slim-app.web.app> (the `slim-app` Hosting site). It is built with `REACT_APP_CONFIG=preview`, so it reads studies from the IDC public proxy. `.github/workflows/deploy-viewer.yml` republishes it on every push to `master` that changes the app. Like the website deploy, it needs the `FIREBASE_SERVICE_ACCOUNT_SLIM` secret, plus `SLIM_PREVIEW_DICOMWEB_URL` set to the IDC proxy URL.
+
 `.github/workflows/deploy-website.yml` deploys every pull request that touches the site to a preview channel and comments the URL, and deploys `master` (and `feat/slim-modern-redesign`, while the site is stacked on the redesign branch) to the live channel. It authenticates with the `FIREBASE_SERVICE_ACCOUNT_SLIM` secret, a service account key from the `slim-website` project with the Firebase Hosting Admin role. A custom domain can be connected later in the Firebase console; update `SITE_URL` in the workflow when it is.
 
 To deploy by hand, from `website/`:

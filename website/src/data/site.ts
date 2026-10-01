@@ -5,8 +5,11 @@
 
 const repo = 'https://github.com/ImagingDataCommons/slim'
 
-/** Slim deployment that loads data from the IDC public proxy */
-export const DEFAULT_DEMO_URL = 'https://idc-external-006.web.app'
+/**
+ * Slim deployment that loads data from the IDC public proxy, hosted in the
+ * same Firebase project as this site (slim-app site).
+ */
+export const DEFAULT_DEMO_URL = 'https://slim-app.web.app'
 
 /** IDC production viewer, used when no demo deployment is configured */
 export const IDC_VIEWER_URL =
