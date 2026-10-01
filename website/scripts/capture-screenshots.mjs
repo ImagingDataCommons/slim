@@ -10,6 +10,7 @@
  * public/examples/{id}.webp thumbnails, and public/og.png (1200x630).
  *
  * Flags: --only=viewer,worklist  --skip-examples  --skip-og
+ * --only=og renders just the social card, which needs no running app.
  * Env: SLIM_APP_URL, PLAYWRIGHT_CHANNEL (default "chrome"; "" for bundled Chromium)
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
@@ -280,10 +281,13 @@ async function renderOgImage(browser) {
         `@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-${weight}-normal.woff2`,
       ),
     ).then((buffer) => buffer.toString('base64'))
-  const [regular, semibold, logo, viewer] = await Promise.all([
+  const [regular, semibold, logo, idcLogo, viewer] = await Promise.all([
     font(400),
     font(600),
     readFile(new URL('public/favicon.svg', root)).then((buffer) =>
+      buffer.toString('base64'),
+    ),
+    readFile(new URL('public/brand/nci-idc-reverse.svg', root)).then((buffer) =>
       buffer.toString('base64'),
     ),
     readFile(new URL('public/screenshots/viewer-dark.webp', root)).then(
@@ -308,12 +312,19 @@ async function renderOgImage(browser) {
     .shot { position: absolute; left: 640px; top: 96px; width: 760px; border-radius: 14px; overflow: hidden;
       border: 1px solid rgb(var(--line)); box-shadow: 0 30px 80px rgb(var(--shadow-color) / 0.5); }
     .shot img { display: block; width: 100%; }
+    .idc { position: absolute; left: 72px; bottom: 60px; }
+    .idc span { display: block; font-size: 15px; color: rgb(var(--ink-muted)); letter-spacing: 0.02em; }
+    .idc img { display: block; margin-top: 12px; height: 46px; }
   </style></head><body>
     <div class="glow"></div>
     <div class="copy">
       <div class="brand"><img src="data:image/svg+xml;base64,${logo}" alt="">Slim</div>
       <h1>The web viewer for DICOM slide microscopy</h1>
       <p>Open source, zero footprint, DICOMweb native.</p>
+    </div>
+    <div class="idc">
+      <span>Developed and supported by</span>
+      <img src="data:image/svg+xml;base64,${idcLogo}" alt="">
     </div>
     <div class="shot"><img src="data:image/webp;base64,${viewer}" alt=""></div>
   </body></html>`

@@ -1,6 +1,7 @@
 ---
 import { ArrowUpRight } from 'lucide-react'
 import CitationCopy from '../components/CitationCopy.astro'
+import IdcLogo from '../components/IdcLogo.astro'
 import SectionHeading from '../components/SectionHeading.astro'
 import { site } from '../data/site'
 import BaseLayout from '../layouts/BaseLayout.astro'
@@ -65,14 +66,20 @@ const related = [
   <section class="border-y border-line bg-subtle">
     <div class="container-site grid grid-cols-1 gap-12 py-20 lg:grid-cols-2">
       <div class="flex flex-col gap-4">
-        <SectionHeading eyebrow="Team" title="Who builds Slim" />
+        <a href={site.links.idcCrdc} target="_blank" rel="noopener" class="mb-2 inline-flex w-fit rounded-md">
+          <IdcLogo height={48} class="max-w-full [&_img]:h-auto [&_img]:max-w-full" />
+        </a>
+        <SectionHeading
+          eyebrow="Team and funding"
+          title="Developed and supported by the NCI Imaging Data Commons"
+        />
         <p class="text-ink-body">
-          Slim is maintained by the Imaging Data Commons team, which has been funded in whole or in
-          part with Federal funds from the National Cancer Institute, National Institutes of Health,
-          under task order no. HHSN26110071 under contract no. HHSN261201500003l.
+          Slim is built and maintained by the Imaging Data Commons team, which has been funded in
+          whole or in part with Federal funds from the National Cancer Institute, National Institutes
+          of Health, under task order no. HHSN26110071 under contract no. HHSN261201500003l.
         </p>
         <p class="text-ink-body">
-          The <a href={site.links.idc} class="text-primary underline underline-offset-2 hover:text-primary-hover">NCI Imaging Data Commons</a> is
+          The <a href={site.links.idcCrdc} class="text-primary underline underline-offset-2 hover:text-primary-hover">NCI Imaging Data Commons</a> is
           a node of the <a href={site.links.crdc} class="text-primary underline underline-offset-2 hover:text-primary-hover">Cancer Research Data Commons</a>,
           which provides secure access to a large and growing collection of cancer research data.
         </p>

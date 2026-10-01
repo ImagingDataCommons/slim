@@ -1,5 +1,6 @@
 ---
 import { demoUrl, site } from '../data/site'
+import IdcLogo from './IdcLogo.astro'
 import Logo from './Logo.astro'
 
 const columns = [
@@ -51,12 +52,17 @@ const columns = [
       <p class="max-w-xs text-sm text-ink-muted">
         Interoperable web-based DICOM slide microscopy viewer and annotation tool.
       </p>
-      <p class="text-sm text-ink-muted">
-        Developed as part of the <a
-          href={site.links.idc}
-          class="text-ink-secondary underline underline-offset-4 hover:text-ink">NCI Imaging Data Commons</a
-        >.
-      </p>
+      <div class="space-y-2.5 pt-2">
+        <p class="eyebrow">Developed and supported by</p>
+        <a
+          href={site.links.idcCrdc}
+          target="_blank"
+          rel="noopener"
+          class="inline-flex rounded-md opacity-90 transition-opacity hover:opacity-100"
+        >
+          <IdcLogo height={34} />
+        </a>
+      </div>
     </div>
     {
       columns.map((column) => (

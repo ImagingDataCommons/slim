@@ -63,3 +63,18 @@ test('every available IDC example has a thumbnail', () => {
 test('the social card exists', () => {
   assert.ok(exists('/og.png'))
 })
+
+test('the IDC logo referenced by IdcLogo.astro exists in both versions', () => {
+  const component = readFileSync(
+    new URL('src/components/IdcLogo.astro', website),
+    'utf8',
+  )
+  const sources = [...component.matchAll(/src="([^"]+)"/g)].map(
+    (match) => match[1],
+  )
+  assert.equal(sources.length, 2)
+  assert.deepEqual(
+    sources.filter((path) => !exists(path)),
+    [],
+  )
+})

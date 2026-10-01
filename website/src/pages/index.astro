@@ -4,6 +4,8 @@ import { buttonVariants } from '@slim/components/ui/button'
 import GithubMark from '../components/GithubMark.astro'
 import ExampleCard from '../components/ExampleCard.astro'
 import Icon from '../components/Icon.astro'
+import IdcLogo from '../components/IdcLogo.astro'
+import IdcSupport from '../components/IdcSupport.astro'
 import ProductPreview from '../components/ProductPreview.tsx'
 import RunYourOwn from '../components/RunYourOwn.astro'
 import SectionHeading from '../components/SectionHeading.astro'
@@ -117,6 +119,15 @@ const dateFormat = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeZone
             GitHub
           </a>
         </div>
+        <a
+          href={site.links.idcCrdc}
+          target="_blank"
+          rel="noopener"
+          class="mt-2 flex flex-col items-center gap-2.5 rounded-md opacity-90 transition-opacity hover:opacity-100 sm:flex-row sm:gap-3"
+        >
+          <span class="text-13 text-ink-muted">Developed and supported by</span>
+          <IdcLogo height={30} />
+        </a>
       </div>
       <div class="w-full max-w-5xl">
         <ProductPreview client:visible tabs={previewTabs} />
@@ -136,6 +147,8 @@ const dateFormat = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeZone
       }
     </dl>
   </section>
+
+  <IdcSupport />
 
   <section class="container-site py-24">
     <SectionHeading
