@@ -79,6 +79,56 @@ export const areROIsEqual = (a: dmv.roi.ROI, b: dmv.roi.ROI): boolean => {
 }
 
 /**
+ * CSS color for an ROI stroke color (`[r, g, b]` or `[r, g, b, a]`, alpha
+ * ignored); `fallback` when the color is missing or malformed.
+ */
+export const roiStrokeToCssColor = (
+  color: readonly number[] | undefined,
+  fallback: string,
+): string => {
+  if (color === undefined || color.length < 3) return fallback
+  const channels = color.slice(0, 3)
+  if (!channels.every((channel) => Number.isFinite(channel))) return fallback
+  const [r, g, b] = channels.map((channel) =>
+    Math.round(Math.min(255, Math.max(0, channel))),
+  )
+  return `rgb(${r}, ${g}, ${b})`
+}
+
+/** "Annotation was removed" / "3 annotations were removed" */
+export const formatRoiRemovalMessage = (count: number): string =>
+  count === 1 ? 'Annotation was removed' : `${count} annotations were removed`
+
+/** Alpha of the default ROI fill, derived from the stroke color. */
+export const DEFAULT_ROI_FILL_ALPHA = 0.2
+
+/**
+ * Default style for ROIs without a configured finding style, built from the
+ * user's stroke preferences (RGB color, width in px).
+ */
+export const buildDefaultRoiStyle = ({
+  strokeColor,
+  strokeWidth,
+  radius,
+}: {
+  strokeColor: number[]
+  strokeWidth: number
+  radius: number
+}): dmv.viewer.ROIStyleOptions => {
+  const rgb = strokeColor.slice(0, 3)
+  return {
+    stroke: { color: rgb, width: strokeWidth },
+    fill: { color: [...rgb, DEFAULT_ROI_FILL_ALPHA] },
+    image: {
+      circle: {
+        fill: { color: rgb },
+        radius,
+      },
+    },
+  }
+}
+
+/**
  * Formats ROI style options
  */
 export const formatRoiStyle = (style: {

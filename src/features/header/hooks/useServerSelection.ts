@@ -1,11 +1,15 @@
 import { useCallback, useState } from 'react'
 
-import { isValidServerUrl, normalizeServerUrl } from '../utils/serverUrl'
+import { getLocalStorage } from '../../../utils/safeStorage'
+import {
+  loadServerSelection,
+  type ServerSelectionMode,
+  saveServerSelection,
+} from '../../../utils/serverSelectionStorage'
+import { normalizeServerUrl } from '../../../utils/url'
+import { isValidServerUrl } from '../utils/serverUrl'
 
-const STORAGE_KEY_URL = 'slim_selected_server'
-const STORAGE_KEY_MODE = 'slim_server_selection_mode'
-
-export type ServerSelectionMode = 'default' | 'custom'
+export type { ServerSelectionMode }
 
 interface UseServerSelectionOptions {
   onServerSelection: (params: { url: string }) => void
@@ -39,22 +43,13 @@ interface UseServerSelectionReturn {
 export function useServerSelection({
   onServerSelection,
 }: UseServerSelectionOptions): UseServerSelectionReturn {
-  /** Load initial state from localStorage */
-  const [serverUrl, setServerUrlState] = useState<string>(() => {
-    const cached = localStorage.getItem(STORAGE_KEY_URL)?.trim() ?? ''
-    return cached
-  })
-
-  const [mode, setModeState] = useState<ServerSelectionMode>(() => {
-    const cachedUrl = localStorage.getItem(STORAGE_KEY_URL)?.trim() ?? ''
-    const cachedMode = localStorage.getItem(
-      STORAGE_KEY_MODE,
-    ) as ServerSelectionMode | null
-    if (cachedMode === 'custom' && cachedUrl !== '') {
-      return 'custom'
-    }
-    return 'default'
-  })
+  const [initialSelection] = useState(() =>
+    loadServerSelection(getLocalStorage()),
+  )
+  const [serverUrl, setServerUrlState] = useState<string>(initialSelection.url)
+  const [mode, setModeState] = useState<ServerSelectionMode>(
+    initialSelection.mode,
+  )
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
@@ -86,23 +81,20 @@ export function useServerSelection({
   }, [])
 
   const submitSelection = useCallback(() => {
-    localStorage.setItem(STORAGE_KEY_MODE, mode)
-
     if (mode === 'default') {
-      localStorage.removeItem(STORAGE_KEY_URL)
+      saveServerSelection(getLocalStorage(), { url: '', mode })
       onServerSelection({ url: '' })
       setIsDialogOpen(false)
       return
     }
 
-    /** Custom mode */
     const trimmedUrl = serverUrl.trim()
     if (!isValidServerUrl(trimmedUrl)) {
       return
     }
 
     const normalizedUrl = normalizeServerUrl(trimmedUrl)
-    localStorage.setItem(STORAGE_KEY_URL, normalizedUrl)
+    saveServerSelection(getLocalStorage(), { url: normalizedUrl, mode })
     onServerSelection({ url: normalizedUrl })
     setServerUrlState(normalizedUrl)
     setIsDialogOpen(false)

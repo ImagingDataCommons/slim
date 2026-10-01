@@ -7,8 +7,14 @@ import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../../../services/NotificationMiddleware'
 import { CustomError, errorTypes } from '../../../utils/CustomError'
-
+import { mapWithConcurrency } from '../../../utils/mapWithConcurrency'
 import { modalitiesNeedBackfill } from '../utils/filters'
+import {
+  buildStudyQueryParams,
+  extractModalitiesFromSeries,
+} from '../utils/studyQuery'
+
+const SERIES_REQUEST_CONCURRENCY = 6
 
 interface UseStudiesOptions {
   clients: { [key: string]: DicomWebManager }
@@ -21,10 +27,18 @@ interface UseStudiesReturn {
   isLoading: boolean
   /** Total count of studies */
   totalCount: number
-  /** Trigger a search with optional criteria */
-  searchStudies: (searchCriteria?: Record<string, string>) => void
-  /** Refresh studies from server */
-  refresh: () => void
+}
+
+async function collectModalitiesFromSeries(
+  client: DicomWebManager,
+  studyInstanceUID: string,
+): Promise<string[]> {
+  try {
+    const seriesList = await client.searchForSeries({ studyInstanceUID })
+    return extractModalitiesFromSeries(seriesList ?? [])
+  } catch {
+    return []
+  }
 }
 
 /**
@@ -32,35 +46,17 @@ interface UseStudiesReturn {
  */
 export function useStudies({ clients }: UseStudiesOptions): UseStudiesReturn {
   const [studies, setStudies] = useState<dmv.metadata.Study[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  /** Generation counter to discard stale modality enrichment results */
-  const enrichmentGeneration = useRef(0)
+  /**
+   * Incremented per search and on unmount so responses from superseded
+   * searches (and their modality enrichment) are dropped.
+   */
+  const searchGeneration = useRef(0)
 
-  /** Collect modalities from series when study-level data is missing */
-  const collectModalitiesFromSeries = useCallback(
-    async (
-      client: DicomWebManager,
-      studyInstanceUID: string,
-    ): Promise<string[]> => {
-      try {
-        const seriesList = await client.searchForSeries({ studyInstanceUID })
-        if (!seriesList) {
-          return []
-        }
-
-        const modalities = new Set<string>()
-        for (const raw of seriesList) {
-          const { dataset } = dmv.metadata.formatMetadata(raw)
-          const mod = (dataset as { Modality?: string }).Modality
-          if (mod && String(mod).trim()) {
-            modalities.add(String(mod))
-          }
-        }
-        return [...modalities].sort()
-      } catch {
-        return []
-      }
+  useEffect(
+    () => () => {
+      searchGeneration.current += 1
     },
     [],
   )
@@ -77,16 +73,20 @@ export function useStudies({ clients }: UseStudiesOptions): UseStudiesReturn {
         return
       }
 
-      const results = await Promise.all(
-        needEnrichment.map(async (study) => {
+      const results = await mapWithConcurrency(
+        needEnrichment,
+        SERIES_REQUEST_CONCURRENCY,
+        async (study) => {
+          if (generation !== searchGeneration.current) {
+            return { uid: study.StudyInstanceUID, mods: [] }
+          }
           const uid = study.StudyInstanceUID
           const mods = await collectModalitiesFromSeries(client, uid)
           return { uid, mods }
-        }),
+        },
       )
 
-      /** Check if a newer search was started */
-      if (generation !== enrichmentGeneration.current) {
+      if (generation !== searchGeneration.current) {
         return
       }
 
@@ -102,41 +102,25 @@ export function useStudies({ clients }: UseStudiesOptions): UseStudiesReturn {
         }),
       )
     },
-    [collectModalitiesFromSeries],
+    [],
   )
 
   const searchStudies = useCallback(
     (searchCriteria?: Record<string, string>) => {
-      setIsLoading(true)
-
-      const queryParams: Record<string, string | number | boolean> = {
-        ModalitiesInStudy: 'SM',
-        includefield: 'NumberOfStudyRelatedSeries',
-      }
-
-      if (searchCriteria) {
-        for (const key in searchCriteria) {
-          const value = searchCriteria[key]
-          if (key === 'PersonName') {
-            queryParams[key] = `*${value}*`
-          } else {
-            queryParams[key] = value
-          }
-        }
-        queryParams.fuzzymatching = true
-      }
-
+      const generation = ++searchGeneration.current
       const client = clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
       if (!client) {
         setIsLoading(false)
         return
       }
 
-      const generation = ++enrichmentGeneration.current
-
+      setIsLoading(true)
       client
-        .searchForStudies({ queryParams })
+        .searchForStudies({
+          queryParams: buildStudyQueryParams(searchCriteria),
+        })
         .then((results) => {
+          if (generation !== searchGeneration.current) return
           const formatted = results.map((study) => {
             const { dataset } = dmv.metadata.formatMetadata(study)
             return dataset as dmv.metadata.Study
@@ -145,10 +129,10 @@ export function useStudies({ clients }: UseStudiesOptions): UseStudiesReturn {
           setStudies(formatted)
           setIsLoading(false)
 
-          /** Start background modality enrichment */
           void runModalitiesEnrichment(client, formatted, generation)
         })
         .catch((error) => {
+          if (generation !== searchGeneration.current) return
           console.error(error)
           setIsLoading(false)
           NotificationMiddleware.onError(
@@ -163,11 +147,6 @@ export function useStudies({ clients }: UseStudiesOptions): UseStudiesReturn {
     [clients, runModalitiesEnrichment],
   )
 
-  const refresh = useCallback(() => {
-    searchStudies()
-  }, [searchStudies])
-
-  /** Initial load */
   useEffect(() => {
     searchStudies()
   }, [searchStudies])
@@ -176,7 +155,5 @@ export function useStudies({ clients }: UseStudiesOptions): UseStudiesReturn {
     studies,
     isLoading,
     totalCount: studies.length,
-    searchStudies,
-    refresh,
   }
 }

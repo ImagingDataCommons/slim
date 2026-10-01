@@ -9,10 +9,17 @@ import {
   DialogTitle,
 } from '../../../../components/ui/dialog'
 import { Icon } from '../../../../components/ui/icon'
+import { useCopyToClipboard } from '../../../../hooks/useCopyToClipboard'
 import { cn } from '../../../../lib/utils'
 import { withOccurrenceKeys } from '../../../../utils/occurrenceKeys'
 import type { ExtendedError } from '../../hooks/useNotifications'
-import { groupErrorsByCategory } from '../../hooks/useNotifications'
+import {
+  buildDebugMessages,
+  DEBUG_CATEGORIES,
+  type DebugCategory,
+  type DebugMessage,
+  formatDebugReport,
+} from '../../utils/debugReport'
 
 interface DebugDialogProps {
   open: boolean
@@ -20,35 +27,6 @@ interface DebugDialogProps {
   errors: ExtendedError[]
   errorCategories: string[]
   warnings: string[]
-}
-
-interface DebugCategory {
-  key:
-    | 'Communication'
-    | 'EncodingDecoding'
-    | 'Visualization'
-    | 'Authentication'
-    | 'Warning'
-  name: string
-  icon: string
-  isWarning?: boolean
-}
-
-const DEBUG_CATEGORIES: DebugCategory[] = [
-  { key: 'Communication', name: 'Communication', icon: 'wifi_off' },
-  {
-    key: 'EncodingDecoding',
-    name: 'Data encoding/decoding',
-    icon: 'data_object',
-  },
-  { key: 'Visualization', name: 'Visualization', icon: 'hide_image' },
-  { key: 'Authentication', name: 'Authentication', icon: 'lock' },
-  { key: 'Warning', name: 'Warning', icon: 'warning', isWarning: true },
-]
-
-interface DebugMessage {
-  message: string
-  source?: string
 }
 
 function DebugCategoryCard({
@@ -64,10 +42,13 @@ function DebugCategoryCard({
 }): React.ReactElement {
   const count = messages.length
   const hasItems = count > 0
+  const panelId = React.useId()
   return (
     <div className="overflow-hidden rounded-[10px] border border-line">
       <button
         type="button"
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? panelId : undefined}
         onClick={onToggle}
         className="flex w-full items-center gap-2.5 bg-panel px-3.5 py-[11px] text-left text-[13px] font-medium text-ink hover:bg-subtle"
       >
@@ -102,7 +83,10 @@ function DebugCategoryCard({
         </span>
       </button>
       {isOpen && (
-        <div className="flex flex-col border-t border-line-soft bg-subtle">
+        <div
+          id={panelId}
+          className="flex flex-col border-t border-line-soft bg-subtle"
+        >
           {withOccurrenceKeys(messages, (message) => message.message).map(
             ({ item, key }) => (
               <div
@@ -141,25 +125,12 @@ export function DebugDialog({
   const [openCategories, setOpenCategories] = useState<Set<string>>(
     () => new Set(['Communication']),
   )
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useCopyToClipboard(1500)
 
-  const messagesByCategory = React.useMemo(() => {
-    const grouped = groupErrorsByCategory(errors, errorCategories)
-    const result: Record<DebugCategory['key'], DebugMessage[]> = {
-      Communication: [],
-      EncodingDecoding: [],
-      Visualization: [],
-      Authentication: [],
-      Warning: warnings.map((message) => ({ message })),
-    }
-    errors.forEach((error, index) => {
-      const key = errorCategories[index] as DebugCategory['key']
-      if (key in grouped) {
-        result[key].push({ message: error.message, source: error.source })
-      }
-    })
-    return result
-  }, [errors, errorCategories, warnings])
+  const messagesByCategory = React.useMemo(
+    () => buildDebugMessages(errors, errorCategories, warnings),
+    [errors, errorCategories, warnings],
+  )
 
   const toggleCategory = (key: string): void => {
     setOpenCategories((prev) => {
@@ -174,24 +145,9 @@ export function DebugDialog({
   }
 
   const copyReport = (): void => {
-    const lines: string[] = [
-      '=== Slim Debug Report ===',
-      `Generated: ${new Date().toISOString()}`,
-      `User agent: ${navigator.userAgent}`,
-      '',
-    ]
-    DEBUG_CATEGORIES.forEach((category) => {
-      const messages = messagesByCategory[category.key]
-      lines.push(`## ${category.name} (${messages.length})`)
-      messages.forEach((item, index) => {
-        const source = item.source !== undefined ? ` [${item.source}]` : ''
-        lines.push(`  ${index + 1}. ${item.message}${source}`)
-      })
-      lines.push('')
-    })
-    void navigator.clipboard?.writeText(lines.join('\n'))
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
+    void copy(
+      formatDebugReport(messagesByCategory, new Date(), navigator.userAgent),
+    )
   }
 
   return (

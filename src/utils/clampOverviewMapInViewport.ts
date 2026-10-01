@@ -2,8 +2,11 @@ import { getCenter, getHeight, getWidth } from 'ol/extent'
 import type OlMap from 'ol/Map'
 import type View from 'ol/View'
 
-import type { OverviewMapSizeBounds } from './fitOverviewMapSize'
-import { fitOverviewMapSize, overviewMapSizeBounds } from './fitOverviewMapSize'
+import {
+  constrainBoundsToCard,
+  fitOverviewMapSize,
+  overviewMapSizeBounds,
+} from './fitOverviewMapSize'
 
 /** Overview card offset from the right/bottom viewport edges (px). */
 const OVERVIEW_CARD_INSET_PX = 14
@@ -125,23 +128,6 @@ function syncOverviewOpenLayersMap(volumeViewer: object): void {
   }
 }
 
-function syncCollapseButtonLayout(overview: HTMLElement): void {
-  const collapseButton = overview.querySelector(':scope > button')
-  if (!(collapseButton instanceof HTMLElement)) {
-    return
-  }
-  collapseButton.style.margin = '0'
-  if (overview.classList.contains('ol-collapsed')) {
-    collapseButton.style.position = ''
-    collapseButton.style.bottom = ''
-    collapseButton.style.left = ''
-  } else {
-    collapseButton.style.position = 'absolute'
-    collapseButton.style.bottom = '0'
-    collapseButton.style.left = '0'
-  }
-}
-
 export type ClampOverviewMapOptions = {
   /**
    * VolumeImageViewer instance. When provided, retargets the overview view's
@@ -169,26 +155,15 @@ export function clampOverviewMapInViewport(
 
   const chromeY = verticalChromePx(mapEl) + OVERVIEW_CARD_CHROME_PX
   const chromeX = horizontalChromePx(mapEl) + OVERVIEW_CARD_CHROME_PX
-  const baseBounds = overviewMapSizeBounds(
-    container.clientWidth,
-    container.clientHeight,
-    chromeX,
-    chromeY,
-  )
-  const maxMapWidth = Math.min(
-    baseBounds.maxMapWidth,
-    OVERVIEW_CARD_MAP_WIDTH_PX,
-  )
-  const bounds: OverviewMapSizeBounds = {
-    ...baseBounds,
-    maxMapWidth,
-    preferredMaxWidth: maxMapWidth,
-    preferredMaxHeight: Math.min(
-      baseBounds.maxMapHeight,
-      OVERVIEW_CARD_MAP_HEIGHT_PX,
+  const bounds = constrainBoundsToCard(
+    overviewMapSizeBounds(
+      container.clientWidth,
+      container.clientHeight,
+      chromeX,
+      chromeY,
     ),
-    minMapWidth: Math.min(baseBounds.minMapWidth, maxMapWidth),
-  }
+    { width: OVERVIEW_CARD_MAP_WIDTH_PX, height: OVERVIEW_CARD_MAP_HEIGHT_PX },
+  )
 
   overview.style.right = `${OVERVIEW_CARD_INSET_PX}px`
   overview.style.bottom = `${OVERVIEW_CARD_INSET_PX}px`
@@ -197,8 +172,6 @@ export function clampOverviewMapInViewport(
   overview.style.margin = '0'
   mapEl.style.margin = '0'
   mapEl.style.padding = '0'
-
-  syncCollapseButtonLayout(overview)
 
   const height =
     Number.parseFloat(mapEl.style.height || '') || mapEl.clientHeight

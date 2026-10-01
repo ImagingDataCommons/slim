@@ -41,11 +41,11 @@ export const CONFIG_DEFAULTS: Record<string, unknown> = {
   'servers[0].write': false,
 }
 
-const SECRET_KEY_PATTERN = /secret|password|token|clientid|apikey/i
+const SECRET_KEY_PATTERN =
+  /(secret|token|password|passwd|authorization|bearer|credential|api[-_]?key|private[-_]?key|client[-_]?secret)/i
 
-function isSecretPath(path: string): boolean {
-  const lastSegment = path.split('.').pop() ?? path
-  return SECRET_KEY_PATTERN.test(lastSegment)
+export function isSecretKey(key: string): boolean {
+  return SECRET_KEY_PATTERN.test(key)
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -68,19 +68,35 @@ export function formatConfigValue(value: unknown): string {
   return String(value)
 }
 
-/** Replace secret-looking leaf values with {@link MASKED_VALUE}. */
-export function maskConfig(value: unknown, path = ''): unknown {
-  if (Array.isArray(value)) {
-    return value.map((item, index) => maskConfig(item, `${path}[${index}]`))
-  }
+/** Replace every defined leaf, keeping the shape of objects and arrays. */
+function maskAll(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(maskAll)
   if (isPlainObject(value)) {
     const result: Record<string, unknown> = {}
     Object.entries(value).forEach(([key, item]) => {
-      const childPath = path === '' ? key : `${path}.${key}`
-      result[key] =
-        !isGroupValue(item) && isSecretPath(childPath) && item !== undefined
-          ? MASKED_VALUE
-          : maskConfig(item, childPath)
+      result[key] = maskAll(item)
+    })
+    return result
+  }
+  return value === undefined ? undefined : MASKED_VALUE
+}
+
+/**
+ * Replace values under secret-looking keys with {@link MASKED_VALUE},
+ * including every leaf of a nested object or array under such a key.
+ */
+export function maskConfig(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map((item) => maskConfig(item))
+  if (isPlainObject(value)) {
+    const result: Record<string, unknown> = {}
+    Object.entries(value).forEach(([key, item]) => {
+      if (!isSecretKey(key)) {
+        result[key] = maskConfig(item)
+      } else if (isGroupValue(item)) {
+        result[key] = maskAll(item)
+      } else {
+        result[key] = item === undefined ? undefined : MASKED_VALUE
+      }
     })
     return result
   }

@@ -1,6 +1,6 @@
 import { detect } from 'detect-browser'
 import type * as React from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 
 import appPackageJson from '../../../../../package.json'
 import { Button } from '../../../../components/ui/button'
@@ -13,28 +13,28 @@ import {
 import { Icon } from '../../../../components/ui/icon'
 import { SegmentedControl } from '../../../../components/ui/segmented'
 import { Switch } from '../../../../components/ui/switch'
-import { type Theme, useTheme } from '../../../../contexts/ThemeContext'
+import type { Theme } from '../../../../contexts/ThemeContext'
+import { useCopyToClipboard } from '../../../../hooks/useCopyToClipboard'
 import { cn } from '../../../../lib/utils'
+import { downloadTextFile } from '../../../../utils/download'
+import {
+  type PreferencesTab,
+  usePreferencesDraft,
+} from '../../hooks/usePreferencesDraft'
+import {
+  buildSupportInfo,
+  formatBrowserLabel,
+  getDependencyVersion,
+} from '../../utils/about'
 import {
   filterConfigRows,
   flattenConfig,
   formatConfigValue,
   maskConfig,
 } from '../../utils/configRows'
-import {
-  loadPreferences,
-  type MeasurementUnit,
-  STROKE_COLORS,
-  savePreferences,
-  type UserPreferences,
-} from '../../utils/preferences'
+import { type MeasurementUnit, STROKE_COLORS } from '../../utils/preferences'
 
-export type PreferencesTab =
-  | 'general'
-  | 'annotations'
-  | 'keys'
-  | 'config'
-  | 'about'
+export type { PreferencesTab }
 
 interface PreferencesDialogProps {
   open: boolean
@@ -93,6 +93,11 @@ function SectionLabel({
   )
 }
 
+interface PreferenceControlProps {
+  'aria-labelledby': string
+  'aria-describedby'?: string
+}
+
 function PreferenceRow({
   label,
   description,
@@ -100,17 +105,28 @@ function PreferenceRow({
 }: {
   label: string
   description?: string
-  children: React.ReactNode
+  /** Receives the ARIA props that name the control after the row label */
+  children: (controlProps: PreferenceControlProps) => React.ReactNode
 }): React.ReactElement {
+  const id = useId()
+  const labelId = `${id}-label`
+  const descriptionId = description !== undefined ? `${id}-desc` : undefined
   return (
     <div className="flex items-center gap-4 border-b border-line-soft py-3">
       <div className="min-w-0 flex-1">
-        <div className="font-medium text-ink">{label}</div>
+        <div id={labelId} className="font-medium text-ink">
+          {label}
+        </div>
         {description !== undefined && (
-          <div className="mt-0.5 text-[12px] text-ink-muted">{description}</div>
+          <div id={descriptionId} className="mt-0.5 text-[12px] text-ink-muted">
+            {description}
+          </div>
         )}
       </div>
-      {children}
+      {children({
+        'aria-labelledby': labelId,
+        'aria-describedby': descriptionId,
+      })}
     </div>
   )
 }
@@ -135,6 +151,7 @@ function NavButton({
   return (
     <button
       type="button"
+      aria-current={isActive ? 'page' : undefined}
       onClick={onSelect}
       className={cn(
         'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium transition-colors',
@@ -158,14 +175,12 @@ function CopyButton({
   label?: string
   className?: string
 }): React.ReactElement {
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useCopyToClipboard(1500)
   return (
     <button
       type="button"
       onClick={() => {
-        void navigator.clipboard?.writeText(text)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 1500)
+        void copy(text)
       }}
       className={cn(
         'flex flex-none items-center gap-1 rounded-md border border-line-input bg-panel font-medium hover:bg-subtle',
@@ -181,8 +196,8 @@ function CopyButton({
 
 function configValueColor(raw: unknown): string {
   if (typeof raw === 'number') return 'text-primary'
-  if (typeof raw === 'boolean') return 'text-[#7a4bd1] dark:text-[#a98bf0]'
-  if (typeof raw === 'string') return 'text-[#1d7a55] dark:text-[#4fc39a]'
+  if (typeof raw === 'boolean') return 'text-syntax-boolean'
+  if (typeof raw === 'string') return 'text-syntax-string'
   return 'text-ink-muted'
 }
 
@@ -209,13 +224,7 @@ function ConfigurationTab(): React.ReactElement {
   const configName = process.env.REACT_APP_CONFIG ?? 'local'
 
   const download = (): void => {
-    const blob = new Blob([json], { type: 'text/javascript' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${configName}.js`
-    link.click()
-    URL.revokeObjectURL(url)
+    downloadTextFile(`${configName}.js`, json, 'text/javascript')
   }
 
   return (
@@ -224,6 +233,8 @@ function ConfigurationTab(): React.ReactElement {
         <div className="flex h-8 min-w-0 max-w-[340px] flex-1 items-center gap-2 rounded-lg border border-line-input px-2.5 focus-within:border-primary">
           <Icon name="search" size={18} className="text-ink-muted" />
           <input
+            type="search"
+            aria-label="Search configuration"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search keys and values"
@@ -232,6 +243,7 @@ function ConfigurationTab(): React.ReactElement {
         </div>
         <button
           type="button"
+          aria-pressed={onlyChanged}
           onClick={() => setOnlyChanged((value) => !value)}
           className={cn(
             'flex h-8 items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-medium',
@@ -356,62 +368,28 @@ function AboutTab({
 }: {
   app: PreferencesDialogProps['app']
 }): React.ReactElement {
-  const browser = detect()
-  const slimCommit = process.env.REACT_APP_GIT_SHA
-  const dmvCommit = process.env.REACT_APP_DMV_GIT_SHA
-  const packageJson = appPackageJson as {
-    dependencies?: Record<string, string>
-    devDependencies?: Record<string, string>
-  }
-  const dmvVersion = (
-    packageJson.dependencies?.['dicom-microscopy-viewer'] ??
-    packageJson.devDependencies?.['dicom-microscopy-viewer'] ??
-    'unknown'
-  ).replace(/^[^0-9]*/, '')
-  const browserLabel =
-    browser !== null
-      ? [
-          `${browser.name ?? ''} ${browser.version ?? ''}`.trim(),
-          browser.os ?? '',
-        ]
-          .filter((part) => part !== '')
-          .join(' · ')
-      : navigator.userAgent
-
-  const rows: Array<{
-    id: string
-    title: string
-    meta: string
-    hash?: string
-  }> = [
-    {
-      id: 'slim',
-      title: 'Slim commit',
-      meta: `Version ${app.version}`,
-      hash:
-        slimCommit !== undefined && slimCommit !== '' ? slimCommit : 'unknown',
-    },
-    {
-      id: 'dmv',
-      title: 'DICOM Microscopy Viewer',
-      meta: `Version ${dmvVersion}`,
-      hash: dmvCommit !== undefined && dmvCommit !== '' ? dmvCommit : 'unknown',
-    },
-    { id: 'browser', title: 'Browser & OS', meta: browserLabel },
-  ]
-  const supportText = [
-    `${app.name} ${app.version}`,
-    `Slim commit: ${rows[0].hash ?? 'unknown'}`,
-    `DICOM Microscopy Viewer ${dmvVersion}: ${rows[1].hash ?? 'unknown'}`,
-    `Browser & OS: ${browserLabel}`,
-    `User agent: ${navigator.userAgent}`,
-  ].join('\n')
+  const { rows, supportText } = useMemo(
+    () =>
+      buildSupportInfo({
+        appName: app.name,
+        appVersion: app.version,
+        slimCommit: process.env.REACT_APP_GIT_SHA,
+        dmvVersion: getDependencyVersion(
+          appPackageJson,
+          'dicom-microscopy-viewer',
+        ),
+        dmvCommit: process.env.REACT_APP_DMV_GIT_SHA,
+        browserLabel: formatBrowserLabel(detect(), navigator.userAgent),
+        userAgent: navigator.userAgent,
+      }),
+    [app.name, app.version],
+  )
   const homepageLabel = app.homepage.replace(/^https?:\/\//, '')
 
   return (
     <div className="grid h-full min-h-0 min-w-0 flex-1 grid-cols-[240px_minmax(0,1fr)] content-start overflow-auto">
       <div className="flex h-full flex-col gap-1.5 border-r border-line-soft bg-subtle px-6 py-7">
-        <div className="grid h-[52px] w-[52px] place-items-center rounded-[14px] bg-primary text-[24px] font-bold leading-none text-white">
+        <div className="grid h-[52px] w-[52px] place-items-center rounded-[14px] bg-primary text-[24px] font-bold leading-none text-primary-foreground">
           S
         </div>
         <div className="mt-2.5 text-[20px] font-semibold leading-[1.2] tracking-[-0.01em] text-ink">
@@ -476,29 +454,18 @@ export function PreferencesDialog({
   app,
   initialTab = 'general',
 }: PreferencesDialogProps): React.ReactElement {
-  const { theme, setTheme } = useTheme()
-  const [activeTab, setActiveTab] = useState<PreferencesTab>(initialTab)
-  const [draftTheme, setDraftTheme] = useState<Theme>(theme)
-  const [draft, setDraft] = useState<UserPreferences>(loadPreferences)
-
-  useEffect(() => {
-    if (open) {
-      setActiveTab(initialTab)
-      setDraftTheme(theme)
-      setDraft(loadPreferences())
-    }
-  }, [open, initialTab, theme])
-
-  const update = <K extends keyof UserPreferences>(
-    key: K,
-    value: UserPreferences[K],
-  ): void => {
-    setDraft((prev) => ({ ...prev, [key]: value }))
-  }
+  const {
+    activeTab,
+    setActiveTab,
+    draftTheme,
+    setDraftTheme,
+    draft,
+    update,
+    save,
+  } = usePreferencesDraft(open, initialTab)
 
   const handleSave = (): void => {
-    savePreferences(draft)
-    setTheme(draftTheme)
+    save()
     onOpenChange(false)
   }
 
@@ -558,48 +525,50 @@ export function PreferencesDialog({
                     />
                   </div>
                   <PreferenceRow
-                    label="Date format"
-                    description="Used in the worklist and panels"
-                  >
-                    <div className="flex h-[34px] items-center gap-1.5 rounded-lg border border-line-input pl-2.5 pr-2 font-mono text-[12.5px] text-ink">
-                      12 Sep 2026
-                    </div>
-                  </PreferenceRow>
-                  <PreferenceRow
                     label="Measurement units"
                     description="Used for lengths and areas of ROIs"
                   >
-                    <SegmentedControl
-                      fill
-                      className="w-40"
-                      aria-label="Measurement units"
-                      value={draft.units}
-                      onChange={(value) => update('units', value)}
-                      options={UNIT_OPTIONS}
-                    />
+                    {() => (
+                      <SegmentedControl
+                        fill
+                        className="w-40"
+                        aria-label="Measurement units"
+                        value={draft.units}
+                        onChange={(value) => update('units', value)}
+                        options={UNIT_OPTIONS}
+                      />
+                    )}
                   </PreferenceRow>
                   <SectionLabel>Worklist</SectionLabel>
                   <PreferenceRow
                     label="Compact rows"
                     description="Show more studies per page"
                   >
-                    <Switch
-                      size="lg"
-                      checked={draft.compactRows}
-                      onCheckedChange={(value) => update('compactRows', value)}
-                    />
+                    {(controlProps) => (
+                      <Switch
+                        {...controlProps}
+                        size="lg"
+                        checked={draft.compactRows}
+                        onCheckedChange={(value) =>
+                          update('compactRows', value)
+                        }
+                      />
+                    )}
                   </PreferenceRow>
                   <PreferenceRow
                     label="Remember filters"
-                    description="Keep search and filters between sessions"
+                    description="Keep the date filter between sessions"
                   >
-                    <Switch
-                      size="lg"
-                      checked={draft.rememberFilters}
-                      onCheckedChange={(value) =>
-                        update('rememberFilters', value)
-                      }
-                    />
+                    {(controlProps) => (
+                      <Switch
+                        {...controlProps}
+                        size="lg"
+                        checked={draft.rememberFilters}
+                        onCheckedChange={(value) =>
+                          update('rememberFilters', value)
+                        }
+                      />
+                    )}
                   </PreferenceRow>
                 </>
               )}
@@ -615,6 +584,7 @@ export function PreferencesDialog({
                           key={color}
                           type="button"
                           aria-label={`Stroke color ${color}`}
+                          aria-pressed={draft.strokeColor === color}
                           onClick={() => update('strokeColor', color)}
                           className="h-7 w-7 rounded-full border-2 border-panel"
                           style={{
@@ -634,6 +604,7 @@ export function PreferencesDialog({
                     </div>
                     <input
                       type="range"
+                      aria-label="Stroke width"
                       min={1}
                       max={6}
                       value={draft.strokeWidth}
@@ -650,25 +621,31 @@ export function PreferencesDialog({
                     label="Show ROI labels"
                     description="Display the ROI name above each shape"
                   >
-                    <Switch
-                      size="lg"
-                      checked={draft.showRoiLabels}
-                      onCheckedChange={(value) =>
-                        update('showRoiLabels', value)
-                      }
-                    />
+                    {(controlProps) => (
+                      <Switch
+                        {...controlProps}
+                        size="lg"
+                        checked={draft.showRoiLabels}
+                        onCheckedChange={(value) =>
+                          update('showRoiLabels', value)
+                        }
+                      />
+                    )}
                   </PreferenceRow>
                   <PreferenceRow
                     label="Confirm before removing"
                     description="Ask before deleting a selected ROI"
                   >
-                    <Switch
-                      size="lg"
-                      checked={draft.confirmRoiRemoval}
-                      onCheckedChange={(value) =>
-                        update('confirmRoiRemoval', value)
-                      }
-                    />
+                    {(controlProps) => (
+                      <Switch
+                        {...controlProps}
+                        size="lg"
+                        checked={draft.confirmRoiRemoval}
+                        onCheckedChange={(value) =>
+                          update('confirmRoiRemoval', value)
+                        }
+                      />
+                    )}
                   </PreferenceRow>
                 </>
               )}

@@ -7,16 +7,12 @@ export { ServerSelectionDialog } from './components/dialogs/ServerSelectionDialo
 export { Header } from './components/Header'
 export { UserMenu } from './components/UserMenu'
 export type { ExtendedError } from './hooks/useNotifications'
-export {
-  groupErrorsByCategory,
-  useNotifications,
-} from './hooks/useNotifications'
+export { useNotifications } from './hooks/useNotifications'
+export { usePreferences } from './hooks/usePreferences'
 export { useServerSelection } from './hooks/useServerSelection'
-
 export {
-  extractHostname,
-  isGcpDicomStorePath,
-  isValidServerUrl,
-  normalizeServerUrl,
-  parseServerUrl,
-} from './utils/serverUrl'
+  loadPreferences,
+  savePreferences,
+  type UserPreferences,
+} from './utils/preferences'
+export { isValidServerUrl } from './utils/serverUrl'

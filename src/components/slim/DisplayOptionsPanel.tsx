@@ -1,34 +1,90 @@
 import type * as React from 'react'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 
 import { cn } from '../../lib/utils'
+import type { DisplayOptionDescriptor } from '../../utils/displayOptions'
 import { Icon } from '../ui/icon'
 import { Switch } from '../ui/switch'
 
-export interface DisplayOption {
-  id: string
-  label: string
-  /** Short label used in the collapsed summary, e.g. "ICC" or "Interp." */
-  shortLabel?: string
-  description: string
-  enabled: boolean
-  disabled?: boolean
+export interface DisplayOption extends DisplayOptionDescriptor {
   onChange: (enabled: boolean) => void
+}
+
+/**
+ * Numeric text field below the switches (e.g. clustering threshold). The
+ * value is the raw text so partial input like "0." survives; callers parse.
+ */
+export interface DisplayOptionsAdditionalInput {
+  label: string
+  description: string
+  placeholder: string
+  unit: string
+  inputValue?: string
+  onInputChange?: (value: string) => void
+  /** @deprecated Use `inputValue` */
+  value?: string
+  /** @deprecated Use `onInputChange` */
+  onChange?: (value: string) => void
 }
 
 interface DisplayOptionsPanelProps {
   options: DisplayOption[]
-  /** Optional numeric field below the switches (e.g. clustering threshold) */
-  additionalInput?: {
-    label: string
-    description: string
-    value: string
-    placeholder: string
-    unit: string
-    onChange: (value: string) => void
-  }
+  additionalInput?: DisplayOptionsAdditionalInput
   defaultOpen?: boolean
   className?: string
+}
+
+/** Binds a toggle handler to plain option descriptors */
+export function bindDisplayOptions(
+  descriptors: DisplayOptionDescriptor[],
+  onToggle: (id: string, enabled: boolean) => void,
+): DisplayOption[] {
+  return descriptors.map((descriptor) => ({
+    ...descriptor,
+    onChange: (enabled: boolean) => onToggle(descriptor.id, enabled),
+  }))
+}
+
+function AdditionalInputField({
+  input,
+}: {
+  input: DisplayOptionsAdditionalInput
+}): React.ReactElement {
+  const labelId = useId()
+  const descriptionId = useId()
+  /** Text typed while focused, so parent-side normalization can't eat "0." */
+  const [draft, setDraft] = useState<string | null>(null)
+  const value = input.inputValue ?? input.value ?? ''
+  const handleChange = input.onInputChange ?? input.onChange
+
+  return (
+    <div className="flex flex-col gap-1.5 pb-3 pt-2.5">
+      <div id={labelId} className="text-[12.5px] font-medium text-ink">
+        {input.label}
+      </div>
+      <div className="flex h-8 items-center overflow-hidden rounded-[7px] border border-line-input focus-within:border-primary">
+        <input
+          inputMode="decimal"
+          aria-labelledby={labelId}
+          aria-describedby={descriptionId}
+          value={draft ?? value}
+          onChange={(event) => {
+            setDraft(event.target.value)
+            handleChange?.(event.target.value)
+          }}
+          onBlur={() => setDraft(null)}
+          placeholder={input.placeholder}
+          className="h-full min-w-0 flex-1 border-0 bg-transparent px-2.5 font-mono text-[12px] text-ink outline-none placeholder:text-ink-fainter"
+        />
+        <span className="grid h-full place-items-center border-l border-line-input bg-subtle px-2.5 font-mono text-[11.5px] font-medium text-ink-secondary">
+          {input.unit}
+        </span>
+      </div>
+      <div id={descriptionId} className="text-[11.5px] text-ink-muted">
+        {input.description}
+      </div>
+    </div>
+  )
 }
 
 /** Summary shown in the collapsed header, e.g. "ICC on · Gamma off". */
@@ -109,28 +165,7 @@ export function DisplayOptionsPanel({
           ))}
 
           {additionalInput !== undefined && (
-            <div className="flex flex-col gap-1.5 pb-3 pt-2.5">
-              <div className="text-[12.5px] font-medium text-ink">
-                {additionalInput.label}
-              </div>
-              <div className="flex h-8 items-center overflow-hidden rounded-[7px] border border-line-input focus-within:border-primary">
-                <input
-                  inputMode="decimal"
-                  value={additionalInput.value}
-                  onChange={(event) =>
-                    additionalInput.onChange(event.target.value)
-                  }
-                  placeholder={additionalInput.placeholder}
-                  className="h-full min-w-0 flex-1 border-0 bg-transparent px-2.5 font-mono text-[12px] text-ink outline-none placeholder:text-ink-fainter"
-                />
-                <span className="grid h-full place-items-center border-l border-line-input bg-subtle px-2.5 font-mono text-[11.5px] font-medium text-ink-secondary">
-                  {additionalInput.unit}
-                </span>
-              </div>
-              <div className="text-[11.5px] text-ink-muted">
-                {additionalInput.description}
-              </div>
-            </div>
+            <AdditionalInputField input={additionalInput} />
           )}
         </div>
       )}

@@ -1,0 +1,55 @@
+import {
+  buildDefaultRoiStyle,
+  formatRoiRemovalMessage,
+  roiStrokeToCssColor,
+} from '../roiUtils'
+
+describe('formatRoiRemovalMessage', () => {
+  it('uses singular and plural forms', () => {
+    expect(formatRoiRemovalMessage(1)).toBe('Annotation was removed')
+    expect(formatRoiRemovalMessage(3)).toBe('3 annotations were removed')
+  })
+})
+
+describe('roiStrokeToCssColor', () => {
+  it('converts RGB and RGBA strokes, ignoring alpha', () => {
+    expect(roiStrokeToCssColor([255, 234, 0], 'fallback')).toBe(
+      'rgb(255, 234, 0)',
+    )
+    expect(roiStrokeToCssColor([0, 153, 255, 0.4], 'fallback')).toBe(
+      'rgb(0, 153, 255)',
+    )
+  })
+
+  it('rounds and clamps channels', () => {
+    expect(roiStrokeToCssColor([12.6, -4, 300], 'fallback')).toBe(
+      'rgb(13, 0, 255)',
+    )
+  })
+
+  it('uses the fallback for missing or malformed colors', () => {
+    expect(roiStrokeToCssColor(undefined, 'rgb(var(--primary))')).toBe(
+      'rgb(var(--primary))',
+    )
+    expect(roiStrokeToCssColor([1, 2], 'fallback')).toBe('fallback')
+    expect(roiStrokeToCssColor([1, Number.NaN, 3], 'fallback')).toBe(
+      'fallback',
+    )
+  })
+})
+
+describe('buildDefaultRoiStyle', () => {
+  it('derives fill and point style from the stroke preference', () => {
+    expect(
+      buildDefaultRoiStyle({
+        strokeColor: [31, 90, 209],
+        strokeWidth: 3,
+        radius: 5,
+      }),
+    ).toEqual({
+      stroke: { color: [31, 90, 209], width: 3 },
+      fill: { color: [31, 90, 209, 0.2] },
+      image: { circle: { fill: { color: [31, 90, 209] }, radius: 5 } },
+    })
+  })
+})

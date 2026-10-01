@@ -1,10 +1,59 @@
 import {
+  buildStudySummary,
   formatDisplayDate,
   formatDisplayTime,
   formatGroupedNumber,
   formatPersonName,
   formatSex,
+  formatStudyDateTime,
+  formatStudyLabel,
 } from '../displayFormat'
+
+describe('formatStudyDateTime', () => {
+  it('joins date and time', () => {
+    expect(formatStudyDateTime('20260912', '094215')).toBe('12 Sep 2026, 09:42')
+  })
+
+  it('omits missing parts', () => {
+    expect(formatStudyDateTime('20260912', undefined)).toBe('12 Sep 2026')
+    expect(formatStudyDateTime(undefined, '0942')).toBe('09:42')
+    expect(formatStudyDateTime(undefined, undefined)).toBe('')
+  })
+})
+
+describe('formatStudyLabel', () => {
+  it('combines the study ID and date', () => {
+    expect(formatStudyLabel('S24-01542', 'ACC1', '20260912')).toBe(
+      'S24-01542 · 12 Sep 2026',
+    )
+  })
+
+  it('falls back to the accession number', () => {
+    expect(formatStudyLabel('', 'ACC1', '20260912')).toBe(
+      'ACC1 · 12 Sep 2026',
+    )
+    expect(formatStudyLabel(undefined, 'ACC1', undefined)).toBe('ACC1')
+  })
+
+  it('returns an empty string without identifiers or date', () => {
+    expect(formatStudyLabel(undefined, undefined, undefined)).toBe('')
+  })
+})
+
+describe('buildStudySummary', () => {
+  it('builds the header breadcrumb labels', () => {
+    expect(
+      buildStudySummary({
+        PatientName: { Alphabetic: 'Whitfield^Margaret^Anne' },
+        StudyID: 'S24-01542',
+        StudyDate: '20260912',
+      }),
+    ).toEqual({
+      patientName: 'Whitfield, Margaret A.',
+      studyLabel: 'S24-01542 · 12 Sep 2026',
+    })
+  })
+})
 
 describe('formatDisplayDate', () => {
   it('formats DICOM DA values', () => {

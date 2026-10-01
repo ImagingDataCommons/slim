@@ -16,7 +16,7 @@ interface ItemProps {
  * and trailing content.
  */
 function Item({
-  uid,
+  uid: _uid,
   identifier,
   attributes,
   groups,
@@ -25,7 +25,7 @@ function Item({
 }: ItemProps): React.ReactElement {
   const title = type !== undefined ? `${type}: ${identifier}` : identifier
   return (
-    <Description key={uid} header={title} attributes={attributes}>
+    <Description header={title} attributes={attributes}>
       {groups?.map((group) => (
         <div
           key={group.name}

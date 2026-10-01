@@ -3,35 +3,14 @@ import type * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
 
 import { cn } from '../lib/utils'
+import { lutToCssGradient } from '../utils/lutGradient'
+import {
+  formatValueRange,
+  getRealWorldValueRange,
+  type ParametricMapDatasetLike,
+} from '../utils/parametricMap'
 import { Icon } from './ui/icon'
 import { Slider } from './ui/slider'
-
-interface RealWorldValueMapping {
-  RealWorldValueFirstValueMapped?: number
-  RealWorldValueLastValueMapped?: number
-}
-
-/** "0.0 – 1.0" from the first Real World Value Mapping item, if present. */
-function getMappedValueRange(
-  metadata: dmv.metadata.ParametricMap | undefined,
-): string | undefined {
-  const dataset = metadata as unknown as
-    | {
-        RealWorldValueMappingSequence?: RealWorldValueMapping[]
-        SharedFunctionalGroupsSequence?: Array<{
-          RealWorldValueMappingSequence?: RealWorldValueMapping[]
-        }>
-      }
-    | undefined
-  const item =
-    dataset?.SharedFunctionalGroupsSequence?.[0]
-      ?.RealWorldValueMappingSequence?.[0] ??
-    dataset?.RealWorldValueMappingSequence?.[0]
-  const first = item?.RealWorldValueFirstValueMapped
-  const last = item?.RealWorldValueLastValueMapped
-  if (typeof first !== 'number' || typeof last !== 'number') return undefined
-  return `${first.toFixed(1)} – ${last.toFixed(1)}`
-}
 
 interface MappingItemProps {
   mapping: dmv.mapping.ParameterMapping
@@ -39,6 +18,8 @@ interface MappingItemProps {
   isVisible: boolean
   defaultStyle: {
     opacity: number
+    /** Drives the value bar gradient when provided */
+    paletteColorLookupTable?: { data: number[][] }
   }
   onVisibilityChange: ({
     mappingUID,
@@ -59,7 +40,6 @@ interface MappingItemProps {
 }
 
 interface MappingItemState {
-  isVisible: boolean
   currentStyle: {
     opacity: number
   }
@@ -72,7 +52,6 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
   constructor(props: MappingItemProps) {
     super(props)
     this.state = {
-      isVisible: this.props.isVisible,
       currentStyle: {
         opacity: this.props.defaultStyle.opacity,
       },
@@ -84,7 +63,6 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
       mappingUID: this.props.mapping.uid,
       isVisible: checked,
     })
-    this.setState({ isVisible: checked })
   }
 
   handleOpacityChange = (opacity: number | null): void => {
@@ -105,7 +83,14 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
 
   render(): React.ReactNode {
     const { mapping } = this.props
-    const range = getMappedValueRange(this.props.metadata?.[0])
+    const dataset = this.props.metadata?.[0] as
+      | ParametricMapDatasetLike
+      | undefined
+    const valueRange = getRealWorldValueRange(dataset)
+    const range =
+      valueRange !== undefined ? formatValueRange(valueRange) : undefined
+    const palette = this.props.defaultStyle.paletteColorLookupTable
+    const gradient = palette !== undefined ? lutToCssGradient(palette) : ''
     const opacity = this.state.currentStyle.opacity
 
     return (
@@ -142,7 +127,14 @@ class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
             />
           </button>
         </div>
-        <div className="h-2 rounded bg-[linear-gradient(90deg,#2c1b6b,#1f6fb0,#2fb08a,#e6d94a)]" />
+        <div
+          className={cn(
+            'h-2 rounded',
+            gradient === '' &&
+              'border border-line bg-gradient-to-r from-panel to-ink-muted',
+          )}
+          style={gradient !== '' ? { background: gradient } : undefined}
+        />
         <div className="flex items-center gap-2 text-[11.5px] text-ink-muted">
           Opacity
           <Slider

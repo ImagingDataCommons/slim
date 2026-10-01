@@ -15,9 +15,10 @@ import { useStudySummary } from '../contexts/StudySummaryContext'
 import type DicomWebManager from '../DicomWebManager'
 import type { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
+import { STUDY_PANEL_ID } from '../features/viewer/utils/panelIds'
 import { useSlides } from '../hooks/useSlides'
 import { cn } from '../lib/utils'
-import { formatDisplayDate, formatPersonName } from '../utils/displayFormat'
+import { buildStudySummary } from '../utils/displayFormat'
 import {
   findSlideBySeriesInstanceUID,
   seriesUidFromSlide,
@@ -278,19 +279,6 @@ interface ViewerProps extends RouteComponentProps {
   user?: User
 }
 
-/** "S24-01542 · 12 Sep 2026" for the header breadcrumb. */
-function formatStudyLabel(
-  studyID: string | undefined,
-  accessionNumber: string | undefined,
-  studyDate: string | undefined,
-): string {
-  const identifier =
-    studyID !== undefined && studyID !== '' ? studyID : accessionNumber
-  return [identifier, formatDisplayDate(studyDate)]
-    .filter((part) => part !== undefined && part !== '')
-    .join(' · ')
-}
-
 function Viewer(props: ViewerProps): JSX.Element | null {
   const { clients, studyInstanceUID, location, navigate } = props
   const { slides, isLoading } = useSlides({ clients, studyInstanceUID })
@@ -307,14 +295,7 @@ function Viewer(props: ViewerProps): JSX.Element | null {
       setSummary(null)
       return
     }
-    setSummary({
-      patientName: formatPersonName(summaryImage.PatientName),
-      studyLabel: formatStudyLabel(
-        summaryImage.StudyID,
-        summaryImage.AccessionNumber,
-        summaryImage.StudyDate,
-      ),
-    })
+    setSummary(buildStudySummary(summaryImage))
   }, [summaryImage, setSummary])
   useEffect(() => () => setSummary(null), [setSummary])
 
@@ -376,6 +357,7 @@ function Viewer(props: ViewerProps): JSX.Element | null {
   return (
     <div className="flex h-full min-h-0">
       <aside
+        id={STUDY_PANEL_ID}
         aria-label="Study panel"
         className={cn(
           'flex min-h-0 w-sidebar flex-none flex-col border-r border-line bg-panel',

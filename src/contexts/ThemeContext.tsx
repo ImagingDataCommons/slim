@@ -8,9 +8,12 @@ import {
   useState,
 } from 'react'
 
+import { readStorage, writeStorage } from '../utils/safeStorage'
+
 export type Theme = 'light' | 'dark' | 'system'
 export type ResolvedTheme = 'light' | 'dark'
 
+/** Also read by the pre-mount theme script in public/index.html */
 const THEME_STORAGE_KEY = 'slim-theme'
 
 interface ThemeContextValue {
@@ -20,8 +23,6 @@ interface ThemeContextValue {
   resolvedTheme: ResolvedTheme
   /** Update the theme setting */
   setTheme: (theme: Theme) => void
-  /** Toggle between light and dark mode */
-  toggleTheme: () => void
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined)
@@ -34,8 +35,7 @@ function getSystemTheme(): ResolvedTheme {
 }
 
 function getStoredTheme(): Theme | null {
-  if (typeof window === 'undefined') return null
-  const stored = localStorage.getItem(THEME_STORAGE_KEY)
+  const stored = readStorage(THEME_STORAGE_KEY)
   if (stored === 'light' || stored === 'dark' || stored === 'system') {
     return stored
   }
@@ -94,21 +94,16 @@ export function ThemeProvider({
 
   const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme)
-    localStorage.setItem(THEME_STORAGE_KEY, newTheme)
+    writeStorage(THEME_STORAGE_KEY, newTheme)
   }, [])
-
-  const toggleTheme = useCallback(() => {
-    setTheme(resolvedTheme === 'light' ? 'dark' : 'light')
-  }, [resolvedTheme, setTheme])
 
   const value = useMemo<ThemeContextValue>(
     () => ({
       theme,
       resolvedTheme,
       setTheme,
-      toggleTheme,
     }),
-    [theme, resolvedTheme, setTheme, toggleTheme],
+    [theme, resolvedTheme, setTheme],
   )
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
@@ -124,13 +119,4 @@ export function useTheme(): ThemeContextValue {
     throw new Error('useTheme must be used within a ThemeProvider')
   }
   return context
-}
-
-/**
- * Hook to check if the current theme is dark.
- * Useful for conditional rendering based on theme.
- */
-export function useIsDarkTheme(): boolean {
-  const { resolvedTheme } = useTheme()
-  return resolvedTheme === 'dark'
 }

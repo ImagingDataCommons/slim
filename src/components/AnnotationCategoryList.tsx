@@ -1,63 +1,16 @@
+import {
+  type AnnotationCategoryAndType,
+  type Category,
+  getCategories,
+} from '../utils/annotationCategories'
 import AnnotationCategoryItem from './AnnotationCategoryItem'
 import type { StyleOptions } from './SlideViewer/types'
 
-export interface AnnotationCategoryAndType {
-  uid: string
-  type: Omit<Type, 'uids'>
-  category: Omit<Category, 'types'>
-}
-export interface Type {
-  CodeValue: string
-  CodeMeaning: string
-  CodingSchemeDesignator: string
-  uids: string[]
-}
-export interface Category {
-  CodeValue: string
-  CodeMeaning: string
-  CodingSchemeDesignator: string
-  types: Type[]
-}
-
-type CategoryWithTypesRecord = Omit<Category, 'types'> & {
-  types: Record<string, Type>
-}
-
-const getCategories = (
-  annotations: AnnotationCategoryAndType[] | undefined,
-): Record<string, Category> => {
-  const categories: Record<string, CategoryWithTypesRecord> = {}
-
-  for (const annotation of annotations ?? []) {
-    const { category, type, uid } = annotation
-    const categoryKey = category.CodeMeaning
-    const typeKey = type.CodeMeaning
-
-    if (!(categoryKey in categories)) {
-      categories[categoryKey] = {
-        ...category,
-        types: {},
-      }
-    }
-    const cat = categories[categoryKey]
-    if (!(typeKey in cat.types)) {
-      cat.types[typeKey] = { ...type, uids: [] }
-    }
-    cat.types[typeKey].uids.push(uid)
-  }
-
-  /** Normalizing types so that it's an array instead of an object: */
-  const result: Record<string, Category> = {}
-  for (const categoryKey of Object.keys(categories)) {
-    const category = categories[categoryKey]
-    const typesArr = Object.keys(category.types).map(
-      (typeKey: string) => category.types[typeKey],
-    )
-    result[categoryKey] = { ...category, types: typesArr }
-  }
-
-  return result
-}
+export type {
+  AnnotationCategoryAndType,
+  Category,
+  Type,
+} from '../utils/annotationCategories'
 
 const AnnotationCategoryList = ({
   annotations,
@@ -88,11 +41,7 @@ const AnnotationCategoryList = ({
     const category = categories[categoryKey]
     return (
       <AnnotationCategoryItem
-        key={
-          category.CodeMeaning !== ''
-            ? category.CodeMeaning
-            : `category-${categoryKey}`
-        }
+        key={categoryKey}
         category={category}
         onChange={onChange}
         onStyleChange={onStyleChange}

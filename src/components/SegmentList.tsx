@@ -1,16 +1,28 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
+import {
+  buildClusteringThresholdInput,
+  buildSegmentDisplayOptions,
+} from '../utils/displayOptions'
 import SegmentItem from './SegmentItem'
-import { type DisplayOption, DisplayOptionsPanel } from './slim'
+import { BulkVisibilityControl } from './slim/BulkVisibilityControl'
+import {
+  bindDisplayOptions,
+  DisplayOptionsPanel,
+} from './slim/DisplayOptionsPanel'
 
-interface SegmentDisplaySettings {
-  clusteringEnabled: boolean
+export interface SegmentDisplaySettings {
   interpolationEnabled: boolean
-  clusteringThreshold: string
+  /** @deprecated Clustering belongs to AnnotationGroupList; listed only when set */
+  clusteringEnabled?: boolean
+  /** @deprecated Raw threshold text; the field is shown only when set */
+  clusteringThreshold?: string
 }
 
-interface SegmentListProps {
+interface SegmentListProps<
+  S extends SegmentDisplaySettings = SegmentDisplaySettings,
+> {
   segments: dmv.segment.Segment[]
   visibleSegmentUIDs: Set<string>
   metadata: {
@@ -20,6 +32,8 @@ interface SegmentListProps {
     [segmentUID: string]: {
       opacity: number
       color?: number[]
+      /** Drives the FRACTIONAL swatch gradient when provided */
+      paletteColorLookupTable?: { data: number[][] }
     }
   }
   onSegmentVisibilityChange: ({
@@ -40,19 +54,61 @@ interface SegmentListProps {
     }
   }) => void
   onSegmentClick: (segmentUID: string) => void
-  /** Display settings for clustering and interpolation */
-  displaySettings?: SegmentDisplaySettings
-  /** Callback when display settings change */
-  onDisplaySettingsChange?: (settings: SegmentDisplaySettings) => void
+  /** Display settings; the callback receives the same shape that was passed */
+  displaySettings?: S
+  onDisplaySettingsChange?: (settings: S) => void
 }
 
 /**
  * React component representing a list of Segments.
  */
-class SegmentList extends React.Component<
-  SegmentListProps,
-  Record<string, never>
-> {
+class SegmentList<
+  S extends SegmentDisplaySettings = SegmentDisplaySettings,
+> extends React.Component<SegmentListProps<S>, Record<string, never>> {
+  private renderDisplayOptions(): React.ReactNode {
+    const { displaySettings, onDisplaySettingsChange } = this.props
+    if (
+      displaySettings === undefined ||
+      onDisplaySettingsChange === undefined
+    ) {
+      return null
+    }
+    const options = bindDisplayOptions(
+      buildSegmentDisplayOptions(displaySettings),
+      (id, enabled) => {
+        if (id === 'clustering') {
+          onDisplaySettingsChange({
+            ...displaySettings,
+            clusteringEnabled: enabled,
+          })
+        } else if (id === 'interpolation') {
+          onDisplaySettingsChange({
+            ...displaySettings,
+            interpolationEnabled: enabled,
+          })
+        }
+      },
+    )
+    const threshold = displaySettings.clusteringThreshold
+    const additionalInput =
+      threshold === undefined
+        ? undefined
+        : {
+            ...buildClusteringThresholdInput(threshold),
+            onInputChange: (value: string) =>
+              onDisplaySettingsChange({
+                ...displaySettings,
+                clusteringThreshold: value,
+              }),
+          }
+    return (
+      <DisplayOptionsPanel
+        options={options}
+        additionalInput={additionalInput}
+      />
+    )
+  }
+
   render(): React.ReactNode {
     const items = this.props.segments.map((segment, _index) => {
       const uid = segment.uid
@@ -70,70 +126,20 @@ class SegmentList extends React.Component<
       )
     })
 
-    /** Display options for clustering and interpolation */
-    const { displaySettings, onDisplaySettingsChange } = this.props
-    const displayOptions: DisplayOption[] = []
-
-    if (
-      displaySettings !== undefined &&
-      onDisplaySettingsChange !== undefined
-    ) {
-      displayOptions.push({
-        id: 'clustering',
-        label: 'Clustering',
-        description: 'Group dense segments at low zoom.',
-        enabled: displaySettings.clusteringEnabled,
-        onChange: (enabled) => {
-          onDisplaySettingsChange({
-            ...displaySettings,
-            clusteringEnabled: enabled,
-          })
-        },
-      })
-
-      displayOptions.push({
-        id: 'interpolation',
-        label: 'Segment interpolation',
-        shortLabel: 'Interp.',
-        description: 'Smooth segment edges when zoomed in.',
-        enabled: displaySettings.interpolationEnabled,
-        onChange: (enabled) => {
-          onDisplaySettingsChange({
-            ...displaySettings,
-            interpolationEnabled: enabled,
-          })
-        },
-      })
-    }
-
-    /** Additional input for clustering threshold */
-    const clusteringThresholdInput =
-      displaySettings !== undefined && onDisplaySettingsChange !== undefined
-        ? {
-            label: 'Clustering pixel size threshold',
-            description:
-              'At or below this pixel size, clustering turns off. Leave empty for zoom-based detection.',
-            value: displaySettings.clusteringThreshold,
-            placeholder: 'Auto (zoom-based)',
-            unit: 'mm',
-            onChange: (value: string) => {
-              onDisplaySettingsChange({
-                ...displaySettings,
-                clusteringThreshold: value,
-              })
-            },
-          }
-        : undefined
-
     return (
       <div className="flex flex-col gap-1.5">
+        <BulkVisibilityControl
+          uids={this.props.segments.map((segment) => segment.uid)}
+          visibleUids={this.props.visibleSegmentUIDs}
+          onChange={({ uid, isVisible }) =>
+            this.props.onSegmentVisibilityChange({
+              segmentUID: uid,
+              isVisible,
+            })
+          }
+        />
         {items}
-        {displayOptions.length > 0 && (
-          <DisplayOptionsPanel
-            options={displayOptions}
-            additionalInput={clusteringThresholdInput}
-          />
-        )}
+        {this.renderDisplayOptions()}
       </div>
     )
   }

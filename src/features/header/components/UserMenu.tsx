@@ -10,6 +10,7 @@ import {
 } from '../../../components/ui/dropdown-menu'
 import { Icon } from '../../../components/ui/icon'
 import { cn } from '../../../lib/utils'
+import { getUserIdentity } from '../utils/userIdentity'
 import type { PreferencesTab } from './dialogs/PreferencesDialog'
 
 interface UserMenuProps {
@@ -17,14 +18,6 @@ interface UserMenuProps {
   organization?: string
   onOpenPreferences: (tab: PreferencesTab) => void
   onLogout?: () => void
-}
-
-/** Two-letter initials from a display name, e.g. "Elena Kovač" → "EK". */
-export function getInitials(name: string | undefined): string {
-  if (name === undefined || name.trim() === '') return ''
-  const parts = name.trim().split(/\s+/)
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
 }
 
 function MenuItem({
@@ -63,27 +56,21 @@ export function UserMenu({
   onOpenPreferences,
   onLogout,
 }: UserMenuProps): React.ReactElement {
-  const hasUser = user !== undefined
-  const name = user?.name ?? user?.email ?? 'Guest'
-  const email = hasUser ? user?.email : 'Not signed in'
-  const initials = getInitials(user?.name ?? user?.email)
-  const subline = [organization, hasUser ? undefined : 'Not signed in']
-    .filter((part) => part !== undefined && part !== '')
-    .join(' · ')
+  const { name, email, initials, subline } = getUserIdentity(user, organization)
 
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 outline-none transition-colors hover:bg-app data-[state=open]:bg-app"
+          className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 outline-none transition-colors hover:bg-app focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=open]:bg-app"
         >
           <span className="grid h-7 w-7 place-items-center rounded-full bg-primary-soft text-[11px] font-semibold text-primary">
             {initials !== '' ? initials : <Icon name="person" size={16} />}
           </span>
           <span className="flex flex-col items-start leading-[1.2]">
             <span className="text-[12.5px] font-medium text-ink">{name}</span>
-            {email !== undefined && email !== name && (
+            {email !== undefined && (
               <span className="text-[11px] text-ink-muted">{email}</span>
             )}
           </span>
@@ -93,9 +80,9 @@ export function UserMenu({
       <DropdownMenuContent align="end" sideOffset={6} className="w-60">
         <div className="mb-1 border-b border-line-soft px-2.5 pb-2.5 pt-2">
           <div className="font-semibold text-ink">{name}</div>
-          <div className="text-[12px] text-ink-muted">
-            {subline !== '' ? subline : email}
-          </div>
+          {subline !== undefined && (
+            <div className="text-[12px] text-ink-muted">{subline}</div>
+          )}
         </div>
         <MenuItem
           icon="manage_accounts"

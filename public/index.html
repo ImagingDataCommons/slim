@@ -24,6 +24,29 @@
     <!-- Application Configuration. Optional SLIM_* vars → window.slim.env via env.js -->
     <script type="text/javascript" src="%PUBLIC_URL%/config/env.js"></script>
     <script type="text/javascript" src="%PUBLIC_URL%/config/%REACT_APP_CONFIG%.js"></script>
+    <script type="text/javascript">
+      /*
+       * Apply the theme class before the bundle loads to avoid a light flash.
+       * Mirrors ThemeProvider: the 'slim-theme' storage key, else config.mode.
+       */
+      (function () {
+        var theme = null
+        try {
+          theme = window.localStorage.getItem('slim-theme')
+        } catch (e) {}
+        if (theme !== 'light' && theme !== 'dark' && theme !== 'system') {
+          theme = window.config && window.config.mode === 'dark' ? 'dark' : 'light'
+        }
+        var isDark =
+          theme === 'dark' ||
+          (theme === 'system' &&
+            !!window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches)
+        var resolved = isDark ? 'dark' : 'light'
+        document.documentElement.classList.add(resolved)
+        document.documentElement.style.colorScheme = resolved
+      })()
+    </script>
     <!--
       manifest.json provides metadata used when your web app is installed on a
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/

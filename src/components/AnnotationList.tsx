@@ -3,6 +3,7 @@ import type * as dmv from 'dicom-microscopy-viewer'
 import type React from 'react'
 
 import AnnotationItem from './AnnotationItem'
+import { BulkVisibilityControl } from './slim/BulkVisibilityControl'
 
 interface AnnotationListProps {
   rois: dmv.roi.ROI[]
@@ -31,6 +32,14 @@ function AnnotationList({
 }: AnnotationListProps): React.ReactElement {
   return (
     <div className="flex flex-col gap-0.5">
+      <BulkVisibilityControl
+        className="mb-1"
+        uids={rois.map((roi) => roi.uid)}
+        visibleUids={visibleRoiUIDs}
+        onChange={({ uid, isVisible }) =>
+          onVisibilityChange({ roiUID: uid, isVisible })
+        }
+      />
       {rois.map((roi, index) => (
         <AnnotationItem
           key={roi.uid}

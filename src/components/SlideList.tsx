@@ -56,7 +56,10 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
 
   render(): React.ReactNode {
     return (
-      <div className="flex flex-col gap-2 px-3 pb-4">
+      <ul
+        aria-label="Slides"
+        className="m-0 flex list-none flex-col gap-2 px-3 pb-4"
+      >
         {this.props.metadata.map((slide) => {
           const seriesInstanceUID = seriesUidForSlide(slide)
           const isSelected =
@@ -65,16 +68,17 @@ class SlideList extends React.Component<SlideListProps, SlideListState> {
               this.state.selectedSeriesInstanceUID,
             )
           return (
-            <SlideItem
-              key={seriesInstanceUID}
-              slide={slide}
-              clients={this.props.clients}
-              isSelected={isSelected}
-              onClick={() => this.handleSlideClick(seriesInstanceUID)}
-            />
+            <li key={seriesInstanceUID}>
+              <SlideItem
+                slide={slide}
+                clients={this.props.clients}
+                isSelected={isSelected}
+                onClick={() => this.handleSlideClick(seriesInstanceUID)}
+              />
+            </li>
           )
         })}
-      </div>
+      </ul>
     )
   }
 }

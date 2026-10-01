@@ -23,7 +23,7 @@ interface ColorSettingsMenuState {
 }
 
 /**
- * React component representing an Annotation Group.
+ * Color, opacity and outline settings applied to a set of annotations.
  */
 class ColorSettingsMenu extends React.Component<
   ColorSettingsMenuProps,
@@ -90,24 +90,6 @@ class ColorSettingsMenu extends React.Component<
 
   handleShowOutlineOnlyCheckbox = (checked: boolean): void => {
     this.handleShowOutlineOnly(checked)
-  }
-
-  getCurrentColor = (): string => {
-    const rgb2hex = (values: number[]): string => {
-      const r = values[0]
-      const g = values[1]
-      const b = values[2]
-      return `#${(0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
-    }
-
-    if (
-      this.state.currentStyle.color !== null &&
-      this.state.currentStyle.color !== undefined
-    ) {
-      return rgb2hex(this.state.currentStyle.color)
-    } else {
-      return 'white'
-    }
   }
 
   updateCurrentStyle = ({

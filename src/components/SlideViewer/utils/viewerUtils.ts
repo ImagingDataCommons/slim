@@ -5,6 +5,7 @@ import * as dcmjs from 'dcmjs'
 import * as dmv from 'dicom-microscopy-viewer'
 // skipcq: JS-C1003
 import type * as dwc from 'dicomweb-client'
+import type OlMap from 'ol/Map'
 import type { Slide } from '../../../data/slides'
 import { StorageClasses } from '../../../data/uids'
 import NotificationMiddleware, {
@@ -183,4 +184,15 @@ export const containsROIAnnotations = (
   })
 
   return foundRegion
+}
+
+/**
+ * OpenLayers map of a DMV viewer. `getMap()` exists at runtime but is missing
+ * from DMV's typings; the map comes from DMV's bundled `ol`.
+ */
+export const getViewerMap = (viewer: object): OlMap | undefined => {
+  const { getMap } = viewer as { getMap?: unknown }
+  if (typeof getMap !== 'function') return undefined
+  const map: unknown = getMap.call(viewer)
+  return map === null || map === undefined ? undefined : (map as OlMap)
 }

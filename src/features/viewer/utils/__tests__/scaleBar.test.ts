@@ -1,9 +1,73 @@
 import {
   computeScaleBar,
+  formatCursorLabel,
   formatLength,
   formatMagnification,
+  formatMagnificationLabel,
   formatMicronsPerPixel,
+  micronsPerScreenPixel,
 } from '../scaleBar'
+
+describe('micronsPerScreenPixel', () => {
+  it('uses the projection point resolution when available', () => {
+    expect(
+      micronsPerScreenPixel({
+        resolution: 4,
+        center: [0, 0],
+        pointResolution: (resolution) => (resolution * 0.00025) / 1000,
+      }),
+    ).toBeCloseTo(1, 10)
+  })
+
+  it('falls back to meters per unit', () => {
+    expect(
+      micronsPerScreenPixel({
+        resolution: 2,
+        center: [0, 0],
+        metersPerUnit: 1e-6,
+      }),
+    ).toBeCloseTo(2, 10)
+  })
+
+  it('returns undefined before the view is ready', () => {
+    expect(
+      micronsPerScreenPixel({ resolution: undefined, center: [0, 0] }),
+    ).toBeUndefined()
+    expect(
+      micronsPerScreenPixel({ resolution: 1, center: undefined }),
+    ).toBeUndefined()
+    expect(
+      micronsPerScreenPixel({
+        resolution: 1,
+        center: [0, 0],
+        pointResolution: () => Number.NaN,
+      }),
+    ).toBeUndefined()
+  })
+})
+
+describe('formatMagnificationLabel', () => {
+  it('combines magnification and resolution', () => {
+    expect(formatMagnificationLabel(0.25)).toBe('40× · 0.25 µm/px')
+  })
+
+  it('shows dashes without a resolution', () => {
+    expect(formatMagnificationLabel(undefined)).toBe('— · — µm/px')
+  })
+})
+
+describe('formatCursorLabel', () => {
+  it('formats slide coordinates in millimeters', () => {
+    expect(formatCursorLabel([12.345678, 45.6])).toBe(
+      'x 12.3457 · y 45.6000 mm',
+    )
+  })
+
+  it('shows dashes without a position', () => {
+    expect(formatCursorLabel(undefined)).toBe('x — · y — mm')
+    expect(formatCursorLabel([Number.NaN, 1])).toBe('x — · y — mm')
+  })
+})
 
 describe('computeScaleBar', () => {
   it('picks the largest 1/2/5 step that fits', () => {

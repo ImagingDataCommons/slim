@@ -58,12 +58,14 @@ const ColorSlider: React.FC<ColorSliderProps> = ({ color, onChange }) => {
               step={1}
               value={[color[index]]}
               onValueChange={createSliderChangeHandler(index)}
+              aria-label={colorLabel}
             />
           </div>
           <Input
             type="number"
             min={0}
             max={255}
+            aria-label={`${colorLabel} value`}
             className="h-8 w-16 font-mono text-[12px]"
             value={color[index]}
             onChange={createInputChangeHandler(index)}

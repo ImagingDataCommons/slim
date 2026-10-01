@@ -8,8 +8,10 @@ import { useNavigate } from 'react-router-dom'
 import type DicomWebManager from '../../../DicomWebManager'
 import { cn } from '../../../lib/utils'
 import { buildStudyPath } from '../../../utils/routes'
-import { loadPreferences } from '../../header/utils/preferences'
+import { getLocalStorage } from '../../../utils/safeStorage'
+import { usePreferences } from '../../header/hooks/usePreferences'
 import { useStudies } from '../hooks/useStudies'
+import { loadStoredFilters, saveStoredFilters } from '../utils/filterStorage'
 import {
   type DateFilter,
   filterStudiesByDateRange,
@@ -18,32 +20,6 @@ import {
 import { WorklistHeader } from './WorklistHeader'
 import { WorklistPagination } from './WorklistPagination'
 import { WorklistTable } from './WorklistTable'
-
-const FILTERS_STORAGE_KEY = 'slim-worklist-filters'
-
-interface StoredFilters {
-  searchText: string
-  dateFilter: DateFilter
-}
-
-function loadStoredFilters(): StoredFilters {
-  const fallback: StoredFilters = { searchText: '', dateFilter: 'all' }
-  if (!loadPreferences().rememberFilters) return fallback
-  try {
-    const parsed = JSON.parse(
-      window.localStorage.getItem(FILTERS_STORAGE_KEY) ?? 'null',
-    ) as Partial<StoredFilters> | null
-    const dateFilter = parsed?.dateFilter
-    return {
-      searchText:
-        typeof parsed?.searchText === 'string' ? parsed.searchText : '',
-      dateFilter:
-        dateFilter === 'today' || dateFilter === 'week' ? dateFilter : 'all',
-    }
-  } catch {
-    return fallback
-  }
-}
 
 interface WorklistProps {
   clients: { [key: string]: DicomWebManager }
@@ -57,11 +33,12 @@ export function Worklist({
 }: WorklistProps): React.ReactElement {
   const navigate = useNavigate()
   const { studies, isLoading, totalCount } = useStudies({ clients })
-  const [preferences] = useState(loadPreferences)
-  const [initialFilters] = useState(loadStoredFilters)
-  const [searchText, setSearchText] = useState(initialFilters.searchText)
+  const preferences = usePreferences()
+  const [searchText, setSearchText] = useState('')
   const [dateFilter, setDateFilter] = useState<DateFilter>(
-    initialFilters.dateFilter,
+    () =>
+      loadStoredFilters(getLocalStorage(), preferences.rememberFilters)
+        .dateFilter,
   )
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -78,10 +55,12 @@ export function Worklist({
   )
 
   useEffect(() => {
-    if (!preferences.rememberFilters) return
-    const filters: StoredFilters = { searchText, dateFilter }
-    window.localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters))
-  }, [preferences.rememberFilters, searchText, dateFilter])
+    saveStoredFilters(
+      getLocalStorage(),
+      { dateFilter },
+      preferences.rememberFilters,
+    )
+  }, [preferences.rememberFilters, dateFilter])
 
   const resetPage = useCallback((): void => {
     setPagination((previous) => ({ ...previous, pageIndex: 0 }))

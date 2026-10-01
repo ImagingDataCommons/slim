@@ -41,6 +41,10 @@ module.exports = {
         },
         'overlay-card': token('overlay-card'),
         scrim: token('scrim'),
+        syntax: {
+          boolean: token('syntax-boolean'),
+          string: token('syntax-string'),
+        },
 
         border: token('border'),
         input: token('input'),

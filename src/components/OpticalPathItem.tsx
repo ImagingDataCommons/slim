@@ -2,25 +2,23 @@
 import type * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
 
+import { cn } from '../lib/utils'
+import { clampLimitValues, type LimitSide } from '../utils/limits'
+import {
+  getOpticalPathMeta,
+  getOpticalPathName,
+  getOpticalPathSwatch,
+} from '../utils/opticalPath'
+import { getSpecimenStains } from '../utils/specimen'
 import ColorSlider from './ColorSlider'
 import OpacitySlider from './OpacitySlider'
+import { LimitInput } from './slim/LimitInput'
 import { Icon } from './ui/icon'
-import { Input } from './ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import { Slider } from './ui/slider'
 import { Switch } from './ui/switch'
 
-/** Display name: description, else "Brightfield" for RGB, else identifier. */
-export function getOpticalPathName(opticalPath: {
-  identifier: string
-  description?: string
-  isMonochromatic: boolean
-}): string {
-  const description = opticalPath.description?.trim() ?? ''
-  if (description !== '') return description
-  if (!opticalPath.isMonochromatic) return 'Brightfield'
-  return opticalPath.identifier
-}
+const LIMIT_LABELS = ['Lower limit', 'Upper limit']
 
 interface OpticalPathItemProps {
   opticalPath: dmv.opticalPath.OpticalPath
@@ -57,7 +55,6 @@ interface OpticalPathItemProps {
 }
 
 interface OpticalPathItemState {
-  isVisible: boolean
   currentStyle: {
     opacity: number
     color?: number[]
@@ -77,7 +74,6 @@ class OpticalPathItem extends React.Component<
   constructor(props: OpticalPathItemProps) {
     super(props)
     this.state = {
-      isVisible: this.props.isVisible,
       currentStyle: {
         opacity: this.props.defaultStyle.opacity,
         color: this.props.defaultStyle.color,
@@ -101,9 +97,6 @@ class OpticalPathItem extends React.Component<
 
   handleVisibilityChange = (checked: boolean): void => {
     const identifier = this.props.opticalPath.identifier
-    this.setState({
-      isVisible: checked,
-    })
     this.props.onVisibilityChange({
       opticalPathIdentifier: identifier,
       isVisible: checked,
@@ -144,139 +137,44 @@ class OpticalPathItem extends React.Component<
     })
   }
 
-  getCurrentColors = (): string[] => {
-    const rgb2hex = (values: number[]): string => {
-      const r = values[0]
-      const g = values[1]
-      const b = values[2]
-      return `#${(0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
-    }
-
-    if (this.props.defaultStyle.paletteColorLookupTable != null) {
-      const colormap = this.props.defaultStyle.paletteColorLookupTable.data
-      return colormap.map((values) => rgb2hex(values))
-    } else if (this.state.currentStyle.color != null) {
-      return ['#000000', rgb2hex(this.state.currentStyle.color)]
-    } else {
-      return ['white', 'white']
-    }
+  private getMaxValue(): number {
+    const bitsAllocated = this.props.metadata[0]?.BitsAllocated ?? 8
+    return 2 ** bitsAllocated - 1
   }
 
-  handleLowerLimitChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    const value = parseInt(e.target.value, 10)
-    if (Number.isNaN(value)) return
-    const identifier = this.props.opticalPath.identifier
-    if (this.state.currentStyle.limitValues !== undefined) {
-      this.setState((state) => {
-        if (state.currentStyle.limitValues !== undefined) {
-          return {
-            currentStyle: {
-              color: state.currentStyle.color,
-              paletteColorLookupTable:
-                state.currentStyle.paletteColorLookupTable,
-              opacity: state.currentStyle.opacity,
-              limitValues: [value, state.currentStyle.limitValues[1]],
-            },
-          }
-        } else {
-          return {
-            currentStyle: {
-              color: state.currentStyle.color,
-              paletteColorLookupTable:
-                state.currentStyle.paletteColorLookupTable,
-              opacity: state.currentStyle.opacity,
-              limitValues: state.currentStyle.limitValues,
-            },
-          }
-        }
-      })
-      this.props.onStyleChange({
-        opticalPathIdentifier: identifier,
-        styleOptions: {
-          limitValues: [value, this.state.currentStyle.limitValues[1]],
-        },
-      })
-    }
+  private applyLimitValues(
+    values: number[],
+    edited: LimitSide = 'lower',
+  ): void {
+    const limitValues = clampLimitValues(values, 0, this.getMaxValue(), edited)
+    this.setState((state) => ({
+      currentStyle: { ...state.currentStyle, limitValues },
+    }))
+    this.props.onStyleChange({
+      opticalPathIdentifier: this.props.opticalPath.identifier,
+      styleOptions: { limitValues },
+    })
   }
 
-  handleUpperLimitChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    const value = parseInt(e.target.value, 10)
-    if (Number.isNaN(value)) return
-    const identifier = this.props.opticalPath.identifier
-    if (this.state.currentStyle.limitValues !== undefined) {
-      this.setState((state) => {
-        if (state.currentStyle.limitValues !== undefined) {
-          return {
-            currentStyle: {
-              color: state.currentStyle.color,
-              paletteColorLookupTable:
-                state.currentStyle.paletteColorLookupTable,
-              opacity: state.currentStyle.opacity,
-              limitValues: [state.currentStyle.limitValues[0], value],
-            },
-          }
-        } else {
-          return {
-            currentStyle: {
-              color: state.currentStyle.color,
-              paletteColorLookupTable:
-                state.currentStyle.paletteColorLookupTable,
-              opacity: state.currentStyle.opacity,
-              limitValues: state.currentStyle.limitValues,
-            },
-          }
-        }
-      })
-      this.props.onStyleChange({
-        opticalPathIdentifier: identifier,
-        styleOptions: {
-          limitValues: [this.state.currentStyle.limitValues[0], value],
-        },
-      })
-    }
+  handleLowerLimitCommit = (value: number): void => {
+    const limitValues = this.state.currentStyle.limitValues
+    if (limitValues === undefined) return
+    this.applyLimitValues([value, limitValues[1]], 'lower')
+  }
+
+  handleUpperLimitCommit = (value: number): void => {
+    const limitValues = this.state.currentStyle.limitValues
+    if (limitValues === undefined) return
+    this.applyLimitValues([limitValues[0], value], 'upper')
   }
 
   handleLimitChange = (values: number[]): void => {
-    const identifier = this.props.opticalPath.identifier
-    this.setState((state) => ({
-      currentStyle: {
-        color: state.currentStyle.color,
-        paletteColorLookupTable: state.currentStyle.paletteColorLookupTable,
-        opacity: state.currentStyle.opacity,
-        limitValues: values,
-      },
-    }))
-    this.props.onStyleChange({
-      opticalPathIdentifier: identifier,
-      styleOptions: { limitValues: values },
-    })
+    this.applyLimitValues(values)
   }
 
   handleRemoval = (): void => {
     const identifier = this.props.opticalPath.identifier
     this.props.onRemoval(identifier)
-  }
-
-  private getSwatchBackground(): string {
-    if (!this.props.opticalPath.isMonochromatic) {
-      return 'linear-gradient(135deg,#e04a4a,#3fb56b,#3a6cf0)'
-    }
-    const colors = this.getCurrentColors()
-    if (this.props.defaultStyle.paletteColorLookupTable != null) {
-      return `linear-gradient(90deg, ${colors.join(', ')})`
-    }
-    return colors[colors.length - 1]
-  }
-
-  private getMeta(): string {
-    const { opticalPath } = this.props
-    if (!opticalPath.isMonochromatic) {
-      return this.props.hasIccProfile === true ? 'RGB · ICC profile' : 'RGB'
-    }
-    if (opticalPath.illuminationWaveLength !== undefined) {
-      return `${opticalPath.illuminationWaveLength} nm`
-    }
-    return opticalPath.illuminationColor?.CodeMeaning ?? ''
   }
 
   private renderSettings(maxValue: number): React.ReactNode {
@@ -291,22 +189,22 @@ class OpticalPathItem extends React.Component<
           <div className="flex flex-col gap-2">
             <div className="text-[12px] text-ink-muted">Values of interest</div>
             <div className="flex items-center gap-2">
-              <Input
-                type="number"
+              <LimitInput
+                integer
+                aria-label={LIMIT_LABELS[0]}
                 min={0}
                 max={currentStyle.limitValues[1]}
-                className="h-8 w-20 font-mono text-[12px]"
                 value={currentStyle.limitValues[0]}
-                onChange={this.handleLowerLimitChange}
+                onCommit={this.handleLowerLimitCommit}
               />
               <span className="text-ink-faint">–</span>
-              <Input
-                type="number"
+              <LimitInput
+                integer
+                aria-label={LIMIT_LABELS[1]}
                 min={currentStyle.limitValues[0]}
                 max={maxValue}
-                className="h-8 w-20 font-mono text-[12px]"
                 value={currentStyle.limitValues[1]}
-                onChange={this.handleUpperLimitChange}
+                onCommit={this.handleUpperLimitCommit}
               />
             </div>
           </div>
@@ -338,25 +236,42 @@ class OpticalPathItem extends React.Component<
   render(): React.ReactNode {
     const { opticalPath } = this.props
     const name = getOpticalPathName(opticalPath)
-    const meta = this.getMeta()
-    const maxValue = 2 ** this.props.metadata[0].BitsAllocated - 1
+    const meta = getOpticalPathMeta(opticalPath, {
+      hasIccProfile: this.props.hasIccProfile,
+      stains: getSpecimenStains(
+        this.props.metadata[0]?.SpecimenDescriptionSequence,
+      ),
+    })
+    const swatch = getOpticalPathSwatch(opticalPath, {
+      color: this.state.currentStyle.color,
+      paletteColorLookupTable: this.props.defaultStyle.paletteColorLookupTable,
+    })
+    const maxValue = this.getMaxValue()
     const limitValues = this.state.currentStyle.limitValues
 
     return (
       <div className="flex flex-col gap-2 rounded-lg border border-line px-3 py-2.5">
         <div className="flex items-center gap-2">
           <span
-            className="h-3 w-3 flex-none rounded-[3px] border border-ink/[0.12]"
-            style={{ background: this.getSwatchBackground() }}
+            className={cn(
+              'h-3 w-3 flex-none rounded-[3px] border border-ink/[0.12]',
+              swatch === undefined && 'bg-panel',
+            )}
+            style={swatch !== undefined ? { background: swatch } : undefined}
           />
           <span
-            className="min-w-0 truncate font-semibold text-ink"
+            className="max-w-[65%] flex-none truncate font-semibold text-ink"
             title={name}
           >
             {name}
           </span>
           {meta !== '' && (
-            <span className="flex-none text-[12px] text-ink-muted">{meta}</span>
+            <span
+              className="min-w-0 flex-1 truncate text-[12px] text-ink-muted"
+              title={meta}
+            >
+              {meta}
+            </span>
           )}
           <span className="ml-auto flex flex-none items-center gap-0.5">
             <Popover>
@@ -388,7 +303,7 @@ class OpticalPathItem extends React.Component<
             <Switch
               size="sm"
               className="ml-1"
-              checked={this.state.isVisible}
+              checked={this.props.isVisible}
               onCheckedChange={this.handleVisibilityChange}
               aria-label={`Show ${name}`}
             />
@@ -404,6 +319,7 @@ class OpticalPathItem extends React.Component<
               step={1}
               value={[limitValues[0], limitValues[1]]}
               onValueChange={this.handleLimitChange}
+              thumbLabels={LIMIT_LABELS.map((label) => `${name} ${label}`)}
             />
           </div>
         )}

@@ -2,8 +2,11 @@
 import type * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
 import { cn } from '../lib/utils'
+import { lutToCssGradient } from '../utils/lutGradient'
+import { describeSegment } from '../utils/segment'
 import { getSegmentationType, rgbToHex } from '../utils/segmentColors'
 import ColorSlider from './ColorSlider'
+import { InfoTooltipButton } from './slim/InfoTooltipButton'
 import { Icon } from './ui/icon'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import { Slider } from './ui/slider'
@@ -15,6 +18,7 @@ interface SegmentItemProps {
   defaultStyle: {
     opacity: number
     color?: number[]
+    paletteColorLookupTable?: { data: number[][] }
   }
   onVisibilityChange: ({
     segmentUID,
@@ -37,7 +41,6 @@ interface SegmentItemProps {
 }
 
 interface SegmentItemState {
-  isVisible: boolean
   currentStyle: {
     opacity: number
     color: number[]
@@ -51,11 +54,9 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
   constructor(props: SegmentItemProps) {
     super(props)
 
-    /** Initialize with default color if not provided */
     /** Yellow when the segment has no recommended display color */
     const defaultColor = this.props.defaultStyle.color ?? [255, 255, 0]
     this.state = {
-      isVisible: this.props.isVisible,
       currentStyle: {
         opacity: this.props.defaultStyle.opacity,
         color: defaultColor,
@@ -68,7 +69,6 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
       segmentUID: this.props.segment.uid,
       isVisible: checked,
     })
-    this.setState({ isVisible: checked })
   }
 
   handleColorChange = (newColor: number[]): void => {
@@ -124,34 +124,35 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
       | undefined
     const segmentationType = getSegmentationType(segmentationMetadata)
     const isFractional = segmentationType === 'FRACTIONAL'
-    const typeLabel =
-      segmentationType.charAt(0) + segmentationType.slice(1).toLowerCase()
-    const meta = [typeLabel, segment.algorithmName]
-      .filter((part) => part !== undefined && part !== '')
-      .join(' · ')
-    const details = [
-      `Property type: ${segment.propertyType.CodeMeaning}`,
-      `Property category: ${segment.propertyCategory.CodeMeaning}`,
-      `Algorithm: ${segment.algorithmName} (${segment.algorithmType})`,
-    ].join('\n')
+    const { meta, attributes } = describeSegment(segment, segmentationType)
     const opacity = this.state.currentStyle.opacity
+    const palette = this.props.defaultStyle.paletteColorLookupTable
+    const fractionalGradient =
+      isFractional && palette !== undefined ? lutToCssGradient(palette) : ''
+    let swatchStyle: React.CSSProperties = {}
+    if (!isFractional) {
+      swatchStyle = { background: rgbToHex(this.state.currentStyle.color) }
+    } else if (fractionalGradient !== '') {
+      swatchStyle = { background: fractionalGradient }
+    }
 
     return (
       <div className="flex flex-col gap-2.5 rounded-lg border border-line px-3 py-2.5">
         <div className="flex items-center gap-2">
           <span
-            className="h-3 w-3 flex-none rounded-[3px]"
-            style={{
-              background: isFractional
-                ? 'linear-gradient(90deg,#2c1b6b,#1f6fb0,#2fb08a,#e6d94a)'
-                : rgbToHex(this.state.currentStyle.color),
-            }}
+            className={cn(
+              'h-3 w-3 flex-none rounded-[3px]',
+              isFractional &&
+                fractionalGradient === '' &&
+                'border border-line bg-gradient-to-r from-panel to-ink-muted',
+            )}
+            style={swatchStyle}
           />
           <button
             type="button"
             className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
             onClick={this.handleClick}
-            title={`${details}\n\nClick to zoom to segment`}
+            title="Zoom to segment"
           >
             <span className="truncate font-semibold text-ink">
               {segment.label}
@@ -162,6 +163,10 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
               </span>
             )}
           </button>
+          <InfoTooltipButton
+            label={`Details for ${segment.label}`}
+            attributes={attributes}
+          />
           {!isFractional && (
             <Popover>
               <PopoverTrigger asChild>

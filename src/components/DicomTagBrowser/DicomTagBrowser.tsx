@@ -10,7 +10,7 @@ import DicomMetadataStore, {
   type Series,
   type Study,
 } from '../../services/DICOMMetadataStore'
-import { formatDicomDate } from '../../utils/formatDicomDate'
+import { formatGroupedNumber } from '../../utils/displayFormat'
 import { logger } from '../../utils/logger'
 import { Icon } from '../ui/icon'
 import {
@@ -20,7 +20,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select'
-import { getSortedTags, type TagInfo } from './dicomTagUtils'
+import {
+  buildTagTree,
+  collectExpandableKeys,
+  countRows,
+  filterTagTree,
+  getInstanceDimensions,
+  getSeriesLabel,
+  getSortedTags,
+  sortInstancesByNumber,
+  sortSeriesByNumber,
+  type TagTreeNode,
+} from './dicomTagUtils'
 
 interface DisplaySet {
   displaySetInstanceUID: number
@@ -31,15 +42,6 @@ interface DisplaySet {
   SeriesInstanceUID?: string
   Modality: string
   images: unknown[]
-}
-
-interface TableDataItem {
-  key: string
-  tag: string
-  vr: string
-  keyword: string
-  value: string
-  children?: TableDataItem[]
 }
 
 interface DicomTagBrowserProps {
@@ -64,7 +66,7 @@ const TAG_GRID_COLUMNS = 'grid-cols-[150px_52px_minmax(0,1fr)_minmax(0,1.4fr)]'
 
 /** Recursive tag row with expandable sequence items */
 interface TagRowProps {
-  item: TableDataItem
+  item: TagTreeNode
   depth: number
   expandedKeys: Set<string>
   onToggle: (key: string) => void
@@ -141,26 +143,6 @@ const TagRow = ({
           />
         ))}
     </>
-  )
-}
-
-function collectExpandableKeys(items: TableDataItem[]): string[] {
-  return items.flatMap((item) =>
-    item.children !== undefined && item.children.length > 0
-      ? [item.key, ...collectExpandableKeys(item.children)]
-      : [],
-  )
-}
-
-function countRows(items: TableDataItem[], expandedKeys: Set<string>): number {
-  return items.reduce(
-    (total, item) =>
-      total +
-      1 +
-      (item.children !== undefined && expandedKeys.has(item.key)
-        ? countRows(item.children, expandedKeys)
-        : 0),
-    0,
   )
 }
 
@@ -317,48 +299,17 @@ const DicomTagBrowser = ({
     setDisplaySets([...displaySets, ...derivedDisplaySets])
   }, [slides, study])
 
-  const sortedDisplaySets = useMemo(() => {
-    return [...displaySets].sort((a, b) => {
-      const aNum = Number(a.SeriesNumber)
-      const bNum = Number(b.SeriesNumber)
-      /** Normalize non-numeric/missing values to Infinity to sort them last */
-      const aSafe =
-        Number.isNaN(aNum) ||
-        a.SeriesNumber === undefined ||
-        a.SeriesNumber === ''
-          ? Infinity
-          : aNum
-      const bSafe =
-        Number.isNaN(bNum) ||
-        b.SeriesNumber === undefined ||
-        b.SeriesNumber === ''
-          ? Infinity
-          : bNum
-      return aSafe - bSafe
-    })
-  }, [displaySets])
+  const sortedDisplaySets = useMemo(
+    () => sortSeriesByNumber(displaySets),
+    [displaySets],
+  )
 
   const displaySetList = useMemo(() => {
-    return sortedDisplaySets.map((displaySet, index) => {
-      const {
-        SeriesDate = '',
-        SeriesTime = '',
-        SeriesNumber = '',
-        SeriesDescription = '',
-        Modality = '',
-        SeriesInstanceUID,
-      } = displaySet
-
-      const dateStr = `${SeriesDate}:${SeriesTime}`.split('.')[0]
-      const displayDate = formatDicomDate(dateStr)
-
-      return {
-        value: index,
-        label: `${SeriesNumber} (${Modality}): ${SeriesDescription}`,
-        description: displayDate,
-        seriesInstanceUID: SeriesInstanceUID ?? '',
-      }
-    })
+    return sortedDisplaySets.map((displaySet, index) => ({
+      value: index,
+      ...getSeriesLabel(displaySet),
+      seriesInstanceUID: displaySet.SeriesInstanceUID ?? '',
+    }))
   }, [sortedDisplaySets])
 
   useEffect(() => {
@@ -398,130 +349,31 @@ const DicomTagBrowser = ({
     return sortedDisplaySets[selectedDisplaySetInstanceUID]?.images.length ?? 1
   }, [selectedDisplaySetInstanceUID, sortedDisplaySets])
 
-  const tableData = useMemo(() => {
-    const transformTagsToTableData = (
-      tags: TagInfo[],
-      parentKey = '',
-    ): TableDataItem[] => {
-      return tags.map((tag, index) => {
-        /** Create a unique key using tag value if available, otherwise use index */
-        const keyBase: string =
-          tag.tag !== '' ? tag.tag.replace(/[(),]/g, '') : index.toString()
-        const currentKey: string =
-          parentKey !== '' ? `${parentKey}-${keyBase}` : keyBase
-
-        const item: TableDataItem = {
-          key: currentKey,
-          tag: tag.tag,
-          vr: tag.vr,
-          keyword: tag.keyword,
-          value: tag.value,
-        }
-
-        if (tag.children !== undefined && tag.children.length > 0) {
-          item.children = transformTagsToTableData(tag.children, currentKey)
-        }
-
-        return item
-      })
-    }
-
-    if (sortedDisplaySets[selectedDisplaySetInstanceUID] === undefined)
-      return []
+  const sortedImages = useMemo((): unknown[] => {
     const images = sortedDisplaySets[selectedDisplaySetInstanceUID]?.images
-    const sortedMetadata = Array.isArray(images)
-      ? [...images].sort((a, b) => {
-          if (
-            a.InstanceNumber !== undefined &&
-            b.InstanceNumber !== undefined
-          ) {
-            return Number(a.InstanceNumber) - Number(b.InstanceNumber)
-          }
-          return 0
-        })
-      : []
-    const metadata = sortedMetadata[instanceNumber - 1]
-    const tags = getSortedTags(metadata)
-    return transformTagsToTableData(tags)
-  }, [instanceNumber, selectedDisplaySetInstanceUID, sortedDisplaySets])
+    return Array.isArray(images) ? sortInstancesByNumber(images) : []
+  }, [selectedDisplaySetInstanceUID, sortedDisplaySets])
 
-  const filteredData = useMemo(() => {
-    if (filterValue === undefined || filterValue === '') return tableData
+  const currentMetadata = sortedImages[instanceNumber - 1] as
+    | Record<string, unknown>
+    | undefined
 
-    const searchLower = filterValue.toLowerCase()
-    const matchedKeys = new Set<string>()
+  const tableData = useMemo((): TagTreeNode[] => {
+    if (currentMetadata === undefined) return []
+    return buildTagTree(getSortedTags(currentMetadata))
+  }, [currentMetadata])
 
-    const nodeMatches = (node: TableDataItem): boolean => {
-      return (
-        (node.tag?.toLowerCase() ?? '').includes(searchLower) ||
-        (node.vr?.toLowerCase() ?? '').includes(searchLower) ||
-        (node.keyword?.toLowerCase() ?? '').includes(searchLower) ||
-        (node.value?.toString().toLowerCase() ?? '').includes(searchLower)
-      )
+  const filterResult = useMemo(
+    () => filterTagTree(tableData, filterValue),
+    [tableData, filterValue],
+  )
+  const filteredData = filterResult.tree
+
+  useEffect(() => {
+    if (filterValue !== '') {
+      setExpandedKeys(filterResult.matchedKeys)
     }
-
-    const findMatchingPaths = (
-      node: TableDataItem,
-      parentPath: TableDataItem[] = [],
-    ): TableDataItem[][] => {
-      const currentPath = [...parentPath, node]
-      let matchingPaths: TableDataItem[][] = []
-
-      if (nodeMatches(node)) {
-        matchingPaths.push(currentPath)
-      }
-
-      node.children?.forEach((child) => {
-        const childPaths = findMatchingPaths(child, currentPath)
-        matchingPaths = [...matchingPaths, ...childPaths]
-      })
-
-      return matchingPaths
-    }
-
-    const matchingPaths = tableData.flatMap((node) => findMatchingPaths(node))
-
-    const reconstructTree = (
-      paths: TableDataItem[][],
-      level = 0,
-    ): TableDataItem[] => {
-      if (paths.length === 0 || level >= paths[0].length) return []
-
-      const nodesAtLevel = new Map<
-        string,
-        {
-          node: TableDataItem
-          childPaths: TableDataItem[][]
-        }
-      >()
-
-      paths.forEach((path) => {
-        if (level < path.length) {
-          const node = path[level]
-          if (!nodesAtLevel.has(node.key)) {
-            nodesAtLevel.set(node.key, {
-              node: { ...node },
-              childPaths: [],
-            })
-          }
-          if (level + 1 < path.length) {
-            nodesAtLevel.get(node.key)?.childPaths.push(path)
-          }
-        }
-      })
-
-      return Array.from(nodesAtLevel.values()).map(({ node, childPaths }) => {
-        matchedKeys.add(node.key)
-        const children = reconstructTree(childPaths, level + 1)
-        return children.length > 0 ? { ...node, children } : node
-      })
-    }
-
-    const filtered = reconstructTree(matchingPaths)
-    setExpandedKeys(matchedKeys)
-
-    return filtered
-  }, [tableData, filterValue])
+  }, [filterResult, filterValue])
 
   const handleToggleExpand = useCallback((key: string) => {
     setExpandedKeys((prev) => {
@@ -535,38 +387,11 @@ const DicomTagBrowser = ({
     })
   }, [])
 
-  const currentInstance = useMemo(():
-    | { columns?: number; rows?: number }
-    | undefined => {
-    const images = sortedDisplaySets[selectedDisplaySetInstanceUID]?.images
-    if (!Array.isArray(images)) return undefined
-    const sorted = [...images].sort(
-      (a, b) =>
-        Number((a as Record<string, unknown>).InstanceNumber ?? 0) -
-        Number((b as Record<string, unknown>).InstanceNumber ?? 0),
-    )
-    const metadata = sorted[instanceNumber - 1] as
-      | Record<string, unknown>
-      | undefined
-    if (metadata === undefined) return undefined
-    const columns = Number(
-      metadata.TotalPixelMatrixColumns ?? metadata.Columns ?? Number.NaN,
-    )
-    const rows = Number(
-      metadata.TotalPixelMatrixRows ?? metadata.Rows ?? Number.NaN,
-    )
-    return {
-      columns: Number.isFinite(columns) ? columns : undefined,
-      rows: Number.isFinite(rows) ? rows : undefined,
-    }
-  }, [instanceNumber, selectedDisplaySetInstanceUID, sortedDisplaySets])
-
-  const formatCount = (value: number): string =>
-    value.toLocaleString('en-US').replace(/,/g, ' ')
+  const currentInstance = getInstanceDimensions(currentMetadata)
 
   const instanceLabel =
     currentInstance?.columns !== undefined && currentInstance.rows !== undefined
-      ? `${formatCount(currentInstance.columns)} × ${formatCount(currentInstance.rows)} px`
+      ? `${formatGroupedNumber(currentInstance.columns)} × ${formatGroupedNumber(currentInstance.rows)} px`
       : ''
 
   const selectedModality =
@@ -712,6 +537,14 @@ const DicomTagBrowser = ({
         <span className="flex-1" />
         <button
           type="button"
+          onClick={() => setExpandedKeys(new Set())}
+          disabled={expandedKeys.size === 0}
+          className="h-[34px] rounded-lg border border-line-input bg-panel px-3.5 text-[13px] font-medium text-ink hover:bg-subtle disabled:cursor-default disabled:text-ink-fainter disabled:hover:bg-panel"
+        >
+          Collapse all
+        </button>
+        <button
+          type="button"
           onClick={() =>
             setExpandedKeys(new Set(collectExpandableKeys(filteredData)))
           }
@@ -723,7 +556,7 @@ const DicomTagBrowser = ({
           <button
             type="button"
             onClick={onDone}
-            className="h-[34px] rounded-lg bg-primary px-4 text-[13px] font-semibold text-white hover:bg-primary-hover"
+            className="h-[34px] rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground hover:bg-primary-hover"
           >
             Done
           </button>

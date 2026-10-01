@@ -1,7 +1,7 @@
 // skipcq: JS-C1003
 import type * as dmv from 'dicom-microscopy-viewer'
 import type React from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 
 import { useValidation } from '../contexts/ValidationContext'
 import type { Slide } from '../data/slides'
@@ -23,23 +23,23 @@ const ValidationWarning: React.FC<ValidationWarningProps> = ({
   size = 16,
   className,
 }) => {
-  const [tooltipText, setTooltipText] = useState<string | undefined>(undefined)
   const { runValidations } = useValidation()
 
-  useEffect(() => {
+  const tooltipText = useMemo((): string | undefined => {
     const validationResult = runValidations({
       dialog: false,
       context: { annotationGroup, slide },
     })
-    if (!validationResult.isValid) {
-      setTooltipText(validationResult.message ?? 'Validation warning')
-      if (process.env.NODE_ENV === 'development') {
-        console.warn(validationResult.message)
-      }
-    } else {
-      setTooltipText(undefined)
-    }
+    return validationResult.isValid
+      ? undefined
+      : (validationResult.message ?? 'Validation warning')
   }, [slide, annotationGroup, runValidations])
+
+  useEffect(() => {
+    if (tooltipText !== undefined && process.env.NODE_ENV === 'development') {
+      console.warn(tooltipText)
+    }
+  }, [tooltipText])
 
   if (tooltipText === undefined) {
     return null
@@ -50,7 +50,7 @@ const ValidationWarning: React.FC<ValidationWarningProps> = ({
       <TooltipTrigger asChild>
         <span
           role="img"
-          aria-label={tooltipText}
+          aria-label={`Warning: ${tooltipText}`}
           className={cn('inline-flex flex-none text-warning', className)}
         >
           <Icon name="warning" size={size} filled />

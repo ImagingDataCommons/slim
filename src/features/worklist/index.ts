@@ -12,17 +12,8 @@ export {
   type DateFilter,
   filterStudiesByDateRange,
   filterStudiesBySearchText,
-  formatModalitiesInStudy,
-  formatPatientName,
   isToday,
   isWithinLastDays,
   modalitiesNeedBackfill,
   parseDicomDate,
 } from './utils/filters'
-
-export {
-  createSortComparator,
-  type SortDirection,
-  type SortField,
-  sortStudies,
-} from './utils/sorting'

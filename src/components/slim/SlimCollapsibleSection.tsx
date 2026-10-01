@@ -57,6 +57,8 @@ export interface SlimCollapsibleSectionProps {
   divider?: boolean
   /** Keep content in the DOM while collapsed (for imperatively rendered viewers) */
   keepMounted?: boolean
+  /** Header controls rendered outside the toggle button (e.g. bulk actions) */
+  actions?: React.ReactNode
   className?: string
 }
 
@@ -79,6 +81,7 @@ export function SlimCollapsibleSection({
   contentClassName,
   divider = true,
   keepMounted = false,
+  actions,
   className,
 }: SlimCollapsibleSectionProps): React.ReactElement {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen)
@@ -88,6 +91,25 @@ export function SlimCollapsibleSection({
     onOpenChange?.(next)
   }
 
+  const trigger = (
+    <CollapsiblePrimitive.Trigger
+      className={cn(
+        'flex items-center gap-1.5 pb-2 pt-3 text-left text-[11px] font-semibold uppercase leading-none tracking-[0.06em] text-ink-secondary',
+        actions === undefined ? 'w-full px-3.5' : 'min-w-0 flex-1 pl-3.5',
+      )}
+    >
+      <Icon
+        name={isOpen ? 'expand_more' : 'chevron_right'}
+        size={18}
+        className="text-ink-faint"
+      />
+      <span className="min-w-0 truncate">{title}</span>
+      {count !== undefined && (
+        <CountBadge count={count} tone={countTone} className="ml-auto" />
+      )}
+    </CollapsiblePrimitive.Trigger>
+  )
+
   return (
     <>
       <CollapsiblePrimitive.Root
@@ -95,17 +117,16 @@ export function SlimCollapsibleSection({
         onOpenChange={handleOpenChange}
         className={className}
       >
-        <CollapsiblePrimitive.Trigger className="flex w-full items-center gap-1.5 px-3.5 pb-2 pt-3 text-left text-[11px] font-semibold uppercase leading-none tracking-[0.06em] text-ink-secondary">
-          <Icon
-            name={isOpen ? 'expand_more' : 'chevron_right'}
-            size={18}
-            className="text-ink-faint"
-          />
-          <span className="min-w-0 truncate">{title}</span>
-          {count !== undefined && (
-            <CountBadge count={count} tone={countTone} className="ml-auto" />
-          )}
-        </CollapsiblePrimitive.Trigger>
+        {actions === undefined ? (
+          trigger
+        ) : (
+          <div className="flex items-center gap-1.5 pr-3.5">
+            {trigger}
+            <div className="flex flex-none items-center pb-2 pt-3">
+              {actions}
+            </div>
+          </div>
+        )}
         <CollapsiblePrimitive.Content
           forceMount={keepMounted ? true : undefined}
           className={keepMounted ? 'data-[state=closed]:hidden' : undefined}

@@ -11,6 +11,12 @@ import NotificationMiddleware, {
 } from '../services/NotificationMiddleware'
 import type { CustomError } from '../utils/CustomError'
 import { computeOverviewPreviewResizeFactor } from '../utils/computeOverviewPreviewResizeFactor'
+import {
+  getIlluminationType,
+  getMagnification,
+  getSlideDisplayId,
+  getSlideStainInfo,
+} from '../utils/slideDisplay'
 import ValidationWarning from './ValidationWarning'
 
 interface SlideItemProps {
@@ -20,99 +26,10 @@ interface SlideItemProps {
   onClick?: () => void
 }
 
-interface SlideItemState {
-  isLoading: boolean
-}
-
-/**
- * Extract stain/description info from slide metadata.
- */
-export function getSlideStainInfo(slide: Slide): string {
-  const desc = slide.description
-  if (desc && desc.trim() !== '') {
-    return desc
-  }
-  if (slide.seriesDescription && slide.seriesDescription.trim() !== '') {
-    return slide.seriesDescription
-  }
-  return ''
-}
-
-/**
- * Get illumination type (Brightfield or Fluorescence).
- */
-function getIlluminationType(slide: Slide): string {
-  const isMonochrome = slide.areVolumeImagesMonochrome
-  if (isMonochrome) {
-    return 'Fluorescence'
-  }
-  return 'Brightfield'
-}
-
-/**
- * Get max magnification from slide.
- */
-function getMagnification(slide: Slide): string {
-  if (slide.volumeImages.length > 0) {
-    const image = slide.volumeImages[0] as unknown as Record<string, unknown>
-    const sharedFunctionalGroupsSequence =
-      image.SharedFunctionalGroupsSequence as
-        | Array<Record<string, unknown>>
-        | undefined
-    if (
-      sharedFunctionalGroupsSequence &&
-      sharedFunctionalGroupsSequence.length > 0
-    ) {
-      const pixelMeasuresSequence = sharedFunctionalGroupsSequence[0]
-        .PixelMeasuresSequence as Array<Record<string, unknown>> | undefined
-      if (pixelMeasuresSequence && pixelMeasuresSequence.length > 0) {
-        const pixelSpacing = pixelMeasuresSequence[0].PixelSpacing as
-          | number[]
-          | undefined
-        if (pixelSpacing && pixelSpacing.length >= 1) {
-          /** Approximate magnification from pixel spacing (mm to microns) */
-          const micronsPerPixel = pixelSpacing[0] * 1000
-          if (micronsPerPixel <= 0.125) return '80×'
-          if (micronsPerPixel <= 0.25) return '40×'
-          if (micronsPerPixel <= 0.5) return '20×'
-          if (micronsPerPixel <= 1.0) return '10×'
-          return '5×'
-        }
-      }
-    }
-  }
-  return ''
-}
-
-/**
- * Get a short slide identifier (e.g., "A1", "A2").
- */
-export function getSlideShortId(slide: Slide, index?: number): string {
-  const containerId = slide.containerIdentifier
-  if (containerId) {
-    /** If it looks like a short ID already, use it */
-    if (/^[A-Z]\d+$/i.test(containerId)) {
-      return containerId.toUpperCase()
-    }
-    /** Otherwise use first part or generate from index */
-    const parts = containerId.split(/[-_]/)
-    if (parts.length > 0 && parts[0].length <= 4) {
-      return parts[0].toUpperCase()
-    }
-  }
-  /** Fallback to index-based ID */
-  if (index !== undefined) {
-    return `A${index + 1}`
-  }
-  return containerId?.slice(0, 15) || 'Slide'
-}
-
 /**
  * React component representing a slide card in the redesigned layout.
  */
-class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
-  state = { isLoading: false }
-
+class SlideItem extends React.Component<SlideItemProps> {
   private readonly thumbnailRef = React.createRef<HTMLSpanElement>()
 
   private overviewViewer?: dmv.viewer.OverviewImageViewer
@@ -216,7 +133,7 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
     const stainInfo = getSlideStainInfo(slide)
     const illuminationType = getIlluminationType(slide)
     const magnification = getMagnification(slide)
-    const shortId = getSlideShortId(slide)
+    const slideId = getSlideDisplayId(slide)
     const hasPreview =
       slide.overviewImages.length > 0 || slide.thumbnailImages.length > 0
 
@@ -247,7 +164,9 @@ class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
 
         <span className="flex min-w-0 flex-1 flex-col gap-[3px] pt-0.5">
           <span className="flex items-center gap-1.5 text-[13px] font-semibold text-ink">
-            <span className="truncate">{shortId}</span>
+            <span className="truncate" title={slideId}>
+              {slideId}
+            </span>
             <ValidationWarning slide={slide} size={15} />
           </span>
           {stainInfo !== '' && (

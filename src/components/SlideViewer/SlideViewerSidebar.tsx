@@ -2,6 +2,7 @@ import type * as dmv from 'dicom-microscopy-viewer'
 import type React from 'react'
 import { useCallback } from 'react'
 
+import { SLIDE_PANEL_ID } from '../../features/viewer/utils/panelIds'
 import { cn } from '../../lib/utils'
 import { SlimCollapsibleSection } from '../slim/SlimCollapsibleSection'
 
@@ -46,6 +47,7 @@ const SlideViewerSidebar: React.FC<SlideViewerSidebarProps> = ({
 
   return (
     <aside
+      id={SLIDE_PANEL_ID}
       aria-label="Slide panel"
       className={cn(
         'flex min-h-0 w-sidebar-right flex-none flex-col border-l border-line bg-panel',

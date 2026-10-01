@@ -1,5 +1,7 @@
 /** User preferences persisted in localStorage by the Preferences dialog. */
 
+import { readStorage, writeStorage } from '../../../utils/safeStorage'
+
 export type MeasurementUnit = 'µm' | 'mm'
 
 export interface UserPreferences {
@@ -13,6 +15,11 @@ export interface UserPreferences {
 }
 
 export const PREFERENCES_STORAGE_KEY = 'slim-preferences'
+
+/** Window event fired after {@link savePreferences} writes new values. */
+export const PREFERENCES_CHANGED_EVENT = 'slim-preferences-changed'
+
+const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i
 
 export const STROKE_COLORS = [
   '#1f5ad1',
@@ -48,10 +55,15 @@ export function parsePreferences(stored: string | null): UserPreferences {
     if (typeof parsed.rememberFilters === 'boolean') {
       result.rememberFilters = parsed.rememberFilters
     }
-    if (typeof parsed.strokeColor === 'string')
+    if (
+      typeof parsed.strokeColor === 'string' &&
+      HEX_COLOR_PATTERN.test(parsed.strokeColor)
+    ) {
       result.strokeColor = parsed.strokeColor
+    }
     if (
       typeof parsed.strokeWidth === 'number' &&
+      Number.isFinite(parsed.strokeWidth) &&
       parsed.strokeWidth >= 1 &&
       parsed.strokeWidth <= 6
     ) {
@@ -70,9 +82,10 @@ export function parsePreferences(stored: string | null): UserPreferences {
 }
 
 export function loadPreferences(): UserPreferences {
-  return parsePreferences(localStorage.getItem(PREFERENCES_STORAGE_KEY))
+  return parsePreferences(readStorage(PREFERENCES_STORAGE_KEY))
 }
 
 export function savePreferences(preferences: UserPreferences): void {
-  localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(preferences))
+  writeStorage(PREFERENCES_STORAGE_KEY, JSON.stringify(preferences))
+  window.dispatchEvent(new Event(PREFERENCES_CHANGED_EVENT))
 }

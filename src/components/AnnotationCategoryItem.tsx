@@ -2,8 +2,13 @@ import type React from 'react'
 import { useCallback } from 'react'
 
 import { cn } from '../lib/utils'
+import {
+  type Category,
+  getCategoryVisibility,
+  type Type,
+} from '../utils/annotationCategories'
 import { rgbToHex } from '../utils/segmentColors'
-import type { Category, Type } from './AnnotationCategoryList'
+import { computeBulkVisibility, getToggleTarget } from '../utils/visibility'
 import ColorSettingsMenu from './ColorSettingsMenu'
 import type { StyleOptions } from './SlideViewer/types'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
@@ -37,12 +42,13 @@ function AnnotationTypeChip({
   const visibleCount = uids.filter((uid) =>
     checkedAnnotationUids.has(uid),
   ).length
-  const isVisible = visibleCount > 0
+  const visibility = getCategoryVisibility(type, checkedAnnotationUids)
+  const isVisible = visibility !== 'none'
   const style = defaultAnnotationStyles[uids[0]]
   const color = style !== undefined ? rgbToHex(style.color) : undefined
   const handleVisibilityChange = useCallback(
-    (checked: boolean) => onVisibilityChange(type, checked),
-    [type, onVisibilityChange],
+    () => onVisibilityChange(type, getToggleTarget(visibility)),
+    [type, visibility, onVisibilityChange],
   )
 
   return (
@@ -59,7 +65,8 @@ function AnnotationTypeChip({
           <span
             className={cn(
               'h-2 w-2 flex-none rounded-full',
-              !isVisible && 'opacity-40',
+              visibility === 'none' && 'opacity-40',
+              visibility === 'some' && 'opacity-70 ring-1 ring-line-hover',
             )}
             style={{ background: color ?? 'rgb(var(--ink-faint))' }}
           />
@@ -86,9 +93,13 @@ function AnnotationTypeChip({
             </span>
             <Switch
               size="sm"
-              checked={isVisible}
+              checked={visibility === 'all'}
               onCheckedChange={handleVisibilityChange}
-              aria-label={`Show ${CodeMeaning}`}
+              aria-label={
+                visibility === 'all'
+                  ? `Hide all ${CodeMeaning}`
+                  : `Show all ${CodeMeaning}`
+              }
             />
           </div>
           <ColorSettingsMenu
@@ -118,11 +129,16 @@ const AnnotationCategoryItem = ({
 }): React.ReactElement => {
   const handleVisibilityChange = useCallback(
     (type: Type, isVisible: boolean): void => {
-      type.uids.forEach((uid: string) => {
-        onChange({ roiUID: uid, isVisible })
-      })
+      const changes = computeBulkVisibility(
+        type.uids,
+        checkedAnnotationUids,
+        isVisible,
+      )
+      for (const change of changes) {
+        onChange({ roiUID: change.uid, isVisible: change.isVisible })
+      }
     },
-    [onChange],
+    [checkedAnnotationUids, onChange],
   )
 
   return (

@@ -4,8 +4,10 @@ import { type MemoryInfo, memoryMonitor } from '../services/MemoryMonitor'
 import NotificationMiddleware, {
   NotificationMiddlewareEvents,
 } from '../services/NotificationMiddleware'
-
-const CRITICAL_WARNING_THROTTLE_MS = 30000
+import {
+  evaluateMemoryWarning,
+  INITIAL_MEMORY_WARNING_STATE,
+} from '../utils/memoryWarning'
 
 /**
  * Subscribes to the shared memory monitor while `enabled` and publishes
@@ -13,8 +15,7 @@ const CRITICAL_WARNING_THROTTLE_MS = 30000
  */
 export function useMemoryMonitor(enabled: boolean): MemoryInfo | null {
   const [memoryInfo, setMemoryInfo] = useState<MemoryInfo | null>(null)
-  const lastWarningLevel = useRef<'none' | 'high' | 'critical'>('none')
-  const lastCriticalWarningTime = useRef(0)
+  const warningState = useRef(INITIAL_MEMORY_WARNING_STATE)
 
   useEffect(() => {
     if (!enabled) {
@@ -22,33 +23,20 @@ export function useMemoryMonitor(enabled: boolean): MemoryInfo | null {
     }
     const unsubscribe = memoryMonitor.subscribe((memory: MemoryInfo) => {
       setMemoryInfo(memory)
-      const warningLevel = memoryMonitor.getWarningLevel(memory)
-      if (warningLevel === lastWarningLevel.current) {
-        return
-      }
-      lastWarningLevel.current = warningLevel
-      if (memory.usagePercentage === null) {
-        return
-      }
-      if (warningLevel === 'critical') {
-        const now = Date.now()
-        if (
-          now - lastCriticalWarningTime.current >=
-          CRITICAL_WARNING_THROTTLE_MS
-        ) {
-          lastCriticalWarningTime.current = now
-          NotificationMiddleware.publish(
-            NotificationMiddlewareEvents.OnWarning,
-            `Critical memory usage: ${memory.usagePercentage.toFixed(1)}% used. ` +
-              `Only ${memoryMonitor.formatBytes(memory.remainingBytes)} remaining. ` +
-              'Consider refreshing the page or closing other tabs.',
-          )
-        }
-      } else if (warningLevel === 'high') {
+      const { state, message } = evaluateMemoryWarning(
+        {
+          level: memoryMonitor.getWarningLevel(memory),
+          usagePercentage: memory.usagePercentage,
+          remaining: memoryMonitor.formatBytes(memory.remainingBytes),
+        },
+        warningState.current,
+        Date.now(),
+      )
+      warningState.current = state
+      if (message !== null) {
         NotificationMiddleware.publish(
           NotificationMiddlewareEvents.OnWarning,
-          `High memory usage: ${memory.usagePercentage.toFixed(1)}% used. ` +
-            `${memoryMonitor.formatBytes(memory.remainingBytes)} remaining.`,
+          message,
         )
       }
     })

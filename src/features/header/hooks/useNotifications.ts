@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import NotificationMiddleware, {
   NotificationMiddlewareEvents,
@@ -7,6 +7,11 @@ import type { CustomError } from '../../../utils/CustomError'
 
 export interface ExtendedError extends CustomError {
   source: string
+}
+
+interface UseNotificationsOptions {
+  /** Notifications are cleared whenever this value changes, e.g. the route */
+  resetKey?: string
 }
 
 interface UseNotificationsReturn {
@@ -28,7 +33,9 @@ interface UseNotificationsReturn {
  * Hook for subscribing to and managing application notifications.
  * Tracks errors and warnings from NotificationMiddleware.
  */
-export function useNotifications(): UseNotificationsReturn {
+export function useNotifications({
+  resetKey,
+}: UseNotificationsOptions = {}): UseNotificationsReturn {
   const [errors, setErrors] = useState<ExtendedError[]>([])
   const [errorCategories, setErrorCategories] = useState<string[]>([])
   const [warnings, setWarnings] = useState<string[]>([])
@@ -71,10 +78,17 @@ export function useNotifications(): UseNotificationsReturn {
   }, [])
 
   const clearNotifications = useCallback(() => {
-    setErrors([])
-    setErrorCategories([])
-    setWarnings([])
+    setErrors((previous) => (previous.length === 0 ? previous : []))
+    setErrorCategories((previous) => (previous.length === 0 ? previous : []))
+    setWarnings((previous) => (previous.length === 0 ? previous : []))
   }, [])
+
+  const previousResetKey = useRef(resetKey)
+  useEffect(() => {
+    if (previousResetKey.current === resetKey) return
+    previousResetKey.current = resetKey
+    clearNotifications()
+  }, [resetKey, clearNotifications])
 
   return {
     errors,
@@ -84,33 +98,4 @@ export function useNotifications(): UseNotificationsReturn {
     warningCount: warnings.length,
     clearNotifications,
   }
-}
-
-/**
- * Groups errors by category for display.
- */
-export function groupErrorsByCategory(
-  errors: ExtendedError[],
-  categories: string[],
-): {
-  Authentication: string[]
-  Communication: string[]
-  EncodingDecoding: string[]
-  Visualization: string[]
-} {
-  const grouped = {
-    Authentication: [] as string[],
-    Communication: [] as string[],
-    EncodingDecoding: [] as string[],
-    Visualization: [] as string[],
-  }
-
-  errors.forEach((error, index) => {
-    const category = categories[index] as keyof typeof grouped
-    if (grouped[category]) {
-      grouped[category].push(`${error.message} (Source: ${error.source})`)
-    }
-  })
-
-  return grouped
 }

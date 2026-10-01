@@ -129,7 +129,11 @@ export interface SlideViewerState {
   isSegmentationInterpolationEnabled: boolean
   isParametricMapInterpolationEnabled: boolean
   customizedSegmentColors: { [segmentUID: string]: number[] }
-  clusteringPixelSizeThreshold: number | null
+  /** Raw threshold field text (mm); '' means automatic */
+  clusteringThresholdInput: string
   isClusteringEnabled: boolean
   isRightPanelOpen: boolean
+  /** Incremented whenever the DMV viewers are (re)constructed */
+  viewerGeneration: number
+  isRoiRemovalConfirmVisible: boolean
 }

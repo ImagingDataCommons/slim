@@ -2,6 +2,7 @@
 import type * as dmv from 'dicom-microscopy-viewer'
 import type React from 'react'
 
+import { formatMultiValue } from '../utils/values'
 import { type KeyValueItem, SlimKeyValueGrid } from './slim/SlimKeyValueGrid'
 
 interface EquipmentProps {
@@ -13,17 +14,11 @@ function Equipment({ metadata }: EquipmentProps): React.ReactElement | null {
   if (metadata === undefined) {
     return null
   }
-  const softwareVersions = metadata.SoftwareVersions as unknown
   const items: KeyValueItem[] = [
     { label: 'Manufacturer', value: metadata.Manufacturer },
     { label: 'Model', value: metadata.ManufacturerModelName },
     { label: 'Serial #', value: metadata.DeviceSerialNumber },
-    {
-      label: 'Software',
-      value: Array.isArray(softwareVersions)
-        ? softwareVersions.join(', ')
-        : (softwareVersions as React.ReactNode),
-    },
+    { label: 'Software', value: formatMultiValue(metadata.SoftwareVersions) },
   ]
   if (metadata.InstitutionName != null) {
     items.push({ label: 'Institution', value: metadata.InstitutionName })

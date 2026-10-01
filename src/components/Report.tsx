@@ -418,11 +418,11 @@ interface ReportProps {
  * A section divider component with a label
  */
 const SectionDivider: React.FC<{ label: string }> = ({ label }) => (
-  <div className="flex items-center gap-4 my-4">
-    <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+  <div className="my-4 flex items-center gap-4">
+    <span className="whitespace-nowrap text-sm font-medium text-ink-muted">
       {label}
     </span>
-    <div className="h-px flex-1 bg-border" />
+    <div className="h-px flex-1 bg-line" />
   </div>
 )
 

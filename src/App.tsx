@@ -35,6 +35,11 @@ import {
 } from './utils/authPolicy'
 import { CustomError, errorTypes } from './utils/CustomError'
 import { getProjectStorePath, isProjectsPath, RoutePaths } from './utils/routes'
+import { readStorage, writeStorage } from './utils/safeStorage'
+import {
+  SERVER_MODE_STORAGE_KEY,
+  SERVER_URL_STORAGE_KEY,
+} from './utils/serverSelectionStorage'
 import { createSingleFlight } from './utils/singleFlight'
 import { joinUrl, normalizeServerUrl } from './utils/url'
 
@@ -454,13 +459,13 @@ class App extends React.Component<AppProps, AppState> {
     console.info('select DICOMweb server: ', trimmedUrl)
     if (
       trimmedUrl === '' ||
-      window.localStorage.getItem('slim_server_selection_mode') === 'default'
+      readStorage(SERVER_MODE_STORAGE_KEY) === 'default'
     ) {
       this.setState({ clients: this.state.defaultClients })
       return
     }
     const resolvedUrl = normalizeServerUrl(trimmedUrl)
-    window.localStorage.setItem('slim_selected_server', resolvedUrl)
+    writeStorage(SERVER_URL_STORAGE_KEY, resolvedUrl)
     const tmpClient = new DicomWebManager({
       baseUri: '',
       settings: [
@@ -610,7 +615,7 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   componentDidMount(): void {
-    const cachedServerUrl = window.localStorage.getItem('slim_selected_server')
+    const cachedServerUrl = readStorage(SERVER_URL_STORAGE_KEY)
     if (
       cachedServerUrl !== null &&
       cachedServerUrl !== undefined &&

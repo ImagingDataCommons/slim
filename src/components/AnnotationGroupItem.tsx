@@ -5,9 +5,19 @@ import type * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
 
 import { cn } from '../lib/utils'
+import {
+  describeAnnotationGroup,
+  getAnnotationGroupItem,
+  getMeasurementOptions,
+  isFillableGraphicType,
+} from '../utils/annotationGroup'
 import { formatGroupedNumber } from '../utils/displayFormat'
+import { clampLimitValues, type LimitSide } from '../utils/limits'
+import { rgbToHex } from '../utils/segmentColors'
 import ColorSlider from './ColorSlider'
 import OpacitySlider from './OpacitySlider'
+import { InfoTooltipButton } from './slim/InfoTooltipButton'
+import { LimitInput } from './slim/LimitInput'
 import { Icon } from './ui/icon'
 import { Input } from './ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
@@ -23,6 +33,10 @@ import { Switch } from './ui/switch'
 import ValidationWarning from './ValidationWarning'
 
 const SETTINGS_LABEL = 'mb-2 text-[12px] text-ink-muted'
+const NO_MEASUREMENT = '-'
+/** The viewer does not expose measurement value ranges yet */
+const LIMIT_MIN = 0
+const LIMIT_MAX = 1000
 
 /** Interfaces */
 interface AnnotationGroupItemProps {
@@ -60,7 +74,8 @@ interface AnnotationGroupItemProps {
 }
 
 interface AnnotationGroupItemState {
-  isVisible: boolean
+  /** Select value; survives the settings popover unmounting */
+  selectedMeasurementKey: string
   currentStyle: {
     opacity: number
     color?: number[]
@@ -81,7 +96,7 @@ class AnnotationGroupItem extends React.Component<
   constructor(props: AnnotationGroupItemProps) {
     super(props)
     this.state = {
-      isVisible: this.props.isVisible,
+      selectedMeasurementKey: NO_MEASUREMENT,
       currentStyle: {
         opacity: this.props.defaultStyle.opacity,
         color: this.props.defaultStyle.color,
@@ -96,7 +111,6 @@ class AnnotationGroupItem extends React.Component<
       annotationGroupUID: this.props.annotationGroup.uid,
       isVisible: checked,
     })
-    this.setState({ isVisible: checked })
   }
 
   handleColorChange = (color: number[]): void => {
@@ -174,169 +188,93 @@ class AnnotationGroupItem extends React.Component<
     }
   }
 
-  getCurrentColor = (): string => {
-    const rgb2hex = (values: number[]): string => {
-      const r = values[0]
-      const g = values[1]
-      const b = values[2]
-      return `#${(0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
-    }
-
-    if (
-      this.state.currentStyle.color !== null &&
-      this.state.currentStyle.color !== undefined
-    ) {
-      return rgb2hex(this.state.currentStyle.color)
-    } else {
-      return 'white'
-    }
-  }
-
-  handleLowerLimitChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    const value = parseInt(e.target.value, 10)
-    if (Number.isNaN(value)) return
-    if (this.state.currentStyle.limitValues !== undefined) {
-      this.setState((state) => {
-        if (state.currentStyle.limitValues !== undefined) {
-          return {
-            currentStyle: {
-              ...state.currentStyle,
-              limitValues: [value, state.currentStyle.limitValues[1]],
-            },
-          }
-        } else {
-          return { currentStyle: state.currentStyle }
-        }
-      })
-      this.props.onStyleChange({
-        uid: this.props.annotationGroup.uid,
-        styleOptions: {
-          limitValues: [value, this.state.currentStyle.limitValues[1]],
-        },
-      })
-    }
-  }
-
-  handleUpperLimitChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    const value = parseInt(e.target.value, 10)
-    if (Number.isNaN(value)) return
-    if (this.state.currentStyle.limitValues !== undefined) {
-      this.setState((state) => {
-        if (state.currentStyle.limitValues !== undefined) {
-          return {
-            currentStyle: {
-              ...state.currentStyle,
-              limitValues: [state.currentStyle.limitValues[0], value],
-            },
-          }
-        } else {
-          return { currentStyle: state.currentStyle }
-        }
-      })
-      this.props.onStyleChange({
-        uid: this.props.annotationGroup.uid,
-        styleOptions: {
-          limitValues: [this.state.currentStyle.limitValues[0], value],
-        },
-      })
-    }
-  }
-
-  handleLimitChange = (values: number[]): void => {
+  private applyLimitValues(
+    values: number[],
+    edited: LimitSide = 'lower',
+  ): void {
+    const limitValues = clampLimitValues(values, LIMIT_MIN, LIMIT_MAX, edited)
     this.setState((state) => ({
-      currentStyle: {
-        ...state.currentStyle,
-        limitValues: values,
-      },
+      currentStyle: { ...state.currentStyle, limitValues },
     }))
     this.props.onStyleChange({
       uid: this.props.annotationGroup.uid,
-      styleOptions: { limitValues: values },
+      styleOptions: { limitValues },
     })
+  }
+
+  handleLowerLimitCommit = (value: number): void => {
+    const limitValues = this.state.currentStyle.limitValues
+    if (limitValues === undefined) return
+    this.applyLimitValues([value, limitValues[1]], 'lower')
+  }
+
+  handleUpperLimitCommit = (value: number): void => {
+    const limitValues = this.state.currentStyle.limitValues
+    if (limitValues === undefined) return
+    this.applyLimitValues([limitValues[0], value], 'upper')
+  }
+
+  handleLimitChange = (values: number[]): void => {
+    this.applyLimitValues(values)
   }
 
   handleAnnotationGroupClick = (): void => {
     this.props.onAnnotationGroupClick(this.props.annotationGroup.uid)
   }
 
-  handleMeasurementSelection = (value: string): void => {
-    if (value && value !== '-') {
-      const codeComponents = value.split('-')
-      /** Need to look up the code meaning from the measurements sequence */
-      const index = this.props.metadata.AnnotationGroupSequence.findIndex(
-        (item) => item.AnnotationGroupUID === this.props.annotationGroup.uid,
-      )
-      const item = this.props.metadata.AnnotationGroupSequence[index]
-      const measurementsSequence = item.MeasurementsSequence ?? []
-      const matchingMeasurement = measurementsSequence.find((m) => {
-        const name = m.ConceptNameCodeSequence[0]
-        return `${name.CodingSchemeDesignator}-${name.CodeValue}` === value
+  handleMeasurementSelection = (key: string): void => {
+    const item = getAnnotationGroupItem(
+      this.props.metadata,
+      this.props.annotationGroup.uid,
+    )
+    const option =
+      key === NO_MEASUREMENT
+        ? undefined
+        : getMeasurementOptions(item).find((candidate) => candidate.key === key)
+    if (option !== undefined) {
+      const measurement = new dcmjs.sr.coding.CodedConcept({
+        value: option.value,
+        schemeDesignator: option.schemeDesignator,
+        meaning: option.meaning,
       })
-      if (matchingMeasurement) {
-        const name = matchingMeasurement.ConceptNameCodeSequence[0]
-        const measurement = new dcmjs.sr.coding.CodedConcept({
-          value: codeComponents[1],
-          schemeDesignator: codeComponents[0],
-          meaning: name.CodeMeaning,
-        })
-        this.props.onStyleChange({
-          uid: this.props.annotationGroup.uid,
-          styleOptions: { measurement },
-        })
-        this.setState((state) => ({
-          currentStyle: {
-            ...state.currentStyle,
-            measurement,
-          },
-        }))
-      }
-    } else {
       this.props.onStyleChange({
         uid: this.props.annotationGroup.uid,
-        styleOptions: {
-          color: this.props.defaultStyle.color,
-        },
+        styleOptions: { measurement },
       })
       this.setState((state) => ({
-        currentStyle: {
-          ...state.currentStyle,
-          color: this.props.defaultStyle.color,
-          limitValues: undefined,
-        },
+        selectedMeasurementKey: option.key,
+        currentStyle: { ...state.currentStyle, measurement },
       }))
+      return
     }
+    this.props.onStyleChange({
+      uid: this.props.annotationGroup.uid,
+      styleOptions: { color: this.props.defaultStyle.color },
+    })
+    this.setState((state) => ({
+      selectedMeasurementKey: NO_MEASUREMENT,
+      currentStyle: {
+        ...state.currentStyle,
+        color: this.props.defaultStyle.color,
+        limitValues: undefined,
+        measurement: undefined,
+      },
+    }))
   }
 
   render(): React.ReactNode {
-    const index = this.props.metadata.AnnotationGroupSequence.findIndex(
-      (item) => item.AnnotationGroupUID === this.props.annotationGroup.uid,
+    const item = getAnnotationGroupItem(
+      this.props.metadata,
+      this.props.annotationGroup.uid,
     )
-    const item = this.props.metadata.AnnotationGroupSequence[index]
-    const attributes: Array<{ name: string; value: string }> = [
-      {
-        name: 'Property type',
-        value: this.props.annotationGroup.propertyType.CodeMeaning,
-      },
-      {
-        name: 'Property category',
-        value: this.props.annotationGroup.propertyCategory.CodeMeaning,
-      },
-      {
-        name: 'Graphic type',
-        value: item.GraphicType,
-      },
-      {
-        name: 'Annotation coordinate type',
-        value: this.props.metadata.AnnotationCoordinateType,
-      },
-    ]
-
-    const measurementsSequence = item.MeasurementsSequence ?? []
-    const measurementOptions = measurementsSequence.map((measurementItem) => {
-      const name = measurementItem.ConceptNameCodeSequence[0]
-      const key = `${name.CodingSchemeDesignator}-${name.CodeValue}`
-      return { key, meaning: name.CodeMeaning }
-    })
+    const { meta, attributes, count } = describeAnnotationGroup(
+      this.props.annotationGroup,
+      item,
+      this.props.metadata?.AnnotationCoordinateType,
+    )
+    const measurementOptions = getMeasurementOptions(item)
+    const isColoredByMeasurement =
+      this.state.selectedMeasurementKey !== NO_MEASUREMENT
 
     let colorSettings: React.ReactNode
     if (
@@ -357,43 +295,35 @@ class AnnotationGroupItem extends React.Component<
 
     let windowSettings: React.ReactNode
     let explorationSettings: React.ReactNode
-    if (measurementsSequence.length > 0) {
-      if (
-        this.state.currentStyle.limitValues !== null &&
-        this.state.currentStyle.limitValues !== undefined
-      ) {
-        const minValue = 0
-        const maxValue = 1000
+    if (measurementOptions.length > 0) {
+      const limitValues = this.state.currentStyle.limitValues
+      if (limitValues !== null && limitValues !== undefined) {
         windowSettings = (
           <div>
             <p className={SETTINGS_LABEL}>Values of interest</p>
             <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                min={0}
-                max={this.state.currentStyle.limitValues[1]}
-                className="h-8 w-20 font-mono text-[12px]"
-                value={this.state.currentStyle.limitValues[0]}
-                onChange={this.handleLowerLimitChange}
+              <LimitInput
+                aria-label="Lower limit"
+                min={LIMIT_MIN}
+                max={limitValues[1]}
+                value={limitValues[0]}
+                onCommit={this.handleLowerLimitCommit}
               />
               <Slider
                 className="flex-1"
-                min={minValue}
-                max={maxValue}
+                min={LIMIT_MIN}
+                max={LIMIT_MAX}
                 step={1}
-                value={[
-                  this.state.currentStyle.limitValues[0],
-                  this.state.currentStyle.limitValues[1],
-                ]}
+                value={[limitValues[0], limitValues[1]]}
                 onValueChange={this.handleLimitChange}
+                thumbLabels={['Lower limit', 'Upper limit']}
               />
-              <Input
-                type="number"
-                min={this.state.currentStyle.limitValues[0]}
-                max={maxValue}
-                className="h-8 w-20 font-mono text-[12px]"
-                value={this.state.currentStyle.limitValues[1]}
-                onChange={this.handleUpperLimitChange}
+              <LimitInput
+                aria-label="Upper limit"
+                min={limitValues[0]}
+                max={LIMIT_MAX}
+                value={limitValues[1]}
+                onCommit={this.handleUpperLimitCommit}
               />
             </div>
           </div>
@@ -403,14 +333,14 @@ class AnnotationGroupItem extends React.Component<
         <div>
           <p className={SETTINGS_LABEL}>Color by measurement</p>
           <Select
+            value={this.state.selectedMeasurementKey}
             onValueChange={this.handleMeasurementSelection}
-            defaultValue="-"
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full" aria-label="Color by measurement">
               <SelectValue placeholder="Select measurement" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="-">None</SelectItem>
+              <SelectItem value={NO_MEASUREMENT}>None</SelectItem>
               {measurementOptions.map((opt) => (
                 <SelectItem
                   key={opt.key}
@@ -428,11 +358,7 @@ class AnnotationGroupItem extends React.Component<
 
     /** Fill settings for POLYGON, RECTANGLE, ELLIPSE graphic types */
     let fillSettings: React.ReactNode
-    if (
-      item.GraphicType === 'POLYGON' ||
-      item.GraphicType === 'RECTANGLE' ||
-      item.GraphicType === 'ELLIPSE'
-    ) {
+    if (isFillableGraphicType(item?.GraphicType)) {
       fillSettings = (
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
@@ -456,12 +382,14 @@ class AnnotationGroupItem extends React.Component<
               value={[this.state.currentStyle.fillOpacity ?? 0.5]}
               onValueChange={this.handleFillOpacitySliderChange}
               disabled={this.state.currentStyle.fill !== true}
+              aria-label="Fill opacity"
             />
             <Input
               type="number"
               min={0}
               max={1}
               step={0.01}
+              aria-label="Fill opacity value"
               className="h-8 w-16 font-mono text-[12px]"
               value={this.state.currentStyle.fillOpacity ?? 0.5}
               onChange={this.handleFillOpacityInputChange}
@@ -489,29 +417,31 @@ class AnnotationGroupItem extends React.Component<
     )
 
     const label = this.props.annotationGroup.label
-    const meta = [
-      this.props.annotationGroup.propertyType.CodeMeaning,
-      item.GraphicType?.toLowerCase(),
-    ]
-      .filter((part) => part !== undefined && part !== '')
-      .join(' · ')
-    const numberOfAnnotations = (item as { NumberOfAnnotations?: number })
-      .NumberOfAnnotations
+    const color = this.state.currentStyle.color
 
     return (
-      <div
-        className="flex items-center gap-2.5 rounded-lg border border-line px-2.5 py-2"
-        title={attributes.map((a) => `${a.name}: ${a.value}`).join('\n')}
-      >
-        <span
-          className="h-2.5 w-2.5 flex-none rounded-full"
-          style={{ background: this.getCurrentColor() }}
-        />
+      <div className="flex items-center gap-2.5 rounded-lg border border-line px-2.5 py-2">
+        {isColoredByMeasurement ? (
+          <Icon
+            name="gradient"
+            size={14}
+            className="flex-none text-ink-muted"
+            title="Colored by measurement"
+          />
+        ) : (
+          <span
+            className={cn(
+              'h-2.5 w-2.5 flex-none rounded-full',
+              color === undefined && 'border border-line bg-panel',
+            )}
+            style={color !== undefined ? { background: rgbToHex(color) } : {}}
+          />
+        )}
         <button
           type="button"
           onClick={this.handleAnnotationGroupClick}
           className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
-          aria-label={`Annotation group ${label}`}
+          title="Zoom to annotation group"
         >
           <span className="flex items-center gap-1.5">
             <span className="truncate font-semibold text-ink">{label}</span>
@@ -524,11 +454,15 @@ class AnnotationGroupItem extends React.Component<
             <span className="truncate text-[12px] text-ink-muted">{meta}</span>
           )}
         </button>
-        {numberOfAnnotations !== undefined && (
+        {count !== undefined && (
           <span className="flex-none font-mono text-[11.5px] font-medium text-ink-secondary">
-            {formatGroupedNumber(numberOfAnnotations)}
+            {formatGroupedNumber(count)}
           </span>
         )}
+        <InfoTooltipButton
+          label={`Details for ${label}`}
+          attributes={attributes}
+        />
         <Popover>
           <PopoverTrigger asChild>
             <button

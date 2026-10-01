@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 
 import { cn } from '../../lib/utils'
 import { Button } from '../ui/button'
@@ -32,6 +32,7 @@ interface CoordinateFieldProps {
   isValid: boolean
   onValueChange: (value: number | null) => void
   onSubmit: () => void
+  inputRef?: React.Ref<HTMLInputElement>
 }
 
 function CoordinateField({
@@ -41,6 +42,7 @@ function CoordinateField({
   isValid,
   onValueChange,
   onSubmit,
+  inputRef,
 }: CoordinateFieldProps): React.ReactElement {
   const [hasValue, setHasValue] = useState(false)
   const showInvalid = hasValue && !isValid
@@ -60,6 +62,7 @@ function CoordinateField({
         )}
       >
         <input
+          ref={inputRef}
           id={id}
           type="number"
           placeholder={placeholder}
@@ -99,6 +102,7 @@ const GoToModal: React.FC<GoToModalProps> = ({
   onYCoordinateSelection,
   onMagnificationSelection,
 }) => {
+  const xInputRef = useRef<HTMLInputElement>(null)
   const handleOpenChange = useCallback(
     (open: boolean): void => {
       if (!open) onCancel()
@@ -112,7 +116,7 @@ const GoToModal: React.FC<GoToModalProps> = ({
         className="max-w-[440px]"
         onOpenAutoFocus={(event) => {
           event.preventDefault()
-          document.getElementById('goto-x-coordinate')?.focus()
+          xInputRef.current?.focus()
         }}
       >
         <SlimDialogHeader
@@ -124,6 +128,7 @@ const GoToModal: React.FC<GoToModalProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <CoordinateField
               id="goto-x-coordinate"
+              inputRef={xInputRef}
               label="X coordinate (mm)"
               placeholder={`${validXCoordinateRange[0]} – ${validXCoordinateRange[1]}`}
               isValid={isSelectedXCoordinateValid}

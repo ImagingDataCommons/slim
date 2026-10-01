@@ -10,6 +10,11 @@ import {
   SelectValue,
 } from '../../../components/ui/select'
 import { cn } from '../../../lib/utils'
+import {
+  clampPageIndex,
+  getPageRange,
+  getVisiblePages,
+} from '../utils/pagination'
 
 interface WorklistPaginationProps {
   pagination: PaginationState
@@ -17,30 +22,6 @@ interface WorklistPaginationProps {
   onPaginationChange: (pagination: PaginationState) => void
   pageSizeOptions?: number[]
   className?: string
-}
-
-/**
- * Page numbers to show around the current page: first, last and a window of
- * neighbours, with `null` marking elided gaps.
- */
-export function getVisiblePages(
-  pageIndex: number,
-  pageCount: number,
-): Array<number | null> {
-  if (pageCount <= 7) {
-    return Array.from({ length: pageCount }, (_, index) => index)
-  }
-  const pages = new Set<number>([0, pageCount - 1])
-  for (let index = pageIndex - 1; index <= pageIndex + 1; index++) {
-    if (index > 0 && index < pageCount - 1) pages.add(index)
-  }
-  const sorted = [...pages].sort((a, b) => a - b)
-  const result: Array<number | null> = []
-  sorted.forEach((page, position) => {
-    if (position > 0 && page - sorted[position - 1] > 1) result.push(null)
-    result.push(page)
-  })
-  return result
 }
 
 const PAGE_BUTTON =
@@ -55,13 +36,15 @@ export function WorklistPagination({
   className,
 }: WorklistPaginationProps): React.ReactElement {
   const { pageIndex, pageSize } = pagination
-  const pageCount = Math.max(1, Math.ceil(totalCount / pageSize))
-  const startItem = totalCount === 0 ? 0 : pageIndex * pageSize + 1
-  const endItem = Math.min((pageIndex + 1) * pageSize, totalCount)
+  const { pageCount, startItem, endItem } = getPageRange(
+    pageIndex,
+    pageSize,
+    totalCount,
+  )
   const goTo = (index: number): void => {
     onPaginationChange({
       ...pagination,
-      pageIndex: Math.min(Math.max(index, 0), pageCount - 1),
+      pageIndex: clampPageIndex(index, pageCount),
     })
   }
 
@@ -84,7 +67,10 @@ export function WorklistPagination({
             onPaginationChange({ pageIndex: 0, pageSize: Number(value) })
           }
         >
-          <SelectTrigger className="h-[30px] w-[68px] rounded-md pl-2.5 pr-1.5 text-ink">
+          <SelectTrigger
+            aria-label="Rows per page"
+            className="h-[30px] w-[68px] rounded-md pl-2.5 pr-1.5 text-ink"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -96,7 +82,7 @@ export function WorklistPagination({
           </SelectContent>
         </Select>
       </div>
-      <div className="flex gap-1">
+      <nav aria-label="Pagination" className="flex gap-1">
         <button
           type="button"
           aria-label="Previous page"
@@ -146,7 +132,7 @@ export function WorklistPagination({
         >
           <Icon name="chevron_right" size={18} />
         </button>
-      </div>
+      </nav>
     </div>
   )
 }

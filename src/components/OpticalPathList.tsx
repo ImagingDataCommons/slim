@@ -1,8 +1,12 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
+import { buildOpticalPathDisplayOptions } from '../utils/displayOptions'
 import OpticalPathItem from './OpticalPathItem'
-import { type DisplayOption, DisplayOptionsPanel } from './slim'
+import {
+  bindDisplayOptions,
+  DisplayOptionsPanel,
+} from './slim/DisplayOptionsPanel'
 import { Button } from './ui/button'
 import { Icon } from './ui/icon'
 import {
@@ -187,54 +191,37 @@ class OpticalPathList extends React.Component<
       )
     }
 
-    /** Display options for ICC profiles and gamma correction */
     const { displaySettings, onDisplaySettingsChange } = this.props
-    const displayOptions: DisplayOption[] = []
-
-    if (
-      displaySettings !== undefined &&
-      onDisplaySettingsChange !== undefined
-    ) {
-      displayOptions.push({
-        id: 'icc',
-        label: 'ICC profiles',
-        shortLabel: 'ICC',
-        description:
-          this.props.hasIccProfiles === false
-            ? 'This slide has no ICC profiles.'
-            : 'Apply the embedded color profile for accurate stain color.',
-        enabled: displaySettings.iccProfileEnabled,
-        disabled: this.props.hasIccProfiles === false,
-        onChange: (enabled) => {
-          onDisplaySettingsChange({
-            ...displaySettings,
-            iccProfileEnabled: enabled,
-          })
-        },
-      })
-
-      displayOptions.push({
-        id: 'gamma',
-        label: 'Gamma correction',
-        shortLabel: 'Gamma',
-        description: 'Correct palette display for monitor gamma.',
-        enabled: displaySettings.gammaEnabled,
-        onChange: (enabled) => {
-          onDisplaySettingsChange({
-            ...displaySettings,
-            gammaEnabled: enabled,
-          })
-        },
-      })
-    }
 
     return (
       <div className="flex flex-col gap-1.5">
         {opticalPathItems}
         {opticalPathSelector}
-        {displayOptions.length > 0 && (
-          <DisplayOptionsPanel options={displayOptions} className="mt-2" />
-        )}
+        {displaySettings !== undefined &&
+          onDisplaySettingsChange !== undefined && (
+            <DisplayOptionsPanel
+              className="mt-2"
+              options={bindDisplayOptions(
+                buildOpticalPathDisplayOptions({
+                  ...displaySettings,
+                  hasIccProfiles: this.props.hasIccProfiles,
+                }),
+                (id, enabled) => {
+                  if (id === 'icc') {
+                    onDisplaySettingsChange({
+                      ...displaySettings,
+                      iccProfileEnabled: enabled,
+                    })
+                  } else if (id === 'gamma') {
+                    onDisplaySettingsChange({
+                      ...displaySettings,
+                      gammaEnabled: enabled,
+                    })
+                  }
+                },
+              )}
+            />
+          )}
       </div>
     )
   }

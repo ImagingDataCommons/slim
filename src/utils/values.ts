@@ -163,10 +163,33 @@ function formatPatientSpeciesCodeSequence(
   return unique.length > 0 ? unique.join(', ') : undefined
 }
 
+/** Multi-valued DICOM attribute (e.g. SoftwareVersions) as "a, b"; empty if absent. */
+function formatMultiValue(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => formatMultiValue(item))
+      .filter((item) => item !== '')
+      .join(', ')
+  }
+  if (typeof value === 'string') {
+    return value
+      .split('\\')
+      .map((item) => item.trim())
+      .filter((item) => item !== '')
+      .join(', ')
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value)
+  }
+  return ''
+}
+
 export {
   codedConceptDisplayText,
   dedupeStringsPreserveOrder,
   formatAdmittingDiagnoses,
+  formatMultiValue,
   formatPatientSpeciesCodeSequence,
   parseDate,
   parseDateTime,

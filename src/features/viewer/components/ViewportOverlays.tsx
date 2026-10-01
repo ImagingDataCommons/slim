@@ -1,19 +1,21 @@
 import type OlMap from 'ol/Map'
-import type MapBrowserEvent from 'ol/MapBrowserEvent'
 import type React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 
 import { Icon } from '../../../components/ui/icon'
-import { formatGroupedNumber } from '../../../utils/displayFormat'
+import { useViewportMetrics } from '../hooks/useViewportMetrics'
 import {
   computeScaleBar,
-  formatMagnification,
-  formatMicronsPerPixel,
+  formatCursorLabel,
+  formatMagnificationLabel,
 } from '../utils/scaleBar'
+import type { SlideAffine } from '../utils/slideCoordinates'
 
 export interface ViewportOverlaysProps {
   /** Returns the viewer's OpenLayers map (DMV bundles its own `ol`). */
   getMap: () => OlMap | undefined
+  /** Base-level pixel → slide transform for the cursor readout (mm) */
+  slideAffine?: SlideAffine
   slideId: string
   slideDescription?: string
 }
@@ -22,20 +24,6 @@ const ZOOM_ANIMATION_MS = 200
 
 const OVERLAY_CARD =
   'rounded-lg border border-line bg-overlay-card/[0.92] shadow-[0_1px_2px_rgb(var(--shadow-color)/0.06)]'
-
-function micronsPerScreenPixel(map: OlMap): number | undefined {
-  const view = map.getView()
-  const resolution = view.getResolution()
-  const center = view.getCenter()
-  if (resolution === undefined || center === undefined) return undefined
-  const projection = view.getProjection()
-  const pointResolution = projection.getPointResolutionFunc()
-  const meters =
-    pointResolution !== undefined
-      ? pointResolution(resolution, center)
-      : resolution * (projection.getMetersPerUnit() ?? 1)
-  return meters * 1e6
-}
 
 function ZoomButton({
   icon,
@@ -68,30 +56,11 @@ function ZoomButton({
  */
 export function ViewportOverlays({
   getMap,
+  slideAffine,
   slideId,
   slideDescription,
 }: ViewportOverlaysProps): React.ReactElement {
-  const [micronsPerPixel, setMicronsPerPixel] = useState<number | undefined>()
-  const [cursor, setCursor] = useState<[number, number] | undefined>()
-
-  useEffect(() => {
-    const map = getMap()
-    if (map === undefined) return
-    const updateResolution = (): void => {
-      setMicronsPerPixel(micronsPerScreenPixel(map))
-    }
-    const updateCursor = (event: MapBrowserEvent): void => {
-      const [x, y] = event.coordinate
-      setCursor([Math.round(x), Math.round(Math.abs(y))])
-    }
-    updateResolution()
-    map.on('moveend', updateResolution)
-    map.on('pointermove', updateCursor)
-    return () => {
-      map.un('moveend', updateResolution)
-      map.un('pointermove', updateCursor)
-    }
-  }, [getMap])
+  const { micronsPerPixel, cursor } = useViewportMetrics(getMap, slideAffine)
 
   const zoomBy = useCallback(
     (delta: number): void => {
@@ -114,14 +83,8 @@ export function ViewportOverlays({
 
   const scaleBar =
     micronsPerPixel !== undefined ? computeScaleBar(micronsPerPixel) : null
-  const magnificationLabel =
-    micronsPerPixel !== undefined
-      ? `${formatMagnification(micronsPerPixel)} · ${formatMicronsPerPixel(micronsPerPixel)} µm/px`
-      : '— · — µm/px'
-  const cursorLabel =
-    cursor !== undefined
-      ? `x ${formatGroupedNumber(cursor[0])} · y ${formatGroupedNumber(cursor[1])}`
-      : 'x — · y —'
+  const magnificationLabel = formatMagnificationLabel(micronsPerPixel)
+  const cursorLabel = formatCursorLabel(cursor)
 
   return (
     <>
@@ -129,11 +92,14 @@ export function ViewportOverlays({
         <div
           className={`flex items-center gap-2 px-2.5 py-1.5 ${OVERLAY_CARD}`}
         >
-          <span className="text-[12.5px] font-semibold text-ink">
+          <span
+            className="max-w-[220px] truncate text-[12.5px] font-semibold text-ink"
+            title={slideId}
+          >
             {slideId}
           </span>
           {slideDescription !== undefined && slideDescription !== '' && (
-            <span className="text-[12px] text-ink-muted">
+            <span className="max-w-[220px] truncate text-[12px] text-ink-muted">
               {slideDescription}
             </span>
           )}

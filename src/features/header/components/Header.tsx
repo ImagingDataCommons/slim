@@ -1,5 +1,5 @@
 import type * as React from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import type { User } from '../../../auth'
@@ -47,17 +47,21 @@ function HeaderIconButton({
   onClick: () => void
   badge?: number
 }): React.ReactElement {
+  const hasBadge = badge !== undefined && badge > 0
   return (
     <button
       type="button"
       title={title}
-      aria-label={title}
+      aria-label={hasBadge ? `${title} (${badge})` : title}
       onClick={onClick}
       className="relative grid h-9 w-9 place-items-center rounded-lg text-ink-secondary transition-colors hover:bg-app hover:text-ink"
     >
       <Icon name={icon} size={20} />
-      {badge !== undefined && badge > 0 && (
-        <span className="absolute right-[3px] top-1 h-4 min-w-[16px] rounded-lg bg-destructive px-1 text-[10px] font-semibold leading-4 text-white shadow-[0_0_0_2px_rgb(var(--panel))]">
+      {hasBadge && (
+        <span
+          aria-hidden="true"
+          className="absolute right-[3px] top-1 h-4 min-w-[16px] rounded-lg bg-destructive px-1 text-[10px] font-semibold leading-4 text-destructive-foreground shadow-[0_0_0_2px_rgb(var(--panel))]"
+        >
           {badge > 99 ? '99+' : badge}
         </span>
       )}
@@ -100,30 +104,14 @@ export function Header({
     submitSelection: submitServerSelection,
   } = useServerSelection({ onServerSelection })
 
-  const {
-    errors,
-    errorCategories,
-    warnings,
-    errorCount,
-    warningCount,
-    clearNotifications,
-  } = useNotifications()
+  const { errors, errorCategories, warnings, errorCount, warningCount } =
+    useNotifications({ resetKey: location.pathname })
 
   const [isDebugDialogOpen, setIsDebugDialogOpen] = useState(false)
   const [isTagBrowserOpen, setIsTagBrowserOpen] = useState(false)
   const [preferencesTab, setPreferencesTab] = useState<PreferencesTab | null>(
     null,
   )
-
-  const previousPathname = useRef(location.pathname)
-  useEffect(() => {
-    if (location.pathname !== previousPathname.current) {
-      if (errorCount > 0 || warningCount > 0) {
-        clearNotifications()
-      }
-      previousPathname.current = location.pathname
-    }
-  }, [location.pathname, errorCount, warningCount, clearNotifications])
 
   const currentServerUrl =
     clients?.default?.baseURL ?? defaultClients?.default?.baseURL ?? serverUrl
@@ -145,7 +133,7 @@ export function Header({
     <>
       <header className="flex h-header flex-none items-center gap-4 border-b border-line bg-panel pl-4 pr-3">
         <div className="flex flex-none items-center gap-2.5">
-          <div className="grid h-7 w-7 place-items-center rounded-[7px] bg-primary text-[14px] font-bold leading-none text-white">
+          <div className="grid h-7 w-7 place-items-center rounded-[7px] bg-primary text-[14px] font-bold leading-none text-primary-foreground">
             S
           </div>
           <div className="text-[15px] font-semibold leading-none tracking-[-0.01em] text-ink">

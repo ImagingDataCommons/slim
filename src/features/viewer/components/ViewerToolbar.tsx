@@ -3,11 +3,14 @@ import { useEffect, useRef, useState } from 'react'
 
 import { Icon } from '../../../components/ui/icon'
 import { cn } from '../../../lib/utils'
+import type { ActiveRoiTool } from '../utils/activeRoiTool'
+import { SLIDE_PANEL_ID, STUDY_PANEL_ID } from '../utils/panelIds'
+
+export type { ActiveRoiTool } from '../utils/activeRoiTool'
+export { deriveActiveRoiTool } from '../utils/activeRoiTool'
 
 /** Below this toolbar width the tool labels collapse to icons only. */
 export const COMPACT_TOOLBAR_WIDTH_PX = 720
-
-export type ActiveRoiTool = 'draw' | 'modify' | 'translate' | null
 
 interface ToolDefinition {
   key: string
@@ -38,10 +41,14 @@ export interface ViewerToolbarProps {
 function PanelToggle({
   icon,
   title,
+  isExpanded,
+  controls,
   onClick,
 }: {
   icon: string
   title: string
+  isExpanded: boolean
+  controls: string
   onClick?: () => void
 }): React.ReactElement {
   return (
@@ -49,6 +56,8 @@ function PanelToggle({
       type="button"
       title={title}
       aria-label={title}
+      aria-expanded={isExpanded}
+      aria-controls={controls}
       onClick={onClick}
       disabled={onClick === undefined}
       className="grid h-[34px] w-[34px] flex-none place-items-center rounded-lg text-ink-secondary transition-colors hover:bg-app disabled:pointer-events-none disabled:opacity-40"
@@ -165,7 +174,7 @@ export function ViewerToolbar({
         {
           key: 'hide',
           icon: areRoisHidden ? 'visibility' : 'visibility_off',
-          label: areRoisHidden ? 'Show' : 'Hide',
+          label: 'Hide',
           tooltip: 'Show/Hide ROIs [Alt+V]',
           isActive: areRoisHidden,
           onClick: onToggleRoiVisibility,
@@ -189,6 +198,8 @@ export function ViewerToolbar({
       <PanelToggle
         icon={isLeftPanelOpen ? 'left_panel_close' : 'left_panel_open'}
         title="Toggle study panel"
+        isExpanded={isLeftPanelOpen}
+        controls={STUDY_PANEL_ID}
         onClick={onToggleLeftPanel}
       />
       <div className="h-[22px] w-px flex-none bg-line" />
@@ -222,6 +233,8 @@ export function ViewerToolbar({
       <PanelToggle
         icon={isRightPanelOpen ? 'right_panel_close' : 'right_panel_open'}
         title="Toggle slide panel"
+        isExpanded={isRightPanelOpen}
+        controls={SLIDE_PANEL_ID}
         onClick={onToggleRightPanel}
       />
     </div>

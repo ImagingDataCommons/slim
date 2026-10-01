@@ -4,6 +4,8 @@ import PubSub from '../utils/PubSub'
 export const NotificationMiddlewareEvents = {
   OnError: 'onError',
   OnWarning: 'onWarning',
+  /** Transient user feedback shown as a toast: `{ message, tone }` */
+  OnInfo: 'onInfo',
 }
 
 export const NotificationMiddlewareContext = {

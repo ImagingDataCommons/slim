@@ -2,25 +2,11 @@
 import type * as dmv from 'dicom-microscopy-viewer'
 import type React from 'react'
 
-import {
-  formatDisplayDate,
-  formatDisplayTime,
-  formatPersonName,
-} from '../utils/displayFormat'
+import { formatPersonName, formatStudyDateTime } from '../utils/displayFormat'
 import { type KeyValueItem, SlimKeyValueGrid } from './slim/SlimKeyValueGrid'
 
 interface StudyProps {
   metadata: dmv.metadata.Study | dmv.metadata.SOPClass
-}
-
-/** "12 Sep 2026, 09:42" from DICOM StudyDate/StudyTime. */
-export function formatStudyDateTime(
-  date: string | undefined,
-  time: string | undefined,
-): string {
-  return [formatDisplayDate(date), formatDisplayTime(time)]
-    .filter((part) => part !== '')
-    .join(', ')
 }
 
 /**

@@ -9,26 +9,18 @@ import {
   formatPersonName,
   formatSex,
 } from '../../../utils/displayFormat'
-import { formatModalitiesInStudy } from '../utils/filters'
+import {
+  DASH,
+  getNumberOfSlides,
+  normalizeModalities,
+  orDash,
+} from '../utils/studyFields'
 
 /** Grid template shared by the header row and the study rows. */
 export const WORKLIST_GRID_COLUMNS =
   'grid-cols-[1.6fr_1fr_1fr_.9fr_.6fr_1fr_.8fr_1.1fr_1fr_1.2fr_.7fr]'
 
-const DASH = '\u2014'
-
-function orDash(value: string | undefined | null): string {
-  return value === undefined || value === null || value === '' ? DASH : value
-}
-
 type PersonNameValue = Parameters<typeof formatPersonName>[0]
-
-function getNumberOfSlides(study: dmv.metadata.Study): number | undefined {
-  const value = (study as unknown as { NumberOfStudyRelatedSeries?: unknown })
-    .NumberOfStudyRelatedSeries
-  const count = typeof value === 'string' ? Number.parseInt(value, 10) : value
-  return typeof count === 'number' && Number.isFinite(count) ? count : undefined
-}
 
 export interface WorklistColumnMeta {
   align?: 'right'
@@ -78,16 +70,13 @@ export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
     id: 'ModalitiesInStudy',
     header: 'Modality',
     enableSorting: false,
-    accessorFn: (study) =>
-      formatModalitiesInStudy(
-        study.ModalitiesInStudy as string[] | string | undefined,
-      ),
+    accessorFn: (study) => normalizeModalities(study.ModalitiesInStudy),
     cell: ({ getValue }) => {
-      const modalities = getValue<string>()
-      if (modalities === '') return DASH
+      const modalities = getValue<string[]>()
+      if (modalities.length === 0) return DASH
       return (
         <span className="flex flex-wrap gap-1">
-          {modalities.split(', ').map((modality) => (
+          {modalities.map((modality) => (
             <span
               key={modality}
               className="rounded bg-chip px-1.5 py-[3px] font-mono text-[11px] font-semibold leading-none text-chip-foreground"

@@ -1,0 +1,98 @@
+import {
+  evaluateMemoryWarning,
+  INITIAL_MEMORY_WARNING_STATE,
+  type MemoryWarningInput,
+} from '../memoryWarning'
+
+const high: MemoryWarningInput = {
+  level: 'high',
+  usagePercentage: 82.34,
+  remaining: '700 MB',
+}
+const critical: MemoryWarningInput = {
+  level: 'critical',
+  usagePercentage: 95.06,
+  remaining: '120 MB',
+}
+const none: MemoryWarningInput = {
+  level: 'none',
+  usagePercentage: 40,
+  remaining: '3 GB',
+}
+
+describe('evaluateMemoryWarning', () => {
+  it('stays silent while the level is unchanged', () => {
+    const decision = evaluateMemoryWarning(
+      none,
+      INITIAL_MEMORY_WARNING_STATE,
+      0,
+    )
+    expect(decision.message).toBeNull()
+    expect(decision.state).toBe(INITIAL_MEMORY_WARNING_STATE)
+  })
+
+  it('warns when usage becomes high', () => {
+    const decision = evaluateMemoryWarning(
+      high,
+      INITIAL_MEMORY_WARNING_STATE,
+      0,
+    )
+    expect(decision.message).toBe(
+      'High memory usage: 82.3% used. 700 MB remaining.',
+    )
+    expect(decision.state.level).toBe('high')
+  })
+
+  it('warns once per level change', () => {
+    const first = evaluateMemoryWarning(high, INITIAL_MEMORY_WARNING_STATE, 0)
+    const second = evaluateMemoryWarning(high, first.state, 1000)
+    expect(second.message).toBeNull()
+  })
+
+  it('warns and records the time when usage becomes critical', () => {
+    const decision = evaluateMemoryWarning(
+      critical,
+      INITIAL_MEMORY_WARNING_STATE,
+      5000,
+    )
+    expect(decision.message).toBe(
+      'Critical memory usage: 95.1% used. Only 120 MB remaining. ' +
+        'Consider refreshing the page or closing other tabs.',
+    )
+    expect(decision.state).toEqual({ level: 'critical', lastCriticalAt: 5000 })
+  })
+
+  it('throttles repeated critical warnings', () => {
+    const first = evaluateMemoryWarning(
+      critical,
+      INITIAL_MEMORY_WARNING_STATE,
+      0,
+    )
+    const backToHigh = evaluateMemoryWarning(high, first.state, 1000)
+    const throttled = evaluateMemoryWarning(critical, backToHigh.state, 2000)
+    expect(throttled.message).toBeNull()
+    expect(throttled.state).toEqual({ level: 'critical', lastCriticalAt: 0 })
+
+    const calm = evaluateMemoryWarning(none, throttled.state, 3000)
+    const later = evaluateMemoryWarning(critical, calm.state, 30000)
+    expect(later.message).not.toBeNull()
+    expect(later.state.lastCriticalAt).toBe(30000)
+  })
+
+  it('tracks the level but stays silent without a usage percentage', () => {
+    const decision = evaluateMemoryWarning(
+      { ...high, usagePercentage: null },
+      INITIAL_MEMORY_WARNING_STATE,
+      0,
+    )
+    expect(decision.message).toBeNull()
+    expect(decision.state.level).toBe('high')
+  })
+
+  it('stays silent when usage drops back to normal', () => {
+    const first = evaluateMemoryWarning(high, INITIAL_MEMORY_WARNING_STATE, 0)
+    const decision = evaluateMemoryWarning(none, first.state, 1000)
+    expect(decision.message).toBeNull()
+    expect(decision.state.level).toBe('none')
+  })
+})

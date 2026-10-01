@@ -38,7 +38,7 @@ export function formatDisplayTime(value: string | null | undefined): string {
   return `${digits.substring(0, 2)}:${digits.substring(2, 4)}`
 }
 
-type PersonNameValue =
+export type PersonNameValue =
   | string
   | { Alphabetic?: string }
   | Array<{ Alphabetic?: string } | string>
@@ -77,6 +77,57 @@ export function formatPersonName(value: PersonNameValue): string {
         ? family
         : givenPart
   return [prefix, core, suffix].filter((part) => part !== '').join(' ')
+}
+
+/** "12 Sep 2026, 09:42" from DICOM StudyDate/StudyTime. */
+export function formatStudyDateTime(
+  date: string | null | undefined,
+  time: string | null | undefined,
+): string {
+  return [formatDisplayDate(date), formatDisplayTime(time)]
+    .filter((part) => part !== '')
+    .join(', ')
+}
+
+/** "S24-01542 · 12 Sep 2026"; the accession number stands in for a missing Study ID. */
+export function formatStudyLabel(
+  studyID: string | null | undefined,
+  accessionNumber: string | null | undefined,
+  studyDate: string | null | undefined,
+): string {
+  const identifier =
+    studyID !== undefined && studyID !== null && studyID.trim() !== ''
+      ? studyID.trim()
+      : (accessionNumber?.trim() ?? '')
+  return [identifier, formatDisplayDate(studyDate)]
+    .filter((part) => part !== '')
+    .join(' · ')
+}
+
+export interface StudySummarySource {
+  PatientName?: PersonNameValue
+  StudyID?: string
+  AccessionNumber?: string
+  StudyDate?: string
+}
+
+export interface StudySummaryLabels {
+  patientName: string
+  studyLabel: string
+}
+
+/** Header breadcrumb labels for a study's reference image. */
+export function buildStudySummary(
+  image: StudySummarySource,
+): StudySummaryLabels {
+  return {
+    patientName: formatPersonName(image.PatientName),
+    studyLabel: formatStudyLabel(
+      image.StudyID,
+      image.AccessionNumber,
+      image.StudyDate,
+    ),
+  }
 }
 
 /** Integer with space thousands separators: 18402 → "18 402". */

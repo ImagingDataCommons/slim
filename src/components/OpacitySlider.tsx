@@ -34,13 +34,15 @@ const OpacitySlider: React.FC<OpacitySliderProps> = ({
           step={0.01}
           value={[opacity]}
           onValueChange={handleSliderChange}
+          aria-label={label}
         />
       </div>
       <Input
         type="number"
         min={0}
         max={1}
-        step={0.1}
+        step={0.01}
+        aria-label={`${label} value`}
         className="h-8 w-16 font-mono text-[12px]"
         value={opacity}
         onChange={handleInputChange}

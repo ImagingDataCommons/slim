@@ -1,8 +1,12 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import React from 'react'
+import { buildMappingDisplayOptions } from '../utils/displayOptions'
 import MappingItem from './MappingItem'
-import { type DisplayOption, DisplayOptionsPanel } from './slim'
+import {
+  bindDisplayOptions,
+  DisplayOptionsPanel,
+} from './slim/DisplayOptionsPanel'
 
 interface MappingDisplaySettings {
   interpolationEnabled: boolean
@@ -15,7 +19,10 @@ interface MappingListProps {
   }
   visibleMappingUIDs: Set<string>
   defaultMappingStyles: {
-    [mappingUID: string]: { opacity: number }
+    [mappingUID: string]: {
+      opacity: number
+      paletteColorLookupTable?: { data: number[][] }
+    }
   }
   onMappingVisibilityChange: ({
     mappingUID,
@@ -62,30 +69,27 @@ class MappingList extends React.Component<
       )
     })
 
-    /** Display options for interpolation */
-    const displayOptions: DisplayOption[] = []
-
-    if (this.props.displaySettings && this.props.onDisplaySettingsChange) {
-      displayOptions.push({
-        id: 'interpolation',
-        label: 'Interpolation',
-        shortLabel: 'Interp.',
-        description: 'Smooth values between pixels.',
-        enabled: this.props.displaySettings.interpolationEnabled,
-        onChange: (enabled) => {
-          this.props.onDisplaySettingsChange?.({
-            interpolationEnabled: enabled,
-          })
-        },
-      })
-    }
+    const { displaySettings, onDisplaySettingsChange } = this.props
 
     return (
       <div className="flex flex-col gap-1.5">
         {items}
-        {displayOptions.length > 0 && (
-          <DisplayOptionsPanel options={displayOptions} />
-        )}
+        {displaySettings !== undefined &&
+          onDisplaySettingsChange !== undefined && (
+            <DisplayOptionsPanel
+              options={bindDisplayOptions(
+                buildMappingDisplayOptions(displaySettings),
+                (id, enabled) => {
+                  if (id === 'interpolation') {
+                    onDisplaySettingsChange({
+                      ...displaySettings,
+                      interpolationEnabled: enabled,
+                    })
+                  }
+                },
+              )}
+            />
+          )}
       </div>
     )
   }

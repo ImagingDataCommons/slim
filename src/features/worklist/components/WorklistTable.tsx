@@ -52,6 +52,7 @@ export function WorklistTable({
     data,
     columns,
     state: { sorting, pagination },
+    autoResetPageIndex: false,
     onSortingChange: setSorting,
     onPaginationChange: (updater) => {
       onPaginationChange(
@@ -95,7 +96,10 @@ export function WorklistTable({
         tabIndex={0}
         onClick={() => onRowClick(row.original)}
         onKeyDown={(event) => {
-          if (event.key === 'Enter') onRowClick(row.original)
+          if (event.key === ' ') event.preventDefault()
+          if (event.key === 'Enter' || event.key === ' ') {
+            onRowClick(row.original)
+          }
         }}
         className={cn(
           'grid cursor-pointer items-center gap-3 border-b border-line-soft px-5 text-ink-body transition-colors hover:bg-selected focus-visible:bg-selected focus-visible:outline-none',
