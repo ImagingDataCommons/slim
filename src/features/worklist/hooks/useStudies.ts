@@ -1,4 +1,4 @@
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import * as dmv from 'dicom-microscopy-viewer'
 import { useEffect, useRef, useState } from 'react'
 import type DicomWebManager from '../../../DicomWebManager'

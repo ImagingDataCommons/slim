@@ -1,4 +1,4 @@
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import * as dcmjs from 'dcmjs'
 import { useCallback, useEffect, useState } from 'react'
 import {
@@ -24,6 +24,10 @@ import {
   type ReferencingInstance,
   resolveReferencedSlide,
 } from '../features/viewer/utils/referencedSlide'
+import {
+  buildSeriesSelectionPath,
+  defaultSeriesRedirectPath,
+} from '../features/viewer/utils/seriesPath'
 import { useSlides } from '../hooks/useSlides'
 import { cn } from '../lib/utils'
 import type { AppInfo } from '../utils/appInfo'
@@ -34,18 +38,11 @@ import {
   seriesUidFromSlide,
 } from '../utils/recoverSeriesInstanceUID'
 import { type RouteComponentProps, withRouter } from '../utils/router'
-import {
-  buildSeriesPath,
-  hasSeriesInPath,
-  isProjectsPath,
-  parseSeriesInstanceUID,
-  RoutePaths,
-  withSeriesInProjectPath,
-} from '../utils/routes'
+import { parseSeriesInstanceUID, RoutePaths } from '../utils/routes'
 import ClinicalTrial from './ClinicalTrial'
 import Patient from './Patient'
 import SlideList from './SlideList'
-// skipcq: JS-W1028 - SlideViewer has a default export
+/** skipcq: JS-W1028 - SlideViewer has a default export */
 import SlideViewer from './SlideViewer'
 import Study from './Study'
 import {
@@ -179,7 +176,7 @@ function ParametrizedSlideViewer({
       }
     }
 
-    // skipcq: JS-0098 - void operator intentionally discards the Promise
+    /** skipcq: JS-0098 - void operator intentionally discards the Promise */
     void findReferencedSlide()
     return () => {
       isCancelled = true
@@ -286,27 +283,41 @@ function Viewer(props: ViewerProps): JSX.Element | null {
   const serverName =
     serverUrl != null && serverUrl !== '' ? serverUrl : 'the server'
 
+  const defaultSeriesInstanceUID = summaryImage?.SeriesInstanceUID
+  useEffect(() => {
+    if (isLoading || error !== null) return
+    const redirectPath = defaultSeriesRedirectPath({
+      studyInstanceUID,
+      defaultSeriesInstanceUID,
+      pathname: location.pathname,
+      search: location.search,
+    })
+    if (redirectPath !== undefined) navigate(redirectPath, { replace: true })
+  }, [
+    isLoading,
+    error,
+    studyInstanceUID,
+    defaultSeriesInstanceUID,
+    location.pathname,
+    location.search,
+    navigate,
+  ])
+
   const handleSeriesSelection = ({
     seriesInstanceUID,
   }: {
     seriesInstanceUID: string
   }): void => {
     logger.log(`switch to series "${seriesInstanceUID}"`)
-    let urlPath = buildSeriesPath(studyInstanceUID, seriesInstanceUID)
-
-    if (isProjectsPath(location.pathname)) {
-      urlPath = withSeriesInProjectPath(location.pathname, seriesInstanceUID)
-    }
-
-    if (
-      hasSeriesInPath(location.pathname) &&
-      location.search !== null &&
-      location.search !== undefined
-    ) {
-      urlPath += location.search
-    }
-
-    navigate(urlPath, { replace: true })
+    navigate(
+      buildSeriesSelectionPath({
+        studyInstanceUID,
+        seriesInstanceUID,
+        pathname: location.pathname,
+        search: location.search,
+      }),
+      { replace: true },
+    )
   }
 
   if (isLoading) {

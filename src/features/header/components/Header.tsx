@@ -14,6 +14,7 @@ import {
 import { useStudySummary } from '../../../contexts/StudySummaryContext'
 import type DicomWebManager from '../../../DicomWebManager'
 import { cn } from '../../../lib/utils'
+import type { AppInfo } from '../../../utils/appInfo'
 import { isViewerPath, parseSeriesInstanceUID } from '../../../utils/routes'
 import { PreferencesDialog, type PreferencesTab } from '../../preferences'
 import { useNotifications } from '../hooks/useNotifications'
@@ -26,16 +27,8 @@ import { DicomTagBrowserDialog } from './dialogs/DicomTagBrowserDialog'
 import { ServerSelectionDialog } from './dialogs/ServerSelectionDialog'
 import { UserMenu } from './UserMenu'
 
-export interface HeaderAppInfo {
-  name: string
-  version: string
-  homepage: string
-  uid: string
-  organization?: string
-}
-
 export interface HeaderProps {
-  app: HeaderAppInfo
+  app: AppInfo
   user?: User
   clients?: { [key: string]: DicomWebManager }
   defaultClients?: { [key: string]: DicomWebManager }

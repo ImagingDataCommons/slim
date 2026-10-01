@@ -65,9 +65,6 @@ module.exports = {
           hover: token('destructive-hover'),
           foreground: token('destructive-foreground'),
         },
-        muted: {
-          foreground: token('ink-muted'),
-        },
         success: token('success'),
         warning: {
           DEFAULT: token('warning'),

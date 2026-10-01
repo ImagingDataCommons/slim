@@ -11,6 +11,7 @@ import {
   buildClusteringThresholdInput,
 } from '../utils/displayOptions'
 import { bindDisplayOptions } from '../utils/displayOptionsBinding'
+import type { VisibilityChange } from '../utils/visibility'
 import AnnotationGroupItem from './AnnotationGroupItem'
 import { BulkVisibilityControl } from './slim/BulkVisibilityControl'
 import { DisplayOptionsPanel } from './slim/DisplayOptionsPanel'
@@ -35,6 +36,7 @@ export interface AnnotationGroupListProps {
     annotationGroupUID: string
     isVisible: boolean
   }) => void
+  onBulkAnnotationGroupVisibilityChange: (changes: VisibilityChange[]) => void
   onAnnotationGroupStyleChange: (change: {
     uid: string
     styleOptions: AnnotationGroupStyleChange
@@ -52,6 +54,7 @@ function AnnotationGroupList({
   defaultAnnotationGroupStyles,
   onAnnotationGroupClick,
   onAnnotationGroupVisibilityChange,
+  onBulkAnnotationGroupVisibilityChange,
   onAnnotationGroupStyleChange,
   displaySettings,
   onDisplaySettingsChange,
@@ -62,12 +65,7 @@ function AnnotationGroupList({
         itemLabel="annotation groups"
         uids={annotationGroups.map((group) => group.uid)}
         visibleUids={visibleAnnotationGroupUIDs}
-        onChange={({ uid, isVisible }) =>
-          onAnnotationGroupVisibilityChange({
-            annotationGroupUID: uid,
-            isVisible,
-          })
-        }
+        onChange={onBulkAnnotationGroupVisibilityChange}
       />
       {annotationGroups.map((annotationGroup) => (
         <AnnotationGroupItem

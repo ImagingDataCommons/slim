@@ -40,24 +40,7 @@ function renderDialog(
   )
 }
 
-/** jsdom has no ResizeObserver, which the Radix slider measures with */
-class ResizeObserverStub {
-  observe(): void {}
-  unobserve(): void {}
-  disconnect(): void {}
-}
-
 describe('PreferencesDialog', () => {
-  const originalResizeObserver = window.ResizeObserver
-
-  beforeAll(() => {
-    window.ResizeObserver = ResizeObserverStub
-  })
-
-  afterAll(() => {
-    window.ResizeObserver = originalResizeObserver
-  })
-
   beforeEach(() => {
     window.localStorage.clear()
   })

@@ -63,7 +63,7 @@ describe('createSingleFlight', () => {
     await gate('https://a.test', run)
     await gate('https://a.test', run)
 
-    // Sequential callers must not replay a stale answer.
+    /** Sequential callers must not replay a stale answer. */
     expect(run).toHaveBeenCalledTimes(2)
   })
 
@@ -78,7 +78,7 @@ describe('createSingleFlight', () => {
     await expect(second).rejects.toThrow('nope')
     expect(failing).toHaveBeenCalledTimes(1)
 
-    // A failed run must not poison the key.
+    /** A failed run must not poison the key. */
     const succeeding = jest.fn(async () => await Promise.resolve('token'))
     await expect(gate('https://a.test', succeeding)).resolves.toBe('token')
   })

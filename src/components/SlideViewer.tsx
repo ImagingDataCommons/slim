@@ -1,8 +1,8 @@
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import * as dcmjs from 'dcmjs'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import * as dmv from 'dicom-microscopy-viewer'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dwc from 'dicomweb-client'
 import type OlMap from 'ol/Map'
 import React from 'react'
@@ -75,6 +75,7 @@ import {
 } from '../features/viewer/utils/hoveredRois'
 import { hasIccProfile } from '../features/viewer/utils/iccProfile'
 import { shortcutForKeyEvent } from '../features/viewer/utils/keyboardShortcuts'
+import { sortByIdentifier } from '../features/viewer/utils/opticalPathOrder'
 import {
   computePixelRange,
   mergePixelStatistics,
@@ -87,17 +88,24 @@ import {
   windowLimitValues,
 } from '../features/viewer/utils/presentationState'
 import { planRoiRemoval } from '../features/viewer/utils/roiRemoval'
+import { nextSelectedRoiUIDs } from '../features/viewer/utils/roiSelection'
 import { buildRoiDescription } from '../features/viewer/utils/selectedRoiDescription'
+import { formatSeriesLabel } from '../features/viewer/utils/seriesLabel'
 import {
   type SlideAffine,
   slideAffineFromImages,
 } from '../features/viewer/utils/slideCoordinates'
+import { reuseEqualStyles } from '../features/viewer/utils/stableStyles'
 import {
   INITIAL_VIEWPORT_LOADING_PHASE,
   isViewportLoading,
   nextViewportLoadingPhase,
   type ViewportLoadingEvent,
 } from '../features/viewer/utils/viewportLoading'
+import {
+  applyVisibilityChanges,
+  removeHiddenUids,
+} from '../features/viewer/utils/visibilityChanges'
 import { ActiveSeriesService } from '../services/ActiveSeriesService'
 import DicomMetadataStore from '../services/DICOMMetadataStore'
 import NotificationMiddleware, {
@@ -108,11 +116,19 @@ import type {
   AnnotationCategoryAndType,
   AnnotationSettings,
 } from '../types/annotations'
+import type {
+  AnnotationGroupStyle,
+  AnnotationStyle,
+  MappingStyle,
+  OpticalPathStyle,
+  SegmentStyle,
+} from '../types/layerStyles'
 import { CustomError, errorTypes } from '../utils/CustomError'
 import {
   clampOverviewMapInViewport,
   observeOverviewMapClamp,
 } from '../utils/clampOverviewMapInViewport'
+import { hexToRgb } from '../utils/color'
 import { type DebouncedFunction, debounce } from '../utils/debounce'
 import {
   applyDistinctFractionalSegmentPalettes,
@@ -123,12 +139,9 @@ import generateReport from '../utils/generateReport'
 import { logger } from '../utils/logger'
 import { MeasurementReport } from '../utils/measurementReport'
 import { withRouter } from '../utils/router'
-import {
-  getSegmentationType,
-  getSegmentColor,
-  hexToRgb,
-} from '../utils/segmentColors'
+import { getSegmentationType, getSegmentColor } from '../utils/segmentColors'
 import { getSlideDisplayId, getSlideStainInfo } from '../utils/slideDisplay'
+import type { VisibilityChange } from '../utils/visibility'
 import type { AnnotationGroupDisplaySettings } from './AnnotationGroupList'
 import { ConfirmDialog } from './ConfirmDialog'
 import Report from './Report'
@@ -149,7 +162,6 @@ import type {
   Measurement,
   SlideViewerProps,
   SlideViewerState,
-  StyleOptions,
 } from './SlideViewer/types'
 import {
   areROIsEqual,
@@ -226,14 +238,32 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   /** Refreshed on {@link PREFERENCES_CHANGED_EVENT} */
   private preferences: UserPreferences = loadPreferences()
 
+  private defaultRoiStyleCache:
+    | { preferences: UserPreferences; style: dmv.viewer.ROIStyleOptions }
+    | undefined
+
   private get defaultRoiStyle(): dmv.viewer.ROIStyleOptions {
-    const { strokeColor, strokeWidth } = this.preferences
-    return buildDefaultRoiStyle({
-      strokeColor: hexToRgb(strokeColor),
-      strokeWidth,
-      radius: DEFAULT_ROI_RADIUS,
-    })
+    if (this.defaultRoiStyleCache?.preferences !== this.preferences) {
+      const { strokeColor, strokeWidth } = this.preferences
+      this.defaultRoiStyleCache = {
+        preferences: this.preferences,
+        style: buildDefaultRoiStyle({
+          strokeColor: hexToRgb(strokeColor),
+          strokeWidth,
+          radius: DEFAULT_ROI_RADIUS,
+        }),
+      }
+    }
+    return this.defaultRoiStyleCache.style
   }
+
+  /** Panel style maps of the last render, reused while the styles are equal */
+  private panelStyles: {
+    opticalPaths: Readonly<Record<string, OpticalPathStyle>>
+    segments: Readonly<Record<string, SegmentStyle>>
+    mappings: Readonly<Record<string, MappingStyle>>
+    annotationGroups: Readonly<Record<string, AnnotationGroupStyle>>
+  } = { opticalPaths: {}, segments: {}, mappings: {}, annotationGroups: {} }
 
   /** Base-level pixel → slide (mm) transform for the cursor readout. */
   private slideAffine: SlideAffine | undefined
@@ -254,7 +284,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   } = {}
 
   private defaultAnnotationStyles: {
-    [annotationUID: string]: StyleOptions
+    [annotationUID: string]: AnnotationStyle
   } = {}
 
   /** Frames requested but not yet loaded; only emptiness is rendered */
@@ -864,13 +894,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
        * ROIs carry no series UID, so show every ROI; addAnnotations already
        * kept only those in this frame of reference.
        */
-      const allRois = this.volumeViewer.getAllROIs()
-      allRois.forEach((roi) => {
-        this.handleAnnotationVisibilityChange({
-          roiUID: roi.uid,
-          isVisible: true,
-        })
-      })
+      this.handleAnnotationVisibilityChanges(
+        this.volumeViewer
+          .getAllROIs()
+          .map((roi) => ({ uid: roi.uid, isVisible: true })),
+      )
       logger.debug('Loading Comprehensive 3D SR')
     } else if (
       (derivedDataset as { SOPClassUID: string }).SOPClassUID ===
@@ -1969,16 +1997,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
     logger.debug(`selected ROI "${selectedRoi.uid}"`)
 
-    if (!this.keysDown.has('Shift')) {
-      return {
-        selectedRoiUIDs: new Set([selectedRoi.uid]),
-        selectedRoi,
-      }
-    }
-
-    const oldSelectedRois = Array.from(this.state.selectedRoiUIDs)
     return {
-      selectedRoiUIDs: new Set([...oldSelectedRois, selectedRoi.uid]),
+      selectedRoiUIDs: nextSelectedRoiUIDs(
+        this.state.selectedRoiUIDs,
+        selectedRoi.uid,
+        this.keysDown.has('Shift'),
+      ),
       selectedRoi,
     }
   }
@@ -2627,25 +2651,32 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     roiUID: string
     isVisible: boolean
   }): void => {
-    if (isVisible) {
-      logger.log(`show ROI ${roiUID}`)
-      const roi = this.volumeViewer.getROI(roiUID)
-      this.volumeViewer.setROIStyle(roi.uid, this.getStyleForRoi(roi))
-      this.setState((state) => {
-        const visibleRoiUIDs = new Set(state.visibleRoiUIDs)
-        visibleRoiUIDs.add(roi.uid)
-        return { visibleRoiUIDs }
-      })
-    } else {
-      logger.log(`hide ROI ${roiUID}`)
-      this.setState((state) => {
-        const selectedRoiUIDs = new Set(state.selectedRoiUIDs)
-        selectedRoiUIDs.delete(roiUID)
-        const visibleRoiUIDs = new Set(state.visibleRoiUIDs)
-        visibleRoiUIDs.delete(roiUID)
-        return { visibleRoiUIDs, selectedRoiUIDs }
-      })
-      this.volumeViewer.setROIStyle(roiUID, {})
+    this.handleAnnotationVisibilityChanges([{ uid: roiUID, isVisible }])
+  }
+
+  /** Shows or hides several ROIs with a single state update */
+  handleAnnotationVisibilityChanges = (changes: VisibilityChange[]): void => {
+    const applied: VisibilityChange[] = []
+    try {
+      for (const { uid, isVisible } of changes) {
+        if (isVisible) {
+          logger.log(`show ROI ${uid}`)
+          const roi = this.volumeViewer.getROI(uid)
+          this.volumeViewer.setROIStyle(roi.uid, this.getStyleForRoi(roi))
+          applied.push({ uid: roi.uid, isVisible })
+        } else {
+          logger.log(`hide ROI ${uid}`)
+          this.volumeViewer.setROIStyle(uid, {})
+          applied.push({ uid, isVisible })
+        }
+      }
+    } finally {
+      if (applied.length > 0) {
+        this.setState((state) => ({
+          visibleRoiUIDs: applyVisibilityChanges(state.visibleRoiUIDs, applied),
+          selectedRoiUIDs: removeHiddenUids(state.selectedRoiUIDs, applied),
+        }))
+      }
     }
   }
 
@@ -2660,49 +2691,57 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     annotationGroupUID: string
     isVisible: boolean
   }): void => {
-    const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups()
-    const annotationGroup = allAnnotationGroups.find(
-      (ag) => ag.uid === annotationGroupUID,
-    )
-    if (annotationGroup !== null && annotationGroup !== undefined) {
-      runValidations({
-        dialog: true,
-        context: { annotationGroup, slide: this.props.slide },
-      })
-    }
+    this.handleAnnotationGroupVisibilityChanges([
+      { uid: annotationGroupUID, isVisible },
+    ])
+  }
 
-    logger.log(`change visibility of annotation group ${annotationGroupUID}`)
-    if (isVisible) {
-      logger.log(`show annotation group ${annotationGroupUID}`)
-      try {
-        this.volumeViewer.showAnnotationGroup(annotationGroupUID)
-      } catch (error) {
-        NotificationMiddleware.onError(
-          NotificationMiddlewareContext.SLIM,
-          new CustomError(
-            errorTypes.VISUALIZATION,
-            'Failed to show annotation group.',
-          ),
-        )
-        throw error
+  /** Shows or hides several annotation groups with a single state update */
+  handleAnnotationGroupVisibilityChanges = (
+    changes: VisibilityChange[],
+  ): void => {
+    const allAnnotationGroups = this.volumeViewer.getAllAnnotationGroups()
+    const applied: VisibilityChange[] = []
+    try {
+      for (const { uid, isVisible } of changes) {
+        const annotationGroup = allAnnotationGroups.find((ag) => ag.uid === uid)
+        if (annotationGroup !== undefined) {
+          runValidations({
+            dialog: true,
+            context: { annotationGroup, slide: this.props.slide },
+          })
+        }
+
+        logger.log(`change visibility of annotation group ${uid}`)
+        if (isVisible) {
+          logger.log(`show annotation group ${uid}`)
+          try {
+            this.volumeViewer.showAnnotationGroup(uid)
+          } catch (error) {
+            NotificationMiddleware.onError(
+              NotificationMiddlewareContext.SLIM,
+              new CustomError(
+                errorTypes.VISUALIZATION,
+                'Failed to show annotation group.',
+              ),
+            )
+            throw error
+          }
+        } else {
+          logger.log(`hide annotation group ${uid}`)
+          this.volumeViewer.hideAnnotationGroup(uid)
+        }
+        applied.push({ uid, isVisible })
       }
-      this.setState((state) => {
-        const visibleAnnotationGroupUIDs = new Set(
-          state.visibleAnnotationGroupUIDs,
-        )
-        visibleAnnotationGroupUIDs.add(annotationGroupUID)
-        return { visibleAnnotationGroupUIDs }
-      })
-    } else {
-      logger.log(`hide annotation group ${annotationGroupUID}`)
-      this.volumeViewer.hideAnnotationGroup(annotationGroupUID)
-      this.setState((state) => {
-        const visibleAnnotationGroupUIDs = new Set(
-          state.visibleAnnotationGroupUIDs,
-        )
-        visibleAnnotationGroupUIDs.delete(annotationGroupUID)
-        return { visibleAnnotationGroupUIDs }
-      })
+    } finally {
+      if (applied.length > 0) {
+        this.setState((state) => ({
+          visibleAnnotationGroupUIDs: applyVisibilityChanges(
+            state.visibleAnnotationGroupUIDs,
+            applied,
+          ),
+        }))
+      }
     }
   }
 
@@ -2738,7 +2777,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   generateRoiStyle = (
-    styleOptions: StyleOptions,
+    styleOptions: AnnotationStyle,
   ): dmv.viewer.ROIStyleOptions => {
     const opacity = styleOptions.opacity ?? DEFAULT_ANNOTATION_OPACITY
     const strokeColor = styleOptions.color ?? DEFAULT_ANNOTATION_STROKE_COLOR
@@ -2752,28 +2791,28 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
   }
 
-  handleRoiStyleChange = ({
-    uid,
+  /** Restyles the ROIs and shows the hidden ones, in a single state update */
+  handleRoiStylesChange = ({
+    uids,
     styleOptions,
   }: {
-    uid: string
-    styleOptions: StyleOptions
+    uids: string[]
+    styleOptions: AnnotationStyle
   }): void => {
-    logger.log(`change style of ROI ${uid}`)
+    const style = this.generateRoiStyle(styleOptions)
+    const styledUids: string[] = []
     try {
-      this.defaultAnnotationStyles[uid] = styleOptions
-      const style = this.generateRoiStyle(styleOptions)
-      const key = getRoiKey(this.volumeViewer.getROI(uid))
-      if (key !== undefined) {
-        this.roiStyles[key] = style
+      for (const uid of uids) {
+        logger.log(`change style of ROI ${uid}`)
+        this.defaultAnnotationStyles[uid] = styleOptions
+        const key = getRoiKey(this.volumeViewer.getROI(uid))
+        if (key !== undefined) {
+          this.roiStyles[key] = style
+        }
+        this.roiStylesByUid[uid] = style
+        this.volumeViewer.setROIStyle(uid, style)
+        styledUids.push(uid)
       }
-      this.roiStylesByUid[uid] = style
-      this.volumeViewer.setROIStyle(uid, style)
-      this.setState((state) =>
-        state.visibleRoiUIDs.has(uid)
-          ? null
-          : { visibleRoiUIDs: new Set(state.visibleRoiUIDs).add(uid) },
-      )
     } catch (error) {
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
@@ -2783,6 +2822,17 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         ),
       )
       throw error
+    } finally {
+      this.setState((state) =>
+        styledUids.every((uid) => state.visibleRoiUIDs.has(uid))
+          ? null
+          : {
+              visibleRoiUIDs: applyVisibilityChanges(
+                state.visibleRoiUIDs,
+                styledUids.map((uid) => ({ uid, isVisible: true })),
+              ),
+            },
+      )
     }
   }
 
@@ -3377,13 +3427,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const series = study?.series?.find(
       (s) => s.SeriesInstanceUID === seriesInstanceUID,
     )
-    if (
-      series?.SeriesDescription !== undefined &&
-      series.SeriesDescription !== ''
-    ) {
-      return series.SeriesDescription
-    }
-    return `Series ${seriesInstanceUID.slice(0, 8)}...`
+    return formatSeriesLabel(seriesInstanceUID, series?.SeriesDescription)
   }
 
   /**
@@ -3504,7 +3548,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         Object.keys(this.roiStyles).length %
           DEFAULT_ANNOTATION_COLOR_PALETTE.length
       ]
-    const annotationStyle: StyleOptions = {
+    const annotationStyle: AnnotationStyle = {
       color,
       opacity: DEFAULT_ANNOTATION_OPACITY,
       contourOnly: false,
@@ -3563,14 +3607,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   private getSortedOpticalPaths(): dmv.opticalPath.OpticalPath[] {
-    return [...this.volumeViewer.getAllOpticalPaths()].sort((a, b) => {
-      if (a.identifier.localeCompare(b.identifier) === 1) {
-        return 1
-      } else if (b.identifier.localeCompare(a.identifier) === 1) {
-        return -1
-      }
-      return 0
-    })
+    return sortByIdentifier(this.volumeViewer.getAllOpticalPaths())
   }
 
   private readonly handleOpticalPathDisplaySettingsChange = (
@@ -3610,14 +3647,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private renderOpticalPathsSection(): React.ReactNode {
     const opticalPaths = this.getSortedOpticalPaths()
-    const opticalPathStyles: {
-      [identifier: string]: {
-        opacity: number
-        color?: number[]
-        limitValues?: number[]
-        paletteColorLookupTable?: dmv.color.PaletteColorLookupTable
-      }
-    } = {}
+    const opticalPathStyles: Record<string, OpticalPathStyle> = {}
     const opticalPathMetadata: {
       [identifier: string]: dmv.metadata.VLWholeSlideMicroscopyImage[]
     } = {}
@@ -3628,11 +3658,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         ...this.volumeViewer.getOpticalPathStyle(identifier),
       }
     })
+    this.panelStyles.opticalPaths = reuseEqualStyles(
+      this.panelStyles.opticalPaths,
+      opticalPathStyles,
+    )
     return (
       <OpticalPathsSection
         metadata={opticalPathMetadata}
         opticalPaths={opticalPaths}
-        defaultOpticalPathStyles={opticalPathStyles}
+        defaultOpticalPathStyles={this.panelStyles.opticalPaths}
         visibleOpticalPathIdentifiers={this.state.visibleOpticalPathIdentifiers}
         activeOpticalPathIdentifiers={this.state.activeOpticalPathIdentifiers}
         onOpticalPathVisibilityChange={this.handleOpticalPathVisibilityChange}
@@ -3657,13 +3691,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     segments: dmv.segment.Segment[],
   ): React.ReactNode {
     if (segments.length === 0) return undefined
-    const defaultSegmentStyles: {
-      [segmentUID: string]: {
-        opacity: number
-        color?: number[]
-        paletteColorLookupTable?: dmv.color.PaletteColorLookupTable
-      }
-    } = {}
+    const defaultSegmentStyles: Record<string, SegmentStyle> = {}
     const segmentMetadata: {
       [segmentUID: string]: dmv.metadata.Segmentation[]
     } = {}
@@ -3671,7 +3699,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const metadata = this.volumeViewer.getSegmentMetadata(segment.uid)
       segmentMetadata[segment.uid] = metadata
       const defaultStyle = this.volumeViewer.getSegmentStyle(segment.uid)
-      if (getSegmentationType(metadataRecord(metadata[0])) !== 'BINARY') {
+      if (getSegmentationType(metadata[0]) !== 'BINARY') {
         /** Non-BINARY segments are drawn through their palette, not a color */
         defaultSegmentStyles[segment.uid] = {
           opacity: defaultStyle.opacity,
@@ -3683,7 +3711,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       }
       const color =
         this.state.customizedSegmentColors[segment.uid] ??
-        getSegmentColor(metadataRecord(metadata?.[0]), segment.number) ??
+        getSegmentColor({
+          segmentSequence: metadata?.[0]?.SegmentSequence,
+          segmentNumber: segment.number,
+        }) ??
         undefined
       defaultSegmentStyles[segment.uid] = {
         opacity: defaultStyle.opacity,
@@ -3700,6 +3731,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
             : undefined,
       })
     })
+
+    this.panelStyles.segments = reuseEqualStyles(
+      this.panelStyles.segments,
+      defaultSegmentStyles,
+    )
 
     const groups = groupBySeries(
       segments,
@@ -3720,7 +3756,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         onSeriesChange={this.handleSegmentationSeriesSelection}
         segments={[...itemsForSeries(segments, groups, selectedSeriesUID)]}
         metadata={segmentMetadata}
-        defaultSegmentStyles={defaultSegmentStyles}
+        defaultSegmentStyles={this.panelStyles.segments}
         visibleSegmentUIDs={this.state.visibleSegmentUIDs}
         onSegmentVisibilityChange={this.handleSegmentVisibilityChange}
         onSegmentStyleChange={this.handleSegmentStyleChange}
@@ -3737,12 +3773,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     mappings: dmv.mapping.ParameterMapping[],
   ): React.ReactNode {
     if (mappings.length === 0) return undefined
-    const defaultMappingStyles: {
-      [mappingUID: string]: {
-        opacity: number
-        paletteColorLookupTable?: dmv.color.PaletteColorLookupTable
-      }
-    } = {}
+    const defaultMappingStyles: Record<string, MappingStyle> = {}
     const mappingMetadata: {
       [mappingUID: string]: dmv.metadata.ParametricMap[]
     } = {}
@@ -3755,11 +3786,15 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       mappingMetadata[mapping.uid] =
         this.volumeViewer.getParameterMappingMetadata(mapping.uid)
     })
+    this.panelStyles.mappings = reuseEqualStyles(
+      this.panelStyles.mappings,
+      defaultMappingStyles,
+    )
     return (
       <ParametricMapsSection
         mappings={mappings}
         metadata={mappingMetadata}
-        defaultMappingStyles={defaultMappingStyles}
+        defaultMappingStyles={this.panelStyles.mappings}
         visibleMappingUIDs={this.state.visibleMappingUIDs}
         onMappingVisibilityChange={this.handleMappingVisibilityChange}
         onMappingStyleChange={this.handleMappingStyleChange}
@@ -3778,18 +3813,18 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const annotationGroupMetadata: {
       [annotationGroupUID: string]: dmv.metadata.MicroscopyBulkSimpleAnnotations
     } = {}
-    const defaultAnnotationGroupStyles: {
-      [annotationUID: string]: {
-        opacity: number
-        color: number[]
-      }
-    } = {}
+    const defaultAnnotationGroupStyles: Record<string, AnnotationGroupStyle> =
+      {}
     annotationGroups.forEach((annotationGroup) => {
       defaultAnnotationGroupStyles[annotationGroup.uid] =
         this.volumeViewer.getAnnotationGroupStyle(annotationGroup.uid)
       annotationGroupMetadata[annotationGroup.uid] =
         this.volumeViewer.getAnnotationGroupMetadata(annotationGroup.uid)
     })
+    this.panelStyles.annotationGroups = reuseEqualStyles(
+      this.panelStyles.annotationGroups,
+      defaultAnnotationGroupStyles,
+    )
     const groups = groupBySeries(
       annotationGroups,
       (annotationGroup) => annotationGroup.seriesInstanceUID,
@@ -3810,10 +3845,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         ]}
         metadata={annotationGroupMetadata}
         onAnnotationGroupClick={this.handleAnnotationGroupClick}
-        defaultAnnotationGroupStyles={defaultAnnotationGroupStyles}
+        defaultAnnotationGroupStyles={this.panelStyles.annotationGroups}
         visibleAnnotationGroupUIDs={this.state.visibleAnnotationGroupUIDs}
         onAnnotationGroupVisibilityChange={
           this.handleAnnotationGroupVisibilityChange
+        }
+        onBulkAnnotationGroupVisibilityChange={
+          this.handleAnnotationGroupVisibilityChanges
         }
         onAnnotationGroupStyleChange={this.handleAnnotationGroupStyleChange}
         displaySettings={this.getAnnotationGroupDisplaySettings()}
@@ -4002,6 +4040,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               getRoiColor={this.getRoiColor}
               onSelection={this.handleAnnotationSelection}
               onVisibilityChange={this.handleAnnotationVisibilityChange}
+              onBulkVisibilityChange={this.handleAnnotationVisibilityChanges}
             />
           }
           annotationGroupMenu={this.renderAnnotationGroupsSection(
@@ -4010,9 +4049,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
           annotationCategoryMenu={
             <AnnotationCategoriesSection
               annotations={annotations}
-              onChange={this.handleAnnotationVisibilityChange}
+              onChange={this.handleAnnotationVisibilityChanges}
               checkedAnnotationUids={this.state.visibleRoiUIDs}
-              onStyleChange={this.handleRoiStyleChange}
+              onStyleChange={this.handleRoiStylesChange}
               defaultAnnotationStyles={this.defaultAnnotationStyles}
             />
           }
@@ -4024,11 +4063,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       </div>
     )
   }
-}
-
-/** Segment metadata as the plain record the color helpers read */
-function metadataRecord(metadata: object | undefined): Record<string, unknown> {
-  return metadata === undefined ? {} : { ...metadata }
 }
 
 export default withRouter(SlideViewer)

@@ -16,7 +16,7 @@ describe('authPolicy - origin resolution', () => {
   })
 
   it('resolves a relative path against the Slim origin', () => {
-    // `servers[].path` configurations are same-origin by construction.
+    /** `servers[].path` configurations are same-origin by construction. */
     expect(getOrigin('/dicomweb')).toBe(window.location.origin)
   })
 
@@ -79,8 +79,10 @@ describe('authPolicy - remembered decisions', () => {
     const now = 1_000_000_000_000
     writeAuthorizationDecision('https://no.test', 'denied', now)
 
-    // Forgetting a denial would silently widen disclosure; forgetting a grant
-    // only costs a prompt.
+    /**
+     * Forgetting a denial would silently widen disclosure; forgetting a grant
+     * only costs a prompt.
+     */
     expect(
       readAuthorizationDecision('https://no.test', now + 3650 * DAY_MS),
     ).toBe('denied')
@@ -119,7 +121,7 @@ describe('authPolicy - remembered decisions', () => {
   })
 
   it('never expires a pre-seeded grant that omits an expiry', () => {
-    // A long-lived browser profile must not start prompting mid-campaign.
+    /** A long-lived browser profile must not start prompting mid-campaign. */
     window.localStorage.setItem(
       'slim_authorization_policy',
       JSON.stringify({ 'https://archive.test': { decision: 'granted' } }),

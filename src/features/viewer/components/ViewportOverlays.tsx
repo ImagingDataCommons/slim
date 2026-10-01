@@ -2,7 +2,7 @@ import type OlMap from 'ol/Map'
 import type React from 'react'
 import { useCallback } from 'react'
 
-import { Icon } from '../../../components/ui/icon'
+import { Icon, type IconName } from '../../../components/ui/icon'
 import { useViewportMetrics } from '../hooks/useViewportMetrics'
 import {
   computeScaleBar,
@@ -31,7 +31,7 @@ function ZoomButton({
   size = 20,
   onClick,
 }: {
-  icon: React.ComponentProps<typeof Icon>['name']
+  icon: IconName
   title: string
   size?: number
   onClick: () => void

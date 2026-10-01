@@ -1,8 +1,8 @@
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import * as dcmjs from 'dcmjs'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import * as dmv from 'dicom-microscopy-viewer'
 import * as dwc from 'dicomweb-client'
 
@@ -708,7 +708,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
         ),
     )
     const naturalized = naturalizeDataset(studySummaryMetadata)
-    DicomMetadataStore.addStudy(naturalized as Record<string, unknown>)
+    DicomMetadataStore.addStudy(naturalized)
     return studySummaryMetadata
   }
 
@@ -729,10 +729,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       cacheKey,
     )
     const naturalized = seriesSummaryMetadata.map(naturalizeDataset)
-    DicomMetadataStore.addSeriesMetadata(
-      naturalized as Array<Record<string, unknown>>,
-      true,
-    )
+    DicomMetadataStore.addSeriesMetadata(naturalized, true)
     return seriesSummaryMetadata
   }
 

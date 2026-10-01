@@ -1,23 +1,15 @@
-export type ViewerShortcutAction =
-  | 'draw'
-  | 'modify'
-  | 'translate'
-  | 'remove'
-  | 'toggleRoiVisibility'
-  | 'save'
-  | 'goTo'
-  | 'cancel'
+import {
+  KEYBOARD_SHORTCUTS,
+  type ShortcutAction,
+} from '../../../utils/keyboardShortcuts'
+
+export type ViewerShortcutAction = ShortcutAction | 'cancel'
 
 /** Alt + key shortcuts, keyed by `KeyboardEvent.code` */
-export const ALT_SHORTCUTS: Readonly<Record<string, ViewerShortcutAction>> = {
-  KeyD: 'draw',
-  KeyM: 'modify',
-  KeyT: 'translate',
-  KeyR: 'remove',
-  KeyV: 'toggleRoiVisibility',
-  KeyS: 'save',
-  KeyG: 'goTo',
-}
+export const ALT_SHORTCUTS: Readonly<Record<string, ShortcutAction>> =
+  Object.fromEntries(
+    KEYBOARD_SHORTCUTS.map((shortcut) => [shortcut.code, shortcut.action]),
+  )
 
 export interface ShortcutKeyEvent {
   key: string
@@ -45,5 +37,7 @@ export function shortcutForKeyEvent(
 ): ViewerShortcutAction | undefined {
   if (event.key === 'Escape') return 'cancel'
   if (!event.altKey || isTextEntryTarget(event.target)) return undefined
-  return ALT_SHORTCUTS[event.code]
+  return Object.hasOwn(ALT_SHORTCUTS, event.code)
+    ? ALT_SHORTCUTS[event.code]
+    : undefined
 }

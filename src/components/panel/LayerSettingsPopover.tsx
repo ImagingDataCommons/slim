@@ -1,7 +1,7 @@
 import type * as React from 'react'
 
 import { Button } from '../ui/button'
-import { Icon } from '../ui/icon'
+import { Icon, type IconName } from '../ui/icon'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 
 export interface LayerSettingsPopoverProps {
@@ -9,7 +9,7 @@ export interface LayerSettingsPopoverProps {
   label: string
   /** Trigger tooltip and accessible-name prefix */
   title?: string
-  icon?: React.ComponentProps<typeof Icon>['name']
+  icon?: IconName
   disabled?: boolean
   contentClassName?: string
   children: React.ReactNode

@@ -1,3 +1,4 @@
+import { KEYBOARD_SHORTCUTS } from '../../../../utils/keyboardShortcuts'
 import { ALT_SHORTCUTS, shortcutForKeyEvent } from '../keyboardShortcuts'
 
 const keyEvent = (
@@ -8,6 +9,15 @@ const keyEvent = (
   altKey: false,
   target: document.body,
   ...overrides,
+})
+
+describe('ALT_SHORTCUTS', () => {
+  it('maps the code of every keyboard shortcut to its action', () => {
+    expect(Object.keys(ALT_SHORTCUTS)).toHaveLength(KEYBOARD_SHORTCUTS.length)
+    for (const shortcut of KEYBOARD_SHORTCUTS) {
+      expect(ALT_SHORTCUTS[shortcut.code]).toBe(shortcut.action)
+    }
+  })
 })
 
 describe('shortcutForKeyEvent', () => {
@@ -24,6 +34,9 @@ describe('shortcutForKeyEvent', () => {
   it('ignores unknown codes', () => {
     expect(
       shortcutForKeyEvent(keyEvent({ code: 'KeyZ', altKey: true })),
+    ).toBeUndefined()
+    expect(
+      shortcutForKeyEvent(keyEvent({ code: 'toString', altKey: true })),
     ).toBeUndefined()
   })
 

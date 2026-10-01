@@ -5,15 +5,11 @@ import { SlimLogoMark } from '../../../../components/slim/SlimLogoMark'
 import { CopyButton } from '../../../../components/ui/copy-button'
 import { Icon } from '../../../../components/ui/icon'
 import { cn } from '../../../../lib/utils'
+import type { AppInfo } from '../../../../utils/appInfo'
 import { buildSupportInfo, getAboutLinks } from '../../utils/about'
 import type { RuntimeInfo } from '../../utils/runtimeInfo'
 
-export interface AboutAppInfo {
-  name: string
-  version: string
-  homepage: string
-  organization?: string
-}
+export type AboutAppInfo = Omit<AppInfo, 'uid'>
 
 export interface AboutTabProps {
   app: AboutAppInfo

@@ -1,6 +1,6 @@
-// skipcq: JS-C1003 - dcmjs uses nested namespaces (dcmjs.sr.coding.CodedConcept)
+/** skipcq: JS-C1003 - dcmjs uses nested namespaces (dcmjs.sr.coding.CodedConcept) */
 import type * as dcmjs from 'dcmjs'
-// skipcq: JS-C1003 - dmv uses nested namespaces (dmv.metadata, dmv.roi)
+/** skipcq: JS-C1003 - dmv uses nested namespaces (dmv.metadata, dmv.roi) */
 import type * as dmv from 'dicom-microscopy-viewer'
 import type DicomWebManager from '../../DicomWebManager'
 import type { Slide } from '../../data/slides'
@@ -9,15 +9,6 @@ import type { ViewportLoadingPhase } from '../../features/viewer/utils/viewportL
 import type { AnnotationSettings } from '../../types/annotations'
 import type { AppInfo } from '../../utils/appInfo'
 import type { RouteComponentProps } from '../../utils/router'
-
-/**
- * Style options for ROI annotations
- */
-export interface StyleOptions {
-  opacity: number
-  color: number[]
-  contourOnly: boolean
-}
 
 /**
  * Evaluation options for DICOM SR

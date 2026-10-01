@@ -4,13 +4,6 @@ import type * as dmv from 'dicom-microscopy-viewer'
 
 import SegmentItem, { type SegmentItemProps } from '../../SegmentItem'
 
-/** jsdom has no ResizeObserver, which the Radix slider measures with */
-class ResizeObserverStub {
-  observe(): void {}
-  unobserve(): void {}
-  disconnect(): void {}
-}
-
 const concept = (meaning: string): dcmjs.sr.coding.CodedConcept =>
   new dcmjs.sr.coding.CodedConcept({
     value: '1',
@@ -55,16 +48,6 @@ function renderItem(overrides: Partial<SegmentItemProps> = {}): {
 }
 
 describe('SegmentItem', () => {
-  const originalResizeObserver = window.ResizeObserver
-
-  beforeAll(() => {
-    window.ResizeObserver = ResizeObserverStub
-  })
-
-  afterAll(() => {
-    window.ResizeObserver = originalResizeObserver
-  })
-
   it('toggles the segment visibility', () => {
     const { onVisibilityChange } = renderItem()
     fireEvent.click(screen.getByRole('button', { name: 'Show Nuclei' }))

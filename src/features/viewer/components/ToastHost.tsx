@@ -1,12 +1,10 @@
 import type React from 'react'
 import { useSyncExternalStore } from 'react'
 
-import { Icon } from '../../../components/ui/icon'
+import { Icon, type IconName } from '../../../components/ui/icon'
 import { cn } from '../../../lib/utils'
 import { type ToastStore, toastStore } from '../services/toast'
 import type { ToastTone } from '../utils/toastQueue'
-
-type IconName = React.ComponentProps<typeof Icon>['name']
 
 const TONE_ICON: Record<ToastTone, { name: IconName; className: string }> = {
   info: { name: 'info', className: 'text-primary' },

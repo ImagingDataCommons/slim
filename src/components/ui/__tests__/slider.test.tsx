@@ -2,24 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 
 import { Slider } from '../slider'
 
-/** jsdom has no ResizeObserver, which the Radix slider measures with */
-class ResizeObserverStub {
-  observe(): void {}
-  unobserve(): void {}
-  disconnect(): void {}
-}
-
 describe('Slider', () => {
-  const originalResizeObserver = window.ResizeObserver
-
-  beforeAll(() => {
-    window.ResizeObserver = ResizeObserverStub
-  })
-
-  afterAll(() => {
-    window.ResizeObserver = originalResizeObserver
-  })
-
   it('names the thumb and forwards value changes and commits', () => {
     const onValueChange = jest.fn()
     const onValueCommit = jest.fn()

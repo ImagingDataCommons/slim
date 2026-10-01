@@ -85,7 +85,7 @@ const clearAuthParamsFromUrl = (): void => {
   for (const key of authParams) {
     url.searchParams.delete(key)
   }
-  // Implicit / hybrid responses put tokens in the hash fragment.
+  /** Implicit / hybrid responses put tokens in the hash fragment. */
   url.hash = ''
   const cleaned = `${url.pathname}${url.search}`
   window.history.replaceState({}, document.title, cleaned)
@@ -134,7 +134,7 @@ export const completeSilentRenewIfFrame = async (): Promise<boolean> => {
   if (window.parent === window) {
     return false
   }
-  // Embedded Slim (non-OIDC iframe) should still mount; only OIDC callbacks skip it.
+  /** Embedded Slim (non-OIDC iframe) should still mount; only OIDC callbacks skip it. */
   if (!isOidcAuthorizeCallbackUrl(window.location)) {
     return false
   }
@@ -143,7 +143,7 @@ export const completeSilentRenewIfFrame = async (): Promise<boolean> => {
   } catch (error) {
     console.error('silent renew callback failed', error)
   }
-  // Always skip SPA mount for OIDC iframe callbacks (success or error).
+  /** Always skip SPA mount for OIDC iframe callbacks (success or error). */
   return true
 }
 
@@ -311,12 +311,12 @@ export default class OidcManager implements AuthManager {
           returnUrl: returnUrl ?? currentReturnUrl(),
         },
       })
-      // oidc-client resolves as soon as navigation is assigned; page unload follows.
+      /** oidc-client resolves as soon as navigation is assigned; page unload follows. */
       return 'redirected'
     }
 
     console.info('user has already been authenticated')
-    // Do not re-apply persisted returnUrl on warm sessions.
+    /** Do not re-apply persisted returnUrl on warm sessions. */
     handleSignIn(userData, { includeReturnUrl: false })
     return 'completed'
   }

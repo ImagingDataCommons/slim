@@ -1,4 +1,4 @@
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dwc from 'dicomweb-client'
 
 import DicomWebManager from '../DicomWebManager'
@@ -139,7 +139,7 @@ describe('DicomWebManager - multi-store search', () => {
         '0020000E': { vr: 'UI', Value: ['1.2.3.A'] },
         '00080060': { vr: 'CS', Value: ['ANN'] },
       },
-      // Same SeriesInstanceUID appears in both stores; should be deduped.
+      /** Same SeriesInstanceUID appears in both stores; should be deduped. */
       {
         '0020000D': { vr: 'UI', Value: ['1.2.3'] },
         '0020000E': { vr: 'UI', Value: ['1.2.3.SHARED'] },
@@ -462,7 +462,7 @@ describe('DicomWebManager - storeInstances and headers', () => {
         },
       ],
     })
-    // The primary is in auto mode; approve its origin so it carries the token.
+    /** The primary is in auto mode; approve its origin so it carries the token. */
     manager.setAuthorizationPolicy(allowAllPolicy())
 
     const primaryStub = makeStubClient('primary')
@@ -476,7 +476,7 @@ describe('DicomWebManager - storeInstances and headers', () => {
 
     expect(primaryStub.headers.Authorization).toBe('Bearer abc')
     expect(openStub.headers.Authorization).toBeUndefined()
-    // Non-credential headers are still propagated to the open store.
+    /** Non-credential headers are still propagated to the open store. */
     expect(openStub.headers['X-Custom']).toBe('value')
   })
 
@@ -494,7 +494,7 @@ describe('DicomWebManager - storeInstances and headers', () => {
 
     manager.updateHeaders({ Authorization: 'Bearer abc' })
 
-    // Nothing has returned 401, so the server never sees the credential.
+    /** Nothing has returned 401, so the server never sees the credential. */
     expect(openStub.headers.Authorization).toBeUndefined()
   })
 
@@ -584,7 +584,7 @@ describe('DicomWebManager - authorization escalation', () => {
     await expect(manager.searchForStudies({})).rejects.toMatchObject({
       status: 401,
     })
-    // One attempt only: no retry, and the credential was never attached.
+    /** One attempt only: no retry, and the credential was never attached. */
     expect(stub.searchForStudies).toHaveBeenCalledTimes(1)
     expect(stub.headers.Authorization).toBeUndefined()
   })
@@ -641,7 +641,7 @@ describe('DicomWebManager - authorization escalation', () => {
       manager.searchForInstances({}),
     ])
 
-    // Three simultaneous challenges, one consent prompt.
+    /** Three simultaneous challenges, one consent prompt. */
     expect(policy.requestAuthorization).toHaveBeenCalledTimes(1)
   })
 
@@ -702,7 +702,7 @@ describe('DicomWebManager - authorization escalation', () => {
       })
     }
 
-    // Asked once; the answer stands for the rest of the session.
+    /** Asked once; the answer stands for the rest of the session. */
     expect(policy.requestAuthorization).toHaveBeenCalledTimes(1)
   })
 
@@ -782,7 +782,7 @@ describe('DicomWebManager - authorization escalation', () => {
     const secondaryStub = makeStubClient('secondary')
     stubManagerClients(manager, [primaryStub, secondaryStub])
 
-    // Only the primary is challenged.
+    /** Only the primary is challenged. */
     primaryStub.searchForStudies
       .mockRejectedValueOnce(httpError(401))
       .mockResolvedValue([])
@@ -791,7 +791,7 @@ describe('DicomWebManager - authorization escalation', () => {
     await manager.searchForStudies({})
 
     expect(primaryStub.headers.Authorization).toBe('Bearer abc')
-    // Same origin, same grant: no need to be refused once on its own account.
+    /** Same origin, same grant: no need to be refused once on its own account. */
     expect(secondaryStub.headers.Authorization).toBe('Bearer abc')
   })
 
@@ -817,7 +817,7 @@ describe('DicomWebManager - authorization escalation', () => {
     await manager.searchForStudies({})
 
     expect(gcpStub.headers.Authorization).toBe('Bearer abc')
-    // Consent is per origin; this one was never approved.
+    /** Consent is per origin; this one was never approved. */
     expect(otherStub.headers.Authorization).toBeUndefined()
   })
 
@@ -848,7 +848,7 @@ describe('DicomWebManager - authorization escalation', () => {
     await manager.searchForStudies({})
 
     expect(primaryStub.headers.Authorization).toBe('Bearer abc')
-    // An explicit operator override outranks a grant for the same origin.
+    /** An explicit operator override outranks a grant for the same origin. */
     expect(openStub.headers.Authorization).toBeUndefined()
   })
 
@@ -896,7 +896,7 @@ describe('DicomWebManager - authorization escalation', () => {
     const gcpStub = makeStubClient('gcp')
     stubManagerClients(manager, [gcpStub])
 
-    // Token arrives before the policy is installed.
+    /** Token arrives before the policy is installed. */
     manager.updateHeaders({ Authorization: 'Bearer abc' })
     expect(gcpStub.headers.Authorization).toBeUndefined()
 

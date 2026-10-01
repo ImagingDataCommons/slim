@@ -28,10 +28,8 @@ const slidesCache = new Map<string, CachedSlides>()
 const pendingRequests = new Map<string, Promise<Slide[]>>()
 const cacheTimestamps = new Map<string, number>()
 
-// Cache expiration time: 30 minutes
 const CACHE_EXPIRATION_TIME = 30 * 60 * 1000
 
-// Clean up expired cache entries
 const cleanupExpiredCache = (): void => {
   const now = Date.now()
   for (const [key, timestamp] of cacheTimestamps.entries()) {
@@ -45,7 +43,6 @@ const cleanupExpiredCache = (): void => {
 const getServerUrl = (clients: { [key: string]: DicomWebManager }): string =>
   clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]?.baseURL ?? ''
 
-// Utility functions for cache management
 export const clearSlidesCache = (studyInstanceUID?: string): void => {
   if (
     studyInstanceUID !== null &&
@@ -103,10 +100,9 @@ export const useSlides = ({
   }, [studyInstanceUID])
 
   useEffect(() => {
-    // Clean up expired cache entries periodically
     cleanupExpiredCache()
 
-    // If no arguments provided, return cached slides if available
+    /** Without a study, fall back to the most recently cached slides */
     if (
       clients === null ||
       clients === undefined ||
@@ -115,7 +111,6 @@ export const useSlides = ({
       studyInstanceUID === '' ||
       studyInstanceUID.length === 0
     ) {
-      // Get the most recently cached slides (last entry in the cache)
       const cachedEntries = Array.from(slidesCache.entries())
       if (cachedEntries.length > 0) {
         const lastCachedSlides = cachedEntries[cachedEntries.length - 1][1]
@@ -145,11 +140,9 @@ export const useSlides = ({
     /** A retry gets its own request instead of joining one still in flight */
     const requestKey = `${serverUrl}|${attempt}|${studyInstanceUID}`
     const fetchSlides = async (): Promise<void> => {
-      // Check if there's already a pending request for this study
       let pendingRequest = pendingRequests.get(requestKey)
 
       if (pendingRequest === undefined) {
-        // Create a new promise for this request
         pendingRequest = new Promise<Slide[]>((resolve, reject): void => {
           fetchImageMetadata({
             clients,
@@ -180,7 +173,7 @@ export const useSlides = ({
         setSlides(newSlides)
         setError(null)
       } catch (err) {
-        setError(err as Error)
+        setError(err instanceof Error ? err : new Error(String(err)))
         setSlides([])
       } finally {
         pendingRequests.delete(requestKey)
@@ -191,7 +184,6 @@ export const useSlides = ({
     void fetchSlides()
   }, [clients, studyInstanceUID, attempt])
 
-  // Memoize the return value to prevent unnecessary re-renders
   return useMemo(
     () => ({
       slides,

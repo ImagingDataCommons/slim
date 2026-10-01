@@ -1,15 +1,14 @@
 import type React from 'react'
 import { useEffect, useRef, useState } from 'react'
 
-import { Icon } from '../../../components/ui/icon'
+import { Icon, type IconName } from '../../../components/ui/icon'
 import { cn } from '../../../lib/utils'
+import { formatShortcutHint } from '../../../utils/keyboardShortcuts'
 import type { ActiveRoiTool } from '../utils/activeRoiTool'
 import { SLIDE_PANEL_ID, STUDY_PANEL_ID } from '../utils/panelIds'
 
 /** Below this toolbar width the tool labels collapse to icons only. */
 export const COMPACT_TOOLBAR_WIDTH_PX = 720
-
-type IconName = React.ComponentProps<typeof Icon>['name']
 
 interface ToolDefinition {
   key: string
@@ -142,7 +141,7 @@ export function ViewerToolbar({
           key: 'draw',
           icon: 'polyline',
           label: 'Draw',
-          tooltip: 'Draw ROI [Alt+D]',
+          tooltip: formatShortcutHint('draw'),
           isActive: activeTool === 'draw',
           onClick: onDraw,
         },
@@ -150,7 +149,7 @@ export function ViewerToolbar({
           key: 'modify',
           icon: 'touch_app',
           label: 'Modify',
-          tooltip: 'Modify ROIs [Alt+M]',
+          tooltip: formatShortcutHint('modify'),
           isActive: activeTool === 'modify',
           onClick: onModify,
         },
@@ -158,7 +157,7 @@ export function ViewerToolbar({
           key: 'translate',
           icon: 'open_with',
           label: 'Translate',
-          tooltip: 'Translate ROIs [Alt+T]',
+          tooltip: formatShortcutHint('translate'),
           isActive: activeTool === 'translate',
           onClick: onTranslate,
         },
@@ -166,7 +165,7 @@ export function ViewerToolbar({
           key: 'remove',
           icon: 'delete',
           label: 'Remove',
-          tooltip: 'Remove selected ROI [Alt+R]',
+          tooltip: formatShortcutHint('remove'),
           isActive: false,
           onClick: onRemove,
         },
@@ -174,7 +173,7 @@ export function ViewerToolbar({
           key: 'hide',
           icon: areRoisHidden ? 'visibility' : 'visibility_off',
           label: 'Hide',
-          tooltip: 'Show/Hide ROIs [Alt+V]',
+          tooltip: formatShortcutHint('toggleRoiVisibility'),
           isActive: areRoisHidden,
           onClick: onToggleRoiVisibility,
         },
@@ -182,7 +181,7 @@ export function ViewerToolbar({
           key: 'save',
           icon: 'save',
           label: 'Save',
-          tooltip: 'Save ROIs [Alt+S]',
+          tooltip: formatShortcutHint('save'),
           isActive: false,
           onClick: onSave,
         },
@@ -221,7 +220,7 @@ export function ViewerToolbar({
           <ToolButton
             icon="my_location"
             label="Go to"
-            tooltip="Go to [Alt+G]"
+            tooltip={formatShortcutHint('goTo')}
             isActive={false}
             isCompact={isCompact}
             onClick={onGoTo}

@@ -3,6 +3,7 @@ import type * as dmv from 'dicom-microscopy-viewer'
 import type React from 'react'
 
 import { usePreferences } from '../features/preferences'
+import type { VisibilityChange } from '../utils/visibility'
 import AnnotationItem from './AnnotationItem'
 import { BulkVisibilityControl } from './slim/BulkVisibilityControl'
 
@@ -13,6 +14,7 @@ export interface AnnotationListProps {
   /** CSS color of the ROI stroke */
   getRoiColor: (roi: dmv.roi.ROI) => string
   onVisibilityChange: (change: { roiUID: string; isVisible: boolean }) => void
+  onBulkVisibilityChange: (changes: VisibilityChange[]) => void
   onSelection: (uid: string) => void
 }
 
@@ -23,6 +25,7 @@ function AnnotationList({
   visibleRoiUIDs,
   getRoiColor,
   onVisibilityChange,
+  onBulkVisibilityChange,
   onSelection,
 }: AnnotationListProps): React.ReactElement {
   const { units } = usePreferences()
@@ -34,9 +37,7 @@ function AnnotationList({
         itemLabel="annotations"
         uids={rois.map((roi) => roi.uid)}
         visibleUids={visibleRoiUIDs}
-        onChange={({ uid, isVisible }) =>
-          onVisibilityChange({ roiUID: uid, isVisible })
-        }
+        onChange={onBulkVisibilityChange}
       />
       {rois.map((roi, index) => (
         <AnnotationItem

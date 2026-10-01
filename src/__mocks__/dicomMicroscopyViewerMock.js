@@ -1,5 +1,7 @@
-// Mock for dicom-microscopy-viewer to resolve Jest test issues.
-// Provides metadata.formatMetadata so Worklist and other components can run in tests.
+/**
+ * Mock for dicom-microscopy-viewer to resolve Jest test issues.
+ * Provides metadata.formatMetadata so Worklist and other components can run in tests.
+ */
 
 const TAG_TO_KEYWORD = {
   '0020000D': 'StudyInstanceUID',

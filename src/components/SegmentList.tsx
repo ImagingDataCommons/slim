@@ -54,9 +54,11 @@ function SegmentList({
         uids={segments.map((segment) => segment.uid)}
         visibleUids={visibleSegmentUIDs}
         itemLabel="segments"
-        onChange={({ uid, isVisible }) =>
-          onSegmentVisibilityChange({ segmentUID: uid, isVisible })
-        }
+        onChange={(changes) => {
+          for (const { uid, isVisible } of changes) {
+            onSegmentVisibilityChange({ segmentUID: uid, isVisible })
+          }
+        }}
       />
       {segments.map((segment) => (
         <SegmentItem

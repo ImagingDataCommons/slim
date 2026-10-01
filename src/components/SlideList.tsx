@@ -1,5 +1,4 @@
 import type React from 'react'
-import { useEffect } from 'react'
 
 import type DicomWebManager from '../DicomWebManager'
 import type { Slide } from '../data/slides'
@@ -23,15 +22,6 @@ function SlideList({
   selectedSeriesInstanceUID,
   onSeriesSelection,
 }: SlideListProps): React.ReactElement {
-  /**
-   * Study routes without a series segment only render the viewer after this
-   * initial selection navigates to the default series.
-   */
-  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once on mount
-  useEffect(() => {
-    onSeriesSelection({ seriesInstanceUID: selectedSeriesInstanceUID })
-  }, [])
-
   return (
     <ul
       aria-label="Slides"

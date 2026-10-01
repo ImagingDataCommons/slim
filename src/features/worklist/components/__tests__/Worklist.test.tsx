@@ -1,5 +1,5 @@
 import { cleanup, render, waitFor } from '@testing-library/react'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dwc from 'dicomweb-client'
 import type React from 'react'
 import { BrowserRouter } from 'react-router-dom'

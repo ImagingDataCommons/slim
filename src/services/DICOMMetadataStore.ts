@@ -18,7 +18,8 @@ export interface Instance {
   Modality: string
   InstanceNumber: string
   imageId?: string
-  [key: string]: unknown // For dynamic metadata properties
+  /** For dynamic metadata properties */
+  [key: string]: unknown
 }
 
 export interface Series {
@@ -185,13 +186,13 @@ const BaseImplementation: BaseImplementationType = {
   addInstance(dicomJSONDatasetOrP10ArrayBuffer) {
     let dicomJSONDataset: Record<string, unknown>
 
-    // If Arraybuffer, parse to DICOMJSON before naturalizing.
+    /** If Arraybuffer, parse to DICOMJSON before naturalizing. */
     if (dicomJSONDatasetOrP10ArrayBuffer instanceof ArrayBuffer) {
       const dicomData = dcmjs.data.DicomMessage.readFile(
         dicomJSONDatasetOrP10ArrayBuffer,
       )
 
-      dicomJSONDataset = dicomData.dict as Record<string, unknown>
+      dicomJSONDataset = dicomData.dict
     } else {
       dicomJSONDataset = dicomJSONDatasetOrP10ArrayBuffer
     }
@@ -233,10 +234,12 @@ const BaseImplementation: BaseImplementationType = {
 
     study.addInstancesToSeries(instances)
 
-    // Broadcast an event even if we used cached data.
-    // This is because the mode needs to listen to instances that are added to build up its active displaySets.
-    // It will see there are cached displaySets and end early if this Series has already been fired in this
-    // Mode session for some reason.
+    /**
+     * Broadcast an event even if we used cached data.
+     * This is because the mode needs to listen to instances that are added to build up its active displaySets.
+     * It will see there are cached displaySets and end early if this Series has already been fired in this
+     * Mode session for some reason.
+     */
     this._broadcastEvent(EVENTS.INSTANCES_ADDED, {
       StudyInstanceUID,
       SeriesInstanceUID,
@@ -271,7 +274,7 @@ const BaseImplementation: BaseImplementationType = {
     let study = _getStudy(studyUID)
     if (study == null) {
       study = createStudyMetadata(studyUID)
-      // Will typically be undefined with a compliant DICOMweb server, reset later
+      /** Will typically be undefined with a compliant DICOMweb server, reset later */
       study.StudyDescription = String(
         seriesSummaryMetadata[0].StudyDescription ?? '',
       )

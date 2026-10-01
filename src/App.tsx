@@ -1,4 +1,4 @@
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dwc from 'dicomweb-client'
 import React from 'react'
 import {
@@ -861,7 +861,7 @@ class App extends React.Component<AppProps, AppState> {
       worklist = <Worklist clients={this.state.clients} />
     } else {
       worklist = (
-        <div className="flex items-center justify-center h-full text-muted-foreground">
+        <div className="flex items-center justify-center h-full text-ink-muted">
           Worklist has been disabled.
         </div>
       )
@@ -967,7 +967,7 @@ class App extends React.Component<AppProps, AppState> {
                   showServerSelectionButton: enableServerSelection,
                   onUserLogout,
                   contentClassName:
-                    'items-center justify-center text-muted-foreground',
+                    'items-center justify-center text-ink-muted',
                 },
                 'Logged out',
               )}

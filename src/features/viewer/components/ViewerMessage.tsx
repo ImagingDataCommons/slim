@@ -1,15 +1,12 @@
 import type * as React from 'react'
 
 import { Button } from '../../../components/ui/button'
-import { Icon } from '../../../components/ui/icon'
+import { Icon, type IconName } from '../../../components/ui/icon'
 import { cn } from '../../../lib/utils'
 
 export type ViewerMessageStatus = 'error' | 'warning'
 
-const STATUS_ICON: Record<
-  ViewerMessageStatus,
-  React.ComponentProps<typeof Icon>['name']
-> = {
+const STATUS_ICON: Record<ViewerMessageStatus, IconName> = {
   error: 'error',
   warning: 'warning',
 }

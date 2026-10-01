@@ -10,8 +10,8 @@ import {
 export interface BulkVisibilityControlProps {
   uids: string[]
   visibleUids: Set<string>
-  /** Called once per uid whose visibility differs from the target */
-  onChange: (change: VisibilityChange) => void
+  /** Called once with every uid whose visibility differs from the target */
+  onChange: (changes: VisibilityChange[]) => void
   /** Plural noun for the accessible names, e.g. "segments" in "Show all segments" */
   itemLabel?: string
   className?: string
@@ -31,7 +31,8 @@ export function BulkVisibilityControl({
   if (uids.length < 2) return null
   const visibleCount = countVisible(uids, visibleUids)
   const apply = (show: boolean): void => {
-    computeBulkVisibility(uids, visibleUids, show).forEach(onChange)
+    const changes = computeBulkVisibility(uids, visibleUids, show)
+    if (changes.length > 0) onChange(changes)
   }
 
   return (

@@ -7,6 +7,7 @@ import {
 import AnnotationCategoryItem, {
   type AnnotationStyleChangeHandler,
   type AnnotationStyleMap,
+  type AnnotationVisibilityChangeHandler,
 } from './AnnotationCategoryItem'
 
 export type {
@@ -17,7 +18,7 @@ export type {
 
 export interface AnnotationCategoryListProps {
   annotations: AnnotationCategoryAndType[]
-  onChange: (change: { roiUID: string; isVisible: boolean }) => void
+  onChange: AnnotationVisibilityChangeHandler
   onStyleChange: AnnotationStyleChangeHandler
   defaultAnnotationStyles: AnnotationStyleMap
   checkedAnnotationUids: Set<string>

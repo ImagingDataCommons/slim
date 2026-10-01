@@ -1,8 +1,8 @@
 declare module 'dicom-microscopy-viewer' {
 
-  // skipcq: JS-C1003
+  /** skipcq: JS-C1003 */
   import * as dwc from 'dicomweb-client'
-  // skipcq: JS-C1003
+  /** skipcq: JS-C1003 */
   import * as dcmjs from 'dcmjs'
   import { CustomError } from '../../src/utils/CustomError'
   import type OlMap from 'ol/Map'
@@ -625,7 +625,7 @@ declare module 'dicom-microscopy-viewer' {
     export interface Dataset {}
 
     export interface SOPClass extends Dataset {
-      // Patient module
+      /** Patient module */
       PatientID: string
       PatientName: PersonName
       PatientSex: string
@@ -636,27 +636,27 @@ declare module 'dicom-microscopy-viewer' {
       AdmittingDiagnosesDescription?: string
       AdmittingDiagnosesCodeSequence?: CodeSequenceItem[]
       StudyDescription?: string
-      // General Study module
+      /** General Study module */
       StudyInstanceUID: string
       AccessionNumber: string
       StudyID: string
       StudyDate: string
       StudyTime: string
-      // Clinical Trial Subject module
+      /** Clinical Trial Subject module */
       ClinicalTrialSponsorName?: string
       ClinicalTrialProtocolID?: string
       ClinicalTrialProtocolName?: string
       ClinicalTrialSiteName?: string
-      // Clinical Trial Study module
+      /** Clinical Trial Study module */
       ClinicalTrialTimePointID?: string
-      // General Series module
+      /** General Series module */
       SeriesInstanceUID: string
       SeriesNumber: number | null | undefined
       SeriesDate: string
       SeriesTime: string
       SeriesDescription: string
       Modality: string
-      // SOP Common module
+      /** SOP Common module */
       SOPClassUID: string
       SOPInstanceUID: string
       InstanceNumber: number | null | undefined
@@ -665,7 +665,7 @@ declare module 'dicom-microscopy-viewer' {
     }
 
     export interface VLWholeSlideMicroscopyImage extends SOPClass {
-      // VL Whole Slide Microscopy Image module
+      /** VL Whole Slide Microscopy Image module */
       BitsAllocated: number
       ImageType: string[]
       SamplesPerPixel: number
@@ -674,19 +674,19 @@ declare module 'dicom-microscopy-viewer' {
       TotalPixelMatrixRows: number
       Columns: number
       Rows: number
-      // Acquisition
+      /** Acquisition */
       AcquisitionUID?: string
-      // Multi-Resolution Pyramid
+      /** Multi-Resolution Pyramid */
       PyramidUID?: string
-      // Frame of Reference module
+      /** Frame of Reference module */
       FrameOfReferenceUID: string
-      // Specimen module
+      /** Specimen module */
       ContainerIdentifier: string
       ContainerTypeCodeSequence: dcmjs.sr.coding.CodedConcept[]
       SpecimenDescriptionSequence: SpecimenDescription[]
-      // Optical Path module
+      /** Optical Path module */
       OpticalPathSequence: OpticalPath[]
-      // Equipment module
+      /** Equipment module */
       Manufacturer: string
       ManufacturerModelName: string
       DeviceSerialNumber: string
@@ -704,13 +704,13 @@ declare module 'dicom-microscopy-viewer' {
 
     export interface MicroscopyBulkSimpleAnnotations extends SOPClass {
       AnnotationCoordinateType: string
-      // Frame of Reference module
+      /** Frame of Reference module */
       FrameOfReferenceUID: string
-      // Specimen module
+      /** Specimen module */
       ContainerIdentifier: string
       ContainerTypeCodeSequence: dcmjs.sr.coding.CodedConcept[]
       SpecimenDescriptionSequence: SpecimenDescription[]
-      // Annotation
+      /** Annotation */
       ContainerIdentifier: string
       ContainerTypeCodeSequence: dcmjs.sr.coding.CodedConcept[]
       SpecimenDescriptionSequence: SpecimenDescription[]
@@ -736,8 +736,10 @@ declare module 'dicom-microscopy-viewer' {
         GraphicType: string
         NumberOfAnnotations: number
         CommonZCoordinateValue?: number
-        DoublePointCoordinatesData?: string // FIXME: bytes
-        PointCoordinatesData?: string // FIXME: bytes
+        /** FIXME: bytes */
+        DoublePointCoordinatesData?: string
+        /** FIXME: bytes */
+        PointCoordinatesData?: string
         MeasurementsSequence: Array<{
           ConceptNameCodeSequence: Array<{
             CodeValue: string
@@ -752,40 +754,42 @@ declare module 'dicom-microscopy-viewer' {
             CodingSchemeVersion?: string
           }>
           MeasurementValuesSequence: Array<{
-            FloatingPointValues?: string // FIXME: bytes
-            AnnotationIndexList?: string // FIXME: bytes
+            /** FIXME: bytes */
+            FloatingPointValues?: string
+            /** FIXME: bytes */
+            AnnotationIndexList?: string
           }>
         }>
       }>
     }
 
     export interface ParametricMap extends SOPClass {
-      // Floating Point Image Pixel or Double Floating Point Image Pixel module
+      /** Floating Point Image Pixel or Double Floating Point Image Pixel module */
       BitsAllocated: number
       /** Real World Value Mapping, top level or in functional groups */
       RealWorldValueMappingSequence?: RealWorldValueMapping[]
       SharedFunctionalGroupsSequence?: FunctionalGroup[]
       PerFrameFunctionalGroupsSequence?: FunctionalGroup[]
-      // Frame of Reference module
+      /** Frame of Reference module */
       FrameOfReferenceUID: string
-      // Specimen module
+      /** Specimen module */
       ContainerIdentifier: string
       ContainerTypeCodeSequence: dcmjs.sr.coding.CodedConcept[]
       SpecimenDescriptionSequence: SpecimenDescription[]
     }
 
     export interface Segmentation extends SOPClass {
-      // Image Pixel module
+      /** Image Pixel module */
       BitsAllocated: number
       /** Segmentation Image module */
       SegmentationType?: 'BINARY' | 'FRACTIONAL'
-      // Frame of Reference module
+      /** Frame of Reference module */
       FrameOfReferenceUID: string
-      // Specimen module
+      /** Specimen module */
       ContainerIdentifier: string
       ContainerTypeCodeSequence: dcmjs.sr.coding.CodedConcept[]
       SpecimenDescriptionSequence: SpecimenDescription[]
-      // Segmentation Image module
+      /** Segmentation Image module */
       SegmentSequence: Array<{
         SegmentNumber: number
         SegmentLabel: string
@@ -808,7 +812,7 @@ declare module 'dicom-microscopy-viewer' {
     export interface AdvancedBlendingPresentationState extends SOPClass {
       AdvancedBlendingSequence: Array<{
         BlendingInputNumber: number
-        // FIXME
+        /** FIXME */
         ReferencedImageSequence?: Array<{
           ReferencedSOPClassUID: string
           ReferencedSOPInstanceUID: string

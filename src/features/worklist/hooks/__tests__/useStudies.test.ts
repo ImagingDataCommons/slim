@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dwc from 'dicomweb-client'
 
 import DicomWebManager from '../../../../DicomWebManager'

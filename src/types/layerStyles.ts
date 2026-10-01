@@ -64,7 +64,7 @@ export interface AnnotationGroupStyleChange {
   fillOpacity?: number
 }
 
-/** Style of individual ROI annotations; structurally equal to `StyleOptions` */
+/** Style of individual ROI annotations */
 export interface AnnotationStyle {
   opacity: number
   color: number[]
