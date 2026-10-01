@@ -1,4 +1,30 @@
-import { clampPageIndex, getPageRange, getVisiblePages } from '../pagination'
+import {
+  clampPageIndex,
+  clampPagination,
+  getPageRange,
+  getVisiblePages,
+} from '../pagination'
+
+describe('clampPagination', () => {
+  it('keeps a valid page and returns the same object', () => {
+    const pagination = { pageIndex: 1, pageSize: 20 }
+    expect(clampPagination(pagination, 30)).toBe(pagination)
+  })
+
+  it('moves to the last page when the list shrinks', () => {
+    expect(clampPagination({ pageIndex: 4, pageSize: 20 }, 45)).toEqual({
+      pageIndex: 2,
+      pageSize: 20,
+    })
+  })
+
+  it('moves to the first page when the list is empty', () => {
+    expect(clampPagination({ pageIndex: 3, pageSize: 20 }, 0)).toEqual({
+      pageIndex: 0,
+      pageSize: 20,
+    })
+  })
+})
 
 describe('getVisiblePages', () => {
   it('lists every page when there are seven or fewer', () => {

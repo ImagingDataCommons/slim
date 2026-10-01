@@ -1,6 +1,6 @@
 // skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type DicomWebManager from '../../../DicomWebManager'
 import { StorageClasses } from '../../../data/uids'
 import NotificationMiddleware, {
@@ -20,13 +20,9 @@ interface UseStudiesOptions {
   clients: { [key: string]: DicomWebManager }
 }
 
-interface UseStudiesReturn {
-  /** All loaded studies */
+export interface UseStudiesReturn {
   studies: dmv.metadata.Study[]
-  /** Whether data is currently being loaded */
   isLoading: boolean
-  /** Total count of studies */
-  totalCount: number
 }
 
 async function collectModalitiesFromSeries(
@@ -41,119 +37,104 @@ async function collectModalitiesFromSeries(
   }
 }
 
+/** Studies whose modalities were backfilled from their series. */
+function mergeModalities(
+  studies: dmv.metadata.Study[],
+  modalitiesByUid: ReadonlyMap<string, string[]>,
+): dmv.metadata.Study[] {
+  return studies.map((study) => {
+    const modalities = modalitiesByUid.get(study.StudyInstanceUID)
+    if (
+      modalities === undefined ||
+      modalities.length === 0 ||
+      !modalitiesNeedBackfill(study)
+    ) {
+      return study
+    }
+    return { ...study, ModalitiesInStudy: modalities }
+  })
+}
+
 /**
- * Hook for fetching and managing study data.
+ * Searches the slide microscopy studies of the current server and backfills
+ * missing ModalitiesInStudy from series-level queries. In-flight requests
+ * cannot be aborted through dicomweb-client, so superseded responses are
+ * dropped instead.
  */
 export function useStudies({ clients }: UseStudiesOptions): UseStudiesReturn {
   const [studies, setStudies] = useState<dmv.metadata.Study[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   /**
-   * Incremented per search and on unmount so responses from superseded
+   * Incremented per search and on cleanup so responses from superseded
    * searches (and their modality enrichment) are dropped.
    */
   const searchGeneration = useRef(0)
 
-  useEffect(
-    () => () => {
-      searchGeneration.current += 1
-    },
-    [],
-  )
+  useEffect(() => {
+    const generation = ++searchGeneration.current
+    const isCurrent = (): boolean => generation === searchGeneration.current
+    const client = clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
+    if (client === undefined) {
+      setIsLoading(false)
+      return
+    }
 
-  /** Enrich studies with modalities from series level */
-  const runModalitiesEnrichment = useCallback(
-    async (
-      client: DicomWebManager,
-      studiesSnapshot: dmv.metadata.Study[],
-      generation: number,
+    const enrichModalities = async (
+      snapshot: dmv.metadata.Study[],
     ): Promise<void> => {
-      const needEnrichment = studiesSnapshot.filter(modalitiesNeedBackfill)
-      if (needEnrichment.length === 0) {
-        return
-      }
-
+      const needEnrichment = snapshot.filter(modalitiesNeedBackfill)
+      if (needEnrichment.length === 0) return
       const results = await mapWithConcurrency(
         needEnrichment,
         SERIES_REQUEST_CONCURRENCY,
         async (study) => {
-          if (generation !== searchGeneration.current) {
-            return { uid: study.StudyInstanceUID, mods: [] }
-          }
           const uid = study.StudyInstanceUID
-          const mods = await collectModalitiesFromSeries(client, uid)
-          return { uid, mods }
+          if (!isCurrent()) return { uid, modalities: [] }
+          return {
+            uid,
+            modalities: await collectModalitiesFromSeries(client, uid),
+          }
         },
       )
-
-      if (generation !== searchGeneration.current) {
-        return
-      }
-
-      const uidToMods = new Map(results.map(({ uid, mods }) => [uid, mods]))
-
-      setStudies((prev) =>
-        prev.map((study) => {
-          const mods = uidToMods.get(study.StudyInstanceUID)
-          if (!mods || mods.length === 0 || !modalitiesNeedBackfill(study)) {
-            return study
-          }
-          return { ...study, ModalitiesInStudy: mods }
-        }),
+      if (!isCurrent()) return
+      const modalitiesByUid = new Map(
+        results.map(({ uid, modalities }) => [uid, modalities]),
       )
-    },
-    [],
-  )
+      setStudies((previous) => mergeModalities(previous, modalitiesByUid))
+    }
 
-  const searchStudies = useCallback(
-    (searchCriteria?: Record<string, string>) => {
-      const generation = ++searchGeneration.current
-      const client = clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
-      if (!client) {
+    setIsLoading(true)
+    client
+      .searchForStudies({ queryParams: buildStudyQueryParams() })
+      .then((results) => {
+        if (!isCurrent()) return
+        const formatted = results.map(
+          /** DMV types formatted metadata as the generic Dataset */
+          (study) =>
+            dmv.metadata.formatMetadata(study).dataset as dmv.metadata.Study,
+        )
+        setStudies(formatted)
         setIsLoading(false)
-        return
-      }
+        void enrichModalities(formatted)
+      })
+      .catch((error: unknown) => {
+        if (!isCurrent()) return
+        console.error(error)
+        setIsLoading(false)
+        NotificationMiddleware.onError(
+          NotificationMiddlewareContext.DICOMWEB,
+          new CustomError(
+            errorTypes.COMMUNICATION,
+            'An error occurred. Search for studies failed.',
+          ),
+        )
+      })
 
-      setIsLoading(true)
-      client
-        .searchForStudies({
-          queryParams: buildStudyQueryParams(searchCriteria),
-        })
-        .then((results) => {
-          if (generation !== searchGeneration.current) return
-          const formatted = results.map((study) => {
-            const { dataset } = dmv.metadata.formatMetadata(study)
-            return dataset as dmv.metadata.Study
-          })
+    return () => {
+      searchGeneration.current += 1
+    }
+  }, [clients])
 
-          setStudies(formatted)
-          setIsLoading(false)
-
-          void runModalitiesEnrichment(client, formatted, generation)
-        })
-        .catch((error) => {
-          if (generation !== searchGeneration.current) return
-          console.error(error)
-          setIsLoading(false)
-          NotificationMiddleware.onError(
-            NotificationMiddlewareContext.DICOMWEB,
-            new CustomError(
-              errorTypes.COMMUNICATION,
-              'An error occurred. Search for studies failed.',
-            ),
-          )
-        })
-    },
-    [clients, runModalitiesEnrichment],
-  )
-
-  useEffect(() => {
-    searchStudies()
-  }, [searchStudies])
-
-  return {
-    studies,
-    isLoading,
-    totalCount: studies.length,
-  }
+  return { studies, isLoading }
 }

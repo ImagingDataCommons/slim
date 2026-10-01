@@ -1,7 +1,9 @@
 import {
   type ConfigRow,
+  countChangedRows,
   filterConfigRows,
   flattenConfig,
+  formatConfigScript,
   formatConfigValue,
   isSecretKey,
   MASKED_VALUE,
@@ -119,6 +121,38 @@ describe('formatConfigValue', () => {
   })
 })
 
+describe('formatConfigScript', () => {
+  it('pretty-prints the config as an assignment', () => {
+    expect(
+      formatConfigScript({ mode: 'dark', servers: [{ read: true }] }),
+    ).toBe(`window.config = {
+  "mode": "dark",
+  "servers": [
+    {
+      "read": true
+    }
+  ]
+}`)
+  })
+
+  it('renders functions as ƒ()', () => {
+    expect(formatConfigScript({ onLoad: () => 1 })).toBe(
+      'window.config = {\n  "onLoad": "ƒ()"\n}',
+    )
+  })
+})
+
+describe('countChangedRows', () => {
+  it('counts changed leaves only', () => {
+    const rows = flattenConfig(
+      { path: '/', mode: 'dark', servers: [{ read: false }] },
+      { path: '/', mode: 'light', 'servers[0].read': true },
+    )
+    expect(countChangedRows(rows)).toBe(2)
+    expect(countChangedRows([])).toBe(0)
+  })
+})
+
 describe('flattenConfig', () => {
   const config = {
     path: '/',
@@ -131,6 +165,11 @@ describe('flattenConfig', () => {
     'servers[0].read': true,
     'servers[0].write': false,
   }
+
+  it('ignores inherited properties when looking up defaults', () => {
+    const rows = flattenConfig({ toString: 'custom' }, {})
+    expect(rows[0]?.isChanged).toBe(true)
+  })
 
   it('emits groups before their leaves with depth and paths', () => {
     const rows = flattenConfig(config, defaults)

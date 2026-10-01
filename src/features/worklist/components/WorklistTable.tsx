@@ -1,3 +1,4 @@
+// biome-ignore-all lint/a11y/noRedundantRoles: display flex/grid/block on table elements drops their implicit roles in some browsers
 import {
   flexRender,
   getCoreRowModel,
@@ -14,16 +15,13 @@ import * as React from 'react'
 import { Icon } from '../../../components/ui/icon'
 import { Skeleton } from '../../../components/ui/skeleton'
 import { cn } from '../../../lib/utils'
-import {
-  columns,
-  WORKLIST_GRID_COLUMNS,
-  type WorklistColumnMeta,
-} from './columns'
+import { columns, WORKLIST_GRID_COLUMNS } from './columns'
 
-interface WorklistTableProps {
+export interface WorklistTableProps {
   data: dmv.metadata.Study[]
   isLoading: boolean
-  searchText: string
+  /** Shown instead of rows when `data` is empty */
+  emptyMessage: string
   isCompact: boolean
   onRowClick: (study: dmv.metadata.Study) => void
   pagination: PaginationState
@@ -56,12 +54,14 @@ function WorklistSkeletonRows({
   const rowIndexes = Array.from({ length: rowCount }, (_, index) => index)
   return (
     <>
-      <tr className="sr-only">
-        <td>Loading studies…</td>
+      <tr role="row" className="sr-only">
+        <td role="cell">Loading studies…</td>
       </tr>
       {rowIndexes.map((rowIndex) => (
+        // biome-ignore lint/a11y/noAriaHiddenOnFocusable: placeholder rows have no tabIndex and no focusable content
         <tr
           key={`skeleton-${rowIndex}`}
+          aria-hidden="true"
           className={cn(
             'grid items-center gap-3 border-b border-line-soft px-5',
             WORKLIST_GRID_COLUMNS,
@@ -70,7 +70,6 @@ function WorklistSkeletonRows({
           style={{ opacity: 1 - rowIndex / (rowCount + 4) }}
         >
           {columns.map((column, columnIndex) => {
-            const meta = column.meta as WorklistColumnMeta | undefined
             const width =
               SKELETON_BAR_WIDTHS[
                 (rowIndex * 3 + columnIndex) % SKELETON_BAR_WIDTHS.length
@@ -80,7 +79,7 @@ function WorklistSkeletonRows({
                 key={column.id ?? columnIndex}
                 className={cn(
                   'flex min-w-0',
-                  meta?.align === 'right' && 'justify-end',
+                  column.meta?.align === 'right' && 'justify-end',
                 )}
               >
                 <Skeleton
@@ -100,7 +99,7 @@ function WorklistSkeletonRows({
 export function WorklistTable({
   data,
   isLoading,
-  searchText,
+  emptyMessage,
   isCompact,
   onRowClick,
   pagination,
@@ -129,14 +128,6 @@ export function WorklistTable({
     getRowId: (row) => row.StudyInstanceUID,
   })
 
-  const statusRow = (content: React.ReactNode): React.ReactNode => (
-    <tr className="block">
-      <td colSpan={columns.length} className="block px-5 py-16 text-ink-muted">
-        {content}
-      </td>
-    </tr>
-  )
-
   let body: React.ReactNode
   if (isLoading) {
     body = (
@@ -146,33 +137,31 @@ export function WorklistTable({
       />
     )
   } else if (data.length === 0) {
-    body = statusRow(
-      <span className="block text-center">
-        {searchText.trim() !== ''
-          ? `No studies match “${searchText.trim()}”.`
-          : 'No studies found.'}
-      </span>,
+    body = (
+      <tr role="row" className="block">
+        <td
+          role="cell"
+          colSpan={columns.length}
+          className="block px-5 py-16 text-center text-ink-muted"
+        >
+          {emptyMessage}
+        </td>
+      </tr>
     )
   } else {
     body = table.getRowModel().rows.map((row) => (
       <tr
         key={row.id}
-        tabIndex={0}
+        role="row"
         onClick={() => onRowClick(row.original)}
-        onKeyDown={(event) => {
-          if (event.key === ' ') event.preventDefault()
-          if (event.key === 'Enter' || event.key === ' ') {
-            onRowClick(row.original)
-          }
-        }}
         className={cn(
-          'grid cursor-pointer items-center gap-3 border-b border-line-soft px-5 text-ink-body transition-colors hover:bg-selected focus-visible:bg-selected focus-visible:outline-none',
+          'grid cursor-pointer items-center gap-3 border-b border-line-soft px-5 text-ink-body transition-colors focus-within:bg-selected hover:bg-selected',
           WORKLIST_GRID_COLUMNS,
           isCompact ? 'h-10' : 'h-12',
         )}
       >
         {row.getVisibleCells().map((cell) => (
-          <td key={cell.id} className="min-w-0">
+          <td key={cell.id} role="cell" className="min-w-0">
             {flexRender(cell.column.columnDef.cell, cell.getContext())}
           </td>
         ))}
@@ -183,26 +172,25 @@ export function WorklistTable({
   return (
     <div
       className={cn(
-        'flex min-h-0 flex-col overflow-hidden rounded-[10px] border border-line bg-panel',
+        'flex min-h-0 flex-col overflow-hidden rounded-card border border-line bg-panel',
         className,
       )}
     >
-      <table className="flex min-h-0 flex-1 flex-col text-left">
-        <thead className="block flex-none">
+      <table role="table" className="flex min-h-0 flex-1 flex-col text-left">
+        <thead role="rowgroup" className="block flex-none">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr
               key={headerGroup.id}
+              role="row"
               className={cn(
-                'grid h-10 items-center gap-3 border-b border-line bg-subtle px-5 text-[11px] font-semibold uppercase leading-none tracking-[0.05em] text-ink-muted',
+                'grid h-10 items-center gap-3 border-b border-line bg-subtle px-5 text-11 font-semibold uppercase leading-none tracking-[0.05em] text-ink-muted',
                 WORKLIST_GRID_COLUMNS,
               )}
             >
               {headerGroup.headers.map((header) => {
                 const sorted = header.column.getIsSorted()
                 const canSort = header.column.getCanSort()
-                const meta = header.column.columnDef.meta as
-                  | WorklistColumnMeta
-                  | undefined
+                const meta = header.column.columnDef.meta
                 const label = flexRender(
                   header.column.columnDef.header,
                   header.getContext(),
@@ -210,6 +198,7 @@ export function WorklistTable({
                 return (
                   <th
                     key={header.id}
+                    role="columnheader"
                     scope="col"
                     aria-sort={
                       sorted === 'asc'
@@ -255,6 +244,7 @@ export function WorklistTable({
           ))}
         </thead>
         <tbody
+          role="rowgroup"
           aria-busy={isLoading}
           className="block min-h-0 flex-1 overflow-auto"
         >

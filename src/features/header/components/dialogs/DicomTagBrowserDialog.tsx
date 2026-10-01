@@ -8,7 +8,7 @@ import {
 } from '../../../../components/ui/dialog'
 import type DicomWebManager from '../../../../DicomWebManager'
 
-interface DicomTagBrowserDialogProps {
+export interface DicomTagBrowserDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   clients: { [key: string]: DicomWebManager }
@@ -39,17 +39,13 @@ export function DicomTagBrowserDialog({
               : studyInstanceUID
           }
         />
-        {open && (
-          <DicomTagBrowser
-            clients={clients}
-            studyInstanceUID={studyInstanceUID}
-            seriesInstanceUID={seriesInstanceUID}
-            onDone={() => onOpenChange(false)}
-          />
-        )}
+        <DicomTagBrowser
+          clients={clients}
+          studyInstanceUID={studyInstanceUID}
+          seriesInstanceUID={seriesInstanceUID}
+          onDone={() => onOpenChange(false)}
+        />
       </DialogContent>
     </Dialog>
   )
 }
-
-export default DicomTagBrowserDialog

@@ -28,6 +28,24 @@ export function getPageRange(
 }
 
 /**
+ * Pagination with the page index moved onto the last page when the list
+ * shrank below it; returns the same object when it is already valid.
+ */
+export function clampPagination<
+  T extends { pageIndex: number; pageSize: number },
+>(pagination: T, total: number): T {
+  const { pageCount } = getPageRange(
+    pagination.pageIndex,
+    pagination.pageSize,
+    total,
+  )
+  const pageIndex = clampPageIndex(pagination.pageIndex, pageCount)
+  return pageIndex === pagination.pageIndex
+    ? pagination
+    : { ...pagination, pageIndex }
+}
+
+/**
  * Page numbers to show around the current page: first, last and a window of
  * neighbours, with `null` marking elided gaps.
  */

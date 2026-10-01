@@ -14,17 +14,25 @@ const EMPTY: DebugMessages = {
 
 describe('buildDebugMessages', () => {
   it('returns empty buckets without input', () => {
-    expect(buildDebugMessages([], [], [])).toEqual(EMPTY)
+    expect(buildDebugMessages([], [])).toEqual(EMPTY)
   })
 
-  it('groups errors by their parallel category', () => {
+  it('groups errors by their type', () => {
     const messages = buildDebugMessages(
       [
-        { message: 'Search failed', source: 'DICOMweb' },
-        { message: 'Token expired', source: 'Auth' },
-        { message: 'Bad frame', source: 'Viewer' },
+        {
+          error: { message: 'Search failed', type: 'Communication' },
+          source: 'DICOMweb',
+        },
+        {
+          error: { message: 'Token expired', type: 'Authentication' },
+          source: 'Auth',
+        },
+        {
+          error: { message: 'Bad frame', type: 'EncodingDecoding' },
+          source: 'Viewer',
+        },
       ],
-      ['Communication', 'Authentication', 'EncodingDecoding'],
       [],
     )
     expect(messages.Communication).toEqual([
@@ -39,17 +47,30 @@ describe('buildDebugMessages', () => {
     expect(messages.Visualization).toEqual([])
   })
 
-  it('drops errors with unknown or missing categories', () => {
+  it('drops errors with unknown or missing types', () => {
     const messages = buildDebugMessages(
-      [{ message: 'a' }, { message: 'b' }, { message: 'c' }],
-      ['Unknown', 'Warning'],
+      [
+        { error: { message: 'a', type: 'Unknown' } },
+        { error: { message: 'b', type: 'Warning' } },
+        { error: { message: 'c' } },
+        { error: { message: 'd', type: 42 } },
+      ],
       [],
     )
     expect(messages).toEqual(EMPTY)
   })
 
+  it('keeps errors without a source', () => {
+    expect(
+      buildDebugMessages(
+        [{ error: { message: 'Hidden', type: 'Visualization' } }],
+        [],
+      ).Visualization,
+    ).toEqual([{ message: 'Hidden', source: undefined }])
+  })
+
   it('turns warnings into source-less messages', () => {
-    expect(buildDebugMessages([], [], ['High memory']).Warning).toEqual([
+    expect(buildDebugMessages([], ['High memory']).Warning).toEqual([
       { message: 'High memory' },
     ])
   })

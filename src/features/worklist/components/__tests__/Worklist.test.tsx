@@ -3,7 +3,7 @@ import { cleanup, render, waitFor } from '@testing-library/react'
 import type * as dwc from 'dicomweb-client'
 import type React from 'react'
 import { BrowserRouter } from 'react-router-dom'
-import { TooltipProvider } from '../../../../components/ui/tooltip'
+
 import DicomWebManager from '../../../../DicomWebManager'
 import { Worklist } from '../Worklist'
 
@@ -85,42 +85,43 @@ describe('Worklist', () => {
     },
   ]
 
-  const seriesForBackfillStudy = [
+  const seriesForBackfillStudy: dwc.api.Series[] = [
     {
-      '0020000D': { vr: 'UI', Value: ['1.2.3.4'] },
       '0020000E': { vr: 'UI', Value: ['1.2.4.1'] },
+      '00200011': { vr: 'IS', Value: [1] },
       '00080060': { vr: 'CS', Value: ['OT'] },
+      '00201209': { vr: 'IS', Value: [1] },
     },
     {
-      '0020000D': { vr: 'UI', Value: ['1.2.3.4'] },
       '0020000E': { vr: 'UI', Value: ['1.2.4.2'] },
+      '00200011': { vr: 'IS', Value: [2] },
       '00080060': { vr: 'CS', Value: ['SR'] },
+      '00201209': { vr: 'IS', Value: [1] },
     },
   ]
 
   manager.searchForStudies = async (
     _options: dwc.api.SearchForStudiesOptions,
   ): Promise<dwc.api.Study[]> => {
+    /** The last study omits ModalitiesInStudy (0008,0061) on purpose */
     return await Promise.resolve(searchResults as dwc.api.Study[])
   }
 
   manager.searchForSeries = async (): Promise<dwc.api.Series[]> => {
-    return await Promise.resolve(
-      seriesForBackfillStudy as unknown as dwc.api.Series[],
-    )
+    return await Promise.resolve(seriesForBackfillStudy)
   }
 
-  /** Helper to wrap component with necessary providers */
-  const renderWithProviders = (ui: React.ReactElement) => {
-    return render(
-      <BrowserRouter>
-        <TooltipProvider>{ui}</TooltipProvider>
+  const renderWithRouter = (ui: React.ReactElement) =>
+    render(
+      <BrowserRouter
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
+        {ui}
       </BrowserRouter>,
     )
-  }
 
   it('should populate one row for each available study', async () => {
-    const { queryAllByRole } = renderWithProviders(
+    const { queryAllByRole } = renderWithRouter(
       <Worklist clients={clientMapping} />,
     )
 
@@ -131,19 +132,22 @@ describe('Worklist', () => {
     })
   })
 
-  /**
-   * Skip this test as the async modality enrichment timing is flaky in test environment.
-   * The feature works correctly in production where the async enrichment completes.
-   */
-  it.skip('synthesizes ModalitiesInStudy from series when study omits (0008,0061)', async () => {
-    const { getByText } = renderWithProviders(
+  it('links each patient name to its study', async () => {
+    const { findAllByRole } = renderWithRouter(
+      <Worklist clients={clientMapping} />,
+    )
+    const links = await findAllByRole('link', { name: /patient/ })
+    expect(links).toHaveLength(4)
+    expect(links[0].getAttribute('href')).toMatch(/\/studies\/1\.2\.3\./)
+  })
+
+  it('synthesizes ModalitiesInStudy from series when study omits (0008,0061)', async () => {
+    const { findByText, getAllByText } = renderWithRouter(
       <Worklist clients={clientMapping} />,
     )
 
-    /** The backfill adds OT and SR modalities, which are rendered as individual badges */
-    await waitFor(() => {
-      expect(getByText('OT')).toBeTruthy()
-      expect(getByText('SR')).toBeTruthy()
-    })
+    /** The backfilled study shows OT and SR badges; study 1 already lists SR */
+    expect(await findByText('OT', {}, { timeout: 3000 })).toBeInTheDocument()
+    expect(getAllByText('SR')).toHaveLength(2)
   })
 })

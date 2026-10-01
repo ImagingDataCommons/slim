@@ -4,23 +4,15 @@ import {
 } from '../studyQuery'
 
 describe('buildStudyQueryParams', () => {
-  it('restricts to slide microscopy studies by default', () => {
+  it('restricts to slide microscopy studies and requests the series count', () => {
     expect(buildStudyQueryParams()).toEqual({
       ModalitiesInStudy: 'SM',
       includefield: 'NumberOfStudyRelatedSeries',
     })
   })
 
-  it('adds criteria with fuzzy matching and wildcards person names', () => {
-    expect(
-      buildStudyQueryParams({ PersonName: 'Doe', StudyDate: '20260912' }),
-    ).toEqual({
-      ModalitiesInStudy: 'SM',
-      includefield: 'NumberOfStudyRelatedSeries',
-      PersonName: '*Doe*',
-      StudyDate: '20260912',
-      fuzzymatching: true,
-    })
+  it('returns a fresh object per call', () => {
+    expect(buildStudyQueryParams()).not.toBe(buildStudyQueryParams())
   })
 })
 

@@ -27,11 +27,21 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined)
 
+const DARK_SCHEME_QUERY = '(prefers-color-scheme: dark)'
+
+/** Null outside browsers and in environments without matchMedia */
+function getDarkSchemeQuery(): MediaQueryList | null {
+  if (
+    typeof window === 'undefined' ||
+    typeof window.matchMedia !== 'function'
+  ) {
+    return null
+  }
+  return window.matchMedia(DARK_SCHEME_QUERY)
+}
+
 function getSystemTheme(): ResolvedTheme {
-  if (typeof window === 'undefined') return 'light'
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
-    ? 'dark'
-    : 'light'
+  return getDarkSchemeQuery()?.matches === true ? 'dark' : 'light'
 }
 
 function getStoredTheme(): Theme | null {
@@ -61,34 +71,24 @@ export function ThemeProvider({
 
   const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(getSystemTheme)
 
-  /** Listen for system theme changes */
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    const handleChange = (e: MediaQueryListEvent): void => {
-      setSystemTheme(e.matches ? 'dark' : 'light')
+    const mediaQuery = getDarkSchemeQuery()
+    if (mediaQuery === null) return
+    const handleChange = (event: MediaQueryListEvent): void => {
+      setSystemTheme(event.matches ? 'dark' : 'light')
     }
-
     mediaQuery.addEventListener('change', handleChange)
     return () => mediaQuery.removeEventListener('change', handleChange)
   }, [])
 
-  const resolvedTheme = useMemo<ResolvedTheme>(() => {
-    if (forcedTheme) return forcedTheme
-    if (theme === 'system') return systemTheme
-    return theme
-  }, [theme, systemTheme, forcedTheme])
+  const resolvedTheme: ResolvedTheme =
+    forcedTheme ?? (theme === 'system' ? systemTheme : theme)
 
-  /** Apply theme class to document */
   useEffect(() => {
     const root = document.documentElement
-
-    /** Remove both classes first */
     root.classList.remove('light', 'dark')
-
-    /** Add the resolved theme class */
     root.classList.add(resolvedTheme)
-
-    /** Update color-scheme for native elements */
+    /** Native controls and scrollbars follow color-scheme */
     root.style.colorScheme = resolvedTheme
   }, [resolvedTheme])
 

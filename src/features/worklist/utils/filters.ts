@@ -6,40 +6,17 @@
 // skipcq: JS-C1003
 import type * as dmv from 'dicom-microscopy-viewer'
 
+import { parseDicomDate } from '../../../utils/dicomDate'
 import { formatPersonName } from '../../../utils/displayFormat'
+import { formatRawPersonName } from '../../../utils/personName'
 import { normalizeModalities } from './studyFields'
+
+export { parseDicomDate }
 
 export type DateFilter = 'all' | 'today' | 'week'
 
-/**
- * Parses a DICOM date string (YYYYMMDD) to a Date object.
- * Returns null if the date is invalid.
- */
-export function parseDicomDate(
-  dateString: string | undefined | null,
-): Date | null {
-  if (dateString?.length !== 8) {
-    return null
-  }
-
-  const year = Number.parseInt(dateString.substring(0, 4), 10)
-  const month = Number.parseInt(dateString.substring(4, 6), 10) - 1
-  const day = Number.parseInt(dateString.substring(6, 8), 10)
-
-  const date = new Date(year, month, day)
-
-  /** Verify the date is valid */
-  if (
-    Number.isNaN(date.getTime()) ||
-    date.getFullYear() !== year ||
-    date.getMonth() !== month ||
-    date.getDate() !== day
-  ) {
-    return null
-  }
-
-  return date
-}
+/** Number of calendar days, including today, covered by the "week" filter. */
+export const WEEK_FILTER_DAYS = 7
 
 /**
  * Checks if a date falls on the same calendar day as `now`.
@@ -53,8 +30,9 @@ export function isToday(date: Date, now: Date = new Date()): boolean {
 }
 
 /**
- * Checks if a date lies between the start of the day `days` days before
- * `now` and `now` itself (future dates are excluded).
+ * Checks if a date lies within the last `days` calendar days, today included
+ * (so `days = 7` covers today and the 6 previous days). Future dates are
+ * excluded.
  */
 export function isWithinLastDays(
   date: Date,
@@ -64,7 +42,7 @@ export function isWithinLastDays(
   const cutoff = new Date(
     now.getFullYear(),
     now.getMonth(),
-    now.getDate() - days,
+    now.getDate() - (days - 1),
   )
   return date >= cutoff && date <= now
 }
@@ -82,8 +60,8 @@ export function filterStudiesByDateRange(
   }
 
   return studies.filter((study) => {
-    const date = parseDicomDate(study.StudyDate as string | undefined)
-    if (!date) {
+    const date = parseDicomDate(study.StudyDate)
+    if (date === null) {
       return false
     }
 
@@ -91,28 +69,27 @@ export function filterStudiesByDateRange(
       return isToday(date, now)
     }
 
-    if (range === 'week') {
-      return isWithinLastDays(date, 7, now)
-    }
-
-    return true
+    return isWithinLastDays(date, WEEK_FILTER_DAYS, now)
   })
 }
 
-type PersonNameValue = Parameters<typeof formatPersonName>[0]
-
-/** Alphabetic PN components joined by spaces, e.g. "Doe^Jane" → "Doe Jane". */
-function getRawPersonName(value: PersonNameValue): string {
-  let alphabetic: string | undefined
-  if (typeof value === 'string') {
-    alphabetic = value
-  } else if (Array.isArray(value)) {
-    const first = value[0]
-    alphabetic = typeof first === 'string' ? first : first?.Alphabetic
-  } else if (value !== null && value !== undefined) {
-    alphabetic = value.Alphabetic
+/** Empty-state message of the worklist table for the active date filter. */
+/** Empty-state text naming the active date filter and search query. */
+export function getEmptyStudiesMessage(
+  range: DateFilter,
+  searchText = '',
+): string {
+  const query = searchText.trim()
+  const scope =
+    range === 'today'
+      ? 'No studies from today'
+      : range === 'week'
+        ? `No studies in the last ${WEEK_FILTER_DAYS} days`
+        : undefined
+  if (query !== '') {
+    return `${scope ?? 'No studies'} match “${query}”.`
   }
-  return (alphabetic ?? '').replace(/\^/g, ' ').replace(/\s+/g, ' ').trim()
+  return `${scope ?? 'No studies found'}.`
 }
 
 /**
@@ -129,13 +106,12 @@ export function filterStudiesBySearchText(
   }
 
   return studies.filter((study) => {
-    const patientName = study.PatientName as PersonNameValue
     const fields: unknown[] = [
       study.AccessionNumber,
       study.StudyID,
       study.PatientID,
-      formatPersonName(patientName),
-      getRawPersonName(patientName),
+      formatPersonName(study.PatientName),
+      formatRawPersonName(study.PatientName),
     ]
 
     return fields.some(

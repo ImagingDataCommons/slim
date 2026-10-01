@@ -1,15 +1,15 @@
 import * as React from 'react'
 
 import { cn } from '../../lib/utils'
-import { Icon } from './icon'
+import { Icon, type IconName } from './icon'
 
 export interface SegmentedOption<T extends string> {
   value: T
   label: string
-  icon?: string
+  icon?: IconName
 }
 
-interface SegmentedControlProps<T extends string> {
+export interface SegmentedControlProps<T extends string> {
   options: Array<SegmentedOption<T>>
   value: T
   onChange: (value: T) => void
@@ -52,8 +52,8 @@ export function SegmentedControl<T extends string>({
             className={cn(
               'flex cursor-pointer items-center justify-center gap-[5px] whitespace-nowrap rounded-md font-medium transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/30',
               size === 'sm'
-                ? 'px-2.5 py-[5px] text-[12px]'
-                : 'px-3 py-1.5 text-[12.5px]',
+                ? 'px-2.5 py-[5px] text-12'
+                : 'px-3 py-1.5 text-12.5',
               fill && 'flex-1',
               isActive
                 ? 'bg-segmented-active text-ink shadow-segmented'

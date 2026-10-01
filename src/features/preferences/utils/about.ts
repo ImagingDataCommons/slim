@@ -1,5 +1,7 @@
 /** Pure builders for the About tab and its "copy for support ticket" text. */
 
+import type { IconName } from '../../../components/ui/icon'
+
 export interface AboutRow {
   id: string
   label: string
@@ -15,7 +17,7 @@ export interface AboutRow {
 export interface AboutLink {
   label: string
   href: string
-  icon: string
+  icon: IconName
 }
 
 export const UNKNOWN_COMMIT = 'unknown'

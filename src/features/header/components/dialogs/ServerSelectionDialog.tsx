@@ -2,6 +2,7 @@ import type * as React from 'react'
 import { useId, useState } from 'react'
 
 import { Button } from '../../../../components/ui/button'
+import { CopyButton } from '../../../../components/ui/copy-button'
 import {
   Dialog,
   DialogContent,
@@ -9,29 +10,15 @@ import {
   SlimDialogHeader,
 } from '../../../../components/ui/dialog'
 import { Icon } from '../../../../components/ui/icon'
-import { useCopyToClipboard } from '../../../../hooks/useCopyToClipboard'
 import { cn } from '../../../../lib/utils'
+import type { UseServerSelectionReturn } from '../../hooks/useServerSelection'
 
-type ServerSelectionMode = 'default' | 'custom'
-
-interface ServerSelectionDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  serverUrl: string
+export interface ServerSelectionDialogProps {
+  /** State and actions from `useServerSelection`; it also owns `open` */
+  selection: UseServerSelectionReturn
   /** Server the app is connected to right now */
   currentServerUrl?: string
   defaultServerUrl?: string
-  mode: ServerSelectionMode
-  /** Whether the whole selection can be submitted */
-  isValid: boolean
-  isServerUrlValid: boolean
-  oidcConfigInput: string
-  isOidcConfigValid: boolean
-  onServerUrlChange: (url: string) => void
-  onModeChange: (mode: ServerSelectionMode) => void
-  onOidcConfigChange: (input: string) => void
-  onSubmit: () => void
-  onCancel: () => void
 }
 
 function ServerOption({
@@ -48,7 +35,7 @@ function ServerOption({
   return (
     <label
       className={cn(
-        'flex cursor-pointer gap-3 rounded-[10px] border px-3.5 py-3 text-left transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/30',
+        'flex cursor-pointer gap-3 rounded-card border px-3.5 py-3 text-left transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/30',
         selected
           ? 'border-primary bg-selected shadow-selected-ring'
           : 'border-line bg-panel hover:border-line-hover',
@@ -76,7 +63,7 @@ function ServerOption({
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
         <span className="font-semibold text-ink">{title}</span>
-        <span className="break-all font-mono text-[11.5px] text-ink-muted">
+        <span className="break-all font-mono text-11.5 text-ink-muted">
           {description}
         </span>
       </span>
@@ -85,31 +72,20 @@ function ServerOption({
 }
 
 function CurrentServer({ url }: { url: string }): React.ReactElement {
-  const { copied, copy } = useCopyToClipboard(1500)
   return (
-    <div className="flex items-center gap-3 rounded-[10px] border border-line bg-subtle px-3.5 py-2.5">
+    <div className="flex items-center gap-3 rounded-card border border-line bg-subtle px-3.5 py-2.5">
       <span className="h-[7px] w-[7px] flex-none rounded-full bg-success" />
       <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-secondary">
+        <span className="text-11 font-semibold uppercase tracking-[0.06em] text-ink-secondary">
           Connected to
         </span>
-        <span className="break-all font-mono text-[12px] text-ink">{url}</span>
+        <span className="break-all font-mono text-12 text-ink">{url}</span>
       </div>
-      <button
-        type="button"
-        aria-label={copied ? 'Server URL copied' : 'Copy server URL'}
-        title={copied ? 'Copied' : 'Copy server URL'}
-        onClick={() => {
-          void copy(url)
-        }}
-        className={cn(
-          'flex h-7 flex-none items-center gap-1 rounded-md border border-line-input bg-panel px-2 text-[12px] font-medium hover:bg-app',
-          copied ? 'text-success' : 'text-ink-secondary',
-        )}
-      >
-        <Icon name={copied ? 'check' : 'content_copy'} size={15} />
-        {copied ? 'Copied' : 'Copy'}
-      </button>
+      <CopyButton
+        text={url}
+        aria-label="Copy server URL"
+        className="flex-none text-ink-secondary"
+      />
     </div>
   )
 }
@@ -132,15 +108,16 @@ function OidcConfigSection({
 }): React.ReactElement {
   const [isOpen, setIsOpen] = useState(value.trim() !== '')
   const textareaId = useId()
+  const errorId = useId()
   const hasError = value.trim() !== '' && !isValid
   return (
-    <div className="mt-1 rounded-[10px] border border-line">
+    <div className="mt-1 rounded-card border border-line">
       <button
         type="button"
         aria-expanded={isOpen}
         aria-controls={textareaId}
         onClick={() => setIsOpen((open) => !open)}
-        className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left"
+        className="flex w-full items-center gap-2 rounded-card px-3.5 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
       >
         <Icon
           name={isOpen ? 'expand_more' : 'chevron_right'}
@@ -154,7 +131,7 @@ function OidcConfigSection({
         {value.trim() !== '' && (
           <span
             className={cn(
-              'rounded-full px-1.5 py-[3px] text-[11px] font-semibold leading-none',
+              'rounded-full px-1.5 py-[3px] text-11 font-semibold leading-none',
               isValid
                 ? 'bg-primary-soft text-primary'
                 : 'bg-destructive/10 text-destructive-text',
@@ -165,7 +142,7 @@ function OidcConfigSection({
         )}
       </button>
       {isOpen && (
-        <div className="flex flex-col gap-1.5 px-3.5 pb-3.5 text-[12px] text-ink-muted">
+        <div className="flex flex-col gap-1.5 px-3.5 pb-3.5 text-12 text-ink-muted">
           <label htmlFor={textareaId}>
             Override the deployment's identity provider. Leave empty to use the
             default.
@@ -178,15 +155,16 @@ function OidcConfigSection({
             placeholder={OIDC_EXAMPLE}
             spellCheck={false}
             aria-invalid={hasError}
+            aria-describedby={hasError ? errorId : undefined}
             className={cn(
-              'resize-y rounded-lg border bg-panel px-2.5 py-2 font-mono text-[12px] leading-[1.5] text-ink outline-none placeholder:text-ink-fainter focus:border-primary',
+              'resize-y rounded-lg border bg-panel px-2.5 py-2 font-mono text-12 leading-[1.5] text-ink outline-none placeholder:text-ink-fainter focus:border-primary',
               hasError
                 ? 'border-destructive/70 shadow-[0_0_0_3px_rgb(var(--destructive)/0.12)]'
                 : 'border-line-input',
             )}
           />
           {hasError && (
-            <span className="text-destructive-text">
+            <span id={errorId} className="text-destructive-text">
               Invalid JSON. Required fields: authority, clientId, scope.
             </span>
           )}
@@ -197,27 +175,35 @@ function OidcConfigSection({
 }
 
 export function ServerSelectionDialog({
-  open,
-  onOpenChange,
-  serverUrl,
+  selection,
   currentServerUrl,
   defaultServerUrl,
-  mode,
-  isValid,
-  isServerUrlValid,
-  oidcConfigInput,
-  isOidcConfigValid,
-  onServerUrlChange,
-  onModeChange,
-  onOidcConfigChange,
-  onSubmit,
-  onCancel,
 }: ServerSelectionDialogProps): React.ReactElement {
+  const {
+    isDialogOpen,
+    serverUrl,
+    mode,
+    isValid,
+    isServerUrlValid,
+    oidcConfigInput,
+    isOidcConfigValid,
+    setServerUrl,
+    setMode,
+    setOidcConfigInput,
+    submitSelection,
+    cancelDialog,
+  } = selection
+  const urlMessageId = useId()
   const showUrlState = serverUrl !== ''
   const urlOk = !showUrlState || isServerUrlValid
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={isDialogOpen}
+      onOpenChange={(open) => {
+        if (!open) cancelDialog()
+      }}
+    >
       <DialogContent className="max-w-[520px]">
         <SlimDialogHeader
           icon="dns"
@@ -233,16 +219,16 @@ export function ServerSelectionDialog({
             selected={mode === 'default'}
             title="Default server"
             description={defaultServerUrl ?? 'Configured in the deployment'}
-            onSelect={() => onModeChange('default')}
+            onSelect={() => setMode('default')}
           />
           <ServerOption
             selected={mode === 'custom'}
             title="Custom server"
             description="Full DICOMweb URL or Google Cloud DICOM store path"
-            onSelect={() => onModeChange('custom')}
+            onSelect={() => setMode('custom')}
           />
           {mode === 'custom' && (
-            <label className="mt-1 flex flex-col gap-1.5 text-[12px] text-ink-muted">
+            <label className="mt-1 flex flex-col gap-1.5 text-12 text-ink-muted">
               Server URL
               <div
                 className={cn(
@@ -255,12 +241,14 @@ export function ServerSelectionDialog({
                 <input
                   autoFocus
                   value={serverUrl}
-                  onChange={(event) => onServerUrlChange(event.target.value)}
+                  onChange={(event) => setServerUrl(event.target.value)}
                   onKeyDown={(event) => {
-                    if (event.key === 'Enter' && isValid) onSubmit()
+                    if (event.key === 'Enter' && isValid) submitSelection()
                   }}
+                  aria-invalid={!urlOk}
+                  aria-describedby={showUrlState ? urlMessageId : undefined}
                   placeholder="https://… or /projects/…/dicomStores/…"
-                  className="min-w-0 flex-1 border-0 bg-transparent font-mono text-[12.5px] text-ink outline-none placeholder:text-ink-fainter"
+                  className="min-w-0 flex-1 border-0 bg-transparent font-mono text-12.5 text-ink outline-none placeholder:text-ink-fainter"
                 />
                 {showUrlState && (
                   <Icon
@@ -274,6 +262,7 @@ export function ServerSelectionDialog({
               </div>
               {showUrlState && (
                 <span
+                  id={urlMessageId}
                   className={
                     isServerUrlValid
                       ? 'text-ink-muted'
@@ -290,15 +279,15 @@ export function ServerSelectionDialog({
           <OidcConfigSection
             value={oidcConfigInput}
             isValid={isOidcConfigValid}
-            onChange={onOidcConfigChange}
+            onChange={setOidcConfigInput}
           />
         </fieldset>
         <SlimDialogFooter>
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="outline" onClick={cancelDialog}>
             Cancel
           </Button>
           <Button
-            onClick={onSubmit}
+            onClick={submitSelection}
             disabled={!isValid}
             className="font-semibold"
           >

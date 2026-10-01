@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 
 import type DicomWebManager from '../../DicomWebManager'
 import { useActiveSeries } from '../../hooks/useActiveSeries'
@@ -8,11 +8,12 @@ import { cn } from '../../lib/utils'
 import DicomMetadataStore, {
   EVENTS,
   type Series,
-  type Study,
 } from '../../services/DICOMMetadataStore'
 import { formatGroupedNumber } from '../../utils/displayFormat'
-import { logger } from '../../utils/logger'
+import { Button } from '../ui/button'
+import { SlimDialogFooter } from '../ui/dialog'
 import { Icon } from '../ui/icon'
+import { SearchInput } from '../ui/search-input'
 import {
   Select,
   SelectContent,
@@ -20,7 +21,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select'
+import { Slider } from '../ui/slider'
 import {
+  buildDisplaySets,
   buildTagTree,
   collectExpandableKeys,
   countRows,
@@ -29,46 +32,29 @@ import {
   getSeriesLabel,
   getSortedTags,
   sortInstancesByNumber,
-  sortSeriesByNumber,
   type TagTreeNode,
+  toggleSetValue,
+  toTagRecord,
 } from './dicomTagUtils'
 
-interface DisplaySet {
-  displaySetInstanceUID: number
-  SeriesDate?: string
-  SeriesTime?: string
-  SeriesNumber: string
-  SeriesDescription?: string
-  SeriesInstanceUID?: string
-  Modality: string
-  images: unknown[]
-}
-
-interface DicomTagBrowserProps {
+export interface DicomTagBrowserProps {
   clients: { [key: string]: DicomWebManager }
   studyInstanceUID: string
+  /** Series selected when the browser opens */
   seriesInstanceUID?: string
   /** Called by the footer "Done" button */
   onDone?: () => void
 }
 
-function bucketContainsSopInstance(bucket: unknown[], sop: string): boolean {
-  if (sop === '') return false
-  for (const existing of bucket) {
-    if ((existing as Record<string, unknown>).SOPInstanceUID === sop) {
-      return true
-    }
-  }
-  return false
-}
-
 const TAG_GRID_COLUMNS = 'grid-cols-[150px_52px_minmax(0,1fr)_minmax(0,1.4fr)]'
+
+const NO_KEYS: ReadonlySet<string> = new Set()
 
 /** Recursive tag row with expandable sequence items */
 interface TagRowProps {
   item: TagTreeNode
   depth: number
-  expandedKeys: Set<string>
+  expandedKeys: ReadonlySet<string>
   onToggle: (key: string) => void
 }
 
@@ -82,15 +68,17 @@ const TagRow = ({
   const isExpanded = expandedKeys.has(item.key)
 
   const rowClassName = cn(
-    'grid min-h-[34px] w-full items-center gap-3 border-b border-line-row px-5 text-left hover:bg-selected',
+    'grid min-h-control w-full items-center gap-3 border-b border-line-row px-5 text-left hover:bg-selected',
     TAG_GRID_COLUMNS,
     depth > 0 ? 'bg-subtle/60' : 'bg-panel',
-    hasChildren ? 'cursor-pointer' : 'cursor-default',
+    hasChildren
+      ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/40'
+      : 'cursor-default',
   )
   const cells = (
     <>
       <span
-        className="flex items-center gap-0.5 font-mono text-[12px] text-ink-secondary"
+        className="flex items-center gap-0.5 font-mono text-12 text-ink-secondary"
         style={{ paddingLeft: depth * 18 }}
       >
         <span className="w-4 flex-none text-ink-muted">
@@ -105,13 +93,13 @@ const TagRow = ({
       </span>
       <span>
         {item.vr !== '' && (
-          <span className="rounded bg-chip px-[5px] py-0.5 font-mono text-[11px] font-medium text-chip-foreground">
+          <span className="rounded bg-chip px-[5px] py-0.5 font-mono text-11 font-medium text-chip-foreground">
             {item.vr}
           </span>
         )}
       </span>
       <span className="truncate font-medium text-ink">{item.keyword}</span>
-      <span className="break-all py-1.5 font-mono text-[12px] text-ink-body">
+      <span className="break-all py-1.5 font-mono text-12 text-ink-body">
         {item.value}
       </span>
     </>
@@ -146,42 +134,39 @@ const TagRow = ({
   )
 }
 
+function readStudySeries(studyInstanceUID: string): Series[] {
+  return [...(DicomMetadataStore.getStudy(studyInstanceUID)?.series ?? [])]
+}
+
 const DicomTagBrowser = ({
   clients,
   studyInstanceUID,
   seriesInstanceUID = '',
   onDone,
 }: DicomTagBrowserProps): JSX.Element => {
+  const id = useId()
+  const seriesLabelId = `${id}-series`
+  const instanceLabelId = `${id}-instance`
+
   const { slides, isLoading } = useSlides({ clients, studyInstanceUID })
   const activeSeriesUIDs = useActiveSeries()
-  const [study, setStudy] = useState<Study | undefined>(undefined)
-
-  const [displaySets, setDisplaySets] = useState<DisplaySet[]>([])
-  const [selectedDisplaySetInstanceUID, setSelectedDisplaySetInstanceUID] =
-    useState(0)
+  const [studySeries, setStudySeries] = useState<Series[]>(() =>
+    readStudySeries(studyInstanceUID),
+  )
+  const [selectedSeriesUID, setSelectedSeriesUID] = useState(seriesInstanceUID)
   const [instanceNumber, setInstanceNumber] = useState(1)
-  const [filterValue, setFilterValue] = useState('')
-  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set())
   const [searchInput, setSearchInput] = useState('')
+  /** Manual expansion, valid only for the filter query it was made under */
+  const [expansion, setExpansion] = useState<{
+    query: string
+    keys: ReadonlySet<string>
+  }>({ query: '', keys: NO_KEYS })
 
-  const debouncedSearchValue = useDebounce(searchInput, 300)
-
-  useEffect(() => {
-    if (debouncedSearchValue === '') {
-      setFilterValue('')
-      setExpandedKeys(new Set())
-    } else {
-      setFilterValue(debouncedSearchValue)
-    }
-  }, [debouncedSearchValue])
+  const filterQuery = useDebounce(searchInput, 300)
 
   useEffect(() => {
-    const handler = (_event: unknown): void => {
-      const study: Study | undefined = Object.assign(
-        {},
-        DicomMetadataStore.getStudy(studyInstanceUID),
-      )
-      setStudy(study)
+    const handler = (): void => {
+      setStudySeries(readStudySeries(studyInstanceUID))
     }
     const seriesAddedSubscription = DicomMetadataStore.subscribe(
       EVENTS.SERIES_ADDED,
@@ -191,232 +176,95 @@ const DicomTagBrowser = ({
       EVENTS.INSTANCES_ADDED,
       handler,
     )
-
-    const study = Object.assign(
-      {},
-      DicomMetadataStore.getStudy(studyInstanceUID),
-    )
-    setStudy(study)
-
+    handler()
     return () => {
       seriesAddedSubscription.unsubscribe()
       instancesAddedSubscription.unsubscribe()
     }
   }, [studyInstanceUID])
 
-  useEffect(() => {
-    let displaySets: DisplaySet[] = []
-    let derivedDisplaySets: DisplaySet[] = []
-    const processedSeries: string[] = []
-    let index = 0
-
-    if (slides.length > 0) {
-      displaySets = slides
-        .flatMap((slide): DisplaySet[] => {
-          /** One row per SeriesInstanceUID; volume/overview/label often share a series. */
-          const imagesBySeries = new Map<string, unknown[]>()
-
-          const addImages = (
-            images: unknown[] | undefined,
-            imageType: string,
-          ): void => {
-            if (images?.[0] === undefined) return
-            logger.debug(
-              `Found ${images.length} ${imageType} image(s) for slide ${slide.containerIdentifier}`,
-            )
-            for (const image of images) {
-              const img = image as Record<string, unknown>
-              const seriesUID = img.SeriesInstanceUID as string | undefined
-              if (seriesUID === undefined || seriesUID === '') continue
-
-              let bucket = imagesBySeries.get(seriesUID)
-              if (bucket === undefined) {
-                processedSeries.push(seriesUID)
-                bucket = []
-                imagesBySeries.set(seriesUID, bucket)
-              }
-
-              const sop =
-                typeof img.SOPInstanceUID === 'string' ? img.SOPInstanceUID : ''
-              if (!bucketContainsSopInstance(bucket, sop)) {
-                bucket.push(image)
-              }
-            }
-          }
-
-          addImages(slide.volumeImages, 'volume')
-          addImages(slide.overviewImages, 'overview')
-          addImages(slide.labelImages, 'label')
-
-          const slideDisplaySets: DisplaySet[] = []
-          for (const images of imagesBySeries.values()) {
-            if (images[0] === undefined) continue
-            const img = images[0] as Record<string, unknown>
-            const {
-              SeriesDate,
-              SeriesTime,
-              SeriesNumber,
-              SeriesInstanceUID,
-              SeriesDescription,
-              Modality,
-            } = img
-            slideDisplaySets.push({
-              displaySetInstanceUID: index,
-              SeriesDate: SeriesDate as string | undefined,
-              SeriesTime: SeriesTime as string | undefined,
-              SeriesInstanceUID: SeriesInstanceUID as string,
-              SeriesNumber: String(SeriesNumber),
-              SeriesDescription: SeriesDescription as string | undefined,
-              Modality: Modality as string,
-              images,
-            })
-            index++
-          }
-          return slideDisplaySets
-        })
-        .filter((set): set is DisplaySet => set !== null && set !== undefined)
-    }
-
-    if (study !== undefined && study.series?.length > 0) {
-      derivedDisplaySets = study.series
-        .filter((s) => !processedSeries.includes(s.SeriesInstanceUID))
-        .map((series: Series): DisplaySet => {
-          const ds: DisplaySet = {
-            displaySetInstanceUID: index,
-            SeriesDate: series.SeriesDate,
-            SeriesTime: series.SeriesTime,
-            SeriesNumber: String(series.SeriesNumber),
-            SeriesDescription: series.SeriesDescription,
-            SeriesInstanceUID: series.SeriesInstanceUID,
-            Modality: series.Modality,
-            images: series?.instances?.length > 0 ? series.instances : [series],
-          }
-          index++
-          return ds
-        })
-    }
-
-    setDisplaySets([...displaySets, ...derivedDisplaySets])
-  }, [slides, study])
-
-  const sortedDisplaySets = useMemo(
-    () => sortSeriesByNumber(displaySets),
-    [displaySets],
+  const displaySets = useMemo(
+    () => buildDisplaySets(slides, studySeries),
+    [slides, studySeries],
   )
 
-  const displaySetList = useMemo(() => {
-    return sortedDisplaySets.map((displaySet, index) => ({
-      value: index,
-      ...getSeriesLabel(displaySet),
-      seriesInstanceUID: displaySet.SeriesInstanceUID ?? '',
-    }))
-  }, [sortedDisplaySets])
+  /** Falls back to the first series until the selected one is loaded */
+  const selectedDisplaySet =
+    displaySets.find(
+      (displaySet) => displaySet.SeriesInstanceUID === selectedSeriesUID,
+    ) ?? displaySets[0]
 
-  useEffect(() => {
-    if (sortedDisplaySets.length === 0) return
+  const sortedImages = useMemo(
+    () =>
+      selectedDisplaySet !== undefined
+        ? sortInstancesByNumber(selectedDisplaySet.images)
+        : [],
+    [selectedDisplaySet],
+  )
+  const totalInstances = Math.max(sortedImages.length, 1)
+  const currentInstanceNumber = Math.min(instanceNumber, totalInstances)
+  const currentImage = sortedImages[currentInstanceNumber - 1]
+  const currentMetadata = useMemo(
+    () => (currentImage !== undefined ? toTagRecord(currentImage) : undefined),
+    [currentImage],
+  )
 
-    if (seriesInstanceUID !== '') {
-      const matchingIndex = sortedDisplaySets.findIndex(
-        (displaySet) => displaySet.SeriesInstanceUID === seriesInstanceUID,
-      )
-      if (matchingIndex !== -1) {
-        setSelectedDisplaySetInstanceUID(matchingIndex)
-        setInstanceNumber(1)
-        return
-      }
-    }
-
-    setSelectedDisplaySetInstanceUID((currentIndex) => {
-      const needsReset =
-        currentIndex >= sortedDisplaySets.length || currentIndex < 0
-      return needsReset ? 0 : currentIndex
-    })
-  }, [seriesInstanceUID, sortedDisplaySets])
-
-  useEffect(() => {
-    const currentIndex = selectedDisplaySetInstanceUID
-    const needsReset =
-      currentIndex >= sortedDisplaySets.length || currentIndex < 0
-    if (needsReset && sortedDisplaySets.length > 0) {
-      setInstanceNumber(1)
-    }
-  }, [selectedDisplaySetInstanceUID, sortedDisplaySets.length])
-
-  const showInstanceList =
-    sortedDisplaySets[selectedDisplaySetInstanceUID]?.images.length > 1
-
-  const totalInstances = useMemo(() => {
-    return sortedDisplaySets[selectedDisplaySetInstanceUID]?.images.length ?? 1
-  }, [selectedDisplaySetInstanceUID, sortedDisplaySets])
-
-  const sortedImages = useMemo((): unknown[] => {
-    const images = sortedDisplaySets[selectedDisplaySetInstanceUID]?.images
-    return Array.isArray(images) ? sortInstancesByNumber(images) : []
-  }, [selectedDisplaySetInstanceUID, sortedDisplaySets])
-
-  const currentMetadata = sortedImages[instanceNumber - 1] as
-    | Record<string, unknown>
-    | undefined
-
-  const tableData = useMemo((): TagTreeNode[] => {
-    if (currentMetadata === undefined) return []
-    return buildTagTree(getSortedTags(currentMetadata))
-  }, [currentMetadata])
-
+  const tableData = useMemo(
+    () =>
+      currentMetadata !== undefined
+        ? buildTagTree(getSortedTags(currentMetadata))
+        : [],
+    [currentMetadata],
+  )
   const filterResult = useMemo(
-    () => filterTagTree(tableData, filterValue),
-    [tableData, filterValue],
+    () => filterTagTree(tableData, filterQuery),
+    [tableData, filterQuery],
   )
   const filteredData = filterResult.tree
+  const isFiltering = filterQuery.trim() !== ''
 
-  useEffect(() => {
-    if (filterValue !== '') {
-      setExpandedKeys(filterResult.matchedKeys)
-    }
-  }, [filterResult, filterValue])
+  const expandedKeys: ReadonlySet<string> =
+    expansion.query === filterQuery
+      ? expansion.keys
+      : isFiltering
+        ? filterResult.matchedKeys
+        : NO_KEYS
 
-  const handleToggleExpand = useCallback((key: string) => {
-    setExpandedKeys((prev) => {
-      const next = new Set(prev)
-      if (next.has(key)) {
-        next.delete(key)
-      } else {
-        next.add(key)
-      }
-      return next
-    })
-  }, [])
+  const handleToggleExpand = useCallback(
+    (key: string) => {
+      setExpansion({
+        query: filterQuery,
+        keys: toggleSetValue(expandedKeys, key),
+      })
+    },
+    [filterQuery, expandedKeys],
+  )
 
-  const currentInstance = getInstanceDimensions(currentMetadata)
-
+  const dimensions = getInstanceDimensions(currentMetadata)
   const instanceLabel =
-    currentInstance?.columns !== undefined && currentInstance.rows !== undefined
-      ? `${formatGroupedNumber(currentInstance.columns)} × ${formatGroupedNumber(currentInstance.rows)} px`
+    dimensions?.columns !== undefined && dimensions.rows !== undefined
+      ? `${formatGroupedNumber(dimensions.columns)} × ${formatGroupedNumber(dimensions.rows)} px`
       : ''
-
-  const selectedModality =
-    sortedDisplaySets[selectedDisplaySetInstanceUID]?.Modality ?? ''
+  const selectedModality = selectedDisplaySet?.Modality ?? ''
+  const hasMultipleInstances = sortedImages.length > 1
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="grid flex-none grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] gap-3 border-b border-line-soft px-5 py-3.5">
-        <div className="flex min-w-0 flex-col gap-1.5 text-[12px] text-ink-muted">
-          <span id="tag-browser-series-label">Series</span>
+        <div className="flex min-w-0 flex-col gap-1.5 text-12 text-ink-muted">
+          <span id={seriesLabelId}>Series</span>
           <Select
-            value={String(selectedDisplaySetInstanceUID)}
+            value={selectedDisplaySet?.SeriesInstanceUID ?? ''}
             onValueChange={(value) => {
-              setSelectedDisplaySetInstanceUID(Number(value))
+              setSelectedSeriesUID(value)
               setInstanceNumber(1)
             }}
-            disabled={isLoading || displaySetList.length === 0}
+            disabled={isLoading || displaySets.length === 0}
           >
-            <SelectTrigger
-              className="h-9"
-              aria-labelledby="tag-browser-series-label"
-            >
+            <SelectTrigger className="h-9" aria-labelledby={seriesLabelId}>
               <span className="flex min-w-0 items-center gap-2">
                 {selectedModality !== '' && (
-                  <span className="rounded bg-chip px-[5px] py-0.5 font-mono text-[11px] font-semibold text-chip-foreground">
+                  <span className="rounded bg-chip px-[5px] py-0.5 font-mono text-11 font-semibold text-chip-foreground">
                     {selectedModality}
                   </span>
                 )}
@@ -430,26 +278,30 @@ const DicomTagBrowser = ({
               </span>
             </SelectTrigger>
             <SelectContent className="max-w-[560px]">
-              {displaySetList.map((item) => {
-                const isActive =
-                  item.seriesInstanceUID !== '' &&
-                  activeSeriesUIDs.has(item.seriesInstanceUID)
+              {displaySets.map((displaySet) => {
+                const { label, description } = getSeriesLabel(displaySet)
+                const isActive = activeSeriesUIDs.has(
+                  displaySet.SeriesInstanceUID,
+                )
                 return (
-                  <SelectItem key={item.value} value={String(item.value)}>
+                  <SelectItem
+                    key={displaySet.SeriesInstanceUID}
+                    value={displaySet.SeriesInstanceUID}
+                  >
                     <span className="flex min-w-0 items-center gap-2">
                       <span className="truncate">
-                        {item.label}
-                        {item.description !== ''
-                          ? ` — ${item.description}`
-                          : ''}
+                        {label}
+                        {description !== '' ? ` — ${description}` : ''}
                       </span>
                       {isActive && (
-                        <Icon
-                          name="visibility"
-                          size={15}
-                          className="text-ink-muted"
-                          title="Active in viewport"
-                        />
+                        <>
+                          <Icon
+                            name="visibility"
+                            size={15}
+                            className="text-ink-muted"
+                          />
+                          <span className="sr-only">(active in viewport)</span>
+                        </>
                       )}
                     </span>
                   </SelectItem>
@@ -459,48 +311,48 @@ const DicomTagBrowser = ({
           </Select>
         </div>
 
-        <label className="flex min-w-0 flex-col gap-1.5 text-[12px] text-ink-muted">
+        <div className="flex min-w-0 flex-col gap-1.5 text-12 text-ink-muted">
           <span className="flex justify-between gap-2">
-            Instance
-            <span className="truncate font-mono text-[11.5px] font-medium text-ink-secondary">
+            <span id={instanceLabelId}>Instance</span>
+            <span className="truncate font-mono text-11.5 font-medium text-ink-secondary">
               {instanceLabel}
             </span>
           </span>
           <div className="flex h-9 min-w-0 items-center gap-2.5">
-            <input
-              type="range"
+            <Slider
+              aria-labelledby={instanceLabelId}
               min={1}
-              max={totalInstances}
-              value={instanceNumber}
-              disabled={!showInstanceList}
-              onChange={(event) =>
-                setInstanceNumber(Number(event.target.value))
-              }
+              max={Math.max(totalInstances, 2)}
+              step={1}
+              value={[currentInstanceNumber]}
+              disabled={!hasMultipleInstances}
+              onValueChange={(values) => {
+                const [value] = values
+                if (value !== undefined) setInstanceNumber(value)
+              }}
               className="min-w-[80px] flex-1"
             />
-            <span className="flex-none font-mono text-[12px] font-medium text-ink">
-              {instanceNumber} / {totalInstances}
+            <span className="flex-none font-mono text-12 font-medium text-ink">
+              {currentInstanceNumber} / {totalInstances}
             </span>
           </div>
-        </label>
+        </div>
 
-        <label className="flex min-w-0 flex-col gap-1.5 text-[12px] text-ink-muted">
-          Filter
-          <div className="flex h-9 items-center gap-2 rounded-lg border border-line-input px-2.5 focus-within:border-primary">
-            <Icon name="search" size={18} className="text-ink-muted" />
-            <input
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              placeholder="Tag, keyword or value"
-              className="min-w-0 flex-1 border-0 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-fainter"
-            />
-          </div>
-        </label>
+        <div className="flex min-w-0 flex-col gap-1.5 text-12 text-ink-muted">
+          <span aria-hidden="true">Filter</span>
+          <SearchInput
+            aria-label="Filter tags"
+            value={searchInput}
+            onValueChange={setSearchInput}
+            placeholder="Tag, keyword or value"
+            clearable
+          />
+        </div>
       </div>
 
       <div
         className={cn(
-          'grid h-9 flex-none items-center gap-3 border-b border-line bg-subtle px-5 text-[11px] font-semibold uppercase leading-none tracking-[0.05em] text-ink-muted',
+          'grid h-9 flex-none items-center gap-3 border-b border-line bg-subtle px-5 text-11 font-semibold uppercase leading-none tracking-[0.05em] text-ink-muted',
           TAG_GRID_COLUMNS,
         )}
       >
@@ -515,9 +367,7 @@ const DicomTagBrowser = ({
           <div className="px-5 py-16 text-center text-ink-muted">Loading…</div>
         ) : filteredData.length === 0 ? (
           <div className="px-5 py-16 text-center text-ink-muted">
-            {filterValue !== ''
-              ? 'No matching tags found'
-              : 'No tags available'}
+            {isFiltering ? 'No matching tags found' : 'No tags available'}
           </div>
         ) : (
           filteredData.map((item) => (
@@ -532,36 +382,35 @@ const DicomTagBrowser = ({
         )}
       </div>
 
-      <div className="flex flex-none items-center gap-2 border-t border-line-soft bg-subtle py-2.5 pl-5 pr-4 text-[12px] text-ink-muted">
+      <SlimDialogFooter className="justify-start pl-5 text-12 text-ink-muted">
         <span>{countRows(filteredData, expandedKeys)} attributes</span>
         <span className="flex-1" />
-        <button
-          type="button"
-          onClick={() => setExpandedKeys(new Set())}
+        <Button
+          variant="outline"
+          className="text-ink"
+          onClick={() => setExpansion({ query: filterQuery, keys: NO_KEYS })}
           disabled={expandedKeys.size === 0}
-          className="h-[34px] rounded-lg border border-line-input bg-panel px-3.5 text-[13px] font-medium text-ink hover:bg-subtle disabled:cursor-default disabled:text-ink-fainter disabled:hover:bg-panel"
         >
           Collapse all
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="outline"
+          className="text-ink"
           onClick={() =>
-            setExpandedKeys(new Set(collectExpandableKeys(filteredData)))
+            setExpansion({
+              query: filterQuery,
+              keys: new Set(collectExpandableKeys(filteredData)),
+            })
           }
-          className="h-[34px] rounded-lg border border-line-input bg-panel px-3.5 text-[13px] font-medium text-ink hover:bg-subtle"
         >
           Expand all
-        </button>
+        </Button>
         {onDone !== undefined && (
-          <button
-            type="button"
-            onClick={onDone}
-            className="h-[34px] rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground hover:bg-primary-hover"
-          >
+          <Button onClick={onDone} className="px-4 font-semibold">
             Done
-          </button>
+          </Button>
         )}
-      </div>
+      </SlimDialogFooter>
     </div>
   )
 }

@@ -1,59 +1,39 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import NotificationMiddleware, {
+  type ErrorNotification,
   NotificationMiddlewareEvents,
 } from '../../../services/NotificationMiddleware'
-import type { CustomError } from '../../../utils/CustomError'
 
-export interface ExtendedError extends CustomError {
-  source: string
-}
+export type { ErrorNotification }
 
-interface UseNotificationsOptions {
+export interface UseNotificationsOptions {
   /** Notifications are cleared whenever this value changes, e.g. the route */
   resetKey?: string
 }
 
-interface UseNotificationsReturn {
-  /** Array of error objects with source information */
-  errors: ExtendedError[]
-  /** Array of error categories/types */
-  errorCategories: string[]
-  /** Array of warning messages */
+export interface UseNotificationsReturn {
+  /** Reported errors with their source, oldest first */
+  errors: ErrorNotification[]
   warnings: string[]
-  /** Total count of errors */
   errorCount: number
-  /** Total count of warnings */
   warningCount: number
-  /** Clear all notifications */
   clearNotifications: () => void
 }
 
-/**
- * Hook for subscribing to and managing application notifications.
- * Tracks errors and warnings from NotificationMiddleware.
- */
+/** Errors and warnings published by NotificationMiddleware while mounted. */
 export function useNotifications({
   resetKey,
 }: UseNotificationsOptions = {}): UseNotificationsReturn {
-  const [errors, setErrors] = useState<ExtendedError[]>([])
-  const [errorCategories, setErrorCategories] = useState<string[]>([])
+  const [errors, setErrors] = useState<ErrorNotification[]>([])
   const [warnings, setWarnings] = useState<string[]>([])
 
   useEffect(() => {
-    const handleError = ({
-      source,
-      error,
-    }: {
-      source: string
-      error: CustomError
-    }): void => {
-      setErrors((prev) => [...prev, { ...error, source }])
-      setErrorCategories((prev) => [...prev, error.type])
+    const handleError = (notification: ErrorNotification): void => {
+      setErrors((previous) => [...previous, notification])
     }
-
     const handleWarning = (warning: string): void => {
-      setWarnings((prev) => [...prev, warning])
+      setWarnings((previous) => [...previous, warning])
     }
 
     NotificationMiddleware.subscribe(
@@ -64,7 +44,6 @@ export function useNotifications({
       NotificationMiddlewareEvents.OnWarning,
       handleWarning,
     )
-
     return () => {
       NotificationMiddleware.unsubscribe(
         NotificationMiddlewareEvents.OnError,
@@ -79,7 +58,6 @@ export function useNotifications({
 
   const clearNotifications = useCallback(() => {
     setErrors((previous) => (previous.length === 0 ? previous : []))
-    setErrorCategories((previous) => (previous.length === 0 ? previous : []))
     setWarnings((previous) => (previous.length === 0 ? previous : []))
   }, [])
 
@@ -92,7 +70,6 @@ export function useNotifications({
 
   return {
     errors,
-    errorCategories,
     warnings,
     errorCount: errors.length,
     warningCount: warnings.length,

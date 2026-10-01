@@ -2,15 +2,9 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import * as React from 'react'
 
 import { cn } from '../../lib/utils'
-import { Icon } from './icon'
+import { Icon, type IconName } from './icon'
 
 const Dialog = DialogPrimitive.Root
-
-const DialogTrigger = DialogPrimitive.Trigger
-
-const DialogPortal = DialogPrimitive.Portal
-
-const DialogClose = DialogPrimitive.Close
 
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
@@ -27,14 +21,15 @@ const DialogOverlay = React.forwardRef<
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
+/**
+ * Pass `aria-describedby={undefined}` when the dialog renders no
+ * DialogDescription (e.g. a SlimDialogHeader without subtitle).
+ */
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
-    /** Render the default top-right close button */
-    showClose?: boolean
-  }
->(({ className, children, showClose = false, ...props }, ref) => (
-  <DialogPortal>
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <DialogPrimitive.Portal>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
@@ -45,35 +40,10 @@ const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      {showClose && (
-        <DialogPrimitive.Close className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-lg text-ink-secondary hover:bg-app hover:text-ink focus:outline-none">
-          <Icon name="close" size={20} />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
-      )}
     </DialogPrimitive.Content>
-  </DialogPortal>
+  </DialogPrimitive.Portal>
 ))
 DialogContent.displayName = DialogPrimitive.Content.displayName
-
-const DialogHeader = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn('flex flex-col gap-1 text-left', className)} {...props} />
-)
-DialogHeader.displayName = 'DialogHeader'
-
-const DialogFooter = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn('flex flex-row items-center justify-end gap-2', className)}
-    {...props}
-  />
-)
-DialogFooter.displayName = 'DialogFooter'
 
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
@@ -96,29 +66,42 @@ const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn('text-[12.5px] text-ink-muted', className)}
+    className={cn('text-12.5 text-ink-muted', className)}
     {...props}
   />
 ))
 DialogDescription.displayName = DialogPrimitive.Description.displayName
 
+const HEADER_TILE_TONES = {
+  primary: 'bg-primary-soft text-primary',
+  destructive: 'bg-destructive-soft text-destructive-text',
+} as const
+
+export type SlimDialogHeaderTone = keyof typeof HEADER_TILE_TONES
+
+export interface SlimDialogHeaderProps {
+  icon: IconName
+  title: React.ReactNode
+  /** Rendered as the dialog description; omit it only together with `aria-describedby={undefined}` on DialogContent */
+  subtitle?: React.ReactNode
+  actions?: React.ReactNode
+  /** Color of the icon tile */
+  tone?: SlimDialogHeaderTone
+  className?: string
+}
+
 /**
- * Design modal header: 34px primary-soft icon tile, title + subtitle and a
- * 32px close button, separated from the body by a bottom border.
+ * Design modal header: 34px icon tile, title + subtitle and a 32px close
+ * button, separated from the body by a bottom border.
  */
 function SlimDialogHeader({
   icon,
   title,
   subtitle,
   actions,
+  tone = 'primary',
   className,
-}: {
-  icon: string
-  title: React.ReactNode
-  subtitle?: React.ReactNode
-  actions?: React.ReactNode
-  className?: string
-}): React.ReactElement {
+}: SlimDialogHeaderProps): React.ReactElement {
   return (
     <div
       className={cn(
@@ -126,19 +109,22 @@ function SlimDialogHeader({
         className,
       )}
     >
-      <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[9px] bg-primary-soft text-primary">
+      <span
+        className={cn(
+          'grid size-control flex-none place-items-center rounded-tile',
+          HEADER_TILE_TONES[tone],
+        )}
+      >
         <Icon name={icon} size={20} />
       </span>
       <div className="min-w-0 flex-1">
         <DialogTitle>{title}</DialogTitle>
-        {subtitle !== undefined ? (
+        {subtitle !== undefined && (
           <DialogDescription className="mt-0.5">{subtitle}</DialogDescription>
-        ) : (
-          <DialogDescription className="sr-only">{title}</DialogDescription>
         )}
       </div>
       {actions}
-      <DialogPrimitive.Close className="grid h-8 w-8 flex-none place-items-center rounded-lg text-ink-secondary hover:bg-app hover:text-ink focus:outline-none">
+      <DialogPrimitive.Close className="grid h-8 w-8 flex-none place-items-center rounded-lg text-ink-secondary hover:bg-app hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
         <Icon name="close" size={20} />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
@@ -146,20 +132,24 @@ function SlimDialogHeader({
   )
 }
 
+export interface SlimDialogFooterProps
+  extends React.HTMLAttributes<HTMLDivElement> {
+  children: React.ReactNode
+}
+
 /** Design modal footer: subtle background, top border, right-aligned actions. */
 function SlimDialogFooter({
   className,
   children,
-}: {
-  className?: string
-  children: React.ReactNode
-}): React.ReactElement {
+  ...props
+}: SlimDialogFooterProps): React.ReactElement {
   return (
     <div
       className={cn(
         'flex flex-none items-center justify-end gap-2 border-t border-line-soft bg-subtle px-4 py-3',
         className,
       )}
+      {...props}
     >
       {children}
     </div>
@@ -168,15 +158,9 @@ function SlimDialogFooter({
 
 export {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogOverlay,
-  DialogPortal,
   DialogTitle,
-  DialogTrigger,
   SlimDialogFooter,
   SlimDialogHeader,
 }

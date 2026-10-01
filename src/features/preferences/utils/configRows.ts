@@ -3,15 +3,6 @@
  * read-only Configuration tab of the Preferences dialog.
  */
 
-export type ConfigValue =
-  | string
-  | number
-  | boolean
-  | null
-  | undefined
-  | ConfigValue[]
-  | { [key: string]: ConfigValue }
-
 export interface ConfigRow {
   /** Dotted path, e.g. `servers[0].url` */
   path: string
@@ -66,6 +57,22 @@ export function formatConfigValue(value: unknown): string {
   }
   if (typeof value === 'function') return 'ƒ()'
   return String(value)
+}
+
+/** Config as a `window.config = …` script, with functions shown as `ƒ()`. */
+export function formatConfigScript(config: unknown): string {
+  const json = JSON.stringify(
+    config,
+    (_key, value: unknown) =>
+      typeof value === 'function' ? formatConfigValue(value) : value,
+    2,
+  )
+  return `window.config = ${json}`
+}
+
+/** Number of leaves that differ from their default. */
+export function countChangedRows(rows: readonly ConfigRow[]): number {
+  return rows.filter((row) => !row.isGroup && row.isChanged).length
 }
 
 /** Replace every defined leaf, keeping the shape of objects and arrays. */

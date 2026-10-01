@@ -4,28 +4,23 @@ const MODALITY_TAG = '00080060'
 
 export type StudyQueryParams = Record<string, string | number | boolean>
 
-export function buildStudyQueryParams(
-  searchCriteria?: Record<string, string>,
-): StudyQueryParams {
-  const queryParams: StudyQueryParams = {
+/** Slide microscopy studies, with the series count used for "Slides". */
+export function buildStudyQueryParams(): StudyQueryParams {
+  return {
     ModalitiesInStudy: 'SM',
     includefield: 'NumberOfStudyRelatedSeries',
   }
-  if (searchCriteria === undefined) return queryParams
-  Object.entries(searchCriteria).forEach(([key, value]) => {
-    queryParams[key] = key === 'PersonName' ? `*${value}*` : value
-  })
-  queryParams.fuzzymatching = true
-  return queryParams
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object'
 }
 
 function getModality(series: unknown): string | undefined {
-  if (series === null || typeof series !== 'object') return undefined
-  const record = series as Record<string, unknown>
-  const element = record[MODALITY_TAG] as { Value?: unknown[] } | undefined
-  const value = Array.isArray(element?.Value)
-    ? element?.Value[0]
-    : record.Modality
+  if (!isRecord(series)) return undefined
+  const element = series[MODALITY_TAG]
+  const elementValue = isRecord(element) ? element.Value : undefined
+  const value = Array.isArray(elementValue) ? elementValue[0] : series.Modality
   if (value === undefined || value === null) return undefined
   const modality = String(value).trim()
   return modality === '' ? undefined : modality

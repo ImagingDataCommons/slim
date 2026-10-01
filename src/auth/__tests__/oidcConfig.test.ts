@@ -166,6 +166,53 @@ describe('readCachedOidcConfig', () => {
   })
 })
 
+describe('blocked storage', () => {
+  let localStorageSpy: jest.SpyInstance | undefined
+
+  beforeEach(() => {
+    localStorageSpy = jest
+      .spyOn(window, 'localStorage', 'get')
+      .mockImplementation(() => {
+        throw new DOMException('Storage is blocked', 'SecurityError')
+      })
+  })
+
+  afterEach(() => {
+    localStorageSpy?.mockRestore()
+  })
+
+  it('reads an empty entry instead of throwing', () => {
+    expect(readCachedOidcConfigInput()).toBe('')
+    expect(readCachedOidcConfig()).toBeUndefined()
+  })
+
+  it('does not throw when caching or clearing an entry', () => {
+    expect(() => cacheOidcConfigInput(JSON.stringify(settings))).not.toThrow()
+    expect(() => cacheOidcConfigInput('')).not.toThrow()
+  })
+})
+
+describe('parseOidcConfig optional fields', () => {
+  it('keeps string optional fields and drops non-string ones', () => {
+    const input = JSON.stringify({
+      ...settings,
+      grantType: 'implicit',
+      authorizationEndpoint: 42,
+      endSessionEndpoint: 'https://idp.example.com/logout',
+    })
+    expect(parseOidcConfig(input)).toEqual({
+      ...settings,
+      grantType: 'implicit',
+      authorizationEndpoint: undefined,
+      endSessionEndpoint: 'https://idp.example.com/logout',
+    })
+  })
+
+  it('rejects arrays', () => {
+    expect(parseOidcConfig('[1, 2]')).toBeUndefined()
+  })
+})
+
 describe('resetCachedOidcConfigFromUrl', () => {
   beforeEach(() => {
     window.localStorage.setItem(

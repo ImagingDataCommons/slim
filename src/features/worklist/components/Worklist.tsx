@@ -2,7 +2,13 @@ import type { PaginationState } from '@tanstack/react-table'
 // skipcq: JS-C1003
 import type * as dmv from 'dicom-microscopy-viewer'
 import type * as React from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import type DicomWebManager from '../../../DicomWebManager'
@@ -16,12 +22,14 @@ import {
   type DateFilter,
   filterStudiesByDateRange,
   filterStudiesBySearchText,
+  getEmptyStudiesMessage,
 } from '../utils/filters'
+import { clampPagination } from '../utils/pagination'
 import { WorklistHeader } from './WorklistHeader'
 import { WorklistPagination } from './WorklistPagination'
 import { WorklistTable } from './WorklistTable'
 
-interface WorklistProps {
+export interface WorklistProps {
   clients: { [key: string]: DicomWebManager }
   className?: string
 }
@@ -32,15 +40,16 @@ export function Worklist({
   className,
 }: WorklistProps): React.ReactElement {
   const navigate = useNavigate()
-  const { studies, isLoading, totalCount } = useStudies({ clients })
+  const { studies, isLoading } = useStudies({ clients })
   const preferences = usePreferences()
   const [searchText, setSearchText] = useState('')
+  const deferredSearchText = useDeferredValue(searchText)
   const [dateFilter, setDateFilter] = useState<DateFilter>(
     () =>
       loadStoredFilters(getLocalStorage(), preferences.rememberFilters)
         .dateFilter,
   )
-  const [pagination, setPagination] = useState<PaginationState>({
+  const [requestedPagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 20,
   })
@@ -49,9 +58,13 @@ export function Worklist({
     () =>
       filterStudiesBySearchText(
         filterStudiesByDateRange(studies, dateFilter),
-        searchText,
+        deferredSearchText,
       ),
-    [studies, dateFilter, searchText],
+    [studies, dateFilter, deferredSearchText],
+  )
+  const pagination = clampPagination(
+    requestedPagination,
+    filteredStudies.length,
   )
 
   useEffect(() => {
@@ -97,7 +110,7 @@ export function Worklist({
       )}
     >
       <WorklistHeader
-        totalCount={totalCount}
+        totalCount={studies.length}
         isLoading={isLoading}
         searchText={searchText}
         onSearchChange={handleSearchChange}
@@ -108,7 +121,7 @@ export function Worklist({
         className="flex-1"
         data={filteredStudies}
         isLoading={isLoading}
-        searchText={searchText}
+        emptyMessage={getEmptyStudiesMessage(dateFilter, deferredSearchText)}
         isCompact={preferences.compactRows}
         onRowClick={handleRowClick}
         pagination={pagination}

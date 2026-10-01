@@ -1,17 +1,26 @@
 /** Pure grouping and plain-text formatting for the Debug dialog. */
 
-export type DebugCategoryKey =
+import type { IconName } from '../../../components/ui/icon'
+
+type DebugErrorCategoryKey =
   | 'Communication'
   | 'EncodingDecoding'
   | 'Visualization'
   | 'Authentication'
-  | 'Warning'
+
+export type DebugCategoryKey = DebugErrorCategoryKey | 'Warning'
 
 export interface DebugCategory {
   key: DebugCategoryKey
   name: string
-  icon: string
+  icon: IconName
   isWarning?: boolean
+}
+
+/** Shape of a reported error notification that the report reads */
+export interface DebugErrorNotification {
+  error: { message: string; type?: unknown }
+  source?: string
 }
 
 export interface DebugMessage {
@@ -34,20 +43,21 @@ export const DEBUG_CATEGORIES: DebugCategory[] = [
   { key: 'Warning', name: 'Warning', icon: 'warning', isWarning: true },
 ]
 
-const ERROR_CATEGORY_KEYS: ReadonlySet<string> = new Set([
-  'Communication',
-  'EncodingDecoding',
-  'Visualization',
-  'Authentication',
-])
+const ERROR_CATEGORY_KEYS: ReadonlySet<unknown> =
+  new Set<DebugErrorCategoryKey>([
+    'Communication',
+    'EncodingDecoding',
+    'Visualization',
+    'Authentication',
+  ])
 
-/**
- * Bucket errors by their parallel `errorCategories` entry; errors with an
- * unknown category are dropped.
- */
+function isErrorCategoryKey(value: unknown): value is DebugErrorCategoryKey {
+  return ERROR_CATEGORY_KEYS.has(value)
+}
+
+/** Bucket errors by their `error.type`; errors of unknown type are dropped. */
 export function buildDebugMessages(
-  errors: ReadonlyArray<{ message: string; source?: string }>,
-  errorCategories: readonly string[],
+  notifications: readonly DebugErrorNotification[],
   warnings: readonly string[],
 ): DebugMessages {
   const result: DebugMessages = {
@@ -57,15 +67,12 @@ export function buildDebugMessages(
     Authentication: [],
     Warning: warnings.map((message) => ({ message })),
   }
-  errors.forEach((error, index) => {
-    const category = errorCategories[index]
-    if (category !== undefined && ERROR_CATEGORY_KEYS.has(category)) {
-      result[category as DebugCategoryKey].push({
-        message: error.message,
-        source: error.source,
-      })
+  for (const { error, source } of notifications) {
+    const category = error.type
+    if (isErrorCategoryKey(category)) {
+      result[category].push({ message: error.message, source })
     }
-  })
+  }
   return result
 }
 

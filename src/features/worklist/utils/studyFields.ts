@@ -7,9 +7,10 @@ export function orDash(value: string | undefined | null): string {
 }
 
 /** NumberOfStudyRelatedSeries as a finite number, if the server returned one. */
-export function getNumberOfSlides(study: object): number | undefined {
-  const value = (study as { NumberOfStudyRelatedSeries?: unknown })
-    .NumberOfStudyRelatedSeries
+export function getNumberOfSlides(study: {
+  NumberOfStudyRelatedSeries?: unknown
+}): number | undefined {
+  const value = study.NumberOfStudyRelatedSeries
   const count = typeof value === 'string' ? Number.parseInt(value, 10) : value
   return typeof count === 'number' && Number.isFinite(count) ? count : undefined
 }

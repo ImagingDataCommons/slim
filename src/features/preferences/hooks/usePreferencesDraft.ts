@@ -6,15 +6,11 @@ import {
   savePreferences,
   type UserPreferences,
 } from '../utils/preferences'
+import type { PreferencesTab } from '../utils/preferencesTabs'
 
-export type PreferencesTab =
-  | 'general'
-  | 'annotations'
-  | 'keys'
-  | 'config'
-  | 'about'
+export type { PreferencesTab }
 
-interface UsePreferencesDraftReturn {
+export interface UsePreferencesDraftReturn {
   activeTab: PreferencesTab
   setActiveTab: (tab: PreferencesTab) => void
   draftTheme: Theme

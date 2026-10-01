@@ -1,32 +1,30 @@
-import * as React from 'react'
-import { useState } from 'react'
+import type * as React from 'react'
+import { useId, useMemo, useState } from 'react'
 
+import { CopyButton } from '../../../../components/ui/copy-button'
 import {
   Dialog,
-  DialogClose,
   DialogContent,
-  DialogDescription,
-  DialogTitle,
+  SlimDialogHeader,
 } from '../../../../components/ui/dialog'
 import { Icon } from '../../../../components/ui/icon'
-import { useCopyToClipboard } from '../../../../hooks/useCopyToClipboard'
 import { cn } from '../../../../lib/utils'
 import { withOccurrenceKeys } from '../../../../utils/occurrenceKeys'
-import type { ExtendedError } from '../../hooks/useNotifications'
+import type { ErrorNotification } from '../../hooks/useNotifications'
 import {
   buildDebugMessages,
   DEBUG_CATEGORIES,
   type DebugCategory,
+  type DebugCategoryKey,
   type DebugMessage,
   formatDebugReport,
 } from '../../utils/debugReport'
 
-interface DebugDialogProps {
+export interface DebugDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  errors: ExtendedError[]
-  errorCategories: string[]
-  warnings: string[]
+  errors: readonly ErrorNotification[]
+  warnings: readonly string[]
 }
 
 function DebugCategoryCard({
@@ -42,15 +40,15 @@ function DebugCategoryCard({
 }): React.ReactElement {
   const count = messages.length
   const hasItems = count > 0
-  const panelId = React.useId()
+  const panelId = useId()
   return (
-    <div className="overflow-hidden rounded-[10px] border border-line">
+    <div className="overflow-hidden rounded-card border border-line">
       <button
         type="button"
         aria-expanded={isOpen}
         aria-controls={isOpen ? panelId : undefined}
         onClick={onToggle}
-        className="flex w-full items-center gap-2.5 bg-panel px-3.5 py-[11px] text-left text-[13px] font-medium text-ink hover:bg-subtle"
+        className="flex w-full items-center gap-2.5 bg-panel px-3.5 py-[11px] text-left text-13 font-medium text-ink hover:bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/40"
       >
         <Icon
           name={isOpen ? 'expand_more' : 'chevron_right'}
@@ -71,7 +69,7 @@ function DebugCategoryCard({
         <span className="flex-1">{category.name}</span>
         <span
           className={cn(
-            'min-w-[22px] rounded-full px-[7px] py-0.5 text-center text-[11px] font-semibold leading-[1.3]',
+            'min-w-[22px] rounded-full px-[7px] py-0.5 text-center text-11 font-semibold leading-[1.3]',
             !hasItems && 'bg-line-soft text-ink-muted',
             hasItems &&
               (category.isWarning === true
@@ -93,11 +91,11 @@ function DebugCategoryCard({
                 key={key}
                 className="flex flex-col gap-[3px] border-b border-line-soft py-2.5 pl-16 pr-3.5 last:border-b-0"
               >
-                <span className="break-words text-[12.5px] text-ink">
+                <span className="break-words text-12.5 text-ink">
                   {item.message}
                 </span>
                 {item.source !== undefined && (
-                  <span className="font-mono text-[11px] text-ink-muted">
+                  <span className="font-mono text-11 text-ink-muted">
                     {item.source}
                   </span>
                 )}
@@ -105,7 +103,7 @@ function DebugCategoryCard({
             ),
           )}
           {!hasItems && (
-            <div className="pb-3 pl-16 pr-3.5 pt-2.5 text-[12.5px] text-ink-muted">
+            <div className="pb-3 pl-16 pr-3.5 pt-2.5 text-12.5 text-ink-muted">
               Nothing reported.
             </div>
           )}
@@ -119,76 +117,51 @@ export function DebugDialog({
   open,
   onOpenChange,
   errors,
-  errorCategories,
   warnings,
 }: DebugDialogProps): React.ReactElement {
-  const [openCategories, setOpenCategories] = useState<Set<string>>(
-    () => new Set(['Communication']),
-  )
-  const { copied, copy } = useCopyToClipboard(1500)
+  const [openCategories, setOpenCategories] = useState<
+    ReadonlySet<DebugCategoryKey>
+  >(() => new Set<DebugCategoryKey>(['Communication']))
 
-  const messagesByCategory = React.useMemo(
-    () => buildDebugMessages(errors, errorCategories, warnings),
-    [errors, errorCategories, warnings],
+  const messagesByCategory = useMemo(
+    () => buildDebugMessages(errors, warnings),
+    [errors, warnings],
   )
 
-  const toggleCategory = (key: string): void => {
-    setOpenCategories((prev) => {
-      const next = new Set(prev)
-      if (next.has(key)) {
-        next.delete(key)
-      } else {
-        next.add(key)
-      }
+  const toggleCategory = (key: DebugCategoryKey): void => {
+    setOpenCategories((previous) => {
+      const next = new Set(previous)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
       return next
     })
-  }
-
-  const copyReport = (): void => {
-    void copy(
-      formatDebugReport(messagesByCategory, new Date(), navigator.userAgent),
-    )
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="h-[72vh] max-w-[760px]">
-        <div className="flex flex-none items-center gap-3.5 border-b border-line pl-5 pr-3 pt-3">
-          <div className="flex items-center gap-2.5 pb-3">
-            <span className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-destructive-soft text-destructive-text">
-              <Icon name="bug_report" size={19} />
-            </span>
-            <DialogTitle>Debug</DialogTitle>
-          </div>
-          <DialogDescription className="ml-1 pb-3 text-[13px]">
-            Debug information
-          </DialogDescription>
-          <div className="flex-1" />
-          <div className="pb-2.5">
-            <DialogClose className="grid h-8 w-8 place-items-center rounded-lg text-ink-secondary hover:bg-app hover:text-ink">
-              <Icon name="close" size={20} />
-              <span className="sr-only">Close</span>
-            </DialogClose>
-          </div>
-        </div>
+        <SlimDialogHeader
+          icon="bug_report"
+          tone="destructive"
+          title="Debug"
+          subtitle="Errors and warnings from this session"
+        />
 
-        <div className="flex flex-none items-center gap-2 border-b border-line-soft px-5 py-3 text-[12.5px] text-ink-secondary">
-          <span className="flex-1">
-            Errors and warnings from this session. More detail in the browser
-            console.
-          </span>
-          <button
-            type="button"
-            onClick={copyReport}
-            className="flex h-8 items-center gap-1.5 whitespace-nowrap rounded-lg border border-line-input bg-panel px-3 text-[12.5px] font-medium text-ink hover:bg-subtle"
-          >
-            <Icon
-              name={copied ? 'check' : 'content_copy'}
-              size={17}
-              className={copied ? 'text-success' : undefined}
-            />
-            {copied ? 'Copied' : 'Copy report'}
-          </button>
+        <div className="flex flex-none items-center gap-2 border-b border-line-soft px-5 py-3 text-12.5 text-ink-secondary">
+          <span className="flex-1">More detail in the browser console.</span>
+          <CopyButton
+            text={() =>
+              formatDebugReport(
+                messagesByCategory,
+                new Date(),
+                navigator.userAgent,
+              )
+            }
+            label="Copy report"
+            size="sm"
+            iconSize={17}
+            className="h-8 rounded-lg px-3 text-ink"
+          />
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto px-5 pb-5 pt-4">

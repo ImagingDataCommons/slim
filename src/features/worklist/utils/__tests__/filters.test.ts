@@ -3,6 +3,7 @@ import type { metadata } from 'dicom-microscopy-viewer'
 import {
   filterStudiesByDateRange,
   filterStudiesBySearchText,
+  getEmptyStudiesMessage,
   isToday,
   isWithinLastDays,
   modalitiesNeedBackfill,
@@ -20,10 +21,14 @@ describe('parseDicomDate', () => {
     expect(parseDicomDate('20260912')).toEqual(new Date(2026, 8, 12))
   })
 
+  it('parses legacy YYYY.MM.DD dates that the worklist displays', () => {
+    expect(parseDicomDate('2026.09.12')).toEqual(new Date(2026, 8, 12))
+  })
+
   it('rejects malformed or impossible dates', () => {
     expect(parseDicomDate(undefined)).toBeNull()
     expect(parseDicomDate('')).toBeNull()
-    expect(parseDicomDate('2026-09-12')).toBeNull()
+    expect(parseDicomDate('2026.0912')).toBeNull()
     expect(parseDicomDate('20260231')).toBeNull()
   })
 })
@@ -37,9 +42,20 @@ describe('isToday', () => {
 })
 
 describe('isWithinLastDays', () => {
-  it('includes the whole day N days ago', () => {
-    expect(isWithinLastDays(new Date(2026, 8, 5), 7, NOW)).toBe(true)
-    expect(isWithinLastDays(new Date(2026, 8, 4), 7, NOW)).toBe(false)
+  it('covers today and the N - 1 previous days', () => {
+    expect(isWithinLastDays(new Date(2026, 8, 6), 7, NOW)).toBe(true)
+    expect(isWithinLastDays(new Date(2026, 8, 5, 23, 59), 7, NOW)).toBe(false)
+  })
+
+  it('covers only today for a single day', () => {
+    expect(isWithinLastDays(new Date(2026, 8, 12), 1, NOW)).toBe(true)
+    expect(isWithinLastDays(new Date(2026, 8, 11), 1, NOW)).toBe(false)
+  })
+
+  it('crosses month boundaries', () => {
+    const now = new Date(2026, 9, 3, 8)
+    expect(isWithinLastDays(new Date(2026, 8, 27), 7, now)).toBe(true)
+    expect(isWithinLastDays(new Date(2026, 8, 26), 7, now)).toBe(false)
   })
 
   it('includes today', () => {
@@ -56,6 +72,8 @@ describe('filterStudiesByDateRange', () => {
   const studies = [
     study({ StudyInstanceUID: 'today', StudyDate: '20260912' }),
     study({ StudyInstanceUID: 'last-week', StudyDate: '20260907' }),
+    study({ StudyInstanceUID: 'legacy', StudyDate: '2026.09.06' }),
+    study({ StudyInstanceUID: 'eight-days', StudyDate: '20260905' }),
     study({ StudyInstanceUID: 'old', StudyDate: '20250101' }),
     study({ StudyInstanceUID: 'future', StudyDate: '20261001' }),
     study({ StudyInstanceUID: 'missing' }),
@@ -77,7 +95,36 @@ describe('filterStudiesByDateRange', () => {
     expect(uids(filterStudiesByDateRange(studies, 'week', NOW))).toEqual([
       'today',
       'last-week',
+      'legacy',
     ])
+  })
+})
+
+describe('getEmptyStudiesMessage', () => {
+  it('names the active date filter', () => {
+    expect(getEmptyStudiesMessage('all')).toBe('No studies found.')
+    expect(getEmptyStudiesMessage('today')).toBe('No studies from today.')
+    expect(getEmptyStudiesMessage('week')).toBe(
+      'No studies in the last 7 days.',
+    )
+  })
+
+  it('quotes the trimmed search text', () => {
+    expect(getEmptyStudiesMessage('all', '  doe ')).toBe(
+      'No studies match “doe”.',
+    )
+    expect(getEmptyStudiesMessage('today', 'doe')).toBe(
+      'No studies from today match “doe”.',
+    )
+    expect(getEmptyStudiesMessage('week', 'doe')).toBe(
+      'No studies in the last 7 days match “doe”.',
+    )
+  })
+
+  it('ignores blank search text', () => {
+    expect(getEmptyStudiesMessage('today', '   ')).toBe(
+      'No studies from today.',
+    )
   })
 })
 

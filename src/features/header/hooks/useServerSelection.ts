@@ -24,11 +24,11 @@ export interface ServerSelectionParams {
   oidc?: OidcSettings | null
 }
 
-interface UseServerSelectionOptions {
+export interface UseServerSelectionOptions {
   onServerSelection: (params: ServerSelectionParams) => void
 }
 
-interface UseServerSelectionReturn {
+export interface UseServerSelectionReturn {
   /** Currently entered/selected server URL */
   serverUrl: string
   /** Selection mode: default server or custom URL */

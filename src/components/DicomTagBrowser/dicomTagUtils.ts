@@ -1,6 +1,6 @@
 import dcmjs from 'dcmjs'
 
-import { formatDicomDate } from '../../utils/formatDicomDate'
+import { formatStudyDateTime } from '../../utils/displayFormat'
 
 const { DicomMetaDictionary } = dcmjs.data
 
@@ -25,13 +25,6 @@ export interface TagInfo {
   value: string
   children?: TagInfo[]
   level: number
-}
-
-export interface DicomTag {
-  name: string
-  vr: string
-  Value?: unknown[]
-  [key: string]: unknown
 }
 
 const PERSON_NAME_GROUP_KEYS = [
@@ -130,16 +123,6 @@ function formatValue(val: unknown, vr?: string): string {
     return JSON.stringify(val)
   }
   return stringifyJsonScalar(val)
-}
-
-export const formatTagValue = (tag: DicomTag): string => {
-  if (tag.Value === undefined || tag.Value === null) return ''
-
-  if (Array.isArray(tag.Value)) {
-    return tag.Value.map((v) => formatValue(v, tag.vr)).join(', ')
-  }
-
-  return formatValue(tag.Value, tag.vr)
 }
 
 /** Normalize to "(GGGG,EEEE)" for dcmjs dictionary lookup. */
@@ -339,16 +322,8 @@ function processMetadataKeyword(
   return rowsForUnmappedKeyword(keyword, vrHint, value, depth)
 }
 
-/**
- * Processes DICOM metadata and returns a flattened array of tag information
- * @param metadata - The DICOM metadata object to process
- * @param depth - The current depth level for nested sequences (default: 0)
- * @returns Array of processed tag information
- */
-export function getRows(
-  metadata: Record<string, unknown>,
-  depth = 0,
-): TagInfo[] {
+/** Tag rows of a dataset; sequences nest their items as children. */
+function getRows(metadata: Record<string, unknown>, depth = 0): TagInfo[] {
   if (metadata === undefined || metadata === null) return []
   const keywords = Object.keys(metadata).filter((key) => key !== '_vrMap')
 
@@ -466,7 +441,7 @@ export function collectExpandableKeys(items: TagTreeNode[]): string[] {
 /** Number of rendered rows given the expanded sequence keys */
 export function countRows(
   items: TagTreeNode[],
-  expandedKeys: Set<string>,
+  expandedKeys: ReadonlySet<string>,
 ): number {
   return items.reduce(
     (total, item) =>
@@ -495,11 +470,13 @@ function compareOptionalNumbers(a: unknown, b: unknown): number {
   return left - right
 }
 
-export function sortInstancesByNumber<T>(images: readonly T[]): T[] {
+export function sortInstancesByNumber<T extends object>(
+  images: readonly T[],
+): T[] {
   return [...images].sort((a, b) =>
     compareOptionalNumbers(
-      (a as Record<string, unknown> | undefined)?.InstanceNumber,
-      (b as Record<string, unknown> | undefined)?.InstanceNumber,
+      Reflect.get(a, 'InstanceNumber'),
+      Reflect.get(b, 'InstanceNumber'),
     ),
   )
 }
@@ -537,21 +514,129 @@ export function sortSeriesByNumber<T extends SeriesLike>(
   )
 }
 
-/** "3 (SM): Slide 1" and a formatted series date/time */
+/** "3 (SM): Slide 1" and the series date/time, e.g. "15 Jan 2024, 10:15" */
 export function getSeriesLabel(series: SeriesLike): {
   label: string
   description: string
 } {
-  const {
-    SeriesDate = '',
-    SeriesTime = '',
-    SeriesNumber = '',
-    SeriesDescription = '',
-    Modality = '',
-  } = series
-  const dateStr = `${SeriesDate}:${SeriesTime}`.split('.')[0]
+  const { SeriesNumber = '', SeriesDescription = '', Modality = '' } = series
   return {
     label: `${SeriesNumber} (${Modality}): ${SeriesDescription}`,
-    description: formatDicomDate(dateStr),
+    description: formatStudyDateTime(series.SeriesDate, series.SeriesTime),
   }
+}
+
+/** Own enumerable fields of a dataset object, for the tag table */
+export function toTagRecord(dataset: object): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(dataset))
+}
+
+function readText(source: object, key: string): string | undefined {
+  const value: unknown = Reflect.get(source, key)
+  if (typeof value === 'string') return value
+  if (typeof value === 'number') return String(value)
+  return undefined
+}
+
+/** One selectable series of the tag browser and its instances */
+export interface DisplaySet extends SeriesLike {
+  SeriesInstanceUID: string
+  images: readonly object[]
+}
+
+export interface SlideImagesLike {
+  volumeImages?: readonly object[]
+  overviewImages?: readonly object[]
+  labelImages?: readonly object[]
+}
+
+export interface StudySeriesLike {
+  SeriesInstanceUID: string
+  SeriesNumber?: number | string
+  SeriesDate?: string
+  SeriesTime?: string
+  SeriesDescription?: string
+  Modality?: string
+  instances?: readonly object[]
+}
+
+/**
+ * One display set per SeriesInstanceUID, sorted by series number. Slide
+ * images come first (volume, overview and label images often share a series;
+ * duplicate SOP instances are dropped); study series without slide images
+ * are added after, using the series itself when it has no instances.
+ */
+export function buildDisplaySets(
+  slides: readonly SlideImagesLike[],
+  studySeries: readonly StudySeriesLike[] = [],
+): DisplaySet[] {
+  const imagesBySeries = new Map<
+    string,
+    { images: object[]; sopInstanceUIDs: Set<string> }
+  >()
+  for (const slide of slides) {
+    for (const images of [
+      slide.volumeImages,
+      slide.overviewImages,
+      slide.labelImages,
+    ]) {
+      for (const image of images ?? []) {
+        const seriesUID = readText(image, 'SeriesInstanceUID') ?? ''
+        if (seriesUID === '') continue
+        let entry = imagesBySeries.get(seriesUID)
+        if (entry === undefined) {
+          entry = { images: [], sopInstanceUIDs: new Set() }
+          imagesBySeries.set(seriesUID, entry)
+        }
+        const sopUID = readText(image, 'SOPInstanceUID') ?? ''
+        if (sopUID !== '') {
+          if (entry.sopInstanceUIDs.has(sopUID)) continue
+          entry.sopInstanceUIDs.add(sopUID)
+        }
+        entry.images.push(image)
+      }
+    }
+  }
+
+  const displaySets: DisplaySet[] = []
+  for (const [seriesUID, { images }] of imagesBySeries) {
+    const first = images[0]
+    displaySets.push({
+      SeriesInstanceUID: seriesUID,
+      SeriesNumber: readText(first, 'SeriesNumber'),
+      SeriesDate: readText(first, 'SeriesDate'),
+      SeriesTime: readText(first, 'SeriesTime'),
+      SeriesDescription: readText(first, 'SeriesDescription'),
+      Modality: readText(first, 'Modality'),
+      images,
+    })
+  }
+  for (const series of studySeries) {
+    const seriesUID = series.SeriesInstanceUID
+    if (seriesUID === '' || imagesBySeries.has(seriesUID)) continue
+    displaySets.push({
+      SeriesInstanceUID: seriesUID,
+      SeriesNumber:
+        series.SeriesNumber !== undefined
+          ? String(series.SeriesNumber)
+          : undefined,
+      SeriesDate: series.SeriesDate,
+      SeriesTime: series.SeriesTime,
+      SeriesDescription: series.SeriesDescription,
+      Modality: series.Modality,
+      images:
+        series.instances !== undefined && series.instances.length > 0
+          ? series.instances
+          : [series],
+    })
+  }
+  return sortSeriesByNumber(displaySets)
+}
+
+/** Copy of `set` with `value` added, or removed if present */
+export function toggleSetValue<T>(set: ReadonlySet<T>, value: T): Set<T> {
+  const next = new Set(set)
+  if (next.has(value)) next.delete(value)
+  else next.add(value)
+  return next
 }

@@ -1,10 +1,11 @@
 import type * as React from 'react'
 import { useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 
 import type { User } from '../../../auth'
 import { SlimLogoMark } from '../../../components/slim/SlimLogoMark'
-import { Icon } from '../../../components/ui/icon'
+import { Button } from '../../../components/ui/button'
+import { Icon, type IconName } from '../../../components/ui/icon'
 import {
   Tooltip,
   TooltipContent,
@@ -33,7 +34,7 @@ export interface HeaderAppInfo {
   organization?: string
 }
 
-interface HeaderProps {
+export interface HeaderProps {
   app: HeaderAppInfo
   user?: User
   clients?: { [key: string]: DicomWebManager }
@@ -50,19 +51,20 @@ function HeaderIconButton({
   onClick,
   badge,
 }: {
-  icon: string
+  icon: IconName
   title: string
   onClick: () => void
   badge?: number
 }): React.ReactElement {
   const hasBadge = badge !== undefined && badge > 0
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="icon"
       title={title}
       aria-label={hasBadge ? `${title} (${badge})` : title}
       onClick={onClick}
-      className="relative grid h-9 w-9 place-items-center rounded-lg text-ink-secondary transition-colors hover:bg-app hover:text-ink"
+      className="relative"
     >
       <Icon name={icon} size={20} />
       {hasBadge && (
@@ -73,7 +75,7 @@ function HeaderIconButton({
           {badge > 99 ? '99+' : badge}
         </span>
       )}
-    </button>
+    </Button>
   )
 }
 
@@ -96,28 +98,15 @@ export function Header({
   showServerSelectionButton,
 }: HeaderProps): React.ReactElement {
   const location = useLocation()
-  const navigate = useNavigate()
   const params = useParams<{ studyInstanceUID?: string }>()
   const { summary } = useStudySummary()
 
-  const {
-    serverUrl,
-    mode: serverMode,
-    isDialogOpen: isServerDialogOpen,
-    isValid: isServerSelectionValid,
-    oidcConfigInput,
-    isOidcConfigValid,
-    isServerUrlValid,
-    openDialog: openServerDialog,
-    cancelDialog: cancelServerDialog,
-    setServerUrl,
-    setMode: setServerMode,
-    setOidcConfigInput,
-    submitSelection: submitServerSelection,
-  } = useServerSelection({ onServerSelection })
+  const serverSelection = useServerSelection({ onServerSelection })
+  const { serverUrl, openDialog: openServerDialog } = serverSelection
 
-  const { errors, errorCategories, warnings, errorCount, warningCount } =
-    useNotifications({ resetKey: location.pathname })
+  const { errors, warnings, errorCount, warningCount } = useNotifications({
+    resetKey: location.pathname,
+  })
 
   const [isDebugDialogOpen, setIsDebugDialogOpen] = useState(false)
   const [isTagBrowserOpen, setIsTagBrowserOpen] = useState(false)
@@ -135,7 +124,7 @@ export function Header({
   const serverPillContent = (
     <>
       <span className="h-[7px] w-[7px] flex-none rounded-full bg-success" />
-      <span className="truncate font-mono text-[12px]">{currentServerUrl}</span>
+      <span className="truncate font-mono text-12">{currentServerUrl}</span>
     </>
   )
   const serverPillClassName =
@@ -151,23 +140,25 @@ export function Header({
           <div className="text-[15px] font-semibold leading-none tracking-[-0.01em] text-ink">
             Slim
           </div>
-          <div className="rounded border border-line px-1.5 py-[3px] font-mono text-[11px] font-medium leading-none text-ink-muted">
+          <div className="rounded border border-line px-1.5 py-[3px] font-mono text-11 font-medium leading-none text-ink-muted">
             v{app.version}
           </div>
         </div>
 
         <HeaderDivider />
 
-        <nav className="flex min-w-0 items-center gap-1.5 text-[13px]">
+        <nav className="flex min-w-0 items-center gap-1.5 text-13">
           {showWorklistButton && (
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              className="flex flex-none items-center gap-1.5 rounded-md px-2 py-1.5 font-medium text-ink-secondary transition-colors hover:bg-app hover:text-ink"
+            <Button
+              asChild
+              variant="ghost"
+              className="h-auto flex-none rounded-md px-2 py-1.5"
             >
-              <Icon name="format_list_bulleted" size={18} />
-              Worklist
-            </button>
+              <Link to="/">
+                <Icon name="format_list_bulleted" size={18} />
+                Worklist
+              </Link>
+            </Button>
           )}
           {isInViewer && summary !== null && (
             <>
@@ -184,7 +175,7 @@ export function Header({
                 </span>
               )}
               {summary.studyLabel !== undefined && (
-                <span className="whitespace-nowrap font-mono text-[12px] text-ink-muted">
+                <span className="whitespace-nowrap font-mono text-12 text-ink-muted">
                   {summary.studyLabel}
                 </span>
               )}
@@ -216,11 +207,11 @@ export function Header({
                 side="bottom"
                 className="max-w-[min(640px,90vw)] px-2.5 py-1.5"
               >
-                <div className="break-all font-mono text-[11.5px] leading-[1.45]">
+                <div className="break-all font-mono text-11.5 leading-[1.45]">
                   {currentServerUrl}
                 </div>
                 {showServerSelectionButton && (
-                  <div className="mt-1 text-[11px] font-normal opacity-70">
+                  <div className="mt-1 text-11 font-normal opacity-70">
                     Click to change or copy the server
                   </div>
                 )}
@@ -275,7 +266,6 @@ export function Header({
         open={isDebugDialogOpen}
         onOpenChange={setIsDebugDialogOpen}
         errors={errors}
-        errorCategories={errorCategories}
         warnings={warnings}
       />
 
@@ -295,23 +285,9 @@ export function Header({
         )}
 
       <ServerSelectionDialog
-        open={isServerDialogOpen}
-        onOpenChange={(open) => {
-          if (!open) cancelServerDialog()
-        }}
-        serverUrl={serverUrl}
+        selection={serverSelection}
         currentServerUrl={currentServerUrl}
         defaultServerUrl={defaultServerUrl}
-        mode={serverMode}
-        isValid={isServerSelectionValid}
-        isServerUrlValid={isServerUrlValid}
-        oidcConfigInput={oidcConfigInput}
-        isOidcConfigValid={isOidcConfigValid}
-        onServerUrlChange={setServerUrl}
-        onModeChange={setServerMode}
-        onOidcConfigChange={setOidcConfigInput}
-        onSubmit={submitServerSelection}
-        onCancel={cancelServerDialog}
       />
     </>
   )

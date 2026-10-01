@@ -1,6 +1,6 @@
 import type * as React from 'react'
 
-import { Icon } from '../../../components/ui/icon'
+import { SearchInput } from '../../../components/ui/search-input'
 import { SegmentedControl } from '../../../components/ui/segmented'
 import { cn } from '../../../lib/utils'
 import type { DateFilter } from '../utils/filters'
@@ -11,7 +11,7 @@ const DATE_FILTER_OPTIONS: Array<{ value: DateFilter; label: string }> = [
   { value: 'week', label: 'Last 7 days' },
 ]
 
-interface WorklistHeaderProps {
+export interface WorklistHeaderProps {
   totalCount: number
   isLoading: boolean
   searchText: string
@@ -44,17 +44,16 @@ export function WorklistHeader({
         </div>
       </div>
       <div className="flex-1" />
-      <label className="flex h-9 w-[340px] items-center gap-2 rounded-lg border border-line-input bg-panel px-3 transition-colors focus-within:border-primary">
-        <Icon name="search" size={19} className="text-ink-muted" />
-        <input
-          type="search"
-          value={searchText}
-          onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Search patient, ID, accession…"
-          aria-label="Search studies"
-          className="min-w-0 flex-1 border-0 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-faint"
-        />
-      </label>
+      <SearchInput
+        aria-label="Search studies"
+        placeholder="Search patient, ID, accession…"
+        value={searchText}
+        onValueChange={onSearchChange}
+        iconSize={19}
+        clearable
+        className="w-[340px]"
+        inputClassName="placeholder:text-ink-faint"
+      />
       <SegmentedControl
         tone="worklist"
         aria-label="Study date"

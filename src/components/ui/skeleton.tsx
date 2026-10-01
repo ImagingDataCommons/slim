@@ -1,23 +1,21 @@
-import type * as React from 'react'
+import * as React from 'react'
 
 import { cn } from '../../lib/utils'
 
+export type SkeletonProps = React.HTMLAttributes<HTMLSpanElement>
+
 /** Pulsing placeholder bar; size it with width/height classes. */
-export function Skeleton({
-  className,
-  style,
-}: {
-  className?: string
-  style?: React.CSSProperties
-}): React.ReactElement {
-  return (
+export const Skeleton = React.forwardRef<HTMLSpanElement, SkeletonProps>(
+  ({ className, ...props }, ref) => (
     <span
+      ref={ref}
       aria-hidden="true"
       className={cn(
         'block h-2.5 animate-pulse rounded-full bg-line',
         className,
       )}
-      style={style}
+      {...props}
     />
-  )
-}
+  ),
+)
+Skeleton.displayName = 'Skeleton'

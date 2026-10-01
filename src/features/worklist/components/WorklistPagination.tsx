@@ -1,6 +1,7 @@
 import type { PaginationState } from '@tanstack/react-table'
 import type * as React from 'react'
 
+import { Button } from '../../../components/ui/button'
 import { Icon } from '../../../components/ui/icon'
 import {
   Select,
@@ -16,7 +17,7 @@ import {
   getVisiblePages,
 } from '../utils/pagination'
 
-interface WorklistPaginationProps {
+export interface WorklistPaginationProps {
   pagination: PaginationState
   totalCount: number
   onPaginationChange: (pagination: PaginationState) => void
@@ -24,8 +25,7 @@ interface WorklistPaginationProps {
   className?: string
 }
 
-const PAGE_BUTTON =
-  'grid h-[30px] min-w-[30px] place-items-center rounded-md border px-1.5 text-[12.5px] transition-colors'
+const ARROW_BUTTON = 'disabled:opacity-100 disabled:text-ink-fainter'
 
 /** 48px table footer: range summary, rows-per-page and page buttons. */
 export function WorklistPagination({
@@ -51,7 +51,7 @@ export function WorklistPagination({
   return (
     <div
       className={cn(
-        'flex h-12 flex-none items-center gap-3 border-t border-line pl-5 pr-4 text-[12.5px] text-ink-muted',
+        'flex h-12 flex-none items-center gap-3 border-t border-line pl-5 pr-4 text-12.5 text-ink-muted',
         className,
       )}
     >
@@ -83,18 +83,16 @@ export function WorklistPagination({
         </Select>
       </div>
       <nav aria-label="Pagination" className="flex gap-1">
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="page"
           aria-label="Previous page"
           disabled={pageIndex === 0}
           onClick={() => goTo(pageIndex - 1)}
-          className={cn(
-            PAGE_BUTTON,
-            'border-line-input bg-panel text-ink-body hover:bg-app disabled:pointer-events-none disabled:text-ink-fainter',
-          )}
+          className={ARROW_BUTTON}
         >
           <Icon name="chevron_left" size={18} />
-        </button>
+        </Button>
         {getVisiblePages(pageIndex, pageCount).map((page, position, pages) =>
           page === null ? (
             <span
@@ -104,34 +102,27 @@ export function WorklistPagination({
               …
             </span>
           ) : (
-            <button
+            <Button
               key={page}
-              type="button"
+              variant={page === pageIndex ? 'selected' : 'outline'}
+              size="page"
               aria-current={page === pageIndex ? 'page' : undefined}
               onClick={() => goTo(page)}
-              className={cn(
-                PAGE_BUTTON,
-                page === pageIndex
-                  ? 'border-primary bg-primary-soft font-semibold text-primary'
-                  : 'border-line-input bg-panel font-medium text-ink-body hover:bg-app',
-              )}
             >
               {page + 1}
-            </button>
+            </Button>
           ),
         )}
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="page"
           aria-label="Next page"
           disabled={pageIndex >= pageCount - 1}
           onClick={() => goTo(pageIndex + 1)}
-          className={cn(
-            PAGE_BUTTON,
-            'border-line-input bg-panel text-ink-body hover:bg-app disabled:pointer-events-none disabled:text-ink-fainter',
-          )}
+          className={ARROW_BUTTON}
         >
           <Icon name="chevron_right" size={18} />
-        </button>
+        </Button>
       </nav>
     </div>
   )

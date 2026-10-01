@@ -1,4 +1,5 @@
 import {
+  buildDisplaySets,
   buildTagTree,
   collectExpandableKeys,
   countRows,
@@ -9,6 +10,8 @@ import {
   sortSeriesByNumber,
   type TagInfo,
   type TagTreeNode,
+  toggleSetValue,
+  toTagRecord,
 } from '../dicomTagUtils'
 
 const tags: TagInfo[] = [
@@ -185,6 +188,135 @@ describe('sortSeriesByNumber / getSeriesLabel', () => {
       SeriesTime: '101500.123',
     })
     expect(label).toBe('3 (SM): Slide 1')
-    expect(description).not.toBe('')
+    expect(description).toBe('15 Jan 2024, 10:15')
+  })
+
+  it('shows the date alone without a series time', () => {
+    expect(getSeriesLabel({ SeriesDate: '20240115' }).description).toBe(
+      '15 Jan 2024',
+    )
+    expect(getSeriesLabel({}).description).toBe('')
+  })
+})
+
+describe('buildDisplaySets', () => {
+  const image = (
+    series: string,
+    sop: string,
+    extra: Record<string, unknown> = {},
+  ): Record<string, unknown> => ({
+    SeriesInstanceUID: series,
+    SOPInstanceUID: sop,
+    ...extra,
+  })
+
+  it('returns nothing without slides or series', () => {
+    expect(buildDisplaySets([])).toEqual([])
+  })
+
+  it('merges the images of one series across image types and slides', () => {
+    const volume = image('s1', 'a', {
+      SeriesNumber: 2,
+      Modality: 'SM',
+      SeriesDescription: 'Slide',
+      SeriesDate: '20240115',
+    })
+    const label = image('s1', 'b')
+    const sets = buildDisplaySets([
+      { volumeImages: [volume], labelImages: [label] },
+      { overviewImages: [image('s1', 'c')] },
+    ])
+    expect(sets).toHaveLength(1)
+    expect(sets[0]).toMatchObject({
+      SeriesInstanceUID: 's1',
+      SeriesNumber: '2',
+      Modality: 'SM',
+      SeriesDescription: 'Slide',
+      SeriesDate: '20240115',
+    })
+    expect(sets[0].images).toHaveLength(3)
+    expect(sets[0].images[0]).toBe(volume)
+  })
+
+  it('drops duplicate SOP instances but keeps images without a SOP UID', () => {
+    const sets = buildDisplaySets([
+      {
+        volumeImages: [image('s1', 'a'), image('s1', 'a')],
+        labelImages: [image('s1', ''), image('s1', '')],
+      },
+    ])
+    expect(sets[0].images).toHaveLength(3)
+  })
+
+  it('skips images without a series UID', () => {
+    expect(
+      buildDisplaySets([{ volumeImages: [{ SOPInstanceUID: 'a' }] }]),
+    ).toEqual([])
+  })
+
+  it('adds study series that have no slide images', () => {
+    const instance = { SOPInstanceUID: 'sr-1' }
+    const annotation = {
+      SeriesInstanceUID: 'ann',
+      SeriesNumber: 3,
+      Modality: 'ANN',
+      instances: [],
+    }
+    const sets = buildDisplaySets(
+      [{ volumeImages: [image('s1', 'a', { SeriesNumber: '1' })] }],
+      [
+        { SeriesInstanceUID: 's1', SeriesNumber: 1, instances: [] },
+        {
+          SeriesInstanceUID: 'sr',
+          SeriesNumber: 2,
+          Modality: 'SR',
+          instances: [instance],
+        },
+        annotation,
+        { SeriesInstanceUID: '' },
+      ],
+    )
+    expect(sets.map((set) => set.SeriesInstanceUID)).toEqual([
+      's1',
+      'sr',
+      'ann',
+    ])
+    expect(sets[1].images).toEqual([instance])
+    expect(sets[2].images).toEqual([annotation])
+    expect(sets[2].SeriesNumber).toBe('3')
+  })
+
+  it('sorts by series number with missing numbers last', () => {
+    const sets = buildDisplaySets(
+      [{ volumeImages: [image('late', 'a', { SeriesNumber: 10 })] }],
+      [
+        { SeriesInstanceUID: 'none' },
+        { SeriesInstanceUID: 'early', SeriesNumber: 1 },
+      ],
+    )
+    expect(sets.map((set) => set.SeriesInstanceUID)).toEqual([
+      'early',
+      'late',
+      'none',
+    ])
+  })
+})
+
+describe('toTagRecord / toggleSetValue', () => {
+  it('copies own enumerable fields', () => {
+    class Dataset {
+      Modality = 'SM'
+      describe(): string {
+        return 'not a field'
+      }
+    }
+    expect(toTagRecord(new Dataset())).toEqual({ Modality: 'SM' })
+  })
+
+  it('adds and removes values without mutating the input', () => {
+    const input = new Set(['a'])
+    expect([...toggleSetValue(input, 'b')]).toEqual(['a', 'b'])
+    expect([...toggleSetValue(input, 'a')]).toEqual([])
+    expect([...input]).toEqual(['a'])
   })
 })

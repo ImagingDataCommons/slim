@@ -5,7 +5,7 @@ import * as React from 'react'
 import { cn } from '../../lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg text-[13px] font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
+  'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg text-13 font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0',
   {
     variants: {
       variant: {
@@ -14,17 +14,24 @@ const buttonVariants = cva(
           'bg-destructive text-destructive-foreground hover:bg-destructive/90',
         outline:
           'border border-line-input bg-panel text-ink-body hover:bg-app hover:text-ink',
+        /** Current item of a group of outline buttons, e.g. the active page */
+        selected:
+          'border border-primary bg-primary-soft font-semibold text-primary',
         secondary: 'bg-app text-ink-body hover:bg-segmented',
         ghost: 'text-ink-secondary hover:bg-app hover:text-ink',
         link: 'text-primary underline-offset-4 hover:underline',
       },
       size: {
-        default: 'h-[34px] px-3.5',
-        sm: 'h-[30px] px-2.5 text-[12.5px]',
+        default: 'h-control px-3.5',
+        sm: 'h-[30px] px-2.5 text-12.5',
+        /** Inline actions inside cards and rows, e.g. copy buttons */
+        xs: 'h-7 gap-1 rounded-md px-2 text-12',
         lg: 'h-10 px-5',
         icon: 'h-9 w-9',
-        'icon-sm': 'h-[34px] w-[34px]',
+        'icon-sm': 'size-control',
         'icon-xs': 'h-7 w-7 rounded-md',
+        /** Square-ish pagination button that grows with the page number */
+        page: 'h-[30px] min-w-[30px] rounded-md px-1.5 text-12.5',
       },
     },
     defaultVariants: {

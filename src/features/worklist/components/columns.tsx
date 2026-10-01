@@ -1,6 +1,7 @@
-import type { ColumnDef } from '@tanstack/react-table'
+import type { ColumnDef, RowData } from '@tanstack/react-table'
 // skipcq: JS-C1003
 import type * as dmv from 'dicom-microscopy-viewer'
+import { Link } from 'react-router-dom'
 
 import {
   formatDisplayDate,
@@ -8,6 +9,7 @@ import {
   formatPersonName,
   formatSex,
 } from '../../../utils/displayFormat'
+import { buildStudyPath } from '../../../utils/routes'
 import {
   DASH,
   getNumberOfSlides,
@@ -15,27 +17,30 @@ import {
   orDash,
 } from '../utils/studyFields'
 
+declare module '@tanstack/react-table' {
+  interface ColumnMeta<TData extends RowData, TValue> {
+    align?: 'right'
+  }
+}
+
 /** Grid template shared by the header row and the study rows. */
 export const WORKLIST_GRID_COLUMNS =
   'grid-cols-[1.6fr_1fr_1fr_.9fr_.6fr_1fr_.8fr_1.1fr_1fr_1.2fr_.7fr]'
-
-type PersonNameValue = Parameters<typeof formatPersonName>[0]
-
-export interface WorklistColumnMeta {
-  align?: 'right'
-}
 
 /** Column definitions (sorting accessors + cells) for the worklist grid. */
 export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
   {
     id: 'PatientName',
     header: 'Patient name',
-    accessorFn: (study) =>
-      formatPersonName(study.PatientName as PersonNameValue),
-    cell: ({ getValue }) => (
-      <span className="block truncate font-semibold text-ink">
+    accessorFn: (study) => formatPersonName(study.PatientName),
+    cell: ({ getValue, row }) => (
+      <Link
+        to={buildStudyPath(row.original.StudyInstanceUID)}
+        onClick={(event) => event.stopPropagation()}
+        className="block truncate rounded-sm font-semibold text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+      >
         {orDash(getValue<string>())}
-      </span>
+      </Link>
     ),
   },
   {
@@ -43,7 +48,7 @@ export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
     header: 'Patient ID',
     accessorFn: (study) => study.PatientID ?? '',
     cell: ({ getValue }) => (
-      <span className="block truncate font-mono text-[12.5px]">
+      <span className="block truncate font-mono text-12.5">
         {orDash(getValue<string>())}
       </span>
     ),
@@ -73,7 +78,7 @@ export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
           {modalities.map((modality) => (
             <span
               key={modality}
-              className="rounded bg-chip px-1.5 py-[3px] font-mono text-[11px] font-semibold leading-none text-chip-foreground"
+              className="rounded bg-chip px-1.5 py-[3px] font-mono text-11 font-semibold leading-none text-chip-foreground"
             >
               {modality}
             </span>
@@ -103,7 +108,7 @@ export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
     header: 'Accession #',
     accessorFn: (study) => study.AccessionNumber ?? '',
     cell: ({ getValue }) => (
-      <span className="block truncate font-mono text-[12.5px]">
+      <span className="block truncate font-mono text-12.5">
         {orDash(getValue<string>())}
       </span>
     ),
@@ -113,7 +118,7 @@ export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
     header: 'Study ID',
     accessorFn: (study) => study.StudyID ?? '',
     cell: ({ getValue }) => (
-      <span className="block truncate font-mono text-[12.5px]">
+      <span className="block truncate font-mono text-12.5">
         {orDash(getValue<string>())}
       </span>
     ),
@@ -121,11 +126,7 @@ export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
   {
     id: 'ReferringPhysicianName',
     header: 'Referring physician',
-    accessorFn: (study) =>
-      formatPersonName(
-        (study as unknown as { ReferringPhysicianName?: PersonNameValue })
-          .ReferringPhysicianName,
-      ),
+    accessorFn: (study) => formatPersonName(study.ReferringPhysicianName),
     cell: ({ getValue }) => (
       <span className="block truncate">{orDash(getValue<string>())}</span>
     ),
@@ -133,7 +134,7 @@ export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
   {
     id: 'Slides',
     header: 'Slides',
-    meta: { align: 'right' } as WorklistColumnMeta,
+    meta: { align: 'right' },
     accessorFn: (study) => getNumberOfSlides(study) ?? -1,
     cell: ({ getValue }) => {
       const count = getValue<number>()
