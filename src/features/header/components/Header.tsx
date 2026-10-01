@@ -15,7 +15,10 @@ import type DicomWebManager from '../../../DicomWebManager'
 import { cn } from '../../../lib/utils'
 import { isViewerPath, parseSeriesInstanceUID } from '../../../utils/routes'
 import { useNotifications } from '../hooks/useNotifications'
-import { useServerSelection } from '../hooks/useServerSelection'
+import {
+  type ServerSelectionParams,
+  useServerSelection,
+} from '../hooks/useServerSelection'
 import { DebugDialog } from './dialogs/DebugDialog'
 import { DicomTagBrowserDialog } from './dialogs/DicomTagBrowserDialog'
 import type { PreferencesTab } from './dialogs/PreferencesDialog'
@@ -37,7 +40,7 @@ interface HeaderProps {
   clients?: { [key: string]: DicomWebManager }
   defaultClients?: { [key: string]: DicomWebManager }
   showWorklistButton: boolean
-  onServerSelection: (params: { url: string }) => void
+  onServerSelection: (params: ServerSelectionParams) => void
   onUserLogout?: () => void
   showServerSelectionButton: boolean
 }
@@ -102,11 +105,15 @@ export function Header({
     serverUrl,
     mode: serverMode,
     isDialogOpen: isServerDialogOpen,
-    isValid: isServerUrlValid,
+    isValid: isServerSelectionValid,
+    oidcConfigInput,
+    isOidcConfigValid,
+    isServerUrlValid,
     openDialog: openServerDialog,
     cancelDialog: cancelServerDialog,
     setServerUrl,
     setMode: setServerMode,
+    setOidcConfigInput,
     submitSelection: submitServerSelection,
   } = useServerSelection({ onServerSelection })
 
@@ -297,9 +304,13 @@ export function Header({
         currentServerUrl={currentServerUrl}
         defaultServerUrl={defaultServerUrl}
         mode={serverMode}
-        isValid={isServerUrlValid}
+        isValid={isServerSelectionValid}
+        isServerUrlValid={isServerUrlValid}
+        oidcConfigInput={oidcConfigInput}
+        isOidcConfigValid={isOidcConfigValid}
         onServerUrlChange={setServerUrl}
         onModeChange={setServerMode}
+        onOidcConfigChange={setOidcConfigInput}
         onSubmit={submitServerSelection}
         onCancel={cancelServerDialog}
       />

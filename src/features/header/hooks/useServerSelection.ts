@@ -1,5 +1,12 @@
 import { useCallback, useState } from 'react'
 
+import type { OidcSettings } from '../../../AppConfig'
+import {
+  cacheOidcConfigInput,
+  getOidcConfigToApply,
+  isValidOidcConfig,
+  readCachedOidcConfigInput,
+} from '../../../auth/oidcConfig'
 import { getLocalStorage } from '../../../utils/safeStorage'
 import {
   loadServerSelection,
@@ -11,8 +18,14 @@ import { isValidServerUrl } from '../utils/serverUrl'
 
 export type { ServerSelectionMode }
 
+export interface ServerSelectionParams {
+  url: string
+  /** New OIDC settings, null to fall back to the deployment config */
+  oidc?: OidcSettings | null
+}
+
 interface UseServerSelectionOptions {
-  onServerSelection: (params: { url: string }) => void
+  onServerSelection: (params: ServerSelectionParams) => void
 }
 
 interface UseServerSelectionReturn {
@@ -20,9 +33,15 @@ interface UseServerSelectionReturn {
   serverUrl: string
   /** Selection mode: default server or custom URL */
   mode: ServerSelectionMode
+  /** Optional OIDC config (JSON) entered by the user */
+  oidcConfigInput: string
+  /** Whether the OIDC config entry is empty or valid */
+  isOidcConfigValid: boolean
+  /** Whether the default server is selected or the custom URL is valid */
+  isServerUrlValid: boolean
   /** Whether the dialog is open */
   isDialogOpen: boolean
-  /** Whether the current URL is valid for submission */
+  /** Whether the current URL and OIDC config are valid for submission */
   isValid: boolean
   /** Open the selection dialog */
   openDialog: () => void
@@ -32,6 +51,8 @@ interface UseServerSelectionReturn {
   setServerUrl: (url: string) => void
   /** Update the selection mode */
   setMode: (mode: ServerSelectionMode) => void
+  /** Update the OIDC config input */
+  setOidcConfigInput: (input: string) => void
   /** Submit the server selection */
   submitSelection: () => void
 }
@@ -50,6 +71,9 @@ export function useServerSelection({
   const [mode, setModeState] = useState<ServerSelectionMode>(
     initialSelection.mode,
   )
+  const [oidcConfigInput, setOidcConfigInput] = useState<string>(
+    readCachedOidcConfigInput,
+  )
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
@@ -58,17 +82,21 @@ export function useServerSelection({
   const [previousMode, setPreviousMode] =
     useState<ServerSelectionMode>('default')
 
-  const isValid = mode === 'default' || isValidServerUrl(serverUrl)
+  const isOidcConfigValid = isValidOidcConfig(oidcConfigInput)
+  const isServerUrlValid = mode === 'default' || isValidServerUrl(serverUrl)
+  const isValid = isOidcConfigValid && isServerUrlValid
 
   const openDialog = useCallback(() => {
     setPreviousUrl(serverUrl)
     setPreviousMode(mode)
+    setOidcConfigInput(readCachedOidcConfigInput())
     setIsDialogOpen(true)
   }, [serverUrl, mode])
 
   const cancelDialog = useCallback(() => {
     setServerUrlState(previousUrl)
     setModeState(previousMode)
+    setOidcConfigInput(readCachedOidcConfigInput())
     setIsDialogOpen(false)
   }, [previousUrl, previousMode])
 
@@ -81,9 +109,19 @@ export function useServerSelection({
   }, [])
 
   const submitSelection = useCallback(() => {
+    /** Keep the dialog open so an invalid entry cannot wipe the cached config */
+    if (!isValidOidcConfig(oidcConfigInput)) {
+      return
+    }
+    const oidc = getOidcConfigToApply(
+      oidcConfigInput,
+      readCachedOidcConfigInput(),
+    )
+
     if (mode === 'default') {
       saveServerSelection(getLocalStorage(), { url: '', mode })
-      onServerSelection({ url: '' })
+      cacheOidcConfigInput(oidcConfigInput)
+      onServerSelection({ url: '', oidc })
       setIsDialogOpen(false)
       return
     }
@@ -95,20 +133,25 @@ export function useServerSelection({
 
     const normalizedUrl = normalizeServerUrl(trimmedUrl)
     saveServerSelection(getLocalStorage(), { url: normalizedUrl, mode })
-    onServerSelection({ url: normalizedUrl })
+    cacheOidcConfigInput(oidcConfigInput)
+    onServerSelection({ url: normalizedUrl, oidc })
     setServerUrlState(normalizedUrl)
     setIsDialogOpen(false)
-  }, [mode, serverUrl, onServerSelection])
+  }, [mode, serverUrl, oidcConfigInput, onServerSelection])
 
   return {
     serverUrl,
     mode,
+    oidcConfigInput,
+    isOidcConfigValid,
+    isServerUrlValid,
     isDialogOpen,
     isValid,
     openDialog,
     cancelDialog,
     setServerUrl,
     setMode,
+    setOidcConfigInput,
     submitSelection,
   }
 }

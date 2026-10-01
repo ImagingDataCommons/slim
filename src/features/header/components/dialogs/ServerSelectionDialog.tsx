@@ -1,4 +1,5 @@
 import type * as React from 'react'
+import { useId, useState } from 'react'
 
 import { Button } from '../../../../components/ui/button'
 import {
@@ -21,9 +22,14 @@ interface ServerSelectionDialogProps {
   currentServerUrl?: string
   defaultServerUrl?: string
   mode: ServerSelectionMode
+  /** Whether the whole selection can be submitted */
   isValid: boolean
+  isServerUrlValid: boolean
+  oidcConfigInput: string
+  isOidcConfigValid: boolean
   onServerUrlChange: (url: string) => void
   onModeChange: (mode: ServerSelectionMode) => void
+  onOidcConfigChange: (input: string) => void
   onSubmit: () => void
   onCancel: () => void
 }
@@ -108,6 +114,88 @@ function CurrentServer({ url }: { url: string }): React.ReactElement {
   )
 }
 
+const OIDC_EXAMPLE = `{
+  "authority": "https://accounts.google.com",
+  "clientId": "your-client-id.apps.googleusercontent.com",
+  "scope": "email profile openid https://www.googleapis.com/auth/cloud-healthcare",
+  "grantType": "implicit"
+}`
+
+function OidcConfigSection({
+  value,
+  isValid,
+  onChange,
+}: {
+  value: string
+  isValid: boolean
+  onChange: (input: string) => void
+}): React.ReactElement {
+  const [isOpen, setIsOpen] = useState(value.trim() !== '')
+  const textareaId = useId()
+  const hasError = value.trim() !== '' && !isValid
+  return (
+    <div className="mt-1 rounded-[10px] border border-line">
+      <button
+        type="button"
+        aria-expanded={isOpen}
+        aria-controls={textareaId}
+        onClick={() => setIsOpen((open) => !open)}
+        className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left"
+      >
+        <Icon
+          name={isOpen ? 'expand_more' : 'chevron_right'}
+          size={18}
+          className="text-ink-faint"
+        />
+        <span className="flex-1 font-semibold text-ink">
+          Sign-in (OIDC)
+          <span className="ml-1.5 font-normal text-ink-muted">optional</span>
+        </span>
+        {value.trim() !== '' && (
+          <span
+            className={cn(
+              'rounded-full px-1.5 py-[3px] text-[11px] font-semibold leading-none',
+              isValid
+                ? 'bg-primary-soft text-primary'
+                : 'bg-destructive/10 text-destructive-text',
+            )}
+          >
+            {isValid ? 'Custom' : 'Invalid'}
+          </span>
+        )}
+      </button>
+      {isOpen && (
+        <div className="flex flex-col gap-1.5 px-3.5 pb-3.5 text-[12px] text-ink-muted">
+          <label htmlFor={textareaId}>
+            Override the deployment's identity provider. Leave empty to use the
+            default.
+          </label>
+          <textarea
+            id={textareaId}
+            rows={5}
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            placeholder={OIDC_EXAMPLE}
+            spellCheck={false}
+            aria-invalid={hasError}
+            className={cn(
+              'resize-y rounded-lg border bg-panel px-2.5 py-2 font-mono text-[12px] leading-[1.5] text-ink outline-none placeholder:text-ink-fainter focus:border-primary',
+              hasError
+                ? 'border-destructive/70 shadow-[0_0_0_3px_rgb(var(--destructive)/0.12)]'
+                : 'border-line-input',
+            )}
+          />
+          {hasError && (
+            <span className="text-destructive-text">
+              Invalid JSON. Required fields: authority, clientId, scope.
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function ServerSelectionDialog({
   open,
   onOpenChange,
@@ -116,13 +204,17 @@ export function ServerSelectionDialog({
   defaultServerUrl,
   mode,
   isValid,
+  isServerUrlValid,
+  oidcConfigInput,
+  isOidcConfigValid,
   onServerUrlChange,
   onModeChange,
+  onOidcConfigChange,
   onSubmit,
   onCancel,
 }: ServerSelectionDialogProps): React.ReactElement {
   const showUrlState = serverUrl !== ''
-  const urlOk = !showUrlState || isValid
+  const urlOk = !showUrlState || isServerUrlValid
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -172,25 +264,34 @@ export function ServerSelectionDialog({
                 />
                 {showUrlState && (
                   <Icon
-                    name={isValid ? 'check_circle' : 'error'}
+                    name={isServerUrlValid ? 'check_circle' : 'error'}
                     size={18}
-                    className={isValid ? 'text-success' : 'text-destructive'}
+                    className={
+                      isServerUrlValid ? 'text-success' : 'text-destructive'
+                    }
                   />
                 )}
               </div>
               {showUrlState && (
                 <span
                   className={
-                    isValid ? 'text-ink-muted' : 'text-destructive-text'
+                    isServerUrlValid
+                      ? 'text-ink-muted'
+                      : 'text-destructive-text'
                   }
                 >
-                  {isValid
+                  {isServerUrlValid
                     ? 'Looks like a valid DICOMweb endpoint.'
                     : 'Enter an http(s) URL with a path, or a projects/…/dicomStores/… path.'}
                 </span>
               )}
             </label>
           )}
+          <OidcConfigSection
+            value={oidcConfigInput}
+            isValid={isOidcConfigValid}
+            onChange={onOidcConfigChange}
+          />
         </fieldset>
         <SlimDialogFooter>
           <Button variant="outline" onClick={onCancel}>

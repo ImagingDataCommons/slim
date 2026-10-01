@@ -2,6 +2,7 @@ shamefullyHoist: true
 strictPeerDependencies: false
 
 allowBuilds:
+  '@parcel/watcher': true
   core-js: true
   core-js-pure: true
   dicom-microscopy-viewer: true
@@ -13,13 +14,15 @@ overrides:
   # Dependabot high: adm-zip unbounded memory on crafted ZIP
   adm-zip: 0.6.1
   # Dependabot high: brace-expansion DoS (v1 and v2 lines)
-  brace-expansion@1: 1.1.18
-  brace-expansion@2: 2.1.4
+  brace-expansion@1: 1.1.21
+  brace-expansion@2: 2.1.7
   # Dependabot high: js-yaml quadratic merge-key chains (v3 and v4 lines)
   js-yaml@3: 3.15.2
   js-yaml@4: 4.3.2
   # Dependabot high: postcss sourceMappingURL path traversal (no 7.x patch; force 8.x)
   postcss: 8.5.25
+  # Dependabot high: nanoid generators can loop indefinitely (GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8)
+  nanoid@3: 3.3.19
   # Dependabot high: shell-quote parse() quadratic DoS
   shell-quote: 1.9.0
   # Dependabot high: fast-uri authority injection & host confusion (CVE-2026-84292, CVE-2026-84394)
@@ -28,6 +31,8 @@ overrides:
   svgo: 2.8.4
   # Dependabot high: browserslist RegExp ReDoS
   browserslist: 4.28.7
+  # Dependabot high: webpack-dev-middleware path traversal (GHSA-g84c-rxfj-3j2c; no 5.x patch, CRA's dev server 4.x runs on 7.x)
+  webpack-dev-middleware: 7.4.6
   nth-check: 2.0.1
   wrap-ansi: 7.0.0
   make-dir: 3.1.0
@@ -42,5 +47,5 @@ overrides:
   underscore: 1.13.8
 
 minimumReleaseAgeExclude:
-  - dicom-microscopy-viewer@0.48.23 || 0.48.24 || 0.48.25 || 0.48.26
+  - dicom-microscopy-viewer@0.48.23 || 0.48.24 || 0.48.25 || 0.48.26 || 0.48.27
   - dicomweb-client@0.11.3

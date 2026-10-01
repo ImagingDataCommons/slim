@@ -938,6 +938,12 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
        */
       const shownSegmentUIDs: string[] = []
       matchingSegments.forEach((segment) => {
+        if (segment.isAbsent) {
+          logger.debug(
+            `auto-load Segmentation: skipping absent segment "${segment.uid}"`,
+          )
+          return
+        }
         if (segment.isBackground === true) {
           logger.debug(
             `skipping auto-show for background segment "${segment.uid}"`,
@@ -3183,6 +3189,13 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     segmentUID: string
     isVisible: boolean
   }): void => {
+    const segment = this.volumeViewer
+      .getAllSegments()
+      .find((item) => item.uid === segmentUID)
+    if (segment?.isAbsent) {
+      logger.debug(`ignore visibility change for absent segment ${segmentUID}`)
+      return
+    }
     logger.log(`change visibility of segment ${segmentUID}`)
     if (isVisible) {
       logger.log(`show segment ${segmentUID}`)
@@ -3797,7 +3810,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const newVisibleSegmentUIDs = new Set<string>()
     if (hadVisibleSegments && selectedSeriesSegments.length > 0) {
       selectedSeriesSegments.forEach((segment) => {
-        newVisibleSegmentUIDs.add(segment.uid)
+        if (!segment.isAbsent) {
+          newVisibleSegmentUIDs.add(segment.uid)
+        }
       })
     }
 

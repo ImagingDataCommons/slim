@@ -119,6 +119,9 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
 
   render(): React.ReactNode {
     const { segment } = this.props
+    /** Listed in the Segment Sequence but no frames contain it */
+    const isAbsent = segment.isAbsent === true
+    const isVisible = !isAbsent && this.props.isVisible
     const segmentationMetadata = this.props.metadata?.[0] as unknown as
       | Record<string, unknown>
       | undefined
@@ -142,24 +145,44 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
           <span
             className={cn(
               'h-3 w-3 flex-none rounded-[3px]',
-              isFractional &&
+              isAbsent && 'border border-dashed border-line-input',
+              !isAbsent &&
+                isFractional &&
                 fractionalGradient === '' &&
                 'border border-line bg-gradient-to-r from-panel to-ink-muted',
             )}
-            style={swatchStyle}
+            style={isAbsent ? undefined : swatchStyle}
           />
           <button
             type="button"
-            className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
+            className="flex min-w-0 flex-1 flex-col items-start gap-0.5 text-left disabled:cursor-default"
             onClick={this.handleClick}
-            title="Zoom to segment"
+            disabled={isAbsent}
+            title={
+              isAbsent
+                ? 'Segment is absent (no pixel data found)'
+                : 'Zoom to segment'
+            }
           >
-            <span className="truncate font-semibold text-ink">
+            <span
+              className={cn(
+                'max-w-full truncate font-semibold',
+                isAbsent ? 'text-ink-muted' : 'text-ink',
+              )}
+            >
               {segment.label}
             </span>
             {meta !== '' && (
-              <span className="truncate text-[12px] text-ink-muted">
+              <span className="max-w-full truncate text-[12px] text-ink-muted">
                 {meta}
+              </span>
+            )}
+            {isAbsent && (
+              <span
+                className="mt-0.5 rounded-full bg-chip px-1.5 py-[3px] text-[11px] font-semibold leading-none text-ink-secondary"
+                title="Listed in Segment Sequence but no frames contain this segment"
+              >
+                Absent
               </span>
             )}
           </button>
@@ -174,7 +197,8 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
                   type="button"
                   title="Segment color"
                   aria-label={`Color for ${segment.label}`}
-                  className="grid h-7 w-7 flex-none place-items-center rounded-md text-ink-secondary transition-colors hover:bg-segmented"
+                  disabled={isAbsent}
+                  className="grid h-7 w-7 flex-none place-items-center rounded-md text-ink-secondary transition-colors hover:bg-segmented disabled:pointer-events-none disabled:opacity-40"
                 >
                   <Icon name="palette" size={17} />
                 </button>
@@ -194,20 +218,19 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
           )}
           <button
             type="button"
-            title="Show/hide"
+            title={isAbsent ? 'Segment has no pixel data' : 'Show/hide'}
             aria-label={
-              this.props.isVisible
-                ? `Hide ${segment.label}`
-                : `Show ${segment.label}`
+              isVisible ? `Hide ${segment.label}` : `Show ${segment.label}`
             }
-            onClick={() => this.handleVisibilityChange(!this.props.isVisible)}
+            disabled={isAbsent}
+            onClick={() => this.handleVisibilityChange(!isVisible)}
             className={cn(
-              'grid h-7 w-7 flex-none place-items-center rounded-md transition-colors hover:bg-segmented',
-              this.props.isVisible ? 'text-ink-secondary' : 'text-ink-fainter',
+              'grid h-7 w-7 flex-none place-items-center rounded-md transition-colors hover:bg-segmented disabled:pointer-events-none disabled:opacity-40',
+              isVisible ? 'text-ink-secondary' : 'text-ink-fainter',
             )}
           >
             <Icon
-              name={this.props.isVisible ? 'visibility' : 'visibility_off'}
+              name={isVisible ? 'visibility' : 'visibility_off'}
               size={18}
             />
           </button>
@@ -220,6 +243,7 @@ class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
             max={1}
             step={0.01}
             value={[opacity]}
+            disabled={isAbsent}
             onValueChange={(values) => this.handleOpacityChange(values[0])}
             aria-label={`Opacity of ${segment.label}`}
           />

@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import type DicomWebManager from '../DicomWebManager'
 import type { Slide } from '../data/slides'
+import { StorageClasses } from '../data/uids'
 import { fetchImageMetadata } from '../services/fetchImageMetadata'
 
 interface UseSlidesProps {
@@ -13,9 +14,17 @@ interface UseSlidesReturn {
   slides: Slide[]
   isLoading: boolean
   error: Error | null
+  /** Drop any cached result for the study and fetch it again */
+  retry: () => void
 }
 
-const slidesCache = new Map<string, Slide[]>()
+interface CachedSlides {
+  /** Server the slides were fetched from; the same study UID may exist on several */
+  serverUrl: string
+  slides: Slide[]
+}
+
+const slidesCache = new Map<string, CachedSlides>()
 const pendingRequests = new Map<string, Promise<Slide[]>>()
 const cacheTimestamps = new Map<string, number>()
 
@@ -33,6 +42,9 @@ const cleanupExpiredCache = (): void => {
   }
 }
 
+const getServerUrl = (clients: { [key: string]: DicomWebManager }): string =>
+  clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]?.baseURL ?? ''
+
 // Utility functions for cache management
 export const clearSlidesCache = (studyInstanceUID?: string): void => {
   if (
@@ -43,7 +55,11 @@ export const clearSlidesCache = (studyInstanceUID?: string): void => {
   ) {
     slidesCache.delete(studyInstanceUID)
     cacheTimestamps.delete(studyInstanceUID)
-    pendingRequests.delete(studyInstanceUID)
+    for (const key of pendingRequests.keys()) {
+      if (key.endsWith(`|${studyInstanceUID}`)) {
+        pendingRequests.delete(key)
+      }
+    }
   } else {
     slidesCache.clear()
     cacheTimestamps.clear()
@@ -54,7 +70,7 @@ export const clearSlidesCache = (studyInstanceUID?: string): void => {
 export const getCachedSlides = (
   studyInstanceUID: string,
 ): Slide[] | undefined => {
-  return slidesCache.get(studyInstanceUID)
+  return slidesCache.get(studyInstanceUID)?.slides
 }
 
 export const isSlidesCached = (studyInstanceUID: string): boolean => {
@@ -77,6 +93,14 @@ export const useSlides = ({
   const [slides, setSlides] = useState<Slide[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [error, setError] = useState<Error | null>(null)
+  const [attempt, setAttempt] = useState(0)
+
+  const retry = useCallback((): void => {
+    if (studyInstanceUID !== undefined && studyInstanceUID !== '') {
+      clearSlidesCache(studyInstanceUID)
+    }
+    setAttempt((value) => value + 1)
+  }, [studyInstanceUID])
 
   useEffect(() => {
     // Clean up expired cache entries periodically
@@ -95,7 +119,7 @@ export const useSlides = ({
       const cachedEntries = Array.from(slidesCache.entries())
       if (cachedEntries.length > 0) {
         const lastCachedSlides = cachedEntries[cachedEntries.length - 1][1]
-        setSlides(lastCachedSlides)
+        setSlides(lastCachedSlides.slides)
         setIsLoading(false)
         setError(null)
       } else {
@@ -106,9 +130,10 @@ export const useSlides = ({
       return
     }
 
+    const serverUrl = getServerUrl(clients)
     const cachedData = slidesCache.get(studyInstanceUID)
-    if (cachedData !== undefined) {
-      setSlides(cachedData)
+    if (cachedData !== undefined && cachedData.serverUrl === serverUrl) {
+      setSlides(cachedData.slides)
       setIsLoading(false)
       setError(null)
       return
@@ -117,9 +142,11 @@ export const useSlides = ({
     setIsLoading(true)
     setError(null)
 
+    /** A retry gets its own request instead of joining one still in flight */
+    const requestKey = `${serverUrl}|${attempt}|${studyInstanceUID}`
     const fetchSlides = async (): Promise<void> => {
       // Check if there's already a pending request for this study
-      let pendingRequest = pendingRequests.get(studyInstanceUID)
+      let pendingRequest = pendingRequests.get(requestKey)
 
       if (pendingRequest === undefined) {
         // Create a new promise for this request
@@ -128,8 +155,14 @@ export const useSlides = ({
             clients,
             studyInstanceUID,
             onSuccess: (newSlides) => {
-              slidesCache.set(studyInstanceUID, newSlides)
-              cacheTimestamps.set(studyInstanceUID, Date.now())
+              /** Not cached when empty, so data added to the store later shows up */
+              if (newSlides.length > 0) {
+                slidesCache.set(studyInstanceUID, {
+                  serverUrl,
+                  slides: newSlides,
+                })
+                cacheTimestamps.set(studyInstanceUID, Date.now())
+              }
               resolve(newSlides)
             },
             onError: (err) => {
@@ -139,7 +172,7 @@ export const useSlides = ({
             reject(err)
           })
         })
-        pendingRequests.set(studyInstanceUID, pendingRequest)
+        pendingRequests.set(requestKey, pendingRequest)
       }
 
       try {
@@ -150,13 +183,13 @@ export const useSlides = ({
         setError(err as Error)
         setSlides([])
       } finally {
-        pendingRequests.delete(studyInstanceUID)
+        pendingRequests.delete(requestKey)
         setIsLoading(false)
       }
     }
 
     void fetchSlides()
-  }, [clients, studyInstanceUID])
+  }, [clients, studyInstanceUID, attempt])
 
   // Memoize the return value to prevent unnecessary re-renders
   return useMemo(
@@ -164,7 +197,8 @@ export const useSlides = ({
       slides,
       isLoading,
       error,
+      retry,
     }),
-    [slides, isLoading, error],
+    [slides, isLoading, error, retry],
   )
 }

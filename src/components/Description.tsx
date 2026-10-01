@@ -14,7 +14,7 @@ export interface AttributeGroup {
 }
 
 interface DescriptionProps {
-  header?: string
+  header?: React.ReactNode
   attributes: Attribute[]
   /** Label column width of the key/value grid */
   labelWidth?: 96 | 104

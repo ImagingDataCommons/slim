@@ -16,6 +16,8 @@ import type DicomWebManager from '../DicomWebManager'
 import type { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
 import { ViewerLoadingLayout } from '../features/viewer/components/ViewerLoadingLayout'
+import { ViewerMessage } from '../features/viewer/components/ViewerMessage'
+import { ViewportLoadingIndicator } from '../features/viewer/components/ViewportLoadingIndicator'
 import { STUDY_PANEL_ID } from '../features/viewer/utils/panelIds'
 import { useSlides } from '../hooks/useSlides'
 import { cn } from '../lib/utils'
@@ -114,6 +116,10 @@ function ParametrizedSlideViewer({
   )
   const [derivedDataset, setDerivedDataset] =
     useState<NaturalizedInstance | null>(null)
+  /** Series from the URL that resolved to no slide of this study */
+  const [unresolvedSeriesUID, setUnresolvedSeriesUID] = useState<string | null>(
+    null,
+  )
 
   useEffect(() => {
     const currentSlideMatchesSeries =
@@ -135,6 +141,7 @@ function ParametrizedSlideViewer({
         )
         setSelectedSlide(imageSlide)
         setDerivedDataset(null)
+        setUnresolvedSeriesUID(null)
         if (resolvedSeriesUID !== seriesInstanceUID) {
           console.warn(
             `Corrected mangled series UID in route: "${seriesInstanceUID}" → "${resolvedSeriesUID}"`,
@@ -178,6 +185,7 @@ function ParametrizedSlideViewer({
               if (referencedSlide !== null && referencedSlide !== undefined) {
                 setSelectedSlide(referencedSlide)
                 setDerivedDataset(naturalizedDerivedMetadata)
+                setUnresolvedSeriesUID(null)
                 return
               }
             }
@@ -204,14 +212,20 @@ function ParametrizedSlideViewer({
                 },
               )
             })
-            setSelectedSlide(referencedSlide)
-            setDerivedDataset(naturalizedDerivedMetadata)
+            if (referencedSlide !== undefined) {
+              setSelectedSlide(referencedSlide)
+              setDerivedDataset(naturalizedDerivedMetadata)
+              setUnresolvedSeriesUID(null)
+              return
+            }
           }
+          setUnresolvedSeriesUID(seriesInstanceUID)
         } catch (error) {
           console.warn(
             `Failed to resolve referenced slide for series "${seriesInstanceUID}"`,
             error,
           )
+          setUnresolvedSeriesUID(seriesInstanceUID)
         }
       }
 
@@ -236,7 +250,24 @@ function ParametrizedSlideViewer({
     presentationStateUID = stateParam !== null ? stateParam : undefined
   }
 
-  let viewer = null
+  if (unresolvedSeriesUID === seriesInstanceUID) {
+    return (
+      <ViewerMessage
+        status="warning"
+        title="Series not found"
+        description={
+          `Series ${seriesInstanceUID} is not a slide in this study, and no ` +
+          'slide it refers to could be found. Pick a slide from the list.'
+        }
+      />
+    )
+  }
+
+  let viewer = (
+    <div className="relative h-full w-full bg-viewport">
+      <ViewportLoadingIndicator isVisible label="Loading series" />
+    </div>
+  )
   if (selectedSlide != null && selectedSlide !== undefined) {
     const resolvedSeriesInstanceUID = seriesUidFromSlide(
       selectedSlide,
@@ -282,7 +313,10 @@ interface ViewerProps extends RouteComponentProps {
 
 function Viewer(props: ViewerProps): JSX.Element | null {
   const { clients, studyInstanceUID, location, navigate } = props
-  const { slides, isLoading } = useSlides({ clients, studyInstanceUID })
+  const { slides, isLoading, error, retry } = useSlides({
+    clients,
+    studyInstanceUID,
+  })
   const { setSummary } = useStudySummary()
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true)
   const toggleLeftPanel = useCallback(
@@ -299,6 +333,11 @@ function Viewer(props: ViewerProps): JSX.Element | null {
     setSummary(buildStudySummary(summaryImage))
   }, [summaryImage, setSummary])
   useEffect(() => () => setSummary(null), [setSummary])
+
+  const serverUrl =
+    clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]?.baseURL
+  const serverName =
+    serverUrl != null && serverUrl !== '' ? serverUrl : 'the server'
 
   const handleSeriesSelection = ({
     seriesInstanceUID,
@@ -327,14 +366,34 @@ function Viewer(props: ViewerProps): JSX.Element | null {
     return <ViewerLoadingLayout isLeftPanelOpen={isLeftPanelOpen} />
   }
 
-  if (slides.length === 0) {
-    return null
+  if (error !== null) {
+    return (
+      <ViewerMessage
+        status="error"
+        title="Couldn't load this study"
+        description={
+          `The request to ${serverName} failed. Check that the server is ` +
+          'reachable and that you have access to it, then try again.'
+        }
+        onRetry={retry}
+      />
+    )
   }
 
-  const firstSlide = slides[0]
-  const volumeInstances = firstSlide.volumeImages
+  const volumeInstances = slides[0]?.volumeImages ?? []
   if (volumeInstances.length === 0) {
-    return null
+    return (
+      <ViewerMessage
+        status="warning"
+        title="No slides found"
+        description={
+          `Study ${studyInstanceUID} has no slide microscopy (SM) images on ` +
+          `${serverName}. Check the study UID in the URL, or select the ` +
+          'server that holds this study.'
+        }
+        onRetry={retry}
+      />
+    )
   }
   const refImage = volumeInstances[0]
 
