@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import { loadEnv, normalizePath, type Plugin } from 'vite'
 import { viteStaticCopy } from 'vite-plugin-static-copy'
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 
 import { resolveSlimEnv, slimEnvScript } from './scripts/slimEnv.mjs'
 
@@ -177,6 +177,8 @@ export default defineConfig(({ mode }) => {
       environmentOptions: { jsdom: { url: 'http://localhost/' } },
       globals: true,
       setupFiles: ['src/setupTests.tsx'],
+      /** The website package runs its own tests with node:test */
+      exclude: [...configDefaults.exclude, 'website/**'],
       /** Matches the CRA Jest preset, which reset mocks before each test */
       mockReset: true,
     },

@@ -1,0 +1,229 @@
+/*
+ * Slim v2 design tokens, shared by the app (src/styles/globals.css) and the
+ * website (website/src/styles/site.css). Import after 'tailwindcss'.
+ */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens for utilities. Colours and shadows read the light/dark
+ * variables defined in the base layer below, so `.dark` switches them at
+ * runtime. Custom keys must also be registered in src/lib/utils.ts so
+ * tailwind-merge resolves conflicts between them.
+ */
+@theme {
+  --color-app: rgb(var(--app));
+  --color-panel: rgb(var(--panel));
+  --color-subtle: rgb(var(--subtle));
+  --color-selected: rgb(var(--selected));
+
+  --color-ink: rgb(var(--ink));
+  --color-ink-body: rgb(var(--ink-body));
+  --color-ink-secondary: rgb(var(--ink-secondary));
+  --color-ink-muted: rgb(var(--ink-muted));
+  --color-ink-faint: rgb(var(--ink-faint));
+  --color-ink-fainter: rgb(var(--ink-fainter));
+
+  --color-line: rgb(var(--line));
+  --color-line-soft: rgb(var(--line-soft));
+  --color-line-row: rgb(var(--line-row));
+  --color-line-input: rgb(var(--line-input));
+  --color-line-hover: rgb(var(--line-hover));
+
+  --color-chip: rgb(var(--chip));
+  --color-chip-foreground: rgb(var(--chip-foreground));
+
+  --color-segmented: rgb(var(--segmented));
+  --color-segmented-active: rgb(var(--segmented-active));
+
+  --color-switch-off: rgb(var(--switch-off));
+
+  --color-viewport: rgb(var(--viewport));
+  --color-viewport-fluorescence: rgb(var(--viewport-fluorescence));
+
+  --color-overlay-card: rgb(var(--overlay-card));
+  --color-scrim: rgb(var(--scrim));
+
+  --color-syntax-boolean: rgb(var(--syntax-boolean));
+  --color-syntax-string: rgb(var(--syntax-string));
+
+  --color-ring: rgb(var(--primary));
+  /* Logo tile background; matches public/favicon.svg in both themes */
+  --color-brand: rgb(var(--brand));
+
+  --color-primary: rgb(var(--primary));
+  --color-primary-hover: rgb(var(--primary-hover));
+  --color-primary-soft: rgb(var(--primary-soft));
+  --color-primary-foreground: rgb(var(--primary-foreground));
+
+  --color-destructive: rgb(var(--destructive));
+  --color-destructive-text: rgb(var(--destructive-text));
+  --color-destructive-soft: rgb(var(--destructive-soft));
+  --color-destructive-hover: rgb(var(--destructive-hover));
+  --color-destructive-foreground: rgb(var(--destructive-foreground));
+
+  --color-success: rgb(var(--success));
+
+  --color-warning: rgb(var(--warning));
+  --color-warning-soft: rgb(var(--warning-soft));
+  --color-warning-text: rgb(var(--warning-text));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  /* Cards, menus and option tiles */
+  --radius-card: 10px;
+  /* Icon tiles in dialog headers */
+  --radius-tile: 9px;
+
+  /* Tinted with the segmented track colour, not --shadow-color */
+  --shadow-segmented: 0 1px 2px rgb(var(--segmented));
+  --shadow-tool: 0 1px 2px rgb(var(--shadow-color) / 0.14);
+  --shadow-overlay: 0 2px 8px rgb(var(--shadow-color) / 0.08);
+  --shadow-menu: 0 12px 32px rgb(var(--shadow-color) / 0.14);
+  --shadow-modal: 0 24px 64px rgb(var(--shadow-color) / 0.22);
+  --shadow-selected-ring: 0 0 0 3px rgb(var(--primary) / 0.12);
+
+  --font-sans:
+    'IBM Plex Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono:
+    'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    monospace;
+
+  /*
+   * Design type scale in px; sizes only, line height stays inherited.
+   * `_` stands for the dot in class names: `--text-11_5` is `text-11.5`.
+   */
+  --text-11: 11px;
+  --text-11_5: 11.5px;
+  --text-12: 12px;
+  --text-12_5: 12.5px;
+  --text-13: 13px;
+
+  /* Default control height (buttons, inputs, icon tiles) */
+  --spacing-control: 34px;
+
+  --width-sidebar: 288px;
+  --width-sidebar-right: 320px;
+
+  --height-header: 52px;
+  --height-toolbar: 40px;
+  --height-footer: 28px;
+}
+
+@layer base {
+  /*
+   * Slim v2 design tokens, stored as RGB triplets so plain CSS can add alpha
+   * (`rgb(var(--primary) / 0.08)`); utilities use the `--color-*` theme keys.
+   */
+  :root {
+    --app: 242 244 247; /* #f2f4f7 */
+    --panel: 255 255 255; /* #ffffff */
+    --subtle: 247 249 251; /* #f7f9fb */
+    --selected: 244 247 253; /* #f4f7fd */
+
+    --ink: 15 26 42; /* #0f1a2a */
+    --ink-body: 42 53 70; /* #2a3546 */
+    --ink-secondary: 74 85 102; /* #4a5566 */
+    --ink-muted: 107 118 134; /* #6b7686 */
+    --ink-faint: 138 148 163; /* #8a94a3 */
+    --ink-fainter: 160 169 182; /* #a0a9b6 */
+
+    --line: 228 232 238; /* #e4e8ee */
+    --line-soft: 238 241 245; /* #eef1f5 */
+    --line-row: 240 242 246; /* #f0f2f6 */
+    --line-input: 217 222 230; /* #d9dee6 */
+    --line-hover: 185 199 228; /* #b9c7e4 */
+
+    --chip: 238 242 248; /* #eef2f8 */
+    --chip-foreground: 52 66 90; /* #34425a */
+    --segmented: 233 236 241; /* #e9ecf1 */
+    --segmented-active: 255 255 255; /* #ffffff */
+    --switch-off: 201 208 218; /* #c9d0da */
+
+    --primary: 31 90 209; /* #1f5ad1 */
+    --primary-hover: 23 71 168; /* #1747a8 */
+    --primary-soft: 234 240 252; /* #eaf0fc */
+    --primary-foreground: 255 255 255;
+
+    --success: 31 157 107; /* #1f9d6b */
+    --success-foreground: 255 255 255;
+    --warning: 217 138 31; /* #d98a1f */
+    --warning-soft: 252 241 222; /* #fcf1de */
+    --warning-text: 138 86 12; /* #8a560c */
+    --warning-foreground: 255 255 255;
+    --destructive: 217 69 59; /* #d9453b */
+    --destructive-text: 184 53 44; /* #b8352c */
+    --destructive-soft: 251 233 231; /* #fbe9e7 */
+    --destructive-hover: 253 241 240; /* #fdf1f0 */
+    --destructive-foreground: 255 255 255;
+
+    --viewport: 251 249 250; /* #fbf9fa */
+    --viewport-fluorescence: 11 16 32; /* #0b1020 */
+    --overlay-card: 255 255 255;
+    --scrim: 15 26 42;
+    --stripe-a: 245 247 250; /* #f5f7fa */
+    --stripe-b: 238 241 245; /* #eef1f5 */
+
+    --shadow-color: 15 26 42;
+
+    /* Logo tile; same in both themes, matches public/favicon.svg */
+    --brand: 61 79 107; /* #3d4f6b */
+
+    /* Value colors in the Preferences > Configuration tree */
+    --syntax-boolean: 122 75 209; /* #7a4bd1 */
+    --syntax-string: 29 122 85; /* #1d7a55 */
+
+    --radius: 8px;
+  }
+
+  .dark {
+    --app: 12 17 25; /* #0c1119 */
+    --panel: 21 27 38; /* #151b26 */
+    --subtle: 17 23 34; /* #111722 */
+    --selected: 24 35 58; /* #18233a */
+
+    --ink: 232 237 245; /* #e8edf5 */
+    --ink-body: 201 210 223; /* #c9d2df */
+    --ink-secondary: 167 177 194; /* #a7b1c2 */
+    --ink-muted: 139 151 170; /* #8b97aa */
+    --ink-faint: 111 123 142; /* #6f7b8e */
+    --ink-fainter: 93 104 120; /* #5d6878 */
+
+    --line: 38 48 65; /* #263041 */
+    --line-soft: 29 37 50; /* #1d2532 */
+    --line-row: 29 37 50; /* #1d2532 */
+    --line-input: 52 64 84; /* #344054 */
+    --line-hover: 59 79 117; /* #3b4f75 */
+
+    --chip: 31 40 56; /* #1f2838 */
+    --chip-foreground: 201 210 223; /* #c9d2df */
+    --segmented: 34 43 58; /* #222b3a */
+    --segmented-active: 38 48 65; /* #263041 */
+    --switch-off: 52 64 84; /* #344054 */
+
+    --primary: 74 134 245; /* #4a86f5 */
+    --primary-hover: 120 166 255; /* #78a6ff */
+    --primary-soft: 23 40 74; /* #17284a */
+    --primary-foreground: 255 255 255;
+
+    --warning-soft: 58 42 18;
+    --warning-text: 240 180 90;
+    --destructive-text: 240 120 110;
+    --destructive-soft: 60 26 26;
+    --destructive-hover: 44 24 28;
+
+    --viewport: 10 14 21; /* #0a0e15 */
+    --viewport-fluorescence: 5 7 11; /* #05070b */
+    --overlay-card: 21 27 38;
+    --scrim: 0 0 0;
+    --stripe-a: 24 31 43;
+    --stripe-b: 29 37 50;
+
+    --shadow-color: 0 0 0;
+
+    --syntax-boolean: 169 139 240; /* #a98bf0 */
+    --syntax-string: 79 195 154; /* #4fc39a */
+  }
+}
