@@ -139,7 +139,7 @@ export function Header({
     <>
       <header className="flex h-header flex-none items-center gap-4 border-b border-line bg-panel pl-5 pr-3">
         <div className="flex flex-none items-center gap-2.5">
-          <div className="h-7 w-7 overflow-hidden rounded-[7px] bg-primary text-primary-foreground">
+          <div className="h-7 w-7 overflow-hidden rounded-[7px] bg-brand text-white">
             <SlimLogoMark className="h-full w-full" />
           </div>
           <div className="text-[15px] font-semibold leading-none tracking-[-0.01em] text-ink">

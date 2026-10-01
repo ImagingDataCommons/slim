@@ -51,6 +51,8 @@ module.exports = {
         ring: token('ring'),
         background: token('background'),
         foreground: token('foreground'),
+        /** Logo tile background; matches public/favicon.svg in both themes */
+        brand: '#3d4f6b',
         primary: {
           DEFAULT: token('primary'),
           hover: token('primary-hover'),

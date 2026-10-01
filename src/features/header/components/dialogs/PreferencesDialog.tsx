@@ -437,7 +437,7 @@ function AboutTab({
     <div className="min-h-0 min-w-0 flex-1 overflow-auto">
       <div className="mx-auto flex max-w-[640px] flex-col gap-5 px-6 py-6">
         <div className="flex items-center gap-4 rounded-xl border border-line bg-gradient-to-br from-primary-soft to-panel p-5">
-          <div className="h-14 w-14 flex-none overflow-hidden rounded-2xl bg-primary text-primary-foreground shadow-[0_6px_16px_-6px_rgb(var(--primary)/0.6)]">
+          <div className="h-14 w-14 flex-none overflow-hidden rounded-2xl bg-brand text-white shadow-[0_6px_16px_-6px_rgb(61_79_107/0.6)]">
             <SlimLogoMark className="h-full w-full" />
           </div>
           <div className="min-w-0 flex-1">
