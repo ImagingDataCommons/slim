@@ -2,6 +2,10 @@
 
 export type MemoryWarningLevel = 'none' | 'high' | 'critical'
 
+/** Usage strictly above these shares of the heap limit (%) raises the level. */
+export const HIGH_MEMORY_USAGE_PERCENT = 80
+export const CRITICAL_MEMORY_USAGE_PERCENT = 90
+
 export interface MemoryWarningState {
   level: MemoryWarningLevel
   lastCriticalAt: number

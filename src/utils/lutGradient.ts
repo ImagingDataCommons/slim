@@ -1,4 +1,4 @@
-import { rgbToHex } from './segmentColors'
+import { rgbToHex } from './color'
 
 export type LutLike = number[][] | { data: number[][] }
 

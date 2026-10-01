@@ -1,4 +1,4 @@
-// React required at runtime for JSX (classic transform)
+/** React required at runtime for JSX (classic transform) */
 // biome-ignore lint/style/useImportType: see above
 import React from 'react'
 import {

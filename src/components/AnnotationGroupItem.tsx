@@ -16,10 +16,9 @@ import {
   isFillableGraphicType,
 } from '../utils/annotationGroup'
 import { measurementOptionToConcept } from '../utils/annotationGroupMeasurement'
-import { toRGB } from '../utils/color'
+import { rgbToHex, toRGB } from '../utils/color'
 import { formatGroupedNumber } from '../utils/displayFormat'
 import { toKeyValueItems } from '../utils/keyValue'
-import { rgbToHex } from '../utils/segmentColors'
 import { areLayerItemPropsEqual } from '../utils/styleEquality'
 import ColorSlider from './ColorSlider'
 import OpacitySlider from './OpacitySlider'

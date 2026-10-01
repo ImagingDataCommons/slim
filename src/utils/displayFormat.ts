@@ -3,6 +3,10 @@
  * "Whitfield, Margaret A." and space-grouped numbers ("18 402").
  */
 
+import { formatCodedConceptSequence } from './dicom/codedConcept'
+import { parseDicomDateParts } from './dicom/datetime'
+import { getAlphabeticName, type PersonNameValue } from './dicom/personName'
+
 const MONTHS = [
   'Jan',
   'Feb',
@@ -18,16 +22,17 @@ const MONTHS = [
   'Dec',
 ]
 
-/** DICOM DA (YYYYMMDD, optionally with separators) → "12 Sep 2026". */
+/**
+ * DICOM DA (YYYYMMDD, optionally with separators) → "12 Sep 2026". Only the
+ * first eight digits are read, so DT values format as their date.
+ */
 export function formatDisplayDate(value: string | null | undefined): string {
   if (value === null || value === undefined) return ''
-  const digits = value.replace(/[^0-9]/g, '')
-  if (digits.length < 8) return value.trim()
-  const year = digits.substring(0, 4)
-  const month = Number(digits.substring(4, 6))
-  const day = Number(digits.substring(6, 8))
-  if (month < 1 || month > 12 || day < 1 || day > 31) return value.trim()
-  return `${String(day).padStart(2, '0')} ${MONTHS[month - 1]} ${year}`
+  const parts = parseDicomDateParts(
+    value.replace(/[^0-9]/g, '').substring(0, 8),
+  )
+  if (parts === null) return value.trim()
+  return `${String(parts.day).padStart(2, '0')} ${MONTHS[parts.month - 1]} ${parts.year}`
 }
 
 /** DICOM TM (HHMMSS.frac, optionally with colons) → "09:42". */
@@ -38,28 +43,13 @@ export function formatDisplayTime(value: string | null | undefined): string {
   return `${digits.substring(0, 2)}:${digits.substring(2, 4)}`
 }
 
-export type PersonNameValue =
-  | string
-  | { Alphabetic?: string }
-  | Array<{ Alphabetic?: string } | string>
-  | null
-  | undefined
-
 /**
  * DICOM PN → "Family, Given M." — middle names are shortened to initials;
  * prefix/suffix components are kept around the name.
  */
 export function formatPersonName(value: PersonNameValue): string {
-  let alphabetic: string | undefined
-  if (typeof value === 'string') {
-    alphabetic = value
-  } else if (Array.isArray(value)) {
-    const first = value[0]
-    alphabetic = typeof first === 'string' ? first : first?.Alphabetic
-  } else if (value !== null && value !== undefined) {
-    alphabetic = value.Alphabetic
-  }
-  if (alphabetic === undefined || alphabetic.trim() === '') return ''
+  const alphabetic = getAlphabeticName(value)
+  if (alphabetic.trim() === '') return ''
   const [family = '', given = '', middle = '', prefix = '', suffix = ''] =
     alphabetic.split('^').map((part) => part.trim())
   const middleInitials = middle
@@ -143,4 +133,83 @@ export function formatSex(value: string | null | undefined): string {
   if (value === null || value === undefined) return ''
   const lookup: Record<string, string> = { F: 'Female', M: 'Male', O: 'Other' }
   return lookup[value.trim().toUpperCase()] ?? value
+}
+
+/** Multi-valued DICOM attribute (e.g. SoftwareVersions) as "a, b"; empty if absent. */
+export function formatMultiValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => formatMultiValue(item))
+      .filter((item) => item !== '')
+      .join(', ')
+  }
+  if (typeof value === 'string') {
+    return value
+      .split('\\')
+      .map((item) => item.trim())
+      .filter((item) => item !== '')
+      .join(', ')
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value)
+  }
+  return ''
+}
+
+/** (00102202) PatientSpeciesCodeSequence — meanings only; undefined if absent or empty. */
+export function formatPatientSpeciesCodeSequence(
+  sequence: unknown,
+): string | undefined {
+  const text = formatCodedConceptSequence(sequence)
+  return text !== '' ? text : undefined
+}
+
+function firstNonEmpty<T>(
+  metadata: Record<string, unknown>,
+  keys: readonly string[],
+  read: (value: unknown) => T | undefined,
+): T | undefined {
+  for (const key of keys) {
+    const value = read(metadata[key])
+    if (value !== undefined) return value
+  }
+  return undefined
+}
+
+/**
+ * (0008,1080) LO + (0008,1084) SQ (standard keywords use plural "Diagnoses").
+ * Also accepts singular / legacy keys (e.g. dcmjs) for interoperability.
+ */
+export function formatAdmittingDiagnoses(
+  metadata: Record<string, unknown>,
+): string | undefined {
+  const description =
+    firstNonEmpty(
+      metadata,
+      ['AdmittingDiagnosesDescription', 'AdmittingDiagnosisDescription'],
+      (value): string | undefined =>
+        typeof value === 'string' && value.trim() !== ''
+          ? value.trim()
+          : undefined,
+    ) ?? ''
+  const sequence = firstNonEmpty(
+    metadata,
+    [
+      'AdmittingDiagnosesCodeSequence',
+      'AdmittingDiagnosisCodeSequence',
+      'AdmittingDiagnosisCodeSeq',
+    ],
+    (value): unknown[] | undefined =>
+      Array.isArray(value) && value.length > 0 ? value : undefined,
+  )
+  const codes = formatCodedConceptSequence(sequence)
+
+  if (description !== '' && codes !== '') {
+    return description.toLowerCase() === codes.toLowerCase()
+      ? description
+      : `${description}; ${codes}`
+  }
+  if (description !== '') return description
+  if (codes !== '') return codes
+  return undefined
 }

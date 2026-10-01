@@ -1,5 +1,5 @@
+import { rgbToHex } from './color'
 import { type LutLike, lutToCssGradient } from './lutGradient'
-import { rgbToHex } from './segmentColors'
 
 export interface OpticalPathLike {
   identifier: string

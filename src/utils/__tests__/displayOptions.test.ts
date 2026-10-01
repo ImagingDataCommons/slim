@@ -40,21 +40,16 @@ describe('buildOpticalPathDisplayOptions', () => {
 })
 
 describe('buildSegmentDisplayOptions', () => {
-  it('lists clustering only when provided', () => {
-    expect(
-      buildSegmentDisplayOptions({ interpolationEnabled: true }).map(
-        (option) => option.id,
-      ),
-    ).toEqual(['interpolation'])
-    expect(
-      buildSegmentDisplayOptions({
-        interpolationEnabled: false,
-        clusteringEnabled: true,
-      }).map((option) => [option.id, option.enabled]),
-    ).toEqual([
-      ['clustering', true],
-      ['interpolation', false],
-    ])
+  it('builds the interpolation option only', () => {
+    expect(buildSegmentDisplayOptions({ interpolationEnabled: false })).toEqual(
+      [
+        expect.objectContaining({
+          id: 'interpolation',
+          shortLabel: 'Interp.',
+          enabled: false,
+        }),
+      ],
+    )
   })
 })
 

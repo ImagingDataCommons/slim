@@ -1,4 +1,8 @@
 import { logger } from '../utils/logger'
+import {
+  CRITICAL_MEMORY_USAGE_PERCENT,
+  HIGH_MEMORY_USAGE_PERCENT,
+} from '../utils/memoryWarning'
 
 interface MemoryMeasureUserAgentSpecificMemoryResult {
   bytes: number
@@ -90,8 +94,6 @@ class MemoryMonitor {
   private monitoringActive: boolean = false
   private readonly updateInterval: number = 5000
   private lastMeasurement: MemoryInfo | null = null
-  private readonly highUsageThreshold = 0.8
-  private readonly criticalUsageThreshold = 0.9
 
   /**
    * Check if modern memory API is available
@@ -167,8 +169,8 @@ class MemoryMonitor {
       totalJSHeapSize: bytes,
       usagePercentage: Math.min(usagePercentage, 100),
       remainingBytes: Math.max(0, jsHeapSizeLimit - bytes),
-      isHighUsage: usagePercentage > this.highUsageThreshold * 100,
-      isCriticalUsage: usagePercentage > this.criticalUsageThreshold * 100,
+      isHighUsage: usagePercentage > HIGH_MEMORY_USAGE_PERCENT,
+      isCriticalUsage: usagePercentage > CRITICAL_MEMORY_USAGE_PERCENT,
       apiMethod: 'modern',
       timestamp: Date.now(),
     }
@@ -195,8 +197,8 @@ class MemoryMonitor {
       totalJSHeapSize,
       usagePercentage,
       remainingBytes: Math.max(0, remainingBytes),
-      isHighUsage: usagePercentage > this.highUsageThreshold * 100,
-      isCriticalUsage: usagePercentage > this.criticalUsageThreshold * 100,
+      isHighUsage: usagePercentage > HIGH_MEMORY_USAGE_PERCENT,
+      isCriticalUsage: usagePercentage > CRITICAL_MEMORY_USAGE_PERCENT,
       apiMethod: 'chrome',
       timestamp: Date.now(),
     }

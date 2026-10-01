@@ -1,27 +1,19 @@
 import type { DisplayOptionDescriptor } from '../displayOptions'
 import {
   bindDisplayOptions,
-  isDisplayOptionId,
   summarizeDisplayOptions,
 } from '../displayOptionsBinding'
 
+type Id = 'icc' | 'gamma'
+
 const descriptor = (
-  overrides: Partial<DisplayOptionDescriptor>,
-): DisplayOptionDescriptor => ({
+  overrides: Partial<DisplayOptionDescriptor<Id>>,
+): DisplayOptionDescriptor<Id> => ({
   id: 'icc',
   label: 'ICC profiles',
   description: '',
   enabled: false,
   ...overrides,
-})
-
-describe('isDisplayOptionId', () => {
-  it('accepts known ids only', () => {
-    expect(isDisplayOptionId('icc')).toBe(true)
-    expect(isDisplayOptionId('interpolation')).toBe(true)
-    expect(isDisplayOptionId('ICC')).toBe(false)
-    expect(isDisplayOptionId('')).toBe(false)
-  })
 })
 
 describe('bindDisplayOptions', () => {
@@ -62,16 +54,15 @@ describe('bindDisplayOptions', () => {
     expect(settings).toEqual({ iccProfileEnabled: false, gammaEnabled: true })
   })
 
-  it('ignores toggles of unmapped or unknown ids', () => {
+  it('ignores toggles of unmapped ids', () => {
     const onChange = jest.fn()
-    const options = bindDisplayOptions(
-      [descriptor({ id: 'gamma' }), descriptor({ id: 'unknown' })],
+    const [option] = bindDisplayOptions(
+      [descriptor({ id: 'gamma' })],
       settings,
       { icc: 'iccProfileEnabled' },
       onChange,
     )
-    options[0].onChange(true)
-    options[1].onChange(true)
+    option.onChange(true)
     expect(onChange).not.toHaveBeenCalled()
   })
 })
@@ -84,5 +75,11 @@ describe('summarizeDisplayOptions', () => {
         descriptor({ id: 'gamma', label: 'Gamma correction' }),
       ]),
     ).toBe('ICC on · Gamma correction off')
+  })
+
+  it('marks disabled options as unavailable', () => {
+    expect(
+      summarizeDisplayOptions([descriptor({ label: 'ICC', disabled: true })]),
+    ).toBe('ICC n/a')
   })
 })

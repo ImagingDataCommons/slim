@@ -1,8 +1,11 @@
 import {
   buildStudySummary,
+  formatAdmittingDiagnoses,
   formatDisplayDate,
   formatDisplayTime,
   formatGroupedNumber,
+  formatMultiValue,
+  formatPatientSpeciesCodeSequence,
   formatPersonName,
   formatSex,
   formatStudyDateTime,
@@ -63,6 +66,15 @@ describe('formatDisplayDate', () => {
     expect(formatDisplayDate(' 2026 ')).toBe('2026')
     expect(formatDisplayDate('20261301')).toBe('20261301')
     expect(formatDisplayDate('20260900')).toBe('20260900')
+  })
+
+  it('rejects impossible calendar dates', () => {
+    expect(formatDisplayDate('20260231')).toBe('20260231')
+  })
+
+  it('formats the date part of DICOM DT values', () => {
+    expect(formatDisplayDate('20260912094215')).toBe('12 Sep 2026')
+    expect(formatDisplayDate('2026.09.12')).toBe('12 Sep 2026')
   })
 
   it('returns an empty string for missing values', () => {
@@ -136,5 +148,99 @@ describe('formatSex', () => {
   it('returns unknown codes unchanged', () => {
     expect(formatSex('X')).toBe('X')
     expect(formatSex(undefined)).toBe('')
+  })
+})
+
+describe('formatMultiValue', () => {
+  it('joins arrays', () => {
+    expect(formatMultiValue(['1.0', '2.3'])).toBe('1.0, 2.3')
+  })
+
+  it('splits backslash-delimited strings', () => {
+    expect(formatMultiValue('1.0\\ 2.3 ')).toBe('1.0, 2.3')
+    expect(formatMultiValue('Scanner 4')).toBe('Scanner 4')
+  })
+
+  it('stringifies scalars and drops empty items', () => {
+    expect(formatMultiValue(3)).toBe('3')
+    expect(formatMultiValue(true)).toBe('true')
+    expect(formatMultiValue(['', null, 'a'])).toBe('a')
+  })
+
+  it('returns an empty string for missing or object values', () => {
+    expect(formatMultiValue(undefined)).toBe('')
+    expect(formatMultiValue(null)).toBe('')
+    expect(formatMultiValue({ a: 1 })).toBe('')
+  })
+})
+
+describe('formatPatientSpeciesCodeSequence', () => {
+  it('lists unique species meanings', () => {
+    expect(
+      formatPatientSpeciesCodeSequence([
+        { CodeMeaning: 'Homo sapiens' },
+        { CodeMeaning: 'homo sapiens' },
+        { CodeMeaning: 'Mus musculus' },
+      ]),
+    ).toBe('Homo sapiens, Mus musculus')
+  })
+
+  it('returns undefined when nothing displayable is present', () => {
+    expect(formatPatientSpeciesCodeSequence(undefined)).toBeUndefined()
+    expect(formatPatientSpeciesCodeSequence([])).toBeUndefined()
+    expect(
+      formatPatientSpeciesCodeSequence([
+        { CodingSchemeDesignator: 'SCT', CodeValue: '337915000' },
+      ]),
+    ).toBeUndefined()
+  })
+})
+
+describe('formatAdmittingDiagnoses', () => {
+  const carcinoma = { CodeMeaning: 'Carcinoma' }
+
+  it('combines the description and the coded diagnoses', () => {
+    expect(
+      formatAdmittingDiagnoses({
+        AdmittingDiagnosesDescription: ' Suspected tumor ',
+        AdmittingDiagnosesCodeSequence: [carcinoma, { CodeMeaning: 'Adenoma' }],
+      }),
+    ).toBe('Suspected tumor; Carcinoma, Adenoma')
+  })
+
+  it('shows the description once when the codes repeat it', () => {
+    expect(
+      formatAdmittingDiagnoses({
+        AdmittingDiagnosesDescription: 'carcinoma',
+        AdmittingDiagnosesCodeSequence: [carcinoma],
+      }),
+    ).toBe('carcinoma')
+  })
+
+  it('accepts singular and legacy keywords', () => {
+    expect(
+      formatAdmittingDiagnoses({ AdmittingDiagnosisDescription: 'Biopsy' }),
+    ).toBe('Biopsy')
+    expect(
+      formatAdmittingDiagnoses({ AdmittingDiagnosisCodeSeq: [carcinoma] }),
+    ).toBe('Carcinoma')
+  })
+
+  it('skips blank descriptions and empty sequences', () => {
+    expect(
+      formatAdmittingDiagnoses({
+        AdmittingDiagnosesDescription: '  ',
+        AdmittingDiagnosisDescription: 'Biopsy',
+        AdmittingDiagnosesCodeSequence: [],
+        AdmittingDiagnosisCodeSequence: [carcinoma],
+      }),
+    ).toBe('Biopsy; Carcinoma')
+  })
+
+  it('returns undefined without description or codes', () => {
+    expect(formatAdmittingDiagnoses({})).toBeUndefined()
+    expect(
+      formatAdmittingDiagnoses({ AdmittingDiagnosesCodeSequence: [{}] }),
+    ).toBeUndefined()
   })
 })

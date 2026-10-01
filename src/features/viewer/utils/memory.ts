@@ -1,10 +1,10 @@
 /** Memory readout helpers for the viewer footer. */
 
-import type { MemoryWarningLevel } from '../../../utils/memoryWarning'
-
-/** Same thresholds as `MemoryMonitor` (usage strictly above them). */
-export const HIGH_MEMORY_USAGE_PERCENT = 80
-export const CRITICAL_MEMORY_USAGE_PERCENT = 90
+import {
+  CRITICAL_MEMORY_USAGE_PERCENT,
+  HIGH_MEMORY_USAGE_PERCENT,
+  type MemoryWarningLevel,
+} from '../../../utils/memoryWarning'
 
 const BYTES_PER_GB = 1024 ** 3
 

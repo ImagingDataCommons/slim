@@ -51,11 +51,51 @@ describe('mapWithConcurrency', () => {
     await expect(run).resolves.toEqual([0, 1, 2])
   })
 
-  it('handles empty input and invalid limits', async () => {
+  it('handles empty input', async () => {
     await expect(mapWithConcurrency([], 6, async () => 1)).resolves.toEqual([])
-    await expect(
-      mapWithConcurrency([1, 2], 0, async (value) => value),
-    ).resolves.toEqual([1, 2])
+  })
+
+  async function peakConcurrency(limit: number): Promise<{
+    results: number[]
+    peak: number
+  }> {
+    let active = 0
+    let peak = 0
+    const results = await mapWithConcurrency([1, 2, 3, 4], limit, async (v) => {
+      active += 1
+      peak = Math.max(peak, active)
+      await Promise.resolve()
+      active -= 1
+      return v * 10
+    })
+    return { results, peak }
+  }
+
+  it.each([
+    ['zero', 0],
+    ['negative', -3],
+    ['fractional below 1', 0.5],
+    ['NaN', Number.NaN],
+    ['-Infinity', Number.NEGATIVE_INFINITY],
+  ])('runs serially for a %s limit', async (_label, limit) => {
+    await expect(peakConcurrency(limit)).resolves.toEqual({
+      results: [10, 20, 30, 40],
+      peak: 1,
+    })
+  })
+
+  it('floors fractional limits', async () => {
+    await expect(peakConcurrency(2.9)).resolves.toEqual({
+      results: [10, 20, 30, 40],
+      peak: 2,
+    })
+  })
+
+  it('runs everything at once for an infinite limit', async () => {
+    await expect(peakConcurrency(Number.POSITIVE_INFINITY)).resolves.toEqual({
+      results: [10, 20, 30, 40],
+      peak: 4,
+    })
   })
 
   it('rejects when a mapper rejects', async () => {

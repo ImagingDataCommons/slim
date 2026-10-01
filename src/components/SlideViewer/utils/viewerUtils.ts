@@ -1,8 +1,8 @@
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import * as dcmjs from 'dcmjs'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import * as dmv from 'dicom-microscopy-viewer'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dwc from 'dicomweb-client'
 import type { Slide } from '../../../data/slides'
 import { StorageClasses } from '../../../data/uids'
@@ -10,8 +10,38 @@ import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../../../services/NotificationMiddleware'
 import { CustomError, errorTypes } from '../../../utils/CustomError'
+import {
+  type CodedConceptLike,
+  isSameCodedConcept,
+} from '../../../utils/dicom/codedConcept'
 import { logger } from '../../../utils/logger'
 import { findContentItemsByName } from '../../../utils/sr'
+
+const DCM = 'DCM'
+const SUBJECT_CLASS: CodedConceptLike = {
+  CodeValue: '121024',
+  CodingSchemeDesignator: DCM,
+}
+const SPECIMEN: CodedConceptLike = {
+  CodeValue: '121027',
+  CodingSchemeDesignator: DCM,
+}
+const IMAGING_MEASUREMENTS: CodedConceptLike = {
+  CodeValue: '126010',
+  CodingSchemeDesignator: DCM,
+}
+const MEASUREMENT_GROUP: CodedConceptLike = {
+  CodeValue: '125007',
+  CodingSchemeDesignator: DCM,
+}
+const IMAGE_REGION: CodedConceptLike = {
+  CodeValue: '111030',
+  CodingSchemeDesignator: DCM,
+}
+
+const reportDmvError = (error: CustomError): void => {
+  NotificationMiddleware.onError(NotificationMiddlewareContext.DMV, error)
+}
 
 /**
  * Constructs volume and label viewers for the slide
@@ -23,7 +53,7 @@ export const constructViewers = ({
   clusteringPixelSizeThreshold,
 }: {
   clients: { [key: string]: dwc.api.DICOMwebClient }
-  slide: Slide
+  slide: Pick<Slide, 'volumeImages' | 'labelImages'>
   preload?: boolean
   clusteringPixelSizeThreshold?: number
 }): {
@@ -52,9 +82,7 @@ export const constructViewers = ({
         clusteringPixelSizeThreshold !== undefined
           ? { clusteringPixelSizeThreshold }
           : undefined,
-      errorInterceptor: (error: CustomError) => {
-        NotificationMiddleware.onError(NotificationMiddlewareContext.DMV, error)
-      },
+      errorInterceptor: reportDmvError,
     })
     volumeViewer.activateSelectInteraction({})
 
@@ -69,12 +97,7 @@ export const constructViewers = ({
         metadata: slide.labelImages[0],
         resizeFactor: 1,
         orientation: 'vertical',
-        errorInterceptor: (error: CustomError) => {
-          NotificationMiddleware.onError(
-            NotificationMiddlewareContext.DMV,
-            error,
-          )
-        },
+        errorInterceptor: reportDmvError,
       })
     }
 
@@ -92,94 +115,44 @@ export const constructViewers = ({
  * Checks if a report implements TID1500
  */
 export const implementsTID1500 = (
-  report: dmv.metadata.Comprehensive3DSR,
-): boolean => {
-  const templateSeq = report.ContentTemplateSequence
-  if (templateSeq.length > 0) {
-    const tid = templateSeq[0].TemplateIdentifier
-    if (tid === '1500') {
-      return true
-    }
-  }
-  return false
-}
+  report: Pick<dmv.metadata.Comprehensive3DSR, 'ContentTemplateSequence'>,
+): boolean => report.ContentTemplateSequence[0]?.TemplateIdentifier === '1500'
 
 /**
  * Checks if a report describes a specimen subject
  */
 export const describesSpecimenSubject = (
-  report: dmv.metadata.Comprehensive3DSR,
+  report: Pick<dmv.metadata.Comprehensive3DSR, 'ContentSequence'>,
 ): boolean => {
-  const items = findContentItemsByName({
+  const [subjectClass] = findContentItemsByName({
     content: report.ContentSequence,
-    name: new dcmjs.sr.coding.CodedConcept({
-      value: '121024',
-      schemeDesignator: 'DCM',
-      meaning: 'Subject Class',
-    }),
+    name: SUBJECT_CLASS,
   })
-  if (items.length === 0) {
-    return false
-  }
-  const subjectClassItem = items[0] as dcmjs.sr.valueTypes.CodeContentItem
-  const subjectClassValue = subjectClassItem.ConceptCodeSequence[0]
-  const retrievedConcept = new dcmjs.sr.coding.CodedConcept({
-    value: subjectClassValue.CodeValue,
-    meaning: subjectClassValue.CodeMeaning,
-    schemeDesignator: subjectClassValue.CodingSchemeDesignator,
-  })
-  const expectedConcept = new dcmjs.sr.coding.CodedConcept({
-    value: '121027',
-    meaning: 'Specimen',
-    schemeDesignator: 'DCM',
-  })
-  return retrievedConcept.equals(expectedConcept)
+  if (subjectClass === undefined) return false
+  const value = (subjectClass as dcmjs.sr.valueTypes.CodeContentItem)
+    .ConceptCodeSequence?.[0]
+  return value !== undefined && isSameCodedConcept(value, SPECIMEN)
 }
 
 /**
  * Checks if a report contains appropriate graphic ROI annotations.
  */
 export const containsROIAnnotations = (
-  report: dmv.metadata.Comprehensive3DSR,
+  report: Pick<dmv.metadata.Comprehensive3DSR, 'ContentSequence'>,
 ): boolean => {
-  const measurements = findContentItemsByName({
+  const [measurements] = findContentItemsByName({
     content: report.ContentSequence,
-    name: new dcmjs.sr.coding.CodedConcept({
-      value: '126010',
-      schemeDesignator: 'DCM',
-      meaning: 'Imaging Measurements',
-    }),
+    name: IMAGING_MEASUREMENTS,
   })
-  if (measurements.length === 0) {
-    return false
-  }
-  const container = measurements[0] as dcmjs.sr.valueTypes.ContainerContentItem
-  const measurementGroups = findContentItemsByName({
-    content: container.ContentSequence,
-    name: new dcmjs.sr.coding.CodedConcept({
-      value: '125007',
-      schemeDesignator: 'DCM',
-      meaning: 'Measurement Group',
-    }),
-  })
-
-  let foundRegion = false
-  measurementGroups.forEach((group) => {
-    const container = group as dcmjs.sr.valueTypes.ContainerContentItem
-    const regions = findContentItemsByName({
-      content: container.ContentSequence,
-      name: new dcmjs.sr.coding.CodedConcept({
-        value: '111030',
-        schemeDesignator: 'DCM',
-        meaning: 'Image Region',
-      }),
+  if (measurements === undefined) return false
+  return findContentItemsByName({
+    content: measurements.ContentSequence ?? [],
+    name: MEASUREMENT_GROUP,
+  }).some((group) => {
+    const [region] = findContentItemsByName({
+      content: group.ContentSequence ?? [],
+      name: IMAGE_REGION,
     })
-    if (regions.length > 0) {
-      if (regions[0].ValueType === dcmjs.sr.valueTypes.ValueTypes.SCOORD3D) {
-        foundRegion = true
-      }
-    }
+    return region?.ValueType === dcmjs.sr.valueTypes.ValueTypes.SCOORD3D
   })
-
-  return foundRegion
 }

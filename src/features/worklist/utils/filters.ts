@@ -3,12 +3,12 @@
  * No side effects - suitable for unit testing.
  */
 
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 
-import { parseDicomDate } from '../../../utils/dicomDate'
+import { parseDicomDate } from '../../../utils/dicom/datetime'
+import { formatRawPersonName } from '../../../utils/dicom/personName'
 import { formatPersonName } from '../../../utils/displayFormat'
-import { formatRawPersonName } from '../../../utils/personName'
 import { normalizeModalities } from './studyFields'
 
 export { parseDicomDate }

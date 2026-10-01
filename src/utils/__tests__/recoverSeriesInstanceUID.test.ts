@@ -20,7 +20,7 @@ describe('recoverSeriesInstanceUID', () => {
   })
 
   it('stops stripping at the first existing UID', () => {
-    // "...2.0.0" → "...2.0" exists in candidates, do not strip further to "...2"
+    /** "...2.0.0" → "...2.0" exists in candidates, do not strip further to "...2" */
     expect(recoverSeriesInstanceUID(`${uids[0]}.0.0`, uids)).toBe(uids[1])
   })
 

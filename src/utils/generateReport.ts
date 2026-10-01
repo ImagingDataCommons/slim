@@ -24,13 +24,13 @@ const generateReport = ({
   isReportModalVisible: boolean
   generatedReport: dmv.metadata.Comprehensive3DSR
 } => {
-  // Metadata should be sorted such that the image with the highest
-  // resolution is the last item in the array.
+  /** Metadata is sorted so that the highest resolution image comes last */
   const refImage = metadata[metadata.length - 1]
-  // We assume that there is only one specimen (tissue section) per
-  // ontainer (slide). Only the tissue section is tracked with a unique
-  // identifier, even if the section may be composed of different biological
-  // samples.
+  /**
+   * Only one specimen (tissue section) per container (slide) is supported;
+   * the section is tracked with a single identifier even if it is composed
+   * of different biological samples.
+   */
   if ((refImage.SpecimenDescriptionSequence?.length ?? 0) > 1) {
     NotificationMiddleware.onError(
       NotificationMiddlewareContext.SLIM,
@@ -179,7 +179,7 @@ const generateReport = ({
     sopInstanceUID: data.DicomMetaDictionary.uid(),
     instanceNumber: 1,
     manufacturer: 'MGH Computational Pathology',
-    previousVersions: undefined, // TODO
+    previousVersions: undefined,
   })
 
   return {

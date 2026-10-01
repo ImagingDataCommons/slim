@@ -1,5 +1,5 @@
-export interface DisplayOptionDescriptor {
-  id: string
+export interface DisplayOptionDescriptor<Id extends string = string> {
+  id: Id
   label: string
   /** Short label used in the collapsed summary, e.g. "ICC" or "Interp." */
   shortLabel?: string
@@ -20,7 +20,7 @@ export function buildOpticalPathDisplayOptions(settings: {
   iccProfileEnabled: boolean
   gammaEnabled: boolean
   hasIccProfiles?: boolean
-}): DisplayOptionDescriptor[] {
+}): Array<DisplayOptionDescriptor<'icc' | 'gamma'>> {
   const hasNoIccProfiles = settings.hasIccProfiles === false
   return [
     {
@@ -43,33 +43,23 @@ export function buildOpticalPathDisplayOptions(settings: {
   ]
 }
 
-/** Clustering is only listed when the caller still provides it */
 export function buildSegmentDisplayOptions(settings: {
   interpolationEnabled: boolean
-  clusteringEnabled?: boolean
-}): DisplayOptionDescriptor[] {
-  const options: DisplayOptionDescriptor[] = []
-  if (settings.clusteringEnabled !== undefined) {
-    options.push({
-      id: 'clustering',
-      label: 'Clustering',
-      description: 'Group dense segments at low zoom.',
-      enabled: settings.clusteringEnabled,
-    })
-  }
-  options.push({
-    id: 'interpolation',
-    label: 'Segment interpolation',
-    shortLabel: 'Interp.',
-    description: 'Smooth segment edges when zoomed in.',
-    enabled: settings.interpolationEnabled,
-  })
-  return options
+}): Array<DisplayOptionDescriptor<'interpolation'>> {
+  return [
+    {
+      id: 'interpolation',
+      label: 'Segment interpolation',
+      shortLabel: 'Interp.',
+      description: 'Smooth segment edges when zoomed in.',
+      enabled: settings.interpolationEnabled,
+    },
+  ]
 }
 
 export function buildMappingDisplayOptions(settings: {
   interpolationEnabled: boolean
-}): DisplayOptionDescriptor[] {
+}): Array<DisplayOptionDescriptor<'interpolation'>> {
   return [
     {
       id: 'interpolation',
@@ -83,7 +73,7 @@ export function buildMappingDisplayOptions(settings: {
 
 export function buildAnnotationGroupDisplayOptions(settings: {
   clusteringEnabled: boolean
-}): DisplayOptionDescriptor[] {
+}): Array<DisplayOptionDescriptor<'clustering'>> {
   return [
     {
       id: 'clustering',

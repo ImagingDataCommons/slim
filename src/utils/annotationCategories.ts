@@ -1,3 +1,4 @@
+import { type CodedConceptLike, codedConceptKey } from './dicom/codedConcept'
 import { getVisibilityState, type VisibilityState } from './visibility'
 
 export interface Type {
@@ -25,17 +26,14 @@ type CategoryWithTypesRecord = Omit<Category, 'types'> & {
 }
 
 /** `SCHEME:VALUE`, falling back to the meaning for uncoded concepts */
-export function getConceptKey(concept: {
-  CodeValue?: string
-  CodingSchemeDesignator?: string
-  CodeMeaning?: string
-}): string {
-  const value = concept.CodeValue ?? ''
-  const scheme = concept.CodingSchemeDesignator ?? ''
-  if (value === '' && scheme === '') {
+export function getConceptKey(concept: CodedConceptLike): string {
+  if (
+    (concept.CodeValue ?? '') === '' &&
+    (concept.CodingSchemeDesignator ?? '') === ''
+  ) {
     return `meaning:${concept.CodeMeaning ?? ''}`
   }
-  return `${scheme}:${value}`
+  return codedConceptKey(concept)
 }
 
 /** Groups annotations by coded category, then by coded type */

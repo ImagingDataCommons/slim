@@ -95,9 +95,9 @@ The default monitoring interval is 5 seconds. This can be changed by modifying t
 
 ### Thresholds
 
-Memory warning thresholds can be adjusted in `MemoryMonitor.ts`:
-- `highUsageThreshold`: 0.80 (80%)
-- `criticalUsageThreshold`: 0.90 (90%)
+Memory warning thresholds live in `src/utils/memoryWarning.ts` and are shared by `MemoryMonitor` and the viewer footer:
+- `HIGH_MEMORY_USAGE_PERCENT`: 80
+- `CRITICAL_MEMORY_USAGE_PERCENT`: 90
 
 ## Technical Details
 

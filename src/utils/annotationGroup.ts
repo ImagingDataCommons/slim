@@ -1,3 +1,5 @@
+import { codedConceptKey } from './dicom/codedConcept'
+
 export interface CodeLike {
   CodeValue: string
   CodingSchemeDesignator: string
@@ -35,9 +37,9 @@ export interface AnnotationGroupDescription {
   count: number | undefined
 }
 
-/** Stable Select value for a measurement concept; CodeValue may contain hyphens */
+/** Stable Select value for a measurement concept */
 export function getMeasurementKey(code: CodeLike): string {
-  return `${code.CodingSchemeDesignator}:${code.CodeValue}`
+  return codedConceptKey(code)
 }
 
 export function getAnnotationGroupItem<T extends AnnotationGroupItemLike>(

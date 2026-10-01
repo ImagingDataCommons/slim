@@ -1,6 +1,6 @@
 import type { LookupTableLike, RGB } from '../types/layerStyles'
+import { rgbToHex } from './color'
 import { lutToCssGradient } from './lutGradient'
-import { rgbToHex } from './segmentColors'
 
 /**
  * CSS background of a segment swatch: the flat color for BINARY segments,

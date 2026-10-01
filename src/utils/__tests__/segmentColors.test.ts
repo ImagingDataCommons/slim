@@ -1,177 +1,66 @@
-import {
-  extractSegmentColorFromMetadata,
-  getContrastColor,
-  getSegmentationType,
-  getSegmentColor,
-  hexToRgb,
-  isLightColor,
-  rgbToHex,
-} from '../segmentColors'
+import dcmjs from 'dcmjs'
 
-describe('segmentColors utility', () => {
-  describe('rgbToHex', () => {
-    it('should convert RGB values to hex string', () => {
-      expect(rgbToHex([255, 0, 0])).toBe('#ff0000')
-      expect(rgbToHex([0, 255, 0])).toBe('#00ff00')
-      expect(rgbToHex([0, 0, 255])).toBe('#0000ff')
-      expect(rgbToHex([128, 128, 128])).toBe('#808080')
-    })
+import { getSegmentationType, getSegmentColor } from '../segmentColors'
 
-    it('should round RGB values', () => {
-      expect(rgbToHex([255.7, 0.3, 128.9])).toBe('#ff0081')
-    })
+describe('getSegmentColor', () => {
+  const segmentSequence = [
+    { SegmentNumber: 1, RecommendedDisplayCIELabValue: [50, 10, -20] },
+    { SegmentNumber: 2 },
+    { SegmentNumber: 3, RecommendedDisplayCIELabValue: [1, 2] },
+    { SegmentNumber: 4, RecommendedDisplayCIELabValue: ['a', 'b', 'c'] },
+  ]
+
+  afterEach(() => {
+    jest.restoreAllMocks()
   })
 
-  describe('hexToRgb', () => {
-    it('should convert hex string to RGB values', () => {
-      expect(hexToRgb('#ff0000')).toEqual([255, 0, 0])
-      expect(hexToRgb('#00ff00')).toEqual([0, 255, 0])
-      expect(hexToRgb('#0000ff')).toEqual([0, 0, 255])
-      expect(hexToRgb('#808080')).toEqual([128, 128, 128])
-    })
-
-    it('should handle hex strings without #', () => {
-      expect(hexToRgb('ff0000')).toEqual([255, 0, 0])
-    })
-
-    it('should return [0, 0, 0] for invalid hex strings', () => {
-      expect(hexToRgb('invalid')).toEqual([0, 0, 0])
-      expect(hexToRgb('')).toEqual([0, 0, 0])
-    })
+  it('converts the recommended CIELab value to 8-bit RGB', () => {
+    const color = getSegmentColor({ segmentSequence, segmentNumber: 1 })
+    expect(color).toHaveLength(3)
+    for (const channel of color ?? []) {
+      expect(Number.isInteger(channel)).toBe(true)
+      expect(channel).toBeGreaterThanOrEqual(0)
+      expect(channel).toBeLessThanOrEqual(255)
+    }
   })
 
-  describe('isLightColor', () => {
-    it('should identify light colors correctly', () => {
-      expect(isLightColor([255, 255, 255])).toBe(true) // White
-      expect(isLightColor([255, 255, 0])).toBe(true) // Yellow
-      expect(isLightColor([0, 255, 255])).toBe(true) // Cyan
-    })
-
-    it('should identify dark colors correctly', () => {
-      expect(isLightColor([0, 0, 0])).toBe(false) // Black
-      expect(isLightColor([255, 0, 0])).toBe(false) // Red
-      expect(isLightColor([0, 0, 255])).toBe(false) // Blue
-    })
+  it('scales and clamps the converted channels', () => {
+    jest.spyOn(dcmjs.data.Colors, 'dicomlab2RGB').mockReturnValue([1, 0.5, 1.2])
+    expect(getSegmentColor({ segmentSequence, segmentNumber: 1 })).toEqual([
+      255, 128, 255,
+    ])
   })
 
-  describe('getContrastColor', () => {
-    it('should return black for light colors', () => {
-      expect(getContrastColor([255, 255, 255])).toEqual([0, 0, 0])
-      expect(getContrastColor([255, 255, 0])).toEqual([0, 0, 0])
-    })
-
-    it('should return white for dark colors', () => {
-      expect(getContrastColor([0, 0, 0])).toEqual([255, 255, 255])
-      expect(getContrastColor([255, 0, 0])).toEqual([255, 255, 255])
-    })
+  it('returns null without a usable color', () => {
+    expect(getSegmentColor({ segmentSequence, segmentNumber: 2 })).toBeNull()
+    expect(getSegmentColor({ segmentSequence, segmentNumber: 3 })).toBeNull()
+    expect(getSegmentColor({ segmentSequence, segmentNumber: 4 })).toBeNull()
+    expect(getSegmentColor({ segmentSequence, segmentNumber: 9 })).toBeNull()
+    expect(
+      getSegmentColor({ segmentSequence: undefined, segmentNumber: 1 }),
+    ).toBeNull()
   })
 
-  describe('extractSegmentColorFromMetadata', () => {
-    it('should extract color from valid DICOM metadata', () => {
-      const metadata = {
-        SegmentSequence: [
-          {
-            SegmentNumber: 1,
-            RecommendedDisplayCIELabValue: [50, 10, -20],
-          },
-        ],
-      }
-
-      const color = extractSegmentColorFromMetadata(metadata, 1)
-      expect(color).toBeDefined()
-      expect(Array.isArray(color)).toBe(true)
-      if (color !== null) {
-        expect(color.length).toBe(3)
-      }
+  it('returns null when the conversion throws', () => {
+    jest.spyOn(dcmjs.data.Colors, 'dicomlab2RGB').mockImplementation(() => {
+      throw new Error('bad lab')
     })
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+    expect(getSegmentColor({ segmentSequence, segmentNumber: 1 })).toBeNull()
+  })
+})
 
-    it('should return null for missing segment', () => {
-      const metadata = {
-        SegmentSequence: [
-          {
-            SegmentNumber: 2,
-            RecommendedDisplayCIELabValue: [50, 10, -20],
-          },
-        ],
-      }
-
-      const color = extractSegmentColorFromMetadata(metadata, 1)
-      expect(color).toBeNull()
-    })
-
-    it('should return null for missing color data', () => {
-      const metadata = {
-        SegmentSequence: [
-          {
-            SegmentNumber: 1,
-            // No RecommendedDisplayCIELabValue
-          },
-        ],
-      }
-
-      const color = extractSegmentColorFromMetadata(metadata, 1)
-      expect(color).toBeNull()
-    })
-
-    it('should handle missing SegmentSequence gracefully', () => {
-      const metadata = {}
-      const color = extractSegmentColorFromMetadata(metadata, 1)
-      expect(color).toBeNull()
-    })
+describe('getSegmentationType', () => {
+  it('returns the SegmentationType when present', () => {
+    expect(getSegmentationType({ SegmentationType: 'FRACTIONAL' })).toBe(
+      'FRACTIONAL',
+    )
   })
 
-  describe('getSegmentColor', () => {
-    it('should return metadata color when available', () => {
-      const metadata = {
-        SegmentSequence: [
-          {
-            SegmentNumber: 1,
-            RecommendedDisplayCIELabValue: [50, 10, -20],
-          },
-        ],
-      }
-
-      const color = getSegmentColor(metadata, 1)
-      expect(color).toBeDefined()
-      expect(Array.isArray(color)).toBe(true)
-      if (color !== null) {
-        expect(color.length).toBe(3)
-      }
-    })
-
-    it('should return null when metadata is not available', () => {
-      const metadata = {}
-      const color = getSegmentColor(metadata, 1)
-      expect(color).toBeNull()
-    })
-  })
-
-  describe('getSegmentationType', () => {
-    it('should return SegmentationType when available', () => {
-      const metadata = {
-        SegmentationType: 'FRACTIONAL',
-      }
-      expect(getSegmentationType(metadata)).toBe('FRACTIONAL')
-    })
-
-    it('should return BINARY when SegmentationType is undefined', () => {
-      const metadata = {}
-      expect(getSegmentationType(metadata)).toBe('BINARY')
-    })
-
-    it('should return BINARY when SegmentationType is null', () => {
-      const metadata = {
-        SegmentationType: null,
-      }
-      expect(getSegmentationType(metadata)).toBe('BINARY')
-    })
-
-    it('should return BINARY when metadata is undefined', () => {
-      expect(getSegmentationType(undefined)).toBe('BINARY')
-    })
-
-    it('should return BINARY when metadata is null', () => {
-      expect(getSegmentationType(null)).toBe('BINARY')
-    })
+  it('defaults to BINARY', () => {
+    expect(getSegmentationType({})).toBe('BINARY')
+    expect(getSegmentationType({ SegmentationType: null })).toBe('BINARY')
+    expect(getSegmentationType(undefined)).toBe('BINARY')
+    expect(getSegmentationType(null)).toBe('BINARY')
   })
 })

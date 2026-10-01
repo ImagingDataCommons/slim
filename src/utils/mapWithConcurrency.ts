@@ -1,6 +1,7 @@
 /**
  * Maps `items` through an async `mapper` with at most `limit` calls in
- * flight, resolving to results in input order.
+ * flight, resolving to results in input order. A NaN or sub-1 `limit` runs
+ * the items one at a time; `Infinity` runs them all at once.
  */
 export async function mapWithConcurrency<T, R>(
   items: readonly T[],
@@ -16,7 +17,8 @@ export async function mapWithConcurrency<T, R>(
       results[index] = await mapper(items[index], index)
     }
   }
-  const workerCount = Math.min(Math.max(1, Math.floor(limit)), items.length)
+  const safeLimit = Number.isNaN(limit) || limit < 1 ? 1 : Math.floor(limit)
+  const workerCount = Math.min(safeLimit, items.length)
   await Promise.all(Array.from({ length: workerCount }, worker))
   return results
 }

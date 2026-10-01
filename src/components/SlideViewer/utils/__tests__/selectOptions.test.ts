@@ -5,7 +5,6 @@ import {
   DEFAULT_PRESENTATION_STATE_VALUE,
   findOptionItem,
   fromPresentationStateValue,
-  isSameCodedConcept,
   selectedConceptValue,
   toPresentationStateValue,
 } from '../selectOptions'
@@ -78,15 +77,6 @@ describe('selectedConceptValue', () => {
     expect(
       selectedConceptValue(options, { CodeValue: 'x', CodeMeaning: 'X' }),
     ).toBe('')
-  })
-})
-
-describe('isSameCodedConcept', () => {
-  it('compares code value and scheme', () => {
-    expect(isSameCodedConcept(tumor, { ...tumor, CodeMeaning: 'Other' })).toBe(
-      true,
-    )
-    expect(isSameCodedConcept(tumor, necrosis)).toBe(false)
   })
 })
 

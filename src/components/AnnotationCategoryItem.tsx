@@ -8,8 +8,12 @@ import {
   getCategoryVisibility,
   type Type,
 } from '../utils/annotationCategories'
-import { rgbToHex } from '../utils/segmentColors'
-import { computeBulkVisibility, getToggleTarget } from '../utils/visibility'
+import { rgbToHex } from '../utils/color'
+import {
+  computeBulkVisibility,
+  getToggleTarget,
+  type VisibilityChange,
+} from '../utils/visibility'
 import { formatVisibilitySummary } from '../utils/visibilitySummary'
 import ColorSettingsMenu from './ColorSettingsMenu'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
@@ -19,9 +23,13 @@ import { Switch } from './ui/switch'
 export type AnnotationStyleMap = Record<string, AnnotationStyle | undefined>
 
 export type AnnotationStyleChangeHandler = (change: {
-  uid: string
+  uids: string[]
   styleOptions: AnnotationStyle
 }) => void
+
+export type AnnotationVisibilityChangeHandler = (
+  changes: VisibilityChange[],
+) => void
 
 interface AnnotationTypeChipProps {
   category: Category
@@ -57,9 +65,7 @@ function AnnotationTypeChip({
 
   const commitStyle = (next: AnnotationStyle): void => {
     setEditedStyle(next)
-    for (const uid of uids) {
-      onStyleChange({ uid, styleOptions: next })
-    }
+    onStyleChange({ uids, styleOptions: next })
   }
 
   return (
@@ -127,7 +133,7 @@ function AnnotationTypeChip({
 
 export interface AnnotationCategoryItemProps {
   category: Category
-  onChange: (change: { roiUID: string; isVisible: boolean }) => void
+  onChange: AnnotationVisibilityChangeHandler
   onStyleChange: AnnotationStyleChangeHandler
   defaultAnnotationStyles: AnnotationStyleMap
   checkedAnnotationUids: Set<string>
@@ -147,9 +153,7 @@ function AnnotationCategoryItem({
       checkedAnnotationUids,
       isVisible,
     )
-    for (const change of changes) {
-      onChange({ roiUID: change.uid, isVisible: change.isVisible })
-    }
+    if (changes.length > 0) onChange(changes)
   }
 
   return (

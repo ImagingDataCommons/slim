@@ -21,7 +21,7 @@ export class Logger {
   public config: LoggerConfig
 
   constructor() {
-    // Get logger config from global config (browser only; Jest may run without window)
+    /** `window` is absent when Jest runs in a node environment */
     const globalConfig =
       typeof window !== 'undefined' ? window.config?.logger : undefined
     let configLevel = 'DEBUG'
@@ -117,10 +117,8 @@ export class Logger {
   }
 }
 
-// Export a singleton instance
 export const logger = new Logger()
 
-// Export convenience functions
 export const debug = (...args: unknown[]): void => logger.debug(...args)
 export const log = (...args: unknown[]): void => logger.log(...args)
 export const warn = (...args: unknown[]): void => logger.warn(...args)

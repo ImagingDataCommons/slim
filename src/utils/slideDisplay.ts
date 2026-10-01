@@ -10,6 +10,7 @@ export interface SlideImageGeometry {
   SharedFunctionalGroupsSequence?: unknown
   ImageOrientationSlide?: unknown
   TotalPixelMatrixOriginSequence?: unknown
+  OpticalPathSequence?: unknown
 }
 
 export interface SlideDisplaySource {
@@ -22,12 +23,15 @@ export interface SlideDisplaySource {
 
 export type IlluminationType = 'Brightfield' | 'Fluorescence'
 
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === 'object' && value !== null
+    ? (value as Record<string, unknown>)
+    : undefined
+}
+
 function firstItem(sequence: unknown): Record<string, unknown> | undefined {
   if (!Array.isArray(sequence) || sequence.length === 0) return undefined
-  const item: unknown = sequence[0]
-  return typeof item === 'object' && item !== null
-    ? (item as Record<string, unknown>)
-    : undefined
+  return asRecord(sequence[0])
 }
 
 function toFiniteNumber(value: unknown): number | undefined {
@@ -68,20 +72,63 @@ export function minimumPixelSpacing(
   return minimum
 }
 
-/** Nominal objective magnification for a base-level resolution. */
-export function formatNominalMagnification(micronsPerPixel: number): string {
-  if (!Number.isFinite(micronsPerPixel) || micronsPerPixel <= 0) return ''
-  if (micronsPerPixel <= 0.125) return '80×'
-  if (micronsPerPixel <= 0.25) return '40×'
-  if (micronsPerPixel <= 0.5) return '20×'
-  if (micronsPerPixel <= 1.0) return '10×'
-  return '5×'
+/** Highest positive Objective Lens Power (0048,0112) across all optical paths. */
+export function readObjectiveLensPower(
+  images: SlideImageGeometry[],
+): number | undefined {
+  let maximum: number | undefined
+  for (const image of images) {
+    if (!Array.isArray(image.OpticalPathSequence)) continue
+    for (const item of image.OpticalPathSequence) {
+      const power = toFiniteNumber(asRecord(item)?.ObjectiveLensPower)
+      if (power === undefined || power <= 0) continue
+      if (maximum === undefined || power > maximum) maximum = power
+    }
+  }
+  return maximum
 }
 
-/** Maximum magnification of the slide, from its finest pyramid level. */
+/** Typical scanner resolution of each objective, finest first. */
+const NOMINAL_OBJECTIVES: ReadonlyArray<{
+  label: string
+  micronsPerPixel: number
+}> = [
+  { label: '80×', micronsPerPixel: 0.125 },
+  { label: '40×', micronsPerPixel: 0.25 },
+  { label: '20×', micronsPerPixel: 0.5 },
+  { label: '10×', micronsPerPixel: 1 },
+  { label: '5×', micronsPerPixel: 2 },
+]
+
+/**
+ * Nominal objective magnification for a base-level resolution. Scanners do not
+ * hit the nominal spacing exactly (40× is often 0.2527 µm/px), so each label
+ * covers spacings up to the geometric midpoint with the next coarser objective.
+ */
+export function formatNominalMagnification(micronsPerPixel: number): string {
+  if (!Number.isFinite(micronsPerPixel) || micronsPerPixel <= 0) return ''
+  for (let index = 0; index < NOMINAL_OBJECTIVES.length - 1; index++) {
+    const finer = NOMINAL_OBJECTIVES[index]
+    const coarser = NOMINAL_OBJECTIVES[index + 1]
+    if (
+      micronsPerPixel <=
+      Math.sqrt(finer.micronsPerPixel * coarser.micronsPerPixel)
+    ) {
+      return finer.label
+    }
+  }
+  return NOMINAL_OBJECTIVES[NOMINAL_OBJECTIVES.length - 1].label
+}
+
+/**
+ * Maximum magnification of the slide: the Objective Lens Power when the
+ * metadata provides one, else estimated from the finest pyramid level.
+ */
 export function getMagnification(
   slide: Pick<SlideDisplaySource, 'volumeImages'>,
 ): string {
+  const lensPower = readObjectiveLensPower(slide.volumeImages)
+  if (lensPower !== undefined) return `${Number(lensPower.toFixed(1))}×`
   const spacing = minimumPixelSpacing(slide.volumeImages)
   return spacing === undefined ? '' : formatNominalMagnification(spacing * 1000)
 }

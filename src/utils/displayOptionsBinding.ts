@@ -1,15 +1,7 @@
 import type { DisplayOptionDescriptor } from './displayOptions'
 
-const DISPLAY_OPTION_IDS = [
-  'icc',
-  'gamma',
-  'interpolation',
-  'clustering',
-] as const
-
-export type DisplayOptionId = (typeof DISPLAY_OPTION_IDS)[number]
-
-export interface DisplayOption extends DisplayOptionDescriptor {
+export interface DisplayOption<Id extends string = string>
+  extends DisplayOptionDescriptor<Id> {
   onChange: (enabled: boolean) => void
 }
 
@@ -18,32 +10,21 @@ export type BooleanSettingKey<S> = {
   [K in keyof S]-?: S[K] extends boolean | undefined ? K : never
 }[keyof S]
 
-/** Which boolean setting each display option id toggles */
-export type DisplayOptionSettingKeys<S> = Partial<
-  Record<DisplayOptionId, BooleanSettingKey<S>>
->
-
-export function isDisplayOptionId(id: string): id is DisplayOptionId {
-  return (DISPLAY_OPTION_IDS as readonly string[]).includes(id)
-}
-
 /**
  * Attaches toggle handlers to option descriptors. Toggling an option calls
  * `onChange` with a copy of `settings` where the mapped flag is replaced;
  * options without a mapping are rendered but ignore toggles.
  */
-export function bindDisplayOptions<S extends object>(
-  descriptors: DisplayOptionDescriptor[],
+export function bindDisplayOptions<S extends object, Id extends string>(
+  descriptors: Array<DisplayOptionDescriptor<Id>>,
   settings: S,
-  settingKeys: DisplayOptionSettingKeys<S>,
+  settingKeys: Partial<Record<Id, BooleanSettingKey<S>>>,
   onChange: (settings: S) => void,
-): DisplayOption[] {
+): Array<DisplayOption<Id>> {
   return descriptors.map((descriptor) => ({
     ...descriptor,
     onChange: (enabled: boolean): void => {
-      const key = isDisplayOptionId(descriptor.id)
-        ? settingKeys[descriptor.id]
-        : undefined
+      const key = settingKeys[descriptor.id]
       if (key === undefined) return
       onChange({ ...settings, [key]: enabled })
     },

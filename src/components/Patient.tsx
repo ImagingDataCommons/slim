@@ -3,15 +3,13 @@ import type * as dmv from 'dicom-microscopy-viewer'
 import type React from 'react'
 
 import {
+  formatAdmittingDiagnoses,
   formatDisplayDate,
+  formatPatientSpeciesCodeSequence,
   formatPersonName,
   formatSex,
 } from '../utils/displayFormat'
 import type { KeyValueItem } from '../utils/keyValue'
-import {
-  formatAdmittingDiagnoses,
-  formatPatientSpeciesCodeSequence,
-} from '../utils/values'
 import { SlimKeyValueGrid } from './slim/SlimKeyValueGrid'
 
 export interface PatientProps {

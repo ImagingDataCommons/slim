@@ -1,4 +1,4 @@
-import { parseDicomDate, parseDicomDateParts } from '../dicomDate'
+import { parseDicomDate, parseDicomDateParts } from '../datetime'
 
 describe('parseDicomDateParts', () => {
   it('parses YYYYMMDD', () => {

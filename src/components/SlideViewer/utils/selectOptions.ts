@@ -1,4 +1,8 @@
 /** Option builders for the viewer's Radix selects (values must be unique, non-empty strings). */
+import {
+  type CodedConceptLike as BaseCodedConcept,
+  isSameCodedConcept,
+} from '../../../utils/dicom/codedConcept'
 
 /** Select value standing for "no presentation state" (Radix forbids ''). */
 export const DEFAULT_PRESENTATION_STATE_VALUE = '__default__'
@@ -6,26 +10,15 @@ export const DEFAULT_PRESENTATION_STATE_VALUE = '__default__'
 /** Select value that clears an evaluation. */
 export const NO_EVALUATION_VALUE = '__none__'
 
-export interface CodedConceptLike {
-  CodeValue?: string
+/** Option labels need a meaning */
+export interface CodedConceptLike extends BaseCodedConcept {
   CodeMeaning: string
-  CodingSchemeDesignator?: string
 }
 
 export interface SelectOption<T = undefined> {
   value: string
   label: string
   item: T
-}
-
-export function isSameCodedConcept(
-  a: CodedConceptLike,
-  b: CodedConceptLike,
-): boolean {
-  return (
-    a.CodeValue === b.CodeValue &&
-    a.CodingSchemeDesignator === b.CodingSchemeDesignator
-  )
 }
 
 /**

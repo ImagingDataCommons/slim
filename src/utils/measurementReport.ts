@@ -9,7 +9,7 @@ import NotificationMiddleware, {
 } from '../services/NotificationMiddleware'
 import { CustomError, errorTypes } from './CustomError'
 import type { KeyValueItem } from './keyValue'
-import { findContentItemsByName } from './sr'
+import { findContentItemsByName, hasValueType } from './sr'
 
 type ContentItem = dcmjs.sr.valueTypes.ContentItem
 type CodeContentItem = dcmjs.sr.valueTypes.CodeContentItem
@@ -69,10 +69,6 @@ const CONCEPTS = {
   personObserverLoginName: concept('128774', "Person Observer's Login Name"),
   deviceObserverUID: concept('121012', 'Device Observer UID'),
   deviceObserverName: concept('121013', 'Device Observer Name'),
-}
-
-export function hasValueType(item: ContentItem, valueType: string): boolean {
-  return item.ValueType === valueType
 }
 
 function isNumItem(item: ContentItem): item is NumContentItem {

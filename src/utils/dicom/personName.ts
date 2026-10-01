@@ -1,4 +1,10 @@
-import type { PersonNameValue } from './displayFormat'
+/** DICOM PN as a plain string, a DICOM JSON object, or a multi-valued array. */
+export type PersonNameValue =
+  | string
+  | { Alphabetic?: string }
+  | Array<{ Alphabetic?: string } | string>
+  | null
+  | undefined
 
 /** Alphabetic component group of a DICOM PN, e.g. "Doe^Jane", or ''. */
 export function getAlphabeticName(value: PersonNameValue): string {
