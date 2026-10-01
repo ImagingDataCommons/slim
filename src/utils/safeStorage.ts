@@ -12,6 +12,14 @@ export function getLocalStorage(): Storage | undefined {
   }
 }
 
+export function getSessionStorage(): Storage | undefined {
+  try {
+    return typeof window === 'undefined' ? undefined : window.sessionStorage
+  } catch {
+    return undefined
+  }
+}
+
 export function readFromStorage(
   storage: Storage | undefined,
   key: string,

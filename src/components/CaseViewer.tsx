@@ -291,6 +291,7 @@ function Viewer(props: ViewerProps): JSX.Element | null {
       defaultSeriesInstanceUID,
       pathname: location.pathname,
       search: location.search,
+      hash: location.hash,
     })
     if (redirectPath !== undefined) navigate(redirectPath, { replace: true })
   }, [
@@ -300,6 +301,7 @@ function Viewer(props: ViewerProps): JSX.Element | null {
     defaultSeriesInstanceUID,
     location.pathname,
     location.search,
+    location.hash,
     navigate,
   ])
 

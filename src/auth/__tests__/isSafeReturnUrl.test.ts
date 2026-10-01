@@ -1,4 +1,4 @@
-import { isSafeReturnUrl } from '../OidcManager'
+import { isSafeReturnUrl } from '../oidcUser'
 
 describe('isSafeReturnUrl', () => {
   const originalLocation = window.location

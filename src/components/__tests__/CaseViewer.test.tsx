@@ -61,7 +61,7 @@ jest.mock('../ClinicalTrial', () => ({ __esModule: true, default: () => null }))
 function LocationProbe(): React.ReactElement {
   const location = useLocation()
   return (
-    <output data-testid="location">{`${location.pathname}${location.search}`}</output>
+    <output data-testid="location">{`${location.pathname}${location.search}${location.hash}`}</output>
   )
 }
 
@@ -110,6 +110,17 @@ describe('CaseViewer', () => {
     expect(screen.getByRole('button', { name: '1.2.3.1' })).toHaveAttribute(
       'aria-pressed',
       'true',
+    )
+  })
+
+  it('keeps the query and hash when redirecting to the first slide', async () => {
+    renderAt('/studies/1.2.3?gcp=https%3A%2F%2Fstore.example&access_token=t#x')
+
+    expect(await screen.findByTestId('slide-viewer')).toHaveTextContent(
+      '1.2.3.1',
+    )
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/studies/1.2.3/series/1.2.3.1?gcp=https%3A%2F%2Fstore.example&access_token=t#x',
     )
   })
 

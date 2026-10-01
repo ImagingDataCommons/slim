@@ -51,7 +51,7 @@
     "dicom-microscopy-viewer": "^0.48.27",
     "dicomweb-client": "0.10.3",
     "lucide-react": "^1.49.0",
-    "oidc-client": "^1.11.5",
+    "oidc-client-ts": "^3.5.0",
     "ol": "^10.7.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

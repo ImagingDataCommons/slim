@@ -56,8 +56,35 @@ describe('defaultSeriesRedirectPath', () => {
         defaultSeriesInstanceUID: '4.5',
         pathname: '/studies/1.2.3',
         search: '',
+        hash: '',
       }),
     ).toBe('/studies/1.2.3/series/4.5')
+  })
+
+  it('keeps the query and hash of the study route', () => {
+    expect(
+      defaultSeriesRedirectPath({
+        studyInstanceUID: '1.2.3',
+        defaultSeriesInstanceUID: '4.5',
+        pathname: '/studies/1.2.3',
+        search: '?gcp=https%3A%2F%2Fstore.example&access_token=abc',
+        hash: '#panel',
+      }),
+    ).toBe(
+      '/studies/1.2.3/series/4.5?gcp=https%3A%2F%2Fstore.example&access_token=abc#panel',
+    )
+  })
+
+  it('keeps the GCP store prefix and query', () => {
+    expect(
+      defaultSeriesRedirectPath({
+        studyInstanceUID: '1.2.3',
+        defaultSeriesInstanceUID: '4.5',
+        pathname: GCP_STUDY,
+        search: '?gcp=x',
+        hash: '',
+      }),
+    ).toBe(`${GCP_STUDY}/series/4.5?gcp=x`)
   })
 
   it('does not redirect routes that already name a series', () => {
@@ -66,7 +93,8 @@ describe('defaultSeriesRedirectPath', () => {
         studyInstanceUID: '1.2.3',
         defaultSeriesInstanceUID: '4.5',
         pathname: '/studies/1.2.3/series/9.9',
-        search: '',
+        search: '?gcp=x',
+        hash: '',
       }),
     ).toBeUndefined()
   })
@@ -77,7 +105,8 @@ describe('defaultSeriesRedirectPath', () => {
         studyInstanceUID: '1.2.3',
         defaultSeriesInstanceUID: undefined,
         pathname: '/studies/1.2.3',
-        search: '',
+        search: '?gcp=x',
+        hash: '',
       }),
     ).toBeUndefined()
   })

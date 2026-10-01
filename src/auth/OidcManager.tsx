@@ -1,8 +1,12 @@
 import {
+  type MetadataService,
   type OidcMetadata,
+  type SigninRedirectArgs,
   type User as UserData,
   UserManager,
-} from 'oidc-client'
+  type UserManagerEvents,
+  type UserManagerSettings,
+} from 'oidc-client-ts'
 
 import type { OidcSettings } from '../AppConfig'
 import NotificationMiddleware, {
@@ -21,105 +25,92 @@ import type {
   SignInOutcome,
   User,
 } from '.'
+import { ImplicitGrant, type ImplicitGrantHost } from './implicitGrant'
+import { createOidcStores, type OidcStores } from './oidcStore'
+import {
+  authorizationFromUser,
+  clearAuthParamsFromUrl,
+  createUser,
+  currentReturnUrl,
+  readReturnUrl,
+} from './oidcUser'
 
 interface ReturnUrlState {
-  returnUrl?: string
+  returnUrl: string
 }
 
-const createUser = (userData: UserData | null): User => {
-  let profile: UserData['profile'] | undefined
-  if (userData !== null) {
-    profile = userData.profile
-  }
+/** The part of oidc-client-ts's `UserManager` this manager relies on */
+export interface OidcUserManager extends ImplicitGrantHost {
+  events: Pick<
+    UserManagerEvents,
+    'load' | 'addUserLoaded' | 'addAccessTokenExpiring'
+  >
+  metadataService: ImplicitGrantHost['metadataService'] &
+    Pick<MetadataService, 'getMetadata'>
+  signinRedirect: (args?: SigninRedirectArgs) => Promise<void>
+  signinRedirectCallback: (url?: string) => Promise<UserData>
+  signinSilent: () => Promise<UserData | null>
+  signoutRedirect: () => Promise<void>
+  removeUser: () => Promise<void>
+  revokeTokens: () => Promise<void>
+}
 
-  if (profile !== undefined) {
-    if (profile.name === undefined || profile.email === undefined) {
-      NotificationMiddleware.onError(
-        NotificationMiddlewareContext.AUTH,
-        new CustomError(
-          errorTypes.AUTHENTICATION,
-          'Failed to obtain user "name" and "email".',
-        ),
-      )
-    } else {
-      return {
-        name: profile.name,
-        email: profile.email,
-      }
-    }
-  } else {
-    NotificationMiddleware.onError(
-      NotificationMiddlewareContext.AUTH,
-      new CustomError(
-        errorTypes.AUTHENTICATION,
-        'Failed to obtain user profile.',
-      ),
-    )
+export interface OidcManagerOptions {
+  stores?: OidcStores
+  createUserManager?: (settings: UserManagerSettings) => OidcUserManager
+}
+
+const isNonEmpty = (value: string | undefined): value is string =>
+  value != null && value !== ''
+
+/** Endpoints from the configuration that take precedence over discovery */
+export const buildMetadataSeed = (
+  settings: OidcSettings,
+): Partial<OidcMetadata> | undefined => {
+  const seed: Partial<OidcMetadata> = {}
+  if (isNonEmpty(settings.authorizationEndpoint)) {
+    seed.authorization_endpoint = settings.authorizationEndpoint
   }
+  if (isNonEmpty(settings.endSessionEndpoint)) {
+    seed.end_session_endpoint = settings.endSessionEndpoint
+  }
+  return Object.keys(seed).length > 0 ? seed : undefined
+}
+
+export const buildUserManagerSettings = (
+  appUri: string,
+  settings: OidcSettings,
+  stores: OidcStores,
+): UserManagerSettings => {
+  const isImplicit = settings.grantType === 'implicit'
   return {
-    name: undefined,
-    email: undefined,
+    authority: settings.authority,
+    client_id: settings.clientId,
+    redirect_uri: appUri,
+    /**
+     * Reuse the main redirect_uri for silent renew so existing IdP client
+     * registrations (app root only) keep working. The iframe path is handled
+     * in index.tsx via completeSilentRenewIfFrame() before React mounts.
+     */
+    silent_redirect_uri: appUri,
+    post_logout_redirect_uri: joinUrl('logout', appUri),
+    scope: settings.scope,
+    /** The implicit grant does not go through the library's request builder */
+    response_type: 'code',
+    metadataSeed: buildMetadataSeed(settings),
+    loadUserInfo: true,
+    /**
+     * The library renews with the code flow, which an implicit-only client
+     * cannot complete; implicit sessions are renewed by this manager instead.
+     */
+    automaticSilentRenew: !isImplicit,
+    monitorSession: true,
+    includeIdTokenInSilentRenew: true,
+    /** Revoked by signOut only when the provider supports revocation */
+    revokeTokensOnSignout: false,
+    stateStore: stores.stateStore,
+    userStore: stores.userStore,
   }
-}
-
-const authorizationFromUser = (userData: UserData): string => {
-  const tokenType = userData.token_type || 'Bearer'
-  return `${tokenType} ${userData.access_token}`
-}
-
-const clearAuthParamsFromUrl = (): void => {
-  const url = new URL(window.location.href)
-  const authParams = [
-    'code',
-    'state',
-    'session_state',
-    'iss',
-    'id_token',
-    'access_token',
-    'token_type',
-    'expires_in',
-    'scope',
-    'error',
-    'error_description',
-  ]
-  for (const key of authParams) {
-    url.searchParams.delete(key)
-  }
-  /** Implicit / hybrid responses put tokens in the hash fragment. */
-  url.hash = ''
-  const cleaned = `${url.pathname}${url.search}`
-  window.history.replaceState({}, document.title, cleaned)
-}
-
-const readReturnUrl = (userData: UserData): string | undefined => {
-  const state = userData.state as ReturnUrlState | string | null | undefined
-  if (state == null) {
-    return undefined
-  }
-  if (typeof state === 'string') {
-    return state || undefined
-  }
-  if (typeof state.returnUrl === 'string' && state.returnUrl !== '') {
-    return state.returnUrl
-  }
-  return undefined
-}
-
-/** Only allow same-origin relative paths (block open redirects). */
-export const isSafeReturnUrl = (returnUrl: string): boolean => {
-  if (!returnUrl.startsWith('/') || returnUrl.startsWith('//')) {
-    return false
-  }
-  try {
-    const parsed = new URL(returnUrl, window.location.origin)
-    return parsed.origin === window.location.origin
-  } catch {
-    return false
-  }
-}
-
-const currentReturnUrl = (): string => {
-  return `${window.location.pathname}${window.location.search}`
 }
 
 /**
@@ -139,7 +130,14 @@ export const completeSilentRenewIfFrame = async (): Promise<boolean> => {
     return false
   }
   try {
-    await new UserManager({}).signinSilentCallback()
+    /** Only posts the callback URL to the parent, which validates it */
+    await new UserManager({
+      authority: '',
+      client_id: '',
+      redirect_uri: window.location.href,
+      automaticSilentRenew: false,
+      ...createOidcStores(),
+    }).signinSilentCallback()
   } catch (error) {
     console.error('silent renew callback failed', error)
   }
@@ -148,66 +146,31 @@ export const completeSilentRenewIfFrame = async (): Promise<boolean> => {
 }
 
 export default class OidcManager implements AuthManager {
-  private _oidc: UserManager
-  private readonly _ready: Promise<void>
+  private readonly _oidc: OidcUserManager
+  /** Set when the configuration asks for the implicit grant */
+  private readonly _implicit?: ImplicitGrant
   private readonly _authorizationListeners = new Set<AuthorizationCallback>()
 
-  constructor(appUri: string, settings: OidcSettings) {
-    const isImplicit = settings.grantType === 'implicit'
-    const responseType = isImplicit ? 'id_token token' : 'code'
-    const redirectUri = appUri
-    /*
-     * Reuse the main redirect_uri for silent renew so existing IdP client
-     * registrations (app root only) keep working. The iframe path is handled
-     * in index.tsx via completeSilentRenewIfFrame() before React mounts.
-     */
-    const silentRedirectUri = redirectUri
-    const postLogoutRedirectUri = joinUrl('logout', appUri)
-
-    const baseSettings = {
-      authority: settings.authority,
-      client_id: settings.clientId,
-      redirect_uri: redirectUri,
-      silent_redirect_uri: silentRedirectUri,
-      post_logout_redirect_uri: postLogoutRedirectUri,
-      scope: settings.scope,
-      response_type: responseType,
-      loadUserInfo: true,
-      automaticSilentRenew: true,
-      revokeAccessTokenOnSignout: true,
-    }
-
-    const needsMetadataPatch =
-      (settings.endSessionEndpoint != null &&
-        settings.endSessionEndpoint !== '') ||
-      (settings.authorizationEndpoint != null &&
-        settings.authorizationEndpoint !== '')
-
-    /**
-     * With a metadata override, this first manager only fetches discovery
-     * metadata. oidc-client cannot stop a session monitor once started, so the
-     * manager that renews tokens and monitors the session is created only
-     * after the override is applied.
-     */
-    this._oidc = new UserManager(
-      needsMetadataPatch
-        ? {
-            ...baseSettings,
-            automaticSilentRenew: false,
-            monitorSession: false,
-          }
-        : baseSettings,
+  constructor(
+    appUri: string,
+    settings: OidcSettings,
+    {
+      stores = createOidcStores(),
+      createUserManager = (managerSettings) => new UserManager(managerSettings),
+    }: OidcManagerOptions = {},
+  ) {
+    this._oidc = createUserManager(
+      buildUserManagerSettings(appUri, settings, stores),
     )
-    this._wireInternalEvents()
-    this._ready = needsMetadataPatch
-      ? this._applyMetadataOverride(baseSettings, settings)
-      : Promise.resolve()
-  }
-
-  private _wireInternalEvents(): void {
     this._oidc.events.addUserLoaded((userData) => {
       this._notifyAuthorization(authorizationFromUser(userData))
     })
+    if (settings.grantType === 'implicit') {
+      this._implicit = new ImplicitGrant(this._oidc, stores.stateStore)
+      this._oidc.events.addAccessTokenExpiring(() => {
+        void this.renewAuthorization()
+      })
+    }
   }
 
   private _notifyAuthorization(authorization: string): void {
@@ -216,37 +179,21 @@ export default class OidcManager implements AuthManager {
     }
   }
 
-  private async _applyMetadataOverride(
-    baseSettings: ConstructorParameters<typeof UserManager>[0],
-    settings: OidcSettings,
-  ): Promise<void> {
-    let metadata: OidcMetadata | undefined
-    try {
-      metadata = await this._oidc.metadataService.getMetadata()
-      if (
-        settings.endSessionEndpoint != null &&
-        settings.endSessionEndpoint !== ''
-      ) {
-        metadata.end_session_endpoint = settings.endSessionEndpoint
-      }
-      if (
-        settings.authorizationEndpoint != null &&
-        settings.authorizationEndpoint !== ''
-      ) {
-        metadata.authorization_endpoint = settings.authorizationEndpoint
-      }
-    } catch (error) {
-      console.error('failed to get metadata from authorization server: ', error)
+  private _handleSignIn(
+    userData: UserData,
+    onSignIn: SignInCallback | undefined,
+    { includeReturnUrl }: { includeReturnUrl: boolean },
+  ): void {
+    if (onSignIn == null) {
+      console.warn('no callback function was provided to handle sign-in')
+      return
     }
-    this._oidc = new UserManager(
-      metadata == null ? baseSettings : { ...baseSettings, metadata },
-    )
-    this._wireInternalEvents()
-  }
-
-  private async _ensureReady(): Promise<UserManager> {
-    await this._ready
-    return this._oidc
+    console.info('handling sign-in using provided callback function')
+    onSignIn({
+      user: createUser(userData),
+      authorization: authorizationFromUser(userData),
+      returnUrl: includeReturnUrl ? readReturnUrl(userData) : undefined,
+    })
   }
 
   /**
@@ -259,65 +206,46 @@ export default class OidcManager implements AuthManager {
     onSignIn?: SignInCallback
     returnUrl?: string
   }): Promise<SignInOutcome> => {
-    const oidc = await this._ensureReady()
-
-    const handleSignIn = (
-      userData: UserData,
-      { includeReturnUrl }: { includeReturnUrl: boolean },
-    ): void => {
-      const user = createUser(userData)
-      const authorization = authorizationFromUser(userData)
-      let resolvedReturnUrl: string | undefined
-      if (includeReturnUrl) {
-        const candidate = readReturnUrl(userData)
-        if (candidate != null && isSafeReturnUrl(candidate)) {
-          resolvedReturnUrl = candidate
-        }
-      }
-      if (onSignIn != null) {
-        console.info('handling sign-in using provided callback function')
-        onSignIn({
-          user,
-          authorization,
-          returnUrl: resolvedReturnUrl,
-        })
-      } else {
-        console.warn('no callback function was provided to handle sign-in')
-      }
-    }
-
     if (isAuthorizationCodeInUrl(window.location)) {
-      /* Handle the callback from the authorization server: extract the code
+      /**
+       * Handle the callback from the authorization server: extract the code
        * (or implicit tokens) from the callback URL, obtain user information
        * and the access token for the DICOMweb server.
        */
       console.info('obtaining authorization')
-      const userData = await oidc.signinRedirectCallback()
+      const userData =
+        this._implicit != null
+          ? await this._implicit.signinRedirectCallback(window.location.href)
+          : await this._oidc.signinRedirectCallback()
       clearAuthParamsFromUrl()
       console.info('obtained user data: ', userData)
-      handleSignIn(userData, { includeReturnUrl: true })
+      this._handleSignIn(userData, onSignIn, { includeReturnUrl: true })
       return 'completed'
     }
 
-    /* Redirect to the authorization server to authenticate the user
+    /**
+     * Redirect to the authorization server to authenticate the user
      * and authorize the application to obtain user information and access
      * the DICOMweb server.
      */
-    const userData = await oidc.getUser()
-    if (userData === null || userData === undefined || userData.expired) {
+    const userData = await this._oidc.getUser()
+    if (userData === null || userData.expired === true) {
       console.info('authenticating user')
-      await oidc.signinRedirect({
-        state: {
-          returnUrl: returnUrl ?? currentReturnUrl(),
-        },
-      })
-      /** oidc-client resolves as soon as navigation is assigned; page unload follows. */
+      const state: ReturnUrlState = {
+        returnUrl: returnUrl ?? currentReturnUrl(),
+      }
+      if (this._implicit != null) {
+        await this._implicit.signinRedirect(state)
+      } else {
+        /** Stays pending until the page unloads (or is restored from bfcache) */
+        await this._oidc.signinRedirect({ state })
+      }
       return 'redirected'
     }
 
     console.info('user has already been authenticated')
     /** Do not re-apply persisted returnUrl on warm sessions. */
-    handleSignIn(userData, { includeReturnUrl: false })
+    this._handleSignIn(userData, onSignIn, { includeReturnUrl: false })
     return 'completed'
   }
 
@@ -327,14 +255,12 @@ export default class OidcManager implements AuthManager {
    */
   signOut = async (): Promise<void> => {
     console.log('signing out user and revoking authorization')
-    const oidc = await this._ensureReady()
-    const logoutUri = joinUrl('logout', oidc.settings.redirect_uri ?? '/')
+    const oidc = this._oidc
+    const logoutUri = joinUrl('logout', oidc.settings.redirect_uri)
     try {
       const metadata = await oidc.metadataService.getMetadata()
-      if (
-        metadata.end_session_endpoint == null ||
-        metadata.end_session_endpoint === ''
-      ) {
+      await this._revokeTokens(metadata)
+      if (!isNonEmpty(metadata.end_session_endpoint)) {
         await oidc.removeUser()
         window.location.assign(logoutUri)
         return
@@ -348,13 +274,27 @@ export default class OidcManager implements AuthManager {
   }
 
   /**
+   * oidc-client-ts fails the whole sign-out when revocation is unsupported or
+   * rejected, so tokens are revoked here on a best-effort basis instead.
+   */
+  private async _revokeTokens(metadata: Partial<OidcMetadata>): Promise<void> {
+    if (!isNonEmpty(metadata.revocation_endpoint)) {
+      return
+    }
+    try {
+      await this._oidc.revokeTokens()
+    } catch (error) {
+      console.warn('token revocation failed', error)
+    }
+  }
+
+  /**
    * Get authorization. Requires prior sign-in.
    * Returns a full HTTP Authorization header value (e.g. "Bearer …").
    */
   getAuthorization = async (): Promise<string | undefined> => {
-    const oidc = await this._ensureReady()
-    const userData = await oidc.getUser()
-    if (userData !== null && userData !== undefined && !userData.expired) {
+    const userData = await this._oidc.getUser()
+    if (userData !== null && userData.expired !== true) {
       return authorizationFromUser(userData)
     }
     NotificationMiddleware.onError(
@@ -371,9 +311,8 @@ export default class OidcManager implements AuthManager {
    * Get user information. Requires prior sign-in.
    */
   getUser = async (): Promise<User> => {
-    const oidc = await this._ensureReady()
-    const userData = await oidc.getUser()
-    if (userData === null || userData === undefined) {
+    const userData = await this._oidc.getUser()
+    if (userData === null) {
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.AUTH,
         new CustomError(
@@ -386,10 +325,12 @@ export default class OidcManager implements AuthManager {
   }
 
   renewAuthorization = async (): Promise<string | undefined> => {
-    const oidc = await this._ensureReady()
     try {
-      const userData = await oidc.signinSilent()
-      if (userData == null || userData.expired) {
+      const userData =
+        this._implicit != null
+          ? await this._implicit.signinSilent()
+          : await this._oidc.signinSilent()
+      if (userData == null || userData.expired === true) {
         return undefined
       }
       const authorization = authorizationFromUser(userData)
