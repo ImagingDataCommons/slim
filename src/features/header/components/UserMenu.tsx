@@ -10,8 +10,8 @@ import {
 } from '../../../components/ui/dropdown-menu'
 import { Icon } from '../../../components/ui/icon'
 import { cn } from '../../../lib/utils'
+import type { PreferencesTab } from '../../preferences'
 import { getUserIdentity } from '../utils/userIdentity'
-import type { PreferencesTab } from './dialogs/PreferencesDialog'
 
 interface UserMenuProps {
   user?: User

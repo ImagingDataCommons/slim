@@ -1,8 +1,11 @@
-import * as CollapsiblePrimitive from '@radix-ui/react-collapsible'
 import type * as React from 'react'
 import { useState } from 'react'
-
 import { cn } from '../../lib/utils'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '../ui/collapsible'
 import { Icon } from '../ui/icon'
 
 export function CountBadge({
@@ -92,7 +95,7 @@ export function SlimCollapsibleSection({
   }
 
   const trigger = (
-    <CollapsiblePrimitive.Trigger
+    <CollapsibleTrigger
       className={cn(
         'flex items-center gap-1.5 pb-2 pt-3 text-left text-[11px] font-semibold uppercase leading-none tracking-[0.06em] text-ink-secondary',
         actions === undefined ? 'w-full px-3.5' : 'min-w-0 flex-1 pl-3.5',
@@ -107,12 +110,12 @@ export function SlimCollapsibleSection({
       {count !== undefined && (
         <CountBadge count={count} tone={countTone} className="ml-auto" />
       )}
-    </CollapsiblePrimitive.Trigger>
+    </CollapsibleTrigger>
   )
 
   return (
     <>
-      <CollapsiblePrimitive.Root
+      <Collapsible
         open={isOpen}
         onOpenChange={handleOpenChange}
         className={className}
@@ -127,15 +130,15 @@ export function SlimCollapsibleSection({
             </div>
           </div>
         )}
-        <CollapsiblePrimitive.Content
+        <CollapsibleContent
           forceMount={keepMounted ? true : undefined}
           className={keepMounted ? 'data-[state=closed]:hidden' : undefined}
         >
           <div className={cn(CONTENT_PADDING[padding], contentClassName)}>
             {children}
           </div>
-        </CollapsiblePrimitive.Content>
-      </CollapsiblePrimitive.Root>
+        </CollapsibleContent>
+      </Collapsible>
       {divider && <PanelDivider />}
     </>
   )

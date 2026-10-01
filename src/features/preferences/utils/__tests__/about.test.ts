@@ -92,9 +92,9 @@ describe('formatBrowserLabel', () => {
 
   it('falls back to the user agent', () => {
     expect(formatBrowserLabel(null, 'UA')).toBe('UA')
-    expect(formatBrowserLabel({ name: '', version: null, os: null }, 'UA')).toBe(
-      'UA',
-    )
+    expect(
+      formatBrowserLabel({ name: '', version: null, os: null }, 'UA'),
+    ).toBe('UA')
   })
 })
 

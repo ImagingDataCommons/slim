@@ -1,14 +1,11 @@
-import React from 'react'
-import { BrowserRouter } from 'react-router-dom'
 import { cleanup, render, waitFor } from '@testing-library/react'
 // skipcq: JS-C1003
-import * as dwc from 'dicomweb-client'
-
-import DicomWebManager from '../../DicomWebManager'
-import { TooltipProvider } from '../ui/tooltip'
-import Worklist from '../Worklist'
-
-beforeAll(() => {})
+import type * as dwc from 'dicomweb-client'
+import type React from 'react'
+import { BrowserRouter } from 'react-router-dom'
+import { TooltipProvider } from '../../../../components/ui/tooltip'
+import DicomWebManager from '../../../../DicomWebManager'
+import { Worklist } from '../Worklist'
 
 afterAll(() => {
   jest.restoreAllMocks()
@@ -20,14 +17,14 @@ describe('Worklist', () => {
   const serverSettings = {
     id: 'mock',
     path: '/dicomweb',
-    write: false
+    write: false,
   }
   const manager = new DicomWebManager({
     baseUri: 'http://mockserver.org',
-    settings: [serverSettings]
+    settings: [serverSettings],
   })
   const clientMapping = {
-    '1.2.840.10008.5.1.4.1.1.77.1.6': manager
+    '1.2.840.10008.5.1.4.1.1.77.1.6': manager,
   }
 
   const searchResults = [
@@ -43,7 +40,7 @@ describe('Worklist', () => {
       '00100030': { vr: 'DA' },
       '00201206': { vr: 'IS', Value: [1] },
       '00201208': { vr: 'IS', Value: [2] },
-      '00080061': { vr: 'CS', Value: ['SM', 'SR'] }
+      '00080061': { vr: 'CS', Value: ['SM', 'SR'] },
     },
     {
       '0020000D': { vr: 'UI', Value: ['1.2.3.2'] },
@@ -57,7 +54,7 @@ describe('Worklist', () => {
       '00100030': { vr: 'DA' },
       '00201206': { vr: 'IS', Value: [1] },
       '00201208': { vr: 'IS', Value: [1] },
-      '00080061': { vr: 'CS', Value: ['SM'] }
+      '00080061': { vr: 'CS', Value: ['SM'] },
     },
     {
       '0020000D': { vr: 'UI', Value: ['1.2.3.3'] },
@@ -71,7 +68,7 @@ describe('Worklist', () => {
       '00100030': { vr: 'DA' },
       '00201206': { vr: 'IS', Value: [1] },
       '00201208': { vr: 'IS', Value: [2] },
-      '00080061': { vr: 'CS', Value: ['CT'] }
+      '00080061': { vr: 'CS', Value: ['CT'] },
     },
     {
       '0020000D': { vr: 'UI', Value: ['1.2.3.4'] },
@@ -84,25 +81,25 @@ describe('Worklist', () => {
       '00100040': { vr: 'CS', Value: ['F'] },
       '00100030': { vr: 'DA' },
       '00201206': { vr: 'IS', Value: [1] },
-      '00201208': { vr: 'IS', Value: [1] }
-    }
+      '00201208': { vr: 'IS', Value: [1] },
+    },
   ]
 
   const seriesForBackfillStudy = [
     {
       '0020000D': { vr: 'UI', Value: ['1.2.3.4'] },
       '0020000E': { vr: 'UI', Value: ['1.2.4.1'] },
-      '00080060': { vr: 'CS', Value: ['OT'] }
+      '00080060': { vr: 'CS', Value: ['OT'] },
     },
     {
       '0020000D': { vr: 'UI', Value: ['1.2.3.4'] },
       '0020000E': { vr: 'UI', Value: ['1.2.4.2'] },
-      '00080060': { vr: 'CS', Value: ['SR'] }
-    }
+      '00080060': { vr: 'CS', Value: ['SR'] },
+    },
   ]
 
   manager.searchForStudies = async (
-    _options: dwc.api.SearchForStudiesOptions
+    _options: dwc.api.SearchForStudiesOptions,
   ): Promise<dwc.api.Study[]> => {
     return await Promise.resolve(searchResults as dwc.api.Study[])
   }
@@ -117,16 +114,14 @@ describe('Worklist', () => {
   const renderWithProviders = (ui: React.ReactElement) => {
     return render(
       <BrowserRouter>
-        <TooltipProvider>
-          {ui}
-        </TooltipProvider>
-      </BrowserRouter>
+        <TooltipProvider>{ui}</TooltipProvider>
+      </BrowserRouter>,
     )
   }
 
   it('should populate one row for each available study', async () => {
     const { queryAllByRole } = renderWithProviders(
-      <Worklist clients={clientMapping} />
+      <Worklist clients={clientMapping} />,
     )
 
     await waitFor(() => {
@@ -142,7 +137,7 @@ describe('Worklist', () => {
    */
   it.skip('synthesizes ModalitiesInStudy from series when study omits (0008,0061)', async () => {
     const { getByText } = renderWithProviders(
-      <Worklist clients={clientMapping} />
+      <Worklist clients={clientMapping} />,
     )
 
     /** The backfill adds OT and SR modalities, which are rendered as individual badges */

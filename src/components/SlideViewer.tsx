@@ -10,7 +10,7 @@ import type OlMap from 'ol/Map'
 import React from 'react'
 import { runValidations } from '../contexts/ValidationContext'
 import { StorageClasses } from '../data/uids'
-import { loadPreferences } from '../features/header/utils/preferences'
+import { loadPreferences } from '../features/preferences'
 import { ViewerFooter } from '../features/viewer/components/ViewerFooter'
 import {
   publishToast,
@@ -632,7 +632,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 }
               })
               .catch((error) => {
-                // eslint-disable-next-line @typescript-eslint/no-floating-promises
                 NotificationMiddleware.onError(
                   NotificationMiddlewareContext.SLIM,
                   new CustomError(
@@ -653,7 +652,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       })
       .catch((error) => {
         logger.error(error)
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.SLIM,
           new CustomError(
@@ -1212,7 +1210,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                   }
                 })
                 .catch((error) => {
-                  // eslint-disable-next-line @typescript-eslint/no-floating-promises
                   NotificationMiddleware.onError(
                     NotificationMiddlewareContext.SLIM,
                     new CustomError(
@@ -1239,7 +1236,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         })
         .catch((error) => {
           console.error(error)
-          // eslint-disable-next-line @typescript-eslint/no-floating-promises
           NotificationMiddleware.onError(
             NotificationMiddlewareContext.SLIM,
             new CustomError(
@@ -1273,7 +1269,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       try {
         this.volumeViewer.addAnnotationGroups(ann)
       } catch (error: unknown) {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.SLIM,
           new CustomError(
@@ -1288,7 +1283,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         const finding = item.AnnotationPropertyTypeCodeSequence[0]
         const key = buildKey(finding)
         const style = this.roiStyles[key]
-        // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
         if (
           style !== null &&
           style !== undefined &&
@@ -1364,7 +1358,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               })
               .catch((error) => {
                 console.error(error)
-                // eslint-disable-next-line @typescript-eslint/no-floating-promises
                 NotificationMiddleware.onError(
                   NotificationMiddlewareContext.SLIM,
                   new CustomError(
@@ -1379,7 +1372,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         })
         .catch((error) => {
           console.error(error)
-          // eslint-disable-next-line @typescript-eslint/no-floating-promises
           NotificationMiddleware.onError(
             NotificationMiddlewareContext.SLIM,
             new CustomError(
@@ -1424,7 +1416,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         this.volumeViewer.addSegments(segmentations)
         applyDistinctFractionalSegmentPalettes(this.volumeViewer)
       } catch (error: unknown) {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.SLIM,
           new CustomError(
@@ -1494,7 +1485,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               })
               .catch((error) => {
                 console.error(error)
-                // eslint-disable-next-line @typescript-eslint/no-floating-promises
                 NotificationMiddleware.onError(
                   NotificationMiddlewareContext.SLIM,
                   new CustomError(
@@ -1508,7 +1498,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         })
         .catch((error) => {
           console.error(error)
-          // eslint-disable-next-line @typescript-eslint/no-floating-promises
           NotificationMiddleware.onError(
             NotificationMiddlewareContext.SLIM,
             new CustomError(
@@ -1555,7 +1544,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         this.volumeViewer.addParameterMappings(parametricMaps)
         applyDistinctParametricMapPalettes(this.volumeViewer)
       } catch (error: unknown) {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.SLIM,
           new CustomError(
@@ -1623,7 +1611,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
               })
               .catch((error) => {
                 console.error(error)
-                // eslint-disable-next-line @typescript-eslint/no-floating-promises
                 NotificationMiddleware.onError(
                   NotificationMiddlewareContext.SLIM,
                   new CustomError(
@@ -1637,7 +1624,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         })
         .catch((error) => {
           console.error(error)
-          // eslint-disable-next-line @typescript-eslint/no-floating-promises
           NotificationMiddleware.onError(
             NotificationMiddlewareContext.SLIM,
             new CustomError(
@@ -2985,7 +2971,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         .then(() => publishToast('Annotations were saved.', 'success'))
         .catch((error) => {
           logger.error(error)
-          // eslint-disable-next-line @typescript-eslint/no-floating-promises
           NotificationMiddleware.onError(
             NotificationMiddlewareContext.SLIM,
             new CustomError(
@@ -3072,7 +3057,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       try {
         this.volumeViewer.showAnnotationGroup(annotationGroupUID)
       } catch (error) {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.SLIM,
           new CustomError(
@@ -3122,7 +3106,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     try {
       this.volumeViewer.setAnnotationGroupStyle(uid, styleOptions)
     } catch (error) {
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.SLIM,
         new CustomError(
@@ -3520,7 +3503,6 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         this.props.navigate(urlPath)
         this.setPresentationState(presentationState)
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.SLIM,
           new CustomError(

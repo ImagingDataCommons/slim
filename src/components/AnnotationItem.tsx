@@ -2,7 +2,7 @@
 import type * as dmv from 'dicom-microscopy-viewer'
 import type React from 'react'
 
-import { usePreferences } from '../features/header/hooks/usePreferences'
+import { usePreferences } from '../features/preferences'
 import { cn } from '../lib/utils'
 import {
   describeRoiMeasurement,

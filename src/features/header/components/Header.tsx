@@ -14,6 +14,7 @@ import { useStudySummary } from '../../../contexts/StudySummaryContext'
 import type DicomWebManager from '../../../DicomWebManager'
 import { cn } from '../../../lib/utils'
 import { isViewerPath, parseSeriesInstanceUID } from '../../../utils/routes'
+import { PreferencesDialog, type PreferencesTab } from '../../preferences'
 import { useNotifications } from '../hooks/useNotifications'
 import {
   type ServerSelectionParams,
@@ -21,8 +22,6 @@ import {
 } from '../hooks/useServerSelection'
 import { DebugDialog } from './dialogs/DebugDialog'
 import { DicomTagBrowserDialog } from './dialogs/DicomTagBrowserDialog'
-import type { PreferencesTab } from './dialogs/PreferencesDialog'
-import { PreferencesDialog } from './dialogs/PreferencesDialog'
 import { ServerSelectionDialog } from './dialogs/ServerSelectionDialog'
 import { UserMenu } from './UserMenu'
 

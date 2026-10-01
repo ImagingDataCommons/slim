@@ -9,7 +9,7 @@ import type DicomWebManager from '../../../DicomWebManager'
 import { cn } from '../../../lib/utils'
 import { buildStudyPath } from '../../../utils/routes'
 import { getLocalStorage } from '../../../utils/safeStorage'
-import { usePreferences } from '../../header/hooks/usePreferences'
+import { usePreferences } from '../../preferences'
 import { useStudies } from '../hooks/useStudies'
 import { loadStoredFilters, saveStoredFilters } from '../utils/filterStorage'
 import {

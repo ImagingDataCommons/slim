@@ -2,40 +2,40 @@ import { detect } from 'detect-browser'
 import type * as React from 'react'
 import { useId, useMemo, useState } from 'react'
 
-import appPackageJson from '../../../../../package.json'
-import { SlimLogoMark } from '../../../../components/slim/SlimLogoMark'
-import { Button } from '../../../../components/ui/button'
+import appPackageJson from '../../../../package.json'
+import { SlimLogoMark } from '../../../components/slim/SlimLogoMark'
+import { Button } from '../../../components/ui/button'
 import {
   Dialog,
   DialogContent,
   SlimDialogFooter,
   SlimDialogHeader,
-} from '../../../../components/ui/dialog'
-import { Icon } from '../../../../components/ui/icon'
-import { SegmentedControl } from '../../../../components/ui/segmented'
-import { Switch } from '../../../../components/ui/switch'
-import type { Theme } from '../../../../contexts/ThemeContext'
-import { useCopyToClipboard } from '../../../../hooks/useCopyToClipboard'
-import { cn } from '../../../../lib/utils'
-import { downloadTextFile } from '../../../../utils/download'
+} from '../../../components/ui/dialog'
+import { Icon } from '../../../components/ui/icon'
+import { SegmentedControl } from '../../../components/ui/segmented'
+import { Switch } from '../../../components/ui/switch'
+import type { Theme } from '../../../contexts/ThemeContext'
+import { useCopyToClipboard } from '../../../hooks/useCopyToClipboard'
+import { cn } from '../../../lib/utils'
+import { downloadTextFile } from '../../../utils/download'
 import {
   type PreferencesTab,
   usePreferencesDraft,
-} from '../../hooks/usePreferencesDraft'
+} from '../hooks/usePreferencesDraft'
 import {
   buildSupportInfo,
   formatBrowserLabel,
   getAboutLinks,
   getDependencyVersion,
-} from '../../utils/about'
+} from '../utils/about'
 import {
   filterConfigRows,
   flattenConfig,
   formatConfigValue,
   maskConfig,
   splitByQuery,
-} from '../../utils/configRows'
-import { type MeasurementUnit, STROKE_COLORS } from '../../utils/preferences'
+} from '../utils/configRows'
+import { type MeasurementUnit, STROKE_COLORS } from '../utils/preferences'
 
 export type { PreferencesTab }
 
