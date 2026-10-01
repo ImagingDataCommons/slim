@@ -23,6 +23,13 @@ export interface ToastConfig {
   top?: number
 }
 
+export interface ToastPublishOptions {
+  /** Show even when `config.messages` disables the tone */
+  ignoreConfig?: boolean
+  /** Auto-dismiss delay in ms, replacing `config.messages.duration` */
+  durationMs?: number
+}
+
 export const MAX_VISIBLE_TOASTS = 3
 
 export const TOAST_DURATION_MS = 5000

@@ -71,12 +71,45 @@ describe('NotificationMiddleware', () => {
     expect(toastStore.getSnapshot()).toHaveLength(0)
   })
 
-  it('respects config.messages for error toasts', () => {
-    toastStore.configure({ disabled: ['error'] })
+  it('shows error notifications even when config.messages disables them', () => {
+    toastStore.configure({ disabled: true })
     NotificationMiddleware.onError(
       NotificationMiddlewareContext.AUTH,
       new CustomError(errorTypes.AUTHENTICATION, 'Denied'),
     )
+    NotificationMiddleware.onError(
+      NotificationMiddlewareContext.SLIM,
+      new CustomError('Warning', 'Careful'),
+    )
+    expect(toastStore.getSnapshot()).toEqual([
+      expect.objectContaining({ message: 'Denied', tone: 'error' }),
+      expect.objectContaining({ message: 'Careful', tone: 'warning' }),
+    ])
+  })
+
+  it('dismisses error notifications after 3 s whatever the duration', () => {
+    vi.useFakeTimers()
+    try {
+      toastStore.configure({ duration: 0 })
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.DICOMWEB,
+        new CustomError(errorTypes.COMMUNICATION, 'Server is down'),
+      )
+      vi.advanceTimersByTime(2999)
+      expect(toastStore.getSnapshot()).toHaveLength(1)
+      vi.advanceTimersByTime(1)
+      expect(toastStore.getSnapshot()).toHaveLength(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('still applies config.messages to OnInfo toasts', () => {
+    toastStore.configure({ disabled: ['success'] })
+    NotificationMiddleware.publish(NotificationMiddlewareEvents.OnInfo, {
+      message: 'Saved',
+      tone: 'success',
+    })
     expect(toastStore.getSnapshot()).toHaveLength(0)
   })
 

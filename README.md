@@ -236,8 +236,8 @@ window.config = {
 
 **Options:**
 
-- `disabled`: Disable specific message types or all messages
-- `duration`: How long messages are shown (in seconds); `0` keeps them until dismissed
+- `disabled`: Disable specific message types or all messages. Error notifications (sign-in failures, rejected or failed server requests, viewer errors) are always shown.
+- `duration`: How long messages are shown (in seconds); `0` keeps them until dismissed. Error notifications always close after 3 seconds.
 - `top`: Anchor the stack this many pixels from the top of the window instead of the bottom
 
 **Available message types:**

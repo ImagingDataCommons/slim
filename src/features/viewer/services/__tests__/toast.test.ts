@@ -65,6 +65,18 @@ describe('createToastStore', () => {
     expect(listener).toHaveBeenCalledTimes(1)
   })
 
+  it('can bypass config.messages with its own duration', () => {
+    const store = createToastStore()
+    store.configure({ disabled: true, duration: 0 })
+    store.publish(
+      { message: 'Denied', tone: 'error' },
+      { ignoreConfig: true, durationMs: 3000 },
+    )
+    expect(store.getSnapshot()).toHaveLength(1)
+    vi.advanceTimersByTime(3000)
+    expect(store.getSnapshot()).toHaveLength(0)
+  })
+
   it('dismisses by id and ignores unknown ids', () => {
     const store = createToastStore()
     const listener = vi.fn()

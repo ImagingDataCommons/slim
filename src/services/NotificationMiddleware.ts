@@ -1,5 +1,8 @@
 import { publishToast } from '../features/viewer/services/toast'
-import { toToastNotification } from '../features/viewer/utils/toastQueue'
+import {
+  type ToastPublishOptions,
+  toToastNotification,
+} from '../features/viewer/utils/toastQueue'
 import { CustomError, errorTypes } from '../utils/CustomError'
 import PubSub from '../utils/PubSub'
 
@@ -48,6 +51,16 @@ const NotificationType = {
 type NotificationKind = (typeof NotificationType)[keyof typeof NotificationType]
 
 const WARNING_CATEGORY = 'Warning'
+
+/**
+ * Error notifications (sign-in failures, 401/403, server errors) are never
+ * silenced by `config.messages` and stay for 3 s, independent of
+ * `messages.duration`.
+ */
+export const ERROR_TOAST_OPTIONS: ToastPublishOptions = {
+  ignoreConfig: true,
+  durationMs: 3000,
+}
 
 /**
  * Sources of Error:
@@ -147,9 +160,14 @@ class NotificationMiddleware extends PubSub {
     const message =
       error instanceof CustomError ? String(error.message) : String(error)
     if (errorCategory === WARNING_CATEGORY) {
-      publishToast(message, 'warning')
+      publishToast(message, 'warning', undefined, ERROR_TOAST_OPTIONS)
     } else {
-      publishToast(message, 'error', `${String(errorCategory)} error`)
+      publishToast(
+        message,
+        'error',
+        `${String(errorCategory)} error`,
+        ERROR_TOAST_OPTIONS,
+      )
     }
   }
 }
