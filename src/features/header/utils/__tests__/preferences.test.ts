@@ -25,7 +25,6 @@ describe('parsePreferences', () => {
       rememberFilters: false,
       strokeColor: '#D9453B',
       strokeWidth: 4,
-      showRoiLabels: false,
       confirmRoiRemoval: false,
     })
     expect(parsePreferences(stored)).toEqual({
@@ -34,7 +33,6 @@ describe('parsePreferences', () => {
       rememberFilters: false,
       strokeColor: '#D9453B',
       strokeWidth: 4,
-      showRoiLabels: false,
       confirmRoiRemoval: false,
     })
   })
@@ -43,8 +41,8 @@ describe('parsePreferences', () => {
     const stored = JSON.stringify({
       units: 'inch',
       compactRows: 'yes',
-      showRoiLabels: 1,
-      extra: true,
+      confirmRoiRemoval: 1,
+      showRoiLabels: true,
     })
     expect(parsePreferences(stored)).toEqual(DEFAULT_PREFERENCES)
   })

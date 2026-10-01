@@ -3,6 +3,7 @@ import type * as React from 'react'
 import { useId, useMemo, useState } from 'react'
 
 import appPackageJson from '../../../../../package.json'
+import { SlimLogoMark } from '../../../../components/slim/SlimLogoMark'
 import { Button } from '../../../../components/ui/button'
 import {
   Dialog,
@@ -24,6 +25,7 @@ import {
 import {
   buildSupportInfo,
   formatBrowserLabel,
+  getAboutLinks,
   getDependencyVersion,
 } from '../../utils/about'
 import {
@@ -31,6 +33,7 @@ import {
   flattenConfig,
   formatConfigValue,
   maskConfig,
+  splitByQuery,
 } from '../../utils/configRows'
 import { type MeasurementUnit, STROKE_COLORS } from '../../utils/preferences'
 
@@ -194,6 +197,32 @@ function CopyButton({
   )
 }
 
+function HighlightedText({
+  text,
+  query,
+}: {
+  text: string
+  query: string
+}): React.ReactElement {
+  const segments = splitByQuery(text, query)
+  return (
+    <>
+      {segments.map((segment) =>
+        segment.isMatch ? (
+          <mark
+            key={segment.start}
+            className="rounded-[3px] bg-warning-soft px-px text-inherit ring-1 ring-warning/40"
+          >
+            {segment.text}
+          </mark>
+        ) : (
+          <span key={segment.start}>{segment.text}</span>
+        ),
+      )}
+    </>
+  )
+}
+
 function configValueColor(raw: unknown): string {
   if (typeof raw === 'number') return 'text-primary'
   if (typeof raw === 'boolean') return 'text-syntax-boolean'
@@ -215,6 +244,7 @@ function ConfigurationTab(): React.ReactElement {
   const changedCount = rows.filter(
     (row) => !row.isGroup && row.isChanged,
   ).length
+  const leafMatchCount = visibleRows.filter((row) => !row.isGroup).length
   const json = `window.config = ${JSON.stringify(
     maskedConfig,
     (_key, value: unknown) =>
@@ -229,57 +259,74 @@ function ConfigurationTab(): React.ReactElement {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex flex-none items-center gap-2 border-b border-line-soft px-5 py-3">
-        <div className="flex h-8 min-w-0 max-w-[340px] flex-1 items-center gap-2 rounded-lg border border-line-input px-2.5 focus-within:border-primary">
-          <Icon name="search" size={18} className="text-ink-muted" />
+      <div className="flex flex-none flex-col gap-2.5 border-b border-line-soft px-5 py-3">
+        <div className="flex h-9 w-full items-center gap-2 rounded-lg border border-line-input bg-panel px-3 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
+          <Icon name="search" size={18} className="flex-none text-ink-muted" />
           <input
             type="search"
             aria-label="Search configuration"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search keys and values"
-            className="min-w-0 flex-1 border-0 bg-transparent text-[12.5px] text-ink outline-none placeholder:text-ink-fainter"
+            className="min-w-0 flex-1 border-0 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-fainter [&::-webkit-search-cancel-button]:appearance-none"
           />
-        </div>
-        <button
-          type="button"
-          aria-pressed={onlyChanged}
-          onClick={() => setOnlyChanged((value) => !value)}
-          className={cn(
-            'flex h-8 items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-medium',
-            onlyChanged
-              ? 'border-warning/60 bg-warning-soft text-warning-text'
-              : 'border-line-input bg-panel text-ink-body',
+          {query !== '' && (
+            <>
+              <span className="flex-none text-[11.5px] text-ink-muted">
+                {leafMatchCount} {leafMatchCount === 1 ? 'match' : 'matches'}
+              </span>
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={() => setQuery('')}
+                className="grid h-5 w-5 flex-none place-items-center rounded text-ink-muted hover:bg-subtle hover:text-ink"
+              >
+                <Icon name="close" size={15} />
+              </button>
+            </>
           )}
-        >
-          <span className="h-[7px] w-[7px] rounded-full bg-warning" />
-          Changed from default
-          <span className="font-mono text-[11px] font-medium">
-            {changedCount}
-          </span>
-        </button>
-        <div className="flex-1" />
-        <SegmentedControl
-          size="sm"
-          value={view}
-          onChange={setView}
-          options={[
-            { value: 'tree', label: 'Tree', icon: 'account_tree' },
-            { value: 'json', label: 'JSON', icon: 'data_object' },
-          ]}
-        />
-        <CopyButton
-          text={json}
-          className="h-8 rounded-lg px-3 text-[12.5px] text-ink"
-        />
-        <button
-          type="button"
-          onClick={download}
-          className="flex h-8 items-center gap-1.5 whitespace-nowrap rounded-lg border border-line-input bg-panel px-3 text-[12.5px] font-medium text-ink hover:bg-subtle"
-        >
-          <Icon name="download" size={17} />
-          Download
-        </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            aria-pressed={onlyChanged}
+            onClick={() => setOnlyChanged((value) => !value)}
+            className={cn(
+              'flex h-8 items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-medium',
+              onlyChanged
+                ? 'border-warning/60 bg-warning-soft text-warning-text'
+                : 'border-line-input bg-panel text-ink-body',
+            )}
+          >
+            <span className="h-[7px] w-[7px] rounded-full bg-warning" />
+            Changed from default
+            <span className="font-mono text-[11px] font-medium">
+              {changedCount}
+            </span>
+          </button>
+          <SegmentedControl
+            size="sm"
+            value={view}
+            onChange={setView}
+            options={[
+              { value: 'tree', label: 'Tree', icon: 'account_tree' },
+              { value: 'json', label: 'JSON', icon: 'data_object' },
+            ]}
+          />
+          <div className="flex-1" />
+          <CopyButton
+            text={json}
+            className="h-8 rounded-lg px-3 text-[12.5px] text-ink"
+          />
+          <button
+            type="button"
+            onClick={download}
+            className="flex h-8 items-center gap-1.5 whitespace-nowrap rounded-lg border border-line-input bg-panel px-3 text-[12.5px] font-medium text-ink hover:bg-subtle"
+          >
+            <Icon name="download" size={17} />
+            Download
+          </button>
+        </div>
       </div>
       <div className="flex flex-none items-center gap-2 border-b border-line-soft bg-subtle px-5 py-2 text-[12px] text-ink-secondary">
         <Icon name="lock" size={16} className="text-ink-muted" />
@@ -321,7 +368,7 @@ function ConfigurationTab(): React.ReactElement {
                       : 'font-mono text-[12px]',
                   )}
                 >
-                  {row.key}
+                  <HighlightedText text={row.key} query={query} />
                 </span>
               </div>
               <div
@@ -330,7 +377,7 @@ function ConfigurationTab(): React.ReactElement {
                   configValueColor(row.raw),
                 )}
               >
-                {row.value}
+                <HighlightedText text={row.value} query={query} />
               </div>
               <div className="text-right">
                 {!row.isGroup && (
@@ -356,7 +403,7 @@ function ConfigurationTab(): React.ReactElement {
         </div>
       ) : (
         <pre className="m-0 min-h-0 flex-1 overflow-auto whitespace-pre bg-subtle px-5 py-4 font-mono text-[12px] leading-[1.6] text-ink-body">
-          {json}
+          <HighlightedText text={json} query={query} />
         </pre>
       )}
     </div>
@@ -384,65 +431,93 @@ function AboutTab({
       }),
     [app.name, app.version],
   )
-  const homepageLabel = app.homepage.replace(/^https?:\/\//, '')
+  const links = useMemo(() => getAboutLinks(app.homepage), [app.homepage])
 
   return (
-    <div className="grid h-full min-h-0 min-w-0 flex-1 grid-cols-[240px_minmax(0,1fr)] content-start overflow-auto">
-      <div className="flex h-full flex-col gap-1.5 border-r border-line-soft bg-subtle px-6 py-7">
-        <div className="grid h-[52px] w-[52px] place-items-center rounded-[14px] bg-primary text-[24px] font-bold leading-none text-primary-foreground">
-          S
-        </div>
-        <div className="mt-2.5 text-[20px] font-semibold leading-[1.2] tracking-[-0.01em] text-ink">
-          Slim
-        </div>
-        <div className="text-ink-secondary">Version {app.version}</div>
-        <div className="mt-2 text-[12.5px] text-ink-muted">
-          Interoperable web viewer for DICOM slide microscopy images.
-        </div>
-        {app.organization !== undefined && app.organization !== '' && (
-          <div className="text-[12.5px] text-ink-muted">{app.organization}</div>
-        )}
-        <a
-          href={app.homepage}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-2.5 text-[12.5px] text-primary hover:text-primary-hover hover:underline"
-        >
-          {homepageLabel}
-        </a>
-      </div>
-      <div className="flex flex-col gap-2.5 px-6 py-5">
-        {rows.map((row) => (
-          <div
-            key={row.id}
-            className="flex flex-col gap-1.5 rounded-[10px] border border-line px-3.5 py-3"
-          >
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="font-semibold text-ink">{row.title}</span>
-              <span className="truncate text-[12px] text-ink-muted">
-                {row.meta}
+    <div className="min-h-0 min-w-0 flex-1 overflow-auto">
+      <div className="mx-auto flex max-w-[640px] flex-col gap-5 px-6 py-6">
+        <div className="flex items-center gap-4 rounded-xl border border-line bg-gradient-to-br from-primary-soft to-panel p-5">
+          <div className="h-14 w-14 flex-none overflow-hidden rounded-2xl bg-primary text-primary-foreground shadow-[0_6px_16px_-6px_rgb(var(--primary)/0.6)]">
+            <SlimLogoMark className="h-full w-full" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-[20px] font-semibold leading-tight tracking-[-0.01em] text-ink">
+                Slim
+              </h3>
+              <span className="rounded-full border border-primary/25 bg-panel px-2 py-0.5 font-mono text-[11px] font-semibold text-primary">
+                v{app.version}
               </span>
             </div>
-            {row.hash !== undefined && (
-              <div className="flex items-center gap-2 rounded-[7px] border border-line-soft bg-subtle py-1.5 pl-2.5 pr-1.5">
-                <code className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-ink-body">
-                  {row.hash}
-                </code>
-                <CopyButton
-                  text={row.hash}
-                  className="h-[26px] px-2 text-[11.5px]"
-                />
-              </div>
+            <p className="mt-1 text-[12.5px] text-ink-secondary">
+              Interoperable web viewer for DICOM slide microscopy images.
+            </p>
+            {app.organization !== undefined && app.organization !== '' && (
+              <p className="mt-0.5 text-[12px] text-ink-muted">
+                {app.organization}
+              </p>
             )}
           </div>
-        ))}
-        <div className="mt-1 flex justify-end">
-          <CopyButton
-            text={supportText}
-            label="Copy all for support ticket"
-            className="h-8 gap-1.5 rounded-lg px-3 text-[12.5px] text-ink"
-          />
         </div>
+
+        <div className="flex flex-wrap gap-2">
+          {links.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              target="_blank"
+              rel="noreferrer"
+              className="flex h-8 items-center gap-1.5 rounded-lg border border-line-input bg-panel px-3 text-[12.5px] font-medium text-ink transition-colors hover:border-line-hover hover:bg-subtle"
+            >
+              <Icon name={link.icon} size={16} className="text-ink-secondary" />
+              {link.label}
+              <Icon name="open_in_new" size={14} className="text-ink-muted" />
+            </a>
+          ))}
+        </div>
+
+        <section>
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-secondary">
+              Build information
+            </h3>
+            <CopyButton
+              text={supportText}
+              label="Copy for support ticket"
+              className="h-7 gap-1.5 rounded-lg px-2.5 text-[12px] text-ink"
+            />
+          </div>
+          <dl className="overflow-hidden rounded-xl border border-line">
+            {rows.map((row) => (
+              <div
+                key={row.id}
+                className="flex min-h-[44px] items-center gap-4 border-b border-line-soft px-4 py-2 last:border-b-0"
+              >
+                <dt className="w-[200px] flex-none text-[12.5px] text-ink-secondary">
+                  {row.label}
+                </dt>
+                <dd
+                  className={cn(
+                    'min-w-0 flex-1 truncate',
+                    row.isCode
+                      ? 'font-mono text-[12px] text-ink'
+                      : 'text-[12.5px] text-ink',
+                    row.isMissing === true && 'italic text-ink-muted',
+                  )}
+                  title={row.copyValue ?? row.value}
+                >
+                  {row.value}
+                </dd>
+                {row.copyValue !== undefined && (
+                  <CopyButton
+                    text={row.copyValue}
+                    className="h-[26px] px-2 text-[11.5px]"
+                  />
+                )}
+              </div>
+            ))}
+          </dl>
+        </section>
       </div>
     </div>
   )
@@ -524,21 +599,6 @@ export function PreferencesDialog({
                       options={THEME_OPTIONS}
                     />
                   </div>
-                  <PreferenceRow
-                    label="Measurement units"
-                    description="Used for lengths and areas of ROIs"
-                  >
-                    {() => (
-                      <SegmentedControl
-                        fill
-                        className="w-40"
-                        aria-label="Measurement units"
-                        value={draft.units}
-                        onChange={(value) => update('units', value)}
-                        options={UNIT_OPTIONS}
-                      />
-                    )}
-                  </PreferenceRow>
                   <SectionLabel>Worklist</SectionLabel>
                   <PreferenceRow
                     label="Compact rows"
@@ -575,9 +635,14 @@ export function PreferencesDialog({
 
               {activeTab === 'annotations' && (
                 <>
-                  <SectionLabel>Default style</SectionLabel>
+                  <SectionLabel>Drawing style</SectionLabel>
                   <div className="flex flex-col gap-2.5 border-b border-line-soft py-3">
-                    <div className="font-medium text-ink">Stroke color</div>
+                    <div>
+                      <div className="font-medium text-ink">Stroke color</div>
+                      <div className="mt-0.5 text-[12px] text-ink-muted">
+                        Applied to new ROIs you draw
+                      </div>
+                    </div>
                     <div className="flex gap-2">
                       {STROKE_COLORS.map((color) => (
                         <button
@@ -617,21 +682,23 @@ export function PreferencesDialog({
                       {draft.strokeWidth} px
                     </span>
                   </div>
+                  <SectionLabel>Measurements</SectionLabel>
                   <PreferenceRow
-                    label="Show ROI labels"
-                    description="Display the ROI name above each shape"
+                    label="Measurement units"
+                    description="Lengths and areas in the annotation list and ROI details"
                   >
-                    {(controlProps) => (
-                      <Switch
-                        {...controlProps}
-                        size="lg"
-                        checked={draft.showRoiLabels}
-                        onCheckedChange={(value) =>
-                          update('showRoiLabels', value)
-                        }
+                    {() => (
+                      <SegmentedControl
+                        fill
+                        className="w-40"
+                        aria-label="Measurement units"
+                        value={draft.units}
+                        onChange={(value) => update('units', value)}
+                        options={UNIT_OPTIONS}
                       />
                     )}
                   </PreferenceRow>
+                  <SectionLabel>Editing</SectionLabel>
                   <PreferenceRow
                     label="Confirm before removing"
                     description="Ask before deleting a selected ROI"

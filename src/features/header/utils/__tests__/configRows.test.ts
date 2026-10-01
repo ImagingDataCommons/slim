@@ -6,7 +6,30 @@ import {
   isSecretKey,
   MASKED_VALUE,
   maskConfig,
+  splitByQuery,
 } from '../configRows'
+
+describe('splitByQuery', () => {
+  it('returns the whole text for an empty query', () => {
+    expect(splitByQuery('servers', '  ')).toEqual([
+      { text: 'servers', isMatch: false, start: 0 },
+    ])
+  })
+
+  it('marks every case-insensitive occurrence with its offset', () => {
+    expect(splitByQuery('Server url: server', 'SERVER')).toEqual([
+      { text: 'Server', isMatch: true, start: 0 },
+      { text: ' url: ', isMatch: false, start: 6 },
+      { text: 'server', isMatch: true, start: 12 },
+    ])
+  })
+
+  it('returns no matches when the query is absent', () => {
+    expect(splitByQuery('mode', 'path')).toEqual([
+      { text: 'mode', isMatch: false, start: 0 },
+    ])
+  })
+})
 
 describe('isSecretKey', () => {
   it.each([

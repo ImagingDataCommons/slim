@@ -10,7 +10,6 @@ export interface UserPreferences {
   rememberFilters: boolean
   strokeColor: string
   strokeWidth: number
-  showRoiLabels: boolean
   confirmRoiRemoval: boolean
 }
 
@@ -36,7 +35,6 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   rememberFilters: true,
   strokeColor: STROKE_COLORS[0],
   strokeWidth: 2,
-  showRoiLabels: true,
   confirmRoiRemoval: true,
 }
 
@@ -68,9 +66,6 @@ export function parsePreferences(stored: string | null): UserPreferences {
       parsed.strokeWidth <= 6
     ) {
       result.strokeWidth = parsed.strokeWidth
-    }
-    if (typeof parsed.showRoiLabels === 'boolean') {
-      result.showRoiLabels = parsed.showRoiLabels
     }
     if (typeof parsed.confirmRoiRemoval === 'boolean') {
       result.confirmRoiRemoval = parsed.confirmRoiRemoval

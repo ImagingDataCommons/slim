@@ -719,7 +719,7 @@ class App extends React.Component<AppProps, AppState> {
                     <Header
                       app={appInfo}
                       user={this.state.user}
-                      showWorklistButton={enableWorklist}
+                      showWorklistButton={false}
                       onServerSelection={this.handleServerSelection}
                       onUserLogout={isLogoutPossible ? onLogout : undefined}
                       showServerSelectionButton={enableServerSelection}

@@ -3,7 +3,13 @@ import { useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import type { User } from '../../../auth'
+import { SlimLogoMark } from '../../../components/slim/SlimLogoMark'
 import { Icon } from '../../../components/ui/icon'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '../../../components/ui/tooltip'
 import { useStudySummary } from '../../../contexts/StudySummaryContext'
 import type DicomWebManager from '../../../DicomWebManager'
 import { cn } from '../../../lib/utils'
@@ -131,10 +137,10 @@ export function Header({
 
   return (
     <>
-      <header className="flex h-header flex-none items-center gap-4 border-b border-line bg-panel pl-4 pr-3">
+      <header className="flex h-header flex-none items-center gap-4 border-b border-line bg-panel pl-5 pr-3">
         <div className="flex flex-none items-center gap-2.5">
-          <div className="grid h-7 w-7 place-items-center rounded-[7px] bg-primary text-[14px] font-bold leading-none text-primary-foreground">
-            S
+          <div className="h-7 w-7 overflow-hidden rounded-[7px] bg-primary text-primary-foreground">
+            <SlimLogoMark className="h-full w-full" />
           </div>
           <div className="text-[15px] font-semibold leading-none tracking-[-0.01em] text-ink">
             Slim
@@ -181,22 +187,40 @@ export function Header({
         </nav>
 
         <div className="flex min-w-0 flex-1 justify-center">
-          {currentServerUrl !== undefined &&
-            currentServerUrl !== '' &&
-            (showServerSelectionButton ? (
-              <button
-                type="button"
-                title="Select server"
-                onClick={openServerDialog}
-                className={cn(serverPillClassName, 'hover:border-line-hover')}
+          {currentServerUrl !== undefined && currentServerUrl !== '' && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {showServerSelectionButton ? (
+                  <button
+                    type="button"
+                    aria-label={`Server ${currentServerUrl}. Change server`}
+                    onClick={openServerDialog}
+                    className={cn(
+                      serverPillClassName,
+                      'hover:border-line-hover',
+                    )}
+                  >
+                    {serverPillContent}
+                  </button>
+                ) : (
+                  <div className={serverPillClassName}>{serverPillContent}</div>
+                )}
+              </TooltipTrigger>
+              <TooltipContent
+                side="bottom"
+                className="max-w-[min(640px,90vw)] px-2.5 py-1.5"
               >
-                {serverPillContent}
-              </button>
-            ) : (
-              <div className={serverPillClassName} title={currentServerUrl}>
-                {serverPillContent}
-              </div>
-            ))}
+                <div className="break-all font-mono text-[11.5px] leading-[1.45]">
+                  {currentServerUrl}
+                </div>
+                {showServerSelectionButton && (
+                  <div className="mt-1 text-[11px] font-normal opacity-70">
+                    Click to change or copy the server
+                  </div>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
 
         <div className="flex flex-none items-center gap-0.5">
@@ -270,6 +294,7 @@ export function Header({
           if (!open) cancelServerDialog()
         }}
         serverUrl={serverUrl}
+        currentServerUrl={currentServerUrl}
         defaultServerUrl={defaultServerUrl}
         mode={serverMode}
         isValid={isServerUrlValid}

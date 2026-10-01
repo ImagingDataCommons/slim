@@ -155,6 +155,39 @@ export function flattenConfig(
   return rows
 }
 
+export interface TextSegment {
+  text: string
+  isMatch: boolean
+  /** Offset of the segment in the original text (unique per segment) */
+  start: number
+}
+
+/** Split `text` around case-insensitive occurrences of `query`. */
+export function splitByQuery(text: string, query: string): TextSegment[] {
+  const needle = query.trim().toLowerCase()
+  if (needle === '') return [{ text, isMatch: false, start: 0 }]
+  const haystack = text.toLowerCase()
+  const segments: TextSegment[] = []
+  let start = 0
+  let index = haystack.indexOf(needle, start)
+  while (index !== -1) {
+    if (index > start) {
+      segments.push({ text: text.slice(start, index), isMatch: false, start })
+    }
+    segments.push({
+      text: text.slice(index, index + needle.length),
+      isMatch: true,
+      start: index,
+    })
+    start = index + needle.length
+    index = haystack.indexOf(needle, start)
+  }
+  if (start < text.length) {
+    segments.push({ text: text.slice(start), isMatch: false, start })
+  }
+  return segments
+}
+
 /**
  * Keep leaves matching the query (and the changed filter) plus any group
  * that still has a visible descendant.

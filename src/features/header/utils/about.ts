@@ -2,10 +2,23 @@
 
 export interface AboutRow {
   id: string
-  title: string
-  meta: string
-  hash?: string
+  label: string
+  value: string
+  /** Render the value in a monospace font (versions, hashes) */
+  isCode: boolean
+  /** Full value to copy; absent when there is nothing useful to copy */
+  copyValue?: string
+  /** The value is a placeholder for information this build does not have */
+  isMissing?: boolean
 }
+
+export interface AboutLink {
+  label: string
+  href: string
+  icon: string
+}
+
+export const UNKNOWN_COMMIT = 'unknown'
 
 export interface SupportInfoInput {
   appName: string
@@ -34,7 +47,54 @@ interface BrowserLike {
 }
 
 export function resolveCommit(value: string | undefined): string {
-  return value !== undefined && value.trim() !== '' ? value.trim() : 'unknown'
+  return value !== undefined && value.trim() !== ''
+    ? value.trim()
+    : UNKNOWN_COMMIT
+}
+
+/** Git-style 7 character abbreviation of a commit hash. */
+export function shortenCommit(commit: string): string {
+  return /^[0-9a-f]{8,}$/i.test(commit) ? commit.slice(0, 7) : commit
+}
+
+function commitRow(id: string, label: string, commit: string): AboutRow {
+  if (commit === UNKNOWN_COMMIT) {
+    return {
+      id,
+      label,
+      value: 'Not available in this build',
+      isCode: false,
+      isMissing: true,
+    }
+  }
+  return {
+    id,
+    label,
+    value: shortenCommit(commit),
+    isCode: true,
+    copyValue: commit,
+  }
+}
+
+/** Repository and issue tracker links for a GitHub homepage. */
+export function getAboutLinks(homepage: string): AboutLink[] {
+  const repository = homepage.replace(/\/+$/, '')
+  const links: AboutLink[] = [
+    { label: 'Source code', href: repository, icon: 'code' },
+  ]
+  if (/^https?:\/\/(www\.)?github\.com\/[^/]+\/[^/]+$/i.test(repository)) {
+    links.push({
+      label: 'Report an issue',
+      href: `${repository}/issues`,
+      icon: 'bug_report',
+    })
+    links.push({
+      label: 'Releases',
+      href: `${repository}/releases`,
+      icon: 'new_releases',
+    })
+  }
+  return links
 }
 
 /** Declared dependency version without its range prefix, e.g. "^0.48.2" → "0.48.2". */
@@ -69,18 +129,27 @@ export function buildSupportInfo(input: SupportInfoInput): SupportInfo {
   const dmvCommit = resolveCommit(input.dmvCommit)
   const rows: AboutRow[] = [
     {
-      id: 'slim',
-      title: 'Slim commit',
-      meta: `Version ${input.appVersion}`,
-      hash: slimCommit,
+      id: 'slim-version',
+      label: 'Slim version',
+      value: input.appVersion,
+      isCode: true,
+      copyValue: input.appVersion,
     },
+    commitRow('slim-commit', 'Slim commit', slimCommit),
     {
-      id: 'dmv',
-      title: 'DICOM Microscopy Viewer',
-      meta: `Version ${input.dmvVersion}`,
-      hash: dmvCommit,
+      id: 'dmv-version',
+      label: 'DICOM Microscopy Viewer',
+      value: input.dmvVersion,
+      isCode: true,
+      copyValue: input.dmvVersion,
     },
-    { id: 'browser', title: 'Browser & OS', meta: input.browserLabel },
+    commitRow('dmv-commit', 'DICOM Microscopy Viewer commit', dmvCommit),
+    {
+      id: 'browser',
+      label: 'Browser & OS',
+      value: input.browserLabel,
+      isCode: false,
+    },
   ]
   const supportText = [
     `${input.appName} ${input.appVersion}`,

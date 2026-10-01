@@ -1,9 +1,42 @@
 import {
   buildSupportInfo,
   formatBrowserLabel,
+  getAboutLinks,
   getDependencyVersion,
   resolveCommit,
+  shortenCommit,
 } from '../about'
+
+describe('shortenCommit', () => {
+  it('abbreviates hex hashes to 7 characters', () => {
+    expect(shortenCommit('8dafac5e0f1b2c3d')).toBe('8dafac5')
+  })
+
+  it('keeps short or non-hex values', () => {
+    expect(shortenCommit('abc123')).toBe('abc123')
+    expect(shortenCommit('unknown')).toBe('unknown')
+  })
+})
+
+describe('getAboutLinks', () => {
+  it('adds issues and releases for GitHub repositories', () => {
+    expect(
+      getAboutLinks('https://github.com/ImagingDataCommons/slim/').map(
+        (link) => link.href,
+      ),
+    ).toEqual([
+      'https://github.com/ImagingDataCommons/slim',
+      'https://github.com/ImagingDataCommons/slim/issues',
+      'https://github.com/ImagingDataCommons/slim/releases',
+    ])
+  })
+
+  it('only links the homepage elsewhere', () => {
+    expect(getAboutLinks('https://example.org/slim')).toEqual([
+      { label: 'Source code', href: 'https://example.org/slim', icon: 'code' },
+    ])
+  })
+})
 
 describe('resolveCommit', () => {
   it('falls back to "unknown" for missing commits', () => {
@@ -79,19 +112,47 @@ describe('buildSupportInfo', () => {
   it('builds the About rows', () => {
     expect(buildSupportInfo(input).rows).toEqual([
       {
-        id: 'slim',
-        title: 'Slim commit',
-        meta: 'Version 0.46.10',
-        hash: 'abc123',
+        id: 'slim-version',
+        label: 'Slim version',
+        value: '0.46.10',
+        isCode: true,
+        copyValue: '0.46.10',
       },
       {
-        id: 'dmv',
-        title: 'DICOM Microscopy Viewer',
-        meta: 'Version 0.48.26',
-        hash: 'unknown',
+        id: 'slim-commit',
+        label: 'Slim commit',
+        value: 'abc123',
+        isCode: true,
+        copyValue: 'abc123',
       },
-      { id: 'browser', title: 'Browser & OS', meta: 'chrome 128 · Mac OS' },
+      {
+        id: 'dmv-version',
+        label: 'DICOM Microscopy Viewer',
+        value: '0.48.26',
+        isCode: true,
+        copyValue: '0.48.26',
+      },
+      {
+        id: 'dmv-commit',
+        label: 'DICOM Microscopy Viewer commit',
+        value: 'Not available in this build',
+        isCode: false,
+        isMissing: true,
+      },
+      {
+        id: 'browser',
+        label: 'Browser & OS',
+        value: 'chrome 128 · Mac OS',
+        isCode: false,
+      },
     ])
+  })
+
+  it('abbreviates full commit hashes but copies the full value', () => {
+    const sha = '8dafac5e0f1b2c3d4e5f60718293a4b5c6d7e8f9'
+    const commitRow = buildSupportInfo({ ...input, slimCommit: sha }).rows[1]
+    expect(commitRow.value).toBe('8dafac5')
+    expect(commitRow.copyValue).toBe(sha)
   })
 
   it('builds the support ticket text', () => {
