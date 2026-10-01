@@ -18,7 +18,7 @@ import { StudySummaryProvider } from './contexts/StudySummaryContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ToastHost } from './features/viewer/components/ToastHost'
 import { configureToasts } from './features/viewer/services/toast'
-import { logger } from './utils/logger'
+import { logger, parseLogLevel } from './utils/logger'
 
 declare global {
   interface Window {
@@ -34,7 +34,7 @@ if (config === undefined) {
 if (config.logger != null) {
   logger.configure({
     ...(config.logger.level != null
-      ? { level: logger.parseLogLevel(config.logger.level) }
+      ? { level: parseLogLevel(config.logger.level) }
       : {}),
     ...(config.logger.enableInProduction != null
       ? { enableInProduction: config.logger.enableInProduction }

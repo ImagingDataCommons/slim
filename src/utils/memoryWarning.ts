@@ -23,6 +23,34 @@ export interface MemoryWarningDecision {
   message: string | null
 }
 
+export interface MemoryUsageFlags {
+  apiMethod: 'modern' | 'chrome' | 'unavailable'
+  isHighUsage: boolean
+  isCriticalUsage: boolean
+}
+
+export function memoryWarningLevel(
+  memory: MemoryUsageFlags | null,
+): MemoryWarningLevel {
+  if (memory === null || memory.apiMethod === 'unavailable') return 'none'
+  if (memory.isCriticalUsage) return 'critical'
+  if (memory.isHighUsage) return 'high'
+  return 'none'
+}
+
+const BYTE_UNITS = ['Bytes', 'KB', 'MB', 'GB', 'TB']
+
+/** Binary (1024-based) size with two decimals, e.g. "1.50 KB" */
+export function formatBytes(bytes: number | null): string {
+  if (bytes === null) return 'N/A'
+  if (bytes === 0) return '0 Bytes'
+  const exponent = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+    BYTE_UNITS.length - 1,
+  )
+  return `${(bytes / 1024 ** exponent).toFixed(2)} ${BYTE_UNITS[exponent]}`
+}
+
 export const CRITICAL_WARNING_THROTTLE_MS = 30000
 
 export const INITIAL_MEMORY_WARNING_STATE: MemoryWarningState = {

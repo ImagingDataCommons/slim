@@ -11,6 +11,24 @@ export enum LogLevel {
   NONE = 4,
 }
 
+/** Unknown names fall back to DEBUG */
+export function parseLogLevel(level: string): LogLevel {
+  switch (level.toUpperCase()) {
+    case 'DEBUG':
+      return LogLevel.DEBUG
+    case 'LOG':
+      return LogLevel.LOG
+    case 'WARN':
+      return LogLevel.WARN
+    case 'ERROR':
+      return LogLevel.ERROR
+    case 'NONE':
+      return LogLevel.NONE
+    default:
+      return LogLevel.DEBUG
+  }
+}
+
 interface LoggerConfig {
   level: LogLevel
   enableInProduction: boolean
@@ -32,29 +50,9 @@ export class Logger {
     }
 
     this.config = {
-      level: this.parseLogLevel(configLevel),
+      level: parseLogLevel(configLevel),
       enableInProduction: Boolean(globalConfig?.enableInProduction),
       enableInDevelopment: globalConfig?.enableInDevelopment !== false,
-    }
-  }
-
-  /**
-   * Parse log level string to LogLevel enum
-   */
-  public parseLogLevel(level: string): LogLevel {
-    switch (level.toUpperCase()) {
-      case 'DEBUG':
-        return LogLevel.DEBUG
-      case 'LOG':
-        return LogLevel.LOG
-      case 'WARN':
-        return LogLevel.WARN
-      case 'ERROR':
-        return LogLevel.ERROR
-      case 'NONE':
-        return LogLevel.NONE
-      default:
-        return LogLevel.DEBUG
     }
   }
 

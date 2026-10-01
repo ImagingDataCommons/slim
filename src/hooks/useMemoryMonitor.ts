@@ -6,7 +6,9 @@ import NotificationMiddleware, {
 } from '../services/NotificationMiddleware'
 import {
   evaluateMemoryWarning,
+  formatBytes,
   INITIAL_MEMORY_WARNING_STATE,
+  memoryWarningLevel,
 } from '../utils/memoryWarning'
 
 /**
@@ -25,9 +27,9 @@ export function useMemoryMonitor(enabled: boolean): MemoryInfo | null {
       setMemoryInfo(memory)
       const { state, message } = evaluateMemoryWarning(
         {
-          level: memoryMonitor.getWarningLevel(memory),
+          level: memoryWarningLevel(memory),
           usagePercentage: memory.usagePercentage,
-          remaining: memoryMonitor.formatBytes(memory.remainingBytes),
+          remaining: formatBytes(memory.remainingBytes),
         },
         warningState.current,
         Date.now(),

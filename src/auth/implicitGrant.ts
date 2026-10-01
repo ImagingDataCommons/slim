@@ -113,9 +113,9 @@ const binaryToBytes = (binary: string): Uint8Array<ArrayBuffer> =>
 const bytesToBase64Url = (bytes: Uint8Array): string =>
   window
     .btoa(String.fromCharCode(...bytes))
-    .replace(/=+$/, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
+    .replaceAll('+', '-')
+    .replaceAll('/', '_')
+    .replace(/[=]+$/, '')
 
 const decodeJwtPart = (part: string): Record<string, unknown> | undefined => {
   try {
@@ -370,7 +370,7 @@ export const loadInHiddenFrame = (
     frame.height = '0'
 
     const listeners = new AbortController()
-    let timer: number | undefined
+    let timer = 0
     const cleanup = (): void => {
       window.clearTimeout(timer)
       listeners.abort()
@@ -473,7 +473,6 @@ export class ImplicitGrant {
     return await this.complete(
       parseImplicitCallback(url),
       REDIRECT_REQUEST_TYPE,
-      undefined,
     )
   }
 
@@ -482,7 +481,6 @@ export class ImplicitGrant {
     const { settings } = this.oidc
     const current = await this.oidc.getUser()
     const url = await this.createAuthorizeUrl({
-      data: undefined,
       requestType: SILENT_REQUEST_TYPE,
       redirectUri: settings.silent_redirect_uri,
       prompt: 'none',
@@ -508,7 +506,7 @@ export class ImplicitGrant {
     prompt,
     idTokenHint,
   }: {
-    data: unknown
+    data?: unknown
     requestType: string
     redirectUri: string
     prompt?: string
@@ -539,7 +537,7 @@ export class ImplicitGrant {
   private async complete(
     callback: ImplicitCallback,
     requestType: string,
-    expectedSubject: string | undefined,
+    expectedSubject?: string,
   ): Promise<User> {
     if (callback.state === null) {
       throw new Error('No state in response')

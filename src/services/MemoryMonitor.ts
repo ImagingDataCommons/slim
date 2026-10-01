@@ -4,14 +4,6 @@ import {
   HIGH_MEMORY_USAGE_PERCENT,
 } from '../utils/memoryWarning'
 
-interface MemoryMeasureUserAgentSpecificMemoryResult {
-  bytes: number
-  breakdown?: Array<{
-    bytes: number
-    userAgentSpecificTypes: string[]
-  }>
-}
-
 /**
  * Memory monitoring service for tracking browser memory usage.
  *
@@ -86,181 +78,117 @@ export interface MemoryMeasureResult {
 type MemoryUpdateCallback = (memory: MemoryInfo) => void
 
 /**
+ * 8 GB fallback for 64-bit browsers without jsHeapSizeLimit, so usage is not
+ * stuck at 50% once more than 2 GB are used.
+ */
+const FALLBACK_HEAP_LIMIT_BYTES = 8 * 1024 * 1024 * 1024
+
+const DEFAULT_UPDATE_INTERVAL_MS = 5000
+
+function isModernApiAvailable(): boolean {
+  return (
+    typeof performance !== 'undefined' &&
+    typeof performance.measureUserAgentSpecificMemory === 'function' &&
+    typeof window !== 'undefined' &&
+    window.crossOriginIsolated
+  )
+}
+
+function chromeMemory(): PerformanceMemory | undefined {
+  if (typeof performance === 'undefined') return undefined
+  const memory = performance.memory
+  return typeof memory?.usedJSHeapSize === 'number' ? memory : undefined
+}
+
+export function createMemoryInfo(
+  apiMethod: 'modern' | 'chrome',
+  usedJSHeapSize: number,
+  totalJSHeapSize: number,
+  jsHeapSizeLimit: number,
+  now: number = Date.now(),
+): MemoryInfo {
+  const usagePercentage = (usedJSHeapSize / jsHeapSizeLimit) * 100
+  return {
+    usedJSHeapSize,
+    jsHeapSizeLimit,
+    totalJSHeapSize,
+    usagePercentage: Math.min(usagePercentage, 100),
+    remainingBytes: Math.max(0, jsHeapSizeLimit - usedJSHeapSize),
+    isHighUsage: usagePercentage > HIGH_MEMORY_USAGE_PERCENT,
+    isCriticalUsage: usagePercentage > CRITICAL_MEMORY_USAGE_PERCENT,
+    apiMethod,
+    timestamp: now,
+  }
+}
+
+export function unavailableMemoryInfo(now: number = Date.now()): MemoryInfo {
+  return {
+    usedJSHeapSize: null,
+    jsHeapSizeLimit: null,
+    totalJSHeapSize: null,
+    usagePercentage: null,
+    remainingBytes: null,
+    isHighUsage: false,
+    isCriticalUsage: false,
+    apiMethod: 'unavailable',
+    timestamp: now,
+  }
+}
+
+/** Falls back to unavailable rather than throwing, so callers always get a value */
+function measureChromeOrUnavailable(): MemoryInfo {
+  const memory = chromeMemory()
+  if (memory === undefined) return unavailableMemoryInfo()
+  return createMemoryInfo(
+    'chrome',
+    memory.usedJSHeapSize,
+    memory.totalJSHeapSize,
+    memory.jsHeapSizeLimit,
+  )
+}
+
+function modernMemoryInfo(result: PerformanceMemoryInfo): MemoryInfo {
+  const bytes = Number.isNaN(result.bytes) ? 0 : result.bytes
+  const reportedLimit = chromeMemory()?.jsHeapSizeLimit
+  const jsHeapSizeLimit =
+    reportedLimit !== undefined && reportedLimit > 0
+      ? reportedLimit
+      : FALLBACK_HEAP_LIMIT_BYTES
+  return createMemoryInfo('modern', bytes, bytes, jsHeapSizeLimit)
+}
+
+/**
  * Memory monitoring service
  */
 class MemoryMonitor {
   private readonly updateCallbacks: Set<MemoryUpdateCallback> = new Set()
   private monitoringTimeoutId: ReturnType<typeof setTimeout> | null = null
   private monitoringActive: boolean = false
-  private readonly updateInterval: number = 5000
-  private lastMeasurement: MemoryInfo | null = null
-
-  /**
-   * Check if modern memory API is available
-   */
-  private isModernAPIAvailable(): boolean {
-    return (
-      typeof performance !== 'undefined' &&
-      typeof performance.measureUserAgentSpecificMemory === 'function' &&
-      typeof window !== 'undefined' &&
-      window.crossOriginIsolated
-    )
-  }
-
-  /**
-   * Check if Chrome-specific memory API is available
-   */
-  private isChromeAPIAvailable(): boolean {
-    return (
-      typeof performance !== 'undefined' &&
-      performance.memory !== undefined &&
-      typeof performance.memory.usedJSHeapSize === 'number'
-    )
-  }
-
-  /**
-   * Format bytes to human-readable string
-   */
-  formatBytes(bytes: number | null): string {
-    if (bytes === null || bytes === undefined) {
-      return 'N/A'
-    }
-
-    if (bytes === 0) {
-      return '0 Bytes'
-    }
-
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-
-    return `${(bytes / k ** i).toFixed(2)} ${sizes[i]}`
-  }
-
-  /**
-   * Get memory info using modern API from already-fetched result
-   */
-  private getMemoryModernFromResult(
-    result: MemoryMeasureUserAgentSpecificMemoryResult,
-  ): MemoryInfo {
-    const bytes =
-      result.bytes != null && !Number.isNaN(result.bytes) ? result.bytes : 0
-
-    let jsHeapSizeLimit: number
-    if (
-      this.isChromeAPIAvailable() &&
-      performance.memory?.jsHeapSizeLimit != null &&
-      performance.memory.jsHeapSizeLimit > 0
-    ) {
-      jsHeapSizeLimit = performance.memory.jsHeapSizeLimit
-    } else {
-      /**
-       * 8 GB fallback for 64-bit browsers without jsHeapSizeLimit, so usage
-       * is not stuck at 50% once more than 2 GB are used.
-       */
-      jsHeapSizeLimit = 8 * 1024 * 1024 * 1024
-    }
-
-    const usagePercentage = (bytes / jsHeapSizeLimit) * 100
-
-    return {
-      usedJSHeapSize: bytes,
-      jsHeapSizeLimit,
-      totalJSHeapSize: bytes,
-      usagePercentage: Math.min(usagePercentage, 100),
-      remainingBytes: Math.max(0, jsHeapSizeLimit - bytes),
-      isHighUsage: usagePercentage > HIGH_MEMORY_USAGE_PERCENT,
-      isCriticalUsage: usagePercentage > CRITICAL_MEMORY_USAGE_PERCENT,
-      apiMethod: 'modern',
-      timestamp: Date.now(),
-    }
-  }
-
-  /**
-   * Get memory info using Chrome-specific API
-   */
-  private getMemoryChrome(): MemoryInfo {
-    const memory = performance.memory
-    if (memory == null) {
-      throw new Error('performance.memory not available')
-    }
-    const usedJSHeapSize = memory.usedJSHeapSize
-    const totalJSHeapSize = memory.totalJSHeapSize
-    const jsHeapSizeLimit = memory.jsHeapSizeLimit
-
-    const usagePercentage = (usedJSHeapSize / jsHeapSizeLimit) * 100
-    const remainingBytes = jsHeapSizeLimit - usedJSHeapSize
-
-    return {
-      usedJSHeapSize,
-      jsHeapSizeLimit,
-      totalJSHeapSize,
-      usagePercentage,
-      remainingBytes: Math.max(0, remainingBytes),
-      isHighUsage: usagePercentage > HIGH_MEMORY_USAGE_PERCENT,
-      isCriticalUsage: usagePercentage > CRITICAL_MEMORY_USAGE_PERCENT,
-      apiMethod: 'chrome',
-      timestamp: Date.now(),
-    }
-  }
-
-  /**
-   * Get memory info (unavailable)
-   */
-  private getMemoryUnavailable(): MemoryInfo {
-    return {
-      usedJSHeapSize: null,
-      jsHeapSizeLimit: null,
-      totalJSHeapSize: null,
-      usagePercentage: null,
-      remainingBytes: null,
-      isHighUsage: false,
-      isCriticalUsage: false,
-      apiMethod: 'unavailable',
-      timestamp: Date.now(),
-    }
-  }
 
   /**
    * Measure current memory usage
    */
   async measure(): Promise<MemoryMeasureResult> {
     let memory: MemoryInfo
-    let breakdown:
-      | Array<{ bytes: number; userAgentSpecificTypes: string[] }>
-      | undefined
+    let breakdown: MemoryMeasureResult['breakdown']
 
-    if (this.isModernAPIAvailable()) {
-      try {
-        if (performance.measureUserAgentSpecificMemory == null) {
-          throw new Error('measureUserAgentSpecificMemory not available')
-        }
-        const result = await performance.measureUserAgentSpecificMemory()
-        memory = this.getMemoryModernFromResult(result)
-
-        if (result.breakdown != null) {
-          breakdown = result.breakdown.map((item) => ({
-            bytes: item.bytes,
-            userAgentSpecificTypes:
-              item.userAgentSpecificTypes != null
-                ? item.userAgentSpecificTypes
-                : [],
-          }))
-        }
-      } catch (_error) {
-        if (this.isChromeAPIAvailable()) {
-          memory = this.getMemoryChrome()
-        } else {
-          memory = this.getMemoryUnavailable()
-        }
-      }
-    } else if (this.isChromeAPIAvailable()) {
-      memory = this.getMemoryChrome()
+    const measureModern = isModernApiAvailable()
+      ? performance.measureUserAgentSpecificMemory
+      : undefined
+    if (measureModern === undefined) {
+      memory = measureChromeOrUnavailable()
     } else {
-      memory = this.getMemoryUnavailable()
+      try {
+        const result = await measureModern.call(performance)
+        memory = modernMemoryInfo(result)
+        breakdown = result.breakdown?.map((item) => ({
+          bytes: item.bytes,
+          userAgentSpecificTypes: item.userAgentSpecificTypes ?? [],
+        }))
+      } catch {
+        memory = measureChromeOrUnavailable()
+      }
     }
-
-    this.lastMeasurement = memory
 
     this.updateCallbacks.forEach((callback) => {
       try {
@@ -271,13 +199,6 @@ class MemoryMonitor {
     })
 
     return { memory, breakdown }
-  }
-
-  /**
-   * Get last measured memory info (synchronous)
-   */
-  getLastMeasurement(): MemoryInfo | null {
-    return this.lastMeasurement
   }
 
   /**
@@ -295,7 +216,7 @@ class MemoryMonitor {
    * Start periodic memory monitoring. Serializes runs so the next tick is scheduled
    * only after the current measure() finishes, avoiding overlapping executions.
    */
-  startMonitoring(interval: number = this.updateInterval): void {
+  startMonitoring(interval: number = DEFAULT_UPDATE_INTERVAL_MS): void {
     if (this.monitoringTimeoutId != null) {
       this.stopMonitoring()
     }
@@ -335,61 +256,6 @@ class MemoryMonitor {
       clearTimeout(this.monitoringTimeoutId)
       this.monitoringTimeoutId = null
     }
-  }
-
-  /**
-   * Check if monitoring is active
-   */
-  isMonitoring(): boolean {
-    return this.monitoringActive
-  }
-
-  /**
-   * Get status message for current memory usage
-   */
-  getStatusMessage(memory: MemoryInfo | null): string {
-    if (memory === null || memory.apiMethod === 'unavailable') {
-      return 'Memory monitoring unavailable'
-    }
-
-    if (memory.isCriticalUsage) {
-      const percentage =
-        memory.usagePercentage != null
-          ? memory.usagePercentage.toFixed(1)
-          : 'N/A'
-      return `Critical: ${percentage}% used (${this.formatBytes(memory.remainingBytes)} remaining)`
-    }
-
-    if (memory.isHighUsage) {
-      const percentage =
-        memory.usagePercentage != null
-          ? memory.usagePercentage.toFixed(1)
-          : 'N/A'
-      return `High: ${percentage}% used (${this.formatBytes(memory.remainingBytes)} remaining)`
-    }
-
-    const percentage =
-      memory.usagePercentage != null ? memory.usagePercentage.toFixed(1) : 'N/A'
-    return `Memory: ${percentage}% used (${this.formatBytes(memory.remainingBytes)} remaining)`
-  }
-
-  /**
-   * Get warning level for memory usage
-   */
-  getWarningLevel(memory: MemoryInfo | null): 'none' | 'high' | 'critical' {
-    if (memory === null || memory.apiMethod === 'unavailable') {
-      return 'none'
-    }
-
-    if (memory.isCriticalUsage) {
-      return 'critical'
-    }
-
-    if (memory.isHighUsage) {
-      return 'high'
-    }
-
-    return 'none'
   }
 }
 

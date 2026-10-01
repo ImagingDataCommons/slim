@@ -208,46 +208,28 @@ class Slide {
     }
     this.frameOfReferenceUID = [...frameOfReferenceUIDs.VOLUME][0]
 
-    let requirePyramidUID = false
-    if (Object.keys(pyramidUIDs.VOLUME).length > 0) {
-      requirePyramidUID = true
+    const requirePyramidUID = Object.keys(pyramidUIDs.VOLUME).length > 0
+    const reportPyramidError = (message: string): void => {
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.SLIM,
+        new CustomError(errorTypes.ENCODINGANDDECODING, message),
+      )
     }
     this.opticalPathIdentifiers.forEach((identifier) => {
-      if (pyramidUIDs.VOLUME[identifier] != null) {
-        if (pyramidUIDs.VOLUME[identifier].size > 1) {
-          NotificationMiddleware.onError(
-            NotificationMiddlewareContext.SLIM,
-            new CustomError(
-              errorTypes.ENCODINGANDDECODING,
-              `All VOLUME images for optical path "${identifier}"` +
-                'must be part of the same multi-resolution pyramid.',
-            ),
-          )
-        } else if (pyramidUIDs.VOLUME[identifier].size === 1) {
-          this.pyramidUIDs.push([...pyramidUIDs.VOLUME[identifier]][0])
-        } else {
-          NotificationMiddleware.onError(
-            NotificationMiddlewareContext.SLIM,
-            new CustomError(
-              errorTypes.ENCODINGANDDECODING,
-              `The VOLUME images for optical path "${identifier}" ` +
-                'lack the Pyramid UID, while the images for other optical paths ' +
-                'contain it.',
-            ),
-          )
-        }
-      } else {
-        if (requirePyramidUID) {
-          NotificationMiddleware.onError(
-            NotificationMiddlewareContext.SLIM,
-            new CustomError(
-              errorTypes.ENCODINGANDDECODING,
-              `The VOLUME images for optical path "${identifier}" ` +
-                'lack the Pyramid UID, while the images for other optical paths ' +
-                'contain it.',
-            ),
-          )
-        }
+      const uids: Set<string> | undefined = pyramidUIDs.VOLUME[identifier]
+      if (uids?.size === 1) {
+        this.pyramidUIDs.push([...uids][0])
+      } else if (uids !== undefined && uids.size > 1) {
+        reportPyramidError(
+          `All VOLUME images for optical path "${identifier}" ` +
+            'must be part of the same multi-resolution pyramid.',
+        )
+      } else if (requirePyramidUID) {
+        reportPyramidError(
+          `The VOLUME images for optical path "${identifier}" ` +
+            'lack the Pyramid UID, while the images for other optical paths ' +
+            'contain it.',
+        )
       }
     })
 
@@ -373,9 +355,8 @@ const createSlides = (
     const imgB = b.volumeImages[0]
     if (imgA.ContainerIdentifier != null && imgB.ContainerIdentifier != null) {
       return Number(imgA.ContainerIdentifier) - Number(imgB.ContainerIdentifier)
-    } else {
-      return 0
     }
+    return 0
   })
 
   return slides

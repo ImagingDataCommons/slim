@@ -1,5 +1,5 @@
 import type AppConfig from '../../AppConfig'
-import { Logger, LogLevel } from '../logger'
+import { Logger, LogLevel, parseLogLevel } from '../logger'
 
 const setWindowConfig = (config: Partial<AppConfig> | undefined): void => {
   Object.defineProperty(window, 'config', {
@@ -41,16 +41,14 @@ describe('Logger', () => {
   })
 
   it('should parse log levels correctly', () => {
-    const testLogger = new Logger()
-
-    expect(testLogger.parseLogLevel('DEBUG')).toBe(LogLevel.DEBUG)
-    expect(testLogger.parseLogLevel('LOG')).toBe(LogLevel.LOG)
-    expect(testLogger.parseLogLevel('WARN')).toBe(LogLevel.WARN)
-    expect(testLogger.parseLogLevel('ERROR')).toBe(LogLevel.ERROR)
-    expect(testLogger.parseLogLevel('NONE')).toBe(LogLevel.NONE)
+    expect(parseLogLevel('DEBUG')).toBe(LogLevel.DEBUG)
+    expect(parseLogLevel('LOG')).toBe(LogLevel.LOG)
+    expect(parseLogLevel('WARN')).toBe(LogLevel.WARN)
+    expect(parseLogLevel('ERROR')).toBe(LogLevel.ERROR)
+    expect(parseLogLevel('NONE')).toBe(LogLevel.NONE)
   })
 
   it('should fall back to DEBUG for unknown levels', () => {
-    expect(new Logger().parseLogLevel('INVALID')).toBe(LogLevel.DEBUG)
+    expect(parseLogLevel('INVALID')).toBe(LogLevel.DEBUG)
   })
 })

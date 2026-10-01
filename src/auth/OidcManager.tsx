@@ -77,6 +77,23 @@ export const buildMetadataSeed = (
   return Object.keys(seed).length > 0 ? seed : undefined
 }
 
+const handleSignIn = (
+  userData: UserData,
+  onSignIn: SignInCallback | undefined,
+  { includeReturnUrl }: { includeReturnUrl: boolean },
+): void => {
+  if (onSignIn == null) {
+    console.warn('no callback function was provided to handle sign-in')
+    return
+  }
+  console.info('handling sign-in using provided callback function')
+  onSignIn({
+    user: createUser(userData),
+    authorization: authorizationFromUser(userData),
+    returnUrl: includeReturnUrl ? readReturnUrl(userData) : undefined,
+  })
+}
+
 export const buildUserManagerSettings = (
   appUri: string,
   settings: OidcSettings,
@@ -179,23 +196,6 @@ export default class OidcManager implements AuthManager {
     }
   }
 
-  private _handleSignIn(
-    userData: UserData,
-    onSignIn: SignInCallback | undefined,
-    { includeReturnUrl }: { includeReturnUrl: boolean },
-  ): void {
-    if (onSignIn == null) {
-      console.warn('no callback function was provided to handle sign-in')
-      return
-    }
-    console.info('handling sign-in using provided callback function')
-    onSignIn({
-      user: createUser(userData),
-      authorization: authorizationFromUser(userData),
-      returnUrl: includeReturnUrl ? readReturnUrl(userData) : undefined,
-    })
-  }
-
   /**
    * Sign-in to authenticate the user and obtain authorization.
    */
@@ -219,7 +219,7 @@ export default class OidcManager implements AuthManager {
           : await this._oidc.signinRedirectCallback()
       clearAuthParamsFromUrl()
       console.info('obtained user data: ', userData)
-      this._handleSignIn(userData, onSignIn, { includeReturnUrl: true })
+      handleSignIn(userData, onSignIn, { includeReturnUrl: true })
       return 'completed'
     }
 
@@ -245,7 +245,7 @@ export default class OidcManager implements AuthManager {
 
     console.info('user has already been authenticated')
     /** Do not re-apply persisted returnUrl on warm sessions. */
-    this._handleSignIn(userData, onSignIn, { includeReturnUrl: false })
+    handleSignIn(userData, onSignIn, { includeReturnUrl: false })
     return 'completed'
   }
 

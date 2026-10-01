@@ -210,9 +210,5 @@ export function mapAllStorageClasses(
   clients: ClientMapping,
   client: DicomWebManager,
 ): ClientMapping {
-  const mapped: ClientMapping = {}
-  for (const key in clients) {
-    mapped[key] = client
-  }
-  return mapped
+  return Object.fromEntries(Object.keys(clients).map((key) => [key, client]))
 }

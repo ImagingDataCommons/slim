@@ -1,7 +1,10 @@
 import {
   evaluateMemoryWarning,
+  formatBytes,
   INITIAL_MEMORY_WARNING_STATE,
+  type MemoryUsageFlags,
   type MemoryWarningInput,
+  memoryWarningLevel,
 } from '../memoryWarning'
 
 const high: MemoryWarningInput = {
@@ -94,5 +97,48 @@ describe('evaluateMemoryWarning', () => {
     const decision = evaluateMemoryWarning(none, first.state, 1000)
     expect(decision.message).toBeNull()
     expect(decision.state.level).toBe('none')
+  })
+})
+
+describe('memoryWarningLevel', () => {
+  const flags = (overrides: Partial<MemoryUsageFlags>): MemoryUsageFlags => ({
+    apiMethod: 'chrome',
+    isHighUsage: false,
+    isCriticalUsage: false,
+    ...overrides,
+  })
+
+  it('is none without a measurement or a memory API', () => {
+    expect(memoryWarningLevel(null)).toBe('none')
+    expect(
+      memoryWarningLevel(
+        flags({ apiMethod: 'unavailable', isCriticalUsage: true }),
+      ),
+    ).toBe('none')
+  })
+
+  it('prefers critical over high', () => {
+    expect(
+      memoryWarningLevel(flags({ isHighUsage: true, isCriticalUsage: true })),
+    ).toBe('critical')
+    expect(memoryWarningLevel(flags({ isHighUsage: true }))).toBe('high')
+    expect(memoryWarningLevel(flags({}))).toBe('none')
+  })
+})
+
+describe('formatBytes', () => {
+  it('handles missing and zero values', () => {
+    expect(formatBytes(null)).toBe('N/A')
+    expect(formatBytes(0)).toBe('0 Bytes')
+  })
+
+  it('uses 1024-based units with two decimals', () => {
+    expect(formatBytes(512)).toBe('512.00 Bytes')
+    expect(formatBytes(1536)).toBe('1.50 KB')
+    expect(formatBytes(3 * 1024 ** 3)).toBe('3.00 GB')
+  })
+
+  it('caps the unit at terabytes', () => {
+    expect(formatBytes(2 * 1024 ** 5)).toBe('2048.00 TB')
   })
 })
