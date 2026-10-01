@@ -1,0 +1,37 @@
+---
+import SectionHeading from '../../components/SectionHeading.astro'
+import ShowcaseCard from '../../components/ShowcaseCard.astro'
+import { site } from '../../data/site'
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { getShowcase } from '../../lib/content'
+
+const showcase = await getShowcase()
+---
+
+<BaseLayout
+  title="Showcase"
+  description="Slim in production at the NCI Imaging Data Commons, in DICOM interoperability testing, and in research."
+>
+  <section class="container-site py-20">
+    <SectionHeading
+      level="h1"
+      eyebrow="Showcase"
+      title="Where Slim is used"
+      lead="Slim runs wherever slides are stored in DICOM: a national public data resource, vendor interoperability testing, and research groups sharing AI results."
+    />
+    <div class="mt-12 grid gap-4 md:grid-cols-3">
+      {showcase.map((entry) => <ShowcaseCard entry={entry} headingLevel="h2" />)}
+    </div>
+    <div class="card mt-12 flex flex-col items-start gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 class="text-lg">Using Slim?</h2>
+        <p class="mt-1 text-sm text-ink-secondary">
+          Tell us about your deployment and we'll add it here.
+        </p>
+      </div>
+      <a href={site.links.newIssue} class="text-sm font-medium text-primary hover:underline">
+        Open an issue on GitHub
+      </a>
+    </div>
+  </section>
+</BaseLayout>

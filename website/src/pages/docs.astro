@@ -1,0 +1,114 @@
+---
+import {
+  ArrowUpRight,
+  BookOpen,
+  Code,
+  FileCheck2,
+  KeyRound,
+  Rocket,
+  Server,
+  Settings2,
+  Users,
+} from 'lucide-react'
+import RunYourOwn from '../components/RunYourOwn.astro'
+import SectionHeading from '../components/SectionHeading.astro'
+import { site } from '../data/site'
+import BaseLayout from '../layouts/BaseLayout.astro'
+
+const readme = (anchor: string): string => `${site.repo}#${anchor}`
+
+const guides = [
+  {
+    icon: Rocket,
+    title: 'Deployment',
+    description: 'Prerequisites, PUBLIC_URL, Docker Compose and Google Cloud.',
+    href: readme('deployment'),
+  },
+  {
+    icon: Settings2,
+    title: 'Configuration guide',
+    description: 'Servers, runtime server selection, annotation colors, read-only mode and the worklist.',
+    href: site.links.configuration,
+  },
+  {
+    icon: Server,
+    title: 'Mixed content and HTTPS',
+    description: 'Serving Slim over HTTPS next to plain-HTTP archives.',
+    href: readme('handling-mixed-content-and-https'),
+  },
+  {
+    icon: KeyRound,
+    title: 'Authentication',
+    description: 'OpenID Connect sign-in with the authorization code or implicit flow.',
+    href: readme('authentication-and-authorization'),
+  },
+  {
+    icon: FileCheck2,
+    title: 'DICOM conformance statement',
+    description: 'Supported SOP classes, transfer syntaxes and DICOMweb transactions.',
+    href: site.links.conformance,
+  },
+  {
+    icon: Code,
+    title: 'Development',
+    description: 'Local setup, scripts, and linking a local dicom-microscopy-viewer.',
+    href: readme('development'),
+  },
+  {
+    icon: Users,
+    title: 'Contributing',
+    description: 'Coding style, pull requests and the release workflow.',
+    href: site.links.contributing,
+  },
+  {
+    icon: BookOpen,
+    title: 'Wiki',
+    description: 'A mirror of the configuration guide and further notes.',
+    href: site.links.wiki,
+  },
+]
+---
+
+<BaseLayout
+  title="Documentation"
+  description="Deploy, configure and develop Slim: guides for DICOMweb servers, authentication, Docker and the DICOM conformance statement."
+>
+  <section class="container-site py-20">
+    <SectionHeading
+      level="h1"
+      eyebrow="Docs"
+      title="Documentation"
+      lead="The guides live next to the code on GitHub, so they always match the version you run."
+    />
+    <ul class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {
+        guides.map((guide) => (
+          <li>
+            <a
+              href={guide.href}
+              class="card group flex h-full flex-col gap-3 p-5 transition-colors hover:border-line-hover hover:bg-subtle"
+            >
+              <span class="flex items-center justify-between">
+                <span class="flex size-9 items-center justify-center rounded-tile bg-primary-soft text-primary">
+                  <guide.icon className="size-[18px]" aria-hidden="true" />
+                </span>
+                <ArrowUpRight className="size-4 text-ink-faint group-hover:text-primary" aria-hidden="true" />
+              </span>
+              <span class="font-medium text-ink">{guide.title}</span>
+              <span class="text-13 text-ink-muted">{guide.description}</span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <section class="border-t border-line bg-subtle">
+    <div class="container-site py-20">
+      <SectionHeading eyebrow="Quick start" title="Run Slim in a few minutes" />
+      <div class="mt-10">
+        <RunYourOwn />
+      </div>
+    </div>
+  </section>
+</BaseLayout>

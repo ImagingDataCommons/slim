@@ -2,3 +2,6 @@ build/*
 Dockerfile
 .dockerignore
 node_modules/*
+website/node_modules
+website/dist
+website/.astro

@@ -1,0 +1,120 @@
+---
+import { ArrowUpRight } from 'lucide-react'
+import CitationCopy from '../components/CitationCopy.astro'
+import SectionHeading from '../components/SectionHeading.astro'
+import { site } from '../data/site'
+import BaseLayout from '../layouts/BaseLayout.astro'
+
+const principles = [
+  {
+    title: 'DICOM in, DICOM out',
+    body: 'Images, annotations, segmentations and parametric maps are read from and written to DICOMweb archives as standard objects. Your data never ends up in a format only Slim understands.',
+  },
+  {
+    title: 'Zero footprint',
+    body: 'Slim is a static web app. There is no server component to run beyond the archive you already have, and nothing to install on the reading workstation.',
+  },
+  {
+    title: 'Built in the open',
+    body: 'Developed on GitHub under the Apache 2.0 license, with a published DICOM conformance statement and a peer-reviewed description of its design.',
+  },
+]
+
+const related = [
+  {
+    title: 'dicom-microscopy-viewer',
+    body: 'The JavaScript library Slim uses to render DICOM whole slide images and their annotations.',
+    href: site.links.dmv,
+  },
+  {
+    title: 'NCI Imaging Data Commons',
+    body: 'A cloud-based environment of publicly available cancer imaging data, co-located with analysis tools.',
+    href: site.links.idc,
+  },
+  {
+    title: 'DICOM Working Group 26',
+    body: 'The DICOM working group for pathology, where Slim is used in interoperability testing.',
+    href: site.links.wg26,
+  },
+]
+---
+
+<BaseLayout
+  title="About"
+  description="Why Slim exists, who builds it, and how to cite it."
+>
+  <section class="container-site py-20">
+    <SectionHeading
+      level="h1"
+      eyebrow="About"
+      title="An open viewer for open, standard pathology data"
+      lead="Slim started as the slide microscopy viewer of the NCI Imaging Data Commons. It shows that whole slide images and the results computed from them can be stored, shared and viewed with nothing but the DICOM standard."
+    />
+    <div class="mt-14 grid gap-4 md:grid-cols-3">
+      {
+        principles.map((principle) => (
+          <div class="card p-6">
+            <h2 class="text-lg">{principle.title}</h2>
+            <p class="mt-2 text-sm text-ink-secondary">{principle.body}</p>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="border-y border-line bg-subtle">
+    <div class="container-site grid grid-cols-1 gap-12 py-20 lg:grid-cols-2">
+      <div class="flex flex-col gap-4">
+        <SectionHeading eyebrow="Team" title="Who builds Slim" />
+        <p class="text-ink-body">
+          Slim is maintained by the Imaging Data Commons team, which has been funded in whole or in
+          part with Federal funds from the National Cancer Institute, National Institutes of Health,
+          under task order no. HHSN26110071 under contract no. HHSN261201500003l.
+        </p>
+        <p class="text-ink-body">
+          The <a href={site.links.idc} class="text-primary underline underline-offset-2 hover:text-primary-hover">NCI Imaging Data Commons</a> is
+          a node of the <a href={site.links.crdc} class="text-primary underline underline-offset-2 hover:text-primary-hover">Cancer Research Data Commons</a>,
+          which provides secure access to a large and growing collection of cancer research data.
+        </p>
+        <p class="text-ink-body">
+          Contributions are welcome from anyone. See the <a
+            href={site.links.contributing}
+            class="text-primary underline underline-offset-2 hover:text-primary-hover">contributing guide</a
+          > to get started.
+        </p>
+      </div>
+      <div class="flex flex-col gap-4">
+        <h2 class="eyebrow">Related projects</h2>
+        <ul class="flex flex-col gap-3">
+          {
+            related.map((project) => (
+              <li>
+                <a
+                  href={project.href}
+                  class="card group flex items-start justify-between gap-4 p-5 transition-colors hover:border-line-hover"
+                >
+                  <span>
+                    <span class="block font-medium text-ink">{project.title}</span>
+                    <span class="mt-1 block text-13 text-ink-muted">{project.body}</span>
+                  </span>
+                  <ArrowUpRight className="size-4 shrink-0 text-ink-faint group-hover:text-primary" aria-hidden="true" />
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="cite" class="container-site scroll-mt-20 py-20">
+    <div class="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+      <SectionHeading
+        eyebrow="Cite"
+        title="Cite Slim"
+        lead="If you use Slim in your research, please cite the article that describes its motivation, design and capabilities."
+      />
+      <CitationCopy />
+    </div>
+  </section>
+</BaseLayout>

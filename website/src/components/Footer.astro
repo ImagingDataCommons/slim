@@ -1,0 +1,92 @@
+---
+import { demoUrl, site } from '../data/site'
+import Logo from './Logo.astro'
+
+const columns = [
+  {
+    title: 'Product',
+    links: [
+      { href: '/features/', label: 'Features' },
+      { href: '/features/#support-matrix', label: 'DICOM support' },
+      { href: '/showcase/', label: 'Showcase' },
+      { href: '/release-notes/', label: 'Release notes' },
+      { href: demoUrl, label: 'Live demo', external: true },
+    ],
+  },
+  {
+    title: 'Resources',
+    links: [
+      { href: '/docs/', label: 'Documentation' },
+      { href: site.links.configuration, label: 'Configuration', external: true },
+      { href: site.links.conformance, label: 'Conformance statement', external: true },
+      { href: site.links.wiki, label: 'Wiki', external: true },
+      { href: '/rss.xml', label: 'RSS feed' },
+    ],
+  },
+  {
+    title: 'Community',
+    links: [
+      { href: site.links.github, label: 'GitHub', external: true },
+      { href: site.links.issues, label: 'Issues', external: true },
+      { href: site.links.idcForum, label: 'IDC forum', external: true },
+      { href: site.links.contributing, label: 'Contributing', external: true },
+    ],
+  },
+  {
+    title: 'Project',
+    links: [
+      { href: '/about/', label: 'About' },
+      { href: '/about/#cite', label: 'Cite Slim' },
+      { href: '/support/', label: 'Support' },
+      { href: site.links.license, label: 'License', external: true },
+    ],
+  },
+]
+---
+
+<footer class="mt-24 border-t border-line bg-subtle">
+  <div class="container-site grid gap-10 py-14 md:grid-cols-[1.3fr_repeat(4,1fr)]">
+    <div class="space-y-4">
+      <Logo showVersion={false} />
+      <p class="max-w-xs text-sm text-ink-muted">
+        Interoperable web-based DICOM slide microscopy viewer and annotation tool.
+      </p>
+      <p class="text-sm text-ink-muted">
+        Developed as part of the <a
+          href={site.links.idc}
+          class="text-ink-secondary underline underline-offset-4 hover:text-ink">NCI Imaging Data Commons</a
+        >.
+      </p>
+    </div>
+    {
+      columns.map((column) => (
+        <div>
+          <h2 class="eyebrow mb-3">{column.title}</h2>
+          <ul class="space-y-2 text-sm">
+            {column.links.map((link) => (
+              <li>
+                <a
+                  href={link.href}
+                  class="text-ink-secondary hover:text-ink"
+                  {...('external' in link && link.external ? { target: '_blank', rel: 'noopener' } : {})}
+                >
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))
+    }
+  </div>
+  <div class="border-t border-line">
+    <div class="container-site flex flex-col gap-2 py-5 text-[13px] text-ink-muted sm:flex-row sm:justify-between">
+      <p>Released under the Apache 2.0 license.</p>
+      <p>
+        Built on <a href={site.links.dmv} class="text-ink-muted underline underline-offset-4 hover:text-ink"
+          >dicom-microscopy-viewer</a
+        > and DICOMweb.
+      </p>
+    </div>
+  </div>
+</footer>

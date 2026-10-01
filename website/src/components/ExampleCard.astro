@@ -1,0 +1,49 @@
+---
+import { ArrowUpRight } from 'lucide-react'
+import { collectionUrl, exampleUrl, type IdcExample } from '../lib/examples'
+
+interface Props {
+  example: IdcExample
+}
+
+const { example } = Astro.props
+const href = exampleUrl(example)
+---
+
+<li class="card group relative flex flex-col overflow-hidden transition-colors hover:border-line-hover">
+  <div class="aspect-[16/10] overflow-hidden border-b border-line bg-viewport">
+    <img
+      src={`/examples/${example.id}.webp`}
+      alt=""
+      width="640"
+      height="400"
+      loading="lazy"
+      decoding="async"
+      class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+    />
+  </div>
+  <div class="flex flex-1 flex-col gap-2 p-5">
+    <p class="eyebrow">{example.sopClassName?.replace(/ Storage$/, '')}</p>
+    <h3 class="text-sm font-medium leading-snug text-ink">
+      <a href={href} target="_blank" rel="noopener" class="after:absolute after:inset-0">
+        {example.caption}
+        <span class="sr-only">(opens in the demo)</span>
+      </a>
+    </h3>
+    {example.detail && <p class="text-13 text-ink-muted">{example.detail}</p>}
+    <div class="mt-auto flex items-center justify-between gap-3 pt-2">
+      <a
+        href={collectionUrl(example.collection)}
+        target="_blank"
+        rel="noopener"
+        class="relative z-10 font-mono text-12 text-ink-secondary hover:text-primary"
+      >
+        {example.collectionName}
+      </a>
+      <span class="inline-flex items-center gap-1 text-13 font-medium text-primary">
+        Open in Slim
+        <ArrowUpRight className="size-3.5" aria-hidden="true" />
+      </span>
+    </div>
+  </div>
+</li>

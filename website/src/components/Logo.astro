@@ -1,0 +1,18 @@
+---
+import { SlimLogoMark } from '@slim/components/slim/SlimLogoMark'
+import pkg from '../../../package.json'
+
+interface Props {
+  showVersion?: boolean
+}
+
+const { showVersion = true } = Astro.props
+---
+
+<a href="/" class="flex flex-none items-center gap-2 rounded-md" aria-label="Slim home">
+  <span class="h-7 w-7 overflow-hidden rounded-[7px] bg-brand text-white">
+    <SlimLogoMark className="h-full w-full" />
+  </span>
+  <span class="text-[17px] font-semibold leading-none tracking-[-0.01em] text-ink">Slim</span>
+  {showVersion && <span class="chip hidden sm:inline-flex">v{pkg.version}</span>}
+</a>

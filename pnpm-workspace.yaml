@@ -1,9 +1,14 @@
+packages:
+  - '.'
+  - website
+
 shamefullyHoist: true
 strictPeerDependencies: false
 
 allowBuilds:
   core-js-pure: true
   dicom-microscopy-viewer: true
+  esbuild: true
 
 overrides:
   '@types/d3-dispatch': 3.0.6
