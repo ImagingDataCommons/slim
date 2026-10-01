@@ -1,6 +1,7 @@
 import { InMemoryWebStorage, type UserManagerSettings } from 'oidc-client-ts'
 import type { Mock } from 'vitest'
 
+import { type IdTokenCrypto, webIdTokenCrypto } from '../idTokenCrypto'
 import {
   buildImplicitAuthorizeUrl,
   decodeJwtClaims,
@@ -10,6 +11,7 @@ import {
   verifyIdToken,
 } from '../implicitGrant'
 import { SafeStateStore } from '../oidcStore'
+import { softwareIdTokenCrypto } from '../softwareCrypto'
 import {
   CLIENT_ID,
   createFakeUserManager,
@@ -122,13 +124,16 @@ describe('decodeJwtClaims', () => {
   })
 })
 
-describe('verifyIdToken', () => {
+describe.each([
+  ['Web Crypto', webIdTokenCrypto(subtle)],
+  ['the JavaScript fallback', softwareIdTokenCrypto],
+])('verifyIdToken with %s', (_, crypto) => {
   const verify = async (
     idToken: string,
     accessToken = 'at',
     keys = [signer.jwk],
   ): Promise<void> => {
-    await verifyIdToken({ idToken, accessToken, keys, subtle })
+    await verifyIdToken({ idToken, accessToken, keys, crypto })
   }
 
   const signWithAtHash = async (
@@ -259,13 +264,12 @@ describe('ImplicitGrant', () => {
     ...overrides,
   })
 
-  /** `null` stands for a context without Web Crypto */
   const createGrant = (
-    cryptoApi: SubtleCrypto | null = subtle,
+    crypto: IdTokenCrypto = webIdTokenCrypto(subtle),
   ): ImplicitGrant =>
     new ImplicitGrant(oidc, stateStore, {
       loadFrame,
-      subtle: cryptoApi ?? undefined,
+      crypto,
     })
 
   /** Provider redirect answering the request in `authorizeUrl` */
@@ -386,13 +390,13 @@ describe('ImplicitGrant', () => {
       expect(oidc.storeUser).not.toHaveBeenCalled()
     })
 
-    it('refuses to sign in where tokens cannot be verified', async () => {
+    it('signs in without Web Crypto (plain HTTP)', async () => {
       const authorizeUrl = await redirect(undefined)
-      await expect(
-        createGrant(null).signinRedirectCallback(
-          await callbackFor(authorizeUrl),
-        ),
-      ).rejects.toThrow('secure context')
+      const user = await createGrant(
+        softwareIdTokenCrypto,
+      ).signinRedirectCallback(await callbackFor(authorizeUrl))
+      expect(user.access_token).toBe('fresh-token')
+      expect(oidc.storeUser).toHaveBeenCalledWith(user)
     })
 
     it('surfaces provider errors', async () => {

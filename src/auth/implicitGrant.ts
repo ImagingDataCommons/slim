@@ -10,6 +10,11 @@ import {
 import { v4 as generateUuid } from 'uuid'
 
 import { isOidcAuthorizeCallbackUrl } from '../utils/url'
+import {
+  type IdTokenCrypto,
+  loadIdTokenCrypto,
+  type SignatureScheme,
+} from './idTokenCrypto'
 
 export const IMPLICIT_RESPONSE_TYPE = 'id_token token'
 
@@ -134,37 +139,13 @@ export const decodeJwtClaims = (
   return parts.length === 3 ? decodeJwtPart(parts[1]) : undefined
 }
 
-interface SigningAlgorithm {
-  kty: 'RSA' | 'EC'
-  hash: 'SHA-256' | 'SHA-384' | 'SHA-512'
-  importParams: RsaHashedImportParams | EcKeyImportParams
-  verifyParams: Algorithm | EcdsaParams
-}
-
-const rsa = (hash: SigningAlgorithm['hash']): SigningAlgorithm => ({
-  kty: 'RSA',
-  hash,
-  importParams: { name: 'RSASSA-PKCS1-v1_5', hash },
-  verifyParams: { name: 'RSASSA-PKCS1-v1_5' },
-})
-
-const ec = (
-  namedCurve: string,
-  hash: SigningAlgorithm['hash'],
-): SigningAlgorithm => ({
-  kty: 'EC',
-  hash,
-  importParams: { name: 'ECDSA', namedCurve },
-  verifyParams: { name: 'ECDSA', hash },
-})
-
 /** JWS algorithms accepted for ID tokens; `none` and HMAC are deliberately absent */
-const SIGNING_ALGORITHMS = new Map<string, SigningAlgorithm>([
-  ['RS256', rsa('SHA-256')],
-  ['RS384', rsa('SHA-384')],
-  ['RS512', rsa('SHA-512')],
-  ['ES256', ec('P-256', 'SHA-256')],
-  ['ES384', ec('P-384', 'SHA-384')],
+const SIGNING_ALGORITHMS = new Map<string, SignatureScheme>([
+  ['RS256', { kty: 'RSA', hash: 'SHA-256' }],
+  ['RS384', { kty: 'RSA', hash: 'SHA-384' }],
+  ['RS512', { kty: 'RSA', hash: 'SHA-512' }],
+  ['ES256', { kty: 'EC', namedCurve: 'P-256', hash: 'SHA-256' }],
+  ['ES384', { kty: 'EC', namedCurve: 'P-384', hash: 'SHA-384' }],
 ])
 
 const toJsonWebKey = (key: SigningKey): JsonWebKey => {
@@ -194,12 +175,12 @@ export async function verifyIdToken({
   idToken,
   accessToken,
   keys,
-  subtle,
+  crypto,
 }: {
   idToken: string
   accessToken: string
   keys: readonly SigningKey[]
-  subtle: SubtleCrypto
+  crypto: IdTokenCrypto
 }): Promise<void> {
   const [headerPart, payloadPart, signaturePart] = idToken.split('.')
   const header = decodeJwtPart(headerPart ?? '')
@@ -221,20 +202,8 @@ export async function verifyIdToken({
   const signingInput = binaryToBytes(`${headerPart}.${payloadPart}`)
   let isVerified = false
   for (const key of candidates) {
-    const cryptoKey = await subtle.importKey(
-      'jwk',
-      toJsonWebKey(key),
-      algorithm.importParams,
-      false,
-      ['verify'],
-    )
     if (
-      await subtle.verify(
-        algorithm.verifyParams,
-        cryptoKey,
-        signature,
-        signingInput,
-      )
+      await crypto.verify(algorithm, toJsonWebKey(key), signature, signingInput)
     ) {
       isVerified = true
       break
@@ -249,9 +218,7 @@ export async function verifyIdToken({
   if (typeof atHash !== 'string') {
     throw new Error('ID token has no at_hash for the access token')
   }
-  const digest = new Uint8Array(
-    await subtle.digest(algorithm.hash, binaryToBytes(accessToken)),
-  )
+  const digest = await crypto.digest(algorithm.hash, binaryToBytes(accessToken))
   if (bytesToBase64Url(digest.slice(0, digest.length / 2)) !== atHash) {
     throw new Error('Access token does not match the ID token')
   }
@@ -428,8 +395,8 @@ export interface ImplicitGrantHost {
 
 export interface ImplicitGrantOptions {
   loadFrame?: (url: string, timeoutMs: number) => Promise<string>
-  /** Undefined outside secure contexts, where sign-in cannot be verified */
-  subtle?: SubtleCrypto
+  /** Defaults to Web Crypto, or a JavaScript fallback outside secure contexts */
+  crypto?: IdTokenCrypto
 }
 
 /**
@@ -446,7 +413,7 @@ export class ImplicitGrant {
     url: string,
     timeoutMs: number,
   ) => Promise<string>
-  private readonly subtle: SubtleCrypto | undefined
+  private readonly crypto: IdTokenCrypto | undefined
 
   constructor(
     oidc: ImplicitGrantHost,
@@ -456,7 +423,7 @@ export class ImplicitGrant {
     this.oidc = oidc
     this.stateStore = stateStore
     this.loadFrame = options.loadFrame ?? loadInHiddenFrame
-    this.subtle = 'subtle' in options ? options.subtle : window.crypto?.subtle
+    this.crypto = options.crypto
   }
 
   /** Navigate to the provider; `data` comes back as `User.state` */
@@ -558,16 +525,11 @@ export class ImplicitGrant {
     if (claims === undefined) {
       throw new Error('Malformed ID token')
     }
-    if (this.subtle === undefined) {
-      throw new Error(
-        'ID tokens can only be verified in a secure context (HTTPS or localhost)',
-      )
-    }
     await verifyIdToken({
       idToken: callback.idToken,
       accessToken: callback.accessToken,
       keys: (await this.oidc.metadataService.getSigningKeys()) ?? [],
-      subtle: this.subtle,
+      crypto: this.crypto ?? (await loadIdTokenCrypto()),
     })
     const now = nowInSeconds()
     const { settings } = this.oidc

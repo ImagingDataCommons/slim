@@ -34,6 +34,7 @@ import {
   currentReturnUrl,
   readReturnUrl,
 } from './oidcUser'
+import { installPkceFallback } from './pkce'
 
 interface ReturnUrlState {
   returnUrl: string
@@ -187,6 +188,8 @@ export default class OidcManager implements AuthManager {
       this._oidc.events.addAccessTokenExpiring(() => {
         void this.renewAuthorization()
       })
+    } else {
+      installPkceFallback()
     }
   }
 

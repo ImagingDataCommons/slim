@@ -444,7 +444,7 @@ Existing configs continue to work without changes:
 
 Deep links are restored after login through the OIDC `state` parameter (not `localStorage`). Silent token renewal reuses the same registered redirect URI (no additional IdP redirect URI is required).
 
-Sign-in needs the browser's Web Crypto API, so Slim must be served over HTTPS (or from `localhost`) when OIDC is configured. It uses it for the PKCE challenge in the code flow, and to check the ID token signature against the provider's published keys in the implicit flow.
+Sign-in hashes the PKCE challenge in the code flow and checks the ID token signature against the provider's published keys in the implicit flow. Browsers only offer the Web Crypto API over HTTPS and on `localhost`, so on plain-HTTP deployments Slim does both in JavaScript instead. Serving Slim over HTTPS is still recommended because it keeps tokens from being exposed on the network.
 
 ## Development
 
