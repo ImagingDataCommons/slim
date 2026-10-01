@@ -57,14 +57,15 @@ The script uses the installed Google Chrome. Set `PLAYWRIGHT_CHANNEL=` to use Pl
 
 ## Deploy
 
-The site is a second Firebase Hosting site, `slim-viewer`, in the `idc-external-006` project, next to the app. `website/firebase.json` targets that site, so the app's root `firebase.json` is unaffected.
+The site is hosted on Firebase Hosting in the `slim-website` project, at <https://slim-website.web.app>. `website/firebase.json` targets that project's default site, so the app's root `firebase.json` is unaffected.
 
-One-time setup, by a project owner:
+`.github/workflows/deploy-website.yml` deploys every pull request that touches the site to a preview channel and comments the URL, and deploys `master` (and `feat/slim-modern-redesign`, while the site is stacked on the redesign branch) to the live channel. It authenticates with the `FIREBASE_SERVICE_ACCOUNT_SLIM` secret, a service account key from the `slim-website` project with the Firebase Hosting Admin role. A custom domain can be connected later in the Firebase console; update `SITE_URL` in the workflow when it is.
+
+To deploy by hand, from `website/`:
 
 ```bash
-firebase hosting:sites:create slim-viewer --project idc-external-006
+pnpm --filter slim-website build
+firebase deploy --only hosting --project slim-website
 ```
-
-After that, `.github/workflows/deploy-website.yml` deploys every pull request that touches the site to a preview channel and comments the URL, and deploys `master` to <https://slim-viewer.web.app>. It reuses the `FIREBASE_SERVICE_ACCOUNT_SLIM` secret. A custom domain can be connected later in the Firebase console; update `SITE_URL` in the workflow when it is.
 
 A weekly workflow, `.github/workflows/website-idc-examples.yml`, checks that every example in the support matrix still resolves on the IDC proxy and opens an issue when one breaks or a new IDC release changes the picture.

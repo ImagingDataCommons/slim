@@ -1,8 +1,10 @@
 name: website/deploy
 
 on:
+  # feat/slim-modern-redesign is included while the website PR is stacked on the
+  # redesign branch; it can be dropped once the site is merged to master.
   pull_request:
-    branches: [master]
+    branches: [master, feat/slim-modern-redesign]
     paths:
       - "website/**"
       - "src/styles/tokens.css"
@@ -15,7 +17,7 @@ on:
       - "pnpm-workspace.yaml"
       - ".github/workflows/deploy-website.yml"
   push:
-    branches: [master]
+    branches: [master, feat/slim-modern-redesign]
     paths:
       - "website/**"
       - "src/styles/tokens.css"
@@ -39,7 +41,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  SITE_URL: https://slim-viewer.web.app
+  SITE_URL: https://slim-website.web.app
 
 jobs:
   build:
@@ -105,7 +107,7 @@ jobs:
         with:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
           firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_SLIM }}"
-          projectId: idc-external-006
+          projectId: slim-website
           entryPoint: website
           channelId: website-pr-${{ github.event.pull_request.number }}
 
@@ -115,6 +117,6 @@ jobs:
         with:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
           firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_SLIM }}"
-          projectId: idc-external-006
+          projectId: slim-website
           entryPoint: website
           channelId: live

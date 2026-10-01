@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "slim-viewer",
+    "site": "slim-website",
     "public": "dist",
     "cleanUrls": true,
     "trailingSlash": true,
