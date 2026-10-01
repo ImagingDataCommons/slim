@@ -11,16 +11,16 @@ function mockClipboard(writeText: (text: string) => Promise<void>): void {
 
 describe('useCopyToClipboard', () => {
   beforeEach(() => {
-    jest.useFakeTimers()
+    vi.useFakeTimers()
   })
 
   afterEach(() => {
-    jest.useRealTimers()
+    vi.useRealTimers()
     Reflect.deleteProperty(navigator, 'clipboard')
   })
 
   it('marks the text as copied until the timeout elapses', async () => {
-    const writeText = jest.fn(async () => undefined)
+    const writeText = vi.fn(async () => undefined)
     mockClipboard(writeText)
     const { result } = renderHook(() => useCopyToClipboard(1000))
 
@@ -34,11 +34,11 @@ describe('useCopyToClipboard', () => {
     expect(result.current.copied).toBe(true)
 
     act(() => {
-      jest.advanceTimersByTime(999)
+      vi.advanceTimersByTime(999)
     })
     expect(result.current.copied).toBe(true)
     act(() => {
-      jest.advanceTimersByTime(1)
+      vi.advanceTimersByTime(1)
     })
     expect(result.current.copied).toBe(false)
   })
@@ -51,17 +51,17 @@ describe('useCopyToClipboard', () => {
       await result.current.copy('first')
     })
     act(() => {
-      jest.advanceTimersByTime(800)
+      vi.advanceTimersByTime(800)
     })
     await act(async () => {
       await result.current.copy('second')
     })
     act(() => {
-      jest.advanceTimersByTime(800)
+      vi.advanceTimersByTime(800)
     })
     expect(result.current.copied).toBe(true)
     act(() => {
-      jest.advanceTimersByTime(200)
+      vi.advanceTimersByTime(200)
     })
     expect(result.current.copied).toBe(false)
   })
@@ -95,7 +95,7 @@ describe('useCopyToClipboard', () => {
 
   it('clears the pending timeout on unmount', async () => {
     mockClipboard(async () => undefined)
-    const clearSpy = jest.spyOn(global, 'clearTimeout')
+    const clearSpy = vi.spyOn(global, 'clearTimeout')
     const { result, unmount } = renderHook(() => useCopyToClipboard(1000))
     await act(async () => {
       await result.current.copy('text')
@@ -105,7 +105,7 @@ describe('useCopyToClipboard', () => {
     unmount()
 
     expect(clearSpy).toHaveBeenCalledTimes(1)
-    expect(jest.getTimerCount()).toBe(0)
+    expect(vi.getTimerCount()).toBe(0)
     clearSpy.mockRestore()
   })
 })

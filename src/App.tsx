@@ -1,4 +1,5 @@
-import { BrowserRouter } from 'react-router-dom'
+import type { JSX } from 'react'
+import { BrowserRouter } from 'react-router'
 import type AppConfig from './AppConfig'
 import { AppPage, type AppPageContext } from './app/AppPage'
 import { AppRoutes } from './app/AppRoutes'

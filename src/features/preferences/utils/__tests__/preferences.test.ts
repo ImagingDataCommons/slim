@@ -85,7 +85,7 @@ describe('loadPreferences / savePreferences', () => {
   })
 
   it('notifies listeners after saving', () => {
-    const listener = jest.fn()
+    const listener = vi.fn()
     window.addEventListener(PREFERENCES_CHANGED_EVENT, listener)
     savePreferences(DEFAULT_PREFERENCES)
     window.removeEventListener(PREFERENCES_CHANGED_EVENT, listener)

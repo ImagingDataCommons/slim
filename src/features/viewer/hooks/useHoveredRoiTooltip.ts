@@ -1,7 +1,7 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import { useEffect, useRef, useState } from 'react'
-import { debounce } from '../../../utils/debounce'
+import { type DebouncedFunction, debounce } from '../../../utils/debounce'
 import { logger } from '../../../utils/logger'
 import {
   HIDDEN_HOVERED_ROI_TOOLTIP,
@@ -150,16 +150,23 @@ export function useHoveredRoiTooltip({
   }
 
   const onPointerMoveRef = useLatestRef(onPointerMove)
-  const [debouncedPointerMove] = useState(() =>
-    debounce(
+  const debouncedPointerMoveRef = useRef<DebouncedFunction<
+    [PointerMovePayload]
+  > | null>(null)
+  useEffect(() => {
+    const debounced = debounce(
       (payload: PointerMovePayload) => {
         onPointerMoveRef.current(payload)
       },
       0,
       { leading: true, trailing: true },
-    ),
-  )
-  useEffect(() => () => debouncedPointerMove.cancel(), [debouncedPointerMove])
+    )
+    debouncedPointerMoveRef.current = debounced
+    return () => {
+      debounced.cancel()
+      debouncedPointerMoveRef.current = null
+    }
+  }, [onPointerMoveRef])
 
   return {
     store,
@@ -168,7 +175,9 @@ export function useHoveredRoiTooltip({
       store.set(HIDDEN_HOVERED_ROI_TOOLTIP)
     },
     dmvHandlers: {
-      dicommicroscopyviewer_pointer_move: debouncedPointerMove,
+      dicommicroscopyviewer_pointer_move: (payload) => {
+        debouncedPointerMoveRef.current?.(payload)
+      },
     },
   }
 }

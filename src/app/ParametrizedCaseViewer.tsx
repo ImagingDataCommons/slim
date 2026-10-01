@@ -1,4 +1,5 @@
-import { Navigate, useParams } from 'react-router-dom'
+import type { JSX } from 'react'
+import { Navigate, useParams } from 'react-router'
 
 import type AppConfig from '../AppConfig'
 import type { User } from '../auth'

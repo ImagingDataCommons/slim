@@ -11,7 +11,7 @@ describe('getSegmentColor', () => {
   ]
 
   afterEach(() => {
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
   })
 
   it('converts the recommended CIELab value to 8-bit RGB', () => {
@@ -25,7 +25,7 @@ describe('getSegmentColor', () => {
   })
 
   it('scales and clamps the converted channels', () => {
-    jest.spyOn(dcmjs.data.Colors, 'dicomlab2RGB').mockReturnValue([1, 0.5, 1.2])
+    vi.spyOn(dcmjs.data.Colors, 'dicomlab2RGB').mockReturnValue([1, 0.5, 1.2])
     expect(getSegmentColor({ segmentSequence, segmentNumber: 1 })).toEqual([
       255, 128, 255,
     ])
@@ -42,10 +42,10 @@ describe('getSegmentColor', () => {
   })
 
   it('returns null when the conversion throws', () => {
-    jest.spyOn(dcmjs.data.Colors, 'dicomlab2RGB').mockImplementation(() => {
+    vi.spyOn(dcmjs.data.Colors, 'dicomlab2RGB').mockImplementation(() => {
       throw new Error('bad lab')
     })
-    jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     expect(getSegmentColor({ segmentSequence, segmentNumber: 1 })).toBeNull()
   })
 })

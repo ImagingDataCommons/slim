@@ -7,7 +7,7 @@ const VALID_OIDC =
   '{"authority":"https://idp.example.com","clientId":"slim","scope":"openid"}'
 
 const renderSelection = () => {
-  const onServerSelection = jest.fn()
+  const onServerSelection = vi.fn()
   const view = renderHook(() => useServerSelection({ onServerSelection }))
   return { ...view, onServerSelection }
 }

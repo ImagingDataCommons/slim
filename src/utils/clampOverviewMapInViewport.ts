@@ -139,7 +139,7 @@ export type ClampOverviewMapOptions = {
 /**
  * Fit overview map size into the bottom-right overview card of the viewport.
  *
- * Slim owns runtime inset/size because craco loads the published DMV bundle;
+ * Slim owns runtime inset/size because it loads the published DMV bundle;
  * keep constants in sync with DMV `_updateOverviewMapSize` /
  * {@link fitOverviewMapSize}.
  */

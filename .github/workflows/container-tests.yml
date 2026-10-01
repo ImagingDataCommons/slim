@@ -46,8 +46,9 @@ jobs:
       - name: Test compiled styles
         run: |
           # The build must run Tailwind; raw @tailwind/@apply rules mean
-          # tailwind.config.js was missing from the image.
-          css_path=$(curl -s http://localhost:8008/ | grep -o 'static/css/main\.[a-z0-9]*\.css' | head -1)
+          # tailwind.config.js was missing from the image. Vite emits the
+          # stylesheet as assets/index-<hash>.css.
+          css_path=$(curl -s http://localhost:8008/ | grep -o 'assets/[^"]*\.css' | head -1)
           test -n "$css_path"
           css=$(curl -s "http://localhost:8008/$css_path")
           if echo "$css" | grep -q '@tailwind\|@apply'; then

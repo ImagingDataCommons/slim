@@ -11,7 +11,7 @@ describe('createExternalStore', () => {
 
   it('notifies listeners only on change', () => {
     const store = createExternalStore({ x: 1 })
-    const listener = jest.fn()
+    const listener = vi.fn()
     store.subscribe(listener)
     store.set(store.getSnapshot())
     expect(listener).not.toHaveBeenCalled()
@@ -21,7 +21,7 @@ describe('createExternalStore', () => {
 
   it('stops notifying after unsubscribe', () => {
     const store = createExternalStore('a')
-    const listener = jest.fn()
+    const listener = vi.fn()
     const unsubscribe = store.subscribe(listener)
     unsubscribe()
     store.set('b')

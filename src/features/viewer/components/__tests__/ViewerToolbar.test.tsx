@@ -6,19 +6,19 @@ function renderToolbar(): void {
   render(
     <ViewerToolbar
       isLeftPanelOpen
-      onToggleLeftPanel={jest.fn()}
+      onToggleLeftPanel={vi.fn()}
       isRightPanelOpen
-      onToggleRightPanel={jest.fn()}
+      onToggleRightPanel={vi.fn()}
       enableAnnotationTools
       activeTool="draw"
       areRoisHidden={false}
-      onDraw={jest.fn()}
-      onModify={jest.fn()}
-      onTranslate={jest.fn()}
-      onRemove={jest.fn()}
-      onToggleRoiVisibility={jest.fn()}
-      onSave={jest.fn()}
-      onGoTo={jest.fn()}
+      onDraw={vi.fn()}
+      onModify={vi.fn()}
+      onTranslate={vi.fn()}
+      onRemove={vi.fn()}
+      onToggleRoiVisibility={vi.fn()}
+      onSave={vi.fn()}
+      onGoTo={vi.fn()}
     />,
   )
 }

@@ -44,7 +44,7 @@ function ValidationWarning({
   }, [slide, annotationGroup, runValidations])
 
   useEffect(() => {
-    if (message !== undefined && process.env.NODE_ENV === 'development') {
+    if (message !== undefined && import.meta.env.MODE === 'development') {
       console.warn(message)
     }
   }, [message])

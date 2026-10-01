@@ -24,7 +24,7 @@ The `SlideViewer` further provides annotation tools, which enable the user to dr
 
 ## Implementation details
 
-The app is implemented in [TypeScript](https://www.typescriptlang.org/) 6 using the [React](https://reactjs.org/) framework.
+The app is implemented in [TypeScript](https://www.typescriptlang.org/) 7 using [React](https://react.dev/) 19 with the [React Compiler](https://react.dev/learn/react-compiler) enabled, so components and hooks are memoized automatically and new code rarely needs `useMemo`, `useCallback` or `React.memo`.
 The UI is styled with [Tailwind CSS](https://tailwindcss.com/) on top of [Radix UI](https://www.radix-ui.com/) primitives (`src/components/ui`).
 Icons are [lucide](https://lucide.dev/) SVGs rendered through `Icon` (`src/components/ui/icon.tsx`); add new glyphs to its `ICONS` map so `IconName` stays a closed union.
 Light and dark color tokens are CSS variables defined in `src/index.css` and mapped in `tailwind.config.js`. Custom font-size, radius and control-size tokens must also be registered in `src/lib/utils.ts` so `cn()` merges them correctly.
@@ -33,17 +33,19 @@ Components render props and call callbacks; DICOM parsing, formatting, filtering
 Shared sidebar layer controls (visibility toggle, settings popover, opacity row, style hooks) live in `src/components/panel`.
 Transient notifications go through `publishToast` (`src/features/viewer/services/toast.ts`) and are rendered by `ToastHost`, which applies `config.messages`.
 
-The app is built using [craco](https://github.com/gsoft-inc/craco), which serves as a configuration layer around [create-react-app](https://github.com/facebook/create-react-app/).
+The app is built and served with [Vite](https://vite.dev/) (`vite.config.ts`). The compiler runs through Babel (`@rolldown/plugin-babel` with `reactCompilerPreset`) in dev, build and tests. Only `VITE_*` and `REACT_APP_*` variables reach the client, as `import.meta.env.*`.
 
-Tests are written and run using the [jest](https://jestjs.io/) framework.
+Tests are written and run with [Vitest](https://vitest.dev/) in a jsdom environment, using [Testing Library](https://testing-library.com/). Mocks are reset before each test (`mockReset: true`); for Vitest, that means a `vi.fn(impl)` goes back to `impl`, not to returning `undefined`.
+
+`pnpm run check:compiler` fails when the React Compiler bails out of a component or hook, and lists each file, line and reason. It runs in the pre-commit hook and in CI. Fix the code rather than opting out. Add `'use no memo'` only for a known compiler limitation (for example a library the compiler marks incompatible, such as TanStack Table's `useReactTable`), and explain why in a `/** */` comment next to the directive.
 
 The [pnpm](https://pnpm.io/) package manager is used to manage dependencies and run scripts specified in `package.json` (`build`, `lint`, `test`, etc.).
 
 ## Coding style
 
-Source code is linted and formatted using [Biome](https://biomejs.dev/). TypeScript is used with [strict type checking compiler options](https://www.typescriptlang.org/tsconfig#Strict_Type_Checking_Options_6173) enabled. Semicolons are not used at the end of statements (Biome uses `asNeeded`).
+Source code is linted and formatted using [Biome](https://biomejs.dev/), the only linter in the project (typescript-eslint does not support TypeScript 7). TypeScript is used with [strict type checking compiler options](https://www.typescriptlang.org/tsconfig#Strict_Type_Checking_Options_6173) enabled. Semicolons are not used at the end of statements (Biome uses `asNeeded`).
 
-Explanatory comments use JSDoc-style block comments (`/** … */`), not `//` line comments. Keep `//` only for tooling directives (`eslint-disable`, `@ts-expect-error`, `biome-ignore`), temporarily commented-out code, and shebang lines.
+Explanatory comments use JSDoc-style block comments (`/** … */`), not `//` line comments. Keep `//` only for tooling directives (`biome-ignore`, `@ts-expect-error`, triple-slash references), temporarily commented-out code, and shebang lines.
 
 Use the following commands to check and fix style:
 

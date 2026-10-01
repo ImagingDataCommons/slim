@@ -108,7 +108,7 @@ describe('useStudies', () => {
   })
 
   it('backfills missing modalities from the series', async () => {
-    const searchForSeries = jest.fn(async () => [
+    const searchForSeries = vi.fn(async () => [
       seriesJson('SR'),
       seriesJson('OT'),
     ])
@@ -136,7 +136,7 @@ describe('useStudies', () => {
       async () => [studyJson('without')],
       async () => await series.promise,
     )
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { result, unmount } = renderHook(() => useStudies({ clients }))
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
@@ -151,10 +151,10 @@ describe('useStudies', () => {
   })
 
   it('reports a failed search', async () => {
-    const onError = jest
+    const onError = vi
       .spyOn(NotificationMiddleware, 'onError')
       .mockImplementation(() => undefined)
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const clients = createClients(async () => {
       throw new Error('network')
     })

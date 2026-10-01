@@ -1,17 +1,8 @@
+import type { Mock } from 'vitest'
 import {
   clampOverviewMapInViewport,
   observeOverviewMapClamp,
 } from '../clampOverviewMapInViewport'
-
-/** `ol` ships untranspiled ESM that Jest does not load from the pnpm store */
-jest.mock('ol/extent', () => ({
-  getCenter: (extent: number[]) => [
-    (extent[0] + extent[2]) / 2,
-    (extent[1] + extent[3]) / 2,
-  ],
-  getHeight: (extent: number[]) => extent[3] - extent[1],
-  getWidth: (extent: number[]) => extent[2] - extent[0],
-}))
 
 function setSize(element: HTMLElement, width: number, height: number): void {
   Object.defineProperty(element, 'clientWidth', {
@@ -48,21 +39,21 @@ function buildContainer(
 interface FakeView {
   getProjection: () => { getExtent: () => number[] }
   getRotation: () => number
-  applyOptions_: jest.Mock
+  applyOptions_: Mock
   getUpdatedOptions_: (options: Record<string, unknown>) => unknown
 }
 
 function buildVolumeViewer(
   rotation = 0,
   size: number[] | undefined = [120, 120],
-): { volumeViewer: object; view: FakeView; updateSize: jest.Mock } {
+): { volumeViewer: object; view: FakeView; updateSize: Mock } {
   const view: FakeView = {
     getProjection: () => ({ getExtent: () => [0, 0, 1000, 500] }),
     getRotation: () => rotation,
-    applyOptions_: jest.fn(),
+    applyOptions_: vi.fn(),
     getUpdatedOptions_: (options) => options,
   }
-  const updateSize = jest.fn()
+  const updateSize = vi.fn()
   const overviewControl = {
     getOverviewMap: () => ({
       updateSize,
@@ -151,7 +142,7 @@ describe('clampOverviewMapInViewport', () => {
 describe('observeOverviewMapClamp', () => {
   let resizeCallback: ResizeObserverCallback | undefined
   let frames: FrameRequestCallback[] = []
-  const disconnectResize = jest.fn()
+  const disconnectResize = vi.fn()
   const OriginalResizeObserver = global.ResizeObserver
 
   function flushFrames(): void {
@@ -164,12 +155,10 @@ describe('observeOverviewMapClamp', () => {
     resizeCallback = undefined
     frames = []
     disconnectResize.mockClear()
-    jest
-      .spyOn(window, 'requestAnimationFrame')
-      .mockImplementation((callback) => {
-        frames.push(callback)
-        return frames.length
-      })
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      frames.push(callback)
+      return frames.length
+    })
     global.ResizeObserver = class {
       constructor(callback: ResizeObserverCallback) {
         resizeCallback = callback
@@ -184,12 +173,12 @@ describe('observeOverviewMapClamp', () => {
 
   afterEach(() => {
     global.ResizeObserver = OriginalResizeObserver
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
   })
 
   it('clamps immediately and resizes the viewer on container resize', () => {
     const { container, mapEl } = buildContainer()
-    const resize = jest.fn()
+    const resize = vi.fn()
     const stop = observeOverviewMapClamp(container, {
       volumeViewer: { resize },
     })

@@ -5,14 +5,13 @@ import { resetFakeDmv } from '../../testing/fakeDmv'
 import { createTestSession } from '../../testing/fixtures'
 import { useHoveredRoiTooltip } from '../useHoveredRoiTooltip'
 
-jest.mock(
-  'dicom-microscopy-viewer',
-  () =>
-    jest.requireActual<typeof import('../../testing/fakeDmv')>(
-      '../../testing/fakeDmv',
-    ).fakeDmvModule,
-)
-jest.mock('../../../../utils/logger')
+vi.mock('dicom-microscopy-viewer', async () => {
+  const actual = await vi.importActual<typeof import('../../testing/fakeDmv')>(
+    '../../testing/fakeDmv',
+  )
+  return actual.fakeDmvModule
+})
+vi.mock('../../../../utils/logger')
 
 function addRoi(
   viewer: dmv.viewer.VolumeImageViewer,
@@ -55,11 +54,11 @@ function setup(visibleRoiUIDs: string[]) {
 
 beforeEach(() => {
   resetFakeDmv()
-  jest.useFakeTimers()
+  vi.useFakeTimers()
 })
 
 afterEach(() => {
-  jest.useRealTimers()
+  vi.useRealTimers()
 })
 
 describe('useHoveredRoiTooltip', () => {
@@ -100,9 +99,9 @@ describe('useHoveredRoiTooltip', () => {
 
     act(() => {
       move(pointerMove([second], 10, 20))
-      jest.runAllTimers()
+      vi.runAllTimers()
       move(pointerMove([second], 30, 40))
-      jest.runAllTimers()
+      vi.runAllTimers()
     })
     expect(result.current.store.getSnapshot()).toMatchObject({
       isVisible: true,
@@ -112,7 +111,7 @@ describe('useHoveredRoiTooltip', () => {
 
     act(() => {
       move(pointerMove([]))
-      jest.runAllTimers()
+      vi.runAllTimers()
     })
     expect(result.current.store.getSnapshot().isVisible).toBe(false)
   })
@@ -139,7 +138,7 @@ describe('useHoveredRoiTooltip', () => {
       move(pointerMove([second]))
     })
     unmount()
-    jest.runAllTimers()
+    vi.runAllTimers()
 
     expect(store.getSnapshot().rois.map((roi) => roi.roiUid)).toEqual(['roi-a'])
   })

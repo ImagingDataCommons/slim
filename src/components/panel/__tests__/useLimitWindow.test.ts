@@ -3,7 +3,7 @@ import { act, renderHook } from '@testing-library/react'
 import { type UseLimitWindowOptions, useLimitWindow } from '../useLimitWindow'
 
 function setup(overrides: Partial<UseLimitWindowOptions> = {}) {
-  const onCommit = jest.fn()
+  const onCommit = vi.fn()
   const options: UseLimitWindowOptions = {
     initial: [10, 200],
     min: 0,
@@ -32,7 +32,7 @@ describe('useLimitWindow', () => {
   })
 
   it('reports clamped preview values to onPreview only', () => {
-    const onPreview = jest.fn()
+    const onPreview = vi.fn()
     const { result, onCommit } = setup({ onPreview })
     act(() => result.current.preview([-5, 300]))
     expect(onPreview).toHaveBeenCalledWith([0, 255])

@@ -1,7 +1,7 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import { useState } from 'react'
-import type { Location, NavigateFunction } from 'react-router-dom'
+import type { Location, NavigateFunction } from 'react-router'
 
 import type DicomWebManager from '../../../DicomWebManager'
 import { StorageClasses } from '../../../data/uids'

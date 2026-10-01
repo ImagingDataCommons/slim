@@ -30,9 +30,9 @@ describe('getRoiKey', () => {
   })
 
   it('is undefined for an ROI without a finding', () => {
-    jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     expect(getRoiKey({ uid: 'roi-2', evaluations: [] })).toBeUndefined()
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
   })
 })
 

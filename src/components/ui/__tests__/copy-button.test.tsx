@@ -3,10 +3,10 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { CopyButton } from '../copy-button'
 
 describe('CopyButton', () => {
-  const writeText = jest.fn<Promise<void>, [string]>()
+  const writeText = vi.fn<(...args: [string]) => Promise<void>>()
 
   beforeEach(() => {
-    jest.useFakeTimers()
+    vi.useFakeTimers()
     writeText.mockReset().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -15,7 +15,7 @@ describe('CopyButton', () => {
   })
 
   afterEach(() => {
-    jest.useRealTimers()
+    vi.useRealTimers()
   })
 
   it('copies the text and confirms until the reset delay', async () => {
@@ -30,7 +30,7 @@ describe('CopyButton', () => {
     expect(screen.getByText('Copied to clipboard')).toBeInTheDocument()
 
     act(() => {
-      jest.advanceTimersByTime(1000)
+      vi.advanceTimersByTime(1000)
     })
     expect(screen.getByRole('button', { name: 'Copy UID' })).toBeInTheDocument()
   })

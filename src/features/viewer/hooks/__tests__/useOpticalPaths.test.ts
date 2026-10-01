@@ -4,14 +4,13 @@ import { resetFakeDmv } from '../../testing/fakeDmv'
 import { createTestSession, type TestSession } from '../../testing/fixtures'
 import { useOpticalPaths } from '../useOpticalPaths'
 
-jest.mock(
-  'dicom-microscopy-viewer',
-  () =>
-    jest.requireActual<typeof import('../../testing/fakeDmv')>(
-      '../../testing/fakeDmv',
-    ).fakeDmvModule,
-)
-jest.mock('../../../../utils/logger')
+vi.mock('dicom-microscopy-viewer', async () => {
+  const actual = await vi.importActual<typeof import('../../testing/fakeDmv')>(
+    '../../testing/fakeDmv',
+  )
+  return actual.fakeDmvModule
+})
+vi.mock('../../../../utils/logger')
 
 function setup(viewerGamma = true): TestSession & {
   result: { current: ReturnType<typeof useOpticalPaths> }

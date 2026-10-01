@@ -24,9 +24,10 @@ export function useActiveSeriesPublisher({
   useEffect(() => {
     const viewer = sessionRef.current?.volumeViewer
     if (viewer === undefined) return
+    const activeSeriesUID = seriesInstanceUID ?? ''
     try {
       ActiveSeriesService.setActiveSeries(
-        seriesInstanceUID ?? '',
+        activeSeriesUID,
         visibleDerivedSeriesUIDs(
           {
             annotationGroups: viewer.getAllAnnotationGroups(),

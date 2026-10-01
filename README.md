@@ -304,7 +304,7 @@ The following topics are documented in [docs/CONFIGURATION.md](docs/CONFIGURATIO
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (LTS recommended)
+- [Node.js](https://nodejs.org/) 22.22 or newer (24 LTS recommended)
 - [pnpm](https://pnpm.io/) `11.9.0` (see `packageManager` in `package.json`)
 
 Download the latest release from [github.com/ImagingDataCommons/slim/releases](https://github.com/ImagingDataCommons/slim/releases), then install dependencies and build the app:
@@ -450,7 +450,7 @@ Sign-in needs the browser's Web Crypto API, so Slim must be served over HTTPS (o
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (LTS recommended)
+- [Node.js](https://nodejs.org/) 22.22 or newer (24 LTS recommended)
 - [pnpm](https://pnpm.io/) `11.9.0` (see `packageManager` in `package.json`)
 
 Install dependencies and run the app for local development:
@@ -483,11 +483,13 @@ Useful scripts:
 
 | Command | Description |
 | ------- | ----------- |
-| `pnpm run start` | Start the development server |
-| `pnpm run build` | Create a production build |
-| `pnpm run test` | Run the unit tests |
-| `pnpm run typecheck` | Type-check with `tsc` |
-| `pnpm run lint` | Check for lint issues |
+| `pnpm run start` (or `dev`) | Start the Vite development server on port 3000 |
+| `pnpm run build` | Create a production build in `build/` |
+| `pnpm run test` | Run the unit tests once with Vitest |
+| `pnpm run test:watch` | Run Vitest in watch mode |
+| `pnpm run typecheck` | Type-check with `tsc` (TypeScript 7) |
+| `pnpm run check:compiler` | Fail if the React Compiler bails out on any component or hook |
+| `pnpm run lint` | Check for lint and format issues with Biome |
 | `pnpm run lint:fix` | Auto-fix lint issues |
 | `pnpm run fmt` | Format source code |
 
@@ -540,11 +542,12 @@ If neither applies, the preview uses the version in `package.json`. Editing the 
    pnpm run start
    ```
 
-   When linked, `craco.config.js` registers the DMV `dist/` folder as a webpack watch dependency so Slim rebuilds after DMV watch emits a new bundle. Restart Slim after linking or after changing `craco.config.js`.
+   When linked, Vite pre-bundles the DMV `dist/dynamic-import` bundle on every start and watches `dicomMicroscopyViewer.min.js`. When DMV watch emits a new bundle, the dev server re-runs the dependency optimizer and restarts itself. The worker and WebAssembly decoders under `/static/js/` are served straight from the linked `dist/` folder. Restart Slim after linking or after changing `vite.config.ts`.
 
 ### Notes
 
-- Running `pnpm install` in Slim removes the link — re-run step 3 afterward.
+- Running `pnpm install` in Slim removes the link — re-run step 2 afterward.
+- If a tab that stayed open across a DMV rebuild logs `Invalid hook call`, hard-reload it: it still holds modules from the previous optimizer run.
 - Do not add `link:` overrides to `package.json`; the commands above are sufficient.
 - Slim imports OpenLayers CSS directly (`ol/ol.css`), so `ol` is listed as a direct dependency. This keeps linked dev working when DMV's transitive dependencies are not hoisted into Slim's `node_modules`.
 - If Slim still serves a stale DMV bundle, confirm step 3 (realpath must not contain `.pnpm`) and that DMV watch logged `[emitted] dicomMicroscopyViewer.min.js` for your change.
@@ -553,7 +556,10 @@ If neither applies, the preview uses the version in `package.json`. Editing the 
   ```bash
   pnpm unlink dicom-microscopy-viewer
   pnpm install
+  pnpm run start --force
   ```
+
+  `--force` makes Vite discard the dependency cache that still holds the linked bundle.
 
 ## Related projects
 

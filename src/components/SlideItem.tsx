@@ -35,7 +35,7 @@ export interface SlideItemProps {
 function useOverviewViewer(
   client: DicomWebManager | undefined,
   metadata: dmv.metadata.VLWholeSlideMicroscopyImage | undefined,
-): React.RefObject<HTMLSpanElement> {
+): React.RefObject<HTMLSpanElement | null> {
   const containerRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {

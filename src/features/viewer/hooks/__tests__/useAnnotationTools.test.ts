@@ -15,14 +15,13 @@ import {
 } from '../../utils/viewerInteraction'
 import { useAnnotationTools } from '../useAnnotationTools'
 
-jest.mock(
-  'dicom-microscopy-viewer',
-  () =>
-    jest.requireActual<typeof import('../../testing/fakeDmv')>(
-      '../../testing/fakeDmv',
-    ).fakeDmvModule,
-)
-jest.mock('../../../../utils/logger')
+vi.mock('dicom-microscopy-viewer', async () => {
+  const actual = await vi.importActual<typeof import('../../testing/fakeDmv')>(
+    '../../testing/fakeDmv',
+  )
+  return actual.fakeDmvModule
+})
+vi.mock('../../../../utils/logger')
 
 interface Options {
   selectedRoiUIDs?: string[]
@@ -41,11 +40,11 @@ function setup({
   const rois = {
     selectedRoiUIDs: new Set(selectedRoiUIDs),
     visibleRoiUIDs: new Set(visibleRoiUIDs),
-    addStyledRoi: jest.fn(),
-    removeRois: jest.fn(),
-    restyleSelected: jest.fn(),
+    addStyledRoi: vi.fn(),
+    removeRois: vi.fn(),
+    restyleSelected: vi.fn(),
   }
-  const onSave = jest.fn()
+  const onSave = vi.fn()
   const { result } = renderHook(() => {
     const [interaction, dispatch] = useReducer(
       viewerInteractionReducer,

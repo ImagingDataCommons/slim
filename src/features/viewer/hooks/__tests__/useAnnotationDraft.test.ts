@@ -3,7 +3,7 @@ import { act, renderHook } from '@testing-library/react'
 import { buildAnnotationConfig } from '../../utils/annotationConfig'
 import { useAnnotationDraft } from '../useAnnotationDraft'
 
-jest.mock('../../../../utils/logger')
+vi.mock('../../../../utils/logger')
 
 const config = buildAnnotationConfig([
   {

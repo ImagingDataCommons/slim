@@ -1,4 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
+import type { MockedFunction } from 'vitest'
 
 import type DicomWebManager from '../../DicomWebManager'
 import type { Slide } from '../../data/slides'
@@ -6,11 +7,11 @@ import { StorageClasses } from '../../data/uids'
 import { fetchImageMetadata } from '../../services/fetchImageMetadata'
 import { clearSlidesCache, useSlides } from '../useSlides'
 
-jest.mock('../../services/fetchImageMetadata', () => ({
-  fetchImageMetadata: jest.fn(),
+vi.mock('../../services/fetchImageMetadata', () => ({
+  fetchImageMetadata: vi.fn(),
 }))
 
-const mockedFetch = fetchImageMetadata as jest.MockedFunction<
+const mockedFetch = fetchImageMetadata as MockedFunction<
   typeof fetchImageMetadata
 >
 

@@ -9,8 +9,8 @@ function publish(name: string, payload: unknown): void {
 
 describe('useDmvEvents', () => {
   it('passes payloads to the handlers of the latest render', () => {
-    const first = jest.fn()
-    const latest = jest.fn()
+    const first = vi.fn()
+    const latest = vi.fn()
     const { rerender } = renderHook(
       ({ handlers }: { handlers: DmvEventHandlers }) => useDmvEvents(handlers),
       {
@@ -28,7 +28,7 @@ describe('useDmvEvents', () => {
   })
 
   it('only listens to the events handled on the first render', () => {
-    const ended = jest.fn()
+    const ended = vi.fn()
     const { rerender } = renderHook(
       ({ handlers }: { handlers: DmvEventHandlers }) => useDmvEvents(handlers),
       { initialProps: { handlers: {} } },
@@ -41,7 +41,7 @@ describe('useDmvEvents', () => {
   })
 
   it('unsubscribes on unmount', () => {
-    const started = jest.fn()
+    const started = vi.fn()
     const { unmount } = renderHook(() =>
       useDmvEvents({ dicommicroscopyviewer_loading_started: started }),
     )

@@ -4,8 +4,8 @@ import { Slider } from '../slider'
 
 describe('Slider', () => {
   it('names the thumb and forwards value changes and commits', () => {
-    const onValueChange = jest.fn()
-    const onValueCommit = jest.fn()
+    const onValueChange = vi.fn()
+    const onValueCommit = vi.fn()
     render(
       <Slider
         aria-label="Opacity"

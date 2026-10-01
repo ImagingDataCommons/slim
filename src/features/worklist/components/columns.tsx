@@ -1,7 +1,7 @@
 import type { ColumnDef, RowData } from '@tanstack/react-table'
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 
 import {
   formatDisplayDate,

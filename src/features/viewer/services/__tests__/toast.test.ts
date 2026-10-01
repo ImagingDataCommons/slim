@@ -3,16 +3,16 @@ import { createToastStore } from '../toast'
 
 describe('createToastStore', () => {
   beforeEach(() => {
-    jest.useFakeTimers()
+    vi.useFakeTimers()
   })
 
   afterEach(() => {
-    jest.useRealTimers()
+    vi.useRealTimers()
   })
 
   it('publishes toasts and notifies subscribers', () => {
     const store = createToastStore()
-    const listener = jest.fn()
+    const listener = vi.fn()
     store.subscribe(listener)
     store.publish({ message: 'Saved', tone: 'success' })
     expect(store.getSnapshot()).toEqual([
@@ -24,7 +24,7 @@ describe('createToastStore', () => {
   it('keeps toasts published before anyone subscribes', () => {
     const store = createToastStore()
     store.publish({ message: 'Early', tone: 'info' })
-    const listener = jest.fn()
+    const listener = vi.fn()
     store.subscribe(listener)
     expect(store.getSnapshot()).toHaveLength(1)
   })
@@ -32,9 +32,9 @@ describe('createToastStore', () => {
   it('auto-dismisses after the default duration', () => {
     const store = createToastStore()
     store.publish({ message: 'Saved', tone: 'success' })
-    jest.advanceTimersByTime(TOAST_DURATION_MS - 1)
+    vi.advanceTimersByTime(TOAST_DURATION_MS - 1)
     expect(store.getSnapshot()).toHaveLength(1)
-    jest.advanceTimersByTime(1)
+    vi.advanceTimersByTime(1)
     expect(store.getSnapshot()).toHaveLength(0)
   })
 
@@ -42,18 +42,18 @@ describe('createToastStore', () => {
     const store = createToastStore()
     store.configure({ duration: 1 })
     store.publish({ message: 'Short', tone: 'info' })
-    jest.advanceTimersByTime(1000)
+    vi.advanceTimersByTime(1000)
     expect(store.getSnapshot()).toHaveLength(0)
 
     store.configure({ duration: 0 })
     store.publish({ message: 'Sticky', tone: 'error' })
-    jest.advanceTimersByTime(60_000)
+    vi.advanceTimersByTime(60_000)
     expect(store.getSnapshot()).toHaveLength(1)
   })
 
   it('drops toasts of disabled tones', () => {
     const store = createToastStore()
-    const listener = jest.fn()
+    const listener = vi.fn()
     store.subscribe(listener)
     store.configure({ disabled: ['error'] })
     store.publish({ message: 'Down', tone: 'error' })
@@ -67,7 +67,7 @@ describe('createToastStore', () => {
 
   it('dismisses by id and ignores unknown ids', () => {
     const store = createToastStore()
-    const listener = jest.fn()
+    const listener = vi.fn()
     store.publish({ message: 'A', tone: 'info' })
     store.subscribe(listener)
     store.dismiss(42)
@@ -83,18 +83,18 @@ describe('createToastStore', () => {
       store.publish({ message: `m${i}`, tone: 'info' })
     }
     expect(store.getSnapshot()).toHaveLength(MAX_VISIBLE_TOASTS)
-    expect(jest.getTimerCount()).toBe(MAX_VISIBLE_TOASTS)
+    expect(vi.getTimerCount()).toBe(MAX_VISIBLE_TOASTS)
   })
 
   it('stops notifying after unsubscribe and clears everything', () => {
     const store = createToastStore()
-    const listener = jest.fn()
+    const listener = vi.fn()
     const unsubscribe = store.subscribe(listener)
     unsubscribe()
     store.publish({ message: 'A', tone: 'info' })
     expect(listener).not.toHaveBeenCalled()
     store.clear()
     expect(store.getSnapshot()).toHaveLength(0)
-    expect(jest.getTimerCount()).toBe(0)
+    expect(vi.getTimerCount()).toBe(0)
   })
 })

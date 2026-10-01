@@ -1,4 +1,5 @@
 import { InMemoryWebStorage, type UserManagerSettings } from 'oidc-client-ts'
+import type { Mock } from 'vitest'
 
 import {
   buildImplicitAuthorizeUrl,
@@ -245,7 +246,7 @@ describe('validateIdTokenClaims', () => {
 describe('ImplicitGrant', () => {
   let oidc: FakeUserManager
   let stateStore: SafeStateStore
-  let loadFrame: jest.Mock<Promise<string>, [string, number]>
+  let loadFrame: Mock<(...args: [string, number]) => Promise<string>>
 
   const managerSettings = (
     overrides: Partial<UserManagerSettings> = {},
@@ -301,7 +302,7 @@ describe('ImplicitGrant', () => {
   beforeEach(() => {
     oidc = createFakeUserManager(managerSettings(), {}, [signer.jwk])
     stateStore = new SafeStateStore(new InMemoryWebStorage())
-    loadFrame = jest.fn<Promise<string>, [string, number]>()
+    loadFrame = vi.fn<(...args: [string, number]) => Promise<string>>()
   })
 
   describe('redirect sign-in', () => {
@@ -420,7 +421,7 @@ describe('ImplicitGrant', () => {
         {},
         [signer.jwk],
       )
-      window.fetch = jest.fn(() => Promise.resolve(response as Response))
+      window.fetch = vi.fn(() => Promise.resolve(response as Response))
       loadFrame.mockImplementation((url) => callbackFor(url))
       const user = await createGrant().signinSilent()
       return user.profile.name

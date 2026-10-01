@@ -31,18 +31,18 @@ function publishMemory(info: MemoryInfo): void {
 
 beforeEach(() => {
   subscribers = []
-  jest.spyOn(memoryMonitor, 'subscribe').mockImplementation((callback) => {
+  vi.spyOn(memoryMonitor, 'subscribe').mockImplementation((callback) => {
     subscribers.push(callback)
     return () => {
       subscribers = subscribers.filter((item) => item !== callback)
     }
   })
-  jest.spyOn(memoryMonitor, 'startMonitoring').mockImplementation(() => {})
-  jest.spyOn(memoryMonitor, 'stopMonitoring').mockImplementation(() => {})
+  vi.spyOn(memoryMonitor, 'startMonitoring').mockImplementation(() => {})
+  vi.spyOn(memoryMonitor, 'stopMonitoring').mockImplementation(() => {})
 })
 
 afterEach(() => {
-  jest.restoreAllMocks()
+  vi.restoreAllMocks()
 })
 
 describe('useMemoryMonitor', () => {
@@ -61,7 +61,7 @@ describe('useMemoryMonitor', () => {
   })
 
   it('publishes a warning once per level change', () => {
-    const onWarning = jest.fn()
+    const onWarning = vi.fn()
     NotificationMiddleware.subscribe(
       NotificationMiddlewareEvents.OnWarning,
       onWarning,

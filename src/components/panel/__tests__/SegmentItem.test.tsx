@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as dcmjs from 'dcmjs'
 import type * as dmv from 'dicom-microscopy-viewer'
+import type { Mock } from 'vitest'
 
 import SegmentItem, { type SegmentItemProps } from '../../SegmentItem'
 
@@ -28,11 +29,11 @@ function makeSegment(isAbsent = false): dmv.segment.Segment {
 }
 
 function renderItem(overrides: Partial<SegmentItemProps> = {}): {
-  onVisibilityChange: jest.Mock
-  onStyleChange: jest.Mock
+  onVisibilityChange: Mock
+  onStyleChange: Mock
 } {
-  const onVisibilityChange = jest.fn()
-  const onStyleChange = jest.fn()
+  const onVisibilityChange = vi.fn()
+  const onStyleChange = vi.fn()
   render(
     <SegmentItem
       segment={makeSegment()}
@@ -40,7 +41,7 @@ function renderItem(overrides: Partial<SegmentItemProps> = {}): {
       defaultStyle={{ opacity: 0.5, color: [255, 0, 0] }}
       onVisibilityChange={onVisibilityChange}
       onStyleChange={onStyleChange}
-      onClick={jest.fn()}
+      onClick={vi.fn()}
       {...overrides}
     />,
   )

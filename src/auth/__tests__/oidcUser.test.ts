@@ -1,3 +1,4 @@
+import type { MockInstance } from 'vitest'
 import NotificationMiddleware from '../../services/NotificationMiddleware'
 import {
   authorizationFromUser,
@@ -8,12 +9,12 @@ import {
 import { makeProfile, makeUser } from '../testing/fakeUserManager'
 
 describe('createUser', () => {
-  let onError: jest.SpyInstance
+  let onError: MockInstance
 
   beforeEach(() => {
-    onError = jest
+    onError = vi
       .spyOn(NotificationMiddleware, 'onError')
-      .mockImplementation(jest.fn())
+      .mockImplementation(vi.fn())
   })
 
   afterEach(() => {

@@ -1,12 +1,14 @@
 /** skipcq: JS-C1003 */
+
 import type * as dmv from 'dicom-microscopy-viewer'
+import type { Mock } from 'vitest'
 
 import {
   applyDistinctFractionalSegmentPalettes,
   applyDistinctParametricMapPalettes,
 } from '../distinctOverlayColormaps'
 
-jest.mock('dicom-microscopy-viewer', () => ({
+vi.mock('dicom-microscopy-viewer', () => ({
   color: {
     createDistinctColormap: ({ index }: { index: number }) => [
       [index, index, index],
@@ -32,9 +34,9 @@ interface FakeSegment {
 
 function segmentViewer(segments: FakeSegment[]): {
   viewer: dmv.viewer.VolumeImageViewer
-  setSegmentStyle: jest.Mock
+  setSegmentStyle: Mock
 } {
-  const setSegmentStyle = jest.fn()
+  const setSegmentStyle = vi.fn()
   const fake: Partial<dmv.viewer.VolumeImageViewer> = {
     getAllSegments: () =>
       segments.map(
@@ -94,9 +96,9 @@ describe('applyDistinctFractionalSegmentPalettes', () => {
 describe('applyDistinctParametricMapPalettes', () => {
   function mappingViewer(count: number): {
     viewer: dmv.viewer.VolumeImageViewer
-    setParameterMappingStyle: jest.Mock
+    setParameterMappingStyle: Mock
   } {
-    const setParameterMappingStyle = jest.fn()
+    const setParameterMappingStyle = vi.fn()
     const fake: Partial<dmv.viewer.VolumeImageViewer> = {
       getAllParameterMappings: () =>
         Array.from(

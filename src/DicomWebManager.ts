@@ -146,7 +146,7 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
       } catch (error: unknown) {
         lastError = error
         failureCount += 1
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.MODE === 'development') {
           console.warn(
             `search against store "${store.id}" failed; ` +
               'continuing with the remaining stores',
@@ -200,7 +200,7 @@ const retrieveWithFallback = async <T>(
       return await call(store)
     } catch (error: unknown) {
       lastError = error
-      if (process.env.NODE_ENV === 'development') {
+      if (import.meta.env.MODE === 'development') {
         console.debug(
           `retrieve against store "${store.id}" failed; ` +
             'falling back to the next configured store',
@@ -266,7 +266,7 @@ const retrieveWithCachedFallback = async <T>(
       return result
     } catch (error: unknown) {
       lastError = error
-      if (process.env.NODE_ENV === 'development') {
+      if (import.meta.env.MODE === 'development') {
         console.debug(
           `retrieve against store "${store.id}" failed; ` +
             'falling back to the next configured store',
@@ -311,7 +311,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       this.handleError = onError
     } else {
       this.handleError = (error, serverSettings) => {
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.MODE === 'development') {
           console.error(error, serverSettings)
         }
       }

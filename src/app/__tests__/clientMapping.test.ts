@@ -35,7 +35,7 @@ const createMapping = (
     gcpBaseUrl: DEFAULT_GCP_BASE_URL,
     settings,
     pathname,
-    onError: jest.fn(),
+    onError: vi.fn(),
   })
 
 describe('addGcpSecondaryAnnotationServer', () => {
@@ -75,11 +75,11 @@ describe('addGcpSecondaryAnnotationServer', () => {
 
 describe('createClientMapping', () => {
   beforeEach(() => {
-    jest.spyOn(NotificationMiddleware, 'onError').mockImplementation(jest.fn())
+    vi.spyOn(NotificationMiddleware, 'onError').mockImplementation(vi.fn())
   })
 
   afterEach(() => {
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
   })
 
   it('maps every storage class to the default server', () => {
@@ -121,7 +121,7 @@ describe('createClientMapping', () => {
   })
 
   it('warns about unknown storage classes', () => {
-    const warn = jest.spyOn(console, 'warn').mockImplementation(jest.fn())
+    const warn = vi.spyOn(console, 'warn').mockImplementation(vi.fn())
     createMapping([primary(), { ...primary(), storageClasses: ['1.2.3'] }])
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining('unknown storage class "1.2.3"'),
@@ -168,7 +168,7 @@ describe('client helpers', () => {
 
   it('installs the policy once per distinct client', () => {
     const mapping = createMapping([primary()])
-    const setPolicy = jest.spyOn(mapping.default, 'setAuthorizationPolicy')
+    const setPolicy = vi.spyOn(mapping.default, 'setAuthorizationPolicy')
     const policy: AuthorizationPolicy = {
       isPreAuthorized: () => false,
       requestAuthorization: () => Promise.resolve(undefined),
@@ -180,7 +180,7 @@ describe('client helpers', () => {
 
   it('offers the token to every mapped client', () => {
     const mapping = createMapping([primary()])
-    const updateHeaders = jest.spyOn(mapping.default, 'updateHeaders')
+    const updateHeaders = vi.spyOn(mapping.default, 'updateHeaders')
     updateAuthorization(mapping, 'Bearer t')
     expect(updateHeaders).toHaveBeenCalledWith({ Authorization: 'Bearer t' })
   })

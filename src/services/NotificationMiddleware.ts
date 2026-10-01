@@ -138,7 +138,7 @@ class NotificationMiddleware extends PubSub {
 
     this.publish(NotificationMiddlewareEvents.OnError, { source, error })
 
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.MODE === 'development') {
       console.error(`A ${String(errorCategory)} error occurred: `, error)
     }
 

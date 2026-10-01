@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useId, useMemo, useState } from 'react'
+import {
+  type JSX,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+} from 'react'
 
 import type DicomWebManager from '../../DicomWebManager'
 import { useActiveSeries } from '../../hooks/useActiveSeries'

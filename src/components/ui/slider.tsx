@@ -15,7 +15,7 @@ type SliderProps = React.ComponentPropsWithoutRef<
  * (single thumb) and `thumbLabels` (range) are applied there, not on Root.
  */
 const Slider = React.forwardRef<
-  React.ElementRef<typeof SliderPrimitive.Root>,
+  React.ComponentRef<typeof SliderPrimitive.Root>,
   SliderProps
 >(
   (

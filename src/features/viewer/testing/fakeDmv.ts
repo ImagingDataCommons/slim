@@ -1,3 +1,5 @@
+import type { Mock } from 'vitest'
+
 /**
  * In-memory stand-in for the dicom-microscopy-viewer module, for tests that
  * mount the slide viewer. Only the members the viewer touches are modelled.
@@ -125,8 +127,8 @@ export class FakeLayers<T extends FakeLayer, M> {
 function createFakeMap(): {
   getView: () => unknown
   getViewport: () => HTMLElement
-  on: jest.Mock
-  un: jest.Mock
+  on: Mock
+  un: Mock
 } {
   const viewport = document.createElement('div')
   const view = {
@@ -136,15 +138,15 @@ function createFakeMap(): {
       getMetersPerUnit: () => 1,
       getPointResolutionFunc: () => undefined,
     }),
-    animate: jest.fn(),
+    animate: vi.fn(),
     getZoom: () => 1,
-    fit: jest.fn(),
+    fit: vi.fn(),
   }
   return {
     getView: () => view,
     getViewport: () => viewport,
-    on: jest.fn(),
-    un: jest.fn(),
+    on: vi.fn(),
+    un: vi.fn(),
   }
 }
 
@@ -167,35 +169,35 @@ export class FakeVolumeImageViewer {
   isTranslateInteractionActive = false
   private gamma = true
 
-  readonly render = jest.fn()
-  readonly cleanup = jest.fn()
-  readonly resize = jest.fn()
-  readonly navigate = jest.fn()
-  readonly activateSelectInteraction = jest.fn()
-  readonly deactivateSelectInteraction = jest.fn()
-  readonly activateDrawInteraction = jest.fn()
-  readonly deactivateDrawInteraction = jest.fn()
-  readonly activateSnapInteraction = jest.fn()
-  readonly deactivateSnapInteraction = jest.fn()
-  readonly activateModifyInteraction = jest.fn(() => {
+  readonly render = vi.fn()
+  readonly cleanup = vi.fn()
+  readonly resize = vi.fn()
+  readonly navigate = vi.fn()
+  readonly activateSelectInteraction = vi.fn()
+  readonly deactivateSelectInteraction = vi.fn()
+  readonly activateDrawInteraction = vi.fn()
+  readonly deactivateDrawInteraction = vi.fn()
+  readonly activateSnapInteraction = vi.fn()
+  readonly deactivateSnapInteraction = vi.fn()
+  readonly activateModifyInteraction = vi.fn(() => {
     this.isModifyInteractionActive = true
   })
-  readonly deactivateModifyInteraction = jest.fn(() => {
+  readonly deactivateModifyInteraction = vi.fn(() => {
     this.isModifyInteractionActive = false
   })
-  readonly activateTranslateInteraction = jest.fn(() => {
+  readonly activateTranslateInteraction = vi.fn(() => {
     this.isTranslateInteractionActive = true
   })
-  readonly deactivateTranslateInteraction = jest.fn(() => {
+  readonly deactivateTranslateInteraction = vi.fn(() => {
     this.isTranslateInteractionActive = false
   })
-  readonly clearSelections = jest.fn()
-  readonly hideROIs = jest.fn()
-  readonly showROIs = jest.fn()
-  readonly setAnnotationOptions = jest.fn()
-  readonly toggleICCProfiles = jest.fn()
-  readonly toggleSegmentationInterpolation = jest.fn()
-  readonly toggleParametricMapInterpolation = jest.fn()
+  readonly clearSelections = vi.fn()
+  readonly hideROIs = vi.fn()
+  readonly showROIs = vi.fn()
+  readonly setAnnotationOptions = vi.fn()
+  readonly toggleICCProfiles = vi.fn()
+  readonly toggleSegmentationInterpolation = vi.fn()
+  readonly toggleParametricMapInterpolation = vi.fn()
 
   constructor(options: Record<string, unknown>) {
     this.options = options
@@ -322,16 +324,16 @@ export class FakeVolumeImageViewer {
   getAnnotationGroupStyle(uid: string): LayerStyle {
     return this.annotationGroups.style(uid)
   }
-  readonly setAnnotationGroupStyle = jest.fn((uid: string, style: LayerStyle) =>
+  readonly setAnnotationGroupStyle = vi.fn((uid: string, style: LayerStyle) =>
     this.annotationGroups.setStyle(uid, style),
   )
-  readonly showAnnotationGroup = jest.fn((uid: string) =>
+  readonly showAnnotationGroup = vi.fn((uid: string) =>
     this.annotationGroups.show(uid),
   )
-  readonly hideAnnotationGroup = jest.fn((uid: string) =>
+  readonly hideAnnotationGroup = vi.fn((uid: string) =>
     this.annotationGroups.hide(uid),
   )
-  readonly zoomToROI = jest.fn()
+  readonly zoomToROI = vi.fn()
 
   getAllSegments(): FakeSegment[] {
     return this.segments.all()
@@ -342,12 +344,12 @@ export class FakeVolumeImageViewer {
   getSegmentStyle(uid: string): LayerStyle {
     return this.segments.style(uid)
   }
-  readonly setSegmentStyle = jest.fn((uid: string, style: LayerStyle) =>
+  readonly setSegmentStyle = vi.fn((uid: string, style: LayerStyle) =>
     this.segments.setStyle(uid, style),
   )
-  readonly showSegment = jest.fn((uid: string) => this.segments.show(uid))
-  readonly hideSegment = jest.fn((uid: string) => this.segments.hide(uid))
-  readonly zoomToSegment = jest.fn()
+  readonly showSegment = vi.fn((uid: string) => this.segments.show(uid))
+  readonly hideSegment = vi.fn((uid: string) => this.segments.hide(uid))
+  readonly zoomToSegment = vi.fn()
 
   getAllParameterMappings(): FakeMapping[] {
     return this.mappings.all()
@@ -358,22 +360,22 @@ export class FakeVolumeImageViewer {
   getParameterMappingStyle(uid: string): LayerStyle {
     return this.mappings.style(uid)
   }
-  readonly setParameterMappingStyle = jest.fn(
-    (uid: string, style: LayerStyle) => this.mappings.setStyle(uid, style),
+  readonly setParameterMappingStyle = vi.fn((uid: string, style: LayerStyle) =>
+    this.mappings.setStyle(uid, style),
   )
-  readonly showParameterMapping = jest.fn((uid: string) =>
+  readonly showParameterMapping = vi.fn((uid: string) =>
     this.mappings.show(uid),
   )
-  readonly hideParameterMapping = jest.fn((uid: string) =>
+  readonly hideParameterMapping = vi.fn((uid: string) =>
     this.mappings.hide(uid),
   )
 }
 
 export class FakeLabelImageViewer {
   readonly options: Record<string, unknown>
-  readonly render = jest.fn()
-  readonly cleanup = jest.fn()
-  readonly resize = jest.fn()
+  readonly render = vi.fn()
+  readonly cleanup = vi.fn()
+  readonly resize = vi.fn()
 
   constructor(options: Record<string, unknown>) {
     this.options = options
@@ -399,7 +401,7 @@ class FakePaletteColorLookupTable {
   }
 }
 
-/** Module shape returned by the `jest.mock('dicom-microscopy-viewer')` factory */
+/** Module shape returned by the `vi.mock('dicom-microscopy-viewer')` factory */
 export const fakeDmvModule = {
   viewer: {
     VolumeImageViewer: FakeVolumeImageViewer,

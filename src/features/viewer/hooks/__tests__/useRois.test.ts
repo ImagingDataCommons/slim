@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import * as dcmjs from 'dcmjs'
 import * as dmv from 'dicom-microscopy-viewer'
+import type { Mock } from 'vitest'
 
 import { getRoiKey } from '../../../../components/SlideViewer/utils/roiUtils'
 import { resetFakeDmv } from '../../testing/fakeDmv'
@@ -11,14 +12,13 @@ import {
 } from '../../testing/fixtures'
 import { SELECTED_ROI_STYLE, useRois } from '../useRois'
 
-jest.mock(
-  'dicom-microscopy-viewer',
-  () =>
-    jest.requireActual<typeof import('../../testing/fakeDmv')>(
-      '../../testing/fakeDmv',
-    ).fakeDmvModule,
-)
-jest.mock('../../../../utils/logger')
+vi.mock('dicom-microscopy-viewer', async () => {
+  const actual = await vi.importActual<typeof import('../../testing/fakeDmv')>(
+    '../../testing/fakeDmv',
+  )
+  return actual.fakeDmvModule
+})
+vi.mock('../../../../utils/logger')
 
 const OWN_STYLE = { stroke: { color: [1, 2, 3, 1], width: 1 } }
 
@@ -34,14 +34,14 @@ function createRoi(uid: string): dmv.roi.ROI {
 
 interface Setup extends TestSession {
   result: { current: ReturnType<typeof useRois> }
-  isShiftDown: jest.Mock<boolean, []>
-  onDetailsVisibilityChange: jest.Mock
+  isShiftDown: Mock<(...args: []) => boolean>
+  onDetailsVisibilityChange: Mock
 }
 
 function setup(): Setup {
   const test = createTestSession()
-  const isShiftDown = jest.fn(() => false)
-  const onDetailsVisibilityChange = jest.fn()
+  const isShiftDown = vi.fn(() => false)
+  const onDetailsVisibilityChange = vi.fn()
   const { result } = renderHook(() =>
     useRois({
       viewer: test.access,
@@ -62,11 +62,11 @@ function addRois(result: Setup['result'], ...uids: string[]): void {
 
 beforeEach(() => {
   resetFakeDmv()
-  jest.spyOn(console, 'warn').mockImplementation(() => {})
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
 })
 
 afterEach(() => {
-  jest.restoreAllMocks()
+  vi.restoreAllMocks()
 })
 
 describe('useRois', () => {

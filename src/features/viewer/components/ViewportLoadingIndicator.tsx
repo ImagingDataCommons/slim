@@ -24,7 +24,7 @@ export function ViewportLoadingIndicator({
         className={cn(
           'flex items-center gap-2.5 rounded-full border border-line/60 bg-panel/85 py-2 pl-2.5 pr-3.5 text-[12.5px] font-medium text-ink-secondary shadow-menu backdrop-blur-md transition-[opacity,transform] ease-out',
           isVisible
-            ? 'translate-y-0 scale-100 opacity-100 delay-[250ms] duration-300'
+            ? 'translate-y-0 scale-100 opacity-100 duration-300 [transition-delay:250ms]'
             : 'translate-y-1 scale-[0.98] opacity-0 delay-0 duration-200',
         )}
       >

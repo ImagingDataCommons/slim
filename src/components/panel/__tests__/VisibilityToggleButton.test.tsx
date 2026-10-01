@@ -5,7 +5,7 @@ import { VisibilityToggleButton } from '../VisibilityToggleButton'
 describe('VisibilityToggleButton', () => {
   it('exposes the visibility as a pressed state under a stable name', () => {
     const { rerender } = render(
-      <VisibilityToggleButton label="Nuclei" isVisible onChange={jest.fn()} />,
+      <VisibilityToggleButton label="Nuclei" isVisible onChange={vi.fn()} />,
     )
     const button = screen.getByRole('button', { name: 'Show Nuclei' })
     expect(button).toHaveAttribute('aria-pressed', 'true')
@@ -14,14 +14,14 @@ describe('VisibilityToggleButton', () => {
       <VisibilityToggleButton
         label="Nuclei"
         isVisible={false}
-        onChange={jest.fn()}
+        onChange={vi.fn()}
       />,
     )
     expect(button).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('requests the opposite visibility on click', () => {
-    const onChange = jest.fn()
+    const onChange = vi.fn()
     render(
       <VisibilityToggleButton label="Nuclei" isVisible onChange={onChange} />,
     )
@@ -30,7 +30,7 @@ describe('VisibilityToggleButton', () => {
   })
 
   it('does not toggle when disabled', () => {
-    const onChange = jest.fn()
+    const onChange = vi.fn()
     render(
       <VisibilityToggleButton
         label="Nuclei"

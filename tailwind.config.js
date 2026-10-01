@@ -1,13 +1,16 @@
-/** @type {import('tailwindcss').Config} */
+import animate from 'tailwindcss-animate'
+
 const token = (name) => `rgb(var(--${name}) / <alpha-value>)`
 
 /**
  * Custom scale keys added here must also be registered in src/lib/utils.ts so
  * tailwind-merge resolves conflicts between them.
+ *
+ * @type {import('tailwindcss').Config}
  */
-module.exports = {
+export default {
   darkMode: ['class'],
-  content: ['./src/**/*.{ts,tsx}', './public/index.html'],
+  content: ['./src/**/*.{ts,tsx}', './index.html'],
   theme: {
     extend: {
       colors: {
@@ -134,5 +137,5 @@ module.exports = {
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [animate],
 }

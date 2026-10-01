@@ -9,7 +9,7 @@ interface SlideViewerContentProps {
   footer: React.ReactNode
   cursor: string
   isFluorescence: boolean
-  volumeViewportRef: React.RefObject<HTMLDivElement>
+  volumeViewportRef: React.RefObject<HTMLDivElement | null>
   /** Called (once per animation frame) when the viewport box changes size */
   onViewportResize: () => void
   children: React.ReactNode

@@ -25,7 +25,7 @@ const RUNTIME: RuntimeInfo = {
 
 function renderDialog(
   initialTab: PreferencesTab = 'general',
-  onOpenChange: (open: boolean) => void = jest.fn(),
+  onOpenChange: (open: boolean) => void = vi.fn(),
 ): void {
   render(
     <ThemeProvider>
@@ -75,7 +75,7 @@ describe('PreferencesDialog', () => {
   })
 
   it('saves edited preferences and closes', () => {
-    const onOpenChange = jest.fn()
+    const onOpenChange = vi.fn()
     renderDialog('general', onOpenChange)
     fireEvent.click(screen.getByRole('switch', { name: 'Compact rows' }))
     fireEvent.click(screen.getByRole('button', { name: 'Save preferences' }))

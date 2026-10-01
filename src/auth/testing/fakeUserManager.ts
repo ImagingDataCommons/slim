@@ -9,6 +9,7 @@ import {
   type UserManagerSettings,
   type UserProfile,
 } from 'oidc-client-ts'
+import type { Mock } from 'vitest'
 
 import type { OidcUserManager } from '../OidcManager'
 
@@ -21,14 +22,14 @@ export interface FakeUserManager extends OidcUserManager {
   readonly userLoadedListeners: UserLoadedCallback[]
   readonly tokenExpiringListeners: AccessTokenCallback[]
   stored: User | null
-  getUser: jest.Mock<Promise<User | null>, []>
-  storeUser: jest.Mock<Promise<void>, [User | null]>
-  signinRedirect: jest.Mock<Promise<void>, [SigninRedirectArgs?]>
-  signinRedirectCallback: jest.Mock<Promise<User>, [string?]>
-  signinSilent: jest.Mock<Promise<User | null>, []>
-  signoutRedirect: jest.Mock<Promise<void>, []>
-  removeUser: jest.Mock<Promise<void>, []>
-  revokeTokens: jest.Mock<Promise<void>, []>
+  getUser: Mock<(...args: []) => Promise<User | null>>
+  storeUser: Mock<(...args: [User | null]) => Promise<void>>
+  signinRedirect: Mock<(...args: [SigninRedirectArgs?]) => Promise<void>>
+  signinRedirectCallback: Mock<(...args: [string?]) => Promise<User>>
+  signinSilent: Mock<(...args: []) => Promise<User | null>>
+  signoutRedirect: Mock<(...args: []) => Promise<void>>
+  removeUser: Mock<(...args: []) => Promise<void>>
+  revokeTokens: Mock<(...args: []) => Promise<void>>
 }
 
 export function createFakeUserManager(
@@ -86,20 +87,20 @@ export function createFakeUserManager(
         return () => {}
       },
     },
-    getUser: jest.fn(() => Promise.resolve(fake.stored)),
-    storeUser: jest.fn((user: User | null) => {
+    getUser: vi.fn(() => Promise.resolve(fake.stored)),
+    storeUser: vi.fn((user: User | null) => {
       fake.stored = user
       return Promise.resolve()
     }),
-    signinRedirect: jest.fn(() => Promise.resolve()),
-    signinRedirectCallback: jest.fn(() => Promise.resolve(makeUser())),
-    signinSilent: jest.fn(() => Promise.resolve(makeUser())),
-    signoutRedirect: jest.fn(() => Promise.resolve()),
-    removeUser: jest.fn(() => {
+    signinRedirect: vi.fn(() => Promise.resolve()),
+    signinRedirectCallback: vi.fn(() => Promise.resolve(makeUser())),
+    signinSilent: vi.fn(() => Promise.resolve(makeUser())),
+    signoutRedirect: vi.fn(() => Promise.resolve()),
+    removeUser: vi.fn(() => {
       fake.stored = null
       return Promise.resolve()
     }),
-    revokeTokens: jest.fn(() => Promise.resolve()),
+    revokeTokens: vi.fn(() => Promise.resolve()),
   }
   return fake
 }
@@ -228,7 +229,7 @@ export async function createIdTokenSigner(
 }
 
 export interface LocationStub {
-  assign: jest.Mock<void, [string]>
+  assign: Mock<(...args: [string]) => void>
   restore: () => void
 }
 
@@ -236,7 +237,7 @@ export interface LocationStub {
 export function stubLocation(url: string): LocationStub {
   const original = window.location
   const parsed = new URL(url)
-  const assign = jest.fn<void, [string]>()
+  const assign = vi.fn<(...args: [string]) => void>()
   Object.defineProperty(window, 'location', {
     configurable: true,
     value: {
@@ -249,8 +250,8 @@ export function stubLocation(url: string): LocationStub {
       search: parsed.search,
       hash: parsed.hash,
       assign,
-      replace: jest.fn(),
-      reload: jest.fn(),
+      replace: vi.fn(),
+      reload: vi.fn(),
     },
   })
   return {

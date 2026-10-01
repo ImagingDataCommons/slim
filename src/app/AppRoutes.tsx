@@ -1,4 +1,5 @@
-import { Route, Routes } from 'react-router-dom'
+import type { JSX } from 'react'
+import { Route, Routes } from 'react-router'
 
 import type AppConfig from '../AppConfig'
 import { Worklist } from '../features/worklist'

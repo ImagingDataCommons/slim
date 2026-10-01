@@ -168,17 +168,19 @@ export const useSlides = ({
         pendingRequests.set(requestKey, pendingRequest)
       }
 
-      try {
-        const newSlides = await pendingRequest
-        setSlides(newSlides)
-        setError(null)
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error(String(err)))
-        setSlides([])
-      } finally {
-        pendingRequests.delete(requestKey)
-        setIsLoading(false)
-      }
+      await pendingRequest
+        .then((newSlides) => {
+          setSlides(newSlides)
+          setError(null)
+        })
+        .catch((err: unknown) => {
+          setError(err instanceof Error ? err : new Error(String(err)))
+          setSlides([])
+        })
+        .finally(() => {
+          pendingRequests.delete(requestKey)
+          setIsLoading(false)
+        })
     }
 
     void fetchSlides()

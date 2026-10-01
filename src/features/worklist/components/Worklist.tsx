@@ -9,7 +9,7 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 
 import type DicomWebManager from '../../../DicomWebManager'
 import { cn } from '../../../lib/utils'

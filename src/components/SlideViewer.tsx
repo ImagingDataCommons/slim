@@ -1,5 +1,5 @@
-import { useMemo, useReducer, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { type JSX, useMemo, useReducer, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router'
 
 import { usePreferences } from '../features/preferences'
 import { HoveredRoiTooltipLayer } from '../features/viewer/components/HoveredRoiTooltipLayer'
@@ -27,7 +27,10 @@ import {
 } from '../features/viewer/hooks/useAnnotationTools'
 import { useDmvEvents } from '../features/viewer/hooks/useDmvEvents'
 import { useHoveredRoiTooltip } from '../features/viewer/hooks/useHoveredRoiTooltip'
-import { useKeyboardShortcuts } from '../features/viewer/hooks/useKeyboardShortcuts'
+import {
+  useHeldKeys,
+  useKeyboardShortcuts,
+} from '../features/viewer/hooks/useKeyboardShortcuts'
 import { useNoIccProfileWarning } from '../features/viewer/hooks/useNoIccProfileWarning'
 import { useOpticalPaths } from '../features/viewer/hooks/useOpticalPaths'
 import { useParametricMaps } from '../features/viewer/hooks/useParametricMaps'
@@ -134,11 +137,11 @@ function SlideViewer({
     opticalPaths,
   })
   const draft = useAnnotationDraft(annotationConfig)
-  const keyboard = useKeyboardShortcuts((action) => tools.onShortcut(action))
+  const heldKeys = useHeldKeys()
   const rois = useRois({
     viewer,
     defaultRoiStyle,
-    isShiftDown: keyboard.isShiftDown,
+    isShiftDown: heldKeys.isShiftDown,
     onDetailsVisibilityChange: (isVisible) =>
       dispatchInteraction({ type: 'setSelectedRoiModalVisible', isVisible }),
   })
@@ -161,6 +164,7 @@ function SlideViewer({
     goToRanges: snapshot.goToRanges,
     onSave: report.onGenerate,
   })
+  useKeyboardShortcuts(tools.onShortcut)
   const annotationGroups = useAnnotationGroups(viewer, slide)
   const segmentations = useSegmentations(viewer, {
     snapshot,

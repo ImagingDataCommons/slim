@@ -1,23 +1,25 @@
 /** skipcq: JS-C1003 */
+
 import type * as dwc from 'dicomweb-client'
+import type { Mock } from 'vitest'
 
 import DicomWebManager from '../DicomWebManager'
 
 interface StubClient {
   baseURL: string
   headers: Record<string, string>
-  searchForStudies: jest.Mock
-  searchForSeries: jest.Mock
-  searchForInstances: jest.Mock
-  retrieveStudyMetadata: jest.Mock
-  retrieveSeriesMetadata: jest.Mock
-  retrieveInstance: jest.Mock
-  retrieveInstanceMetadata: jest.Mock
-  retrieveInstanceFrames: jest.Mock
-  retrieveInstanceRendered: jest.Mock
-  retrieveInstanceFramesRendered: jest.Mock
-  retrieveBulkData: jest.Mock
-  storeInstances: jest.Mock
+  searchForStudies: Mock
+  searchForSeries: Mock
+  searchForInstances: Mock
+  retrieveStudyMetadata: Mock
+  retrieveSeriesMetadata: Mock
+  retrieveInstance: Mock
+  retrieveInstanceMetadata: Mock
+  retrieveInstanceFrames: Mock
+  retrieveInstanceRendered: Mock
+  retrieveInstanceFramesRendered: Mock
+  retrieveBulkData: Mock
+  storeInstances: Mock
 }
 
 interface ManagerInternals {
@@ -32,18 +34,18 @@ interface ManagerInternals {
 const makeStubClient = (id: string): StubClient => ({
   baseURL: `https://example.test/${id}/dicomWeb`,
   headers: {},
-  searchForStudies: jest.fn(),
-  searchForSeries: jest.fn(),
-  searchForInstances: jest.fn(),
-  retrieveStudyMetadata: jest.fn(),
-  retrieveSeriesMetadata: jest.fn(),
-  retrieveInstance: jest.fn(),
-  retrieveInstanceMetadata: jest.fn(),
-  retrieveInstanceFrames: jest.fn(),
-  retrieveInstanceRendered: jest.fn(),
-  retrieveInstanceFramesRendered: jest.fn(),
-  retrieveBulkData: jest.fn(),
-  storeInstances: jest.fn(),
+  searchForStudies: vi.fn(),
+  searchForSeries: vi.fn(),
+  searchForInstances: vi.fn(),
+  retrieveStudyMetadata: vi.fn(),
+  retrieveSeriesMetadata: vi.fn(),
+  retrieveInstance: vi.fn(),
+  retrieveInstanceMetadata: vi.fn(),
+  retrieveInstanceFrames: vi.fn(),
+  retrieveInstanceRendered: vi.fn(),
+  retrieveInstanceFramesRendered: vi.fn(),
+  retrieveBulkData: vi.fn(),
+  storeInstances: vi.fn(),
 })
 
 /**
@@ -71,11 +73,11 @@ const httpError = (status: number): Error & { status: number } =>
 const allowAllPolicy = (
   token = 'Bearer abc',
 ): {
-  isPreAuthorized: jest.Mock
-  requestAuthorization: jest.Mock
+  isPreAuthorized: Mock
+  requestAuthorization: Mock
 } => ({
-  isPreAuthorized: jest.fn().mockReturnValue(true),
-  requestAuthorization: jest.fn().mockResolvedValue(token),
+  isPreAuthorized: vi.fn().mockReturnValue(true),
+  requestAuthorization: vi.fn().mockResolvedValue(token),
 })
 
 /** Policy that grants only when challenged, mimicking the consent prompt. */
@@ -83,13 +85,11 @@ const consentPolicy = (
   approved: boolean,
   token = 'Bearer abc',
 ): {
-  isPreAuthorized: jest.Mock
-  requestAuthorization: jest.Mock
+  isPreAuthorized: Mock
+  requestAuthorization: Mock
 } => ({
-  isPreAuthorized: jest.fn().mockReturnValue(false),
-  requestAuthorization: jest
-    .fn()
-    .mockResolvedValue(approved ? token : undefined),
+  isPreAuthorized: vi.fn().mockReturnValue(false),
+  requestAuthorization: vi.fn().mockResolvedValue(approved ? token : undefined),
 })
 
 /**
@@ -100,15 +100,15 @@ const consentPolicy = (
 const recordingPolicy = (
   token = 'Bearer abc',
 ): {
-  isPreAuthorized: jest.Mock
-  requestAuthorization: jest.Mock
+  isPreAuthorized: Mock
+  requestAuthorization: Mock
   granted: Set<string>
 } => {
   const granted = new Set<string>()
   return {
     granted,
-    isPreAuthorized: jest.fn((origin: string) => granted.has(origin)),
-    requestAuthorization: jest.fn(async (origin: string) => {
+    isPreAuthorized: vi.fn((origin: string) => granted.has(origin)),
+    requestAuthorization: vi.fn(async (origin: string) => {
       granted.add(origin)
       return await Promise.resolve(token)
     }),
@@ -646,7 +646,7 @@ describe('DicomWebManager - authorization escalation', () => {
   })
 
   it('does not route a refused challenge through the DICOMweb error handler', async () => {
-    const onError = jest.fn()
+    const onError = vi.fn()
     const manager = new DicomWebManager({
       baseUri,
       settings: [
@@ -707,7 +707,7 @@ describe('DicomWebManager - authorization escalation', () => {
   })
 
   it('does not route an unauthorized sendAuthorization: false store through the error handler', async () => {
-    const onError = jest.fn()
+    const onError = vi.fn()
     const manager = new DicomWebManager({
       baseUri,
       settings: [

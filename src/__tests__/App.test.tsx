@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import App from '../App'
 import type AppConfig from '../AppConfig'
 
-jest.mock('../features/header', () => ({
+vi.mock('../features/header', () => ({
   Header: ({
     showWorklistButton,
     showServerSelectionButton,
@@ -20,15 +20,15 @@ jest.mock('../features/header', () => ({
   ),
 }))
 
-jest.mock('../features/worklist', () => ({
+vi.mock('../features/worklist', () => ({
   Worklist: () => <div>Worklist</div>,
 }))
 
-jest.mock('../contexts/ValidationContext', () => ({
+vi.mock('../contexts/ValidationContext', () => ({
   ValidationProvider: ({ children }: { children: ReactNode }) => children,
 }))
 
-jest.mock('../components/CaseViewer', () => ({
+vi.mock('../components/CaseViewer', () => ({
   __esModule: true,
   default: ({ studyInstanceUID }: { studyInstanceUID: string }) => (
     <div>Case {studyInstanceUID}</div>
@@ -51,13 +51,13 @@ const renderAt = (path: string, config: AppConfig = createConfig()): void => {
 
 describe('App', () => {
   beforeEach(() => {
-    jest.spyOn(console, 'info').mockImplementation(jest.fn())
+    vi.spyOn(console, 'info').mockImplementation(vi.fn())
     /** react-router v7 future-flag notices */
-    jest.spyOn(console, 'warn').mockImplementation(jest.fn())
+    vi.spyOn(console, 'warn').mockImplementation(vi.fn())
   })
 
   afterEach(() => {
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
     window.history.replaceState({}, '', '/')
   })
 

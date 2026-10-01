@@ -1,13 +1,13 @@
 /** skipcq: JS-C1003 */
 import * as dcmjs from 'dcmjs'
-import { useCallback, useEffect, useState } from 'react'
+import { type JSX, useCallback, useEffect, useState } from 'react'
 import {
   Route,
   Routes,
   useLocation,
   useNavigate,
   useParams,
-} from 'react-router-dom'
+} from 'react-router'
 
 import type { AnnotationSettings } from '../AppConfig'
 import type { User } from '../auth'

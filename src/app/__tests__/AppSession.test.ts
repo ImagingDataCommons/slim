@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import type AppConfig from '../../AppConfig'
 import type { OidcSettings } from '../../AppConfig'
 import type {
@@ -24,30 +25,30 @@ const USER = { name: 'Ada Lovelace', email: 'ada@example.com' }
 type SignInArgs = Parameters<AuthManager['signIn']>[0]
 
 interface FakeAuth extends AuthManager {
-  signIn: jest.Mock<Promise<SignInOutcome>, [SignInArgs]>
-  renewAuthorization: jest.Mock<Promise<string | undefined>, []>
-  onAuthorizationChange: jest.Mock<() => void, [AuthorizationCallback]>
+  signIn: Mock<(...args: [SignInArgs]) => Promise<SignInOutcome>>
+  renewAuthorization: Mock<(...args: []) => Promise<string | undefined>>
+  onAuthorizationChange: Mock<(...args: [AuthorizationCallback]) => () => void>
   /** Unsubscribe functions handed out by onAuthorizationChange */
-  unsubscribes: jest.Mock[]
+  unsubscribes: Mock[]
 }
 
 /** Signs in with `Bearer t` unless `signIn` is overridden */
 const createFakeAuth = (): FakeAuth => {
-  const unsubscribes: jest.Mock[] = []
+  const unsubscribes: Mock[] = []
   return {
     unsubscribes,
-    signIn: jest.fn(({ onSignIn }: SignInArgs) => {
+    signIn: vi.fn(({ onSignIn }: SignInArgs) => {
       onSignIn?.({ user: USER, authorization: 'Bearer t' })
       return Promise.resolve<SignInOutcome>('completed')
     }),
-    signOut: jest.fn(() => Promise.resolve()),
-    getAuthorization: jest.fn(() => Promise.resolve('Bearer t')),
-    getUser: jest.fn(() => Promise.resolve(USER)),
-    renewAuthorization: jest.fn(() =>
+    signOut: vi.fn(() => Promise.resolve()),
+    getAuthorization: vi.fn(() => Promise.resolve('Bearer t')),
+    getUser: vi.fn(() => Promise.resolve(USER)),
+    renewAuthorization: vi.fn(() =>
       Promise.resolve<string | undefined>(undefined),
     ),
-    onAuthorizationChange: jest.fn((_callback: AuthorizationCallback) => {
-      const unsubscribe = jest.fn()
+    onAuthorizationChange: vi.fn((_callback: AuthorizationCallback) => {
+      const unsubscribe = vi.fn()
       unsubscribes.push(unsubscribe)
       return unsubscribe
     }),
@@ -70,14 +71,16 @@ const OIDC: OidcSettings = {
 interface Setup {
   session: AppSession
   auth: FakeAuth
-  createAuth: jest.Mock<AuthManager, [string, OidcSettings]>
-  reload: jest.Mock<void, []>
+  createAuth: Mock<(...args: [string, OidcSettings]) => AuthManager>
+  reload: Mock<(...args: []) => void>
 }
 
 const setup = (config: AppConfig = createConfig({ oidc: OIDC })): Setup => {
   const auth = createFakeAuth()
-  const createAuth = jest.fn<AuthManager, [string, OidcSettings]>(() => auth)
-  const reload = jest.fn<void, []>()
+  const createAuth = vi.fn<(...args: [string, OidcSettings]) => AuthManager>(
+    () => auth,
+  )
+  const reload = vi.fn<(...args: []) => void>()
   const session = new AppSession({
     config,
     createAuth,
@@ -95,13 +98,13 @@ const flush = (): Promise<void> =>
 describe('AppSession', () => {
   beforeEach(() => {
     window.localStorage.clear()
-    jest.spyOn(console, 'info').mockImplementation(jest.fn())
-    jest.spyOn(console, 'error').mockImplementation(jest.fn())
-    jest.spyOn(NotificationMiddleware, 'onError').mockImplementation(jest.fn())
+    vi.spyOn(console, 'info').mockImplementation(vi.fn())
+    vi.spyOn(console, 'error').mockImplementation(vi.fn())
+    vi.spyOn(NotificationMiddleware, 'onError').mockImplementation(vi.fn())
   })
 
   afterEach(() => {
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
   })
 
   describe('sign-in', () => {
@@ -117,7 +120,7 @@ describe('AppSession', () => {
 
     it('signs in and credentials the clients', async () => {
       const { session, auth } = setup()
-      const updateHeaders = jest.spyOn(
+      const updateHeaders = vi.spyOn(
         session.getSnapshot().defaultClients.default,
         'updateHeaders',
       )
@@ -199,7 +202,7 @@ describe('AppSession', () => {
     it('applies renewed tokens from the identity provider', () => {
       const { session, auth } = setup()
       session.start()
-      const updateHeaders = jest.spyOn(
+      const updateHeaders = vi.spyOn(
         session.getSnapshot().defaultClients.default,
         'updateHeaders',
       )
@@ -214,7 +217,7 @@ describe('AppSession', () => {
 
     it('notifies subscribers on every change', async () => {
       const { session } = setup()
-      const listener = jest.fn()
+      const listener = vi.fn()
       session.subscribe(listener)
       session.start()
       await flush()

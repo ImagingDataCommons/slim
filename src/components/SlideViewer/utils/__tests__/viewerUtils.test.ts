@@ -14,16 +14,16 @@ import {
   implementsTID1500,
 } from '../viewerUtils'
 
-jest.mock('dicom-microscopy-viewer', () => ({
+vi.mock('dicom-microscopy-viewer', () => ({
   viewer: {
-    VolumeImageViewer: jest.fn(),
-    LabelImageViewer: jest.fn(),
+    VolumeImageViewer: vi.fn(),
+    LabelImageViewer: vi.fn(),
   },
 }))
 
-jest.mock('../../../../services/NotificationMiddleware', () => ({
+vi.mock('../../../../services/NotificationMiddleware', () => ({
   __esModule: true,
-  default: { onError: jest.fn() },
+  default: { onError: vi.fn() },
   NotificationMiddlewareContext: {
     DMV: 'dicom-microscopy-viewer',
     SLIM: 'slim',
@@ -141,9 +141,9 @@ describe('containsROIAnnotations', () => {
 })
 
 describe('constructViewers', () => {
-  const VolumeImageViewer = jest.mocked(dmv.viewer.VolumeImageViewer)
-  const LabelImageViewer = jest.mocked(dmv.viewer.LabelImageViewer)
-  const activateSelectInteraction = jest.fn()
+  const VolumeImageViewer = vi.mocked(dmv.viewer.VolumeImageViewer)
+  const LabelImageViewer = vi.mocked(dmv.viewer.LabelImageViewer)
+  const activateSelectInteraction = vi.fn()
   const client = {} as dwc.api.DICOMwebClient
   const clients = {
     [StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]: client,
@@ -153,18 +153,18 @@ describe('constructViewers', () => {
   } as dmv.metadata.VLWholeSlideMicroscopyImage
 
   beforeEach(() => {
-    jest.clearAllMocks()
-    jest.spyOn(console, 'log').mockImplementation(() => undefined)
-    VolumeImageViewer.mockImplementation(
-      () =>
-        ({
-          activateSelectInteraction,
-        }) as Partial<dmv.viewer.VolumeImageViewer> as dmv.viewer.VolumeImageViewer,
-    )
+    vi.clearAllMocks()
+    vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    // biome-ignore lint/complexity/useArrowFunction: `new` needs a function implementation
+    VolumeImageViewer.mockImplementation(function () {
+      return {
+        activateSelectInteraction,
+      } as Partial<dmv.viewer.VolumeImageViewer> as dmv.viewer.VolumeImageViewer
+    })
   })
 
   afterEach(() => {
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
   })
 
   it('builds the volume viewer and activates selection', () => {

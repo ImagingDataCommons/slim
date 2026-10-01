@@ -101,7 +101,7 @@ export class AppSession {
   }: AppSessionOptions) {
     this.reload = reload
 
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.MODE === 'development') {
       console.info('instatiate app')
       console.info(`app is located at "${config.path}"`)
     }
@@ -116,7 +116,7 @@ export class AppSession {
     this.usesCachedOidcConfig = cachedOidcSettings !== undefined
     const oidcSettings = cachedOidcSettings ?? config.oidc
     if (oidcSettings !== undefined) {
-      if (process.env.NODE_ENV === 'development') {
+      if (import.meta.env.MODE === 'development') {
         console.info(
           'app uses the following OIDC configuration: ',
           oidcSettings,
@@ -136,7 +136,7 @@ export class AppSession {
       )
     }
 
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.MODE === 'development') {
       console.info(
         'app uses the following DICOMweb server configuration: ',
         config.servers,

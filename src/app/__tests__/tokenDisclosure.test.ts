@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import type { AuthManager } from '../../auth'
 import NotificationMiddleware from '../../services/NotificationMiddleware'
 import {
@@ -18,12 +19,12 @@ const createAuth = (
   getAuthorization: AuthManager['getAuthorization'] = () =>
     Promise.resolve('Bearer t'),
 ): AuthManager => ({
-  signIn: jest.fn(() => Promise.resolve('completed' as const)),
-  signOut: jest.fn(() => Promise.resolve()),
-  getAuthorization: jest.fn(getAuthorization),
-  getUser: jest.fn(() => Promise.resolve({ name: 'A', email: 'a@b.c' })),
-  renewAuthorization: jest.fn(() => Promise.resolve(undefined)),
-  onAuthorizationChange: jest.fn(() => () => {}),
+  signIn: vi.fn(() => Promise.resolve('completed' as const)),
+  signOut: vi.fn(() => Promise.resolve()),
+  getAuthorization: vi.fn(getAuthorization),
+  getUser: vi.fn(() => Promise.resolve({ name: 'A', email: 'a@b.c' })),
+  renewAuthorization: vi.fn(() => Promise.resolve(undefined)),
+  onAuthorizationChange: vi.fn(() => () => {}),
 })
 
 describe('decideDisclosure', () => {
@@ -42,8 +43,8 @@ describe('decideDisclosure', () => {
 })
 
 describe('createTokenDisclosurePolicy', () => {
-  let confirm: jest.Mock<Promise<boolean>, [string, string | undefined]>
-  let onAuthorization: jest.Mock<void, [string]>
+  let confirm: Mock<(...args: [string, string | undefined]) => Promise<boolean>>
+  let onAuthorization: Mock<(...args: [string]) => void>
 
   const createPolicy = (
     auth: AuthManager | null = createAuth(),
@@ -58,17 +59,17 @@ describe('createTokenDisclosurePolicy', () => {
 
   beforeEach(() => {
     clearAuthorizationDecisions()
-    confirm = jest.fn((_origin: string, _authority: string | undefined) =>
+    confirm = vi.fn((_origin: string, _authority: string | undefined) =>
       Promise.resolve(true),
     )
-    onAuthorization = jest.fn()
-    jest.spyOn(console, 'info').mockImplementation(jest.fn())
-    jest.spyOn(console, 'warn').mockImplementation(jest.fn())
-    jest.spyOn(NotificationMiddleware, 'onError').mockImplementation(jest.fn())
+    onAuthorization = vi.fn()
+    vi.spyOn(console, 'info').mockImplementation(vi.fn())
+    vi.spyOn(console, 'warn').mockImplementation(vi.fn())
+    vi.spyOn(NotificationMiddleware, 'onError').mockImplementation(vi.fn())
   })
 
   afterEach(() => {
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
   })
 
   it('sends nothing without sign-in', async () => {
@@ -129,7 +130,7 @@ describe('createTokenDisclosurePolicy', () => {
   })
 
   it('never rejects when the token cannot be obtained', async () => {
-    jest.spyOn(console, 'error').mockImplementation(jest.fn())
+    vi.spyOn(console, 'error').mockImplementation(vi.fn())
     const policy = createPolicy(
       createAuth(() => Promise.reject(new Error('expired'))),
     )

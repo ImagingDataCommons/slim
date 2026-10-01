@@ -10,16 +10,15 @@ import {
   useSlidePopulation,
 } from '../useSlidePopulation'
 
-jest.mock(
-  'dicom-microscopy-viewer',
-  () =>
-    jest.requireActual<typeof import('../../testing/fakeDmv')>(
-      '../../testing/fakeDmv',
-    ).fakeDmvModule,
-)
-jest.mock('../../../../utils/logger')
-jest.mock('../../services/derivedDataLoaders', () => ({
-  loadDerivedData: jest.fn(),
+vi.mock('dicom-microscopy-viewer', async () => {
+  const actual = await vi.importActual<typeof import('../../testing/fakeDmv')>(
+    '../../testing/fakeDmv',
+  )
+  return actual.fakeDmvModule
+})
+vi.mock('../../../../utils/logger')
+vi.mock('../../services/derivedDataLoaders', () => ({
+  loadDerivedData: vi.fn(),
 }))
 
 type LoadCallbacks = Parameters<typeof loadDerivedData>[1]
@@ -34,27 +33,27 @@ function segmentationDataset(): dmv.metadata.Dataset {
 function createSources(
   derivedDataset: dmv.metadata.Dataset | undefined,
 ): SlidePopulationSources {
-  const resettable = () => ({ reset: jest.fn(), showSeries: jest.fn() })
+  const resettable = () => ({ reset: vi.fn(), showSeries: vi.fn() })
   return {
     clients: createTestClients(),
     studyInstanceUID: '1',
     derivedDataset,
-    refreshSnapshot: jest.fn(),
-    viewportLoading: { reset: jest.fn() },
-    opticalPaths: { ...resettable(), showDefault: jest.fn() },
-    presentationStates: { load: jest.fn() },
-    rois: { reset: jest.fn(), registerRoi: jest.fn(), showAll: jest.fn() },
+    refreshSnapshot: vi.fn(),
+    viewportLoading: { reset: vi.fn() },
+    opticalPaths: { ...resettable(), showDefault: vi.fn() },
+    presentationStates: { load: vi.fn() },
+    rois: { reset: vi.fn(), registerRoi: vi.fn(), showAll: vi.fn() },
     annotationGroups: resettable(),
     segmentations: resettable(),
     parametricMaps: resettable(),
-    hoveredRoiTooltip: { reset: jest.fn() },
+    hoveredRoiTooltip: { reset: vi.fn() },
   }
 }
 
 function populate(sources: SlidePopulationSources) {
   const test = createTestSession()
   let callbacks: LoadCallbacks | undefined
-  jest.mocked(loadDerivedData).mockImplementation((_, received) => {
+  vi.mocked(loadDerivedData).mockImplementation((_, received) => {
     callbacks = received
   })
   const { result } = renderHook(() => useSlidePopulation(sources))

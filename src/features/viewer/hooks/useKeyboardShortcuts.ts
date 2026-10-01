@@ -7,20 +7,16 @@ import {
 } from '../utils/keyboardShortcuts'
 import { useLatestRef } from './useLatestRef'
 
-export interface KeyboardShortcuts {
+export interface HeldKeys {
   /** Whether Shift is held, for additive ROI selection */
   isShiftDown: () => boolean
 }
 
 /**
- * Run viewer shortcuts on key release and track held keys, listening on
- * `document.body` like the DMV viewport does.
+ * Track held keys, listening on `document.body` like the DMV viewport does.
  */
-export function useKeyboardShortcuts(
-  onShortcut: (action: ViewerShortcutAction) => void,
-): KeyboardShortcuts {
+export function useHeldKeys(): HeldKeys {
   const keysDownRef = useRef(new Set<string>())
-  const onShortcutRef = useLatestRef(onShortcut)
 
   useLayoutEffect(() => {
     const keysDown = keysDownRef.current
@@ -28,10 +24,7 @@ export function useKeyboardShortcuts(
       [
         'keyup',
         (event) => {
-          if (!(event instanceof KeyboardEvent)) return
-          keysDown.delete(event.key)
-          const action = shortcutForKeyEvent(event)
-          if (action !== undefined) onShortcutRef.current(action)
+          if (event instanceof KeyboardEvent) keysDown.delete(event.key)
         },
       ],
       [
@@ -41,11 +34,36 @@ export function useKeyboardShortcuts(
         },
       ],
     ])
-  }, [onShortcutRef])
+  }, [])
 
   const isShiftDown = useCallback(
     (): boolean => keysDownRef.current.has('Shift'),
     [],
   )
   return { isShiftDown }
+}
+
+/**
+ * Run viewer shortcuts on key release, listening on `document.body` like the
+ * DMV viewport does.
+ */
+export function useKeyboardShortcuts(
+  onShortcut: (action: ViewerShortcutAction) => void,
+): void {
+  const onShortcutRef = useLatestRef(onShortcut)
+
+  useLayoutEffect(
+    () =>
+      subscribeDomEvents(document.body, [
+        [
+          'keyup',
+          (event) => {
+            if (!(event instanceof KeyboardEvent)) return
+            const action = shortcutForKeyEvent(event)
+            if (action !== undefined) onShortcutRef.current(action)
+          },
+        ],
+      ]),
+    [onShortcutRef],
+  )
 }

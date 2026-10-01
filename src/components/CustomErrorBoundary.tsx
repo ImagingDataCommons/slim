@@ -1,5 +1,9 @@
-import { useState } from 'react'
-import { ErrorBoundary, type FallbackProps } from 'react-error-boundary'
+import { type ErrorInfo, type JSX, useState } from 'react'
+import {
+  ErrorBoundary,
+  type FallbackProps,
+  getErrorMessage,
+} from 'react-error-boundary'
 
 import { logger } from '../utils/logger'
 import { Button } from './ui/button'
@@ -16,6 +20,7 @@ function ErrorFallback({
   context,
 }: FallbackProps & { context: string }): JSX.Element {
   const [isOpen, setIsOpen] = useState(false)
+  const stack = error instanceof Error ? error.stack : undefined
 
   return (
     <div>
@@ -36,7 +41,7 @@ function ErrorFallback({
           <SlimDialogHeader
             icon="error"
             title={`Unexpected error in the ${context} component`}
-            subtitle={error.message}
+            subtitle={getErrorMessage(error) ?? String(error)}
           />
           <div className="min-h-0 overflow-y-auto px-5 pb-5 pt-[18px]">
             <details className="group rounded-lg border border-line">
@@ -49,7 +54,7 @@ function ErrorFallback({
                 Stack trace
               </summary>
               <pre className="max-h-64 overflow-auto whitespace-pre-wrap border-t border-line-soft bg-subtle p-3 font-mono text-[11.5px] text-ink-body">
-                {error.stack}
+                {stack}
               </pre>
             </details>
           </div>
@@ -76,13 +81,8 @@ const CustomErrorBoundary = ({
   context: string
   children: JSX.Element
 }): JSX.Element => {
-  const ErrorHandler = (
-    error: Error,
-    info: {
-      componentStack: string
-    },
-  ): void => {
-    if (process.env.NODE_ENV === 'development') {
+  const ErrorHandler = (error: unknown, info: ErrorInfo): void => {
+    if (import.meta.env.MODE === 'development') {
       logger.error('Error caught by boundary:', error, info)
     }
   }

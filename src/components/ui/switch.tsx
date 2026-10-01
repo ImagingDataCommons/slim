@@ -20,7 +20,7 @@ const THUMB_SIZES = {
  * 36×20 (`lg`).
  */
 const Switch = React.forwardRef<
-  React.ElementRef<typeof SwitchPrimitives.Root>,
+  React.ComponentRef<typeof SwitchPrimitives.Root>,
   React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Root> & {
     size?: 'default' | 'sm' | 'lg'
   }

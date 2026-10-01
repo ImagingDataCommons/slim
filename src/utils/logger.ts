@@ -21,13 +21,13 @@ export class Logger {
   public config: LoggerConfig
 
   constructor() {
-    /** `window` is absent when Jest runs in a node environment */
+    /** `window` is absent when tests run in the node environment */
     const globalConfig =
       typeof window !== 'undefined' ? window.config?.logger : undefined
     let configLevel = 'DEBUG'
     if (globalConfig?.level != null && String(globalConfig.level) !== '') {
       configLevel = globalConfig.level as string
-    } else if (process.env.NODE_ENV === 'production') {
+    } else if (import.meta.env.PROD) {
       configLevel = 'ERROR'
     }
 
@@ -73,7 +73,7 @@ export class Logger {
       return false
     }
 
-    if (process.env.NODE_ENV === 'production') {
+    if (import.meta.env.PROD) {
       return this.config.enableInProduction
     }
 

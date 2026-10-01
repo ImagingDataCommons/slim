@@ -4,7 +4,9 @@
  * {@link fakeDmvModule}.
  */
 /** skipcq: JS-C1003 */
+
 import type * as dmv from 'dicom-microscopy-viewer'
+import type { Mock } from 'vitest'
 
 import { formatRoiStyle } from '../../../components/SlideViewer/utils/roiUtils'
 import DicomWebManager from '../../../DicomWebManager'
@@ -71,9 +73,9 @@ export function createTestClients(): { [key: string]: DicomWebManager } {
       { id: 'test', url: 'https://example.test/dicomWeb', write: true },
     ],
   })
-  manager.searchForInstances = jest.fn().mockResolvedValue([])
-  manager.searchForSeries = jest.fn().mockResolvedValue([])
-  manager.storeInstances = jest.fn().mockResolvedValue(undefined)
+  manager.searchForInstances = vi.fn().mockResolvedValue([])
+  manager.searchForSeries = vi.fn().mockResolvedValue([])
+  manager.storeInstances = vi.fn().mockResolvedValue(undefined)
   return {
     [StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]: manager,
     [StorageClasses.COMPREHENSIVE_3D_SR]: manager,
@@ -90,7 +92,7 @@ export interface TestSession {
   session: ViewerSession
   /** The fake behind `session.volumeViewer` */
   viewer: FakeVolumeImageViewer
-  access: ViewerAccess & { refreshSnapshot: jest.Mock }
+  access: ViewerAccess & { refreshSnapshot: Mock }
 }
 
 /** A session built by the real factory on top of the fake DMV module */
@@ -115,6 +117,6 @@ export function createTestSession(
   return {
     session,
     viewer,
-    access: { sessionRef: { current: session }, refreshSnapshot: jest.fn() },
+    access: { sessionRef: { current: session }, refreshSnapshot: vi.fn() },
   }
 }

@@ -20,6 +20,7 @@ import type { DmvEventHandlers } from '../services/dmvEvents'
 import { publishToast } from '../services/toast'
 import type { ViewerSession } from '../services/viewerSession'
 import type { AnnotationDraft } from '../utils/annotationDraft'
+import { applyEach } from '../utils/applyEach'
 import { isBulkAnnotationUid } from '../utils/derivedDataset'
 import { planRoiRemoval } from '../utils/roiRemoval'
 import { nextSelectedRoiUIDs } from '../utils/roiSelection'
@@ -185,22 +186,21 @@ export function useRois({
     const session = sessionRef.current
     if (session === undefined) return
     const { volumeViewer } = session
-    const applied: VisibilityChange[] = []
-    try {
-      for (const { uid, isVisible } of changes) {
+    applyEach(
+      changes,
+      ({ uid, isVisible }): VisibilityChange => {
         if (isVisible) {
           logger.log(`show ROI ${uid}`)
           const roi = volumeViewer.getROI(uid)
           volumeViewer.setROIStyle(roi.uid, styleForRoi(session, roi))
-          applied.push({ uid: roi.uid, isVisible })
-        } else {
-          logger.log(`hide ROI ${uid}`)
-          volumeViewer.setROIStyle(uid, {})
-          applied.push({ uid, isVisible })
+          return { uid: roi.uid, isVisible }
         }
-      }
-    } finally {
-      if (applied.length > 0) {
+        logger.log(`hide ROI ${uid}`)
+        volumeViewer.setROIStyle(uid, {})
+        return { uid, isVisible }
+      },
+      (applied) => {
+        if (applied.length === 0) return
         setState((current) => ({
           ...current,
           visibleRoiUIDs: applyVisibilityChanges(
@@ -210,8 +210,8 @@ export function useRois({
           selectedRoiUIDs: removeHiddenUids(current.selectedRoiUIDs, applied),
         }))
         refreshSnapshot()
-      }
-    }
+      },
+    )
   }
 
   return {
@@ -297,36 +297,39 @@ export function useRois({
         styleOptions,
         defaultRoiStyle.stroke?.width,
       )
-      const styledUids: string[] = []
-      try {
-        for (const uid of uids) {
+      applyEach(
+        uids,
+        (uid) => {
           logger.log(`change style of ROI ${uid}`)
-          session.roiStyles.applyAnnotationStyle(
-            uid,
-            getRoiKey(session.volumeViewer.getROI(uid)),
-            styleOptions,
-            style,
+          try {
+            session.roiStyles.applyAnnotationStyle(
+              uid,
+              getRoiKey(session.volumeViewer.getROI(uid)),
+              styleOptions,
+              style,
+            )
+            session.volumeViewer.setROIStyle(uid, style)
+          } catch (error) {
+            notifyVisualizationError('Failed to change style of ROI.')
+            throw error
+          }
+          return uid
+        },
+        (styledUids) => {
+          setState((current) =>
+            styledUids.every((uid) => current.visibleRoiUIDs.has(uid))
+              ? current
+              : {
+                  ...current,
+                  visibleRoiUIDs: applyVisibilityChanges(
+                    current.visibleRoiUIDs,
+                    styledUids.map((uid) => ({ uid, isVisible: true })),
+                  ),
+                },
           )
-          session.volumeViewer.setROIStyle(uid, style)
-          styledUids.push(uid)
-        }
-      } catch (error) {
-        notifyVisualizationError('Failed to change style of ROI.')
-        throw error
-      } finally {
-        setState((current) =>
-          styledUids.every((uid) => current.visibleRoiUIDs.has(uid))
-            ? current
-            : {
-                ...current,
-                visibleRoiUIDs: applyVisibilityChanges(
-                  current.visibleRoiUIDs,
-                  styledUids.map((uid) => ({ uid, isVisible: true })),
-                ),
-              },
-        )
-        refreshSnapshot()
-      }
+          refreshSnapshot()
+        },
+      )
     },
     removeRois: () => {
       const session = sessionRef.current

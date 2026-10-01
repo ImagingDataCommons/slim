@@ -8,7 +8,7 @@ import {
   parseMeasurementReport,
 } from '../measurementReport'
 
-jest.mock('dicom-microscopy-viewer', () => {
+vi.mock('dicom-microscopy-viewer', () => {
   class Scoord3D {
     graphicType: string
     options: unknown
@@ -266,7 +266,7 @@ describe('describeEvaluations', () => {
 
 describe('MeasurementReport', () => {
   it('notifies each warning once on construction', () => {
-    const onError = jest
+    const onError = vi
       .spyOn(NotificationMiddleware, 'onError')
       .mockImplementation(() => undefined)
     const parsed = new MeasurementReport({ ContentSequence: [] })

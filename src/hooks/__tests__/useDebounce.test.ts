@@ -4,11 +4,11 @@ import { useDebounce } from '../useDebounce'
 
 describe('useDebounce', () => {
   beforeEach(() => {
-    jest.useFakeTimers()
+    vi.useFakeTimers()
   })
 
   afterEach(() => {
-    jest.useRealTimers()
+    vi.useRealTimers()
   })
 
   it('returns the initial value immediately', () => {
@@ -24,16 +24,16 @@ describe('useDebounce', () => {
 
     rerender({ value: 'ab' })
     act(() => {
-      jest.advanceTimersByTime(200)
+      vi.advanceTimersByTime(200)
     })
     rerender({ value: 'abc' })
     act(() => {
-      jest.advanceTimersByTime(200)
+      vi.advanceTimersByTime(200)
     })
     expect(result.current).toBe('a')
 
     act(() => {
-      jest.advanceTimersByTime(100)
+      vi.advanceTimersByTime(100)
     })
     expect(result.current).toBe('abc')
   })

@@ -1,37 +1,18 @@
 {
   "compilerOptions": {
-    "target": "es2022",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "es2023"
-    ],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
+    "target": "es2023",
+    "lib": ["es2023", "dom"],
     "module": "esnext",
-    "moduleResolution": "node",
-    "ignoreDeprecations": "6.0",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
+    "moduleResolution": "bundler",
     "jsx": "react-jsx",
-    "typeRoots": [
-      "types",
-      "node_modules/@types"
-    ],
-    "types": [
-      "node",
-      "jest",
-      "@testing-library/jest-dom"
-    ],
-    "noFallthroughCasesInSwitch": true
+    "allowJs": true,
+    "strict": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noFallthroughCasesInSwitch": true,
+    "types": ["vite/client", "vitest/globals", "node"]
   },
-  "include": [
-    "src",
-    "types"
-  ]
+  "include": ["src", "types", "vite.config.ts"]
 }

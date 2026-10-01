@@ -12,6 +12,7 @@ import {
   applyClusteringOptions,
   type ViewerSession,
 } from '../services/viewerSession'
+import { applyEach } from '../utils/applyEach'
 import {
   type ClusteringSettings,
   changedSettingKeys,
@@ -73,9 +74,9 @@ export function useAnnotationGroups(
     const viewer = sessionRef.current?.volumeViewer
     if (viewer === undefined) return
     const allAnnotationGroups = viewer.getAllAnnotationGroups()
-    const applied: VisibilityChange[] = []
-    try {
-      for (const { uid, isVisible } of changes) {
+    applyEach(
+      changes,
+      ({ uid, isVisible }): VisibilityChange => {
         const annotationGroup = allAnnotationGroups.find(
           (group) => group.uid === uid,
         )
@@ -95,13 +96,14 @@ export function useAnnotationGroups(
           logger.log(`hide annotation group ${uid}`)
           viewer.hideAnnotationGroup(uid)
         }
-        applied.push({ uid, isVisible })
-      }
-    } finally {
-      if (applied.length > 0) {
-        setVisibleUIDs((current) => applyVisibilityChanges(current, applied))
-      }
-    }
+        return { uid, isVisible }
+      },
+      (applied) => {
+        if (applied.length > 0) {
+          setVisibleUIDs((current) => applyVisibilityChanges(current, applied))
+        }
+      },
+    )
   }
 
   return {

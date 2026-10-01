@@ -1,3 +1,4 @@
+import type { MockInstance } from 'vitest'
 import {
   clearAuthorizationDecisions,
   readAuthorizationDecision,
@@ -167,10 +168,10 @@ describe('readCachedOidcConfig', () => {
 })
 
 describe('blocked storage', () => {
-  let localStorageSpy: jest.SpyInstance | undefined
+  let localStorageSpy: MockInstance | undefined
 
   beforeEach(() => {
-    localStorageSpy = jest
+    localStorageSpy = vi
       .spyOn(window, 'localStorage', 'get')
       .mockImplementation(() => {
         throw new DOMException('Storage is blocked', 'SecurityError')

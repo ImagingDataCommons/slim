@@ -39,9 +39,9 @@ export function getRuntimeInfo(sources: RuntimeInfoSources): RuntimeInfo {
 export function getCurrentRuntimeInfo(): RuntimeInfo {
   return getRuntimeInfo({
     env: {
-      REACT_APP_CONFIG: process.env.REACT_APP_CONFIG,
-      REACT_APP_GIT_SHA: process.env.REACT_APP_GIT_SHA,
-      REACT_APP_DMV_GIT_SHA: process.env.REACT_APP_DMV_GIT_SHA,
+      REACT_APP_CONFIG: import.meta.env.REACT_APP_CONFIG,
+      REACT_APP_GIT_SHA: import.meta.env.REACT_APP_GIT_SHA,
+      REACT_APP_DMV_GIT_SHA: import.meta.env.REACT_APP_DMV_GIT_SHA,
     },
     config: typeof window === 'undefined' ? undefined : window.config,
     userAgent: typeof navigator === 'undefined' ? '' : navigator.userAgent,

@@ -1,22 +1,21 @@
 import { act, renderHook } from '@testing-library/react'
 import type * as dmv from 'dicom-microscopy-viewer'
-import type { Location } from 'react-router-dom'
+import type { Location } from 'react-router'
 
 import { loadPresentationStates } from '../../services/presentationStates'
 import { resetFakeDmv } from '../../testing/fakeDmv'
 import { createTestClients, createTestSession } from '../../testing/fixtures'
 import { usePresentationStates } from '../usePresentationStates'
 
-jest.mock(
-  'dicom-microscopy-viewer',
-  () =>
-    jest.requireActual<typeof import('../../testing/fakeDmv')>(
-      '../../testing/fakeDmv',
-    ).fakeDmvModule,
-)
-jest.mock('../../../../utils/logger')
-jest.mock('../../services/presentationStates', () => ({
-  loadPresentationStates: jest.fn(),
+vi.mock('dicom-microscopy-viewer', async () => {
+  const actual = await vi.importActual<typeof import('../../testing/fakeDmv')>(
+    '../../testing/fakeDmv',
+  )
+  return actual.fakeDmvModule
+})
+vi.mock('../../../../utils/logger')
+vi.mock('../../services/presentationStates', () => ({
+  loadPresentationStates: vi.fn(),
 }))
 
 type PresentationState = dmv.metadata.AdvancedBlendingPresentationState
@@ -39,13 +38,13 @@ const location: Location = {
 
 function setup(requestedUID?: string) {
   const test = createTestSession()
-  const navigate = jest.fn()
+  const navigate = vi.fn()
   const opticalPaths = {
-    showDefault: jest.fn(),
-    showPresentationState: jest.fn(),
+    showDefault: vi.fn(),
+    showPresentationState: vi.fn(),
   }
   let deliver: OnPresentationState = () => {}
-  jest.mocked(loadPresentationStates).mockImplementation((options) => {
+  vi.mocked(loadPresentationStates).mockImplementation((options) => {
     deliver = options.onPresentationState
   })
   const { result } = renderHook(() =>

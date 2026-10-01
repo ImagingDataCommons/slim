@@ -4,7 +4,7 @@ import { SearchInput } from '../search-input'
 
 describe('SearchInput', () => {
   it('reports typed values', () => {
-    const onValueChange = jest.fn()
+    const onValueChange = vi.fn()
     render(
       <SearchInput
         aria-label="Search"
@@ -23,7 +23,7 @@ describe('SearchInput', () => {
       <SearchInput
         aria-label="Search"
         value=""
-        onValueChange={jest.fn()}
+        onValueChange={vi.fn()}
         status="0 matches"
         clearable
       />,
@@ -35,7 +35,7 @@ describe('SearchInput', () => {
   })
 
   it('shows the status and clears the query', () => {
-    const onValueChange = jest.fn()
+    const onValueChange = vi.fn()
     render(
       <SearchInput
         aria-label="Search"
@@ -52,7 +52,7 @@ describe('SearchInput', () => {
 
   it('has no clear button unless clearable', () => {
     render(
-      <SearchInput aria-label="Search" value="doe" onValueChange={jest.fn()} />,
+      <SearchInput aria-label="Search" value="doe" onValueChange={vi.fn()} />,
     )
     expect(
       screen.queryByRole('button', { name: 'Clear search' }),

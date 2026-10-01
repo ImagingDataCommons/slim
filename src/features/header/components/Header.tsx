@@ -1,6 +1,6 @@
 import type * as React from 'react'
 import { useState } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router'
 
 import type { User } from '../../../auth'
 import { SlimLogoMark } from '../../../components/slim/SlimLogoMark'

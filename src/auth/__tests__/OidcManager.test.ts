@@ -1,4 +1,5 @@
 import { InMemoryWebStorage, type UserManagerSettings } from 'oidc-client-ts'
+import type { Mock } from 'vitest'
 
 import type { OidcSettings } from '../../AppConfig'
 import NotificationMiddleware from '../../services/NotificationMiddleware'
@@ -85,8 +86,8 @@ describe('completeSilentRenewIfFrame', () => {
 
   const runInFrame = async (
     url: string,
-  ): Promise<{ handled: boolean; postMessage: jest.Mock }> => {
-    const postMessage = jest.fn()
+  ): Promise<{ handled: boolean; postMessage: Mock }> => {
+    const postMessage = vi.fn()
     Object.defineProperty(window, 'parent', {
       configurable: true,
       value: { postMessage },
@@ -128,13 +129,13 @@ describe('completeSilentRenewIfFrame', () => {
 
 describe('OidcManager', () => {
   beforeEach(() => {
-    jest.spyOn(console, 'info').mockImplementation(jest.fn())
-    jest.spyOn(console, 'log').mockImplementation(jest.fn())
-    jest.spyOn(NotificationMiddleware, 'onError').mockImplementation(jest.fn())
+    vi.spyOn(console, 'info').mockImplementation(vi.fn())
+    vi.spyOn(console, 'log').mockImplementation(vi.fn())
+    vi.spyOn(NotificationMiddleware, 'onError').mockImplementation(vi.fn())
   })
 
   afterEach(() => {
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
     window.history.replaceState({}, '', '/')
   })
 
@@ -222,7 +223,7 @@ describe('OidcManager', () => {
       oidc.signinRedirectCallback.mockResolvedValue(
         makeUser({ accessToken: 't', state: { returnUrl: '/studies/1' } }),
       )
-      const onSignIn = jest.fn()
+      const onSignIn = vi.fn()
 
       await expect(manager.signIn({ onSignIn })).resolves.toBe('completed')
 
@@ -240,7 +241,7 @@ describe('OidcManager', () => {
       oidc.signinRedirectCallback.mockResolvedValue(
         makeUser({ state: { returnUrl: '//evil.example.com' } }),
       )
-      const onSignIn = jest.fn()
+      const onSignIn = vi.fn()
 
       await manager.signIn({ onSignIn })
 
@@ -252,7 +253,7 @@ describe('OidcManager', () => {
     it('reuses a live session without the persisted return URL', async () => {
       const { manager, oidc } = setup()
       oidc.stored = makeUser({ state: { returnUrl: '/studies/1' } })
-      const onSignIn = jest.fn()
+      const onSignIn = vi.fn()
 
       await expect(manager.signIn({ onSignIn })).resolves.toBe('completed')
 
@@ -278,7 +279,7 @@ describe('OidcManager', () => {
 
     it('notifies listeners when the library loads a user', async () => {
       const { manager, oidc } = setup()
-      const listener = jest.fn()
+      const listener = vi.fn()
       manager.onAuthorizationChange(listener)
 
       await oidc.events.load(makeUser({ accessToken: 'renewed' }))
@@ -288,7 +289,7 @@ describe('OidcManager', () => {
 
     it('stops notifying after unsubscribe', async () => {
       const { manager, oidc } = setup()
-      const listener = jest.fn()
+      const listener = vi.fn()
       manager.onAuthorizationChange(listener)()
 
       await oidc.events.load(makeUser())
@@ -301,7 +302,7 @@ describe('OidcManager', () => {
     it('renews silently and notifies listeners', async () => {
       const { manager, oidc } = setup()
       oidc.signinSilent.mockResolvedValue(makeUser({ accessToken: 'new' }))
-      const listener = jest.fn()
+      const listener = vi.fn()
       manager.onAuthorizationChange(listener)
 
       await expect(manager.renewAuthorization()).resolves.toBe('Bearer new')
@@ -309,7 +310,7 @@ describe('OidcManager', () => {
     })
 
     it('returns undefined when silent renew fails', async () => {
-      jest.spyOn(console, 'warn').mockImplementation(jest.fn())
+      vi.spyOn(console, 'warn').mockImplementation(vi.fn())
       const { manager, oidc } = setup()
       oidc.signinSilent.mockRejectedValue(new Error('login_required'))
 
@@ -317,9 +318,9 @@ describe('OidcManager', () => {
     })
 
     it('renews implicit sessions through the implicit grant', async () => {
-      jest.spyOn(console, 'warn').mockImplementation(jest.fn())
+      vi.spyOn(console, 'warn').mockImplementation(vi.fn())
       const { manager, oidc } = setup({ grantType: 'implicit' })
-      const getAuthorizationEndpoint = jest.fn(() =>
+      const getAuthorizationEndpoint = vi.fn(() =>
         Promise.reject(new Error('offline')),
       )
       oidc.metadataService.getAuthorizationEndpoint = getAuthorizationEndpoint
@@ -368,7 +369,7 @@ describe('OidcManager', () => {
     })
 
     it('still signs out when revocation fails', async () => {
-      jest.spyOn(console, 'warn').mockImplementation(jest.fn())
+      vi.spyOn(console, 'warn').mockImplementation(vi.fn())
       const { manager, oidc } = setup(
         {},
         {
@@ -396,7 +397,7 @@ describe('OidcManager', () => {
     })
 
     it('falls back to a local sign-out when the redirect fails', async () => {
-      jest.spyOn(console, 'error').mockImplementation(jest.fn())
+      vi.spyOn(console, 'error').mockImplementation(vi.fn())
       const { manager, oidc } = setup(
         {},
         { end_session_endpoint: `${ISSUER}/logout` },

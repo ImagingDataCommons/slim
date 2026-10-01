@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import type { JSX } from 'react'
 
 import { observeOverviewMapClamp } from '../../../../utils/clampOverviewMapInViewport'
 import { fakeDmvInstances, resetFakeDmv } from '../../testing/fakeDmv'
@@ -15,19 +16,17 @@ import {
   type ViewerSessionOptions,
 } from '../useViewerSession'
 
-jest.mock(
-  'dicom-microscopy-viewer',
-  () =>
-    jest.requireActual<typeof import('../../testing/fakeDmv')>(
-      '../../testing/fakeDmv',
-    ).fakeDmvModule,
-)
-/** OpenLayers ships ESM that this Jest setup does not transform */
-jest.mock('../../../../utils/clampOverviewMapInViewport', () => ({
-  clampOverviewMapInViewport: jest.fn(),
-  observeOverviewMapClamp: jest.fn(() => jest.fn()),
+vi.mock('dicom-microscopy-viewer', async () => {
+  const actual = await vi.importActual<typeof import('../../testing/fakeDmv')>(
+    '../../testing/fakeDmv',
+  )
+  return actual.fakeDmvModule
+})
+vi.mock('../../../../utils/clampOverviewMapInViewport', () => ({
+  clampOverviewMapInViewport: vi.fn(),
+  observeOverviewMapClamp: vi.fn(() => vi.fn()),
 }))
-jest.mock('../../../../utils/logger')
+vi.mock('../../../../utils/logger')
 
 let api: ViewerSessionApi | undefined
 
@@ -59,7 +58,7 @@ function options(
     defaultRoiStyle: TEST_ROI_STYLE,
     clustering: { isEnabled: true, thresholdInput: '' },
     gammaCorrection: undefined,
-    onSessionCreated: jest.fn(),
+    onSessionCreated: vi.fn(),
     ...overrides,
   }
 }
@@ -75,7 +74,7 @@ beforeEach(() => {
 
 describe('useViewerSession', () => {
   it('creates and renders the viewers, then reports the new session', () => {
-    const onSessionCreated = jest.fn()
+    const onSessionCreated = vi.fn()
     render(<Harness options={options({ onSessionCreated })} />)
 
     const [volumeViewer] = fakeDmvInstances.volumeViewers
@@ -112,7 +111,7 @@ describe('useViewerSession', () => {
           preload: true,
           gammaCorrection: true,
           clustering: { isEnabled: false, thresholdInput: '1' },
-          onSessionCreated: jest.fn(),
+          onSessionCreated: vi.fn(),
         })}
       />,
     )
@@ -126,7 +125,7 @@ describe('useViewerSession', () => {
     ['route', { routeKey: 'other-route' }],
     ['clients', { clients: createTestClients() }],
   ])('rebuilds the viewers for a new %s', (_, change) => {
-    const onSessionCreated = jest.fn()
+    const onSessionCreated = vi.fn()
     const { rerender } = render(
       <Harness options={options({ onSessionCreated })} />,
     )

@@ -1,19 +1,20 @@
+import type { Mock, MockInstance } from 'vitest'
 import { downloadTextFile } from '../download'
 
 describe('downloadTextFile', () => {
   const originalCreate = URL.createObjectURL
   const originalRevoke = URL.revokeObjectURL
-  let createObjectURL: jest.Mock
-  let revokeObjectURL: jest.Mock
-  let click: jest.SpyInstance
+  let createObjectURL: Mock
+  let revokeObjectURL: Mock
+  let click: MockInstance
 
   beforeEach(() => {
-    jest.useFakeTimers()
-    createObjectURL = jest.fn(() => 'blob:mock')
-    revokeObjectURL = jest.fn()
+    vi.useFakeTimers()
+    createObjectURL = vi.fn(() => 'blob:mock')
+    revokeObjectURL = vi.fn()
     URL.createObjectURL = createObjectURL
     URL.revokeObjectURL = revokeObjectURL
-    click = jest
+    click = vi
       .spyOn(HTMLAnchorElement.prototype, 'click')
       .mockImplementation(function (this: HTMLAnchorElement) {
         expect(document.body.contains(this)).toBe(true)
@@ -26,7 +27,7 @@ describe('downloadTextFile', () => {
     click.mockRestore()
     URL.createObjectURL = originalCreate
     URL.revokeObjectURL = originalRevoke
-    jest.useRealTimers()
+    vi.useRealTimers()
   })
 
   it('clicks an attached anchor and removes it', () => {
@@ -40,7 +41,7 @@ describe('downloadTextFile', () => {
   it('revokes the object URL asynchronously', () => {
     downloadTextFile('config.js', 'text')
     expect(revokeObjectURL).not.toHaveBeenCalled()
-    jest.runAllTimers()
+    vi.runAllTimers()
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock')
   })
 })

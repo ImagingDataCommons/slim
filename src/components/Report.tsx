@@ -36,7 +36,7 @@ function SectionDivider({ label }: { label: string }): React.ReactElement {
 function Report({ dataset }: ReportProps): React.ReactElement {
   const report = useMemo(() => parseMeasurementReport(dataset), [dataset])
   /** StrictMode replays effects; warnings must be reported once per parse */
-  const notifiedReport = useRef<ParsedMeasurementReport>()
+  const notifiedReport = useRef<ParsedMeasurementReport | undefined>(undefined)
 
   useEffect(() => {
     if (notifiedReport.current === report) return

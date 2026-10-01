@@ -15,26 +15,26 @@ describe('useFrameThrottledCallback', () => {
   beforeEach(() => {
     frames = new Map()
     nextFrame = 1
-    jest
-      .spyOn(window, 'requestAnimationFrame')
-      .mockImplementation((run: FrameRequestCallback): number => {
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(
+      (run: FrameRequestCallback): number => {
         const id = nextFrame++
         frames.set(id, run)
         return id
-      })
-    jest
-      .spyOn(window, 'cancelAnimationFrame')
-      .mockImplementation((id: number): void => {
+      },
+    )
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(
+      (id: number): void => {
         frames.delete(id)
-      })
+      },
+    )
   })
 
   afterEach(() => {
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
   })
 
   it('calls the callback once per frame with the latest arguments', () => {
-    const callback = jest.fn()
+    const callback = vi.fn()
     const { result } = renderHook(() => useFrameThrottledCallback(callback))
 
     act(() => {
@@ -57,8 +57,8 @@ describe('useFrameThrottledCallback', () => {
   })
 
   it('uses the latest callback without rescheduling', () => {
-    const first = jest.fn()
-    const second = jest.fn()
+    const first = vi.fn()
+    const second = vi.fn()
     const { result, rerender } = renderHook(
       ({ callback }) => useFrameThrottledCallback(callback),
       { initialProps: { callback: first } },
@@ -73,7 +73,7 @@ describe('useFrameThrottledCallback', () => {
   })
 
   it('drops a pending call on unmount', () => {
-    const callback = jest.fn()
+    const callback = vi.fn()
     const { result, unmount } = renderHook(() =>
       useFrameThrottledCallback(callback),
     )

@@ -34,7 +34,7 @@ export interface ViewerAccess {
 }
 
 export interface ViewerStore extends ViewerAccess {
-  sessionRef: React.MutableRefObject<ViewerSession | undefined>
+  sessionRef: React.RefObject<ViewerSession | undefined>
   snapshot: ViewerSnapshot
 }
 
@@ -76,7 +76,7 @@ export interface ViewerSessionOptions {
 }
 
 export interface ViewerSessionApi {
-  volumeViewportRef: React.RefObject<HTMLDivElement>
+  volumeViewportRef: React.RefObject<HTMLDivElement | null>
   labelViewportRef: React.RefCallback<HTMLDivElement>
   onViewportResize: () => void
 }

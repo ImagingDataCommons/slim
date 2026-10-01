@@ -1,10 +1,10 @@
-import '@testing-library/jest-dom'
+import '@testing-library/jest-dom/vitest'
 
 function noop(): void {}
 
-global.matchMedia =
-  global.matchMedia !== undefined
-    ? global.matchMedia
+globalThis.matchMedia =
+  globalThis.matchMedia !== undefined
+    ? globalThis.matchMedia
     : (query: string): MediaQueryList => ({
         media: query,
         matches: false,
@@ -25,6 +25,6 @@ class ResizeObserverStub implements ResizeObserver {
   disconnect(): void {}
 }
 
-if (typeof global.ResizeObserver === 'undefined') {
-  global.ResizeObserver = ResizeObserverStub
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = ResizeObserverStub
 }

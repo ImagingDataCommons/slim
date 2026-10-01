@@ -2,13 +2,13 @@ import { cleanup, render, waitFor } from '@testing-library/react'
 /** skipcq: JS-C1003 */
 import type * as dwc from 'dicomweb-client'
 import type React from 'react'
-import { BrowserRouter } from 'react-router-dom'
+import { BrowserRouter } from 'react-router'
 
 import DicomWebManager from '../../../../DicomWebManager'
 import { Worklist } from '../Worklist'
 
 afterAll(() => {
-  jest.restoreAllMocks()
+  vi.restoreAllMocks()
 })
 
 afterEach(cleanup)
@@ -112,13 +112,7 @@ describe('Worklist', () => {
   }
 
   const renderWithRouter = (ui: React.ReactElement) =>
-    render(
-      <BrowserRouter
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-      >
-        {ui}
-      </BrowserRouter>,
-    )
+    render(<BrowserRouter>{ui}</BrowserRouter>)
 
   it('should populate one row for each available study', async () => {
     const { queryAllByRole } = renderWithRouter(

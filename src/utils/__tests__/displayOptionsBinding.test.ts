@@ -24,7 +24,7 @@ describe('bindDisplayOptions', () => {
       [descriptor({ shortLabel: 'ICC', disabled: true })],
       settings,
       { icc: 'iccProfileEnabled' },
-      jest.fn(),
+      vi.fn(),
     )
     expect(option).toMatchObject({
       id: 'icc',
@@ -34,7 +34,7 @@ describe('bindDisplayOptions', () => {
   })
 
   it('replaces only the mapped flag on toggle', () => {
-    const onChange = jest.fn()
+    const onChange = vi.fn()
     const options = bindDisplayOptions(
       [descriptor({ id: 'icc' }), descriptor({ id: 'gamma' })],
       settings,
@@ -55,7 +55,7 @@ describe('bindDisplayOptions', () => {
   })
 
   it('ignores toggles of unmapped ids', () => {
-    const onChange = jest.fn()
+    const onChange = vi.fn()
     const [option] = bindDisplayOptions(
       [descriptor({ id: 'gamma' })],
       settings,

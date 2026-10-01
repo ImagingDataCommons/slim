@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import type * as React from 'react'
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 
 import CaseViewer from '../CaseViewer'
 
@@ -15,7 +15,7 @@ const mockSlides = [
   },
 ]
 
-jest.mock('../../hooks/useSlides', () => ({
+vi.mock('../../hooks/useSlides', () => ({
   useSlides: () => ({
     slides: mockSlides,
     isLoading: false,
@@ -24,14 +24,14 @@ jest.mock('../../hooks/useSlides', () => ({
   }),
 }))
 
-jest.mock('../SlideViewer', () => ({
+vi.mock('../SlideViewer', () => ({
   __esModule: true,
   default: ({ seriesInstanceUID }: { seriesInstanceUID: string }) => (
     <div data-testid="slide-viewer">{seriesInstanceUID}</div>
   ),
 }))
 
-jest.mock('../SlideItem', () => ({
+vi.mock('../SlideItem', () => ({
   __esModule: true,
   default: ({
     slide,
@@ -54,9 +54,9 @@ jest.mock('../SlideItem', () => ({
   ),
 }))
 
-jest.mock('../Patient', () => ({ __esModule: true, default: () => null }))
-jest.mock('../Study', () => ({ __esModule: true, default: () => null }))
-jest.mock('../ClinicalTrial', () => ({ __esModule: true, default: () => null }))
+vi.mock('../Patient', () => ({ __esModule: true, default: () => null }))
+vi.mock('../Study', () => ({ __esModule: true, default: () => null }))
+vi.mock('../ClinicalTrial', () => ({ __esModule: true, default: () => null }))
 
 function LocationProbe(): React.ReactElement {
   const location = useLocation()
@@ -67,10 +67,7 @@ function LocationProbe(): React.ReactElement {
 
 function renderAt(path: string): void {
   render(
-    <MemoryRouter
-      initialEntries={[path]}
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-    >
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route
           path="/studies/:studyInstanceUID/*"

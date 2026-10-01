@@ -19,8 +19,8 @@ function createService(): typeof pubSubInterface & {
 describe('pubSubServiceInterface', () => {
   it('delivers broadcasts to the subscribers of that event only', () => {
     const service = createService()
-    const onChanged = jest.fn()
-    const onAdded = jest.fn()
+    const onChanged = vi.fn()
+    const onAdded = vi.fn()
     service.subscribe('event::changed', onChanged)
     service.subscribe('event::changed', onChanged)
     service.subscribe('event::added', onAdded)
@@ -32,8 +32,8 @@ describe('pubSubServiceInterface', () => {
 
   it('stops delivering after unsubscribe', () => {
     const service = createService()
-    const kept = jest.fn()
-    const removed = jest.fn()
+    const kept = vi.fn()
+    const removed = vi.fn()
     service.subscribe('event::changed', kept)
     const subscription = service.subscribe('event::changed', removed)
     subscription.unsubscribe()
@@ -44,7 +44,7 @@ describe('pubSubServiceInterface', () => {
 
   it('rejects events that are not declared', () => {
     const service = createService()
-    expect(() => service.subscribe('event::unknown', jest.fn())).toThrow(
+    expect(() => service.subscribe('event::unknown', vi.fn())).toThrow(
       'Event event::unknown not supported.',
     )
     expect(service._isValidEvent('event::added')).toBe(true)

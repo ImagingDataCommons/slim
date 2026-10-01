@@ -63,11 +63,11 @@ const applyHook = (
 
 describe('getXHRRetryHook', () => {
   beforeEach(() => {
-    jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
   })
 
   afterEach(() => {
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
   })
 
   it('does not wrap send for non-idempotent methods', () => {
@@ -79,7 +79,7 @@ describe('getXHRRetryHook', () => {
   it('passes a success straight through to the client handler', async () => {
     const xhr = new FakeXHR()
     xhr.statusQueue = [200]
-    const clientHandler = jest.fn()
+    const clientHandler = vi.fn()
     xhr.onreadystatechange = clientHandler
     applyHook(xhr, 'GET')
 
@@ -94,7 +94,7 @@ describe('getXHRRetryHook', () => {
   it('does not retry non-retryable failure statuses', async () => {
     const xhr = new FakeXHR()
     xhr.statusQueue = [404]
-    const clientHandler = jest.fn()
+    const clientHandler = vi.fn()
     xhr.onreadystatechange = clientHandler
     applyHook(xhr, 'GET')
 
@@ -110,7 +110,7 @@ describe('getXHRRetryHook', () => {
     const xhr = new FakeXHR()
     xhr.statusQueue = [500, 429, 200]
     xhr.responseType = 'arraybuffer'
-    const clientHandler = jest.fn()
+    const clientHandler = vi.fn()
     xhr.onreadystatechange = clientHandler
     applyHook(xhr, 'GET')
 
@@ -130,7 +130,7 @@ describe('getXHRRetryHook', () => {
   it('surfaces the final failure once retries are exhausted', async () => {
     const xhr = new FakeXHR()
     xhr.statusQueue = [500, 500, 500]
-    const clientHandler = jest.fn()
+    const clientHandler = vi.fn()
     xhr.onreadystatechange = clientHandler
     applyHook(xhr, 'GET')
 
@@ -146,7 +146,7 @@ describe('getXHRRetryHook', () => {
   it('honors custom retryable status codes', async () => {
     const xhr = new FakeXHR()
     xhr.statusQueue = [500]
-    const clientHandler = jest.fn()
+    const clientHandler = vi.fn()
     xhr.onreadystatechange = clientHandler
     applyHook(xhr, 'GET', { ...fastRetryOptions, retryableStatusCodes: [429] })
 
@@ -161,7 +161,7 @@ describe('getXHRRetryHook', () => {
   it('preserves onreadystatechange wrappers installed after the retry hook', async () => {
     const xhr = new FakeXHR()
     xhr.statusQueue = [0]
-    const clientHandler = jest.fn()
+    const clientHandler = vi.fn()
     xhr.onreadystatechange = clientHandler
     applyHook(xhr, 'GET')
 
@@ -170,7 +170,7 @@ describe('getXHRRetryHook', () => {
      * handler between retry-hook install and send().
      */
     const prev = xhr.onreadystatechange
-    const laterWrapper = jest.fn(function (this: FakeXHR, ev: Event) {
+    const laterWrapper = vi.fn(function (this: FakeXHR, ev: Event) {
       if (this.readyState === XMLHttpRequest.DONE && this.status === 0) {
         return
       }

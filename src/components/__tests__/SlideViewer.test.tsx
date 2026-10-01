@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import type React from 'react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter } from 'react-router'
 
 import {
   fakeDmvInstances,
@@ -14,21 +14,14 @@ import {
 import type { AnnotationSettings } from '../../types/annotations'
 import SlideViewer from '../SlideViewer'
 
-jest.mock(
-  'dicom-microscopy-viewer',
-  () =>
-    jest.requireActual<typeof import('../../features/viewer/testing/fakeDmv')>(
-      '../../features/viewer/testing/fakeDmv',
-    ).fakeDmvModule,
-)
+vi.mock('dicom-microscopy-viewer', async () => {
+  const actual = await vi.importActual<
+    typeof import('../../features/viewer/testing/fakeDmv')
+  >('../../features/viewer/testing/fakeDmv')
+  return actual.fakeDmvModule
+})
 
-/** OpenLayers ships ESM that this Jest setup does not transform */
-jest.mock('../../utils/clampOverviewMapInViewport', () => ({
-  clampOverviewMapInViewport: jest.fn(),
-  observeOverviewMapClamp: jest.fn(() => jest.fn()),
-}))
-
-jest.mock('../../utils/logger')
+vi.mock('../../utils/logger')
 
 const ANNOTATIONS: AnnotationSettings[] = [
   {
@@ -38,13 +31,12 @@ const ANNOTATIONS: AnnotationSettings[] = [
 
 type ViewerProps = React.ComponentProps<typeof SlideViewer>
 
-function viewerElement(overrides: Partial<ViewerProps> = {}): JSX.Element {
+function viewerElement(
+  overrides: Partial<ViewerProps> = {},
+): React.JSX.Element {
   const slide = overrides.slide ?? createSlide('1.2.3.4')
   return (
-    <MemoryRouter
-      initialEntries={[`/studies/${STUDY_UID}/series/1.2.3.4`]}
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-    >
+    <MemoryRouter initialEntries={[`/studies/${STUDY_UID}/series/1.2.3.4`]}>
       <SlideViewer
         slide={slide}
         clients={overrides.clients ?? createClients()}
@@ -104,11 +96,11 @@ async function addRoiThroughGoTo(): Promise<void> {
 beforeEach(() => {
   resetFakeDmv()
   /** ROIs placed through "Go to" have no finding, which is logged */
-  jest.spyOn(console, 'warn').mockImplementation(() => {})
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
 })
 
 afterEach(() => {
-  jest.restoreAllMocks()
+  vi.restoreAllMocks()
 })
 
 describe('SlideViewer', () => {

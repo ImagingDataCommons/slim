@@ -5,14 +5,13 @@ import { resetFakeDmv } from '../../testing/fakeDmv'
 import { createTestSession } from '../../testing/fixtures'
 import { useActiveSeriesPublisher } from '../useActiveSeriesPublisher'
 
-jest.mock(
-  'dicom-microscopy-viewer',
-  () =>
-    jest.requireActual<typeof import('../../testing/fakeDmv')>(
-      '../../testing/fakeDmv',
-    ).fakeDmvModule,
-)
-jest.mock('../../../../utils/logger')
+vi.mock('dicom-microscopy-viewer', async () => {
+  const actual = await vi.importActual<typeof import('../../testing/fakeDmv')>(
+    '../../testing/fakeDmv',
+  )
+  return actual.fakeDmvModule
+})
+vi.mock('../../../../utils/logger')
 
 beforeEach(() => {
   resetFakeDmv()

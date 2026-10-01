@@ -107,6 +107,12 @@ export function WorklistTable({
   footer,
   className,
 }: WorklistTableProps): React.ReactElement {
+  /**
+   * TanStack Table returns a mutable table instance whose getters change
+   * without a new identity, so memoizing this component would render stale
+   * rows. React Compiler lists useReactTable as an incompatible library.
+   */
+  'use no memo'
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: 'StudyDate', desc: true },
   ])

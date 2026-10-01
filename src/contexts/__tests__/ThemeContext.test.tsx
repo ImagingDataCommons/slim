@@ -10,15 +10,15 @@ function mockSystemScheme(initiallyDark: boolean): {
 } {
   const listeners = new Set<EventListenerOrEventListenerObject>()
   let matches = initiallyDark
-  jest.spyOn(window, 'matchMedia').mockImplementation(
+  vi.spyOn(window, 'matchMedia').mockImplementation(
     (media: string): MediaQueryList => ({
       media,
       get matches() {
         return matches
       },
       onchange: null,
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
       addEventListener: (
         _type: string,
         listener: EventListenerOrEventListenerObject,
@@ -68,7 +68,7 @@ describe('ThemeProvider', () => {
   })
 
   afterEach(() => {
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
   })
 
   it('uses the default theme when nothing is stored', () => {
@@ -163,7 +163,7 @@ describe('ThemeProvider', () => {
 
 describe('useTheme', () => {
   it('throws outside a ThemeProvider', () => {
-    jest.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     expect(() => renderHook(() => useTheme())).toThrow(
       'useTheme must be used within a ThemeProvider',
     )

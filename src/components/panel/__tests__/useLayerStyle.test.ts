@@ -11,7 +11,7 @@ const INITIAL: Style = { opacity: 1, color: [255, 0, 0] }
 
 describe('useLayerStyle', () => {
   it('previews changes locally without committing', () => {
-    const onCommit = jest.fn()
+    const onCommit = vi.fn()
     const { result } = renderHook(() => useLayerStyle(INITIAL, onCommit))
     act(() => result.current[2]({ opacity: 0.4 }))
     expect(result.current[0]).toEqual({ opacity: 0.4, color: [255, 0, 0] })
@@ -19,7 +19,7 @@ describe('useLayerStyle', () => {
   })
 
   it('applies and commits only the changed part on update', () => {
-    const onCommit = jest.fn()
+    const onCommit = vi.fn()
     const { result } = renderHook(() => useLayerStyle(INITIAL, onCommit))
     act(() => result.current[1]({ color: [0, 0, 255] }))
     expect(result.current[0]).toEqual({ opacity: 1, color: [0, 0, 255] })
@@ -29,7 +29,7 @@ describe('useLayerStyle', () => {
 
   it('follows the initial style when the reset key changes', () => {
     const { result, rerender } = renderHook(
-      ({ style, resetKey }) => useLayerStyle(style, jest.fn(), resetKey),
+      ({ style, resetKey }) => useLayerStyle(style, vi.fn(), resetKey),
       { initialProps: { style: INITIAL, resetKey: '1' } },
     )
     act(() => result.current[2]({ opacity: 0.2 }))

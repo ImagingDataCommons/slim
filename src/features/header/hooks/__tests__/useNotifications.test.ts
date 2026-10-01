@@ -78,7 +78,7 @@ describe('useNotifications', () => {
   it('stops listening after unmount', () => {
     const { result, unmount } = renderHook(() => useNotifications())
     unmount()
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     act(() => {
       publishError('late')
     })

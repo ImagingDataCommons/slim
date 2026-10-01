@@ -26,15 +26,15 @@ function publishFrame(
 
 beforeEach(() => {
   frameCallbacks = []
-  jest.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
     frameCallbacks.push(callback)
     return frameCallbacks.length
   })
-  jest.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
+  vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
 })
 
 afterEach(() => {
-  jest.restoreAllMocks()
+  vi.restoreAllMocks()
 })
 
 describe('useTileCounts', () => {
@@ -95,7 +95,7 @@ describe('useTileCounts', () => {
   })
 
   it('removes listeners and cancels the pending frame on unmount', () => {
-    const removeSpy = jest.spyOn(document.body, 'removeEventListener')
+    const removeSpy = vi.spyOn(document.body, 'removeEventListener')
     const { unmount } = renderHook(() => useTileCounts())
     publishFrame('started', 'a', 1)
     unmount()

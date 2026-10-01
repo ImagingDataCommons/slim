@@ -13,7 +13,7 @@ describe('usePreferences', () => {
   })
 
   afterEach(() => {
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
   })
 
   it('returns the defaults when nothing is stored', () => {
@@ -33,7 +33,7 @@ describe('usePreferences', () => {
   it('does not read storage again on re-render', () => {
     const { result, rerender } = renderHook(() => usePreferences())
     const first = result.current
-    const getItem = jest.spyOn(Storage.prototype, 'getItem')
+    const getItem = vi.spyOn(Storage.prototype, 'getItem')
     rerender()
     rerender()
     expect(getItem).not.toHaveBeenCalled()

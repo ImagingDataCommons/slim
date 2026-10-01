@@ -9,7 +9,7 @@ function publish(target: EventTarget, type: string, payload: unknown): void {
 describe('subscribeDmvEvents', () => {
   it('passes detail.payload to the matching handler', () => {
     const target = new EventTarget()
-    const onVisibility = jest.fn()
+    const onVisibility = vi.fn()
     subscribeDmvEvents(target, {
       dicommicroscopyviewer_segment_visibility_changed: onVisibility,
     })
@@ -25,7 +25,7 @@ describe('subscribeDmvEvents', () => {
 
   it('ignores events that are not CustomEvents', () => {
     const target = new EventTarget()
-    const onStarted = jest.fn()
+    const onStarted = vi.fn()
     subscribeDmvEvents(target, {
       dicommicroscopyviewer_loading_started: onStarted,
     })
@@ -35,7 +35,7 @@ describe('subscribeDmvEvents', () => {
 
   it('passes undefined when the event has no detail', () => {
     const target = new EventTarget()
-    const onEnded = jest.fn()
+    const onEnded = vi.fn()
     subscribeDmvEvents(target, { dicommicroscopyviewer_loading_ended: onEnded })
     target.dispatchEvent(new CustomEvent('dicommicroscopyviewer_loading_ended'))
     expect(onEnded).toHaveBeenCalledWith(undefined)
@@ -43,9 +43,9 @@ describe('subscribeDmvEvents', () => {
 
   it('removes every listener once, including error events', () => {
     const target = new EventTarget()
-    const removeSpy = jest.spyOn(target, 'removeEventListener')
-    const onError = jest.fn()
-    const onFrameError = jest.fn()
+    const removeSpy = vi.spyOn(target, 'removeEventListener')
+    const onError = vi.fn()
+    const onFrameError = vi.fn()
     const unsubscribe = subscribeDmvEvents(target, {
       dicommicroscopyviewer_loading_error: onError,
       dicommicroscopyviewer_frame_loading_error: onFrameError,
@@ -61,7 +61,7 @@ describe('subscribeDmvEvents', () => {
 
   it('skips undefined handlers', () => {
     const target = new EventTarget()
-    const addSpy = jest.spyOn(target, 'addEventListener')
+    const addSpy = vi.spyOn(target, 'addEventListener')
     subscribeDmvEvents(target, { dicommicroscopyviewer_roi_drawn: undefined })
     expect(addSpy).not.toHaveBeenCalled()
   })
@@ -70,8 +70,8 @@ describe('subscribeDmvEvents', () => {
 describe('subscribeDomEvents', () => {
   it('adds and removes all listeners in the table', () => {
     const target = new EventTarget()
-    const onKeyUp = jest.fn()
-    const onKeyDown = jest.fn()
+    const onKeyUp = vi.fn()
+    const onKeyDown = vi.fn()
     const unsubscribe = subscribeDomEvents(target, [
       ['keyup', onKeyUp],
       ['keydown', onKeyDown],

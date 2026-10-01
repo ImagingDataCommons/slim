@@ -31,7 +31,7 @@ describe('NotificationMiddleware', () => {
   })
 
   it('publishes OnError and an error toast for toast categories', () => {
-    const listener = jest.fn<void, [ErrorNotification]>()
+    const listener = vi.fn<(...args: [ErrorNotification]) => void>()
     NotificationMiddleware.subscribe(
       NotificationMiddlewareEvents.OnError,
       listener,
