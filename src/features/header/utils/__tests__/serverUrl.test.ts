@@ -17,10 +17,10 @@ describe('isValidServerUrl', () => {
     expect(isValidServerUrl('  https://example.org/dicomweb/  ')).toBe(true)
   })
 
-  it('rejects a bare origin', () => {
-    expect(isValidServerUrl('https://example.org')).toBe(false)
-    expect(isValidServerUrl('https://example.org/')).toBe(false)
-    expect(isValidServerUrl('http://localhost:8008')).toBe(false)
+  it('accepts a bare origin', () => {
+    expect(isValidServerUrl('https://example.org')).toBe(true)
+    expect(isValidServerUrl('https://example.org/')).toBe(true)
+    expect(isValidServerUrl('http://localhost:8008')).toBe(true)
   })
 
   it('rejects malformed URLs and other schemes', () => {

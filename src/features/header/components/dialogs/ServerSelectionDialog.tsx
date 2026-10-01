@@ -271,7 +271,7 @@ export function ServerSelectionDialog({
                 >
                   {isServerUrlValid
                     ? 'Looks like a valid DICOMweb endpoint.'
-                    : 'Enter an http(s) URL with a path, or a projects/…/dicomStores/… path.'}
+                    : 'Enter an http(s) URL, or a projects/…/dicomStores/… path.'}
                 </span>
               )}
             </label>
