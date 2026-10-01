@@ -17,11 +17,13 @@ import { cn } from '../../../lib/utils'
 import type { AppInfo } from '../../../utils/appInfo'
 import { isViewerPath, parseSeriesInstanceUID } from '../../../utils/routes'
 import { PreferencesDialog, type PreferencesTab } from '../../preferences'
+import { useCustomLogo } from '../hooks/useCustomLogo'
 import { useNotifications } from '../hooks/useNotifications'
 import {
   type ServerSelectionParams,
   useServerSelection,
 } from '../hooks/useServerSelection'
+import { customLogoUrl } from '../utils/customLogo'
 import { DebugDialog } from './dialogs/DebugDialog'
 import { DicomTagBrowserDialog } from './dialogs/DicomTagBrowserDialog'
 import { ServerSelectionDialog } from './dialogs/ServerSelectionDialog'
@@ -101,6 +103,9 @@ export function Header({
     resetKey: location.pathname,
   })
 
+  const customLogo = useCustomLogo(customLogoUrl(import.meta.env.BASE_URL))
+  const [failedLogo, setFailedLogo] = useState<string | undefined>(undefined)
+
   const [isDebugDialogOpen, setIsDebugDialogOpen] = useState(false)
   const [isTagBrowserOpen, setIsTagBrowserOpen] = useState(false)
   const [preferencesTab, setPreferencesTab] = useState<PreferencesTab | null>(
@@ -127,12 +132,23 @@ export function Header({
     <>
       <header className="flex h-header flex-none items-center gap-4 border-b border-line bg-panel pl-5 pr-3">
         <div className="flex flex-none items-center gap-2">
-          <div className="h-6 w-6 overflow-hidden rounded-[6px] bg-brand text-white">
-            <SlimLogoMark className="h-full w-full" />
-          </div>
-          <div className="text-[15px] font-semibold leading-none tracking-[-0.01em] text-ink">
-            Slim
-          </div>
+          {customLogo !== undefined && customLogo !== failedLogo ? (
+            <img
+              src={customLogo}
+              alt="Slim"
+              className="block h-8 w-auto max-w-[240px] object-contain"
+              onError={() => setFailedLogo(customLogo)}
+            />
+          ) : (
+            <>
+              <div className="h-6 w-6 overflow-hidden rounded-[6px] bg-brand text-white">
+                <SlimLogoMark className="h-full w-full" />
+              </div>
+              <div className="text-[15px] font-semibold leading-none tracking-[-0.01em] text-ink">
+                Slim
+              </div>
+            </>
+          )}
           <div className="rounded-sm border border-line px-1.5 py-[3px] font-mono text-11 font-medium leading-none text-ink-muted">
             v{app.version}
           </div>
