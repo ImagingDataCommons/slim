@@ -8,7 +8,7 @@ import { defineConfig } from 'astro/config'
 const slimSrc = fileURLToPath(new URL('../src', import.meta.url))
 
 export default defineConfig({
-  site: process.env.SITE_URL ?? 'https://slim-viewer.web.app',
+  site: process.env.SITE_URL ?? 'https://slim-website.web.app',
   output: 'static',
   trailingSlash: 'ignore',
   build: {

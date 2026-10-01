@@ -30,7 +30,7 @@ export async function GET(context: APIContext): Promise<Response> {
   return rss({
     title: 'Slim release notes',
     description: site.description,
-    site: context.site ?? 'https://slim-viewer.web.app',
+    site: context.site ?? 'https://slim-website.web.app',
     items,
     customData: '<language>en</language>',
   })
