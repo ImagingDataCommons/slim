@@ -1,10 +1,66 @@
 import {
+  INITIAL_VIEWPORT_LOADING,
   INITIAL_VIEWPORT_LOADING_PHASE,
   isViewportLoading,
   nextViewportLoadingPhase,
+  type ViewportLoadingAction,
   type ViewportLoadingEvent,
   type ViewportLoadingPhase,
+  viewportLoadingReducer,
 } from '../viewportLoading'
+
+describe('viewportLoadingReducer', () => {
+  const reduce = (actions: ViewportLoadingAction[]) =>
+    actions.reduce(viewportLoadingReducer, INITIAL_VIEWPORT_LOADING)
+
+  it('tracks the busy flag and the first-image phase together', () => {
+    expect(reduce([{ type: 'loadingStarted' }])).toEqual({
+      isLoading: true,
+      phase: 'loading',
+    })
+    expect(
+      reduce([{ type: 'loadingStarted' }, { type: 'loadingEnded' }]),
+    ).toEqual({ isLoading: false, phase: 'ready' })
+  })
+
+  it('keeps the busy flag when loading fails', () => {
+    expect(
+      reduce([{ type: 'loadingStarted' }, { type: 'loadingFailed' }]),
+    ).toEqual({ isLoading: true, phase: 'ready' })
+  })
+
+  it('ends loading once the last pending frame settles', () => {
+    const started = reduce([{ type: 'loadingStarted' }])
+    expect(
+      viewportLoadingReducer(started, {
+        type: 'frameSettled',
+        hasPendingFrames: true,
+      }),
+    ).toEqual({ isLoading: true, phase: 'loading' })
+    expect(
+      viewportLoadingReducer(started, {
+        type: 'frameSettled',
+        hasPendingFrames: false,
+      }),
+    ).toEqual({ isLoading: false, phase: 'ready' })
+  })
+
+  it('waits again after a reset', () => {
+    expect(
+      reduce([
+        { type: 'loadingStarted' },
+        { type: 'loadingEnded' },
+        { type: 'reset' },
+      ]),
+    ).toEqual(INITIAL_VIEWPORT_LOADING)
+  })
+
+  it('returns the same state when nothing changes', () => {
+    expect(
+      viewportLoadingReducer(INITIAL_VIEWPORT_LOADING, { type: 'reset' }),
+    ).toBe(INITIAL_VIEWPORT_LOADING)
+  })
+})
 
 const run = (events: ViewportLoadingEvent[]): ViewportLoadingPhase =>
   events.reduce(nextViewportLoadingPhase, INITIAL_VIEWPORT_LOADING_PHASE)

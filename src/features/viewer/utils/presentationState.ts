@@ -81,6 +81,17 @@ export function matchBlendingItems<B extends BlendingItem>(
   return matches
 }
 
+/** Append `instance`, replacing a listed instance with the same UID in place */
+export function upsertBySopInstanceUID<T extends { SOPInstanceUID: string }>(
+  list: readonly T[],
+  instance: T,
+): T[] {
+  const byUID = new Map<string, T>()
+  for (const item of list) byUID.set(item.SOPInstanceUID, item)
+  byUID.set(instance.SOPInstanceUID, instance)
+  return [...byUID.values()]
+}
+
 /** VOI window as `[lower, upper]` limit values, if the item defines one. */
 export function windowLimitValues(
   item: BlendingItem,

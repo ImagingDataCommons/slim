@@ -1,8 +1,40 @@
+import * as dcmjs from 'dcmjs'
+
 import {
   buildDefaultRoiStyle,
   formatRoiRemovalMessage,
+  getRoiKey,
   roiStrokeToCssColor,
 } from '../roiUtils'
+
+describe('getRoiKey', () => {
+  const finding = (value: string, schemeDesignator: string) =>
+    new dcmjs.sr.valueTypes.CodeContentItem({
+      name: new dcmjs.sr.coding.CodedConcept({
+        value: '121071',
+        meaning: 'Finding',
+        schemeDesignator: 'DCM',
+      }),
+      value: new dcmjs.sr.coding.CodedConcept({
+        value,
+        meaning: 'Tissue',
+        schemeDesignator,
+      }),
+      relationshipType: 'CONTAINS',
+    })
+
+  it('keys the ROI by its finding as SCHEME:VALUE', () => {
+    expect(
+      getRoiKey({ uid: 'roi-1', evaluations: [finding('85756007', 'SCT')] }),
+    ).toBe('SCT:85756007')
+  })
+
+  it('is undefined for an ROI without a finding', () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+    expect(getRoiKey({ uid: 'roi-2', evaluations: [] })).toBeUndefined()
+    jest.restoreAllMocks()
+  })
+})
 
 describe('formatRoiRemovalMessage', () => {
   it('uses singular and plural forms', () => {

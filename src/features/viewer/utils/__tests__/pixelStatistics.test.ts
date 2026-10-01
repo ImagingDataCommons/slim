@@ -1,4 +1,30 @@
-import { computePixelRange, mergePixelStatistics } from '../pixelStatistics'
+import {
+  computePixelRange,
+  mergePixelStatistics,
+  type PixelStatistics,
+  recordFirstFrameStatistics,
+} from '../pixelStatistics'
+
+describe('recordFirstFrameStatistics', () => {
+  it('records the first frame of each optical path only', () => {
+    const statistics = new Map<string, PixelStatistics>()
+    recordFirstFrameStatistics(statistics, '1', new Uint8Array([4, 9]))
+    recordFirstFrameStatistics(statistics, '1', new Uint8Array([0, 255]))
+    recordFirstFrameStatistics(statistics, '2', new Uint8Array([7]))
+
+    expect(statistics.get('1')).toEqual({ min: 4, max: 9, numFramesSampled: 1 })
+    expect(statistics.get('2')).toEqual({ min: 7, max: 7, numFramesSampled: 1 })
+  })
+
+  it('ignores missing and empty pixel data', () => {
+    const statistics = new Map<string, PixelStatistics>()
+    recordFirstFrameStatistics(statistics, '1', null)
+    recordFirstFrameStatistics(statistics, '1', undefined)
+    recordFirstFrameStatistics(statistics, '1', new Uint8Array(0))
+
+    expect(statistics.size).toBe(0)
+  })
+})
 
 describe('computePixelRange', () => {
   it('returns undefined for an empty array', () => {

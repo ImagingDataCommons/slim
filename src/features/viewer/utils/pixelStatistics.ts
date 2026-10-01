@@ -26,6 +26,24 @@ export function computePixelRange(
   return { min, max }
 }
 
+/**
+ * Record the statistics of an optical path's first loaded frame; later
+ * frames of the same path are ignored.
+ */
+export function recordFirstFrameStatistics(
+  statistics: Map<string, PixelStatistics>,
+  opticalPathIdentifier: string,
+  pixels: ArrayLike<number> | null | undefined,
+): void {
+  if (statistics.has(opticalPathIdentifier) || pixels == null) return
+  const range = computePixelRange(pixels)
+  if (range === undefined) return
+  statistics.set(
+    opticalPathIdentifier,
+    mergePixelStatistics(statistics.get(opticalPathIdentifier), range),
+  )
+}
+
 /** Fold one sampled frame's range into the running statistics. */
 export function mergePixelStatistics(
   previous: PixelStatistics | undefined,

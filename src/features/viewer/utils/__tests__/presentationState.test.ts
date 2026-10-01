@@ -3,6 +3,7 @@ import {
   matchBlendingItems,
   referencesSlideSeries,
   shouldApplyPresentationState,
+  upsertBySopInstanceUID,
   windowLimitValues,
 } from '../presentationState'
 
@@ -117,5 +118,21 @@ describe('windowLimitValues', () => {
     expect(
       windowLimitValues(item({ SoftcopyVOILUTSequence: [] })),
     ).toBeUndefined()
+  })
+})
+
+describe('upsertBySopInstanceUID', () => {
+  it('appends new instances and replaces listed ones in place', () => {
+    const first = { SOPInstanceUID: 'a', version: 1 }
+    const second = { SOPInstanceUID: 'b', version: 1 }
+    const list = [first, second]
+
+    expect(
+      upsertBySopInstanceUID(list, { SOPInstanceUID: 'c', version: 1 }),
+    ).toEqual([first, second, { SOPInstanceUID: 'c', version: 1 }])
+    expect(
+      upsertBySopInstanceUID(list, { SOPInstanceUID: 'a', version: 2 }),
+    ).toEqual([{ SOPInstanceUID: 'a', version: 2 }, second])
+    expect(list).toEqual([first, second])
   })
 })

@@ -2,26 +2,13 @@
 import * as dcmjs from 'dcmjs'
 /** skipcq: JS-C1003 - dmv uses nested namespaces (dmv.roi, dmv.scoord3d) */
 import type * as dmv from 'dicom-microscopy-viewer'
+import { codedConceptKey } from '../../../utils/dicom/codedConcept'
 import { findContentItemsByName } from '../../../utils/sr'
 
-/**
- * Builds a key for a concept based on its coding scheme and value
- */
-export const buildKey = (concept: {
-  CodeValue: string
-  CodeMeaning: string
-  CodingSchemeDesignator: string
-  CodingSchemeVersion?: string
-}): string => {
-  const codingScheme = concept.CodingSchemeDesignator
-  const codeValue = concept.CodeValue
-  return `${codingScheme}-${codeValue}`
-}
-
-/**
- * Gets the ROI key from a ROI object
- */
-export const getRoiKey = (roi: dmv.roi.ROI): string | undefined => {
+/** {@link codedConceptKey} of the ROI's finding, if it has one */
+export const getRoiKey = (
+  roi: Pick<dmv.roi.ROI, 'uid' | 'evaluations'>,
+): string | undefined => {
   const matches = findContentItemsByName({
     content: roi.evaluations,
     name: new dcmjs.sr.coding.CodedConcept({
@@ -35,8 +22,7 @@ export const getRoiKey = (roi: dmv.roi.ROI): string | undefined => {
     return
   }
   const finding = matches[0] as dcmjs.sr.valueTypes.CodeContentItem
-  const findingName = finding.ConceptCodeSequence[0]
-  return buildKey(findingName)
+  return codedConceptKey(finding.ConceptCodeSequence[0])
 }
 
 /**

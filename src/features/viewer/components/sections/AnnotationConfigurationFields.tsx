@@ -5,7 +5,6 @@ import type {
   Evaluation,
   EvaluationOptions,
 } from '../../../../components/SlideViewer/types'
-import { buildKey } from '../../../../components/SlideViewer/utils/roiUtils'
 import {
   buildCodedConceptOptions,
   buildGeometryTypeOptions,
@@ -14,6 +13,7 @@ import {
   selectedConceptValue,
 } from '../../../../components/SlideViewer/utils/selectOptions'
 import { Checkbox } from '../../../../components/ui/checkbox'
+import { codedConceptKey } from '../../../../utils/dicom/codedConcept'
 import { OptionSelect } from '../OptionSelect'
 
 type CodedConcept = dcmjs.sr.coding.CodedConcept
@@ -68,7 +68,7 @@ function EvaluationField({
     `evaluation-${index}`,
   )
   const selectedValue = selectedEvaluations.find(
-    (item) => buildKey(item.name) === buildKey(evaluation.name),
+    (item) => codedConceptKey(item.name) === codedConceptKey(evaluation.name),
   )?.value
   return (
     <Field label={evaluation.name.CodeMeaning}>
@@ -107,7 +107,7 @@ export function AnnotationConfigurationFields({
 }: AnnotationConfigurationFieldsProps): React.ReactElement {
   const findingOptions = buildCodedConceptOptions(findings, 'finding')
   const findingKey =
-    selectedFinding !== undefined ? buildKey(selectedFinding) : ''
+    selectedFinding !== undefined ? codedConceptKey(selectedFinding) : ''
   return (
     <>
       <Field label="Finding">
@@ -125,7 +125,7 @@ export function AnnotationConfigurationFields({
         <>
           {evaluationOptions.map((evaluation, index) => (
             <EvaluationField
-              key={`eval-${findingKey}-${buildKey(evaluation.name)}`}
+              key={`eval-${findingKey}-${codedConceptKey(evaluation.name)}`}
               evaluation={evaluation}
               index={index}
               selectedEvaluations={selectedEvaluations}
