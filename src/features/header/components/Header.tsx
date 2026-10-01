@@ -295,7 +295,6 @@ export function Header({
 
       <ServerSelectionDialog
         selection={serverSelection}
-        currentServerUrl={currentServerUrl}
         defaultServerUrl={defaultServerUrl}
       />
     </>

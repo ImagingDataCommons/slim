@@ -38,13 +38,16 @@ export function loadServerSelection(
   )
 }
 
-/** Persist the mode; the URL is stored for custom mode and cleared otherwise. */
+/**
+ * Persist the mode and the custom URL. The URL is kept in default mode too,
+ * so switching back to the custom server offers it again.
+ */
 export function saveServerSelection(
   storage: Storage | undefined,
   selection: ServerSelection,
 ): void {
   writeToStorage(storage, SERVER_MODE_STORAGE_KEY, selection.mode)
-  if (selection.mode === 'custom') {
+  if (selection.url !== '') {
     writeToStorage(storage, SERVER_URL_STORAGE_KEY, selection.url)
   } else {
     removeFromStorage(storage, SERVER_URL_STORAGE_KEY)

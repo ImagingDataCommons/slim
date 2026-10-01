@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 
 import { OIDC_CONFIG_STORAGE_KEY } from '../../../../auth/oidcConfig'
+import { loadServerSelection } from '../../../../utils/serverSelectionStorage'
 import { useServerSelection } from '../useServerSelection'
 
 const VALID_OIDC =
@@ -52,6 +53,30 @@ describe('useServerSelection', () => {
     expect(window.localStorage.getItem(OIDC_CONFIG_STORAGE_KEY)).toBe(
       VALID_OIDC,
     )
+  })
+
+  it('remembers the custom URL after switching back to the default', () => {
+    const { result, onServerSelection } = renderSelection()
+
+    act(() => result.current.openDialog())
+    act(() => {
+      result.current.setMode('custom')
+      result.current.setServerUrl('https://dicom.example.com/dicomweb')
+    })
+    act(() => result.current.submitSelection())
+    act(() => result.current.openDialog())
+    act(() => result.current.setMode('default'))
+    act(() => result.current.submitSelection())
+
+    expect(onServerSelection).toHaveBeenLastCalledWith({
+      url: '',
+      oidc: undefined,
+    })
+    expect(result.current.serverUrl).toBe('https://dicom.example.com/dicomweb')
+    expect(loadServerSelection(window.localStorage)).toEqual({
+      url: 'https://dicom.example.com/dicomweb',
+      mode: 'default',
+    })
   })
 
   it('blocks submission while the OIDC config is invalid', () => {

@@ -1,8 +1,7 @@
 import type * as React from 'react'
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 
 import { Button } from '../../../../components/ui/button'
-import { CopyButton } from '../../../../components/ui/copy-button'
 import {
   Dialog,
   DialogContent,
@@ -11,83 +10,15 @@ import {
 } from '../../../../components/ui/dialog'
 import { Icon } from '../../../../components/ui/icon'
 import { cn } from '../../../../lib/utils'
-import type { UseServerSelectionReturn } from '../../hooks/useServerSelection'
+import type {
+  ServerSelectionMode,
+  UseServerSelectionReturn,
+} from '../../hooks/useServerSelection'
 
 export interface ServerSelectionDialogProps {
   /** State and actions from `useServerSelection`; it also owns `open` */
   selection: UseServerSelectionReturn
-  /** Server the app is connected to right now */
-  currentServerUrl?: string
   defaultServerUrl?: string
-}
-
-function ServerOption({
-  selected,
-  title,
-  description,
-  onSelect,
-}: {
-  selected: boolean
-  title: string
-  description: string
-  onSelect: () => void
-}): React.ReactElement {
-  return (
-    <label
-      className={cn(
-        'flex cursor-pointer gap-3 rounded-card border px-3.5 py-3 text-left transition-colors has-focus-visible:ring-2 has-focus-visible:ring-primary/30',
-        selected
-          ? 'border-primary bg-selected shadow-selected-ring'
-          : 'border-line bg-panel hover:border-line-hover',
-      )}
-    >
-      <input
-        type="radio"
-        name="dicomweb-server"
-        checked={selected}
-        onChange={onSelect}
-        className="sr-only"
-      />
-      <span
-        className={cn(
-          'mt-px grid h-[18px] w-[18px] flex-none place-items-center rounded-full border-2',
-          selected ? 'border-primary' : 'border-switch-off',
-        )}
-      >
-        <span
-          className={cn(
-            'h-2 w-2 rounded-full',
-            selected ? 'bg-primary' : 'bg-transparent',
-          )}
-        />
-      </span>
-      <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
-        <span className="font-semibold text-ink">{title}</span>
-        <span className="break-all font-mono text-11.5 text-ink-muted">
-          {description}
-        </span>
-      </span>
-    </label>
-  )
-}
-
-function CurrentServer({ url }: { url: string }): React.ReactElement {
-  return (
-    <div className="flex items-center gap-3 rounded-card border border-line bg-subtle px-3.5 py-2.5">
-      <span className="h-[7px] w-[7px] flex-none rounded-full bg-success" />
-      <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
-        <span className="text-11 font-semibold uppercase tracking-[0.06em] text-ink-secondary">
-          Connected to
-        </span>
-        <span className="break-all font-mono text-12 text-ink">{url}</span>
-      </div>
-      <CopyButton
-        text={url}
-        aria-label="Copy server URL"
-        className="flex-none text-ink-secondary"
-      />
-    </div>
-  )
 }
 
 const OIDC_EXAMPLE = `{
@@ -97,94 +28,89 @@ const OIDC_EXAMPLE = `{
   "grantType": "implicit"
 }`
 
-function OidcConfigSection({
-  value,
-  isValid,
-  onChange,
+const FIELD_CLASS =
+  'w-full rounded-lg border bg-panel font-mono text-12.5 text-ink outline-hidden transition-colors placeholder:text-ink-fainter focus:border-primary focus:ring-[3px] focus:ring-primary/15'
+
+const FIELD_ERROR_CLASS =
+  'border-destructive/70 ring-[3px] ring-destructive/12 focus:border-destructive/70 focus:ring-destructive/12'
+
+function FieldError({
+  id,
+  children,
 }: {
-  value: string
-  isValid: boolean
-  onChange: (input: string) => void
+  id: string
+  children: React.ReactNode
 }): React.ReactElement {
-  const [isOpen, setIsOpen] = useState(value.trim() !== '')
-  const textareaId = useId()
-  const errorId = useId()
-  const hasError = value.trim() !== '' && !isValid
   return (
-    <div className="mt-1 rounded-card border border-line">
-      <button
-        type="button"
-        aria-expanded={isOpen}
-        aria-controls={textareaId}
-        onClick={() => setIsOpen((open) => !open)}
-        className="flex w-full items-center gap-2 rounded-card px-3.5 py-2.5 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
-      >
-        <Icon
-          name={isOpen ? 'expand_more' : 'chevron_right'}
-          size={18}
-          className="text-ink-faint"
-        />
-        <span className="flex-1 font-semibold text-ink">
-          Sign-in (OIDC)
-          <span className="ml-1.5 font-normal text-ink-muted">optional</span>
-        </span>
-        {value.trim() !== '' && (
-          <span
-            className={cn(
-              'rounded-full px-1.5 py-[3px] text-11 font-semibold leading-none',
-              isValid
-                ? 'bg-primary-soft text-primary'
-                : 'bg-destructive/10 text-destructive-text',
-            )}
-          >
-            {isValid ? 'Custom' : 'Invalid'}
-          </span>
-        )}
-      </button>
-      {isOpen && (
-        <div className="flex flex-col gap-1.5 px-3.5 pb-3.5 text-12 text-ink-muted">
-          <label htmlFor={textareaId}>
-            Override the deployment's identity provider. Leave empty to use the
-            default.
-          </label>
-          <textarea
-            id={textareaId}
-            rows={5}
-            value={value}
-            onChange={(event) => onChange(event.target.value)}
-            placeholder={OIDC_EXAMPLE}
-            spellCheck={false}
-            aria-invalid={hasError}
-            aria-describedby={hasError ? errorId : undefined}
-            className={cn(
-              'resize-y rounded-lg border bg-panel px-2.5 py-2 font-mono text-12 leading-normal text-ink outline-hidden placeholder:text-ink-fainter focus:border-primary',
-              hasError
-                ? 'border-destructive/70 shadow-[0_0_0_3px_rgb(var(--destructive)/0.12)]'
-                : 'border-line-input',
-            )}
-          />
-          {hasError && (
-            <span id={errorId} className="text-destructive-text">
-              Invalid JSON. Required fields: authority, clientId, scope.
-            </span>
-          )}
-        </div>
+    <p
+      id={id}
+      className="m-0 flex items-start gap-1.5 text-12 text-destructive-text"
+    >
+      <Icon name="error" size={14} className="mt-px flex-none" />
+      {children}
+    </p>
+  )
+}
+
+function ServerOption({
+  name,
+  value,
+  checked,
+  onSelect,
+  title,
+  description,
+  children,
+}: {
+  name: string
+  value: ServerSelectionMode
+  checked: boolean
+  onSelect: (value: ServerSelectionMode) => void
+  title: string
+  description: React.ReactNode
+  children?: React.ReactNode
+}): React.ReactElement {
+  return (
+    <div
+      className={cn(
+        'flex flex-col gap-3 rounded-card border px-3.5 py-3 transition-colors',
+        checked ? 'border-primary bg-primary/5' : 'border-line',
       )}
+    >
+      <label className="flex cursor-pointer items-start gap-3">
+        <input
+          type="radio"
+          name={name}
+          value={value}
+          checked={checked}
+          onChange={() => onSelect(value)}
+          className="mt-0.5 size-4 flex-none cursor-pointer accent-primary"
+        />
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-13 font-semibold text-ink">{title}</span>
+          <span className="break-all text-12 text-ink-muted">
+            {description}
+          </span>
+        </span>
+      </label>
+      {children}
     </div>
   )
 }
 
+/**
+ * Pick the deployment's default DICOMweb server or a custom one, with
+ * optional OpenID Connect settings for signing in to it.
+ */
 export function ServerSelectionDialog({
   selection,
-  currentServerUrl,
   defaultServerUrl,
 }: ServerSelectionDialogProps): React.ReactElement {
   const {
     isDialogOpen,
     serverUrl,
     mode,
-    isValid,
     isServerUrlValid,
+    isValid,
     oidcConfigInput,
     isOidcConfigValid,
     setServerUrl,
@@ -193,105 +119,194 @@ export function ServerSelectionDialog({
     submitSelection,
     cancelDialog,
   } = selection
-  const urlMessageId = useId()
-  const showUrlState = serverUrl !== ''
-  const urlOk = !showUrlState || isServerUrlValid
+  const modeName = useId()
+  const urlId = useId()
+  const urlHintId = useId()
+  const urlErrorId = useId()
+  const oidcId = useId()
+  const oidcHintId = useId()
+  const oidcErrorId = useId()
+  const urlRef = useRef<HTMLInputElement>(null)
+  /** Errors wait for blur or Enter so typing a URL does not flash red */
+  const [isUrlTouched, setIsUrlTouched] = useState(false)
+
+  const isCustom = mode === 'custom'
+  const hasUrlError = isCustom && isUrlTouched && !isServerUrlValid
+  const hasOidcInput = oidcConfigInput.trim() !== ''
+  const hasOidcError = hasOidcInput && !isOidcConfigValid
+
+  const selectMode = (value: ServerSelectionMode): void => {
+    setMode(value)
+    setIsUrlTouched(false)
+    if (value === 'custom') {
+      requestAnimationFrame(() => urlRef.current?.focus())
+    }
+  }
+
+  const close = (): void => {
+    setIsUrlTouched(false)
+    cancelDialog()
+  }
 
   return (
     <Dialog
       open={isDialogOpen}
       onOpenChange={(open) => {
-        if (!open) cancelDialog()
+        if (!open) close()
       }}
     >
-      <DialogContent className="max-w-[520px]">
+      <DialogContent
+        className="max-w-[560px]"
+        onOpenAutoFocus={(event) => {
+          if (!isCustom) return
+          event.preventDefault()
+          urlRef.current?.focus()
+        }}
+      >
         <SlimDialogHeader
           icon="dns"
-          title="DICOMweb server"
-          subtitle="Choose where studies are loaded from"
+          title="Select DICOMweb server"
+          subtitle="The server Slim loads studies and slides from"
         />
-        <fieldset className="m-0 flex min-w-0 flex-col gap-2.5 overflow-auto border-0 px-5 pb-5 pt-[18px]">
-          <legend className="sr-only">Server</legend>
-          {currentServerUrl !== undefined && currentServerUrl !== '' && (
-            <CurrentServer url={currentServerUrl} />
-          )}
-          <ServerOption
-            selected={mode === 'default'}
-            title="Default server"
-            description={defaultServerUrl ?? 'Configured in the deployment'}
-            onSelect={() => setMode('default')}
-          />
-          <ServerOption
-            selected={mode === 'custom'}
-            title="Custom server"
-            description="Full DICOMweb URL or Google Cloud DICOM store path"
-            onSelect={() => setMode('custom')}
-          />
-          {mode === 'custom' && (
-            <label className="mt-1 flex flex-col gap-1.5 text-12 text-ink-muted">
-              Server URL
-              <div
-                className={cn(
-                  'flex h-[38px] items-center gap-2 rounded-lg border px-2.5 focus-within:border-primary',
-                  urlOk
-                    ? 'border-line-input'
-                    : 'border-destructive/70 shadow-[0_0_0_3px_rgb(var(--destructive)/0.12)]',
-                )}
-              >
-                <input
-                  autoFocus
-                  value={serverUrl}
-                  onChange={(event) => setServerUrl(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' && isValid) submitSelection()
-                  }}
-                  aria-invalid={!urlOk}
-                  aria-describedby={showUrlState ? urlMessageId : undefined}
-                  placeholder="https://… or /projects/…/dicomStores/…"
-                  className="min-w-0 flex-1 border-0 bg-transparent font-mono text-12.5 text-ink outline-hidden placeholder:text-ink-fainter"
-                />
-                {showUrlState && (
-                  <Icon
-                    name={isServerUrlValid ? 'check_circle' : 'error'}
-                    size={18}
-                    className={
-                      isServerUrlValid ? 'text-success' : 'text-destructive'
-                    }
-                  />
-                )}
-              </div>
-              {showUrlState && (
-                <span
-                  id={urlMessageId}
-                  className={
-                    isServerUrlValid
-                      ? 'text-ink-muted'
-                      : 'text-destructive-text'
-                  }
-                >
-                  {isServerUrlValid
-                    ? 'Looks like a valid DICOMweb endpoint.'
-                    : 'Enter an http(s) URL, or a projects/…/dicomStores/… path.'}
-                </span>
+        <div className="flex min-h-0 flex-col gap-6 overflow-auto px-5 py-5">
+          <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
+            <legend className="sr-only">Server</legend>
+            <ServerOption
+              name={modeName}
+              value="default"
+              checked={!isCustom}
+              onSelect={selectMode}
+              title="Use default server"
+              description={
+                defaultServerUrl !== undefined && defaultServerUrl !== ''
+                  ? defaultServerUrl
+                  : "The server set in this deployment's configuration"
+              }
+            />
+            <ServerOption
+              name={modeName}
+              value="custom"
+              checked={isCustom}
+              onSelect={selectMode}
+              title="Use custom server"
+              description="A DICOMweb URL or a Google Cloud DICOM store path"
+            >
+              {isCustom && (
+                <div className="flex flex-col gap-1.5 pl-7">
+                  <label htmlFor={urlId} className="sr-only">
+                    Server URL
+                  </label>
+                  <div className="relative">
+                    <input
+                      id={urlId}
+                      ref={urlRef}
+                      type="text"
+                      value={serverUrl}
+                      onChange={(event) => setServerUrl(event.target.value)}
+                      onBlur={() => setIsUrlTouched(true)}
+                      onKeyDown={(event) => {
+                        if (event.key !== 'Enter') return
+                        event.preventDefault()
+                        setIsUrlTouched(true)
+                        if (isValid) submitSelection()
+                      }}
+                      aria-invalid={hasUrlError}
+                      aria-describedby={hasUrlError ? urlErrorId : urlHintId}
+                      placeholder="Full URL or GCP path (e.g. /projects/.../dicomStores/my-store)"
+                      spellCheck={false}
+                      autoComplete="off"
+                      className={cn(
+                        FIELD_CLASS,
+                        'h-9 pl-3 pr-9',
+                        hasUrlError ? FIELD_ERROR_CLASS : 'border-line-input',
+                      )}
+                    />
+                    <Icon
+                      name={isServerUrlValid ? 'check_circle' : 'error'}
+                      size={16}
+                      aria-hidden
+                      className={cn(
+                        'pointer-events-none absolute right-3 top-1/2 -translate-y-1/2',
+                        isServerUrlValid ? 'text-success' : 'text-ink-faint',
+                      )}
+                    />
+                  </div>
+                  {hasUrlError ? (
+                    <FieldError id={urlErrorId}>
+                      {serverUrl === ''
+                        ? 'Enter the URL of a DICOMweb server.'
+                        : 'Enter a URL starting with http:// or https://, or a Google Cloud DICOM store path.'}
+                    </FieldError>
+                  ) : (
+                    <p id={urlHintId} className="m-0 text-12 text-ink-muted">
+                      Press Enter to connect.
+                    </p>
+                  )}
+                </div>
               )}
-            </label>
-          )}
-          <OidcConfigSection
-            value={oidcConfigInput}
-            isValid={isOidcConfigValid}
-            onChange={setOidcConfigInput}
-          />
-        </fieldset>
+            </ServerOption>
+          </fieldset>
+
+          <section className="flex flex-col gap-2">
+            <div className="flex min-h-6 items-center gap-2">
+              <label
+                htmlFor={oidcId}
+                className="text-13 font-semibold text-ink"
+              >
+                OIDC configuration
+              </label>
+              <span className="text-12 text-ink-muted">Optional</span>
+              {hasOidcInput && (
+                <button
+                  type="button"
+                  onClick={() => setOidcConfigInput('')}
+                  className="ml-auto rounded-sm text-12 font-medium text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <textarea
+              id={oidcId}
+              rows={6}
+              value={oidcConfigInput}
+              onChange={(event) => setOidcConfigInput(event.target.value)}
+              placeholder={OIDC_EXAMPLE}
+              spellCheck={false}
+              aria-invalid={hasOidcError}
+              aria-describedby={hasOidcError ? oidcErrorId : oidcHintId}
+              className={cn(
+                FIELD_CLASS,
+                'resize-y px-3 py-2 text-12 leading-normal',
+                hasOidcError ? FIELD_ERROR_CLASS : 'border-line-input',
+              )}
+            />
+            {hasOidcError ? (
+              <FieldError id={oidcErrorId}>
+                Invalid JSON format. Required fields: authority, clientId and
+                scope.
+              </FieldError>
+            ) : (
+              <p id={oidcHintId} className="m-0 text-12 text-ink-muted">
+                OpenID Connect settings as JSON. Leave empty to sign in with the
+                deployment's identity provider.
+              </p>
+            )}
+          </section>
+        </div>
         <SlimDialogFooter>
-          <Button variant="outline" onClick={cancelDialog}>
+          <Button variant="outline" onClick={close}>
             Cancel
           </Button>
           <Button
-            onClick={submitSelection}
+            onClick={() => {
+              setIsUrlTouched(true)
+              submitSelection()
+            }}
             disabled={!isValid}
             className="font-semibold"
           >
-            Connect
+            OK
           </Button>
         </SlimDialogFooter>
       </DialogContent>

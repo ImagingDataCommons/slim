@@ -119,7 +119,11 @@ export function useServerSelection({
     )
 
     if (mode === 'default') {
-      saveServerSelection(getLocalStorage(), { url: '', mode })
+      const customUrl = isValidServerUrl(serverUrl)
+        ? normalizeServerUrl(serverUrl.trim())
+        : loadServerSelection(getLocalStorage()).url
+      saveServerSelection(getLocalStorage(), { url: customUrl, mode })
+      setServerUrlState(customUrl)
       cacheOidcConfigInput(oidcConfigInput)
       onServerSelection({ url: '', oidc })
       setIsDialogOpen(false)

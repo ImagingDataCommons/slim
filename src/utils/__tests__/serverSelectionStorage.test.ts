@@ -60,7 +60,21 @@ describe('loadServerSelection / saveServerSelection', () => {
     })
   })
 
-  it('clears the stored URL for default mode', () => {
+  it('keeps the custom URL in default mode', () => {
+    saveServerSelection(window.localStorage, {
+      url: 'https://a.org/rs',
+      mode: 'default',
+    })
+    expect(window.localStorage.getItem(SERVER_URL_STORAGE_KEY)).toBe(
+      'https://a.org/rs',
+    )
+    expect(loadServerSelection(window.localStorage)).toEqual({
+      url: 'https://a.org/rs',
+      mode: 'default',
+    })
+  })
+
+  it('clears the stored URL when there is none', () => {
     window.localStorage.setItem(SERVER_URL_STORAGE_KEY, 'https://a.org/rs')
     saveServerSelection(window.localStorage, { url: '', mode: 'default' })
     expect(window.localStorage.getItem(SERVER_URL_STORAGE_KEY)).toBeNull()
