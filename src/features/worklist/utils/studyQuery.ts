@@ -36,5 +36,5 @@ export function extractModalitiesFromSeries(series: unknown[]): string[] {
     const modality = getModality(item)
     if (modality !== undefined) modalities.add(modality)
   })
-  return [...modalities].sort()
+  return [...modalities].sort((a, b) => a.localeCompare(b))
 }

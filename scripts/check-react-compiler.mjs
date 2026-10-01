@@ -58,11 +58,15 @@ function describe(event) {
   return { loc, reason: `${detail.reason}${description}` }
 }
 
-const bailouts = []
-const optOuts = []
-let compiled = 0
+const COMPILER_PROBLEMS = new Set([
+  'CompileError',
+  'CompileDiagnostic',
+  'PipelineError',
+])
 
-for (const file of files) {
+/** Compile one file and sort its compiler events into results */
+function checkFile(file) {
+  const result = { compiled: 0, bailouts: [], optOuts: [] }
   const filename = path.join(root, file)
   const code = fs.readFileSync(filename, 'utf8')
   const ast = babel.parseSync(code, {
@@ -78,23 +82,16 @@ for (const file of files) {
   const logger = {
     logEvent(_filename, event) {
       if (event.kind === 'CompileSuccess') {
-        compiled += 1
+        result.compiled += 1
         return
       }
-      if (
-        event.kind !== 'CompileError' &&
-        event.kind !== 'CompileDiagnostic' &&
-        event.kind !== 'PipelineError'
-      ) {
+      if (!COMPILER_PROBLEMS.has(event.kind)) {
         return
       }
       const { loc, reason } = describe(event)
       const entry = { file, line: loc?.start.line, reason }
-      if (event.fnLoc != null && optedOut.has(locKey(event.fnLoc))) {
-        optOuts.push(entry)
-      } else {
-        bailouts.push(entry)
-      }
+      const isOptOut = event.fnLoc != null && optedOut.has(locKey(event.fnLoc))
+      ;(isOptOut ? result.optOuts : result.bailouts).push(entry)
     },
   }
 
@@ -107,21 +104,32 @@ for (const file of files) {
       ['babel-plugin-react-compiler', { panicThreshold: 'none', logger }],
     ],
   })
+  return result
 }
 
+const results = files.map(checkFile)
+const compiled = results.reduce((sum, result) => sum + result.compiled, 0)
+const bailouts = results.flatMap((result) => result.bailouts)
+const optOuts = results.flatMap((result) => result.optOuts)
+
 const print = ({ file, line, reason }) => `  ${file}:${line ?? '?'}  ${reason}`
+const writeLines = (stream, lines) => stream.write(`${lines.join('\n')}\n`)
 
 if (optOuts.length > 0) {
-  console.log(`Opted out with 'use no memo' (${optOuts.length}):`)
-  console.log(optOuts.map(print).join('\n'))
+  writeLines(process.stdout, [
+    `Opted out with 'use no memo' (${optOuts.length}):`,
+    ...optOuts.map(print),
+  ])
 }
 
 if (bailouts.length > 0) {
-  console.error(`React Compiler bailed out (${bailouts.length}):`)
-  console.error(bailouts.map(print).join('\n'))
+  writeLines(process.stderr, [
+    `React Compiler bailed out (${bailouts.length}):`,
+    ...bailouts.map(print),
+  ])
   process.exit(1)
 }
 
-console.log(
+writeLines(process.stdout, [
   `React Compiler: ${compiled} components/hooks compiled in ${files.length} files, no bailouts.`,
-)
+])

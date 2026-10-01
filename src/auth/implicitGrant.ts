@@ -369,9 +369,11 @@ export const loadInHiddenFrame = (
     frame.width = '0'
     frame.height = '0'
 
+    const listeners = new AbortController()
+    let timer: number | undefined
     const cleanup = (): void => {
       window.clearTimeout(timer)
-      frame.removeEventListener('load', handleLoad)
+      listeners.abort()
       frame.remove()
     }
     const handleLoad = (): void => {
@@ -390,12 +392,12 @@ export const loadInHiddenFrame = (
       cleanup()
       resolve(href)
     }
-    const timer = window.setTimeout(() => {
+    timer = window.setTimeout(() => {
       cleanup()
       reject(new Error('silent renew timed out'))
     }, timeoutMs)
 
-    frame.addEventListener('load', handleLoad)
+    frame.addEventListener('load', handleLoad, { signal: listeners.signal })
     document.body.appendChild(frame)
     frame.src = url
   })

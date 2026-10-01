@@ -20,9 +20,9 @@ globalThis.matchMedia =
 
 /** jsdom has no ResizeObserver; Radix sliders and the viewer layout use it */
 class ResizeObserverStub implements ResizeObserver {
-  observe(): void {}
-  unobserve(): void {}
-  disconnect(): void {}
+  observe = noop
+  unobserve = noop
+  disconnect = noop
 }
 
 if (typeof globalThis.ResizeObserver === 'undefined') {
