@@ -1,11 +1,12 @@
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import type React from 'react'
 
 import { formatPersonName, formatStudyDateTime } from '../utils/displayFormat'
-import { type KeyValueItem, SlimKeyValueGrid } from './slim/SlimKeyValueGrid'
+import type { KeyValueItem } from '../utils/keyValue'
+import { SlimKeyValueGrid } from './slim/SlimKeyValueGrid'
 
-interface StudyProps {
+export interface StudyProps {
   metadata: dmv.metadata.Study | dmv.metadata.SOPClass
 }
 
@@ -14,8 +15,7 @@ interface StudyProps {
  * slide microscopy images.
  */
 function Study({ metadata }: StudyProps): React.ReactElement {
-  const meta = metadata as unknown as Record<string, unknown>
-  const description = meta.StudyDescription as string | undefined
+  const description = metadata.StudyDescription
   const items: KeyValueItem[] = [
     { label: 'Study ID', value: metadata.StudyID },
     { label: 'Accession #', value: metadata.AccessionNumber },
@@ -25,9 +25,7 @@ function Study({ metadata }: StudyProps): React.ReactElement {
     },
     {
       label: 'Referring',
-      value: formatPersonName(
-        meta.ReferringPhysicianName as Parameters<typeof formatPersonName>[0],
-      ),
+      value: formatPersonName(metadata.ReferringPhysicianName),
     },
     ...(description !== undefined && description !== ''
       ? [{ label: 'Description', value: description }]

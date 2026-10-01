@@ -7,39 +7,11 @@ import {
   CollapsibleTrigger,
 } from '../ui/collapsible'
 import { Icon } from '../ui/icon'
+import { CountBadge } from './CountBadge'
+import { PanelDivider } from './PanelDivider'
 
-export function CountBadge({
-  count,
-  tone = 'neutral',
-  className,
-}: {
-  count: React.ReactNode
-  tone?: 'neutral' | 'primary'
-  className?: string
-}): React.ReactElement {
-  return (
-    <span
-      className={cn(
-        'rounded-full px-1.5 py-[3px] text-[11px] font-semibold normal-case leading-none tracking-normal',
-        tone === 'primary'
-          ? 'bg-primary-soft text-primary'
-          : 'bg-chip text-ink-secondary',
-        className,
-      )}
-    >
-      {count}
-    </span>
-  )
-}
-
-/** 1px separator drawn between panel sections */
-export function PanelDivider({
-  className,
-}: {
-  className?: string
-}): React.ReactElement {
-  return <div className={cn('mx-3.5 h-px flex-none bg-line-soft', className)} />
-}
+export { CountBadge } from './CountBadge'
+export { PanelDivider } from './PanelDivider'
 
 export interface SlimCollapsibleSectionProps {
   title: string
@@ -47,7 +19,6 @@ export interface SlimCollapsibleSectionProps {
   count?: number
   countTone?: 'neutral' | 'primary'
   defaultOpen?: boolean
-  open?: boolean
   onOpenChange?: (open: boolean) => void
   children: React.ReactNode
   /**
@@ -60,8 +31,6 @@ export interface SlimCollapsibleSectionProps {
   divider?: boolean
   /** Keep content in the DOM while collapsed (for imperatively rendered viewers) */
   keepMounted?: boolean
-  /** Header controls rendered outside the toggle button (e.g. bulk actions) */
-  actions?: React.ReactNode
   className?: string
 }
 
@@ -77,41 +46,19 @@ export function SlimCollapsibleSection({
   count,
   countTone = 'neutral',
   defaultOpen = true,
-  open,
   onOpenChange,
   children,
   padding = 'default',
   contentClassName,
   divider = true,
   keepMounted = false,
-  actions,
   className,
 }: SlimCollapsibleSectionProps): React.ReactElement {
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen)
-  const isOpen = open ?? uncontrolledOpen
+  const [isOpen, setIsOpen] = useState(defaultOpen)
   const handleOpenChange = (next: boolean): void => {
-    if (open === undefined) setUncontrolledOpen(next)
+    setIsOpen(next)
     onOpenChange?.(next)
   }
-
-  const trigger = (
-    <CollapsibleTrigger
-      className={cn(
-        'flex items-center gap-1.5 pb-2 pt-3 text-left text-[11px] font-semibold uppercase leading-none tracking-[0.06em] text-ink-secondary',
-        actions === undefined ? 'w-full px-3.5' : 'min-w-0 flex-1 pl-3.5',
-      )}
-    >
-      <Icon
-        name={isOpen ? 'expand_more' : 'chevron_right'}
-        size={18}
-        className="text-ink-faint"
-      />
-      <span className="min-w-0 truncate">{title}</span>
-      {count !== undefined && (
-        <CountBadge count={count} tone={countTone} className="ml-auto" />
-      )}
-    </CollapsibleTrigger>
-  )
 
   return (
     <>
@@ -120,16 +67,17 @@ export function SlimCollapsibleSection({
         onOpenChange={handleOpenChange}
         className={className}
       >
-        {actions === undefined ? (
-          trigger
-        ) : (
-          <div className="flex items-center gap-1.5 pr-3.5">
-            {trigger}
-            <div className="flex flex-none items-center pb-2 pt-3">
-              {actions}
-            </div>
-          </div>
-        )}
+        <CollapsibleTrigger className="flex w-full items-center gap-1.5 px-3.5 pb-2 pt-3 text-left text-[11px] font-semibold uppercase leading-none tracking-[0.06em] text-ink-secondary">
+          <Icon
+            name={isOpen ? 'expand_more' : 'chevron_right'}
+            size={18}
+            className="text-ink-faint"
+          />
+          <span className="min-w-0 truncate">{title}</span>
+          {count !== undefined && (
+            <CountBadge count={count} tone={countTone} className="ml-auto" />
+          )}
+        </CollapsibleTrigger>
         <CollapsibleContent
           forceMount={keepMounted ? true : undefined}
           className={keepMounted ? 'data-[state=closed]:hidden' : undefined}

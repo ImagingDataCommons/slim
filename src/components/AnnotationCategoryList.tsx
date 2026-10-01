@@ -1,10 +1,13 @@
+import type React from 'react'
+
 import {
   type AnnotationCategoryAndType,
-  type Category,
   getCategories,
 } from '../utils/annotationCategories'
-import AnnotationCategoryItem from './AnnotationCategoryItem'
-import type { StyleOptions } from './SlideViewer/types'
+import AnnotationCategoryItem, {
+  type AnnotationStyleChangeHandler,
+  type AnnotationStyleMap,
+} from './AnnotationCategoryItem'
 
 export type {
   AnnotationCategoryAndType,
@@ -12,45 +15,42 @@ export type {
   Type,
 } from '../utils/annotationCategories'
 
-const AnnotationCategoryList = ({
+export interface AnnotationCategoryListProps {
+  annotations: AnnotationCategoryAndType[]
+  onChange: (change: { roiUID: string; isVisible: boolean }) => void
+  onStyleChange: AnnotationStyleChangeHandler
+  defaultAnnotationStyles: AnnotationStyleMap
+  checkedAnnotationUids: Set<string>
+}
+
+/** Annotation types grouped by category, rendered as chips. */
+function AnnotationCategoryList({
   annotations,
   onChange,
   onStyleChange,
   defaultAnnotationStyles,
   checkedAnnotationUids,
-}: {
-  annotations: AnnotationCategoryAndType[]
-  onChange: (arg: { roiUID: string; isVisible: boolean }) => void
-  onStyleChange: (arg: { uid: string; styleOptions: StyleOptions }) => void
-  defaultAnnotationStyles: {
-    [annotationUID: string]: {
-      opacity: number
-      color: number[]
-      contourOnly: boolean
-    }
-  }
-  checkedAnnotationUids: Set<string>
-}): JSX.Element | null => {
-  const categories: Record<string, Category> = getCategories(annotations)
+}: AnnotationCategoryListProps): React.ReactElement | null {
+  const categories = Object.entries(getCategories(annotations))
 
-  if (Object.keys(categories).length === 0) {
+  if (categories.length === 0) {
     return null
   }
 
-  const items = Object.keys(categories).map((categoryKey: string) => {
-    const category = categories[categoryKey]
-    return (
-      <AnnotationCategoryItem
-        key={categoryKey}
-        category={category}
-        onChange={onChange}
-        onStyleChange={onStyleChange}
-        defaultAnnotationStyles={defaultAnnotationStyles}
-        checkedAnnotationUids={checkedAnnotationUids}
-      />
-    )
-  })
-
-  return <div className="flex flex-wrap gap-1.5">{items}</div>
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {categories.map(([categoryKey, category]) => (
+        <AnnotationCategoryItem
+          key={categoryKey}
+          category={category}
+          onChange={onChange}
+          onStyleChange={onStyleChange}
+          defaultAnnotationStyles={defaultAnnotationStyles}
+          checkedAnnotationUids={checkedAnnotationUids}
+        />
+      ))}
+    </div>
+  )
 }
+
 export default AnnotationCategoryList

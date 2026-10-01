@@ -1,7 +1,7 @@
 import {
   type DisplayOption,
   summarizeDisplayOptions,
-} from '../DisplayOptionsPanel'
+} from '../../../utils/displayOptionsBinding'
 
 const option = (overrides: Partial<DisplayOption>): DisplayOption => ({
   id: 'id',

@@ -1,32 +1,28 @@
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import type React from 'react'
+import { memo, useMemo } from 'react'
 
-import { usePreferences } from '../features/preferences'
 import { cn } from '../lib/utils'
 import {
   describeRoiMeasurement,
   describeRoiType,
   formatRoiAttributes,
   getRoiAttributes,
-  type RoiLike,
+  type LengthUnit,
 } from '../utils/roiDescription'
-import { Icon } from './ui/icon'
+import { VisibilityToggleButton } from './panel/VisibilityToggleButton'
 
-interface AnnotationItemProps {
+export interface AnnotationItemProps {
   roi: dmv.roi.ROI
   index: number
   color: string
   isSelected: boolean
   isVisible: boolean
+  /** Display unit of lengths and areas */
+  units: LengthUnit
   onSelection: (uid: string) => void
-  onVisibilityChange: ({
-    roiUID,
-    isVisible,
-  }: {
-    roiUID: string
-    isVisible: boolean
-  }) => void
+  onVisibilityChange: (change: { roiUID: string; isVisible: boolean }) => void
 }
 
 /** One ROI row in the Annotations section. */
@@ -36,16 +32,18 @@ function AnnotationItem({
   color,
   isSelected,
   isVisible,
+  units,
   onSelection,
   onVisibilityChange,
 }: AnnotationItemProps): React.ReactElement {
-  const { units } = usePreferences()
   const label = `ROI ${index + 1}`
-  const description: RoiLike = roi
-  const type = describeRoiType(description)
-  const measurement = describeRoiMeasurement(description, { unit: units })
-  const details = formatRoiAttributes(
-    getRoiAttributes(description, { unit: units }),
+  const { type, measurement, details } = useMemo(
+    () => ({
+      type: describeRoiType(roi),
+      measurement: describeRoiMeasurement(roi, { unit: units }),
+      details: formatRoiAttributes(getRoiAttributes(roi, { unit: units })),
+    }),
+    [roi, units],
   )
 
   return (
@@ -89,22 +87,15 @@ function AnnotationItem({
           )}
         </span>
       </button>
-      <button
-        type="button"
-        title="Show/hide"
-        aria-label={isVisible ? `Hide ${label}` : `Show ${label}`}
-        onClick={() =>
-          onVisibilityChange({ roiUID: roi.uid, isVisible: !isVisible })
+      <VisibilityToggleButton
+        label={label}
+        isVisible={isVisible}
+        onChange={(nextIsVisible) =>
+          onVisibilityChange({ roiUID: roi.uid, isVisible: nextIsVisible })
         }
-        className={cn(
-          'grid h-7 w-7 flex-none place-items-center rounded-md transition-colors hover:bg-segmented',
-          isVisible ? 'text-ink-secondary' : 'text-ink-fainter',
-        )}
-      >
-        <Icon name={isVisible ? 'visibility' : 'visibility_off'} size={18} />
-      </button>
+      />
     </div>
   )
 }
 
-export default AnnotationItem
+export default memo(AnnotationItem)

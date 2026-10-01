@@ -1,7 +1,8 @@
 import type React from 'react'
-import { useCallback } from 'react'
+import { useState } from 'react'
 
 import { cn } from '../lib/utils'
+import type { AnnotationStyle } from '../types/layerStyles'
 import {
   type Category,
   getCategoryVisibility,
@@ -9,17 +10,26 @@ import {
 } from '../utils/annotationCategories'
 import { rgbToHex } from '../utils/segmentColors'
 import { computeBulkVisibility, getToggleTarget } from '../utils/visibility'
+import { formatVisibilitySummary } from '../utils/visibilitySummary'
 import ColorSettingsMenu from './ColorSettingsMenu'
-import type { StyleOptions } from './SlideViewer/types'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import { Switch } from './ui/switch'
 
-interface AnnotationStyleMap {
-  [annotationUID: string]: {
-    opacity: number
-    color: number[]
-    contourOnly: boolean
-  }
+/** Not every annotation UID has a style entry */
+export type AnnotationStyleMap = Record<string, AnnotationStyle | undefined>
+
+export type AnnotationStyleChangeHandler = (change: {
+  uid: string
+  styleOptions: AnnotationStyle
+}) => void
+
+interface AnnotationTypeChipProps {
+  category: Category
+  type: Type
+  checkedAnnotationUids: Set<string>
+  onVisibilityChange: (type: Type, isVisible: boolean) => void
+  onStyleChange: AnnotationStyleChangeHandler
+  defaultAnnotationStyles: AnnotationStyleMap
 }
 
 /** One annotation type as a pill chip; clicking opens visibility and color settings. */
@@ -30,26 +40,27 @@ function AnnotationTypeChip({
   onVisibilityChange,
   onStyleChange,
   defaultAnnotationStyles,
-}: {
-  category: Category
-  type: Type
-  checkedAnnotationUids: Set<string>
-  onVisibilityChange: (type: Type, isVisible: boolean) => void
-  onStyleChange: (arg: { uid: string; styleOptions: StyleOptions }) => void
-  defaultAnnotationStyles: AnnotationStyleMap
-}): React.ReactElement {
+}: AnnotationTypeChipProps): React.ReactElement {
   const { CodeMeaning, CodingSchemeDesignator, CodeValue, uids } = type
+  /**
+   * The viewer's style map is mutated in place, so the chip keeps the style
+   * the user picked instead of relying on the map to re-render it.
+   */
+  const [editedStyle, setEditedStyle] = useState<AnnotationStyle>()
+  const style = editedStyle ?? defaultAnnotationStyles[uids[0]]
   const visibleCount = uids.filter((uid) =>
     checkedAnnotationUids.has(uid),
   ).length
   const visibility = getCategoryVisibility(type, checkedAnnotationUids)
   const isVisible = visibility !== 'none'
-  const style = defaultAnnotationStyles[uids[0]]
   const color = style !== undefined ? rgbToHex(style.color) : undefined
-  const handleVisibilityChange = useCallback(
-    () => onVisibilityChange(type, getToggleTarget(visibility)),
-    [type, visibility, onVisibilityChange],
-  )
+
+  const commitStyle = (next: AnnotationStyle): void => {
+    setEditedStyle(next)
+    for (const uid of uids) {
+      onStyleChange({ uid, styleOptions: next })
+    }
+  }
 
   return (
     <Popover>
@@ -57,6 +68,7 @@ function AnnotationTypeChip({
         <button
           type="button"
           title={`${category.CodeMeaning} · ${CodeMeaning}`}
+          aria-label={`${CodeMeaning}, ${uids.length} annotations, ${formatVisibilitySummary(visibleCount, uids.length)}`}
           className={cn(
             'flex items-center gap-1.5 rounded-full border border-line py-1 pl-2 pr-2.5 text-[12px] text-ink transition-colors hover:border-line-hover',
             !isVisible && 'text-ink-muted',
@@ -94,52 +106,51 @@ function AnnotationTypeChip({
             <Switch
               size="sm"
               checked={visibility === 'all'}
-              onCheckedChange={handleVisibilityChange}
-              aria-label={
-                visibility === 'all'
-                  ? `Hide all ${CodeMeaning}`
-                  : `Show all ${CodeMeaning}`
+              onCheckedChange={() =>
+                onVisibilityChange(type, getToggleTarget(visibility))
               }
+              aria-label={`Show all ${CodeMeaning}`}
             />
           </div>
-          <ColorSettingsMenu
-            annotationGroupsUIDs={uids}
-            onStyleChange={onStyleChange}
-            defaultStyle={style}
-          />
+          {style !== undefined && (
+            <ColorSettingsMenu
+              style={style}
+              onChange={setEditedStyle}
+              onCommit={commitStyle}
+            />
+          )}
         </div>
       </PopoverContent>
     </Popover>
   )
 }
 
+export interface AnnotationCategoryItemProps {
+  category: Category
+  onChange: (change: { roiUID: string; isVisible: boolean }) => void
+  onStyleChange: AnnotationStyleChangeHandler
+  defaultAnnotationStyles: AnnotationStyleMap
+  checkedAnnotationUids: Set<string>
+}
+
 /** Chips for all annotation types of one category. */
-const AnnotationCategoryItem = ({
+function AnnotationCategoryItem({
   category,
   onChange,
   checkedAnnotationUids,
   onStyleChange,
   defaultAnnotationStyles,
-}: {
-  category: Category
-  onChange: (arg: { roiUID: string; isVisible: boolean }) => void
-  onStyleChange: (arg: { uid: string; styleOptions: StyleOptions }) => void
-  defaultAnnotationStyles: AnnotationStyleMap
-  checkedAnnotationUids: Set<string>
-}): React.ReactElement => {
-  const handleVisibilityChange = useCallback(
-    (type: Type, isVisible: boolean): void => {
-      const changes = computeBulkVisibility(
-        type.uids,
-        checkedAnnotationUids,
-        isVisible,
-      )
-      for (const change of changes) {
-        onChange({ roiUID: change.uid, isVisible: change.isVisible })
-      }
-    },
-    [checkedAnnotationUids, onChange],
-  )
+}: AnnotationCategoryItemProps): React.ReactElement {
+  const handleVisibilityChange = (type: Type, isVisible: boolean): void => {
+    const changes = computeBulkVisibility(
+      type.uids,
+      checkedAnnotationUids,
+      isVisible,
+    )
+    for (const change of changes) {
+      onChange({ roiUID: change.uid, isVisible: change.isVisible })
+    }
+  }
 
   return (
     <>

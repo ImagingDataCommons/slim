@@ -1,13 +1,10 @@
 import * as React from 'react'
 
 import { cn } from '../../lib/utils'
+import type { KeyValueItem } from '../../utils/keyValue'
 import { withOccurrenceKeys } from '../../utils/occurrenceKeys'
 
-export interface KeyValueItem {
-  label: string
-  value: React.ReactNode
-  mono?: boolean
-}
+export type { KeyValueItem } from '../../utils/keyValue'
 
 export interface SlimKeyValueGridProps {
   items: KeyValueItem[]

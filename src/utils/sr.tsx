@@ -29,10 +29,7 @@ const hasName = (
 const hasValueType = (
   item: dcmjs.sr.valueTypes.ContentItem,
   valueType: dcmjs.sr.valueTypes.ValueTypes,
-): boolean => {
-  console.log(item.ValueType, valueType)
-  return item.ValueType === valueType
-}
+): boolean => item.ValueType === valueType
 
 /**
  * Find content items in a DICOM SR document given their name.

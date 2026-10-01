@@ -1,259 +1,185 @@
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import React from 'react'
-import { cn } from '../lib/utils'
-import { lutToCssGradient } from '../utils/lutGradient'
-import { describeSegment } from '../utils/segment'
-import { getSegmentationType, rgbToHex } from '../utils/segmentColors'
-import ColorSlider from './ColorSlider'
-import { InfoTooltipButton } from './slim/InfoTooltipButton'
-import { Icon } from './ui/icon'
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
-import { Slider } from './ui/slider'
+import type React from 'react'
+import { memo, useMemo } from 'react'
 
-interface SegmentItemProps {
+import { cn } from '../lib/utils'
+import type {
+  RGB,
+  SegmentStyle,
+  SegmentStyleChange,
+} from '../types/layerStyles'
+import { toRGB } from '../utils/color'
+import { toKeyValueItems } from '../utils/keyValue'
+import { describeSegment } from '../utils/segment'
+import { getSegmentationType } from '../utils/segmentColors'
+import { getSegmentSwatchBackground } from '../utils/segmentSwatch'
+import { areLayerItemPropsEqual } from '../utils/styleEquality'
+import ColorSlider from './ColorSlider'
+import { InlineOpacityRow } from './panel/InlineOpacityRow'
+import { LayerSettingsPopover } from './panel/LayerSettingsPopover'
+import { useLayerStyle } from './panel/useLayerStyle'
+import { VisibilityToggleButton } from './panel/VisibilityToggleButton'
+import { InfoDetailsButton } from './slim/InfoDetailsButton'
+
+/** Shown when the segment has no recommended display color */
+const DEFAULT_SEGMENT_COLOR: RGB = [255, 255, 0]
+
+export interface SegmentItemProps {
   segment: dmv.segment.Segment
   isVisible: boolean
-  metadata: dmv.metadata.Segmentation[]
-  defaultStyle: {
-    opacity: number
-    color?: number[]
-    paletteColorLookupTable?: { data: number[][] }
-  }
-  onVisibilityChange: ({
-    segmentUID,
-    isVisible,
-  }: {
+  metadata?: dmv.metadata.Segmentation[]
+  defaultStyle: SegmentStyle
+  onVisibilityChange: (change: {
     segmentUID: string
     isVisible: boolean
   }) => void
-  onStyleChange: ({
-    segmentUID,
-    styleOptions,
-  }: {
+  onStyleChange: (change: {
     segmentUID: string
-    styleOptions: {
-      opacity: number
-      color?: number[]
-    }
+    styleOptions: SegmentStyleChange
   }) => void
   onClick: (segmentUID: string) => void
 }
 
-interface SegmentItemState {
-  currentStyle: {
-    opacity: number
-    color: number[]
-  }
+interface SegmentLocalStyle {
+  opacity: number
+  color: RGB
 }
 
-/**
- * React component representing a Segment.
- */
-class SegmentItem extends React.Component<SegmentItemProps, SegmentItemState> {
-  constructor(props: SegmentItemProps) {
-    super(props)
+/** One segment with visibility, color and opacity controls. */
+function SegmentItem({
+  segment,
+  isVisible: isVisibleProp,
+  metadata,
+  defaultStyle,
+  onVisibilityChange,
+  onStyleChange,
+  onClick,
+}: SegmentItemProps): React.ReactElement {
+  /**
+   * Opacity and color are committed separately: for FRACTIONAL segments,
+   * sending a color would replace the distinct colormap with a flat LUT.
+   */
+  const [style, updateStyle, previewStyle] = useLayerStyle<SegmentLocalStyle>(
+    {
+      opacity: defaultStyle.opacity,
+      color: toRGB(defaultStyle.color, DEFAULT_SEGMENT_COLOR),
+    },
+    (styleOptions) => onStyleChange({ segmentUID: segment.uid, styleOptions }),
+  )
 
-    /** Yellow when the segment has no recommended display color */
-    const defaultColor = this.props.defaultStyle.color ?? [255, 255, 0]
-    this.state = {
-      currentStyle: {
-        opacity: this.props.defaultStyle.opacity,
-        color: defaultColor,
-      },
-    }
-  }
+  /** Listed in the Segment Sequence but no frames contain it */
+  const isAbsent = segment.isAbsent === true
+  const isVisible = !isAbsent && isVisibleProp
+  const segmentationType = getSegmentationType({
+    SegmentationType: metadata?.[0]?.SegmentationType,
+  })
+  const isFractional = segmentationType === 'FRACTIONAL'
+  const { meta, attributes } = useMemo(
+    () => describeSegment(segment, segmentationType),
+    [segment, segmentationType],
+  )
+  const details = useMemo(() => toKeyValueItems(attributes), [attributes])
+  const swatch = getSegmentSwatchBackground({
+    isFractional,
+    color: style.color,
+    palette: defaultStyle.paletteColorLookupTable,
+  })
+  const label = segment.label
 
-  handleVisibilityChange = (checked: boolean): void => {
-    this.props.onVisibilityChange({
-      segmentUID: this.props.segment.uid,
-      isVisible: checked,
-    })
-  }
-
-  handleColorChange = (newColor: number[]): void => {
-    this.setState(
-      (prevState) => {
-        const newStyle = { ...prevState.currentStyle, color: newColor }
-        return { currentStyle: newStyle }
-      },
-      () => {
-        this.props.onStyleChange({
-          segmentUID: this.props.segment.uid,
-          styleOptions: {
-            opacity: this.state.currentStyle.opacity,
-            color: newColor,
-          },
-        })
-      },
-    )
-  }
-
-  handleOpacityChange = (opacity: number | null): void => {
-    if (opacity !== null) {
-      this.setState(
-        (prevState) => {
-          const newStyle = { ...prevState.currentStyle, opacity }
-          return { currentStyle: newStyle }
-        },
-        () => {
-          /**
-           * Only send opacity - do not include color. For FRACTIONAL segments,
-           * sending color would replace the distinct colormap with a flat LUT.
-           * Color changes are handled separately by handleColorChange.
-           */
-          this.props.onStyleChange({
-            segmentUID: this.props.segment.uid,
-            styleOptions: {
-              opacity,
-            },
-          })
-        },
-      )
-    }
-  }
-
-  handleClick = (): void => {
-    this.props.onClick(this.props.segment.uid)
-  }
-
-  render(): React.ReactNode {
-    const { segment } = this.props
-    /** Listed in the Segment Sequence but no frames contain it */
-    const isAbsent = segment.isAbsent === true
-    const isVisible = !isAbsent && this.props.isVisible
-    const segmentationMetadata = this.props.metadata?.[0] as unknown as
-      | Record<string, unknown>
-      | undefined
-    const segmentationType = getSegmentationType(segmentationMetadata)
-    const isFractional = segmentationType === 'FRACTIONAL'
-    const { meta, attributes } = describeSegment(segment, segmentationType)
-    const opacity = this.state.currentStyle.opacity
-    const palette = this.props.defaultStyle.paletteColorLookupTable
-    const fractionalGradient =
-      isFractional && palette !== undefined ? lutToCssGradient(palette) : ''
-    let swatchStyle: React.CSSProperties = {}
-    if (!isFractional) {
-      swatchStyle = { background: rgbToHex(this.state.currentStyle.color) }
-    } else if (fractionalGradient !== '') {
-      swatchStyle = { background: fractionalGradient }
-    }
-
-    return (
-      <div className="flex flex-col gap-2.5 rounded-lg border border-line px-3 py-2.5">
-        <div className="flex items-center gap-2">
+  return (
+    <div className="flex flex-col gap-2.5 rounded-lg border border-line px-3 py-2.5">
+      <div className="flex items-center gap-2">
+        <span
+          className={cn(
+            'h-3 w-3 flex-none rounded-[3px]',
+            isAbsent && 'border border-dashed border-line-input',
+            !isAbsent &&
+              swatch === undefined &&
+              'border border-line bg-gradient-to-r from-panel to-ink-muted',
+          )}
+          style={
+            isAbsent || swatch === undefined
+              ? undefined
+              : { background: swatch }
+          }
+        />
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 flex-col items-start gap-0.5 text-left disabled:cursor-default"
+          onClick={() => onClick(segment.uid)}
+          disabled={isAbsent}
+          title={
+            isAbsent
+              ? 'Segment is absent (no pixel data found)'
+              : 'Zoom to segment'
+          }
+        >
           <span
             className={cn(
-              'h-3 w-3 flex-none rounded-[3px]',
-              isAbsent && 'border border-dashed border-line-input',
-              !isAbsent &&
-                isFractional &&
-                fractionalGradient === '' &&
-                'border border-line bg-gradient-to-r from-panel to-ink-muted',
-            )}
-            style={isAbsent ? undefined : swatchStyle}
-          />
-          <button
-            type="button"
-            className="flex min-w-0 flex-1 flex-col items-start gap-0.5 text-left disabled:cursor-default"
-            onClick={this.handleClick}
-            disabled={isAbsent}
-            title={
-              isAbsent
-                ? 'Segment is absent (no pixel data found)'
-                : 'Zoom to segment'
-            }
-          >
-            <span
-              className={cn(
-                'max-w-full truncate font-semibold',
-                isAbsent ? 'text-ink-muted' : 'text-ink',
-              )}
-            >
-              {segment.label}
-            </span>
-            {meta !== '' && (
-              <span className="max-w-full truncate text-[12px] text-ink-muted">
-                {meta}
-              </span>
-            )}
-            {isAbsent && (
-              <span
-                className="mt-0.5 rounded-full bg-chip px-1.5 py-[3px] text-[11px] font-semibold leading-none text-ink-secondary"
-                title="Listed in Segment Sequence but no frames contain this segment"
-              >
-                Absent
-              </span>
-            )}
-          </button>
-          <InfoTooltipButton
-            label={`Details for ${segment.label}`}
-            attributes={attributes}
-          />
-          {!isFractional && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  title="Segment color"
-                  aria-label={`Color for ${segment.label}`}
-                  disabled={isAbsent}
-                  className="grid h-7 w-7 flex-none place-items-center rounded-md text-ink-secondary transition-colors hover:bg-segmented disabled:pointer-events-none disabled:opacity-40"
-                >
-                  <Icon name="palette" size={17} />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent side="left" align="start" className="w-80">
-                <div className="flex flex-col gap-2">
-                  <span className="text-[12.5px] font-semibold text-ink">
-                    Color
-                  </span>
-                  <ColorSlider
-                    color={this.state.currentStyle.color}
-                    onChange={this.handleColorChange}
-                  />
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
-          <button
-            type="button"
-            title={isAbsent ? 'Segment has no pixel data' : 'Show/hide'}
-            aria-label={
-              isVisible ? `Hide ${segment.label}` : `Show ${segment.label}`
-            }
-            disabled={isAbsent}
-            onClick={() => this.handleVisibilityChange(!isVisible)}
-            className={cn(
-              'grid h-7 w-7 flex-none place-items-center rounded-md transition-colors hover:bg-segmented disabled:pointer-events-none disabled:opacity-40',
-              isVisible ? 'text-ink-secondary' : 'text-ink-fainter',
+              'max-w-full truncate font-semibold',
+              isAbsent ? 'text-ink-muted' : 'text-ink',
             )}
           >
-            <Icon
-              name={isVisible ? 'visibility' : 'visibility_off'}
-              size={18}
-            />
-          </button>
-        </div>
-        <div className="flex items-center gap-2 text-[11.5px] text-ink-muted">
-          Opacity
-          <Slider
-            className="flex-1"
-            min={0}
-            max={1}
-            step={0.01}
-            value={[opacity]}
-            disabled={isAbsent}
-            onValueChange={(values) => this.handleOpacityChange(values[0])}
-            aria-label={`Opacity of ${segment.label}`}
-          />
-          <span className="w-9 text-right font-mono text-ink-body">
-            {Math.round(opacity * 100)}%
+            {label}
           </span>
-        </div>
+          {meta !== '' && (
+            <span className="max-w-full truncate text-[12px] text-ink-muted">
+              {meta}
+            </span>
+          )}
+          {isAbsent && (
+            <span
+              className="mt-0.5 rounded-full bg-chip px-1.5 py-[3px] text-[11px] font-semibold leading-none text-ink-secondary"
+              title="Listed in Segment Sequence but no frames contain this segment"
+            >
+              Absent
+            </span>
+          )}
+        </button>
+        <InfoDetailsButton label={`Details for ${label}`} items={details} />
+        {!isFractional && (
+          <LayerSettingsPopover
+            label={label}
+            title="Segment color"
+            icon="palette"
+            disabled={isAbsent}
+            contentClassName="w-80"
+          >
+            <div className="flex flex-col gap-2">
+              <span className="text-[12.5px] font-semibold text-ink">
+                Color
+              </span>
+              <ColorSlider
+                color={style.color}
+                onChange={(color) => previewStyle({ color })}
+                onCommit={(color) => updateStyle({ color })}
+              />
+            </div>
+          </LayerSettingsPopover>
+        )}
+        <VisibilityToggleButton
+          label={label}
+          isVisible={isVisible}
+          disabled={isAbsent}
+          title={isAbsent ? 'Segment has no pixel data' : undefined}
+          onChange={(nextIsVisible) =>
+            onVisibilityChange({
+              segmentUID: segment.uid,
+              isVisible: nextIsVisible,
+            })
+          }
+        />
       </div>
-    )
-  }
+      <InlineOpacityRow
+        label={label}
+        opacity={style.opacity}
+        disabled={isAbsent}
+        onChange={(opacity) => previewStyle({ opacity })}
+        onCommit={(opacity) => updateStyle({ opacity })}
+      />
+    </div>
+  )
 }
 
-export default SegmentItem
+export default memo(SegmentItem, areLayerItemPropsEqual)

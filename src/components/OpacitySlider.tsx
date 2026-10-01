@@ -1,27 +1,33 @@
 import type React from 'react'
+
+import { clamp } from '../utils/math'
 import { Input } from './ui/input'
 import { Slider } from './ui/slider'
 
-interface OpacitySliderProps {
+export interface OpacitySliderProps {
   opacity: number
-  onChange: (opacity: number | null) => void
+  /** Every value change, including while dragging */
+  onChange: (opacity: number) => void
+  /** Final value: slider release, keyboard step or typed number */
+  onCommit: (opacity: number) => void
   label?: string
+  disabled?: boolean
 }
 
-const OpacitySlider: React.FC<OpacitySliderProps> = ({
+/** Labelled 0-1 slider with a numeric field. */
+function OpacitySlider({
   opacity,
   onChange,
+  onCommit,
   label = 'Opacity',
-}) => {
-  const handleSliderChange = (values: number[]): void => {
-    onChange(values[0])
-  }
-
+  disabled = false,
+}: OpacitySliderProps): React.ReactElement {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    const value = parseFloat(e.target.value)
-    if (!Number.isNaN(value)) {
-      onChange(Math.min(1, Math.max(0, value)))
-    }
+    const value = Number.parseFloat(e.target.value)
+    if (Number.isNaN(value)) return
+    const next = clamp(value, 0, 1)
+    onChange(next)
+    onCommit(next)
   }
 
   return (
@@ -33,7 +39,9 @@ const OpacitySlider: React.FC<OpacitySliderProps> = ({
           max={1}
           step={0.01}
           value={[opacity]}
-          onValueChange={handleSliderChange}
+          disabled={disabled}
+          onValueChange={(values) => onChange(values[0])}
+          onValueCommit={(values) => onCommit(values[0])}
           aria-label={label}
         />
       </div>
@@ -45,6 +53,7 @@ const OpacitySlider: React.FC<OpacitySliderProps> = ({
         aria-label={`${label} value`}
         className="h-8 w-16 font-mono text-[12px]"
         value={opacity}
+        disabled={disabled}
         onChange={handleInputChange}
       />
     </div>

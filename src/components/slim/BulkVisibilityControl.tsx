@@ -12,8 +12,8 @@ export interface BulkVisibilityControlProps {
   visibleUids: Set<string>
   /** Called once per uid whose visibility differs from the target */
   onChange: (change: VisibilityChange) => void
-  /** Rendered only for lists of at least this many items */
-  minItems?: number
+  /** Plural noun for the accessible names, e.g. "segments" in "Show all segments" */
+  itemLabel?: string
   className?: string
 }
 
@@ -25,19 +25,20 @@ export function BulkVisibilityControl({
   uids,
   visibleUids,
   onChange,
-  minItems = 2,
+  itemLabel = 'items',
   className,
 }: BulkVisibilityControlProps): React.ReactElement | null {
-  if (uids.length < minItems) return null
+  if (uids.length < 2) return null
   const visibleCount = countVisible(uids, visibleUids)
   const apply = (show: boolean): void => {
     computeBulkVisibility(uids, visibleUids, show).forEach(onChange)
   }
 
   return (
-    <div
+    <fieldset
+      aria-label={`Visibility of ${itemLabel}`}
       className={cn(
-        'flex items-center gap-1 px-1 text-[11.5px] text-ink-muted',
+        'flex min-w-0 items-center gap-1 px-1 text-[11.5px] text-ink-muted',
         className,
       )}
     >
@@ -47,6 +48,7 @@ export function BulkVisibilityControl({
       <button
         type="button"
         className={BUTTON_CLASS}
+        aria-label={`Show all ${itemLabel}`}
         disabled={visibleCount === uids.length}
         onClick={() => apply(true)}
       >
@@ -55,12 +57,13 @@ export function BulkVisibilityControl({
       <button
         type="button"
         className={BUTTON_CLASS}
+        aria-label={`Hide all ${itemLabel}`}
         disabled={visibleCount === 0}
         onClick={() => apply(false)}
       >
         Hide all
       </button>
-    </div>
+    </fieldset>
   )
 }
 

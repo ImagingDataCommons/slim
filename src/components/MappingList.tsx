@@ -1,44 +1,33 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import React from 'react'
-import { buildMappingDisplayOptions } from '../utils/displayOptions'
-import MappingItem from './MappingItem'
-import {
-  bindDisplayOptions,
-  DisplayOptionsPanel,
-} from './slim/DisplayOptionsPanel'
+import type React from 'react'
 
-interface MappingDisplaySettings {
+import type { MappingStyle, MappingStyleChange } from '../types/layerStyles'
+import { buildMappingDisplayOptions } from '../utils/displayOptions'
+import { bindDisplayOptions } from '../utils/displayOptionsBinding'
+import MappingItem from './MappingItem'
+import { DisplayOptionsPanel } from './slim/DisplayOptionsPanel'
+
+export interface MappingDisplaySettings {
   interpolationEnabled: boolean
 }
 
-interface MappingListProps {
+export interface MappingListProps {
   mappings: dmv.mapping.ParameterMapping[]
   metadata: {
     [mappingUID: string]: dmv.metadata.ParametricMap[]
   }
   visibleMappingUIDs: Set<string>
   defaultMappingStyles: {
-    [mappingUID: string]: {
-      opacity: number
-      paletteColorLookupTable?: { data: number[][] }
-    }
+    [mappingUID: string]: MappingStyle
   }
-  onMappingVisibilityChange: ({
-    mappingUID,
-    isVisible,
-  }: {
+  onMappingVisibilityChange: (change: {
     mappingUID: string
     isVisible: boolean
   }) => void
-  onMappingStyleChange: ({
-    mappingUID,
-    styleOptions,
-  }: {
+  onMappingStyleChange: (change: {
     mappingUID: string
-    styleOptions: {
-      opacity?: number
-    }
+    styleOptions: MappingStyleChange
   }) => void
   /** Display settings for interpolation */
   displaySettings?: MappingDisplaySettings
@@ -46,53 +35,43 @@ interface MappingListProps {
   onDisplaySettingsChange?: (settings: MappingDisplaySettings) => void
 }
 
-/**
- * React component representing a list of Real World Value Mappings.
- */
-class MappingList extends React.Component<
-  MappingListProps,
-  Record<string, never>
-> {
-  render(): React.ReactNode {
-    const items = this.props.mappings.map((mapping, _index) => {
-      const uid = mapping.uid
-      return (
+/** Real World Value Mappings of the parametric maps of a slide. */
+function MappingList({
+  mappings,
+  metadata,
+  visibleMappingUIDs,
+  defaultMappingStyles,
+  onMappingVisibilityChange,
+  onMappingStyleChange,
+  displaySettings,
+  onDisplaySettingsChange,
+}: MappingListProps): React.ReactElement {
+  return (
+    <div className="flex flex-col gap-1.5">
+      {mappings.map((mapping) => (
         <MappingItem
           key={mapping.uid}
           mapping={mapping}
-          metadata={this.props.metadata[uid]}
-          isVisible={this.props.visibleMappingUIDs.has(uid)}
-          defaultStyle={this.props.defaultMappingStyles[uid]}
-          onVisibilityChange={this.props.onMappingVisibilityChange}
-          onStyleChange={this.props.onMappingStyleChange}
+          metadata={metadata[mapping.uid]}
+          isVisible={visibleMappingUIDs.has(mapping.uid)}
+          defaultStyle={defaultMappingStyles[mapping.uid]}
+          onVisibilityChange={onMappingVisibilityChange}
+          onStyleChange={onMappingStyleChange}
         />
-      )
-    })
-
-    const { displaySettings, onDisplaySettingsChange } = this.props
-
-    return (
-      <div className="flex flex-col gap-1.5">
-        {items}
-        {displaySettings !== undefined &&
-          onDisplaySettingsChange !== undefined && (
-            <DisplayOptionsPanel
-              options={bindDisplayOptions(
-                buildMappingDisplayOptions(displaySettings),
-                (id, enabled) => {
-                  if (id === 'interpolation') {
-                    onDisplaySettingsChange({
-                      ...displaySettings,
-                      interpolationEnabled: enabled,
-                    })
-                  }
-                },
-              )}
-            />
-          )}
-      </div>
-    )
-  }
+      ))}
+      {displaySettings !== undefined &&
+        onDisplaySettingsChange !== undefined && (
+          <DisplayOptionsPanel
+            options={bindDisplayOptions(
+              buildMappingDisplayOptions(displaySettings),
+              displaySettings,
+              { interpolation: 'interpolationEnabled' },
+              onDisplaySettingsChange,
+            )}
+          />
+        )}
+    </div>
+  )
 }
 
 export default MappingList

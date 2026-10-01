@@ -2,13 +2,14 @@ import type * as React from 'react'
 import { useId, useState } from 'react'
 
 import { cn } from '../../lib/utils'
-import type { DisplayOptionDescriptor } from '../../utils/displayOptions'
+import {
+  type DisplayOption,
+  summarizeDisplayOptions,
+} from '../../utils/displayOptionsBinding'
 import { Icon } from '../ui/icon'
 import { Switch } from '../ui/switch'
 
-export interface DisplayOption extends DisplayOptionDescriptor {
-  onChange: (enabled: boolean) => void
-}
+export type { DisplayOption } from '../../utils/displayOptionsBinding'
 
 /**
  * Numeric text field below the switches (e.g. clustering threshold). The
@@ -19,30 +20,14 @@ export interface DisplayOptionsAdditionalInput {
   description: string
   placeholder: string
   unit: string
-  inputValue?: string
-  onInputChange?: (value: string) => void
-  /** @deprecated Use `inputValue` */
-  value?: string
-  /** @deprecated Use `onInputChange` */
-  onChange?: (value: string) => void
+  inputValue: string
+  onInputChange: (value: string) => void
 }
 
-interface DisplayOptionsPanelProps {
+export interface DisplayOptionsPanelProps {
   options: DisplayOption[]
   additionalInput?: DisplayOptionsAdditionalInput
-  defaultOpen?: boolean
   className?: string
-}
-
-/** Binds a toggle handler to plain option descriptors */
-export function bindDisplayOptions(
-  descriptors: DisplayOptionDescriptor[],
-  onToggle: (id: string, enabled: boolean) => void,
-): DisplayOption[] {
-  return descriptors.map((descriptor) => ({
-    ...descriptor,
-    onChange: (enabled: boolean) => onToggle(descriptor.id, enabled),
-  }))
 }
 
 function AdditionalInputField({
@@ -54,8 +39,6 @@ function AdditionalInputField({
   const descriptionId = useId()
   /** Text typed while focused, so parent-side normalization can't eat "0." */
   const [draft, setDraft] = useState<string | null>(null)
-  const value = input.inputValue ?? input.value ?? ''
-  const handleChange = input.onInputChange ?? input.onChange
 
   return (
     <div className="flex flex-col gap-1.5 pb-3 pt-2.5">
@@ -67,10 +50,10 @@ function AdditionalInputField({
           inputMode="decimal"
           aria-labelledby={labelId}
           aria-describedby={descriptionId}
-          value={draft ?? value}
+          value={draft ?? input.inputValue}
           onChange={(event) => {
             setDraft(event.target.value)
-            handleChange?.(event.target.value)
+            input.onInputChange(event.target.value)
           }}
           onBlur={() => setDraft(null)}
           placeholder={input.placeholder}
@@ -87,15 +70,38 @@ function AdditionalInputField({
   )
 }
 
-/** Summary shown in the collapsed header, e.g. "ICC on · Gamma off". */
-export function summarizeDisplayOptions(options: DisplayOption[]): string {
-  return options
-    .map((option) => {
-      const label = option.shortLabel ?? option.label
-      if (option.disabled === true) return `${label} n/a`
-      return `${label} ${option.enabled ? 'on' : 'off'}`
-    })
-    .join(' · ')
+function DisplayOptionRow({
+  option,
+}: {
+  option: DisplayOption
+}): React.ReactElement {
+  const labelId = useId()
+  const descriptionId = useId()
+  return (
+    <div className="flex items-center gap-3 border-b border-line-row py-2.5">
+      <div className="min-w-0 flex-1">
+        <div
+          id={labelId}
+          className={cn(
+            'text-[12.5px] font-medium',
+            option.disabled === true ? 'text-ink-faint' : 'text-ink',
+          )}
+        >
+          {option.label}
+        </div>
+        <div id={descriptionId} className="mt-0.5 text-[11.5px] text-ink-muted">
+          {option.description}
+        </div>
+      </div>
+      <Switch
+        aria-labelledby={labelId}
+        aria-describedby={descriptionId}
+        checked={option.enabled && option.disabled !== true}
+        onCheckedChange={option.onChange}
+        disabled={option.disabled}
+      />
+    </div>
+  )
 }
 
 /**
@@ -105,10 +111,9 @@ export function summarizeDisplayOptions(options: DisplayOption[]): string {
 export function DisplayOptionsPanel({
   options,
   additionalInput,
-  defaultOpen = false,
   className,
 }: DisplayOptionsPanelProps): React.ReactElement {
-  const [isOpen, setIsOpen] = useState(defaultOpen)
+  const [isOpen, setIsOpen] = useState(false)
 
   return (
     <div
@@ -138,30 +143,7 @@ export function DisplayOptionsPanel({
       {isOpen && (
         <div className="flex flex-col border-t border-line-soft bg-panel px-3">
           {options.map((option) => (
-            <div
-              key={option.id}
-              className="flex items-center gap-3 border-b border-line-row py-2.5"
-            >
-              <div className="min-w-0 flex-1">
-                <div
-                  className={cn(
-                    'text-[12.5px] font-medium',
-                    option.disabled === true ? 'text-ink-faint' : 'text-ink',
-                  )}
-                >
-                  {option.label}
-                </div>
-                <div className="mt-0.5 text-[11.5px] text-ink-muted">
-                  {option.description}
-                </div>
-              </div>
-              <Switch
-                aria-label={option.label}
-                checked={option.enabled && option.disabled !== true}
-                onCheckedChange={option.onChange}
-                disabled={option.disabled}
-              />
-            </div>
+            <DisplayOptionRow key={option.id} option={option} />
           ))}
 
           {additionalInput !== undefined && (

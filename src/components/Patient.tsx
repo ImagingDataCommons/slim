@@ -1,4 +1,4 @@
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import type React from 'react'
 
@@ -7,13 +7,14 @@ import {
   formatPersonName,
   formatSex,
 } from '../utils/displayFormat'
+import type { KeyValueItem } from '../utils/keyValue'
 import {
   formatAdmittingDiagnoses,
   formatPatientSpeciesCodeSequence,
 } from '../utils/values'
-import { type KeyValueItem, SlimKeyValueGrid } from './slim/SlimKeyValueGrid'
+import { SlimKeyValueGrid } from './slim/SlimKeyValueGrid'
 
-interface PatientProps {
+export interface PatientProps {
   metadata: dmv.metadata.Study | dmv.metadata.SOPClass
 }
 
@@ -22,12 +23,12 @@ interface PatientProps {
  * contained slide microscopy images.
  */
 function Patient({ metadata }: PatientProps): React.ReactElement {
-  const meta = metadata as unknown as Record<string, unknown>
   const species = formatPatientSpeciesCodeSequence(
-    meta.PatientSpeciesCodeSequence,
+    metadata.PatientSpeciesCodeSequence,
   )
-  const admittingDiagnosis = formatAdmittingDiagnoses(meta)
-  const age = meta.PatientAge as string | undefined
+  /** Spread copies the own dataset attributes, including non-standard keys */
+  const admittingDiagnosis = formatAdmittingDiagnoses({ ...metadata })
+  const age = metadata.PatientAge
   const items: KeyValueItem[] = [
     { label: 'Name', value: formatPersonName(metadata.PatientName) },
     { label: 'Patient ID', value: metadata.PatientID },

@@ -1,153 +1,55 @@
-import React from 'react'
+import type React from 'react'
+
+import type { AnnotationStyle } from '../types/layerStyles'
+import { toRGB } from '../utils/color'
 import ColorSlider from './ColorSlider'
 import OpacitySlider from './OpacitySlider'
-import type { StyleOptions } from './SlideViewer/types'
 import { Switch } from './ui/switch'
 
-interface ColorSettingsMenuProps {
-  annotationGroupsUIDs: string[]
-  defaultStyle: {
-    opacity: number
-    color: number[]
-    contourOnly: boolean
-  }
-  onStyleChange: (arg: { uid: string; styleOptions: StyleOptions }) => void
+export interface ColorSettingsMenuProps {
+  style: AnnotationStyle
+  /** Every change, including while dragging a slider */
+  onChange: (style: AnnotationStyle) => void
+  /** Final value: slider release, keyboard step, typed number or toggle */
+  onCommit: (style: AnnotationStyle) => void
 }
 
-interface ColorSettingsMenuState {
-  currentStyle: {
-    opacity: number
-    color?: number[]
-    contourOnly: boolean
-  }
-}
+/** Color, opacity and outline settings of a set of annotations. */
+function ColorSettingsMenu({
+  style,
+  onChange,
+  onCommit,
+}: ColorSettingsMenuProps): React.ReactElement {
+  const color = toRGB(style.color)
 
-/**
- * Color, opacity and outline settings applied to a set of annotations.
- */
-class ColorSettingsMenu extends React.Component<
-  ColorSettingsMenuProps,
-  ColorSettingsMenuState
-> {
-  constructor(props: ColorSettingsMenuProps) {
-    super(props)
-    this.state = {
-      currentStyle: {
-        opacity: this.props.defaultStyle.opacity,
-        color: this.props.defaultStyle.color,
-        contourOnly: this.props.defaultStyle.contourOnly,
-      },
-    }
-  }
-
-  handleColorChange = (color: number[]): void => {
-    this.updateCurrentStyle({ color })
-    this.props.annotationGroupsUIDs.forEach((uid) => {
-      this.props.onStyleChange({
-        uid,
-        styleOptions: {
-          color,
-          opacity:
-            this.state.currentStyle.opacity ?? this.props.defaultStyle.opacity,
-          contourOnly: this.state.currentStyle.contourOnly,
-        },
-      })
-    })
-  }
-
-  handleOpacityChange = (opacity: number | null): void => {
-    if (opacity !== null) {
-      this.props.annotationGroupsUIDs.forEach((uid) => {
-        this.props.onStyleChange({
-          uid,
-          styleOptions: {
-            color:
-              this.state.currentStyle.color ?? this.props.defaultStyle.color,
-            opacity,
-            contourOnly: this.state.currentStyle.contourOnly,
-          },
-        })
-      })
-      this.updateCurrentStyle({ opacity })
-    }
-  }
-
-  handleShowOutlineOnly = (value: boolean): void => {
-    this.updateCurrentStyle({ contourOnly: value })
-
-    this.props.annotationGroupsUIDs.forEach((uid) => {
-      this.props.onStyleChange({
-        uid,
-        styleOptions: {
-          color: this.state.currentStyle.color ?? this.props.defaultStyle.color,
-          opacity:
-            this.state.currentStyle.opacity ?? this.props.defaultStyle.opacity,
-          contourOnly: value,
-        },
-      })
-    })
-  }
-
-  handleShowOutlineOnlyCheckbox = (checked: boolean): void => {
-    this.handleShowOutlineOnly(checked)
-  }
-
-  updateCurrentStyle = ({
-    color,
-    opacity,
-    contourOnly,
-  }: {
-    color?: number[]
-    opacity?: number
-    contourOnly?: boolean
-  }): void => {
-    this.setState((state) => ({
-      currentStyle: {
-        opacity: opacity ?? state.currentStyle.opacity,
-        color: color ?? state.currentStyle.color,
-        contourOnly: contourOnly ?? state.currentStyle.contourOnly,
-      },
-    }))
-  }
-
-  render(): React.ReactNode {
-    let colorSettings: React.ReactNode
-    if (
-      this.state.currentStyle.color !== null &&
-      this.state.currentStyle.color !== undefined
-    ) {
-      colorSettings = (
+  return (
+    <div className="flex flex-col gap-4">
+      {color !== undefined && (
         <div className="flex flex-col gap-2">
           <span className="text-[12px] text-ink-muted">Color</span>
           <ColorSlider
-            color={this.state.currentStyle.color}
-            onChange={this.handleColorChange}
+            color={color}
+            onChange={(next) => onChange({ ...style, color: next })}
+            onCommit={(next) => onCommit({ ...style, color: next })}
           />
         </div>
-      )
-    }
-
-    return (
-      <div className="flex flex-col gap-4">
-        {colorSettings}
-        <OpacitySlider
-          opacity={this.state.currentStyle.opacity}
-          onChange={this.handleOpacityChange}
+      )}
+      <OpacitySlider
+        opacity={style.opacity}
+        onChange={(opacity) => onChange({ ...style, opacity })}
+        onCommit={(opacity) => onCommit({ ...style, opacity })}
+      />
+      <div className="flex items-center justify-between">
+        <span className="text-[12.5px] font-medium text-ink">Outline only</span>
+        <Switch
+          size="sm"
+          checked={style.contourOnly}
+          onCheckedChange={(contourOnly) => onCommit({ ...style, contourOnly })}
+          aria-label="Show outline only"
         />
-        <div className="flex items-center justify-between">
-          <span className="text-[12.5px] font-medium text-ink">
-            Outline only
-          </span>
-          <Switch
-            size="sm"
-            checked={this.state.currentStyle.contourOnly}
-            onCheckedChange={this.handleShowOutlineOnlyCheckbox}
-            aria-label="Show outline only"
-          />
-        </div>
       </div>
-    )
-  }
+    </div>
+  )
 }
 
 export default ColorSettingsMenu
