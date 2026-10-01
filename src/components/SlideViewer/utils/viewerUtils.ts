@@ -1,17 +1,16 @@
 // skipcq: JS-C1003
-
-// skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
+// skipcq: JS-C1003
 import * as dmv from 'dicom-microscopy-viewer'
 // skipcq: JS-C1003
 import type * as dwc from 'dicomweb-client'
-import type OlMap from 'ol/Map'
 import type { Slide } from '../../../data/slides'
 import { StorageClasses } from '../../../data/uids'
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../../../services/NotificationMiddleware'
 import { CustomError, errorTypes } from '../../../utils/CustomError'
+import { logger } from '../../../utils/logger'
 import { findContentItemsByName } from '../../../utils/sr'
 
 /**
@@ -31,7 +30,7 @@ export const constructViewers = ({
   volumeViewer: dmv.viewer.VolumeImageViewer
   labelViewer?: dmv.viewer.LabelImageViewer
 } => {
-  console.info(
+  logger.log(
     'instantiate viewer for VOLUME images of slide ' +
       `"${slide.volumeImages[0].ContainerIdentifier}"`,
   )
@@ -61,7 +60,7 @@ export const constructViewers = ({
 
     let labelViewer: dmv.viewer.LabelImageViewer | undefined
     if (slide.labelImages.length > 0) {
-      console.info(
+      logger.log(
         'instantiate viewer for LABEL image of slide ' +
           `"${slide.labelImages[0].ContainerIdentifier}"`,
       )
@@ -183,15 +182,4 @@ export const containsROIAnnotations = (
   })
 
   return foundRegion
-}
-
-/**
- * OpenLayers map of a DMV viewer. `getMap()` exists at runtime but is missing
- * from DMV's typings; the map comes from DMV's bundled `ol`.
- */
-export const getViewerMap = (viewer: object): OlMap | undefined => {
-  const { getMap } = viewer as { getMap?: unknown }
-  if (typeof getMap !== 'function') return undefined
-  const map: unknown = getMap.call(viewer)
-  return map === null || map === undefined ? undefined : (map as OlMap)
 }

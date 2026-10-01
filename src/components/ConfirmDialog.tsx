@@ -1,4 +1,5 @@
-import * as React from 'react'
+import type * as React from 'react'
+import { createRoot } from 'react-dom/client'
 
 import { cn } from '../lib/utils'
 import { Button } from './ui/button'
@@ -11,15 +12,18 @@ import {
 } from './ui/dialog'
 import { Icon } from './ui/icon'
 
-interface ConfirmDialogProps {
-  open: boolean
+export interface ConfirmOptions {
   title: string
   description?: React.ReactNode
   confirmLabel?: string
   cancelLabel?: string
+  variant?: 'default' | 'destructive'
+}
+
+export interface ConfirmDialogProps extends ConfirmOptions {
+  open: boolean
   onConfirm: () => void
   onCancel: () => void
-  variant?: 'default' | 'destructive'
 }
 
 /**
@@ -77,137 +81,39 @@ export function ConfirmDialog({
   )
 }
 
-/**
- * Imperative API for showing confirmation dialogs.
- * Use this for programmatic confirmation flows.
- */
-interface ConfirmOptions {
-  title: string
-  description?: React.ReactNode
-  confirmLabel?: string
-  cancelLabel?: string
-  variant?: 'default' | 'destructive'
-}
-
-type ConfirmResolve = (confirmed: boolean) => void
-
-interface ConfirmState {
-  open: boolean
-  options: ConfirmOptions
-  resolve: ConfirmResolve | null
-}
-
-const ConfirmContext = React.createContext<{
-  confirm: (options: ConfirmOptions) => Promise<boolean>
-} | null>(null)
-
-export function ConfirmProvider({
-  children,
-}: {
-  children: React.ReactNode
-}): React.ReactElement {
-  const [state, setState] = React.useState<ConfirmState>({
-    open: false,
-    options: { title: '' },
-    resolve: null,
-  })
-
-  const confirm = React.useCallback(
-    (options: ConfirmOptions): Promise<boolean> => {
-      return new Promise<boolean>((resolve) => {
-        setState({
-          open: true,
-          options,
-          resolve,
-        })
-      })
-    },
-    [],
-  )
-
-  const { resolve } = state
-
-  const handleConfirm = React.useCallback(() => {
-    resolve?.(true)
-    setState((prev) => ({ ...prev, open: false, resolve: null }))
-  }, [resolve])
-
-  const handleCancel = React.useCallback(() => {
-    resolve?.(false)
-    setState((prev) => ({ ...prev, open: false, resolve: null }))
-  }, [resolve])
-
-  return (
-    <ConfirmContext.Provider value={{ confirm }}>
-      {children}
-      <ConfirmDialog
-        open={state.open}
-        title={state.options.title}
-        description={state.options.description}
-        confirmLabel={state.options.confirmLabel}
-        cancelLabel={state.options.cancelLabel}
-        variant={state.options.variant}
-        onConfirm={handleConfirm}
-        onCancel={handleCancel}
-      />
-    </ConfirmContext.Provider>
-  )
-}
-
-export function useConfirm(): (options: ConfirmOptions) => Promise<boolean> {
-  const context = React.useContext(ConfirmContext)
-  if (!context) {
-    throw new Error('useConfirm must be used within a ConfirmProvider')
-  }
-  return context.confirm
-}
+/** Settles the dialog opened by the last `showConfirmDialog` call, if open */
+let settleOpenDialog: ((confirmed: boolean) => void) | undefined
 
 /**
- * Standalone function to show a confirmation dialog without React context.
- * Creates a temporary DOM node and renders the dialog imperatively.
+ * Shows a confirmation dialog outside the React tree and resolves with the
+ * user's choice. Opening a new dialog cancels (resolves `false`) the one
+ * still open, so every returned promise settles.
  */
-export async function showConfirmDialog(
-  options: ConfirmOptions,
-): Promise<boolean> {
+export function showConfirmDialog(options: ConfirmOptions): Promise<boolean> {
+  settleOpenDialog?.(false)
   return new Promise<boolean>((resolve) => {
     const container = document.createElement('div')
     document.body.appendChild(container)
+    const root = createRoot(container)
+    let isSettled = false
 
-    const cleanup = (): void => {
-      const root = (
-        container as unknown as { _reactRoot?: { unmount: () => void } }
-      )._reactRoot
-      if (root) {
-        root.unmount()
-      }
-      document.body.removeChild(container)
+    const settle = (confirmed: boolean): void => {
+      if (isSettled) return
+      isSettled = true
+      if (settleOpenDialog === settle) settleOpenDialog = undefined
+      root.unmount()
+      container.remove()
+      resolve(confirmed)
     }
+    settleOpenDialog = settle
 
-    const handleConfirm = (): void => {
-      cleanup()
-      resolve(true)
-    }
-
-    const handleCancel = (): void => {
-      cleanup()
-      resolve(false)
-    }
-
-    import('react-dom/client').then(({ createRoot }) => {
-      const root = createRoot(container)
-      ;(container as unknown as { _reactRoot: typeof root })._reactRoot = root
-      root.render(
-        <ConfirmDialog
-          open={true}
-          title={options.title}
-          description={options.description}
-          confirmLabel={options.confirmLabel}
-          cancelLabel={options.cancelLabel}
-          variant={options.variant}
-          onConfirm={handleConfirm}
-          onCancel={handleCancel}
-        />,
-      )
-    })
+    root.render(
+      <ConfirmDialog
+        {...options}
+        open
+        onConfirm={() => settle(true)}
+        onCancel={() => settle(false)}
+      />,
+    )
   })
 }

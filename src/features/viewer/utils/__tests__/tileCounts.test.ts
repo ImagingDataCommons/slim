@@ -4,10 +4,44 @@ import {
   frameEventSopInstanceUID,
   INITIAL_TILE_COUNTS,
   nextTileStatus,
+  recordTileStatus,
   type TileCounts,
   type TileEventKind,
   type TileStatus,
 } from '../tileCounts'
+
+describe('recordTileStatus', () => {
+  it('stores the status as the most recent entry', () => {
+    const statuses = new Map<string, TileStatus>([
+      ['a', 'loading'],
+      ['b', 'loaded'],
+    ])
+    recordTileStatus(statuses, 'a', 'loaded', 10)
+    expect(Array.from(statuses)).toEqual([
+      ['b', 'loaded'],
+      ['a', 'loaded'],
+    ])
+  })
+
+  it('evicts the oldest settled entry past the limit', () => {
+    const statuses = new Map<string, TileStatus>([
+      ['inflight', 'loading'],
+      ['done', 'loaded'],
+      ['failed', 'failed'],
+    ])
+    recordTileStatus(statuses, 'new', 'loading', 3)
+    expect(Array.from(statuses.keys())).toEqual(['inflight', 'failed', 'new'])
+  })
+
+  it('evicts the oldest entry when every frame is in flight', () => {
+    const statuses = new Map<string, TileStatus>([
+      ['a', 'loading'],
+      ['b', 'loading'],
+    ])
+    recordTileStatus(statuses, 'c', 'loading', 2)
+    expect(Array.from(statuses.keys())).toEqual(['b', 'c'])
+  })
+})
 
 describe('frameEventKey', () => {
   it('combines SOP instance UID and frame number', () => {

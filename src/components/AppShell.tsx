@@ -7,7 +7,7 @@ interface AppShellProps {
 /** Full-height column shell: header on top, route content fills the rest. */
 const AppShell: React.FC<AppShellProps> = ({ children }) => {
   return (
-    <div className="flex h-screen min-w-[1180px] flex-col overflow-hidden bg-app text-[13px] text-ink">
+    <div className="flex h-screen flex-col overflow-hidden bg-app text-[13px] text-ink">
       {children}
     </div>
   )

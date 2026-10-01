@@ -5,6 +5,7 @@ declare module 'dicom-microscopy-viewer' {
   // skipcq: JS-C1003
   import * as dcmjs from 'dcmjs'
   import { CustomError } from '../../src/utils/CustomError'
+  import type OlMap from 'ol/Map'
 
   declare namespace viewer {
 
@@ -85,7 +86,7 @@ declare module 'dicom-microscopy-viewer' {
       getROI (uid: string): roi.ROI
       popROI (): roi.ROI
       addROI (item: roi.ROI, styleOptions?: object)
-      getROIStyle (uid: string): object
+      getROIStyle (uid: string): ROIStyleOptions
       setROIStyle (uid: string, styleOptions?: object): void
       addROIMeasurement (
         uid: string,
@@ -245,6 +246,18 @@ declare module 'dicom-microscopy-viewer' {
       getPaletteDisplayGammaCorrectionEnabled (): boolean;
       toggleSegmentationInterpolation (): void;
       toggleParametricMapInterpolation (): void;
+      /** OpenLayers map; DMV bundles its own copy of `ol`. */
+      getMap (): OlMap
+      clearSelections (): void
+      /**
+       * An undefined `clusteringPixelSizeThreshold` turns clustering off;
+       * omitting the key leaves it unchanged.
+       */
+      setAnnotationOptions (options: AnnotationOptions): void
+    }
+
+    export interface AnnotationOptions {
+      clusteringPixelSizeThreshold?: number
     }
 
     export interface OverviewImageViewerOptions {
@@ -283,6 +296,70 @@ declare module 'dicom-microscopy-viewer' {
       resize (): void
       get size (): number[]
     }
+  }
+
+  /** Payloads DMV publishes as `event.detail.payload` on its CustomEvents. */
+  declare namespace events {
+
+    export interface FrameInfo {
+      studyInstanceUID: string
+      seriesInstanceUID: string
+      sopInstanceUID: string
+      sopClassUID: string
+      frameNumber: number
+      channelIdentifier: string
+    }
+
+    export interface FrameLoadingEndedPayload extends FrameInfo {
+      /** Missing when the frame failed to load */
+      pixelArray?: Uint8Array | Uint16Array | Float32Array | null
+    }
+
+    export interface PointerMoveFeature {
+      feature: roi.ROI
+      annotationGroupUID: string | null
+    }
+
+    export interface PointerMovePayload {
+      features: PointerMoveFeature[]
+      event: { originalEvent: MouseEvent }
+    }
+
+    export interface ViewportClickedPayload {
+      rois: roi.ROI[]
+    }
+
+    export interface SegmentVisibilityChangedPayload {
+      segmentUID: string
+      isVisible: boolean
+    }
+
+    export interface ParameterMappingVisibilityChangedPayload {
+      mappingUID: string
+      isVisible: boolean
+    }
+
+    export interface EventPayloadMap {
+      dicommicroscopyviewer_roi_added: roi.ROI
+      dicommicroscopyviewer_roi_removed: roi.ROI
+      dicommicroscopyviewer_roi_drawn: roi.ROI
+      /** Bulk annotation selections may carry only a UID */
+      dicommicroscopyviewer_roi_selected: roi.ROI | { uid?: string }
+      dicommicroscopyviewer_roi_modified: roi.ROI
+      dicommicroscopyviewer_roi_double_clicked: roi.ROI | null
+      dicommicroscopyviewer_viewport_clicked: ViewportClickedPayload
+      dicommicroscopyviewer_pointer_move: PointerMovePayload
+      dicommicroscopyviewer_loading_started: unknown
+      dicommicroscopyviewer_loading_ended: unknown
+      dicommicroscopyviewer_loading_error: CustomError | null
+      dicommicroscopyviewer_frame_loading_started: FrameInfo
+      dicommicroscopyviewer_frame_loading_ended: FrameLoadingEndedPayload
+      dicommicroscopyviewer_frame_loading_error: FrameInfo
+      dicommicroscopyviewer_segment_visibility_changed: SegmentVisibilityChangedPayload
+      dicommicroscopyviewer_parameter_mapping_visibility_changed: ParameterMappingVisibilityChangedPayload
+    }
+
+    export type EventName = keyof EventPayloadMap
   }
 
   declare namespace scoord3d {
@@ -458,6 +535,30 @@ declare module 'dicom-microscopy-viewer' {
       InstanceAvailability?: string
       RetrieveURL?: string
       TimezoneOffsetFromUTC?: string
+      StudyDescription?: string
+      PatientAge?: string
+      PatientSpeciesCodeSequence?: CodeSequenceItem[]
+      AdmittingDiagnosesDescription?: string
+      AdmittingDiagnosesCodeSequence?: CodeSequenceItem[]
+    }
+
+    export interface CodeSequenceItem {
+      CodeValue: string
+      CodeMeaning: string
+      CodingSchemeDesignator: string
+      CodingSchemeVersion?: string
+    }
+
+    export interface RealWorldValueMapping {
+      RealWorldValueFirstValueMapped?: number
+      RealWorldValueLastValueMapped?: number
+      LUTLabel?: string
+      LUTExplanation?: string
+      MeasurementUnitsCodeSequence?: CodeSequenceItem[]
+    }
+
+    export interface FunctionalGroup {
+      RealWorldValueMappingSequence?: RealWorldValueMapping[]
     }
 
     export interface Series extends Study {
@@ -530,6 +631,11 @@ declare module 'dicom-microscopy-viewer' {
       PatientSex: string
       PatientBirthDate: string
       ReferringPhysicianName: PersonName
+      PatientAge?: string
+      PatientSpeciesCodeSequence?: CodeSequenceItem[]
+      AdmittingDiagnosesDescription?: string
+      AdmittingDiagnosesCodeSequence?: CodeSequenceItem[]
+      StudyDescription?: string
       // General Study module
       StudyInstanceUID: string
       AccessionNumber: string
@@ -656,6 +762,10 @@ declare module 'dicom-microscopy-viewer' {
     export interface ParametricMap extends SOPClass {
       // Floating Point Image Pixel or Double Floating Point Image Pixel module
       BitsAllocated: number
+      /** Real World Value Mapping, top level or in functional groups */
+      RealWorldValueMappingSequence?: RealWorldValueMapping[]
+      SharedFunctionalGroupsSequence?: FunctionalGroup[]
+      PerFrameFunctionalGroupsSequence?: FunctionalGroup[]
       // Frame of Reference module
       FrameOfReferenceUID: string
       // Specimen module
@@ -667,6 +777,8 @@ declare module 'dicom-microscopy-viewer' {
     export interface Segmentation extends SOPClass {
       // Image Pixel module
       BitsAllocated: number
+      /** Segmentation Image module */
+      SegmentationType?: 'BINARY' | 'FRACTIONAL'
       // Frame of Reference module
       FrameOfReferenceUID: string
       // Specimen module

@@ -6,9 +6,13 @@ import { SLIDE_PANEL_ID } from '../../features/viewer/utils/panelIds'
 import { cn } from '../../lib/utils'
 import { SlimCollapsibleSection } from '../slim/SlimCollapsibleSection'
 
-interface SlideViewerSidebarProps {
+export interface SlideViewerSidebarProps {
   isOpen: boolean
-  labelViewportRef: React.RefObject<HTMLDivElement>
+  /**
+   * Called with the label container whenever it mounts or unmounts, so the
+   * label viewer can render into it even when it appears after a rebuild
+   */
+  labelViewportRef: React.RefCallback<HTMLDivElement>
   labelViewer?: dmv.viewer.LabelImageViewer
   specimenMenu: React.ReactNode
   equipmentMenu: React.ReactNode
@@ -27,7 +31,7 @@ interface SlideViewerSidebarProps {
  * parametric maps. Kept mounted while hidden so the DMV label viewer and
  * item state survive panel toggles.
  */
-const SlideViewerSidebar: React.FC<SlideViewerSidebarProps> = ({
+const SlideViewerSidebar = ({
   isOpen,
   labelViewportRef,
   labelViewer,
@@ -40,7 +44,7 @@ const SlideViewerSidebar: React.FC<SlideViewerSidebarProps> = ({
   annotationCategoryMenu,
   segmentationMenu,
   parametricMapMenu,
-}) => {
+}: SlideViewerSidebarProps): React.ReactElement => {
   const handleLabelOpenChange = useCallback((): void => {
     requestAnimationFrame(() => labelViewer?.resize())
   }, [labelViewer])

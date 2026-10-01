@@ -31,7 +31,7 @@ function ZoomButton({
   size = 20,
   onClick,
 }: {
-  icon: string
+  icon: React.ComponentProps<typeof Icon>['name']
   title: string
   size?: number
   onClick: () => void

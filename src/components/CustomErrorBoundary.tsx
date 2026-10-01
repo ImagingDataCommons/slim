@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary'
 
+import { logger } from '../utils/logger'
 import { Button } from './ui/button'
 import {
   Dialog,
@@ -81,11 +82,9 @@ const CustomErrorBoundary = ({
       componentStack: string
     },
   ): void => {
-    /** Only log errors in development environment */
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error caught by boundary:', error, info)
+      logger.error('Error caught by boundary:', error, info)
     }
-    /** In production, you might want to send this to an error reporting service */
   }
 
   return (

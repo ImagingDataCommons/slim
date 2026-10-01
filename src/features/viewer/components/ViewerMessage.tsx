@@ -6,9 +6,19 @@ import { cn } from '../../../lib/utils'
 
 export type ViewerMessageStatus = 'error' | 'warning'
 
-const STATUS_ICON: Record<ViewerMessageStatus, string> = {
+const STATUS_ICON: Record<
+  ViewerMessageStatus,
+  React.ComponentProps<typeof Icon>['name']
+> = {
   error: 'error',
   warning: 'warning',
+}
+
+export interface ViewerMessageProps {
+  status: ViewerMessageStatus
+  title: string
+  description: string
+  onRetry?: () => void
 }
 
 /** Explains, in place of the viewer, why there is nothing to display */
@@ -17,12 +27,7 @@ export function ViewerMessage({
   title,
   description,
   onRetry,
-}: {
-  status: ViewerMessageStatus
-  title: string
-  description: string
-  onRetry?: () => void
-}): React.ReactElement {
+}: ViewerMessageProps): React.ReactElement {
   return (
     <div className="grid h-full w-full place-items-center bg-app p-6">
       <div

@@ -22,6 +22,7 @@ import type DicomWebManager from '../DicomWebManager'
 import type { Slide } from '../data/slides'
 import { useSlides } from '../hooks/useSlides'
 import { cn } from '../lib/utils'
+import { logger } from '../utils/logger'
 import {
   runValidationChecks,
   VALID_RESULT,
@@ -201,7 +202,7 @@ export const runValidations = (options: {
     globalValidationContext === null ||
     globalValidationContext === undefined
   ) {
-    console.warn(
+    logger.warn(
       'Validation context not available. Make sure ValidationProvider is mounted.',
     )
     return VALID_RESULT

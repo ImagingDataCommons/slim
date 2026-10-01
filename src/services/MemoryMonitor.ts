@@ -1,3 +1,5 @@
+import { logger } from '../utils/logger'
+
 interface MemoryMeasureUserAgentSpecificMemoryResult {
   bytes: number
   breakdown?: Array<{
@@ -88,8 +90,8 @@ class MemoryMonitor {
   private monitoringActive: boolean = false
   private readonly updateInterval: number = 5000
   private lastMeasurement: MemoryInfo | null = null
-  private readonly highUsageThreshold = 0.8 // 80%
-  private readonly criticalUsageThreshold = 0.9 // 90%
+  private readonly highUsageThreshold = 0.8
+  private readonly criticalUsageThreshold = 0.9
 
   /**
    * Check if modern memory API is available
@@ -150,8 +152,10 @@ class MemoryMonitor {
     ) {
       jsHeapSizeLimit = performance.memory.jsHeapSizeLimit
     } else {
-      // Use 8GB as fallback limit for 64-bit browsers when jsHeapSizeLimit unavailable
-      // This prevents usagePercentage from being stuck at 50% when bytes > 2GB
+      /**
+       * 8 GB fallback for 64-bit browsers without jsHeapSizeLimit, so usage
+       * is not stuck at 50% once more than 2 GB are used.
+       */
       jsHeapSizeLimit = 8 * 1024 * 1024 * 1024
     }
 
@@ -242,7 +246,6 @@ class MemoryMonitor {
           }))
         }
       } catch (_error) {
-        // Modern API failed, try Chrome fallback
         if (this.isChromeAPIAvailable()) {
           memory = this.getMemoryChrome()
         } else {
@@ -261,7 +264,7 @@ class MemoryMonitor {
       try {
         callback(memory)
       } catch (error) {
-        console.error('Error in memory update callback:', error)
+        logger.error('Error in memory update callback:', error)
       }
     })
 
@@ -305,7 +308,7 @@ class MemoryMonitor {
             scheduleNext()
           })
           .catch((error) => {
-            console.error('Error in periodic memory measurement:', error)
+            logger.error('Error in periodic memory measurement:', error)
             scheduleNext()
           })
       }, interval)
@@ -316,7 +319,7 @@ class MemoryMonitor {
         scheduleNext()
       })
       .catch((error) => {
-        console.error('Error in initial memory measurement:', error)
+        logger.error('Error in initial memory measurement:', error)
         scheduleNext()
       })
   }
@@ -388,8 +391,4 @@ class MemoryMonitor {
   }
 }
 
-// Export singleton instance
 export const memoryMonitor = new MemoryMonitor()
-
-// Auto-start monitoring when module loads (optional - can be controlled by app)
-// memoryMonitor.startMonitoring()

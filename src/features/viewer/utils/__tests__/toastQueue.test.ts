@@ -1,7 +1,11 @@
 import {
   dismissToast,
   enqueueToast,
+  isToastTone,
+  isToastToneDisabled,
+  TOAST_DURATION_MS,
   type Toast,
+  toastDurationMs,
   toToastNotification,
 } from '../toastQueue'
 
@@ -24,6 +28,16 @@ describe('toToastNotification', () => {
     })
     expect(toToastNotification({ message: 'Hi', tone: 'loud' })).toEqual({
       message: 'Hi',
+      tone: 'info',
+    })
+  })
+
+  it('keeps the error tone and a non-empty title', () => {
+    expect(
+      toToastNotification({ message: 'Down', tone: 'error', title: 'Oops' }),
+    ).toEqual({ message: 'Down', tone: 'error', title: 'Oops' })
+    expect(toToastNotification({ message: 'Down', title: '' })).toEqual({
+      message: 'Down',
       tone: 'info',
     })
   })
@@ -52,6 +66,53 @@ describe('enqueueToast', () => {
 
   it('always keeps the newest toast', () => {
     expect(enqueueToast([toast(1)], toast(2), 0)).toEqual([toast(2)])
+  })
+})
+
+describe('isToastTone', () => {
+  it('accepts the four tones only', () => {
+    expect(['info', 'success', 'warning', 'error'].every(isToastTone)).toBe(
+      true,
+    )
+    expect(isToastTone('loading')).toBe(false)
+    expect(isToastTone(undefined)).toBe(false)
+  })
+})
+
+describe('isToastToneDisabled', () => {
+  it('enables everything without configuration', () => {
+    expect(isToastToneDisabled('error', undefined)).toBe(false)
+    expect(isToastToneDisabled('info', {})).toBe(false)
+  })
+
+  it('honors a global boolean', () => {
+    expect(isToastToneDisabled('success', { disabled: true })).toBe(true)
+    expect(isToastToneDisabled('success', { disabled: false })).toBe(false)
+  })
+
+  it('honors a list of disabled tones', () => {
+    const config = { disabled: ['warning', 'info'] }
+    expect(isToastToneDisabled('warning', config)).toBe(true)
+    expect(isToastToneDisabled('info', config)).toBe(true)
+    expect(isToastToneDisabled('error', config)).toBe(false)
+  })
+})
+
+describe('toastDurationMs', () => {
+  it('falls back to the default duration', () => {
+    expect(toastDurationMs(undefined)).toBe(TOAST_DURATION_MS)
+    expect(toastDurationMs({})).toBe(TOAST_DURATION_MS)
+    expect(toastDurationMs({ duration: Number.NaN })).toBe(TOAST_DURATION_MS)
+  })
+
+  it('converts configured seconds to ms', () => {
+    expect(toastDurationMs({ duration: 5 })).toBe(5000)
+    expect(toastDurationMs({ duration: 0.5 })).toBe(500)
+  })
+
+  it('keeps toasts open for zero or negative durations', () => {
+    expect(toastDurationMs({ duration: 0 })).toBeUndefined()
+    expect(toastDurationMs({ duration: -1 })).toBeUndefined()
   })
 })
 

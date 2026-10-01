@@ -1,7 +1,7 @@
 import type * as React from 'react'
 
 import { cn } from '../lib/utils'
-import { Icon } from './ui/icon'
+import { Icon, type IconName } from './ui/icon'
 
 interface InfoPageProps {
   type: 'error' | 'info' | 'warning'
@@ -9,7 +9,7 @@ interface InfoPageProps {
   message?: string
 }
 
-const TONES: Record<InfoPageProps['type'], { icon: string; tile: string }> = {
+const TONES: Record<InfoPageProps['type'], { icon: IconName; tile: string }> = {
   error: { icon: 'error', tile: 'bg-destructive-soft text-destructive-text' },
   warning: { icon: 'warning', tile: 'bg-warning-soft text-warning-text' },
   info: { icon: 'info', tile: 'bg-primary-soft text-primary' },

@@ -14,6 +14,8 @@ export interface ViewerFooterProps {
   enableMemoryMonitoring: boolean
   /** Volume image SOP Instance UIDs whose frames are counted */
   sopInstanceUIDs?: ReadonlySet<string>
+  /** Tile counts restart whenever this changes (e.g. a viewer rebuild) */
+  resetKey?: string
 }
 
 const MEMORY_BAR_TONE = {
@@ -26,8 +28,9 @@ const MEMORY_BAR_TONE = {
 export function ViewerFooter({
   enableMemoryMonitoring,
   sopInstanceUIDs,
+  resetKey,
 }: ViewerFooterProps): React.ReactElement {
-  const tiles = useTileCounts(sopInstanceUIDs)
+  const tiles = useTileCounts(sopInstanceUIDs, resetKey)
   const memory = useMemoryMonitor(enableMemoryMonitoring)
   const used = memory?.usedJSHeapSize ?? null
   const limit = memory?.jsHeapSizeLimit ?? null

@@ -1,36 +1,36 @@
 import type React from 'react'
-import { useCallback, useRef, useState } from 'react'
+import { useRef } from 'react'
 
+import {
+  type GoToField,
+  type GoToFieldStatus,
+  type GoToInput,
+  type GoToRanges,
+  MAX_GO_TO_MAGNIFICATION,
+  MIN_GO_TO_MAGNIFICATION,
+  validateGoToInput,
+} from '../../features/viewer/utils/goTo'
 import { cn } from '../../lib/utils'
 import { Button } from '../ui/button'
-import {
-  Dialog,
-  DialogContent,
-  SlimDialogFooter,
-  SlimDialogHeader,
-} from '../ui/dialog'
 import { Icon } from '../ui/icon'
+import { ViewerModal } from './ViewerModal'
 
-interface GoToModalProps {
+export interface GoToModalProps {
   isVisible: boolean
+  input: GoToInput
+  ranges: GoToRanges
+  onInputChange: (field: GoToField, value: string) => void
   onOk: () => void
   onCancel: () => void
-  validXCoordinateRange: number[]
-  validYCoordinateRange: number[]
-  isSelectedXCoordinateValid: boolean
-  isSelectedYCoordinateValid: boolean
-  isSelectedMagnificationValid: boolean
-  onXCoordinateSelection: (value: number | string | null) => void
-  onYCoordinateSelection: (value: number | string | null) => void
-  onMagnificationSelection: (value: number | string | null) => void
 }
 
 interface CoordinateFieldProps {
   id: string
   label: string
   placeholder: string
-  isValid: boolean
-  onValueChange: (value: number | null) => void
+  value: string
+  status: GoToFieldStatus
+  onValueChange: (value: string) => void
   onSubmit: () => void
   inputRef?: React.Ref<HTMLInputElement>
 }
@@ -39,13 +39,13 @@ function CoordinateField({
   id,
   label,
   placeholder,
-  isValid,
+  value,
+  status,
   onValueChange,
   onSubmit,
   inputRef,
 }: CoordinateFieldProps): React.ReactElement {
-  const [hasValue, setHasValue] = useState(false)
-  const showInvalid = hasValue && !isValid
+  const showInvalid = !status.isEmpty && !status.isValid
 
   return (
     <label
@@ -66,21 +66,19 @@ function CoordinateField({
           id={id}
           type="number"
           placeholder={placeholder}
-          onChange={(event) => {
-            const raw = event.target.value
-            setHasValue(raw !== '')
-            onValueChange(raw !== '' ? Number(raw) : null)
-          }}
+          value={value}
+          aria-invalid={showInvalid}
+          onChange={(event) => onValueChange(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Enter') onSubmit()
           }}
           className="min-w-0 flex-1 border-0 bg-transparent font-mono text-[12.5px] text-ink outline-none placeholder:text-ink-fainter"
         />
-        {hasValue && (
+        {!status.isEmpty && (
           <Icon
-            name={isValid ? 'check_circle' : 'error'}
+            name={status.isValid ? 'check_circle' : 'error'}
             size={18}
-            className={isValid ? 'text-success' : 'text-destructive'}
+            className={status.isValid ? 'text-success' : 'text-destructive'}
           />
         )}
       </div>
@@ -89,78 +87,70 @@ function CoordinateField({
 }
 
 /** Modal for navigating to a slide position and magnification. */
-const GoToModal: React.FC<GoToModalProps> = ({
+const GoToModal = ({
   isVisible,
+  input,
+  ranges,
+  onInputChange,
   onOk,
   onCancel,
-  validXCoordinateRange,
-  validYCoordinateRange,
-  isSelectedXCoordinateValid,
-  isSelectedYCoordinateValid,
-  isSelectedMagnificationValid,
-  onXCoordinateSelection,
-  onYCoordinateSelection,
-  onMagnificationSelection,
-}) => {
+}: GoToModalProps): React.ReactElement => {
   const xInputRef = useRef<HTMLInputElement>(null)
-  const handleOpenChange = useCallback(
-    (open: boolean): void => {
-      if (!open) onCancel()
-    },
-    [onCancel],
-  )
+  const { fields } = validateGoToInput(input, ranges)
 
   return (
-    <Dialog open={isVisible} onOpenChange={handleOpenChange}>
-      <DialogContent
-        className="max-w-[440px]"
-        onOpenAutoFocus={(event) => {
-          event.preventDefault()
-          xInputRef.current?.focus()
-        }}
-      >
-        <SlimDialogHeader
-          icon="my_location"
-          title="Go to position"
-          subtitle="Center the viewport on slide coordinates"
-        />
-        <div className="flex flex-col gap-3 overflow-y-auto px-5 pb-5 pt-[18px]">
-          <div className="grid grid-cols-2 gap-3">
-            <CoordinateField
-              id="goto-x-coordinate"
-              inputRef={xInputRef}
-              label="X coordinate (mm)"
-              placeholder={`${validXCoordinateRange[0]} – ${validXCoordinateRange[1]}`}
-              isValid={isSelectedXCoordinateValid}
-              onValueChange={onXCoordinateSelection}
-              onSubmit={onOk}
-            />
-            <CoordinateField
-              id="goto-y-coordinate"
-              label="Y coordinate (mm)"
-              placeholder={`${validYCoordinateRange[0]} – ${validYCoordinateRange[1]}`}
-              isValid={isSelectedYCoordinateValid}
-              onValueChange={onYCoordinateSelection}
-              onSubmit={onOk}
-            />
-          </div>
-          <CoordinateField
-            id="goto-magnification"
-            label="Magnification"
-            placeholder="0 – 40"
-            isValid={isSelectedMagnificationValid}
-            onValueChange={onMagnificationSelection}
-            onSubmit={onOk}
-          />
-        </div>
-        <SlimDialogFooter>
+    <ViewerModal
+      isVisible={isVisible}
+      onCancel={onCancel}
+      icon="my_location"
+      title="Go to position"
+      subtitle="Center the viewport on slide coordinates"
+      widthClassName="max-w-[440px]"
+      bodyClassName="gap-3"
+      onOpenAutoFocus={(event) => {
+        event.preventDefault()
+        xInputRef.current?.focus()
+      }}
+      footer={
+        <>
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
           <Button onClick={onOk}>Go to position</Button>
-        </SlimDialogFooter>
-      </DialogContent>
-    </Dialog>
+        </>
+      }
+    >
+      <div className="grid grid-cols-2 gap-3">
+        <CoordinateField
+          id="goto-x-coordinate"
+          inputRef={xInputRef}
+          label="X coordinate (mm)"
+          placeholder={`${ranges.x[0]} – ${ranges.x[1]}`}
+          value={input.x}
+          status={fields.x}
+          onValueChange={(value) => onInputChange('x', value)}
+          onSubmit={onOk}
+        />
+        <CoordinateField
+          id="goto-y-coordinate"
+          label="Y coordinate (mm)"
+          placeholder={`${ranges.y[0]} – ${ranges.y[1]}`}
+          value={input.y}
+          status={fields.y}
+          onValueChange={(value) => onInputChange('y', value)}
+          onSubmit={onOk}
+        />
+      </div>
+      <CoordinateField
+        id="goto-magnification"
+        label="Magnification"
+        placeholder={`${MIN_GO_TO_MAGNIFICATION} – ${MAX_GO_TO_MAGNIFICATION}`}
+        value={input.magnification}
+        status={fields.magnification}
+        onValueChange={(value) => onInputChange('magnification', value)}
+        onSubmit={onOk}
+      />
+    </ViewerModal>
   )
 }
 

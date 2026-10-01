@@ -6,15 +6,14 @@ import { cn } from '../../../lib/utils'
 import type { ActiveRoiTool } from '../utils/activeRoiTool'
 import { SLIDE_PANEL_ID, STUDY_PANEL_ID } from '../utils/panelIds'
 
-export type { ActiveRoiTool } from '../utils/activeRoiTool'
-export { deriveActiveRoiTool } from '../utils/activeRoiTool'
-
 /** Below this toolbar width the tool labels collapse to icons only. */
 export const COMPACT_TOOLBAR_WIDTH_PX = 720
 
+type IconName = React.ComponentProps<typeof Icon>['name']
+
 interface ToolDefinition {
   key: string
-  icon: string
+  icon: IconName
   label: string
   tooltip: string
   isActive: boolean
@@ -45,7 +44,7 @@ function PanelToggle({
   controls,
   onClick,
 }: {
-  icon: string
+  icon: IconName
   title: string
   isExpanded: boolean
   controls: string
@@ -75,7 +74,7 @@ function ToolButton({
   isCompact,
   onClick,
 }: {
-  icon: string
+  icon: IconName
   label: string
   tooltip: string
   isActive: boolean

@@ -4,8 +4,10 @@ import type * as dcmjs from 'dcmjs'
 import type * as dmv from 'dicom-microscopy-viewer'
 import type DicomWebManager from '../../DicomWebManager'
 import type { Slide } from '../../data/slides'
+import type { GoToInput } from '../../features/viewer/utils/goTo'
 import type { ViewportLoadingPhase } from '../../features/viewer/utils/viewportLoading'
 import type { AnnotationSettings } from '../../types/annotations'
+import type { AppInfo } from '../../utils/appInfo'
 import type { RouteComponentProps } from '../../utils/router'
 
 /**
@@ -50,12 +52,7 @@ export interface SlideViewerProps extends RouteComponentProps {
   clients: { [key: string]: DicomWebManager }
   studyInstanceUID: string
   seriesInstanceUID: string
-  app: {
-    name: string
-    version: string
-    uid: string
-    organization?: string
-  }
+  app: AppInfo
   annotations: AnnotationSettings[]
   enableAnnotationTools: boolean
   preload: boolean
@@ -88,43 +85,23 @@ export interface SlideViewerState {
   selectedMarkup?: string
   selectedRoi?: dmv.roi.ROI
   selectedRoiUIDs: Set<string>
+  /** Naturalized Comprehensive 3D SR awaiting verification */
   generatedReport?: dmv.metadata.Comprehensive3DSR
   isLoading: boolean
   isAnnotationModalVisible: boolean
   isSelectedRoiModalVisible: boolean
-  isHoveredRoiTooltipVisible: boolean
-  hoveredRoiAttributes: Array<{
-    index: number
-    roiUid: string
-    attributes: Array<{ name: string; value: string }>
-    seriesDescription?: string
-  }>
-  hoveredRoiTooltipX: number
-  hoveredRoiTooltipY: number
   isReportModalVisible: boolean
   isRoiDrawingActive: boolean
   isRoiModificationActive: boolean
   isRoiTranslationActive: boolean
   isGoToModalVisible: boolean
-  isSelectedMagnificationValid: boolean
-  isSelectedXCoordinateValid: boolean
-  isSelectedYCoordinateValid: boolean
-  selectedXCoordinate?: number
-  validXCoordinateRange: number[]
-  selectedYCoordinate?: number
-  validYCoordinateRange: number[]
-  selectedMagnification?: number
+  /** Raw text of the "Go to position" fields */
+  goToInput: GoToInput
+  validXCoordinateRange: [number, number]
+  validYCoordinateRange: [number, number]
   areRoisHidden: boolean
   selectedSeriesInstanceUID?: string
   selectedSegmentationSeriesInstanceUID?: string
-  pixelDataStatistics: {
-    [opticalPathIdentifier: string]: {
-      min: number
-      max: number
-      numFramesSampled: number
-    }
-  }
-  loadingFrames: Set<string>
   viewportLoadingPhase: ViewportLoadingPhase
   isICCProfilesEnabled: boolean
   isPaletteDisplayGammaCorrectionEnabled: boolean

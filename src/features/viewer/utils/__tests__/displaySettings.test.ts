@@ -2,7 +2,58 @@ import {
   changedSettingKeys,
   parseClusteringThreshold,
   resolveClusteringThreshold,
+  shouldApplyClusteringSettings,
 } from '../displaySettings'
+
+describe('shouldApplyClusteringSettings', () => {
+  const enabled = { isEnabled: true, thresholdInput: '' }
+
+  it('applies when clustering is toggled, whatever the threshold', () => {
+    expect(
+      shouldApplyClusteringSettings(enabled, { ...enabled, isEnabled: false }),
+    ).toBe(true)
+    expect(
+      shouldApplyClusteringSettings(
+        { isEnabled: false, thresholdInput: '0.' },
+        { isEnabled: true, thresholdInput: '0.' },
+      ),
+    ).toBe(true)
+  })
+
+  it('applies a valid threshold edit while enabled', () => {
+    expect(
+      shouldApplyClusteringSettings(enabled, {
+        ...enabled,
+        thresholdInput: '0.5',
+      }),
+    ).toBe(true)
+  })
+
+  it('applies toggle and threshold edits made together using the new values', () => {
+    expect(
+      shouldApplyClusteringSettings(
+        { isEnabled: false, thresholdInput: '' },
+        { isEnabled: true, thresholdInput: '0.5' },
+      ),
+    ).toBe(true)
+  })
+
+  it('skips partial input, edits while disabled and no-ops', () => {
+    expect(
+      shouldApplyClusteringSettings(enabled, {
+        ...enabled,
+        thresholdInput: '0.',
+      }),
+    ).toBe(false)
+    expect(
+      shouldApplyClusteringSettings(
+        { isEnabled: false, thresholdInput: '' },
+        { isEnabled: false, thresholdInput: '1' },
+      ),
+    ).toBe(false)
+    expect(shouldApplyClusteringSettings(enabled, { ...enabled })).toBe(false)
+  })
+})
 
 describe('parseClusteringThreshold', () => {
   it('treats empty input as automatic', () => {

@@ -19,9 +19,16 @@ import { ViewerLoadingLayout } from '../features/viewer/components/ViewerLoading
 import { ViewerMessage } from '../features/viewer/components/ViewerMessage'
 import { ViewportLoadingIndicator } from '../features/viewer/components/ViewportLoadingIndicator'
 import { STUDY_PANEL_ID } from '../features/viewer/utils/panelIds'
+import {
+  isReferencingInstance,
+  type ReferencingInstance,
+  resolveReferencedSlide,
+} from '../features/viewer/utils/referencedSlide'
 import { useSlides } from '../hooks/useSlides'
 import { cn } from '../lib/utils'
+import type { AppInfo } from '../utils/appInfo'
 import { buildStudySummary } from '../utils/displayFormat'
+import { logger } from '../utils/logger'
 import {
   findSlideBySeriesInstanceUID,
   seriesUidFromSlide,
@@ -49,28 +56,6 @@ import {
 
 const { naturalizeDataset } = dcmjs.data.DicomMetaDictionary
 
-interface NaturalizedInstance {
-  SeriesInstanceUID: string
-  SOPInstanceUID: string
-  FrameOfReferenceUID?: string
-  ContainerIdentifier?: string
-  ReferencedSeriesSequence?: Array<{
-    SeriesInstanceUID: string
-  }>
-  ContentSequence?: Array<{
-    ConceptNameCodeSequence: Array<{
-      CodeValue: string
-    }>
-    ContentSequence?: Array<{
-      ContentSequence: Array<{
-        ReferencedSOPSequence: Array<{
-          ReferencedSOPInstanceUID: string
-        }>
-      }>
-    }>
-  }>
-}
-
 const findSeriesSlide = (
   slides: Slide[],
   seriesInstanceUID: string,
@@ -91,12 +76,7 @@ function ParametrizedSlideViewer({
   clients: { [key: string]: DicomWebManager }
   slides: Slide[]
   user?: User
-  app: {
-    name: string
-    version: string
-    uid: string
-    organization?: string
-  }
+  app: AppInfo
   preload: boolean
   enableAnnotationTools: boolean
   enableMemoryMonitoring: boolean
@@ -115,7 +95,7 @@ function ParametrizedSlideViewer({
     findSeriesSlide(slides, seriesInstanceUID),
   )
   const [derivedDataset, setDerivedDataset] =
-    useState<NaturalizedInstance | null>(null)
+    useState<ReferencingInstance | null>(null)
   /** Series from the URL that resolved to no slide of this study */
   const [unresolvedSeriesUID, setUnresolvedSeriesUID] = useState<string | null>(
     null,
@@ -129,108 +109,80 @@ function ParametrizedSlideViewer({
         selectedSlide
 
     if (
-      selectedSlide === null ||
-      selectedSlide === undefined ||
-      !currentSlideMatchesSeries
+      selectedSlide !== null &&
+      selectedSlide !== undefined &&
+      currentSlideMatchesSeries
     ) {
-      const imageSlide = findSeriesSlide(slides, seriesInstanceUID)
-      if (imageSlide !== null && imageSlide !== undefined) {
-        const resolvedSeriesUID = seriesUidFromSlide(
-          imageSlide,
-          seriesInstanceUID,
+      return
+    }
+
+    const imageSlide = findSeriesSlide(slides, seriesInstanceUID)
+    if (imageSlide !== null && imageSlide !== undefined) {
+      const resolvedSeriesUID = seriesUidFromSlide(
+        imageSlide,
+        seriesInstanceUID,
+      )
+      setSelectedSlide(imageSlide)
+      setDerivedDataset(null)
+      setUnresolvedSeriesUID(null)
+      if (resolvedSeriesUID !== seriesInstanceUID) {
+        logger.warn(
+          `Corrected mangled series UID in route: "${seriesInstanceUID}" → "${resolvedSeriesUID}"`,
         )
-        setSelectedSlide(imageSlide)
-        setDerivedDataset(null)
-        setUnresolvedSeriesUID(null)
-        if (resolvedSeriesUID !== seriesInstanceUID) {
-          console.warn(
-            `Corrected mangled series UID in route: "${seriesInstanceUID}" → "${resolvedSeriesUID}"`,
-          )
-          navigate(
-            {
-              pathname: location.pathname.replace(
-                `/series/${seriesInstanceUID}`,
-                `/series/${resolvedSeriesUID}`,
-              ),
-              search: location.search,
-            },
-            { replace: true },
-          )
-        }
-        return
+        navigate(
+          {
+            pathname: location.pathname.replace(
+              `/series/${seriesInstanceUID}`,
+              `/series/${resolvedSeriesUID}`,
+            ),
+            search: location.search,
+          },
+          { replace: true },
+        )
       }
+      return
+    }
 
-      const findReferencedSlide = async (): Promise<void> => {
-        try {
-          const client = clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
-          const derivedSeriesMetadata = await client.retrieveSeriesMetadata({
-            studyInstanceUID,
-            seriesInstanceUID,
-          })
-          const naturalizedDerivedMetadata = naturalizeDataset(
-            derivedSeriesMetadata[0],
-          ) as NaturalizedInstance
-          if (
-            naturalizedDerivedMetadata.ReferencedSeriesSequence != null &&
-            naturalizedDerivedMetadata.ReferencedSeriesSequence.length > 0
-          ) {
-            for (const referencedSeries of naturalizedDerivedMetadata.ReferencedSeriesSequence) {
-              const referencedImageSeriesUID =
-                referencedSeries.SeriesInstanceUID
-              const referencedSlide = slides.find((slide: Slide) => {
-                return slide.seriesInstanceUIDs.some(
-                  (uid: string) => uid === referencedImageSeriesUID,
-                )
-              })
-              if (referencedSlide !== null && referencedSlide !== undefined) {
-                setSelectedSlide(referencedSlide)
-                setDerivedDataset(naturalizedDerivedMetadata)
-                setUnresolvedSeriesUID(null)
-                return
-              }
-            }
-          }
-          const IMAGE_LIBRARY_CONCEPT_NAME_CODE = '111028'
-          const imageLibrary = naturalizedDerivedMetadata.ContentSequence?.find(
-            (contentItem) =>
-              contentItem.ConceptNameCodeSequence[0].CodeValue ===
-              IMAGE_LIBRARY_CONCEPT_NAME_CODE,
+    /** Set on cleanup so a superseded lookup cannot select a stale slide */
+    let isCancelled = false
+    const findReferencedSlide = async (): Promise<void> => {
+      try {
+        const client = clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
+        const derivedSeriesMetadata = await client.retrieveSeriesMetadata({
+          studyInstanceUID,
+          seriesInstanceUID,
+        })
+        if (isCancelled) return
+        const naturalizedDerivedMetadata = naturalizeDataset(
+          derivedSeriesMetadata[0],
+        )
+        if (isReferencingInstance(naturalizedDerivedMetadata)) {
+          const referencedSlide = resolveReferencedSlide(
+            slides,
+            naturalizedDerivedMetadata,
           )
-          if (
-            imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]
-              ?.ReferencedSOPSequence?.[0] !== undefined &&
-            imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]
-              ?.ReferencedSOPSequence?.[0] !== null
-          ) {
-            const referencedSOPInstanceUID =
-              imageLibrary.ContentSequence[0].ContentSequence[0]
-                .ReferencedSOPSequence[0].ReferencedSOPInstanceUID
-            const referencedSlide = slides.find((slide: Slide) => {
-              return slide.volumeImages.find(
-                (image: { SOPInstanceUID: string }) => {
-                  return image.SOPInstanceUID === referencedSOPInstanceUID
-                },
-              )
-            })
-            if (referencedSlide !== undefined) {
-              setSelectedSlide(referencedSlide)
-              setDerivedDataset(naturalizedDerivedMetadata)
-              setUnresolvedSeriesUID(null)
-              return
-            }
+          if (referencedSlide !== undefined) {
+            setSelectedSlide(referencedSlide)
+            setDerivedDataset(naturalizedDerivedMetadata)
+            setUnresolvedSeriesUID(null)
+            return
           }
-          setUnresolvedSeriesUID(seriesInstanceUID)
-        } catch (error) {
-          console.warn(
-            `Failed to resolve referenced slide for series "${seriesInstanceUID}"`,
-            error,
-          )
-          setUnresolvedSeriesUID(seriesInstanceUID)
         }
+        setUnresolvedSeriesUID(seriesInstanceUID)
+      } catch (error) {
+        if (isCancelled) return
+        logger.warn(
+          `Failed to resolve referenced slide for series "${seriesInstanceUID}"`,
+          error,
+        )
+        setUnresolvedSeriesUID(seriesInstanceUID)
       }
+    }
 
-      // skipcq: JS-0098 - void operator intentionally discards the Promise
-      void findReferencedSlide()
+    // skipcq: JS-0098 - void operator intentionally discards the Promise
+    void findReferencedSlide()
+    return () => {
+      isCancelled = true
     }
   }, [
     slides,
@@ -298,12 +250,7 @@ function ParametrizedSlideViewer({
 interface ViewerProps extends RouteComponentProps {
   clients: { [key: string]: DicomWebManager }
   studyInstanceUID: string
-  app: {
-    name: string
-    version: string
-    uid: string
-    organization?: string
-  }
+  app: AppInfo
   annotations: AnnotationSettings[]
   enableAnnotationTools: boolean
   enableMemoryMonitoring: boolean
@@ -344,7 +291,7 @@ function Viewer(props: ViewerProps): JSX.Element | null {
   }: {
     seriesInstanceUID: string
   }): void => {
-    console.info(`switch to series "${seriesInstanceUID}"`)
+    logger.log(`switch to series "${seriesInstanceUID}"`)
     let urlPath = buildSeriesPath(studyInstanceUID, seriesInstanceUID)
 
     if (isProjectsPath(location.pathname)) {
@@ -432,17 +379,17 @@ function Viewer(props: ViewerProps): JSX.Element | null {
             <Study metadata={refImage} />
           </SlimCollapsibleSection>
           {refImage.ClinicalTrialSponsorName != null && (
-            <SlimCollapsibleSection
-              title="Clinical trial"
-              padding="indent"
-              defaultOpen={false}
-              divider={false}
-            >
-              <ClinicalTrial metadata={refImage} />
-            </SlimCollapsibleSection>
-          )}
-          {refImage.ClinicalTrialSponsorName != null && (
-            <PanelDivider className="mb-1" />
+            <>
+              <SlimCollapsibleSection
+                title="Clinical trial"
+                padding="indent"
+                defaultOpen={false}
+                divider={false}
+              >
+                <ClinicalTrial metadata={refImage} />
+              </SlimCollapsibleSection>
+              <PanelDivider className="mb-1" />
+            </>
           )}
 
           <div className="flex items-center gap-2 px-4 pb-2.5 pt-3">

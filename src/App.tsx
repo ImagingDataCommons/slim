@@ -36,6 +36,7 @@ import { Worklist } from './features/worklist'
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from './services/NotificationMiddleware'
+import { type AppInfo, buildAppInfo } from './utils/appInfo'
 import {
   getOrigin,
   isSecureOrigin,
@@ -61,12 +62,7 @@ function ParametrizedCaseViewer({
 }: {
   clients: { [key: string]: DicomWebManager }
   user?: User
-  app: {
-    name: string
-    version: string
-    uid: string
-    organization?: string
-  }
+  app: AppInfo
   config: AppConfig
 }): JSX.Element {
   const { studyInstanceUID } = useParams()
@@ -193,6 +189,16 @@ function _createClientMapping({
     }
   })
   return clientMapping
+}
+
+const PAGE_CONTENT_CLASS_NAME = 'flex-1 min-h-0 overflow-hidden flex flex-col'
+
+interface PageOptions {
+  showWorklistButton: boolean
+  showServerSelectionButton: boolean
+  onUserLogout?: () => void
+  /** Appended to the content container's base classes */
+  contentClassName?: string
 }
 
 interface AppProps {
@@ -803,14 +809,49 @@ class App extends React.Component<AppProps, AppState> {
     this.unsubscribeAuthorization?.()
   }
 
+  /** App shell with the header above `content` */
+  private renderPage(
+    appInfo: AppInfo,
+    {
+      showWorklistButton,
+      showServerSelectionButton,
+      onUserLogout,
+      contentClassName,
+    }: PageOptions,
+    content: React.ReactNode,
+  ): React.ReactElement {
+    return (
+      <AppShell>
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <Header
+            app={appInfo}
+            user={this.state.user}
+            showWorklistButton={showWorklistButton}
+            onServerSelection={this.handleServerSelection}
+            onUserLogout={onUserLogout}
+            showServerSelectionButton={showServerSelectionButton}
+            clients={this.state.clients}
+            defaultClients={this.state.defaultClients}
+          />
+          <div
+            className={[PAGE_CONTENT_CLASS_NAME, contentClassName]
+              .filter((className) => className !== undefined)
+              .join(' ')}
+          >
+            {content}
+          </div>
+        </div>
+      </AppShell>
+    )
+  }
+
   render(): React.ReactNode {
-    const appInfo = {
+    const appInfo = buildAppInfo({
       name: this.props.name,
       version: this.props.version,
       homepage: this.props.homepage,
-      uid: '1.2.826.0.1.3680043.9.7433.1.5',
       organization: this.props.config.organization,
-    }
+    })
 
     const enableWorklist = !(this.props.config.disableWorklist ?? false)
     const enableServerSelection =
@@ -838,6 +879,16 @@ class App extends React.Component<AppProps, AppState> {
       isLogoutPossible = false
     }
 
+    const onUserLogout = isLogoutPossible ? onLogout : undefined
+    const caseViewer = (
+      <ParametrizedCaseViewer
+        clients={this.state.clients}
+        user={this.state.user}
+        config={this.props.config}
+        app={appInfo}
+      />
+    )
+
     if (this.state.redirectTo !== undefined) {
       return (
         <BrowserRouter basename={this.props.config.path}>
@@ -847,22 +898,15 @@ class App extends React.Component<AppProps, AppState> {
     } else if (this.state.isLoading) {
       return (
         <BrowserRouter basename={this.props.config.path}>
-          <AppShell>
-            <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-              <Header
-                app={appInfo}
-                user={this.state.user}
-                showWorklistButton={false}
-                onServerSelection={this.handleServerSelection}
-                showServerSelectionButton={false}
-                clients={this.state.clients}
-                defaultClients={this.state.defaultClients}
-              />
-              <div className="flex-1 min-h-0 overflow-hidden flex flex-col items-center justify-center">
-                <AppLoading fullscreen={false} label="Loading Slim" />
-              </div>
-            </div>
-          </AppShell>
+          {this.renderPage(
+            appInfo,
+            {
+              showWorklistButton: false,
+              showServerSelectionButton: false,
+              contentClassName: 'items-center justify-center',
+            },
+            <AppLoading fullscreen={false} label="Loading Slim" />,
+          )}
         </BrowserRouter>
       )
     } else if (!this.state.wasAuthSuccessful) {
@@ -880,101 +924,53 @@ class App extends React.Component<AppProps, AppState> {
           <Routes key={this.state.authRecoveryKey}>
             <Route
               path={RoutePaths.ROOT}
-              element={
-                <AppShell>
-                  <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-                    <Header
-                      app={appInfo}
-                      user={this.state.user}
-                      showWorklistButton={false}
-                      onServerSelection={this.handleServerSelection}
-                      onUserLogout={isLogoutPossible ? onLogout : undefined}
-                      showServerSelectionButton={enableServerSelection}
-                      clients={this.state.clients}
-                      defaultClients={this.state.defaultClients}
-                    />
-                    <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-                      {worklist}
-                    </div>
-                  </div>
-                </AppShell>
-              }
+              element={this.renderPage(
+                appInfo,
+                {
+                  showWorklistButton: false,
+                  showServerSelectionButton: enableServerSelection,
+                  onUserLogout,
+                },
+                worklist,
+              )}
             />
             <Route
               path={RoutePaths.STUDY}
-              element={
-                <AppShell>
-                  <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-                    <Header
-                      app={appInfo}
-                      user={this.state.user}
-                      showWorklistButton={enableWorklist}
-                      onServerSelection={this.handleServerSelection}
-                      onUserLogout={isLogoutPossible ? onLogout : undefined}
-                      showServerSelectionButton={enableServerSelection}
-                      clients={this.state.clients}
-                      defaultClients={this.state.defaultClients}
-                    />
-                    <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-                      <ParametrizedCaseViewer
-                        clients={this.state.clients}
-                        user={this.state.user}
-                        config={this.props.config}
-                        app={appInfo}
-                      />
-                    </div>
-                  </div>
-                </AppShell>
-              }
+              element={this.renderPage(
+                appInfo,
+                {
+                  showWorklistButton: enableWorklist,
+                  showServerSelectionButton: enableServerSelection,
+                  onUserLogout,
+                },
+                caseViewer,
+              )}
             />
             <Route
               path={RoutePaths.GCP_STUDY}
-              element={
-                <AppShell>
-                  <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-                    <Header
-                      app={appInfo}
-                      user={this.state.user}
-                      showWorklistButton={enableWorklist}
-                      onServerSelection={this.handleServerSelection}
-                      onUserLogout={isLogoutPossible ? onLogout : undefined}
-                      showServerSelectionButton={enableServerSelection}
-                      clients={this.state.clients}
-                      defaultClients={this.state.defaultClients}
-                    />
-                    <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-                      <ParametrizedCaseViewer
-                        clients={this.state.clients}
-                        user={this.state.user}
-                        config={this.props.config}
-                        app={appInfo}
-                      />
-                    </div>
-                  </div>
-                </AppShell>
-              }
+              element={this.renderPage(
+                appInfo,
+                {
+                  showWorklistButton: enableWorklist,
+                  showServerSelectionButton: enableServerSelection,
+                  onUserLogout,
+                },
+                caseViewer,
+              )}
             />
             <Route
               path={RoutePaths.LOGOUT}
-              element={
-                <AppShell>
-                  <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-                    <Header
-                      app={appInfo}
-                      user={this.state.user}
-                      showWorklistButton={false}
-                      onServerSelection={this.handleServerSelection}
-                      onUserLogout={isLogoutPossible ? onLogout : undefined}
-                      showServerSelectionButton={enableServerSelection}
-                      clients={this.state.clients}
-                      defaultClients={this.state.defaultClients}
-                    />
-                    <div className="flex-1 min-h-0 overflow-hidden flex flex-col items-center justify-center text-muted-foreground">
-                      Logged out
-                    </div>
-                  </div>
-                </AppShell>
-              }
+              element={this.renderPage(
+                appInfo,
+                {
+                  showWorklistButton: false,
+                  showServerSelectionButton: enableServerSelection,
+                  onUserLogout,
+                  contentClassName:
+                    'items-center justify-center text-muted-foreground',
+                },
+                'Logged out',
+              )}
             />
           </Routes>
         </BrowserRouter>

@@ -1,34 +1,48 @@
 import { useEffect, useRef, useState } from 'react'
 
+import { subscribeDomEvents } from '../services/dmvEvents'
 import {
   applyTileStatusChange,
   frameEventKey,
   frameEventSopInstanceUID,
   INITIAL_TILE_COUNTS,
   nextTileStatus,
+  recordTileStatus,
   type TileCounts,
   type TileEventKind,
   type TileStatus,
 } from '../utils/tileCounts'
 
-const FRAME_EVENTS: Array<[string, TileEventKind]> = [
+const FRAME_EVENTS: ReadonlyArray<readonly [string, TileEventKind]> = [
   ['dicommicroscopyviewer_frame_loading_started', 'started'],
   ['dicommicroscopyviewer_frame_loading_ended', 'ended'],
   ['dicommicroscopyviewer_frame_loading_error', 'error'],
 ]
 
+interface KeyedCounts {
+  resetKey: unknown
+  counts: TileCounts
+}
+
 /**
- * Counts DMV frame requests since mount; remount per viewer to reset. Every
+ * Counts DMV frame requests since mount or the last `resetKey` change. Every
  * DMV viewer publishes on `document.body`, so events are filtered to
  * `sopInstanceUIDs` (the volume images) when given. Updates are batched per
  * animation frame because tile events arrive in bursts.
  */
 export function useTileCounts(
   sopInstanceUIDs?: ReadonlySet<string>,
+  resetKey?: unknown,
 ): TileCounts {
-  const [counts, setCounts] = useState<TileCounts>(INITIAL_TILE_COUNTS)
+  const [state, setState] = useState<KeyedCounts>({
+    resetKey,
+    counts: INITIAL_TILE_COUNTS,
+  })
   const allowedRef = useRef(sopInstanceUIDs)
-  allowedRef.current = sopInstanceUIDs
+
+  useEffect(() => {
+    allowedRef.current = sopInstanceUIDs
+  }, [sopInstanceUIDs])
 
   useEffect(() => {
     const statuses = new Map<string, TileStatus>()
@@ -37,35 +51,39 @@ export function useTileCounts(
 
     const flush = (): void => {
       frameId = undefined
-      setCounts(pending)
+      setState({ resetKey, counts: pending })
     }
-    const listeners = FRAME_EVENTS.map(([type, kind]) => {
-      const listener = (event: Event): void => {
-        const detail = (event as CustomEvent<unknown>).detail
-        const allowed = allowedRef.current
-        if (allowed !== undefined) {
-          const uid = frameEventSopInstanceUID(detail)
-          if (uid === undefined || !allowed.has(uid)) return
-        }
-        const key = frameEventKey(detail)
-        if (key === undefined) return
-        const previous = statuses.get(key)
-        const next = nextTileStatus(previous, kind)
-        statuses.set(key, next)
-        pending = applyTileStatusChange(pending, previous, next)
-        if (frameId === undefined) frameId = requestAnimationFrame(flush)
+    const handle = (kind: TileEventKind, event: Event): void => {
+      if (!(event instanceof CustomEvent)) return
+      const detail: unknown = event.detail
+      const allowed = allowedRef.current
+      if (allowed !== undefined) {
+        const uid = frameEventSopInstanceUID(detail)
+        if (uid === undefined || !allowed.has(uid)) return
       }
-      document.body.addEventListener(type, listener)
-      return [type, listener] as const
-    })
+      const key = frameEventKey(detail)
+      if (key === undefined) return
+      const previous = statuses.get(key)
+      const next = nextTileStatus(previous, kind)
+      recordTileStatus(statuses, key, next)
+      pending = applyTileStatusChange(pending, previous, next)
+      if (frameId === undefined) frameId = requestAnimationFrame(flush)
+    }
+    const unsubscribe = subscribeDomEvents(
+      document.body,
+      FRAME_EVENTS.map(
+        ([type, kind]) =>
+          [type, (event: Event): void => handle(kind, event)] as const,
+      ),
+    )
 
     return () => {
       if (frameId !== undefined) cancelAnimationFrame(frameId)
-      for (const [type, listener] of listeners) {
-        document.body.removeEventListener(type, listener)
-      }
+      unsubscribe()
     }
-  }, [])
+  }, [resetKey])
 
-  return counts
+  return Object.is(state.resetKey, resetKey)
+    ? state.counts
+    : INITIAL_TILE_COUNTS
 }

@@ -1,4 +1,3 @@
-import React from 'react'
 import { createRoot } from 'react-dom/client'
 
 import './index.css'
@@ -10,6 +9,8 @@ import CustomErrorBoundary from './components/CustomErrorBoundary'
 import { TooltipProvider } from './components/ui/tooltip'
 import { StudySummaryProvider } from './contexts/StudySummaryContext'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { ToastHost } from './features/viewer/components/ToastHost'
+import { configureToasts } from './features/viewer/services/toast'
 import { logger } from './utils/logger'
 
 declare global {
@@ -37,6 +38,8 @@ if (config.logger != null) {
   })
 }
 
+configureToasts(config.messages)
+
 const mountApp = (): void => {
   const container = document.getElementById('root')
   if (container == null) {
@@ -48,29 +51,21 @@ const mountApp = (): void => {
 
   const root = createRoot(container)
   root.render(
-    <React.Suspense
-      fallback={
-        <div className="slim-app-loading">
-          <div className="slim-app-loading-spinner" />
-          <p className="slim-app-loading-label">Loading application...</p>
-        </div>
-      }
-    >
-      <CustomErrorBoundary context="App">
-        <ThemeProvider defaultTheme={initialTheme}>
-          <TooltipProvider delayDuration={300}>
-            <StudySummaryProvider>
-              <App
-                config={config}
-                version={packageInfo.version}
-                name={packageInfo.name}
-                homepage="https://github.com/ImagingDataCommons/slim"
-              />
-            </StudySummaryProvider>
-          </TooltipProvider>
-        </ThemeProvider>
-      </CustomErrorBoundary>
-    </React.Suspense>,
+    <CustomErrorBoundary context="App">
+      <ThemeProvider defaultTheme={initialTheme}>
+        <TooltipProvider delayDuration={300}>
+          <StudySummaryProvider>
+            <App
+              config={config}
+              version={packageInfo.version}
+              name={packageInfo.name}
+              homepage="https://github.com/ImagingDataCommons/slim"
+            />
+            <ToastHost top={config.messages?.top} />
+          </StudySummaryProvider>
+        </TooltipProvider>
+      </ThemeProvider>
+    </CustomErrorBoundary>,
   )
 }
 
@@ -88,6 +83,6 @@ void import('./auth/OidcManager')
     }
   })
   .catch((error) => {
-    console.error('failed to initialize auth bootstrap', error)
+    logger.error('failed to initialize auth bootstrap', error)
     mountApp()
   })

@@ -5,14 +5,8 @@ import type { User } from '../auth'
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../services/NotificationMiddleware'
+import type { AppInfo } from './appInfo'
 import { CustomError, errorTypes } from './CustomError'
-
-interface AppInfo {
-  name: string
-  version: string
-  uid: string
-  organization?: string
-}
 
 const generateReport = ({
   rois,

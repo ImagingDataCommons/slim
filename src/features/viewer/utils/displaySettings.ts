@@ -49,6 +49,26 @@ export function resolveClusteringThreshold(
   return value
 }
 
+export interface ClusteringSettings {
+  isEnabled: boolean
+  /** Raw threshold field text (mm); '' means automatic */
+  thresholdInput: string
+}
+
+/**
+ * Whether DMV must be updated when clustering settings move from `previous`
+ * to `next`: always when clustering is toggled, and for threshold edits only
+ * while enabled and once the text parses, so partial input is not applied.
+ */
+export function shouldApplyClusteringSettings(
+  previous: ClusteringSettings,
+  next: ClusteringSettings,
+): boolean {
+  if (previous.isEnabled !== next.isEnabled) return true
+  if (previous.thresholdInput === next.thresholdInput) return false
+  return next.isEnabled && parseClusteringThreshold(next.thresholdInput).isValid
+}
+
 /** Keys whose values differ between two flat settings objects. */
 export function changedSettingKeys<T extends object>(
   previous: T,
