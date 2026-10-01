@@ -6,6 +6,7 @@ import {
 } from 'react-error-boundary'
 
 import { logger } from '../utils/logger'
+import InfoPage from './InfoPage'
 import { Button } from './ui/button'
 import {
   Dialog,
@@ -23,18 +24,20 @@ function ErrorFallback({
   const stack = error instanceof Error ? error.stack : undefined
 
   return (
-    <div>
-      <p className="text-sm">
-        There was an error in loading this page.{' '}
-        <button
-          type="button"
-          className="cursor-pointer border-none bg-transparent p-0 text-primary hover:underline"
-          onClick={() => setIsOpen(true)}
-          aria-label="Show error details"
-        >
-          Click for error details
-        </button>
-      </p>
+    <InfoPage
+      type="error"
+      title="Something went wrong"
+      message={getErrorMessage(error) ?? String(error)}
+    >
+      <div className="mt-2 flex gap-2">
+        <Button onClick={() => window.location.reload()}>
+          <Icon name="refresh" size={16} />
+          Reload page
+        </Button>
+        <Button variant="outline" onClick={() => setIsOpen(true)}>
+          Show details
+        </Button>
+      </div>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-3xl">
@@ -63,7 +66,7 @@ function ErrorFallback({
           </SlimDialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </InfoPage>
   )
 }
 

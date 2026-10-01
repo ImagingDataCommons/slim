@@ -7,6 +7,7 @@ interface InfoPageProps {
   type: 'error' | 'info' | 'warning'
   title?: string
   message?: string
+  children?: React.ReactNode
 }
 
 const TONES: Record<InfoPageProps['type'], { icon: IconName; tile: string }> = {
@@ -16,11 +17,16 @@ const TONES: Record<InfoPageProps['type'], { icon: IconName; tile: string }> = {
 }
 
 /** Full-page info/error display component. */
-function InfoPage({ type, title, message }: InfoPageProps): React.ReactElement {
+function InfoPage({
+  type,
+  title,
+  message,
+  children,
+}: InfoPageProps): React.ReactElement {
   const tone = TONES[type]
   return (
     <div className="flex h-full min-h-screen w-full items-center justify-center bg-app">
-      <div className="flex max-w-md flex-col items-center gap-3 px-4 text-center">
+      <div className="flex max-w-lg flex-col items-center gap-3 px-4 text-center">
         <span
           className={cn(
             'grid h-14 w-14 place-items-center rounded-[14px]',
@@ -35,6 +41,7 @@ function InfoPage({ type, title, message }: InfoPageProps): React.ReactElement {
         {message !== undefined && message !== '' && (
           <p className="text-13 text-ink-muted">{message}</p>
         )}
+        {children}
       </div>
     </div>
   )

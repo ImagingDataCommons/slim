@@ -12,7 +12,10 @@ needed. Without `.env`, start/build defaults to `REACT_APP_CONFIG=local` and
 `SLIM_LOCAL_DICOMWEB_URL` defaults to the docker-compose DICOMweb URL.
 Committed `demo` / `preview` configs require `SLIM_DEMO_DICOMWEB_URL` /
 `SLIM_PREVIEW_DICOMWEB_URL` in `.env` or as GitHub Actions secrets/variables
-(see `scripts/inject-slim-env.mjs`).
+(see `scripts/slimEnv.mjs`). Builds write these to `public/config/env.js`; the
+dev server serves its own copy, so several servers with different configs can
+run side by side. If a server ends up without a URL, Slim shows which setting
+is missing instead of starting.
 
 For the full type definitions, see [`src/AppConfig.d.ts`](../src/AppConfig.d.ts).
 Example configs live in [`public/config/`](../public/config/).

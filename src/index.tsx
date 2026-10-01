@@ -12,6 +12,8 @@ import './index.css'
 import packageInfo from '../package.json'
 import App from './App'
 import type AppConfig from './AppConfig'
+import { ConfigProblemsPage } from './app/ConfigProblemsPage'
+import { findConfigProblems } from './app/configProblems'
 import CustomErrorBoundary from './components/CustomErrorBoundary'
 import { TooltipProvider } from './components/ui/tooltip'
 import { StudySummaryProvider } from './contexts/StudySummaryContext'
@@ -26,12 +28,13 @@ declare global {
   }
 }
 
-const config: AppConfig = window.config
-if (config === undefined) {
-  throw Error('No application configuration was provided.')
-}
+const config: AppConfig | undefined = window.config
+const configProblems = findConfigProblems(
+  config,
+  import.meta.env.REACT_APP_CONFIG ?? 'local',
+)
 
-if (config.logger != null) {
+if (config?.logger != null) {
   logger.configure({
     ...(config.logger.level != null
       ? { level: parseLogLevel(config.logger.level) }
@@ -45,7 +48,7 @@ if (config.logger != null) {
   })
 }
 
-configureToasts(config.messages)
+configureToasts(config?.messages)
 
 const mountApp = (): void => {
   const container = document.getElementById('root')
@@ -54,23 +57,27 @@ const mountApp = (): void => {
   }
 
   /** Determine initial theme from config or default to light */
-  const initialTheme = config.mode === 'dark' ? 'dark' : 'light'
+  const initialTheme = config?.mode === 'dark' ? 'dark' : 'light'
 
   const root = createRoot(container)
   root.render(
     <CustomErrorBoundary context="App">
       <ThemeProvider defaultTheme={initialTheme}>
-        <TooltipProvider delayDuration={300}>
-          <StudySummaryProvider>
-            <App
-              config={config}
-              version={packageInfo.version}
-              name={packageInfo.name}
-              homepage="https://github.com/ImagingDataCommons/slim"
-            />
-            <ToastHost top={config.messages?.top} />
-          </StudySummaryProvider>
-        </TooltipProvider>
+        {config === undefined || configProblems.length > 0 ? (
+          <ConfigProblemsPage problems={configProblems} />
+        ) : (
+          <TooltipProvider delayDuration={300}>
+            <StudySummaryProvider>
+              <App
+                config={config}
+                version={packageInfo.version}
+                name={packageInfo.name}
+                homepage="https://github.com/ImagingDataCommons/slim"
+              />
+              <ToastHost top={config.messages?.top} />
+            </StudySummaryProvider>
+          </TooltipProvider>
+        )}
       </ThemeProvider>
     </CustomErrorBoundary>,
   )

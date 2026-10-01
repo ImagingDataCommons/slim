@@ -7,6 +7,8 @@ import { loadEnv, normalizePath, type Plugin } from 'vite'
 import { viteStaticCopy } from 'vite-plugin-static-copy'
 import { defineConfig } from 'vitest/config'
 
+import { resolveSlimEnv, slimEnvScript } from './scripts/slimEnv.mjs'
+
 const root = import.meta.dirname
 const dmvRoot = fs.realpathSync(
   path.join(root, 'node_modules/dicom-microscopy-viewer'),
@@ -41,6 +43,31 @@ function htmlPlaceholders(configName: string): Plugin {
         html
           .replaceAll('%PUBLIC_URL%', publicUrl)
           .replaceAll('%REACT_APP_CONFIG%', configName),
+    },
+  }
+}
+
+/**
+ * Serves config/env.js from this dev server's own environment instead of the
+ * shared file on disk, which the next `pnpm start` or build rewrites for its
+ * own config.
+ */
+function serveSlimEnv(): Plugin {
+  return {
+    name: 'slim:serve-env',
+    apply: 'serve',
+    configureServer(server) {
+      const script = slimEnvScript(resolveSlimEnv(root, process.env).values)
+      const envPath = `${server.config.base}config/env.js`
+      server.middlewares.use((request, response, next) => {
+        if (request.url?.split('?')[0] !== envPath) {
+          next()
+          return
+        }
+        response.setHeader('Content-Type', 'text/javascript')
+        response.setHeader('Cache-Control', 'no-store')
+        response.end(script)
+      })
     },
   }
 }
@@ -85,6 +112,7 @@ export default defineConfig(({ mode }) => {
       babel({ presets: [reactCompilerPreset()] }),
       tailwindcss(),
       htmlPlaceholders(configName),
+      serveSlimEnv(),
       /**
        * DMV resolves its web worker and codec .wasm files at runtime from
        * `window.config.path` + `static/js/` (see getMicroscopyHref in DMV).

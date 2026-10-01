@@ -389,16 +389,9 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       } else if (serverSettings.path !== undefined) {
         serviceUrl = joinUrl(serverSettings.path, baseUri)
       } else {
-        NotificationMiddleware.onError(
-          NotificationMiddlewareContext.SLIM,
-          new CustomError(
-            errorTypes.COMMUNICATION,
-            'Either path or full URL needs to be configured for server.',
-          ),
-        )
         throw new CustomError(
           errorTypes.COMMUNICATION,
-          'Either path or full URL needs to be configured for server.',
+          `The DICOMweb server "${serverSettings.id}" needs a "url" or a "path".`,
         )
       }
 
