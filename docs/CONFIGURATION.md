@@ -12,7 +12,10 @@ needed. Without `.env`, start/build defaults to `REACT_APP_CONFIG=local` and
 `SLIM_LOCAL_DICOMWEB_URL` defaults to the docker-compose DICOMweb URL.
 Committed `demo` / `preview` configs require `SLIM_DEMO_DICOMWEB_URL` /
 `SLIM_PREVIEW_DICOMWEB_URL` in `.env` or as GitHub Actions secrets/variables
-(see `scripts/inject-slim-env.mjs`).
+(see `scripts/slimEnv.mjs`). Builds write these to `public/config/env.js`; the
+dev server serves its own copy, so several servers with different configs can
+run side by side. If a server ends up without a URL, Slim shows which setting
+is missing instead of starting.
 
 For the full type definitions, see [`src/AppConfig.d.ts`](../src/AppConfig.d.ts).
 Example configs live in [`public/config/`](../public/config/).
@@ -204,9 +207,9 @@ window.config = {
 }
 ```
 
-When enabled, a **Select server** button appears in the header (Ant Design
-`ApiOutlined` icon; often called the “link” icon in issue discussions).
-Clicking it opens the **Select DICOMweb server** dialog.
+When enabled, a **Select server** button (server icon) appears in the header,
+and the server URL pill becomes clickable.
+Either one opens the **Select DICOMweb server** dialog.
 
 Reference configs that already enable this:
 
@@ -233,6 +236,10 @@ Persistence and behavior:
 - Mode is stored in `localStorage` as `slim_server_selection_mode`
   (`default` | `custom`).
 - The custom URL is stored as `slim_selected_server`.
+- A stored URL without a mode (saved by older Slim versions) is treated as
+  `custom`, so existing users keep their server after upgrading.
+- The pill is read-only text, and not focusable, when
+  `enableServerSelection` is off.
 - On a custom switch, Slim creates a temporary client with `read: true` and
   **`write: false`**, re-applies the current Bearer token when OIDC is in use,
   and maps **all** SOP-class clients to that single client (so a prior `?gcp=`

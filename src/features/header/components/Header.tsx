@@ -1,0 +1,302 @@
+import type * as React from 'react'
+import { useState } from 'react'
+import { Link, useLocation, useParams } from 'react-router'
+
+import type { User } from '../../../auth'
+import { SlimLogoMark } from '../../../components/slim/SlimLogoMark'
+import { Button } from '../../../components/ui/button'
+import { Icon, type IconName } from '../../../components/ui/icon'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '../../../components/ui/tooltip'
+import { useStudySummary } from '../../../contexts/StudySummaryContext'
+import type DicomWebManager from '../../../DicomWebManager'
+import { cn } from '../../../lib/utils'
+import type { AppInfo } from '../../../utils/appInfo'
+import { isViewerPath, parseSeriesInstanceUID } from '../../../utils/routes'
+import { PreferencesDialog, type PreferencesTab } from '../../preferences'
+import { useCustomLogo } from '../hooks/useCustomLogo'
+import { useNotifications } from '../hooks/useNotifications'
+import {
+  type ServerSelectionParams,
+  useServerSelection,
+} from '../hooks/useServerSelection'
+import { customLogoUrl } from '../utils/customLogo'
+import { DebugDialog } from './dialogs/DebugDialog'
+import { DicomTagBrowserDialog } from './dialogs/DicomTagBrowserDialog'
+import { ServerSelectionDialog } from './dialogs/ServerSelectionDialog'
+import { UserMenu } from './UserMenu'
+
+export interface HeaderProps {
+  app: AppInfo
+  user?: User
+  clients?: { [key: string]: DicomWebManager }
+  defaultClients?: { [key: string]: DicomWebManager }
+  showWorklistButton: boolean
+  onServerSelection: (params: ServerSelectionParams) => void
+  onUserLogout?: () => void
+  showServerSelectionButton: boolean
+}
+
+function HeaderIconButton({
+  icon,
+  title,
+  onClick,
+  badge,
+}: {
+  icon: IconName
+  title: string
+  onClick: () => void
+  badge?: number
+}): React.ReactElement {
+  const hasBadge = badge !== undefined && badge > 0
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      title={title}
+      aria-label={hasBadge ? `${title} (${badge})` : title}
+      onClick={onClick}
+      className="relative"
+    >
+      <Icon name={icon} size={20} />
+      {hasBadge && (
+        <span
+          aria-hidden="true"
+          className="absolute right-[3px] top-1 h-4 min-w-[16px] rounded-lg bg-destructive px-1 text-[10px] font-semibold leading-4 text-destructive-foreground shadow-[0_0_0_2px_rgb(var(--panel))]"
+        >
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
+    </Button>
+  )
+}
+
+function HeaderDivider({
+  className,
+}: {
+  className?: string
+}): React.ReactElement {
+  return <div className={cn('h-[22px] w-px flex-none bg-line', className)} />
+}
+
+export function Header({
+  app,
+  user,
+  clients,
+  defaultClients,
+  showWorklistButton,
+  onServerSelection,
+  onUserLogout,
+  showServerSelectionButton,
+}: HeaderProps): React.ReactElement {
+  const location = useLocation()
+  const params = useParams<{ studyInstanceUID?: string }>()
+  const { summary } = useStudySummary()
+
+  const serverSelection = useServerSelection({ onServerSelection })
+  const { serverUrl, openDialog: openServerDialog } = serverSelection
+
+  const { errors, warnings, errorCount, warningCount } = useNotifications({
+    resetKey: location.pathname,
+  })
+
+  const customLogo = useCustomLogo(customLogoUrl(import.meta.env.BASE_URL))
+  const [failedLogo, setFailedLogo] = useState<string | undefined>(undefined)
+
+  const [isDebugDialogOpen, setIsDebugDialogOpen] = useState(false)
+  const [isTagBrowserOpen, setIsTagBrowserOpen] = useState(false)
+  const [preferencesTab, setPreferencesTab] = useState<PreferencesTab | null>(
+    null,
+  )
+
+  const currentServerUrl =
+    clients?.default?.baseURL ?? defaultClients?.default?.baseURL ?? serverUrl
+  const defaultServerUrl = defaultClients?.default?.baseURL
+  const isInViewer = isViewerPath(location.pathname)
+  const studyInstanceUID = params.studyInstanceUID
+  const issueCount = errorCount + warningCount
+
+  const serverPillContent = (
+    <>
+      <span className="h-[7px] w-[7px] flex-none rounded-full bg-success" />
+      <span className="truncate font-mono text-12">{currentServerUrl}</span>
+    </>
+  )
+  const serverPillClassName =
+    'flex min-w-0 max-w-[420px] items-center gap-2 rounded-full border border-line bg-subtle py-[5px] pl-2 pr-2.5 text-ink-secondary'
+
+  return (
+    <>
+      <header className="flex h-header flex-none items-center gap-4 border-b border-line bg-panel pl-5 pr-3">
+        <div className="flex flex-none items-center gap-2">
+          {customLogo !== undefined && customLogo !== failedLogo ? (
+            <img
+              src={customLogo}
+              alt="Slim"
+              className="block h-8 w-auto max-w-[240px] object-contain"
+              onError={() => setFailedLogo(customLogo)}
+            />
+          ) : (
+            <>
+              <div className="h-6 w-6 overflow-hidden rounded-[6px] bg-brand text-white">
+                <SlimLogoMark className="h-full w-full" />
+              </div>
+              <div className="text-[15px] font-semibold leading-none tracking-[-0.01em] text-ink">
+                Slim
+              </div>
+            </>
+          )}
+          <div className="rounded-sm border border-line px-1.5 py-[3px] font-mono text-11 font-medium leading-none text-ink-muted">
+            v{app.version}
+          </div>
+        </div>
+
+        <HeaderDivider />
+
+        <nav className="flex min-w-0 items-center gap-1.5 text-13">
+          {showWorklistButton && (
+            <Button
+              asChild
+              variant="ghost"
+              className="h-auto flex-none rounded-md px-2 py-1.5"
+            >
+              <Link to="/">
+                <Icon name="format_list_bulleted" size={18} />
+                Worklist
+              </Link>
+            </Button>
+          )}
+          {isInViewer && summary !== null && (
+            <>
+              {showWorklistButton && (
+                <Icon
+                  name="chevron_right"
+                  size={16}
+                  className="text-ink-fainter"
+                />
+              )}
+              {summary.patientName !== undefined && (
+                <span className="truncate whitespace-nowrap font-semibold text-ink">
+                  {summary.patientName}
+                </span>
+              )}
+              {summary.studyLabel !== undefined && (
+                <span className="whitespace-nowrap font-mono text-12 text-ink-muted">
+                  {summary.studyLabel}
+                </span>
+              )}
+            </>
+          )}
+        </nav>
+
+        <div className="flex min-w-0 flex-1 justify-center">
+          {currentServerUrl !== undefined && currentServerUrl !== '' && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {showServerSelectionButton ? (
+                  <button
+                    type="button"
+                    aria-label={`Server ${currentServerUrl}. Change server`}
+                    onClick={openServerDialog}
+                    className={cn(
+                      serverPillClassName,
+                      'hover:border-line-hover',
+                    )}
+                  >
+                    {serverPillContent}
+                  </button>
+                ) : (
+                  <div className={serverPillClassName}>{serverPillContent}</div>
+                )}
+              </TooltipTrigger>
+              <TooltipContent
+                side="bottom"
+                className="max-w-[min(640px,90vw)] px-2.5 py-1.5"
+              >
+                <div className="break-all font-mono text-11.5 leading-[1.45]">
+                  {currentServerUrl}
+                </div>
+                {showServerSelectionButton && (
+                  <div className="mt-1 text-11 font-normal opacity-70">
+                    Click to change or copy the server
+                  </div>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+
+        <div className="flex flex-none items-center gap-0.5">
+          <HeaderIconButton
+            icon="bug_report"
+            title="Debug info"
+            badge={issueCount}
+            onClick={() => setIsDebugDialogOpen(true)}
+          />
+          {isInViewer &&
+            studyInstanceUID !== undefined &&
+            clients !== undefined && (
+              <HeaderIconButton
+                icon="manage_search"
+                title="DICOM tag browser"
+                onClick={() => setIsTagBrowserOpen(true)}
+              />
+            )}
+          {showServerSelectionButton && (
+            <HeaderIconButton
+              icon="dns"
+              title="Select server"
+              onClick={openServerDialog}
+            />
+          )}
+          <HeaderDivider className="mx-2" />
+          <UserMenu
+            user={user}
+            organization={app.organization}
+            onOpenPreferences={setPreferencesTab}
+            onLogout={onUserLogout}
+          />
+        </div>
+      </header>
+
+      <PreferencesDialog
+        open={preferencesTab !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreferencesTab(null)
+        }}
+        app={app}
+        initialTab={preferencesTab ?? 'general'}
+      />
+
+      <DebugDialog
+        open={isDebugDialogOpen}
+        onOpenChange={setIsDebugDialogOpen}
+        errors={errors}
+        warnings={warnings}
+      />
+
+      {isInViewer &&
+        studyInstanceUID !== undefined &&
+        clients !== undefined && (
+          <DicomTagBrowserDialog
+            open={isTagBrowserOpen}
+            onOpenChange={setIsTagBrowserOpen}
+            clients={clients}
+            studyInstanceUID={studyInstanceUID}
+            seriesInstanceUID={parseSeriesInstanceUID(location.pathname)}
+            subtitle={[summary?.patientName, summary?.studyLabel]
+              .filter((part) => part !== undefined && part !== '')
+              .join(' · ')}
+          />
+        )}
+
+      <ServerSelectionDialog
+        selection={serverSelection}
+        defaultServerUrl={defaultServerUrl}
+      />
+    </>
+  )
+}

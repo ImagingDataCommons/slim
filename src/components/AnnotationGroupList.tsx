@@ -1,119 +1,107 @@
-import type { MenuProps } from 'antd'
-import { Menu, Switch } from 'antd'
-// skipcq: JS-C1003
-import type * as dcmjs from 'dcmjs'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import React from 'react'
-import { FaEye, FaEyeSlash } from 'react-icons/fa'
-import AnnotationGroupItem from './AnnotationGroupItem'
+import type React from 'react'
 
-interface AnnotationGroupListProps {
+import type {
+  AnnotationGroupStyle,
+  AnnotationGroupStyleChange,
+} from '../types/layerStyles'
+import {
+  buildAnnotationGroupDisplayOptions,
+  buildClusteringThresholdInput,
+} from '../utils/displayOptions'
+import { bindDisplayOptions } from '../utils/displayOptionsBinding'
+import type { VisibilityChange } from '../utils/visibility'
+import AnnotationGroupItem from './AnnotationGroupItem'
+import { BulkVisibilityControl } from './slim/BulkVisibilityControl'
+import { DisplayOptionsPanel } from './slim/DisplayOptionsPanel'
+
+export interface AnnotationGroupDisplaySettings {
+  clusteringEnabled: boolean
+  /** Raw text of the pixel size threshold field (mm); '' means zoom-based */
+  clusteringThreshold: string
+}
+
+export interface AnnotationGroupListProps {
   annotationGroups: dmv.annotation.AnnotationGroup[]
   visibleAnnotationGroupUIDs: Set<string>
   metadata: {
     [annotationGroupUID: string]: dmv.metadata.MicroscopyBulkSimpleAnnotations
   }
   defaultAnnotationGroupStyles: {
-    [annotationGroupUID: string]: {
-      opacity: number
-      color: number[]
-      fill?: boolean
-      fillOpacity?: number
-    }
+    [annotationGroupUID: string]: AnnotationGroupStyle
   }
   onAnnotationGroupClick: (annotationGroupUID: string) => void
-  onAnnotationGroupVisibilityChange: ({
-    annotationGroupUID,
-    isVisible,
-  }: {
+  onAnnotationGroupVisibilityChange: (change: {
     annotationGroupUID: string
     isVisible: boolean
   }) => void
-  onAnnotationGroupStyleChange: ({
-    uid,
-    styleOptions,
-  }: {
+  onBulkAnnotationGroupVisibilityChange: (changes: VisibilityChange[]) => void
+  onAnnotationGroupStyleChange: (change: {
     uid: string
-    styleOptions: {
-      opacity?: number
-      color?: number[]
-      measurement?: dcmjs.sr.coding.CodedConcept
-      fill?: boolean
-      fillOpacity?: number
-    }
+    styleOptions: AnnotationGroupStyleChange
   }) => void
+  /** Clustering display settings; the panel is hidden when omitted */
+  displaySettings?: AnnotationGroupDisplaySettings
+  onDisplaySettingsChange?: (settings: AnnotationGroupDisplaySettings) => void
 }
 
-/**
- * React component representing a list of Annotation Groups.
- */
-class AnnotationGroupList extends React.Component<
-  AnnotationGroupListProps,
-  unknown
-> {
-  handleVisibilityChange = (checked: boolean): void => {
-    if (checked) {
-      this.props.annotationGroups.forEach((annotationGroup) => {
-        this.props.onAnnotationGroupVisibilityChange({
-          annotationGroupUID: annotationGroup.uid,
-          isVisible: checked,
-        })
-      })
-      return
-    }
-
-    this.props.visibleAnnotationGroupUIDs.forEach((annotationGroupUID) => {
-      this.props.onAnnotationGroupVisibilityChange({
-        annotationGroupUID,
-        isVisible: checked,
-      })
-    })
-  }
-
-  render(): React.ReactNode {
-    const items: MenuProps['items'] = this.props.annotationGroups.map(
-      (annotationGroup) => {
-        const uid = annotationGroup.uid
-        return {
-          key: uid,
-          style: { height: '100%', paddingLeft: '3px' },
-          label: (
-            <AnnotationGroupItem
-              annotationGroup={annotationGroup}
-              onAnnotationGroupClick={this.props.onAnnotationGroupClick}
-              metadata={this.props.metadata[uid]}
-              isVisible={this.props.visibleAnnotationGroupUIDs.has(uid)}
-              defaultStyle={this.props.defaultAnnotationGroupStyles[uid]}
-              onVisibilityChange={this.props.onAnnotationGroupVisibilityChange}
-              onStyleChange={this.props.onAnnotationGroupStyleChange}
-            />
-          ),
-        }
-      },
-    )
-
-    return (
-      <>
-        <div
-          style={{
-            paddingLeft: '14px',
-            paddingTop: '7px',
-            paddingBottom: '7px',
-          }}
-        >
-          <Switch
-            size="small"
-            onChange={this.handleVisibilityChange}
-            checked={this.props.visibleAnnotationGroupUIDs.size > 0}
-            checkedChildren={<FaEye />}
-            unCheckedChildren={<FaEyeSlash />}
+/** Annotation groups of bulk simple annotations with clustering options. */
+function AnnotationGroupList({
+  annotationGroups,
+  visibleAnnotationGroupUIDs,
+  metadata,
+  defaultAnnotationGroupStyles,
+  onAnnotationGroupClick,
+  onAnnotationGroupVisibilityChange,
+  onBulkAnnotationGroupVisibilityChange,
+  onAnnotationGroupStyleChange,
+  displaySettings,
+  onDisplaySettingsChange,
+}: AnnotationGroupListProps): React.ReactElement {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <BulkVisibilityControl
+        itemLabel="annotation groups"
+        uids={annotationGroups.map((group) => group.uid)}
+        visibleUids={visibleAnnotationGroupUIDs}
+        onChange={onBulkAnnotationGroupVisibilityChange}
+      />
+      {annotationGroups.map((annotationGroup) => (
+        <AnnotationGroupItem
+          key={annotationGroup.uid}
+          annotationGroup={annotationGroup}
+          onAnnotationGroupClick={onAnnotationGroupClick}
+          metadata={metadata[annotationGroup.uid]}
+          isVisible={visibleAnnotationGroupUIDs.has(annotationGroup.uid)}
+          defaultStyle={defaultAnnotationGroupStyles[annotationGroup.uid]}
+          onVisibilityChange={onAnnotationGroupVisibilityChange}
+          onStyleChange={onAnnotationGroupStyleChange}
+        />
+      ))}
+      {displaySettings !== undefined &&
+        onDisplaySettingsChange !== undefined && (
+          <DisplayOptionsPanel
+            options={bindDisplayOptions(
+              buildAnnotationGroupDisplayOptions(displaySettings),
+              displaySettings,
+              { clustering: 'clusteringEnabled' },
+              onDisplaySettingsChange,
+            )}
+            additionalInput={{
+              ...buildClusteringThresholdInput(
+                displaySettings.clusteringThreshold,
+              ),
+              onInputChange: (clusteringThreshold) =>
+                onDisplaySettingsChange({
+                  ...displaySettings,
+                  clusteringThreshold,
+                }),
+            }}
           />
-        </div>
-        <Menu selectable={false} items={items} />
-      </>
-    )
-  }
+        )}
+    </div>
+  )
 }
 
 export default AnnotationGroupList

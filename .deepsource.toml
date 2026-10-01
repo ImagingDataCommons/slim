@@ -1,5 +1,14 @@
 version = 1
 
+test_patterns = [
+  "src/**/__tests__/**",
+  "src/**/*.test.ts",
+  "src/**/*.test.tsx",
+  "src/**/testing/**",
+  "src/__mocks__/**",
+  "src/setupTests.tsx",
+]
+
 [[analyzers]]
 name = "javascript"
 enabled = true

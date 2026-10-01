@@ -10,7 +10,7 @@ window.config = {
   disableWorklist: false,
   disableAnnotationTools: false,
   enableServerSelection: true,
-  mode: 'light',
+  mode: 'dark',
   preload: true,
   annotations: [
     {

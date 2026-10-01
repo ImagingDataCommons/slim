@@ -1,158 +1,99 @@
-import { SettingOutlined } from '@ant-design/icons'
-import { Button, Menu, Popover, Space, Switch } from 'antd'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import React from 'react'
-import { FaEye, FaEyeSlash } from 'react-icons/fa'
+import type React from 'react'
+import { memo } from 'react'
 
-import Description from './Description'
-import OpacitySlider from './OpacitySlider'
+import { cn } from '../lib/utils'
+import type { MappingStyle, MappingStyleChange } from '../types/layerStyles'
+import { lutToCssGradient } from '../utils/lutGradient'
+import {
+  formatValueRange,
+  getRealWorldValueRange,
+} from '../utils/parametricMap'
+import { areLayerItemPropsEqual } from '../utils/styleEquality'
+import { InlineOpacityRow } from './panel/InlineOpacityRow'
+import { useLayerStyle } from './panel/useLayerStyle'
+import { VisibilityToggleButton } from './panel/VisibilityToggleButton'
 
-interface MappingItemProps {
+export interface MappingItemProps {
   mapping: dmv.mapping.ParameterMapping
-  metadata: dmv.metadata.ParametricMap[]
+  metadata?: dmv.metadata.ParametricMap[]
   isVisible: boolean
-  defaultStyle: {
-    opacity: number
-  }
-  onVisibilityChange: ({
-    mappingUID,
-    isVisible,
-  }: {
+  defaultStyle: MappingStyle
+  onVisibilityChange: (change: {
     mappingUID: string
     isVisible: boolean
   }) => void
-  onStyleChange: ({
-    mappingUID,
-    styleOptions,
-  }: {
+  onStyleChange: (change: {
     mappingUID: string
-    styleOptions: {
-      opacity?: number
-    }
+    styleOptions: MappingStyleChange
   }) => void
 }
 
-interface MappingItemState {
-  isVisible: boolean
-  currentStyle: {
-    opacity: number
-  }
-}
+/** One Real World Value Mapping with its value range and opacity. */
+function MappingItem({
+  mapping,
+  metadata,
+  isVisible,
+  defaultStyle,
+  onVisibilityChange,
+  onStyleChange,
+}: MappingItemProps): React.ReactElement {
+  const [style, updateStyle, previewStyle] = useLayerStyle(
+    { opacity: defaultStyle.opacity },
+    (styleOptions) => onStyleChange({ mappingUID: mapping.uid, styleOptions }),
+  )
+  const valueRange = getRealWorldValueRange(metadata?.[0])
+  const range =
+    valueRange !== undefined ? formatValueRange(valueRange) : undefined
+  const palette = defaultStyle.paletteColorLookupTable
+  const gradient = palette !== undefined ? lutToCssGradient(palette) : ''
+  const description = mapping.description?.trim() ?? ''
 
-/**
- * React component representing a Real World Value Mapping.
- */
-class MappingItem extends React.Component<MappingItemProps, MappingItemState> {
-  constructor(props: MappingItemProps) {
-    super(props)
-    this.state = {
-      isVisible: this.props.isVisible,
-      currentStyle: {
-        opacity: this.props.defaultStyle.opacity,
-      },
-    }
-  }
-
-  handleVisibilityChange = (
-    checked: boolean,
-    _event: React.MouseEvent<HTMLButtonElement>,
-  ): void => {
-    this.props.onVisibilityChange({
-      mappingUID: this.props.mapping.uid,
-      isVisible: checked,
-    })
-    this.setState({ isVisible: checked })
-  }
-
-  handleOpacityChange = (opacity: number | null): void => {
-    if (opacity !== null) {
-      this.props.onStyleChange({
-        mappingUID: this.props.mapping.uid,
-        styleOptions: {
-          opacity,
-        },
-      })
-      this.setState((_state) => ({
-        currentStyle: {
-          opacity,
-        },
-      }))
-    }
-  }
-
-  render(): React.ReactNode {
-    const attributes: Array<{ name: string; value: string }> = [
-      {
-        name: 'Description',
-        value: this.props.mapping.description,
-      },
-    ]
-
-    const settings = (
-      <div>
-        <OpacitySlider
-          opacity={this.state.currentStyle.opacity}
-          onChange={this.handleOpacityChange}
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-line px-3 py-2.5">
+      <div className="flex items-center gap-2">
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate font-semibold text-ink">
+            {mapping.label}
+          </span>
+          {description !== '' && description !== mapping.label && (
+            <span className="truncate text-12 text-ink-muted">
+              {description}
+            </span>
+          )}
+        </span>
+        {range !== undefined && (
+          <span className="flex-none text-12 text-ink-muted">{range}</span>
+        )}
+        <VisibilityToggleButton
+          label={mapping.label}
+          isVisible={isVisible}
+          className="-my-1"
+          onChange={(nextIsVisible) =>
+            onVisibilityChange({
+              mappingUID: mapping.uid,
+              isVisible: nextIsVisible,
+            })
+          }
         />
       </div>
-    )
-
-    /**
-     * This hack is required for Menu.Item to work properly:
-     * https://github.com/react-component/menu/issues/142
-     */
-    const {
-      defaultStyle,
-      isVisible,
-      mapping,
-      metadata,
-      onVisibilityChange,
-      onStyleChange,
-      ...otherProps
-    } = this.props
-    return (
-      <Menu.Item
-        style={{ height: '100%', paddingLeft: '3px' }}
-        key={this.props.mapping.uid}
-        {...otherProps}
-      >
-        <Space align="start">
-          <div style={{ paddingLeft: '14px' }}>
-            <Space direction="vertical" align="end" size={100}>
-              <Space direction="vertical" align="end">
-                <Switch
-                  size="small"
-                  onChange={this.handleVisibilityChange}
-                  checked={this.props.isVisible}
-                  checkedChildren={<FaEye />}
-                  unCheckedChildren={<FaEyeSlash />}
-                />
-                <Popover
-                  placement="left"
-                  content={settings}
-                  overlayStyle={{ width: '350px' }}
-                  title="Display Settings"
-                >
-                  <Button
-                    type="primary"
-                    shape="circle"
-                    icon={<SettingOutlined />}
-                  />
-                </Popover>
-              </Space>
-            </Space>
-          </div>
-          <Description
-            header={this.props.mapping.label}
-            attributes={attributes}
-            selectable
-            hasLongValues
-          />
-        </Space>
-      </Menu.Item>
-    )
-  }
+      <div
+        className={cn(
+          'h-2 rounded-sm',
+          gradient === '' &&
+            'border border-line bg-linear-to-r/srgb from-panel to-ink-muted',
+        )}
+        style={gradient !== '' ? { background: gradient } : undefined}
+      />
+      <InlineOpacityRow
+        label={mapping.label}
+        opacity={style.opacity}
+        onChange={(opacity) => previewStyle({ opacity })}
+        onCommit={(opacity) => updateStyle({ opacity })}
+      />
+    </div>
+  )
 }
 
-export default MappingItem
+export default memo(MappingItem, areLayerItemPropsEqual)

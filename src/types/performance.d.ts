@@ -20,7 +20,3 @@ interface Performance {
   memory?: PerformanceMemory
   measureUserAgentSpecificMemory?: () => Promise<PerformanceMemoryInfo>
 }
-
-interface Window {
-  crossOriginIsolated?: boolean
-}

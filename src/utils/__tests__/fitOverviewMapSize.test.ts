@@ -1,4 +1,5 @@
 import {
+  constrainBoundsToCard,
   fitOverviewMapSize,
   MAX_OVERVIEW_BOX_PX,
   MAX_OVERVIEW_FRACTION,
@@ -89,5 +90,39 @@ describe('fitOverviewMapSize', () => {
     expect(wide.width).toBeLessThanOrEqual(MAX_OVERVIEW_BOX_PX + 0.01)
     expect(tall.height).toBeLessThan(1600 * 0.25)
     expect(wide.width).toBeLessThan(2400 * 0.25)
+  })
+})
+
+describe('constrainBoundsToCard', () => {
+  const card = { width: 186, height: 120 }
+
+  it('caps the width and preferred height to the card box', () => {
+    const bounds = constrainBoundsToCard(
+      overviewMapSizeBounds(2000, 1200),
+      card,
+    )
+    expect(bounds.maxMapWidth).toBe(186)
+    expect(bounds.preferredMaxWidth).toBe(186)
+    expect(bounds.preferredMaxHeight).toBe(120)
+    expect(bounds.maxMapHeight).toBe(MAX_OVERVIEW_BOX_PX)
+  })
+
+  it('keeps tighter viewport bounds on small viewports', () => {
+    const base = overviewMapSizeBounds(300, 200)
+    const bounds = constrainBoundsToCard(base, card)
+    expect(bounds.maxMapWidth).toBe(base.maxMapWidth)
+    expect(bounds.preferredMaxHeight).toBe(base.maxMapHeight)
+    expect(bounds.minMapWidth).toBeLessThanOrEqual(bounds.maxMapWidth)
+  })
+
+  it('keeps fitted sizes inside the card width', () => {
+    const bounds = constrainBoundsToCard(
+      overviewMapSizeBounds(2000, 1200),
+      card,
+    )
+    const wide = fitOverviewMapSize(1000, 100, bounds)
+    expect(wide.width).toBeLessThanOrEqual(186)
+    const normal = fitOverviewMapSize(400, 300, bounds)
+    expect(normal.height).toBeLessThanOrEqual(120)
   })
 })

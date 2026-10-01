@@ -1,61 +1,68 @@
-import { Col, InputNumber, Row, Slider } from 'antd'
 import type React from 'react'
-import { useCallback } from 'react'
 
-interface ColorSliderProps {
-  color: number[]
-  onChange: (color: number[]) => void
+import type { RGB } from '../types/layerStyles'
+import { withChannel } from '../utils/color'
+import { Input } from './ui/input'
+import { Slider } from './ui/slider'
+
+export interface ColorSliderProps {
+  color: RGB
+  /** Every value change, including while dragging */
+  onChange: (color: RGB) => void
+  /** Final value: slider release, keyboard step or typed number */
+  onCommit: (color: RGB) => void
 }
 
-const ColorSlider: React.FC<ColorSliderProps> = ({ color, onChange }) => {
-  const handleColorChange = useCallback(
-    (index: number, value: number | null): void => {
-      if (value !== null) {
-        const newColor = [...color]
-        newColor[index] = value
-        onChange(newColor)
-      }
-    },
-    [color, onChange],
-  )
+const CHANNELS = [
+  { label: 'Red', index: 0 },
+  { label: 'Green', index: 1 },
+  { label: 'Blue', index: 2 },
+] as const
 
-  const createChangeHandler = useCallback(
-    (index: number) => {
-      return (value: number | null) => handleColorChange(index, value)
-    },
-    [handleColorChange],
-  )
-
-  const colorLabels = ['Red', 'Green', 'Blue']
-
+/** Red, green and blue 0-255 sliders with numeric fields. */
+function ColorSlider({
+  color,
+  onChange,
+  onCommit,
+}: ColorSliderProps): React.ReactElement {
   return (
-    <>
-      {colorLabels.map((colorLabel, index) => (
-        <Row key={colorLabel} justify="center" align="middle" gutter={[8, 8]}>
-          <Col span={5}>{colorLabel}</Col>
-          <Col span={14}>
+    <div className="flex flex-col gap-2">
+      {CHANNELS.map(({ label, index }) => (
+        <div key={label} className="flex items-center justify-center gap-2">
+          <div className="w-12 shrink-0 text-12 text-ink-muted">{label}</div>
+          <div className="flex-1">
             <Slider
-              range={false}
               min={0}
               max={255}
               step={1}
-              value={color[index]}
-              onChange={createChangeHandler(index)}
+              value={[color[index]]}
+              onValueChange={(values) =>
+                onChange(withChannel(color, index, values[0]))
+              }
+              onValueCommit={(values) =>
+                onCommit(withChannel(color, index, values[0]))
+              }
+              aria-label={label}
             />
-          </Col>
-          <Col span={5}>
-            <InputNumber
-              min={0}
-              max={255}
-              size="small"
-              style={{ width: '65px' }}
-              value={color[index]}
-              onChange={createChangeHandler(index)}
-            />
-          </Col>
-        </Row>
+          </div>
+          <Input
+            type="number"
+            min={0}
+            max={255}
+            aria-label={`${label} value`}
+            className="h-8 w-16 font-mono text-12"
+            value={color[index]}
+            onChange={(e) => {
+              const value = Number.parseInt(e.target.value, 10)
+              if (Number.isNaN(value)) return
+              const next = withChannel(color, index, value)
+              onChange(next)
+              onCommit(next)
+            }}
+          />
+        </div>
       ))}
-    </>
+    </div>
   )
 }
 

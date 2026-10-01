@@ -100,31 +100,50 @@ declare module 'dicomweb-client' {
     }
 
     export interface Study {
-      '0020000D': MetadataElement, // StudyInstanceUID
-      '00200010': MetadataElement, // StudyID
-      '00080020': MetadataElement, // StudyDate
-      '00080030': MetadataElement, // StudyTime
-      '00080050': MetadataElement, // AccessionNumber
-      '00100020': MetadataElement, // PatientID
-      '00100030': MetadataElement, // PatientBirthDate
-      '00100040': MetadataElement, // PatientSex
-      '00100010': MetadataElement, // PatientName
-      '00080061': MetadataElement, // ModalitiesInStudy
-      '00201206': MetadataElement, // NumberOfStudyRelatedSeries
-      '00201208': MetadataElement // NumberOfStudyRelatedInstances
+      /** StudyInstanceUID */
+      '0020000D': MetadataElement,
+      /** StudyID */
+      '00200010': MetadataElement,
+      /** StudyDate */
+      '00080020': MetadataElement,
+      /** StudyTime */
+      '00080030': MetadataElement,
+      /** AccessionNumber */
+      '00080050': MetadataElement,
+      /** PatientID */
+      '00100020': MetadataElement,
+      /** PatientBirthDate */
+      '00100030': MetadataElement,
+      /** PatientSex */
+      '00100040': MetadataElement,
+      /** PatientName */
+      '00100010': MetadataElement,
+      /** ModalitiesInStudy */
+      '00080061': MetadataElement,
+      /** NumberOfStudyRelatedSeries */
+      '00201206': MetadataElement,
+      /** NumberOfStudyRelatedInstances */
+      '00201208': MetadataElement
     }
 
     export interface Series {
-      '0020000E': MetadataElement, // SeriesInstanceUID
-      '00200011': MetadataElement, // SeriesNumber
-      '00080060': MetadataElement, // Modality
-      '00201209': MetadataElement // NumberOfSeriesRelatedInstances
+      /** SeriesInstanceUID */
+      '0020000E': MetadataElement,
+      /** SeriesNumber */
+      '00200011': MetadataElement,
+      /** Modality */
+      '00080060': MetadataElement,
+      /** NumberOfSeriesRelatedInstances */
+      '00201209': MetadataElement
     }
 
     export interface Instance {
-      '00080016': MetadataElement, // SOPClassUID
-      '00080018': MetadataElement, // SOPInstanceUID
-      '00200013': MetadataElement // InstanceNumber
+      /** SOPClassUID */
+      '00080016': MetadataElement,
+      /** SOPInstanceUID */
+      '00080018': MetadataElement,
+      /** InstanceNumber */
+      '00200013': MetadataElement
     }
 
     export type Pixeldata = ArrayBuffer
@@ -136,9 +155,9 @@ declare module 'dicomweb-client' {
     export interface DICOMwebClient {
       headers: { [key: string]: string }
       baseURL: string
-      // STOW-RS
+      /** STOW-RS */
       storeInstances(options: StoreInstancesOptions): Promise<void>
-      // QIDO-RS
+      /** QIDO-RS */
       searchForStudies(
         options: SearchForStudiesOptions
       ): Promise<Study[]>
@@ -148,7 +167,7 @@ declare module 'dicomweb-client' {
       searchForInstances(
         options: SearchForInstancesOptions
       ): Promise<Instance[]>
-      // WADO-RS
+      /** WADO-RS */
       retrieveStudyMetadata(
         options: RetrieveStudyMetadataOptions
       ): Promise<Metadata[]>

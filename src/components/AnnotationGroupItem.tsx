@@ -1,667 +1,258 @@
-import { SettingOutlined } from '@ant-design/icons'
-import type { SelectProps } from 'antd'
-import {
-  Badge,
-  Button,
-  Col,
-  Divider,
-  InputNumber,
-  Popover,
-  Row,
-  Select,
-  Slider,
-  Space,
-  Switch,
-} from 'antd'
-// skipcq: JS-C1003
-import * as dcmjs from 'dcmjs'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import React, { useCallback } from 'react'
-import { FaEye, FaEyeSlash } from 'react-icons/fa'
-import { rgbToHex } from '../utils/segmentColors'
+import type React from 'react'
+import { memo, useMemo, useState } from 'react'
+
+import { cn } from '../lib/utils'
+import type {
+  AnnotationGroupStyle,
+  AnnotationGroupStyleChange,
+  RGB,
+} from '../types/layerStyles'
+import {
+  describeAnnotationGroup,
+  getAnnotationGroupItem,
+  getMeasurementOptions,
+  isFillableGraphicType,
+} from '../utils/annotationGroup'
+import { measurementOptionToConcept } from '../utils/annotationGroupMeasurement'
+import { rgbToHex, toRGB } from '../utils/color'
+import { formatGroupedNumber } from '../utils/displayFormat'
+import { toKeyValueItems } from '../utils/keyValue'
+import { areLayerItemPropsEqual } from '../utils/styleEquality'
 import ColorSlider from './ColorSlider'
-import Description from './Description'
 import OpacitySlider from './OpacitySlider'
+import { LayerSettingsPopover } from './panel/LayerSettingsPopover'
+import { useLayerStyle } from './panel/useLayerStyle'
+import { VisibilityToggleButton } from './panel/VisibilityToggleButton'
+import { InfoDetailsButton } from './slim/InfoDetailsButton'
+import { Icon } from './ui/icon'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select'
+import { Switch } from './ui/switch'
 import ValidationWarning from './ValidationWarning'
 
-// Helper function components
-function AnnotationGroupControls({
-  isVisible,
-  onVisibilityChange,
-  settings,
-  color,
-}: {
-  isVisible: boolean
-  onVisibilityChange: (
-    checked: boolean,
-    event: React.MouseEvent<HTMLButtonElement>,
-  ) => void
-  settings: React.ReactNode
-  color: number[]
-}): React.ReactElement {
-  return (
-    <Space direction="vertical" align="center">
-      <Switch
-        size="small"
-        onChange={onVisibilityChange}
-        checked={isVisible}
-        checkedChildren={<FaEye />}
-        unCheckedChildren={<FaEyeSlash />}
-      />
-      <Popover
-        placement="left"
-        content={settings}
-        overlayStyle={{ width: '350px' }}
-        title="Display Settings"
-      >
-        <Button type="primary" shape="circle" icon={<SettingOutlined />} />
-      </Popover>
-      {/* Color indicator */}
-      <div
-        style={{
-          width: '20px',
-          height: '20px',
-          backgroundColor: rgbToHex(color),
-          border: '1px solid #d9d9d9',
-          borderRadius: '50%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-        title={`Annotation group color: ${rgbToHex(color)}`}
-      />
-    </Space>
-  )
-}
+const SETTINGS_LABEL = 'mb-2 text-12 text-ink-muted'
+const NO_MEASUREMENT = '-'
+const DEFAULT_FILL_OPACITY = 0.5
 
-function AnnotationGroupBadgeDescription({
-  annotationGroup,
-  onClick,
-  isBadgeVisible,
-  color,
-  label,
-  attributes,
-}: {
-  annotationGroup: dmv.annotation.AnnotationGroup
-  onClick: () => void
-  isBadgeVisible: boolean
-  color: string
-  label: string
-  attributes: Array<{ name: string; value: string }>
-}): React.ReactElement {
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent): void => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault()
-        onClick()
-      }
-    },
-    [onClick],
-  )
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      onKeyDown={handleKeyDown}
-      aria-label={`Annotation group ${label}`}
-      style={{
-        background: 'none',
-        border: 'none',
-        padding: 0,
-        cursor: 'pointer',
-        textAlign: 'left',
-        width: '100%',
-      }}
-    >
-      <Badge
-        offset={[-20, 20]}
-        count={' '}
-        style={{
-          borderStyle: 'solid',
-          borderWidth: '1px',
-          borderColor: 'gray',
-          visibility: isBadgeVisible ? 'visible' : 'hidden',
-          backgroundImage: `linear-gradient(to bottom, ${color}, ${color}`,
-        }}
-      >
-        <ValidationWarning
-          annotationGroup={annotationGroup}
-          style={{ padding: '0.3rem' }}
-        />
-        <Description
-          header={label}
-          attributes={attributes}
-          selectable
-          hasLongValues
-        />
-      </Badge>
-    </button>
-  )
-}
-
-// Interfaces
-interface AnnotationGroupItemProps {
+export interface AnnotationGroupItemProps {
   annotationGroup: dmv.annotation.AnnotationGroup
   isVisible: boolean
-  metadata: dmv.metadata.MicroscopyBulkSimpleAnnotations
-  defaultStyle: {
-    opacity: number
-    color: number[]
-    fill?: boolean
-    fillOpacity?: number
-  }
+  metadata?: dmv.metadata.MicroscopyBulkSimpleAnnotations
+  defaultStyle: AnnotationGroupStyle
   onAnnotationGroupClick: (annotationGroupUID: string) => void
-  onVisibilityChange: ({
-    annotationGroupUID,
-    isVisible,
-  }: {
+  onVisibilityChange: (change: {
     annotationGroupUID: string
     isVisible: boolean
   }) => void
-  onStyleChange: ({
-    uid,
-    styleOptions,
-  }: {
+  onStyleChange: (change: {
     uid: string
-    styleOptions: {
-      opacity?: number
-      color?: number[]
-      limitValues?: number[]
-      measurement?: dcmjs.sr.coding.CodedConcept
-      fill?: boolean
-      fillOpacity?: number
-    }
+    styleOptions: AnnotationGroupStyleChange
   }) => void
 }
 
-interface AnnotationGroupItemState {
-  isVisible: boolean
-  currentStyle: {
-    opacity: number
-    color?: number[]
-    limitValues?: number[]
-    measurement?: dcmjs.sr.coding.CodedConcept
-    fill?: boolean
-    fillOpacity?: number
-  }
+interface AnnotationGroupLocalStyle {
+  opacity: number
+  /** Only RGB colors can be edited */
+  color?: RGB
+  fill: boolean
+  fillOpacity: number
 }
 
-// Class
-/**
- * React component representing an Annotation Group.
- */
-class AnnotationGroupItem extends React.Component<
-  AnnotationGroupItemProps,
-  AnnotationGroupItemState
-> {
-  constructor(props: AnnotationGroupItemProps) {
-    super(props)
-    this.state = {
-      isVisible: this.props.isVisible,
-      currentStyle: {
-        opacity: this.props.defaultStyle.opacity,
-        color: this.props.defaultStyle.color,
-        fill: this.props.defaultStyle.fill ?? false,
-        fillOpacity: this.props.defaultStyle.fillOpacity ?? 0.5,
+function toEditableColor(color: readonly number[]): RGB | undefined {
+  return color.length === 3 ? toRGB(color) : undefined
+}
+
+/** One annotation group with visibility, style and measurement coloring. */
+function AnnotationGroupItem({
+  annotationGroup,
+  isVisible,
+  metadata,
+  defaultStyle,
+  onAnnotationGroupClick,
+  onVisibilityChange,
+  onStyleChange,
+}: AnnotationGroupItemProps): React.ReactElement {
+  const uid = annotationGroup.uid
+  const [style, updateStyle, previewStyle] =
+    useLayerStyle<AnnotationGroupLocalStyle>(
+      {
+        opacity: defaultStyle.opacity,
+        color: toEditableColor(defaultStyle.color),
+        fill: defaultStyle.fill ?? false,
+        fillOpacity: defaultStyle.fillOpacity ?? DEFAULT_FILL_OPACITY,
       },
-    }
-  }
-
-  handleVisibilityChange = (
-    checked: boolean,
-    _event: React.MouseEvent<HTMLButtonElement>,
-  ): void => {
-    this.props.onVisibilityChange({
-      annotationGroupUID: this.props.annotationGroup.uid,
-      isVisible: checked,
-    })
-    this.setState({ isVisible: checked })
-  }
-
-  handleColorChange = (color: number[]): void => {
-    this.setState((state) => ({
-      currentStyle: {
-        ...state.currentStyle,
-        color,
-      },
-    }))
-    this.props.onStyleChange({
-      uid: this.props.annotationGroup.uid,
-      styleOptions: { color },
-    })
-  }
-
-  handleOpacityChange = (opacity: number | null): void => {
-    if (opacity !== null) {
-      this.props.onStyleChange({
-        uid: this.props.annotationGroup.uid,
-        styleOptions: {
-          opacity,
-        },
-      })
-      this.setState((state) => ({
-        currentStyle: {
-          ...state.currentStyle,
-          opacity,
-        },
-      }))
-    }
-  }
-
-  handleFillChange = (checked: boolean): void => {
-    this.props.onStyleChange({
-      uid: this.props.annotationGroup.uid,
-      styleOptions: {
-        fill: checked,
-      },
-    })
-    this.setState((state) => ({
-      currentStyle: {
-        ...state.currentStyle,
-        fill: checked,
-      },
-    }))
-  }
-
-  handleFillOpacityChange = (fillOpacity: number | null): void => {
-    if (fillOpacity !== null) {
-      this.props.onStyleChange({
-        uid: this.props.annotationGroup.uid,
-        styleOptions: {
-          fillOpacity,
-        },
-      })
-      this.setState((state) => ({
-        currentStyle: {
-          ...state.currentStyle,
-          fillOpacity,
-        },
-      }))
-    }
-  }
-
-  getCurrentColor = (): string => {
-    const rgb2hex = (values: number[]): string => {
-      const r = values[0]
-      const g = values[1]
-      const b = values[2]
-      return `#${(0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
-    }
-
-    if (
-      this.state.currentStyle.color !== null &&
-      this.state.currentStyle.color !== undefined
-    ) {
-      return rgb2hex(this.state.currentStyle.color)
-    } else {
-      return 'white'
-    }
-  }
-
-  handleLowerLimitChange = (value: number | null): void => {
-    if (
-      value !== null &&
-      value !== undefined &&
-      this.state.currentStyle.limitValues !== undefined
-    ) {
-      this.setState((state) => {
-        if (state.currentStyle.limitValues !== undefined) {
-          return {
-            currentStyle: {
-              ...state.currentStyle,
-              limitValues: [value, state.currentStyle.limitValues[1]],
-            },
-          }
-        } else {
-          return { currentStyle: state.currentStyle }
-        }
-      })
-      this.props.onStyleChange({
-        uid: this.props.annotationGroup.uid,
-        styleOptions: {
-          limitValues: [value, this.state.currentStyle.limitValues[1]],
-        },
-      })
-    }
-  }
-
-  handleUpperLimitChange = (value: number | null): void => {
-    if (
-      value !== null &&
-      value !== undefined &&
-      this.state.currentStyle.limitValues !== undefined
-    ) {
-      this.setState((state) => {
-        if (state.currentStyle.limitValues !== undefined) {
-          return {
-            currentStyle: {
-              ...state.currentStyle,
-              limitValues: [state.currentStyle.limitValues[0], value],
-            },
-          }
-        } else {
-          return { currentStyle: state.currentStyle }
-        }
-      })
-      this.props.onStyleChange({
-        uid: this.props.annotationGroup.uid,
-        styleOptions: {
-          limitValues: [this.state.currentStyle.limitValues[0], value],
-        },
-      })
-    }
-  }
-
-  handleLimitChange = (values: number[]): void => {
-    this.setState((state) => ({
-      currentStyle: {
-        ...state.currentStyle,
-        limitValues: values,
-      },
-    }))
-    this.props.onStyleChange({
-      uid: this.props.annotationGroup.uid,
-      styleOptions: { limitValues: values },
-    })
-  }
-
-  handleAnnotationGroupClick = (): void => {
-    this.props.onAnnotationGroupClick(this.props.annotationGroup.uid)
-  }
-
-  handleMeasurementSelection: SelectProps['onChange'] = (value, option) => {
-    if (
-      value !== null &&
-      value !== undefined &&
-      option !== null &&
-      option !== undefined &&
-      Array.isArray(option) &&
-      option.length > 0 &&
-      option[0] !== null &&
-      option[0] !== undefined &&
-      option[0].children !== null &&
-      option[0].children !== undefined
-    ) {
-      const codeComponents = value.split('-')
-      const measurement = new dcmjs.sr.coding.CodedConcept({
-        value: codeComponents[1],
-        schemeDesignator: codeComponents[0],
-        meaning: Array.isArray(option[0].children)
-          ? String(option[0].children[0])
-          : String(option[0].children),
-      })
-      this.props.onStyleChange({
-        uid: this.props.annotationGroup.uid,
-        styleOptions: { measurement },
-      })
-      this.setState((state) => ({
-        currentStyle: {
-          ...state.currentStyle,
-          measurement,
-        },
-      }))
-    } else {
-      this.props.onStyleChange({
-        uid: this.props.annotationGroup.uid,
-        styleOptions: {
-          color: this.props.defaultStyle.color,
-        },
-      })
-      this.setState((state) => ({
-        currentStyle: {
-          ...state.currentStyle,
-          color: this.props.defaultStyle.color,
-          limitValues: undefined,
-        },
-      }))
-    }
-  }
-
-  render(): React.ReactNode {
-    const index = this.props.metadata.AnnotationGroupSequence.findIndex(
-      (item) => item.AnnotationGroupUID === this.props.annotationGroup.uid,
+      (styleOptions) => onStyleChange({ uid, styleOptions }),
     )
-    const item = this.props.metadata.AnnotationGroupSequence[index]
-    const attributes: Array<{ name: string; value: string }> = [
-      {
-        name: 'Property type',
-        value: this.props.annotationGroup.propertyType.CodeMeaning,
-      },
-      {
-        name: 'Property category',
-        value: this.props.annotationGroup.propertyCategory.CodeMeaning,
-      },
-      // {
-      //   name: 'Algorithm Name',
-      //   value: this.props.annotationGroup.algorithmName
-      // },
-      {
-        name: 'Graphic type',
-        value: item.GraphicType,
-      },
-      {
-        name: 'Annotation coordinate type',
-        value: this.props.metadata.AnnotationCoordinateType,
-      },
-    ]
+  /** Select value; survives the settings popover unmounting */
+  const [measurementKey, setMeasurementKey] = useState(NO_MEASUREMENT)
 
-    const measurementsSequence = item.MeasurementsSequence ?? []
-    const createMeasurementOption = (measurementItem: {
-      ConceptNameCodeSequence: Array<{
-        CodingSchemeDesignator: string
-        CodeValue: string
-        CodeMeaning: string
-      }>
-    }): React.ReactElement => {
-      const name = measurementItem.ConceptNameCodeSequence[0]
-      const key = `${name.CodingSchemeDesignator}-${name.CodeValue}`
-      return (
-        <Select.Option
-          key={key}
-          value={key}
-          dropdownMatchSelectWidth={false}
-          size="small"
-          disabled={!this.props.isVisible}
+  const item = getAnnotationGroupItem(metadata, uid)
+  const { meta, attributes, count } = useMemo(
+    () =>
+      describeAnnotationGroup(
+        annotationGroup,
+        item,
+        metadata?.AnnotationCoordinateType,
+      ),
+    [annotationGroup, item, metadata],
+  )
+  const details = useMemo(() => toKeyValueItems(attributes), [attributes])
+  const measurementOptions = useMemo(() => getMeasurementOptions(item), [item])
+  const isColoredByMeasurement = measurementKey !== NO_MEASUREMENT
+  const isFillable = isFillableGraphicType(item?.GraphicType)
+  const label = annotationGroup.label
+
+  const handleMeasurementSelection = (key: string): void => {
+    const option = measurementOptions.find((candidate) => candidate.key === key)
+    setMeasurementKey(option?.key ?? NO_MEASUREMENT)
+    if (option !== undefined) {
+      onStyleChange({
+        uid,
+        styleOptions: { measurement: measurementOptionToConcept(option) },
+      })
+      return
+    }
+    const defaultColor = toRGB(defaultStyle.color)
+    if (defaultColor === undefined) return
+    previewStyle({ color: toEditableColor(defaultStyle.color) })
+    onStyleChange({ uid, styleOptions: { color: defaultColor } })
+  }
+
+  return (
+    <div className="flex items-center gap-2.5 rounded-lg border border-line px-2.5 py-2">
+      {isColoredByMeasurement ? (
+        <span
+          role="img"
+          aria-label="Colored by measurement"
+          title="Colored by measurement"
+          className="flex flex-none text-ink-muted"
         >
-          {name.CodeMeaning}
-        </Select.Option>
-      )
-    }
-    const measurementOptions = measurementsSequence.map(createMeasurementOption)
-    measurementOptions.push(
-      <Select.Option
-        key="-"
-        value={undefined}
-        dropdownMatchSelectWidth={false}
-        size="small"
-        disabled={!this.props.isVisible}
-      >
-        {null}
-      </Select.Option>,
-    )
-
-    let colorSettings: React.ReactNode
-    if (
-      this.state.currentStyle.color !== null &&
-      this.state.currentStyle.color !== undefined &&
-      this.state.currentStyle.color.length === 3
-    ) {
-      colorSettings = (
-        <>
-          <Divider plain>Color</Divider>
-          <ColorSlider
-            color={this.state.currentStyle.color}
-            onChange={this.handleColorChange}
-          />
-          <Divider plain />
-        </>
-      )
-    }
-
-    let windowSettings: React.ReactNode
-    let explorationSettings: React.ReactNode
-    if (measurementsSequence.length > 0) {
-      if (
-        this.state.currentStyle.limitValues !== null &&
-        this.state.currentStyle.limitValues !== undefined
-      ) {
-        // TODO: need to get default min/max values from viewer first
-        const minValue = 0
-        const maxValue = 1000
-        windowSettings = (
-          <>
-            <Divider plain>Values of interest</Divider>
-            <Row justify="center" align="middle" gutter={[8, 8]}>
-              <Col span={6}>
-                <InputNumber
-                  min={0}
-                  max={this.state.currentStyle.limitValues[1]}
-                  size="small"
-                  style={{ width: '75px' }}
-                  value={this.state.currentStyle.limitValues[0]}
-                  onChange={this.handleLowerLimitChange}
-                />
-              </Col>
-              <Col span={12}>
-                <Slider
-                  range
-                  min={minValue}
-                  max={maxValue}
-                  step={1}
-                  value={[
-                    this.state.currentStyle.limitValues[0],
-                    this.state.currentStyle.limitValues[1],
-                  ]}
-                  onChange={this.handleLimitChange}
-                />
-              </Col>
-              <Col span={6}>
-                <InputNumber
-                  min={this.state.currentStyle.limitValues[0]}
-                  max={maxValue}
-                  size="small"
-                  style={{ width: '75px' }}
-                  value={this.state.currentStyle.limitValues[1]}
-                  onChange={this.handleUpperLimitChange}
-                />
-              </Col>
-            </Row>
-          </>
-        )
-      }
-      explorationSettings = (
-        <>
-          <Divider plain>Exploration</Divider>
-          <Row justify="start" align="middle" gutter={[8, 8]}>
-            <Col span={8}>Measurement</Col>
-            <Col span={16}>
-              <Select
-                style={{ minWidth: '65px', width: '90%' }}
-                onSelect={this.handleMeasurementSelection}
-                key="annotation-group-measurements"
-                defaultValue={undefined}
-              >
-                {measurementOptions}
-              </Select>
-            </Col>
-          </Row>
-        </>
-      )
-    }
-
-    // Fill settings for POLYGON, RECTANGLE, ELLIPSE graphic types
-    let fillSettings: React.ReactNode
-    if (
-      item.GraphicType === 'POLYGON' ||
-      item.GraphicType === 'RECTANGLE' ||
-      item.GraphicType === 'ELLIPSE'
-    ) {
-      fillSettings = (
-        <>
-          <Divider plain>Fill</Divider>
-          <Row justify="start" align="middle" gutter={[8, 8]}>
-            <Col span={8}>Enable fill</Col>
-            <Col span={16}>
-              <Switch
-                size="small"
-                checked={this.state.currentStyle.fill ?? false}
-                onChange={this.handleFillChange}
-              />
-            </Col>
-          </Row>
-          <Row
-            justify="start"
-            align="middle"
-            gutter={[8, 8]}
-            style={{ marginTop: '8px' }}
+          <Icon name="gradient" size={14} />
+        </span>
+      ) : (
+        <span
+          className={cn(
+            'h-2.5 w-2.5 flex-none rounded-full',
+            style.color === undefined && 'border border-line bg-panel',
+          )}
+          style={
+            style.color !== undefined
+              ? { background: rgbToHex(style.color) }
+              : undefined
+          }
+        />
+      )}
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="flex min-w-0 items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => onAnnotationGroupClick(uid)}
+            className="min-w-0 truncate text-left font-semibold text-ink"
+            title="Zoom to annotation group"
           >
-            <Col span={8}>Fill opacity</Col>
-            <Col span={12}>
-              <Slider
-                min={0}
-                max={1}
-                step={0.01}
-                value={this.state.currentStyle.fillOpacity ?? 0.5}
-                onChange={this.handleFillOpacityChange}
-                disabled={!this.state.currentStyle.fill}
-              />
-            </Col>
-            <Col span={4}>
-              <InputNumber
-                min={0}
-                max={1}
-                step={0.01}
-                size="small"
-                style={{ width: '55px' }}
-                value={this.state.currentStyle.fillOpacity ?? 0.5}
-                onChange={this.handleFillOpacityChange}
-                disabled={!this.state.currentStyle.fill}
-              />
-            </Col>
-          </Row>
-        </>
-      )
-    }
-
-    const settings = (
-      <div>
-        {colorSettings}
-        {windowSettings}
-        <OpacitySlider
-          opacity={this.state.currentStyle.opacity}
-          onChange={this.handleOpacityChange}
-        />
-        {fillSettings}
-        {explorationSettings}
+            {label}
+          </button>
+          <ValidationWarning annotationGroup={annotationGroup} size={15} />
+        </span>
+        {meta !== '' && (
+          <span className="truncate text-12 text-ink-muted">{meta}</span>
+        )}
       </div>
-    )
-
-    const color = this.getCurrentColor()
-    const isBadgeVisible =
-      this.state.isVisible && this.state.currentStyle.measurement === null
-    return (
-      <Space align="start">
-        <div style={{ paddingLeft: '14px' }}>
-          <AnnotationGroupControls
-            isVisible={this.props.isVisible}
-            onVisibilityChange={this.handleVisibilityChange}
-            settings={settings}
-            color={this.state.currentStyle.color ?? [255, 255, 255]}
+      {count !== undefined && (
+        <span className="flex-none font-mono text-11.5 font-medium text-ink-secondary">
+          {formatGroupedNumber(count)}
+        </span>
+      )}
+      <InfoDetailsButton label={`Details for ${label}`} items={details} />
+      <LayerSettingsPopover label={label}>
+        <div className="flex w-80 flex-col gap-4">
+          <div className="text-12.5 font-semibold text-ink">
+            Display settings
+          </div>
+          {style.color !== undefined && (
+            <div>
+              <p className={SETTINGS_LABEL}>Color</p>
+              <ColorSlider
+                color={style.color}
+                onChange={(color) => previewStyle({ color })}
+                onCommit={(color) => updateStyle({ color })}
+              />
+            </div>
+          )}
+          <OpacitySlider
+            opacity={style.opacity}
+            onChange={(opacity) => previewStyle({ opacity })}
+            onCommit={(opacity) => updateStyle({ opacity })}
           />
+          {isFillable && (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-12.5 font-medium text-ink">Fill</span>
+                <Switch
+                  size="sm"
+                  checked={style.fill}
+                  onCheckedChange={(fill) => updateStyle({ fill })}
+                  aria-label="Fill shapes"
+                />
+              </div>
+              <OpacitySlider
+                label="Fill opacity"
+                opacity={style.fillOpacity}
+                disabled={!style.fill}
+                onChange={(fillOpacity) => previewStyle({ fillOpacity })}
+                onCommit={(fillOpacity) => updateStyle({ fillOpacity })}
+              />
+            </div>
+          )}
+          {measurementOptions.length > 0 && (
+            <div>
+              <p className={SETTINGS_LABEL}>Color by measurement</p>
+              <Select
+                value={measurementKey}
+                onValueChange={handleMeasurementSelection}
+              >
+                <SelectTrigger
+                  className="w-full"
+                  aria-label="Color by measurement"
+                >
+                  <SelectValue placeholder="Select measurement" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_MEASUREMENT}>None</SelectItem>
+                  {measurementOptions.map((option) => (
+                    <SelectItem
+                      key={option.key}
+                      value={option.key}
+                      disabled={!isVisible}
+                    >
+                      {option.meaning}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
-        <AnnotationGroupBadgeDescription
-          onClick={this.handleAnnotationGroupClick}
-          annotationGroup={this.props.annotationGroup}
-          isBadgeVisible={isBadgeVisible}
-          color={color}
-          label={this.props.annotationGroup.label}
-          attributes={attributes}
-        />
-      </Space>
-    )
-  }
+      </LayerSettingsPopover>
+      <VisibilityToggleButton
+        label={label}
+        isVisible={isVisible}
+        onChange={(nextIsVisible) =>
+          onVisibilityChange({
+            annotationGroupUID: uid,
+            isVisible: nextIsVisible,
+          })
+        }
+      />
+    </div>
+  )
 }
 
-export default AnnotationGroupItem
+export default memo(AnnotationGroupItem, areLayerItemPropsEqual)

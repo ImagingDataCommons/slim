@@ -1,7 +1,9 @@
-import { Modal, Space } from 'antd'
 import type React from 'react'
 
-interface AnnotationModalProps {
+import { Button } from '../ui/button'
+import { ViewerModal } from './ViewerModal'
+
+export interface AnnotationModalProps {
   isVisible: boolean
   onOk: () => void
   onCancel: () => void
@@ -9,30 +11,35 @@ interface AnnotationModalProps {
   children: React.ReactNode
 }
 
-/**
- * Modal component for configuring annotations
- */
-const AnnotationModal: React.FC<AnnotationModalProps> = ({
+/** Modal for choosing the finding and geometry before drawing an ROI. */
+const AnnotationModal = ({
   isVisible,
   onOk,
   onCancel,
   isOkDisabled,
   children,
-}) => {
-  return (
-    <Modal
-      open={isVisible}
-      title="Configure annotations"
-      onOk={onOk}
-      okButtonProps={{ disabled: isOkDisabled }}
-      onCancel={onCancel}
-      okText="Select"
-    >
-      <Space align="start" direction="vertical">
-        {children}
-      </Space>
-    </Modal>
-  )
-}
+}: AnnotationModalProps): React.ReactElement => (
+  <ViewerModal
+    isVisible={isVisible}
+    onCancel={onCancel}
+    icon="polyline"
+    title="Configure annotation"
+    subtitle="Choose what you are about to draw"
+    widthClassName="max-w-[520px]"
+    bodyClassName="gap-3"
+    footer={
+      <>
+        <Button variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button onClick={onOk} disabled={isOkDisabled}>
+          Start drawing
+        </Button>
+      </>
+    }
+  >
+    {children}
+  </ViewerModal>
+)
 
 export default AnnotationModal

@@ -1,4 +1,4 @@
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import * as dcmjs from 'dcmjs'
 
 export type DicomWebManagerErrorHandler = (
@@ -115,6 +115,7 @@ export default interface AppConfig {
   disableWorklist?: boolean
   disableAnnotationTools?: boolean
   enableServerSelection?: boolean
+  /** Default theme until the user picks one: 'light', else dark */
   mode?: string
   preload?: boolean
   messages?: {

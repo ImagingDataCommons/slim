@@ -1,221 +1,166 @@
-import { Typography } from 'antd'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import * as dmv from 'dicom-microscopy-viewer'
-import React from 'react'
-import { FaSpinner } from 'react-icons/fa'
+import type React from 'react'
+import { memo, useEffect, useRef } from 'react'
 
 import type DicomWebManager from '../DicomWebManager'
 import type { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
+import { cn } from '../lib/utils'
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../services/NotificationMiddleware'
 import type { CustomError } from '../utils/CustomError'
+import { computeOverviewPreviewResizeFactor } from '../utils/computeOverviewPreviewResizeFactor'
 import {
-  computeOverviewPreviewResizeFactor,
-  SLIDE_PREVIEW_HEIGHT_PX,
-} from '../utils/computeOverviewPreviewResizeFactor'
-import Description from './Description'
+  getIlluminationType,
+  getMagnification,
+  getSlideDisplayId,
+  getSlideStainInfo,
+} from '../utils/slideDisplay'
 import ValidationWarning from './ValidationWarning'
 
-interface SlideItemProps {
+export interface SlideItemProps {
   clients: { [key: string]: DicomWebManager }
   slide: Slide
-  /** When true, parent is a native button — omit hoverable Card styling. */
-  disableCardHover?: boolean
-}
-
-interface SlideItemState {
-  isLoading: boolean
+  isSelected?: boolean
+  onSelect: ({ seriesInstanceUID }: { seriesInstanceUID: string }) => void
 }
 
 /**
- * React component representing a DICOM Series Information Entity that displays
- * common series-level attributes of contained DICOM Slide Microscopy images
- * as well as the OVERVIEW image (if available).
- * When selected a Slide Viewer instance is created for the display of the
- * contained images.
+ * Renders a DMV overview of `metadata` into the returned ref once the
+ * container has a size. The thumbnail lives in a panel that may be
+ * `display: none` at mount, so mounting waits for the ResizeObserver.
  */
-class SlideItem extends React.Component<SlideItemProps, SlideItemState> {
-  state = { isLoading: false }
+function useOverviewViewer(
+  client: DicomWebManager | undefined,
+  metadata: dmv.metadata.VLWholeSlideMicroscopyImage | undefined,
+): React.RefObject<HTMLSpanElement | null> {
+  const containerRef = useRef<HTMLSpanElement>(null)
 
-  private readonly overviewViewportRef = React.createRef<HTMLDivElement>()
-
-  private overviewViewer?: dmv.viewer.OverviewImageViewer
-
-  private overviewResizeObserver?: ResizeObserver
-
-  private mountFrameId: number | undefined
-
-  private isMountAborted = false
-
-  constructor(props: SlideItemProps) {
-    super(props)
-    this.overviewViewer = undefined
-  }
-
-  componentDidMount(): void {
-    this.isMountAborted = false
-    this.setState({ isLoading: true })
-    this.scheduleOverviewViewerMount()
-    this.setState({ isLoading: false })
-  }
-
-  componentWillUnmount(): void {
-    this.isMountAborted = true
-    if (this.mountFrameId !== undefined) {
-      cancelAnimationFrame(this.mountFrameId)
-      this.mountFrameId = undefined
-    }
-    this.overviewResizeObserver?.disconnect()
-    this.overviewResizeObserver = undefined
-    this.overviewViewer?.cleanup()
-    this.overviewViewer = undefined
-  }
-
-  /**
-   * Wait until the preview tile has non-zero layout, then mount the overview
-   * viewer with a resize factor that matches container pixels to matrix extent.
-   */
-  private scheduleOverviewViewerMount(): void {
-    const tryMount = (): void => {
-      this.mountFrameId = undefined
-      if (this.isMountAborted) {
-        return
-      }
-      const container = this.overviewViewportRef.current
-      if (container == null) {
-        return
-      }
-      const { clientWidth, clientHeight } = container
-      if (clientWidth <= 0 || clientHeight <= 0) {
-        this.mountFrameId = requestAnimationFrame(tryMount)
-        return
-      }
-      this.mountOverviewViewer(container)
-    }
-    this.mountFrameId = requestAnimationFrame(tryMount)
-  }
-
-  private mountOverviewViewer(container: HTMLDivElement): void {
-    if (this.isMountAborted) {
-      return
-    }
-    /** Use OVERVIEW if available, otherwise fall back to THUMBNAIL */
-    const previewImages =
-      this.props.slide.overviewImages.length > 0
-        ? this.props.slide.overviewImages
-        : this.props.slide.thumbnailImages
-
-    if (previewImages.length === 0) {
+  useEffect(() => {
+    const container = containerRef.current
+    if (container === null || metadata === undefined || client === undefined) {
       return
     }
 
-    const metadata = previewImages[0]
-    container.innerHTML = ''
-    const imageType =
-      this.props.slide.overviewImages.length > 0 ? 'OVERVIEW' : 'THUMBNAIL'
-    console.info(
-      `instantiate viewer for ${imageType} image of slide ` +
-        `"${metadata.ContainerIdentifier}"`,
-    )
+    let viewer: dmv.viewer.OverviewImageViewer | undefined
+    let resizeFrame: number | undefined
 
-    const resizeFactor = computeOverviewPreviewResizeFactor(
-      metadata,
-      container.clientWidth,
-      container.clientHeight,
-    )
-
-    this.overviewViewer?.cleanup()
-    this.overviewViewer = new dmv.viewer.OverviewImageViewer({
-      client:
-        this.props.clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE],
-      disableInteractions: true,
-      metadata,
-      resizeFactor,
-      errorInterceptor: (error: CustomError) => {
-        NotificationMiddleware.onError(NotificationMiddlewareContext.DMV, error)
-      },
-    })
-    this.overviewViewer.render({ container })
-
-    requestAnimationFrame(() => {
-      this.overviewViewer?.resize()
-    })
-
-    this.overviewResizeObserver?.disconnect()
-    this.overviewResizeObserver = new ResizeObserver(() => {
-      this.overviewViewer?.resize()
-    })
-    this.overviewResizeObserver.observe(container)
-  }
-
-  render(): React.ReactNode {
-    if (this.overviewViewer !== undefined) {
-      this.overviewViewer.resize()
+    const mount = (): void => {
+      container.innerHTML = ''
+      viewer = new dmv.viewer.OverviewImageViewer({
+        client,
+        disableInteractions: true,
+        metadata,
+        resizeFactor: computeOverviewPreviewResizeFactor(
+          metadata,
+          container.clientWidth,
+          container.clientHeight,
+        ),
+        errorInterceptor: (error: CustomError) => {
+          NotificationMiddleware.onError(
+            NotificationMiddlewareContext.DMV,
+            error,
+          )
+        },
+      })
+      viewer.render({ container })
+      resizeFrame = requestAnimationFrame(() => viewer?.resize())
     }
 
-    const attributes = []
-    const description = this.props.slide.description
-    attributes.push({
-      name: 'Description',
-      value:
-        description !== null && description !== undefined && description !== ''
-          ? description
-          : '\u2014',
+    const observer = new ResizeObserver(() => {
+      if (viewer !== undefined) {
+        viewer.resize()
+      } else if (container.clientWidth > 0 && container.clientHeight > 0) {
+        mount()
+      }
     })
+    observer.observe(container)
 
-    if (this.state.isLoading) {
-      return <FaSpinner />
+    return () => {
+      observer.disconnect()
+      if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame)
+      viewer?.cleanup()
     }
+  }, [client, metadata])
 
-    return (
-      <Description
-        header={this.props.slide.containerIdentifier}
-        attributes={attributes}
-        selectable={this.props.disableCardHover !== true}
-      >
-        <div style={{ position: 'relative', height: SLIDE_PREVIEW_HEIGHT_PX }}>
-          {this.props.slide.overviewImages.length > 0 ||
-          this.props.slide.thumbnailImages.length > 0 ? (
-            <div ref={this.overviewViewportRef} style={{ height: '100%' }} />
-          ) : (
-            <div
-              style={{
-                height: '100%',
-                textAlign: 'center',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.5rem',
-                fontWeight: 300,
-                color: '#8F9BA8',
-                letterSpacing: '0.1em',
-              }}
-            >
-              SM
-            </div>
-          )}
-          <ValidationWarning slide={this.props.slide} />
-        </div>
-        {this.props.slide.seriesDescription !== undefined &&
-        this.props.slide.seriesDescription !== null &&
-        this.props.slide.seriesDescription !== '' ? (
-          <Typography.Text
-            type="secondary"
-            style={{
-              display: 'block',
-              marginTop: 4,
-              fontSize: '0.75rem',
-              lineHeight: 1.2,
-            }}
-          >
-            {this.props.slide.seriesDescription}
-          </Typography.Text>
-        ) : null}
-      </Description>
-    )
-  }
+  return containerRef
 }
 
-export default SlideItem
+/** Slide card with an overview thumbnail, stain and acquisition details. */
+function SlideItem({
+  clients,
+  slide,
+  isSelected = false,
+  onSelect,
+}: SlideItemProps): React.ReactElement {
+  const previewImages =
+    slide.overviewImages.length > 0
+      ? slide.overviewImages
+      : slide.thumbnailImages
+  const thumbnailRef = useOverviewViewer(
+    clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE],
+    previewImages[0],
+  )
+  const stainInfo = getSlideStainInfo(slide)
+  const illuminationType = getIlluminationType(slide)
+  const magnification = getMagnification(slide)
+  const slideId = getSlideDisplayId(slide)
+  const hasPreview = previewImages.length > 0
+
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        onSelect({ seriesInstanceUID: slide.seriesInstanceUIDs[0] })
+      }
+      aria-pressed={isSelected}
+      className={cn(
+        'flex w-full items-stretch gap-3 rounded-card border p-2 text-left transition-colors hover:border-line-hover',
+        isSelected
+          ? 'border-primary bg-selected shadow-selected-ring'
+          : 'border-line bg-panel',
+      )}
+    >
+      <span className="flex h-16 w-16 flex-none items-center justify-center overflow-hidden rounded-md border border-line bg-viewport">
+        {hasPreview ? (
+          <span
+            ref={thumbnailRef}
+            className="pointer-events-none block h-full w-full"
+          />
+        ) : (
+          <span className="font-mono text-[10.5px] font-medium text-ink-faint">
+            SM
+          </span>
+        )}
+      </span>
+
+      <span className="flex min-w-0 flex-1 flex-col gap-[3px] pt-0.5">
+        <span className="flex items-center gap-1.5 text-13 font-semibold text-ink">
+          <span className="truncate" title={slideId}>
+            {slideId}
+          </span>
+          <ValidationWarning slide={slide} size={15} interactive={false} />
+        </span>
+        {stainInfo !== '' && (
+          <span className="truncate text-12 text-ink-secondary">
+            {stainInfo}
+          </span>
+        )}
+        <span className="mt-auto flex gap-1.5">
+          <span className="rounded-sm bg-app px-[5px] py-0.5 font-mono text-[10.5px] font-medium text-ink-secondary">
+            {illuminationType}
+          </span>
+          {magnification !== '' && (
+            <span className="rounded-sm bg-app px-[5px] py-0.5 font-mono text-[10.5px] font-medium text-ink-secondary">
+              {magnification}
+            </span>
+          )}
+        </span>
+      </span>
+    </button>
+  )
+}
+
+export default memo(SlideItem)
