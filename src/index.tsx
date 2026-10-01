@@ -57,8 +57,8 @@ const mountApp = (): void => {
     throw new Error('Root element not found')
   }
 
-  /** Determine initial theme from config or default to light */
-  const initialTheme = config?.mode === 'dark' ? 'dark' : 'light'
+  /** Determine initial theme from config or default to dark */
+  const initialTheme = config?.mode === 'light' ? 'light' : 'dark'
 
   const root = createRoot(container)
   root.render(

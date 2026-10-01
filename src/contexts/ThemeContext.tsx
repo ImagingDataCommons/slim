@@ -62,7 +62,7 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({
   children,
-  defaultTheme = 'light',
+  defaultTheme = 'dark',
   forcedTheme,
 }: ThemeProviderProps): React.ReactElement {
   const [theme, setThemeState] = useState<Theme>(() => {

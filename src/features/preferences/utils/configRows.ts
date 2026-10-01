@@ -22,7 +22,7 @@ export const MASKED_VALUE = '••••••••'
 /** Slim defaults for config keys that have one, keyed by dotted path. */
 export const CONFIG_DEFAULTS: Record<string, unknown> = {
   path: '/',
-  mode: 'light',
+  mode: 'dark',
   disableWorklist: false,
   disableAnnotationTools: false,
   enableServerSelection: false,

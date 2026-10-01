@@ -25,7 +25,7 @@
           theme = window.localStorage.getItem('slim-theme')
         } catch (e) {}
         if (theme !== 'light' && theme !== 'dark' && theme !== 'system') {
-          theme = window.config && window.config.mode === 'dark' ? 'dark' : 'light'
+          theme = window.config && window.config.mode === 'light' ? 'light' : 'dark'
         }
         var isDark =
           theme === 'dark' ||

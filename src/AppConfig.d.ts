@@ -115,6 +115,7 @@ export default interface AppConfig {
   disableWorklist?: boolean
   disableAnnotationTools?: boolean
   enableServerSelection?: boolean
+  /** Default theme until the user picks one: 'light', else dark */
   mode?: string
   preload?: boolean
   messages?: {

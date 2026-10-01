@@ -72,14 +72,14 @@ describe('ThemeProvider', () => {
   })
 
   it('uses the default theme when nothing is stored', () => {
-    mockSystemScheme(true)
+    mockSystemScheme(false)
     const { result } = renderHook(() => useTheme(), {
       wrapper: createWrapper({}),
     })
-    expect(result.current.theme).toBe('light')
-    expect(result.current.resolvedTheme).toBe('light')
-    expect(document.documentElement).toHaveClass('light')
-    expect(document.documentElement.style.colorScheme).toBe('light')
+    expect(result.current.theme).toBe('dark')
+    expect(result.current.resolvedTheme).toBe('dark')
+    expect(document.documentElement).toHaveClass('dark')
+    expect(document.documentElement.style.colorScheme).toBe('dark')
   })
 
   it('prefers the stored theme over the default', () => {
