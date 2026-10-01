@@ -4,6 +4,7 @@ import type * as dcmjs from 'dcmjs'
 import type * as dmv from 'dicom-microscopy-viewer'
 import type DicomWebManager from '../../DicomWebManager'
 import type { Slide } from '../../data/slides'
+import type { ViewportLoadingPhase } from '../../features/viewer/utils/viewportLoading'
 import type { AnnotationSettings } from '../../types/annotations'
 import type { RouteComponentProps } from '../../utils/router'
 
@@ -124,6 +125,7 @@ export interface SlideViewerState {
     }
   }
   loadingFrames: Set<string>
+  viewportLoadingPhase: ViewportLoadingPhase
   isICCProfilesEnabled: boolean
   isPaletteDisplayGammaCorrectionEnabled: boolean
   isSegmentationInterpolationEnabled: boolean

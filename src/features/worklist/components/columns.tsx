@@ -2,7 +2,6 @@ import type { ColumnDef } from '@tanstack/react-table'
 // skipcq: JS-C1003
 import type * as dmv from 'dicom-microscopy-viewer'
 
-import { Icon } from '../../../components/ui/icon'
 import {
   formatDisplayDate,
   formatDisplayTime,
@@ -34,14 +33,9 @@ export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
     accessorFn: (study) =>
       formatPersonName(study.PatientName as PersonNameValue),
     cell: ({ getValue }) => (
-      <div className="flex min-w-0 items-center gap-2.5">
-        <span className="grid h-7 w-7 flex-none place-items-center rounded-md border border-line bg-app text-ink-faint">
-          <Icon name="biotech" size={16} />
-        </span>
-        <span className="truncate font-semibold text-ink">
-          {orDash(getValue<string>())}
-        </span>
-      </div>
+      <span className="block truncate font-semibold text-ink">
+        {orDash(getValue<string>())}
+      </span>
     ),
   },
   {

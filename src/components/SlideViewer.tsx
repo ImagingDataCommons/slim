@@ -20,6 +20,7 @@ import {
   deriveActiveRoiTool,
   ViewerToolbar,
 } from '../features/viewer/components/ViewerToolbar'
+import { ViewportLoadingIndicator } from '../features/viewer/components/ViewportLoadingIndicator'
 import { ViewportOverlays } from '../features/viewer/components/ViewportOverlays'
 import {
   changedSettingKeys,
@@ -31,6 +32,12 @@ import {
   type SlideAffine,
   slideAffineFromImages,
 } from '../features/viewer/utils/slideCoordinates'
+import {
+  INITIAL_VIEWPORT_LOADING_PHASE,
+  isViewportLoading,
+  nextViewportLoadingPhase,
+  type ViewportLoadingEvent,
+} from '../features/viewer/utils/viewportLoading'
 import { ActiveSeriesService } from '../services/ActiveSeriesService'
 import DicomMetadataStore from '../services/DICOMMetadataStore'
 import NotificationMiddleware, {
@@ -52,6 +59,7 @@ import {
 } from '../utils/distinctOverlayColormaps'
 import generateReport from '../utils/generateReport'
 import { logger } from '../utils/logger'
+import { formatMeasuredValue } from '../utils/roiDescription'
 import { withRouter } from '../utils/router'
 import {
   getSegmentationType,
@@ -192,6 +200,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
 
   private readonly roiStyles: { [key: string]: dmv.viewer.ROIStyleOptions } = {}
 
+  /** Styles owned by individual ROIs (drawn with the user's preferences or recolored) */
+  private readonly roiStylesByUid: {
+    [roiUID: string]: dmv.viewer.ROIStyleOptions
+  } = {}
+
   private readonly defaultAnnotationStyles: {
     [annotationUID: string]: StyleOptions
   } = {}
@@ -322,6 +335,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       pixelDataStatistics: {},
       selectedPresentationStateUID: this.props.selectedPresentationStateUID,
       loadingFrames: new Set(),
+      viewportLoadingPhase: INITIAL_VIEWPORT_LOADING_PHASE,
       isICCProfilesEnabled: true,
       isPaletteDisplayGammaCorrectionEnabled:
         volumeViewer.getPaletteDisplayGammaCorrectionEnabled(),
@@ -506,6 +520,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         activeOpticalPathIdentifiers,
         presentationStates: [],
         loadingFrames: new Set(),
+        viewportLoadingPhase: nextViewportLoadingPhase(
+          state.viewportLoadingPhase,
+          'reset',
+        ),
         selectedSeriesInstanceUID: undefined,
         validXCoordinateRange: [offset[0], offset[0] + size[0]],
         validYCoordinateRange: [offset[1], offset[1] + size[1]],
@@ -792,6 +810,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     }
     return this.defaultRoiStyle
   }
+
+  /** An ROI's own style (drawn or recolored) wins over its finding's style. */
+  getStyleForRoi = (roi: dmv.roi.ROI): dmv.viewer.ROIStyleOptions =>
+    this.roiStylesByUid[roi.uid] ?? this.getRoiStyle(getRoiKey(roi))
 
   loadDerivedDataset = (derivedDataset: dmv.metadata.Dataset): void => {
     logger.debug('Loading derived dataset:', derivedDataset)
@@ -1722,8 +1744,8 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         })
         roi.addEvaluation(item)
       })
-      const key = buildKey(selectedFinding)
-      const style = this.getRoiStyle(key)
+      const style = this.defaultRoiStyle
+      this.roiStylesByUid[roi.uid] = style
       this.volumeViewer.addROI(roi, style)
       this.setState((state) => {
         const visibleRoiUIDs = state.visibleRoiUIDs
@@ -2144,9 +2166,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       ) {
         return
       }
-      const key = getRoiKey(roi)
-      const style = this.getRoiStyle(key)
-      this.volumeViewer.setROIStyle(uid, style)
+      this.volumeViewer.setROIStyle(uid, this.getStyleForRoi(roi))
     })
   }
 
@@ -2216,8 +2236,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         })
       } else {
         if (this.state.visibleRoiUIDs.has(roi.uid)) {
-          const key = getRoiKey(roi)
-          style = this.getRoiStyle(key)
+          style = this.getStyleForRoi(roi)
         }
       }
       this.volumeViewer.setROIStyle(roi.uid, style)
@@ -2281,12 +2300,28 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     })
   }
 
+  private readonly advanceViewportLoading = (
+    event: ViewportLoadingEvent,
+  ): void => {
+    this.setState((state) => {
+      const viewportLoadingPhase = nextViewportLoadingPhase(
+        state.viewportLoadingPhase,
+        event,
+      )
+      return viewportLoadingPhase === state.viewportLoadingPhase
+        ? null
+        : { viewportLoadingPhase }
+    })
+  }
+
   onLoadingStarted = (_event: CustomEventInit): void => {
     this.setState({ isLoading: true })
+    this.advanceViewportLoading('started')
   }
 
   onLoadingEnded = (_event: CustomEventInit): void => {
     this.setState({ isLoading: false })
+    this.advanceViewportLoading('ended')
   }
 
   onFrameLoadingStarted = (event: CustomEventInit): void => {
@@ -2313,6 +2348,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const message = (event.detail?.payload?.message ??
       'Failed to load data') as string
     console.error(message)
+    this.advanceViewportLoading('failed')
     NotificationMiddleware.onError(
       NotificationMiddlewareContext.SLIM,
       new CustomError(errorTypes.VISUALIZATION, message),
@@ -2339,6 +2375,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       return {
         isLoading,
         loadingFrames: state.loadingFrames,
+        viewportLoadingPhase: isLoading
+          ? state.viewportLoadingPhase
+          : nextViewportLoadingPhase(state.viewportLoadingPhase, 'ended'),
       }
     })
     if (
@@ -2462,7 +2501,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.onMappingVisibilityChanged,
     )
     document.body.removeEventListener('keyup', this.onKeyUp)
-    document.body.removeEventListener('keyup', this.onKeyDown)
+    document.body.removeEventListener('keydown', this.onKeyDown)
 
     this.stopOverviewMapClamp?.()
     this.stopOverviewMapClamp = undefined
@@ -2823,7 +2862,9 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         frameOfReferenceUID: this.volumeViewer.frameOfReferenceUID,
       })
       const roi = new dmv.roi.ROI({ scoord3d: point })
-      this.volumeViewer.addROI(roi, this.defaultRoiStyle)
+      const style = this.defaultRoiStyle
+      this.roiStylesByUid[roi.uid] = style
+      this.volumeViewer.addROI(roi, style)
       this.setState((state) => {
         const visibleRoiUIDs = state.visibleRoiUIDs
         visibleRoiUIDs.add(roi.uid)
@@ -2858,7 +2899,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     const geometryType = this.state.selectedGeometryType
     const markup = this.state.selectedMarkup
     if (geometryType !== undefined && finding !== undefined) {
-      this.volumeViewer.activateDrawInteraction({ geometryType, markup })
+      this.volumeViewer.activateDrawInteraction({
+        geometryType,
+        markup,
+        styleOptions: this.defaultRoiStyle,
+      })
       this.setState({
         isAnnotationModalVisible: false,
         isRoiDrawingActive: true,
@@ -2974,9 +3019,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     if (isVisible) {
       logger.log(`show ROI ${roiUID}`)
       const roi = this.volumeViewer.getROI(roiUID)
-      const key = getRoiKey(roi)
-      const style = this.getRoiStyle(key)
-      this.volumeViewer.setROIStyle(roi.uid, style)
+      this.volumeViewer.setROIStyle(roi.uid, this.getStyleForRoi(roi))
       this.setState((state) => {
         const visibleRoiUIDs = new Set(state.visibleRoiUIDs)
         visibleRoiUIDs.add(roi.uid)
@@ -3114,6 +3157,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       const roi = this.volumeViewer.getROI(uid)
       const key = getRoiKey(roi) as string
       this.roiStyles[key] = style
+      this.roiStylesByUid[uid] = style
       this.volumeViewer.setROIStyle(uid, style)
       this.state.visibleRoiUIDs.add(uid)
     } catch (error) {
@@ -3618,6 +3662,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
     this.setState({ isRoiRemovalConfirmVisible: false })
   }
 
+  private forgetRoiStyle(uid: string): void {
+    delete this.roiStylesByUid[uid]
+    delete this.defaultAnnotationStyles[uid]
+  }
+
   /** Remove the selected ROIs, or all visible ROIs when none is selected. */
   private removeRois(): void {
     this.volumeViewer.deactivateDrawInteraction()
@@ -3630,6 +3679,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         if (uid === undefined) return
         logger.log(`remove ROI "${uid}"`)
         this.volumeViewer.removeROI(uid)
+        this.forgetRoiStyle(uid)
         removedCount++
       })
       publishToast(formatRoiRemovalMessage(removedCount), 'success')
@@ -3644,6 +3694,7 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
       this.state.visibleRoiUIDs.forEach((uid) => {
         logger.log(`remove ROI "${uid}"`)
         this.volumeViewer.removeROI(uid)
+        this.forgetRoiStyle(uid)
       })
       publishToast(formatRoiRemovalMessage(removedCount), 'success')
       this.setState({
@@ -3871,23 +3922,26 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
   }
 
   formatAnnotation = (annotation: AnnotationCategoryAndType): void => {
+    if (this.defaultAnnotationStyles[annotation.uid] !== undefined) return
     const roi = this.volumeViewer.getROI(annotation.uid)
     const key = getRoiKey(roi) as string
+    const ownStyle = this.roiStylesByUid[annotation.uid]
     const color =
-      this.roiStyles[key] !== undefined
-        ? this.roiStyles[key].stroke?.color.slice(0, 3)
-        : DEFAULT_ANNOTATION_COLOR_PALETTE[
-            Object.keys(this.roiStyles).length %
-              DEFAULT_ANNOTATION_COLOR_PALETTE.length
-          ]
+      (ownStyle ?? this.roiStyles[key])?.stroke?.color.slice(0, 3) ??
+      DEFAULT_ANNOTATION_COLOR_PALETTE[
+        Object.keys(this.roiStyles).length %
+          DEFAULT_ANNOTATION_COLOR_PALETTE.length
+      ]
     this.defaultAnnotationStyles[annotation.uid] = {
-      color: color as number[],
+      color,
       opacity: DEFAULT_ANNOTATION_OPACITY,
       contourOnly: false,
     }
-    this.roiStyles[key] = this.generateRoiStyle(
-      this.defaultAnnotationStyles[annotation.uid],
-    )
+    if (ownStyle === undefined && this.roiStyles[key] === undefined) {
+      this.roiStyles[key] = this.generateRoiStyle(
+        this.defaultAnnotationStyles[annotation.uid],
+      )
+    }
   }
 
   private readonly getDataFromViewer = (): {
@@ -4671,8 +4725,11 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
         const measuredValueItem = item.MeasuredValueSequence[0]
         roiMeasurmentAttributesPerOpticalPath[identifier].push({
           name: item.ConceptNameCodeSequence[0].CodeMeaning,
-          value: measuredValueItem.NumericValue.toString(),
-          unit: measuredValueItem.MeasurementUnitsCodeSequence[0].CodeMeaning,
+          value: formatMeasuredValue(
+            measuredValueItem.NumericValue,
+            measuredValueItem.MeasurementUnitsCodeSequence[0].CodeValue,
+            { significantDigits: 4, unit: loadPreferences().units },
+          ),
         })
       })
       const createRoiDescription = (
@@ -4781,6 +4838,10 @@ class SlideViewer extends React.Component<SlideViewerProps, SlideViewerState> {
                 slideDescription={slideDescription}
               />
               <ViewerToasts />
+              <ViewportLoadingIndicator
+                isVisible={isViewportLoading(this.state.viewportLoadingPhase)}
+                label="Loading slide"
+              />
             </>
           }
           footer={

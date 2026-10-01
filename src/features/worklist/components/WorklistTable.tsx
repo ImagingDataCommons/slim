@@ -12,6 +12,7 @@ import type * as dmv from 'dicom-microscopy-viewer'
 import * as React from 'react'
 
 import { Icon } from '../../../components/ui/icon'
+import { Skeleton } from '../../../components/ui/skeleton'
 import { cn } from '../../../lib/utils'
 import {
   columns,
@@ -30,6 +31,69 @@ interface WorklistTableProps {
   /** Rendered under the rows (pagination bar) */
   footer?: React.ReactNode
   className?: string
+}
+
+const SKELETON_MAX_ROWS = 12
+
+/** Bar widths cycled across cells so the placeholder reads like real data */
+const SKELETON_BAR_WIDTHS = [
+  'w-3/4',
+  'w-1/2',
+  'w-2/3',
+  'w-5/6',
+  'w-2/5',
+  'w-3/5',
+  'w-4/5',
+]
+
+function WorklistSkeletonRows({
+  rowCount,
+  isCompact,
+}: {
+  rowCount: number
+  isCompact: boolean
+}): React.ReactElement {
+  const rowIndexes = Array.from({ length: rowCount }, (_, index) => index)
+  return (
+    <>
+      <tr className="sr-only">
+        <td>Loading studies…</td>
+      </tr>
+      {rowIndexes.map((rowIndex) => (
+        <tr
+          key={`skeleton-${rowIndex}`}
+          className={cn(
+            'grid items-center gap-3 border-b border-line-soft px-5',
+            WORKLIST_GRID_COLUMNS,
+            isCompact ? 'h-10' : 'h-12',
+          )}
+          style={{ opacity: 1 - rowIndex / (rowCount + 4) }}
+        >
+          {columns.map((column, columnIndex) => {
+            const meta = column.meta as WorklistColumnMeta | undefined
+            const width =
+              SKELETON_BAR_WIDTHS[
+                (rowIndex * 3 + columnIndex) % SKELETON_BAR_WIDTHS.length
+              ]
+            return (
+              <td
+                key={column.id ?? columnIndex}
+                className={cn(
+                  'flex min-w-0',
+                  meta?.align === 'right' && 'justify-end',
+                )}
+              >
+                <Skeleton
+                  className={width}
+                  style={{ animationDelay: `${rowIndex * 60}ms` }}
+                />
+              </td>
+            )
+          })}
+        </tr>
+      ))}
+    </>
+  )
 }
 
 /** Studies grid: sticky uppercase header, 48px rows, footer slot. */
@@ -75,11 +139,11 @@ export function WorklistTable({
 
   let body: React.ReactNode
   if (isLoading) {
-    body = statusRow(
-      <span className="flex flex-col items-center gap-3">
-        <span className="h-7 w-7 animate-spin rounded-full border-[3px] border-primary/20 border-t-primary" />
-        Loading studies…
-      </span>,
+    body = (
+      <WorklistSkeletonRows
+        rowCount={Math.min(pagination.pageSize, SKELETON_MAX_ROWS)}
+        isCompact={isCompact}
+      />
     )
   } else if (data.length === 0) {
     body = statusRow(
@@ -190,7 +254,12 @@ export function WorklistTable({
             </tr>
           ))}
         </thead>
-        <tbody className="block min-h-0 flex-1 overflow-auto">{body}</tbody>
+        <tbody
+          aria-busy={isLoading}
+          className="block min-h-0 flex-1 overflow-auto"
+        >
+          {body}
+        </tbody>
       </table>
       {footer}
     </div>

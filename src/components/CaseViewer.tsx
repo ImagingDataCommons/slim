@@ -15,6 +15,7 @@ import { useStudySummary } from '../contexts/StudySummaryContext'
 import type DicomWebManager from '../DicomWebManager'
 import type { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
+import { ViewerLoadingLayout } from '../features/viewer/components/ViewerLoadingLayout'
 import { STUDY_PANEL_ID } from '../features/viewer/utils/panelIds'
 import { useSlides } from '../hooks/useSlides'
 import { cn } from '../lib/utils'
@@ -323,7 +324,7 @@ function Viewer(props: ViewerProps): JSX.Element | null {
   }
 
   if (isLoading) {
-    return null
+    return <ViewerLoadingLayout isLeftPanelOpen={isLeftPanelOpen} />
   }
 
   if (slides.length === 0) {

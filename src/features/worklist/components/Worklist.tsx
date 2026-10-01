@@ -92,7 +92,7 @@ export function Worklist({
   return (
     <main
       className={cn(
-        'flex h-full min-h-0 flex-col gap-4 px-7 pb-5 pt-6',
+        'flex h-full min-h-0 flex-col gap-4 px-5 pb-5 pt-6',
         className,
       )}
     >

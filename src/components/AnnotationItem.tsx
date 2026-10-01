@@ -2,6 +2,7 @@
 import type * as dmv from 'dicom-microscopy-viewer'
 import type React from 'react'
 
+import { usePreferences } from '../features/header/hooks/usePreferences'
 import { cn } from '../lib/utils'
 import {
   describeRoiMeasurement,
@@ -38,11 +39,14 @@ function AnnotationItem({
   onSelection,
   onVisibilityChange,
 }: AnnotationItemProps): React.ReactElement {
+  const { units } = usePreferences()
   const label = `ROI ${index + 1}`
   const description: RoiLike = roi
   const type = describeRoiType(description)
-  const measurement = describeRoiMeasurement(description)
-  const details = formatRoiAttributes(getRoiAttributes(description))
+  const measurement = describeRoiMeasurement(description, { unit: units })
+  const details = formatRoiAttributes(
+    getRoiAttributes(description, { unit: units }),
+  )
 
   return (
     <div

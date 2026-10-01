@@ -1,4 +1,5 @@
 import {
+  convertMeasuredValue,
   describeRoiMeasurement,
   describeRoiType,
   formatMeasuredValue,
@@ -108,8 +109,62 @@ describe('describeRoiMeasurement', () => {
 describe('formatMeasuredValue', () => {
   it('honours the requested precision', () => {
     expect(formatMeasuredValue(1234.5678, 'mm2')).toBe('1230 mm²')
-    expect(formatMeasuredValue(0.000123456, 'mm2', 2)).toBe('0.00012 mm²')
-    expect(formatMeasuredValue('3.14159', '', 4)).toBe('3.142')
+    expect(
+      formatMeasuredValue(0.000123456, 'mm2', { significantDigits: 2 }),
+    ).toBe('0.00012 mm²')
+    expect(formatMeasuredValue('3.14159', '', { significantDigits: 4 })).toBe(
+      '3.142',
+    )
+  })
+
+  it('converts lengths and areas to the requested unit', () => {
+    expect(formatMeasuredValue(1.5, 'mm', { unit: 'µm' })).toBe('1500 µm')
+    expect(formatMeasuredValue(250, 'um', { unit: 'mm' })).toBe('0.25 mm')
+    expect(formatMeasuredValue(0.002, 'mm2', { unit: 'µm' })).toBe('2000 µm²')
+    expect(formatMeasuredValue(5e6, 'um2', { unit: 'mm' })).toBe('5 mm²')
+  })
+
+  it('leaves values in other units unchanged', () => {
+    expect(formatMeasuredValue(12, 'deg', { unit: 'mm' })).toBe('12 deg')
+    expect(formatMeasuredValue('n/a', 'mm', { unit: 'µm' })).toBe('n/a mm')
+  })
+})
+
+describe('convertMeasuredValue', () => {
+  it('returns UCUM codes for the target unit', () => {
+    expect(convertMeasuredValue(2, 'mm', 'mm')).toEqual({
+      value: 2,
+      unitCode: 'mm',
+    })
+    expect(convertMeasuredValue(3, 'µm²', 'mm')).toEqual({
+      value: 3e-6,
+      unitCode: 'mm2',
+    })
+  })
+})
+
+describe('describeRoiMeasurement with units', () => {
+  it('converts the first measurement', () => {
+    expect(
+      describeRoiMeasurement(
+        {
+          measurements: [
+            {
+              ConceptNameCodeSequence: [{ CodeValue: '1', CodeMeaning: 'area' }],
+              MeasuredValueSequence: [
+                {
+                  NumericValue: 0.5,
+                  MeasurementUnitsCodeSequence: [
+                    { CodeValue: 'mm2', CodeMeaning: 'square millimeter' },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        { unit: 'µm' },
+      ),
+    ).toBe('Area 500000 µm²')
   })
 })
 

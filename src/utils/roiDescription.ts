@@ -69,21 +69,73 @@ function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
+/** Display unit for lengths; areas use its square. */
+export type LengthUnit = 'µm' | 'mm'
+
+export interface MeasurementFormatOptions {
+  significantDigits?: number
+  /** Convert µm/mm lengths and µm²/mm² areas to this unit */
+  unit?: LengthUnit
+}
+
+/** Unit codes as UCUM (`um`) or display (`µm`) strings, with their size in mm. */
+const UNIT_SCALES: Record<
+  string,
+  { dimension: 'length' | 'area'; inMm: number }
+> = {
+  mm: { dimension: 'length', inMm: 1 },
+  um: { dimension: 'length', inMm: 1e-3 },
+  µm: { dimension: 'length', inMm: 1e-3 },
+  mm2: { dimension: 'area', inMm: 1 },
+  um2: { dimension: 'area', inMm: 1e-6 },
+  'µm²': { dimension: 'area', inMm: 1e-6 },
+  'mm²': { dimension: 'area', inMm: 1 },
+}
+
 export function formatUnit(unitCode: string): string {
   return UNIT_LABELS[unitCode] ?? unitCode
+}
+
+/**
+ * Value expressed in `target` (µm or mm, squared for areas). Values in other
+ * units are returned unchanged.
+ */
+export function convertMeasuredValue(
+  value: number,
+  unitCode: string,
+  target: LengthUnit,
+): { value: number; unitCode: string } {
+  const scale = UNIT_SCALES[unitCode]
+  if (scale === undefined) return { value, unitCode }
+  const targetInMm = target === 'mm' ? 1 : 1e-3
+  if (scale.dimension === 'length') {
+    return {
+      value: (value * scale.inMm) / targetInMm,
+      unitCode: target === 'mm' ? 'mm' : 'um',
+    }
+  }
+  return {
+    value: (value * scale.inMm) / targetInMm ** 2,
+    unitCode: target === 'mm' ? 'mm2' : 'um2',
+  }
 }
 
 /** Rounds to significant digits without scientific notation for typical sizes */
 export function formatMeasuredValue(
   value: number | string,
   unitCode: string,
-  significantDigits = 3,
+  { significantDigits = 3, unit }: MeasurementFormatOptions = {},
 ): string {
   const numeric = Number(value)
-  const text = Number.isFinite(numeric)
-    ? String(Number(numeric.toPrecision(significantDigits)))
-    : String(value)
-  return `${text} ${formatUnit(unitCode)}`.trim()
+  if (!Number.isFinite(numeric)) {
+    return `${String(value)} ${formatUnit(unitCode)}`.trim()
+  }
+  const converted =
+    unit !== undefined
+      ? convertMeasuredValue(numeric, unitCode, unit)
+      : { value: numeric, unitCode }
+  const text = String(Number(converted.value.toPrecision(significantDigits)))
+  return `${text} ${formatUnit(converted.unitCode)}`.trim()
 }
 
 /** Finding type (121071) wins over finding category (276214006). */
@@ -105,7 +157,7 @@ export function describeRoiType(roi: RoiLike): string {
 
 function describeMeasurement(
   measurement: RoiMeasurementLike,
-  significantDigits: number,
+  options: MeasurementFormatOptions,
 ): string | undefined {
   const name = capitalize(
     measurement.ConceptNameCodeSequence?.[0]?.CodeMeaning ?? '',
@@ -117,25 +169,28 @@ function describeMeasurement(
   return `${name} ${formatMeasuredValue(
     measuredValue.NumericValue,
     unitCode,
-    significantDigits,
+    options,
   )}`.trim()
 }
 
 /** "Area 2.41 mm²" from the first ROI measurement. */
 export function describeRoiMeasurement(
   roi: RoiLike,
-  significantDigits = 3,
+  options: MeasurementFormatOptions = {},
 ): string | undefined {
   const measurement = roi.measurements?.[0]
   if (measurement === undefined) return undefined
-  return describeMeasurement(measurement, significantDigits)
+  return describeMeasurement(measurement, options)
 }
 
 /**
  * Evaluations and measurements not already summarized by `describeRoiType`
  * and `describeRoiMeasurement`.
  */
-export function getRoiAttributes(roi: RoiLike): RoiAttribute[] {
+export function getRoiAttributes(
+  roi: RoiLike,
+  options: MeasurementFormatOptions = {},
+): RoiAttribute[] {
   const attributes: RoiAttribute[] = []
   const hasFindingType =
     getCodeEvaluationMeaning(roi, FINDING_TYPE_CODE) !== undefined
@@ -176,6 +231,7 @@ export function getRoiAttributes(roi: RoiLike): RoiAttribute[] {
       value: formatMeasuredValue(
         measuredValue.NumericValue,
         measuredValue.MeasurementUnitsCodeSequence?.[0]?.CodeValue ?? '',
+        options,
       ),
     })
   }
