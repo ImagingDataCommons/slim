@@ -155,26 +155,9 @@ export function useViewerSession(
       annotationConfig: options.annotationConfig,
       defaultRoiStyle: options.defaultRoiStyle,
     })
-    if (options.gammaCorrection !== undefined) {
-      session.volumeViewer.setPaletteDisplayGammaCorrectionEnabled(
-        options.gammaCorrection,
-      )
-    }
     sessionRef.current = session
 
-    logger.log('populate viewports...')
-    const container = volumeViewportRef.current
-    if (container !== null) {
-      session.volumeViewer.render({ container })
-      stopOverviewClampRef.current = observeOverviewMapClamp(container, {
-        volumeViewer: session.volumeViewer,
-      })
-    }
-    renderLabelViewer()
-    refreshSnapshot()
-    options.onSessionCreated(session)
-
-    return () => {
+    const release = (): void => {
       stopOverviewClampRef.current?.()
       stopOverviewClampRef.current = undefined
       renderedLabelRef.current = undefined
@@ -184,6 +167,32 @@ export function useViewerSession(
       })
       if (sessionRef.current === session) sessionRef.current = undefined
     }
+
+    /** React registers no cleanup when the effect throws */
+    try {
+      if (options.gammaCorrection !== undefined) {
+        session.volumeViewer.setPaletteDisplayGammaCorrectionEnabled(
+          options.gammaCorrection,
+        )
+      }
+
+      logger.log('populate viewports...')
+      const container = volumeViewportRef.current
+      if (container !== null) {
+        session.volumeViewer.render({ container })
+        stopOverviewClampRef.current = observeOverviewMapClamp(container, {
+          volumeViewer: session.volumeViewer,
+        })
+      }
+      renderLabelViewer()
+      refreshSnapshot()
+      options.onSessionCreated(session)
+    } catch (error) {
+      release()
+      throw error
+    }
+
+    return release
   }, [
     slide,
     clients,

@@ -20,6 +20,9 @@ export function useFrameThrottledCallback<A extends unknown[]>(
       if (frameRef.current !== undefined) {
         cancelAnimationFrame(frameRef.current)
       }
+      /** A remount (StrictMode, Activity) must be able to schedule again */
+      frameRef.current = undefined
+      argsRef.current = undefined
     },
     [],
   )

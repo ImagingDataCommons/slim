@@ -27,6 +27,16 @@ describe('readViewerSnapshot', () => {
     expect(snapshot.isPaletteDisplayGammaCorrectionEnabled).toBe(true)
   })
 
+  it('stops handing out the map once the session is destroyed', () => {
+    const { session, viewer } = createTestSession()
+    const snapshot = readViewerSnapshot(session, EMPTY_VIEWER_SNAPSHOT)
+    expect(snapshot.getMap()).toBe(viewer.map)
+
+    session.isDestroyed = true
+
+    expect(snapshot.getMap()).toBeUndefined()
+  })
+
   it('keeps the identity of unchanged parts', () => {
     const { session, viewer } = createTestSession()
     viewer.segments.add(

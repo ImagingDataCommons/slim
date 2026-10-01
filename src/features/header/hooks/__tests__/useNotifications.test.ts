@@ -5,7 +5,11 @@ import NotificationMiddleware, {
   NotificationMiddlewareEvents,
 } from '../../../../services/NotificationMiddleware'
 import { CustomError, errorTypes } from '../../../../utils/CustomError'
-import { useNotifications } from '../useNotifications'
+import {
+  appendCapped,
+  MAX_NOTIFICATIONS,
+  useNotifications,
+} from '../useNotifications'
 
 function publishError(message: string): CustomError {
   const error = new CustomError(errorTypes.COMMUNICATION, message)
@@ -85,5 +89,28 @@ describe('useNotifications', () => {
     expect(result.current.errorCount).toBe(0)
     expect(errorSpy).not.toHaveBeenCalled()
     errorSpy.mockRestore()
+  })
+})
+
+describe('appendCapped', () => {
+  it('appends while under the limit', () => {
+    expect(appendCapped([1, 2], 3, 5)).toEqual([1, 2, 3])
+  })
+
+  it('drops the oldest entries beyond the limit', () => {
+    expect(appendCapped([1, 2, 3], 4, 3)).toEqual([2, 3, 4])
+  })
+})
+
+describe('useNotifications limit', () => {
+  it(`keeps the ${MAX_NOTIFICATIONS} most recent warnings`, () => {
+    const { result } = renderHook(() => useNotifications())
+    act(() => {
+      for (let index = 0; index <= MAX_NOTIFICATIONS; index++) {
+        publishWarning(`warning ${index}`)
+      }
+    })
+    expect(result.current.warningCount).toBe(MAX_NOTIFICATIONS)
+    expect(result.current.warnings[0]).toBe('warning 1')
   })
 })

@@ -21,6 +21,18 @@ export interface UseNotificationsReturn {
   clearNotifications: () => void
 }
 
+/**
+ * Most recent errors and warnings kept per list. Every `console.warn` is
+ * captured, so a long viewer session would otherwise grow without bound.
+ */
+export const MAX_NOTIFICATIONS = 500
+
+/** `list` plus `item`, dropping the oldest entries beyond `max` */
+export function appendCapped<T>(list: T[], item: T, max: number): T[] {
+  const next = [...list, item]
+  return next.length > max ? next.slice(next.length - max) : next
+}
+
 /** Errors and warnings published by NotificationMiddleware while mounted. */
 export function useNotifications({
   resetKey,
@@ -30,10 +42,14 @@ export function useNotifications({
 
   useEffect(() => {
     const handleError = (notification: ErrorNotification): void => {
-      setErrors((previous) => [...previous, notification])
+      setErrors((previous) =>
+        appendCapped(previous, notification, MAX_NOTIFICATIONS),
+      )
     }
     const handleWarning = (warning: string): void => {
-      setWarnings((previous) => [...previous, warning])
+      setWarnings((previous) =>
+        appendCapped(previous, warning, MAX_NOTIFICATIONS),
+      )
     }
 
     NotificationMiddleware.subscribe(

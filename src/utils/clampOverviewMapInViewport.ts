@@ -209,17 +209,16 @@ export function observeOverviewMapClamp(
   container: HTMLElement,
   options: ClampOverviewMapOptions = {},
 ): () => void {
-  let scheduled = false
+  let clampFrame: number | undefined
   let isClamping = false
-  let resizeScheduled = false
+  let resizeFrame: number | undefined
 
   const clamp = (): void => {
-    if (scheduled || isClamping) {
+    if (clampFrame !== undefined || isClamping) {
       return
     }
-    scheduled = true
-    requestAnimationFrame(() => {
-      scheduled = false
+    clampFrame = requestAnimationFrame(() => {
+      clampFrame = undefined
       isClamping = true
       try {
         clampOverviewMapInViewport(container, options)
@@ -230,12 +229,11 @@ export function observeOverviewMapClamp(
   }
 
   const onContainerResize = (): void => {
-    if (resizeScheduled) {
+    if (resizeFrame !== undefined) {
       return
     }
-    resizeScheduled = true
-    requestAnimationFrame(() => {
-      resizeScheduled = false
+    resizeFrame = requestAnimationFrame(() => {
+      resizeFrame = undefined
       const viewer = options.volumeViewer as { resize?: () => void } | undefined
       viewer?.resize?.()
       clamp()
@@ -260,8 +258,13 @@ export function observeOverviewMapClamp(
 
   clamp()
 
+  /** Pending frames would otherwise resize a viewer that was cleaned up */
   return () => {
     mutationObserver.disconnect()
     resizeObserver.disconnect()
+    if (clampFrame !== undefined) cancelAnimationFrame(clampFrame)
+    if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame)
+    clampFrame = undefined
+    resizeFrame = undefined
   }
 }

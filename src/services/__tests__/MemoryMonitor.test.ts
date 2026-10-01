@@ -59,3 +59,42 @@ describe('memoryMonitor.measure', () => {
     expect(listener).toHaveBeenCalledWith(memory)
   })
 })
+
+describe('memoryMonitor polling', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.spyOn(memoryMonitor, 'measure').mockResolvedValue({
+      memory: unavailableMemoryInfo(),
+    })
+  })
+
+  afterEach(() => {
+    memoryMonitor.stopMonitoring()
+    vi.useRealTimers()
+  })
+
+  it('measures once per interval until stopped', async () => {
+    memoryMonitor.startMonitoring(1000)
+    await vi.advanceTimersByTimeAsync(2500)
+    expect(memoryMonitor.measure).toHaveBeenCalledTimes(3)
+
+    memoryMonitor.stopMonitoring()
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(memoryMonitor.measure).toHaveBeenCalledTimes(3)
+  })
+
+  it('keeps a single polling chain when restarted during a measurement', async () => {
+    memoryMonitor.startMonitoring(1000)
+    memoryMonitor.stopMonitoring()
+    memoryMonitor.startMonitoring(1000)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(memoryMonitor.measure).toHaveBeenCalledTimes(2)
+
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(memoryMonitor.measure).toHaveBeenCalledTimes(3)
+
+    memoryMonitor.stopMonitoring()
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(memoryMonitor.measure).toHaveBeenCalledTimes(3)
+  })
+})

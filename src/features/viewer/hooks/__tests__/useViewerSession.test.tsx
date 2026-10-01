@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import type { JSX } from 'react'
+import { ErrorBoundary } from 'react-error-boundary'
 
 import { observeOverviewMapClamp } from '../../../../utils/clampOverviewMapInViewport'
 import { fakeDmvInstances, resetFakeDmv } from '../../testing/fakeDmv'
@@ -159,6 +160,28 @@ describe('useViewerSession', () => {
     unmount()
 
     expect(volumeViewer.cleanup).toHaveBeenCalledTimes(1)
+  })
+
+  it('releases the viewers when setting them up throws', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const onSessionCreated = vi.fn(() => {
+      throw new Error('style failed')
+    })
+    const stopClamp = vi.fn()
+    vi.mocked(observeOverviewMapClamp).mockReturnValue(stopClamp)
+
+    render(
+      <ErrorBoundary fallback={<p>failed</p>}>
+        <Harness options={options({ onSessionCreated })} />
+      </ErrorBoundary>,
+    )
+
+    expect(screen.getByText('failed')).toBeDefined()
+    const [volumeViewer] = fakeDmvInstances.volumeViewers
+    const [labelViewer] = fakeDmvInstances.labelViewers
+    expect(volumeViewer.cleanup).toHaveBeenCalledTimes(1)
+    expect(labelViewer.cleanup).toHaveBeenCalledTimes(1)
+    expect(stopClamp).toHaveBeenCalledTimes(1)
   })
 
   it('resizes the viewers with the viewport', () => {

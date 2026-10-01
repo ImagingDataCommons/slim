@@ -1,7 +1,10 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 
-import { constructViewers } from '../../../components/SlideViewer/utils/viewerUtils'
+import {
+  constructViewers,
+  releaseViewer,
+} from '../../../components/SlideViewer/utils/viewerUtils'
 import type DicomWebManager from '../../../DicomWebManager'
 import type { Slide } from '../../../data/slides'
 import { codedConceptKey } from '../../../utils/dicom/codedConcept'
@@ -86,27 +89,33 @@ export function createViewerSession({
       clustering.thresholdInput,
     ),
   })
-  if (!clustering.isEnabled) {
-    applyClusteringOptions(volumeViewer, clustering)
-  }
-  /** Visibility is set later, possibly by a presentation state */
-  for (const opticalPath of volumeViewer.getAllOpticalPaths()) {
-    volumeViewer.deactivateOpticalPath(opticalPath.identifier)
-  }
-  return {
-    generation,
-    slide,
-    volumeViewer,
-    labelViewer,
-    roiStyles: new RoiStyleRegistry({
-      configuredStyles: annotationConfig.configuredStyles,
-      findingKeys: annotationConfig.findings.map(codedConceptKey),
-      defaultStyle: defaultRoiStyle,
-    }),
-    loadingFrames: new Set(),
-    pixelStatistics: new Map(),
-    annotationGroupMetadata: new Map(),
-    isDestroyed: false,
+  try {
+    if (!clustering.isEnabled) {
+      applyClusteringOptions(volumeViewer, clustering)
+    }
+    /** Visibility is set later, possibly by a presentation state */
+    for (const opticalPath of volumeViewer.getAllOpticalPaths()) {
+      volumeViewer.deactivateOpticalPath(opticalPath.identifier)
+    }
+    return {
+      generation,
+      slide,
+      volumeViewer,
+      labelViewer,
+      roiStyles: new RoiStyleRegistry({
+        configuredStyles: annotationConfig.configuredStyles,
+        findingKeys: annotationConfig.findings.map(codedConceptKey),
+        defaultStyle: defaultRoiStyle,
+      }),
+      loadingFrames: new Set(),
+      pixelStatistics: new Map(),
+      annotationGroupMetadata: new Map(),
+      isDestroyed: false,
+    }
+  } catch (error) {
+    releaseViewer(volumeViewer)
+    releaseViewer(labelViewer)
+    throw error
   }
 }
 
@@ -125,9 +134,9 @@ export function destroyViewerSession(
   if (session.isDestroyed) return
   session.isDestroyed = true
   if (containers.volume !== null) containers.volume.innerHTML = ''
-  session.volumeViewer.cleanup()
+  releaseViewer(session.volumeViewer)
   if (session.labelViewer !== undefined) {
     if (containers.label !== null) containers.label.innerHTML = ''
-    session.labelViewer.cleanup()
+    releaseViewer(session.labelViewer)
   }
 }

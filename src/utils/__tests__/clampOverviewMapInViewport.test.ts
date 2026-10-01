@@ -195,6 +195,24 @@ describe('observeOverviewMapClamp', () => {
     expect(disconnectResize).toHaveBeenCalled()
   })
 
+  it('cancels pending frames when stopped', () => {
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => {
+      frames[id - 1] = () => undefined
+    })
+    const { container, mapEl } = buildContainer()
+    const resize = vi.fn()
+    const stop = observeOverviewMapClamp(container, {
+      volumeViewer: { resize },
+    })
+    resizeCallback?.([], {} as ResizeObserver)
+
+    stop()
+    flushFrames()
+
+    expect(resize).not.toHaveBeenCalled()
+    expect(mapEl.style.width).toBe('300px')
+  })
+
   it('re-clamps when DMV rewrites the mini-map size', async () => {
     const { container, mapEl } = buildContainer()
     const stop = observeOverviewMapClamp(container)

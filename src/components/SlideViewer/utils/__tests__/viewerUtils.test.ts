@@ -12,6 +12,7 @@ import {
   containsROIAnnotations,
   describesSpecimenSubject,
   implementsTID1500,
+  releaseViewer,
 } from '../viewerUtils'
 
 vi.mock('dicom-microscopy-viewer', () => ({
@@ -247,5 +248,46 @@ describe('constructViewers', () => {
       'slim',
       expect.objectContaining({ message: 'Failed to instantiate viewer' }),
     )
+  })
+
+  it('cleans up the volume viewer when the label viewer cannot be created', () => {
+    const cleanup = vi.fn()
+    // biome-ignore lint/complexity/useArrowFunction: `new` needs a function implementation
+    VolumeImageViewer.mockImplementation(function () {
+      return {
+        activateSelectInteraction,
+        cleanup,
+      } as Partial<dmv.viewer.VolumeImageViewer> as dmv.viewer.VolumeImageViewer
+    })
+    LabelImageViewer.mockImplementation(() => {
+      throw new Error('bad label')
+    })
+    const label = {
+      ContainerIdentifier: 'L1',
+    } as dmv.metadata.VLWholeSlideMicroscopyImage
+
+    expect(() =>
+      constructViewers({
+        clients,
+        slide: { volumeImages: [image], labelImages: [label] },
+      }),
+    ).toThrow('bad label')
+    expect(cleanup).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('releaseViewer', () => {
+  it('cleans up the viewer and ignores a missing one', () => {
+    const cleanup = vi.fn()
+    releaseViewer({ cleanup })
+    releaseViewer(undefined)
+    expect(cleanup).toHaveBeenCalledTimes(1)
+  })
+
+  it('logs instead of throwing when cleanup fails', () => {
+    const cleanup = vi.fn(() => {
+      throw new Error('already gone')
+    })
+    expect(() => releaseViewer({ cleanup })).not.toThrow()
   })
 })

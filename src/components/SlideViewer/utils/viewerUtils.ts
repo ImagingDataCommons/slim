@@ -44,6 +44,21 @@ const reportDmvError = (error: CustomError): void => {
 }
 
 /**
+ * Clean up a viewer that will never be handed out. A failing cleanup is
+ * logged so the original error still reaches the caller.
+ */
+export const releaseViewer = (
+  viewer: { cleanup: () => void } | undefined,
+): void => {
+  if (viewer === undefined) return
+  try {
+    viewer.cleanup()
+  } catch (error) {
+    logger.error('failed to clean up viewer:', error)
+  }
+}
+
+/**
  * Constructs volume and label viewers for the slide
  */
 export const constructViewers = ({
@@ -64,8 +79,9 @@ export const constructViewers = ({
     'instantiate viewer for VOLUME images of slide ' +
       `"${slide.volumeImages[0].ContainerIdentifier}"`,
   )
+  let volumeViewer: dmv.viewer.VolumeImageViewer | undefined
   try {
-    const volumeViewer = new dmv.viewer.VolumeImageViewer({
+    volumeViewer = new dmv.viewer.VolumeImageViewer({
       clientMapping: clients,
       metadata: slide.volumeImages,
       controls: ['overview'],
@@ -103,6 +119,7 @@ export const constructViewers = ({
 
     return { volumeViewer, labelViewer }
   } catch (error) {
+    releaseViewer(volumeViewer)
     NotificationMiddleware.onError(
       NotificationMiddlewareContext.SLIM,
       new CustomError(errorTypes.VISUALIZATION, 'Failed to instantiate viewer'),

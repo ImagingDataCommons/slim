@@ -1,4 +1,6 @@
-import { act, renderHook } from '@testing-library/react'
+import { act, render, renderHook } from '@testing-library/react'
+import type React from 'react'
+import { Activity } from 'react'
 
 import { useFrameThrottledCallback } from '../useFrameThrottledCallback'
 
@@ -83,5 +85,33 @@ describe('useFrameThrottledCallback', () => {
     unmount()
     act(flushFrame)
     expect(callback).not.toHaveBeenCalled()
+  })
+
+  it('schedules again after being hidden with a call pending', () => {
+    const callback = vi.fn()
+    let throttled: ((value: number) => void) | undefined
+    function Probe(): null {
+      throttled = useFrameThrottledCallback(callback)
+      return null
+    }
+    const view = (mode: 'visible' | 'hidden'): React.ReactElement => (
+      <Activity mode={mode}>
+        <Probe />
+      </Activity>
+    )
+    const { rerender } = render(view('visible'))
+    act(() => {
+      throttled?.(1)
+    })
+
+    rerender(view('hidden'))
+    rerender(view('visible'))
+    act(() => {
+      throttled?.(2)
+    })
+    act(flushFrame)
+
+    expect(callback).toHaveBeenCalledTimes(1)
+    expect(callback).toHaveBeenCalledWith(2)
   })
 })

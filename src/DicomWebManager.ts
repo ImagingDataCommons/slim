@@ -257,10 +257,20 @@ const retrieveWithFallback = async <T>(
 }
 
 /**
- * Cache mapping series UIDs to the store that successfully served them.
- * Keyed by "studyInstanceUID/seriesInstanceUID".
+ * Per manager (keyed by its store list), maps
+ * "studyInstanceUID/seriesInstanceUID" to the store that served the series.
+ * Weakly held, so managers replaced by a server switch are not retained.
  */
-const seriesStoreCache = new Map<string, Store>()
+const seriesStoreCaches = new WeakMap<Store[], Map<string, Store>>()
+
+const getSeriesStoreCache = (stores: Store[]): Map<string, Store> => {
+  let cache = seriesStoreCaches.get(stores)
+  if (cache === undefined) {
+    cache = new Map()
+    seriesStoreCaches.set(stores, cache)
+  }
+  return cache
+}
 
 /**
  * Build the cache key for a series.
@@ -291,6 +301,7 @@ const retrieveWithCachedFallback = async <T>(
   }
 
   /** Reorder stores to try the cached one first if available. */
+  const seriesStoreCache = getSeriesStoreCache(stores)
   let orderedStores = readable
   const cachedStore = cacheKey != null ? seriesStoreCache.get(cacheKey) : null
   if (cachedStore != null && readable.includes(cachedStore)) {

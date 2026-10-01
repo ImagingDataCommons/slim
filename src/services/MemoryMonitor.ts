@@ -163,7 +163,12 @@ function modernMemoryInfo(result: PerformanceMemoryInfo): MemoryInfo {
 class MemoryMonitor {
   private readonly updateCallbacks: Set<MemoryUpdateCallback> = new Set()
   private monitoringTimeoutId: ReturnType<typeof setTimeout> | null = null
-  private monitoringActive: boolean = false
+  /**
+   * Bumped by every start and stop. A polling chain only schedules its next
+   * tick while it is still the current run, so a measure() still pending
+   * across a stop/start cannot leave a second chain polling.
+   */
+  private runId: number = 0
 
   /**
    * Measure current memory usage
@@ -217,13 +222,11 @@ class MemoryMonitor {
    * only after the current measure() finishes, avoiding overlapping executions.
    */
   startMonitoring(interval: number = DEFAULT_UPDATE_INTERVAL_MS): void {
-    if (this.monitoringTimeoutId != null) {
-      this.stopMonitoring()
-    }
-    this.monitoringActive = true
+    this.stopMonitoring()
+    const run = this.runId
 
     const scheduleNext = (): void => {
-      if (!this.monitoringActive) return
+      if (run !== this.runId) return
       this.monitoringTimeoutId = setTimeout(() => {
         this.monitoringTimeoutId = null
         this.measure()
@@ -251,7 +254,7 @@ class MemoryMonitor {
    * Stop periodic memory monitoring
    */
   stopMonitoring(): void {
-    this.monitoringActive = false
+    this.runId += 1
     if (this.monitoringTimeoutId != null) {
       clearTimeout(this.monitoringTimeoutId)
       this.monitoringTimeoutId = null

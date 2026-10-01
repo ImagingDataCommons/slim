@@ -132,7 +132,11 @@ function readSessionConstants(
   return {
     generation: session.generation,
     labelViewer: session.labelViewer,
-    getMap: () => volumeViewer.getMap(),
+    /**
+     * Overlays can mount with an older snapshot for one commit after the
+     * session is destroyed, so they must not subscribe to its map.
+     */
+    getMap: () => (session.isDestroyed ? undefined : volumeViewer.getMap()),
     goToRanges: {
       x: [offset[0], offset[0] + size[0]],
       y: [offset[1], offset[1] + size[1]],
