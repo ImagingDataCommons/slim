@@ -60,7 +60,7 @@ for (const [key, value] of Object.entries(fileValues)) {
   }
 }
 
-// Safe public default for docker-compose / fresh clones / CI unit builds.
+/** Safe public default for docker-compose / fresh clones / CI unit builds. */
 if (!process.env.SLIM_LOCAL_DICOMWEB_URL) {
   process.env.SLIM_LOCAL_DICOMWEB_URL = DEFAULT_LOCAL_DICOMWEB_URL
 }
