@@ -37,7 +37,9 @@ function Description({
 
   return (
     <div className={cn('rounded-lg border border-line px-3 py-2.5', className)}>
-      <div className="mb-2 break-words font-semibold text-ink">{header}</div>
+      <div className="mb-2 wrap-break-word font-semibold text-ink">
+        {header}
+      </div>
       {grid}
       {children}
     </div>

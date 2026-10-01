@@ -37,7 +37,7 @@ export function ViewerFooter({
   const usage = memoryUsagePercent(used, limit)
 
   return (
-    <footer className="flex h-footer flex-none items-center gap-4 border-t border-line bg-panel px-3.5 font-mono text-[11.5px] text-ink-muted">
+    <footer className="flex h-footer flex-none items-center gap-4 border-t border-line bg-panel px-3.5 font-mono text-11.5 text-ink-muted">
       <span>
         Tiles {formatGroupedNumber(tiles.loaded)} /{' '}
         {formatGroupedNumber(tiles.requested)}

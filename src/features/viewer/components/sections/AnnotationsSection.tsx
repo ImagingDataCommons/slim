@@ -27,7 +27,7 @@ export function AnnotationsSection({
       {rois.length > 0 ? (
         <AnnotationList {...listProps} />
       ) : (
-        <p className="px-2 py-1 text-[12px] text-ink-muted">
+        <p className="px-2 py-1 text-12 text-ink-muted">
           No ROIs yet. Use Draw to annotate the slide.
         </p>
       )}

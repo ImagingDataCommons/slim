@@ -22,7 +22,7 @@ export function InlineOpacityRow({
   onCommit,
 }: InlineOpacityRowProps): React.ReactElement {
   return (
-    <div className="flex items-center gap-2 text-[11.5px] text-ink-muted">
+    <div className="flex items-center gap-2 text-11.5 text-ink-muted">
       Opacity
       <Slider
         className="flex-1"

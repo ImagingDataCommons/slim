@@ -50,7 +50,7 @@ function CoordinateField({
   return (
     <label
       htmlFor={id}
-      className="flex flex-col gap-1.5 text-[12px] text-ink-muted"
+      className="flex flex-col gap-1.5 text-12 text-ink-muted"
     >
       {label}
       <div
@@ -72,7 +72,7 @@ function CoordinateField({
           onKeyDown={(event) => {
             if (event.key === 'Enter') onSubmit()
           }}
-          className="min-w-0 flex-1 border-0 bg-transparent font-mono text-[12.5px] text-ink outline-none placeholder:text-ink-fainter"
+          className="min-w-0 flex-1 border-0 bg-transparent font-mono text-12.5 text-ink outline-hidden placeholder:text-ink-fainter"
         />
         {!status.isEmpty && (
           <Icon

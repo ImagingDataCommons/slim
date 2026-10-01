@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import babel from '@rolldown/plugin-babel'
+import tailwindcss from '@tailwindcss/vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import { loadEnv, normalizePath, type Plugin } from 'vite'
 import { viteStaticCopy } from 'vite-plugin-static-copy'
@@ -82,6 +83,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       babel({ presets: [reactCompilerPreset()] }),
+      tailwindcss(),
       htmlPlaceholders(configName),
       /**
        * DMV resolves its web worker and codec .wasm files at runtime from
@@ -125,6 +127,21 @@ export default defineConfig(({ mode }) => {
       sourcemap: true,
       /** The DMV bundle alone is ~9 MB */
       chunkSizeWarningLimit: 12000,
+      rolldownOptions: {
+        /**
+         * Builds emit no CSS sourcemaps, so Tailwind's map-less CSS transform
+         * is expected.
+         */
+        onLog(level, log, handler) {
+          if (
+            log.code === 'SOURCEMAP_BROKEN' &&
+            log.plugin?.startsWith('@tailwindcss/vite') === true
+          ) {
+            return
+          }
+          handler(level, log)
+        },
+      },
     },
     test: {
       environment: 'jsdom',

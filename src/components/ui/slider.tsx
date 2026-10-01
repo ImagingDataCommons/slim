@@ -60,7 +60,7 @@ const Slider = React.forwardRef<
                 aria-labelledby={
                   label === undefined ? ariaLabelledBy : undefined
                 }
-                className="block h-3.5 w-3.5 rounded-full border-2 border-primary bg-panel shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/20 disabled:pointer-events-none disabled:opacity-50"
+                className="block h-3.5 w-3.5 rounded-full border-2 border-primary bg-panel shadow-xs transition-colors focus-visible:outline-hidden focus-visible:ring-[3px] focus-visible:ring-primary/20 disabled:pointer-events-none disabled:opacity-50"
               />
             )
           },

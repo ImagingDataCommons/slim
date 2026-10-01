@@ -29,7 +29,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 RUN pnpm install --frozen-lockfile
 
-COPY vite.config.ts index.html tailwind.config.js postcss.config.js tsconfig.json ./
+COPY vite.config.ts index.html tsconfig.json ./
 COPY types ./types
 COPY public ./public
 COPY scripts ./scripts

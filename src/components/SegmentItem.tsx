@@ -96,7 +96,7 @@ function SegmentItem({
             isAbsent && 'border border-dashed border-line-input',
             !isAbsent &&
               swatch === undefined &&
-              'border border-line bg-gradient-to-r from-panel to-ink-muted',
+              'border border-line bg-linear-to-r/srgb from-panel to-ink-muted',
           )}
           style={
             isAbsent || swatch === undefined
@@ -124,13 +124,13 @@ function SegmentItem({
             {label}
           </span>
           {meta !== '' && (
-            <span className="max-w-full truncate text-[12px] text-ink-muted">
+            <span className="max-w-full truncate text-12 text-ink-muted">
               {meta}
             </span>
           )}
           {isAbsent && (
             <span
-              className="mt-0.5 rounded-full bg-chip px-1.5 py-[3px] text-[11px] font-semibold leading-none text-ink-secondary"
+              className="mt-0.5 rounded-full bg-chip px-1.5 py-[3px] text-11 font-semibold leading-none text-ink-secondary"
               title="Listed in Segment Sequence but no frames contain this segment"
             >
               Absent
@@ -147,9 +147,7 @@ function SegmentItem({
             contentClassName="w-80"
           >
             <div className="flex flex-col gap-2">
-              <span className="text-[12.5px] font-semibold text-ink">
-                Color
-              </span>
+              <span className="text-12.5 font-semibold text-ink">Color</span>
               <ColorSlider
                 color={style.color}
                 onChange={(color) => previewStyle({ color })}

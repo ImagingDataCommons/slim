@@ -29,9 +29,7 @@ function ColorSlider({
     <div className="flex flex-col gap-2">
       {CHANNELS.map(({ label, index }) => (
         <div key={label} className="flex items-center justify-center gap-2">
-          <div className="w-12 shrink-0 text-[12px] text-ink-muted">
-            {label}
-          </div>
+          <div className="w-12 shrink-0 text-12 text-ink-muted">{label}</div>
           <div className="flex-1">
             <Slider
               min={0}
@@ -52,7 +50,7 @@ function ColorSlider({
             min={0}
             max={255}
             aria-label={`${label} value`}
-            className="h-8 w-16 font-mono text-[12px]"
+            className="h-8 w-16 font-mono text-12"
             value={color[index]}
             onChange={(e) => {
               const value = Number.parseInt(e.target.value, 10)

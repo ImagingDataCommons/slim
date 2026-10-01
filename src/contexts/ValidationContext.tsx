@@ -144,7 +144,7 @@ export const ValidationProvider: React.FC<ValidationProviderProps> = ({
               <div className="flex gap-3 px-5 pb-5 pt-[18px]">
                 <span
                   className={cn(
-                    'grid h-[34px] w-[34px] flex-none place-items-center rounded-[9px]',
+                    'grid h-control w-control flex-none place-items-center rounded-tile',
                     currentValidationResult.type === 'error'
                       ? 'bg-destructive-soft text-destructive-text'
                       : currentValidationResult.type === 'warning'

@@ -1,5 +1,10 @@
-/* OpenLayers first so Tailwind utilities win at equal specificity */
-@import 'ol/ol.css';
+/*
+ * OpenLayers joins the base layer ahead of Tailwind's preflight: preflight
+ * wins at equal specificity and utilities always win. Unlayered rules beat
+ * every layer, so only OpenLayers overrides stay unlayered below.
+ */
+@layer theme, base, components, utilities;
+@import 'ol/ol.css' layer(base);
 
 @import './styles/globals.css';
 
@@ -51,7 +56,9 @@
   background: transparent;
 }
 
-img {
-  object-fit: contain;
-  max-height: 100%;
+@layer base {
+  img {
+    object-fit: contain;
+    max-height: 100%;
+  }
 }

@@ -11,7 +11,7 @@ export interface RoiDescriptionProps {
 }
 
 const SECTION_TITLE_CLASS =
-  'mb-2 border-b border-line-soft pb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-secondary'
+  'mb-2 border-b border-line-soft pb-1.5 text-11 font-semibold uppercase tracking-[0.06em] text-ink-secondary'
 
 /** Body of the "Selected ROI" dialog. */
 export function RoiDescription({
@@ -35,7 +35,7 @@ export function RoiDescription({
             <SlimKeyValueGrid key={identifier} items={items} />
           ) : (
             <div key={identifier} className="mt-2">
-              <div className="mb-1.5 font-mono text-[11px] text-ink-muted">
+              <div className="mb-1.5 font-mono text-11 text-ink-muted">
                 {identifier}
               </div>
               <SlimKeyValueGrid items={items} />

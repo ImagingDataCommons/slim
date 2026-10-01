@@ -37,7 +37,7 @@ export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
       <Link
         to={buildStudyPath(row.original.StudyInstanceUID)}
         onClick={(event) => event.stopPropagation()}
-        className="block truncate rounded-sm font-semibold text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        className="block truncate rounded-sm font-semibold text-ink hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
       >
         {orDash(getValue<string>())}
       </Link>
@@ -78,7 +78,7 @@ export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
           {modalities.map((modality) => (
             <span
               key={modality}
-              className="rounded bg-chip px-1.5 py-[3px] font-mono text-11 font-semibold leading-none text-chip-foreground"
+              className="rounded-sm bg-chip px-1.5 py-[3px] font-mono text-11 font-semibold leading-none text-chip-foreground"
             >
               {modality}
             </span>

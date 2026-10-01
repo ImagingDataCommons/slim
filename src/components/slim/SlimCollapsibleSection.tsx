@@ -67,7 +67,7 @@ export function SlimCollapsibleSection({
         onOpenChange={handleOpenChange}
         className={className}
       >
-        <CollapsibleTrigger className="flex w-full items-center gap-1.5 px-3.5 pb-2 pt-3 text-left text-[11px] font-semibold uppercase leading-none tracking-[0.06em] text-ink-secondary">
+        <CollapsibleTrigger className="flex w-full items-center gap-1.5 px-3.5 pb-2 pt-3 text-left text-11 font-semibold uppercase leading-none tracking-[0.06em] text-ink-secondary">
           <Icon
             name={isOpen ? 'expand_more' : 'chevron_right'}
             size={18}

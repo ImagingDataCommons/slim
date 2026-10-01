@@ -58,13 +58,13 @@ function MappingItem({
             {mapping.label}
           </span>
           {description !== '' && description !== mapping.label && (
-            <span className="truncate text-[12px] text-ink-muted">
+            <span className="truncate text-12 text-ink-muted">
               {description}
             </span>
           )}
         </span>
         {range !== undefined && (
-          <span className="flex-none text-[12px] text-ink-muted">{range}</span>
+          <span className="flex-none text-12 text-ink-muted">{range}</span>
         )}
         <VisibilityToggleButton
           label={mapping.label}
@@ -80,9 +80,9 @@ function MappingItem({
       </div>
       <div
         className={cn(
-          'h-2 rounded',
+          'h-2 rounded-sm',
           gradient === '' &&
-            'border border-line bg-gradient-to-r from-panel to-ink-muted',
+            'border border-line bg-linear-to-r/srgb from-panel to-ink-muted',
         )}
         style={gradient !== '' ? { background: gradient } : undefined}
       />

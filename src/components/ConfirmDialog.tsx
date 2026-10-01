@@ -46,7 +46,7 @@ export function ConfirmDialog({
         <div className="flex gap-3 px-5 pb-5 pt-[18px]">
           <span
             className={cn(
-              'grid h-[34px] w-[34px] flex-none place-items-center rounded-[9px]',
+              'grid h-control w-control flex-none place-items-center rounded-tile',
               isDestructive
                 ? 'bg-destructive-soft text-destructive-text'
                 : 'bg-primary-soft text-primary',

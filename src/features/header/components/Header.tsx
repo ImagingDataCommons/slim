@@ -133,7 +133,7 @@ export function Header({
           <div className="text-[15px] font-semibold leading-none tracking-[-0.01em] text-ink">
             Slim
           </div>
-          <div className="rounded border border-line px-1.5 py-[3px] font-mono text-11 font-medium leading-none text-ink-muted">
+          <div className="rounded-sm border border-line px-1.5 py-[3px] font-mono text-11 font-medium leading-none text-ink-muted">
             v{app.version}
           </div>
         </div>

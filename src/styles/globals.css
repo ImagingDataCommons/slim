@@ -1,11 +1,119 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens for utilities. Colours and shadows read the light/dark
+ * variables defined in the base layer below, so `.dark` switches them at
+ * runtime. Custom keys must also be registered in src/lib/utils.ts so
+ * tailwind-merge resolves conflicts between them.
+ */
+@theme {
+  --color-app: rgb(var(--app));
+  --color-panel: rgb(var(--panel));
+  --color-subtle: rgb(var(--subtle));
+  --color-selected: rgb(var(--selected));
+
+  --color-ink: rgb(var(--ink));
+  --color-ink-body: rgb(var(--ink-body));
+  --color-ink-secondary: rgb(var(--ink-secondary));
+  --color-ink-muted: rgb(var(--ink-muted));
+  --color-ink-faint: rgb(var(--ink-faint));
+  --color-ink-fainter: rgb(var(--ink-fainter));
+
+  --color-line: rgb(var(--line));
+  --color-line-soft: rgb(var(--line-soft));
+  --color-line-row: rgb(var(--line-row));
+  --color-line-input: rgb(var(--line-input));
+  --color-line-hover: rgb(var(--line-hover));
+
+  --color-chip: rgb(var(--chip));
+  --color-chip-foreground: rgb(var(--chip-foreground));
+
+  --color-segmented: rgb(var(--segmented));
+  --color-segmented-active: rgb(var(--segmented-active));
+
+  --color-switch-off: rgb(var(--switch-off));
+
+  --color-viewport: rgb(var(--viewport));
+  --color-viewport-fluorescence: rgb(var(--viewport-fluorescence));
+
+  --color-overlay-card: rgb(var(--overlay-card));
+  --color-scrim: rgb(var(--scrim));
+
+  --color-syntax-boolean: rgb(var(--syntax-boolean));
+  --color-syntax-string: rgb(var(--syntax-string));
+
+  --color-ring: rgb(var(--primary));
+  /* Logo tile background; matches public/favicon.svg in both themes */
+  --color-brand: rgb(var(--brand));
+
+  --color-primary: rgb(var(--primary));
+  --color-primary-hover: rgb(var(--primary-hover));
+  --color-primary-soft: rgb(var(--primary-soft));
+  --color-primary-foreground: rgb(var(--primary-foreground));
+
+  --color-destructive: rgb(var(--destructive));
+  --color-destructive-text: rgb(var(--destructive-text));
+  --color-destructive-soft: rgb(var(--destructive-soft));
+  --color-destructive-hover: rgb(var(--destructive-hover));
+  --color-destructive-foreground: rgb(var(--destructive-foreground));
+
+  --color-success: rgb(var(--success));
+
+  --color-warning: rgb(var(--warning));
+  --color-warning-soft: rgb(var(--warning-soft));
+  --color-warning-text: rgb(var(--warning-text));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  /* Cards, menus and option tiles */
+  --radius-card: 10px;
+  /* Icon tiles in dialog headers */
+  --radius-tile: 9px;
+
+  /* Tinted with the segmented track colour, not --shadow-color */
+  --shadow-segmented: 0 1px 2px rgb(var(--segmented));
+  --shadow-tool: 0 1px 2px rgb(var(--shadow-color) / 0.14);
+  --shadow-overlay: 0 2px 8px rgb(var(--shadow-color) / 0.08);
+  --shadow-menu: 0 12px 32px rgb(var(--shadow-color) / 0.14);
+  --shadow-modal: 0 24px 64px rgb(var(--shadow-color) / 0.22);
+  --shadow-selected-ring: 0 0 0 3px rgb(var(--primary) / 0.12);
+
+  --font-sans:
+    'IBM Plex Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono:
+    'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    monospace;
+
+  /*
+   * Design type scale in px; sizes only, line height stays inherited.
+   * `_` stands for the dot in class names: `--text-11_5` is `text-11.5`.
+   */
+  --text-11: 11px;
+  --text-11_5: 11.5px;
+  --text-12: 12px;
+  --text-12_5: 12.5px;
+  --text-13: 13px;
+
+  /* Default control height (buttons, inputs, icon tiles) */
+  --spacing-control: 34px;
+
+  --width-sidebar: 288px;
+  --width-sidebar-right: 320px;
+
+  --height-header: 52px;
+  --height-toolbar: 48px;
+  --height-footer: 28px;
+}
 
 @layer base {
   /*
-   * Slim v2 design tokens, stored as RGB triplets so Tailwind opacity
-   * modifiers (`bg-primary/10`) keep working.
+   * Slim v2 design tokens, stored as RGB triplets so plain CSS can add alpha
+   * (`rgb(var(--primary) / 0.08)`); utilities use the `--color-*` theme keys.
    */
   :root {
     --app: 242 244 247; /* #f2f4f7 */
@@ -164,6 +272,24 @@
 
   input[type='range'] {
     accent-color: rgb(var(--primary));
+  }
+
+  /*
+   * Defaults the layout relies on that Tailwind v4's preflight changed:
+   * pointer cursors on buttons and the 1px user-agent padding of table cells.
+   */
+  button,
+  [role='button'] {
+    cursor: pointer;
+  }
+
+  :disabled {
+    cursor: default;
+  }
+
+  th,
+  td {
+    padding: 1px;
   }
 }
 

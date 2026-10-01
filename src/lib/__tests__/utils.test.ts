@@ -54,6 +54,42 @@ describe('cn', () => {
 
   it('treats design color tokens as colors', () => {
     expect(cn('bg-panel', 'bg-subtle')).toBe('bg-subtle')
+  })
+
+  it.each([
+    'segmented',
+    'tool',
+    'overlay',
+    'menu',
+    'modal',
+    'selected-ring',
+  ])('treats shadow-%s as a box shadow, not a shadow color', (name) => {
+    expect(cn('shadow-sm', `shadow-${name}`)).toBe(`shadow-${name}`)
+    expect(cn(`shadow-${name}`, 'shadow-none')).toBe('shadow-none')
+    expect(cn(`shadow-${name}`, 'shadow-primary')).toBe(
+      `shadow-${name} shadow-primary`,
+    )
+  })
+
+  it('merges custom shadow tokens with each other', () => {
     expect(cn('shadow-segmented', 'shadow-menu')).toBe('shadow-menu')
+  })
+
+  it('merges layout width and height tokens with other sizes', () => {
+    expect(cn('w-sidebar', 'w-72')).toBe('w-72')
+    expect(cn('w-sidebar', 'w-sidebar-right')).toBe('w-sidebar-right')
+    expect(cn('h-8', 'h-header')).toBe('h-header')
+    expect(cn('h-header', 'h-toolbar', 'h-footer')).toBe('h-footer')
+    expect(cn('w-sidebar', 'h-header')).toBe('w-sidebar h-header')
+  })
+
+  it('merges Tailwind v4 renamed utilities', () => {
+    expect(cn('rounded-sm', 'rounded-card')).toBe('rounded-card')
+    expect(cn('rounded-xs', 'rounded-sm')).toBe('rounded-sm')
+    expect(cn('shadow-xs', 'shadow-menu')).toBe('shadow-menu')
+    expect(cn('outline-hidden', 'outline-none')).toBe('outline-none')
+    expect(cn('bg-linear-to-r/srgb', 'bg-linear-to-br/srgb')).toBe(
+      'bg-linear-to-br/srgb',
+    )
   })
 })

@@ -57,7 +57,7 @@ function AnnotationItem({
         type="button"
         aria-pressed={isSelected}
         onClick={() => onSelection(roi.uid)}
-        className="flex min-w-0 flex-1 items-stretch gap-2.5 text-left focus-visible:outline-none"
+        className="flex min-w-0 flex-1 items-stretch gap-2.5 text-left focus-visible:outline-hidden"
       >
         <span
           className="w-1 flex-none rounded-sm"
@@ -67,21 +67,16 @@ function AnnotationItem({
           <span className="flex items-baseline gap-1.5">
             <span className="flex-none font-semibold text-ink">{label}</span>
             {type !== '' && (
-              <span className="truncate text-[12px] text-ink-muted">
-                {type}
-              </span>
+              <span className="truncate text-12 text-ink-muted">{type}</span>
             )}
           </span>
           {measurement !== undefined && (
-            <span className="font-mono text-[11.5px] text-ink-secondary">
+            <span className="font-mono text-11.5 text-ink-secondary">
               {measurement}
             </span>
           )}
           {details !== '' && (
-            <span
-              className="truncate text-[11.5px] text-ink-muted"
-              title={details}
-            >
+            <span className="truncate text-11.5 text-ink-muted" title={details}>
               {details}
             </span>
           )}

@@ -48,7 +48,7 @@ export function LimitInput({
       max={max}
       step={step ?? (integer ? 1 : 'any')}
       aria-label={ariaLabel}
-      className={cn('h-8 w-20 font-mono text-[12px]', className)}
+      className={cn('h-8 w-20 font-mono text-12', className)}
       value={draft ?? String(value)}
       onChange={(event) => setDraft(event.target.value)}
       onBlur={commit}

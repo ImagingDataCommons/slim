@@ -25,7 +25,7 @@ export const NavButton = React.forwardRef<HTMLButtonElement, NavButtonProps>(
       tabIndex={isActive ? 0 : -1}
       onClick={onSelect}
       className={cn(
-        'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-13 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+        'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-13 font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40',
         isActive
           ? 'bg-segmented-active text-primary shadow-[0_1px_2px_rgb(var(--shadow-color)/0.1)]'
           : 'text-ink-secondary hover:text-ink',

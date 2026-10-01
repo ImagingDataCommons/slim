@@ -105,7 +105,7 @@ export function ConfigurationTab({
             aria-pressed={onlyChanged}
             onClick={() => setOnlyChanged((value) => !value)}
             className={cn(
-              'flex h-8 items-center gap-1.5 rounded-full border px-3 text-12.5 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+              'flex h-8 items-center gap-1.5 rounded-full border px-3 text-12.5 font-medium focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40',
               onlyChanged
                 ? 'border-warning/60 bg-warning-soft text-warning-text'
                 : 'border-line-input bg-panel text-ink-body',
@@ -198,7 +198,7 @@ export function ConfigurationTab({
                 {!row.isGroup && (
                   <span
                     className={cn(
-                      'rounded px-1.5 py-0.5 font-mono text-[10.5px] font-medium',
+                      'rounded-sm px-1.5 py-0.5 font-mono text-[10.5px] font-medium',
                       row.isChanged
                         ? 'bg-primary-soft text-primary'
                         : 'bg-app text-ink-muted',

@@ -33,7 +33,7 @@ function InfoPage({ type, title, message }: InfoPageProps): React.ReactElement {
           <h1 className="text-[20px] font-semibold text-ink">{title}</h1>
         )}
         {message !== undefined && message !== '' && (
-          <p className="text-[13px] text-ink-muted">{message}</p>
+          <p className="text-13 text-ink-muted">{message}</p>
         )}
       </div>
     </div>

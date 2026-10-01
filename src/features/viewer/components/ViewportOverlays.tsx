@@ -23,7 +23,7 @@ export interface ViewportOverlaysProps {
 const ZOOM_ANIMATION_MS = 200
 
 const OVERLAY_CARD =
-  'rounded-lg border border-line bg-overlay-card/[0.92] shadow-[0_1px_2px_rgb(var(--shadow-color)/0.06)]'
+  'rounded-lg border border-line bg-overlay-card/92 shadow-[0_1px_2px_rgb(var(--shadow-color)/0.06)]'
 
 function ZoomButton({
   icon,
@@ -93,20 +93,20 @@ export function ViewportOverlays({
           className={`flex items-center gap-2 px-2.5 py-1.5 ${OVERLAY_CARD}`}
         >
           <span
-            className="max-w-[220px] truncate text-[12.5px] font-semibold text-ink"
+            className="max-w-[220px] truncate text-12.5 font-semibold text-ink"
             title={slideId}
           >
             {slideId}
           </span>
           {slideDescription !== undefined && slideDescription !== '' && (
-            <span className="max-w-[220px] truncate text-[12px] text-ink-muted">
+            <span className="max-w-[220px] truncate text-12 text-ink-muted">
               {slideDescription}
             </span>
           )}
         </div>
       </div>
 
-      <div className="absolute right-3.5 top-3.5 z-10 flex flex-col overflow-hidden rounded-[10px] border border-line bg-panel shadow-overlay">
+      <div className="absolute right-3.5 top-3.5 z-10 flex flex-col overflow-hidden rounded-card border border-line bg-panel shadow-overlay">
         <ZoomButton icon="add" title="Zoom in" onClick={() => zoomBy(1)} />
         <div className="h-px bg-line-soft" />
         <ZoomButton icon="remove" title="Zoom out" onClick={() => zoomBy(-1)} />
@@ -120,7 +120,7 @@ export function ViewportOverlays({
       </div>
 
       <div
-        className={`pointer-events-none absolute bottom-3.5 left-3.5 z-10 flex items-center gap-3 px-3 py-2 font-mono text-[11.5px] font-medium text-ink-body ${OVERLAY_CARD}`}
+        className={`pointer-events-none absolute bottom-3.5 left-3.5 z-10 flex items-center gap-3 px-3 py-2 font-mono text-11.5 font-medium text-ink-body ${OVERLAY_CARD}`}
       >
         <div className="flex flex-col gap-1">
           <div

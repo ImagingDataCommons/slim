@@ -117,7 +117,7 @@ function SlideItem({
       }
       aria-pressed={isSelected}
       className={cn(
-        'flex w-full items-stretch gap-3 rounded-[10px] border p-2 text-left transition-colors hover:border-line-hover',
+        'flex w-full items-stretch gap-3 rounded-card border p-2 text-left transition-colors hover:border-line-hover',
         isSelected
           ? 'border-primary bg-selected shadow-selected-ring'
           : 'border-line bg-panel',
@@ -137,23 +137,23 @@ function SlideItem({
       </span>
 
       <span className="flex min-w-0 flex-1 flex-col gap-[3px] pt-0.5">
-        <span className="flex items-center gap-1.5 text-[13px] font-semibold text-ink">
+        <span className="flex items-center gap-1.5 text-13 font-semibold text-ink">
           <span className="truncate" title={slideId}>
             {slideId}
           </span>
           <ValidationWarning slide={slide} size={15} interactive={false} />
         </span>
         {stainInfo !== '' && (
-          <span className="truncate text-[12px] text-ink-secondary">
+          <span className="truncate text-12 text-ink-secondary">
             {stainInfo}
           </span>
         )}
         <span className="mt-auto flex gap-1.5">
-          <span className="rounded bg-app px-[5px] py-0.5 font-mono text-[10.5px] font-medium text-ink-secondary">
+          <span className="rounded-sm bg-app px-[5px] py-0.5 font-mono text-[10.5px] font-medium text-ink-secondary">
             {illuminationType}
           </span>
           {magnification !== '' && (
-            <span className="rounded bg-app px-[5px] py-0.5 font-mono text-[10.5px] font-medium text-ink-secondary">
+            <span className="rounded-sm bg-app px-[5px] py-0.5 font-mono text-[10.5px] font-medium text-ink-secondary">
               {magnification}
             </span>
           )}

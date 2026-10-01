@@ -189,7 +189,7 @@ export function WorklistTable({
               key={headerGroup.id}
               role="row"
               className={cn(
-                'grid h-10 items-center gap-3 border-b border-line bg-subtle px-5 text-11 font-semibold uppercase leading-none tracking-[0.05em] text-ink-muted',
+                'grid h-10 items-center gap-3 border-b border-line bg-subtle px-5 text-11 font-semibold uppercase leading-none tracking-wider text-ink-muted',
                 WORKLIST_GRID_COLUMNS,
               )}
             >
@@ -223,7 +223,7 @@ export function WorklistTable({
                         type="button"
                         onClick={header.column.getToggleSortingHandler()}
                         className={cn(
-                          'inline-flex max-w-full items-center gap-1 uppercase tracking-[0.05em] transition-colors hover:text-ink',
+                          'inline-flex max-w-full items-center gap-1 uppercase tracking-wider transition-colors hover:text-ink',
                           sorted !== false && 'text-primary hover:text-primary',
                           meta?.align === 'right' && 'flex-row-reverse',
                         )}

@@ -121,7 +121,7 @@ function OpticalPathItem({
       <div className="flex items-center gap-2">
         <span
           className={cn(
-            'h-3 w-3 flex-none rounded-[3px] border border-ink/[0.12]',
+            'h-3 w-3 flex-none rounded-[3px] border border-ink/12',
             swatch === undefined && 'bg-panel',
           )}
           style={swatch !== undefined ? { background: swatch } : undefined}
@@ -134,7 +134,7 @@ function OpticalPathItem({
         </span>
         {meta !== '' && (
           <span
-            className="min-w-0 flex-1 truncate text-[12px] text-ink-muted"
+            className="min-w-0 flex-1 truncate text-12 text-ink-muted"
             title={meta}
           >
             {meta}
@@ -143,12 +143,12 @@ function OpticalPathItem({
         <span className="ml-auto flex flex-none items-center gap-0.5">
           <LayerSettingsPopover label={name}>
             <div className="flex w-72 flex-col gap-4">
-              <div className="text-[12.5px] font-semibold text-ink">
+              <div className="text-12.5 font-semibold text-ink">
                 Display settings
               </div>
               {isMonochromatic && limits.values !== undefined && (
                 <div className="flex flex-col gap-2">
-                  <div className="text-[12px] text-ink-muted">
+                  <div className="text-12 text-ink-muted">
                     Values of interest
                   </div>
                   <div className="flex items-center gap-2">
@@ -174,7 +174,7 @@ function OpticalPathItem({
               )}
               {isMonochromatic && (
                 <div className="flex flex-col gap-2">
-                  <div className="text-[12px] text-ink-muted">Color</div>
+                  <div className="text-12 text-ink-muted">Color</div>
                   {style.color !== undefined ? (
                     <ColorSlider
                       color={style.color}
@@ -182,7 +182,7 @@ function OpticalPathItem({
                       onCommit={(color) => updateStyle({ color })}
                     />
                   ) : (
-                    <p className="text-[12px] text-ink-secondary">
+                    <p className="text-12 text-ink-secondary">
                       Pixels are colorized by the embedded palette color lookup
                       table, so custom pseudo-coloring is disabled.
                     </p>
@@ -222,7 +222,7 @@ function OpticalPathItem({
         </span>
       </div>
       {isMonochromatic && limits.values !== undefined && (
-        <div className="flex items-center gap-2 text-[11.5px] text-ink-muted">
+        <div className="flex items-center gap-2 text-11.5 text-ink-muted">
           Window
           <Slider
             className="flex-1"

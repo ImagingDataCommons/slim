@@ -34,7 +34,7 @@ export function ToastHost({
     <div
       aria-live="polite"
       className={cn(
-        'pointer-events-none fixed left-1/2 z-[100] flex -translate-x-1/2 flex-col items-center gap-2',
+        'pointer-events-none fixed left-1/2 z-100 flex -translate-x-1/2 flex-col items-center gap-2',
         !isTopAnchored && 'bottom-10',
       )}
       style={isTopAnchored ? { top } : undefined}
@@ -45,7 +45,7 @@ export function ToastHost({
           <div
             key={toast.id}
             role={toast.tone === 'error' ? 'alert' : 'status'}
-            className="pointer-events-auto flex max-w-[480px] items-center gap-2 rounded-lg border border-line bg-panel py-2 pl-3 pr-1.5 text-[12.5px] text-ink shadow-overlay"
+            className="pointer-events-auto flex max-w-[480px] items-center gap-2 rounded-lg border border-line bg-panel py-2 pl-3 pr-1.5 text-12.5 text-ink shadow-overlay"
           >
             <Icon
               name={icon.name}
@@ -56,13 +56,13 @@ export function ToastHost({
               {toast.title !== undefined && (
                 <span className="block font-semibold">{toast.title}</span>
               )}
-              <span className="break-words">{toast.message}</span>
+              <span className="wrap-break-word">{toast.message}</span>
             </span>
             <button
               type="button"
               aria-label="Dismiss notification"
               onClick={() => store.dismiss(toast.id)}
-              className="grid h-6 w-6 flex-none place-items-center rounded-md text-ink-muted transition-colors hover:bg-app hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="grid h-6 w-6 flex-none place-items-center rounded-md text-ink-muted transition-colors hover:bg-app hover:text-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40"
             >
               <Icon name="close" size={16} />
             </button>

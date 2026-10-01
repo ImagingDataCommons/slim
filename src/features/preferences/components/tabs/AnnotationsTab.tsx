@@ -47,7 +47,7 @@ export function AnnotationsTab({
               aria-label={`Stroke color ${color}`}
               aria-pressed={draft.strokeColor === color}
               onClick={() => onChange('strokeColor', color)}
-              className="h-7 w-7 rounded-full border-2 border-panel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-panel"
+              className="h-7 w-7 rounded-full border-2 border-panel focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-panel"
               style={{
                 backgroundColor: color,
                 boxShadow:

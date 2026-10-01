@@ -50,7 +50,7 @@ export function SegmentedControl<T extends string>({
           <label
             key={option.value}
             className={cn(
-              'flex cursor-pointer items-center justify-center gap-[5px] whitespace-nowrap rounded-md font-medium transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/30',
+              'flex cursor-pointer items-center justify-center gap-[5px] whitespace-nowrap rounded-md font-medium transition-colors has-focus-visible:ring-2 has-focus-visible:ring-primary/30',
               size === 'sm'
                 ? 'px-2.5 py-[5px] text-12'
                 : 'px-3 py-1.5 text-12.5',

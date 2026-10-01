@@ -12,7 +12,7 @@ const ROW_KEYS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth']
 
 function SectionHeader({ title }: { title?: string }): React.ReactElement {
   return (
-    <div className="flex items-center gap-1.5 px-3.5 pb-2 pt-3 text-[11px] font-semibold uppercase leading-none tracking-[0.06em] text-ink-secondary">
+    <div className="flex items-center gap-1.5 px-3.5 pb-2 pt-3 text-11 font-semibold uppercase leading-none tracking-[0.06em] text-ink-secondary">
       <Icon name="expand_more" size={18} className="text-ink-faint" />
       {title !== undefined ? title : <Skeleton className="h-2 w-24" />}
     </div>
@@ -42,7 +42,7 @@ function KeyValueRow({ index }: { index: number }): React.ReactElement {
 
 function SlideCardSkeleton(): React.ReactElement {
   return (
-    <div className="flex items-center gap-3 rounded-[10px] border border-line px-2.5 py-2.5">
+    <div className="flex items-center gap-3 rounded-card border border-line px-2.5 py-2.5">
       <Skeleton className="h-12 w-12 flex-none rounded-md" />
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <Skeleton className="h-2.5 w-3/4" />
@@ -77,7 +77,7 @@ export function ViewerLoadingLayout({
         <SectionHeader title="Study" />
         <KeyValueRows count={5} />
         <PanelDivider />
-        <div className="px-4 pb-2.5 pt-3 text-[11px] font-semibold uppercase leading-none tracking-[0.06em] text-ink-secondary">
+        <div className="px-4 pb-2.5 pt-3 text-11 font-semibold uppercase leading-none tracking-[0.06em] text-ink-secondary">
           Slides
         </div>
         <div className="flex flex-col gap-2 px-3">
@@ -89,15 +89,15 @@ export function ViewerLoadingLayout({
       <main className="flex min-w-0 flex-1 overflow-hidden">
         <section className="flex min-h-0 min-w-0 flex-1 flex-col">
           <div className="flex h-toolbar flex-none items-center gap-2 border-b border-line bg-panel px-2.5">
-            <span className="grid h-[34px] w-[34px] flex-none place-items-center text-ink-secondary opacity-40">
+            <span className="grid h-control w-control flex-none place-items-center text-ink-secondary opacity-40">
               <Icon name="left_panel_close" size={20} />
             </span>
             <div className="h-[22px] w-px flex-none bg-line" />
             <div className="flex min-w-0 flex-1 justify-center">
-              <Skeleton className="h-[38px] w-[min(520px,70%)] rounded-[10px] bg-app" />
+              <Skeleton className="h-[38px] w-[min(520px,70%)] rounded-card bg-app" />
             </div>
             <div className="h-[22px] w-px flex-none bg-line" />
-            <span className="grid h-[34px] w-[34px] flex-none place-items-center text-ink-secondary opacity-40">
+            <span className="grid h-control w-control flex-none place-items-center text-ink-secondary opacity-40">
               <Icon name="right_panel_close" size={20} />
             </span>
           </div>

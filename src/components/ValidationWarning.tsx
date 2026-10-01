@@ -83,7 +83,7 @@ function ValidationWarning({
               aria-label={`Warning: ${message}`}
               className={cn(
                 iconClassName,
-                'rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+                'rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40',
               )}
             >
               {icon}
@@ -92,7 +92,7 @@ function ValidationWarning({
         </TooltipTrigger>
         <TooltipContent className="max-w-[280px]">{message}</TooltipContent>
       </Tooltip>
-      <PopoverContent className="w-auto max-w-[280px] px-3 py-2 text-[12px]">
+      <PopoverContent className="w-auto max-w-[280px] px-3 py-2 text-12">
         {message}
       </PopoverContent>
     </Popover>

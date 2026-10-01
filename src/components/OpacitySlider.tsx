@@ -32,7 +32,7 @@ function OpacitySlider({
 
   return (
     <div className="flex items-center justify-center gap-2">
-      <div className="w-16 shrink-0 text-[12px] text-ink-muted">{label}</div>
+      <div className="w-16 shrink-0 text-12 text-ink-muted">{label}</div>
       <div className="flex-1">
         <Slider
           min={0}
@@ -51,7 +51,7 @@ function OpacitySlider({
         max={1}
         step={0.01}
         aria-label={`${label} value`}
-        className="h-8 w-16 font-mono text-[12px]"
+        className="h-8 w-16 font-mono text-12"
         value={opacity}
         disabled={disabled}
         onChange={handleInputChange}

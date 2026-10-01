@@ -63,7 +63,7 @@ export function UserMenu({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 outline-none transition-colors hover:bg-app focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=open]:bg-app"
+          className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 outline-hidden transition-colors hover:bg-app focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=open]:bg-app"
         >
           <span className="grid h-7 w-7 place-items-center rounded-full bg-primary-soft text-11 font-semibold text-primary">
             {initials !== '' ? initials : <Icon name="person" size={16} />}

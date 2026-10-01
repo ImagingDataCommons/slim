@@ -26,7 +26,7 @@ function ColorSettingsMenu({
     <div className="flex flex-col gap-4">
       {color !== undefined && (
         <div className="flex flex-col gap-2">
-          <span className="text-[12px] text-ink-muted">Color</span>
+          <span className="text-12 text-ink-muted">Color</span>
           <ColorSlider
             color={color}
             onChange={(next) => onChange({ ...style, color: next })}
@@ -40,7 +40,7 @@ function ColorSettingsMenu({
         onCommit={(opacity) => onCommit({ ...style, opacity })}
       />
       <div className="flex items-center justify-between">
-        <span className="text-[12.5px] font-medium text-ink">Outline only</span>
+        <span className="text-12.5 font-medium text-ink">Outline only</span>
         <Switch
           size="sm"
           checked={style.contourOnly}

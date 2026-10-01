@@ -48,7 +48,7 @@ function DebugCategoryCard({
         aria-expanded={isOpen}
         aria-controls={isOpen ? panelId : undefined}
         onClick={onToggle}
-        className="flex w-full items-center gap-2.5 bg-panel px-3.5 py-[11px] text-left text-13 font-medium text-ink hover:bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/40"
+        className="flex w-full items-center gap-2.5 bg-panel px-3.5 py-[11px] text-left text-13 font-medium text-ink hover:bg-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/40"
       >
         <Icon
           name={isOpen ? 'expand_more' : 'chevron_right'}
@@ -91,7 +91,7 @@ function DebugCategoryCard({
                 key={key}
                 className="flex flex-col gap-[3px] border-b border-line-soft py-2.5 pl-16 pr-3.5 last:border-b-0"
               >
-                <span className="break-words text-12.5 text-ink">
+                <span className="wrap-break-word text-12.5 text-ink">
                   {item.message}
                 </span>
                 {item.source !== undefined && (

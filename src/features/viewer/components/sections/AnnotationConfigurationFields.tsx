@@ -44,7 +44,7 @@ function Field({
 }): React.ReactElement {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[12px] text-ink-muted">{label}</span>
+      <span className="text-12 text-ink-muted">{label}</span>
       {children}
     </div>
   )
@@ -143,7 +143,7 @@ export function AnnotationConfigurationFields({
           </Field>
           <label
             htmlFor="measure-checkbox"
-            className="flex cursor-pointer items-center gap-2 pt-1 text-[13px] text-ink"
+            className="flex cursor-pointer items-center gap-2 pt-1 text-13 text-ink"
           >
             <Checkbox
               id="measure-checkbox"

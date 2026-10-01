@@ -45,7 +45,7 @@ function ErrorFallback({
           />
           <div className="min-h-0 overflow-y-auto px-5 pb-5 pt-[18px]">
             <details className="group rounded-lg border border-line">
-              <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-[12.5px] font-semibold text-ink">
+              <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-12.5 font-semibold text-ink">
                 <Icon
                   name="chevron_right"
                   size={18}
@@ -53,7 +53,7 @@ function ErrorFallback({
                 />
                 Stack trace
               </summary>
-              <pre className="max-h-64 overflow-auto whitespace-pre-wrap border-t border-line-soft bg-subtle p-3 font-mono text-[11.5px] text-ink-body">
+              <pre className="max-h-64 overflow-auto whitespace-pre-wrap border-t border-line-soft bg-subtle p-3 font-mono text-11.5 text-ink-body">
                 {stack}
               </pre>
             </details>

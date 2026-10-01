@@ -79,7 +79,7 @@ const TagRow = ({
     TAG_GRID_COLUMNS,
     depth > 0 ? 'bg-subtle/60' : 'bg-panel',
     hasChildren
-      ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/40'
+      ? 'cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/40'
       : 'cursor-default',
   )
   const cells = (
@@ -100,7 +100,7 @@ const TagRow = ({
       </span>
       <span>
         {item.vr !== '' && (
-          <span className="rounded bg-chip px-[5px] py-0.5 font-mono text-11 font-medium text-chip-foreground">
+          <span className="rounded-sm bg-chip px-[5px] py-0.5 font-mono text-11 font-medium text-chip-foreground">
             {item.vr}
           </span>
         )}
@@ -271,7 +271,7 @@ const DicomTagBrowser = ({
             <SelectTrigger className="h-9" aria-labelledby={seriesLabelId}>
               <span className="flex min-w-0 items-center gap-2">
                 {selectedModality !== '' && (
-                  <span className="rounded bg-chip px-[5px] py-0.5 font-mono text-11 font-semibold text-chip-foreground">
+                  <span className="rounded-sm bg-chip px-[5px] py-0.5 font-mono text-11 font-semibold text-chip-foreground">
                     {selectedModality}
                   </span>
                 )}
@@ -359,7 +359,7 @@ const DicomTagBrowser = ({
 
       <div
         className={cn(
-          'grid h-9 flex-none items-center gap-3 border-b border-line bg-subtle px-5 text-11 font-semibold uppercase leading-none tracking-[0.05em] text-ink-muted',
+          'grid h-9 flex-none items-center gap-3 border-b border-line bg-subtle px-5 text-11 font-semibold uppercase leading-none tracking-wider text-ink-muted',
           TAG_GRID_COLUMNS,
         )}
       >

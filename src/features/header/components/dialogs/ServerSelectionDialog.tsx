@@ -35,7 +35,7 @@ function ServerOption({
   return (
     <label
       className={cn(
-        'flex cursor-pointer gap-3 rounded-card border px-3.5 py-3 text-left transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/30',
+        'flex cursor-pointer gap-3 rounded-card border px-3.5 py-3 text-left transition-colors has-focus-visible:ring-2 has-focus-visible:ring-primary/30',
         selected
           ? 'border-primary bg-selected shadow-selected-ring'
           : 'border-line bg-panel hover:border-line-hover',
@@ -117,7 +117,7 @@ function OidcConfigSection({
         aria-expanded={isOpen}
         aria-controls={textareaId}
         onClick={() => setIsOpen((open) => !open)}
-        className="flex w-full items-center gap-2 rounded-card px-3.5 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        className="flex w-full items-center gap-2 rounded-card px-3.5 py-2.5 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
       >
         <Icon
           name={isOpen ? 'expand_more' : 'chevron_right'}
@@ -157,7 +157,7 @@ function OidcConfigSection({
             aria-invalid={hasError}
             aria-describedby={hasError ? errorId : undefined}
             className={cn(
-              'resize-y rounded-lg border bg-panel px-2.5 py-2 font-mono text-12 leading-[1.5] text-ink outline-none placeholder:text-ink-fainter focus:border-primary',
+              'resize-y rounded-lg border bg-panel px-2.5 py-2 font-mono text-12 leading-normal text-ink outline-hidden placeholder:text-ink-fainter focus:border-primary',
               hasError
                 ? 'border-destructive/70 shadow-[0_0_0_3px_rgb(var(--destructive)/0.12)]'
                 : 'border-line-input',
@@ -248,7 +248,7 @@ export function ServerSelectionDialog({
                   aria-invalid={!urlOk}
                   aria-describedby={showUrlState ? urlMessageId : undefined}
                   placeholder="https://… or /projects/…/dicomStores/…"
-                  className="min-w-0 flex-1 border-0 bg-transparent font-mono text-12.5 text-ink outline-none placeholder:text-ink-fainter"
+                  className="min-w-0 flex-1 border-0 bg-transparent font-mono text-12.5 text-ink outline-hidden placeholder:text-ink-fainter"
                 />
                 {showUrlState && (
                   <Icon

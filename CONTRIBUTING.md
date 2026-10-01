@@ -25,9 +25,17 @@ The `SlideViewer` further provides annotation tools, which enable the user to dr
 ## Implementation details
 
 The app is implemented in [TypeScript](https://www.typescriptlang.org/) 7 using [React](https://react.dev/) 19 with the [React Compiler](https://react.dev/learn/react-compiler) enabled, so components and hooks are memoized automatically and new code rarely needs `useMemo`, `useCallback` or `React.memo`.
-The UI is styled with [Tailwind CSS](https://tailwindcss.com/) on top of [Radix UI](https://www.radix-ui.com/) primitives (`src/components/ui`).
+The UI is styled with [Tailwind CSS](https://tailwindcss.com/) 4 on top of [Radix UI](https://www.radix-ui.com/) primitives (`src/components/ui`).
 Icons are [lucide](https://lucide.dev/) SVGs rendered through `Icon` (`src/components/ui/icon.tsx`); add new glyphs to its `ICONS` map so `IconName` stays a closed union.
-Light and dark color tokens are CSS variables defined in `src/index.css` and mapped in `tailwind.config.js`. Custom font-size, radius and control-size tokens must also be registered in `src/lib/utils.ts` so `cn()` merges them correctly.
+
+Tailwind is configured in CSS, without a `tailwind.config.js` or PostCSS config, and compiled by the `@tailwindcss/vite` plugin. `src/styles/globals.css` is the entry point:
+
+- Light and dark color tokens are RGB-triplet CSS variables on `:root` and `.dark` (the theme toggle sets the `dark` class on `<html>`). The `@theme` block maps them to utilities (`--color-panel: rgb(var(--panel))` gives `bg-panel`, `text-panel`, `border-panel`, …), so opacity modifiers such as `bg-primary/10` keep working.
+- The same `@theme` block holds the custom font sizes (`--text-11_5` gives `text-11.5`; `_` stands for the dot), radii (`rounded-card`, `rounded-tile`), shadows (`shadow-menu`, …), the `control` spacing step (`h-control`, `size-control`) and the layout sizes (`w-sidebar`, `h-header`, …).
+- `dark:` utilities use `@custom-variant dark (&:where(.dark, .dark *))`.
+- Radix enter/exit animations (`data-[state=open]:animate-in`, `fade-in-0`, `zoom-in-95`, `slide-in-from-top-2`, …) come from [tw-animate-css](https://github.com/Wombosvideo/tw-animate-css).
+
+Register every new custom font-size, radius, shadow, spacing or size key in `src/lib/utils.ts` as well, so `cn()` merges it correctly. Otherwise tailwind-merge treats an unknown `text-*` or `shadow-*` as a color.
 
 Components render props and call callbacks; DICOM parsing, formatting, filtering and other rules live in pure functions under `src/utils` and `src/features/*/utils`, with unit tests in sibling `__tests__` folders.
 Shared sidebar layer controls (visibility toggle, settings popover, opacity row, style hooks) live in `src/components/panel`.

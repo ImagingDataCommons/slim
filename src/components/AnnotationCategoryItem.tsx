@@ -76,7 +76,7 @@ function AnnotationTypeChip({
           title={`${category.CodeMeaning} · ${CodeMeaning}`}
           aria-label={`${CodeMeaning}, ${uids.length} annotations, ${formatVisibilitySummary(visibleCount, uids.length)}`}
           className={cn(
-            'flex items-center gap-1.5 rounded-full border border-line py-1 pl-2 pr-2.5 text-[12px] text-ink transition-colors hover:border-line-hover',
+            'flex items-center gap-1.5 rounded-full border border-line py-1 pl-2 pr-2.5 text-12 text-ink transition-colors hover:border-line-hover',
             !isVisible && 'text-ink-muted',
           )}
         >
@@ -95,15 +95,15 @@ function AnnotationTypeChip({
       <PopoverContent side="left" align="start" className="w-80">
         <div className="flex flex-col gap-4">
           <div>
-            <div className="text-[12.5px] font-semibold text-ink">
+            <div className="text-12.5 font-semibold text-ink">
               {CodeMeaning}
             </div>
-            <div className="mt-0.5 font-mono text-[11px] text-ink-muted">
+            <div className="mt-0.5 font-mono text-11 text-ink-muted">
               {category.CodeMeaning} · {CodeValue}:{CodingSchemeDesignator}
             </div>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[12.5px] font-medium text-ink">
+            <span className="text-12.5 font-medium text-ink">
               Visible
               <span className="ml-1.5 font-normal text-ink-muted">
                 {visibleCount} / {uids.length}

@@ -18,7 +18,7 @@ export interface BulkVisibilityControlProps {
 }
 
 const BUTTON_CLASS =
-  'rounded px-1.5 py-0.5 font-medium text-primary transition-colors hover:bg-primary-soft disabled:cursor-default disabled:text-ink-fainter disabled:hover:bg-transparent'
+  'rounded-sm px-1.5 py-0.5 font-medium text-primary transition-colors hover:bg-primary-soft disabled:cursor-default disabled:text-ink-fainter disabled:hover:bg-transparent'
 
 /** Compact "n of m visible · Show all · Hide all" row above panel lists. */
 export function BulkVisibilityControl({
@@ -39,7 +39,7 @@ export function BulkVisibilityControl({
     <fieldset
       aria-label={`Visibility of ${itemLabel}`}
       className={cn(
-        'flex min-w-0 items-center gap-1 px-1 text-[11.5px] text-ink-muted',
+        'flex min-w-0 items-center gap-1 px-1 text-11.5 text-ink-muted',
         className,
       )}
     >

@@ -42,7 +42,7 @@ export function ViewerMessage({
           <Icon name={STATUS_ICON[status]} size={22} />
         </span>
         <h2 className="text-[16px] font-semibold text-ink">{title}</h2>
-        <p className="break-words text-[13px] leading-relaxed text-ink-muted [overflow-wrap:anywhere]">
+        <p className="text-13 leading-relaxed text-ink-muted wrap-anywhere">
           {description}
         </p>
         {onRetry !== undefined && (

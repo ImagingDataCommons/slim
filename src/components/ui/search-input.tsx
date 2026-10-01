@@ -52,7 +52,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
           value={value}
           onChange={(event) => onValueChange(event.target.value)}
           className={cn(
-            'min-w-0 flex-1 border-0 bg-transparent text-13 text-ink outline-none placeholder:text-ink-fainter [&::-webkit-search-cancel-button]:appearance-none',
+            'min-w-0 flex-1 border-0 bg-transparent text-13 text-ink outline-hidden placeholder:text-ink-fainter [&::-webkit-search-cancel-button]:appearance-none',
             inputClassName,
           )}
           {...props}
@@ -65,7 +65,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
             type="button"
             aria-label="Clear search"
             onClick={() => onValueChange('')}
-            className="grid h-5 w-5 flex-none place-items-center rounded text-ink-muted hover:bg-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            className="grid h-5 w-5 flex-none place-items-center rounded-sm text-ink-muted hover:bg-subtle hover:text-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
           >
             <Icon name="close" size={15} />
           </button>

@@ -35,7 +35,7 @@ export function AboutTab({ app, runtime }: AboutTabProps): React.ReactElement {
   return (
     <div className="min-h-0 min-w-0 flex-1 overflow-auto">
       <div className="mx-auto flex max-w-[640px] flex-col gap-5 px-6 py-6">
-        <div className="flex items-center gap-4 rounded-xl border border-line bg-gradient-to-br from-primary-soft to-panel p-5">
+        <div className="flex items-center gap-4 rounded-xl border border-line bg-linear-to-br/srgb from-primary-soft to-panel p-5">
           <div className="h-14 w-14 flex-none overflow-hidden rounded-2xl bg-brand text-white shadow-[0_6px_16px_-6px_rgb(var(--brand)/0.6)]">
             <SlimLogoMark className="h-full w-full" />
           </div>
@@ -66,7 +66,7 @@ export function AboutTab({ app, runtime }: AboutTabProps): React.ReactElement {
               href={link.href}
               target="_blank"
               rel="noreferrer"
-              className="flex h-8 items-center gap-1.5 rounded-lg border border-line-input bg-panel px-3 text-12.5 font-medium text-ink transition-colors hover:border-line-hover hover:bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              className="flex h-8 items-center gap-1.5 rounded-lg border border-line-input bg-panel px-3 text-12.5 font-medium text-ink transition-colors hover:border-line-hover hover:bg-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
             >
               <Icon name={link.icon} size={16} className="text-ink-secondary" />
               {link.label}

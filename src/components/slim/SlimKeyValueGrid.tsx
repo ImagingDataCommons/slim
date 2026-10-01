@@ -35,11 +35,11 @@ export function SlimKeyValueGrid({
     >
       {entries.map(({ item, key }) => (
         <React.Fragment key={key}>
-          <div className="text-[12px] text-ink-muted">{item.label}</div>
+          <div className="text-12 text-ink-muted">{item.label}</div>
           <div
             className={cn(
-              'break-words text-[12.5px] text-ink',
-              item.mono === true && 'font-mono text-[12px]',
+              'wrap-break-word text-12.5 text-ink',
+              item.mono === true && 'font-mono text-12',
             )}
           >
             {item.value === undefined ||

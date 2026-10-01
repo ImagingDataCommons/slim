@@ -58,7 +58,7 @@ function PanelToggle({
       aria-controls={controls}
       onClick={onClick}
       disabled={onClick === undefined}
-      className="grid h-[34px] w-[34px] flex-none place-items-center rounded-lg text-ink-secondary transition-colors hover:bg-app disabled:pointer-events-none disabled:opacity-40"
+      className="grid h-control w-control flex-none place-items-center rounded-lg text-ink-secondary transition-colors hover:bg-app disabled:pointer-events-none disabled:opacity-40"
     >
       <Icon name={icon} size={20} />
     </button>
@@ -88,7 +88,7 @@ function ToolButton({
       aria-pressed={isActive}
       onClick={onClick}
       className={cn(
-        'flex h-8 flex-none items-center gap-1.5 rounded-[7px] text-[12.5px] font-medium transition-colors hover:text-ink',
+        'flex h-8 flex-none items-center gap-1.5 rounded-[7px] text-12.5 font-medium transition-colors hover:text-ink',
         isCompact ? 'px-2' : 'px-2.5',
         isActive
           ? 'bg-panel text-primary shadow-tool hover:text-primary'
@@ -202,7 +202,7 @@ export function ViewerToolbar({
       />
       <div className="h-[22px] w-px flex-none bg-line" />
       <div className="flex min-w-0 flex-1 justify-center overflow-hidden">
-        <div className="flex min-w-0 items-center gap-0.5 rounded-[10px] bg-app p-[3px]">
+        <div className="flex min-w-0 items-center gap-0.5 rounded-card bg-app p-[3px]">
           {tools.map((tool) => (
             <ToolButton
               key={tool.key}

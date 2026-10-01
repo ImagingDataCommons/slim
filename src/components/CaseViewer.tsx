@@ -406,7 +406,7 @@ function Viewer(props: ViewerProps): JSX.Element | null {
           )}
 
           <div className="flex items-center gap-2 px-4 pb-2.5 pt-3">
-            <span className="text-[11px] font-semibold uppercase leading-none tracking-[0.06em] text-ink-secondary">
+            <span className="text-11 font-semibold uppercase leading-none tracking-[0.06em] text-ink-secondary">
               Slides
             </span>
             <CountBadge count={slides.length} />

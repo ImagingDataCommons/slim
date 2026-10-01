@@ -27,7 +27,7 @@ const Switch = React.forwardRef<
 >(({ className, size = 'default', ...props }, ref) => (
   <SwitchPrimitives.Root
     className={cn(
-      'peer inline-flex shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed data-[disabled]:!bg-line data-[state=checked]:bg-primary data-[state=unchecked]:bg-switch-off',
+      'peer inline-flex shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed data-disabled:bg-line! data-[state=checked]:bg-primary data-[state=unchecked]:bg-switch-off',
       TRACK_SIZES[size],
       className,
     )}

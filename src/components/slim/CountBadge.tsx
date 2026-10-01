@@ -17,7 +17,7 @@ export function CountBadge({
   return (
     <span
       className={cn(
-        'rounded-full px-1.5 py-[3px] text-[11px] font-semibold normal-case leading-none tracking-normal',
+        'rounded-full px-1.5 py-[3px] text-11 font-semibold normal-case leading-none tracking-normal',
         tone === 'primary'
           ? 'bg-primary-soft text-primary'
           : 'bg-chip text-ink-secondary',

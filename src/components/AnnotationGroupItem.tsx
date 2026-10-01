@@ -37,7 +37,7 @@ import {
 import { Switch } from './ui/switch'
 import ValidationWarning from './ValidationWarning'
 
-const SETTINGS_LABEL = 'mb-2 text-[12px] text-ink-muted'
+const SETTINGS_LABEL = 'mb-2 text-12 text-ink-muted'
 const NO_MEASUREMENT = '-'
 const DEFAULT_FILL_OPACITY = 0.5
 
@@ -162,18 +162,18 @@ function AnnotationGroupItem({
           <ValidationWarning annotationGroup={annotationGroup} size={15} />
         </span>
         {meta !== '' && (
-          <span className="truncate text-[12px] text-ink-muted">{meta}</span>
+          <span className="truncate text-12 text-ink-muted">{meta}</span>
         )}
       </div>
       {count !== undefined && (
-        <span className="flex-none font-mono text-[11.5px] font-medium text-ink-secondary">
+        <span className="flex-none font-mono text-11.5 font-medium text-ink-secondary">
           {formatGroupedNumber(count)}
         </span>
       )}
       <InfoDetailsButton label={`Details for ${label}`} items={details} />
       <LayerSettingsPopover label={label}>
         <div className="flex w-80 flex-col gap-4">
-          <div className="text-[12.5px] font-semibold text-ink">
+          <div className="text-12.5 font-semibold text-ink">
             Display settings
           </div>
           {style.color !== undefined && (
@@ -194,7 +194,7 @@ function AnnotationGroupItem({
           {isFillable && (
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <span className="text-[12.5px] font-medium text-ink">Fill</span>
+                <span className="text-12.5 font-medium text-ink">Fill</span>
                 <Switch
                   size="sm"
                   checked={style.fill}
