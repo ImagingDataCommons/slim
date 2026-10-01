@@ -24,11 +24,14 @@ The `SlideViewer` further provides annotation tools, which enable the user to dr
 
 ## Implementation details
 
-The app is implemented in [TypeScript](https://www.typescriptlang.org/) using the [React](https://reactjs.org/) framework.
-The UI is styled with [Tailwind CSS](https://tailwindcss.com/) on top of [Radix UI](https://www.radix-ui.com/) primitives (`src/components/ui`), with [Material Symbols](https://fonts.google.com/icons) icons.
-Light and dark color tokens are CSS variables defined in `src/index.css` and mapped in `tailwind.config.js`.
+The app is implemented in [TypeScript](https://www.typescriptlang.org/) 6 using the [React](https://reactjs.org/) framework.
+The UI is styled with [Tailwind CSS](https://tailwindcss.com/) on top of [Radix UI](https://www.radix-ui.com/) primitives (`src/components/ui`).
+Icons are [lucide](https://lucide.dev/) SVGs rendered through `Icon` (`src/components/ui/icon.tsx`); add new glyphs to its `ICONS` map so `IconName` stays a closed union.
+Light and dark color tokens are CSS variables defined in `src/index.css` and mapped in `tailwind.config.js`. Custom font-size, radius and control-size tokens must also be registered in `src/lib/utils.ts` so `cn()` merges them correctly.
 
 Components render props and call callbacks; DICOM parsing, formatting, filtering and other rules live in pure functions under `src/utils` and `src/features/*/utils`, with unit tests in sibling `__tests__` folders.
+Shared sidebar layer controls (visibility toggle, settings popover, opacity row, style hooks) live in `src/components/panel`.
+Transient notifications go through `publishToast` (`src/features/viewer/services/toast.ts`) and are rendered by `ToastHost`, which applies `config.messages`.
 
 The app is built using [craco](https://github.com/gsoft-inc/craco), which serves as a configuration layer around [create-react-app](https://github.com/facebook/create-react-app/).
 

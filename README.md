@@ -221,7 +221,7 @@ This feature was implemented in response to [issue #159](https://github.com/Imag
 
 ### Messages/popups configuration
 
-Configure message popup notifications that appear at the top of the screen. By default, all message popups are enabled.
+Configure the transient message popups (toasts). By default, all message popups are enabled and stack at the bottom centre of the window, at most three at a time.
 
 ```js
 window.config = {
@@ -237,8 +237,8 @@ window.config = {
 **Options:**
 
 - `disabled`: Disable specific message types or all messages
-- `duration`: How long messages are shown (in seconds)
-- `top`: Distance from top of screen (in pixels)
+- `duration`: How long messages are shown (in seconds); `0` keeps them until dismissed
+- `top`: Anchor the stack this many pixels from the top of the window instead of the bottom
 
 **Available message types:**
 
@@ -268,7 +268,7 @@ messages: {
 **Defaults** (if not specified):
 
 - `duration`: 5 seconds
-- `top`: 100 pixels
+- `top`: not set (bottom centre)
 
 ### Memory monitoring configuration
 
@@ -483,7 +483,8 @@ Useful scripts:
 | ------- | ----------- |
 | `pnpm run start` | Start the development server |
 | `pnpm run build` | Create a production build |
-| `pnpm run test` | Run lint checks and tests |
+| `pnpm run test` | Run the unit tests |
+| `pnpm run typecheck` | Type-check with `tsc` |
 | `pnpm run lint` | Check for lint issues |
 | `pnpm run lint:fix` | Auto-fix lint issues |
 | `pnpm run fmt` | Format source code |

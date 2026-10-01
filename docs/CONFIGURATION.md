@@ -233,6 +233,10 @@ Persistence and behavior:
 - Mode is stored in `localStorage` as `slim_server_selection_mode`
   (`default` | `custom`).
 - The custom URL is stored as `slim_selected_server`.
+- A stored URL without a mode (saved by older Slim versions) is treated as
+  `custom`, so existing users keep their server after upgrading.
+- The pill is read-only text, and not focusable, when
+  `enableServerSelection` is off.
 - On a custom switch, Slim creates a temporary client with `read: true` and
   **`write: false`**, re-applies the current Bearer token when OIDC is in use,
   and maps **all** SOP-class clients to that single client (so a prior `?gcp=`

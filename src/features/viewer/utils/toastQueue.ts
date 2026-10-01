@@ -25,7 +25,7 @@ export interface ToastConfig {
 
 export const MAX_VISIBLE_TOASTS = 3
 
-export const TOAST_DURATION_MS = 4000
+export const TOAST_DURATION_MS = 5000
 
 const TONES: readonly ToastTone[] = ['info', 'success', 'warning', 'error']
 
