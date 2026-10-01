@@ -17,12 +17,11 @@ const ALLOWED_SLIM_ENV_KEYS = [
   'SLIM_PREVIEW_DICOMWEB_URL',
 ]
 
-/** @type {Record<string, string>} */
-const REQUIRED_URL_BY_CONFIG = {
-  local: 'SLIM_LOCAL_DICOMWEB_URL',
-  demo: 'SLIM_DEMO_DICOMWEB_URL',
-  preview: 'SLIM_PREVIEW_DICOMWEB_URL',
-}
+const REQUIRED_URL_BY_CONFIG = new Map([
+  ['local', 'SLIM_LOCAL_DICOMWEB_URL'],
+  ['demo', 'SLIM_DEMO_DICOMWEB_URL'],
+  ['preview', 'SLIM_PREVIEW_DICOMWEB_URL'],
+])
 
 /**
  * @param {string} file
@@ -73,7 +72,7 @@ export function resolveSlimEnv(root, env) {
     }
   }
   const configName = merged.REACT_APP_CONFIG || 'local'
-  const requiredKey = REQUIRED_URL_BY_CONFIG[configName]
+  const requiredKey = REQUIRED_URL_BY_CONFIG.get(configName)
   const missingKey =
     requiredKey !== undefined && values[requiredKey] === undefined
       ? requiredKey

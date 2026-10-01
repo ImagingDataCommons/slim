@@ -7,11 +7,11 @@ export interface ConfigProblem {
 }
 
 /** Variables the committed configs read their DICOMweb URL from */
-const ENV_URL_KEY_BY_CONFIG: Readonly<Record<string, string>> = {
-  local: 'SLIM_LOCAL_DICOMWEB_URL',
-  demo: 'SLIM_DEMO_DICOMWEB_URL',
-  preview: 'SLIM_PREVIEW_DICOMWEB_URL',
-}
+const ENV_URL_KEY_BY_CONFIG: ReadonlyMap<string, string> = new Map([
+  ['local', 'SLIM_LOCAL_DICOMWEB_URL'],
+  ['demo', 'SLIM_DEMO_DICOMWEB_URL'],
+  ['preview', 'SLIM_PREVIEW_DICOMWEB_URL'],
+])
 
 const isBlank = (value: string | undefined): boolean =>
   value === undefined || value.trim() === ''
@@ -42,7 +42,7 @@ export function findConfigProblems(
       },
     ]
   }
-  const envKey = ENV_URL_KEY_BY_CONFIG[configName]
+  const envKey = ENV_URL_KEY_BY_CONFIG.get(configName)
   return config.servers
     .filter((server) => isBlank(server.url) && isBlank(server.path))
     .map((server) => ({
