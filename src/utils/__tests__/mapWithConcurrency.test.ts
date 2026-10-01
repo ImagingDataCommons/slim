@@ -52,9 +52,7 @@ describe('mapWithConcurrency', () => {
   })
 
   it('handles empty input and invalid limits', async () => {
-    await expect(
-      mapWithConcurrency([], 6, async () => 1),
-    ).resolves.toEqual([])
+    await expect(mapWithConcurrency([], 6, async () => 1)).resolves.toEqual([])
     await expect(
       mapWithConcurrency([1, 2], 0, async (value) => value),
     ).resolves.toEqual([1, 2])

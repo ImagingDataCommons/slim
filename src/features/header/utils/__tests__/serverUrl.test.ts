@@ -37,8 +37,6 @@ describe('isValidServerUrl', () => {
 
   it('rejects incomplete GCP paths', () => {
     expect(isValidServerUrl('/projects/my-project')).toBe(false)
-    expect(
-      isValidServerUrl('/projects/p/locations/l/datasets/d'),
-    ).toBe(false)
+    expect(isValidServerUrl('/projects/p/locations/l/datasets/d')).toBe(false)
   })
 })

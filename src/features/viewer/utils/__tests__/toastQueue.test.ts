@@ -18,9 +18,10 @@ describe('toToastNotification', () => {
   })
 
   it('keeps known tones and defaults unknown ones to info', () => {
-    expect(toToastNotification({ message: 'Saved', tone: 'success' })).toEqual(
-      { message: 'Saved', tone: 'success' },
-    )
+    expect(toToastNotification({ message: 'Saved', tone: 'success' })).toEqual({
+      message: 'Saved',
+      tone: 'success',
+    })
     expect(toToastNotification({ message: 'Hi', tone: 'loud' })).toEqual({
       message: 'Hi',
       tone: 'info',

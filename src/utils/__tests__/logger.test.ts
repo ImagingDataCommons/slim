@@ -1,7 +1,7 @@
-import { Logger, LogLevel } from './logger'
+import type AppConfig from '../../AppConfig'
+import { Logger, LogLevel } from '../logger'
 
-// Mock window.config
-const mockWindowConfig = (config: any): void => {
+const setWindowConfig = (config: Partial<AppConfig> | undefined): void => {
   Object.defineProperty(window, 'config', {
     value: config,
     writable: true,
@@ -11,13 +11,11 @@ const mockWindowConfig = (config: any): void => {
 
 describe('Logger', () => {
   beforeEach(() => {
-    // Reset window.config before each test
-    mockWindowConfig(undefined)
+    setWindowConfig(undefined)
   })
 
   afterEach(() => {
-    // Clean up
-    delete (window as any).config
+    Reflect.deleteProperty(window, 'config')
   })
 
   it('should use default config when no config is provided', () => {
@@ -28,12 +26,12 @@ describe('Logger', () => {
   })
 
   it('should read logger config from window.config', () => {
-    mockWindowConfig({
+    setWindowConfig({
       logger: {
         level: 'WARN',
         enableInProduction: true,
-        enableInDevelopment: false
-      }
+        enableInDevelopment: false,
+      },
     })
 
     const testLogger = new Logger()
@@ -50,6 +48,9 @@ describe('Logger', () => {
     expect(testLogger.parseLogLevel('WARN')).toBe(LogLevel.WARN)
     expect(testLogger.parseLogLevel('ERROR')).toBe(LogLevel.ERROR)
     expect(testLogger.parseLogLevel('NONE')).toBe(LogLevel.NONE)
-    expect(testLogger.parseLogLevel('INVALID')).toBe(LogLevel.DEBUG) // default
+  })
+
+  it('should fall back to DEBUG for unknown levels', () => {
+    expect(new Logger().parseLogLevel('INVALID')).toBe(LogLevel.DEBUG)
   })
 })

@@ -32,9 +32,7 @@ describe('roiStrokeToCssColor', () => {
       'rgb(var(--primary))',
     )
     expect(roiStrokeToCssColor([1, 2], 'fallback')).toBe('fallback')
-    expect(roiStrokeToCssColor([1, Number.NaN, 3], 'fallback')).toBe(
-      'fallback',
-    )
+    expect(roiStrokeToCssColor([1, Number.NaN, 3], 'fallback')).toBe('fallback')
   })
 })
 

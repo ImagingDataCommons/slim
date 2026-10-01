@@ -1,4 +1,7 @@
-import { type DisplayOption, summarizeDisplayOptions } from '../DisplayOptionsPanel'
+import {
+  type DisplayOption,
+  summarizeDisplayOptions,
+} from '../DisplayOptionsPanel'
 
 const option = (overrides: Partial<DisplayOption>): DisplayOption => ({
   id: 'id',

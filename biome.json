@@ -6,12 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": [
-      "src/**/*.{ts,tsx,js,jsx}",
-      "!src/__mocks__",
-      "!src/**/*.test.{ts,tsx}",
-      "!src/**/__tests__"
-    ]
+    "includes": ["src/**/*.{ts,tsx,js,jsx}", "!src/__mocks__"]
   },
   "formatter": {
     "enabled": true,

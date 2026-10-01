@@ -97,7 +97,10 @@ describe('constrainBoundsToCard', () => {
   const card = { width: 186, height: 120 }
 
   it('caps the width and preferred height to the card box', () => {
-    const bounds = constrainBoundsToCard(overviewMapSizeBounds(2000, 1200), card)
+    const bounds = constrainBoundsToCard(
+      overviewMapSizeBounds(2000, 1200),
+      card,
+    )
     expect(bounds.maxMapWidth).toBe(186)
     expect(bounds.preferredMaxWidth).toBe(186)
     expect(bounds.preferredMaxHeight).toBe(120)
@@ -113,7 +116,10 @@ describe('constrainBoundsToCard', () => {
   })
 
   it('keeps fitted sizes inside the card width', () => {
-    const bounds = constrainBoundsToCard(overviewMapSizeBounds(2000, 1200), card)
+    const bounds = constrainBoundsToCard(
+      overviewMapSizeBounds(2000, 1200),
+      card,
+    )
     const wide = fitOverviewMapSize(1000, 100, bounds)
     expect(wide.width).toBeLessThanOrEqual(186)
     const normal = fitOverviewMapSize(400, 300, bounds)

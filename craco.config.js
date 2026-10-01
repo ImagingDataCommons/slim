@@ -3,15 +3,6 @@ const path = require('path')
 const CopyWebpackPlugin = require('copy-webpack-plugin')
 
 /**
- * PostCSS configuration for Tailwind CSS
- */
-const postcssConfig = {
-  postcssOptions: {
-    plugins: [require('tailwindcss'), require('autoprefixer')],
-  },
-}
-
-/**
  * When dicom-microscopy-viewer is pnpm-linked, resolve the real repo path so
  * webpack can watch DMV dist/ rebuilds. The import alias must stay under
  * node_modules (CRA ModuleScopePlugin blocks absolute paths outside src/).
@@ -39,8 +30,13 @@ function getLinkedDmvPaths() {
 }
 
 module.exports = {
-  style: {
-    postcss: postcssConfig,
+  /**
+   * Tailwind runs through CRA's built-in PostCSS pipeline, which is enabled
+   * whenever tailwind.config.js exists. Biome is the project linter, so CRA's
+   * build-time ESLint pass is disabled.
+   */
+  eslint: {
+    enable: false,
   },
   plugins: [],
   webpack: {
@@ -72,7 +68,6 @@ module.exports = {
         }
       }
       config.plugins.push(
-        // TO DO: remove hard coded path
         new CopyWebpackPlugin({
           patterns: [
             {

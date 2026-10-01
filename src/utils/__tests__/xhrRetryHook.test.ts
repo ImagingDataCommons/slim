@@ -73,7 +73,7 @@ describe('getXHRRetryHook', () => {
   it('does not wrap send for non-idempotent methods', () => {
     const xhr = new FakeXHR()
     applyHook(xhr, 'POST')
-    expect(Object.prototype.hasOwnProperty.call(xhr, 'send')).toBe(false)
+    expect(Object.hasOwn(xhr, 'send')).toBe(false)
   })
 
   it('passes a success straight through to the client handler', async () => {

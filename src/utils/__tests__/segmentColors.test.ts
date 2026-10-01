@@ -1,11 +1,11 @@
 import {
-  rgbToHex,
+  extractSegmentColorFromMetadata,
+  getContrastColor,
+  getSegmentationType,
+  getSegmentColor,
   hexToRgb,
   isLightColor,
-  getContrastColor,
-  extractSegmentColorFromMetadata,
-  getSegmentColor,
-  getSegmentationType
+  rgbToHex,
 } from '../segmentColors'
 
 describe('segmentColors utility', () => {
@@ -72,9 +72,9 @@ describe('segmentColors utility', () => {
         SegmentSequence: [
           {
             SegmentNumber: 1,
-            RecommendedDisplayCIELabValue: [50, 10, -20]
-          }
-        ]
+            RecommendedDisplayCIELabValue: [50, 10, -20],
+          },
+        ],
       }
 
       const color = extractSegmentColorFromMetadata(metadata, 1)
@@ -90,9 +90,9 @@ describe('segmentColors utility', () => {
         SegmentSequence: [
           {
             SegmentNumber: 2,
-            RecommendedDisplayCIELabValue: [50, 10, -20]
-          }
-        ]
+            RecommendedDisplayCIELabValue: [50, 10, -20],
+          },
+        ],
       }
 
       const color = extractSegmentColorFromMetadata(metadata, 1)
@@ -103,10 +103,10 @@ describe('segmentColors utility', () => {
       const metadata = {
         SegmentSequence: [
           {
-            SegmentNumber: 1
+            SegmentNumber: 1,
             // No RecommendedDisplayCIELabValue
-          }
-        ]
+          },
+        ],
       }
 
       const color = extractSegmentColorFromMetadata(metadata, 1)
@@ -126,9 +126,9 @@ describe('segmentColors utility', () => {
         SegmentSequence: [
           {
             SegmentNumber: 1,
-            RecommendedDisplayCIELabValue: [50, 10, -20]
-          }
-        ]
+            RecommendedDisplayCIELabValue: [50, 10, -20],
+          },
+        ],
       }
 
       const color = getSegmentColor(metadata, 1)
@@ -149,7 +149,7 @@ describe('segmentColors utility', () => {
   describe('getSegmentationType', () => {
     it('should return SegmentationType when available', () => {
       const metadata = {
-        SegmentationType: 'FRACTIONAL'
+        SegmentationType: 'FRACTIONAL',
       }
       expect(getSegmentationType(metadata)).toBe('FRACTIONAL')
     })
@@ -161,7 +161,7 @@ describe('segmentColors utility', () => {
 
     it('should return BINARY when SegmentationType is null', () => {
       const metadata = {
-        SegmentationType: null
+        SegmentationType: null,
       }
       expect(getSegmentationType(metadata)).toBe('BINARY')
     })

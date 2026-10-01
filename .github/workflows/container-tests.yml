@@ -43,6 +43,19 @@ jobs:
           docker compose logs --tail=80 app || true
           exit 1
 
+      - name: Test compiled styles
+        run: |
+          # The build must run Tailwind; raw @tailwind/@apply rules mean
+          # tailwind.config.js was missing from the image.
+          css_path=$(curl -s http://localhost:8008/ | grep -o 'static/css/main\.[a-z0-9]*\.css' | head -1)
+          test -n "$css_path"
+          css=$(curl -s "http://localhost:8008/$css_path")
+          if echo "$css" | grep -q '@tailwind\|@apply'; then
+            echo "Unprocessed Tailwind directives found in $css_path"
+            exit 1
+          fi
+          echo "$css" | grep -q '\.flex{display:flex}'
+
       - name: Test DICOMweb service
         run: |
           # Poll instead of a fixed sleep: the archive can take a while to boot.

@@ -25,12 +25,11 @@ RUN corepack enable && corepack prepare pnpm@11.9.0 --activate
 WORKDIR /usr/local/share/mghcomputationalpathology/slim
 
 # Install dependencies first and then include code for efficient caching
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 RUN pnpm install --frozen-lockfile
 
-COPY craco.config.js .
-COPY tsconfig.json .
+COPY craco.config.js tailwind.config.js postcss.config.js babel.config.js tsconfig.json ./
 COPY types ./types
 COPY public ./public
 COPY scripts ./scripts

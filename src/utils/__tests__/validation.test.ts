@@ -35,10 +35,7 @@ describe('validateAnnotationGroupAssociation', () => {
       validateAnnotationGroupAssociation(undefined, [pyramidSlide]),
     ).toEqual(VALID_RESULT)
     expect(
-      validateAnnotationGroupAssociation(
-        { referencedSOPInstanceUID: 'x' },
-        [],
-      ),
+      validateAnnotationGroupAssociation({ referencedSOPInstanceUID: 'x' }, []),
     ).toEqual(VALID_RESULT)
     expect(
       validateAnnotationGroupAssociation(
@@ -50,10 +47,10 @@ describe('validateAnnotationGroupAssociation', () => {
 
   it('accepts a group referencing a volume image of any slide', () => {
     expect(
-      validateAnnotationGroupAssociation(
-        { referencedSOPInstanceUID: '2.1' },
-        [pyramidSlide, flatSlide],
-      ),
+      validateAnnotationGroupAssociation({ referencedSOPInstanceUID: '2.1' }, [
+        pyramidSlide,
+        flatSlide,
+      ]),
     ).toEqual(VALID_RESULT)
   })
 
@@ -64,10 +61,9 @@ describe('validateAnnotationGroupAssociation', () => {
       type: 'warning',
     }
     expect(
-      validateAnnotationGroupAssociation(
-        { referencedSOPInstanceUID: '9.9' },
-        [pyramidSlide],
-      ),
+      validateAnnotationGroupAssociation({ referencedSOPInstanceUID: '9.9' }, [
+        pyramidSlide,
+      ]),
     ).toEqual(warning)
     expect(
       validateAnnotationGroupAssociation({}, [

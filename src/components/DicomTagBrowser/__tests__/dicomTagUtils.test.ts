@@ -101,9 +101,9 @@ describe('filterTagTree', () => {
   })
 
   it('matches on VR and returns nothing when nothing matches', () => {
-    expect(filterTagTree(tree, 'cs').tree.map((node) => node.keyword)).toEqual(
-      ['Modality'],
-    )
+    expect(filterTagTree(tree, 'cs').tree.map((node) => node.keyword)).toEqual([
+      'Modality',
+    ])
     expect(filterTagTree(tree, 'zzz').tree).toEqual([])
   })
 })

@@ -18,7 +18,10 @@ describe('parseClusteringThreshold', () => {
       value: 0.001,
       isValid: true,
     })
-    expect(parseClusteringThreshold('.5')).toEqual({ value: 0.5, isValid: true })
+    expect(parseClusteringThreshold('.5')).toEqual({
+      value: 0.5,
+      isValid: true,
+    })
     expect(parseClusteringThreshold(' 2 ')).toEqual({ value: 2, isValid: true })
   })
 

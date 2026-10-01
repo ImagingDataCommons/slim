@@ -75,13 +75,17 @@ describe('describeRoiType', () => {
 describe('describeRoiMeasurement', () => {
   it('formats area in µm² with three significant digits', () => {
     expect(
-      describeRoiMeasurement({ measurements: [areaMeasurement(2.41234, 'um2')] }),
+      describeRoiMeasurement({
+        measurements: [areaMeasurement(2.41234, 'um2')],
+      }),
     ).toBe('Area 2.41 µm²')
   })
 
   it('maps mm and keeps unknown units', () => {
     expect(
-      describeRoiMeasurement({ measurements: [areaMeasurement(12.3456, 'mm')] }),
+      describeRoiMeasurement({
+        measurements: [areaMeasurement(12.3456, 'mm')],
+      }),
     ).toBe('Area 12.3 mm')
     expect(
       describeRoiMeasurement({ measurements: [areaMeasurement(1, 'px')] }),
@@ -93,7 +97,9 @@ describe('describeRoiMeasurement', () => {
       describeRoiMeasurement({
         measurements: [
           {
-            ConceptNameCodeSequence: [{ CodeValue: '1', CodeMeaning: 'length' }],
+            ConceptNameCodeSequence: [
+              { CodeValue: '1', CodeMeaning: 'length' },
+            ],
           },
         ],
       }),
@@ -150,7 +156,9 @@ describe('describeRoiMeasurement with units', () => {
         {
           measurements: [
             {
-              ConceptNameCodeSequence: [{ CodeValue: '1', CodeMeaning: 'area' }],
+              ConceptNameCodeSequence: [
+                { CodeValue: '1', CodeMeaning: 'area' },
+              ],
               MeasuredValueSequence: [
                 {
                   NumericValue: 0.5,

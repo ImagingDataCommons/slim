@@ -29,9 +29,7 @@ describe('formatStudyLabel', () => {
   })
 
   it('falls back to the accession number', () => {
-    expect(formatStudyLabel('', 'ACC1', '20260912')).toBe(
-      'ACC1 · 12 Sep 2026',
-    )
+    expect(formatStudyLabel('', 'ACC1', '20260912')).toBe('ACC1 · 12 Sep 2026')
     expect(formatStudyLabel(undefined, 'ACC1', undefined)).toBe('ACC1')
   })
 

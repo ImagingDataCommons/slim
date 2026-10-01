@@ -1,5 +1,5 @@
 // skipcq: JS-C1003
-import * as dwc from 'dicomweb-client'
+import type * as dwc from 'dicomweb-client'
 
 import DicomWebManager from '../DicomWebManager'
 
@@ -121,7 +121,11 @@ describe('DicomWebManager - multi-store search', () => {
       baseUri,
       settings: [
         { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
-        { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
       ],
     })
 
@@ -175,7 +179,11 @@ describe('DicomWebManager - multi-store search', () => {
       baseUri,
       settings: [
         { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
-        { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
       ],
     })
 
@@ -197,9 +205,8 @@ describe('DicomWebManager - multi-store search', () => {
 
     expect(merged.length).toBe(1)
     expect(
-      (merged[0] as unknown as Record<string, { Value?: string[] }>)[
-        '0020000E'
-      ]?.Value?.[0],
+      (merged[0] as unknown as Record<string, { Value?: string[] }>)['0020000E']
+        ?.Value?.[0],
     ).toBe('1.2.3.B')
   })
 
@@ -208,7 +215,11 @@ describe('DicomWebManager - multi-store search', () => {
       baseUri,
       settings: [
         { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
-        { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
       ],
     })
 
@@ -236,7 +247,11 @@ describe('DicomWebManager - multi-store search', () => {
           write: false,
           read: false,
         },
-        { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
       ],
     })
 
@@ -268,7 +283,11 @@ describe('DicomWebManager - multi-store retrieve fallback', () => {
       baseUri,
       settings: [
         { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
-        { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
       ],
     })
 
@@ -295,7 +314,11 @@ describe('DicomWebManager - multi-store retrieve fallback', () => {
       baseUri,
       settings: [
         { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
-        { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
       ],
     })
 
@@ -327,7 +350,11 @@ describe('DicomWebManager - multi-store retrieve fallback', () => {
       baseUri,
       settings: [
         { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
-        { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
       ],
     })
 
@@ -352,7 +379,11 @@ describe('DicomWebManager - storeInstances and headers', () => {
       baseUri,
       settings: [
         { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
-        { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: true },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: true,
+        },
       ],
     })
 
@@ -375,7 +406,11 @@ describe('DicomWebManager - storeInstances and headers', () => {
       baseUri,
       settings: [
         { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
-        { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
       ],
     })
 
@@ -395,7 +430,11 @@ describe('DicomWebManager - storeInstances and headers', () => {
       baseUri,
       settings: [
         { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
-        { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
       ],
     })
     manager.setAuthorizationPolicy(allowAllPolicy())
@@ -444,7 +483,9 @@ describe('DicomWebManager - storeInstances and headers', () => {
   it('withholds the token from an unchallenged server until it asks', () => {
     const manager = new DicomWebManager({
       baseUri,
-      settings: [{ id: 'open', url: 'https://open.test/dicomWeb', write: false }],
+      settings: [
+        { id: 'open', url: 'https://open.test/dicomWeb', write: false },
+      ],
     })
     manager.setAuthorizationPolicy(consentPolicy(true))
 
@@ -526,7 +567,11 @@ describe('DicomWebManager - authorization escalation', () => {
     const manager = new DicomWebManager({
       baseUri,
       settings: [
-        { id: 'untrusted', url: 'https://untrusted.test/dicomWeb', write: false },
+        {
+          id: 'untrusted',
+          url: 'https://untrusted.test/dicomWeb',
+          write: false,
+        },
       ],
     })
     manager.setAuthorizationPolicy(consentPolicy(false))
@@ -605,7 +650,11 @@ describe('DicomWebManager - authorization escalation', () => {
     const manager = new DicomWebManager({
       baseUri,
       settings: [
-        { id: 'untrusted', url: 'https://untrusted.test/dicomWeb', write: false },
+        {
+          id: 'untrusted',
+          url: 'https://untrusted.test/dicomWeb',
+          write: false,
+        },
       ],
       onError,
     })
@@ -632,7 +681,11 @@ describe('DicomWebManager - authorization escalation', () => {
     const manager = new DicomWebManager({
       baseUri,
       settings: [
-        { id: 'untrusted', url: 'https://untrusted.test/dicomWeb', write: false },
+        {
+          id: 'untrusted',
+          url: 'https://untrusted.test/dicomWeb',
+          write: false,
+        },
       ],
     })
     const policy = consentPolicy(false)

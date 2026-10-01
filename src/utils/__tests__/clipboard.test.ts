@@ -3,9 +3,7 @@ import { writeClipboardText } from '../clipboard'
 describe('writeClipboardText', () => {
   it('resolves true once the text is written', async () => {
     const writeText = jest.fn().mockResolvedValue(undefined)
-    await expect(writeClipboardText({ writeText }, 'hello')).resolves.toBe(
-      true,
-    )
+    await expect(writeClipboardText({ writeText }, 'hello')).resolves.toBe(true)
     expect(writeText).toHaveBeenCalledWith('hello')
   })
 

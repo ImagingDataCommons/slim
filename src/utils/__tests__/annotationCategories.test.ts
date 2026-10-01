@@ -48,13 +48,13 @@ describe('getCategories', () => {
     const categories = getCategories(annotations)
     expect(Object.keys(categories)).toEqual(['SCT:85756007'])
     const types = categories['SCT:85756007'].types
-    expect(types.map((type) => [type.CodingSchemeDesignator, type.uids])).toEqual(
-      [
-        ['SCT', ['r1', 'r2']],
-        ['99LOCAL', ['r3']],
-        ['SCT', ['r4']],
-      ],
-    )
+    expect(
+      types.map((type) => [type.CodingSchemeDesignator, type.uids]),
+    ).toEqual([
+      ['SCT', ['r1', 'r2']],
+      ['99LOCAL', ['r3']],
+      ['SCT', ['r4']],
+    ])
   })
 
   it('returns an empty record without annotations', () => {
