@@ -204,9 +204,9 @@ window.config = {
 }
 ```
 
-When enabled, a **Select server** button appears in the header (Ant Design
-`ApiOutlined` icon; often called the “link” icon in issue discussions).
-Clicking it opens the **Select DICOMweb server** dialog.
+When enabled, a **Select server** button (server icon) appears in the header,
+and the server URL pill becomes clickable.
+Either one opens the **Select DICOMweb server** dialog.
 
 Reference configs that already enable this:
 

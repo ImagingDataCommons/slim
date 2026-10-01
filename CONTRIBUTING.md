@@ -25,9 +25,12 @@ The `SlideViewer` further provides annotation tools, which enable the user to dr
 ## Implementation details
 
 The app is implemented in [TypeScript](https://www.typescriptlang.org/) using the [React](https://reactjs.org/) framework.
-The [antd](https://ant.design/https://ant.design/) React UI component library is used with a [customized theme](https://ant.design/docs/react/customize-theme).
+The UI is styled with [Tailwind CSS](https://tailwindcss.com/) on top of [Radix UI](https://www.radix-ui.com/) primitives (`src/components/ui`), with [Material Symbols](https://fonts.google.com/icons) icons.
+Light and dark color tokens are CSS variables defined in `src/index.css` and mapped in `tailwind.config.js`.
 
-The app is built using [craco](https://github.com/gsoft-inc/craco) (with the [craco-less plugin](https://github.com/DocSpring/craco-less)), which serves as a configuration layer around [create-react-app](https://github.com/facebook/create-react-app/).
+Components render props and call callbacks; DICOM parsing, formatting, filtering and other rules live in pure functions under `src/utils` and `src/features/*/utils`, with unit tests in sibling `__tests__` folders.
+
+The app is built using [craco](https://github.com/gsoft-inc/craco), which serves as a configuration layer around [create-react-app](https://github.com/facebook/create-react-app/).
 
 Tests are written and run using the [jest](https://jestjs.io/) framework.
 
