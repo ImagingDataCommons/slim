@@ -29,33 +29,35 @@ const ColorSlider: React.FC<ColorSliderProps> = ({ color, onChange }) => {
   const colorLabels = ['Red', 'Green', 'Blue']
 
   return (
-    <>
+    <div style={{ padding: '0 8px 8px' }}>
       {colorLabels.map((colorLabel, index) => (
-        <Row key={colorLabel} justify="center" align="middle" gutter={[8, 8]}>
-          <Col span={5}>{colorLabel}</Col>
-          <Col span={14}>
-            <Slider
-              range={false}
-              min={0}
-              max={255}
-              step={1}
-              value={color[index]}
-              onChange={createChangeHandler(index)}
-            />
-          </Col>
-          <Col span={5}>
-            <InputNumber
-              min={0}
-              max={255}
-              size="small"
-              style={{ width: '65px' }}
-              value={color[index]}
-              onChange={createChangeHandler(index)}
-            />
-          </Col>
-        </Row>
+        <div key={colorLabel} style={{ marginBottom: 8 }}>
+          <div style={{ marginBottom: 4 }}>{colorLabel}</div>
+          <Row gutter={8} align="middle">
+            <Col span={18}>
+              <Slider
+                range={false}
+                min={0}
+                max={255}
+                step={1}
+                value={color[index]}
+                onChange={createChangeHandler(index)}
+              />
+            </Col>
+            <Col span={6}>
+              <InputNumber
+                min={0}
+                max={255}
+                size="small"
+                style={{ width: '100%' }}
+                value={color[index]}
+                onChange={createChangeHandler(index)}
+              />
+            </Col>
+          </Row>
+        </div>
       ))}
-    </>
+    </div>
   )
 }
 

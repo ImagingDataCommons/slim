@@ -20,12 +20,10 @@ export const constructViewers = ({
   clients,
   slide,
   preload,
-  clusteringPixelSizeThreshold,
 }: {
   clients: { [key: string]: dwc.api.DICOMwebClient }
   slide: Slide
   preload?: boolean
-  clusteringPixelSizeThreshold?: number
 }): {
   volumeViewer: dmv.viewer.VolumeImageViewer
   labelViewer?: dmv.viewer.LabelImageViewer
@@ -48,10 +46,6 @@ export const constructViewers = ({
        */
       useTileGridResolutions: false,
       preload,
-      annotationOptions:
-        clusteringPixelSizeThreshold !== undefined
-          ? { clusteringPixelSizeThreshold }
-          : undefined,
       errorInterceptor: (error: CustomError) => {
         NotificationMiddleware.onError(NotificationMiddlewareContext.DMV, error)
       },

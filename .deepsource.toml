@@ -1,5 +1,14 @@
 version = 1
 
+# Playwright specs, helpers, and the local e2e static server are test
+# infrastructure — not production browser code — so exclude them from the
+# JavaScript analyzer (which is configured for the React app).
+exclude_patterns = [
+  "e2e/**",
+  "scripts/serve-e2e.mjs",
+  "playwright.config.ts",
+]
+
 [[analyzers]]
 name = "javascript"
 enabled = true

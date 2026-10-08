@@ -4,6 +4,7 @@
 /node_modules
 /.pnp
 .pnp.js
+/.pnpm-store
 
 # testing
 /coverage
@@ -18,6 +19,13 @@ public/config/*
 !public/config/demo.js
 !public/config/local.js
 !public/config/preview.js
+!public/config/e2e.js
+
+# Playwright
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache
 
 # misc
 .DS_Store
