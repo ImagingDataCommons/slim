@@ -1,0 +1,25 @@
+---
+interface Props {
+  eyebrow?: string
+  title: string
+  lead?: string
+  align?: 'left' | 'center'
+  level?: 'h1' | 'h2'
+  id?: string
+}
+
+const { eyebrow, title, lead, align = 'left', level = 'h2', id } = Astro.props
+const Heading = level
+---
+
+<div class:list={['flex flex-col gap-3', align === 'center' && 'mx-auto max-w-2xl items-center text-center']}>
+  {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+  <Heading
+    id={id}
+    class:list={[level === 'h1' ? 'text-4xl sm:text-hero leading-[1.05]' : 'text-3xl sm:text-section leading-tight']}
+  >
+    {title}
+  </Heading>
+  {lead && <p class="max-w-2xl text-lead leading-relaxed text-ink-secondary">{lead}</p>}
+  <slot />
+</div>
