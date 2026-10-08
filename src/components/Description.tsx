@@ -13,7 +13,7 @@ export interface AttributeGroup {
 }
 
 interface DescriptionProps {
-  header?: string
+  header?: React.ReactNode
   icon?: React.ComponentType<Record<string, never>>
   attributes: Attribute[]
   selectable?: boolean

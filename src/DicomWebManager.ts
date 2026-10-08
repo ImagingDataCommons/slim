@@ -125,7 +125,8 @@ const buildDedupKey = (
  *
  * Stores are queried independently. Per-store failures are logged but do not
  * abort the merge: a missing/forbidden store on one side should not hide
- * results that are available on the other.
+ * results that are available on the other. When every store fails, the last
+ * error is thrown, so an unreachable server is not mistaken for no matches.
  */
 const searchAcrossStores = async <T extends DicomJsonObject>(
   stores: Store[],
@@ -136,11 +137,15 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
   if (readable.length === 0) {
     return []
   }
+  let lastError: unknown
+  let failureCount = 0
   const results = await Promise.all(
     readable.map(async (store) => {
       try {
         return await call(store)
       } catch (error: unknown) {
+        lastError = error
+        failureCount += 1
         if (process.env.NODE_ENV === 'development') {
           console.warn(
             `search against store "${store.id}" failed; ` +
@@ -152,6 +157,9 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
       }
     }),
   )
+  if (failureCount === readable.length) {
+    throw lastError
+  }
 
   const merged: T[] = []
   const seen = new Set<string>()

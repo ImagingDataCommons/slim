@@ -425,6 +425,7 @@ declare module 'dicom-microscopy-viewer' {
       studyInstanceUID: string
       seriesInstanceUID: string
       sopInstanceUIDs: string[]
+      isAbsent?: boolean
     }
 
     export class Segment {
@@ -439,6 +440,8 @@ declare module 'dicom-microscopy-viewer' {
       get studyInstanceUID (): string
       get seriesInstanceUID (): string
       get sopInstanceUIDs (): string[]
+      /** True when Segment Sequence lists the segment but no frames exist. */
+      get isAbsent (): boolean
     }
 
   }

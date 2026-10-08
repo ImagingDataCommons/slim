@@ -11,9 +11,18 @@ import {
 } from 'react-router-dom'
 
 import type AppConfig from './AppConfig'
-import type { ErrorMessageSettings, ServerSettings } from './AppConfig'
+import type {
+  ErrorMessageSettings,
+  OidcSettings,
+  ServerSettings,
+} from './AppConfig'
 import type { AuthManager, User } from './auth'
 import OidcManager from './auth/OidcManager'
+import {
+  clearCachedOidcConfig,
+  readCachedOidcConfig,
+  resetCachedOidcConfigFromUrl,
+} from './auth/oidcConfig'
 import AppLoading from './components/AppLoading'
 import AppShell from './components/AppShell'
 import CaseViewer from './components/CaseViewer'
@@ -196,6 +205,7 @@ interface AppState {
   isLoading: boolean
   redirectTo?: string
   wasAuthSuccessful: boolean
+  signInFailureMessage?: string
   error?: ErrorMessageSettings
   /** Bumped after mid-session auth recovery so views remount and refetch. */
   authRecoveryKey: number
@@ -203,6 +213,10 @@ interface AppState {
 
 class App extends React.Component<AppProps, AppState> {
   private readonly auth?: AuthManager
+  /** Whether `auth` was built from the OIDC config cached by server selection */
+  private usesCachedOidcConfig = false
+  /** Issuer of the tokens `auth` hands out */
+  private readonly oidcAuthority?: string
   private reauthInProgress = false
   private unsubscribeAuthorization?: () => void
 
@@ -281,15 +295,20 @@ class App extends React.Component<AppProps, AppState> {
     const baseUri = `${protocol}//${host}`
     const appUri = joinUrl(props.config.path, baseUri)
 
-    const oidcSettings = props.config.oidc
+    resetCachedOidcConfigFromUrl()
+    /** OIDC config entered in server selection overrides the deployment one */
+    const cachedOidcSettings = readCachedOidcConfig()
+    this.usesCachedOidcConfig = cachedOidcSettings !== undefined
+    const oidcSettings = cachedOidcSettings ?? props.config.oidc
     if (oidcSettings !== undefined) {
       if (process.env.NODE_ENV === 'development') {
         console.info(
           'app uses the following OIDC configuration: ',
-          props.config.oidc,
+          oidcSettings,
         )
       }
       this.auth = new OidcManager(appUri, oidcSettings)
+      this.oidcAuthority = oidcSettings.authority
     }
 
     if (props.config.servers.length === 0) {
@@ -447,7 +466,7 @@ class App extends React.Component<AppProps, AppState> {
       if (remembered !== 'granted' && !this.configuredOrigins.has(origin)) {
         const approved = await App.confirmAuthorizationDisclosure(
           origin,
-          this.props.config.oidc?.authority,
+          this.oidcAuthority,
         )
         writeAuthorizationDecision(origin, approved ? 'granted' : 'denied')
         console.info(
@@ -540,18 +559,45 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  handleServerSelection = async ({ url }: { url: string }): Promise<void> => {
+  handleServerSelection = async ({
+    url,
+    oidc,
+  }: {
+    url: string
+    /** New settings, null to fall back to the deployment config */
+    oidc?: OidcSettings | null
+  }): Promise<void> => {
     const trimmedUrl = url.trim()
     console.info('select DICOMweb server: ', trimmedUrl)
-    if (
+
+    const resolvedUrl =
       trimmedUrl === '' ||
       window.localStorage.getItem('slim_server_selection_mode') === 'default'
-    ) {
+        ? undefined
+        : normalizeServerUrl(trimmedUrl)
+    if (resolvedUrl !== undefined) {
+      window.localStorage.setItem('slim_selected_server', resolvedUrl)
+    }
+
+    if (oidc !== undefined) {
+      /**
+       * Start over with the cached config, which the constructor reads and
+       * mount signs in with. Clients keep token grants and headers from the
+       * previous provider in memory, and the deployment may have no OIDC.
+       */
+      console.info(
+        oidc === null
+          ? 'removing custom OIDC configuration'
+          : 'applying custom OIDC configuration',
+      )
+      window.location.reload()
+      return
+    }
+
+    if (resolvedUrl === undefined) {
       this.setState({ clients: this.state.defaultClients })
       return
     }
-    const resolvedUrl = normalizeServerUrl(trimmedUrl)
-    window.localStorage.setItem('slim_selected_server', resolvedUrl)
     const tmpClient = new DicomWebManager({
       baseUri: '',
       settings: [
@@ -714,10 +760,22 @@ class App extends React.Component<AppProps, AppState> {
               'Could not sign-in user.',
             ),
           )
+          /**
+           * The failure page has no header, so a broken custom config could
+           * not be changed from the UI and would be reused on every load.
+           */
+          let signInFailureMessage: string | undefined
+          if (this.usesCachedOidcConfig) {
+            clearCachedOidcConfig()
+            this.usesCachedOidcConfig = false
+            signInFailureMessage =
+              'Sign-in with the custom OIDC configuration failed. It has been cleared; reload the page to use the default configuration.'
+          }
           this.setState({
             isLoading: false,
             redirectTo: undefined,
             wasAuthSuccessful: false,
+            signInFailureMessage,
           })
         })
     } else {
@@ -842,7 +900,12 @@ class App extends React.Component<AppProps, AppState> {
         </BrowserRouter>
       )
     } else if (!this.state.wasAuthSuccessful) {
-      return <InfoPage type="error" message="Sign-in failed." />
+      return (
+        <InfoPage
+          type="error"
+          message={this.state.signInFailureMessage ?? 'Sign-in failed.'}
+        />
+      )
     } else if (this.state.error != null) {
       return <InfoPage type="error" message={this.state.error.message} />
     } else {

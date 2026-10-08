@@ -1,5 +1,5 @@
-import type { MenuProps } from 'antd'
-import { Layout, Menu, Select, Tag } from 'antd'
+import type { MenuProps, ResultProps } from 'antd'
+import { Button, Layout, Menu, Result, Select, Tag } from 'antd'
 // skipcq: JS-C1003
 import * as dcmjs from 'dcmjs'
 // skipcq: JS-C1003
@@ -26,6 +26,7 @@ import VivSlideViewport from '../viv/VivSlideViewport'
 import { EMPTY_VIV_BULK_LOAD_STATUS } from '../viv/vivBulkLoadStatus'
 import { VIV_BULK_DEFAULT_OVERLAY_COLOR } from '../viv/vivDisplayDefaults'
 import AnnotationGroupList from './AnnotationGroupList'
+import AppLoading from './AppLoading'
 import ClinicalTrial from './ClinicalTrial'
 import Patient from './Patient'
 import SlideList from './SlideList'
@@ -140,6 +141,39 @@ const vivChrome = (main: JSX.Element, rightPanel?: ReactNode): JSX.Element => (
   </div>
 )
 
+/** Explains, in place of the viewer, why there is nothing to display */
+function ViewerMessage({
+  status,
+  title,
+  subTitle,
+  extra,
+}: {
+  status: ResultProps['status']
+  title: string
+  subTitle: string
+  extra?: ReactNode
+}): JSX.Element {
+  return (
+    <div
+      style={{
+        height: '100%',
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Result
+        status={status}
+        title={title}
+        subTitle={subTitle}
+        extra={extra}
+        style={{ maxWidth: 640 }}
+      />
+    </div>
+  )
+}
+
 function ParametrizedSlideViewer({
   clients,
   slides,
@@ -189,6 +223,10 @@ function ParametrizedSlideViewer({
   const [vivIccProfilesAvailable, setVivIccProfilesAvailable] = useState(true)
   const [vivBulkLoadStatus, setVivBulkLoadStatus] = useState(
     EMPTY_VIV_BULK_LOAD_STATUS,
+  )
+  /** Series from the URL that resolved to no slide of this study */
+  const [unresolvedSeriesUID, setUnresolvedSeriesUID] = useState<string | null>(
+    null,
   )
 
   const getVivSeriesDescription = (seriesInstanceUID: string): string => {
@@ -319,60 +357,76 @@ function ParametrizedSlideViewer({
       if (imageSlide !== null && imageSlide !== undefined) {
         setSelectedSlide(imageSlide)
         setDerivedDataset(null)
+        setUnresolvedSeriesUID(null)
         return
       }
 
       const findReferencedSlide = async (): Promise<void> => {
-        const client = clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
-        const derivedSeriesMetadata = await client.retrieveSeriesMetadata({
-          studyInstanceUID,
-          seriesInstanceUID,
-        })
-        const naturalizedDerivedMetadata = naturalizeDataset(
-          derivedSeriesMetadata[0],
-        ) as NaturalizedInstance
-        if (
-          naturalizedDerivedMetadata.ReferencedSeriesSequence != null &&
-          naturalizedDerivedMetadata.ReferencedSeriesSequence.length > 0
-        ) {
-          for (const referencedSeries of naturalizedDerivedMetadata.ReferencedSeriesSequence) {
-            const referencedImageSeriesUID = referencedSeries.SeriesInstanceUID
+        try {
+          const client = clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
+          const derivedSeriesMetadata = await client.retrieveSeriesMetadata({
+            studyInstanceUID,
+            seriesInstanceUID,
+          })
+          const naturalizedDerivedMetadata = naturalizeDataset(
+            derivedSeriesMetadata[0],
+          ) as NaturalizedInstance
+          if (
+            naturalizedDerivedMetadata.ReferencedSeriesSequence != null &&
+            naturalizedDerivedMetadata.ReferencedSeriesSequence.length > 0
+          ) {
+            for (const referencedSeries of naturalizedDerivedMetadata.ReferencedSeriesSequence) {
+              const referencedImageSeriesUID =
+                referencedSeries.SeriesInstanceUID
+              const referencedSlide = slides.find((slide: Slide) => {
+                return slide.seriesInstanceUIDs.some(
+                  (uid: string) => uid === referencedImageSeriesUID,
+                )
+              })
+              if (referencedSlide !== null && referencedSlide !== undefined) {
+                setSelectedSlide(referencedSlide)
+                setDerivedDataset(naturalizedDerivedMetadata)
+                setUnresolvedSeriesUID(null)
+                return
+              }
+            }
+          }
+          const IMAGE_LIBRARY_CONCEPT_NAME_CODE = '111028'
+          const imageLibrary = naturalizedDerivedMetadata.ContentSequence?.find(
+            (contentItem) =>
+              contentItem.ConceptNameCodeSequence[0].CodeValue ===
+              IMAGE_LIBRARY_CONCEPT_NAME_CODE,
+          )
+          if (
+            imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]
+              ?.ReferencedSOPSequence?.[0] !== undefined &&
+            imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]
+              ?.ReferencedSOPSequence?.[0] !== null
+          ) {
+            const referencedSOPInstanceUID =
+              imageLibrary.ContentSequence[0].ContentSequence[0]
+                .ReferencedSOPSequence[0].ReferencedSOPInstanceUID
             const referencedSlide = slides.find((slide: Slide) => {
-              return slide.seriesInstanceUIDs.some(
-                (uid: string) => uid === referencedImageSeriesUID,
+              return slide.volumeImages.find(
+                (image: { SOPInstanceUID: string }) => {
+                  return image.SOPInstanceUID === referencedSOPInstanceUID
+                },
               )
             })
-            if (referencedSlide !== null && referencedSlide !== undefined) {
+            if (referencedSlide !== undefined) {
               setSelectedSlide(referencedSlide)
               setDerivedDataset(naturalizedDerivedMetadata)
+              setUnresolvedSeriesUID(null)
               return
             }
           }
-        }
-        const IMAGE_LIBRARY_CONCEPT_NAME_CODE = '111028'
-        const imageLibrary = naturalizedDerivedMetadata.ContentSequence?.find(
-          (contentItem) =>
-            contentItem.ConceptNameCodeSequence[0].CodeValue ===
-            IMAGE_LIBRARY_CONCEPT_NAME_CODE,
-        )
-        if (
-          imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]
-            ?.ReferencedSOPSequence?.[0] !== undefined &&
-          imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]
-            ?.ReferencedSOPSequence?.[0] !== null
-        ) {
-          const referencedSOPInstanceUID =
-            imageLibrary.ContentSequence[0].ContentSequence[0]
-              .ReferencedSOPSequence[0].ReferencedSOPInstanceUID
-          const referencedSlide = slides.find((slide: Slide) => {
-            return slide.volumeImages.find(
-              (image: { SOPInstanceUID: string }) => {
-                return image.SOPInstanceUID === referencedSOPInstanceUID
-              },
-            )
-          })
-          setSelectedSlide(referencedSlide)
-          setDerivedDataset(naturalizedDerivedMetadata)
+          setUnresolvedSeriesUID(seriesInstanceUID)
+        } catch (error) {
+          console.warn(
+            `Failed to resolve referenced slide for series "${seriesInstanceUID}"`,
+            error,
+          )
+          setUnresolvedSeriesUID(seriesInstanceUID)
         }
       }
 
@@ -388,7 +442,20 @@ function ParametrizedSlideViewer({
     presentationStateUID = stateParam !== null ? stateParam : undefined
   }
 
-  let viewer = null
+  if (unresolvedSeriesUID === seriesInstanceUID) {
+    return (
+      <ViewerMessage
+        status="warning"
+        title="Series not found"
+        subTitle={
+          `Series ${seriesInstanceUID} is not a slide in this study, and no ` +
+          'slide it refers to could be found. Pick a slide from the list.'
+        }
+      />
+    )
+  }
+
+  let viewer = <AppLoading label="Loading series…" fullscreen={false} />
   if (selectedSlide != null && selectedSlide !== undefined) {
     if (useViv) {
       const microscopyClient =
@@ -652,7 +719,15 @@ interface ViewerProps extends RouteComponentProps {
 
 function Viewer(props: ViewerProps): JSX.Element | null {
   const { clients, studyInstanceUID, location, navigate } = props
-  const { slides, isLoading } = useSlides({ clients, studyInstanceUID })
+  const { slides, isLoading, error, retry } = useSlides({
+    clients,
+    studyInstanceUID,
+  })
+
+  const serverUrl =
+    clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]?.baseURL
+  const serverName =
+    serverUrl != null && serverUrl !== '' ? serverUrl : 'the server'
 
   const handleSeriesSelection = ({
     seriesInstanceUID,
@@ -686,17 +761,43 @@ function Viewer(props: ViewerProps): JSX.Element | null {
   }
 
   if (isLoading) {
-    return null
+    return <AppLoading label="Loading study…" fullscreen={false} />
   }
 
-  if (slides.length === 0) {
-    return null
+  const retryButton = (
+    <Button type="primary" onClick={retry}>
+      Retry
+    </Button>
+  )
+
+  if (error !== null) {
+    return (
+      <ViewerMessage
+        status="error"
+        title="Couldn't load this study"
+        subTitle={
+          `The request to ${serverName} failed. Check that the server is ` +
+          'reachable and that you have access to it, then try again.'
+        }
+        extra={retryButton}
+      />
+    )
   }
 
-  const firstSlide = slides[0]
-  const volumeInstances = firstSlide.volumeImages
+  const volumeInstances = slides[0]?.volumeImages ?? []
   if (volumeInstances.length === 0) {
-    return null
+    return (
+      <ViewerMessage
+        status="warning"
+        title="No slides found"
+        subTitle={
+          `Study ${studyInstanceUID} has no slide microscopy (SM) images on ` +
+          `${serverName}. Check the study UID in the URL, or select the ` +
+          'server that holds this study.'
+        }
+        extra={retryButton}
+      />
+    )
   }
   const refImage = volumeInstances[0]
 
