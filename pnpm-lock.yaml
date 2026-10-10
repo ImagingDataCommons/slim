@@ -6,15 +6,18 @@ settings:
 
 overrides:
   '@types/d3-dispatch': 3.0.6
-  axios: 1.18.0
+  axios: 1.20.0
   adm-zip: 0.6.1
   brace-expansion@1: 1.1.21
   brace-expansion@2: 2.1.7
+  compression: 1.8.2
   js-yaml@3: 3.15.2
   js-yaml@4: 4.3.2
   postcss: 8.5.25
   nanoid@3: 3.3.19
-  shell-quote: 1.9.0
+  proxy-addr: 2.0.8
+  shell-quote: 1.11.0
+  source-map-js: 1.2.2
   fast-uri: 3.1.8
   svgo: 2.8.4
   browserslist: 4.28.7
@@ -43,8 +46,8 @@ importers:
         specifier: ^2.2.6
         version: 2.5.1
       dcmjs:
-        specifier: ^0.35.0
-        version: 0.35.0
+        specifier: ^0.52.0
+        version: 0.52.0
       detect-browser:
         specifier: ^5.2.1
         version: 5.3.0
@@ -900,8 +903,8 @@ packages:
     peerDependencies:
       '@babel/core': ^7.0.0-0
 
-  '@babel/runtime-corejs3@7.29.7':
-    resolution: {integrity: sha512-ppj9ouYku+RX0ljtgZd+KMO5mkM2bCqg8H2PYAFWnLsHEIKIdRojqbJ2i3eVHrisuxy7nOFCmngTDdWtUCdXUQ==}
+  '@babel/runtime-corejs3@7.29.2':
+    resolution: {integrity: sha512-Lc94FOD5+0aXhdb0Tdg3RUtqT6yWbI/BbFWvlaSJ3gAb9Ks+99nHRDKADVqC37er4eCB0fHyWT+y+K3QOvJKbw==}
     engines: {node: '>=6.9.0'}
 
   '@babel/runtime@7.29.7':
@@ -980,20 +983,20 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@cornerstonejs/codec-charls@1.2.3':
-    resolution: {integrity: sha512-qKUe6DN0dnGzhhfZLYhH9UZacMcudjxcaLXCrpxJImT/M/PQvZCT2rllu6VGJbWKJWG+dMVV2zmmleZcdJ7/cA==, tarball: https://registry.npmjs.org/@cornerstonejs/codec-charls/-/codec-charls-1.2.3.tgz}
+  '@cornerstonejs/codec-charls@1.2.7':
+    resolution: {integrity: sha512-kNfQ7J8LIrfQUbt56fPJ0SEvevLlAAbsLHjqPS4DUDWVSuAHb5Fn0cMIV/U0SYkJRJqKvzyLJYF1hl7/xQGqLQ==, tarball: https://registry.npmjs.org/@cornerstonejs/codec-charls/-/codec-charls-1.2.7.tgz}
     engines: {node: '>=0.14'}
 
-  '@cornerstonejs/codec-libjpeg-turbo-8bit@1.2.2':
-    resolution: {integrity: sha512-aAUMK2958YNpOb/7G6e2/aG7hExTiFTASlMt/v90XA0pRHdWiNg5ny4S5SAju0FbIw4zcMnR0qfY+yW3VG2ivg==, tarball: https://registry.npmjs.org/@cornerstonejs/codec-libjpeg-turbo-8bit/-/codec-libjpeg-turbo-8bit-1.2.2.tgz}
+  '@cornerstonejs/codec-libjpeg-turbo-8bit@1.2.8':
+    resolution: {integrity: sha512-qggTc0EAso+FAB4aND1wufjY/FnaVXKaJ/PAiabSksaAgf8jhCew+K3R4e3QWJI8SqcYczZFkhpVdFVwXG9ZgQ==, tarball: https://registry.npmjs.org/@cornerstonejs/codec-libjpeg-turbo-8bit/-/codec-libjpeg-turbo-8bit-1.2.8.tgz}
     engines: {node: '>=0.14'}
 
-  '@cornerstonejs/codec-openjpeg@1.3.0':
-    resolution: {integrity: sha512-hP8WAZ63AcaDYmHbBVTY04x424AglXsRHrI6VBdW4eTiJ76f0heWrEodT9Sb3sNwazzYuyMOIZNndJPeVSeHcw==, tarball: https://registry.npmjs.org/@cornerstonejs/codec-openjpeg/-/codec-openjpeg-1.3.0.tgz}
+  '@cornerstonejs/codec-openjpeg@1.3.6':
+    resolution: {integrity: sha512-bSdZXF+2GxfBkWHUr7yGLQtIwbAm9wOl3e4ARee/9Z9lfKyVqhUCixI6+ZjIn9YKTIuDcn/NZNK94XEUg1SBtw==, tarball: https://registry.npmjs.org/@cornerstonejs/codec-openjpeg/-/codec-openjpeg-1.3.6.tgz}
     engines: {node: '>=0.14'}
 
-  '@cornerstonejs/codec-openjph@2.4.7':
-    resolution: {integrity: sha512-qvP4q4JDib7mi9r7LqKOwqz7YZ8gjtDX4ZCezeYf8+eb7MBXCz5uXAMeVF3yz9Axw4XiIMdB/pqXkm8tqCl13w==, tarball: https://registry.npmjs.org/@cornerstonejs/codec-openjph/-/codec-openjph-2.4.7.tgz}
+  '@cornerstonejs/codec-openjph@2.4.11':
+    resolution: {integrity: sha512-NzwCYevGSj2JOuP7BztxrOd5WnJ86gOGLv3sq36jZxxHUXoDo1YhzizHiYz+T7GQqkzbfaQcwSyxsRogzGFIPQ==, tarball: https://registry.npmjs.org/@cornerstonejs/codec-openjph/-/codec-openjph-2.4.11.tgz}
     engines: {node: '>=0.14'}
 
   '@craco/craco@6.4.5':
@@ -2086,8 +2089,8 @@ packages:
     resolution: {integrity: sha512-FTavr/7Ba0IptwGOPxnQvdyW2tAsdLBMTBXz7rKH6xJ2skpyxpBxyHkDdBs4lf69yRqYpkqCdfhnwS8YULGOmg==}
     engines: {node: '>=4'}
 
-  axios@1.18.0:
-    resolution: {integrity: sha512-E32NzpYKp++W7XRe52rHiXV2ehxmh3wbdgO7MHeFM+vqxLBYHzt0ElkiImtOBxtOmyp0yoC8C6uESVV84Y2/hw==}
+  axios@1.20.0:
+    resolution: {integrity: sha512-r8aOh8j9cGKpgQAqpzrUHnSIc6a59Y3Xf/cv8sy1DrHCkZHzQGEuoq1tARk6qSyDdtQGSDgpb9kFlruzPvrgwg==}
 
   axobject-query@4.1.0:
     resolution: {integrity: sha512-qIj0G9wZbMGNLjLmg1PT6v2mE9AH2zlnADJD/2tC6E00hgmhUOfEB6greHPAfLRSufHqROIUTkw6E+M3lH0PTQ==}
@@ -2427,8 +2430,8 @@ packages:
     resolution: {integrity: sha512-AF3r7P5dWxL8MxyITRMlORQNaOA2IkAFaTr4k7BUumjPtRpGDTZpl0Pb1XCO6JeDCBdp126Cgs9sMxqSjgYyRg==}
     engines: {node: '>= 0.6'}
 
-  compression@1.8.1:
-    resolution: {integrity: sha512-9mAqGPHLakhCLeNyxPkK4xVo746zQ/czLH1Ky+vkitMnWfWZps8r0qXuwhwizagCRttsL4lfG4pIOvaWLpAP0w==}
+  compression@1.8.2:
+    resolution: {integrity: sha512-o8vI5RE5A6EVVOd9o41jKp41aJom+QTEO/Bx8MYNjexMo/Bv2WOjUfZr+aL0WnYSgymUy6zeguqLTsIhV0gMvQ==}
     engines: {node: '>= 0.8.0'}
 
   compute-scroll-into-view@1.0.20:
@@ -2668,11 +2671,12 @@ packages:
   dayjs@1.11.21:
     resolution: {integrity: sha512-98IT+HOahAisibz/yjKbzuOBwYcjJ7BCLPzARyHiyEBmRz4fatF+KPJszEHXsGYjUG234aH/cOjW1wwTbKUZlA==}
 
-  dcmjs@0.35.0:
-    resolution: {integrity: sha512-kKOX4y0XoSQsDx7xYh9HJLfAWizrvYNJPU/d+DGOehdGz1frvimBZDEL0iaCK46Lhy7amAmtv4g5hkjcxVF+kg==}
-
   dcmjs@0.41.0:
     resolution: {integrity: sha512-kr46REomItFeWz+0ck4Wif4uS5VVDWVlwdh5GGaCtTYHWfNQmrcCSiQOkrShc7Dc5zP8vNKrHEdORlZXenlg3w==}
+
+  dcmjs@0.52.0:
+    resolution: {integrity: sha512-0/mT9NACKnwnOnkUx7JAqmWxRcUr7HiCoptw1KhN2StNYE0Hy6+tmpI7CU+lJuBc4rFpcMCalvI8QO6JkJ+7Fg==}
+    engines: {node: '>=22.13'}
 
   debug@2.6.9:
     resolution: {integrity: sha512-bC7ElrdJaJnPbAP+1EotYvqZsb3ecl5wi6Bfi6BJTUcNowp6cvspg0jXznRTKDjm/E7AdgFBVeAPVMNcKGsHMA==}
@@ -5122,8 +5126,8 @@ packages:
   protocol-buffers-schema@3.6.1:
     resolution: {integrity: sha512-VG2K63Igkiv9p76tk1lilczEK1cT+kCjKtkdhw1dQZV3k3IXJbd3o6Ho8b9zJZaHSnT2hKe4I+ObmX9w6m5SmQ==}
 
-  proxy-addr@2.0.7:
-    resolution: {integrity: sha512-llQsMLSUDUPT44jdrU/O37qlnifitDP+ZwrmmZcoSKyLKvtZxpyV0n2/bD/N4tBAAZ/gJEdZU7KMraoK1+XYAg==}
+  proxy-addr@2.0.8:
+    resolution: {integrity: sha512-5nnx0yGyVUcY6t9RnWcARWtwT9F1D8O9rt08htPvnd49W1IgZtmLkhu9WfMzQj1cFxjHIO6connUNVW5k7AVyQ==}
     engines: {node: '>= 0.10'}
 
   proxy-from-env@2.1.0:
@@ -5760,8 +5764,8 @@ packages:
     resolution: {integrity: sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==}
     engines: {node: '>=8'}
 
-  shell-quote@1.9.0:
-    resolution: {integrity: sha512-Iov+JwFv/2HcTpcwNMKd8+IWNb8tboQJNQTkAY/LLVK7gGH9jy+LGkVqPxfekHl+yMmiqXszdGWXgkfml7hjqA==}
+  shell-quote@1.11.0:
+    resolution: {integrity: sha512-JdxDPD0DBTyu08pq0kPC0xSNet/qsU07qT6IsX1AS8oO2ICNRY4ldNa8OAI6PuwAH8tG3lxEhbqmyp4Dw4036g==}
     engines: {node: '>= 0.4'}
 
   side-channel-list@1.0.1:
@@ -5809,8 +5813,8 @@ packages:
   source-list-map@2.0.1:
     resolution: {integrity: sha512-qnQ7gVMxGNxsiL4lEuJwe/To8UnK7fAnmbGEEH8RpLouuKbeEm0lhbQVFIrNSuB+G7tVrAlVsZgETT5nljf+Iw==}
 
-  source-map-js@1.2.1:
-    resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
+  source-map-js@1.2.2:
+    resolution: {integrity: sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==}
     engines: {node: '>=0.10.0'}
 
   source-map-loader@3.0.2:
@@ -7538,7 +7542,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@babel/runtime-corejs3@7.29.7':
+  '@babel/runtime-corejs3@7.29.2':
     dependencies:
       core-js-pure: 3.49.0
 
@@ -7604,13 +7608,13 @@ snapshots:
   '@biomejs/cli-win32-x64@2.4.16':
     optional: true
 
-  '@cornerstonejs/codec-charls@1.2.3': {}
+  '@cornerstonejs/codec-charls@1.2.7': {}
 
-  '@cornerstonejs/codec-libjpeg-turbo-8bit@1.2.2': {}
+  '@cornerstonejs/codec-libjpeg-turbo-8bit@1.2.8': {}
 
-  '@cornerstonejs/codec-openjpeg@1.3.0': {}
+  '@cornerstonejs/codec-openjpeg@1.3.6': {}
 
-  '@cornerstonejs/codec-openjph@2.4.7': {}
+  '@cornerstonejs/codec-openjph@2.4.11': {}
 
   '@craco/craco@6.4.5(@types/node@14.18.63)(react-scripts@5.0.0(@babel/plugin-syntax-flow@7.29.7(@babel/core@7.29.7))(@babel/plugin-transform-react-jsx@7.29.7(@babel/core@7.29.7))(@types/babel__core@7.20.5)(eslint@8.57.1)(react@18.3.1)(ts-node@10.9.2(@types/node@14.18.63)(typescript@4.9.5))(type-fest@4.41.0)(typescript@4.9.5))(typescript@4.9.5)':
     dependencies:
@@ -8965,7 +8969,7 @@ snapshots:
 
   axe-core@4.12.0: {}
 
-  axios@1.18.0:
+  axios@1.20.0:
     dependencies:
       follow-redirects: 1.16.0
       form-data: 4.0.6
@@ -9352,11 +9356,12 @@ snapshots:
     dependencies:
       mime-db: 1.54.0
 
-  compression@1.8.1:
+  compression@1.8.2:
     dependencies:
       bytes: 3.1.2
       compressible: 2.0.18
       debug: 2.6.9
+      destroy: 1.2.0
       negotiator: 0.6.4
       on-headers: 1.1.0
       safe-buffer: 5.2.1
@@ -9613,9 +9618,9 @@ snapshots:
 
   dayjs@1.11.21: {}
 
-  dcmjs@0.35.0:
+  dcmjs@0.41.0:
     dependencies:
-      '@babel/runtime-corejs3': 7.29.7
+      '@babel/runtime-corejs3': 7.29.2
       adm-zip: 0.6.1
       gl-matrix: 3.4.4
       lodash.clonedeep: 4.5.0
@@ -9623,9 +9628,9 @@ snapshots:
       ndarray: 1.0.19
       pako: 2.1.0
 
-  dcmjs@0.41.0:
+  dcmjs@0.52.0:
     dependencies:
-      '@babel/runtime-corejs3': 7.29.7
+      '@babel/runtime-corejs3': 7.29.2
       adm-zip: 0.6.1
       gl-matrix: 3.4.4
       lodash.clonedeep: 4.5.0
@@ -9715,10 +9720,10 @@ snapshots:
 
   dicom-microscopy-viewer@0.48.27:
     dependencies:
-      '@cornerstonejs/codec-charls': 1.2.3
-      '@cornerstonejs/codec-libjpeg-turbo-8bit': 1.2.2
-      '@cornerstonejs/codec-openjpeg': 1.3.0
-      '@cornerstonejs/codec-openjph': 2.4.7
+      '@cornerstonejs/codec-charls': 1.2.7
+      '@cornerstonejs/codec-libjpeg-turbo-8bit': 1.2.8
+      '@cornerstonejs/codec-openjpeg': 1.3.6
+      '@cornerstonejs/codec-openjph': 2.4.11
       '@imagingdatacommons/dicomicc': 0.2.3
       colormap: 2.3.2
       dcmjs: 0.41.0
@@ -10292,7 +10297,7 @@ snapshots:
       on-finished: 2.4.1
       parseurl: 1.3.3
       path-to-regexp: 0.1.13
-      proxy-addr: 2.0.7
+      proxy-addr: 2.0.8
       qs: 6.13.0
       range-parser: 1.2.1
       safe-buffer: 5.2.1
@@ -11580,7 +11585,7 @@ snapshots:
   launch-editor@2.14.1:
     dependencies:
       picocolors: 1.1.1
-      shell-quote: 1.9.0
+      shell-quote: 1.11.0
 
   lerc@3.0.0: {}
 
@@ -12484,7 +12489,7 @@ snapshots:
     dependencies:
       nanoid: 3.3.19
       picocolors: 1.1.1
-      source-map-js: 1.2.1
+      source-map-js: 1.2.2
 
   prelude-ls@1.2.1: {}
 
@@ -12529,7 +12534,7 @@ snapshots:
 
   protocol-buffers-schema@3.6.1: {}
 
-  proxy-addr@2.0.7:
+  proxy-addr@2.0.8:
     dependencies:
       forwarded: 0.2.0
       ipaddr.js: 1.9.1
@@ -12942,7 +12947,7 @@ snapshots:
       prompts: 2.4.2
       react-error-overlay: 6.1.0
       recursive-readdir: 2.2.3
-      shell-quote: 1.9.0
+      shell-quote: 1.11.0
       strip-ansi: 6.0.1
       text-table: 0.2.0
       webpack: 5.107.2(postcss@8.5.25)
@@ -13421,7 +13426,7 @@ snapshots:
 
   shebang-regex@3.0.0: {}
 
-  shell-quote@1.9.0: {}
+  shell-quote@1.11.0: {}
 
   side-channel-list@1.0.1:
     dependencies:
@@ -13470,7 +13475,7 @@ snapshots:
   sonarqube-scanner@4.3.6:
     dependencies:
       adm-zip: 0.6.1
-      axios: 1.18.0
+      axios: 1.20.0
       commander: 14.0.3
       hpagent: 1.2.0
       node-forge: 1.4.0
@@ -13488,13 +13493,13 @@ snapshots:
 
   source-list-map@2.0.1: {}
 
-  source-map-js@1.2.1: {}
+  source-map-js@1.2.2: {}
 
   source-map-loader@3.0.2(webpack@5.107.2(postcss@8.5.25)):
     dependencies:
       abab: 2.0.6
       iconv-lite: 0.6.3
-      source-map-js: 1.2.1
+      source-map-js: 1.2.2
       webpack: 5.107.2(postcss@8.5.25)
 
   source-map-support@0.5.21:
@@ -14100,7 +14105,7 @@ snapshots:
       bonjour-service: 1.4.0
       chokidar: 3.6.0
       colorette: 2.0.20
-      compression: 1.8.1
+      compression: 1.8.2
       connect-history-api-fallback: 2.0.0
       default-gateway: 6.0.3
       express: 4.21.0
