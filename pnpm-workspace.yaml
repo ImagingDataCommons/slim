@@ -10,12 +10,14 @@ allowBuilds:
 overrides:
   '@types/d3-dispatch': 3.0.6
   # Dependabot high: axios inherited-proxy after interceptor cloning
-  axios: 1.18.0
+  axios: 1.20.0
   # Dependabot high: adm-zip unbounded memory on crafted ZIP
   adm-zip: 0.6.1
   # Dependabot high: brace-expansion DoS (v1 and v2 lines)
   brace-expansion@1: 1.1.21
   brace-expansion@2: 2.1.7
+  # Dependabot high: compression DoS via infinite loop
+  compression: 1.8.2
   # Dependabot high: js-yaml quadratic merge-key chains (v3 and v4 lines)
   js-yaml@3: 3.15.2
   js-yaml@4: 4.3.2
@@ -23,8 +25,12 @@ overrides:
   postcss: 8.5.25
   # Dependabot high: nanoid generators can loop indefinitely (GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8)
   nanoid@3: 3.3.19
-  # Dependabot high: shell-quote parse() quadratic DoS
-  shell-quote: 1.9.0
+  # Dependabot critical: proxy-addr unbound CPU during request header parsing
+  proxy-addr: 2.0.8
+  # Dependabot critical: shell-quote parse() quadratic DoS
+  shell-quote: 1.11.0
+  # Dependabot high: source-map-js path traversal in sourceRoot
+  source-map-js: 1.2.2
   # Dependabot high: fast-uri authority injection & host confusion (CVE-2026-84292, CVE-2026-84394)
   fast-uri: 3.1.8
   # Dependabot high: SVGO removeScripts (CRA still pulls 1.x via @svgr; no SVG imports in app)
