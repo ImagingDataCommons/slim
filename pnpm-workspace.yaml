@@ -39,6 +39,8 @@ overrides:
   browserslist: 4.28.7
   # Dependabot high: webpack-dev-middleware path traversal (GHSA-g84c-rxfj-3j2c; no 5.x patch, CRA's dev server 4.x runs on 7.x)
   webpack-dev-middleware: 7.4.6
+  # Dependabot high: node-forge RSA PKCS#1 v1.5 (selfsigned 5.x uses @peculiar/x509 instead)
+  selfsigned: 5.5.0
   nth-check: 2.0.1
   wrap-ansi: 7.0.0
   make-dir: 3.1.0
