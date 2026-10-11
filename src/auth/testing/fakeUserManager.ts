@@ -80,11 +80,11 @@ export function createFakeUserManager(
       },
       addUserLoaded: (callback: UserLoadedCallback) => {
         userLoadedListeners.push(callback)
-        return () => {}
+        return () => undefined
       },
       addAccessTokenExpiring: (callback: AccessTokenCallback) => {
         tokenExpiringListeners.push(callback)
-        return () => {}
+        return () => undefined
       },
     },
     getUser: vi.fn(() => Promise.resolve(fake.stored)),
