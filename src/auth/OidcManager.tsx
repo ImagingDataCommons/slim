@@ -186,7 +186,7 @@ export default class OidcManager implements AuthManager {
     if (settings.grantType === 'implicit') {
       this._implicit = new ImplicitGrant(this._oidc, stores.stateStore)
       this._oidc.events.addAccessTokenExpiring(() => {
-        void this.renewAuthorization()
+        this.renewAuthorization().catch(() => {})
       })
     } else {
       installPkceFallback()

@@ -209,7 +209,7 @@ export class AppSession {
     if (isFirstStart) {
       const cachedSelection = loadServerSelection(getLocalStorage())
       if (cachedSelection.mode === 'custom') {
-        void this.selectServer({ url: cachedSelection.url })
+        this.selectServer({ url: cachedSelection.url }).catch(() => {})
       }
     }
 
@@ -236,7 +236,7 @@ export class AppSession {
     serverSettings,
   ) => {
     if (error.status === 401) {
-      void this.ensureAuthorized()
+      this.ensureAuthorized().catch(() => {})
     } else if (error.status === 403) {
       NotificationMiddleware.onError(
         NotificationMiddlewareContext.DICOMWEB,
@@ -476,6 +476,6 @@ export class AppSession {
 
   /** Sign out with the identity provider; a no-op without OIDC */
   signOut = (): void => {
-    void this.auth?.signOut()
+    this.auth?.signOut().catch(() => {})
   }
 }

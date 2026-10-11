@@ -6,6 +6,7 @@ shamefullyHoist: true
 strictPeerDependencies: false
 
 allowBuilds:
+  '@parcel/watcher': true
   core-js: true
   core-js-pure: true
   dicom-microscopy-viewer: true
@@ -48,7 +49,15 @@ overrides:
   nth-check: 2.0.1
   wrap-ansi: 7.0.0
   make-dir: 3.1.0
+  axios>form-data: 4.0.6
+  express: 4.21.0
+  jsdom>form-data: 3.0.5
+  path-to-regexp: 0.1.13
+  rollup: 3.30.0
   semver: 7.5.2
+  serialize-javascript: 7.0.5
+  tar: 7.5.16
+  underscore: 1.13.8
 
 minimumReleaseAgeExclude:
   - dicom-microscopy-viewer@0.48.23 || 0.48.24 || 0.48.25 || 0.48.26 || 0.48.27
