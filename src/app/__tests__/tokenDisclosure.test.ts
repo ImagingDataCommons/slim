@@ -24,7 +24,7 @@ const createAuth = (
   getAuthorization: vi.fn(getAuthorization),
   getUser: vi.fn(() => Promise.resolve({ name: 'A', email: 'a@b.c' })),
   renewAuthorization: vi.fn(() => Promise.resolve(undefined)),
-  onAuthorizationChange: vi.fn(() => () => {}),
+  onAuthorizationChange: vi.fn(() => () => undefined),
 })
 
 describe('decideDisclosure', () => {

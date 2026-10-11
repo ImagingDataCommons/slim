@@ -27,7 +27,7 @@ const isBlank = (value: string | undefined): boolean =>
 export function findConfigProblems(
   config: Pick<AppConfig, 'servers'> | undefined,
   configName: string,
-  pathname: string = '',
+  pathname = '',
 ): ConfigProblem[] {
   const file = `config/${configName}.js`
   if (config === undefined) {
