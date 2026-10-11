@@ -141,11 +141,13 @@ export function verifyEcdsa(
 }
 
 export const softwareIdTokenCrypto: IdTokenCrypto = {
-  digest: async (hash, data) => HASHES[hash](data),
-  verify: async (scheme: SignatureScheme, key, signature, data) =>
-    scheme.kty === 'RSA'
-      ? verifyRsaPkcs1(scheme.hash, key, signature, data)
-      : verifyEcdsa(scheme.namedCurve, scheme.hash, key, signature, data),
+  digest: (hash, data) => Promise.resolve(HASHES[hash](data)),
+  verify: (scheme: SignatureScheme, key, signature, data) =>
+    Promise.resolve(
+      scheme.kty === 'RSA'
+        ? verifyRsaPkcs1(scheme.hash, key, signature, data)
+        : verifyEcdsa(scheme.namedCurve, scheme.hash, key, signature, data),
+    ),
 }
 
 /** PKCE S256 challenge (RFC 7636): base64url(SHA-256(ASCII(verifier))) */
