@@ -180,6 +180,7 @@ function ParametrizedSlideViewer({
     void findReferencedSlide()
     return () => {
       isCancelled = true
+      return undefined
     }
   }, [
     slides,
