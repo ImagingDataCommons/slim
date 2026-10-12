@@ -30,7 +30,7 @@ fi
 
 INSTALLED="$(node -e "try{console.log(require('./node_modules/playwright/package.json').version)}catch{}")"
 if [ "$INSTALLED" != "$PLAYWRIGHT_VERSION" ]; then
-  npm install --no-audit --no-fund --silent "playwright@$PLAYWRIGHT_VERSION"
+  npm install --ignore-scripts --no-audit --no-fund --silent "playwright@$PLAYWRIGHT_VERSION"
 fi
 
 ./node_modules/.bin/playwright install chromium-headless-shell
