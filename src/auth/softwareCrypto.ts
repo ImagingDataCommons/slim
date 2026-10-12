@@ -49,7 +49,7 @@ export const bytesToBase64Url = (bytes: Uint8Array): string =>
   btoa(String.fromCharCode(...bytes))
     .replaceAll('+', '-')
     .replaceAll('/', '_')
-    .replace(/=+$/, '')
+    .replace(/[=]+$/, '')
 
 const bytesToBigInt = (bytes: Uint8Array): bigint =>
   bytes.reduce((value, byte) => (value << 8n) | BigInt(byte), 0n)

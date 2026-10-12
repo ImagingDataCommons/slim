@@ -13,6 +13,23 @@ import {
 } from '../utils/roiDescription'
 import { VisibilityToggleButton } from './panel/VisibilityToggleButton'
 
+interface RoiLabelRowProps {
+  label: string
+  type: string
+}
+
+/** Label and type display for an ROI row. */
+function RoiLabelRow({ label, type }: RoiLabelRowProps): React.ReactElement {
+  return (
+    <span className="flex items-baseline gap-1.5">
+      <span className="flex-none font-semibold text-ink">{label}</span>
+      {type !== '' && (
+        <span className="truncate text-12 text-ink-muted">{type}</span>
+      )}
+    </span>
+  )
+}
+
 export interface AnnotationItemProps {
   roi: dmv.roi.ROI
   index: number
@@ -64,12 +81,7 @@ function AnnotationItem({
           style={{ background: color }}
         />
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="flex items-baseline gap-1.5">
-            <span className="flex-none font-semibold text-ink">{label}</span>
-            {type !== '' && (
-              <span className="truncate text-12 text-ink-muted">{type}</span>
-            )}
-          </span>
+          <RoiLabelRow label={label} type={type} />
           {measurement !== undefined && (
             <span className="font-mono text-11.5 text-ink-secondary">
               {measurement}
