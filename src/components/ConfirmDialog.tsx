@@ -1,4 +1,4 @@
-import type * as React from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import { cn } from '../lib/utils'
@@ -14,7 +14,7 @@ import { Icon } from './ui/icon'
 
 export interface ConfirmOptions {
   title: string
-  description?: React.ReactNode
+  description?: ReactNode
   confirmLabel?: string
   cancelLabel?: string
   variant?: 'default' | 'destructive'
@@ -38,7 +38,7 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
   variant = 'default',
-}: ConfirmDialogProps): React.ReactElement {
+}: ConfirmDialogProps): ReactElement {
   const isDestructive = variant === 'destructive'
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onCancel()}>
