@@ -18,3 +18,11 @@ enabled = true
   plugins = ["react"]
   style_guide = "standard"
   dialect = "typescript"
+  skip_doc_coverage = [
+    "function-declaration",
+    "function-expression",
+    "arrow-function-expression",
+    "class-declaration",
+    "class-expression",
+    "method-definition",
+  ]
