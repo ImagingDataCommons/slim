@@ -148,7 +148,11 @@ const toUtf8Binary = (value: string): string =>
   )
 
 const binaryToBase64Url = (binary: string): string =>
-  window.btoa(binary).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_')
+  window
+    .btoa(binary)
+    .replace(/[=]+$/, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
 
 export const encodeBase64Url = (value: string): string =>
   binaryToBase64Url(toUtf8Binary(value))

@@ -19,6 +19,40 @@ import ColorSettingsMenu from './ColorSettingsMenu'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import { Switch } from './ui/switch'
 
+interface VisibilityRowProps {
+  visibleCount: number
+  totalCount: number
+  isChecked: boolean
+  onToggle: () => void
+  label: string
+}
+
+/** Visibility toggle row for the annotation popover. */
+function VisibilityRow({
+  visibleCount,
+  totalCount,
+  isChecked,
+  onToggle,
+  label,
+}: VisibilityRowProps): React.ReactElement {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-12.5 font-medium text-ink">
+        Visible
+        <span className="ml-1.5 font-normal text-ink-muted">
+          {visibleCount} / {totalCount}
+        </span>
+      </span>
+      <Switch
+        size="sm"
+        checked={isChecked}
+        onCheckedChange={onToggle}
+        aria-label={label}
+      />
+    </div>
+  )
+}
+
 /** Not every annotation UID has a style entry */
 export type AnnotationStyleMap = Record<string, AnnotationStyle | undefined>
 
@@ -102,22 +136,15 @@ function AnnotationTypeChip({
               {category.CodeMeaning} · {CodeValue}:{CodingSchemeDesignator}
             </div>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-12.5 font-medium text-ink">
-              Visible
-              <span className="ml-1.5 font-normal text-ink-muted">
-                {visibleCount} / {uids.length}
-              </span>
-            </span>
-            <Switch
-              size="sm"
-              checked={visibility === 'all'}
-              onCheckedChange={() =>
-                onVisibilityChange(type, getToggleTarget(visibility))
-              }
-              aria-label={`Show all ${CodeMeaning}`}
-            />
-          </div>
+          <VisibilityRow
+            visibleCount={visibleCount}
+            totalCount={uids.length}
+            isChecked={visibility === 'all'}
+            onToggle={() =>
+              onVisibilityChange(type, getToggleTarget(visibility))
+            }
+            label={`Show all ${CodeMeaning}`}
+          />
           {style !== undefined && (
             <ColorSettingsMenu
               style={style}
