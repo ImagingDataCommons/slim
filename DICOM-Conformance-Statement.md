@@ -210,6 +210,38 @@ It supports the Search, Retrieve, and Store transactions of the Studies Service.
 -   All Instances
 -   Instance
 
-##### Store transaction of the Studies Service (QIDO-RS)
+##### Store transaction of the Studies Service (STOW-RS)
 -   All Studies
 -   Study
+
+## Transfer Syntax Support
+
+*Slim* supports the following Transfer Syntaxes for VL Whole Slide Microscopy Image instances through the *dicom-microscopy-viewer* library. Image frame decoding is performed client-side using a combination of native browser capabilities and WebAssembly (WASM) based codecs.
+
+### Supported Transfer Syntaxes
+
+| Transfer Syntax Name | UID | Decoding Method |
+| :------------------- | :-- | :-------------- |
+| Explicit VR Little Endian | 1.2.840.10008.1.2.1 | Native |
+| JPEG Baseline (Process 1) | 1.2.840.10008.1.2.4.50 | Native |
+| JPEG Extended (Process 2 & 4) | 1.2.840.10008.1.2.4.51 | Native |
+| JPEG-LS Lossless | 1.2.840.10008.1.2.4.80 | WASM (CharLS) |
+| JPEG-LS Near-Lossless | 1.2.840.10008.1.2.4.81 | WASM (CharLS) |
+| JPEG 2000 Image Compression (Lossless Only) | 1.2.840.10008.1.2.4.90 | WASM (OpenJPEG) |
+| JPEG 2000 Image Compression | 1.2.840.10008.1.2.4.91 | WASM (OpenJPEG) |
+| High-Throughput JPEG 2000 (Lossless Only) | 1.2.840.10008.1.2.4.201 | WASM (OpenJPH) |
+| High-Throughput JPEG 2000 (RPCL) | 1.2.840.10008.1.2.4.202 | WASM (OpenJPH) |
+| High-Throughput JPEG 2000 | 1.2.840.10008.1.2.4.203 | WASM (OpenJPH) |
+| JPEG XL Lossless | 1.2.840.10008.1.2.4.110 | Native (Chrome 116+) / WASM fallback |
+| JPEG XL Recompressed Lossless | 1.2.840.10008.1.2.4.111 | Native (Chrome 116+) / WASM fallback |
+| JPEG XL | 1.2.840.10008.1.2.4.112 | Native (Chrome 116+) / WASM fallback |
+
+### Decoding Implementation Notes
+
+**Native decoding**: Standard image formats (JPEG, uncompressed) are decoded using the browser's built-in image decoding capabilities.
+
+**WASM-based decoding**: Advanced codecs (JPEG 2000, JPEG-LS, HTJ2K, JPEG XL fallback) use WebAssembly modules from the [@cornerstonejs/codecs](https://github.com/cornerstonejs/codecs) library. These run in Web Workers to avoid blocking the main thread.
+
+**JPEG XL**: Browsers with native JPEG XL support (Chrome 116+, enabled by default) use hardware-accelerated decoding. On browsers without native support, decoding falls back to WASM.
+
+**High-Throughput JPEG 2000 (HTJ2K)**: This modern codec offers significantly faster decoding than traditional JPEG 2000 while maintaining similar compression efficiency, making it well-suited for streaming large whole slide microscopy images
