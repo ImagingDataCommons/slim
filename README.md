@@ -17,6 +17,7 @@ The application is based on the [dicom-microscopy-viewer](https://github.com/Ima
   - [Demo](#demo)
 - [Features](#features)
   - [Display of images](#display-of-images)
+    - [Supported image compression formats](#supported-image-compression-formats)
   - [Display of image annotations and analysis results](#display-of-image-annotations-and-analysis-results)
   - [Annotation of images](#annotation-of-images)
   - [Memory monitoring](#memory-monitoring)
@@ -69,6 +70,28 @@ Representative DICOM SM images opened in Slim:
 ### Display of images
 
 _Slim_ enables interactive visualization of [DICOM VL Whole Slide Microscopy Image](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_A.32.8.html) instances in a vendor-neutral and device-independent manner.
+
+#### Supported image compression formats
+
+_Slim_ supports a wide range of DICOM Transfer Syntaxes for whole slide microscopy images through the [dicom-microscopy-viewer](https://github.com/ImagingDataCommons/dicom-microscopy-viewer) library:
+
+| Transfer Syntax | UID | Notes |
+| :-------------- | :-- | :---- |
+| **JPEG XL Lossless** | 1.2.840.10008.1.2.4.110 | Native browser decoding (Chrome 116+) with WASM fallback |
+| **JPEG XL Recompressed Lossless** | 1.2.840.10008.1.2.4.111 | Native browser decoding (Chrome 116+) with WASM fallback |
+| **JPEG XL Lossy** | 1.2.840.10008.1.2.4.112 | Native browser decoding (Chrome 116+) with WASM fallback |
+| **HTJ2K Lossless** | 1.2.840.10008.1.2.4.201 | High-Throughput JPEG 2000, WASM-based decoding |
+| **HTJ2K Lossless RPCL** | 1.2.840.10008.1.2.4.202 | High-Throughput JPEG 2000, WASM-based decoding |
+| **HTJ2K Lossy** | 1.2.840.10008.1.2.4.203 | High-Throughput JPEG 2000, WASM-based decoding |
+| **JPEG 2000 Lossless** | 1.2.840.10008.1.2.4.90 | Traditional JPEG 2000 |
+| **JPEG 2000 Lossy** | 1.2.840.10008.1.2.4.91 | Traditional JPEG 2000 |
+| **JPEG Baseline (8-bit)** | 1.2.840.10008.1.2.4.50 | Standard JPEG |
+| **JPEG Extended (12-bit)** | 1.2.840.10008.1.2.4.51 | Standard JPEG |
+| **JPEG-LS Lossless** | 1.2.840.10008.1.2.4.80 | JPEG Lossless |
+| **JPEG-LS Near-Lossless** | 1.2.840.10008.1.2.4.81 | JPEG Near-Lossless |
+| **Uncompressed (Explicit VR Little Endian)** | 1.2.840.10008.1.2.1 | Raw pixel data |
+
+JPEG XL and HTJ2K are modern, high-efficiency codecs that offer superior compression ratios and faster decoding compared to traditional formats, making them ideal for large whole slide microscopy images.
 
 Interoperability with various image acquisition and management systems was successfully demonstrated at the [DICOM WG-26 Connectathon at Path Visions 2020](https://digitalpathologyassociation.org/past-presentations#PV20) and the [DICOM WG-26 Hackathon at Path Visions 2021](https://digitalpathologyassociation.org/past-presentations#PV21). Screenshots below show example images that are publicly available on the NEMA FTP server at [medical.nema.org](ftp://medical.nema.org).
 
