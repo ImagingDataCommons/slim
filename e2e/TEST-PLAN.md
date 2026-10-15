@@ -23,6 +23,8 @@ pnpm test:e2e                           # all tests, about 5 minutes
 pnpm test:e2e:ui                        # watch them run
 ```
 
+On GitHub, add the `run-e2e` label to a pull request to run the suite there. It never runs on its own, so the public IDC servers aren't hit on every push.
+
 ## Studies
 
 | Name | What it covers | Link |

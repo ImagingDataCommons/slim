@@ -1,0 +1,57 @@
+name: slim/e2e-tests
+
+# The suite reads real slides from the public IDC proxy, a shared production
+# service, so it never runs on its own. A reviewer starts it by adding the
+# "run-e2e" label to a PR (remove and re-add it to run again after new
+# commits), or from the Actions tab for any branch.
+on:
+  pull_request:
+    types: [labeled]
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Keyed by label so adding an unrelated label can't cancel a running suite
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.label.name || 'manual' }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: "Run e2e tests against IDC"
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'run-e2e'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run e2e tests
+        run: pnpm test:e2e
+
+      - name: Upload report
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
