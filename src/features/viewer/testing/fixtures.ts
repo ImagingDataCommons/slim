@@ -56,7 +56,9 @@ function image(
 }
 
 /** RGB slide with one volume and one label image */
-export function createTestSlide(seriesInstanceUID = '1.2.3.4'): Slide {
+export function createTestSlide(
+  seriesInstanceUID = '1.2.826.0.1.3680043.10.511.3.1',
+): Slide {
   return new Slide({
     images: [
       image(seriesInstanceUID, 'VOLUME', `${seriesInstanceUID}.1`),
