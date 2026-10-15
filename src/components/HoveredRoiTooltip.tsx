@@ -93,6 +93,7 @@ const HoveredRoiTooltip = ({
   rois,
 }: HoveredRoiTooltipProps): React.ReactElement => (
   <div
+    role="tooltip"
     style={{ ...tooltipStyle, top: `${yPosition}px`, left: `${xPosition}px` }}
   >
     {groupHoveredRoisBySeries(rois).map(

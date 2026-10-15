@@ -110,6 +110,16 @@ describe('usePresentationStates', () => {
     expect(result.current.selectedUID).toBe('ps-2')
   })
 
+  it('reports no selection when the URL names a state the study lacks', () => {
+    const { result, load, receive, opticalPaths } = setup('unknown')
+
+    load()
+    receive(presentationState('ps-1'), 0)
+
+    expect(opticalPaths.showPresentationState).not.toHaveBeenCalled()
+    expect(result.current.selectedUID).toBeUndefined()
+  })
+
   it('ignores states retrieved for released viewers', () => {
     const { result, load, receive, session, opticalPaths } = setup()
 

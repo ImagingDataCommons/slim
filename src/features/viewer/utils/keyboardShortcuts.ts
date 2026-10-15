@@ -27,6 +27,14 @@ function isTextEntryTarget(target: EventTarget | null): boolean {
   return TEXT_ENTRY_TAGS.has(target.tagName) || target.isContentEditable
 }
 
+/** With `disableAnnotationTools`, only the shortcuts of the remaining toolbar buttons work */
+export function isShortcutEnabled(
+  action: ViewerShortcutAction,
+  enableAnnotationTools: boolean,
+): boolean {
+  return enableAnnotationTools || action === 'cancel' || action === 'goTo'
+}
+
 /**
  * Viewer action for a key-up event. Escape always cancels; Alt shortcuts are
  * ignored while typing in a field, where Alt combinations produce characters

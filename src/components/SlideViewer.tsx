@@ -53,6 +53,7 @@ import {
   groupBySeries,
   itemsForSeries,
 } from '../features/viewer/utils/groupBySeries'
+import { isShortcutEnabled } from '../features/viewer/utils/keyboardShortcuts'
 import { buildRoiDescription } from '../features/viewer/utils/selectedRoiDescription'
 import { slideAffineFromImages } from '../features/viewer/utils/slideCoordinates'
 import {
@@ -164,7 +165,11 @@ function SlideViewer({
     goToRanges: snapshot.goToRanges,
     onSave: report.onGenerate,
   })
-  useKeyboardShortcuts(tools.onShortcut)
+  useKeyboardShortcuts((action) => {
+    if (isShortcutEnabled(action, enableAnnotationTools)) {
+      tools.onShortcut(action)
+    }
+  })
   const annotationGroups = useAnnotationGroups(viewer, slide)
   const segmentations = useSegmentations(viewer, {
     snapshot,
@@ -209,7 +214,7 @@ function SlideViewer({
     },
   })
 
-  const onSessionCreated = useSlidePopulation({
+  const populateSlide = useSlidePopulation({
     clients,
     studyInstanceUID,
     derivedDataset,
@@ -233,7 +238,10 @@ function SlideViewer({
       defaultRoiStyle,
       clustering: annotationGroups.clustering,
       gammaCorrection: opticalPaths.gammaCorrection,
-      onSessionCreated,
+      onSessionCreated: (session) => {
+        dispatchInteraction({ type: 'newViewer' })
+        populateSlide(session)
+      },
     })
   useActiveSeriesPublisher({
     sessionRef,
