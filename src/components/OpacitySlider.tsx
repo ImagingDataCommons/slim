@@ -1,7 +1,7 @@
 import type React from 'react'
 
 import { clamp } from '../utils/math'
-import { Input } from './ui/input'
+import LimitInput from './slim/LimitInput'
 import { Slider } from './ui/slider'
 
 export interface OpacitySliderProps {
@@ -22,14 +22,6 @@ function OpacitySlider({
   label = 'Opacity',
   disabled = false,
 }: OpacitySliderProps): React.ReactElement {
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    const value = Number.parseFloat(e.target.value)
-    if (Number.isNaN(value)) return
-    const next = clamp(value, 0, 1)
-    onChange(next)
-    onCommit(next)
-  }
-
   return (
     <div className="flex items-center justify-center gap-2">
       <div className="w-16 shrink-0 text-12 text-ink-muted">{label}</div>
@@ -45,16 +37,19 @@ function OpacitySlider({
           aria-label={label}
         />
       </div>
-      <Input
-        type="number"
+      <LimitInput
         min={0}
         max={1}
         step={0.01}
         aria-label={`${label} value`}
-        className="h-8 w-16 font-mono text-12"
+        className="w-16"
         value={opacity}
         disabled={disabled}
-        onChange={handleInputChange}
+        onCommit={(value) => {
+          const next = clamp(value, 0, 1)
+          onChange(next)
+          onCommit(next)
+        }}
       />
     </div>
   )

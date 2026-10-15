@@ -176,7 +176,16 @@ test.describe('ROI selection on one H&E slide', () => {
       page.getByRole('button', { name: 'Draw', exact: true }),
     ).toHaveAttribute('aria-pressed', 'false')
     await section(slidePanel(page), 'Annotations')
+    await expect(roiButton(1)).toBeVisible()
     await expect(roiButton(2)).toBeVisible()
+  })
+
+  /**
+   * OpenLayers reads two clicks within 250 ms as a double-click, wherever they
+   * land, and a double-click opens the modal ROI details
+   */
+  test.beforeEach(async () => {
+    await page.waitForTimeout(300)
   })
 
   test.afterAll(async () => {
@@ -189,7 +198,6 @@ test.describe('ROI selection on one H&E slide', () => {
     await expect(roiButton(1)).toHaveAttribute('aria-pressed', 'true')
     await expect(roiButton(2)).toHaveAttribute('aria-pressed', 'false')
 
-    /** OpenLayers reads two clicks within 250 ms as a double-click, wherever they land */
     await page.waitForTimeout(300)
     const tissueEdge = leftEdge(tissue)
     await page.keyboard.down('Shift')

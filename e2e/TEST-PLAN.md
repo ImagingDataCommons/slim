@@ -207,7 +207,7 @@ Fixed on this branch:
 - **Worklist search only covered loaded studies.** IDC returns at most 100 studies, so most patients were unreachable. The search now also queries the server by Patient ID, Patient Name, Accession Number and Study ID, as the old worklist did (W3).
 - **Saving ROIs threw before the dialog opened.** dcmjs rejects every valid `TrackingIdentifier` when building a measurement group, up to its latest release. `patches/dcmjs@0.52.0.patch` fixes the check. Failed saves also show a toast now; before, they only reached the console (D6).
 - **The Modality column was slow on IDC.** It sent one series query for each of the 100 loaded studies. It now asks only for the rows on the current page and remembers the answers (W6).
-- **The ICC profile switch could stay disabled.** DMV fetches ICC profiles after the viewer is created, and the panel never saw them arrive. It now checks again when tiles finish loading (O5).
+- **The ICC profile switch could stay disabled.** DMV fetches ICC profiles after the viewer is created, and the panel never saw them arrive. It now checks again when the first tile finishes loading. An earlier check on `loading_ended` only ran for bulk annotations (O5).
 - **Draw stayed on after switching slides.** The new slide started with the old tool active. Each new viewer now starts in select mode with ROIs shown (V15). `master` had the same flaw.
 - **ROI shortcuts ignored `disableAnnotationTools`.** Alt+D opened Draw with the tools hidden. Only Escape and Go to work now (C2). `master` had the same flaw.
 - **An unknown `?state=` left the presentation state picker blank.** It now reads Default (O10).

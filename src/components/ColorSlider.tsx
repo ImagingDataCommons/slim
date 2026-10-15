@@ -2,7 +2,7 @@ import type React from 'react'
 
 import type { RGB } from '../types/layerStyles'
 import { withChannel } from '../utils/color'
-import { Input } from './ui/input'
+import LimitInput from './slim/LimitInput'
 import { Slider } from './ui/slider'
 
 export interface ColorSliderProps {
@@ -45,16 +45,14 @@ function ColorSlider({
               aria-label={label}
             />
           </div>
-          <Input
-            type="number"
+          <LimitInput
+            integer
             min={0}
             max={255}
             aria-label={`${label} value`}
-            className="h-8 w-16 font-mono text-12"
+            className="w-16"
             value={color[index]}
-            onChange={(e) => {
-              const value = Number.parseInt(e.target.value, 10)
-              if (Number.isNaN(value)) return
+            onCommit={(value) => {
               const next = withChannel(color, index, value)
               onChange(next)
               onCommit(next)

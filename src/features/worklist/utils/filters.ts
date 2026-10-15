@@ -17,6 +17,24 @@ export function getEmptyStudiesMessage(searchText = ''): string {
 }
 
 /**
+ * Text test for a search term. A term with `*` or `?` uses DICOM wildcard
+ * matching on the whole value, as the server search does; any other term
+ * matches anywhere in the value.
+ */
+function toSearchMatcher(search: string): (text: string) => boolean {
+  if (!/[*?]/.test(search)) {
+    return (text) => text.toLowerCase().includes(search)
+  }
+  const source = Array.from(search, (char) => {
+    if (char === '*') return '.*'
+    if (char === '?') return '.'
+    return char.replace(/[.+^${}()|[\]\\]/g, '\\$&')
+  }).join('')
+  const pattern = new RegExp(`^${source}$`, 'i')
+  return (text) => pattern.test(text)
+}
+
+/**
  * Filters studies by search text across identifiers and the patient name,
  * matching both the displayed ("Doe, Jane") and raw ("Doe Jane") forms.
  */
@@ -28,6 +46,7 @@ export function filterStudiesBySearchText(
   if (search === '') {
     return studies
   }
+  const matches = toSearchMatcher(search)
 
   return studies.filter((study) => {
     const fields: unknown[] = [
@@ -40,9 +59,7 @@ export function filterStudiesBySearchText(
 
     return fields.some(
       (field) =>
-        field !== undefined &&
-        field !== null &&
-        String(field).toLowerCase().includes(search),
+        field !== undefined && field !== null && matches(String(field)),
     )
   })
 }

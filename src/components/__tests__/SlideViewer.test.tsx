@@ -168,7 +168,9 @@ describe('SlideViewer', () => {
 
     vi.spyOn(volumeViewer, 'getICCProfiles').mockReturnValue([{}])
     act(() => {
-      dispatchDmvEvent('dicommicroscopyviewer_loading_ended', null)
+      dispatchDmvEvent('dicommicroscopyviewer_frame_loading_ended', {
+        frameNumber: 1,
+      })
     })
 
     expect(iccSwitch()).toBeEnabled()

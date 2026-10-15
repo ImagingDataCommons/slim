@@ -57,6 +57,15 @@ describe('filterStudiesBySearchText', () => {
     expect(search('s24')).toEqual(['1'])
   })
 
+  it('treats * and ? as DICOM wildcards over the whole value', () => {
+    expect(search('p-00*')).toEqual(['1', '2'])
+    expect(search('P-00?')).toEqual(['1', '2'])
+    expect(search('*-77')).toEqual(['1'])
+    expect(search('doe*')).toEqual(['2'])
+    expect(search('00*')).toEqual([])
+    expect(search('S24.01542*')).toEqual([])
+  })
+
   it('matches the displayed patient name', () => {
     expect(search('Whitfield, Margaret A.')).toEqual(['1'])
     expect(search('doe, jane')).toEqual(['2'])

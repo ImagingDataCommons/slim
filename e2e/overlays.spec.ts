@@ -356,6 +356,9 @@ test.describe('SR annotations', () => {
 
   test('R3 annotation categories hide every ROI of a finding', async () => {
     const categories = await section(slidePanel(page), 'Annotation categories')
+    await expect(
+      categories.getByRole('button', { name: /category, \d+ annotations/ }),
+    ).not.toHaveCount(0)
     await categories
       .getByRole('button', { name: /^Necrosis, 4 annotations/ })
       .click()
