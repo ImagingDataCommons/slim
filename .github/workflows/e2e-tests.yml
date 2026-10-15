@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   e2e:
-    name: "Run e2e tests against IDC (${{ matrix.shard }}/3)"
+    name: "Run e2e tests against IDC (${{ matrix.shard }}/4)"
     if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'run-e2e'
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -28,7 +28,7 @@ jobs:
       # Let every shard finish so one run reports all failures
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -66,7 +66,15 @@ jobs:
         run: pnpm exec playwright install-deps chromium
 
       - name: Run e2e tests
-        run: pnpm test:e2e --shard=${{ matrix.shard }}/3
+        run: |
+          vmstat -S M 10 > vmstat.log &
+          pnpm test:e2e --shard=${{ matrix.shard }}/4
+
+      # Software WebGL keeps textures in system memory; this shows how close
+      # a shard came to the runner's limit
+      - name: Memory use during the tests
+        if: always()
+        run: cat vmstat.log || true
 
       - name: Upload report
         if: failure() || cancelled()

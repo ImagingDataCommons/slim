@@ -26,8 +26,12 @@ export default defineConfig({
   fullyParallel: true,
   timeout: 90_000,
   expect: { timeout: 30_000 },
-  /** IDC is a shared production proxy; keep the load modest */
-  workers: isCI ? 2 : 3,
+  /**
+   * IDC is a shared production proxy; keep the load modest. CI shards the
+   * suite over several runners instead: two software-WebGL browsers on one
+   * runner stalled each other for minutes after the heaviest slides.
+   */
+  workers: isCI ? 1 : 3,
   retries: isCI ? 1 : 0,
   /** A broken environment fails everything; stop instead of burning the job timeout */
   maxFailures: isCI ? 5 : 0,
