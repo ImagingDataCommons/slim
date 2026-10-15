@@ -32,10 +32,10 @@ On GitHub, add the `run-e2e` label to a pull request to run the suite there. It 
 | H&E | 6 brightfield slides, label and overview images | [study](http://localhost:3000/studies/2.25.211094631316408413440371843585977094852) |
 | TIL maps | Binary and fractional SEG, nuclei ANN (~500k polygons) | [nuclei SEG](http://localhost:3000/studies/2.25.312916405820155829215771528638931942827/series/1.2.826.0.1.3680043.10.511.3.11534436557194942782874737859569974) · [fractional SEG](http://localhost:3000/studies/2.25.312916405820155829215771528638931942827/series/1.2.826.0.1.3680043.10.511.3.44304577929953804027133272057932075) · [nuclei ANN](http://localhost:3000/studies/2.25.312916405820155829215771528638931942827/series/1.2.826.0.1.3680043.10.511.3.65930042075829390210508226259517515) |
 | Parametric map | Aggressiveness score map, ICC profile | [parametric map](http://localhost:3000/studies/2.25.169142599340531625361659178384453215494/series/1.2.826.0.1.3680043.10.511.3.75366725734262349592517155782982171) · [DX1 slide](http://localhost:3000/studies/2.25.169142599340531625361659178384453215494/series/1.3.6.1.4.1.5962.99.1.1127304153.1690914100.1637509876697.2.0) |
-| SR ROIs | 9 manual ROIs, fractional 4-segment SEG | [SR](http://localhost:3000/studies/2.25.266314239954879564284639768519696615904/series/1.2.826.0.1.3680043.10.511.3.65352168153070950281170547035589843) · [study](http://localhost:3000/studies/2.25.266314239954879564284639768519696615904) |
+| SR ROIs | 9 manual ROIs, fractional 4-segment SEG (JPEG-LS lossless), lossless JPEG 2000 slide | [SR](http://localhost:3000/studies/2.25.266314239954879564284639768519696615904/series/1.2.826.0.1.3680043.10.511.3.65352168153070950281170547035589843) · [study](http://localhost:3000/studies/2.25.266314239954879564284639768519696615904) |
 | Multiplexed | 28-channel IMC, 9 presentation states | [IMC slide](http://localhost:3000/studies/2.25.289188443974026654725116153923555879592/series/1.3.6.1.4.1.5962.99.1.1997905734.514527437.1655560347462.4.0) |
 | Bone marrow | Rectangle ANN, 47 groups on the slide | [ANN](http://localhost:3000/studies/1.2.826.0.1.3680043.8.498.68164890741340078452950522749989442436/series/1.2.826.0.1.3680043.10.511.3.32704286069299586301112252202253953) |
-| JPEG 2000 | JPEG 2000 compressed tiles | [slide](http://localhost:3000/studies/2.25.114227083156133646516769539915340013624/series/1.3.6.1.4.1.5962.99.1.2903380917.963766137.1639285953461.2.0) |
+| JPEG 2000 | Lossy JPEG 2000 tiles | [slide](http://localhost:3000/studies/2.25.114227083156133646516769539915340013624/series/1.3.6.1.4.1.5962.99.1.2903380917.963766137.1639285953461.2.0) |
 
 ## Worklist
 
@@ -77,10 +77,11 @@ Open the [H&E study](http://localhost:3000/studies/2.25.211094631316408413440371
 - [ ] **V7** e2e. Both side panels collapse and reopen.
 - [ ] **V8** e2e. The footer shows "Tiles X / Y" and memory, and never says "failed".
 - [ ] **V9** e2e. A wrong study UID or series UID shows an error page, not a blank screen.
-- [ ] **V10** e2e. The [JPEG 2000 slide](http://localhost:3000/studies/2.25.114227083156133646516769539915340013624/series/1.3.6.1.4.1.5962.99.1.2903380917.963766137.1639285953461.2.0) renders.
+- [ ] **V10** e2e. The [lossy JPEG 2000 slide](http://localhost:3000/studies/2.25.114227083156133646516769539915340013624/series/1.3.6.1.4.1.5962.99.1.2903380917.963766137.1639285953461.2.0) renders.
 - [ ] **V11** e2e. Every study in the table loads without page errors or failed tiles.
 - [ ] **V12** manual. Dragging pans the slide. Clicking the overview map jumps there.
 - [ ] **V13** manual. Below 720px wide, the toolbar compacts into a menu.
+- [ ] **V14** e2e. The [lossless JPEG 2000 slide](http://localhost:3000/studies/2.25.266314239954879564284639768519696615904/series/1.3.6.1.4.1.5962.99.1.3501356587.1328342165.1687128569387.4.0) renders.
 
 ## Channels and display options
 
@@ -110,7 +111,7 @@ Open the [IMC slide](http://localhost:3000/studies/2.25.289188443974026654725116
 - [ ] **A1** e2e. The [nuclei ANN](http://localhost:3000/studies/2.25.312916405820155829215771528638931942827/series/1.2.826.0.1.3680043.10.511.3.65930042075829390210508226259517515) draws polygons once you zoom in, and its toggle hides them. Loading takes 20–30 seconds.
 - [ ] **A2** e2e. The [bone marrow ANN](http://localhost:3000/studies/1.2.826.0.1.3680043.8.498.68164890741340078452950522749989442436/series/1.2.826.0.1.3680043.10.511.3.32704286069299586301112252202253953) opens with "5 of 47 visible". Show all gives "47 of 47", Hide all gives "0 of 47".
 - [ ] **A3** manual. Group color, fill and outline change the drawing.
-- [ ] **A4** manual. Color by measurement recolors the shapes, and measurement names with a hyphen (LOINC codes) display in full.
+- [ ] **A4** manual. Color by measurement recolors the shapes, and measurement names with a hyphen (LOINC codes) display in full. No IDC ANN series has measurements, so this needs your own data. The picker itself has unit tests (`AnnotationGroupItem.test.tsx`).
 - [ ] **A5** manual. Zoom to group frames that group.
 
 ## SR ROIs
@@ -143,6 +144,16 @@ Open the [H&E study](http://localhost:3000/studies/2.25.211094631316408413440371
 - [ ] **C3** manual, optional. An OIDC server config signs in, shows your name in the user menu and signs out.
 - [ ] **C4** manual, optional. A Google Cloud route (`/projects/<project>/locations/<location>/datasets/<dataset>/dicomStores/<store>/studies/<study>`) opens a slide.
 
+## Not covered by IDC data
+
+IDC v25 slide studies hold no examples of these, so neither this plan nor Playwright can check them:
+
+- **Slides in HTJ2K, JPEG-LS or JPEG XL.** IDC slides use uncompressed, JPEG baseline and JPEG 2000 (lossy and lossless) tiles only. The RMS fractional SEG is JPEG-LS lossless (S2, S3), which exercises that decoder.
+- **ANN measurements** (see A4).
+- **Label map SEG.**
+- **Comprehensive SR (not 3D).** Every IDC slide SR is Comprehensive 3D SR.
+- **Grayscale, Color and Pseudocolor Softcopy presentation states.** Every IDC slide PR is an Advanced Blending presentation state, which is the only kind Slim applies, and only on monochrome slides. Opening a link to any other presentation state series, or to a Comprehensive SR, shows the referenced slide and nothing else.
+
 ## Known issues
 
 Found while writing this plan.
@@ -152,7 +163,9 @@ Fixed on this branch:
 - **Worklist search only covered loaded studies.** IDC returns at most 100 studies, so most patients were unreachable. The search now also queries the server by Patient ID, Patient Name, Accession Number and Study ID, as the old worklist did (W3).
 - **Saving ROIs threw before the dialog opened.** dcmjs rejects every valid `TrackingIdentifier` when building a measurement group, up to its latest release. `patches/dcmjs@0.52.0.patch` fixes the check. Failed saves also show a toast now; before, they only reached the console (D6).
 - **The Modality column was slow on IDC.** It sent one series query for each of the 100 loaded studies. It now asks only for the rows on the current page and remembers the answers (W6).
+- **The ICC profile switch could stay disabled.** DMV fetches ICC profiles after the viewer is created, and the panel never saw them arrive. It now checks again when tiles finish loading (O5).
 
 Still open:
 
 - **The `verify-slim` skill on this branch** still uses craco and Ant Design selectors. It will be rewritten from scratch separately.
+- **Other presentation states in a monochrome study.** The loader reads every PR instance in the study as Advanced Blending. A Grayscale or Pseudocolor presentation state there has no `AdvancedBlendingSequence`, so it would likely show "Presentation State could not be loaded." `master` behaves the same. IDC has no such study to confirm it.

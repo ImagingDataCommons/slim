@@ -16,7 +16,7 @@ import {
 } from './helpers'
 import { seriesUrl, studies, studyUrl } from './studies'
 
-const { he, jpeg2000 } = studies
+const { he, jpeg2000, rmsSr } = studies
 
 test.describe('Slide viewer', () => {
   test('V1 study link redirects to its first slide and renders tissue', async ({
@@ -65,13 +65,25 @@ test.describe('Slide viewer', () => {
     })
   })
 
-  test('V10 JPEG 2000 slide renders', async ({ page }) => {
-    await openViewer(
-      page,
-      seriesUrl({ study: jpeg2000.study, series: jpeg2000.slide }),
-    )
-    await expectTissueRendered(page)
-  })
+  for (const { id, compression, study, series } of [
+    {
+      id: 'V10',
+      compression: 'lossy JPEG 2000',
+      study: jpeg2000.study,
+      series: jpeg2000.slide,
+    },
+    {
+      id: 'V14',
+      compression: 'lossless JPEG 2000',
+      study: rmsSr.study,
+      series: rmsSr.slide,
+    },
+  ]) {
+    test(`${id} ${compression} slide renders`, async ({ page }) => {
+      await openViewer(page, seriesUrl({ study, series }))
+      await expectTissueRendered(page)
+    })
+  }
 })
 
 /**

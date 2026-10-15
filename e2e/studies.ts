@@ -33,10 +33,14 @@ export const studies = {
     parametricMap:
       '1.2.826.0.1.3680043.10.511.3.75366725734262349592517155782982171',
   },
-  /** RMS-Mutation-Prediction RMS2203: 9 manual SR ROIs plus a fractional SEG */
+  /**
+   * RMS-Mutation-Prediction RMS2203: 9 manual SR ROIs plus a fractional SEG
+   * stored as JPEG-LS lossless, on a lossless JPEG 2000 slide
+   */
   rmsSr: {
     study: '2.25.266314239954879564284639768519696615904',
     sr: '1.2.826.0.1.3680043.10.511.3.65352168153070950281170547035589843',
+    slide: '1.3.6.1.4.1.5962.99.1.3501356587.1328342165.1687128569387.4.0',
   },
   /** HTAN-WUSTL HTA12_3: 28-channel IMC slides, H&E and 9 presentation states */
   htanImc: {
@@ -48,7 +52,7 @@ export const studies = {
     study: '1.2.826.0.1.3680043.8.498.68164890741340078452950522749989442436',
     ann: '1.2.826.0.1.3680043.10.511.3.32704286069299586301112252202253953',
   },
-  /** TCGA-STAD TCGA-BR-4201: JPEG 2000 compressed slide */
+  /** TCGA-STAD TCGA-BR-4201: lossy JPEG 2000 slide */
   jpeg2000: {
     study: '2.25.114227083156133646516769539915340013624',
     slide: '1.3.6.1.4.1.5962.99.1.2903380917.963766137.1639285953461.2.0',
