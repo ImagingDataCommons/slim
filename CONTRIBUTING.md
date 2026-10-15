@@ -45,9 +45,12 @@ The app is built and served with [Vite](https://vite.dev/) (`vite.config.ts`). T
 
 Tests are written and run with [Vitest](https://vitest.dev/) in a jsdom environment, using [Testing Library](https://testing-library.com/). Mocks are reset before each test (`mockReset: true`); for Vitest, that means a `vi.fn(impl)` goes back to `impl`, not to returning `undefined`.
 
+End-to-end tests live in `e2e/` and run with [Playwright](https://playwright.dev/) against real slides on the public IDC DICOMweb proxy (`public/config/e2e.js`, read-only, no sign-in). Install the browser once with `pnpm exec playwright install chromium`, then run `pnpm test:e2e` (or `pnpm test:e2e:ui` to watch them). Playwright starts its own dev server on port 3100, or reuses one already running there. Each test name starts with the ID of the matching step in the manual checklist, [`e2e/TEST-PLAN.md`](e2e/TEST-PLAN.md), which also lists the studies used.
+
 `pnpm run check:compiler` fails when the React Compiler bails out of a component or hook, and lists each file, line and reason. It runs in the pre-commit hook and in CI. Fix the code rather than opting out. Add `'use no memo'` only for a known compiler limitation (for example a library the compiler marks incompatible, such as TanStack Table's `useReactTable`), and explain why in a `/** */` comment next to the directive.
 
 The [pnpm](https://pnpm.io/) package manager is used to manage dependencies and run scripts specified in `package.json` (`build`, `lint`, `test`, etc.).
+`patches/` holds `pnpm patch` fixes for upstream bugs, listed under `patchedDependencies` in `pnpm-workspace.yaml` with the reason. Drop a patch once the dependency ships the fix.
 
 ## Coding style
 
