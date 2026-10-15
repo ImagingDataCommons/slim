@@ -1,6 +1,17 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const PORT = Number(process.env.E2E_PORT ?? 3100)
+const isCI = process.env.CI !== undefined
+
+/**
+ * CI runners render WebGL in software on a few cores. The dev server (per-module
+ * transforms, React dev mode) plus video recording starved them until tests
+ * timed out, so CI serves a production build (`REACT_APP_CONFIG=e2e pnpm
+ * build`) and records a trace only when a test is retried.
+ */
+const serverCommand = isCI
+  ? `vite preview --port ${PORT} --strictPort`
+  : `./scripts/set-git-env.sh vite --port ${PORT} --strictPort`
 
 /**
  * End-to-end suite for the manual test plan in e2e/TEST-PLAN.md. Runs the dev
@@ -13,15 +24,17 @@ export default defineConfig({
   timeout: 120_000,
   expect: { timeout: 30_000 },
   /** IDC is a shared production proxy; keep the load modest */
-  workers: process.env.CI ? 2 : 3,
-  retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
+  workers: isCI ? 2 : 3,
+  retries: isCI ? 1 : 0,
+  /** A broken environment fails everything; stop instead of burning the job timeout */
+  maxFailures: isCI ? 5 : 0,
+  reporter: isCI ? [['list'], ['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: `http://localhost:${PORT}`,
     viewport: { width: 1600, height: 900 },
-    trace: 'retain-on-failure',
+    trace: isCI ? 'on-first-retry' : 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    video: isCI ? 'off' : 'retain-on-failure',
   },
   projects: [
     {
@@ -37,10 +50,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `./scripts/set-git-env.sh vite --port ${PORT} --strictPort`,
+    command: serverCommand,
     url: `http://localhost:${PORT}/config/e2e.js`,
     env: { REACT_APP_CONFIG: 'e2e', BROWSER: 'none' },
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !isCI,
     timeout: 120_000,
   },
 })
