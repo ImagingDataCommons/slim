@@ -152,6 +152,47 @@ describe('Worklist', () => {
     expect(getAllByText('SR')).toHaveLength(2)
   })
 
+  it('asks the server for patients outside the loaded studies', async () => {
+    const searchManager = new DicomWebManager({
+      baseUri: 'http://mockserver.org',
+      settings: [serverSettings],
+    })
+    searchManager.searchForStudies = async (options) => {
+      const params = options.queryParams as Record<string, unknown> | undefined
+      if (params?.PatientID === 'far-patient') {
+        return [
+          {
+            '0020000D': { vr: 'UI', Value: ['7.7.7'] },
+            '00100020': { vr: 'LO', Value: ['far-patient'] },
+            '00100010': { vr: 'PN', Value: [{ Alphabetic: 'far^patient' }] },
+            '00080061': { vr: 'CS', Value: ['SM'] },
+          },
+        ] as dwc.api.Study[]
+      }
+      if (Object.keys(params ?? {}).length > 2) return []
+      return searchResults as dwc.api.Study[]
+    }
+    searchManager.searchForSeries = async () => []
+    render(
+      <MemoryRouter>
+        <Worklist
+          clients={{
+            [StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]: searchManager,
+          }}
+        />
+      </MemoryRouter>,
+    )
+    await screen.findAllByRole('link', { name: /patient/ })
+
+    fireEvent.change(screen.getByLabelText('Search studies'), {
+      target: { value: 'far-patient' },
+    })
+
+    const links = await screen.findAllByRole('link', { name: /far/ })
+    expect(links).toHaveLength(1)
+    expect(links[0].getAttribute('href')).toContain('7.7.7')
+  })
+
   describe('"Contains" filter', () => {
     const uidRow = (study: string, series: string, sopClass?: string) => ({
       '0020000D': { vr: 'UI', Value: [study] },

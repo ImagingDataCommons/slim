@@ -7,14 +7,8 @@ import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../../../services/NotificationMiddleware'
 import { CustomError, errorTypes } from '../../../utils/CustomError'
-import { mapWithConcurrency } from '../../../utils/mapWithConcurrency'
-import { modalitiesNeedBackfill } from '../utils/filters'
-import {
-  buildStudyQueryParams,
-  extractModalitiesFromSeries,
-} from '../utils/studyQuery'
-
-const SERIES_REQUEST_CONCURRENCY = 6
+import { buildStudyQueryParams } from '../utils/studyQuery'
+import { fetchMissingModalities, mergeModalities } from './modalityBackfill'
 
 interface UseStudiesOptions {
   clients: { [key: string]: DicomWebManager }
@@ -23,36 +17,6 @@ interface UseStudiesOptions {
 export interface UseStudiesReturn {
   studies: dmv.metadata.Study[]
   isLoading: boolean
-}
-
-async function collectModalitiesFromSeries(
-  client: DicomWebManager,
-  studyInstanceUID: string,
-): Promise<string[]> {
-  try {
-    const seriesList = await client.searchForSeries({ studyInstanceUID })
-    return extractModalitiesFromSeries(seriesList ?? [])
-  } catch {
-    return []
-  }
-}
-
-/** Studies whose modalities were backfilled from their series. */
-function mergeModalities(
-  studies: dmv.metadata.Study[],
-  modalitiesByUid: ReadonlyMap<string, string[]>,
-): dmv.metadata.Study[] {
-  return studies.map((study) => {
-    const modalities = modalitiesByUid.get(study.StudyInstanceUID)
-    if (
-      modalities === undefined ||
-      modalities.length === 0 ||
-      !modalitiesNeedBackfill(study)
-    ) {
-      return study
-    }
-    return { ...study, ModalitiesInStudy: modalities }
-  })
 }
 
 /**
@@ -83,24 +47,12 @@ export function useStudies({ clients }: UseStudiesOptions): UseStudiesReturn {
     const enrichModalities = async (
       snapshot: dmv.metadata.Study[],
     ): Promise<void> => {
-      const needEnrichment = snapshot.filter(modalitiesNeedBackfill)
-      if (needEnrichment.length === 0) return
-      const results = await mapWithConcurrency(
-        needEnrichment,
-        SERIES_REQUEST_CONCURRENCY,
-        async (study) => {
-          const uid = study.StudyInstanceUID
-          if (!isCurrent()) return { uid, modalities: [] }
-          return {
-            uid,
-            modalities: await collectModalitiesFromSeries(client, uid),
-          }
-        },
+      const modalitiesByUid = await fetchMissingModalities(
+        client,
+        snapshot,
+        isCurrent,
       )
-      if (!isCurrent()) return
-      const modalitiesByUid = new Map(
-        results.map(({ uid, modalities }) => [uid, modalities]),
-      )
+      if (!isCurrent() || modalitiesByUid.size === 0) return
       setStudies((previous) => mergeModalities(previous, modalitiesByUid))
     }
 

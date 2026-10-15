@@ -18,6 +18,7 @@ import {
   useContainsSearch,
 } from '../hooks/useContainsSearch'
 import { useStudies } from '../hooks/useStudies'
+import { useStudySearch } from '../hooks/useStudySearch'
 import {
   CONTAINS_PARAM,
   type ContainsEntry,
@@ -25,6 +26,7 @@ import {
 } from '../utils/containsCatalog'
 import { withEntryModality } from '../utils/containsSearch'
 import {
+  appendMissingStudies,
   filterStudiesBySearchText,
   getEmptyStudiesMessage,
 } from '../utils/filters'
@@ -100,6 +102,10 @@ export function Worklist({
         clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE])
   const containsSearch = useContainsSearch(containsClient, containsEntry)
   const containsResult = containsSearch.result
+  const serverSearch = useStudySearch({
+    clients,
+    searchText: containsEntry === undefined ? deferredSearchText : '',
+  })
 
   const slideClient = clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
   const loadedStudies = useMemo(
@@ -129,7 +135,7 @@ export function Worklist({
     candidates,
   )
 
-  let containsStudies = studies
+  let containsStudies = appendMissingStudies(studies, serverSearch.matches)
   let hasUncheckedMatches = false
   if (containsEntry !== undefined) {
     containsStudies = []
@@ -220,7 +226,11 @@ export function Worklist({
       <WorklistTable
         className="flex-1"
         data={filteredStudies}
-        isLoading={isLoading || isSearchingContains}
+        isLoading={
+          isLoading ||
+          isSearchingContains ||
+          (serverSearch.isSearching && filteredStudies.length === 0)
+        }
         emptyMessage={emptyMessage}
         isCompact={preferences.compactRows}
         onRowClick={handleRowClick}

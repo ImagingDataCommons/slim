@@ -1,5 +1,6 @@
 import {
   buildStudyQueryParams,
+  buildStudySearchQueries,
   extractModalitiesFromSeries,
 } from '../studyQuery'
 
@@ -13,6 +14,35 @@ describe('buildStudyQueryParams', () => {
 
   it('returns a fresh object per call', () => {
     expect(buildStudyQueryParams()).not.toBe(buildStudyQueryParams())
+  })
+})
+
+describe('buildStudySearchQueries', () => {
+  const base = buildStudyQueryParams()
+
+  it('sends nothing for blank text', () => {
+    expect(buildStudySearchQueries('   ')).toEqual([])
+  })
+
+  it('queries each attribute with an exact and a wildcard value', () => {
+    expect(buildStudySearchQueries(' C3L-00965 ')).toEqual([
+      { ...base, PatientID: 'C3L-00965' },
+      { ...base, PatientID: '*C3L-00965*' },
+      { ...base, PatientName: 'C3L-00965', fuzzymatching: true },
+      { ...base, PatientName: '*C3L-00965*', fuzzymatching: true },
+      { ...base, AccessionNumber: 'C3L-00965' },
+      { ...base, AccessionNumber: '*C3L-00965*' },
+      { ...base, StudyID: 'C3L-00965' },
+    ])
+  })
+
+  it('sends a term with its own wildcards as typed', () => {
+    expect(buildStudySearchQueries('TCGA-*')).toEqual([
+      { ...base, PatientID: 'TCGA-*' },
+      { ...base, PatientName: 'TCGA-*', fuzzymatching: true },
+      { ...base, AccessionNumber: 'TCGA-*' },
+      { ...base, StudyID: 'TCGA-*' },
+    ])
   })
 })
 

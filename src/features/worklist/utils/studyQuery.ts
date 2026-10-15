@@ -12,6 +12,28 @@ export function buildStudyQueryParams(): StudyQueryParams {
   }
 }
 
+/**
+ * QIDO queries that find the studies a worklist search refers to, one per
+ * attribute and matching style. Servers differ in what they honor: Google
+ * Cloud Healthcare (IDC) ignores `*` wildcards and matches only exact values
+ * or fuzzy person names, while dcm4chee matches wildcards. Sending both styles
+ * covers either; queries a server rejects return nothing. A term that already
+ * contains `*` or `?` is sent as typed.
+ */
+export function buildStudySearchQueries(
+  searchText: string,
+): StudyQueryParams[] {
+  const term = searchText.trim()
+  if (term === '') return []
+  const values = /[*?]/.test(term) ? [term] : [term, `*${term}*`]
+  return [
+    ...values.map((value) => ({ PatientID: value })),
+    ...values.map((value) => ({ PatientName: value, fuzzymatching: true })),
+    ...values.map((value) => ({ AccessionNumber: value })),
+    { StudyID: term },
+  ].map((criteria) => ({ ...buildStudyQueryParams(), ...criteria }))
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object'
 }

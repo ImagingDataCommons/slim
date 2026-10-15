@@ -1,6 +1,7 @@
 import type { metadata } from 'dicom-microscopy-viewer'
 
 import {
+  appendMissingStudies,
   filterStudiesBySearchText,
   getEmptyStudiesMessage,
   modalitiesNeedBackfill,
@@ -67,6 +68,30 @@ describe('filterStudiesBySearchText', () => {
 
   it('trims the search text', () => {
     expect(search('  jane ')).toEqual(['2'])
+  })
+})
+
+describe('appendMissingStudies', () => {
+  const listed = [
+    study({ StudyInstanceUID: '1' }),
+    study({ StudyInstanceUID: '2' }),
+  ]
+
+  it('appends only the studies not already listed', () => {
+    const extra = study({ StudyInstanceUID: '3' })
+    const merged = appendMissingStudies(listed, [
+      study({ StudyInstanceUID: '2' }),
+      extra,
+    ])
+    expect(merged.map((item) => item.StudyInstanceUID)).toEqual(['1', '2', '3'])
+    expect(merged[1]).toBe(listed[1])
+  })
+
+  it('returns the same list when nothing is missing', () => {
+    expect(appendMissingStudies(listed, [])).toBe(listed)
+    expect(
+      appendMissingStudies(listed, [study({ StudyInstanceUID: '1' })]),
+    ).toBe(listed)
   })
 })
 

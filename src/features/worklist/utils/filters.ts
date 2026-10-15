@@ -47,6 +47,17 @@ export function filterStudiesBySearchText(
   })
 }
 
+/** `studies` followed by the `extra` studies it does not already list. */
+export function appendMissingStudies(
+  studies: dmv.metadata.Study[],
+  extra: dmv.metadata.Study[],
+): dmv.metadata.Study[] {
+  if (extra.length === 0) return studies
+  const listed = new Set(studies.map((study) => study.StudyInstanceUID))
+  const missing = extra.filter((study) => !listed.has(study.StudyInstanceUID))
+  return missing.length === 0 ? studies : [...studies, ...missing]
+}
+
 /**
  * True when QIDO did not return usable ModalitiesInStudy.
  */
