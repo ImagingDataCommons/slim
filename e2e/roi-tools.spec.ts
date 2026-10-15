@@ -1,13 +1,13 @@
 import { expect, type Locator, type Page, test } from '@playwright/test'
 
 import {
-  captureViewport,
+  captureSettledViewport,
+  expectViewportToDiffer,
   mainViewportCenter,
   openViewer,
   pressViewerShortcut,
   section,
   slidePanel,
-  viewportDiff,
 } from './helpers'
 import { seriesUrl, studies } from './studies'
 
@@ -40,8 +40,9 @@ async function configureDraw(
   await chooseOption(page, selects.last(), geometry)
   await dialog.getByRole('button', { name: 'Start drawing' }).click()
   await expect(dialog).toBeHidden()
-  /** The draw interaction attaches after the dialog closes */
-  await page.waitForTimeout(1000)
+  await expect(
+    page.getByRole('button', { name: 'Draw', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true')
 }
 
 /** Clicks the corners of a rectangle and closes it on the first point */
@@ -56,7 +57,6 @@ async function drawPolygon(page: Page): Promise<void> {
   ]
   for (const [cornerX, cornerY] of corners) {
     await page.mouse.click(cornerX, cornerY)
-    await page.waitForTimeout(300)
   }
 }
 
@@ -121,12 +121,9 @@ test.describe('ROI tools', () => {
     await expect(rois.getByRole('button', { name: /^ROI 1 / })).toBeVisible()
     await page.keyboard.press('Escape')
 
-    const shown = await captureViewport(page)
+    const shown = await captureSettledViewport(page)
     await pressViewerShortcut(page, 'KeyV')
-    await page.waitForTimeout(500)
-    expect(
-      await viewportDiff(page, shown, await captureViewport(page)),
-    ).toBeGreaterThan(0)
+    await expectViewportToDiffer(page, shown, 0)
     await pressViewerShortcut(page, 'KeyV')
 
     await page.getByRole('button', { name: 'Remove', exact: true }).click()
@@ -140,7 +137,7 @@ test.describe('ROI tools', () => {
     page,
   }) => {
     await openViewer(page, slideUrl)
-    const before = await captureViewport(page)
+    const before = await captureSettledViewport(page)
     await pressViewerShortcut(page, 'KeyG')
     const dialog = page.getByRole('dialog')
     await expect(
@@ -163,10 +160,7 @@ test.describe('ROI tools', () => {
     await dialog.getByLabel('Magnification').fill('10')
     await dialog.getByRole('button', { name: 'Go to position' }).click()
     await expect(dialog).toBeHidden()
-    await page.waitForTimeout(2000)
-    expect(
-      await viewportDiff(page, before, await captureViewport(page)),
-    ).toBeGreaterThan(5)
+    await expectViewportToDiffer(page, before, 5)
   })
 
   /**

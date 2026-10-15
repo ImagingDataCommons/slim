@@ -1,24 +1,17 @@
 import { expect, type Locator, type Page, test } from '@playwright/test'
 
 import {
-  captureViewport,
+  captureSettledViewport,
   expectTissueRendered,
+  expectViewportToDiffer,
   openViewer,
   section,
   slidePanel,
-  viewportDiff,
-  waitForTilesSettled,
 } from './helpers'
 import { seriesUrl, studies } from './studies'
 
 const { htanImc, tcgaGbm, boneMarrow } = studies
 const imcUrl = seriesUrl({ study: htanImc.study, series: htanImc.imcSlide })
-
-async function settle(page: Page): Promise<Buffer> {
-  await page.waitForTimeout(1500)
-  await waitForTilesSettled(page)
-  return captureViewport(page)
-}
 
 async function openDisplayOptions(container: Locator): Promise<Locator> {
   const toggle = container.getByRole('button', { name: /^Display options/ })
@@ -27,11 +20,21 @@ async function openDisplayOptions(container: Locator): Promise<Locator> {
   return container
 }
 
-test.describe('Optical paths and display options', () => {
-  test('O1 multiplexed slide lists channels with window and visibility controls', async ({
-    page,
-  }) => {
+/** Each test puts the channels back the way it found them, so they share a slide */
+test.describe('Optical paths on one multiplexed slide', () => {
+  test.describe.configure({ mode: 'serial' })
+  let page: Page
+
+  test.beforeAll(async ({ browser }) => {
+    page = await browser.newPage()
     await openViewer(page, imcUrl)
+  })
+
+  test.afterAll(async () => {
+    await page.close()
+  })
+
+  test('O1 multiplexed slide lists channels with window and visibility controls', async () => {
     await expectTissueRendered(page, 3)
     const paths = await section(slidePanel(page), 'Optical paths')
     await expect(
@@ -44,16 +47,16 @@ test.describe('Optical paths and display options', () => {
       paths.getByRole('slider', { name: 'SMA Upper limit' }),
     ).toBeVisible()
 
-    const before = await settle(page)
+    const before = await captureSettledViewport(page)
     const sma = paths.getByRole('button', { name: 'Show SMA' })
     await sma.click()
     await expect(sma).toHaveAttribute('aria-pressed', 'false')
-    const hidden = await settle(page)
-    expect(await viewportDiff(page, before, hidden)).toBeGreaterThan(0.5)
+    await expectViewportToDiffer(page, before, 0.5)
+    await sma.click()
+    await expect(sma).toHaveAttribute('aria-pressed', 'true')
   })
 
-  test('O2 channels can be removed and added back', async ({ page }) => {
-    await openViewer(page, imcUrl)
+  test('O2 channels can be removed and added back', async () => {
     const paths = await section(slidePanel(page), 'Optical paths')
     await paths.getByRole('button', { name: 'Remove SMA' }).click()
     await expect(paths.getByRole('button', { name: 'Show SMA' })).toHaveCount(0)
@@ -63,27 +66,25 @@ test.describe('Optical paths and display options', () => {
     await expect(paths.getByRole('button', { name: 'Show SMA' })).toBeVisible()
   })
 
-  test('O3 presentation state applies, updates the URL and resets', async ({
-    page,
-  }) => {
-    await openViewer(page, imcUrl)
+  test('O3 presentation state applies, updates the URL and resets', async () => {
     const states = await section(slidePanel(page), 'Presentation states')
-    const before = await settle(page)
+    const before = await captureSettledViewport(page)
     const picker = states.getByRole('combobox', { name: 'Presentation state' })
     await picker.click()
     const options = page.getByRole('option')
     expect(await options.count()).toBeGreaterThan(1)
     await options.nth(1).click()
     await expect(page).toHaveURL(/[?&]state=[\d.]+/)
-    const applied = await settle(page)
-    expect(await viewportDiff(page, before, applied)).toBeGreaterThan(0.5)
+    await expectViewportToDiffer(page, before, 0.5)
 
     await states
       .getByRole('button', { name: 'Reset presentation state' })
       .click()
     await expect(page).not.toHaveURL(/state=/)
   })
+})
 
+test.describe('Optical paths and display options', () => {
   test('O4 presentation state from the URL is applied on load', async ({
     page,
   }) => {
@@ -114,11 +115,10 @@ test.describe('Optical paths and display options', () => {
     )
     const icc = paths.getByRole('switch', { name: 'ICC profiles' })
     await expect(icc).toBeChecked()
-    const before = await settle(page)
+    const before = await captureSettledViewport(page)
     await icc.click()
     await expect(icc).not.toBeChecked()
-    const after = await settle(page)
-    expect(await viewportDiff(page, before, after)).toBeGreaterThan(0.2)
+    await expectViewportToDiffer(page, before, 0.2)
   })
 
   test('O6 clustering threshold accepts decimals', async ({ page }) => {

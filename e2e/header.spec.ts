@@ -11,14 +11,23 @@ async function openUserMenuItem(page: Page, item: string): Promise<void> {
   await expect(page.getByRole('dialog')).toBeVisible()
 }
 
-test.describe('Header and dialogs', () => {
-  test('H1 tag browser filters attributes of the open slide', async ({
-    page,
-  }) => {
+test.describe('Header dialogs on one H&E slide', () => {
+  test.describe.configure({ mode: 'serial' })
+  let page: Page
+
+  test.beforeAll(async ({ browser }) => {
+    page = await browser.newPage()
     await openViewer(
       page,
       seriesUrl({ study: he.study, series: he.firstSlide }),
     )
+  })
+
+  test.afterAll(async () => {
+    await page.close()
+  })
+
+  test('H1 tag browser filters attributes of the open slide', async () => {
     await page.getByRole('button', { name: 'DICOM tag browser' }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog.getByText(/\d+ attributes/)).toBeVisible()
@@ -31,6 +40,16 @@ test.describe('Header and dialogs', () => {
     await expect(dialog).toBeHidden()
   })
 
+  test('H4 debug dialog lists session messages', async () => {
+    await page.getByRole('button', { name: /^Debug info/ }).click()
+    const dialog = page.getByRole('dialog')
+    await expect(
+      dialog.getByText('Errors and warnings from this session'),
+    ).toBeVisible()
+  })
+})
+
+test.describe('Header and dialogs', () => {
   test('H2 tag browser is not offered on the worklist', async ({ page }) => {
     await page.goto('/')
     await expect(page.getByRole('heading', { name: 'Studies' })).toBeVisible()
@@ -57,18 +76,6 @@ test.describe('Header and dialogs', () => {
     await expect(dialog).toBeHidden()
     await expect(
       page.getByRole('button', { name: /^Server https:\/\/proxy\.imaging/ }),
-    ).toBeVisible()
-  })
-
-  test('H4 debug dialog lists session messages', async ({ page }) => {
-    await openViewer(
-      page,
-      seriesUrl({ study: he.study, series: he.firstSlide }),
-    )
-    await page.getByRole('button', { name: /^Debug info/ }).click()
-    const dialog = page.getByRole('dialog')
-    await expect(
-      dialog.getByText('Errors and warnings from this session'),
     ).toBeVisible()
   })
 

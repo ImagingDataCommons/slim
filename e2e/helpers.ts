@@ -43,7 +43,7 @@ export async function section(panel: Locator, title: string): Promise<Locator> {
 
 /**
  * Waits for the footer tile counter to report every requested tile as loaded
- * and to stay that way, so screenshots compare settled frames.
+ * and to stay that way. Use captureSettledViewport when comparing pixels.
  */
 export async function waitForTilesSettled(page: Page): Promise<void> {
   const footer = page.locator('footer').filter({ hasText: 'Tiles' })
@@ -69,8 +69,6 @@ export async function waitForTilesSettled(page: Page): Promise<void> {
       { timeout: 60_000, intervals: [500] },
     )
     .toBe(true)
-  /** WebGL paints a frame after the last tile arrives */
-  await page.waitForTimeout(500)
 }
 
 /** Opens a viewer URL and waits for the first slide to finish rendering */
@@ -178,6 +176,61 @@ export async function viewportDiff(
 }
 
 /**
+ * WebGL paints after the last tile arrives and layer changes repaint over a
+ * few frames, so pixel checks wait until captures stop changing. Layers that
+ * draw in bursts need a longer quiet period than two captures in a row.
+ */
+export async function captureSettledViewport(
+  page: Page,
+  { quietMs = 0, timeout = 30_000 } = {},
+): Promise<Buffer> {
+  await waitForTilesSettled(page)
+  let previous = await captureViewport(page)
+  let lastChange = Date.now()
+  await expect
+    .poll(
+      async () => {
+        const next = await captureViewport(page)
+        const isUnchanged = (await viewportDiff(page, previous, next)) < 0.01
+        previous = next
+        if (!isUnchanged) lastChange = Date.now()
+        return isUnchanged && Date.now() - lastChange >= quietMs
+      },
+      { message: 'viewport stops changing', timeout, intervals: [250] },
+    )
+    .toBe(true)
+  return previous
+}
+
+/** Waits for the viewport to move away from a reference capture */
+export async function expectViewportToDiffer(
+  page: Page,
+  reference: Buffer,
+  minDiff: number,
+): Promise<void> {
+  await expect
+    .poll(
+      async () => viewportDiff(page, reference, await captureViewport(page)),
+      { message: 'viewport differs from reference', timeout: 30_000 },
+    )
+    .toBeGreaterThan(minDiff)
+}
+
+/** Waits for the viewport to come back to a reference capture */
+export async function expectViewportToMatch(
+  page: Page,
+  reference: Buffer,
+  maxDiff: number,
+): Promise<void> {
+  await expect
+    .poll(
+      async () => viewportDiff(page, reference, await captureViewport(page)),
+      { message: 'viewport matches reference', timeout: 30_000 },
+    )
+    .toBeLessThan(maxDiff)
+}
+
+/**
  * Asserts tissue is painted: a blank canvas has a luminance spread near 0,
  * brightfield H&E about 39 and sparse fluorescence on black about 9.
  */
@@ -185,8 +238,13 @@ export async function expectTissueRendered(
   page: Page,
   minSpread = 10,
 ): Promise<void> {
-  const stats = await viewportStats(page, await captureViewport(page))
-  expect(stats.stdDev, 'viewport luminance spread').toBeGreaterThan(minSpread)
+  await expect
+    .poll(
+      async () =>
+        (await viewportStats(page, await captureViewport(page))).stdDev,
+      { message: 'viewport luminance spread', timeout: 30_000 },
+    )
+    .toBeGreaterThan(minSpread)
 }
 
 /** Alt shortcuts fire on keyup and need focus on the page, not a field */

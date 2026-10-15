@@ -6,22 +6,25 @@ const isCI = process.env.CI !== undefined
 /**
  * CI runners render WebGL in software on a few cores. The dev server (per-module
  * transforms, React dev mode) plus video recording starved them until tests
- * timed out, so CI serves a production build (`REACT_APP_CONFIG=e2e pnpm
- * build`) and records a trace only when a test is retried.
+ * timed out, so CI builds with the e2e config and serves that build, and
+ * records a trace only when a test is retried. Building here rather than in a
+ * workflow step means a build made with another config is never served.
  */
 const serverCommand = isCI
-  ? `vite preview --port ${PORT} --strictPort`
+  ? `pnpm run build && vite preview --port ${PORT} --strictPort`
   : `./scripts/set-git-env.sh vite --port ${PORT} --strictPort`
 
 /**
- * End-to-end suite for the manual test plan in e2e/TEST-PLAN.md. Runs the dev
- * server with public/config/e2e.js, which reads real slides from the public
- * IDC DICOMweb proxy, so tests need network access but no credentials.
+ * End-to-end suite for the manual test plan in e2e/TEST-PLAN.md. Runs Slim
+ * with public/config/e2e.js, which reads real slides from the public IDC
+ * DICOMweb proxy, so tests need network access but no credentials.
  */
 export default defineConfig({
   testDir: 'e2e',
   outputDir: 'test-results',
-  timeout: 120_000,
+  /** Spreads tests of one file over workers and shards; serial groups stay together */
+  fullyParallel: true,
+  timeout: 90_000,
   expect: { timeout: 30_000 },
   /** IDC is a shared production proxy; keep the load modest */
   workers: isCI ? 2 : 3,

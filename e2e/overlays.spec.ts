@@ -1,25 +1,18 @@
 import { expect, type Page, test } from '@playwright/test'
 
 import {
-  captureViewport,
+  captureSettledViewport,
   expectTissueRendered,
-  mainViewportCenter,
+  expectViewportToDiffer,
+  expectViewportToMatch,
   openViewer,
   section,
   slidePanel,
-  viewportDiff,
-  waitForTilesSettled,
 } from './helpers'
 import { seriesUrl, studies } from './studies'
 
 const { tcgaRead, tcgaGbm, rmsSr, boneMarrow } = studies
-
-/** Waits for the DMV layer to repaint after a visibility change */
-async function settle(page: Page): Promise<Buffer> {
-  await page.waitForTimeout(1500)
-  await waitForTilesSettled(page)
-  return captureViewport(page)
-}
+const srUrl = seriesUrl({ study: rmsSr.study, series: rmsSr.sr })
 
 test.describe('Segmentations', () => {
   test('S1 SEG link opens the referenced slide with that segmentation visible', async ({
@@ -49,35 +42,35 @@ test.describe('Segmentations', () => {
   test('S2 hide all and show all segments change the viewport', async ({
     page,
   }) => {
-    await openViewer(page, seriesUrl({ study: rmsSr.study, series: rmsSr.sr }))
+    await openViewer(page, srUrl)
     const segments = await section(slidePanel(page), 'Segmentations')
-    const before = await settle(page)
+    const before = await captureSettledViewport(page)
     await segments.getByRole('button', { name: 'Show all segments' }).click()
     await expect(segments.getByText('4 of 4 visible')).toBeVisible()
-    const shown = await settle(page)
-    expect(await viewportDiff(page, before, shown)).toBeGreaterThan(1)
+    await expectViewportToDiffer(page, before, 1)
 
     await segments.getByRole('button', { name: 'Hide all segments' }).click()
     await expect(segments.getByText('0 of 4 visible')).toBeVisible()
-    const hidden = await settle(page)
-    expect(await viewportDiff(page, before, hidden)).toBeLessThan(1)
+    await expectViewportToMatch(page, before, 1)
   })
 
   test('S3 a single segment toggles and its opacity changes the overlay', async ({
     page,
   }) => {
-    await openViewer(page, seriesUrl({ study: rmsSr.study, series: rmsSr.sr }))
+    await openViewer(page, srUrl)
     const segments = await section(slidePanel(page), 'Segmentations')
     const toggle = segments.getByRole('button', { name: 'Show STROMA' })
     await toggle.click()
     await expect(toggle).toHaveAttribute('aria-pressed', 'true')
-    const full = await settle(page)
+    const full = await captureSettledViewport(page)
 
     const opacity = segments.getByRole('slider', { name: 'Opacity of STROMA' })
-    await opacity.focus()
-    for (let step = 0; step < 10; step++) await page.keyboard.press('ArrowLeft')
-    const faded = await settle(page)
-    expect(await viewportDiff(page, full, faded)).toBeGreaterThan(0.5)
+    await opacity.press('Home')
+    await expect(opacity).toHaveAttribute(
+      'aria-valuenow',
+      (await opacity.getAttribute('aria-valuemin')) ?? '0',
+    )
+    await expectViewportToDiffer(page, full, 0.5)
   })
 
   test('S4 series selector switches between segmentation series', async ({
@@ -108,14 +101,13 @@ test.describe('Parametric maps', () => {
     const maps = await section(slidePanel(page), 'Parametric maps')
     const toggle = maps.getByRole('button', { name: /^Show / }).last()
     const wasVisible = (await toggle.getAttribute('aria-pressed')) === 'true'
-    const before = await settle(page)
+    const before = await captureSettledViewport(page)
     await toggle.click()
     await expect(toggle).toHaveAttribute(
       'aria-pressed',
       wasVisible ? 'false' : 'true',
     )
-    const after = await settle(page)
-    expect(await viewportDiff(page, before, after)).toBeGreaterThan(0.5)
+    await expectViewportToDiffer(page, before, 0.5)
   })
 })
 
@@ -124,9 +116,20 @@ test.describe('Annotation groups', () => {
     page,
   }) => {
     test.setTimeout(240_000)
-    const bulk: number[] = []
+    const bulkStatuses: number[] = []
+    let pendingBulk = 0
+    const isBulk = (url: string): boolean => url.includes('/bulk')
+    page.on('request', (request) => {
+      if (isBulk(request.url())) pendingBulk++
+    })
+    page.on('requestfailed', (request) => {
+      if (isBulk(request.url())) pendingBulk--
+    })
     page.on('response', (response) => {
-      if (response.url().includes('/bulk')) bulk.push(response.status())
+      if (isBulk(response.url())) bulkStatuses.push(response.status())
+    })
+    page.on('requestfinished', (request) => {
+      if (isBulk(request.url())) pendingBulk--
     })
     await openViewer(
       page,
@@ -135,21 +138,23 @@ test.describe('Annotation groups', () => {
     const groups = await section(slidePanel(page), 'Annotation groups')
     const toggle = groups.getByRole('button', { name: 'Show Nuclei' })
     await expect(toggle).toHaveAttribute('aria-pressed', 'true')
-    await expect.poll(() => bulk.includes(200), { timeout: 90_000 }).toBe(true)
+    await expect
+      .poll(() => bulkStatuses.includes(200) && pendingBulk === 0, {
+        message: 'bulk annotation data downloaded',
+        timeout: 90_000,
+      })
+      .toBe(true)
 
-    /** ~508k polygons arrive progressively; toggling earlier leaves clusters */
-    await page.waitForTimeout(25_000)
-    const center = await mainViewportCenter(page)
-    await page.mouse.move(center.x, center.y)
-    for (let step = 0; step < 8; step++) {
-      await page.mouse.wheel(0, -300)
-      await page.waitForTimeout(250)
-    }
-    const shown = await settle(page)
+    const zoomIn = page.getByRole('button', { name: 'Zoom in' })
+    for (let step = 0; step < 8; step++) await zoomIn.click()
+    /** ~508k polygons draw in bursts; hiding them mid-draw leaves clusters */
+    const shown = await captureSettledViewport(page, {
+      quietMs: 5_000,
+      timeout: 90_000,
+    })
     await toggle.click()
     await expect(toggle).toHaveAttribute('aria-pressed', 'false')
-    const hidden = await settle(page)
-    expect(await viewportDiff(page, shown, hidden)).toBeGreaterThan(2)
+    await expectViewportToDiffer(page, shown, 2)
   })
 
   test('A2 ANN link turns on its groups; show all and hide all cover every group', async ({
@@ -177,9 +182,21 @@ test.describe('Annotation groups', () => {
   })
 })
 
+/** Each test leaves every ROI visible, so the three share one loaded slide */
 test.describe('SR annotations', () => {
-  test('R1 SR link lists its 9 ROIs with findings', async ({ page }) => {
-    await openViewer(page, seriesUrl({ study: rmsSr.study, series: rmsSr.sr }))
+  test.describe.configure({ mode: 'serial' })
+  let page: Page
+
+  test.beforeAll(async ({ browser }) => {
+    page = await browser.newPage()
+    await openViewer(page, srUrl)
+  })
+
+  test.afterAll(async () => {
+    await page.close()
+  })
+
+  test('R1 SR link lists its 9 ROIs with findings', async () => {
     const rois = await section(slidePanel(page), 'Annotations')
     for (let roi = 1; roi <= 9; roi++) {
       await expect(
@@ -189,24 +206,22 @@ test.describe('SR annotations', () => {
     await expect(rois.getByText(/Necrosis/).first()).toBeVisible()
   })
 
-  test('R2 hide all ROIs and hide a single ROI', async ({ page }) => {
-    await openViewer(page, seriesUrl({ study: rmsSr.study, series: rmsSr.sr }))
+  test('R2 hide all ROIs and hide a single ROI', async () => {
     const rois = await section(slidePanel(page), 'Annotations')
-    const before = await settle(page)
+    const before = await captureSettledViewport(page)
     await rois.getByRole('button', { name: 'Hide all annotations' }).click()
     await expect(rois.getByText('0 of 9 visible')).toBeVisible()
-    const hidden = await settle(page)
-    expect(await viewportDiff(page, before, hidden)).toBeGreaterThan(0.3)
+    await expectViewportToDiffer(page, before, 0.3)
 
     await rois.getByRole('button', { name: 'Show all annotations' }).click()
-    await rois.getByRole('button', { name: 'Show ROI 1', exact: true }).click()
+    const roi1 = rois.getByRole('button', { name: 'Show ROI 1', exact: true })
+    await roi1.click()
     await expect(rois.getByText('8 of 9 visible')).toBeVisible()
+    await roi1.click()
+    await expect(rois.getByText('9 of 9 visible')).toBeVisible()
   })
 
-  test('R3 annotation categories hide every ROI of a finding', async ({
-    page,
-  }) => {
-    await openViewer(page, seriesUrl({ study: rmsSr.study, series: rmsSr.sr }))
+  test('R3 annotation categories hide every ROI of a finding', async () => {
     const categories = await section(slidePanel(page), 'Annotation categories')
     await categories
       .getByRole('button', { name: /^Necrosis, 4 annotations/ })
