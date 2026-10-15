@@ -1,5 +1,6 @@
-import { expect, type Page, test } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 
+import { newSharedPage, test } from './fixtures'
 import {
   captureSettledViewport,
   expectTissueRendered,
@@ -188,12 +189,12 @@ test.describe('SR annotations', () => {
   let page: Page
 
   test.beforeAll(async ({ browser }) => {
-    page = await browser.newPage()
+    page = await newSharedPage(browser)
     await openViewer(page, srUrl)
   })
 
   test.afterAll(async () => {
-    await page.close()
+    await page.context().close()
   })
 
   test('R1 SR link lists its 9 ROIs with findings', async () => {

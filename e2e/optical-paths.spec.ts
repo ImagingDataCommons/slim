@@ -1,5 +1,6 @@
-import { expect, type Locator, type Page, test } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 
+import { newSharedPage, test } from './fixtures'
 import {
   captureSettledViewport,
   expectTissueRendered,
@@ -26,12 +27,12 @@ test.describe('Optical paths on one multiplexed slide', () => {
   let page: Page
 
   test.beforeAll(async ({ browser }) => {
-    page = await browser.newPage()
+    page = await newSharedPage(browser)
     await openViewer(page, imcUrl)
   })
 
   test.afterAll(async () => {
-    await page.close()
+    await page.context().close()
   })
 
   test('O1 multiplexed slide lists channels with window and visibility controls', async () => {

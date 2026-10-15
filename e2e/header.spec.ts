@@ -1,5 +1,6 @@
-import { expect, type Page, test } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 
+import { newSharedPage, test } from './fixtures'
 import { openViewer } from './helpers'
 import { seriesUrl, studies } from './studies'
 
@@ -16,7 +17,7 @@ test.describe('Header dialogs on one H&E slide', () => {
   let page: Page
 
   test.beforeAll(async ({ browser }) => {
-    page = await browser.newPage()
+    page = await newSharedPage(browser)
     await openViewer(
       page,
       seriesUrl({ study: he.study, series: he.firstSlide }),
@@ -24,7 +25,7 @@ test.describe('Header dialogs on one H&E slide', () => {
   })
 
   test.afterAll(async () => {
-    await page.close()
+    await page.context().close()
   })
 
   test('H1 tag browser filters attributes of the open slide', async () => {

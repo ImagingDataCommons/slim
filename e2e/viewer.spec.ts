@@ -1,5 +1,6 @@
-import { expect, type Page, test } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 
+import { newSharedPage, test } from './fixtures'
 import {
   captureSettledViewport,
   expandSection,
@@ -82,7 +83,7 @@ test.describe('Slide viewer on one H&E slide', () => {
   let page: Page
 
   test.beforeAll(async ({ browser }) => {
-    page = await browser.newPage()
+    page = await newSharedPage(browser)
     await openViewer(
       page,
       seriesUrl({ study: he.study, series: he.firstSlide }),
@@ -90,7 +91,7 @@ test.describe('Slide viewer on one H&E slide', () => {
   })
 
   test.afterAll(async () => {
-    await page.close()
+    await page.context().close()
   })
 
   test('V2 zoom buttons fetch higher resolution tiles and fit restores', async () => {
