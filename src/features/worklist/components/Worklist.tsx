@@ -17,6 +17,7 @@ import {
   useContainsRowChecks,
   useContainsSearch,
 } from '../hooks/useContainsSearch'
+import { useModalityBackfill } from '../hooks/useModalityBackfill'
 import { useStudies } from '../hooks/useStudies'
 import { useStudySearch } from '../hooks/useStudySearch'
 import {
@@ -29,6 +30,7 @@ import {
   appendMissingStudies,
   filterStudiesBySearchText,
   getEmptyStudiesMessage,
+  mergeModalities,
 } from '../utils/filters'
 import { clampPagination } from '../utils/pagination'
 import { WorklistHeader } from './WorklistHeader'
@@ -161,6 +163,15 @@ export function Worklist({
     requestedPagination,
     filteredStudies.length,
   )
+  const pageStudies = useMemo(() => {
+    const onPage = new Set(pageStudyUids)
+    return filteredStudies.filter((study) => onPage.has(study.StudyInstanceUID))
+  }, [filteredStudies, pageStudyUids])
+  const backfilledModalities = useModalityBackfill(slideClient, pageStudies)
+  const tableStudies = useMemo(
+    () => mergeModalities(filteredStudies, backfilledModalities),
+    [filteredStudies, backfilledModalities],
+  )
 
   const handleSearchChange = useCallback((value: string): void => {
     setSearchText(value)
@@ -225,7 +236,7 @@ export function Worklist({
       />
       <WorklistTable
         className="flex-1"
-        data={filteredStudies}
+        data={tableStudies}
         isLoading={
           isLoading ||
           isSearchingContains ||

@@ -64,3 +64,22 @@ export function appendMissingStudies(
 export function modalitiesNeedBackfill(study: dmv.metadata.Study): boolean {
   return normalizeModalities(study.ModalitiesInStudy).length === 0
 }
+
+/** Studies with ModalitiesInStudy filled in from `modalitiesByUid` where missing. */
+export function mergeModalities(
+  studies: dmv.metadata.Study[],
+  modalitiesByUid: ReadonlyMap<string, string[]>,
+): dmv.metadata.Study[] {
+  if (modalitiesByUid.size === 0) return studies
+  return studies.map((study) => {
+    const modalities = modalitiesByUid.get(study.StudyInstanceUID)
+    if (
+      modalities === undefined ||
+      modalities.length === 0 ||
+      !modalitiesNeedBackfill(study)
+    ) {
+      return study
+    }
+    return { ...study, ModalitiesInStudy: modalities }
+  })
+}

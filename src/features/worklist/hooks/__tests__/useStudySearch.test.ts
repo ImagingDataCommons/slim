@@ -19,7 +19,6 @@ function studyJson(uid: string, patientId: string): dwc.api.Study {
 
 function createClients(
   searchForStudies: (params: QueryParams) => Promise<dwc.api.Study[]>,
-  searchForSeries: DicomWebManager['searchForSeries'] = async () => [],
 ): Clients {
   const manager = new DicomWebManager({
     baseUri: 'http://mockserver.org',
@@ -27,7 +26,6 @@ function createClients(
   })
   manager.searchForStudies = async (options) =>
     await searchForStudies((options.queryParams ?? {}) as QueryParams)
-  manager.searchForSeries = searchForSeries
   return { [StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]: manager }
 }
 
@@ -61,22 +59,6 @@ describe('useStudySearch', () => {
     expect(result.current.matches.map((study) => study.PatientID)).toEqual([
       'P-9',
     ])
-  })
-
-  it('backfills modalities of the matches', async () => {
-    const clients = createClients(
-      async (params) =>
-        params.PatientID === 'P-9' ? [studyJson('9.9', 'P-9')] : [],
-      async () =>
-        [{ '00080060': { vr: 'CS', Value: ['SM'] } }] as dwc.api.Series[],
-    )
-    const { result } = renderHook(() =>
-      useStudySearch({ clients, searchText: 'P-9' }),
-    )
-
-    await waitFor(() =>
-      expect(result.current.matches[0]?.ModalitiesInStudy).toEqual(['SM']),
-    )
   })
 
   it('only queries for the text once typing pauses', async () => {

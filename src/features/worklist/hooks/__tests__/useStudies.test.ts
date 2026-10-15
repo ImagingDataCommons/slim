@@ -46,25 +46,14 @@ function studyJson(uid: string, modalities?: string[]): dwc.api.Study {
   }
 }
 
-function seriesJson(modality: string): dwc.api.Series {
-  return {
-    '0020000E': element('UI', [`series-${modality}`]),
-    '00200011': element('IS', [1]),
-    '00080060': element('CS', [modality]),
-    '00201209': element('IS', [1]),
-  }
-}
-
 function createClients(
   searchForStudies: DicomWebManager['searchForStudies'],
-  searchForSeries: DicomWebManager['searchForSeries'] = async () => [],
 ): Clients {
   const manager = new DicomWebManager({
     baseUri: 'http://mockserver.org',
     settings: [{ id: 'mock', path: '/dicomweb', write: false }],
   })
   manager.searchForStudies = searchForStudies
-  manager.searchForSeries = searchForSeries
   return { [StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]: manager }
 }
 
@@ -105,49 +94,6 @@ describe('useStudies', () => {
     })
 
     expect(uids(result.current.studies)).toEqual(['new'])
-  })
-
-  it('backfills missing modalities from the series', async () => {
-    const searchForSeries = vi.fn(async () => [
-      seriesJson('SR'),
-      seriesJson('OT'),
-    ])
-    const clients = createClients(
-      async () => [studyJson('with', ['SM']), studyJson('without')],
-      searchForSeries,
-    )
-    const { result } = renderHook(() => useStudies({ clients }))
-
-    await waitFor(() => {
-      const backfilled = result.current.studies.find(
-        (study) => study.StudyInstanceUID === 'without',
-      )
-      expect(backfilled?.ModalitiesInStudy).toEqual(['OT', 'SR'])
-    })
-    expect(searchForSeries).toHaveBeenCalledTimes(1)
-    expect(searchForSeries).toHaveBeenCalledWith({
-      studyInstanceUID: 'without',
-    })
-  })
-
-  it('ignores enrichment that finishes after the hook unmounts', async () => {
-    const series = deferred<dwc.api.Series[]>()
-    const clients = createClients(
-      async () => [studyJson('without')],
-      async () => await series.promise,
-    )
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const { result, unmount } = renderHook(() => useStudies({ clients }))
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
-
-    unmount()
-    await act(async () => {
-      series.resolve([seriesJson('OT')])
-      await series.promise
-    })
-
-    expect(errorSpy).not.toHaveBeenCalled()
-    errorSpy.mockRestore()
   })
 
   it('reports a failed search', async () => {

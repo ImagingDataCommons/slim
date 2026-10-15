@@ -44,7 +44,7 @@ Open http://localhost:3000.
 - [ ] **W3** e2e. Searching `C3L-00965` finds the H&E patient, even though IDC's first 100 studies don't include it. The search also asks the server, so try `TCGA-AF-2689` and `HTA12_3` too.
 - [ ] **W4** e2e. Clicking the Patient ID header sorts the rows. Click again to reverse.
 - [ ] **W5** e2e. Next and Previous move between pages. Rows per page 50 shows 50 rows.
-- [ ] **W6** e2e. The Modality column fills in with `SM` (and `ANN`, `SEG`, `SR` where present) after a few seconds.
+- [ ] **W6** e2e. The Modality column fills in with `SM` (and `ANN`, `SEG`, `SR` where present) within a few seconds. IDC doesn't return study modalities, so Slim asks for the series of the rows on screen only: 20 requests per page, none when you come back to a page.
 - [ ] **W7** e2e. Contains → Bulk annotations adds a chip and `?contains=ann` to the URL, and narrows the list. Clearing the chip restores it.
 - [ ] **W8** e2e. Clicking a row opens the viewer. The Worklist link in the header brings you back.
 - [ ] **W9** manual. Compact rows (Preferences) tightens the table.
@@ -149,8 +149,8 @@ Fixed on this branch:
 
 - **Worklist search only covered loaded studies.** IDC returns at most 100 studies, so most patients were unreachable. The search now also queries the server by Patient ID, Patient Name, Accession Number and Study ID, as the old worklist did (W3).
 - **Saving ROIs threw before the dialog opened.** dcmjs rejects every valid `TrackingIdentifier` when building a measurement group, up to its latest release. `patches/dcmjs@0.52.0.patch` fixes the check. Failed saves also show a toast now; before, they only reached the console (D6).
+- **The Modality column was slow on IDC.** It sent one series query for each of the 100 loaded studies. It now asks only for the rows on the current page and remembers the answers (W6).
 
 Still open:
 
-- **The Modality column is slow on IDC.** It fills in through one series query per study, about 100 requests.
-- **The `verify-slim` skill on this branch** still uses craco and Ant Design selectors and won't work with v2.
+- **The `verify-slim` skill on this branch** still uses craco and Ant Design selectors. It will be rewritten from scratch separately.

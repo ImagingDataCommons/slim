@@ -8,7 +8,6 @@ import NotificationMiddleware, {
 } from '../../../services/NotificationMiddleware'
 import { CustomError, errorTypes } from '../../../utils/CustomError'
 import { buildStudyQueryParams } from '../utils/studyQuery'
-import { fetchMissingModalities, mergeModalities } from './modalityBackfill'
 
 interface UseStudiesOptions {
   clients: { [key: string]: DicomWebManager }
@@ -20,19 +19,15 @@ export interface UseStudiesReturn {
 }
 
 /**
- * Searches the slide microscopy studies of the current server and backfills
- * missing ModalitiesInStudy from series-level queries. In-flight requests
- * cannot be aborted through dicomweb-client, so superseded responses are
- * dropped instead.
+ * Searches the slide microscopy studies of the current server. In-flight
+ * requests cannot be aborted through dicomweb-client, so superseded responses
+ * are dropped instead.
  */
 export function useStudies({ clients }: UseStudiesOptions): UseStudiesReturn {
   const [studies, setStudies] = useState<dmv.metadata.Study[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  /**
-   * Incremented per search and on cleanup so responses from superseded
-   * searches (and their modality enrichment) are dropped.
-   */
+  /** Incremented per search and on cleanup so superseded responses are dropped */
   const searchGeneration = useRef(0)
 
   useEffect(() => {
@@ -44,31 +39,19 @@ export function useStudies({ clients }: UseStudiesOptions): UseStudiesReturn {
       return
     }
 
-    const enrichModalities = async (
-      snapshot: dmv.metadata.Study[],
-    ): Promise<void> => {
-      const modalitiesByUid = await fetchMissingModalities(
-        client,
-        snapshot,
-        isCurrent,
-      )
-      if (!isCurrent() || modalitiesByUid.size === 0) return
-      setStudies((previous) => mergeModalities(previous, modalitiesByUid))
-    }
-
     setIsLoading(true)
     client
       .searchForStudies({ queryParams: buildStudyQueryParams() })
       .then((results) => {
         if (!isCurrent()) return
-        const formatted = results.map(
-          /** DMV types formatted metadata as the generic Dataset */
-          (study) =>
-            dmv.metadata.formatMetadata(study).dataset as dmv.metadata.Study,
+        setStudies(
+          results.map(
+            /** DMV types formatted metadata as the generic Dataset */
+            (study) =>
+              dmv.metadata.formatMetadata(study).dataset as dmv.metadata.Study,
+          ),
         )
-        setStudies(formatted)
         setIsLoading(false)
-        void enrichModalities(formatted)
       })
       .catch((error: unknown) => {
         if (!isCurrent()) return

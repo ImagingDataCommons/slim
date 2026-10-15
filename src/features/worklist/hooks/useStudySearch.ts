@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react'
 import type DicomWebManager from '../../../DicomWebManager'
 import { StorageClasses } from '../../../data/uids'
 import { buildStudySearchQueries } from '../utils/studyQuery'
-import { fetchMissingModalities, mergeModalities } from './modalityBackfill'
 
 const SEARCH_DEBOUNCE_MS = 400
 
@@ -63,16 +62,7 @@ export function useStudySearch({
           .dataset as dmv.metadata.Study
         studiesByUid.set(formatted.StudyInstanceUID, formatted)
       }
-      const studies = [...studiesByUid.values()]
-      setResult({ query, studies })
-
-      const modalitiesByUid = await fetchMissingModalities(
-        client,
-        studies,
-        isCurrent,
-      )
-      if (!isCurrent() || modalitiesByUid.size === 0) return
-      setResult({ query, studies: mergeModalities(studies, modalitiesByUid) })
+      setResult({ query, studies: [...studiesByUid.values()] })
     }
 
     const timer = setTimeout(() => {

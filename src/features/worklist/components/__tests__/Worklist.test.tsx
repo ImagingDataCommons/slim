@@ -152,6 +152,37 @@ describe('Worklist', () => {
     expect(getAllByText('SR')).toHaveLength(2)
   })
 
+  it('looks up missing modalities for the rows on the current page only', async () => {
+    const pageManager = new DicomWebManager({
+      baseUri: 'http://mockserver.org',
+      settings: [serverSettings],
+    })
+    const manyStudies = Array.from({ length: 25 }, (_, index) => ({
+      '0020000D': { vr: 'UI', Value: [`5.5.${index}`] },
+      '00100020': { vr: 'LO', Value: [`patient-${index}`] },
+      '00100010': { vr: 'PN', Value: [{ Alphabetic: `patient^${index}` }] },
+    }))
+    pageManager.searchForStudies = async () => manyStudies as dwc.api.Study[]
+    const searchForSeries = vi.fn(async () => seriesForBackfillStudy)
+    pageManager.searchForSeries =
+      searchForSeries as unknown as DicomWebManager['searchForSeries']
+    render(
+      <MemoryRouter>
+        <Worklist
+          clients={{
+            [StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]: pageManager,
+          }}
+        />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => expect(searchForSeries).toHaveBeenCalledTimes(20))
+    expect((await screen.findAllByText('OT')).length).toBe(20)
+
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    await waitFor(() => expect(searchForSeries).toHaveBeenCalledTimes(25))
+  })
+
   it('asks the server for patients outside the loaded studies', async () => {
     const searchManager = new DicomWebManager({
       baseUri: 'http://mockserver.org',
