@@ -7,6 +7,12 @@ test_patterns = [
   "src/**/testing/**",
   "src/__mocks__/**",
   "src/setupTests.tsx",
+  "e2e/**",
+  "playwright.config.ts",
+]
+
+exclude_patterns = [
+  ".cursor/**",
 ]
 
 [[analyzers]]
