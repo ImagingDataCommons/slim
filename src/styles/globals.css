@@ -124,7 +124,7 @@
     --ink: 15 26 42; /* #0f1a2a */
     --ink-body: 42 53 70; /* #2a3546 */
     --ink-secondary: 74 85 102; /* #4a5566 */
-    --ink-muted: 107 118 134; /* #6b7686 */
+    --ink-muted: 98 109 125; /* #626d7d, 4.5:1 on --subtle for WCAG AA */
     --ink-faint: 138 148 163; /* #8a94a3 */
     --ink-fainter: 160 169 182; /* #a0a9b6 */
 
@@ -201,10 +201,15 @@
     --segmented-active: 38 48 65; /* #263041 */
     --switch-off: 52 64 84; /* #344054 */
 
-    --primary: 74 134 245; /* #4a86f5 */
-    --primary-hover: 120 166 255; /* #78a6ff */
+    /*
+     * Light enough for 4.5:1 as text on --segmented-active, so filled
+     * buttons carry dark labels; no blue passes under white text and on
+     * these panels at once.
+     */
+    --primary: 106 156 247; /* #6a9cf7 */
+    --primary-hover: 134 174 249; /* #86aef9 */
     --primary-soft: 23 40 74; /* #17284a */
-    --primary-foreground: 255 255 255;
+    --primary-foreground: 12 17 25; /* #0c1119 */
 
     --warning-soft: 58 42 18;
     --warning-text: 240 180 90;
