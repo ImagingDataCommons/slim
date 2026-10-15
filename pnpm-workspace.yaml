@@ -57,3 +57,9 @@ overrides:
 minimumReleaseAgeExclude:
   - dicom-microscopy-viewer@0.48.23 || 0.48.24 || 0.48.25 || 0.48.26 || 0.48.27 || 0.49.0
   - dicomweb-client@0.11.3
+
+patchedDependencies:
+  # Saving ROIs: dcmjs rejects every valid TrackingIdentifier when building a
+  # measurement group (it counts CodedConcept items, and .filter() on the Array
+  # subclass calls new TrackingIdentifier(0), which throws). Still in dcmjs latest.
+  dcmjs@0.52.0: patches/dcmjs@0.52.0.patch
