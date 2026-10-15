@@ -168,4 +168,4 @@ Fixed on this branch:
 Still open:
 
 - **The `verify-slim` skill on this branch** still uses craco and Ant Design selectors. It will be rewritten from scratch separately.
-- **Other presentation states in a monochrome study.** The loader reads every PR instance in the study as Advanced Blending. A Grayscale or Pseudocolor presentation state there has no `AdvancedBlendingSequence`, so it would likely show "Presentation State could not be loaded." `master` behaves the same. IDC has no such study to confirm it.
+- **Other presentation states in a monochrome study.** The loader reads every PR instance in the study as Advanced Blending. A Grayscale or Pseudocolor presentation state there has no `AdvancedBlendingSequence`, so it would likely show "Presentation State could not be loaded." `master` behaves the same. IDC has no such study to confirm it. Tracked in [#460](https://github.com/ImagingDataCommons/slim/issues/460).
