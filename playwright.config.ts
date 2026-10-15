@@ -28,8 +28,8 @@ export default defineConfig({
   expect: { timeout: 30_000 },
   /**
    * IDC is a shared production proxy; keep the load modest. CI shards the
-   * suite over several runners instead: two software-WebGL browsers on one
-   * runner stalled each other for minutes after the heaviest slides.
+   * suite over several runners instead, one software-rendered browser each,
+   * so tests don't compete for a runner's few cores.
    */
   workers: isCI ? 1 : 3,
   retries: isCI ? 1 : 0,

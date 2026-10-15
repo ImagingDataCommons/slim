@@ -66,15 +66,7 @@ jobs:
         run: pnpm exec playwright install-deps chromium
 
       - name: Run e2e tests
-        run: |
-          vmstat -S M 10 > vmstat.log &
-          pnpm test:e2e --shard=${{ matrix.shard }}/4
-
-      # Software WebGL keeps textures in system memory; this shows how close
-      # a shard came to the runner's limit
-      - name: Memory use during the tests
-        if: always()
-        run: cat vmstat.log || true
+        run: pnpm test:e2e --shard=${{ matrix.shard }}/4
 
       - name: Upload report
         if: failure() || cancelled()
