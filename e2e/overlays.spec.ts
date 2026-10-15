@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 
 import { newSharedPage, test } from './fixtures'
 import {
@@ -14,6 +14,32 @@ import { seriesUrl, studies } from './studies'
 
 const { tcgaRead, tcgaGbm, rmsSr, boneMarrow } = studies
 const srUrl = seriesUrl({ study: rmsSr.study, series: rmsSr.sr })
+
+/** Name of the first layer shown in a section, read from its "Show …" toggle */
+async function visibleLayerName(container: Locator): Promise<string> {
+  return (await visibleLayer(container)).name
+}
+
+/**
+ * The first layer shown in a section, with its position among layers of the
+ * same name: one ANN series can repeat a label across categories.
+ */
+async function visibleLayer(
+  container: Locator,
+): Promise<{ name: string; index: number }> {
+  const toggle = container
+    .getByRole('button', { name: /^Show (?!all)/, pressed: true })
+    .first()
+  const label = await toggle.getAttribute('aria-label')
+  expect(label, 'visible layer toggle').not.toBeNull()
+  const name = (label ?? '').replace(/^Show /, '')
+  const pressed = await container
+    .getByRole('button', { name: `Show ${name}`, exact: true })
+    .evaluateAll((toggles) =>
+      toggles.map((element) => element.getAttribute('aria-pressed')),
+    )
+  return { name, index: pressed.indexOf('true') }
+}
 
 test.describe('Segmentations', () => {
   test('S1 SEG link opens the referenced slide with that segmentation visible', async ({
@@ -91,6 +117,43 @@ test.describe('Segmentations', () => {
       segments.getByRole('button', { name: /^Show / }).first(),
     ).toBeVisible()
   })
+
+  test('S5 segment details, color and interpolation', async ({ page }) => {
+    await openViewer(
+      page,
+      seriesUrl({ study: tcgaRead.study, series: tcgaRead.nucleiSeg }),
+    )
+    const segments = await section(slidePanel(page), 'Segmentations')
+    const name = await visibleLayerName(segments)
+
+    await segments.getByRole('button', { name: `Details for ${name}` }).click()
+    const details = page.getByRole('dialog')
+    await expect(details).toContainText('Segmentation type')
+    await page.keyboard.press('Escape')
+    await expect(details).toBeHidden()
+
+    const before = await captureSettledViewport(page)
+    await segments
+      .getByRole('button', { name: `Segment color for ${name}` })
+      .click()
+    const red = page.getByRole('dialog').getByRole('spinbutton', {
+      name: 'Red value',
+    })
+    await red.fill((await red.inputValue()) === '0' ? '255' : '0')
+    await red.press('Enter')
+    await expectViewportToDiffer(page, before, 0.01)
+    await page.keyboard.press('Escape')
+
+    const options = segments.getByRole('button', { name: /^Display options/ })
+    await options.click()
+    const interpolation = segments.getByRole('switch', {
+      name: 'Segment interpolation',
+    })
+    const wasOn = await interpolation.isChecked()
+    await interpolation.click()
+    await expect(interpolation).toBeChecked({ checked: !wasOn })
+    await expect(options).toContainText(wasOn ? 'Interp. off' : 'Interp. on')
+  })
 })
 
 test.describe('Parametric maps', () => {
@@ -109,6 +172,31 @@ test.describe('Parametric maps', () => {
       wasVisible ? 'false' : 'true',
     )
     await expectViewportToDiffer(page, before, 0.5)
+  })
+
+  test('P2 parametric map opacity and interpolation', async ({ page }) => {
+    await openViewer(
+      page,
+      seriesUrl({ study: tcgaGbm.study, series: tcgaGbm.parametricMap }),
+    )
+    const maps = await section(slidePanel(page), 'Parametric maps')
+    const name = await visibleLayerName(maps)
+    const before = await captureSettledViewport(page)
+    const opacity = maps.getByRole('slider', { name: `Opacity of ${name}` })
+    await opacity.press('Home')
+    await expect(opacity).toHaveAttribute(
+      'aria-valuenow',
+      (await opacity.getAttribute('aria-valuemin')) ?? '0',
+    )
+    await expectViewportToDiffer(page, before, 0.5)
+
+    const options = maps.getByRole('button', { name: /^Display options/ })
+    await options.click()
+    const interpolation = maps.getByRole('switch')
+    const wasOn = await interpolation.isChecked()
+    await interpolation.click()
+    await expect(interpolation).toBeChecked({ checked: !wasOn })
+    await expect(options).toContainText(wasOn ? 'Interp. off' : 'Interp. on')
   })
 })
 
@@ -180,6 +268,50 @@ test.describe('Annotation groups', () => {
       .getByRole('button', { name: 'Hide all annotation groups' })
       .click()
     await expect(bulk).toContainText(`0 of ${total} visible`)
+  })
+
+  test('A3 group color and fill change the drawing', async ({ page }) => {
+    await openViewer(
+      page,
+      seriesUrl({ study: boneMarrow.study, series: boneMarrow.ann }),
+    )
+    const groups = await section(slidePanel(page), 'Annotation groups')
+    const { name, index } = await visibleLayer(groups)
+    /** The rectangles are a few pixels wide at the overview zoom */
+    await groups.getByRole('button', { name, exact: true }).nth(index).click()
+    await groups
+      .getByRole('button', { name: `Display settings for ${name}` })
+      .nth(index)
+      .click()
+    const settings = page.getByRole('dialog')
+    const before = await captureSettledViewport(page)
+
+    const red = settings.getByRole('spinbutton', { name: 'Red value' })
+    await red.fill((await red.inputValue()) === '0' ? '255' : '0')
+    await red.press('Enter')
+    await expectViewportToDiffer(page, before, 0.01)
+
+    const outlined = await captureSettledViewport(page)
+    const fillOpacity = settings.getByRole('slider', { name: 'Fill opacity' })
+    await expect(fillOpacity).toBeDisabled()
+    await settings.getByRole('switch', { name: 'Fill shapes' }).click()
+    await expect(fillOpacity).toBeEnabled()
+    await expectViewportToDiffer(page, outlined, 0.01)
+  })
+
+  test('A5 zoom to group frames that group', async ({ page }) => {
+    await openViewer(
+      page,
+      seriesUrl({ study: boneMarrow.study, series: boneMarrow.ann }),
+    )
+    const groups = await section(slidePanel(page), 'Annotation groups')
+    const { name, index } = await visibleLayer(groups)
+    const scale = page.getByText(/× · [\d.]+ µm\/px/)
+    const overview = await scale.innerText()
+    const before = await captureSettledViewport(page)
+    await groups.getByRole('button', { name, exact: true }).nth(index).click()
+    await expect(scale).not.toHaveText(overview)
+    await expectViewportToDiffer(page, before, 2)
   })
 })
 

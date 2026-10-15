@@ -1,8 +1,11 @@
-import { expect, type Locator, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 
-import { test } from './fixtures'
+import { newSharedPage, test } from './fixtures'
 import {
   captureSettledViewport,
+  chooseOption,
+  configureDraw,
+  drawPolygon,
   expectViewportToDiffer,
   mainViewportCenter,
   openViewer,
@@ -16,50 +19,6 @@ const slideUrl = seriesUrl({
   study: studies.he.study,
   series: studies.he.firstSlide,
 })
-
-async function chooseOption(
-  page: Page,
-  trigger: Locator,
-  option: string,
-): Promise<void> {
-  await trigger.click()
-  await page.getByRole('option', { name: option, exact: true }).click()
-}
-
-/** Configures the Draw dialog: finding, optional grade, then geometry */
-async function configureDraw(
-  page: Page,
-  finding: string,
-  geometry: string,
-  grade?: string,
-): Promise<void> {
-  const dialog = page.getByRole('dialog')
-  await expect(dialog.getByText('Configure annotation')).toBeVisible()
-  const selects = dialog.getByRole('combobox')
-  await chooseOption(page, selects.first(), finding)
-  if (grade !== undefined) await chooseOption(page, selects.nth(1), grade)
-  await chooseOption(page, selects.last(), geometry)
-  await dialog.getByRole('button', { name: 'Start drawing' }).click()
-  await expect(dialog).toBeHidden()
-  await expect(
-    page.getByRole('button', { name: 'Draw', exact: true }),
-  ).toHaveAttribute('aria-pressed', 'true')
-}
-
-/** Clicks the corners of a rectangle and closes it on the first point */
-async function drawPolygon(page: Page): Promise<void> {
-  const { x, y } = await mainViewportCenter(page)
-  const corners = [
-    [x - 120, y - 80],
-    [x + 120, y - 80],
-    [x + 120, y + 80],
-    [x - 120, y + 80],
-    [x - 120, y - 80],
-  ]
-  for (const [cornerX, cornerY] of corners) {
-    await page.mouse.click(cornerX, cornerY)
-  }
-}
 
 test.describe('ROI tools', () => {
   test('D1 draw a polygon ROI with a finding and an evaluation', async ({
@@ -182,5 +141,100 @@ test.describe('ROI tools', () => {
     await expect(dialog).toContainText('Tissue')
     await dialog.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(page.getByText('Annotations could not be saved')).toBeVisible()
+  })
+})
+
+type Rectangle = Awaited<ReturnType<typeof drawPolygon>>
+
+/** A point on the outline; OpenLayers hit-tests the stroke, not the fill */
+function leftEdge(rectangle: Rectangle): { x: number; y: number } {
+  return { x: rectangle.left, y: (rectangle.top + rectangle.bottom) / 2 }
+}
+
+/** Two drawn polygons side by side: ROI 1 is Tumor (left), ROI 2 is Tissue (right) */
+test.describe('ROI selection on one H&E slide', () => {
+  test.describe.configure({ mode: 'serial' })
+  let page: Page
+  let tumor: Rectangle
+  let tissue: Rectangle
+
+  const roiButton = (roi: number) =>
+    slidePanel(page).getByRole('button', { name: new RegExp(`^ROI ${roi} `) })
+
+  test.beforeAll(async ({ browser }) => {
+    page = await newSharedPage(browser)
+    await openViewer(page, slideUrl)
+    await pressViewerShortcut(page, 'KeyD')
+    await configureDraw(page, 'Tumor', 'Polygon', 'G1')
+    tumor = await drawPolygon(page, -150)
+    await page.keyboard.press('Escape')
+    await pressViewerShortcut(page, 'KeyD')
+    await configureDraw(page, 'Tissue', 'Polygon')
+    tissue = await drawPolygon(page, 150)
+    await page.keyboard.press('Escape')
+    await expect(
+      page.getByRole('button', { name: 'Draw', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'false')
+    await section(slidePanel(page), 'Annotations')
+    await expect(roiButton(2)).toBeVisible()
+  })
+
+  test.afterAll(async () => {
+    await page.context().close()
+  })
+
+  test('D10 clicking ROIs in the viewport selects them, Shift adds to the selection', async () => {
+    const tumorEdge = leftEdge(tumor)
+    await page.mouse.click(tumorEdge.x, tumorEdge.y)
+    await expect(roiButton(1)).toHaveAttribute('aria-pressed', 'true')
+    await expect(roiButton(2)).toHaveAttribute('aria-pressed', 'false')
+
+    /** OpenLayers reads two clicks within 250 ms as a double-click, wherever they land */
+    await page.waitForTimeout(300)
+    const tissueEdge = leftEdge(tissue)
+    await page.keyboard.down('Shift')
+    await page.mouse.click(tissueEdge.x, tissueEdge.y)
+    await page.keyboard.up('Shift')
+    await expect(roiButton(1)).toHaveAttribute('aria-pressed', 'true')
+    await expect(roiButton(2)).toHaveAttribute('aria-pressed', 'true')
+
+    await page.waitForTimeout(300)
+    await page.mouse.click(tumorEdge.x, tumor.top - 60)
+    await expect(roiButton(1)).toHaveAttribute('aria-pressed', 'false')
+    await expect(roiButton(2)).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  test('D11 double-clicking an ROI opens its details', async () => {
+    const edge = leftEdge(tumor)
+    await page.mouse.dblclick(edge.x, edge.y)
+    const dialog = page.getByRole('dialog', { name: 'Selected ROI' })
+    await expect(dialog).toBeVisible()
+    await expect(dialog).toContainText('Tumor')
+    await expect(dialog).toContainText('G1')
+    await dialog.getByRole('button', { name: 'Done' }).click()
+    await expect(dialog).toBeHidden()
+  })
+
+  test('D12 hovering an ROI shows a tooltip with its finding', async () => {
+    const edge = leftEdge(tissue)
+    await page.mouse.move(edge.x, edge.y)
+    const tooltip = page.getByRole('tooltip')
+    await expect(tooltip).toContainText('ROI 2')
+    await expect(tooltip).toContainText('Tissue')
+    await page.mouse.move(edge.x, tissue.top - 60)
+    await expect(tooltip).toBeHidden()
+  })
+
+  test('D13 selecting an ROI in the Annotations list highlights it on the slide', async () => {
+    const center = await mainViewportCenter(page)
+    await page.mouse.move(center.x, tissue.top - 60)
+    const unselected = await captureSettledViewport(page)
+    await roiButton(2).click()
+    await expect(roiButton(2)).toHaveAttribute('aria-pressed', 'true')
+    await expectViewportToDiffer(page, unselected, 0.05)
+
+    await roiButton(1).click()
+    await expect(roiButton(1)).toHaveAttribute('aria-pressed', 'true')
+    await expect(roiButton(2)).toHaveAttribute('aria-pressed', 'false')
   })
 })

@@ -135,4 +135,107 @@ test.describe('Worklist', () => {
     await expect(page).toHaveURL(/\/$/)
     await expect(page.getByRole('heading', { name: 'Studies' })).toBeVisible()
   })
+
+  test('W9 Compact rows tightens the table', async ({ page }) => {
+    await openWorklist(page)
+    await expect(rows(page).first().getByRole('link')).toBeVisible()
+    const rowHeight = async () =>
+      (await rows(page).first().boundingBox())?.height ?? 0
+    const regular = await rowHeight()
+    await page.getByRole('button', { name: /Guest/ }).click()
+    await page.getByRole('menuitem', { name: 'Preferences' }).click()
+    await page.getByRole('switch', { name: 'Compact rows' }).click()
+    await page.getByRole('button', { name: 'Save preferences' }).click()
+    await expect.poll(rowHeight).toBeLessThan(regular)
+  })
+
+  for (const { option, id } of [
+    { option: 'Parametric map, Maps', id: 'pmap' },
+    { option: 'Advanced blending, Presentation states', id: 'pr-blending' },
+  ]) {
+    const label = option.split(',')[0]
+    test(`W10 Contains ${label} finds studies`, async ({ page }) => {
+      await openWorklist(page)
+      await page.getByRole('button', { name: 'Contains' }).click()
+      await page.getByRole('option', { name: option, exact: true }).click()
+      await expect(page).toHaveURL(new RegExp(`[?&]contains=${id}(&|$)`))
+      await expect(
+        page.getByRole('button', { name: `Contains ${label}. Change` }),
+      ).toBeVisible()
+      await expect(rows(page).first().getByRole('link')).toBeVisible({
+        timeout: 60_000,
+      })
+    })
+  }
+
+  /** IDC holds thousands of SEG and SR series, so these searches outlast a test */
+  for (const { option, id } of [
+    { option: 'Segmentation, Segmentations', id: 'seg' },
+    { option: '3D SR annotations, Annotations', id: 'sr3d' },
+  ]) {
+    const label = option.split(',')[0]
+    test(`W10 Contains ${label} pages through the server`, async ({ page }) => {
+      await openWorklist(page)
+      await page.getByRole('button', { name: 'Contains' }).click()
+      await page.getByRole('option', { name: option, exact: true }).click()
+      await expect(page).toHaveURL(new RegExp(`[?&]contains=${id}(&|$)`))
+      await expect(
+        page.getByText(`Searching the server for ${label}… page 2`),
+      ).toBeVisible({ timeout: 60_000 })
+    })
+  }
+
+  test('W11 sorting by Study date orders rows by date', async ({ page }) => {
+    await openWorklist(page)
+    await expect(rows(page).first().getByRole('link')).toBeVisible()
+    const headers = page.getByRole('table').getByRole('columnheader')
+    const names = await headers.allInnerTexts()
+    const column = names.findIndex((name) => /^study date/i.test(name.trim()))
+    expect(column, 'Study date column').toBeGreaterThan(-1)
+    const studyDates = async () =>
+      (
+        await Promise.all(
+          (
+            await rows(page).all()
+          ).map((row) => row.getByRole('cell').nth(column).innerText()),
+        )
+      )
+        .map((text) => Date.parse(text))
+        .filter((time) => !Number.isNaN(time))
+    const direction = async () => {
+      const dates = await studyDates()
+      if (dates.every((date, i) => i === 0 || dates[i - 1] <= date)) {
+        return 'ascending'
+      }
+      if (dates.every((date, i) => i === 0 || dates[i - 1] >= date)) {
+        return 'descending'
+      }
+      return 'unsorted'
+    }
+    expect(new Set(await studyDates()).size).toBeGreaterThan(1)
+    expect(await direction()).toBe('descending')
+    await page.getByRole('button', { name: 'Patient ID' }).click()
+    await expect.poll(direction).toBe('unsorted')
+    await page.getByRole('button', { name: 'Study date' }).click()
+    await expect.poll(direction).toBe('ascending')
+  })
+
+  test('W12 a search with no match says so', async ({ page }) => {
+    await openWorklist(page)
+    await page
+      .getByRole('searchbox', { name: 'Search studies' })
+      .fill('no-such-patient-e2e')
+    await expect(page.getByText(/No studies match/)).toBeVisible({
+      timeout: 60_000,
+    })
+    await expect(rows(page).getByRole('link')).toHaveCount(0)
+  })
+
+  test('W13 Enter on a focused study opens the viewer', async ({ page }) => {
+    await openWorklist(page)
+    await rows(page).first().getByRole('link').focus()
+    await page.keyboard.press('Enter')
+    await expect(page).toHaveURL(/\/studies\/[\d.]+\/series\/[\d.]+/)
+    await expect(slidePanel(page)).toBeVisible({ timeout: 60_000 })
+  })
 })

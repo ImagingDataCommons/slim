@@ -5,6 +5,7 @@ import {
   captureSettledViewport,
   expectTissueRendered,
   expectViewportToDiffer,
+  expectViewportToMatch,
   openViewer,
   section,
   slidePanel,
@@ -83,6 +84,55 @@ test.describe('Optical paths on one multiplexed slide', () => {
       .click()
     await expect(page).not.toHaveURL(/state=/)
   })
+
+  test('O7 channel color and opacity change the image', async () => {
+    const paths = await section(slidePanel(page), 'Optical paths')
+    await paths
+      .getByRole('button', { name: 'Display settings for SMA' })
+      .click()
+    const settings = page.getByRole('dialog')
+    const before = await captureSettledViewport(page)
+
+    const opacity = settings.getByRole('spinbutton', { name: 'Opacity value' })
+    const initialOpacity = await opacity.inputValue()
+    await opacity.fill('0')
+    await opacity.press('Enter')
+    await expectViewportToDiffer(page, before, 0.3)
+    await opacity.fill(initialOpacity)
+    await opacity.press('Enter')
+    await expectViewportToMatch(page, before, 0.3)
+
+    const red = settings.getByRole('spinbutton', { name: 'Red value' })
+    const initialRed = await red.inputValue()
+    await red.fill(initialRed === '0' ? '255' : '0')
+    await red.press('Enter')
+    await expectViewportToDiffer(page, before, 0.1)
+    await red.fill(initialRed)
+    await red.press('Enter')
+    await page.keyboard.press('Escape')
+    await expect(settings).toBeHidden()
+  })
+
+  test('O9 switching between presentation states updates the URL and the image', async () => {
+    const states = await section(slidePanel(page), 'Presentation states')
+    const picker = states.getByRole('combobox', { name: 'Presentation state' })
+    await picker.click()
+    await page.getByRole('option').nth(0).click()
+    await expect(page).toHaveURL(/[?&]state=[\d.]+/)
+    const firstUrl = page.url()
+    const first = await captureSettledViewport(page)
+
+    await picker.click()
+    await page.getByRole('option').nth(1).click()
+    await expect(page).not.toHaveURL(firstUrl)
+    await expect(page).toHaveURL(/[?&]state=[\d.]+/)
+    await expectViewportToDiffer(page, first, 0.5)
+
+    await states
+      .getByRole('button', { name: 'Reset presentation state' })
+      .click()
+    await expect(page).not.toHaveURL(/state=/)
+  })
 })
 
 test.describe('Optical paths and display options', () => {
@@ -104,6 +154,39 @@ test.describe('Optical paths and display options', () => {
     await expect(
       reloaded.getByRole('combobox', { name: 'Presentation state' }),
     ).toHaveText(label)
+  })
+
+  test('O10 an unknown presentation state in the URL falls back to the default', async ({
+    page,
+  }) => {
+    const pageErrors: Error[] = []
+    page.on('pageerror', (error) => pageErrors.push(error))
+    await openViewer(page, `${imcUrl}?state=1.2.3.4.5`)
+    await expectTissueRendered(page, 3)
+    const states = await section(slidePanel(page), 'Presentation states')
+    await expect(
+      states.getByRole('combobox', { name: 'Presentation state' }),
+    ).toHaveText('Default')
+    expect(pageErrors).toEqual([])
+  })
+
+  /** Gamma correction applies to palette colors, so it shows on the parametric map */
+  test('O8 gamma correction changes palette colored overlays', async ({
+    page,
+  }) => {
+    await openViewer(
+      page,
+      seriesUrl({ study: tcgaGbm.study, series: tcgaGbm.parametricMap }),
+    )
+    const paths = await openDisplayOptions(
+      await section(slidePanel(page), 'Optical paths'),
+    )
+    const gamma = paths.getByRole('switch', { name: 'Gamma correction' })
+    await expect(gamma).toBeChecked()
+    const before = await captureSettledViewport(page)
+    await gamma.click()
+    await expect(gamma).not.toBeChecked()
+    await expectViewportToDiffer(page, before, 0.1)
   })
 
   test('O5 ICC profile toggle changes brightfield colors', async ({ page }) => {

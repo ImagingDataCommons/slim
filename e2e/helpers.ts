@@ -5,6 +5,36 @@ export interface ViewportStats {
   stdDev: number
 }
 
+export const IDC_PROXY =
+  'https://proxy.imaging.datacommons.cancer.gov/current/viewer-only-no-downloads-see-tinyurl-dot-com-slash-3j3d9jyp/dicomWeb'
+
+/** Merges `overrides` into public/config/e2e.js for every page load of `page` */
+export async function overrideConfig(
+  page: Page,
+  overrides: Record<string, unknown>,
+): Promise<void> {
+  await page.route('**/config/e2e.js', async (route) => {
+    const response = await route.fetch()
+    await route.fulfill({
+      response,
+      body: `${await response.text()}\nObject.assign(window.config, ${JSON.stringify(overrides)})\n`,
+    })
+  })
+}
+
+/** Answers requests below `fakeBase` from the IDC proxy, so any server URL can serve real data */
+export async function serveFromIdc(
+  page: Page,
+  fakeBase: string,
+): Promise<void> {
+  await page.route(`${fakeBase}/**`, async (route) => {
+    const response = await route.fetch({
+      url: route.request().url().replace(fakeBase, IDC_PROXY),
+    })
+    await route.fulfill({ response })
+  })
+}
+
 export function slidePanel(page: Page): Locator {
   return page.getByRole('complementary', { name: 'Slide panel' })
 }
@@ -245,6 +275,87 @@ export async function expectTissueRendered(
       { message: 'viewport luminance spread', timeout: 30_000 },
     )
     .toBeGreaterThan(minSpread)
+}
+
+export async function chooseOption(
+  page: Page,
+  trigger: Locator,
+  option: string,
+): Promise<void> {
+  await trigger.click()
+  await page.getByRole('option', { name: option, exact: true }).click()
+}
+
+/** Configures the Draw dialog: finding, optional grade, then geometry */
+export async function configureDraw(
+  page: Page,
+  finding: string,
+  geometry: string,
+  grade?: string,
+): Promise<void> {
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByText('Configure annotation')).toBeVisible()
+  const selects = dialog.getByRole('combobox')
+  await chooseOption(page, selects.first(), finding)
+  if (grade !== undefined) await chooseOption(page, selects.nth(1), grade)
+  await chooseOption(page, selects.last(), geometry)
+  await dialog.getByRole('button', { name: 'Start drawing' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(
+    page.getByRole('button', { name: 'Draw', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true')
+}
+
+/**
+ * Clicks the corners of a 240 × 160 px rectangle, `offsetX` px from the
+ * viewport center, and closes it on the first point. Returns the rectangle.
+ */
+export async function drawPolygon(
+  page: Page,
+  offsetX = 0,
+): Promise<{ left: number; right: number; top: number; bottom: number }> {
+  const center = await mainViewportCenter(page)
+  const x = center.x + offsetX
+  const rectangle = {
+    left: x - 120,
+    right: x + 120,
+    top: center.y - 80,
+    bottom: center.y + 80,
+  }
+  const corners = [
+    [rectangle.left, rectangle.top],
+    [rectangle.right, rectangle.top],
+    [rectangle.right, rectangle.bottom],
+    [rectangle.left, rectangle.bottom],
+    [rectangle.left, rectangle.top],
+  ]
+  for (const [cornerX, cornerY] of corners) {
+    await page.mouse.click(cornerX, cornerY)
+  }
+  return rectangle
+}
+
+/** Go to marks the slide center with a point ROI drawn in the default style */
+export async function goToSlideCenter(page: Page): Promise<void> {
+  await pressViewerShortcut(page, 'KeyG')
+  const dialog = page.getByRole('dialog')
+  const center = async (label: string): Promise<string> => {
+    const [min, max] = (
+      (await dialog.getByLabel(label).getAttribute('placeholder')) ?? '0 – 0'
+    )
+      .split(' – ')
+      .map(Number)
+    return ((min + max) / 2).toFixed(2)
+  }
+  await dialog
+    .getByLabel('X coordinate (mm)')
+    .fill(await center('X coordinate (mm)'))
+  await dialog
+    .getByLabel('Y coordinate (mm)')
+    .fill(await center('Y coordinate (mm)'))
+  await dialog.getByLabel('Magnification').fill('2')
+  await dialog.getByRole('button', { name: 'Go to position' }).click()
+  await expect(dialog).toBeHidden()
 }
 
 /** Alt shortcuts fire on keyup and need focus on the page, not a field */
