@@ -149,6 +149,31 @@ describe('SlideViewer', () => {
     expect(volumeViewer.isOpticalPathVisible('1')).toBe(true)
   })
 
+  it('enables the ICC profile switch once DMV has fetched the profiles', async () => {
+    await renderViewer()
+    const [volumeViewer] = fakeDmvInstances.volumeViewers
+    const panel = screen.getByRole('complementary', { name: 'Slide panel' })
+    const section = within(panel).getByRole('button', {
+      name: /^Optical paths/,
+    })
+    if (section.getAttribute('aria-expanded') !== 'true') {
+      fireEvent.click(section)
+    }
+    fireEvent.click(
+      within(panel).getByRole('button', { name: /^Display options/ }),
+    )
+    const iccSwitch = (): HTMLElement =>
+      within(panel).getByRole('switch', { name: 'ICC profiles' })
+    expect(iccSwitch()).toBeDisabled()
+
+    vi.spyOn(volumeViewer, 'getICCProfiles').mockReturnValue([{}])
+    act(() => {
+      dispatchDmvEvent('dicommicroscopyviewer_loading_ended', null)
+    })
+
+    expect(iccSwitch()).toBeEnabled()
+  })
+
   it('cleans up the viewers on unmount', async () => {
     const { unmount } = await renderViewer()
     const [volumeViewer] = fakeDmvInstances.volumeViewers

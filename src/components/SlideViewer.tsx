@@ -184,6 +184,20 @@ function SlideViewer({
     ...segmentations.dmvHandlers,
     ...parametricMaps.dmvHandlers,
     ...hoveredRoiTooltip.dmvHandlers,
+    dicommicroscopyviewer_loading_ended: (payload) => {
+      viewportLoading.dmvHandlers.dicommicroscopyviewer_loading_ended(payload)
+      /**
+       * DMV fetches ICC profiles after the viewer is created, so the snapshot
+       * may predate them. Tiles only load once the profiles are in.
+       */
+      const volumeViewer = sessionRef.current?.volumeViewer
+      if (
+        volumeViewer !== undefined &&
+        volumeViewer.getICCProfiles().length > 0 !== snapshot.hasIccProfiles
+      ) {
+        viewer.refreshSnapshot()
+      }
+    },
     dicommicroscopyviewer_roi_drawn: (roi) => {
       const session = sessionRef.current
       if (session === undefined) return
