@@ -1,187 +1,172 @@
-import { AppstoreAddOutlined } from '@ant-design/icons'
-import { Button as Btn, Menu, Select, Space, Tooltip } from 'antd'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import React from 'react'
+import type React from 'react'
+import { useMemo, useState } from 'react'
 
+import type {
+  OpticalPathStyle,
+  OpticalPathStyleChange,
+} from '../types/layerStyles'
+import { buildOpticalPathDisplayOptions } from '../utils/displayOptions'
+import { bindDisplayOptions } from '../utils/displayOptionsBinding'
+import { partitionOpticalPaths } from '../utils/opticalPathPartition'
 import OpticalPathItem from './OpticalPathItem'
+import { DisplayOptionsPanel } from './slim/DisplayOptionsPanel'
+import { Button } from './ui/button'
+import { Icon } from './ui/icon'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select'
 
-const { Option } = Select
+export interface OpticalPathDisplaySettings {
+  iccProfileEnabled: boolean
+  gammaEnabled: boolean
+}
 
-interface OpticalPathListProps {
+export interface OpticalPathListProps {
   opticalPaths: dmv.opticalPath.OpticalPath[]
-  metadata: {
+  metadata?: {
     [opticalPathIdentifier: string]: dmv.metadata.VLWholeSlideMicroscopyImage[]
   }
   visibleOpticalPathIdentifiers: Set<string>
   activeOpticalPathIdentifiers: Set<string>
   defaultOpticalPathStyles: {
-    [opticalPathIdentifier: string]: {
-      opacity: number
-      color?: number[]
-      limitValues?: number[]
-      paletteColorLookupTable?: dmv.color.PaletteColorLookupTable
-    }
+    [opticalPathIdentifier: string]: OpticalPathStyle
   }
-  onOpticalPathVisibilityChange: ({
-    opticalPathIdentifier,
-    isVisible,
-  }: {
+  onOpticalPathVisibilityChange: (change: {
     opticalPathIdentifier: string
     isVisible: boolean
   }) => void
-  onOpticalPathStyleChange: ({
-    opticalPathIdentifier,
-    styleOptions,
-  }: {
+  onOpticalPathStyleChange: (change: {
     opticalPathIdentifier: string
-    styleOptions: {
-      opacity?: number
-      color?: number[]
-      limitValues?: number[]
-    }
+    styleOptions: OpticalPathStyleChange
   }) => void
-  onOpticalPathActivityChange: ({
-    opticalPathIdentifier,
-    isActive,
-  }: {
+  onOpticalPathActivityChange: (change: {
     opticalPathIdentifier: string
     isActive: boolean
   }) => void
+  /** @deprecated Not used; styles are followed through `defaultOpticalPathStyles` */
   selectedPresentationStateUID?: string
+  /** Display settings for ICC profiles and gamma correction */
+  displaySettings?: OpticalPathDisplaySettings
+  /** Callback when display settings change */
+  onDisplaySettingsChange?: (settings: OpticalPathDisplaySettings) => void
+  /** Whether ICC profiles are available for this slide */
+  hasIccProfiles?: boolean
 }
 
-interface OpticalPathListState {
-  selectedOpticalPathIdentifier?: string
-}
+/** Active optical paths plus a selector to add inactive ones. */
+function OpticalPathList({
+  opticalPaths,
+  metadata,
+  visibleOpticalPathIdentifiers,
+  activeOpticalPathIdentifiers,
+  defaultOpticalPathStyles,
+  onOpticalPathVisibilityChange,
+  onOpticalPathStyleChange,
+  onOpticalPathActivityChange,
+  displaySettings,
+  onDisplaySettingsChange,
+  hasIccProfiles,
+}: OpticalPathListProps): React.ReactElement | null {
+  const [selectedIdentifier, setSelectedIdentifier] = useState<
+    string | undefined
+  >(undefined)
+  const { active, available } = useMemo(
+    () =>
+      partitionOpticalPaths(
+        opticalPaths,
+        metadata ?? {},
+        activeOpticalPathIdentifiers,
+      ),
+    [opticalPaths, metadata, activeOpticalPathIdentifiers],
+  )
 
-/**
- * React component representing a list of optical paths.
- */
-class OpticalPathList extends React.Component<
-  OpticalPathListProps,
-  OpticalPathListState
-> {
-  state = {
-    selectedOpticalPathIdentifier: undefined,
+  if (metadata === undefined) {
+    return null
   }
 
-  constructor(props: OpticalPathListProps) {
-    super(props)
-    this.handleItemAddition = this.handleItemAddition.bind(this)
-    this.handleItemRemoval = this.handleItemRemoval.bind(this)
-    this.handleItemSelectionChange = this.handleItemSelectionChange.bind(this)
+  const isSelectable = opticalPaths.length > 1
+  const handleRemoval = (opticalPathIdentifier: string): void => {
+    onOpticalPathActivityChange({ opticalPathIdentifier, isActive: false })
   }
-
-  /**
-   * Handler that gets called when an optical path should be removed.
-   */
-  handleItemRemoval(opticalPathIdentifier: string): void {
-    this.props.onOpticalPathActivityChange({
-      opticalPathIdentifier,
-      isActive: false,
+  const handleAddition = (): void => {
+    if (selectedIdentifier === undefined) return
+    onOpticalPathActivityChange({
+      opticalPathIdentifier: selectedIdentifier,
+      isActive: true,
     })
+    setSelectedIdentifier(undefined)
   }
 
-  /**
-   * Handler that gets called when the selection of an optical path should change.
-   */
-  handleItemSelectionChange(value: string): void {
-    this.setState({ selectedOpticalPathIdentifier: value })
-  }
-
-  /**
-   * Handler that gets called when an optical path should be added.
-   */
-  handleItemAddition(): void {
-    const identifier = this.state.selectedOpticalPathIdentifier
-    if (identifier !== undefined) {
-      this.props.onOpticalPathActivityChange({
-        opticalPathIdentifier: identifier,
-        isActive: true,
-      })
-      this.setState({ selectedOpticalPathIdentifier: undefined })
-    }
-  }
-
-  render(): React.ReactNode {
-    if (this.props.metadata === undefined) {
-      return null
-    }
-
-    const isSelectable = this.props.opticalPaths.length > 1
-    const opticalPathItems: React.ReactNode[] = []
-    const optionItems: React.ReactNode[] = []
-    this.props.opticalPaths.forEach((opticalPath) => {
-      const opticalPathIdentifier = opticalPath.identifier
-      const images = this.props.metadata[opticalPathIdentifier]
-      const seriesInstanceUID = images[0].SeriesInstanceUID
-      images[0].OpticalPathSequence.forEach((opticalPathItem) => {
-        const id = opticalPathItem.OpticalPathIdentifier
-        const description = opticalPathItem.OpticalPathDescription
-        if (opticalPath.identifier === id) {
-          if (this.props.activeOpticalPathIdentifiers.has(id)) {
-            opticalPathItems.push(
-              <OpticalPathItem
-                key={`${seriesInstanceUID}-${id}`}
-                opticalPath={opticalPath}
-                metadata={images}
-                isVisible={this.props.visibleOpticalPathIdentifiers.has(id)}
-                defaultStyle={this.props.defaultOpticalPathStyles[id]}
-                onVisibilityChange={this.props.onOpticalPathVisibilityChange}
-                onStyleChange={this.props.onOpticalPathStyleChange}
-                onRemoval={this.handleItemRemoval}
-                isRemovable={isSelectable}
-              />,
-            )
-          } else {
-            let title: string
-            if (description !== '') {
-              title = `${id} - ${description}`
-            } else {
-              title = `${id}`
-            }
-            optionItems.push(
-              <Option key={id} value={id}>
-                {title}
-              </Option>,
-            )
-          }
-        }
-      })
-    })
-
-    let opticalPathSelector: React.ReactNode
-    if (isSelectable) {
-      opticalPathSelector = (
-        <Space align="center" size={20} style={{ padding: '14px' }}>
+  return (
+    <div className="flex flex-col gap-1.5">
+      {active.map(({ key, opticalPath, images }) => (
+        <OpticalPathItem
+          key={key}
+          opticalPath={opticalPath}
+          metadata={images}
+          isVisible={visibleOpticalPathIdentifiers.has(opticalPath.identifier)}
+          defaultStyle={defaultOpticalPathStyles[opticalPath.identifier]}
+          onVisibilityChange={onOpticalPathVisibilityChange}
+          onStyleChange={onOpticalPathStyleChange}
+          onRemoval={handleRemoval}
+          isRemovable={isSelectable}
+          hasIccProfile={hasIccProfiles}
+        />
+      ))}
+      {isSelectable && available.length > 0 && (
+        <div className="flex gap-1.5">
           <Select
-            defaultValue=""
-            style={{ width: 200 }}
-            onChange={this.handleItemSelectionChange}
-            value={this.state.selectedOpticalPathIdentifier}
-            allowClear
+            value={selectedIdentifier ?? ''}
+            onValueChange={setSelectedIdentifier}
           >
-            {optionItems}
+            <SelectTrigger
+              className="min-w-0 flex-1"
+              aria-label="Optical path to add"
+            >
+              <SelectValue placeholder="Add optical path" />
+            </SelectTrigger>
+            <SelectContent>
+              {available.map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
-          <Tooltip title="Add">
-            <Btn
-              icon={<AppstoreAddOutlined />}
-              type="primary"
-              onClick={this.handleItemAddition}
-            />
-          </Tooltip>
-        </Space>
-      )
-    }
-
-    return (
-      <Menu selectable={false}>
-        {opticalPathItems}
-        {opticalPathSelector}
-      </Menu>
-    )
-  }
+          <Button
+            variant="outline"
+            size="icon-sm"
+            title="Add optical path"
+            aria-label="Add optical path"
+            disabled={selectedIdentifier === undefined}
+            onClick={handleAddition}
+          >
+            <Icon name="add" size={18} />
+          </Button>
+        </div>
+      )}
+      {displaySettings !== undefined &&
+        onDisplaySettingsChange !== undefined && (
+          <DisplayOptionsPanel
+            options={bindDisplayOptions(
+              buildOpticalPathDisplayOptions({
+                ...displaySettings,
+                hasIccProfiles,
+              }),
+              displaySettings,
+              { icc: 'iccProfileEnabled', gamma: 'gammaEnabled' },
+              onDisplaySettingsChange,
+            )}
+          />
+        )}
+    </div>
+  )
 }
 
 export default OpticalPathList

@@ -1,107 +1,90 @@
-import { Menu, Switch } from 'antd'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import React from 'react'
-import { FaEye, FaEyeSlash } from 'react-icons/fa'
+import type React from 'react'
 
+import type { SegmentStyle, SegmentStyleChange } from '../types/layerStyles'
+import { buildSegmentDisplayOptions } from '../utils/displayOptions'
+import { bindDisplayOptions } from '../utils/displayOptionsBinding'
 import SegmentItem from './SegmentItem'
+import { BulkVisibilityControl } from './slim/BulkVisibilityControl'
+import { DisplayOptionsPanel } from './slim/DisplayOptionsPanel'
 
-interface SegmentListProps {
+export interface SegmentDisplaySettings {
+  interpolationEnabled: boolean
+}
+
+export interface SegmentListProps {
   segments: dmv.segment.Segment[]
   visibleSegmentUIDs: Set<string>
   metadata: {
     [segmentUID: string]: dmv.metadata.Segmentation[]
   }
   defaultSegmentStyles: {
-    [segmentUID: string]: {
-      opacity: number
-      color?: number[]
-    }
+    [segmentUID: string]: SegmentStyle
   }
-  onSegmentVisibilityChange: ({
-    segmentUID,
-    isVisible,
-  }: {
+  onSegmentVisibilityChange: (change: {
     segmentUID: string
     isVisible: boolean
   }) => void
-  onSegmentStyleChange: ({
-    segmentUID,
-    styleOptions,
-  }: {
+  onSegmentStyleChange: (change: {
     segmentUID: string
-    styleOptions: {
-      opacity: number
-      color?: number[]
-    }
+    styleOptions: SegmentStyleChange
   }) => void
   onSegmentClick: (segmentUID: string) => void
+  /** Interpolation setting; the display options panel is hidden when omitted */
+  displaySettings?: SegmentDisplaySettings
+  onDisplaySettingsChange?: (settings: SegmentDisplaySettings) => void
 }
 
-/**
- * React component representing a list of Segments.
- */
-class SegmentList extends React.Component<
-  SegmentListProps,
-  Record<string, never>
-> {
-  handleVisibilityChange = (checked: boolean): void => {
-    if (checked) {
-      this.props.segments.forEach((segment) => {
-        this.props.onSegmentVisibilityChange({
-          segmentUID: segment.uid,
-          isVisible: checked,
-        })
-      })
-      return
-    }
-
-    this.props.visibleSegmentUIDs.forEach((segmentUID) => {
-      this.props.onSegmentVisibilityChange({
-        segmentUID,
-        isVisible: checked,
-      })
-    })
-  }
-
-  render(): React.ReactNode {
-    const items = this.props.segments.map((segment, _index) => {
-      const uid = segment.uid
-      return (
+/** Segments of the selected segmentation series. */
+function SegmentList({
+  segments,
+  visibleSegmentUIDs,
+  metadata,
+  defaultSegmentStyles,
+  onSegmentVisibilityChange,
+  onSegmentStyleChange,
+  onSegmentClick,
+  displaySettings,
+  onDisplaySettingsChange,
+}: SegmentListProps): React.ReactElement {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <BulkVisibilityControl
+        uids={segments.map((segment) => segment.uid)}
+        visibleUids={visibleSegmentUIDs}
+        itemLabel="segments"
+        onChange={(changes) => {
+          for (const { uid, isVisible } of changes) {
+            onSegmentVisibilityChange({ segmentUID: uid, isVisible })
+          }
+        }}
+      />
+      {segments.map((segment) => (
         <SegmentItem
           key={segment.uid}
           segment={segment}
-          metadata={this.props.metadata[uid]}
-          isVisible={this.props.visibleSegmentUIDs.has(uid)}
-          defaultStyle={this.props.defaultSegmentStyles[uid]}
-          onVisibilityChange={this.props.onSegmentVisibilityChange}
-          onStyleChange={this.props.onSegmentStyleChange}
-          onClick={this.props.onSegmentClick}
+          metadata={metadata[segment.uid]}
+          isVisible={visibleSegmentUIDs.has(segment.uid)}
+          defaultStyle={defaultSegmentStyles[segment.uid]}
+          onVisibilityChange={onSegmentVisibilityChange}
+          onStyleChange={onSegmentStyleChange}
+          onClick={onSegmentClick}
         />
-      )
-    })
-
-    return (
-      <>
-        <div
-          style={{
-            paddingLeft: '14px',
-            paddingTop: '7px',
-            paddingBottom: '7px',
-          }}
-        >
-          <Switch
-            size="small"
-            onChange={this.handleVisibilityChange}
-            checked={this.props.visibleSegmentUIDs.size > 0}
-            checkedChildren={<FaEye />}
-            unCheckedChildren={<FaEyeSlash />}
+      ))}
+      {displaySettings !== undefined &&
+        onDisplaySettingsChange !== undefined && (
+          <DisplayOptionsPanel
+            options={bindDisplayOptions(
+              buildSegmentDisplayOptions(displaySettings),
+              displaySettings,
+              { interpolation: 'interpolationEnabled' },
+              onDisplaySettingsChange,
+            )}
           />
-        </div>
-        <Menu selectable={false}>{items}</Menu>
-      </>
-    )
-  }
+        )}
+    </div>
+  )
 }
 
 export default SegmentList

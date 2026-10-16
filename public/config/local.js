@@ -11,7 +11,7 @@ window.config = {
   ],
   disableWorklist: false,
   disableAnnotationTools: false,
-  mode: 'light',
+  mode: 'dark',
   preload: true,
   annotations: [
     {

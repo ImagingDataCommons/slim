@@ -1,16 +1,22 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
+import type { MockedFunction } from 'vitest'
 
 import type DicomWebManager from '../../DicomWebManager'
 import type { Slide } from '../../data/slides'
 import { StorageClasses } from '../../data/uids'
 import { fetchImageMetadata } from '../../services/fetchImageMetadata'
-import { clearSlidesCache, useSlides } from '../useSlides'
+import {
+  clearSlidesCache,
+  isSlidesCached,
+  MAX_CACHED_STUDIES,
+  useSlides,
+} from '../useSlides'
 
-jest.mock('../../services/fetchImageMetadata', () => ({
-  fetchImageMetadata: jest.fn(),
+vi.mock('../../services/fetchImageMetadata', () => ({
+  fetchImageMetadata: vi.fn(),
 }))
 
-const mockedFetch = fetchImageMetadata as jest.MockedFunction<
+const mockedFetch = fetchImageMetadata as MockedFunction<
   typeof fetchImageMetadata
 >
 
@@ -90,5 +96,49 @@ describe('useSlides', () => {
 
     await waitFor(() => expect(result.current.slides).toEqual([slide]))
     expect(result.current.error).toBeNull()
+  })
+
+  it('ignores a slower fetch for the previous study', async () => {
+    const clients = clientsFor('https://a.test/dicomWeb')
+    const slowSlide = { volumeImages: [{}, {}] } as unknown as Slide
+    let finishSlowFetch: (() => void) | undefined
+    mockedFetch.mockImplementation(({ studyInstanceUID, onSuccess }) => {
+      if (studyInstanceUID === 'slow') {
+        finishSlowFetch = () => onSuccess([slowSlide])
+      } else {
+        onSuccess([slide])
+      }
+      return Promise.resolve()
+    })
+    const { result, rerender } = renderHook(
+      ({ studyInstanceUID }) => useSlides({ clients, studyInstanceUID }),
+      { initialProps: { studyInstanceUID: 'slow' } },
+    )
+
+    rerender({ studyInstanceUID: 'fast' })
+    await waitFor(() => expect(result.current.slides).toEqual([slide]))
+    await act(async () => {
+      finishSlowFetch?.()
+      await Promise.resolve()
+    })
+
+    expect(result.current.slides).toEqual([slide])
+  })
+
+  it('keeps only the most recently loaded studies cached', async () => {
+    respondWith([slide])
+    const clients = clientsFor('https://a.test/dicomWeb')
+    for (let index = 0; index <= MAX_CACHED_STUDIES; index++) {
+      const studyInstanceUID = `study-${index}`
+      const { result, unmount } = renderHook(() =>
+        useSlides({ clients, studyInstanceUID }),
+      )
+      await waitFor(() => expect(result.current.slides).toEqual([slide]))
+      unmount()
+    }
+
+    expect(isSlidesCached('study-0')).toBe(false)
+    expect(isSlidesCached('study-1')).toBe(true)
+    expect(isSlidesCached(`study-${MAX_CACHED_STUDIES}`)).toBe(true)
   })
 })

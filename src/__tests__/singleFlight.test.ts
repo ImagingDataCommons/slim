@@ -18,7 +18,7 @@ const deferred = <T>(): {
 describe('createSingleFlight', () => {
   it('runs the operation once for concurrent callers sharing a key', async () => {
     const gate = createSingleFlight<string>()
-    const run = jest.fn(async () => await Promise.resolve('token'))
+    const run = vi.fn(async () => await Promise.resolve('token'))
 
     const results = await Promise.all([
       gate('https://a.test', run),
@@ -33,7 +33,7 @@ describe('createSingleFlight', () => {
   it('gives every concurrent caller the same answer', async () => {
     const gate = createSingleFlight<string>()
     const control = deferred<string>()
-    const run = jest.fn(async () => await control.promise)
+    const run = vi.fn(async () => await control.promise)
 
     const first = gate('https://a.test', run)
     const second = gate('https://a.test', run)
@@ -46,7 +46,7 @@ describe('createSingleFlight', () => {
 
   it('keeps distinct keys independent', async () => {
     const gate = createSingleFlight<string>()
-    const run = jest.fn(async (value: string) => await Promise.resolve(value))
+    const run = vi.fn(async (value: string) => await Promise.resolve(value))
 
     await Promise.all([
       gate('https://a.test', async () => await run('a')),
@@ -58,18 +58,18 @@ describe('createSingleFlight', () => {
 
   it('releases the key so a later call starts a fresh run', async () => {
     const gate = createSingleFlight<string>()
-    const run = jest.fn(async () => await Promise.resolve('token'))
+    const run = vi.fn(async () => await Promise.resolve('token'))
 
     await gate('https://a.test', run)
     await gate('https://a.test', run)
 
-    // Sequential callers must not replay a stale answer.
+    /** Sequential callers must not replay a stale answer. */
     expect(run).toHaveBeenCalledTimes(2)
   })
 
   it('propagates a rejection to every joined caller and releases the key', async () => {
     const gate = createSingleFlight<string>()
-    const failing = jest.fn(async () => await Promise.reject(new Error('nope')))
+    const failing = vi.fn(async () => await Promise.reject(new Error('nope')))
 
     const first = gate('https://a.test', failing)
     const second = gate('https://a.test', failing)
@@ -78,8 +78,8 @@ describe('createSingleFlight', () => {
     await expect(second).rejects.toThrow('nope')
     expect(failing).toHaveBeenCalledTimes(1)
 
-    // A failed run must not poison the key.
-    const succeeding = jest.fn(async () => await Promise.resolve('token'))
+    /** A failed run must not poison the key. */
+    const succeeding = vi.fn(async () => await Promise.resolve('token'))
     await expect(gate('https://a.test', succeeding)).resolves.toBe('token')
   })
 })

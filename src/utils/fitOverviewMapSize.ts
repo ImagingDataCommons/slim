@@ -132,6 +132,33 @@ export function overviewMapSizeBounds(
   }
 }
 
+export type OverviewCardMapBox = {
+  /** Inner width available to the mini-map inside the card (px) */
+  width: number
+  /** Preferred inner height of the mini-map inside the card (px) */
+  height: number
+}
+
+/**
+ * Narrow viewport-derived bounds to the overview card: the card's inner width
+ * caps both the preferred and maximum width, and its inner height becomes the
+ * preferred height. The maximum height still follows the viewport so the
+ * minimum-side growth can exceed the card height for very tall slides.
+ */
+export function constrainBoundsToCard(
+  bounds: OverviewMapSizeBounds,
+  card: OverviewCardMapBox,
+): OverviewMapSizeBounds {
+  const maxMapWidth = Math.min(bounds.maxMapWidth, card.width)
+  return {
+    ...bounds,
+    maxMapWidth,
+    preferredMaxWidth: maxMapWidth,
+    preferredMaxHeight: Math.min(bounds.maxMapHeight, card.height),
+    minMapWidth: Math.min(bounds.minMapWidth, maxMapWidth),
+  }
+}
+
 /**
  * Fit overview map size into a fixed OL-style box: contain in the preferred
  * box, grow toward the max box only to meet minimum side length, then contain

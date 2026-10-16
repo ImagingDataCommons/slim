@@ -1,4 +1,4 @@
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import * as dmv from 'dicom-microscopy-viewer'
 
 import { getSegmentationType, getSegmentColor } from './segmentColors'
@@ -31,25 +31,27 @@ export function applyDistinctFractionalSegmentPalettes(
   volumeViewer: dmv.viewer.VolumeImageViewer,
 ): void {
   const segments = volumeViewer.getAllSegments()
-  const fractional = segments.filter((seg) => {
-    const meta = volumeViewer.getSegmentMetadata(seg.uid)?.[0] as unknown as
-      | Record<string, unknown>
-      | undefined
-    return getSegmentationType(meta) === 'FRACTIONAL'
-  })
+  const fractional = segments.filter(
+    (seg) =>
+      getSegmentationType(volumeViewer.getSegmentMetadata(seg.uid)?.[0]) ===
+      'FRACTIONAL',
+  )
   if (fractional.length <= 1) {
     return
   }
 
   let paletteIndex = 0
   fractional.forEach((seg) => {
-    const meta0 = volumeViewer.getSegmentMetadata(seg.uid)?.[0] as unknown as
-      | Record<string, unknown>
-      | undefined
-    if (meta0 === undefined) {
+    const metadata = volumeViewer.getSegmentMetadata(seg.uid)?.[0]
+    if (metadata === undefined) {
       return
     }
-    if (getSegmentColor(meta0, seg.number) !== null) {
+    if (
+      getSegmentColor({
+        segmentSequence: metadata.SegmentSequence,
+        segmentNumber: seg.number,
+      }) !== null
+    ) {
       return
     }
 

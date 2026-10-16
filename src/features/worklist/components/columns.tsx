@@ -1,0 +1,142 @@
+import type { ColumnDef, RowData } from '@tanstack/react-table'
+/** skipcq: JS-C1003 */
+import type * as dmv from 'dicom-microscopy-viewer'
+import type * as React from 'react'
+import { Link } from 'react-router'
+
+import { MonoChip } from '../../../components/ui/mono-chip'
+import {
+  formatDisplayDate,
+  formatDisplayTime,
+  formatPersonName,
+  formatSex,
+} from '../../../utils/displayFormat'
+import { buildStudyPath } from '../../../utils/routes'
+import {
+  DASH,
+  getNumberOfSlides,
+  normalizeModalities,
+  orDash,
+} from '../utils/studyFields'
+
+function MonoCell({ value }: { value: string }): React.ReactElement {
+  return (
+    <span className="block truncate font-mono text-12.5">{orDash(value)}</span>
+  )
+}
+
+declare module '@tanstack/react-table' {
+  interface ColumnMeta<TData extends RowData, TValue> {
+    align?: 'right'
+  }
+}
+
+/**
+ * DOM order of worklist columns. Hidden columns are omitted by TanStack, so
+ * remaining cells pack left-to-right into `WORKLIST_GRID_TEMPLATE_BY_TIER`:
+ * - base: name, id, modality, date, slides
+ * - md: + sex, accession
+ * - lg: + study id
+ * - xl: + birth, time, referring
+ */
+export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
+  {
+    id: 'PatientName',
+    header: 'Patient name',
+    accessorFn: (study) => formatPersonName(study.PatientName),
+    cell: ({ getValue, row }) => (
+      <Link
+        to={buildStudyPath(row.original.StudyInstanceUID)}
+        onClick={(event) => event.stopPropagation()}
+        className="block truncate rounded-sm font-semibold text-ink hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
+      >
+        {orDash(getValue<string>())}
+      </Link>
+    ),
+  },
+  {
+    id: 'PatientID',
+    header: 'Patient ID',
+    accessorFn: (study) => study.PatientID ?? '',
+    cell: ({ getValue }) => <MonoCell value={getValue<string>()} />,
+  },
+  {
+    id: 'PatientBirthDate',
+    header: 'Birth date',
+    accessorFn: (study) => study.PatientBirthDate ?? '',
+    cell: ({ getValue }) => orDash(formatDisplayDate(getValue<string>())),
+  },
+  {
+    id: 'PatientSex',
+    header: 'Sex',
+    accessorFn: (study) => study.PatientSex ?? '',
+    cell: ({ getValue }) => orDash(formatSex(getValue<string>())),
+  },
+  {
+    id: 'ModalitiesInStudy',
+    header: 'Modality',
+    enableSorting: false,
+    accessorFn: (study) => normalizeModalities(study.ModalitiesInStudy),
+    cell: ({ getValue }) => {
+      const modalities = getValue<string[]>()
+      if (modalities.length === 0) return DASH
+      return (
+        <span className="flex flex-wrap content-center gap-1">
+          {modalities.map((modality) => (
+            <MonoChip key={modality}>{modality}</MonoChip>
+          ))}
+        </span>
+      )
+    },
+  },
+  {
+    id: 'StudyDate',
+    header: 'Study date',
+    accessorFn: (study) => study.StudyDate ?? '',
+    cell: ({ getValue }) => orDash(formatDisplayDate(getValue<string>())),
+  },
+  {
+    id: 'StudyTime',
+    header: 'Time',
+    accessorFn: (study) => study.StudyTime ?? '',
+    cell: ({ getValue }) => (
+      <span className="text-ink-muted">
+        {orDash(formatDisplayTime(getValue<string>()))}
+      </span>
+    ),
+  },
+  {
+    id: 'AccessionNumber',
+    header: 'Accession #',
+    accessorFn: (study) => study.AccessionNumber ?? '',
+    cell: ({ getValue }) => <MonoCell value={getValue<string>()} />,
+  },
+  {
+    id: 'StudyID',
+    header: 'Study ID',
+    accessorFn: (study) => study.StudyID ?? '',
+    cell: ({ getValue }) => <MonoCell value={getValue<string>()} />,
+  },
+  {
+    id: 'ReferringPhysicianName',
+    header: 'Referring physician',
+    accessorFn: (study) => formatPersonName(study.ReferringPhysicianName),
+    cell: ({ getValue }) => (
+      <span className="block truncate">{orDash(getValue<string>())}</span>
+    ),
+  },
+  {
+    id: 'Slides',
+    header: 'Slides',
+    meta: { align: 'right' },
+    accessorFn: (study) => getNumberOfSlides(study) ?? -1,
+    cell: ({ getValue }) => {
+      const count = getValue<number>()
+      return (
+        <span className="block text-right font-semibold">
+          {count >= 0 ? count : DASH}
+        </span>
+      )
+    },
+  },
+]
