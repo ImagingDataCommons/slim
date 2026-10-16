@@ -46,6 +46,8 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      /** D9 lives in playwright.local-archive.config.ts (writable :8008 stack) */
+      testIgnore: /save-local\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1600, height: 900 },

@@ -335,6 +335,83 @@ export async function drawPolygon(
   return rectangle
 }
 
+/** Labels as shown in the Draw dialog (e2e config Tumor finding). */
+export const GEOMETRY_LABELS = [
+  'Point',
+  'Circle',
+  'Box',
+  'Polygon',
+  'Line',
+  'Polygon (freehand)',
+  'Line (freehand)',
+] as const
+
+export type GeometryLabel = (typeof GEOMETRY_LABELS)[number]
+
+/**
+ * Draws one ROI of `geometry` near the viewport center, shifted by `offsetX`.
+ * Call after configureDraw / Start drawing.
+ */
+export async function drawGeometry(
+  page: Page,
+  geometry: GeometryLabel,
+  offsetX = 0,
+): Promise<void> {
+  const center = await mainViewportCenter(page)
+  const x = center.x + offsetX
+  const y = center.y
+  switch (geometry) {
+    case 'Point':
+      await page.mouse.click(x, y)
+      break
+    case 'Line':
+      await page.mouse.click(x - 80, y - 40)
+      await page.waitForTimeout(200)
+      /** Finish the line: OpenLayers ends a LineString on double-click. */
+      await page.mouse.dblclick(x + 80, y + 40)
+      break
+    case 'Box':
+      /** OL box: first click anchors a corner, move, second click finishes. */
+      await page.mouse.click(x - 70, y - 50)
+      await page.mouse.move(x + 70, y + 50, { steps: 10 })
+      await page.mouse.click(x + 70, y + 50)
+      break
+    case 'Circle':
+      await page.mouse.click(x, y)
+      await page.waitForTimeout(200)
+      await page.mouse.click(x + 60, y)
+      break
+    case 'Polygon':
+      await drawPolygon(page, offsetX)
+      break
+    case 'Line (freehand)':
+      await page.mouse.move(x - 90, y)
+      await page.mouse.down()
+      for (const [dx, dy] of [
+        [-30, -40],
+        [40, 20],
+        [90, 0],
+      ] as const) {
+        await page.mouse.move(x + dx, y + dy, { steps: 5 })
+      }
+      await page.mouse.up()
+      break
+    case 'Polygon (freehand)':
+      await page.mouse.move(x - 60, y - 50)
+      await page.mouse.down()
+      for (const [dx, dy] of [
+        [60, -50],
+        [60, 50],
+        [-60, 50],
+        [-60, -50],
+      ] as const) {
+        await page.mouse.move(x + dx, y + dy, { steps: 5 })
+      }
+      await page.mouse.up()
+      break
+  }
+}
+
 /** Go to marks the slide center with a point ROI drawn in the default style */
 export async function goToSlideCenter(page: Page): Promise<void> {
   await pressViewerShortcut(page, 'KeyG')

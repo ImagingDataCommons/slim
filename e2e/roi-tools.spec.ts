@@ -5,8 +5,10 @@ import {
   captureSettledViewport,
   chooseOption,
   configureDraw,
+  drawGeometry,
   drawPolygon,
   expectViewportToDiffer,
+  GEOMETRY_LABELS,
   mainViewportCenter,
   openViewer,
   pressViewerShortcut,
@@ -141,6 +143,75 @@ test.describe('ROI tools', () => {
     await expect(dialog).toContainText('Tissue')
     await dialog.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(page.getByText('Annotations could not be saved')).toBeVisible()
+  })
+
+  test('D7 each geometry type draws an ROI', async ({ page }) => {
+    test.setTimeout(240_000)
+    await openViewer(page, slideUrl)
+    const rois = await section(slidePanel(page), 'Annotations')
+    for (const [index, geometry] of GEOMETRY_LABELS.entries()) {
+      const before = await rois
+        .getByRole('button', { name: /^ROI \d+ / })
+        .count()
+      await pressViewerShortcut(page, 'KeyD')
+      await configureDraw(page, 'Tumor', geometry)
+      await drawGeometry(page, geometry, (index - 3) * 35)
+      await expect
+        .poll(
+          async () => rois.getByRole('button', { name: /^ROI \d+ / }).count(),
+          {
+            message: `${geometry} should add an ROI`,
+            timeout: 20_000,
+          },
+        )
+        .toBe(before + 1)
+      await page.keyboard.press('Escape')
+      await expect(
+        page.getByRole('button', { name: 'Draw', exact: true }),
+      ).toHaveAttribute('aria-pressed', 'false')
+    }
+  })
+
+  test('D8 modify, translate, measure and Esc cancel drawing', async ({
+    page,
+  }) => {
+    await openViewer(page, slideUrl)
+    await pressViewerShortcut(page, 'KeyD')
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByText('Configure annotation')).toBeVisible()
+    const selects = dialog.getByRole('combobox')
+    await chooseOption(page, selects.first(), 'Tumor')
+    await chooseOption(page, selects.last(), 'Polygon')
+    await dialog.locator('#measure-checkbox').click()
+    await dialog.getByRole('button', { name: 'Start drawing' }).click()
+    await expect(dialog).toBeHidden()
+    await drawPolygon(page, -80)
+    await page.keyboard.press('Escape')
+    const rois = await section(slidePanel(page), 'Annotations')
+    const roi1 = rois.getByRole('button', { name: /^ROI 1 / })
+    await expect(roi1).toBeVisible()
+    await expect(rois.getByText(/µm|mm/)).toBeVisible()
+
+    await roi1.click()
+    await pressViewerShortcut(page, 'KeyM')
+    await expect(
+      page.getByRole('button', { name: 'Modify', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    await pressViewerShortcut(page, 'KeyT')
+    await expect(
+      page.getByRole('button', { name: 'Translate', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true')
+
+    await pressViewerShortcut(page, 'KeyD')
+    await configureDraw(page, 'Tumor', 'Point')
+    await expect(
+      page.getByRole('button', { name: 'Draw', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    await page.keyboard.press('Escape')
+    await expect(
+      page.getByRole('button', { name: 'Draw', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'false')
+    await expect(rois.getByRole('button', { name: /^ROI 2 / })).toHaveCount(0)
   })
 })
 

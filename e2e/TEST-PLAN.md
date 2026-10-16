@@ -25,6 +25,14 @@ pnpm test:e2e:ui                        # watch them run
 
 On GitHub, add the `run-e2e` label to a pull request to run the suite there. It never runs on its own, so the public IDC servers aren't hit on every push.
 
+D9 needs the writable docker-compose archive (not the IDC proxy):
+
+```sh
+docker compose up -d --build
+pnpm seed:local-archive          # STOW one SM series from IDC into dcm4chee
+pnpm test:e2e:local-archive      # Playwright against http://localhost:8008
+```
+
 ## Studies
 
 | Name | What it covers | Link |
@@ -148,13 +156,13 @@ Open the [H&E study](http://localhost:3000/studies/2.25.211094631316408413440371
 - [ ] **D4** e2e. Draw a point. Alt+V hides ROIs. Remove deletes it after you confirm.
 - [ ] **D5** e2e. Go to rejects bad coordinates and centers the view on valid ones.
 - [ ] **D6** e2e. Save opens the Save annotations dialog with your ROIs. Confirming shows an "Annotations could not be saved." toast, because the IDC proxy is read-only.
-- [ ] **D7** manual. Each geometry type draws: point, line, freehand line, polygon, freehand polygon, rectangle, ellipse.
-- [ ] **D8** manual. Alt+M modifies and Alt+T moves an ROI. The Measure option shows length or area. Esc cancels drawing.
+- [ ] **D7** e2e. Each geometry type draws: point, line, freehand line, polygon, freehand polygon, rectangle, ellipse.
+- [ ] **D8** e2e. Alt+M modifies and Alt+T moves an ROI. The Measure option shows length or area. Esc cancels drawing.
 - [ ] **D10** e2e. Clicking an ROI on the slide selects it, Shift-click adds a second one, and clicking empty space clears the selection.
 - [ ] **D11** e2e. Double-clicking an ROI opens its details with the finding and evaluation.
 - [ ] **D12** e2e. Hovering an ROI shows a tooltip with its name and finding.
 - [ ] **D13** e2e. Clicking an ROI in the Annotations list selects it and highlights it on the slide.
-- [ ] **D9** manual. Start the local archive with `docker compose up -d` (see the README's local deployment section) and store a slide in it. Open it at http://localhost:8008, draw ROIs, Save, reload and see them come back as an SR.
+- [ ] **D9** e2e (local archive). `docker compose up -d --build`, `pnpm seed:local-archive`, then `pnpm test:e2e:local-archive`. Draw, Save, reload and see the ROIs come back as an SR on http://localhost:8008.
 
 ## Configuration
 
