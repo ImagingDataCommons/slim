@@ -95,8 +95,8 @@ importers:
         specifier: ^5.2.1
         version: 5.3.0
       dicom-microscopy-viewer:
-        specifier: ^0.48.27
-        version: 0.48.27
+        specifier: ^0.49.0
+        version: 0.49.0
       dicomweb-client:
         specifier: 0.10.3
         version: 0.10.3
@@ -1033,6 +1033,10 @@ packages:
   '@cornerstonejs/codec-libjpeg-turbo-8bit@1.2.8':
     resolution: {integrity: sha512-qggTc0EAso+FAB4aND1wufjY/FnaVXKaJ/PAiabSksaAgf8jhCew+K3R4e3QWJI8SqcYczZFkhpVdFVwXG9ZgQ==, tarball: https://registry.npmjs.org/@cornerstonejs/codec-libjpeg-turbo-8bit/-/codec-libjpeg-turbo-8bit-1.2.8.tgz}
     engines: {node: '>=0.14'}
+
+  '@cornerstonejs/codec-libjxl@1.1.1':
+    resolution: {integrity: sha512-Gp5AXNDuqX9CggJ6VJzjEuPowL2IsKGkvUPo3I7ZmCaY1vNDTwOdJUFrHACl3RIMDm+EL9EUw0Lhsmbs5b0fvA==, tarball: https://registry.npmjs.org/@cornerstonejs/codec-libjxl/-/codec-libjxl-1.1.1.tgz}
+    engines: {node: '>=24'}
 
   '@cornerstonejs/codec-openjpeg@1.3.6':
     resolution: {integrity: sha512-bSdZXF+2GxfBkWHUr7yGLQtIwbAm9wOl3e4ARee/9Z9lfKyVqhUCixI6+ZjIn9YKTIuDcn/NZNK94XEUg1SBtw==, tarball: https://registry.npmjs.org/@cornerstonejs/codec-openjpeg/-/codec-openjpeg-1.3.6.tgz}
@@ -3085,9 +3089,6 @@ packages:
   dayjs@1.11.21:
     resolution: {integrity: sha512-98IT+HOahAisibz/yjKbzuOBwYcjJ7BCLPzARyHiyEBmRz4fatF+KPJszEHXsGYjUG234aH/cOjW1wwTbKUZlA==}
 
-  dcmjs@0.41.0:
-    resolution: {integrity: sha512-kr46REomItFeWz+0ck4Wif4uS5VVDWVlwdh5GGaCtTYHWfNQmrcCSiQOkrShc7Dc5zP8vNKrHEdORlZXenlg3w==}
-
   dcmjs@0.52.0:
     resolution: {integrity: sha512-0/mT9NACKnwnOnkUx7JAqmWxRcUr7HiCoptw1KhN2StNYE0Hy6+tmpI7CU+lJuBc4rFpcMCalvI8QO6JkJ+7Fg==}
     engines: {node: '>=22.13'}
@@ -3185,8 +3186,8 @@ packages:
     engines: {node: '>= 4.2.1'}
     hasBin: true
 
-  dicom-microscopy-viewer@0.48.27:
-    resolution: {integrity: sha512-Y/5q/AOgqYirT9mzfdAUQwi2bPdY/TOG5ouLbP1KGgtpEsfWelAVlagtovB15Gh7585kZ9XWR6fGnBAmwNE9Cg==}
+  dicom-microscopy-viewer@0.49.0:
+    resolution: {integrity: sha512-a3hIdA3VtKf2/9TaOo29E/KVC2sjOUbLnO/4d6CT7xi8CmPVI5kd0qx5YHDWmJikV3NPZ7wd3/OMfg9RJp3Jcg==}
 
   dicomweb-client@0.10.3:
     resolution: {integrity: sha512-/fHNEAYiz8j+9TNOrNJ0k+hYqirbOT85B7vM7I4VkY8DeDQb4BDUeL3RX6huDVtn6ZQlR91dI+2tejLc5c99wA==}
@@ -8187,6 +8188,8 @@ snapshots:
 
   '@cornerstonejs/codec-libjpeg-turbo-8bit@1.2.8': {}
 
+  '@cornerstonejs/codec-libjxl@1.1.1': {}
+
   '@cornerstonejs/codec-openjpeg@1.3.6': {}
 
   '@cornerstonejs/codec-openjph@2.4.11': {}
@@ -10788,16 +10791,6 @@ snapshots:
 
   dayjs@1.11.21: {}
 
-  dcmjs@0.41.0:
-    dependencies:
-      '@babel/runtime-corejs3': 7.29.2
-      adm-zip: 0.6.1
-      gl-matrix: 3.4.4
-      lodash.clonedeep: 4.5.0
-      loglevel: 1.9.2
-      ndarray: 1.0.19
-      pako: 2.1.0
-
   dcmjs@0.52.0:
     dependencies:
       '@babel/runtime-corejs3': 7.29.2
@@ -10892,15 +10885,16 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  dicom-microscopy-viewer@0.48.27:
+  dicom-microscopy-viewer@0.49.0:
     dependencies:
       '@cornerstonejs/codec-charls': 1.2.7
       '@cornerstonejs/codec-libjpeg-turbo-8bit': 1.2.8
+      '@cornerstonejs/codec-libjxl': 1.1.1
       '@cornerstonejs/codec-openjpeg': 1.3.6
       '@cornerstonejs/codec-openjph': 2.4.11
       '@imagingdatacommons/dicomicc': 0.2.3
       colormap: 2.3.2
-      dcmjs: 0.41.0
+      dcmjs: 0.52.0
       dicomweb-client: 0.11.3
       image-type: 4.1.0
       mathjs: 11.12.0
