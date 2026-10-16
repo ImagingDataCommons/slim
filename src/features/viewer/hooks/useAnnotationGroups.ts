@@ -1,6 +1,6 @@
 /** skipcq: JS-C1003 */
 import type * as dcmjs from 'dcmjs'
-import { useState } from 'react'
+import { startTransition, useState } from 'react'
 
 import type { AnnotationGroupDisplaySettings } from '../../../components/AnnotationGroupList'
 import { runValidations } from '../../../contexts/ValidationContext'
@@ -100,7 +100,11 @@ export function useAnnotationGroups(
       },
       (applied) => {
         if (applied.length > 0) {
-          setVisibleUIDs((current) => applyVisibilityChanges(current, applied))
+          startTransition(() => {
+            setVisibleUIDs((current) =>
+              applyVisibilityChanges(current, applied),
+            )
+          })
         }
       },
     )
@@ -175,8 +179,10 @@ export function useAnnotationGroups(
       if (viewer === undefined) return
       /** Switching series hides every group shown for the previous one */
       for (const uid of visibleUIDs) viewer.hideAnnotationGroup(uid)
-      setSelectedSeriesUID(seriesInstanceUID)
-      setVisibleUIDs(new Set())
+      startTransition(() => {
+        setSelectedSeriesUID(seriesInstanceUID)
+        setVisibleUIDs(new Set())
+      })
     },
     onDisplaySettingsChange: (settings) => {
       if (changedSettingKeys(displaySettings, settings).length === 0) return

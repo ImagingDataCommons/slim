@@ -1,5 +1,3 @@
-/** skipcq: JS-C1003 */
-import * as dcmjs from 'dcmjs'
 import { type JSX, useCallback, useEffect, useState } from 'react'
 import {
   Route,
@@ -18,12 +16,15 @@ import { StorageClasses } from '../data/uids'
 import { ViewerLoadingLayout } from '../features/viewer/components/ViewerLoadingLayout'
 import { ViewerMessage } from '../features/viewer/components/ViewerMessage'
 import { ViewportLoadingIndicator } from '../features/viewer/components/ViewportLoadingIndicator'
+import {
+  resolvedSeriesInstanceUID,
+  useRouteSlideResolution,
+} from '../features/viewer/hooks/useRouteSlideResolution'
 import { STUDY_PANEL_ID } from '../features/viewer/utils/panelIds'
 import {
-  isReferencingInstance,
-  type ReferencingInstance,
-  resolveReferencedSlide,
-} from '../features/viewer/utils/referencedSlide'
+  presentationStateUIDFromSearch,
+  selectedSeriesForStudyPath,
+} from '../features/viewer/utils/routeSlide'
 import {
   buildSeriesSelectionPath,
   defaultSeriesRedirectPath,
@@ -33,12 +34,8 @@ import { cn } from '../lib/utils'
 import type { AppInfo } from '../utils/appInfo'
 import { buildStudySummary } from '../utils/displayFormat'
 import { logger } from '../utils/logger'
-import {
-  findSlideBySeriesInstanceUID,
-  seriesUidFromSlide,
-} from '../utils/recoverSeriesInstanceUID'
 import { type RouteComponentProps, withRouter } from '../utils/router'
-import { parseSeriesInstanceUID, RoutePaths } from '../utils/routes'
+import { RoutePaths } from '../utils/routes'
 import ClinicalTrial from './ClinicalTrial'
 import Patient from './Patient'
 import SlideList from './SlideList'
@@ -50,13 +47,6 @@ import {
   PanelDivider,
   SlimCollapsibleSection,
 } from './slim/SlimCollapsibleSection'
-
-const { naturalizeDataset } = dcmjs.data.DicomMetaDictionary
-
-const findSeriesSlide = (
-  slides: Slide[],
-  seriesInstanceUID: string,
-): Slide | undefined => findSlideBySeriesInstanceUID(slides, seriesInstanceUID)
 
 function ParametrizedSlideViewer({
   clients,
@@ -87,118 +77,17 @@ function ParametrizedSlideViewer({
   }>()
   const location = useLocation()
   const navigate = useNavigate()
+  const { selectedSlide, derivedDataset, unresolvedSeriesUID } =
+    useRouteSlideResolution({
+      clients,
+      slides,
+      studyInstanceUID,
+      seriesInstanceUID,
+      location,
+      navigate,
+    })
 
-  const [selectedSlide, setSelectedSlide] = useState(
-    findSeriesSlide(slides, seriesInstanceUID),
-  )
-  const [derivedDataset, setDerivedDataset] =
-    useState<ReferencingInstance | null>(null)
-  /** Series from the URL that resolved to no slide of this study */
-  const [unresolvedSeriesUID, setUnresolvedSeriesUID] = useState<string | null>(
-    null,
-  )
-
-  useEffect(() => {
-    const currentSlideMatchesSeries =
-      selectedSlide !== null &&
-      selectedSlide !== undefined &&
-      findSlideBySeriesInstanceUID([selectedSlide], seriesInstanceUID) ===
-        selectedSlide
-
-    if (
-      selectedSlide !== null &&
-      selectedSlide !== undefined &&
-      currentSlideMatchesSeries
-    ) {
-      return
-    }
-
-    const imageSlide = findSeriesSlide(slides, seriesInstanceUID)
-    if (imageSlide !== null && imageSlide !== undefined) {
-      const resolvedSeriesUID = seriesUidFromSlide(
-        imageSlide,
-        seriesInstanceUID,
-      )
-      setSelectedSlide(imageSlide)
-      setDerivedDataset(null)
-      setUnresolvedSeriesUID(null)
-      if (resolvedSeriesUID !== seriesInstanceUID) {
-        logger.warn(
-          `Corrected mangled series UID in route: "${seriesInstanceUID}" → "${resolvedSeriesUID}"`,
-        )
-        navigate(
-          {
-            pathname: location.pathname.replace(
-              `/series/${seriesInstanceUID}`,
-              `/series/${resolvedSeriesUID}`,
-            ),
-            search: location.search,
-          },
-          { replace: true },
-        )
-      }
-      return
-    }
-
-    /** Set on cleanup so a superseded lookup cannot select a stale slide */
-    let isCancelled = false
-    const findReferencedSlide = async (): Promise<void> => {
-      try {
-        const client = clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
-        const derivedSeriesMetadata = await client.retrieveSeriesMetadata({
-          studyInstanceUID,
-          seriesInstanceUID,
-        })
-        if (isCancelled) return
-        const naturalizedDerivedMetadata = naturalizeDataset(
-          derivedSeriesMetadata[0],
-        )
-        if (isReferencingInstance(naturalizedDerivedMetadata)) {
-          const referencedSlide = resolveReferencedSlide(
-            slides,
-            naturalizedDerivedMetadata,
-          )
-          if (referencedSlide !== undefined) {
-            setSelectedSlide(referencedSlide)
-            setDerivedDataset(naturalizedDerivedMetadata)
-            setUnresolvedSeriesUID(null)
-            return
-          }
-        }
-        setUnresolvedSeriesUID(seriesInstanceUID)
-      } catch (error) {
-        if (isCancelled) return
-        logger.warn(
-          `Failed to resolve referenced slide for series "${seriesInstanceUID}"`,
-          error,
-        )
-        setUnresolvedSeriesUID(seriesInstanceUID)
-      }
-    }
-
-    /** skipcq: JS-0098 - void operator intentionally discards the Promise */
-    void findReferencedSlide()
-    return () => {
-      isCancelled = true
-      return undefined
-    }
-  }, [
-    slides,
-    clients,
-    studyInstanceUID,
-    seriesInstanceUID,
-    selectedSlide,
-    navigate,
-    location.pathname,
-    location.search,
-  ])
-
-  const searchParams = new URLSearchParams(location.search)
-  let presentationStateUID: string | undefined
-  if (!searchParams.has('access_token')) {
-    const stateParam = searchParams.get('state')
-    presentationStateUID = stateParam !== null ? stateParam : undefined
-  }
+  const presentationStateUID = presentationStateUIDFromSearch(location.search)
 
   if (unresolvedSeriesUID === seriesInstanceUID) {
     return (
@@ -219,15 +108,14 @@ function ParametrizedSlideViewer({
     </div>
   )
   if (selectedSlide != null && selectedSlide !== undefined) {
-    const resolvedSeriesInstanceUID = seriesUidFromSlide(
-      selectedSlide,
-      seriesInstanceUID,
-    )
     viewer = (
       <SlideViewer
         clients={clients}
         studyInstanceUID={studyInstanceUID}
-        seriesInstanceUID={resolvedSeriesInstanceUID}
+        seriesInstanceUID={resolvedSeriesInstanceUID(
+          selectedSlide,
+          seriesInstanceUID,
+        )}
         selectedPresentationStateUID={presentationStateUID}
         slide={selectedSlide}
         preload={preload}
@@ -358,22 +246,11 @@ function Viewer(props: ViewerProps): JSX.Element | null {
   }
   const refImage = volumeInstances[0]
 
-  /**
-   * If a series is encoded in the path, route the viewer to this series.
-   * Otherwise select the first series correspondent to
-   * the first slide contained in the study.
-   */
-  let selectedSeriesInstanceUID: string
-  const seriesFromPath = parseSeriesInstanceUID(location.pathname)
-  if (seriesFromPath !== '') {
-    const slideForPath = findSeriesSlide(slides, seriesFromPath)
-    selectedSeriesInstanceUID =
-      slideForPath !== undefined
-        ? seriesUidFromSlide(slideForPath, seriesFromPath)
-        : seriesFromPath
-  } else {
-    selectedSeriesInstanceUID = volumeInstances[0].SeriesInstanceUID
-  }
+  const selectedSeriesInstanceUID = selectedSeriesForStudyPath({
+    slides,
+    pathname: location.pathname,
+    fallbackSeriesInstanceUID: volumeInstances[0].SeriesInstanceUID,
+  })
 
   return (
     <div className="flex h-full min-h-0">

@@ -8,7 +8,7 @@
 #   SLIM_VERIFY_WRITE  "true" to mark the server writable (only for a local archive)
 #
 # Writes public/config/verify.js (gitignored) and keeps pid/log under
-# /tmp/slim-verify/run-<port>/. Blocks until webpack has compiled and the app
+# /tmp/slim-verify/run-<port>/. Blocks until Vite is ready and the app
 # serves the verify config, or fails with the tail of the dev server log.
 set -euo pipefail
 
@@ -93,14 +93,14 @@ if [ "$FRESH_CACHE" = true ]; then
 fi
 
 # Job control gives the background job its own process group, so cleanup can
-# stop pnpm, craco and webpack together without matching on process names.
+# stop pnpm and vite together without matching on process names.
 set -m
 BROWSER=none PORT="$PORT" REACT_APP_CONFIG=verify \
-  nohup pnpm exec ./scripts/set-git-env.sh craco start >"$LOG" 2>&1 &
+  nohup pnpm exec ./scripts/set-git-env.sh vite --port "$PORT" --strictPort >"$LOG" 2>&1 &
 PGID=$!
 set +m
 echo "$PGID" > "$RUN_DIR/pgid"
-echo "Started dev server (pgid $PGID) on port $PORT. Log: $LOG"
+echo "Started Vite (pgid $PGID) on port $PORT. Log: $LOG"
 
 deadline=$((SECONDS + READY_TIMEOUT_S))
 while [ $SECONDS -lt $deadline ]; do
@@ -109,12 +109,12 @@ while [ $SECONDS -lt $deadline ]; do
     tail -n 40 "$LOG"
     exit 1
   fi
-  if grep -qE "Failed to compile|webpack [0-9.]+ compiled with [0-9]+ errors?" "$LOG"; then
-    echo "Dev server failed to compile. Last log lines:"
+  if grep -qiE "error when starting|failed to bind|EADDRINUSE" "$LOG"; then
+    echo "Vite failed to start. Last log lines:"
     tail -n 60 "$LOG"
     exit 1
   fi
-  if grep -qE "webpack [0-9.]+ compiled" "$LOG" \
+  if grep -qE "Local: +http://|ready in [0-9]" "$LOG" \
     && curl -fsS "http://localhost:$PORT/config/verify.js" 2>/dev/null | grep -q "$DICOMWEB_URL"; then
     echo "Ready: http://localhost:$PORT/"
     exit 0

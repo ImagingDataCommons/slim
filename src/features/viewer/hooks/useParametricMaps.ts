@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { startTransition, useRef, useState } from 'react'
 
 import { logger } from '../../../utils/logger'
 import type { DmvEventHandlers } from '../services/dmvEvents'
@@ -114,11 +114,13 @@ export function useParametricMaps({
          */
         if (payload?.mappingUID == null || payload.isVisible == null) return
         const { mappingUID, isVisible } = payload
-        setVisibleUIDs((current) =>
-          isVisible
-            ? withItem(current, mappingUID)
-            : withoutItem(current, mappingUID),
-        )
+        startTransition(() => {
+          setVisibleUIDs((current) =>
+            isVisible
+              ? withItem(current, mappingUID)
+              : withoutItem(current, mappingUID),
+          )
+        })
       },
     },
   }

@@ -38,17 +38,18 @@ else
   bad "port $PORT is owned by pid $LISTENER_PID, which this skill did not start"
 fi
 
-LAST_STATUS="$(grep -oE "webpack [0-9.]+ compiled.*|Failed to compile" "$LOG" | tail -n 1)"
-case "$LAST_STATUS" in
-  "Failed to compile"|*error*) bad "latest webpack build failed: $LAST_STATUS (see $LOG)" ;;
-  "") bad "webpack has not finished compiling yet" ;;
-  *) ok "latest webpack status: $LAST_STATUS" ;;
-esac
-
-if curl -fsS "http://localhost:$PORT/" 2>/dev/null | grep -q "/config/verify.js"; then
-  ok "index.html loads config/verify.js"
+if grep -qiE "error when starting|failed to bind|EADDRINUSE" "$LOG"; then
+  bad "Vite log shows a startup failure (see $LOG)"
+elif grep -qE "Local: +http://|ready in [0-9]" "$LOG"; then
+  ok "Vite reported ready"
 else
-  bad "index.html does not reference config/verify.js (wrong REACT_APP_CONFIG?)"
+  bad "Vite has not reported ready yet (see $LOG)"
+fi
+
+if curl -fsS "http://localhost:$PORT/" 2>/dev/null | grep -qE "config/verify\.js|/src/main"; then
+  ok "index.html loads (Vite app shell)"
+else
+  bad "index.html did not load as expected (wrong REACT_APP_CONFIG?)"
 fi
 
 if curl -fsS "http://localhost:$PORT/config/verify.js" 2>/dev/null | grep -q "$DICOMWEB_URL"; then

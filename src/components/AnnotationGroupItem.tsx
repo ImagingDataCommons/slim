@@ -16,7 +16,7 @@ import {
   isFillableGraphicType,
 } from '../utils/annotationGroup'
 import { measurementOptionToConcept } from '../utils/annotationGroupMeasurement'
-import { rgbToHex, toRGB } from '../utils/color'
+import { rgbToHex, toEditableColor, toRGB } from '../utils/color'
 import { formatGroupedNumber } from '../utils/displayFormat'
 import { toKeyValueItems } from '../utils/keyValue'
 import { areLayerItemPropsEqual } from '../utils/styleEquality'
@@ -64,10 +64,6 @@ interface AnnotationGroupLocalStyle {
   color?: RGB
   fill: boolean
   fillOpacity: number
-}
-
-function toEditableColor(color: readonly number[]): RGB | undefined {
-  return color.length === 3 ? toRGB(color) : undefined
 }
 
 /** One annotation group with visibility, style and measurement coloring. */

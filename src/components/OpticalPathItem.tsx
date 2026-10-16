@@ -15,6 +15,7 @@ import {
   getOpticalPathName,
   getOpticalPathSwatch,
 } from '../utils/opticalPath'
+import { maxValueForBitsAllocated } from '../utils/opticalPathLimits'
 import { getOpticalPathStyleSignature } from '../utils/opticalPathPartition'
 import { getSpecimenStains } from '../utils/specimen'
 import { areLayerItemPropsEqual } from '../utils/styleEquality'
@@ -91,7 +92,7 @@ function OpticalPathItem({
     previewStyle(change)
     commitLive(change)
   }
-  const maxValue = 2 ** (metadata[0]?.BitsAllocated ?? 8) - 1
+  const maxValue = maxValueForBitsAllocated(metadata[0]?.BitsAllocated)
   const limits = useLimitWindow({
     initial: defaultStyle.limitValues,
     min: 0,
@@ -102,6 +103,10 @@ function OpticalPathItem({
   })
 
   const name = getOpticalPathName(opticalPath)
+  /** Short label for AT / e2e (description or Brightfield / identifier). */
+  const a11yName =
+    opticalPath.description?.trim() ||
+    (opticalPath.isMonochromatic ? opticalPath.identifier : 'Brightfield')
   const meta = useMemo(
     () =>
       getOpticalPathMeta(opticalPath, {
@@ -141,7 +146,7 @@ function OpticalPathItem({
           </span>
         )}
         <span className="ml-auto flex flex-none items-center gap-0.5">
-          <LayerSettingsPopover label={name}>
+          <LayerSettingsPopover label={a11yName}>
             <div className="flex w-72 flex-col gap-4">
               <div className="text-12.5 font-semibold text-ink">
                 Display settings
@@ -154,7 +159,7 @@ function OpticalPathItem({
                   <div className="flex items-center gap-2">
                     <LimitInput
                       integer
-                      aria-label={LIMIT_LABELS[0]}
+                      aria-label={`${a11yName} ${LIMIT_LABELS[0]}`}
                       min={0}
                       max={limits.values[1]}
                       value={limits.values[0]}
@@ -163,7 +168,7 @@ function OpticalPathItem({
                     <span className="text-ink-faint">–</span>
                     <LimitInput
                       integer
-                      aria-label={LIMIT_LABELS[1]}
+                      aria-label={`${a11yName} ${LIMIT_LABELS[1]}`}
                       min={limits.values[0]}
                       max={maxValue}
                       value={limits.values[1]}
@@ -202,7 +207,7 @@ function OpticalPathItem({
               variant="ghost"
               size="icon-xs"
               title="Remove optical path"
-              aria-label={`Remove ${name}`}
+              aria-label={`Remove ${a11yName}`}
               onClick={() => onRemoval(identifier)}
               className="hover:bg-segmented hover:text-ink-secondary"
             >
@@ -210,7 +215,7 @@ function OpticalPathItem({
             </Button>
           )}
           <VisibilityToggleButton
-            label={name}
+            label={a11yName}
             isVisible={isVisible}
             onChange={(nextIsVisible) =>
               onVisibilityChange({
@@ -232,7 +237,7 @@ function OpticalPathItem({
             value={limits.values}
             onValueChange={limits.preview}
             onValueCommit={limits.commit}
-            thumbLabels={LIMIT_LABELS.map((label) => `${name} ${label}`)}
+            thumbLabels={LIMIT_LABELS.map((label) => `${a11yName} ${label}`)}
           />
         </div>
       )}

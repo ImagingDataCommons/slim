@@ -1,6 +1,6 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { SegmentStyle } from '../../../types/layerStyles'
 import { logger } from '../../../utils/logger'
@@ -237,8 +237,10 @@ export function useSegmentations(
           if (!segment.isAbsent) nextVisible.add(segment.uid)
         }
       }
-      setSelectedSeriesUID(seriesInstanceUID)
-      setVisibleUIDs(nextVisible)
+      startTransition(() => {
+        setSelectedSeriesUID(seriesInstanceUID)
+        setVisibleUIDs(nextVisible)
+      })
       for (const uid of nextVisible) viewer.showSegment(uid)
     },
     onDisplaySettingsChange: ({ interpolationEnabled }) => {
@@ -255,11 +257,13 @@ export function useSegmentations(
          */
         if (payload?.segmentUID == null || payload.isVisible == null) return
         const { segmentUID, isVisible } = payload
-        setVisibleUIDs((current) =>
-          isVisible
-            ? withItem(current, segmentUID)
-            : withoutItem(current, segmentUID),
-        )
+        startTransition(() => {
+          setVisibleUIDs((current) =>
+            isVisible
+              ? withItem(current, segmentUID)
+              : withoutItem(current, segmentUID),
+          )
+        })
       },
     },
   }

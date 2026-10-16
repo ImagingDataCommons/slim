@@ -92,9 +92,7 @@ const TagRow = ({
               <button
                 type="button"
                 aria-expanded={isExpanded}
-                aria-label={
-                  isExpanded ? 'Collapse sequence' : 'Expand sequence'
-                }
+                aria-label={`${item.tag} ${item.keyword}`.trim()}
                 onClick={() => onToggle(item.key)}
                 className="grid place-items-center rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
               >

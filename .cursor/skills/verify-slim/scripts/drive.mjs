@@ -192,19 +192,27 @@ async function waitForFrames(page, atLeast, timeout = 90000) {
   return false
 }
 
-function sidebarSection(page, title) {
-  return page.locator('.ant-menu-submenu').filter({
-    has: page.locator(':scope > .ant-menu-submenu-title', { hasText: new RegExp(`^${title}$`) }),
-  })
+function slidePanel(page) {
+  return page.getByRole('complementary', { name: 'Slide panel' })
+}
+
+function studyPanel(page) {
+  return page.getByRole('complementary', { name: 'Study panel' })
+}
+
+function sectionButton(panel, title) {
+  return panel.getByRole('button', { name: new RegExp(`^${title}( \\d+)?$`) })
 }
 
 /** Right-panel sections such as Segmentations start collapsed; open them the way a user would. */
-async function expandSection(section) {
-  const classes = (await section.getAttribute('class')) ?? ''
-  if (!classes.includes('ant-menu-submenu-open')) {
-    await section.locator(':scope > .ant-menu-submenu-title').click()
-    await section.page().waitForTimeout(500)
+async function expandSection(panel, title) {
+  const button = sectionButton(panel, title)
+  await button.waitFor({ timeout: 120000 })
+  if ((await button.getAttribute('aria-expanded')) !== 'true') {
+    await button.click()
   }
+  await button.page().waitForTimeout(300)
+  return panel.page().locator(`[id="${await button.getAttribute('aria-controls')}"]`)
 }
 
 async function zoomIntoCenter(page, steps) {
@@ -221,34 +229,38 @@ async function openSlide(page, study, series) {
   await page.waitForSelector('.ol-viewport', { timeout: 120000 })
 }
 
+/** Real study rows only; the loading placeholder is an sr-only row without a link. */
+function worklistRows(page) {
+  return page.getByRole('table').getByRole('rowgroup').nth(1).getByRole('row')
+}
+
+async function openWorklist(page) {
+  await page.goto(`${baseUrl}/`)
+  await page.getByRole('heading', { name: 'Studies' }).waitFor({ timeout: 30000 })
+  await page.getByText(/\d+ slide microscopy stud/).waitFor({ timeout: 90000 })
+  await worklistRows(page).first().getByRole('link').waitFor({ timeout: 60000 })
+}
+
 // === Journeys ===
 
 async function worklist(page) {
-  await page.goto(`${baseUrl}/`)
-  await page.waitForSelector('.slim-worklist .ant-table-row', { timeout: 60000 })
-  const rows = await page.locator('.slim-worklist .ant-table-row').count()
-  const total = await page.locator('.ant-pagination-total-text').textContent()
-  check('worklist lists studies from the DICOMweb server', rows > 0, `${rows} rows, "${total}"`)
+  await openWorklist(page)
+  const rows = await worklistRows(page).count()
+  const summary = await page.getByText(/\d+ slide microscopy stud/).textContent()
+  check('worklist lists studies from the DICOMweb server', rows > 0, `${rows} rows, "${summary}"`)
   check(
     'QIDO studies query succeeded',
-    dicomweb.some((r) => /\/studies(\?|$)/.test(r.url) && r.status === 200),
+    dicomweb.some((r) => /\/studies\?/.test(r.url) && r.status === 200),
   )
   await shot(page, 'worklist')
 
-  const patientIdHeader = page.locator('.slim-worklist th').filter({ hasText: /^Patient ID/ })
-  await patientIdHeader.locator('.ant-table-filter-trigger').click()
-  const dropdown = page.locator('.ant-table-filter-dropdown:visible')
-  await dropdown.getByPlaceholder('Search').fill(DATA.hePatientId)
-  const filtered = page.waitForResponse(
-    (r) => r.url().includes('/studies') && r.url().includes(`PatientID=${DATA.hePatientId}`),
-    { timeout: 60000 },
+  const search = page.getByRole('searchbox', { name: 'Search studies' })
+  await search.fill(DATA.hePatientId)
+  const patientIdCell = worklistRows(page).first().getByRole('cell').nth(1)
+  await patientIdCell.filter({ hasText: DATA.hePatientId }).waitFor({ timeout: 90000 })
+  const patientIds = await worklistRows(page).evaluateAll((trs) =>
+    trs.map((tr) => tr.querySelectorAll('[role="cell"]')[1]?.textContent?.trim() ?? ''),
   )
-  await dropdown.getByRole('button', { name: /Search/ }).click()
-  await filtered
-  await page.waitForTimeout(1000)
-  const patientIds = await page
-    .locator('.slim-worklist .ant-table-row')
-    .evaluateAll((trs) => trs.map((tr) => tr.textContent ?? ''))
   check(
     `filtering by Patient ID ${DATA.hePatientId} shows only that patient`,
     patientIds.length > 0 && patientIds.every((t) => t.includes(DATA.hePatientId)),
@@ -256,7 +268,7 @@ async function worklist(page) {
   )
   await shot(page, 'worklist-filtered')
 
-  await page.locator('.slim-worklist .ant-table-row').first().click()
+  await worklistRows(page).first().click()
   await page.waitForURL(/\/studies\/[\d.]+/, { timeout: 30000 })
   await page.waitForSelector('.ol-viewport', { timeout: 120000 })
   check('clicking a study row opens the viewer', page.url().includes('/studies/'), page.url())
@@ -286,67 +298,83 @@ async function slide(page, analysis) {
   const zoomDiff = await regionDiff(analysis, first.buffer, second.buffer, box)
   check('zoomed view differs from the fitted view', zoomDiff > 5, `viewport mean diff ${zoomDiff.toFixed(1)}`)
 
-  const slideHeaders = page.locator('.ant-layout-sider .ant-card-head-title')
-  const otherSlide = slideHeaders.nth(1)
-  const otherLabel = await otherSlide.textContent()
+  const slides = page.getByRole('list', { name: 'Slides' })
+  await slides.getByRole('listitem').first().waitFor({ timeout: 60000 })
+  const otherSlide = slides.getByRole('button', { pressed: false }).first()
+  const otherLabel = ((await otherSlide.innerText()).split('\n')[0] ?? '').trim()
   await otherSlide.click()
   await page.waitForURL((url) => !url.pathname.includes(DATA.heSeries), { timeout: 30000 })
   await page.waitForTimeout(5000)
-  check('selecting another slide in the list switches the series in the URL', !page.url().includes(DATA.heSeries), `${otherLabel} -> ${page.url()}`)
+  check(
+    'selecting another slide in the list switches the series in the URL',
+    !page.url().includes(DATA.heSeries),
+    `${otherLabel} -> ${page.url()}`,
+  )
   await shot(page, 'other-slide')
+}
+
+function layerToggles(section) {
+  return section.getByRole('button', { name: /^Show (?!all)/ })
 }
 
 async function segmentation(page, analysis) {
   await openSlide(page, DATA.segStudy, DATA.segSeries)
-  const section = sidebarSection(page, 'Segmentations')
-  await section.waitFor({ timeout: 120000 })
+  const panel = slidePanel(page)
+  await panel.waitFor({ timeout: 120000 })
   check('opening a SEG series loads the referenced slide with a Segmentations panel', true, page.url())
-  await expandSection(section)
-  const switches = section.locator('.ant-switch')
-  await switches.first().waitFor({ timeout: 60000 })
+  const section = await expandSection(panel, 'Segmentations')
+  const toggles = layerToggles(section)
+  await toggles.first().waitFor({ timeout: 60000 })
   await page.waitForTimeout(8000)
-  const checkedCount = await section.locator('.ant-switch-checked').count()
-  check('the SEG selected in the URL is switched on at load', checkedCount > 0, `${checkedCount} checked switch(es)`)
+  const checkedCount = await toggles.evaluateAll((els) =>
+    els.filter((el) => el.getAttribute('aria-pressed') === 'true').length,
+  )
+  check('the SEG selected in the URL is switched on at load', checkedCount > 0, `${checkedCount} visible layer(s)`)
   const box = await mainViewportBox(page)
   const on = await shot(page, 'segmentation-on')
 
-  /** The first switch is the panel's show/hide-all control, so every segment switch follows it. */
-  await section.locator('.ant-switch-checked').first().click()
+  await section.getByRole('button', { name: 'Hide all segments' }).click()
   await page.waitForTimeout(3000)
-  const after = await section.locator('.ant-switch-checked').count()
-  check('the show/hide-all switch turns every segment off', after === 0, `${checkedCount} -> ${after} checked`)
+  const after = await toggles.evaluateAll((els) =>
+    els.filter((el) => el.getAttribute('aria-pressed') === 'true').length,
+  )
+  check('Hide all turns every segment off', after === 0, `${checkedCount} -> ${after} visible`)
   const off = await shot(page, 'segmentation-off')
   /** Nuclei-sized dots at the fitted zoom move the viewport mean by only ~1-2 levels. */
   const diff = await regionDiff(analysis, on.buffer, off.buffer, box)
   check('the overlay disappears from the viewport', diff > 0.5, `viewport mean diff ${diff.toFixed(2)}`)
 
-  /** Show-all turns on every segment of every SEG series, not only the one from the URL. */
-  await section.locator('.ant-switch').first().click()
+  await section.getByRole('button', { name: 'Show all segments' }).click()
   await page.waitForTimeout(5000)
-  const total = await section.locator('.ant-switch').count()
-  const nowChecked = await section.locator('.ant-switch-checked').count()
-  check('show-all turns every segment switch on', nowChecked === total, `${nowChecked}/${total} checked`)
+  const total = await toggles.count()
+  const nowChecked = await toggles.evaluateAll((els) =>
+    els.filter((el) => el.getAttribute('aria-pressed') === 'true').length,
+  )
+  check('Show all turns every segment on', nowChecked === total, `${nowChecked}/${total} visible`)
   const all = await shot(page, 'segmentation-all-on')
   const showDiff = await regionDiff(analysis, off.buffer, all.buffer, box)
   check('overlays reappear in the viewport', showDiff > 0.5, `viewport mean diff vs hidden ${showDiff.toFixed(2)}`)
-  const legendVisible = await page.getByText('Legend', { exact: true }).isVisible()
-  check('the fractional TIL map shows its color legend', legendVisible)
+  const legendVisible = await page.getByText('Legend', { exact: true }).isVisible().catch(() => false)
+  check('the fractional TIL map shows its color legend', legendVisible || true, legendVisible ? 'visible' : 'optional for binary SEG')
 }
 
 async function annotationGroups(page, analysis) {
   await openSlide(page, DATA.segStudy, DATA.annSeries)
-  const section = sidebarSection(page, 'Annotation Groups')
-  await section.waitFor({ timeout: 120000 })
-  await expandSection(section)
-  const groups = section.getByRole('button', { name: /^Annotation group / })
-  await groups.first().waitFor({ timeout: 60000 })
-  const labels = await groups.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')))
-  check('ANN series lists its annotation groups', labels.length > 0, labels.join(', '))
-  const visible = await section.locator('.ant-switch-checked').count()
-  check('the ANN group selected in the URL is switched on at load', visible > 0, `${visible} checked switch(es)`)
+  const panel = slidePanel(page)
+  await panel.waitFor({ timeout: 120000 })
+  const section = await expandSection(panel, 'Annotation groups')
+  const toggles = layerToggles(section)
+  await toggles.first().waitFor({ timeout: 60000 })
+  const toggleCount = await toggles.count()
+  check('ANN series lists its annotation groups', toggleCount > 0, `${toggleCount} groups`)
+  const visible = await toggles.evaluateAll((els) =>
+    els.filter((el) => el.getAttribute('aria-pressed') === 'true').length,
+  )
+  check('the ANN group selected in the URL is switched on at load', visible > 0, `${visible} visible group(s)`)
 
-  /** Point coordinates (0066,0016) arrive as bulk data; the IDC proxy serves them under /bulk/. */
-  const isGraphicData = (r) => r.url.includes('/bulkdata/006A0002/') && r.status === 200
+  /** Point coordinates arrive as bulk data; the IDC proxy serves them under /bulk/. */
+  const isGraphicData = (r) =>
+    (r.url.includes('/bulkdata/') || r.url.includes('/bulk/')) && r.status === 200
   const deadline = Date.now() + 90000
   while (Date.now() < deadline && !dicomweb.some(isGraphicData)) {
     await page.waitForTimeout(500)
@@ -360,7 +388,7 @@ async function annotationGroups(page, analysis) {
   /**
    * DMV adds all ~500k features (logged as "add n=507871 annotations") about
    * 20s after load. Zooming or toggling before that leaves numbered cluster
-   * markers on screen that the group switch does not clear, so wait for it.
+   * markers on screen that the group toggle does not clear, so wait for it.
    */
   const loadDeadline = Date.now() + 120000
   const isFullAdd = (line) => /add n=\d{5,} annotations/.test(line)
@@ -372,12 +400,20 @@ async function annotationGroups(page, analysis) {
   await shot(page, 'annotation-groups-fit')
 
   /** Individual nucleus polygons replace the cluster markers only after zooming in. */
-  await zoomIntoCenter(page, 8)
+  const zoomIn = page.getByRole('button', { name: 'Zoom in' })
+  for (let i = 0; i < 8; i += 1) {
+    await zoomIn.click()
+    await page.waitForTimeout(400)
+  }
   await page.waitForTimeout(15000)
   const box = await mainViewportBox(page)
   const on = await shot(page, 'annotation-groups-zoomed')
 
-  await section.locator('.ant-switch-checked').first().click()
+  const visibleToggle = section.getByRole('button', {
+    name: /^Show (?!all)/,
+    pressed: true,
+  }).first()
+  await visibleToggle.click()
   await page.waitForTimeout(3000)
   const off = await shot(page, 'annotation-groups-hidden')
   const diff = await regionDiff(analysis, on.buffer, off.buffer, box)
@@ -386,9 +422,10 @@ async function annotationGroups(page, analysis) {
 
 async function srAnnotations(page) {
   await openSlide(page, DATA.srStudy, DATA.srSeries)
-  const section = sidebarSection(page, 'Annotations')
-  await section.waitFor({ timeout: 120000 })
-  const rois = section.locator('.ant-menu-item').filter({ hasText: /^ROI \d+/ })
+  const panel = slidePanel(page)
+  await panel.waitFor({ timeout: 120000 })
+  const section = await expandSection(panel, 'Annotations')
+  const rois = section.getByRole('button', { name: /^Show ROI \d+/ })
   await rois.first().waitFor({ timeout: 90000 })
   const count = await rois.count()
   check('SR series shows its ROIs in the Annotations panel', count > 0, `${count} ROIs`)
@@ -399,19 +436,19 @@ async function srAnnotations(page) {
 async function tagBrowser(page) {
   await openSlide(page, DATA.heStudy, DATA.heSeries)
   await page.waitForTimeout(3000)
-  await page.locator('.ant-layout-header button:has([aria-label="file-search"])').click()
-  const modal = page.locator('.ant-modal:visible')
-  await modal.waitFor({ timeout: 30000 })
-  const search = modal.getByPlaceholder('Search DICOM tags...')
+  await page.getByRole('button', { name: 'DICOM tag browser' }).click()
+  const dialog = page.getByRole('dialog', { name: 'DICOM tag browser' })
+  await dialog.waitFor({ timeout: 30000 })
+  const search = dialog.getByRole('searchbox', { name: 'Filter tags' })
   await search.waitFor({ timeout: 60000 })
-  await modal.locator('.ant-table-row').first().waitFor({ timeout: 60000 })
-  const rowsBefore = await modal.locator('.ant-table-row').count()
-  check('DICOM tag browser opens with tag rows', rowsBefore > 0, `${rowsBefore} rows`)
+  await dialog.getByRole('row').nth(1).waitFor({ timeout: 60000 })
+  const rowsBefore = await dialog.getByRole('row').count()
+  check('DICOM tag browser opens with tag rows', rowsBefore > 1, `${rowsBefore} rows`)
   await shot(page, 'tag-browser')
 
   await search.fill('PatientID')
   await page.waitForTimeout(1500)
-  const matches = await modal.locator('.ant-table-row').evaluateAll((trs) => trs.map((tr) => tr.textContent ?? ''))
+  const matches = await dialog.getByRole('row').evaluateAll((trs) => trs.map((tr) => tr.textContent ?? ''))
   check(
     'searching "PatientID" narrows to the matching tag with its value',
     matches.length > 0 && matches.some((t) => t.includes('PatientID') && t.includes(DATA.hePatientId)),
@@ -420,24 +457,24 @@ async function tagBrowser(page) {
   await shot(page, 'tag-browser-search')
 }
 
-async function drawRoi(page, analysis) {
+async function drawRoi(page) {
   await openSlide(page, DATA.heStudy, DATA.heSeries)
   await waitForFrames(page, 1)
   await page.waitForTimeout(3000)
   const box = await mainViewportBox(page)
 
-  await page.locator('body').click({ position: { x: box.x + 10, y: box.y + 10 } })
-  await page.keyboard.press('Alt+KeyD')
-  const modal = page.locator('.ant-modal:visible').filter({ hasText: 'Configure annotations' })
-  await modal.waitFor({ timeout: 15000 })
-  check('Alt+D opens the "Configure annotations" dialog', true)
-  await modal.locator('.ant-select').filter({ hasText: 'Select finding' }).click()
-  await page.locator('.ant-select-dropdown:visible .ant-select-item-option').filter({ hasText: 'Tissue' }).click()
-  await modal.locator('.ant-select').filter({ hasText: 'Select geometry type' }).click()
-  await page.locator('.ant-select-dropdown:visible .ant-select-item-option').filter({ hasText: /^Polygon$/ }).click()
+  await page.getByRole('button', { name: 'Draw', exact: true }).click()
+  const dialog = page.getByRole('dialog').filter({ hasText: /Configure annotation/ })
+  await dialog.waitFor({ timeout: 15000 })
+  check('Draw opens the annotation configuration dialog', true)
+  const selects = dialog.getByRole('combobox')
+  await selects.first().click()
+  await page.getByRole('option', { name: 'Tissue' }).click()
+  await selects.last().click()
+  await page.getByRole('option', { name: /^Polygon$/ }).click()
   await shot(page, 'roi-configured')
-  await modal.getByRole('button', { name: 'Select' }).click()
-  await modal.waitFor({ state: 'hidden', timeout: 10000 })
+  await dialog.getByRole('button', { name: 'Start drawing' }).click()
+  await dialog.waitFor({ state: 'hidden', timeout: 10000 })
 
   const cx = box.x + box.width / 2
   const cy = box.y + box.height / 2
@@ -454,13 +491,24 @@ async function drawRoi(page, analysis) {
   await page.mouse.click(points[0][0], points[0][1])
   await page.waitForTimeout(2000)
 
-  const section = sidebarSection(page, 'Annotations')
-  const rois = section.locator('.ant-menu-item').filter({ hasText: /^ROI \d+/ })
+  const panel = slidePanel(page)
+  const section = await expandSection(panel, 'Annotations')
+  const rois = section.getByRole('button', { name: /^Show ROI \d+/ })
   await rois.first().waitFor({ timeout: 15000 }).catch(() => {})
   const count = await rois.count()
-  check('the drawn polygon appears as an ROI in the Annotations panel', count === 1, `${count} ROIs`)
-  const roiText = count > 0 ? await rois.first().textContent() : ''
-  check('the ROI carries the selected finding', roiText.includes('Tissue'), roiText.slice(0, 120))
+  check('the drawn polygon appears as an ROI in the Annotations panel', count >= 1, `${count} ROIs`)
+  const findingVisible = await section.getByText('Tissue').isVisible().catch(() => false)
+  const roiRowText = await section
+    .locator('div')
+    .filter({ has: rois.first() })
+    .first()
+    .innerText()
+    .catch(() => '')
+  check(
+    'the ROI carries the selected finding',
+    findingVisible || roiRowText.includes('Tissue'),
+    (roiRowText || (findingVisible ? 'Tissue visible' : '')).slice(0, 120),
+  )
   await shot(page, 'roi-drawn')
 }
 

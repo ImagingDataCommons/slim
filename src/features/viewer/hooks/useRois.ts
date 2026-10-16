@@ -1,8 +1,6 @@
 /** skipcq: JS-C1003 */
-import * as dcmjs from 'dcmjs'
-/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import { useState } from 'react'
+import { startTransition, useState } from 'react'
 
 import {
   SELECTION_FILL_COLOR,
@@ -22,8 +20,13 @@ import type { ViewerSession } from '../services/viewerSession'
 import type { AnnotationDraft } from '../utils/annotationDraft'
 import { applyEach } from '../utils/applyEach'
 import { isBulkAnnotationUid } from '../utils/derivedDataset'
+import { attachDraftEvaluations } from '../utils/drawnRoi'
 import { planRoiRemoval } from '../utils/roiRemoval'
 import { nextSelectedRoiUIDs } from '../utils/roiSelection'
+import {
+  stylesForRoiSelection,
+  visibleUidsAfterSelection,
+} from '../utils/roiSelectionStyles'
 import { annotationStyleToRoiStyle } from '../utils/roiStyleRegistry'
 import { withItem } from '../utils/uidSets'
 import {
@@ -92,12 +95,6 @@ export interface RoisApi extends RoiState {
   /** Re-apply the selection style, after ROIs were shown again */
   restyleSelected: () => void
   dmvHandlers: RoiEventHandlers
-}
-
-const FINDING_NAME = {
-  value: '121071',
-  meaning: 'Finding',
-  schemeDesignator: 'DCM',
 }
 
 /** ROIs of the viewer: which are shown, selected, and how they are styled */
@@ -201,14 +198,16 @@ export function useRois({
       },
       (applied) => {
         if (applied.length === 0) return
-        setState((current) => ({
-          ...current,
-          visibleRoiUIDs: applyVisibilityChanges(
-            current.visibleRoiUIDs,
-            applied,
-          ),
-          selectedRoiUIDs: removeHiddenUids(current.selectedRoiUIDs, applied),
-        }))
+        startTransition(() => {
+          setState((current) => ({
+            ...current,
+            visibleRoiUIDs: applyVisibilityChanges(
+              current.visibleRoiUIDs,
+              applied,
+            ),
+            selectedRoiUIDs: removeHiddenUids(current.selectedRoiUIDs, applied),
+          }))
+        })
         refreshSnapshot()
       },
     )
@@ -229,27 +228,11 @@ export function useRois({
     },
     addStyledRoi,
     addDrawnRoi: (roi, draft, style) => {
-      if (roi === undefined || draft.finding === undefined) {
+      if (roi === undefined || !attachDraftEvaluations(roi, draft)) {
         logger.debug(`could not add ROI "${roi?.uid}"`)
         return
       }
       logger.debug(`add ROI "${roi.uid}"`)
-      roi.addEvaluation(
-        new dcmjs.sr.valueTypes.CodeContentItem({
-          name: new dcmjs.sr.coding.CodedConcept(FINDING_NAME),
-          value: draft.finding,
-          relationshipType: 'CONTAINS',
-        }),
-      )
-      for (const evaluation of draft.evaluations) {
-        roi.addEvaluation(
-          new dcmjs.sr.valueTypes.CodeContentItem({
-            name: evaluation.name,
-            value: evaluation.value,
-            relationshipType: 'CONTAINS',
-          }),
-        )
-      }
       addStyledRoi(roi, style)
     },
     showAll: (session) => {
@@ -269,25 +252,23 @@ export function useRois({
       const { volumeViewer } = session
       volumeViewer.clearSelections()
       const selection = selectionOf(session, uid)
-      const selectedVisibleUIDs: string[] = []
-      for (const roi of volumeViewer.getAllROIs()) {
-        let style: RoiStyle = {}
-        if (selection.selectedRoiUIDs.has(roi.uid)) {
-          style = SELECTED_ROI_STYLE
-          selectedVisibleUIDs.push(roi.uid)
-        } else if (visibleRoiUIDs.has(roi.uid)) {
-          style = styleForRoi(session, roi)
-        }
-        volumeViewer.setROIStyle(roi.uid, style)
+      const { styles, selectedVisibleUIDs } = stylesForRoiSelection({
+        rois: volumeViewer.getAllROIs(),
+        selectedRoiUIDs: selection.selectedRoiUIDs,
+        visibleRoiUIDs,
+        selectedStyle: SELECTED_ROI_STYLE,
+        styleForRoi: (roi) => styleForRoi(session, roi),
+      })
+      for (const { uid: roiUid, style } of styles) {
+        volumeViewer.setROIStyle(roiUid, style)
       }
       setState((current) => ({
         ...current,
         ...selection,
-        visibleRoiUIDs: selectedVisibleUIDs.every((uid) =>
-          current.visibleRoiUIDs.has(uid),
-        )
-          ? current.visibleRoiUIDs
-          : new Set([...current.visibleRoiUIDs, ...selectedVisibleUIDs]),
+        visibleRoiUIDs: visibleUidsAfterSelection(
+          current.visibleRoiUIDs,
+          selectedVisibleUIDs,
+        ),
       }))
       refreshSnapshot()
     },
