@@ -24,6 +24,7 @@ import {
 } from '../hooks/useContainsSearch'
 import { useStudies } from '../hooks/useStudies'
 import { useStudySearch } from '../hooks/useStudySearch'
+import type { WorklistWidthTier } from '../hooks/useWorklistColumnLayout'
 import {
   useWorklistCandidates,
   useWorklistRows,
@@ -94,6 +95,10 @@ export function Worklist({
     pageSize: 20,
   })
   const [pageStudyUids, setPageStudyUids] = useState<readonly string[]>([])
+  const [columnTier, setColumnTier] = useState<WorklistWidthTier>('base')
+  const handleTierChange = useCallback((tier: WorklistWidthTier) => {
+    setColumnTier(tier)
+  }, [])
 
   const containsEntry = findContainsEntry(searchParams.get(CONTAINS_PARAM))
   /** Derived data may live on another store than the slides */
@@ -209,6 +214,8 @@ export function Worklist({
         isLoading={isLoading}
         searchText={searchText}
         onSearchChange={handleSearchChange}
+        columnTier={columnTier}
+        hiddenColumnIds={preferences.worklistHiddenColumnIds}
         contains={
           containsEntry === undefined || containsSearch.status === 'idle'
             ? undefined
@@ -234,6 +241,8 @@ export function Worklist({
         }
         emptyMessage={emptyMessage}
         isCompact={preferences.compactRows}
+        hiddenColumnIds={preferences.worklistHiddenColumnIds}
+        onTierChange={handleTierChange}
         onRowClick={handleRowClick}
         pagination={pagination}
         onPaginationChange={setPagination}

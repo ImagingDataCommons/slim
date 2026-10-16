@@ -21,11 +21,13 @@ import { Icon } from '../../../components/ui/icon'
 import { Skeleton } from '../../../components/ui/skeleton'
 import { cn } from '../../../lib/utils'
 import {
-  columnVisibilityForTier,
+  gridTemplateForColumns,
+  resolveVisibleColumnIds,
+  resolveWorklistVisibility,
   useWorklistColumnLayout,
-  WORKLIST_GRID_TEMPLATE_BY_TIER,
   type WorklistWidthTier,
 } from '../hooks/useWorklistColumnLayout'
+import type { WorklistColumnId } from '../utils/worklistColumns'
 import { columns } from './columns'
 
 export interface WorklistTableProps {
@@ -37,6 +39,10 @@ export interface WorklistTableProps {
   onRowClick: (study: dmv.metadata.Study) => void
   pagination: PaginationState
   onPaginationChange: (pagination: PaginationState) => void
+  /** Column ids the user turned off (width shedding still applies). */
+  hiddenColumnIds?: readonly string[]
+  /** Fires when the measured width tier changes (for the Columns picker). */
+  onTierChange?: (tier: WorklistWidthTier) => void
   /** Rendered under the rows (pagination bar) */
   footer?: React.ReactNode
   /** Study UIDs on the current page, after sorting */
@@ -66,28 +72,28 @@ function rowHeightClass(isCompact: boolean): string {
   return isCompact ? 'min-h-8 py-1' : 'min-h-9 py-1.5'
 }
 
-function visibleColumnsForTier(tier: WorklistWidthTier) {
-  const visibility = columnVisibilityForTier(tier)
+function skeletonColumns(visibleIds: readonly WorklistColumnId[]) {
+  const visible = new Set<string>(visibleIds)
   return columns.filter((column) => {
     const id = column.id
     if (id === undefined) return true
-    return visibility[id] !== false
+    return visible.has(id)
   })
 }
 
 function WorklistSkeletonRows({
   rowCount,
   isCompact,
-  tier,
+  visibleIds,
   gridStyle,
 }: {
   rowCount: number
   isCompact: boolean
-  tier: WorklistWidthTier
+  visibleIds: readonly WorklistColumnId[]
   gridStyle: React.CSSProperties
 }): React.ReactElement {
   const rowIndexes = Array.from({ length: rowCount }, (_, index) => index)
-  const visibleColumns = visibleColumnsForTier(tier)
+  const visibleColumns = skeletonColumns(visibleIds)
   return (
     <>
       <div role="row" className="sr-only">
@@ -143,6 +149,8 @@ export function WorklistTable({
   onRowClick,
   pagination,
   onPaginationChange,
+  hiddenColumnIds = [],
+  onTierChange,
   footer,
   onPageRowsChange,
   renderRowMarker,
@@ -156,10 +164,15 @@ export function WorklistTable({
   'use no memo'
   const [container, setContainer] = React.useState<HTMLElement | null>(null)
   const tier = useWorklistColumnLayout(container)
-  const columnVisibility = columnVisibilityForTier(tier)
+  const visibleIds = resolveVisibleColumnIds(tier, hiddenColumnIds)
+  const columnVisibility = resolveWorklistVisibility(tier, hiddenColumnIds)
   const gridStyle: React.CSSProperties = {
-    gridTemplateColumns: WORKLIST_GRID_TEMPLATE_BY_TIER[tier],
+    gridTemplateColumns: gridTemplateForColumns(visibleIds),
   }
+
+  React.useEffect(() => {
+    onTierChange?.(tier)
+  }, [tier, onTierChange])
 
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: 'StudyDate', desc: true },
@@ -198,7 +211,7 @@ export function WorklistTable({
       <WorklistSkeletonRows
         rowCount={Math.min(pagination.pageSize, SKELETON_MAX_ROWS)}
         isCompact={isCompact}
-        tier={tier}
+        visibleIds={visibleIds}
         gridStyle={gridStyle}
       />
     )

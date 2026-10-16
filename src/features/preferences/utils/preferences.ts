@@ -1,6 +1,7 @@
 /** User preferences persisted in localStorage by the Preferences dialog. */
 
 import { readStorage, writeStorage } from '../../../utils/safeStorage'
+import { sanitizeHiddenColumnIds } from '../../worklist/utils/worklistColumns'
 
 export type MeasurementUnit = 'µm' | 'mm'
 
@@ -18,6 +19,11 @@ export interface UserPreferences {
   showSlideLabel: boolean
   /** Zoom in, zoom out and fit buttons in the top-right corner */
   showZoomControls: boolean
+  /**
+   * Worklist column ids the user turned off. Width-based shedding still
+   * decides the maximum set; these only hide extras within that set.
+   */
+  worklistHiddenColumnIds: string[]
 }
 
 type BooleanPreference = {
@@ -59,16 +65,24 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   showViewportInfo: true,
   showSlideLabel: true,
   showZoomControls: true,
+  worklistHiddenColumnIds: [],
+}
+
+function cloneDefaults(): UserPreferences {
+  return {
+    ...DEFAULT_PREFERENCES,
+    worklistHiddenColumnIds: [...DEFAULT_PREFERENCES.worklistHiddenColumnIds],
+  }
 }
 
 /** Merge stored JSON over defaults, ignoring unknown or mistyped fields. */
 export function parsePreferences(stored: string | null): UserPreferences {
-  if (stored === null || stored === '') return { ...DEFAULT_PREFERENCES }
+  if (stored === null || stored === '') return cloneDefaults()
   try {
     const parsed = JSON.parse(stored) as Partial<
       Record<keyof UserPreferences, unknown>
     >
-    const result: UserPreferences = { ...DEFAULT_PREFERENCES }
+    const result: UserPreferences = cloneDefaults()
     if (parsed.units === 'µm' || parsed.units === 'mm')
       result.units = parsed.units
     for (const key of BOOLEAN_PREFERENCES) {
@@ -89,9 +103,14 @@ export function parsePreferences(stored: string | null): UserPreferences {
     ) {
       result.strokeWidth = parsed.strokeWidth
     }
+    if (Array.isArray(parsed.worklistHiddenColumnIds)) {
+      result.worklistHiddenColumnIds = sanitizeHiddenColumnIds(
+        parsed.worklistHiddenColumnIds,
+      )
+    }
     return result
   } catch {
-    return { ...DEFAULT_PREFERENCES }
+    return cloneDefaults()
   }
 }
 

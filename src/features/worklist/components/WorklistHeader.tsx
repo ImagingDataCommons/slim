@@ -3,8 +3,10 @@ import type * as React from 'react'
 import { SearchInput } from '../../../components/ui/search-input'
 import { cn } from '../../../lib/utils'
 import type { ContainsSearchStatus } from '../hooks/useContainsSearch'
+import type { WorklistWidthTier } from '../hooks/useWorklistColumnLayout'
 import type { ContainsEntry } from '../utils/containsCatalog'
 import { CONTAINS_MAX_PAGES, CONTAINS_PAGE_SIZE } from '../utils/containsSearch'
+import { ColumnsPicker } from './ColumnsPicker'
 import { ContainsPicker } from './ContainsPicker'
 
 export interface WorklistContainsState {
@@ -26,6 +28,10 @@ export interface WorklistHeaderProps {
   onSearchChange: (value: string) => void
   contains?: WorklistContainsState
   onContainsChange: (entry: ContainsEntry | undefined) => void
+  /** Current width tier for the Columns picker eligibility. */
+  columnTier: WorklistWidthTier
+  /** Column ids the user has turned off. */
+  hiddenColumnIds: readonly string[]
   className?: string
 }
 
@@ -84,6 +90,8 @@ export function WorklistHeader({
   onSearchChange,
   contains,
   onContainsChange,
+  columnTier,
+  hiddenColumnIds,
   className,
 }: WorklistHeaderProps): React.ReactElement {
   const status =
@@ -114,6 +122,7 @@ export function WorklistHeader({
         )}
       </div>
       <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2 sm:flex-nowrap">
+        <ColumnsPicker tier={columnTier} hiddenColumnIds={hiddenColumnIds} />
         <ContainsPicker
           value={contains?.entry}
           onChange={onContainsChange}

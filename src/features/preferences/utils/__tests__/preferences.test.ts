@@ -40,7 +40,23 @@ describe('parsePreferences', () => {
       showViewportInfo: false,
       showSlideLabel: false,
       showZoomControls: false,
+      worklistHiddenColumnIds: [],
     })
+  })
+
+  it('keeps known worklist hidden column ids', () => {
+    const stored = JSON.stringify({
+      worklistHiddenColumnIds: [
+        'AccessionNumber',
+        'PatientName',
+        'bogus',
+        'StudyID',
+      ],
+    })
+    expect(parsePreferences(stored).worklistHiddenColumnIds).toEqual([
+      'AccessionNumber',
+      'StudyID',
+    ])
   })
 
   it('shows every viewport overlay by default', () => {

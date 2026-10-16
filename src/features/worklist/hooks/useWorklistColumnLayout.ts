@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react'
 
+import {
+  sanitizeHiddenColumnIds,
+  WORKLIST_COLUMN_IDS,
+  WORKLIST_LOCKED_COLUMN_ID,
+  type WorklistColumnId,
+} from '../utils/worklistColumns'
+
 /**
  * How wide the worklist panel is, for column shedding. Tiers are chosen by
  * whether each set's minimum column widths fit the measured panel.
@@ -22,7 +29,7 @@ const FIT_MARGIN = 56
  * Minimum readable width per column. Used only to pick a tier; the live grid
  * still uses flexible `fr` tracks so columns share leftover space.
  */
-const COLUMN_MIN_WIDTH: Record<string, number> = {
+const COLUMN_MIN_WIDTH: Record<WorklistColumnId, number> = {
   PatientName: 150,
   PatientID: 120,
   PatientBirthDate: 92,
@@ -36,11 +43,29 @@ const COLUMN_MIN_WIDTH: Record<string, number> = {
   Slides: 56,
 }
 
+/** `fr` weight per column when building a dynamic grid template. */
+const COLUMN_FR: Record<WorklistColumnId, number> = {
+  PatientName: 1.6,
+  PatientID: 1.2,
+  PatientBirthDate: 0.85,
+  PatientSex: 0.5,
+  ModalitiesInStudy: 1.3,
+  StudyDate: 1,
+  StudyTime: 0.5,
+  AccessionNumber: 1.1,
+  StudyID: 1.05,
+  ReferringPhysicianName: 0.95,
+  Slides: 0.5,
+}
+
 /**
- * Visible columns per tier, in DOM/grid order. Primary set always includes
+ * Eligible columns per tier, in DOM/grid order. Primary set always includes
  * Slides so the count never falls off the right edge.
  */
-export const WORKLIST_COLUMNS_BY_TIER: Record<WorklistWidthTier, string[]> = {
+export const WORKLIST_COLUMNS_BY_TIER: Record<
+  WorklistWidthTier,
+  WorklistColumnId[]
+> = {
   base: [
     'PatientName',
     'PatientID',
@@ -67,19 +92,7 @@ export const WORKLIST_COLUMNS_BY_TIER: Record<WorklistWidthTier, string[]> = {
     'StudyID',
     'Slides',
   ],
-  xl: [
-    'PatientName',
-    'PatientID',
-    'PatientBirthDate',
-    'PatientSex',
-    'ModalitiesInStudy',
-    'StudyDate',
-    'StudyTime',
-    'AccessionNumber',
-    'StudyID',
-    'ReferringPhysicianName',
-    'Slides',
-  ],
+  xl: [...WORKLIST_COLUMN_IDS],
 }
 
 const TIER_ORDER: WorklistWidthTier[] = ['xl', 'lg', 'md', 'base']
@@ -87,7 +100,7 @@ const TIER_ORDER: WorklistWidthTier[] = ['xl', 'lg', 'md', 'base']
 function minWidthForColumns(columnIds: readonly string[]): number {
   const gaps = Math.max(0, columnIds.length - 1) * ROW_GAP
   const cols = columnIds.reduce(
-    (sum, id) => sum + (COLUMN_MIN_WIDTH[id] ?? 80),
+    (sum, id) => sum + (COLUMN_MIN_WIDTH[id as WorklistColumnId] ?? 80),
     0,
   )
   return ROW_PAD_X + cols + gaps + FIT_MARGIN
@@ -102,28 +115,49 @@ export function tierForWidth(width: number): WorklistWidthTier {
   return 'base'
 }
 
-/** CSS `grid-template-columns` value for a tier (applied via style, not Tailwind). */
-export const WORKLIST_GRID_TEMPLATE_BY_TIER: Record<WorklistWidthTier, string> =
-  {
-    base: 'minmax(0, 1.8fr) minmax(0, 1.3fr) minmax(0, 1.4fr) minmax(0, 1.1fr) minmax(0, 0.55fr)',
-    md: 'minmax(0, 1.6fr) minmax(0, 1.2fr) minmax(0, 0.5fr) minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 0.5fr)',
-    lg: 'minmax(0, 1.5fr) minmax(0, 1.15fr) minmax(0, 0.45fr) minmax(0, 1.3fr) minmax(0, 0.95fr) minmax(0, 1fr) minmax(0, 1.05fr) minmax(0, 0.45fr)',
-    xl: 'minmax(0, 1.4fr) minmax(0, 1.05fr) minmax(0, 0.85fr) minmax(0, 0.4fr) minmax(0, 1.2fr) minmax(0, 0.9fr) minmax(0, 0.5fr) minmax(0, 0.95fr) minmax(0, 0.9fr) minmax(0, 0.95fr) minmax(0, 0.4fr)',
-  }
+/**
+ * Columns shown for a tier after applying the user's hidden set. PatientName
+ * always remains. Order matches DOM/grid packing.
+ */
+export function resolveVisibleColumnIds(
+  tier: WorklistWidthTier,
+  hiddenColumnIds: readonly string[] = [],
+): WorklistColumnId[] {
+  const hidden = new Set(sanitizeHiddenColumnIds(hiddenColumnIds))
+  return WORKLIST_COLUMNS_BY_TIER[tier].filter(
+    (id) => id === WORKLIST_LOCKED_COLUMN_ID || !hidden.has(id),
+  )
+}
 
-/** TanStack visibility map for a tier (false = hidden). */
+/**
+ * TanStack visibility map: every known column is explicit so hiding a
+ * primary-tier column (e.g. PatientID) works, not only secondary ones.
+ */
+export function resolveWorklistVisibility(
+  tier: WorklistWidthTier,
+  hiddenColumnIds: readonly string[] = [],
+): Record<string, boolean> {
+  const visible = new Set(resolveVisibleColumnIds(tier, hiddenColumnIds))
+  const visibility: Record<string, boolean> = {}
+  for (const id of WORKLIST_COLUMN_IDS) {
+    visibility[id] = visible.has(id)
+  }
+  return visibility
+}
+
+/** CSS `grid-template-columns` for the given visible column ids. */
+export function gridTemplateForColumns(
+  columnIds: readonly WorklistColumnId[],
+): string {
+  if (columnIds.length === 0) return 'minmax(0, 1fr)'
+  return columnIds.map((id) => `minmax(0, ${COLUMN_FR[id]}fr)`).join(' ')
+}
+
+/** @deprecated Prefer {@link resolveWorklistVisibility}; kept for older tests. */
 export function columnVisibilityForTier(
   tier: WorklistWidthTier,
 ): Record<string, boolean> {
-  const visible = new Set(WORKLIST_COLUMNS_BY_TIER[tier])
-  return {
-    PatientBirthDate: visible.has('PatientBirthDate'),
-    PatientSex: visible.has('PatientSex'),
-    StudyTime: visible.has('StudyTime'),
-    AccessionNumber: visible.has('AccessionNumber'),
-    StudyID: visible.has('StudyID'),
-    ReferringPhysicianName: visible.has('ReferringPhysicianName'),
-  }
+  return resolveWorklistVisibility(tier, [])
 }
 
 /**
