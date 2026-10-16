@@ -255,6 +255,8 @@ describe('useSegmentations visibility', () => {
       result.current.reset()
     })
     expect(result.current.visibleUIDs.size).toBe(0)
+    expect(result.current.selectedSeriesUID).toBeUndefined()
+    expect(result.current.isInterpolationEnabled).toBe(false)
   })
 
   it('toggles interpolation only when the setting changes', () => {

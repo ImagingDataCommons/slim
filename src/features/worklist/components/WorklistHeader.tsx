@@ -100,7 +100,7 @@ export function WorklistHeader({
           ) : contains !== undefined ? (
             <ContainsSummary contains={contains} />
           ) : (
-            `${totalCount} slide microscopy ${studies(totalCount)} on this server`
+            `Showing ${totalCount} slide microscopy ${studies(totalCount)}`
           )}
         </div>
       </div>

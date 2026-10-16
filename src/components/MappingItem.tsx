@@ -12,6 +12,7 @@ import {
 } from '../utils/parametricMap'
 import { areLayerItemPropsEqual } from '../utils/styleEquality'
 import { InlineOpacityRow } from './panel/InlineOpacityRow'
+import { useFrameThrottledCallback } from './panel/useFrameThrottledCallback'
 import { useLayerStyle } from './panel/useLayerStyle'
 import { VisibilityToggleButton } from './panel/VisibilityToggleButton'
 
@@ -39,10 +40,18 @@ function MappingItem({
   onVisibilityChange,
   onStyleChange,
 }: MappingItemProps): React.ReactElement {
+  const commit = (styleOptions: MappingStyleChange): void => {
+    onStyleChange({ mappingUID: mapping.uid, styleOptions })
+  }
   const [style, updateStyle, previewStyle] = useLayerStyle(
     { opacity: defaultStyle.opacity },
-    (styleOptions) => onStyleChange({ mappingUID: mapping.uid, styleOptions }),
+    commit,
   )
+  const commitLive = useFrameThrottledCallback(commit)
+  const previewLive = (change: MappingStyleChange): void => {
+    previewStyle(change)
+    commitLive(change)
+  }
   const valueRange = getRealWorldValueRange(metadata?.[0])
   const range =
     valueRange !== undefined ? formatValueRange(valueRange) : undefined
@@ -89,7 +98,7 @@ function MappingItem({
       <InlineOpacityRow
         label={mapping.label}
         opacity={style.opacity}
-        onChange={(opacity) => previewStyle({ opacity })}
+        onChange={(opacity) => previewLive({ opacity })}
         onCommit={(opacity) => updateStyle({ opacity })}
       />
     </div>

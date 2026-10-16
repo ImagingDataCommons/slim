@@ -1,6 +1,6 @@
 import { sr } from 'dcmjs'
 import type * as dmv from 'dicom-microscopy-viewer'
-
+import NotificationMiddleware from '../../services/NotificationMiddleware'
 import type { AppInfo } from '../appInfo'
 import generateReport from '../generateReport'
 
@@ -72,5 +72,36 @@ describe('generateReport', () => {
       (item) => item.ConceptNameCodeSequence[0].CodeValue === '126010',
     )
     expect(imagingMeasurements?.ContentSequence).toHaveLength(1)
+  })
+
+  it('skips ROIs that have no Finding instead of throwing', () => {
+    const onError = vi
+      .spyOn(NotificationMiddleware, 'onError')
+      .mockImplementation(() => undefined)
+    const roiWithoutFinding = {
+      ...pointRoi('1.2.3.12'),
+      evaluations: [],
+    } as unknown as dmv.roi.ROI
+
+    const { generatedReport } = generateReport({
+      rois: [roiWithoutFinding, pointRoi('1.2.3.13')],
+      metadata: [slide],
+      user: undefined,
+      app,
+      visibleRoiUIDs: new Set(['1.2.3.12', '1.2.3.13']),
+    })
+
+    const report = generatedReport as unknown as {
+      ContentSequence: Array<{
+        ConceptNameCodeSequence: Array<{ CodeValue: string }>
+        ContentSequence?: unknown[]
+      }>
+    }
+    const imagingMeasurements = report.ContentSequence.find(
+      (item) => item.ConceptNameCodeSequence[0].CodeValue === '126010',
+    )
+    expect(imagingMeasurements?.ContentSequence).toHaveLength(1)
+    expect(onError).toHaveBeenCalledTimes(1)
+    onError.mockRestore()
   })
 })

@@ -85,7 +85,9 @@ describe('useStudies', () => {
       ({ clients }: { clients: Clients }) => useStudies({ clients }),
       { initialProps: { clients: oldClients } },
     )
+    await waitFor(() => expect(result.current.isLoading).toBe(true))
     rerender({ clients: newClients })
+    expect(result.current.studies).toEqual([])
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     await act(async () => {

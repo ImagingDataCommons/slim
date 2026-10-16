@@ -1,6 +1,6 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import type { SegmentStyle } from '../../../types/layerStyles'
 import { logger } from '../../../utils/logger'
@@ -80,6 +80,7 @@ export function useSegmentations(
     Record<string, number[]>
   >({})
   const [isInterpolationEnabled, setIsInterpolationEnabled] = useState(false)
+  const isInterpolationEnabledRef = useRef(false)
 
   const { generation, segments, segmentMetadata, segmentStyles } = snapshot
   /** Segment Sequence lookups are only redone when segments are added */
@@ -113,6 +114,9 @@ export function useSegmentations(
     isInterpolationEnabled,
     reset: () => {
       setVisibleUIDs(new Set())
+      setSelectedSeriesUID(undefined)
+      isInterpolationEnabledRef.current = false
+      setIsInterpolationEnabled(false)
     },
     showSeries: (session, seriesInstanceUID) => {
       const allSegments = session.volumeViewer.getAllSegments()
@@ -238,7 +242,8 @@ export function useSegmentations(
       for (const uid of nextVisible) viewer.showSegment(uid)
     },
     onDisplaySettingsChange: ({ interpolationEnabled }) => {
-      if (interpolationEnabled === isInterpolationEnabled) return
+      if (interpolationEnabled === isInterpolationEnabledRef.current) return
+      isInterpolationEnabledRef.current = interpolationEnabled
       setIsInterpolationEnabled(interpolationEnabled)
       sessionRef.current?.volumeViewer.toggleSegmentationInterpolation()
     },

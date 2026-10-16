@@ -151,7 +151,8 @@
     --warning-soft: 252 241 222; /* #fcf1de */
     --warning-text: 138 86 12; /* #8a560c */
     --warning-foreground: 255 255 255;
-    --destructive: 217 69 59; /* #d9453b */
+    /** Dark enough for white label text at WCAG AA (4.5:1) */
+    --destructive: 176 42 34; /* #b02a22 */
     --destructive-text: 184 53 44; /* #b8352c */
     --destructive-soft: 251 233 231; /* #fbe9e7 */
     --destructive-hover: 253 241 240; /* #fdf1f0 */
@@ -213,6 +214,7 @@
 
     --warning-soft: 58 42 18;
     --warning-text: 240 180 90;
+    --destructive: 196 58 50; /* #c43a32, white text at 4.5:1 on dark panels */
     --destructive-text: 240 120 110;
     --destructive-soft: 60 26 26;
     --destructive-hover: 44 24 28;

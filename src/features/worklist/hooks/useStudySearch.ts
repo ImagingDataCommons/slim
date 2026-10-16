@@ -17,14 +17,21 @@ export interface UseStudySearchReturn {
   /** Studies the server matched for the current search text */
   matches: dmv.metadata.Study[]
   isSearching: boolean
+  /** True when at least one non-rejected query failed for the current text */
+  hasError: boolean
 }
 
 interface SearchResult {
   query: string
   studies: dmv.metadata.Study[]
+  failed: boolean
 }
 
-const NO_RESULT: SearchResult = { query: '', studies: [] }
+const NO_RESULT: SearchResult = { query: '', studies: [], failed: false }
+
+function isRejectedQuery(error: unknown): boolean {
+  return (error as { status?: unknown } | null)?.status === 400
+}
 
 /**
  * Asks the server for studies matching the worklist search text. The main
@@ -38,6 +45,8 @@ export function useStudySearch({
   const [result, setResult] = useState<SearchResult>(NO_RESULT)
   const query = searchText.trim()
   const client = clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
+  const willSearch =
+    client !== undefined && buildStudySearchQueries(query).length > 0
 
   /** Bumped per search and on cleanup so superseded responses are dropped */
   const searchGeneration = useRef(0)
@@ -45,24 +54,39 @@ export function useStudySearch({
   useEffect(() => {
     const generation = ++searchGeneration.current
     const isCurrent = (): boolean => generation === searchGeneration.current
+    setResult(NO_RESULT)
     const queries = buildStudySearchQueries(query)
     if (client === undefined || queries.length === 0) return
 
     const search = async (): Promise<void> => {
       const responses = await Promise.all(
-        queries.map((queryParams) =>
-          client.searchForStudies({ queryParams }).catch(() => []),
-        ),
+        queries.map(async (queryParams) => {
+          try {
+            return {
+              studies: await client.searchForStudies({ queryParams }),
+              failed: false,
+            }
+          } catch (error: unknown) {
+            if (isRejectedQuery(error)) {
+              return { studies: [], failed: false }
+            }
+            return { studies: [], failed: true }
+          }
+        }),
       )
       if (!isCurrent()) return
       const studiesByUid = new Map<string, dmv.metadata.Study>()
-      for (const study of responses.flat()) {
-        /** DMV types formatted metadata as the generic Dataset */
-        const formatted = dmv.metadata.formatMetadata(study)
-          .dataset as dmv.metadata.Study
-        studiesByUid.set(formatted.StudyInstanceUID, formatted)
+      let failed = false
+      for (const response of responses) {
+        if (response.failed) failed = true
+        for (const study of response.studies) {
+          /** DMV types formatted metadata as the generic Dataset */
+          const formatted = dmv.metadata.formatMetadata(study)
+            .dataset as dmv.metadata.Study
+          studiesByUid.set(formatted.StudyInstanceUID, formatted)
+        }
       }
-      setResult({ query, studies: [...studiesByUid.values()] })
+      setResult({ query, studies: [...studiesByUid.values()], failed })
     }
 
     const timer = setTimeout(() => {
@@ -74,9 +98,10 @@ export function useStudySearch({
     }
   }, [client, query])
 
-  const isCurrentResult = query !== '' && result.query === query
+  const isCurrentResult = willSearch && result.query === query
   return {
     matches: isCurrentResult ? result.studies : [],
-    isSearching: client !== undefined && query !== '' && !isCurrentResult,
+    isSearching: willSearch && !isCurrentResult,
+    hasError: isCurrentResult && result.failed,
   }
 }

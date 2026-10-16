@@ -11,7 +11,9 @@
       "!src/__mocks__",
       "e2e/**/*.ts",
       "!e2e/.cache",
-      "playwright.config.ts"
+      "playwright.config.ts",
+      "vite.config.ts",
+      "scripts/**/*.mjs"
     ]
   },
   "formatter": {

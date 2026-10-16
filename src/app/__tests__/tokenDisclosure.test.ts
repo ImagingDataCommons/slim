@@ -1,5 +1,6 @@
 import type { Mock } from 'vitest'
 import type { AuthManager } from '../../auth'
+import type { ConfirmResult } from '../../components/ConfirmDialog'
 import NotificationMiddleware from '../../services/NotificationMiddleware'
 import {
   clearAuthorizationDecisions,
@@ -43,7 +44,9 @@ describe('decideDisclosure', () => {
 })
 
 describe('createTokenDisclosurePolicy', () => {
-  let confirm: Mock<(...args: [string, string | undefined]) => Promise<boolean>>
+  let confirm: Mock<
+    (...args: [string, string | undefined]) => Promise<ConfirmResult>
+  >
   let onAuthorization: Mock<(...args: [string]) => void>
 
   const createPolicy = (
@@ -60,7 +63,7 @@ describe('createTokenDisclosurePolicy', () => {
   beforeEach(() => {
     clearAuthorizationDecisions()
     confirm = vi.fn((_origin: string, _authority: string | undefined) =>
-      Promise.resolve(true),
+      Promise.resolve('confirm' as ConfirmResult),
     )
     onAuthorization = vi.fn()
     vi.spyOn(console, 'info').mockImplementation(vi.fn())
@@ -107,7 +110,7 @@ describe('createTokenDisclosurePolicy', () => {
   })
 
   it('remembers a refusal and does not ask again', async () => {
-    confirm.mockResolvedValue(false)
+    confirm.mockResolvedValue('cancel')
     const policy = createPolicy()
 
     await expect(policy.requestAuthorization(UNKNOWN)).resolves.toBeUndefined()
@@ -116,6 +119,17 @@ describe('createTokenDisclosurePolicy', () => {
     expect(confirm).toHaveBeenCalledTimes(1)
     expect(readAuthorizationDecision(UNKNOWN)).toBe('denied')
     expect(onAuthorization).not.toHaveBeenCalled()
+  })
+
+  it('does not remember a denial when the dialog was superseded', async () => {
+    confirm.mockResolvedValue('superseded')
+    const policy = createPolicy()
+
+    await expect(policy.requestAuthorization(UNKNOWN)).resolves.toBeUndefined()
+    expect(readAuthorizationDecision(UNKNOWN)).toBeUndefined()
+    confirm.mockResolvedValue('confirm')
+    await expect(policy.requestAuthorization(UNKNOWN)).resolves.toBe('Bearer t')
+    expect(readAuthorizationDecision(UNKNOWN)).toBe('granted')
   })
 
   it('shares one prompt between simultaneous challenges', async () => {

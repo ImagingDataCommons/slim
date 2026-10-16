@@ -245,10 +245,12 @@ export function useAnnotationTools({
         frameOfReferenceUID: viewer.frameOfReferenceUID,
       })
       rois.addStyledRoi(new dmv.roi.ROI({ scoord3d: point }), defaultRoiStyle)
+      viewer.activateSelectInteraction({})
       dispatch({ type: 'closeGoTo' })
     },
     onSlidePositionSelectionCancellation: () => {
       logger.log('cancel slide position selection')
+      viewerOf()?.activateSelectInteraction({})
       dispatch({ type: 'closeGoTo' })
     },
     onAnnotationConfigurationCompletion: () => {

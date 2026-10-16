@@ -13,6 +13,7 @@ import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../services/NotificationMiddleware'
 import { CustomError, errorTypes } from '../utils/CustomError'
+import { logger } from '../utils/logger'
 import {
   isAuthorizationCodeInUrl,
   isOidcAuthorizeCallbackUrl,
@@ -221,7 +222,7 @@ export default class OidcManager implements AuthManager {
           ? await this._implicit.signinRedirectCallback(window.location.href)
           : await this._oidc.signinRedirectCallback()
       clearAuthParamsFromUrl()
-      console.info('obtained user data: ', userData)
+      logger.log(`obtained user data for subject ${userData.profile.sub}`)
       handleSignIn(userData, onSignIn, { includeReturnUrl: true })
       return 'completed'
     }

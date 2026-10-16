@@ -62,6 +62,7 @@ export function createFakeUserManager(
       includeIdTokenInSilentRenew:
         settings.includeIdTokenInSilentRenew ?? false,
       validateSubOnSilentRenew: settings.validateSubOnSilentRenew ?? true,
+      staleStateAgeInSeconds: settings.staleStateAgeInSeconds ?? 900,
     },
     metadataService: {
       getMetadata: () => Promise.resolve(resolvedMetadata),

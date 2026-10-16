@@ -19,10 +19,7 @@ overrides:
   shell-quote: 1.11.0
   source-map-js: 1.2.2
   fast-uri: 3.1.8
-  svgo: 2.8.4
   browserslist: 4.28.7
-  webpack-dev-middleware: 7.4.6
-  selfsigned: 5.5.0
   nth-check: 2.0.1
   wrap-ansi: 7.0.0
   make-dir: 3.1.0
@@ -30,7 +27,6 @@ overrides:
   express: 4.21.0
   jsdom>form-data: 3.0.5
   path-to-regexp: 0.1.13
-  rollup: 3.30.0
   semver: 7.5.2
   serialize-javascript: 7.0.5
   tar: 7.5.16

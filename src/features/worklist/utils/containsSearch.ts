@@ -92,6 +92,11 @@ const formatStudy = (row: unknown): dmv.metadata.Study =>
 
 class IgnoredMatchingKeyError extends Error {}
 
+/**
+ * Pages until an empty response or the page cap. A short page is not treated
+ * as the end: some servers (e.g. IDC) cap below the requested Limit, so the
+ * next offset may still hold matches.
+ */
 async function collectPages(
   fetchPage: (offset: number) => Promise<unknown[]>,
   { onPage, isCurrent = () => true }: ContainsSearchOptions,
@@ -99,9 +104,12 @@ async function collectPages(
   const rows: unknown[] = []
   for (let page = 0; page < CONTAINS_MAX_PAGES; page++) {
     const items = await fetchPage(rows.length)
+    if (items.length === 0) {
+      return { rows, isPartial: false }
+    }
     rows.push(...items)
     onPage?.(page + 1)
-    if (items.length < CONTAINS_PAGE_SIZE || !isCurrent()) {
+    if (!isCurrent()) {
       return { rows, isPartial: false }
     }
   }

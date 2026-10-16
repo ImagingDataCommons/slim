@@ -99,7 +99,12 @@ const numItem = (
   ConceptNameCodeSequence: [name],
   RelationshipType: 'CONTAINS',
   ValueType: 'NUM',
-  MeasuredValueSequence: [],
+  MeasuredValueSequence: [
+    {
+      NumericValue: 1.5,
+      MeasurementUnitsCodeSequence: [code('mm2', 'Square Millimeter', 'UCUM')],
+    },
+  ],
 })
 
 const regionItem = (
@@ -163,8 +168,32 @@ describe('parseMeasurementReport', () => {
     expect(parsed.ROIs[0].properties).toMatchObject({
       trackingUID: '1.2.840.1',
       observerType: 'Person',
-      evaluations: [finding],
-      measurements: [numItem(area)],
+    })
+    const { evaluations, measurements } = parsed.ROIs[0].properties
+    expect(evaluations).toHaveLength(1)
+    expect(evaluations[0]).toBeInstanceOf(dcmjs.sr.valueTypes.CodeContentItem)
+    expect(evaluations[0]).toMatchObject({
+      ConceptNameCodeSequence: [
+        expect.objectContaining({ CodeValue: '121071' }),
+      ],
+      ConceptCodeSequence: [
+        expect.objectContaining({ CodeValue: '108369006' }),
+      ],
+    })
+    expect(measurements).toHaveLength(1)
+    expect(measurements[0]).toBeInstanceOf(dcmjs.sr.valueTypes.NumContentItem)
+    expect(measurements[0]).toMatchObject({
+      ConceptNameCodeSequence: [
+        expect.objectContaining({ CodeValue: '42798000' }),
+      ],
+      MeasuredValueSequence: [
+        expect.objectContaining({
+          NumericValue: 1.5,
+          MeasurementUnitsCodeSequence: [
+            expect.objectContaining({ CodeValue: 'mm2' }),
+          ],
+        }),
+      ],
     })
   })
 

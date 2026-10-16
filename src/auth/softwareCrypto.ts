@@ -1,4 +1,4 @@
-import { p256, p384 } from '@noble/curves/nist.js'
+import { p256, p384, p521 } from '@noble/curves/nist.js'
 import { sha256, sha384, sha512 } from '@noble/hashes/sha2.js'
 
 import type { HashName, IdTokenCrypto, SignatureScheme } from './idTokenCrypto'
@@ -34,6 +34,7 @@ const DIGEST_INFO_PREFIX: Record<HashName, readonly number[]> = {
 const CURVES = {
   'P-256': { ecdsa: p256, size: 32 },
   'P-384': { ecdsa: p384, size: 48 },
+  'P-521': { ecdsa: p521, size: 66 },
 } as const
 
 export const base64UrlToBytes = (input: string): Uint8Array => {
@@ -111,7 +112,7 @@ export function verifyRsaPkcs1(
 
 /** ECDSA verification of a JWS (raw `r || s`) signature */
 export function verifyEcdsa(
-  namedCurve: 'P-256' | 'P-384',
+  namedCurve: 'P-256' | 'P-384' | 'P-521',
   hash: HashName,
   key: JsonWebKey,
   signature: Uint8Array,
@@ -123,11 +124,12 @@ export function verifyEcdsa(
   }
   const x = base64UrlToBytes(key.x)
   const y = base64UrlToBytes(key.y)
-  if (x.length !== curve.size || y.length !== curve.size) return false
+  /** P-521 coordinates are 66 bytes; some JWKs omit a leading zero */
+  if (x.length > curve.size || y.length > curve.size) return false
   const publicKey = new Uint8Array(1 + 2 * curve.size)
   publicKey[0] = 0x04
-  publicKey.set(x, 1)
-  publicKey.set(y, 1 + curve.size)
+  publicKey.set(x, 1 + curve.size - x.length)
+  publicKey.set(y, 1 + 2 * curve.size - y.length)
   try {
     /** JWS signers do not normalize `s`, so high-S signatures are valid */
     return curve.ecdsa.verify(signature, HASHES[hash](data), publicKey, {
@@ -142,12 +144,16 @@ export function verifyEcdsa(
 
 export const softwareIdTokenCrypto: IdTokenCrypto = {
   digest: (hash, data) => Promise.resolve(HASHES[hash](data)),
-  verify: (scheme: SignatureScheme, key, signature, data) =>
-    Promise.resolve(
-      scheme.kty === 'RSA'
-        ? verifyRsaPkcs1(scheme.hash, key, signature, data)
-        : verifyEcdsa(scheme.namedCurve, scheme.hash, key, signature, data),
-    ),
+  verify: (scheme: SignatureScheme, key, signature, data) => {
+    /** RSA-PSS needs Web Crypto; keep the software path on PKCS#1 only */
+    if (scheme.kty === 'RSA') {
+      if (scheme.padding === 'PSS') return Promise.resolve(false)
+      return Promise.resolve(verifyRsaPkcs1(scheme.hash, key, signature, data))
+    }
+    return Promise.resolve(
+      verifyEcdsa(scheme.namedCurve, scheme.hash, key, signature, data),
+    )
+  },
 }
 
 /** PKCE S256 challenge (RFC 7636): base64url(SHA-256(ASCII(verifier))) */

@@ -81,29 +81,34 @@ export function ConfirmDialog({
   )
 }
 
+/** User choice, or `superseded` when a newer dialog replaced this one */
+export type ConfirmResult = 'confirm' | 'cancel' | 'superseded'
+
 /** Settles the dialog opened by the last `showConfirmDialog` call, if open */
-let settleOpenDialog: ((confirmed: boolean) => void) | undefined
+let settleOpenDialog: ((result: ConfirmResult) => void) | undefined
 
 /**
  * Shows a confirmation dialog outside the React tree and resolves with the
- * user's choice. Opening a new dialog cancels (resolves `false`) the one
- * still open, so every returned promise settles.
+ * user's choice. Opening a new dialog settles the previous promise as
+ * `superseded` (not `cancel`) so callers do not treat replacement as denial.
  */
-export function showConfirmDialog(options: ConfirmOptions): Promise<boolean> {
-  settleOpenDialog?.(false)
-  return new Promise<boolean>((resolve) => {
+export function showConfirmDialog(
+  options: ConfirmOptions,
+): Promise<ConfirmResult> {
+  settleOpenDialog?.('superseded')
+  return new Promise<ConfirmResult>((resolve) => {
     const container = document.createElement('div')
     document.body.appendChild(container)
     const root = createRoot(container)
     let isSettled = false
 
-    const settle = (confirmed: boolean): void => {
+    const settle = (result: ConfirmResult): void => {
       if (isSettled) return
       isSettled = true
       if (settleOpenDialog === settle) settleOpenDialog = undefined
       root.unmount()
       container.remove()
-      resolve(confirmed)
+      resolve(result)
     }
     settleOpenDialog = settle
 
@@ -111,8 +116,8 @@ export function showConfirmDialog(options: ConfirmOptions): Promise<boolean> {
       <ConfirmDialog
         {...options}
         open
-        onConfirm={() => settle(true)}
-        onCancel={() => settle(false)}
+        onConfirm={() => settle('confirm')}
+        onCancel={() => settle('cancel')}
       />,
     )
   })

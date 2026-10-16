@@ -2,6 +2,7 @@ import {
   type IdTokenClaims,
   type MetadataService,
   type SigningKey,
+  State,
   type StateStore,
   User,
   type UserManagerEvents,
@@ -15,6 +16,7 @@ import {
   loadIdTokenCrypto,
   type SignatureScheme,
 } from './idTokenCrypto'
+import { jwkFromX5c } from './x509'
 
 export const IMPLICIT_RESPONSE_TYPE = 'id_token token'
 
@@ -23,6 +25,9 @@ const SILENT_RENEW_TIMEOUT_MS = 10_000
 
 /** Leeway for ID token expiry, as in oidc-client 1.x */
 const CLOCK_SKEW_SECONDS = 300
+
+/** Same default as oidc-client-ts `staleStateAgeInSeconds` */
+const STALE_STATE_AGE_SECONDS = 900
 
 const REDIRECT_REQUEST_TYPE = 'si:r'
 const SILENT_REQUEST_TYPE = 'si:s'
@@ -144,23 +149,39 @@ const SIGNING_ALGORITHMS = new Map<string, SignatureScheme>([
   ['RS256', { kty: 'RSA', hash: 'SHA-256' }],
   ['RS384', { kty: 'RSA', hash: 'SHA-384' }],
   ['RS512', { kty: 'RSA', hash: 'SHA-512' }],
+  ['PS256', { kty: 'RSA', hash: 'SHA-256', padding: 'PSS' }],
+  ['PS384', { kty: 'RSA', hash: 'SHA-384', padding: 'PSS' }],
+  ['PS512', { kty: 'RSA', hash: 'SHA-512', padding: 'PSS' }],
   ['ES256', { kty: 'EC', namedCurve: 'P-256', hash: 'SHA-256' }],
   ['ES384', { kty: 'EC', namedCurve: 'P-384', hash: 'SHA-384' }],
+  ['ES512', { kty: 'EC', namedCurve: 'P-521', hash: 'SHA-512' }],
 ])
 
-const toJsonWebKey = (key: SigningKey): JsonWebKey => {
+export const toJsonWebKey = (key: SigningKey): JsonWebKey | undefined => {
   const read = (name: string): string | undefined => {
     const value = key[name]
     return typeof value === 'string' ? value : undefined
   }
-  return {
-    kty: read('kty'),
-    n: read('n'),
-    e: read('e'),
-    crv: read('crv'),
-    x: read('x'),
-    y: read('y'),
+  const kty = read('kty')
+  const n = read('n')
+  const e = read('e')
+  const crv = read('crv')
+  const x = read('x')
+  const y = read('y')
+  if (kty === 'RSA' && n !== undefined && e !== undefined) {
+    return { kty, n, e }
   }
+  if (kty === 'EC' && crv !== undefined && x !== undefined && y !== undefined) {
+    return { kty, crv, x, y }
+  }
+  /** Keys published only as x5c: decode the leaf cert, else keep x5c for Web Crypto */
+  const x5c = key.x5c
+  if (!Array.isArray(x5c) || typeof x5c[0] !== 'string' || x5c[0] === '') {
+    return undefined
+  }
+  return (
+    jwkFromX5c(x5c[0]) ?? ({ kty: kty ?? 'RSA', x5c: [x5c[0]] } as JsonWebKey)
+  )
 }
 
 /**
@@ -194,7 +215,7 @@ export async function verifyIdToken({
   const kid = typeof header.kid === 'string' ? header.kid : undefined
   const candidates = keys.filter(
     (key) =>
-      key.kty === algorithm.kty &&
+      (key.kty === undefined || key.kty === algorithm.kty) &&
       (kid === undefined || key.kid === kid) &&
       (key.use === undefined || key.use === 'sig'),
   )
@@ -202,9 +223,9 @@ export async function verifyIdToken({
   const signingInput = binaryToBytes(`${headerPart}.${payloadPart}`)
   let isVerified = false
   for (const key of candidates) {
-    if (
-      await crypto.verify(algorithm, toJsonWebKey(key), signature, signingInput)
-    ) {
+    const jwk = toJsonWebKey(key)
+    if (jwk === undefined) continue
+    if (await crypto.verify(algorithm, jwk, signature, signingInput)) {
       isVerified = true
       break
     }
@@ -272,6 +293,16 @@ export const validateIdTokenClaims = (
   }
   if (typeof iat !== 'number') {
     throw new Error('ID token has no issue time')
+  }
+  if (iat > expected.nowInSeconds + CLOCK_SKEW_SECONDS) {
+    throw new Error('ID token issue time is in the future')
+  }
+  const nbf = claims.nbf
+  if (
+    typeof nbf === 'number' &&
+    expected.nowInSeconds + CLOCK_SKEW_SECONDS < nbf
+  ) {
+    throw new Error('ID token is not yet valid')
   }
   return {
     ...claims,
@@ -380,6 +411,7 @@ export interface ImplicitGrantHost {
     | 'loadUserInfo'
     | 'includeIdTokenInSilentRenew'
     | 'validateSubOnSilentRenew'
+    | 'staleStateAgeInSeconds'
   >
   metadataService: Pick<
     MetadataService,
@@ -479,6 +511,11 @@ export class ImplicitGrant {
     prompt?: string
     idTokenHint?: string
   }): Promise<string> {
+    /** Drop abandoned pending requests (Google often has no end-session URL) */
+    await State.clearStaleState(
+      this.stateStore,
+      this.oidc.settings.staleStateAgeInSeconds ?? STALE_STATE_AGE_SECONDS,
+    )
     const authorizationEndpoint =
       await this.oidc.metadataService.getAuthorizationEndpoint()
     const request: PendingRequest = {

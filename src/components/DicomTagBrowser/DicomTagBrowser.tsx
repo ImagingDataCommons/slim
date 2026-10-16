@@ -78,54 +78,47 @@ const TagRow = ({
     'grid min-h-control w-full items-center gap-3 border-b border-line-row px-5 text-left hover:bg-selected',
     TAG_GRID_COLUMNS,
     depth > 0 ? 'bg-subtle/60' : 'bg-panel',
-    hasChildren
-      ? 'cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/40'
-      : 'cursor-default',
-  )
-  const cells = (
-    <>
-      <span
-        className="flex items-center gap-0.5 font-mono text-12 text-ink-secondary"
-        style={{ paddingLeft: depth * 18 }}
-      >
-        <span className="w-4 flex-none text-ink-muted">
-          {hasChildren && (
-            <Icon
-              name={isExpanded ? 'expand_more' : 'chevron_right'}
-              size={16}
-            />
-          )}
-        </span>
-        {item.tag}
-      </span>
-      <span>
-        {item.vr !== '' && (
-          <span className="rounded-sm bg-chip px-[5px] py-0.5 font-mono text-11 font-medium text-chip-foreground">
-            {item.vr}
-          </span>
-        )}
-      </span>
-      <span className="truncate font-medium text-ink">{item.keyword}</span>
-      <span className="break-all py-1.5 font-mono text-12 text-ink-body">
-        {item.value}
-      </span>
-    </>
   )
 
   return (
     <>
-      {hasChildren ? (
-        <button
-          type="button"
-          aria-expanded={isExpanded}
-          onClick={() => onToggle(item.key)}
-          className={rowClassName}
+      <tr className={rowClassName}>
+        <td
+          className="flex items-center gap-0.5 font-mono text-12 text-ink-secondary"
+          style={{ paddingLeft: depth * 18 }}
         >
-          {cells}
-        </button>
-      ) : (
-        <div className={rowClassName}>{cells}</div>
-      )}
+          <span className="w-4 flex-none text-ink-muted">
+            {hasChildren ? (
+              <button
+                type="button"
+                aria-expanded={isExpanded}
+                aria-label={
+                  isExpanded ? 'Collapse sequence' : 'Expand sequence'
+                }
+                onClick={() => onToggle(item.key)}
+                className="grid place-items-center rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
+              >
+                <Icon
+                  name={isExpanded ? 'expand_more' : 'chevron_right'}
+                  size={16}
+                />
+              </button>
+            ) : null}
+          </span>
+          {item.tag}
+        </td>
+        <td>
+          {item.vr !== '' && (
+            <span className="rounded-sm bg-chip px-[5px] py-0.5 font-mono text-11 font-medium text-chip-foreground">
+              {item.vr}
+            </span>
+          )}
+        </td>
+        <td className="truncate font-medium text-ink">{item.keyword}</td>
+        <td className="break-all py-1.5 font-mono text-12 text-ink-body">
+          {item.value}
+        </td>
+      </tr>
       {hasChildren &&
         isExpanded &&
         item.children?.map((child) => (
@@ -357,37 +350,57 @@ const DicomTagBrowser = ({
         </div>
       </div>
 
-      <div
-        className={cn(
-          'grid h-9 flex-none items-center gap-3 border-b border-line bg-subtle px-5 text-11 font-semibold uppercase leading-none tracking-wider text-ink-muted',
-          TAG_GRID_COLUMNS,
-        )}
+      <table
+        aria-label="DICOM tags"
+        className="flex min-h-0 w-full flex-1 flex-col border-collapse"
       >
-        <div>Tag</div>
-        <div>VR</div>
-        <div>Keyword</div>
-        <div>Value</div>
-      </div>
-
-      <div className="h-[52vh] min-h-0 flex-1 overflow-auto">
-        {isLoading ? (
-          <div className="px-5 py-16 text-center text-ink-muted">Loading…</div>
-        ) : filteredData.length === 0 ? (
-          <div className="px-5 py-16 text-center text-ink-muted">
-            {isFiltering ? 'No matching tags found' : 'No tags available'}
-          </div>
-        ) : (
-          filteredData.map((item) => (
-            <TagRow
-              key={item.key}
-              item={item}
-              depth={0}
-              expandedKeys={expandedKeys}
-              onToggle={handleToggleExpand}
-            />
-          ))
-        )}
-      </div>
+        <thead className="block flex-none">
+          <tr
+            className={cn(
+              'grid h-9 items-center gap-3 border-b border-line bg-subtle px-5 text-11 font-semibold uppercase leading-none tracking-wider text-ink-muted',
+              TAG_GRID_COLUMNS,
+            )}
+          >
+            <th scope="col" className="text-left font-semibold">
+              Tag
+            </th>
+            <th scope="col" className="text-left font-semibold">
+              VR
+            </th>
+            <th scope="col" className="text-left font-semibold">
+              Keyword
+            </th>
+            <th scope="col" className="text-left font-semibold">
+              Value
+            </th>
+          </tr>
+        </thead>
+        <tbody className="block h-[52vh] min-h-0 flex-1 overflow-auto">
+          {isLoading ? (
+            <tr>
+              <td colSpan={4} className="px-5 py-16 text-center text-ink-muted">
+                Loading…
+              </td>
+            </tr>
+          ) : filteredData.length === 0 ? (
+            <tr>
+              <td colSpan={4} className="px-5 py-16 text-center text-ink-muted">
+                {isFiltering ? 'No matching tags found' : 'No tags available'}
+              </td>
+            </tr>
+          ) : (
+            filteredData.map((item) => (
+              <TagRow
+                key={item.key}
+                item={item}
+                depth={0}
+                expandedKeys={expandedKeys}
+                onToggle={handleToggleExpand}
+              />
+            ))
+          )}
+        </tbody>
+      </table>
 
       <SlimDialogFooter className="justify-start pl-5 text-12 text-ink-muted">
         <span>{countRows(filteredData, expandedKeys)} attributes</span>

@@ -217,7 +217,12 @@ export function useRois({
   return {
     ...state,
     reset: () => {
-      setState((current) => ({ ...current, visibleRoiUIDs: new Set() }))
+      setState((current) => ({
+        ...current,
+        visibleRoiUIDs: new Set(),
+        selectedRoiUIDs: new Set(),
+        selectedRoi: undefined,
+      }))
     },
     registerRoi: (session, roi) => {
       registerRoi(session, roi)

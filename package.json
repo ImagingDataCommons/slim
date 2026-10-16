@@ -11,7 +11,7 @@
   "scripts": {
     "start": "./scripts/set-git-env.sh vite",
     "dev": "pnpm run start",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc -b",
     "build": "./scripts/set-git-env.sh vite build",
     "build:firebase": "REACT_APP_CONFIG=gcp PUBLIC_URL=/ ./scripts/set-git-env.sh vite build",
     "lint": "biome check .",

@@ -34,6 +34,8 @@ export function useStudies({ clients }: UseStudiesOptions): UseStudiesReturn {
     const generation = ++searchGeneration.current
     const isCurrent = (): boolean => generation === searchGeneration.current
     const client = clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
+    /** Keep the same empty array when already clear to avoid a render loop */
+    setStudies((previous) => (previous.length === 0 ? previous : []))
     if (client === undefined) {
       setIsLoading(false)
       return

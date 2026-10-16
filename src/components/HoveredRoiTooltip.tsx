@@ -6,6 +6,7 @@ import {
   type HoveredRoi,
   SERIES_DESCRIPTION_ATTRIBUTE,
 } from '../features/viewer/utils/hoveredRois'
+import { withOccurrenceKeys } from '../utils/occurrenceKeys'
 
 export interface HoveredRoiTooltipProps {
   xPosition: number
@@ -75,11 +76,14 @@ function HoveredRoiRow({
             marginTop: '2px',
           }}
         >
-          {otherAttributes.map((attr) => (
-            <div key={`${attr.name}-${roi.roiUid}`}>
-              {attr.name}: <span style={{ fontWeight: 500 }}>{attr.value}</span>
-            </div>
-          ))}
+          {withOccurrenceKeys(otherAttributes, (attr) => attr.name).map(
+            ({ item: attr, key }) => (
+              <div key={`${key}-${roi.roiUid}`}>
+                {attr.name}:{' '}
+                <span style={{ fontWeight: 500 }}>{attr.value}</span>
+              </div>
+            ),
+          )}
         </div>
       )}
     </div>

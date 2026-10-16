@@ -37,6 +37,15 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
     },
     ref,
   ) => {
+    const inputRef = React.useRef<HTMLInputElement>(null)
+    const setRefs = React.useCallback(
+      (node: HTMLInputElement | null) => {
+        inputRef.current = node
+        if (typeof ref === 'function') ref(node)
+        else if (ref !== null) ref.current = node
+      },
+      [ref],
+    )
     const hasQuery = value !== ''
     return (
       <label
@@ -47,7 +56,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
       >
         <Icon name="search" size={iconSize} className="text-ink-muted" />
         <input
-          ref={ref}
+          ref={setRefs}
           type="search"
           value={value}
           onChange={(event) => onValueChange(event.target.value)}
@@ -64,7 +73,10 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
           <button
             type="button"
             aria-label="Clear search"
-            onClick={() => onValueChange('')}
+            onClick={() => {
+              onValueChange('')
+              inputRef.current?.focus()
+            }}
             className="grid h-5 w-5 flex-none place-items-center rounded-sm text-ink-muted hover:bg-subtle hover:text-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
           >
             <Icon name="close" size={15} />

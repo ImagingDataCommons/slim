@@ -2,7 +2,14 @@ import type { PaginationState } from '@tanstack/react-table'
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import type * as React from 'react'
-import { useCallback, useDeferredValue, useMemo, useState } from 'react'
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 
 import { Icon } from '../../../components/ui/icon'
@@ -110,6 +117,25 @@ export function Worklist({
   })
 
   const slideClient = clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
+  const serverUrl = slideClient?.baseURL
+  const previousServerUrl = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    if (
+      previousServerUrl.current !== undefined &&
+      previousServerUrl.current !== serverUrl
+    ) {
+      setSearchText('')
+      setPagination((previous) => ({ ...previous, pageIndex: 0 }))
+      setSearchParams((previous) => {
+        if (!previous.has(CONTAINS_PARAM)) return previous
+        const next = new URLSearchParams(previous)
+        next.delete(CONTAINS_PARAM)
+        return next
+      })
+    }
+    previousServerUrl.current = serverUrl
+  }, [serverUrl, setSearchParams])
+
   const loadedStudies = useMemo(
     () => new Map(studies.map((study) => [study.StudyInstanceUID, study])),
     [studies],
@@ -205,6 +231,8 @@ export function Worklist({
       containsSearch.status === 'error'
         ? `Couldn't search for ${containsEntry.label}.`
         : `No studies with ${containsEntry.label}.`
+  } else if (serverSearch.hasError) {
+    emptyMessage = "Couldn't search for studies."
   }
 
   return (

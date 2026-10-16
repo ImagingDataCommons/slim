@@ -195,7 +195,7 @@ describe('useRois', () => {
     expect([...result.current.visibleRoiUIDs]).toEqual(['a'])
   })
 
-  it('reset hides every ROI but keeps the selection', () => {
+  it('reset hides every ROI and clears the selection', () => {
     const { result } = setup()
     addRois(result, 'a')
     act(() => {
@@ -207,7 +207,8 @@ describe('useRois', () => {
     })
 
     expect(result.current.visibleRoiUIDs.size).toBe(0)
-    expect([...result.current.selectedRoiUIDs]).toEqual(['a'])
+    expect(result.current.selectedRoiUIDs.size).toBe(0)
+    expect(result.current.selectedRoi).toBeUndefined()
   })
 })
 

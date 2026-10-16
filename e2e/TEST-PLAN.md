@@ -209,6 +209,7 @@ Fixed on this branch:
 - **The Modality column was slow on IDC.** It sent one series query for each of the 100 loaded studies. It now asks only for the rows on the current page and remembers the answers (W6).
 - **The ICC profile switch could stay disabled.** DMV fetches ICC profiles after the viewer is created, and the panel never saw them arrive. It now checks again when the first tile finishes loading. An earlier check on `loading_ended` only ran for bulk annotations (O5).
 - **Draw stayed on after switching slides.** The new slide started with the old tool active. Each new viewer now starts in select mode with ROIs shown (V15). `master` had the same flaw.
+- **Viewer state carried over on slide switch.** Interpolation toggles, the segmentation series filter and ROI selection are cleared for the new viewer. Closing Go to restores select mode (#461).
 - **ROI shortcuts ignored `disableAnnotationTools`.** Alt+D opened Draw with the tools hidden. Only Escape and Go to work now (C2). `master` had the same flaw.
 - **An unknown `?state=` left the presentation state picker blank.** It now reads Default (O10).
 - **Dark theme contrast failed WCAG AA.** White labels on the blue primary buttons reached 3.5:1, and the selected tab text 3.8:1. Dark primary is lighter (`#6a9cf7`) with dark labels. Light theme muted text on the panel background reached 4.4:1 and is darker now (X3, X4).

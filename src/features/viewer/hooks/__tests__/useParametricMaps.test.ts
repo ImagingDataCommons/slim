@@ -93,14 +93,26 @@ describe('useParametricMaps', () => {
     expect(result.current.visibleUIDs.size).toBe(0)
   })
 
-  it('toggles interpolation in the viewer', () => {
+  it('toggles interpolation only when the setting changes', () => {
     const { result, viewer } = setup()
 
     act(() => {
+      result.current.onDisplaySettingsChange({ interpolationEnabled: false })
       result.current.onDisplaySettingsChange({ interpolationEnabled: false })
     })
 
     expect(result.current.isInterpolationEnabled).toBe(false)
     expect(viewer.toggleParametricMapInterpolation).toHaveBeenCalledTimes(1)
+  })
+
+  it('reset restores interpolation to the viewer default', () => {
+    const { result } = setup()
+
+    act(() => {
+      result.current.onDisplaySettingsChange({ interpolationEnabled: false })
+      result.current.reset()
+    })
+
+    expect(result.current.isInterpolationEnabled).toBe(true)
   })
 })

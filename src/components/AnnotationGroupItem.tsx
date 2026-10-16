@@ -23,6 +23,7 @@ import { areLayerItemPropsEqual } from '../utils/styleEquality'
 import ColorSlider from './ColorSlider'
 import OpacitySlider from './OpacitySlider'
 import { LayerSettingsPopover } from './panel/LayerSettingsPopover'
+import { useFrameThrottledCallback } from './panel/useFrameThrottledCallback'
 import { useLayerStyle } from './panel/useLayerStyle'
 import { VisibilityToggleButton } from './panel/VisibilityToggleButton'
 import { InfoDetailsButton } from './slim/InfoDetailsButton'
@@ -80,6 +81,9 @@ function AnnotationGroupItem({
   onStyleChange,
 }: AnnotationGroupItemProps): React.ReactElement {
   const uid = annotationGroup.uid
+  const commit = (styleOptions: AnnotationGroupStyleChange): void => {
+    onStyleChange({ uid, styleOptions })
+  }
   const [style, updateStyle, previewStyle] =
     useLayerStyle<AnnotationGroupLocalStyle>(
       {
@@ -88,8 +92,13 @@ function AnnotationGroupItem({
         fill: defaultStyle.fill ?? false,
         fillOpacity: defaultStyle.fillOpacity ?? DEFAULT_FILL_OPACITY,
       },
-      (styleOptions) => onStyleChange({ uid, styleOptions }),
+      commit,
     )
+  const commitLive = useFrameThrottledCallback(commit)
+  const previewLive = (change: AnnotationGroupStyleChange): void => {
+    previewStyle(change)
+    commitLive(change)
+  }
   /** Select value; survives the settings popover unmounting */
   const [measurementKey, setMeasurementKey] = useState(NO_MEASUREMENT)
 
@@ -181,14 +190,14 @@ function AnnotationGroupItem({
               <p className={SETTINGS_LABEL}>Color</p>
               <ColorSlider
                 color={style.color}
-                onChange={(color) => previewStyle({ color })}
+                onChange={(color) => previewLive({ color })}
                 onCommit={(color) => updateStyle({ color })}
               />
             </div>
           )}
           <OpacitySlider
             opacity={style.opacity}
-            onChange={(opacity) => previewStyle({ opacity })}
+            onChange={(opacity) => previewLive({ opacity })}
             onCommit={(opacity) => updateStyle({ opacity })}
           />
           {isFillable && (
@@ -206,7 +215,7 @@ function AnnotationGroupItem({
                 label="Fill opacity"
                 opacity={style.fillOpacity}
                 disabled={!style.fill}
-                onChange={(fillOpacity) => previewStyle({ fillOpacity })}
+                onChange={(fillOpacity) => previewLive({ fillOpacity })}
                 onCommit={(fillOpacity) => updateStyle({ fillOpacity })}
               />
             </div>

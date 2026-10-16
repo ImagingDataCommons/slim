@@ -18,6 +18,7 @@ import { areLayerItemPropsEqual } from '../utils/styleEquality'
 import ColorSlider from './ColorSlider'
 import { InlineOpacityRow } from './panel/InlineOpacityRow'
 import { LayerSettingsPopover } from './panel/LayerSettingsPopover'
+import { useFrameThrottledCallback } from './panel/useFrameThrottledCallback'
 import { useLayerStyle } from './panel/useLayerStyle'
 import { VisibilityToggleButton } from './panel/VisibilityToggleButton'
 import { InfoDetailsButton } from './slim/InfoDetailsButton'
@@ -60,13 +61,21 @@ function SegmentItem({
    * Opacity and color are committed separately: for FRACTIONAL segments,
    * sending a color would replace the distinct colormap with a flat LUT.
    */
+  const commit = (styleOptions: SegmentStyleChange): void => {
+    onStyleChange({ segmentUID: segment.uid, styleOptions })
+  }
   const [style, updateStyle, previewStyle] = useLayerStyle<SegmentLocalStyle>(
     {
       opacity: defaultStyle.opacity,
       color: toRGB(defaultStyle.color, DEFAULT_SEGMENT_COLOR),
     },
-    (styleOptions) => onStyleChange({ segmentUID: segment.uid, styleOptions }),
+    commit,
   )
+  const commitLive = useFrameThrottledCallback(commit)
+  const previewLive = (change: SegmentStyleChange): void => {
+    previewStyle(change)
+    commitLive(change)
+  }
 
   /** Listed in the Segment Sequence but no frames contain it */
   const isAbsent = segment.isAbsent === true
@@ -150,7 +159,7 @@ function SegmentItem({
               <span className="text-12.5 font-semibold text-ink">Color</span>
               <ColorSlider
                 color={style.color}
-                onChange={(color) => previewStyle({ color })}
+                onChange={(color) => previewLive({ color })}
                 onCommit={(color) => updateStyle({ color })}
               />
             </div>
@@ -173,7 +182,7 @@ function SegmentItem({
         label={label}
         opacity={style.opacity}
         disabled={isAbsent}
-        onChange={(opacity) => previewStyle({ opacity })}
+        onChange={(opacity) => previewLive({ opacity })}
         onCommit={(opacity) => updateStyle({ opacity })}
       />
     </div>

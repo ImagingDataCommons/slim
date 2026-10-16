@@ -10,7 +10,6 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 
 import packageInfo from '../package.json'
-import App from './App'
 import type AppConfig from './AppConfig'
 import { ConfigProblemsPage } from './app/ConfigProblemsPage'
 import { findConfigProblems } from './app/configProblems'
@@ -51,34 +50,45 @@ if (config?.logger != null) {
 
 configureToasts(config?.messages)
 
-const mountApp = (): void => {
+/**
+ * Lazy-load App so the silent-renew iframe does not parse the full viewer
+ * bundle when it only needs to complete the OIDC callback.
+ */
+const mountApp = async (): Promise<void> => {
   const container = document.getElementById('root')
   if (container == null) {
     throw new Error('Root element not found')
   }
 
-  /** Determine initial theme from config or default to dark */
   const initialTheme = config?.mode === 'light' ? 'light' : 'dark'
-
   const root = createRoot(container)
+
+  if (config === undefined || configProblems.length > 0) {
+    root.render(
+      <CustomErrorBoundary context="App">
+        <ThemeProvider defaultTheme={initialTheme}>
+          <ConfigProblemsPage problems={configProblems} />
+        </ThemeProvider>
+      </CustomErrorBoundary>,
+    )
+    return
+  }
+
+  const { default: App } = await import('./App')
   root.render(
     <CustomErrorBoundary context="App">
       <ThemeProvider defaultTheme={initialTheme}>
-        {config === undefined || configProblems.length > 0 ? (
-          <ConfigProblemsPage problems={configProblems} />
-        ) : (
-          <TooltipProvider delayDuration={300}>
-            <StudySummaryProvider>
-              <App
-                config={config}
-                version={packageInfo.version}
-                name={packageInfo.name}
-                homepage="https://github.com/ImagingDataCommons/slim"
-              />
-              <ToastHost top={config.messages?.top} />
-            </StudySummaryProvider>
-          </TooltipProvider>
-        )}
+        <TooltipProvider delayDuration={300}>
+          <StudySummaryProvider>
+            <App
+              config={config}
+              version={packageInfo.version}
+              name={packageInfo.name}
+              homepage="https://github.com/ImagingDataCommons/slim"
+            />
+            <ToastHost top={config.messages?.top} />
+          </StudySummaryProvider>
+        </TooltipProvider>
       </ThemeProvider>
     </CustomErrorBoundary>,
   )
@@ -94,10 +104,10 @@ void import('./auth/OidcManager')
   .then(async ({ completeSilentRenewIfFrame }) => {
     const handled = await completeSilentRenewIfFrame()
     if (!handled) {
-      mountApp()
+      await mountApp()
     }
   })
-  .catch((error) => {
+  .catch(async (error) => {
     logger.error('failed to initialize auth bootstrap', error)
-    mountApp()
+    await mountApp()
   })

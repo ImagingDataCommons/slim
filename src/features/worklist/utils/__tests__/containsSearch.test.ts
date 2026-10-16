@@ -24,7 +24,9 @@ const entry = (id: string): ContainsEntry => {
 
 type QidoRow = dwc.api.Instance & dwc.api.Series
 
-const offsetOf = (options: dwc.api.SearchForSeriesOptions): number =>
+const offsetOf = (
+  options: dwc.api.SearchForSeriesOptions | dwc.api.SearchForInstancesOptions,
+): number =>
   Number((options.queryParams as { offset?: number } | undefined)?.offset)
 
 function row(
@@ -45,6 +47,13 @@ function badRequest(): Error {
   return Object.assign(new Error('400'), { status: 400 })
 }
 
+/** Single page of rows; later offsets are empty (paging ends on empty). */
+function onePage(items: QidoRow[]) {
+  return async (
+    options: dwc.api.SearchForSeriesOptions | dwc.api.SearchForInstancesOptions,
+  ): Promise<QidoRow[]> => (offsetOf(options) === 0 ? items : [])
+}
+
 function fakeClient(
   overrides: Partial<ContainsSearchClient> = {},
 ): ContainsSearchClient & {
@@ -61,12 +70,12 @@ describe('searchStudiesContaining', () => {
   it('matches on SOP class and groups series by study', async () => {
     const pmap = StorageClasses.PARAMETRIC_MAP
     const client = fakeClient({
-      searchForInstances: async () => [
+      searchForInstances: onePage([
         row('s1', 'a', pmap),
         row('s1', 'a', pmap),
         row('s1', 'b', pmap),
         row('s2', 'c', pmap),
-      ],
+      ]),
     })
 
     const result = await searchStudiesContaining(client, entry('pmap'))
@@ -94,7 +103,7 @@ describe('searchStudiesContaining', () => {
       searchForInstances: async () => {
         throw badRequest()
       },
-      searchForSeries: async () => [row('s1', 'a')],
+      searchForSeries: onePage([row('s1', 'a')]),
     })
     const onPage = vi.fn()
 
@@ -120,10 +129,10 @@ describe('searchStudiesContaining', () => {
 
   it('falls back when the server ignores SOPClassUID', async () => {
     const client = fakeClient({
-      searchForInstances: async () => [
+      searchForInstances: onePage([
         row('s1', 'a', StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE),
-      ],
-      searchForSeries: async () => [row('s2', 'b')],
+      ]),
+      searchForSeries: onePage([row('s2', 'b')]),
     })
 
     const result = await searchStudiesContaining(client, entry('ann'))
@@ -145,32 +154,46 @@ describe('searchStudiesContaining', () => {
     expect(client.searchForSeries).not.toHaveBeenCalled()
   })
 
-  it('pages until a short page and stops at the cap', async () => {
-    const fullPage = (offset: number): QidoRow[] =>
-      Array.from({ length: CONTAINS_PAGE_SIZE }, (_, index) =>
+  it('keeps paging past a short page until an empty one or the cap', async () => {
+    const serverCap = 100
+    const cappedPage = (offset: number): QidoRow[] => {
+      if (offset >= serverCap * 2) return []
+      return Array.from({ length: serverCap }, (_, index) =>
         row(`s${offset + index}`, `x${offset + index}`),
       )
-    const twoPages = fakeClient({
+    }
+    const cappedServer = fakeClient({
       searchForInstances: async () => {
         throw badRequest()
       },
-      searchForSeries: async (options) =>
-        offsetOf(options) === 0 ? fullPage(0) : [row('last', 'y')],
+      searchForSeries: async (options) => cappedPage(offsetOf(options)),
     })
 
-    const result = await searchStudiesContaining(twoPages, entry('ann'))
-    expect(twoPages.searchForSeries).toHaveBeenCalledTimes(2)
-    expect(twoPages.searchForSeries).toHaveBeenLastCalledWith({
+    const result = await searchStudiesContaining(cappedServer, entry('ann'))
+    expect(cappedServer.searchForSeries).toHaveBeenCalledTimes(3)
+    expect(cappedServer.searchForSeries).toHaveBeenNthCalledWith(2, {
       queryParams: {
         Modality: 'ANN',
         includefield: STUDY_FIELDS,
         limit: CONTAINS_PAGE_SIZE,
-        offset: CONTAINS_PAGE_SIZE,
+        offset: serverCap,
       },
     })
-    expect(result.matches.size).toBe(CONTAINS_PAGE_SIZE + 1)
+    expect(cappedServer.searchForSeries).toHaveBeenLastCalledWith({
+      queryParams: {
+        Modality: 'ANN',
+        includefield: STUDY_FIELDS,
+        limit: CONTAINS_PAGE_SIZE,
+        offset: serverCap * 2,
+      },
+    })
+    expect(result.matches.size).toBe(serverCap * 2)
     expect(result.isPartial).toBe(false)
 
+    const fullPage = (offset: number): QidoRow[] =>
+      Array.from({ length: CONTAINS_PAGE_SIZE }, (_, index) =>
+        row(`s${offset + index}`, `x${offset + index}`),
+      )
     const endless = fakeClient({
       searchForInstances: async () => {
         throw badRequest()
@@ -184,13 +207,13 @@ describe('searchStudiesContaining', () => {
 
   it('keeps the study attributes of the first match', async () => {
     const client = fakeClient({
-      searchForInstances: async () => [
+      searchForInstances: onePage([
         {
           ...row('s1', 'a', StorageClasses.PARAMETRIC_MAP),
           '00100020': { vr: 'LO', Value: ['patient-1'] },
           '00080020': { vr: 'DA', Value: ['20240102'] },
         } as unknown as QidoRow,
-      ],
+      ]),
     })
 
     const result = await searchStudiesContaining(client, entry('pmap'))

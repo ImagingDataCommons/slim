@@ -38,7 +38,7 @@ export function VisibilityToggleButton({
         'flex-none hover:bg-segmented disabled:opacity-40',
         isVisible
           ? 'text-ink-secondary hover:text-ink-secondary'
-          : 'text-ink-fainter hover:text-ink-fainter',
+          : 'text-ink-faint hover:text-ink-faint',
         className,
       )}
     >

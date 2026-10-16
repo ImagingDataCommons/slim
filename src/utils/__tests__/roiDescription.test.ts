@@ -147,6 +147,20 @@ describe('convertMeasuredValue', () => {
       unitCode: 'mm2',
     })
   })
+
+  it('converts DMV Greek-mu unit codes', () => {
+    expect(convertMeasuredValue(250, '\u03BCm', 'mm')).toEqual({
+      value: 0.25,
+      unitCode: 'mm',
+    })
+    expect(convertMeasuredValue(5e6, '\u03BCm2', 'mm')).toEqual({
+      value: 5,
+      unitCode: 'mm2',
+    })
+    expect(formatMeasuredValue(1.5, '\u03BCm', { unit: 'mm' })).toBe(
+      '0.0015 mm',
+    )
+  })
 })
 
 describe('describeRoiMeasurement with units', () => {

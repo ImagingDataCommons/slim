@@ -2,8 +2,6 @@ shamefullyHoist: true
 strictPeerDependencies: false
 
 allowBuilds:
-  '@parcel/watcher': true
-  core-js: true
   core-js-pure: true
   dicom-microscopy-viewer: true
 
@@ -33,14 +31,8 @@ overrides:
   source-map-js: 1.2.2
   # Dependabot high: fast-uri authority injection & host confusion (CVE-2026-84292, CVE-2026-84394)
   fast-uri: 3.1.8
-  # Dependabot high: SVGO removeScripts (CRA still pulls 1.x via @svgr; no SVG imports in app)
-  svgo: 2.8.4
   # Dependabot high: browserslist RegExp ReDoS
   browserslist: 4.28.7
-  # Dependabot high: webpack-dev-middleware path traversal (GHSA-g84c-rxfj-3j2c; no 5.x patch, CRA's dev server 4.x runs on 7.x)
-  webpack-dev-middleware: 7.4.6
-  # Dependabot high: node-forge RSA PKCS#1 v1.5 (selfsigned 5.x uses @peculiar/x509 instead)
-  selfsigned: 5.5.0
   nth-check: 2.0.1
   wrap-ansi: 7.0.0
   make-dir: 3.1.0
@@ -48,7 +40,6 @@ overrides:
   express: 4.21.0
   jsdom>form-data: 3.0.5
   path-to-regexp: 0.1.13
-  rollup: 3.30.0
   semver: 7.5.2
   serialize-javascript: 7.0.5
   tar: 7.5.16

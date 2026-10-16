@@ -37,7 +37,26 @@ describe('useStudySearch', () => {
     const { result } = renderHook(() =>
       useStudySearch({ clients: createClients(search), searchText: '  ' }),
     )
-    expect(result.current).toEqual({ matches: [], isSearching: false })
+    expect(result.current).toEqual({
+      matches: [],
+      isSearching: false,
+      hasError: false,
+    })
+    expect(search).not.toHaveBeenCalled()
+  })
+
+  it('skips the server for a one-character term', () => {
+    const search = vi.fn(
+      async (_params: QueryParams): Promise<dwc.api.Study[]> => [],
+    )
+    const { result } = renderHook(() =>
+      useStudySearch({ clients: createClients(search), searchText: 'P' }),
+    )
+    expect(result.current).toEqual({
+      matches: [],
+      isSearching: false,
+      hasError: false,
+    })
     expect(search).not.toHaveBeenCalled()
   })
 
@@ -56,9 +75,29 @@ describe('useStudySearch', () => {
 
     expect(result.current.isSearching).toBe(true)
     await waitFor(() => expect(result.current.isSearching).toBe(false))
+    expect(result.current.hasError).toBe(false)
     expect(result.current.matches.map((study) => study.PatientID)).toEqual([
       'P-9',
     ])
+  })
+
+  it('reports an error when a non-rejected query fails', async () => {
+    const clients = createClients(async (params) => {
+      if (params.StudyID !== undefined) {
+        throw Object.assign(new Error('down'), { status: 503 })
+      }
+      return []
+    })
+    const { result } = renderHook(() =>
+      useStudySearch({ clients, searchText: 'P-9' }),
+    )
+
+    await waitFor(() => expect(result.current.isSearching).toBe(false))
+    expect(result.current).toEqual({
+      matches: [],
+      isSearching: false,
+      hasError: true,
+    })
   })
 
   it('only queries for the text once typing pauses', async () => {
@@ -77,5 +116,6 @@ describe('useStudySearch', () => {
     const searched = search.mock.calls.map(([params]) => params.PatientID)
     expect(searched).not.toContain('P')
     expect(searched).toContain('P-9')
+    expect(search.mock.calls[0]?.[0].limit).toBe(100)
   })
 })

@@ -17,14 +17,21 @@ export interface OpticalPathStyleLike {
 /** Conventional RGB swatch for brightfield (non-monochrome) paths */
 const RGB_SWATCH = 'linear-gradient(135deg, #e04a4a, #3fb56b, #3a6cf0)'
 
-/** Display name: description, else "Brightfield" for RGB, else identifier. */
+/**
+ * Display name: description (with identifier when they differ), else
+ * "Brightfield" for RGB, else identifier.
+ */
 export function getOpticalPathName(opticalPath: {
   identifier: string
   description?: string
   isMonochromatic: boolean
 }): string {
   const description = opticalPath.description?.trim() ?? ''
-  if (description !== '') return description
+  if (description !== '') {
+    return description === opticalPath.identifier
+      ? description
+      : `${description} (${opticalPath.identifier})`
+  }
   if (!opticalPath.isMonochromatic) return 'Brightfield'
   return opticalPath.identifier
 }

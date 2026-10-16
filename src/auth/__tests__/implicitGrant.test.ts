@@ -241,6 +241,8 @@ describe('validateIdTokenClaims', () => {
     [{ nonce: undefined }, 'nonce'],
     [{ exp: NOW - 3600 }, 'expired'],
     [{ iat: undefined }, 'issue time'],
+    [{ iat: NOW + 3600 }, 'issue time is in the future'],
+    [{ nbf: NOW + 3600 }, 'not yet valid'],
   ])('rejects %p', (override, message) => {
     expect(() =>
       validateIdTokenClaims({ ...claims, ...override }, expected),
