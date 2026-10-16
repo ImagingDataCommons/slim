@@ -1,0 +1,20 @@
+---
+/**
+ * Official NCI Imaging Data Commons lockup. The reverse version swaps the grey
+ * and red wordmark for white so it stays legible on the dark theme.
+ */
+interface Props {
+  class?: string
+  /** Rendered height in pixels; width follows the logo's aspect ratio */
+  height?: number
+}
+
+const { class: className, height = 32 } = Astro.props
+const width = Math.round((height * 554.5) / 91)
+const alt = 'National Cancer Institute Imaging Data Commons'
+---
+
+<span class:list={['inline-flex shrink-0', className]}>
+  <img src="/brand/nci-idc.svg" alt={alt} width={width} height={height} class="dark:hidden" />
+  <img src="/brand/nci-idc-reverse.svg" alt={alt} width={width} height={height} class="hidden dark:block" />
+</span>

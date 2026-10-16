@@ -1,0 +1,201 @@
+@import 'tailwindcss';
+@import '../../../src/styles/tokens.css';
+
+/* Shared app components rendered by the site (button, logo mark) */
+@source '../../../src/components/ui/button.tsx';
+@source '../../../src/components/slim/SlimLogoMark.tsx';
+
+/*
+ * Site-only reading type scale. Sizes only: every colour comes from
+ * src/styles/tokens.css so the site and the app cannot drift apart.
+ */
+@theme {
+  --text-eyebrow: 11.5px;
+  --text-lead: 1.1875rem;
+  --text-section: 2.25rem;
+  --text-hero: 3.5rem;
+
+  --container-content: 1180px;
+  --container-reading: 720px;
+
+  --animate-fade-up: fade-up 0.5s ease-out both;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-line;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+  }
+
+  body {
+    @apply m-0 bg-app font-sans text-[15px] leading-relaxed text-ink-body antialiased;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply text-ink font-semibold tracking-[-0.015em] text-balance;
+  }
+
+  code,
+  kbd,
+  pre {
+    @apply font-mono;
+  }
+
+  a {
+    @apply transition-colors;
+  }
+
+  button,
+  [role='button'] {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-primary;
+  }
+
+  ::selection {
+    @apply bg-primary/25 text-ink;
+  }
+
+  /* Set for two frames while the theme toggles; see ThemeScript.astro */
+  .theme-switching *,
+  .theme-switching *::before,
+  .theme-switching *::after {
+    transition: none !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .container-site {
+    @apply mx-auto w-full max-w-content px-5 sm:px-8;
+  }
+
+  /* Small mono label above headings, like the app's panel section titles */
+  .eyebrow {
+    @apply font-mono text-eyebrow font-medium uppercase tracking-[0.12em] text-ink-muted;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-sm border border-line bg-subtle px-1.5 py-[3px] font-mono text-11 font-medium leading-none text-ink-muted;
+  }
+
+  .card {
+    @apply rounded-card border border-line bg-panel;
+  }
+
+  /* Faint grid behind hero sections, drawn from the line token */
+  .bg-grid {
+    background-image:
+      linear-gradient(rgb(var(--line) / 0.55) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--line) / 0.55) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse at 50% 0%, black 30%, transparent 75%);
+  }
+
+  .glow-primary {
+    background: radial-gradient(
+      ellipse at 50% 0%,
+      rgb(var(--primary) / 0.18),
+      transparent 65%
+    );
+  }
+
+  /* Long-form Markdown (release notes, showcase overviews) */
+  .prose-slim {
+    @apply max-w-reading text-[15.5px] leading-[1.75] text-ink-body;
+  }
+
+  .prose-slim > * + * {
+    @apply mt-4;
+  }
+
+  .prose-slim h2 {
+    @apply mt-12 border-t border-line pt-8 text-2xl;
+  }
+
+  .prose-slim h3 {
+    @apply mt-8 text-lg;
+  }
+
+  .prose-slim a {
+    @apply font-medium text-primary underline underline-offset-4 hover:text-primary-hover;
+  }
+
+  .prose-slim strong {
+    @apply font-semibold text-ink;
+  }
+
+  .prose-slim ul {
+    @apply list-disc space-y-1.5 pl-5 marker:text-ink-faint;
+  }
+
+  .prose-slim ol {
+    @apply list-decimal space-y-1.5 pl-5 marker:text-ink-faint;
+  }
+
+  .prose-slim code {
+    @apply rounded-sm bg-chip px-1 py-0.5 text-[0.86em] text-chip-foreground;
+  }
+
+  .prose-slim pre {
+    @apply overflow-x-auto rounded-card border border-line bg-subtle p-4 text-13 leading-relaxed;
+  }
+
+  .prose-slim pre code {
+    @apply bg-transparent p-0 text-ink-body;
+  }
+
+  .prose-slim blockquote {
+    @apply border-l-2 border-primary pl-4 text-ink-secondary;
+  }
+
+  .prose-slim hr {
+    @apply my-10 border-line;
+  }
+
+  .prose-slim table {
+    @apply w-full border-collapse text-sm;
+  }
+
+  .prose-slim th {
+    @apply border-b border-line py-2 pr-4 text-left font-semibold text-ink;
+  }
+
+  .prose-slim td {
+    @apply border-b border-line-soft py-2 pr-4 align-top;
+  }
+}

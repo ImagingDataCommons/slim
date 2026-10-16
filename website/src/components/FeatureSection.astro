@@ -1,0 +1,53 @@
+---
+import { Check } from 'lucide-react'
+import type { CollectionEntry } from 'astro:content'
+import { render } from 'astro:content'
+import { featureAnchor } from '../lib/content'
+import Icon from './Icon.astro'
+import OpenInSlim from './OpenInSlim.astro'
+import Screenshot from './Screenshot.astro'
+
+interface Props {
+  feature: CollectionEntry<'features'>
+  reverse?: boolean
+}
+
+const { feature, reverse = false } = Astro.props
+const { Content } = await render(feature)
+const { title, eyebrow, summary, icon, bullets, screenshot, example } = feature.data
+---
+
+<article
+  id={featureAnchor(feature)}
+  class="grid grid-cols-1 scroll-mt-24 items-center gap-10 lg:grid-cols-2 lg:gap-16"
+>
+  <div class:list={['flex flex-col gap-5', reverse && 'lg:order-2']}>
+    <p class="eyebrow flex items-center gap-2">
+      <Icon name={icon} class="size-4 text-primary" />
+      {eyebrow}
+    </p>
+    <h2 class="text-2xl leading-tight sm:text-3xl">{title}</h2>
+    <p class="text-lead text-ink-secondary">{summary}</p>
+    <div class="prose-slim text-ink-body">
+      <Content />
+    </div>
+    {
+      bullets.length > 0 && (
+        <ul class="flex flex-col gap-2.5">
+          {bullets.map((bullet) => (
+            <li class="flex gap-2.5 text-sm text-ink-body">
+              <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+              {bullet}
+            </li>
+          ))}
+        </ul>
+      )
+    }
+    <OpenInSlim example={example} label="See it in the demo" class="w-fit" />
+  </div>
+  {
+    screenshot && (
+      <Screenshot name={screenshot} alt={`Slim: ${title}`} class={reverse ? 'lg:order-1' : undefined} />
+    )
+  }
+</article>

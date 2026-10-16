@@ -1,0 +1,91 @@
+---
+import { ArrowUpRight, Menu, X } from 'lucide-react'
+import { buttonVariants } from '@slim/components/ui/button'
+import { demoUrl, site } from '../data/site'
+import GithubMark from './GithubMark.astro'
+import Logo from './Logo.astro'
+import ThemeToggle from './ThemeToggle.astro'
+
+const path = Astro.url.pathname
+const isActive = (href: string): boolean => path === href || path.startsWith(href)
+---
+
+<header class="sticky top-0 z-40 border-b border-line bg-app/85 backdrop-blur-md">
+  <a
+    href="#main"
+    class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-3 focus:rounded-md focus:bg-panel focus:px-3 focus:py-2 focus:text-ink"
+    >Skip to content</a
+  >
+  <div class="container-site flex h-16 items-center gap-6">
+    <Logo />
+
+    <nav aria-label="Main" class="hidden items-center gap-1 lg:flex">
+      {
+        site.nav.map((item) => (
+          <a
+            href={item.href}
+            aria-current={isActive(item.href) ? 'page' : undefined}
+            class="rounded-md px-2.5 py-1.5 text-sm text-ink-secondary hover:bg-panel hover:text-ink aria-[current=page]:text-ink aria-[current=page]:bg-panel"
+          >
+            {item.label}
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="ml-auto flex items-center gap-1">
+      <a
+        href={site.links.github}
+        class={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
+        aria-label="Slim on GitHub"
+        rel="noopener"
+      >
+        <GithubMark class="size-[18px]" />
+      </a>
+      <ThemeToggle />
+      <a
+        href={demoUrl}
+        target="_blank"
+        rel="noopener"
+        class:list={[buttonVariants({ size: 'sm' }), 'ml-2 hidden sm:inline-flex']}
+      >
+        Open demo
+        <ArrowUpRight className="size-4" aria-hidden="true" />
+      </a>
+
+      <details class="group relative lg:hidden">
+        <summary
+          class:list={[buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'list-none [&::-webkit-details-marker]:hidden']}
+          aria-label="Menu"
+        >
+          <Menu className="size-5 group-open:hidden" aria-hidden="true" />
+          <X className="hidden size-5 group-open:block" aria-hidden="true" />
+        </summary>
+        <nav
+          aria-label="Mobile"
+          class="card absolute right-0 top-11 flex w-56 flex-col p-1.5 shadow-menu"
+        >
+          {
+            site.nav.map((item) => (
+              <a
+                href={item.href}
+                aria-current={isActive(item.href) ? 'page' : undefined}
+                class="rounded-md px-3 py-2 text-sm text-ink-body hover:bg-app aria-[current=page]:text-primary"
+              >
+                {item.label}
+              </a>
+            ))
+          }
+          <a
+            href={demoUrl}
+            target="_blank"
+            rel="noopener"
+            class="mt-1 rounded-md border-t border-line px-3 py-2 text-sm font-medium text-primary"
+          >
+            Open demo ↗
+          </a>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>

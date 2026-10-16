@@ -1,0 +1,304 @@
+---
+import { ArrowRight, ArrowUpRight, BookOpen } from 'lucide-react'
+import { buttonVariants } from '@slim/components/ui/button'
+import GithubMark from '../components/GithubMark.astro'
+import ExampleCard from '../components/ExampleCard.astro'
+import Icon from '../components/Icon.astro'
+import IdcLogo from '../components/IdcLogo.astro'
+import IdcSupport from '../components/IdcSupport.astro'
+import ProductPreview from '../components/ProductPreview.tsx'
+import RunYourOwn from '../components/RunYourOwn.astro'
+import SectionHeading from '../components/SectionHeading.astro'
+import ShowcaseCard from '../components/ShowcaseCard.astro'
+import { matrix } from '../data/matrix'
+import { demoUrl, site } from '../data/site'
+import BaseLayout from '../layouts/BaseLayout.astro'
+import { summarizeEntry } from '../lib/changelog'
+import { featureAnchor, getChangelog, getFeatures, getHighlights, getShowcase } from '../lib/content'
+import { exampleUrl, getExample, type IdcExample, idcVersion } from '../lib/examples'
+
+const features = await getFeatures()
+const showcase = await getShowcase()
+const highlight = (await getHighlights())[0]
+const changelog = (await getChangelog()).slice(0, 4)
+
+const sopClassCount = new Set(matrix.flatMap((group) => group.rows.map((row) => row.sopClassUID)))
+  .size
+
+const exampleHref = (id: string): string | undefined => {
+  const example = getExample(id)
+  return example ? exampleUrl(example) : undefined
+}
+
+const previewTabs = [
+  {
+    id: 'worklist',
+    label: 'Worklist',
+    screenshot: 'worklist',
+    caption: 'The worklist, filtered to studies that contain derived objects.',
+  },
+  {
+    id: 'viewer',
+    label: 'Viewer',
+    screenshot: 'viewer',
+    caption: 'An H&E slide with the case panel, slide overview and tool pill.',
+    href: exampleHref('brightfield'),
+  },
+  {
+    id: 'annotations',
+    label: 'Annotations',
+    screenshot: 'annotations',
+    caption: 'Half a million AI nuclei outlines from a Microscopy Bulk Simple Annotations object.',
+    href: exampleHref('ann'),
+  },
+  {
+    id: 'fluorescence',
+    label: 'Fluorescence',
+    screenshot: 'fluorescence',
+    caption: 'A multiplexed t-CyCIF slide with per-channel color and windowing.',
+    href: exampleHref('fluorescence'),
+  },
+]
+
+const openData = ['brightfield', 'fluorescence', 'ann', 'seg-fractional', 'sr', 'pmap']
+  .map(getExample)
+  .filter((example): example is IdcExample => example?.available === true)
+
+const stats = [
+  { value: '76,000+', label: 'slide series in IDC open in Slim' },
+  { value: String(sopClassCount), label: 'DICOM object types supported' },
+  { value: 'Zero', label: 'install: runs in the browser' },
+  { value: 'Apache 2.0', label: 'open-source license' },
+]
+
+const dateFormat = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeZone: 'UTC' })
+---
+
+<BaseLayout>
+  <section class="relative overflow-hidden border-b border-line">
+    <div class="bg-grid pointer-events-none absolute inset-0" aria-hidden="true"></div>
+    <div class="glow-primary pointer-events-none absolute inset-0" aria-hidden="true"></div>
+    <div class="container-site relative flex flex-col items-center gap-12 pt-16 pb-20 sm:pt-24">
+      <div class="flex max-w-3xl animate-fade-up flex-col items-center gap-6 text-center">
+        {
+          highlight && (
+            <a
+              href={`/release-notes/${highlight.id}/`}
+              class="inline-flex items-center gap-2 rounded-full border border-line bg-panel px-3 py-1 text-13 text-ink-secondary hover:border-line-hover hover:text-ink"
+            >
+              <span class="rounded-full bg-primary-soft px-1.5 py-px font-mono text-11 font-medium text-primary-hover">
+                New
+              </span>
+              {highlight.data.title}
+              <ArrowRight className="size-3.5" aria-hidden="true" />
+            </a>
+          )
+        }
+        <h1 class="text-4xl leading-[1.05] sm:text-hero">
+          The web viewer for DICOM slide microscopy
+        </h1>
+        <p class="max-w-2xl text-lead text-ink-secondary">
+          Slim opens whole slide images, annotations and AI results straight from any DICOMweb
+          archive. Open source, zero footprint, and built on the DICOM standard from the first
+          pixel.
+        </p>
+        <div class="flex flex-wrap justify-center gap-3">
+          <a href={demoUrl} target="_blank" rel="noopener" class={buttonVariants({ size: 'lg' })}>
+            Open the demo
+            <ArrowUpRight className="size-4" aria-hidden="true" />
+          </a>
+          <a href="#run-your-own" class={buttonVariants({ variant: 'outline', size: 'lg' })}>
+            Run your own
+          </a>
+          <a
+            href={site.links.github}
+            rel="noopener"
+            class={buttonVariants({ variant: 'ghost', size: 'lg' })}
+          >
+            <GithubMark class="size-4" />
+            GitHub
+          </a>
+        </div>
+        <a
+          href={site.links.idcCrdc}
+          target="_blank"
+          rel="noopener"
+          class="mt-2 flex flex-col items-center gap-2.5 rounded-md opacity-90 transition-opacity hover:opacity-100 sm:flex-row sm:gap-3"
+        >
+          <span class="text-13 text-ink-muted">Developed and supported by</span>
+          <IdcLogo height={30} />
+        </a>
+      </div>
+      <div class="w-full max-w-5xl">
+        <ProductPreview client:visible tabs={previewTabs} />
+      </div>
+    </div>
+  </section>
+
+  <section aria-label="Slim in numbers" class="border-b border-line bg-subtle">
+    <dl class="container-site grid grid-cols-2 gap-8 py-10 lg:grid-cols-4">
+      {
+        stats.map((stat) => (
+          <div class="flex flex-col-reverse gap-1">
+            <dt class="text-13 text-ink-muted">{stat.label}</dt>
+            <dd class="font-mono text-2xl font-medium text-ink">{stat.value}</dd>
+          </div>
+        ))
+      }
+    </dl>
+  </section>
+
+  <IdcSupport />
+
+  <section class="container-site py-24">
+    <SectionHeading
+      eyebrow="Features"
+      title="Everything a pathology viewer needs, in DICOM"
+      lead="From the worklist to the last annotation, every object Slim shows or saves is a standard DICOM object on your archive."
+    />
+    <div class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {
+        features.map((feature) => (
+          <a
+            href={`/features/#${featureAnchor(feature)}`}
+            class="card group flex flex-col gap-3 p-5 transition-colors hover:border-line-hover hover:bg-subtle"
+          >
+            <span class="flex size-9 items-center justify-center rounded-tile bg-primary-soft text-primary">
+              <Icon name={feature.data.icon} class="size-[18px]" />
+            </span>
+            <h3 class="text-base leading-snug">{feature.data.title}</h3>
+            <p class="text-13 text-ink-muted">{feature.data.summary}</p>
+          </a>
+        ))
+      }
+    </div>
+    <a
+      href="/features/"
+      class="mt-8 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+    >
+      Explore all features
+      <ArrowRight className="size-4" aria-hidden="true" />
+    </a>
+  </section>
+
+  <section class="border-y border-line bg-subtle">
+    <div class="container-site py-24">
+      <SectionHeading
+        eyebrow="Open data"
+        title="Try it on real slides, one click away"
+        lead={`Each example is public data in the NCI Imaging Data Commons (${idcVersion}), served over DICOMweb by the IDC proxy and opened in the live demo.`}
+      />
+      <ul class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {openData.map((example) => <ExampleCard example={example} />)}
+      </ul>
+      <a
+        href="/features/#support-matrix"
+        class="mt-8 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+      >
+        See the full DICOM support matrix
+        <ArrowRight className="size-4" aria-hidden="true" />
+      </a>
+    </div>
+  </section>
+
+  <section id="run-your-own" class="container-site scroll-mt-20 py-24">
+    <SectionHeading
+      eyebrow="Run your own"
+      title="Deploy Slim next to your archive"
+      lead="Slim is a static web app. Point it at a DICOMweb server and serve the files from anywhere."
+    />
+    <div class="mt-12">
+      <RunYourOwn />
+    </div>
+  </section>
+
+  <section class="border-y border-line bg-subtle">
+    <div class="container-site grid grid-cols-1 gap-12 py-24 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+      <div class="flex flex-col gap-6">
+        <SectionHeading eyebrow="Release notes" title="What's new" />
+        {
+          highlight && (
+            <a
+              href={`/release-notes/${highlight.id}/`}
+              class="card group flex flex-col gap-3 p-6 transition-colors hover:border-line-hover"
+            >
+              <p class="eyebrow">{dateFormat.format(highlight.data.date)}</p>
+              <h3 class="text-xl">{highlight.data.title}</h3>
+              <p class="text-sm text-ink-secondary">{highlight.data.summary}</p>
+              <span class="inline-flex items-center gap-1 text-13 font-medium text-primary">
+                Read the release
+                <ArrowRight className="size-3.5" aria-hidden="true" />
+              </span>
+            </a>
+          )
+        }
+      </div>
+      <ol class="flex flex-col divide-y divide-line-soft self-end">
+        {
+          changelog.map((entry) => (
+            <li>
+              <a
+                href={`/release-notes/${entry.id}/`}
+                class="group flex items-baseline gap-4 py-4 hover:text-ink"
+              >
+                <span class="chip shrink-0">v{entry.data.version}</span>
+                <span class="min-w-0 flex-1 truncate text-sm text-ink-body group-hover:text-ink">
+                  {summarizeEntry({ body: entry.body ?? '' })}
+                </span>
+                <time
+                  datetime={entry.data.date.toISOString()}
+                  class="shrink-0 font-mono text-12 text-ink-muted"
+                >
+                  {dateFormat.format(entry.data.date)}
+                </time>
+              </a>
+            </li>
+          ))
+        }
+        <li class="pt-4">
+          <a
+            href="/release-notes/"
+            class="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+          >
+            All release notes
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </a>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="container-site py-24">
+    <SectionHeading
+      eyebrow="Showcase"
+      title="Where Slim is used"
+      lead="From a national cancer imaging resource to DICOM interoperability testing and published research."
+    />
+    <div class="mt-12 grid gap-4 md:grid-cols-3">
+      {showcase.map((entry) => <ShowcaseCard entry={entry} />)}
+    </div>
+  </section>
+
+  <section class="container-site pb-8">
+    <div class="card relative overflow-hidden px-6 py-14 text-center sm:px-12">
+      <div class="glow-primary pointer-events-none absolute inset-0" aria-hidden="true"></div>
+      <div class="relative mx-auto flex max-w-2xl flex-col items-center gap-5">
+        <h2 class="text-3xl sm:text-section">Open a slide in seconds</h2>
+        <p class="text-lead text-ink-secondary">
+          No install, no account. Open the demo on public IDC data, or read the docs to connect
+          your own archive.
+        </p>
+        <div class="flex flex-wrap justify-center gap-3">
+          <a href={demoUrl} target="_blank" rel="noopener" class={buttonVariants({ size: 'lg' })}>
+            Open the demo
+            <ArrowUpRight className="size-4" aria-hidden="true" />
+          </a>
+          <a href="/docs/" class={buttonVariants({ variant: 'outline', size: 'lg' })}>
+            <BookOpen className="size-4" aria-hidden="true" />
+            Read the docs
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,74 @@
+---
+import { ArrowUpRight } from 'lucide-react'
+import { buttonVariants } from '@slim/components/ui/button'
+import { site } from '../data/site'
+import IdcLogo from './IdcLogo.astro'
+
+/** Facts from IDC's page in the Cancer Research Data Commons (site.links.idcCrdc) */
+const facts = [
+  {
+    value: '>100 TB',
+    label: 'of public cancer imaging data: radiology, pathology and fluorescence microscopy',
+  },
+  { value: 'Free', label: 'to use, with no registration and no access requests' },
+  { value: '>95%', label: 'of the data under CC BY, which allows commercial reuse' },
+  { value: 'DICOM', label: 'for every image and every annotation, segmentation and map' },
+]
+---
+
+<section aria-labelledby="idc-support-title" class="border-b border-line">
+  <div class="container-site grid grid-cols-1 items-center gap-12 py-20 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+    <div class="flex flex-col items-start gap-6">
+      <p class="eyebrow">Developed and supported by</p>
+      <a href={site.links.idcCrdc} target="_blank" rel="noopener" class="inline-flex rounded-md">
+        <IdcLogo height={56} class="max-w-full [&_img]:h-auto [&_img]:max-w-full" />
+      </a>
+      <h2 id="idc-support-title" class="text-3xl leading-tight sm:text-section">
+        The slide microscopy viewer of the NCI Imaging Data Commons
+      </h2>
+      <p class="text-lead text-ink-secondary">
+        Slim is built and maintained by the Imaging Data Commons team, part of the National Cancer
+        Institute's Cancer Research Data Commons. Every whole slide image in IDC, and the
+        annotations, segmentations and maps computed from it, opens in Slim straight from the IDC
+        Portal.
+      </p>
+      <div class="flex flex-wrap gap-3">
+        <a
+          href={site.links.idcCrdc}
+          target="_blank"
+          rel="noopener"
+          class={buttonVariants({ variant: 'outline' })}
+        >
+          About IDC
+          <ArrowUpRight className="size-4" aria-hidden="true" />
+        </a>
+        <a
+          href={site.links.idcPortal}
+          target="_blank"
+          rel="noopener"
+          class={buttonVariants({ variant: 'ghost' })}
+        >
+          Browse slides in the IDC Portal
+          <ArrowUpRight className="size-4" aria-hidden="true" />
+        </a>
+      </div>
+    </div>
+    <div class="flex flex-col gap-4">
+      <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {
+          facts.map((fact) => (
+            <div class="card flex flex-col-reverse justify-end gap-1.5 p-5">
+              <dt class="text-13 text-ink-muted">{fact.label}</dt>
+              <dd class="font-mono text-2xl font-medium text-ink">{fact.value}</dd>
+            </div>
+          ))
+        }
+      </dl>
+      <p class="text-12 leading-relaxed text-ink-muted">
+        The Imaging Data Commons has been funded in whole or in part with Federal funds from the
+        National Cancer Institute, National Institutes of Health, under task order no. HHSN26110071
+        under contract no. HHSN261201500003l.
+      </p>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,42 @@
+---
+import { ArrowRight } from 'lucide-react'
+import type { CollectionEntry } from 'astro:content'
+
+interface Props {
+  entry: CollectionEntry<'showcase'>
+  headingLevel?: 'h2' | 'h3'
+}
+
+const { entry, headingLevel: Heading = 'h3' } = Astro.props
+const { title, organization, summary, tags, stats } = entry.data
+---
+
+<a
+  href={`/showcase/${entry.id}/`}
+  class="card group flex flex-col gap-4 p-6 transition-colors hover:border-line-hover hover:bg-subtle"
+>
+  <div>
+    <p class="eyebrow">{organization}</p>
+    <Heading class="mt-2 text-lg">{title}</Heading>
+  </div>
+  <p class="text-sm text-ink-secondary">{summary}</p>
+  {
+    stats.length > 0 && (
+      <dl class="grid grid-cols-3 gap-3 border-t border-line-soft pt-4">
+        {stats.map((stat) => (
+          <div class="flex flex-col-reverse">
+            <dt class="text-12 leading-snug text-ink-muted">{stat.label}</dt>
+            <dd class="font-mono text-base font-medium text-ink">{stat.value}</dd>
+          </div>
+        ))}
+      </dl>
+    )
+  }
+  <div class="mt-auto flex flex-wrap items-center gap-1.5 pt-2">
+    {tags.map((tag) => <span class="chip">{tag}</span>)}
+    <span class="ml-auto inline-flex items-center gap-1 text-13 font-medium text-primary">
+      Read more
+      <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+    </span>
+  </div>
+</a>

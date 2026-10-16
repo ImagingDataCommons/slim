@@ -1,0 +1,38 @@
+---
+import { parse } from 'yaml'
+import cffSource from '../../../CITATION.cff?raw'
+import { type Cff, formatCitation } from '../lib/citation'
+import CopyButton from './CopyButton.tsx'
+import Tabs from './Tabs.astro'
+
+const citation = formatCitation(parse(cffSource) as Cff)
+---
+
+<div class="card flex flex-col gap-5 p-6">
+  <div>
+    <p class="text-sm font-medium text-ink">{citation.title}</p>
+    <p class="mt-1 text-13 text-ink-secondary">{citation.authors}</p>
+    <p class="mt-1 text-13 text-ink-muted">
+      <em>{citation.journal}</em>
+      {citation.year} ·
+      <a href={citation.url} class="font-mono text-primary hover:underline">doi:{citation.doi}</a>
+    </p>
+  </div>
+  <Tabs label="Citation format" tabs={[{ id: 'bibtex', label: 'BibTeX' }, { id: 'apa', label: 'APA' }]}>
+    <div slot="bibtex" class="relative">
+      <pre
+        class="overflow-x-auto rounded-card border border-line bg-subtle p-4 pr-24 text-12 leading-relaxed text-ink-body"><code>{citation.bibtex}</code></pre>
+      <div class="absolute right-3 top-3">
+        <CopyButton client:visible text={citation.bibtex} label="Copy BibTeX" />
+      </div>
+    </div>
+    <div slot="apa" class="relative">
+      <p class="rounded-card border border-line bg-subtle p-4 pr-24 text-13 leading-relaxed text-ink-body">
+        {citation.apa}
+      </p>
+      <div class="absolute right-3 top-3">
+        <CopyButton client:visible text={citation.apa} label="Copy APA" />
+      </div>
+    </div>
+  </Tabs>
+</div>
