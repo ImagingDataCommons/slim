@@ -1,6 +1,6 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
+import { startTransition, useEffect, useMemo, useState } from 'react'
 
 import type { SegmentStyle } from '../../../types/layerStyles'
 import { logger } from '../../../utils/logger'
@@ -17,7 +17,9 @@ import {
   recommendedBinarySegmentColors,
   segmentPanelStyles,
 } from '../utils/segmentStyles'
-import { withItem, withItems, withoutItem } from '../utils/uidSets'
+import { showMatchingSeriesItems } from '../utils/showSeriesItems'
+import { applyUidVisibility, mirrorDmvVisibility } from '../utils/uidVisibility'
+import { useInterpolationToggle } from './useInterpolationToggle'
 import type { ViewerAccess } from './useViewerSession'
 
 export interface SegmentationsApi {
@@ -79,8 +81,11 @@ export function useSegmentations(
   const [customizedColors, setCustomizedColors] = useState<
     Record<string, number[]>
   >({})
-  const [isInterpolationEnabled, setIsInterpolationEnabled] = useState(false)
-  const isInterpolationEnabledRef = useRef(false)
+  const { isInterpolationEnabled, resetInterpolation, onInterpolationChange } =
+    useInterpolationToggle(
+      () => sessionRef.current?.volumeViewer.toggleSegmentationInterpolation(),
+      false,
+    )
 
   const { generation, segments, segmentMetadata, segmentStyles } = snapshot
   /** Segment Sequence lookups are only redone when segments are added */
@@ -115,53 +120,24 @@ export function useSegmentations(
     reset: () => {
       setVisibleUIDs(new Set())
       setSelectedSeriesUID(undefined)
-      isInterpolationEnabledRef.current = false
-      setIsInterpolationEnabled(false)
+      resetInterpolation()
     },
     showSeries: (session, seriesInstanceUID) => {
-      const allSegments = session.volumeViewer.getAllSegments()
-      const matching = allSegments.filter(
-        (segment) => segment.seriesInstanceUID === seriesInstanceUID,
-      )
-      logger.debug(
-        'auto-load Segmentation: found ' +
-          `${matching.length} matching segment(s) ` +
-          `out of ${allSegments.length} total ` +
-          `for series "${seriesInstanceUID}"`,
-      )
       /**
        * One failing segment must not keep the others hidden. Background
-       * segments stay listed but are not shown.
+       * and absent segments stay listed but are not shown.
        */
-      const shown: string[] = []
-      for (const segment of matching) {
-        if (segment.isAbsent) {
-          logger.debug(
-            `auto-load Segmentation: skipping absent segment "${segment.uid}"`,
-          )
-          continue
-        }
-        if (segment.isBackground === true) {
-          logger.debug(
-            `skipping auto-show for background segment "${segment.uid}"`,
-          )
-          continue
-        }
-        try {
-          session.volumeViewer.showSegment(segment.uid)
-          shown.push(segment.uid)
-        } catch (error) {
-          logger.error(`failed to auto-show segment "${segment.uid}":`, error)
-        }
-      }
-      logger.debug(
-        'auto-load Segmentation: showing ' +
-          `${shown.length}/${matching.length} segment(s)`,
-      )
-      if (shown.length > 0) {
-        setVisibleUIDs((current) => withItems(current, shown))
-      }
-      logger.debug('Loading Segmentation')
+      showMatchingSeriesItems({
+        items: session.volumeViewer.getAllSegments(),
+        seriesInstanceUID,
+        label: 'Segmentation',
+        getSeriesInstanceUID: (segment) => segment.seriesInstanceUID,
+        getId: (segment) => segment.uid,
+        show: (uid) => session.volumeViewer.showSegment(uid),
+        setVisible: setVisibleUIDs,
+        shouldSkip: (segment) =>
+          segment.isAbsent || segment.isBackground === true,
+      })
     },
     onVisibilityChange: ({ segmentUID, isVisible }) => {
       const viewer = sessionRef.current?.volumeViewer
@@ -176,15 +152,19 @@ export function useSegmentations(
         return
       }
       logger.log(`change visibility of segment ${segmentUID}`)
-      if (isVisible) {
-        logger.log(`show segment ${segmentUID}`)
-        viewer.showSegment(segmentUID)
-        setVisibleUIDs((current) => withItem(current, segmentUID))
-      } else {
-        logger.log(`hide segment ${segmentUID}`)
-        viewer.hideSegment(segmentUID)
-        setVisibleUIDs((current) => withoutItem(current, segmentUID))
-      }
+      applyUidVisibility({
+        uid: segmentUID,
+        isVisible,
+        show: (uid) => {
+          logger.log(`show segment ${uid}`)
+          viewer.showSegment(uid)
+        },
+        hide: (uid) => {
+          logger.log(`hide segment ${uid}`)
+          viewer.hideSegment(uid)
+        },
+        setVisibleUIDs,
+      })
     },
     onClick: (segmentUID) => {
       sessionRef.current?.volumeViewer.zoomToSegment(segmentUID)
@@ -244,10 +224,7 @@ export function useSegmentations(
       for (const uid of nextVisible) viewer.showSegment(uid)
     },
     onDisplaySettingsChange: ({ interpolationEnabled }) => {
-      if (interpolationEnabled === isInterpolationEnabledRef.current) return
-      isInterpolationEnabledRef.current = interpolationEnabled
-      setIsInterpolationEnabled(interpolationEnabled)
-      sessionRef.current?.volumeViewer.toggleSegmentationInterpolation()
+      onInterpolationChange(interpolationEnabled)
     },
     dmvHandlers: {
       dicommicroscopyviewer_segment_visibility_changed: (payload) => {
@@ -255,15 +232,11 @@ export function useSegmentations(
          * The in-viewport legend already changed the overlay; only mirror
          * it into the panel.
          */
-        if (payload?.segmentUID == null || payload.isVisible == null) return
-        const { segmentUID, isVisible } = payload
-        startTransition(() => {
-          setVisibleUIDs((current) =>
-            isVisible
-              ? withItem(current, segmentUID)
-              : withoutItem(current, segmentUID),
-          )
-        })
+        mirrorDmvVisibility(
+          setVisibleUIDs,
+          payload?.segmentUID,
+          payload?.isVisible,
+        )
       },
     },
   }

@@ -2,6 +2,7 @@ import type { JSX } from 'react'
 
 import { cn } from '../../lib/utils'
 import { Icon } from '../ui/icon'
+import { MonoChip } from '../ui/mono-chip'
 import type { TagTreeNode } from './dicomTagUtils'
 
 const TAG_GRID_COLUMNS = 'grid-cols-[150px_52px_minmax(0,1fr)_minmax(0,1.4fr)]'
@@ -56,13 +57,7 @@ export function TagRow({
           </span>
           {item.tag}
         </td>
-        <td>
-          {item.vr !== '' && (
-            <span className="rounded-sm bg-chip px-[5px] py-0.5 font-mono text-11 font-medium text-chip-foreground">
-              {item.vr}
-            </span>
-          )}
-        </td>
+        <td>{item.vr !== '' && <MonoChip size="sm">{item.vr}</MonoChip>}</td>
         <td className="truncate font-medium text-ink">{item.keyword}</td>
         <td className="break-all py-1.5 font-mono text-12 text-ink-body">
           {item.value}

@@ -3,6 +3,8 @@
  * for ID token verification (Web Crypto imports SPKI; software needs n/e or x/y).
  */
 
+import { bytesToBase64Url } from './base64Url'
+
 const readLength = (
   bytes: Uint8Array,
   offset: number,
@@ -92,12 +94,6 @@ export const derFromX5cCert = (certBase64: string): Uint8Array => {
   const binary = atob(certBase64.replace(/\s+/g, ''))
   return Uint8Array.from(binary, (char) => char.charCodeAt(0))
 }
-
-const bytesToBase64Url = (bytes: Uint8Array): string =>
-  btoa(String.fromCharCode(...bytes))
-    .replaceAll('+', '-')
-    .replaceAll('/', '_')
-    .replace(/[=]+$/, '')
 
 /** Strip leading zero bytes that DER INTEGER uses for sign extension */
 const unsignedInteger = (bytes: Uint8Array): Uint8Array => {

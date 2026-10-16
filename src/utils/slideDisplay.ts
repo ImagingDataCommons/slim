@@ -1,5 +1,7 @@
 /** Display helpers for slide cards and the viewer's active slide chip. */
 
+import { toFiniteNumber } from './numbers'
+
 /**
  * Geometry attributes read from VL Whole Slide Microscopy Image metadata.
  * Nested sequences are typed loosely because DMV's metadata types omit them.
@@ -32,13 +34,6 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
 function firstItem(sequence: unknown): Record<string, unknown> | undefined {
   if (!Array.isArray(sequence) || sequence.length === 0) return undefined
   return asRecord(sequence[0])
-}
-
-function toFiniteNumber(value: unknown): number | undefined {
-  if (typeof value !== 'number' && typeof value !== 'string') return undefined
-  if (typeof value === 'string' && value.trim() === '') return undefined
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : undefined
 }
 
 /** (row, column) pixel spacing in mm from the shared functional groups. */

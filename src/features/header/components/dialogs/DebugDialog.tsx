@@ -10,6 +10,7 @@ import {
 import { Icon } from '../../../../components/ui/icon'
 import { cn } from '../../../../lib/utils'
 import { withOccurrenceKeys } from '../../../../utils/occurrenceKeys'
+import { toggleSetValue } from '../../../../utils/set'
 import type { ErrorNotification } from '../../hooks/useNotifications'
 import {
   buildDebugMessages,
@@ -129,12 +130,7 @@ export function DebugDialog({
   )
 
   const toggleCategory = (key: DebugCategoryKey): void => {
-    setOpenCategories((previous) => {
-      const next = new Set(previous)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
+    setOpenCategories((previous) => toggleSetValue(previous, key))
   }
 
   return (

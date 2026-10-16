@@ -1,3 +1,5 @@
+import { toFiniteNumber } from './numbers'
+
 interface RealWorldValueMappingLike {
   RealWorldValueFirstValueMapped?: unknown
   RealWorldValueLastValueMapped?: unknown
@@ -20,15 +22,6 @@ export interface ParametricMapDatasetLike {
 export interface ValueRange {
   first: number
   last: number
-}
-
-function toFiniteNumber(value: unknown): number | undefined {
-  if (typeof value === 'number' && Number.isFinite(value)) return value
-  if (typeof value === 'string' && value.trim() !== '') {
-    const parsed = Number(value)
-    if (Number.isFinite(parsed)) return parsed
-  }
-  return undefined
 }
 
 /**

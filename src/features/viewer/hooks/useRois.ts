@@ -335,9 +335,11 @@ export function useRois({
           'scoord3d' in payload
         ) {
           select(session, {
-            selectedRoiUIDs: isShiftDown()
-              ? new Set([...selectedRoiUIDs, payload.uid])
-              : new Set([payload.uid]),
+            selectedRoiUIDs: nextSelectedRoiUIDs(
+              selectedRoiUIDs,
+              payload.uid,
+              isShiftDown(),
+            ),
             selectedRoi: payload,
           })
         } else {

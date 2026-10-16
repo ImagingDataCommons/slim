@@ -2,6 +2,7 @@ import type * as React from 'react'
 import { useId, useState } from 'react'
 
 import { Icon } from '../../../components/ui/icon'
+import { MonoChip } from '../../../components/ui/mono-chip'
 import {
   Popover,
   PopoverContent,
@@ -192,9 +193,7 @@ export function ContainsPicker({
                       )}
                     >
                       <span className="flex-1 truncate">{entry.label}</span>
-                      <span className="rounded-sm bg-chip px-1.5 py-[3px] font-mono text-11 font-semibold leading-none text-chip-foreground">
-                        {entry.modality}
-                      </span>
+                      <MonoChip>{entry.modality}</MonoChip>
                       <Icon
                         name="check"
                         size={15}

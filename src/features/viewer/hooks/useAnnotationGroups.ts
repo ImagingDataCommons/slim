@@ -18,7 +18,7 @@ import {
   changedSettingKeys,
   shouldApplyClusteringSettings,
 } from '../utils/displaySettings'
-import { withItems } from '../utils/uidSets'
+import { showMatchingSeriesItems } from '../utils/showSeriesItems'
 import { applyVisibilityChanges } from '../utils/visibilityChanges'
 import type { ViewerAccess } from './useViewerSession'
 
@@ -120,40 +120,19 @@ export function useAnnotationGroups(
       setSelectedSeriesUID(undefined)
     },
     showSeries: (session, seriesInstanceUID) => {
-      const allAnnotationGroups = session.volumeViewer.getAllAnnotationGroups()
-      const matching = allAnnotationGroups.filter(
-        (group) => group.seriesInstanceUID === seriesInstanceUID,
-      )
-      logger.debug(
-        'auto-load Microscopy Bulk Simple Annotation: found ' +
-          `${matching.length} matching annotation group(s) ` +
-          `out of ${allAnnotationGroups.length} total ` +
-          `for series "${seriesInstanceUID}"`,
-      )
       /**
        * Unlike a manual toggle, no validation dialog is shown, and one
        * failing group must not keep the others hidden.
        */
-      const shown: string[] = []
-      for (const group of matching) {
-        try {
-          session.volumeViewer.showAnnotationGroup(group.uid)
-          shown.push(group.uid)
-        } catch (error) {
-          logger.error(
-            `failed to auto-show annotation group "${group.uid}":`,
-            error,
-          )
-        }
-      }
-      logger.debug(
-        'auto-load Microscopy Bulk Simple Annotation: showing ' +
-          `${shown.length}/${matching.length} annotation group(s)`,
-      )
-      if (shown.length > 0) {
-        setVisibleUIDs((current) => withItems(current, shown))
-      }
-      logger.debug('Loading Microscopy Bulk Simple Annotation')
+      showMatchingSeriesItems({
+        items: session.volumeViewer.getAllAnnotationGroups(),
+        seriesInstanceUID,
+        label: 'Microscopy Bulk Simple Annotation',
+        getSeriesInstanceUID: (group) => group.seriesInstanceUID,
+        getId: (group) => group.uid,
+        show: (uid) => session.volumeViewer.showAnnotationGroup(uid),
+        setVisible: setVisibleUIDs,
+      })
     },
     onVisibilityChange: ({ annotationGroupUID, isVisible }) => {
       onVisibilityChanges([{ uid: annotationGroupUID, isVisible }])

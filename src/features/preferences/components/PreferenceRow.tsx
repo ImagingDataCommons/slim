@@ -1,5 +1,9 @@
 import type * as React from 'react'
-import { useId } from 'react'
+
+import {
+  type LabeledControlProps,
+  LabeledControlRow,
+} from '../../../components/slim/LabeledControlRow'
 
 export function SectionLabel({
   children,
@@ -13,10 +17,7 @@ export function SectionLabel({
   )
 }
 
-export interface PreferenceControlProps {
-  'aria-labelledby': string
-  'aria-describedby'?: string
-}
+export type PreferenceControlProps = LabeledControlProps
 
 export interface PreferenceRowProps {
   label: string
@@ -31,25 +32,9 @@ export function PreferenceRow({
   description,
   children,
 }: PreferenceRowProps): React.ReactElement {
-  const id = useId()
-  const labelId = `${id}-label`
-  const descriptionId = description !== undefined ? `${id}-desc` : undefined
   return (
-    <div className="flex items-center gap-4 border-b border-line-soft py-3">
-      <div className="min-w-0 flex-1">
-        <div id={labelId} className="font-medium text-ink">
-          {label}
-        </div>
-        {description !== undefined && (
-          <div id={descriptionId} className="mt-0.5 text-12 text-ink-muted">
-            {description}
-          </div>
-        )}
-      </div>
-      {children({
-        'aria-labelledby': labelId,
-        'aria-describedby': descriptionId,
-      })}
-    </div>
+    <LabeledControlRow label={label} description={description}>
+      {children}
+    </LabeledControlRow>
   )
 }

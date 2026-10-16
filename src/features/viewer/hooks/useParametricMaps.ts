@@ -1,9 +1,11 @@
-import { startTransition, useRef, useState } from 'react'
+import { useState } from 'react'
 
 import { logger } from '../../../utils/logger'
 import type { DmvEventHandlers } from '../services/dmvEvents'
 import type { ViewerSession } from '../services/viewerSession'
-import { withItem, withItems, withoutItem } from '../utils/uidSets'
+import { showMatchingSeriesItems } from '../utils/showSeriesItems'
+import { applyUidVisibility, mirrorDmvVisibility } from '../utils/uidVisibility'
+import { useInterpolationToggle } from './useInterpolationToggle'
 import type { ViewerAccess } from './useViewerSession'
 
 export interface ParametricMapsApi {
@@ -36,62 +38,46 @@ export function useParametricMaps({
   refreshSnapshot,
 }: ViewerAccess): ParametricMapsApi {
   const [visibleUIDs, setVisibleUIDs] = useState<Set<string>>(() => new Set())
-  const [isInterpolationEnabled, setIsInterpolationEnabled] = useState(true)
-  const isInterpolationEnabledRef = useRef(true)
+  const { isInterpolationEnabled, resetInterpolation, onInterpolationChange } =
+    useInterpolationToggle(() =>
+      sessionRef.current?.volumeViewer.toggleParametricMapInterpolation(),
+    )
 
   return {
     visibleUIDs,
     isInterpolationEnabled,
     reset: () => {
       setVisibleUIDs(new Set())
-      isInterpolationEnabledRef.current = true
-      setIsInterpolationEnabled(true)
+      resetInterpolation()
     },
     showSeries: (session, seriesInstanceUID) => {
-      const allMappings = session.volumeViewer.getAllParameterMappings()
-      const matching = allMappings.filter(
-        (mapping) => mapping.seriesInstanceUID === seriesInstanceUID,
-      )
-      logger.debug(
-        'auto-load Parametric Map: found ' +
-          `${matching.length} matching mapping(s) ` +
-          `out of ${allMappings.length} total ` +
-          `for series "${seriesInstanceUID}"`,
-      )
-      const shown: string[] = []
-      for (const mapping of matching) {
-        try {
-          session.volumeViewer.showParameterMapping(mapping.uid)
-          shown.push(mapping.uid)
-        } catch (error) {
-          logger.error(
-            `failed to auto-show parameter mapping "${mapping.uid}":`,
-            error,
-          )
-        }
-      }
-      logger.debug(
-        'auto-load Parametric Map: showing ' +
-          `${shown.length}/${matching.length} mapping(s)`,
-      )
-      if (shown.length > 0) {
-        setVisibleUIDs((current) => withItems(current, shown))
-      }
-      logger.debug('Loading Parametric Map')
+      showMatchingSeriesItems({
+        items: session.volumeViewer.getAllParameterMappings(),
+        seriesInstanceUID,
+        label: 'Parametric Map',
+        getSeriesInstanceUID: (mapping) => mapping.seriesInstanceUID,
+        getId: (mapping) => mapping.uid,
+        show: (uid) => session.volumeViewer.showParameterMapping(uid),
+        setVisible: setVisibleUIDs,
+      })
     },
     onVisibilityChange: ({ mappingUID, isVisible }) => {
       const viewer = sessionRef.current?.volumeViewer
       if (viewer === undefined) return
       logger.log(`change visibility of mapping ${mappingUID}`)
-      if (isVisible) {
-        logger.log(`show mapping ${mappingUID}`)
-        viewer.showParameterMapping(mappingUID)
-        setVisibleUIDs((current) => withItem(current, mappingUID))
-      } else {
-        logger.log(`hide mapping ${mappingUID}`)
-        viewer.hideParameterMapping(mappingUID)
-        setVisibleUIDs((current) => withoutItem(current, mappingUID))
-      }
+      applyUidVisibility({
+        uid: mappingUID,
+        isVisible,
+        show: (uid) => {
+          logger.log(`show mapping ${uid}`)
+          viewer.showParameterMapping(uid)
+        },
+        hide: (uid) => {
+          logger.log(`hide mapping ${uid}`)
+          viewer.hideParameterMapping(uid)
+        },
+        setVisibleUIDs,
+      })
     },
     onStyleChange: ({ mappingUID, styleOptions }) => {
       const viewer = sessionRef.current?.volumeViewer
@@ -101,10 +87,7 @@ export function useParametricMaps({
       refreshSnapshot()
     },
     onDisplaySettingsChange: ({ interpolationEnabled }) => {
-      if (interpolationEnabled === isInterpolationEnabledRef.current) return
-      isInterpolationEnabledRef.current = interpolationEnabled
-      setIsInterpolationEnabled(interpolationEnabled)
-      sessionRef.current?.volumeViewer.toggleParametricMapInterpolation()
+      onInterpolationChange(interpolationEnabled)
     },
     dmvHandlers: {
       dicommicroscopyviewer_parameter_mapping_visibility_changed: (payload) => {
@@ -112,15 +95,11 @@ export function useParametricMaps({
          * The in-viewport legend already changed the overlay; only mirror
          * it into the panel.
          */
-        if (payload?.mappingUID == null || payload.isVisible == null) return
-        const { mappingUID, isVisible } = payload
-        startTransition(() => {
-          setVisibleUIDs((current) =>
-            isVisible
-              ? withItem(current, mappingUID)
-              : withoutItem(current, mappingUID),
-          )
-        })
+        mirrorDmvVisibility(
+          setVisibleUIDs,
+          payload?.mappingUID,
+          payload?.isVisible,
+        )
       },
     },
   }

@@ -11,6 +11,7 @@ import {
 } from 'oidc-client-ts'
 import type { Mock } from 'vitest'
 
+import { bytesToBase64Url as encodeBytesBase64Url } from '../base64Url'
 import type { OidcUserManager } from '../OidcManager'
 
 export const ISSUER = 'https://idp.example.com'
@@ -159,7 +160,7 @@ export const encodeBase64Url = (value: string): string =>
   binaryToBase64Url(toUtf8Binary(value))
 
 const bytesToBase64Url = (bytes: ArrayBuffer): string =>
-  binaryToBase64Url(String.fromCharCode(...new Uint8Array(bytes)))
+  encodeBytesBase64Url(new Uint8Array(bytes))
 
 const toBytes = (binary: string): Uint8Array<ArrayBuffer> =>
   Uint8Array.from(binary, (char) => char.charCodeAt(0))

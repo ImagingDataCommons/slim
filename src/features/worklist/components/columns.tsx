@@ -1,8 +1,10 @@
 import type { ColumnDef, RowData } from '@tanstack/react-table'
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
+import type * as React from 'react'
 import { Link } from 'react-router'
 
+import { MonoChip } from '../../../components/ui/mono-chip'
 import {
   formatDisplayDate,
   formatDisplayTime,
@@ -16,6 +18,12 @@ import {
   normalizeModalities,
   orDash,
 } from '../utils/studyFields'
+
+function MonoCell({ value }: { value: string }): React.ReactElement {
+  return (
+    <span className="block truncate font-mono text-12.5">{orDash(value)}</span>
+  )
+}
 
 declare module '@tanstack/react-table' {
   interface ColumnMeta<TData extends RowData, TValue> {
@@ -47,11 +55,7 @@ export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
     id: 'PatientID',
     header: 'Patient ID',
     accessorFn: (study) => study.PatientID ?? '',
-    cell: ({ getValue }) => (
-      <span className="block truncate font-mono text-12.5">
-        {orDash(getValue<string>())}
-      </span>
-    ),
+    cell: ({ getValue }) => <MonoCell value={getValue<string>()} />,
   },
   {
     id: 'PatientBirthDate',
@@ -76,12 +80,7 @@ export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
       return (
         <span className="flex flex-wrap gap-1">
           {modalities.map((modality) => (
-            <span
-              key={modality}
-              className="rounded-sm bg-chip px-1.5 py-[3px] font-mono text-11 font-semibold leading-none text-chip-foreground"
-            >
-              {modality}
-            </span>
+            <MonoChip key={modality}>{modality}</MonoChip>
           ))}
         </span>
       )
@@ -107,21 +106,13 @@ export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
     id: 'AccessionNumber',
     header: 'Accession #',
     accessorFn: (study) => study.AccessionNumber ?? '',
-    cell: ({ getValue }) => (
-      <span className="block truncate font-mono text-12.5">
-        {orDash(getValue<string>())}
-      </span>
-    ),
+    cell: ({ getValue }) => <MonoCell value={getValue<string>()} />,
   },
   {
     id: 'StudyID',
     header: 'Study ID',
     accessorFn: (study) => study.StudyID ?? '',
-    cell: ({ getValue }) => (
-      <span className="block truncate font-mono text-12.5">
-        {orDash(getValue<string>())}
-      </span>
-    ),
+    cell: ({ getValue }) => <MonoCell value={getValue<string>()} />,
   },
   {
     id: 'ReferringPhysicianName',

@@ -1,6 +1,6 @@
 import type * as React from 'react'
-import { useState } from 'react'
 
+import { useDraftInput } from '../../hooks/useDraftInput'
 import { cn } from '../../lib/utils'
 import { parseLimitInput } from '../../utils/limits'
 import { Input } from '../ui/input'
@@ -33,12 +33,14 @@ export function LimitInput({
   'aria-label': ariaLabel,
   className,
 }: LimitInputProps): React.ReactElement {
-  const [draft, setDraft] = useState<string | null>(null)
+  const { displayValue, isDrafting, onChange, clearDraft } = useDraftInput(
+    String(value),
+  )
 
   const commit = (): void => {
-    if (draft === null) return
-    const parsed = parseLimitInput(draft, integer)
-    setDraft(null)
+    if (!isDrafting) return
+    const parsed = parseLimitInput(displayValue, integer)
+    clearDraft()
     if (parsed !== undefined) onCommit(parsed)
   }
 
@@ -52,12 +54,12 @@ export function LimitInput({
       disabled={disabled}
       aria-label={ariaLabel}
       className={cn('h-8 w-20 font-mono text-12', className)}
-      value={draft ?? String(value)}
-      onChange={(event) => setDraft(event.target.value)}
+      value={displayValue}
+      onChange={(event) => onChange(event.target.value)}
       onBlur={commit}
       onKeyDown={(event) => {
         if (event.key === 'Enter') commit()
-        if (event.key === 'Escape') setDraft(null)
+        if (event.key === 'Escape') clearDraft()
       }}
     />
   )

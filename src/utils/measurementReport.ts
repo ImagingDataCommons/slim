@@ -9,6 +9,7 @@ import NotificationMiddleware, {
 } from '../services/NotificationMiddleware'
 import { CustomError, errorTypes } from './CustomError'
 import type { KeyValueItem } from './keyValue'
+import { ALGORITHM_NAME_CODE, FINDING_TYPE_CODE } from './roiDescription'
 import { findContentItemsByName, hasValueType } from './sr'
 
 type ContentItem = dcmjs.sr.valueTypes.ContentItem
@@ -58,8 +59,8 @@ const CONCEPTS = {
   imagingMeasurements: concept('126010', 'Imaging Measurements'),
   measurementGroup: concept('125007', 'Measurement Group'),
   trackingUID: concept('112040', 'Tracking Unique Identifier'),
-  finding: concept('121071', 'Finding'),
-  algorithmName: concept('111001', 'Algorithm Name'),
+  finding: concept(FINDING_TYPE_CODE, 'Finding'),
+  algorithmName: concept(ALGORITHM_NAME_CODE, 'Algorithm Name'),
   algorithmVersion: concept('111003', 'Algorithm Version'),
   imageRegion: concept('111030', 'Image Region'),
   specimenUID: concept('121039', 'Specimen UID'),

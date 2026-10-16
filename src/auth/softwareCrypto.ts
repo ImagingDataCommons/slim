@@ -1,7 +1,10 @@
 import { p256, p384, p521 } from '@noble/curves/nist.js'
 import { sha256, sha384, sha512 } from '@noble/hashes/sha2.js'
 
+import { base64UrlToBytes, bytesToBase64Url } from './base64Url'
 import type { HashName, IdTokenCrypto, SignatureScheme } from './idTokenCrypto'
+
+export { base64UrlToBytes, bytesToBase64Url } from './base64Url'
 
 /**
  * JavaScript stand-ins for the Web Crypto calls sign-in needs, for pages
@@ -36,21 +39,6 @@ const CURVES = {
   'P-384': { ecdsa: p384, size: 48 },
   'P-521': { ecdsa: p521, size: 66 },
 } as const
-
-export const base64UrlToBytes = (input: string): Uint8Array => {
-  const base64 = input.replace(/-/g, '+').replace(/_/g, '/')
-  const padded = base64.padEnd(
-    base64.length + ((4 - (base64.length % 4)) % 4),
-    '=',
-  )
-  return Uint8Array.from(atob(padded), (char) => char.charCodeAt(0))
-}
-
-export const bytesToBase64Url = (bytes: Uint8Array): string =>
-  btoa(String.fromCharCode(...bytes))
-    .replaceAll('+', '-')
-    .replaceAll('/', '_')
-    .replace(/[=]+$/, '')
 
 const bytesToBigInt = (bytes: Uint8Array): bigint =>
   bytes.reduce((value, byte) => (value << 8n) | BigInt(byte), 0n)

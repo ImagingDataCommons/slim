@@ -5,6 +5,7 @@ import { cn } from '../../lib/utils'
 import { Button } from '../ui/button'
 import { SlimDialogFooter } from '../ui/dialog'
 import { Icon } from '../ui/icon'
+import { MonoChip } from '../ui/mono-chip'
 import { SearchInput } from '../ui/search-input'
 import {
   Select,
@@ -77,9 +78,9 @@ const DicomTagBrowser = ({
             <SelectTrigger className="h-9" aria-labelledby={seriesLabelId}>
               <span className="flex min-w-0 items-center gap-2">
                 {selectedModality !== '' && (
-                  <span className="rounded-sm bg-chip px-[5px] py-0.5 font-mono text-11 font-semibold text-chip-foreground">
+                  <MonoChip size="sm" className="font-semibold">
                     {selectedModality}
-                  </span>
+                  </MonoChip>
                 )}
                 <span className="truncate">
                   <SelectValue

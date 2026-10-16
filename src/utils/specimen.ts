@@ -1,3 +1,5 @@
+import { type CodedConceptLike, isSameCodedConcept } from './dicom/codedConcept'
+
 interface CodeLike {
   CodeValue: string
   CodingSchemeDesignator: string
@@ -28,30 +30,42 @@ export interface SpecimenAttribute {
   value: string
 }
 
-interface CodeRef {
-  value: string
-  scheme: string
-}
-
 /** TID 8001 "Specimen Preparation" concept names */
 export const SPECIMEN_STEP_CODES = {
-  PROCESSING_TYPE: { value: '111701', scheme: 'DCM' },
-  PARENT_SPECIMEN_IDENTIFIER: { value: '111705', scheme: 'DCM' },
-  COLLECTION_METHOD: { value: '17636008', scheme: 'SCT' },
-  FIXATIVE: { value: '430864009', scheme: 'SCT' },
-  EMBEDDING_MEDIUM: { value: '430863003', scheme: 'SCT' },
-  STAIN: { value: '424361007', scheme: 'SCT' },
-} as const
+  PROCESSING_TYPE: {
+    CodeValue: '111701',
+    CodingSchemeDesignator: 'DCM',
+  },
+  PARENT_SPECIMEN_IDENTIFIER: {
+    CodeValue: '111705',
+    CodingSchemeDesignator: 'DCM',
+  },
+  COLLECTION_METHOD: {
+    CodeValue: '17636008',
+    CodingSchemeDesignator: 'SCT',
+  },
+  FIXATIVE: {
+    CodeValue: '430864009',
+    CodingSchemeDesignator: 'SCT',
+  },
+  EMBEDDING_MEDIUM: {
+    CodeValue: '430863003',
+    CodingSchemeDesignator: 'SCT',
+  },
+  STAIN: {
+    CodeValue: '424361007',
+    CodingSchemeDesignator: 'SCT',
+  },
+} as const satisfies Record<string, CodedConceptLike>
 
-function matchesCode(code: CodeLike | undefined, ref: CodeRef): boolean {
-  return (
-    code !== undefined &&
-    code.CodeValue === ref.value &&
-    code.CodingSchemeDesignator === ref.scheme
-  )
+function matchesCode(
+  code: CodeLike | undefined,
+  ref: CodedConceptLike,
+): boolean {
+  return code !== undefined && isSameCodedConcept(code, ref)
 }
 
-const CODE_STEP_LABELS: Array<{ code: CodeRef; name: string }> = [
+const CODE_STEP_LABELS: Array<{ code: CodedConceptLike; name: string }> = [
   { code: SPECIMEN_STEP_CODES.COLLECTION_METHOD, name: 'Collection' },
   { code: SPECIMEN_STEP_CODES.FIXATIVE, name: 'Fixation' },
   { code: SPECIMEN_STEP_CODES.EMBEDDING_MEDIUM, name: 'Embedding' },
