@@ -72,16 +72,21 @@ export const toJsonWebKey = (key: SigningKey): JsonWebKey | undefined => {
     return typeof value === 'string' ? value : undefined
   }
   const kty = read('kty')
-  const n = read('n')
-  const e = read('e')
+  const modulus = read('n')
+  const exponent = read('e')
   const crv = read('crv')
-  const x = read('x')
-  const y = read('y')
-  if (kty === 'RSA' && n !== undefined && e !== undefined) {
-    return { kty, n, e }
+  const xCoordinate = read('x')
+  const yCoordinate = read('y')
+  if (kty === 'RSA' && modulus !== undefined && exponent !== undefined) {
+    return { kty, n: modulus, e: exponent }
   }
-  if (kty === 'EC' && crv !== undefined && x !== undefined && y !== undefined) {
-    return { kty, crv, x, y }
+  if (
+    kty === 'EC' &&
+    crv !== undefined &&
+    xCoordinate !== undefined &&
+    yCoordinate !== undefined
+  ) {
+    return { kty, crv, x: xCoordinate, y: yCoordinate }
   }
   /** Keys published only as x5c: decode the leaf cert, else keep x5c for Web Crypto */
   const x5c = key.x5c
