@@ -23,10 +23,10 @@ async function disableBackdropFilters(context: BrowserContext): Promise<void> {
 }
 
 export const test = base.extend({
-  /** Playwright fixture callback — `use` is not a React Hook. */
-  context: async ({ context }, use /* skipcq: JS-0820 */) => {
+  /** Playwright fixture runner — second arg is not a React Hook. */
+  context: async ({ context }, provide) => {
     await disableBackdropFilters(context)
-    await use(context)
+    await provide(context)
   },
 })
 
