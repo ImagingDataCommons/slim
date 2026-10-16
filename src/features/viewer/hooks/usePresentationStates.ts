@@ -84,7 +84,12 @@ export function usePresentationStates({
 
   return {
     presentationStates,
-    selectedUID,
+    /** A `?state=` the study doesn't have shows as the default display */
+    selectedUID: presentationStates.some(
+      (instance) => instance.SOPInstanceUID === selectedUID,
+    )
+      ? selectedUID
+      : undefined,
     load: (session) => {
       setPresentationStates([])
       loadPresentationStates({

@@ -24,7 +24,7 @@ export interface AnnotationCategoryListProps {
   checkedAnnotationUids: Set<string>
 }
 
-/** Annotation types grouped by category, rendered as chips. */
+/** One row of chips per category: the category, then its annotation types. */
 function AnnotationCategoryList({
   annotations,
   onChange,
@@ -39,7 +39,7 @@ function AnnotationCategoryList({
   }
 
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="flex flex-col gap-2">
       {categories.map(([categoryKey, category]) => (
         <AnnotationCategoryItem
           key={categoryKey}

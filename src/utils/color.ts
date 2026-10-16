@@ -27,6 +27,11 @@ export function toRGB(
   return [toChannel(values[0]), toChannel(values[1]), toChannel(values[2])]
 }
 
+/** Only exact RGB triples can be edited in the color slider. */
+export function toEditableColor(color: readonly number[]): RGB | undefined {
+  return color.length === 3 ? toRGB(color) : undefined
+}
+
 /** `#rrggbb` for the first three channels, rounded and clamped to 0-255 */
 export function rgbToHex(rgb: readonly number[]): string {
   return `#${[rgb[0], rgb[1], rgb[2]]

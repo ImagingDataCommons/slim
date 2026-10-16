@@ -1,5 +1,9 @@
 import { KEYBOARD_SHORTCUTS } from '../../../../utils/keyboardShortcuts'
-import { ALT_SHORTCUTS, shortcutForKeyEvent } from '../keyboardShortcuts'
+import {
+  ALT_SHORTCUTS,
+  isShortcutEnabled,
+  shortcutForKeyEvent,
+} from '../keyboardShortcuts'
 
 const keyEvent = (
   overrides: Partial<Parameters<typeof shortcutForKeyEvent>[0]>,
@@ -63,5 +67,27 @@ describe('shortcutForKeyEvent', () => {
         keyEvent({ code: 'KeyG', altKey: true, target: null }),
       ),
     ).toBe('goTo')
+  })
+})
+
+describe('isShortcutEnabled', () => {
+  it('allows every shortcut while annotation tools are enabled', () => {
+    expect(isShortcutEnabled('draw', true)).toBe(true)
+    expect(isShortcutEnabled('save', true)).toBe(true)
+  })
+
+  it('keeps only Escape and Go to when annotation tools are disabled', () => {
+    expect(isShortcutEnabled('cancel', false)).toBe(true)
+    expect(isShortcutEnabled('goTo', false)).toBe(true)
+    for (const action of [
+      'draw',
+      'modify',
+      'translate',
+      'remove',
+      'toggleRoiVisibility',
+      'save',
+    ] as const) {
+      expect(isShortcutEnabled(action, false)).toBe(false)
+    }
   })
 })

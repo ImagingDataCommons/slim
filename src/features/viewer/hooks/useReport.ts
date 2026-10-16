@@ -7,6 +7,7 @@ import type { SlideViewerProps } from '../../../components/SlideViewer/types'
 import type DicomWebManager from '../../../DicomWebManager'
 import { StorageClasses } from '../../../data/uids'
 import NotificationMiddleware, {
+  ERROR_TOAST_OPTIONS,
   NotificationMiddlewareContext,
 } from '../../../services/NotificationMiddleware'
 import type { AppInfo } from '../../../utils/appInfo'
@@ -51,6 +52,24 @@ export function useReport({
     setReport(undefined)
   }
 
+  /** Encoding errors only reach the console and Debug log, so toast it too */
+  const notifySaveFailed = (error: unknown): void => {
+    logger.error(error)
+    NotificationMiddleware.onError(
+      NotificationMiddlewareContext.SLIM,
+      new CustomError(
+        errorTypes.ENCODINGANDDECODING,
+        'Annotations could not be saved',
+      ),
+    )
+    publishToast(
+      'Annotations could not be saved.',
+      'error',
+      undefined,
+      ERROR_TOAST_OPTIONS,
+    )
+  }
+
   return {
     report,
     onGenerate: () => {
@@ -58,13 +77,20 @@ export function useReport({
       if (viewer === undefined) return
       logger.log('save ROIs')
       const opticalPaths = viewer.getAllOpticalPaths()
-      const generated = generateReport({
-        rois: viewer.getAllROIs(),
-        metadata: viewer.getOpticalPathMetadata(opticalPaths[0].identifier),
-        user,
-        app,
-        visibleRoiUIDs,
-      })
+      let generated: ReturnType<typeof generateReport>
+      try {
+        generated = generateReport({
+          rois: viewer.getAllROIs(),
+          metadata: viewer.getOpticalPathMetadata(opticalPaths[0].identifier),
+          user,
+          app,
+          visibleRoiUIDs,
+        })
+      } catch (error: unknown) {
+        /** dcmjs throws on SR content it can't encode; without this the click does nothing */
+        notifySaveFailed(error)
+        return
+      }
       setReport(generated.generatedReport)
       dispatch({
         type: 'setReportModalVisible',
@@ -82,16 +108,7 @@ export function useReport({
             }),
           )
           .then(() => publishToast('Annotations were saved.', 'success'))
-          .catch((error: unknown) => {
-            logger.error(error)
-            NotificationMiddleware.onError(
-              NotificationMiddlewareContext.SLIM,
-              new CustomError(
-                errorTypes.ENCODINGANDDECODING,
-                'Annotations could not be saved',
-              ),
-            )
-          })
+          .catch(notifySaveFailed)
       }
       close()
     },

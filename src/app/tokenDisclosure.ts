@@ -1,4 +1,5 @@
 import type { AuthManager } from '../auth'
+import type { ConfirmResult } from '../components/ConfirmDialog'
 import type { AuthorizationPolicy } from '../DicomWebManager'
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
@@ -54,7 +55,10 @@ export interface TokenDisclosureOptions {
   /** Issuer of the tokens `auth` hands out */
   oidcAuthority: string | undefined
   /** Ask the user whether the token may be sent to `origin` */
-  confirm: (origin: string, authority: string | undefined) => Promise<boolean>
+  confirm: (
+    origin: string,
+    authority: string | undefined,
+  ) => Promise<ConfirmResult>
   /** Receives every token that was cleared for disclosure */
   onAuthorization: (authorization: string) => void
 }
@@ -131,7 +135,12 @@ export function createTokenDisclosurePolicy({
         return undefined
       }
       if (step === 'ask') {
-        const approved = await confirm(origin, oidcAuthority)
+        const choice = await confirm(origin, oidcAuthority)
+        /** A newer dialog replaced this one; leave the remembered decision alone */
+        if (choice === 'superseded') {
+          return undefined
+        }
+        const approved = choice === 'confirm'
         writeAuthorizationDecision(origin, approved ? 'granted' : 'denied')
         console.info(
           `${approved ? 'approved' : 'declined'} disclosure of access token ` +

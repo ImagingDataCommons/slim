@@ -1,4 +1,7 @@
-import { showConfirmDialog } from '../components/ConfirmDialog'
+import {
+  type ConfirmResult,
+  showConfirmDialog,
+} from '../components/ConfirmDialog'
 
 /**
  * Ask the user before disclosing their access token to a server that is not
@@ -10,12 +13,12 @@ import { showConfirmDialog } from '../components/ConfirmDialog'
  *
  * @param origin - Origin of the server that asked for credentials
  * @param authority - Issuer of the token, from the OIDC configuration
- * @returns Whether the user agreed to disclose the token
+ * @returns User choice, or `superseded` when another prompt replaced this one
  */
 export async function confirmAuthorizationDisclosure(
   origin: string,
   authority?: string,
-): Promise<boolean> {
+): Promise<ConfirmResult> {
   return await showConfirmDialog({
     title: 'Send your access token to this server?',
     description: (

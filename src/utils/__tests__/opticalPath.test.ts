@@ -5,11 +5,21 @@ import {
 } from '../opticalPath'
 
 describe('getOpticalPathName', () => {
-  it('uses the description when present', () => {
+  it('uses the description when present and keeps the identifier', () => {
     expect(
       getOpticalPathName({
         identifier: '1',
         description: ' DAPI ',
+        isMonochromatic: true,
+      }),
+    ).toBe('DAPI (1)')
+  })
+
+  it('does not repeat the identifier when it matches the description', () => {
+    expect(
+      getOpticalPathName({
+        identifier: 'DAPI',
+        description: 'DAPI',
         isMonochromatic: true,
       }),
     ).toBe('DAPI')

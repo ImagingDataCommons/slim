@@ -13,6 +13,7 @@ export interface LimitInputProps {
   min?: number
   max?: number
   step?: number
+  disabled?: boolean
   'aria-label': string
   className?: string
 }
@@ -28,6 +29,7 @@ export function LimitInput({
   min,
   max,
   step,
+  disabled,
   'aria-label': ariaLabel,
   className,
 }: LimitInputProps): React.ReactElement {
@@ -47,6 +49,7 @@ export function LimitInput({
       min={min}
       max={max}
       step={step ?? (integer ? 1 : 'any')}
+      disabled={disabled}
       aria-label={ariaLabel}
       className={cn('h-8 w-20 font-mono text-12', className)}
       value={draft ?? String(value)}

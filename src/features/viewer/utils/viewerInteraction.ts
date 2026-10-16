@@ -27,6 +27,8 @@ export const INITIAL_VIEWER_INTERACTION: ViewerInteraction = {
 }
 
 export type ViewerInteractionAction =
+  /** New viewers start in select mode with ROIs shown, whatever the toolbar said */
+  | { type: 'newViewer' }
   | { type: 'cancel' }
   | { type: 'startDrawing' }
   | { type: 'stopDrawing' }
@@ -61,6 +63,8 @@ export function viewerInteractionReducer(
   action: ViewerInteractionAction,
 ): ViewerInteraction {
   switch (action.type) {
+    case 'newViewer':
+      return INITIAL_VIEWER_INTERACTION
     case 'cancel':
       return {
         ...state,

@@ -9,7 +9,12 @@
     "includes": [
       "src/**/*.{ts,tsx,js,jsx}",
       "!src/__mocks__",
-      "website/**/*.{ts,tsx,mjs}"
+      "website/**/*.{ts,tsx,mjs}",
+      "e2e/**/*.ts",
+      "!e2e/.cache",
+      "playwright.config.ts",
+      "vite.config.ts",
+      "scripts/**/*.mjs"
     ]
   },
   "formatter": {

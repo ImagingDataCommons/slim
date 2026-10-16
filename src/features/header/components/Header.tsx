@@ -193,10 +193,11 @@ export function Header({
         </nav>
 
         <div className="flex min-w-0 flex-1 justify-center">
-          {currentServerUrl !== undefined && currentServerUrl !== '' && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {showServerSelectionButton ? (
+          {showServerSelectionButton &&
+            currentServerUrl !== undefined &&
+            currentServerUrl !== '' && (
+              <Tooltip>
+                <TooltipTrigger asChild>
                   <button
                     type="button"
                     aria-label={`Server ${currentServerUrl}. Change server`}
@@ -208,25 +209,20 @@ export function Header({
                   >
                     {serverPillContent}
                   </button>
-                ) : (
-                  <div className={serverPillClassName}>{serverPillContent}</div>
-                )}
-              </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                className="max-w-[min(640px,90vw)] px-2.5 py-1.5"
-              >
-                <div className="break-all font-mono text-11.5 leading-[1.45]">
-                  {currentServerUrl}
-                </div>
-                {showServerSelectionButton && (
+                </TooltipTrigger>
+                <TooltipContent
+                  side="bottom"
+                  className="max-w-[min(640px,90vw)] px-2.5 py-1.5"
+                >
+                  <div className="break-all font-mono text-11.5 leading-[1.45]">
+                    {currentServerUrl}
+                  </div>
                   <div className="mt-1 text-11 font-normal opacity-70">
                     Click to change or copy the server
                   </div>
-                )}
-              </TooltipContent>
-            </Tooltip>
-          )}
+                </TooltipContent>
+              </Tooltip>
+            )}
         </div>
 
         <div className="flex flex-none items-center gap-0.5">

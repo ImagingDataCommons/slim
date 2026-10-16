@@ -85,7 +85,7 @@ const setup = (config: AppConfig = createConfig({ oidc: OIDC })): Setup => {
     config,
     createAuth,
     reload,
-    confirmDisclosure: () => Promise.resolve(false),
+    confirmDisclosure: () => Promise.resolve('cancel' as const),
   })
   return { session, auth, createAuth, reload }
 }

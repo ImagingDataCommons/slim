@@ -491,7 +491,7 @@ The configuration can be specified using the `REACT_APP_CONFIG` environment vari
 REACT_APP_CONFIG=local pnpm run start
 ```
 
-Copy [`.env.example`](.env.example) to `.env` (gitignored) and adjust as needed. Without `.env`, start/build defaults to `REACT_APP_CONFIG=local` and `SLIM_LOCAL_DICOMWEB_URL` defaults to the docker-compose DICOMweb URL. Committed `demo` / `preview` configs require `SLIM_DEMO_DICOMWEB_URL` / `SLIM_PREVIEW_DICOMWEB_URL` in `.env` or CI (see `scripts/inject-slim-env.mjs`).
+Copy [`.env.example`](.env.example) to `.env` (gitignored) and adjust as needed. Without `.env`, start/build defaults to `REACT_APP_CONFIG=local` and `SLIM_LOCAL_DICOMWEB_URL` defaults to the docker-compose DICOMweb URL. Committed `demo` / `preview` configs require `SLIM_DEMO_DICOMWEB_URL` / `SLIM_PREVIEW_DICOMWEB_URL` in `.env` or CI (see [`scripts/slimEnv.mjs`](scripts/slimEnv.mjs)).
 
 ### Upgrading from older Slim versions
 
@@ -510,6 +510,8 @@ Useful scripts:
 | `pnpm run build` | Create a production build in `build/` |
 | `pnpm run test` | Run the unit tests once with Vitest |
 | `pnpm run test:watch` | Run Vitest in watch mode |
+| `pnpm run test:e2e` | Run Playwright end-to-end tests (see [CONTRIBUTING.md](CONTRIBUTING.md)) |
+| `pnpm run test:e2e:ui` | Run Playwright end-to-end tests with the UI runner |
 | `pnpm run typecheck` | Type-check with `tsc` (TypeScript 7) |
 | `pnpm run check:compiler` | Fail if the React Compiler bails out on any component or hook |
 | `pnpm run lint` | Check for lint and format issues with Biome |

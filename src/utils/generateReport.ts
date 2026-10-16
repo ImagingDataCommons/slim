@@ -101,11 +101,11 @@ const generateReport = ({
       continue
     }
 
-    let findingType = roi.evaluations.find(
+    const findingType = roi.evaluations.find(
       (item: sr.valueTypes.ContentItem) => {
         return item.ConceptNameCodeSequence[0].CodeValue === '121071'
       },
-    )
+    ) as sr.valueTypes.CodeContentItem | undefined
 
     if (findingType === undefined) {
       NotificationMiddleware.onError(
@@ -115,9 +115,20 @@ const generateReport = ({
           `No finding type was specified for ROI "${String(roi.uid)}"`,
         ),
       )
+      continue
     }
 
-    findingType = findingType as sr.valueTypes.CodeContentItem
+    const findingCode = findingType.ConceptCodeSequence?.[0]
+    if (findingCode === undefined) {
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.SLIM,
+        new CustomError(
+          errorTypes.ENCODINGANDDECODING,
+          `No finding type was specified for ROI "${String(roi.uid)}"`,
+        ),
+      )
+      continue
+    }
 
     const trackingIdentifier = new sr.templates.TrackingIdentifier({
       uid: roi.properties.trackingUID ?? roi.uid,
@@ -133,10 +144,9 @@ const generateReport = ({
           frameOfReferenceUID: roi.scoord3d.frameOfReferenceUID,
         }),
         findingType: new sr.coding.CodedConcept({
-          value: findingType.ConceptCodeSequence[0].CodeValue,
-          schemeDesignator:
-            findingType.ConceptCodeSequence[0].CodingSchemeDesignator,
-          meaning: findingType.ConceptCodeSequence[0].CodeMeaning,
+          value: findingCode.CodeValue,
+          schemeDesignator: findingCode.CodingSchemeDesignator,
+          meaning: findingCode.CodeMeaning,
         }),
         qualitativeEvaluations: roi.evaluations.filter(
           (item: sr.valueTypes.ContentItem) => {

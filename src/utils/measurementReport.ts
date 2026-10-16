@@ -91,6 +91,107 @@ function isScoord3DItem(item: ContentItem): item is Scoord3DContentItem {
   )
 }
 
+function toCodedConcept(
+  code:
+    | dcmjs.sr.coding.CodedConcept
+    | {
+        CodeValue: string
+        CodeMeaning: string
+        CodingSchemeDesignator?: string
+      },
+): dcmjs.sr.coding.CodedConcept {
+  if (code instanceof dcmjs.sr.coding.CodedConcept) return code
+  return new dcmjs.sr.coding.CodedConcept({
+    value: code.CodeValue,
+    schemeDesignator: code.CodingSchemeDesignator ?? 'DCM',
+    meaning: code.CodeMeaning,
+  })
+}
+
+/**
+ * Naturalized SR content is plain objects; dcmjs templates require
+ * CodeContentItem / TextContentItem instances on save.
+ */
+/** Naturalized SR items are plain objects; dcmjs class types erase under instanceof */
+type PlainCodeItem = {
+  ConceptNameCodeSequence?: CodeContentItem['ConceptNameCodeSequence']
+  ConceptCodeSequence?: CodeContentItem['ConceptCodeSequence']
+  RelationshipType?: string
+}
+type PlainTextItem = {
+  ConceptNameCodeSequence?: TextContentItem['ConceptNameCodeSequence']
+  TextValue?: string
+  RelationshipType?: string
+}
+type PlainNumItem = {
+  ConceptNameCodeSequence?: NumContentItem['ConceptNameCodeSequence']
+  MeasuredValueSequence?: NumContentItem['MeasuredValueSequence']
+  RelationshipType?: string
+}
+
+function toCodeContentItem(item: CodeContentItem): CodeContentItem {
+  if (item instanceof dcmjs.sr.valueTypes.CodeContentItem) return item
+  const plain = item as PlainCodeItem
+  const name = plain.ConceptNameCodeSequence?.[0]
+  const value = plain.ConceptCodeSequence?.[0]
+  if (name === undefined || value === undefined) {
+    throw new Error('CODE content item is missing ConceptName or ConceptCode')
+  }
+  return new dcmjs.sr.valueTypes.CodeContentItem({
+    name: toCodedConcept(name),
+    value: toCodedConcept(value),
+    relationshipType: plain.RelationshipType ?? 'CONTAINS',
+  })
+}
+
+function toTextContentItem(item: TextContentItem): TextContentItem {
+  if (item instanceof dcmjs.sr.valueTypes.TextContentItem) return item
+  const plain = item as PlainTextItem
+  const name = plain.ConceptNameCodeSequence?.[0]
+  if (name === undefined || typeof plain.TextValue !== 'string') {
+    throw new Error('TEXT content item is missing ConceptName or TextValue')
+  }
+  return new dcmjs.sr.valueTypes.TextContentItem({
+    name: toCodedConcept(name),
+    value: plain.TextValue,
+    relationshipType: plain.RelationshipType ?? 'CONTAINS',
+  })
+}
+
+function toNumContentItem(item: NumContentItem): NumContentItem | undefined {
+  if (item instanceof dcmjs.sr.valueTypes.NumContentItem) return item
+  const plain = item as PlainNumItem
+  const name = plain.ConceptNameCodeSequence?.[0]
+  if (name === undefined) return undefined
+  const measured = plain.MeasuredValueSequence?.[0]
+  const unit = measured?.MeasurementUnitsCodeSequence?.[0]
+  const numeric =
+    typeof measured?.FloatingPointValue === 'number'
+      ? measured.FloatingPointValue
+      : typeof measured?.NumericValue === 'number'
+        ? measured.NumericValue
+        : typeof measured?.NumericValue === 'string'
+          ? Number(measured.NumericValue)
+          : undefined
+  if (
+    numeric === undefined ||
+    !Number.isFinite(numeric) ||
+    unit === undefined
+  ) {
+    return undefined
+  }
+  return new dcmjs.sr.valueTypes.NumContentItem({
+    name: toCodedConcept(name),
+    value: numeric,
+    unit: toCodedConcept(unit),
+    relationshipType: plain.RelationshipType ?? 'CONTAINS',
+  })
+}
+
+function toEvaluationItem(item: EvaluationItem): EvaluationItem {
+  return isTextItem(item) ? toTextContentItem(item) : toCodeContentItem(item)
+}
+
 /** String attribute of a content item, whatever its declared value type */
 function readString(
   item: ContentItem | undefined,
@@ -170,7 +271,7 @@ function parseMeasurementGroup(
   const algorithmVersion = findFirst(content, CONCEPTS.algorithmVersion)
   for (const item of [algorithmName, algorithmVersion]) {
     if (item !== undefined && (isCodeItem(item) || isTextItem(item))) {
-      evaluations.push(item)
+      evaluations.push(toEvaluationItem(item))
     }
   }
 
@@ -188,7 +289,15 @@ function parseMeasurementGroup(
     return undefined
   }
 
-  evaluations.push(...content.filter(isCodeItem))
+  for (const item of content.filter(isCodeItem)) {
+    evaluations.push(toCodeContentItem(item))
+  }
+
+  const measurements: NumContentItem[] = []
+  for (const item of content.filter(isNumItem)) {
+    const rebuilt = toNumContentItem(item)
+    if (rebuilt !== undefined) measurements.push(rebuilt)
+  }
 
   return new dmv.roi.ROI({
     scoord3d,
@@ -197,7 +306,7 @@ function parseMeasurementGroup(
       trackingUID,
       observerType,
       evaluations,
-      measurements: content.filter(isNumItem),
+      measurements,
     },
   })
 }

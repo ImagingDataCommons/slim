@@ -8,6 +8,8 @@ import { notifyVisualizationError } from '../services/derivedDataLoaders'
 import { publishToast } from '../services/toast'
 import type { ViewerSession, ViewerSessionRef } from '../services/viewerSession'
 import type { AnnotationDraft } from '../utils/annotationDraft'
+import { planToolMode } from '../utils/annotationToolModes'
+import { applyToolModePlan } from '../utils/applyToolModePlan'
 import {
   choosePyramidLevel,
   type GoToField,
@@ -87,21 +89,29 @@ export function useAnnotationTools({
   const viewerOf = (): dmv.viewer.VolumeImageViewer | undefined =>
     sessionRef.current?.volumeViewer
 
+  const viewerFlags = (
+    viewer: dmv.viewer.VolumeImageViewer,
+  ): {
+    isModifyInteractionActive: boolean
+    isTranslateInteractionActive: boolean
+  } => ({
+    isModifyInteractionActive: viewer.isModifyInteractionActive,
+    isTranslateInteractionActive: viewer.isTranslateInteractionActive,
+  })
+
   const onDraw = (): void => {
     const viewer = viewerOf()
     if (viewer === undefined) return
+    const plan = planToolMode('draw', interaction, viewerFlags(viewer))
+    if (plan === null) return
     if (interaction.isRoiDrawingActive) {
       logger.log('deactivate drawing of ROIs')
-      viewer.deactivateDrawInteraction()
-      viewer.activateSelectInteraction({})
+      applyToolModePlan(viewer, plan)
       dispatch({ type: 'stopDrawing' })
     } else {
       logger.log('activate drawing of ROIs')
       dispatch({ type: 'startDrawing' })
-      viewer.deactivateSelectInteraction()
-      viewer.deactivateSnapInteraction()
-      viewer.deactivateTranslateInteraction()
-      viewer.deactivateModifyInteraction()
+      applyToolModePlan(viewer, plan)
     }
   }
 
@@ -109,16 +119,14 @@ export function useAnnotationTools({
     const viewer = viewerOf()
     if (viewer === undefined) return
     logger.log('toggle modification of ROIs')
+    const plan = planToolMode('modify', interaction, viewerFlags(viewer))
+    if (plan === null) return
     if (viewer.isModifyInteractionActive) {
-      viewer.deactivateModifyInteraction()
-      viewer.deactivateSnapInteraction()
-      viewer.activateSelectInteraction({})
+      applyToolModePlan(viewer, plan)
       dispatch({ type: 'stopTools' })
     } else {
       dispatch({ type: 'startModifying' })
-      viewer.deactivateDrawInteraction()
-      viewer.deactivateTranslateInteraction()
-      viewer.deactivateSelectInteraction()
+      applyToolModePlan(viewer, plan)
       viewer.activateSnapInteraction({})
       viewer.activateModifyInteraction({})
     }
@@ -128,15 +136,14 @@ export function useAnnotationTools({
     const viewer = viewerOf()
     if (viewer === undefined) return
     logger.log('toggle translation of ROIs')
+    const plan = planToolMode('translate', interaction, viewerFlags(viewer))
+    if (plan === null) return
     if (viewer.isTranslateInteractionActive) {
-      viewer.deactivateTranslateInteraction()
+      applyToolModePlan(viewer, plan)
       dispatch({ type: 'stopTools' })
     } else {
       dispatch({ type: 'startTranslating' })
-      viewer.deactivateModifyInteraction()
-      viewer.deactivateSnapInteraction()
-      viewer.deactivateDrawInteraction()
-      viewer.deactivateSelectInteraction()
+      applyToolModePlan(viewer, plan)
       viewer.activateTranslateInteraction({})
     }
   }
@@ -144,11 +151,8 @@ export function useAnnotationTools({
   const onGoTo = (): void => {
     const viewer = viewerOf()
     if (viewer === undefined) return
-    viewer.deactivateDrawInteraction()
-    viewer.deactivateModifyInteraction()
-    viewer.deactivateSnapInteraction()
-    viewer.deactivateTranslateInteraction()
-    viewer.deactivateSelectInteraction()
+    const plan = planToolMode('goTo', interaction, viewerFlags(viewer))
+    if (plan !== null) applyToolModePlan(viewer, plan)
     dispatch({ type: 'openGoTo' })
   }
 
@@ -178,16 +182,14 @@ export function useAnnotationTools({
     if (viewer === undefined) return
     logger.log('toggle visibility of ROIs')
     if (!interaction.areRoisHidden) {
-      viewer.deactivateDrawInteraction()
-      viewer.deactivateSnapInteraction()
-      viewer.deactivateTranslateInteraction()
-      viewer.deactivateSelectInteraction()
-      viewer.deactivateModifyInteraction()
+      const plan = planToolMode('hide', interaction, viewerFlags(viewer))
+      if (plan !== null) applyToolModePlan(viewer, plan)
       viewer.hideROIs()
       dispatch({ type: 'hideRois' })
     } else {
+      const plan = planToolMode('show', interaction, viewerFlags(viewer))
       viewer.showROIs()
-      viewer.activateSelectInteraction({})
+      if (plan !== null) applyToolModePlan(viewer, plan)
       rois.restyleSelected()
       dispatch({ type: 'showRois' })
     }
@@ -196,18 +198,16 @@ export function useAnnotationTools({
   const cancelActiveInteraction = (): void => {
     const viewer = viewerOf()
     if (viewer !== undefined) {
-      if (interaction.isRoiDrawingActive) {
-        logger.log('deactivate drawing of ROIs')
-        viewer.deactivateDrawInteraction()
-        viewer.activateSelectInteraction({})
-      } else if (interaction.isRoiModificationActive) {
-        logger.log('deactivate modification of ROIs')
-        viewer.deactivateModifyInteraction()
-        viewer.activateSelectInteraction({})
-      } else if (interaction.isRoiTranslationActive) {
-        logger.log('deactivate translation of ROIs')
-        viewer.deactivateTranslateInteraction()
-        viewer.activateSelectInteraction({})
+      const plan = planToolMode('cancel', interaction, viewerFlags(viewer))
+      if (plan !== null) {
+        if (interaction.isRoiDrawingActive) {
+          logger.log('deactivate drawing of ROIs')
+        } else if (interaction.isRoiModificationActive) {
+          logger.log('deactivate modification of ROIs')
+        } else if (interaction.isRoiTranslationActive) {
+          logger.log('deactivate translation of ROIs')
+        }
+        applyToolModePlan(viewer, plan)
       }
     }
     dispatch({ type: 'cancel' })
@@ -245,10 +245,12 @@ export function useAnnotationTools({
         frameOfReferenceUID: viewer.frameOfReferenceUID,
       })
       rois.addStyledRoi(new dmv.roi.ROI({ scoord3d: point }), defaultRoiStyle)
+      viewer.activateSelectInteraction({})
       dispatch({ type: 'closeGoTo' })
     },
     onSlidePositionSelectionCancellation: () => {
       logger.log('cancel slide position selection')
+      viewerOf()?.activateSelectInteraction({})
       dispatch({ type: 'closeGoTo' })
     },
     onAnnotationConfigurationCompletion: () => {

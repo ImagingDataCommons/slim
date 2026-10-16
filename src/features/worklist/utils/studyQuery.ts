@@ -2,6 +2,12 @@
 
 const MODALITY_TAG = '00080060'
 
+/** Shortest term that triggers a server-side worklist search */
+export const STUDY_SEARCH_MIN_LENGTH = 2
+
+/** Cap per QIDO search query so a pause cannot pull an unbounded page */
+export const STUDY_SEARCH_RESULT_LIMIT = 100
+
 export type StudyQueryParams = Record<string, string | number | boolean>
 
 /** Slide microscopy studies, with the series count used for "Slides". */
@@ -10,6 +16,33 @@ export function buildStudyQueryParams(): StudyQueryParams {
     ModalitiesInStudy: 'SM',
     includefield: 'NumberOfStudyRelatedSeries',
   }
+}
+
+/**
+ * QIDO queries that find the studies a worklist search refers to, one per
+ * attribute and matching style. Servers differ in what they honor: Google
+ * Cloud Healthcare (IDC) ignores `*` wildcards and matches only exact values
+ * or fuzzy person names, while dcm4chee matches wildcards. Sending both styles
+ * covers either; queries a server rejects return nothing. A term that already
+ * contains `*` or `?` is sent as typed. Terms shorter than
+ * {@link STUDY_SEARCH_MIN_LENGTH} skip the server (local filter still runs).
+ */
+export function buildStudySearchQueries(
+  searchText: string,
+): StudyQueryParams[] {
+  const term = searchText.trim()
+  if (term.length < STUDY_SEARCH_MIN_LENGTH) return []
+  const values = /[*?]/.test(term) ? [term] : [term, `*${term}*`]
+  return [
+    ...values.map((value) => ({ PatientID: value })),
+    ...values.map((value) => ({ PatientName: value, fuzzymatching: true })),
+    ...values.map((value) => ({ AccessionNumber: value })),
+    { StudyID: term },
+  ].map((criteria) => ({
+    ...buildStudyQueryParams(),
+    ...criteria,
+    limit: STUDY_SEARCH_RESULT_LIMIT,
+  }))
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

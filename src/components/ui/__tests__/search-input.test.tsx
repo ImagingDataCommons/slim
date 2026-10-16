@@ -36,7 +36,7 @@ describe('SearchInput', () => {
 
   it('shows the status and clears the query', () => {
     const onValueChange = vi.fn()
-    render(
+    const { rerender } = render(
       <SearchInput
         aria-label="Search"
         value="doe"
@@ -48,6 +48,16 @@ describe('SearchInput', () => {
     expect(screen.getByText('2 matches')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Clear search' }))
     expect(onValueChange).toHaveBeenCalledWith('')
+    rerender(
+      <SearchInput
+        aria-label="Search"
+        value=""
+        onValueChange={onValueChange}
+        status="2 matches"
+        clearable
+      />,
+    )
+    expect(screen.getByRole('searchbox', { name: 'Search' })).toHaveFocus()
   })
 
   it('has no clear button unless clearable', () => {

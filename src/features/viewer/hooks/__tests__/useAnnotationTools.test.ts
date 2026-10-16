@@ -272,6 +272,22 @@ describe('useAnnotationTools visibility and go-to', () => {
       expect.objectContaining({ scoord3d: expect.anything() }),
       TEST_ROI_STYLE,
     )
+    expect(viewer.activateSelectInteraction).toHaveBeenCalled()
+    expect(result.current.interaction.isGoToModalVisible).toBe(false)
+  })
+
+  it('restores selection when Go to is cancelled', () => {
+    const { result, viewer } = setup()
+    act(() => {
+      result.current.tools.onGoTo()
+    })
+    viewer.activateSelectInteraction.mockClear()
+
+    act(() => {
+      result.current.tools.onSlidePositionSelectionCancellation()
+    })
+
+    expect(viewer.activateSelectInteraction).toHaveBeenCalled()
     expect(result.current.interaction.isGoToModalVisible).toBe(false)
   })
 })

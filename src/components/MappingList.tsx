@@ -6,6 +6,7 @@ import type { MappingStyle, MappingStyleChange } from '../types/layerStyles'
 import { buildMappingDisplayOptions } from '../utils/displayOptions'
 import { bindDisplayOptions } from '../utils/displayOptionsBinding'
 import MappingItem from './MappingItem'
+import { BulkVisibilityControl } from './slim/BulkVisibilityControl'
 import { DisplayOptionsPanel } from './slim/DisplayOptionsPanel'
 
 export interface MappingDisplaySettings {
@@ -48,6 +49,16 @@ function MappingList({
 }: MappingListProps): React.ReactElement {
   return (
     <div className="flex flex-col gap-1.5">
+      <BulkVisibilityControl
+        uids={mappings.map((mapping) => mapping.uid)}
+        visibleUids={visibleMappingUIDs}
+        itemLabel="parametric maps"
+        onChange={(changes) => {
+          for (const { uid, isVisible } of changes) {
+            onMappingVisibilityChange({ mappingUID: uid, isVisible })
+          }
+        }}
+      />
       {mappings.map((mapping) => (
         <MappingItem
           key={mapping.uid}

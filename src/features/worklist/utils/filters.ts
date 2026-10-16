@@ -17,6 +17,24 @@ export function getEmptyStudiesMessage(searchText = ''): string {
 }
 
 /**
+ * Text test for a search term. A term with `*` or `?` uses DICOM wildcard
+ * matching on the whole value, as the server search does; any other term
+ * matches anywhere in the value.
+ */
+function toSearchMatcher(search: string): (text: string) => boolean {
+  if (!/[*?]/.test(search)) {
+    return (text) => text.toLowerCase().includes(search)
+  }
+  const source = Array.from(search, (char) => {
+    if (char === '*') return '.*'
+    if (char === '?') return '.'
+    return char.replace(/[.+^${}()|[\]\\]/g, '\\$&')
+  }).join('')
+  const pattern = new RegExp(`^${source}$`, 'i')
+  return (text) => pattern.test(text)
+}
+
+/**
  * Filters studies by search text across identifiers and the patient name,
  * matching both the displayed ("Doe, Jane") and raw ("Doe Jane") forms.
  */
@@ -28,6 +46,7 @@ export function filterStudiesBySearchText(
   if (search === '') {
     return studies
   }
+  const matches = toSearchMatcher(search)
 
   return studies.filter((study) => {
     const fields: unknown[] = [
@@ -40,11 +59,20 @@ export function filterStudiesBySearchText(
 
     return fields.some(
       (field) =>
-        field !== undefined &&
-        field !== null &&
-        String(field).toLowerCase().includes(search),
+        field !== undefined && field !== null && matches(String(field)),
     )
   })
+}
+
+/** `studies` followed by the `extra` studies it does not already list. */
+export function appendMissingStudies(
+  studies: dmv.metadata.Study[],
+  extra: dmv.metadata.Study[],
+): dmv.metadata.Study[] {
+  if (extra.length === 0) return studies
+  const listed = new Set(studies.map((study) => study.StudyInstanceUID))
+  const missing = extra.filter((study) => !listed.has(study.StudyInstanceUID))
+  return missing.length === 0 ? studies : [...studies, ...missing]
 }
 
 /**
@@ -52,4 +80,23 @@ export function filterStudiesBySearchText(
  */
 export function modalitiesNeedBackfill(study: dmv.metadata.Study): boolean {
   return normalizeModalities(study.ModalitiesInStudy).length === 0
+}
+
+/** Studies with ModalitiesInStudy filled in from `modalitiesByUid` where missing. */
+export function mergeModalities(
+  studies: dmv.metadata.Study[],
+  modalitiesByUid: ReadonlyMap<string, string[]>,
+): dmv.metadata.Study[] {
+  if (modalitiesByUid.size === 0) return studies
+  return studies.map((study) => {
+    const modalities = modalitiesByUid.get(study.StudyInstanceUID)
+    if (
+      modalities === undefined ||
+      modalities.length === 0 ||
+      !modalitiesNeedBackfill(study)
+    ) {
+      return study
+    }
+    return { ...study, ModalitiesInStudy: modalities }
+  })
 }

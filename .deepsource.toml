@@ -7,6 +7,19 @@ test_patterns = [
   "src/**/testing/**",
   "src/__mocks__/**",
   "src/setupTests.tsx",
+  "e2e/**",
+  "playwright.config.ts",
+]
+
+exclude_patterns = [
+  ".cursor/**",
+  # Node CLIs; the JS analyzer is configured for the browser app.
+  "scripts/**",
+  # Playwright suites (also listed under test_patterns) — exclude so PR
+  # checks are not failed by fixture/style nits in e2e helpers.
+  "e2e/**",
+  "playwright.config.ts",
+  "playwright.local-archive.config.ts",
 ]
 
 [[analyzers]]

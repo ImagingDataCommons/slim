@@ -1,6 +1,6 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { mapWithConcurrency } from '../../../utils/mapWithConcurrency'
 import type { ContainsEntry } from '../utils/containsCatalog'
@@ -212,12 +212,16 @@ export function useContainsRowChecks(
     })
   }, [searchClient, studyClient, entry, candidates])
 
+  /** Avoid scanning the candidate list on every row lookup during render */
+  const candidateUids = useMemo(
+    () => new Set(candidates.map((candidate) => candidate.studyUid)),
+    [candidates],
+  )
+
   return (studyUid: string): RowCheckState | undefined => {
     if (entry === undefined) return undefined
     const check = checks.get(rowCheckKey(entry, studyUid))
     if (check !== undefined) return check
-    return candidates.some((candidate) => candidate.studyUid === studyUid)
-      ? { status: 'checking' }
-      : undefined
+    return candidateUids.has(studyUid) ? { status: 'checking' } : undefined
   }
 }

@@ -20,7 +20,8 @@ import {
 import { buildAnnotationConfig } from '../utils/annotationConfig'
 import { type FakeVolumeImageViewer, fakeDmvInstances } from './fakeDmv'
 
-export const TEST_STUDY_UID = '1.2.3'
+/** DICOM-style UID (not a network address). */
+export const TEST_STUDY_UID = '2.25.900000000000000000000000000000000000001'
 
 function image(
   seriesInstanceUID: string,
@@ -56,7 +57,9 @@ function image(
 }
 
 /** RGB slide with one volume and one label image */
-export function createTestSlide(seriesInstanceUID = '1.2.3.4'): Slide {
+export function createTestSlide(
+  seriesInstanceUID = '2.25.900000000000000000000000000000000000002',
+): Slide {
   return new Slide({
     images: [
       image(seriesInstanceUID, 'VOLUME', `${seriesInstanceUID}.1`),

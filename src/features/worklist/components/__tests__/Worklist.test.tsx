@@ -152,6 +152,78 @@ describe('Worklist', () => {
     expect(getAllByText('SR')).toHaveLength(2)
   })
 
+  it('looks up missing modalities for the rows on the current page only', async () => {
+    const pageManager = new DicomWebManager({
+      baseUri: 'http://mockserver.org',
+      settings: [serverSettings],
+    })
+    const manyStudies = Array.from({ length: 25 }, (_, index) => ({
+      '0020000D': { vr: 'UI', Value: [`5.5.${index}`] },
+      '00100020': { vr: 'LO', Value: [`patient-${index}`] },
+      '00100010': { vr: 'PN', Value: [{ Alphabetic: `patient^${index}` }] },
+    }))
+    pageManager.searchForStudies = async () => manyStudies as dwc.api.Study[]
+    const searchForSeries = vi.fn(async () => seriesForBackfillStudy)
+    pageManager.searchForSeries =
+      searchForSeries as unknown as DicomWebManager['searchForSeries']
+    render(
+      <MemoryRouter>
+        <Worklist
+          clients={{
+            [StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]: pageManager,
+          }}
+        />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => expect(searchForSeries).toHaveBeenCalledTimes(20))
+    expect((await screen.findAllByText('OT')).length).toBe(20)
+
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    await waitFor(() => expect(searchForSeries).toHaveBeenCalledTimes(25))
+  })
+
+  it('asks the server for patients outside the loaded studies', async () => {
+    const searchManager = new DicomWebManager({
+      baseUri: 'http://mockserver.org',
+      settings: [serverSettings],
+    })
+    searchManager.searchForStudies = async (options) => {
+      const params = options.queryParams as Record<string, unknown> | undefined
+      if (params?.PatientID === 'far-patient') {
+        return [
+          {
+            '0020000D': { vr: 'UI', Value: ['7.7.7'] },
+            '00100020': { vr: 'LO', Value: ['far-patient'] },
+            '00100010': { vr: 'PN', Value: [{ Alphabetic: 'far^patient' }] },
+            '00080061': { vr: 'CS', Value: ['SM'] },
+          },
+        ] as dwc.api.Study[]
+      }
+      if (Object.keys(params ?? {}).length > 2) return []
+      return searchResults as dwc.api.Study[]
+    }
+    searchManager.searchForSeries = async () => []
+    render(
+      <MemoryRouter>
+        <Worklist
+          clients={{
+            [StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]: searchManager,
+          }}
+        />
+      </MemoryRouter>,
+    )
+    await screen.findAllByRole('link', { name: /patient/ })
+
+    fireEvent.change(screen.getByLabelText('Search studies'), {
+      target: { value: 'far-patient' },
+    })
+
+    const links = await screen.findAllByRole('link', { name: /far/ })
+    expect(links).toHaveLength(1)
+    expect(links[0].getAttribute('href')).toContain('7.7.7')
+  })
+
   describe('"Contains" filter', () => {
     const uidRow = (study: string, series: string, sopClass?: string) => ({
       '0020000D': { vr: 'UI', Value: [study] },
@@ -197,15 +269,27 @@ describe('Worklist', () => {
         </MemoryRouter>,
       )
 
+    const pageOffset = (
+      options:
+        | dwc.api.SearchForSeriesOptions
+        | dwc.api.SearchForInstancesOptions,
+    ): number =>
+      Number((options.queryParams as { offset?: number } | undefined)?.offset)
+
     it('shows only studies with the entry from the URL and clears it', async () => {
       const filterManager = createManager()
-      filterManager.searchForInstances = vi.fn(async () => [
-        uidRow(
-          '1.2.3.1',
-          'ann1',
-          StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION,
-        ),
-      ]) as unknown as DicomWebManager['searchForInstances']
+      filterManager.searchForInstances = vi.fn(
+        async (options: dwc.api.SearchForInstancesOptions) =>
+          pageOffset(options) === 0
+            ? [
+                uidRow(
+                  '1.2.3.1',
+                  'ann1',
+                  StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION,
+                ),
+              ]
+            : [],
+      ) as unknown as DicomWebManager['searchForInstances']
 
       renderAt('/?contains=ann', filterManager)
 
@@ -221,7 +305,7 @@ describe('Worklist', () => {
         expect(screen.getAllByRole('link', { name: /patient/ })).toHaveLength(4)
       })
       expect(
-        screen.getByText('4 slide microscopy studies on this server'),
+        screen.getByText('Showing 4 slide microscopy studies'),
       ).toBeInTheDocument()
     })
 
@@ -244,11 +328,13 @@ describe('Worklist', () => {
         },
       ) as unknown as DicomWebManager['searchForInstances']
       filterManager.searchForSeries = vi.fn(
-        async (options: dwc.api.SearchForSeriesOptions) =>
-          (options.queryParams as { Modality?: string } | undefined)
+        async (options: dwc.api.SearchForSeriesOptions) => {
+          if (pageOffset(options) !== 0) return []
+          return (options.queryParams as { Modality?: string } | undefined)
             ?.Modality === 'OT'
             ? [uidRow('1.2.3.1', 'pm1'), uidRow('1.2.3.2', 'ct1')]
-            : [],
+            : []
+        },
       ) as unknown as DicomWebManager['searchForSeries']
 
       renderAt('/?contains=pmap', filterManager)
@@ -263,18 +349,22 @@ describe('Worklist', () => {
 
     it('offers a retry when the search fails', async () => {
       const filterManager = createManager()
+      const match = [
+        uidRow(
+          '1.2.3.4',
+          'ann4',
+          StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION,
+        ),
+      ]
       const searchForInstances = vi
         .fn()
         .mockRejectedValueOnce(
           Object.assign(new Error('down'), { status: 503 }),
         )
-        .mockResolvedValue([
-          uidRow(
-            '1.2.3.4',
-            'ann4',
-            StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION,
-          ),
-        ])
+        .mockImplementation(
+          async (options: dwc.api.SearchForInstancesOptions) =>
+            pageOffset(options) === 0 ? match : [],
+        )
       filterManager.searchForInstances =
         searchForInstances as unknown as DicomWebManager['searchForInstances']
       vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -290,14 +380,19 @@ describe('Worklist', () => {
     it('fetches matches outside the loaded worklist and drops those without slides', async () => {
       const filterManager = createManager()
       const ann = StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION
-      filterManager.searchForInstances = vi.fn(async () => [
-        uidRow('1.2.3.1', 'ann1', ann),
-        {
-          ...uidRow('9.9.9', 'ann9', ann),
-          '00100020': unlistedStudy['00100020'],
-        },
-        uidRow('8.8.8', 'ann8', ann),
-      ]) as unknown as DicomWebManager['searchForInstances']
+      filterManager.searchForInstances = vi.fn(
+        async (options: dwc.api.SearchForInstancesOptions) =>
+          pageOffset(options) === 0
+            ? [
+                uidRow('1.2.3.1', 'ann1', ann),
+                {
+                  ...uidRow('9.9.9', 'ann9', ann),
+                  '00100020': unlistedStudy['00100020'],
+                },
+                uidRow('8.8.8', 'ann8', ann),
+              ]
+            : [],
+      ) as unknown as DicomWebManager['searchForInstances']
 
       renderAt('/?contains=ann', filterManager)
 

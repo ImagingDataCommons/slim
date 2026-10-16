@@ -34,11 +34,16 @@ export const FINDING_TYPE_CODE = '121071'
 export const FINDING_CATEGORY_CODE = '276214006'
 export const ALGORITHM_NAME_CODE = '111001'
 
+/** Greek mu (U+03BC) as written by DMV, plus ASCII and micro-sign forms */
+const GREEK_MU = '\u03BC'
+
 const UNIT_LABELS: Record<string, string> = {
   mm2: 'mm²',
   um2: 'µm²',
+  [`${GREEK_MU}m2`]: 'µm²',
   mm: 'mm',
   um: 'µm',
+  [`${GREEK_MU}m`]: 'µm',
 }
 
 const GRAPHIC_TYPE_LABELS: Record<string, string> = {
@@ -86,9 +91,12 @@ const UNIT_SCALES: Record<
   mm: { dimension: 'length', inMm: 1 },
   um: { dimension: 'length', inMm: 1e-3 },
   µm: { dimension: 'length', inMm: 1e-3 },
+  [`${GREEK_MU}m`]: { dimension: 'length', inMm: 1e-3 },
   mm2: { dimension: 'area', inMm: 1 },
   um2: { dimension: 'area', inMm: 1e-6 },
+  [`${GREEK_MU}m2`]: { dimension: 'area', inMm: 1e-6 },
   'µm²': { dimension: 'area', inMm: 1e-6 },
+  [`${GREEK_MU}m²`]: { dimension: 'area', inMm: 1e-6 },
   'mm²': { dimension: 'area', inMm: 1 },
 }
 

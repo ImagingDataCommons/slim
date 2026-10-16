@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { startTransition, useRef, useState } from 'react'
 
 import { logger } from '../../../utils/logger'
 import type { DmvEventHandlers } from '../services/dmvEvents'
@@ -37,12 +37,15 @@ export function useParametricMaps({
 }: ViewerAccess): ParametricMapsApi {
   const [visibleUIDs, setVisibleUIDs] = useState<Set<string>>(() => new Set())
   const [isInterpolationEnabled, setIsInterpolationEnabled] = useState(true)
+  const isInterpolationEnabledRef = useRef(true)
 
   return {
     visibleUIDs,
     isInterpolationEnabled,
     reset: () => {
       setVisibleUIDs(new Set())
+      isInterpolationEnabledRef.current = true
+      setIsInterpolationEnabled(true)
     },
     showSeries: (session, seriesInstanceUID) => {
       const allMappings = session.volumeViewer.getAllParameterMappings()
@@ -98,6 +101,8 @@ export function useParametricMaps({
       refreshSnapshot()
     },
     onDisplaySettingsChange: ({ interpolationEnabled }) => {
+      if (interpolationEnabled === isInterpolationEnabledRef.current) return
+      isInterpolationEnabledRef.current = interpolationEnabled
       setIsInterpolationEnabled(interpolationEnabled)
       sessionRef.current?.volumeViewer.toggleParametricMapInterpolation()
     },
@@ -109,11 +114,13 @@ export function useParametricMaps({
          */
         if (payload?.mappingUID == null || payload.isVisible == null) return
         const { mappingUID, isVisible } = payload
-        setVisibleUIDs((current) =>
-          isVisible
-            ? withItem(current, mappingUID)
-            : withoutItem(current, mappingUID),
-        )
+        startTransition(() => {
+          setVisibleUIDs((current) =>
+            isVisible
+              ? withItem(current, mappingUID)
+              : withoutItem(current, mappingUID),
+          )
+        })
       },
     },
   }

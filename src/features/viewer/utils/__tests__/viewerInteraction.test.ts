@@ -8,6 +8,20 @@ import {
 const reduce = viewerInteractionReducer
 
 describe('viewerInteractionReducer', () => {
+  it('drops the active tool and hidden ROIs when a new viewer starts', () => {
+    const drawing = reduce(
+      reduce(INITIAL_VIEWER_INTERACTION, { type: 'hideRois' }),
+      { type: 'startDrawing' },
+    )
+    const configured = reduce(drawing, {
+      type: 'completeAnnotationConfiguration',
+    })
+
+    expect(reduce(configured, { type: 'newViewer' })).toEqual(
+      INITIAL_VIEWER_INTERACTION,
+    )
+  })
+
   it('opens the annotation dialog when drawing starts and closes it on stop', () => {
     const modifying = reduce(INITIAL_VIEWER_INTERACTION, {
       type: 'startModifying',

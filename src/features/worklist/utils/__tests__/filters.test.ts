@@ -1,8 +1,10 @@
 import type { metadata } from 'dicom-microscopy-viewer'
 
 import {
+  appendMissingStudies,
   filterStudiesBySearchText,
   getEmptyStudiesMessage,
+  mergeModalities,
   modalitiesNeedBackfill,
 } from '../filters'
 
@@ -55,6 +57,15 @@ describe('filterStudiesBySearchText', () => {
     expect(search('s24')).toEqual(['1'])
   })
 
+  it('treats * and ? as DICOM wildcards over the whole value', () => {
+    expect(search('p-00*')).toEqual(['1', '2'])
+    expect(search('P-00?')).toEqual(['1', '2'])
+    expect(search('*-77')).toEqual(['1'])
+    expect(search('doe*')).toEqual(['2'])
+    expect(search('00*')).toEqual([])
+    expect(search('S24.01542*')).toEqual([])
+  })
+
   it('matches the displayed patient name', () => {
     expect(search('Whitfield, Margaret A.')).toEqual(['1'])
     expect(search('doe, jane')).toEqual(['2'])
@@ -67,6 +78,57 @@ describe('filterStudiesBySearchText', () => {
 
   it('trims the search text', () => {
     expect(search('  jane ')).toEqual(['2'])
+  })
+})
+
+describe('appendMissingStudies', () => {
+  const listed = [
+    study({ StudyInstanceUID: '1' }),
+    study({ StudyInstanceUID: '2' }),
+  ]
+
+  it('appends only the studies not already listed', () => {
+    const extra = study({ StudyInstanceUID: '3' })
+    const merged = appendMissingStudies(listed, [
+      study({ StudyInstanceUID: '2' }),
+      extra,
+    ])
+    expect(merged.map((item) => item.StudyInstanceUID)).toEqual(['1', '2', '3'])
+    expect(merged[1]).toBe(listed[1])
+  })
+
+  it('returns the same list when nothing is missing', () => {
+    expect(appendMissingStudies(listed, [])).toBe(listed)
+    expect(
+      appendMissingStudies(listed, [study({ StudyInstanceUID: '1' })]),
+    ).toBe(listed)
+  })
+})
+
+describe('mergeModalities', () => {
+  const listed = study({ StudyInstanceUID: '1', ModalitiesInStudy: ['SM'] })
+  const missing = study({ StudyInstanceUID: '2' })
+
+  it('fills in only studies that lack modalities', () => {
+    const merged = mergeModalities(
+      [listed, missing],
+      new Map([
+        ['1', ['CT']],
+        ['2', ['ANN', 'SM']],
+      ]),
+    )
+    expect(merged[0]).toBe(listed)
+    expect(merged[1].ModalitiesInStudy).toEqual(['ANN', 'SM'])
+  })
+
+  it('leaves a study alone when the lookup found nothing', () => {
+    const merged = mergeModalities([missing], new Map([['2', []]]))
+    expect(merged[0]).toBe(missing)
+  })
+
+  it('returns the same list without lookups', () => {
+    const studies = [listed, missing]
+    expect(mergeModalities(studies, new Map())).toBe(studies)
   })
 })
 

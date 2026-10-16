@@ -74,7 +74,7 @@ function AnnotationItem({
         type="button"
         aria-pressed={isSelected}
         onClick={() => onSelection(roi.uid)}
-        className="flex min-w-0 flex-1 items-stretch gap-2.5 text-left focus-visible:outline-hidden"
+        className="flex min-w-0 flex-1 items-stretch gap-2.5 rounded-md text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
       >
         <span
           className="w-1 flex-none rounded-sm"

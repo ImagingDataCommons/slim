@@ -2,7 +2,14 @@ import type { PaginationState } from '@tanstack/react-table'
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import type * as React from 'react'
-import { useCallback, useDeferredValue, useMemo, useState } from 'react'
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 
 import { Icon } from '../../../components/ui/icon'
@@ -17,7 +24,9 @@ import {
   useContainsRowChecks,
   useContainsSearch,
 } from '../hooks/useContainsSearch'
+import { useModalityBackfill } from '../hooks/useModalityBackfill'
 import { useStudies } from '../hooks/useStudies'
+import { useStudySearch } from '../hooks/useStudySearch'
 import {
   CONTAINS_PARAM,
   type ContainsEntry,
@@ -25,8 +34,10 @@ import {
 } from '../utils/containsCatalog'
 import { withEntryModality } from '../utils/containsSearch'
 import {
+  appendMissingStudies,
   filterStudiesBySearchText,
   getEmptyStudiesMessage,
+  mergeModalities,
 } from '../utils/filters'
 import { clampPagination } from '../utils/pagination'
 import { WorklistHeader } from './WorklistHeader'
@@ -100,8 +111,31 @@ export function Worklist({
         clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE])
   const containsSearch = useContainsSearch(containsClient, containsEntry)
   const containsResult = containsSearch.result
+  const serverSearch = useStudySearch({
+    clients,
+    searchText: containsEntry === undefined ? deferredSearchText : '',
+  })
 
   const slideClient = clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
+  const serverUrl = slideClient?.baseURL
+  const previousServerUrl = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    if (
+      previousServerUrl.current !== undefined &&
+      previousServerUrl.current !== serverUrl
+    ) {
+      setSearchText('')
+      setPagination((previous) => ({ ...previous, pageIndex: 0 }))
+      setSearchParams((previous) => {
+        if (!previous.has(CONTAINS_PARAM)) return previous
+        const next = new URLSearchParams(previous)
+        next.delete(CONTAINS_PARAM)
+        return next
+      })
+    }
+    previousServerUrl.current = serverUrl
+  }, [serverUrl, setSearchParams])
+
   const loadedStudies = useMemo(
     () => new Map(studies.map((study) => [study.StudyInstanceUID, study])),
     [studies],
@@ -129,7 +163,7 @@ export function Worklist({
     candidates,
   )
 
-  let containsStudies = studies
+  let containsStudies = appendMissingStudies(studies, serverSearch.matches)
   let hasUncheckedMatches = false
   if (containsEntry !== undefined) {
     containsStudies = []
@@ -154,6 +188,15 @@ export function Worklist({
   const pagination = clampPagination(
     requestedPagination,
     filteredStudies.length,
+  )
+  const pageStudies = useMemo(() => {
+    const onPage = new Set(pageStudyUids)
+    return filteredStudies.filter((study) => onPage.has(study.StudyInstanceUID))
+  }, [filteredStudies, pageStudyUids])
+  const backfilledModalities = useModalityBackfill(slideClient, pageStudies)
+  const tableStudies = useMemo(
+    () => mergeModalities(filteredStudies, backfilledModalities),
+    [filteredStudies, backfilledModalities],
   )
 
   const handleSearchChange = useCallback((value: string): void => {
@@ -188,6 +231,8 @@ export function Worklist({
       containsSearch.status === 'error'
         ? `Couldn't search for ${containsEntry.label}.`
         : `No studies with ${containsEntry.label}.`
+  } else if (serverSearch.hasError) {
+    emptyMessage = "Couldn't search for studies."
   }
 
   return (
@@ -219,8 +264,12 @@ export function Worklist({
       />
       <WorklistTable
         className="flex-1"
-        data={filteredStudies}
-        isLoading={isLoading || isSearchingContains}
+        data={tableStudies}
+        isLoading={
+          isLoading ||
+          isSearchingContains ||
+          (serverSearch.isSearching && filteredStudies.length === 0)
+        }
         emptyMessage={emptyMessage}
         isCompact={preferences.compactRows}
         onRowClick={handleRowClick}

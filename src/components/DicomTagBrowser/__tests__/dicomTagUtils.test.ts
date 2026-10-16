@@ -6,6 +6,7 @@ import {
   filterTagTree,
   getInstanceDimensions,
   getSeriesLabel,
+  getSortedTags,
   sortInstancesByNumber,
   sortSeriesByNumber,
   type TagInfo,
@@ -299,6 +300,26 @@ describe('buildDisplaySets', () => {
       'late',
       'none',
     ])
+  })
+})
+
+describe('getSortedTags', () => {
+  it('returns tags sorted by tag value and appends bulkdata references', () => {
+    const tags = getSortedTags({
+      SOPInstanceUID: '1.2.3',
+      Modality: 'SM',
+      bulkdataReferences: { PixelData: { BulkDataURI: 'http://example/bd' } },
+    })
+    const keywords = tags.map((tag) => tag.keyword)
+    expect(keywords).toContain('Modality')
+    expect(keywords).toContain('SOPInstanceUID')
+    expect(keywords[keywords.length - 1]).toBe('bulkdataReferences')
+    const sortedKeywords = tags
+      .filter((tag) => tag.keyword !== 'bulkdataReferences')
+      .map((tag) => tag.tag)
+    expect(sortedKeywords).toEqual(
+      [...sortedKeywords].sort((a, b) => a.localeCompare(b)),
+    )
   })
 })
 
