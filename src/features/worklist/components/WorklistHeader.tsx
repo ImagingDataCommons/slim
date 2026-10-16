@@ -21,7 +21,6 @@ export interface WorklistContainsState {
 }
 
 export interface WorklistHeaderProps {
-  totalCount: number
   isLoading: boolean
   searchText: string
   onSearchChange: (value: string) => void
@@ -78,9 +77,8 @@ function ContainsSummary({
   )
 }
 
-/** "Studies" title, study count, "Contains" filter and search field. */
+/** "Studies" title, optional status line, "Contains" filter and search field. */
 export function WorklistHeader({
-  totalCount,
   isLoading,
   searchText,
   onSearchChange,
@@ -88,24 +86,34 @@ export function WorklistHeader({
   onContainsChange,
   className,
 }: WorklistHeaderProps): React.ReactElement {
+  const status =
+    isLoading && contains === undefined ? (
+      'Loading studies…'
+    ) : contains !== undefined ? (
+      <ContainsSummary contains={contains} />
+    ) : undefined
+
   return (
-    <div className={cn('flex items-center gap-4', className)}>
-      <div className="flex min-w-0 items-baseline gap-3">
-        <h1 className="text-[18px] font-semibold leading-[1.2] tracking-[-0.01em] text-ink">
+    <div
+      className={cn(
+        'flex min-w-0 w-full flex-wrap items-center gap-x-4 gap-y-2',
+        className,
+      )}
+    >
+      <div className="flex min-w-0 flex-1 items-baseline gap-3">
+        <h1 className="flex-none text-[18px] font-semibold leading-[1.2] tracking-[-0.01em] text-ink">
           Studies
         </h1>
-        <div className="truncate text-12.5 text-ink-muted" aria-live="polite">
-          {isLoading ? (
-            'Loading studies…'
-          ) : contains !== undefined ? (
-            <ContainsSummary contains={contains} />
-          ) : (
-            `Showing ${totalCount} slide microscopy ${studies(totalCount)}`
-          )}
-        </div>
+        {status !== undefined && (
+          <div
+            className="min-w-0 truncate text-12.5 text-ink-muted"
+            aria-live="polite"
+          >
+            {status}
+          </div>
+        )}
       </div>
-      <div className="flex-1" />
-      <div className="flex flex-none items-center gap-2">
+      <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2 sm:flex-nowrap">
         <ContainsPicker
           value={contains?.entry}
           onChange={onContainsChange}
@@ -117,7 +125,7 @@ export function WorklistHeader({
           value={searchText}
           onValueChange={onSearchChange}
           clearable
-          className="w-[340px]"
+          className="min-w-0 w-full max-w-[340px] sm:w-[340px]"
           inputClassName="placeholder:text-ink-faint"
         />
       </div>

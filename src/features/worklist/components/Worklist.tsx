@@ -201,12 +201,11 @@ export function Worklist({
   return (
     <main
       className={cn(
-        'flex h-full min-h-0 flex-col gap-3 px-5 pb-4 pt-4',
+        'flex h-full min-h-0 min-w-0 w-full max-w-full flex-col gap-3 px-5 pb-4 pt-4',
         className,
       )}
     >
       <WorklistHeader
-        totalCount={studies.length}
         isLoading={isLoading}
         searchText={searchText}
         onSearchChange={handleSearchChange}

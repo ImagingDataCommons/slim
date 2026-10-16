@@ -305,8 +305,8 @@ describe('Worklist', () => {
         expect(screen.getAllByRole('link', { name: /patient/ })).toHaveLength(4)
       })
       expect(
-        screen.getByText('Showing 4 slide microscopy studies'),
-      ).toBeInTheDocument()
+        screen.queryByText(/slide microscopy studies/),
+      ).not.toBeInTheDocument()
     })
 
     it('confirms modality matches and drops studies of another SOP class', async () => {

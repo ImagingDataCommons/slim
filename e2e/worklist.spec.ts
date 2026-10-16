@@ -17,9 +17,6 @@ async function openWorklist(page: Page): Promise<void> {
 test.describe('Worklist', () => {
   test('W1 lists slide microscopy studies with a count', async ({ page }) => {
     await openWorklist(page)
-    await expect(
-      page.getByText(/\d+ slide microscopy stud(y|ies)/),
-    ).toBeVisible()
     await expect(rows(page)).toHaveCount(20)
     await expect(page.getByText(/Showing 1–20 of \d+/)).toBeVisible()
   })

@@ -1,4 +1,9 @@
-// biome-ignore-all lint/a11y/noRedundantRoles: display flex/grid/block on table elements drops their implicit roles in some browsers
+/**
+ * Div grid + ARIA table roles: real <table>/<tr> fight CSS grid track sizing.
+ * Biome prefers semantic tags / focusable interactive roles; suppress those here.
+ */
+// biome-ignore-all lint/a11y/useSemanticElements: intentional ARIA table on divs for CSS grid
+// biome-ignore-all lint/a11y/useFocusableInteractive: only data rows are keyboard targets
 import {
   flexRender,
   getCoreRowModel,
@@ -15,7 +20,13 @@ import * as React from 'react'
 import { Icon } from '../../../components/ui/icon'
 import { Skeleton } from '../../../components/ui/skeleton'
 import { cn } from '../../../lib/utils'
-import { columns, WORKLIST_GRID_COLUMNS } from './columns'
+import {
+  columnVisibilityForTier,
+  useWorklistColumnLayout,
+  WORKLIST_GRID_TEMPLATE_BY_TIER,
+  type WorklistWidthTier,
+} from '../hooks/useWorklistColumnLayout'
+import { columns } from './columns'
 
 export interface WorklistTableProps {
   data: dmv.metadata.Study[]
@@ -50,39 +61,61 @@ const SKELETON_BAR_WIDTHS = [
   'w-4/5',
 ]
 
+function rowHeightClass(isCompact: boolean): string {
+  /** min-height so wrapped modality chips grow the row instead of overlapping */
+  return isCompact ? 'min-h-8 py-1' : 'min-h-9 py-1.5'
+}
+
+function visibleColumnsForTier(tier: WorklistWidthTier) {
+  const visibility = columnVisibilityForTier(tier)
+  return columns.filter((column) => {
+    const id = column.id
+    if (id === undefined) return true
+    return visibility[id] !== false
+  })
+}
+
 function WorklistSkeletonRows({
   rowCount,
   isCompact,
+  tier,
+  gridStyle,
 }: {
   rowCount: number
   isCompact: boolean
+  tier: WorklistWidthTier
+  gridStyle: React.CSSProperties
 }): React.ReactElement {
   const rowIndexes = Array.from({ length: rowCount }, (_, index) => index)
+  const visibleColumns = visibleColumnsForTier(tier)
   return (
     <>
-      <tr role="row" className="sr-only">
-        <td role="cell">Loading studies…</td>
-      </tr>
+      <div role="row" className="sr-only">
+        <div role="cell">Loading studies…</div>
+      </div>
       {rowIndexes.map((rowIndex) => (
-        // biome-ignore lint/a11y/noAriaHiddenOnFocusable: placeholder rows have no tabIndex and no focusable content
-        <tr
+        <div
           key={`skeleton-${rowIndex}`}
+          role="row"
           aria-hidden="true"
           className={cn(
-            'grid items-center gap-3 border-b border-line-soft px-5',
-            WORKLIST_GRID_COLUMNS,
-            isCompact ? 'h-8' : 'h-9',
+            'grid w-full min-w-0 items-center gap-2 border-b border-line-soft px-5 sm:gap-3',
+            rowHeightClass(isCompact),
           )}
-          style={{ opacity: 1 - rowIndex / (rowCount + 4) }}
+          style={{
+            ...gridStyle,
+            opacity: 1 - rowIndex / (rowCount + 4),
+          }}
         >
-          {columns.map((column, columnIndex) => {
+          {visibleColumns.map((column, columnIndex) => {
             const width =
               SKELETON_BAR_WIDTHS[
                 (rowIndex * 3 + columnIndex) % SKELETON_BAR_WIDTHS.length
               ]
             return (
-              <td
+              <div
                 key={column.id ?? columnIndex}
+                role="cell"
                 className={cn(
                   'flex min-w-0',
                   column.meta?.align === 'right' && 'justify-end',
@@ -92,16 +125,16 @@ function WorklistSkeletonRows({
                   className={width}
                   style={{ animationDelay: `${rowIndex * 60}ms` }}
                 />
-              </td>
+              </div>
             )
           })}
-        </tr>
+        </div>
       ))}
     </>
   )
 }
 
-/** Studies grid: sticky uppercase header, 36px rows (32px compact), footer slot. */
+/** Studies grid: sticky uppercase header, growing rows, footer slot. */
 export function WorklistTable({
   data,
   isLoading,
@@ -121,6 +154,13 @@ export function WorklistTable({
    * rows. React Compiler lists useReactTable as an incompatible library.
    */
   'use no memo'
+  const [container, setContainer] = React.useState<HTMLElement | null>(null)
+  const tier = useWorklistColumnLayout(container)
+  const columnVisibility = columnVisibilityForTier(tier)
+  const gridStyle: React.CSSProperties = {
+    gridTemplateColumns: WORKLIST_GRID_TEMPLATE_BY_TIER[tier],
+  }
+
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: 'StudyDate', desc: true },
   ])
@@ -128,7 +168,7 @@ export function WorklistTable({
   const table = useReactTable({
     data,
     columns,
-    state: { sorting, pagination },
+    state: { sorting, pagination, columnVisibility },
     autoResetPageIndex: false,
     onSortingChange: setSorting,
     onPaginationChange: (updater) => {
@@ -158,128 +198,136 @@ export function WorklistTable({
       <WorklistSkeletonRows
         rowCount={Math.min(pagination.pageSize, SKELETON_MAX_ROWS)}
         isCompact={isCompact}
+        tier={tier}
+        gridStyle={gridStyle}
       />
     )
   } else if (data.length === 0) {
     body = (
-      <tr role="row" className="block">
-        <td
+      <div role="row" className="block">
+        <div
           role="cell"
-          colSpan={columns.length}
           className="block px-5 py-16 text-center text-ink-muted"
         >
           {emptyMessage}
-        </td>
-      </tr>
+        </div>
+      </div>
     )
   } else {
     body = table.getRowModel().rows.map((row) => (
-      <tr
+      <div
         key={row.id}
         role="row"
+        tabIndex={0}
         onClick={() => onRowClick(row.original)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            onRowClick(row.original)
+          }
+        }}
         className={cn(
-          'relative grid cursor-pointer items-center gap-3 border-b border-line-soft px-5 text-ink-body transition-colors focus-within:bg-selected hover:bg-selected',
-          WORKLIST_GRID_COLUMNS,
-          isCompact ? 'h-8' : 'h-9',
+          'relative grid w-full min-w-0 max-w-full cursor-pointer items-center gap-2 border-b border-line-soft px-5 text-ink-body transition-colors focus-within:bg-selected hover:bg-selected sm:gap-3',
+          rowHeightClass(isCompact),
         )}
+        style={gridStyle}
       >
         {renderRowMarker !== undefined && (
-          <td className="absolute left-1.5 top-1/2 flex -translate-y-1/2">
+          <div className="pointer-events-none absolute left-1.5 top-1/2 flex -translate-y-1/2">
             {renderRowMarker(row.original)}
-          </td>
+          </div>
         )}
         {row.getVisibleCells().map((cell) => (
-          <td key={cell.id} role="cell" className="min-w-0">
+          <div key={cell.id} role="cell" className="min-w-0 overflow-hidden">
             {flexRender(cell.column.columnDef.cell, cell.getContext())}
-          </td>
+          </div>
         ))}
-      </tr>
+      </div>
     ))
   }
 
   return (
     <div
       className={cn(
-        'flex min-h-0 flex-col overflow-hidden rounded-card border border-line bg-panel',
+        'flex min-h-0 min-w-0 w-full flex-col overflow-hidden rounded-card border border-line bg-panel',
         className,
       )}
     >
-      <table role="table" className="flex min-h-0 flex-1 flex-col text-left">
-        <thead role="rowgroup" className="block flex-none">
-          {table.getHeaderGroups().map((headerGroup) => (
-            <tr
-              key={headerGroup.id}
-              role="row"
-              className={cn(
-                'grid h-8 items-center gap-3 border-b border-line bg-subtle px-5 text-11 font-semibold uppercase leading-none tracking-wider text-ink-muted',
-                WORKLIST_GRID_COLUMNS,
-              )}
-            >
-              {headerGroup.headers.map((header) => {
-                const sorted = header.column.getIsSorted()
-                const canSort = header.column.getCanSort()
-                const meta = header.column.columnDef.meta
-                const label = flexRender(
-                  header.column.columnDef.header,
-                  header.getContext(),
-                )
-                return (
-                  <th
-                    key={header.id}
-                    role="columnheader"
-                    scope="col"
-                    aria-sort={
-                      sorted === 'asc'
-                        ? 'ascending'
-                        : sorted === 'desc'
-                          ? 'descending'
-                          : undefined
-                    }
-                    className={cn(
-                      'min-w-0 text-left font-semibold',
-                      meta?.align === 'right' && 'text-right',
-                    )}
-                  >
-                    {canSort ? (
-                      <button
-                        type="button"
-                        onClick={header.column.getToggleSortingHandler()}
-                        className={cn(
-                          'inline-flex max-w-full items-center gap-1 uppercase tracking-wider transition-colors hover:text-ink',
-                          sorted !== false && 'text-primary hover:text-primary',
-                          meta?.align === 'right' && 'flex-row-reverse',
-                        )}
-                      >
-                        <span className="truncate">{label}</span>
-                        {sorted !== false && (
-                          <Icon
-                            name={
-                              sorted === 'desc'
-                                ? 'arrow_downward'
-                                : 'arrow_upward'
-                            }
-                            size={15}
-                          />
-                        )}
-                      </button>
-                    ) : (
-                      <span className="block truncate">{label}</span>
-                    )}
-                  </th>
-                )
-              })}
-            </tr>
-          ))}
-        </thead>
-        <tbody
-          role="rowgroup"
-          aria-busy={isLoading}
-          className="block min-h-0 flex-1 overflow-auto"
-        >
-          {body}
-        </tbody>
-      </table>
+      {/** Measured width drives TanStack visibility + matching grid tracks. */}
+      <div
+        ref={setContainer}
+        className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
+      >
+        <div role="table" className="w-full min-w-0 max-w-full text-left">
+          <div role="rowgroup" className="sticky top-0 z-10">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <div
+                key={headerGroup.id}
+                role="row"
+                className="grid h-8 w-full min-w-0 max-w-full items-center gap-2 border-b border-line bg-subtle px-5 text-11 font-semibold uppercase leading-none tracking-wider text-ink-muted sm:gap-3"
+                style={gridStyle}
+              >
+                {headerGroup.headers.map((header) => {
+                  const sorted = header.column.getIsSorted()
+                  const canSort = header.column.getCanSort()
+                  const meta = header.column.columnDef.meta
+                  const label = flexRender(
+                    header.column.columnDef.header,
+                    header.getContext(),
+                  )
+                  return (
+                    <div
+                      key={header.id}
+                      role="columnheader"
+                      aria-sort={
+                        sorted === 'asc'
+                          ? 'ascending'
+                          : sorted === 'desc'
+                            ? 'descending'
+                            : undefined
+                      }
+                      className={cn(
+                        'min-w-0 overflow-hidden text-left font-semibold',
+                        meta?.align === 'right' && 'text-right',
+                      )}
+                    >
+                      {canSort ? (
+                        <button
+                          type="button"
+                          onClick={header.column.getToggleSortingHandler()}
+                          className={cn(
+                            'inline-flex max-w-full items-center gap-1 uppercase tracking-wider transition-colors hover:text-ink',
+                            sorted !== false &&
+                              'text-primary hover:text-primary',
+                            meta?.align === 'right' && 'flex-row-reverse',
+                          )}
+                        >
+                          <span className="truncate">{label}</span>
+                          {sorted !== false && (
+                            <Icon
+                              name={
+                                sorted === 'desc'
+                                  ? 'arrow_downward'
+                                  : 'arrow_upward'
+                              }
+                              size={15}
+                            />
+                          )}
+                        </button>
+                      ) : (
+                        <span className="block truncate">{label}</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+          <div role="rowgroup" aria-busy={isLoading}>
+            {body}
+          </div>
+        </div>
+      </div>
       {footer}
     </div>
   )

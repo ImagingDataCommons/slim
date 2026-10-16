@@ -7,11 +7,14 @@ import {
 } from '../studyQuery'
 
 describe('buildStudyQueryParams', () => {
-  it('restricts to slide microscopy studies and requests the series count', () => {
+  it('restricts to slide microscopy studies', () => {
     expect(buildStudyQueryParams()).toEqual({
       ModalitiesInStudy: 'SM',
-      includefield: 'NumberOfStudyRelatedSeries',
     })
+  })
+
+  it('does not request NumberOfStudyRelatedSeries (Google Healthcare 400)', () => {
+    expect(buildStudyQueryParams()).not.toHaveProperty('includefield')
   })
 
   it('returns a fresh object per call', () => {

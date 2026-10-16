@@ -31,11 +31,14 @@ declare module '@tanstack/react-table' {
   }
 }
 
-/** Grid template shared by the header row and the study rows. */
-export const WORKLIST_GRID_COLUMNS =
-  'grid-cols-[1.6fr_1fr_1fr_.9fr_.6fr_1fr_.8fr_1.1fr_1fr_1.2fr_.7fr]'
-
-/** Column definitions (sorting accessors + cells) for the worklist grid. */
+/**
+ * DOM order of worklist columns. Hidden columns are omitted by TanStack, so
+ * remaining cells pack left-to-right into `WORKLIST_GRID_TEMPLATE_BY_TIER`:
+ * - base: name, id, modality, date, slides
+ * - md: + sex, accession
+ * - lg: + study id
+ * - xl: + birth, time, referring
+ */
 export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
   {
     id: 'PatientName',
@@ -78,7 +81,7 @@ export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
       const modalities = getValue<string[]>()
       if (modalities.length === 0) return DASH
       return (
-        <span className="flex flex-wrap gap-1">
+        <span className="flex flex-wrap content-center gap-1">
           {modalities.map((modality) => (
             <MonoChip key={modality}>{modality}</MonoChip>
           ))}

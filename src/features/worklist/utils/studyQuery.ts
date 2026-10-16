@@ -10,11 +10,16 @@ export const STUDY_SEARCH_RESULT_LIMIT = 100
 
 export type StudyQueryParams = Record<string, string | number | boolean>
 
-/** Slide microscopy studies, with the series count used for "Slides". */
+/**
+ * Slide microscopy studies. Do not request `NumberOfStudyRelatedSeries` via
+ * `includefield`: Google Healthcare (IDC) rejects that attribute with HTTP 400
+ * ("not a supported … attribute"), which also breaks StudyID search queries
+ * that reuse these params. Servers that return the series count by default
+ * (e.g. dcm4chee) still populate the Slides column without `includefield`.
+ */
 export function buildStudyQueryParams(): StudyQueryParams {
   return {
     ModalitiesInStudy: 'SM',
-    includefield: 'NumberOfStudyRelatedSeries',
   }
 }
 
