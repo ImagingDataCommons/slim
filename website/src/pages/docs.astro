@@ -15,7 +15,8 @@ import SectionHeading from '../components/SectionHeading.astro'
 import { site } from '../data/site'
 import BaseLayout from '../layouts/BaseLayout.astro'
 
-const readme = (anchor: string): string => `${site.repo}#${anchor}`
+/** README section links follow the same docs ref as site.links.readme */
+const readme = (anchor: string): string => `${site.links.readme}#${anchor}`
 
 const guides = [
   {

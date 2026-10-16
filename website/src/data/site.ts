@@ -6,6 +6,12 @@
 const repo = 'https://github.com/ImagingDataCommons/slim'
 
 /**
+ * Git ref for docs links. Slim v2 docs live on this stack until the redesign
+ * PR merges; switch back to `master` after that.
+ */
+const docsRef = 'feat/slim-website'
+
+/**
  * Slim deployment that loads data from the IDC public proxy, hosted in the
  * same Firebase project as this site (slim-app site).
  */
@@ -35,13 +41,13 @@ export const site = {
     newIssue: `${repo}/issues/new/choose`,
     pulls: `${repo}/pulls`,
     wiki: `${repo}/wiki`,
-    readme: `${repo}#readme`,
-    configuration: `${repo}/blob/master/docs/CONFIGURATION.md`,
-    conformance: `${repo}/blob/master/DICOM-Conformance-Statement.md`,
-    contributing: `${repo}/blob/master/CONTRIBUTING.md`,
-    changelog: `${repo}/blob/master/docs/CHANGELOG.md`,
-    license: `${repo}/blob/master/LICENSE`,
-    dockerCompose: `${repo}/blob/master/docker-compose.yml`,
+    readme: `${repo}/blob/${docsRef}/README.md`,
+    configuration: `${repo}/blob/${docsRef}/docs/CONFIGURATION.md`,
+    conformance: `${repo}/blob/${docsRef}/DICOM-Conformance-Statement.md`,
+    contributing: `${repo}/blob/${docsRef}/CONTRIBUTING.md`,
+    changelog: `${repo}/blob/${docsRef}/docs/CHANGELOG.md`,
+    license: `${repo}/blob/${docsRef}/LICENSE`,
+    dockerCompose: `${repo}/blob/${docsRef}/docker-compose.yml`,
     dmv: 'https://github.com/ImagingDataCommons/dicom-microscopy-viewer',
     idc: 'https://imaging.datacommons.cancer.gov',
     idcPortal: 'https://portal.imaging.datacommons.cancer.gov',
