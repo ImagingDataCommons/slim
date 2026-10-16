@@ -107,7 +107,7 @@ export function showConfirmDialog(
       isSettled = true
       if (settleOpenDialog === settle) settleOpenDialog = undefined
       root.unmount()
-      container.remove()
+      container.parentNode?.removeChild(container)
       resolve(result)
     }
     settleOpenDialog = settle
