@@ -285,7 +285,11 @@ async function slide(page, analysis) {
   const box = await mainViewportBox(page)
   const first = await shot(page, 'slide-fit')
   const stdFit = await imageStdDev(analysis, first.buffer, box)
-  check('slide viewport shows rendered tissue, not a blank canvas', stdFit > 10, `luminance stddev ${stdFit.toFixed(1)}`)
+  /**
+   * Fitted H&E is mostly empty slide background, so stddev sits near ~7; a blank
+   * canvas is ~0. Zoom (below) still requires > 10 for dense tissue.
+   */
+  check('slide viewport shows rendered tissue, not a blank canvas', stdFit > 5, `luminance stddev ${stdFit.toFixed(1)}`)
 
   const framesBeforeZoom = frameResponses()
   await zoomIntoCenter(page, 6)
