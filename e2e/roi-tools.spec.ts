@@ -157,13 +157,10 @@ test.describe('ROI tools', () => {
       await configureDraw(page, 'Tumor', geometry)
       await drawGeometry(page, geometry, (index - 3) * 35)
       await expect
-        .poll(
-          async () => rois.getByRole('button', { name: /^ROI \d+ / }).count(),
-          {
-            message: `${geometry} should add an ROI`,
-            timeout: 20_000,
-          },
-        )
+        .poll(() => rois.getByRole('button', { name: /^ROI \d+ / }).count(), {
+          message: `${geometry} should add an ROI`,
+          timeout: 20_000,
+        })
         .toBe(before + 1)
       await page.keyboard.press('Escape')
       await expect(

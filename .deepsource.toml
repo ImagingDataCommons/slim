@@ -13,6 +13,8 @@ test_patterns = [
 
 exclude_patterns = [
   ".cursor/**",
+  # Node CLIs; the JS analyzer is configured for the browser app.
+  "scripts/**",
 ]
 
 [[analyzers]]

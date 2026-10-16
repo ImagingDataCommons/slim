@@ -31,6 +31,15 @@ const SERIES =
 const MAX_INSTANCES = Number(process.env.SEED_MAX_INSTANCES ?? 12)
 const MAX_BYTES = Number(process.env.SEED_MAX_BYTES ?? 40 * 1024 * 1024)
 
+/** Node CLI output (avoid `console.*`, which DeepSource flags under browser env). */
+function log(message) {
+  process.stdout.write(`${message}\n`)
+}
+
+function warn(message) {
+  process.stderr.write(`${message}\n`)
+}
+
 async function waitForArchive(timeoutMs = 180_000) {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
@@ -130,31 +139,31 @@ async function stowInstance(buffer, sopInstanceUID) {
 }
 
 async function main() {
-  console.log('Waiting for local DICOMweb archive…')
+  log('Waiting for local DICOMweb archive…')
   await waitForArchive()
-  console.log('Listing VOLUME instances from IDC…')
+  log('Listing VOLUME instances from IDC…')
   const instances = await listInstances()
   const selected = instances.slice(0, MAX_INSTANCES)
-  console.log(
+  log(
     `Seeding up to ${selected.length}/${instances.length} VOLUME instances (smallest first, cap ${MAX_BYTES} bytes)…`,
   )
 
   let total = 0
   const stored = []
   for (const { uid, pixels } of selected) {
-    let buffer
+    let buffer = null
     try {
       buffer = await retrieveInstance(uid)
     } catch {
-      console.warn('  skip one instance (WADO retrieve failed)')
+      warn('  skip one instance (WADO retrieve failed)')
       continue
     }
     total += buffer.length
     if (total > MAX_BYTES) {
-      console.warn('Stopping: would exceed SEED_MAX_BYTES.')
+      warn('Stopping: would exceed SEED_MAX_BYTES.')
       break
     }
-    console.log(`  STOW instance (${buffer.length} bytes, ~${pixels} px)`)
+    log(`  STOW instance (${buffer.length} bytes, ~${pixels} px)`)
     await stowInstance(buffer, uid)
     stored.push(uid)
   }
@@ -171,13 +180,13 @@ async function main() {
     seededAt: new Date().toISOString(),
   }
   fs.writeFileSync(OUT, `${JSON.stringify(seed, null, 2)}\n`)
-  console.log(`Wrote ${OUT}`)
-  console.log(
+  log(`Wrote ${OUT}`)
+  log(
     'Seed complete. Open the seeded study/series on the local Slim app (port 8008).',
   )
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : 'seed failed')
+  warn(error instanceof Error ? error.message : 'seed failed')
   process.exit(1)
 })

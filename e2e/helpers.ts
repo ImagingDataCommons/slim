@@ -409,6 +409,10 @@ export async function drawGeometry(
       }
       await page.mouse.up()
       break
+    default: {
+      const unexpected: never = geometry
+      throw new Error(`Unsupported geometry: ${unexpected}`)
+    }
   }
 }
 
