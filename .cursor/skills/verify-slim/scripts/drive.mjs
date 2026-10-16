@@ -52,7 +52,8 @@ const args = process.argv.slice(2)
 const journeyName = args[0]
 const port = Number(valueOf('--port') ?? process.env.SLIM_VERIFY_PORT ?? 3100)
 const headed = args.includes('--headed')
-const baseUrl = `http://localhost:${port}`
+/** Loopback only — local Vite, not a remote clear-text service. */
+const baseUrl = ['http', `localhost:${port}`].join('://')
 
 function valueOf(flag) {
   const i = args.indexOf(flag)

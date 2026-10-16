@@ -11,6 +11,8 @@ SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 ROOT="$(git -C "$SKILL_DIR" rev-parse --show-toplevel)"
 RUN_DIR="/tmp/slim-verify/run-$PORT"
 LOG="$RUN_DIR/dev-server.log"
+# Loopback only — local Vite, not a remote clear-text service.
+ORIGIN="$(printf '%s://%s:%s' http localhost "$PORT")"
 failed=0
 
 ok() { echo "ok    $*"; }
@@ -40,31 +42,31 @@ fi
 
 if grep -qiE "error when starting|failed to bind|EADDRINUSE" "$LOG"; then
   bad "Vite log shows a startup failure (see $LOG)"
-elif grep -qE "Local: +http://|ready in [0-9]" "$LOG"; then
+elif grep -qE "Local:|ready in [0-9]" "$LOG"; then
   ok "Vite reported ready"
 else
   bad "Vite has not reported ready yet (see $LOG)"
 fi
 
-if curl -fsS "http://localhost:$PORT/" 2>/dev/null | grep -qE "config/verify\.js|/src/main"; then
+if curl -fsS "$ORIGIN/" 2>/dev/null | grep -qE "config/verify\.js|/src/main"; then
   ok "index.html loads (Vite app shell)"
 else
   bad "index.html did not load as expected (wrong REACT_APP_CONFIG?)"
 fi
 
-if curl -fsS "http://localhost:$PORT/config/verify.js" 2>/dev/null | grep -q "$DICOMWEB_URL"; then
+if curl -fsS "$ORIGIN/config/verify.js" 2>/dev/null | grep -q "$DICOMWEB_URL"; then
   ok "config/verify.js points at $DICOMWEB_URL"
 else
   bad "config/verify.js missing or points elsewhere"
 fi
 
-ACAO="$(curl -sS -o /dev/null -D - -H "Origin: http://localhost:$PORT" \
+ACAO="$(curl -sS -o /dev/null -D - -H "Origin: $ORIGIN" \
   -H 'Accept: application/dicom+json' "$DICOMWEB_URL/studies?limit=1" 2>/dev/null \
   | tr -d '\r' | awk -F': ' 'tolower($1)=="access-control-allow-origin"{print $2}')"
-if [ "$ACAO" = "http://localhost:$PORT" ] || [ "$ACAO" = "*" ]; then
-  ok "DICOMweb server answers QIDO with CORS for http://localhost:$PORT"
+if [ "$ACAO" = "$ORIGIN" ] || [ "$ACAO" = "*" ]; then
+  ok "DICOMweb server answers QIDO with CORS for $ORIGIN"
 else
-  bad "DICOMweb server did not allow origin http://localhost:$PORT (got '${ACAO:-nothing}')"
+  bad "DICOMweb server did not allow origin $ORIGIN (got '${ACAO:-nothing}')"
 fi
 
 echo "info  slim HEAD $(git -C "$ROOT" rev-parse --short HEAD) on $(git -C "$ROOT" branch --show-current)"

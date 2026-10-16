@@ -42,7 +42,7 @@ async function waitForArchive(timeoutMs = 180_000) {
     }
     await new Promise((resolve) => setTimeout(resolve, 3000))
   }
-  throw new Error(`DICOMweb at ${LOCAL} did not become ready`)
+  throw new Error('Local DICOMweb archive did not become ready')
 }
 
 async function listInstances() {
@@ -56,11 +56,11 @@ async function listInstances() {
     headers: { Accept: 'application/dicom+json' },
   })
   if (!response.ok) {
-    throw new Error(`QIDO instances failed: ${response.status} ${url}`)
+    throw new Error(`QIDO instances failed: ${response.status}`)
   }
   const rows = await response.json()
   if (!Array.isArray(rows) || rows.length === 0) {
-    throw new Error(`No instances for series ${SERIES}`)
+    throw new Error('No instances for the configured series')
   }
   /**
    * VOLUME frames only, smallest first — a few pyramid tip levels fit under
@@ -91,7 +91,7 @@ async function listInstances() {
 
 async function retrieveInstance(sopInstanceUID, attempts = 4) {
   const url = `${IDC}/studies/${STUDY}/series/${SERIES}/instances/${sopInstanceUID}`
-  let lastError = new Error(`WADO instance failed: ${sopInstanceUID}`)
+  let lastError = new Error('WADO instance failed')
   for (let attempt = 1; attempt <= attempts; attempt++) {
     const response = await fetch(url, {
       headers: { Accept: 'application/dicom; transfer-syntax=*' },
@@ -99,9 +99,7 @@ async function retrieveInstance(sopInstanceUID, attempts = 4) {
     if (response.ok) {
       return Buffer.from(await response.arrayBuffer())
     }
-    lastError = new Error(
-      `WADO instance failed: ${response.status} ${sopInstanceUID}`,
-    )
+    lastError = new Error(`WADO instance failed: ${response.status}`)
     await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
   }
   throw lastError
@@ -127,15 +125,14 @@ async function stowInstance(buffer, sopInstanceUID) {
     body,
   })
   if (!response.ok) {
-    const text = await response.text()
-    throw new Error(`STOW failed (${response.status}): ${text.slice(0, 400)}`)
+    throw new Error(`STOW failed (${response.status})`)
   }
 }
 
 async function main() {
-  console.log(`Waiting for archive at ${LOCAL}…`)
+  console.log('Waiting for local DICOMweb archive…')
   await waitForArchive()
-  console.log(`Listing instances of ${SERIES} from IDC…`)
+  console.log('Listing VOLUME instances from IDC…')
   const instances = await listInstances()
   const selected = instances.slice(0, MAX_INSTANCES)
   console.log(
@@ -148,20 +145,16 @@ async function main() {
     let buffer
     try {
       buffer = await retrieveInstance(uid)
-    } catch (error) {
-      console.warn(
-        `  skip ${uid}: ${error instanceof Error ? error.message : error}`,
-      )
+    } catch {
+      console.warn('  skip one instance (WADO retrieve failed)')
       continue
     }
     total += buffer.length
     if (total > MAX_BYTES) {
-      console.warn(
-        `Stopping before ${uid}: would exceed SEED_MAX_BYTES (${MAX_BYTES}).`,
-      )
+      console.warn('Stopping: would exceed SEED_MAX_BYTES.')
       break
     }
-    console.log(`  STOW ${uid} (${buffer.length} bytes, ~${pixels} px)`)
+    console.log(`  STOW instance (${buffer.length} bytes, ~${pixels} px)`)
     await stowInstance(buffer, uid)
     stored.push(uid)
   }
@@ -180,11 +173,11 @@ async function main() {
   fs.writeFileSync(OUT, `${JSON.stringify(seed, null, 2)}\n`)
   console.log(`Wrote ${OUT}`)
   console.log(
-    `Open http://localhost:8008/studies/${STUDY}/series/${SERIES} after docker compose is up.`,
+    'Seed complete. Open the seeded study/series on the local Slim app (port 8008).',
   )
 }
 
 main().catch((error) => {
-  console.error(error)
+  console.error(error instanceof Error ? error.message : 'seed failed')
   process.exit(1)
 })

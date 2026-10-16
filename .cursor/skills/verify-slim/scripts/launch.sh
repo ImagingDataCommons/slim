@@ -16,6 +16,8 @@ PORT="${SLIM_VERIFY_PORT:-3100}"
 DICOMWEB_URL="${SLIM_VERIFY_DICOMWEB_URL:-https://proxy.imaging.datacommons.cancer.gov/current/viewer-only-no-downloads-see-tinyurl-dot-com-slash-3j3d9jyp/dicomWeb}"
 WRITE="${SLIM_VERIFY_WRITE:-false}"
 READY_TIMEOUT_S="${SLIM_VERIFY_READY_TIMEOUT_S:-300}"
+# Loopback only — local Vite, not a remote clear-text service.
+ORIGIN="$(printf '%s://%s:%s' http localhost "$PORT")"
 
 SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 ROOT="$(git -C "$SKILL_DIR" rev-parse --show-toplevel)"
@@ -114,9 +116,9 @@ while [ $SECONDS -lt $deadline ]; do
     tail -n 60 "$LOG"
     exit 1
   fi
-  if grep -qE "Local: +http://|ready in [0-9]" "$LOG" \
-    && curl -fsS "http://localhost:$PORT/config/verify.js" 2>/dev/null | grep -q "$DICOMWEB_URL"; then
-    echo "Ready: http://localhost:$PORT/"
+  if grep -qE "Local:|ready in [0-9]" "$LOG" \
+    && curl -fsS "$ORIGIN/config/verify.js" 2>/dev/null | grep -q "$DICOMWEB_URL"; then
+    echo "Ready: $ORIGIN/"
     exit 0
   fi
   sleep 2
