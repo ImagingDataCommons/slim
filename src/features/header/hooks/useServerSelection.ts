@@ -100,13 +100,13 @@ export function useServerSelection({
     setIsDialogOpen(false)
   }, [previousUrl, previousMode])
 
-  const setServerUrl = useCallback((url: string) => {
+  const setServerUrl = (url: string): void => {
     setServerUrlState(url.trim())
-  }, [])
+  }
 
-  const setMode = useCallback((newMode: ServerSelectionMode) => {
+  const setMode = (newMode: ServerSelectionMode): void => {
     setModeState(newMode)
-  }, [])
+  }
 
   const submitSelection = useCallback(() => {
     /** Keep the dialog open so an invalid entry cannot wipe the cached config */

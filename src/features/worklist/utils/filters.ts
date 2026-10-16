@@ -8,7 +8,17 @@ import type * as dmv from 'dicom-microscopy-viewer'
 
 import { formatRawPersonName } from '../../../utils/dicom/personName'
 import { formatPersonName } from '../../../utils/displayFormat'
+import type { ContainsEntry } from './containsCatalog'
+import { type ContainsMatch, withEntryModality } from './containsSearch'
 import { normalizeModalities } from './studyFields'
+
+/** Row check status used when merging Contains matches into the study list. */
+export type ContainsRowCheckLookup = (studyUid: string) =>
+  | {
+      status: 'mismatch' | 'match' | 'unknown' | 'checking'
+      study?: dmv.metadata.Study
+    }
+  | undefined
 
 /** Empty-state text of the worklist table, quoting the search query. */
 export function getEmptyStudiesMessage(searchText = ''): string {
@@ -99,4 +109,45 @@ export function mergeModalities(
     }
     return { ...study, ModalitiesInStudy: modalities }
   })
+}
+
+export interface ResolveContainsStudiesInput {
+  entry: ContainsEntry
+  matches: ReadonlyMap<string, ContainsMatch>
+  loadedStudies: ReadonlyMap<string, dmv.metadata.Study>
+  getRowCheck: ContainsRowCheckLookup
+  /** True when the match still needs a row check before it can be trusted. */
+  needsCheck: (studyUid: string) => boolean
+}
+
+export interface ResolveContainsStudiesResult {
+  studies: dmv.metadata.Study[]
+  hasUncheckedMatches: boolean
+}
+
+/**
+ * Builds the study list for an active Contains filter: skip mismatches, prefer
+ * loaded worklist rows, then fetched check studies, then the match stub.
+ */
+export function resolveContainsStudies({
+  entry,
+  matches,
+  loadedStudies,
+  getRowCheck,
+  needsCheck,
+}: ResolveContainsStudiesInput): ResolveContainsStudiesResult {
+  const studies: dmv.metadata.Study[] = []
+  let hasUncheckedMatches = false
+  for (const [studyUid, match] of matches) {
+    const check = getRowCheck(studyUid)
+    if (check?.status === 'mismatch') continue
+    if (check === undefined && needsCheck(studyUid)) {
+      hasUncheckedMatches = true
+    }
+    const loaded = loadedStudies.get(studyUid)
+    const fetched =
+      check !== undefined && 'study' in check ? check.study : undefined
+    studies.push(loaded ?? withEntryModality(fetched ?? match.study, entry))
+  }
+  return { studies, hasUncheckedMatches }
 }

@@ -1,22 +1,7 @@
-import {
-  type JSX,
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useState,
-} from 'react'
+import { type JSX, useId } from 'react'
 
 import type DicomWebManager from '../../DicomWebManager'
-import { useActiveSeries } from '../../hooks/useActiveSeries'
-import { useDebounce } from '../../hooks/useDebounce'
-import { useSlides } from '../../hooks/useSlides'
 import { cn } from '../../lib/utils'
-import DicomMetadataStore, {
-  EVENTS,
-  type Series,
-} from '../../services/DICOMMetadataStore'
-import { formatGroupedNumber } from '../../utils/displayFormat'
 import { Button } from '../ui/button'
 import { SlimDialogFooter } from '../ui/dialog'
 import { Icon } from '../ui/icon'
@@ -29,20 +14,9 @@ import {
   SelectValue,
 } from '../ui/select'
 import { Slider } from '../ui/slider'
-import {
-  buildDisplaySets,
-  buildTagTree,
-  collectExpandableKeys,
-  countRows,
-  filterTagTree,
-  getInstanceDimensions,
-  getSeriesLabel,
-  getSortedTags,
-  sortInstancesByNumber,
-  type TagTreeNode,
-  toggleSetValue,
-  toTagRecord,
-} from './dicomTagUtils'
+import { getSeriesLabel } from './dicomTagUtils'
+import { TAG_GRID_COLUMNS, TagRow } from './TagRow'
+import { useDicomTagBrowserState } from './useDicomTagBrowserState'
 
 export interface DicomTagBrowserProps {
   clients: { [key: string]: DicomWebManager }
@@ -51,89 +25,6 @@ export interface DicomTagBrowserProps {
   seriesInstanceUID?: string
   /** Called by the footer "Done" button */
   onDone?: () => void
-}
-
-const TAG_GRID_COLUMNS = 'grid-cols-[150px_52px_minmax(0,1fr)_minmax(0,1.4fr)]'
-
-const NO_KEYS: ReadonlySet<string> = new Set()
-
-/** Recursive tag row with expandable sequence items */
-interface TagRowProps {
-  item: TagTreeNode
-  depth: number
-  expandedKeys: ReadonlySet<string>
-  onToggle: (key: string) => void
-}
-
-const TagRow = ({
-  item,
-  depth,
-  expandedKeys,
-  onToggle,
-}: TagRowProps): JSX.Element => {
-  const hasChildren = item.children !== undefined && item.children.length > 0
-  const isExpanded = expandedKeys.has(item.key)
-
-  const rowClassName = cn(
-    'grid min-h-control w-full items-center gap-3 border-b border-line-row px-5 text-left hover:bg-selected',
-    TAG_GRID_COLUMNS,
-    depth > 0 ? 'bg-subtle/60' : 'bg-panel',
-  )
-
-  return (
-    <>
-      <tr className={rowClassName}>
-        <td
-          className="flex items-center gap-0.5 font-mono text-12 text-ink-secondary"
-          style={{ paddingLeft: depth * 18 }}
-        >
-          <span className="w-4 flex-none text-ink-muted">
-            {hasChildren ? (
-              <button
-                type="button"
-                aria-expanded={isExpanded}
-                aria-label={`${item.tag} ${item.keyword}`.trim()}
-                onClick={() => onToggle(item.key)}
-                className="grid place-items-center rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
-              >
-                <Icon
-                  name={isExpanded ? 'expand_more' : 'chevron_right'}
-                  size={16}
-                />
-              </button>
-            ) : null}
-          </span>
-          {item.tag}
-        </td>
-        <td>
-          {item.vr !== '' && (
-            <span className="rounded-sm bg-chip px-[5px] py-0.5 font-mono text-11 font-medium text-chip-foreground">
-              {item.vr}
-            </span>
-          )}
-        </td>
-        <td className="truncate font-medium text-ink">{item.keyword}</td>
-        <td className="break-all py-1.5 font-mono text-12 text-ink-body">
-          {item.value}
-        </td>
-      </tr>
-      {hasChildren &&
-        isExpanded &&
-        item.children?.map((child) => (
-          <TagRow
-            key={child.key}
-            item={child}
-            depth={depth + 1}
-            expandedKeys={expandedKeys}
-            onToggle={onToggle}
-          />
-        ))}
-    </>
-  )
-}
-
-function readStudySeries(studyInstanceUID: string): Series[] {
-  return [...(DicomMetadataStore.getStudy(studyInstanceUID)?.series ?? [])]
 }
 
 const DicomTagBrowser = ({
@@ -146,105 +37,32 @@ const DicomTagBrowser = ({
   const seriesLabelId = `${id}-series`
   const instanceLabelId = `${id}-instance`
 
-  const { slides, isLoading } = useSlides({ clients, studyInstanceUID })
-  const activeSeriesUIDs = useActiveSeries()
-  const [studySeries, setStudySeries] = useState<Series[]>(() =>
-    readStudySeries(studyInstanceUID),
-  )
-  const [selectedSeriesUID, setSelectedSeriesUID] = useState(seriesInstanceUID)
-  const [instanceNumber, setInstanceNumber] = useState(1)
-  const [searchInput, setSearchInput] = useState('')
-  /** Manual expansion, valid only for the filter query it was made under */
-  const [expansion, setExpansion] = useState<{
-    query: string
-    keys: ReadonlySet<string>
-  }>({ query: '', keys: NO_KEYS })
-
-  const filterQuery = useDebounce(searchInput, 300)
-
-  useEffect(() => {
-    const handler = (): void => {
-      setStudySeries(readStudySeries(studyInstanceUID))
-    }
-    const seriesAddedSubscription = DicomMetadataStore.subscribe(
-      EVENTS.SERIES_ADDED,
-      handler,
-    )
-    const instancesAddedSubscription = DicomMetadataStore.subscribe(
-      EVENTS.INSTANCES_ADDED,
-      handler,
-    )
-    handler()
-    return () => {
-      seriesAddedSubscription.unsubscribe()
-      instancesAddedSubscription.unsubscribe()
-    }
-  }, [studyInstanceUID])
-
-  const displaySets = useMemo(
-    () => buildDisplaySets(slides, studySeries),
-    [slides, studySeries],
-  )
-
-  /** Falls back to the first series until the selected one is loaded */
-  const selectedDisplaySet =
-    displaySets.find(
-      (displaySet) => displaySet.SeriesInstanceUID === selectedSeriesUID,
-    ) ?? displaySets[0]
-
-  const sortedImages = useMemo(
-    () =>
-      selectedDisplaySet !== undefined
-        ? sortInstancesByNumber(selectedDisplaySet.images)
-        : [],
-    [selectedDisplaySet],
-  )
-  const totalInstances = Math.max(sortedImages.length, 1)
-  const currentInstanceNumber = Math.min(instanceNumber, totalInstances)
-  const currentImage = sortedImages[currentInstanceNumber - 1]
-  const currentMetadata = useMemo(
-    () => (currentImage !== undefined ? toTagRecord(currentImage) : undefined),
-    [currentImage],
-  )
-
-  const tableData = useMemo(
-    () =>
-      currentMetadata !== undefined
-        ? buildTagTree(getSortedTags(currentMetadata))
-        : [],
-    [currentMetadata],
-  )
-  const filterResult = useMemo(
-    () => filterTagTree(tableData, filterQuery),
-    [tableData, filterQuery],
-  )
-  const filteredData = filterResult.tree
-  const isFiltering = filterQuery.trim() !== ''
-
-  const expandedKeys: ReadonlySet<string> =
-    expansion.query === filterQuery
-      ? expansion.keys
-      : isFiltering
-        ? filterResult.matchedKeys
-        : NO_KEYS
-
-  const handleToggleExpand = useCallback(
-    (key: string) => {
-      setExpansion({
-        query: filterQuery,
-        keys: toggleSetValue(expandedKeys, key),
-      })
-    },
-    [filterQuery, expandedKeys],
-  )
-
-  const dimensions = getInstanceDimensions(currentMetadata)
-  const instanceLabel =
-    dimensions?.columns !== undefined && dimensions.rows !== undefined
-      ? `${formatGroupedNumber(dimensions.columns)} × ${formatGroupedNumber(dimensions.rows)} px`
-      : ''
-  const selectedModality = selectedDisplaySet?.Modality ?? ''
-  const hasMultipleInstances = sortedImages.length > 1
+  const {
+    isLoading,
+    activeSeriesUIDs,
+    displaySets,
+    selectedDisplaySet,
+    setSelectedSeriesUID,
+    setInstanceNumber,
+    currentInstanceNumber,
+    totalInstances,
+    hasMultipleInstances,
+    instanceLabel,
+    selectedModality,
+    searchInput,
+    setSearchInput,
+    filteredData,
+    isFiltering,
+    expandedKeys,
+    handleToggleExpand,
+    collapseAll,
+    expandAll,
+    attributeCount,
+  } = useDicomTagBrowserState({
+    clients,
+    studyInstanceUID,
+    seriesInstanceUID,
+  })
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -253,10 +71,7 @@ const DicomTagBrowser = ({
           <span id={seriesLabelId}>Series</span>
           <Select
             value={selectedDisplaySet?.SeriesInstanceUID ?? ''}
-            onValueChange={(value) => {
-              setSelectedSeriesUID(value)
-              setInstanceNumber(1)
-            }}
+            onValueChange={setSelectedSeriesUID}
             disabled={isLoading || displaySets.length === 0}
           >
             <SelectTrigger className="h-9" aria-labelledby={seriesLabelId}>
@@ -401,26 +216,17 @@ const DicomTagBrowser = ({
       </table>
 
       <SlimDialogFooter className="justify-start pl-5 text-12 text-ink-muted">
-        <span>{countRows(filteredData, expandedKeys)} attributes</span>
+        <span>{attributeCount} attributes</span>
         <span className="flex-1" />
         <Button
           variant="outline"
           className="text-ink"
-          onClick={() => setExpansion({ query: filterQuery, keys: NO_KEYS })}
+          onClick={collapseAll}
           disabled={expandedKeys.size === 0}
         >
           Collapse all
         </Button>
-        <Button
-          variant="outline"
-          className="text-ink"
-          onClick={() =>
-            setExpansion({
-              query: filterQuery,
-              keys: new Set(collectExpandableKeys(filteredData)),
-            })
-          }
-        >
+        <Button variant="outline" className="text-ink" onClick={expandAll}>
           Expand all
         </Button>
         {onDone !== undefined && (

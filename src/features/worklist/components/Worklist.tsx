@@ -6,7 +6,6 @@ import {
   useCallback,
   useDeferredValue,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -19,26 +18,22 @@ import { cn } from '../../../lib/utils'
 import { buildStudyPath } from '../../../utils/routes'
 import { usePreferences } from '../../preferences'
 import {
-  type ContainsCandidate,
   type RowCheckState,
   useContainsRowChecks,
   useContainsSearch,
 } from '../hooks/useContainsSearch'
-import { useModalityBackfill } from '../hooks/useModalityBackfill'
 import { useStudies } from '../hooks/useStudies'
 import { useStudySearch } from '../hooks/useStudySearch'
+import {
+  useWorklistCandidates,
+  useWorklistRows,
+} from '../hooks/useWorklistRows'
 import {
   CONTAINS_PARAM,
   type ContainsEntry,
   findContainsEntry,
 } from '../utils/containsCatalog'
-import { withEntryModality } from '../utils/containsSearch'
-import {
-  appendMissingStudies,
-  filterStudiesBySearchText,
-  getEmptyStudiesMessage,
-  mergeModalities,
-} from '../utils/filters'
+import { getEmptyStudiesMessage } from '../utils/filters'
 import { clampPagination } from '../utils/pagination'
 import { WorklistHeader } from './WorklistHeader'
 import { WorklistPagination } from './WorklistPagination'
@@ -48,8 +43,6 @@ export interface WorklistProps {
   clients: { [key: string]: DicomWebManager }
   className?: string
 }
-
-const NO_CANDIDATES: readonly ContainsCandidate[] = []
 
 function ContainsRowMarker({
   check,
@@ -136,68 +129,33 @@ export function Worklist({
     previousServerUrl.current = serverUrl
   }, [serverUrl, setSearchParams])
 
-  const loadedStudies = useMemo(
-    () => new Map(studies.map((study) => [study.StudyInstanceUID, study])),
-    [studies],
-  )
-  const needsCheck = (studyUid: string): boolean =>
-    containsResult !== undefined &&
-    (!containsResult.isExact || !loadedStudies.has(studyUid))
-
-  const candidates = useMemo(() => {
-    if (containsResult === undefined) return NO_CANDIDATES
-    return pageStudyUids.flatMap((studyUid) => {
-      const match = containsResult.matches.get(studyUid)
-      const needsStudy = !loadedStudies.has(studyUid)
-      const needsSopClass = !containsResult.isExact
-      if (match === undefined || (!needsStudy && !needsSopClass)) return []
-      return [
-        { studyUid, seriesUids: match.seriesUids, needsStudy, needsSopClass },
-      ]
-    })
-  }, [containsResult, pageStudyUids, loadedStudies])
+  const { loadedStudies, candidates } = useWorklistCandidates({
+    studies,
+    containsResult,
+    pageStudyUids,
+  })
   const getRowCheck = useContainsRowChecks(
     containsClient,
     slideClient,
     containsEntry,
     candidates,
   )
-
-  let containsStudies = appendMissingStudies(studies, serverSearch.matches)
-  let hasUncheckedMatches = false
-  if (containsEntry !== undefined) {
-    containsStudies = []
-    for (const [studyUid, match] of containsResult?.matches ?? []) {
-      const check = getRowCheck(studyUid)
-      if (check?.status === 'mismatch') continue
-      if (check === undefined && needsCheck(studyUid)) {
-        hasUncheckedMatches = true
-      }
-      const loaded = loadedStudies.get(studyUid)
-      const fetched =
-        check !== undefined && 'study' in check ? check.study : undefined
-      containsStudies.push(
-        loaded ?? withEntryModality(fetched ?? match.study, containsEntry),
-      )
-    }
-  }
-  const filteredStudies = useMemo(
-    () => filterStudiesBySearchText(containsStudies, deferredSearchText),
-    [containsStudies, deferredSearchText],
-  )
-  const pagination = clampPagination(
-    requestedPagination,
-    filteredStudies.length,
-  )
-  const pageStudies = useMemo(() => {
-    const onPage = new Set(pageStudyUids)
-    return filteredStudies.filter((study) => onPage.has(study.StudyInstanceUID))
-  }, [filteredStudies, pageStudyUids])
-  const backfilledModalities = useModalityBackfill(slideClient, pageStudies)
-  const tableStudies = useMemo(
-    () => mergeModalities(filteredStudies, backfilledModalities),
-    [filteredStudies, backfilledModalities],
-  )
+  const {
+    containsStudies,
+    hasUncheckedMatches,
+    filteredStudies,
+    tableStudies,
+  } = useWorklistRows({
+    studies,
+    serverSearchMatches: serverSearch.matches,
+    containsEntry,
+    containsResult,
+    loadedStudies,
+    getRowCheck,
+    deferredSearchText,
+    pageStudyUids,
+    slideClient,
+  })
 
   const handleSearchChange = useCallback((value: string): void => {
     setSearchText(value)
@@ -234,6 +192,11 @@ export function Worklist({
   } else if (serverSearch.hasError) {
     emptyMessage = "Couldn't search for studies."
   }
+
+  const pagination = clampPagination(
+    requestedPagination,
+    filteredStudies.length,
+  )
 
   return (
     <main

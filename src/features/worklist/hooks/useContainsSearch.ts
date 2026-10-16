@@ -218,10 +218,13 @@ export function useContainsRowChecks(
     [candidates],
   )
 
-  return (studyUid: string): RowCheckState | undefined => {
-    if (entry === undefined) return undefined
-    const check = checks.get(rowCheckKey(entry, studyUid))
-    if (check !== undefined) return check
-    return candidateUids.has(studyUid) ? { status: 'checking' } : undefined
-  }
+  return useCallback(
+    (studyUid: string): RowCheckState | undefined => {
+      if (entry === undefined) return undefined
+      const check = checks.get(rowCheckKey(entry, studyUid))
+      if (check !== undefined) return check
+      return candidateUids.has(studyUid) ? { status: 'checking' } : undefined
+    },
+    [entry, checks, candidateUids],
+  )
 }

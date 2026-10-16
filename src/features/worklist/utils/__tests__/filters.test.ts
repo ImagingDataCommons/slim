@@ -1,11 +1,13 @@
 import type { metadata } from 'dicom-microscopy-viewer'
 
+import { CONTAINS_CATALOG } from '../containsCatalog'
 import {
   appendMissingStudies,
   filterStudiesBySearchText,
   getEmptyStudiesMessage,
   mergeModalities,
   modalitiesNeedBackfill,
+  resolveContainsStudies,
 } from '../filters'
 
 function study(fields: Record<string, unknown>): metadata.Study {
@@ -148,5 +150,64 @@ describe('modalitiesNeedBackfill', () => {
     expect(modalitiesNeedBackfill(study({ ModalitiesInStudy: ['SM'] }))).toBe(
       false,
     )
+  })
+})
+
+describe('resolveContainsStudies', () => {
+  const entry = CONTAINS_CATALOG.find((item) => item.id === 'ann')!
+  const matchStudy = study({ StudyInstanceUID: '1', PatientID: 'from-match' })
+  const loaded = study({ StudyInstanceUID: '1', PatientID: 'loaded' })
+  const fetched = study({ StudyInstanceUID: '1', PatientID: 'fetched' })
+  const matches = new Map([
+    ['1', { seriesUids: ['s1'], study: matchStudy }],
+    [
+      '2',
+      {
+        seriesUids: ['s2'],
+        study: study({ StudyInstanceUID: '2', PatientID: 'match-2' }),
+      },
+    ],
+  ])
+
+  it('skips mismatches and prefers loaded then fetched studies', () => {
+    const { studies, hasUncheckedMatches } = resolveContainsStudies({
+      entry,
+      matches,
+      loadedStudies: new Map([['1', loaded]]),
+      getRowCheck: (uid) => {
+        if (uid === '1') return { status: 'match' }
+        if (uid === '2') return { status: 'mismatch' }
+        return undefined
+      },
+      needsCheck: () => false,
+    })
+    expect(studies.map((item) => item.PatientID)).toEqual(['loaded'])
+    expect(hasUncheckedMatches).toBe(false)
+  })
+
+  it('uses the fetched check study when the row was not loaded', () => {
+    const { studies } = resolveContainsStudies({
+      entry,
+      matches: new Map([['1', { seriesUids: ['s1'], study: matchStudy }]]),
+      loadedStudies: new Map(),
+      getRowCheck: () => ({ status: 'match', study: fetched }),
+      needsCheck: () => false,
+    })
+    expect(studies[0].PatientID).toBe('fetched')
+  })
+
+  it('falls back to the match stub and flags unchecked rows', () => {
+    const { studies, hasUncheckedMatches } = resolveContainsStudies({
+      entry,
+      matches: new Map([['1', { seriesUids: ['s1'], study: matchStudy }]]),
+      loadedStudies: new Map(),
+      getRowCheck: () => undefined,
+      needsCheck: () => true,
+    })
+    expect(studies[0].PatientID).toBe('from-match')
+    expect(studies[0].ModalitiesInStudy).toEqual(
+      expect.arrayContaining([entry.modality]),
+    )
+    expect(hasUncheckedMatches).toBe(true)
   })
 })

@@ -3,10 +3,6 @@ import type * as dmv from 'dicom-microscopy-viewer'
 import { startTransition, useState } from 'react'
 
 import {
-  SELECTION_FILL_COLOR,
-  SELECTION_STROKE_COLOR,
-} from '../../../components/SlideViewer/constants'
-import {
   formatRoiRemovalMessage,
   getRoiKey,
 } from '../../../components/SlideViewer/utils/roiUtils'
@@ -28,35 +24,19 @@ import {
   visibleUidsAfterSelection,
 } from '../utils/roiSelectionStyles'
 import { annotationStyleToRoiStyle } from '../utils/roiStyleRegistry'
+import { SELECTED_ROI_STYLE } from '../utils/selectedRoiStyle'
 import { withItem } from '../utils/uidSets'
 import {
   applyVisibilityChanges,
   removeHiddenUids,
 } from '../utils/visibilityChanges'
+import { applyRoiSelection, type RoiSelection } from './roiSelection'
+import { type RoiVisibilityState, styleForRoi } from './roiVisibility'
 import type { ViewerAccess } from './useViewerSession'
 
 type RoiStyle = dmv.viewer.ROIStyleOptions
 
-export const SELECTED_ROI_STYLE: RoiStyle = {
-  stroke: { color: [...SELECTION_STROKE_COLOR, 1], width: 3 },
-  fill: { color: [...SELECTION_FILL_COLOR, 0.5] },
-  image: {
-    circle: {
-      radius: 5,
-      fill: { color: [...SELECTION_STROKE_COLOR, 1] },
-    },
-  },
-}
-
-interface RoiSelection {
-  selectedRoiUIDs: Set<string>
-  /** Last selected or double-clicked ROI, described in the details dialog */
-  selectedRoi?: dmv.roi.ROI
-}
-
-interface RoiState extends RoiSelection {
-  visibleRoiUIDs: Set<string>
-}
+export { SELECTED_ROI_STYLE }
 
 type RoiEventHandlers = Required<
   Pick<
@@ -69,7 +49,7 @@ type RoiEventHandlers = Required<
   >
 >
 
-export interface RoisApi extends RoiState {
+export interface RoisApi extends RoiVisibilityState {
   /** New viewers start with no ROI shown */
   reset: () => void
   /** Give an ROI loaded from a report its list style */
@@ -109,15 +89,12 @@ export function useRois({
   isShiftDown: () => boolean
   onDetailsVisibilityChange: (isVisible: boolean) => void
 }): RoisApi {
-  const [state, setState] = useState<RoiState>(() => ({
+  const [state, setState] = useState<RoiVisibilityState>(() => ({
     selectedRoiUIDs: new Set(),
     visibleRoiUIDs: new Set(),
     selectedRoi: undefined,
   }))
   const { selectedRoiUIDs, visibleRoiUIDs } = state
-
-  const styleForRoi = (session: ViewerSession, roi: dmv.roi.ROI): RoiStyle =>
-    session.roiStyles.styleForRoi(roi.uid, getRoiKey(roi), defaultRoiStyle)
 
   const registerRoi = (
     session: ViewerSession,
@@ -150,19 +127,15 @@ export function useRois({
     }
   }
 
-  /** Select, then give visible unselected ROIs back their own style */
   const select = (session: ViewerSession, selection: RoiSelection): void => {
-    setState((current) => ({ ...current, ...selection }))
-    for (const roi of session.volumeViewer.getAllROIs()) {
-      if (
-        selection.selectedRoiUIDs.has(roi.uid) ||
-        !visibleRoiUIDs.has(roi.uid)
-      ) {
-        continue
-      }
-      session.volumeViewer.setROIStyle(roi.uid, styleForRoi(session, roi))
-    }
-    refreshSnapshot()
+    applyRoiSelection(
+      session,
+      selection,
+      visibleRoiUIDs,
+      defaultRoiStyle,
+      setState,
+      refreshSnapshot,
+    )
   }
 
   const addStyledRoi = (roi: dmv.roi.ROI, style: RoiStyle): void => {
@@ -189,7 +162,10 @@ export function useRois({
         if (isVisible) {
           logger.log(`show ROI ${uid}`)
           const roi = volumeViewer.getROI(uid)
-          volumeViewer.setROIStyle(roi.uid, styleForRoi(session, roi))
+          volumeViewer.setROIStyle(
+            roi.uid,
+            styleForRoi(session, roi, defaultRoiStyle),
+          )
           return { uid: roi.uid, isVisible }
         }
         logger.log(`hide ROI ${uid}`)
@@ -257,7 +233,7 @@ export function useRois({
         selectedRoiUIDs: selection.selectedRoiUIDs,
         visibleRoiUIDs,
         selectedStyle: SELECTED_ROI_STYLE,
-        styleForRoi: (roi) => styleForRoi(session, roi),
+        styleForRoi: (roi) => styleForRoi(session, roi, defaultRoiStyle),
       })
       for (const { uid: roiUid, style } of styles) {
         volumeViewer.setROIStyle(roiUid, style)

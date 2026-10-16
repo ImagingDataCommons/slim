@@ -1,11 +1,10 @@
-import { useCallback, useLayoutEffect, useRef } from 'react'
+import { useEffectEvent, useLayoutEffect, useRef } from 'react'
 
 import { subscribeDomEvents } from '../services/dmvEvents'
 import {
   shortcutForKeyEvent,
   type ViewerShortcutAction,
 } from '../utils/keyboardShortcuts'
-import { useLatestRef } from './useLatestRef'
 
 export interface HeldKeys {
   /** Whether Shift is held, for additive ROI selection */
@@ -36,21 +35,24 @@ export function useHeldKeys(): HeldKeys {
     ])
   }, [])
 
-  const isShiftDown = useCallback(
-    (): boolean => keysDownRef.current.has('Shift'),
-    [],
-  )
-  return { isShiftDown }
+  return {
+    isShiftDown: (): boolean => keysDownRef.current.has('Shift'),
+  }
 }
 
 /**
  * Run viewer shortcuts on key release, listening on `document.body` like the
- * DMV viewport does.
+ * DMV viewport does. `useEffectEvent` keeps the latest handler without
+ * re-subscribing.
  */
 export function useKeyboardShortcuts(
   onShortcut: (action: ViewerShortcutAction) => void,
 ): void {
-  const onShortcutRef = useLatestRef(onShortcut)
+  const onShortcutEvent = useEffectEvent(
+    (action: ViewerShortcutAction): void => {
+      onShortcut(action)
+    },
+  )
 
   useLayoutEffect(
     () =>
@@ -60,10 +62,10 @@ export function useKeyboardShortcuts(
           (event) => {
             if (!(event instanceof KeyboardEvent)) return
             const action = shortcutForKeyEvent(event)
-            if (action !== undefined) onShortcutRef.current(action)
+            if (action !== undefined) onShortcutEvent(action)
           },
         ],
       ]),
-    [onShortcutRef],
+    [],
   )
 }

@@ -1,4 +1,4 @@
-import { type JSX, useCallback, useEffect, useState } from 'react'
+import { type JSX, useEffect, useState } from 'react'
 import {
   Route,
   Routes,
@@ -16,37 +16,23 @@ import { StorageClasses } from '../data/uids'
 import { ViewerLoadingLayout } from '../features/viewer/components/ViewerLoadingLayout'
 import { ViewerMessage } from '../features/viewer/components/ViewerMessage'
 import { ViewportLoadingIndicator } from '../features/viewer/components/ViewportLoadingIndicator'
+import { useCaseViewerRouting } from '../features/viewer/hooks/useCaseViewerRouting'
 import {
   resolvedSeriesInstanceUID,
   useRouteSlideResolution,
 } from '../features/viewer/hooks/useRouteSlideResolution'
-import { STUDY_PANEL_ID } from '../features/viewer/utils/panelIds'
 import {
   presentationStateUIDFromSearch,
   selectedSeriesForStudyPath,
 } from '../features/viewer/utils/routeSlide'
-import {
-  buildSeriesSelectionPath,
-  defaultSeriesRedirectPath,
-} from '../features/viewer/utils/seriesPath'
 import { useSlides } from '../hooks/useSlides'
-import { cn } from '../lib/utils'
 import type { AppInfo } from '../utils/appInfo'
 import { buildStudySummary } from '../utils/displayFormat'
-import { logger } from '../utils/logger'
 import { type RouteComponentProps, withRouter } from '../utils/router'
 import { RoutePaths } from '../utils/routes'
-import ClinicalTrial from './ClinicalTrial'
-import Patient from './Patient'
-import SlideList from './SlideList'
+import { StudySidePanel } from './CaseViewer/StudySidePanel'
 /** skipcq: JS-W1028 - SlideViewer has a default export */
 import SlideViewer from './SlideViewer'
-import Study from './Study'
-import {
-  CountBadge,
-  PanelDivider,
-  SlimCollapsibleSection,
-} from './slim/SlimCollapsibleSection'
 
 function ParametrizedSlideViewer({
   clients,
@@ -152,10 +138,9 @@ function Viewer(props: ViewerProps): JSX.Element | null {
   })
   const { setSummary } = useStudySummary()
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true)
-  const toggleLeftPanel = useCallback(
-    () => setIsLeftPanelOpen((isOpen) => !isOpen),
-    [],
-  )
+  const toggleLeftPanel = (): void => {
+    setIsLeftPanelOpen((isOpen) => !isOpen)
+  }
 
   const summaryImage = slides[0]?.volumeImages[0]
   useEffect(() => {
@@ -173,43 +158,14 @@ function Viewer(props: ViewerProps): JSX.Element | null {
     serverUrl != null && serverUrl !== '' ? serverUrl : 'the server'
 
   const defaultSeriesInstanceUID = summaryImage?.SeriesInstanceUID
-  useEffect(() => {
-    if (isLoading || error !== null) return
-    const redirectPath = defaultSeriesRedirectPath({
-      studyInstanceUID,
-      defaultSeriesInstanceUID,
-      pathname: location.pathname,
-      search: location.search,
-      hash: location.hash,
-    })
-    if (redirectPath !== undefined) navigate(redirectPath, { replace: true })
-  }, [
+  const { handleSeriesSelection } = useCaseViewerRouting({
     isLoading,
     error,
     studyInstanceUID,
     defaultSeriesInstanceUID,
-    location.pathname,
-    location.search,
-    location.hash,
+    location,
     navigate,
-  ])
-
-  const handleSeriesSelection = ({
-    seriesInstanceUID,
-  }: {
-    seriesInstanceUID: string
-  }): void => {
-    logger.log(`switch to series "${seriesInstanceUID}"`)
-    navigate(
-      buildSeriesSelectionPath({
-        studyInstanceUID,
-        seriesInstanceUID,
-        pathname: location.pathname,
-        search: location.search,
-      }),
-      { replace: true },
-    )
-  }
+  })
 
   if (isLoading) {
     return <ViewerLoadingLayout isLeftPanelOpen={isLeftPanelOpen} />
@@ -254,49 +210,14 @@ function Viewer(props: ViewerProps): JSX.Element | null {
 
   return (
     <div className="flex h-full min-h-0">
-      <aside
-        id={STUDY_PANEL_ID}
-        aria-label="Study panel"
-        className={cn(
-          'flex min-h-0 w-sidebar flex-none flex-col border-r border-line bg-panel',
-          !isLeftPanelOpen && 'hidden',
-        )}
-      >
-        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-          <SlimCollapsibleSection title="Patient" padding="indent">
-            <Patient metadata={refImage} />
-          </SlimCollapsibleSection>
-          <SlimCollapsibleSection title="Study" padding="indent">
-            <Study metadata={refImage} />
-          </SlimCollapsibleSection>
-          {refImage.ClinicalTrialSponsorName != null && (
-            <>
-              <SlimCollapsibleSection
-                title="Clinical trial"
-                padding="indent"
-                defaultOpen={false}
-                divider={false}
-              >
-                <ClinicalTrial metadata={refImage} />
-              </SlimCollapsibleSection>
-              <PanelDivider className="mb-1" />
-            </>
-          )}
-
-          <div className="flex items-center gap-2 px-4 pb-2.5 pt-3">
-            <span className="text-11 font-semibold uppercase leading-none tracking-[0.06em] text-ink-secondary">
-              Slides
-            </span>
-            <CountBadge count={slides.length} />
-          </div>
-          <SlideList
-            clients={props.clients}
-            metadata={slides}
-            selectedSeriesInstanceUID={selectedSeriesInstanceUID}
-            onSeriesSelection={handleSeriesSelection}
-          />
-        </div>
-      </aside>
+      <StudySidePanel
+        isOpen={isLeftPanelOpen}
+        clients={props.clients}
+        slides={slides}
+        refImage={refImage}
+        selectedSeriesInstanceUID={selectedSeriesInstanceUID}
+        onSeriesSelection={handleSeriesSelection}
+      />
 
       <main className="flex min-w-0 flex-1 overflow-hidden">
         <Routes>

@@ -1,6 +1,6 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import { useState } from 'react'
+import { startTransition, useState } from 'react'
 
 import { logger } from '../../../utils/logger'
 import {
@@ -69,8 +69,10 @@ export function useOpticalPaths(
   }
 
   const showIdentifiers = (shown: Set<string>): void => {
-    setVisibleIdentifiers(new Set(shown))
-    setActiveIdentifiers(new Set(shown))
+    startTransition(() => {
+      setVisibleIdentifiers(new Set(shown))
+      setActiveIdentifiers(new Set(shown))
+    })
     refreshSnapshot()
   }
 
@@ -125,7 +127,9 @@ export function useOpticalPaths(
           `${shown.length}/${matching.length} optical path(s)`,
       )
       if (shown.length > 0) {
-        setVisibleIdentifiers((current) => withItems(current, shown))
+        startTransition(() => {
+          setVisibleIdentifiers((current) => withItems(current, shown))
+        })
       }
       logger.debug('Loading Optical Path')
     },
@@ -136,15 +140,19 @@ export function useOpticalPaths(
       if (isVisible) {
         logger.log(`show optical path ${opticalPathIdentifier}`)
         viewer.showOpticalPath(opticalPathIdentifier)
-        setVisibleIdentifiers((current) =>
-          withItem(current, opticalPathIdentifier),
-        )
+        startTransition(() => {
+          setVisibleIdentifiers((current) =>
+            withItem(current, opticalPathIdentifier),
+          )
+        })
       } else {
         logger.log(`hide optical path ${opticalPathIdentifier}`)
         viewer.hideOpticalPath(opticalPathIdentifier)
-        setVisibleIdentifiers((current) =>
-          withoutItem(current, opticalPathIdentifier),
-        )
+        startTransition(() => {
+          setVisibleIdentifiers((current) =>
+            withoutItem(current, opticalPathIdentifier),
+          )
+        })
       }
     },
     onActivityChange: ({ opticalPathIdentifier, isActive }) => {
@@ -154,15 +162,19 @@ export function useOpticalPaths(
       if (isActive) {
         logger.log(`activate optical path ${opticalPathIdentifier}`)
         viewer.activateOpticalPath(opticalPathIdentifier)
-        setActiveIdentifiers((current) =>
-          withItem(current, opticalPathIdentifier),
-        )
+        startTransition(() => {
+          setActiveIdentifiers((current) =>
+            withItem(current, opticalPathIdentifier),
+          )
+        })
       } else {
         logger.log(`deactivate optical path ${opticalPathIdentifier}`)
         viewer.deactivateOpticalPath(opticalPathIdentifier)
-        setActiveIdentifiers((current) =>
-          withoutItem(current, opticalPathIdentifier),
-        )
+        startTransition(() => {
+          setActiveIdentifiers((current) =>
+            withoutItem(current, opticalPathIdentifier),
+          )
+        })
       }
     },
     onStyleChange: ({ opticalPathIdentifier, styleOptions }) => {
