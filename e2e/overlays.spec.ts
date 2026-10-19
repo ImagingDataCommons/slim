@@ -12,7 +12,7 @@ import {
 } from './helpers'
 import { seriesUrl, studies } from './studies'
 
-const { tcgaRead, tcgaGbm, rmsSr, boneMarrow } = studies
+const { tcgaRead, tcgaLuad, tcgaGbm, rmsSr, boneMarrow, catchAnn } = studies
 const srUrl = seriesUrl({ study: rmsSr.study, series: rmsSr.sr })
 
 /** Name of the first layer shown in a section, read from its "Show …" toggle */
@@ -153,6 +153,30 @@ test.describe('Segmentations', () => {
     await interpolation.click()
     await expect(interpolation).toBeChecked({ checked: !wasOn })
     await expect(options).toContainText(wasOn ? 'Interp. off' : 'Interp. on')
+  })
+
+  test('S6 binary TIL SEG link opens the slide with that segmentation visible', async ({
+    page,
+  }) => {
+    await openViewer(
+      page,
+      seriesUrl({ study: tcgaLuad.study, series: tcgaLuad.binaryTilSeg }),
+    )
+    await expectTissueRendered(page)
+    const segments = await section(slidePanel(page), 'Segmentations')
+    const visibleToggle = page.getByRole('button', {
+      name: /^Show (?!all)/,
+      pressed: true,
+    })
+    await expect(segments.locator(visibleToggle)).toHaveCount(1)
+    await expect(
+      segments
+        .locator('div')
+        .filter({ has: visibleToggle })
+        .filter({ hasText: /Binary/i })
+        .filter({ hasNotText: /Fractional/i })
+        .first(),
+    ).toBeVisible()
   })
 })
 
@@ -312,6 +336,43 @@ test.describe('Annotation groups', () => {
     await groups.getByRole('button', { name, exact: true }).nth(index).click()
     await expect(scale).not.toHaveText(overview)
     await expectViewportToDiffer(page, before, 2)
+  })
+
+  test('A6 CATCH multi-group tissue ANN show all and hide all', async ({
+    page,
+  }) => {
+    /** openViewer can spend up to 2× its timeout (panel + tiles) */
+    test.setTimeout(300_000)
+    await openViewer(
+      page,
+      seriesUrl({ study: catchAnn.study, series: catchAnn.ann }),
+      { timeout: 120_000 },
+    )
+    await expectTissueRendered(page)
+    const groups = await section(slidePanel(page), 'Annotation groups')
+    const bulk = groups.getByRole('group', {
+      name: 'Visibility of annotation groups',
+    })
+    const showAll = bulk.getByRole('button', {
+      name: 'Show all annotation groups',
+    })
+    const hideAll = bulk.getByRole('button', {
+      name: 'Hide all annotation groups',
+    })
+    /**
+     * Deep-link turns every group of the series on after derived data loads.
+     * Wait for that settled state before reading N — tiles can settle first.
+     */
+    await expect(showAll).toBeDisabled({ timeout: 60_000 })
+    const counts = /(\d+) of (\d+) visible/.exec(await bulk.innerText())
+    expect(counts, 'visible/total group counts').not.toBeNull()
+    const total = counts?.[2] ?? '0'
+    expect(Number(total)).toBeGreaterThan(1)
+    await expect(bulk).toContainText(`${total} of ${total} visible`)
+    await hideAll.click()
+    await expect(bulk).toContainText(`0 of ${total} visible`)
+    await showAll.click()
+    await expect(bulk).toContainText(`${total} of ${total} visible`)
   })
 })
 

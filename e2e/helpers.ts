@@ -75,7 +75,10 @@ export async function section(panel: Locator, title: string): Promise<Locator> {
  * Waits for the footer tile counter to report every requested tile as loaded
  * and to stay that way. Use captureSettledViewport when comparing pixels.
  */
-export async function waitForTilesSettled(page: Page): Promise<void> {
+export async function waitForTilesSettled(
+  page: Page,
+  timeout = 60_000,
+): Promise<void> {
   const footer = page.locator('footer').filter({ hasText: 'Tiles' })
   let previous = ''
   let stableSince = Date.now()
@@ -96,16 +99,21 @@ export async function waitForTilesSettled(page: Page): Promise<void> {
           Date.now() - stableSince > 1500
         )
       },
-      { timeout: 60_000, intervals: [500] },
+      { timeout, intervals: [500] },
     )
     .toBe(true)
 }
 
 /** Opens a viewer URL and waits for the first slide to finish rendering */
-export async function openViewer(page: Page, url: string): Promise<void> {
+export async function openViewer(
+  page: Page,
+  url: string,
+  options?: { timeout?: number },
+): Promise<void> {
+  const timeout = options?.timeout ?? 60_000
   await page.goto(url)
-  await expect(slidePanel(page)).toBeVisible({ timeout: 60_000 })
-  await waitForTilesSettled(page)
+  await expect(slidePanel(page)).toBeVisible({ timeout })
+  await waitForTilesSettled(page, timeout)
 }
 
 /** The DMV main viewport is the largest OpenLayers viewport on the page */

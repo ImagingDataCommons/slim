@@ -12,7 +12,7 @@ import {
 } from './helpers'
 import { seriesUrl, studies } from './studies'
 
-const { htanImc, tcgaGbm, boneMarrow } = studies
+const { htanImc, htanHms, tcgaGbm, boneMarrow } = studies
 const imcUrl = seriesUrl({ study: htanImc.study, series: htanImc.imcSlide })
 
 async function openDisplayOptions(container: Locator): Promise<Locator> {
@@ -221,5 +221,37 @@ test.describe('Optical paths and display options', () => {
     await threshold.fill('0.0005')
     await threshold.blur()
     await expect(threshold).toHaveValue('0.0005')
+  })
+
+  /**
+   * Deep-link to an Advanced Blending PR series (gallery P9). Slim resolves the
+   * referenced fluorescence slide; applying that PR from the series URL is still
+   * a TODO (showDerivedDataset treats it as unsupported).
+   */
+  test('O11 Advanced Blending PR series link opens the referenced slide', async ({
+    page,
+  }) => {
+    /** openViewer can spend up to 2× its timeout (panel + tiles) on CyCIF */
+    test.setTimeout(420_000)
+    await openViewer(
+      page,
+      seriesUrl({
+        study: htanHms.study,
+        series: htanHms.advancedBlendingPr,
+      }),
+      { timeout: 180_000 },
+    )
+    await expectTissueRendered(page, 3)
+    const paths = await section(slidePanel(page), 'Optical paths')
+    await expect(
+      slidePanel(page).getByRole('button', { name: /^Optical paths \d+$/ }),
+    ).toBeVisible()
+    await expect(
+      paths.getByRole('button', { name: /^Show / }).first(),
+    ).toBeVisible()
+    const states = await section(slidePanel(page), 'Presentation states')
+    await expect(
+      states.getByRole('combobox', { name: 'Presentation state' }),
+    ).toBeVisible()
   })
 })
