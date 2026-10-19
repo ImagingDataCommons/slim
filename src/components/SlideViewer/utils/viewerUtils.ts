@@ -93,6 +93,8 @@ export const constructViewers = ({
        * first paint (see #389).
        */
       useTileGridResolutions: false,
+      /** Slim owns the in-viewport SEG/PM color legend. */
+      showDerivedLegend: false,
       preload,
       annotationOptions:
         clusteringPixelSizeThreshold !== undefined

@@ -20,11 +20,6 @@ export interface UserPreferences {
   /** Zoom in, zoom out and fit buttons in the top-right corner */
   showZoomControls: boolean
   /**
-   * Dark chrome for DMV in-viewport SEG/PM legends. Off keeps DMV's
-   * default light legend styling.
-   */
-  darkOverlayLegends: boolean
-  /**
    * Worklist column ids the user turned off. Width-based shedding still
    * decides the maximum set; these only hide extras within that set.
    */
@@ -42,7 +37,6 @@ const BOOLEAN_PREFERENCES: readonly BooleanPreference[] = [
   'showViewportInfo',
   'showSlideLabel',
   'showZoomControls',
-  'darkOverlayLegends',
 ]
 
 export const PREFERENCES_STORAGE_KEY = 'slim-preferences'
@@ -71,7 +65,6 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   showViewportInfo: true,
   showSlideLabel: true,
   showZoomControls: true,
-  darkOverlayLegends: true,
   worklistHiddenColumnIds: [],
 }
 

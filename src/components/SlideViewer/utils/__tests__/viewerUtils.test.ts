@@ -183,6 +183,7 @@ describe('constructViewers', () => {
         metadata: [image],
         preload: true,
         useTileGridResolutions: false,
+        showDerivedLegend: false,
         annotationOptions: undefined,
       }),
     )

@@ -1,28 +1,22 @@
 import { useEffect, useRef } from 'react'
 
-import {
-  applyDMVLegendTheme,
-  type DMVLegendAppearance,
-} from '../utils/dmvLegendTheme'
-
-export interface UseDMVLegendThemeOptions {
+export interface UseSuppressDMVDerivedLegendOptions {
   /** DMV segmentOverlay root; undefined until the volume viewer exists */
   getLegendRoot: () => HTMLElement | undefined
-  appearance: DMVLegendAppearance
   /** Re-bind when the viewer instance is replaced */
   viewerKey: string
 }
 
 /**
- * Keep DMV's in-viewport SEG/PM legend styled for Slim light/dark chrome.
- * DMV rebuilds the legend DOM on visibility changes, so a MutationObserver
- * re-applies the theme after each sync.
+ * Hide DMV's built-in SEG/PM legend while Slim renders its own DerivedLegend.
+ * Needed until the published dicom-microscopy-viewer honors
+ * `showDerivedLegend: false` (ImagingDataCommons/dicom-microscopy-viewer#296).
+ * Safe to remove after that bump: the option then skips the overlay entirely.
  */
-export function useDMVLegendTheme({
+export function useSuppressDMVDerivedLegend({
   getLegendRoot,
-  appearance,
   viewerKey,
-}: UseDMVLegendThemeOptions): void {
+}: UseSuppressDMVDerivedLegendOptions): void {
   const getLegendRootRef = useRef(getLegendRoot)
 
   useEffect(() => {
@@ -30,19 +24,21 @@ export function useDMVLegendTheme({
   }, [getLegendRoot])
 
   useEffect(() => {
-    /** Reference keeps the effect keyed to viewer remounts for Biome. */
     void viewerKey
     let observer: MutationObserver | undefined
     let retryId = 0
     let cancelled = false
 
+    const suppress = (root: HTMLElement): void => {
+      root.style.setProperty('display', 'none', 'important')
+      root.replaceChildren()
+    }
+
     const bind = (root: HTMLElement): void => {
-      const paint = (): void => {
-        applyDMVLegendTheme(root, appearance)
-      }
-      paint()
-      /** childList only — observing style would loop with applyDMVLegendTheme */
-      observer = new MutationObserver(paint)
+      suppress(root)
+      observer = new MutationObserver(() => {
+        suppress(root)
+      })
       observer.observe(root, { childList: true, subtree: true })
     }
 
@@ -50,7 +46,6 @@ export function useDMVLegendTheme({
     if (root !== undefined) {
       bind(root)
     } else {
-      /** Viewer can mount a tick after viewerKey updates */
       retryId = window.setInterval(() => {
         if (cancelled) return
         const next = getLegendRootRef.current()
@@ -66,5 +61,5 @@ export function useDMVLegendTheme({
       if (retryId !== 0) window.clearInterval(retryId)
       observer?.disconnect()
     }
-  }, [appearance, viewerKey])
+  }, [viewerKey])
 }

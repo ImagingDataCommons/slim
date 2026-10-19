@@ -1,5 +1,6 @@
 import type { ComponentProps, JSX } from 'react'
 
+import { DerivedLegend, type DerivedLegendProps } from './DerivedLegend'
 import { ViewerFooter } from './ViewerFooter'
 import { ViewerToolbar } from './ViewerToolbar'
 import { ViewportLoadingIndicator } from './ViewportLoadingIndicator'
@@ -12,6 +13,7 @@ export type ViewerChromeOverlaysProps = ComponentProps<
 > & {
   viewerKey: string
   isWaitingForFirstImage: boolean
+  derivedLegend: DerivedLegendProps
 }
 
 export type ViewerChromeFooterProps = Omit<
@@ -32,11 +34,16 @@ export function ViewerChromeToolbar(
 export function ViewerChromeOverlays({
   viewerKey,
   isWaitingForFirstImage,
+  derivedLegend,
   ...overlayProps
 }: ViewerChromeOverlaysProps): JSX.Element {
   return (
     <>
       <ViewportOverlays key={viewerKey} {...overlayProps} />
+      <DerivedLegend
+        rows={derivedLegend.rows}
+        onVisibilityChange={derivedLegend.onVisibilityChange}
+      />
       <ViewportLoadingIndicator
         isVisible={isWaitingForFirstImage}
         label="Loading slide"

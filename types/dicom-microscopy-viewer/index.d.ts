@@ -26,6 +26,11 @@ declare module 'dicom-microscopy-viewer' {
       annotationOptions?: object
       errorInterceptor?: (error: CustomError) => void
       paletteDisplayGammaCorrection?: boolean
+      /**
+       * When false, skip the in-viewport SEG/PM color legend so the host can
+       * render its own (dicom-microscopy-viewer#296). Defaults to true.
+       */
+      showDerivedLegend?: boolean
     }
 
     export interface ROIStyleOptions {

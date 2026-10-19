@@ -18,6 +18,10 @@ import { describeStudySeries } from '../services/seriesDescription'
 import { deriveActiveRoiTool } from '../utils/activeRoiTool'
 import { buildAnnotationConfig } from '../utils/annotationConfig'
 import {
+  buildDerivedLegendRows,
+  type DerivedLegendRow,
+} from '../utils/derivedLegend'
+import {
   ALL_SERIES,
   buildSeriesOptions,
   groupBySeries,
@@ -33,7 +37,6 @@ import { useActiveSeriesPublisher } from './useActiveSeriesPublisher'
 import { useAnnotationDraft } from './useAnnotationDraft'
 import { useAnnotationGroups } from './useAnnotationGroups'
 import { drawStyleFor, useAnnotationTools } from './useAnnotationTools'
-import { useDMVLegendTheme } from './useDMVLegendTheme'
 import { useDmvEvents } from './useDmvEvents'
 import { useHoveredRoiTooltip } from './useHoveredRoiTooltip'
 import { useHeldKeys, useKeyboardShortcuts } from './useKeyboardShortcuts'
@@ -45,6 +48,7 @@ import { useReport } from './useReport'
 import { useRois } from './useRois'
 import { useSegmentations } from './useSegmentations'
 import { useSlidePopulation } from './useSlidePopulation'
+import { useSuppressDMVDerivedLegend } from './useSuppressDMVDerivedLegend'
 import { useViewerSession, useViewerSnapshot } from './useViewerSession'
 import { useViewportLoading } from './useViewportLoading'
 
@@ -240,7 +244,7 @@ export function useSlideViewerModel({
   }
 
   const viewerKey = `${studyInstanceUID}/${seriesInstanceUID}/${snapshot.generation}`
-  useDMVLegendTheme({
+  useSuppressDMVDerivedLegend({
     getLegendRoot: () => {
       const overlay = (
         sessionRef.current?.volumeViewer as
@@ -249,9 +253,45 @@ export function useSlideViewerModel({
       )?.segmentOverlay
       return overlay?.getElement()
     },
-    appearance: preferences.darkOverlayLegends ? 'dark' : 'light',
     viewerKey,
   })
+  const derivedLegendRows = useMemo(
+    () =>
+      buildDerivedLegendRows({
+        segments: snapshot.segments,
+        segmentMetadata: snapshot.segmentMetadata,
+        segmentStyles: snapshot.segmentStyles,
+        visibleSegmentUIDs: segmentations.visibleUIDs,
+        mappings: snapshot.mappings,
+        mappingStyles: snapshot.mappingStyles,
+        visibleMappingUIDs: parametricMaps.visibleUIDs,
+      }),
+    [
+      snapshot.segments,
+      snapshot.segmentMetadata,
+      snapshot.segmentStyles,
+      segmentations.visibleUIDs,
+      snapshot.mappings,
+      snapshot.mappingStyles,
+      parametricMaps.visibleUIDs,
+    ],
+  )
+  const onDerivedLegendVisibilityChange = (
+    row: DerivedLegendRow,
+    isVisible: boolean,
+  ): void => {
+    if (row.kind === 'segment') {
+      segmentations.onVisibilityChange({
+        segmentUID: row.id,
+        isVisible,
+      })
+      return
+    }
+    parametricMaps.onVisibilityChange({
+      mappingUID: row.id,
+      isVisible,
+    })
+  }
   const metadata = slide.volumeImages[0]
   const slideAffine = useMemo(
     () => slideAffineFromImages(slide.volumeImages),
@@ -309,6 +349,10 @@ export function useSlideViewerModel({
       showZoomControls: preferences.showZoomControls,
       showViewportInfo: preferences.showViewportInfo,
       isWaitingForFirstImage: viewportLoading.isWaitingForFirstImage,
+      derivedLegend: {
+        rows: derivedLegendRows,
+        onVisibilityChange: onDerivedLegendVisibilityChange,
+      },
     },
     footer: {
       viewerKey,

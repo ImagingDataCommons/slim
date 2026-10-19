@@ -18,7 +18,6 @@ const VIEWPORT_OVERLAYS: Array<{
     | 'showViewportInfo'
     | 'showSlideLabel'
     | 'showZoomControls'
-    | 'darkOverlayLegends'
   label: string
   description: string
 }> = [
@@ -42,12 +41,6 @@ const VIEWPORT_OVERLAYS: Array<{
     key: 'showZoomControls',
     label: 'Zoom controls',
     description: 'Zoom and fit buttons in the top-right corner',
-  },
-  {
-    key: 'darkOverlayLegends',
-    label: 'Dark overlay legends',
-    description:
-      'Dark chrome for SEG and parametric-map legends in the viewport',
   },
 ]
 
