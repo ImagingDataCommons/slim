@@ -54,4 +54,3 @@ patchedDependencies:
   # measurement group (it counts CodedConcept items, and .filter() on the Array
   # subclass calls new TrackingIdentifier(0), which throws). Still in dcmjs latest.
   dcmjs@0.52.0: patches/dcmjs@0.52.0.patch
-  dicom-microscopy-viewer@0.49.0: patches/dicom-microscopy-viewer@0.49.0.patch
