@@ -1,7 +1,15 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 
-import type { MappingStyle, SegmentStyle } from '../../../types/layerStyles'
+import type {
+  LookupTableLike,
+  MappingStyle,
+  SegmentStyle,
+} from '../../../types/layerStyles'
+import {
+  getRealWorldValueRange,
+  type ParametricMapDatasetLike,
+} from '../../../utils/parametricMap'
 
 export type DerivedLegendKind = 'segment' | 'mapping'
 
@@ -11,17 +19,20 @@ export interface DerivedLegendRow {
   id: string
   kind: DerivedLegendKind
   title: string
-  /** RGB triplets 0–255 for the color bar */
-  colors: number[][]
+  /** Palette used for the color bar (sampled via lutToCssGradient) */
+  palette: LookupTableLike
   minLabel: string
   maxLabel: string
   isVisible: boolean
 }
 
-function paletteColors(style: LegendStyle | undefined): number[][] | undefined {
-  const data = style?.paletteColorLookupTable?.data
+function paletteOf(
+  style: LegendStyle | undefined,
+): LookupTableLike | undefined {
+  const lut = style?.paletteColorLookupTable
+  const data = lut?.data
   if (data == null || data.length === 0) return undefined
-  return data as number[][]
+  return lut
 }
 
 function segmentTitle(segment: dmv.segment.Segment): string {
@@ -42,6 +53,41 @@ function isFractional(
   return metadata?.[0]?.SegmentationType === 'FRACTIONAL'
 }
 
+/** Stored-value span for fractional SEG (matches DMV legend defaults). */
+function segmentBounds(metadata: dmv.metadata.Segmentation[] | undefined): {
+  minLabel: string
+  maxLabel: string
+} {
+  const bits = metadata?.[0]?.BitsAllocated
+  const max =
+    typeof bits === 'number' && Number.isFinite(bits) && bits > 0
+      ? 2 ** bits - 1
+      : 255
+  return { minLabel: '0', maxLabel: String(max) }
+}
+
+/** Real-world range when present; otherwise stored-value bits (DMV legend). */
+function mappingBounds(metadata: dmv.metadata.ParametricMap[] | undefined): {
+  minLabel: string
+  maxLabel: string
+} {
+  const range = getRealWorldValueRange(
+    metadata?.[0] as ParametricMapDatasetLike | undefined,
+  )
+  if (range !== undefined) {
+    return {
+      minLabel: range.first.toFixed(2),
+      maxLabel: range.last.toFixed(2),
+    }
+  }
+  const bits = metadata?.[0]?.BitsAllocated
+  const max =
+    typeof bits === 'number' && Number.isFinite(bits) && bits > 0
+      ? 2 ** bits - 1
+      : 255
+  return { minLabel: '0', maxLabel: String(max) }
+}
+
 /**
  * Rows for Slim's in-viewport SEG/PM legend. Fractional segments and
  * parametric maps with a palette, including currently hidden overlays so the
@@ -53,6 +99,7 @@ export function buildDerivedLegendRows({
   segmentStyles,
   visibleSegmentUIDs,
   mappings,
+  mappingMetadata,
   mappingStyles,
   visibleMappingUIDs,
 }: {
@@ -61,6 +108,7 @@ export function buildDerivedLegendRows({
   segmentStyles: Readonly<Record<string, LegendStyle>>
   visibleSegmentUIDs: ReadonlySet<string>
   mappings: readonly dmv.mapping.ParameterMapping[]
+  mappingMetadata: Readonly<Record<string, dmv.metadata.ParametricMap[]>>
   mappingStyles: Readonly<Record<string, LegendStyle>>
   visibleMappingUIDs: ReadonlySet<string>
 }): DerivedLegendRow[] {
@@ -70,43 +118,34 @@ export function buildDerivedLegendRows({
     if (segment.isAbsent) continue
     if ((segment as { isBackground?: boolean }).isBackground === true) continue
     if (!isFractional(segmentMetadata[segment.uid])) continue
-    const colors = paletteColors(segmentStyles[segment.uid])
-    if (colors === undefined) continue
+    const palette = paletteOf(segmentStyles[segment.uid])
+    if (palette === undefined) continue
+    const bounds = segmentBounds(segmentMetadata[segment.uid])
     rows.push({
       id: segment.uid,
       kind: 'segment',
       title: segmentTitle(segment),
-      colors,
-      minLabel: '0',
-      maxLabel: '255',
+      palette,
+      minLabel: bounds.minLabel,
+      maxLabel: bounds.maxLabel,
       isVisible: visibleSegmentUIDs.has(segment.uid),
     })
   }
 
   for (const mapping of mappings) {
-    const colors = paletteColors(mappingStyles[mapping.uid])
-    if (colors === undefined) continue
+    const palette = paletteOf(mappingStyles[mapping.uid])
+    if (palette === undefined) continue
+    const bounds = mappingBounds(mappingMetadata[mapping.uid])
     rows.push({
       id: mapping.uid,
       kind: 'mapping',
       title: mappingTitle(mapping),
-      colors,
-      minLabel: '0',
-      maxLabel: '255',
+      palette,
+      minLabel: bounds.minLabel,
+      maxLabel: bounds.maxLabel,
       isVisible: visibleMappingUIDs.has(mapping.uid),
     })
   }
 
   return rows
-}
-
-/** CSS linear-gradient stops from palette RGB triplets. */
-export function paletteGradient(colors: number[][]): string {
-  if (colors.length === 1) {
-    const [r, g, b] = colors[0]
-    return `rgb(${r}, ${g}, ${b})`
-  }
-  return `linear-gradient(to right, ${colors
-    .map(([r, g, b]) => `rgb(${r}, ${g}, ${b})`)
-    .join(', ')})`
 }

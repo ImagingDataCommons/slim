@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildDerivedLegendRows, paletteGradient } from '../derivedLegend'
+import { buildDerivedLegendRows } from '../derivedLegend'
 
 describe('buildDerivedLegendRows', () => {
   it('includes fractional segments with palettes and skips binary', () => {
@@ -18,7 +18,7 @@ describe('buildDerivedLegendRows', () => {
         } as never,
       ],
       segmentMetadata: {
-        frac: [{ SegmentationType: 'FRACTIONAL' } as never],
+        frac: [{ SegmentationType: 'FRACTIONAL', BitsAllocated: 8 } as never],
         bin: [{ SegmentationType: 'BINARY' } as never],
       },
       segmentStyles: {
@@ -43,6 +43,7 @@ describe('buildDerivedLegendRows', () => {
       },
       visibleSegmentUIDs: new Set(['frac']),
       mappings: [],
+      mappingMetadata: {},
       mappingStyles: {},
       visibleMappingUIDs: new Set(),
     })
@@ -52,18 +53,36 @@ describe('buildDerivedLegendRows', () => {
         id: 'frac',
         kind: 'segment',
         title: 'Tumor infiltration',
+        minLabel: '0',
+        maxLabel: '255',
         isVisible: true,
       }),
     ])
+    expect(rows[0].palette.data).toHaveLength(2)
   })
 
-  it('includes parametric maps with palettes', () => {
+  it('includes parametric maps with real-world bounds when present', () => {
     const rows = buildDerivedLegendRows({
       segments: [],
       segmentMetadata: {},
       segmentStyles: {},
       visibleSegmentUIDs: new Set(),
       mappings: [{ uid: 'ki67', label: 'Ki-67' } as never],
+      mappingMetadata: {
+        ki67: [
+          {
+            BitsAllocated: 16,
+            RealWorldValueMappingSequence: [
+              {
+                RealWorldValueFirstValueMapped: 0,
+                RealWorldValueLastValueMapped: 100,
+                RealWorldValueSlope: 0.01,
+                RealWorldValueIntercept: 0,
+              },
+            ],
+          } as never,
+        ],
+      },
       mappingStyles: {
         ki67: {
           opacity: 0.8,
@@ -83,19 +102,10 @@ describe('buildDerivedLegendRows', () => {
         id: 'ki67',
         kind: 'mapping',
         title: 'Ki-67',
+        minLabel: '0.00',
+        maxLabel: '1.00',
         isVisible: false,
       }),
     ])
-  })
-})
-
-describe('paletteGradient', () => {
-  it('builds a CSS gradient from RGB stops', () => {
-    expect(
-      paletteGradient([
-        [0, 0, 0],
-        [255, 0, 0],
-      ]),
-    ).toBe('linear-gradient(to right, rgb(0, 0, 0), rgb(255, 0, 0))')
   })
 })
