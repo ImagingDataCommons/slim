@@ -37,12 +37,20 @@ export function ViewerChromeOverlays({
   derivedLegend,
   ...overlayProps
 }: ViewerChromeOverlaysProps): JSX.Element {
+  const legendVisible = derivedLegend.rows.some((row) => row.isVisible)
   return (
     <>
-      <ViewportOverlays key={viewerKey} {...overlayProps} />
-      <DerivedLegend
-        rows={derivedLegend.rows}
-        onVisibilityChange={derivedLegend.onVisibilityChange}
+      <ViewportOverlays
+        key={viewerKey}
+        {...overlayProps}
+        topLeftAccessory={
+          legendVisible ? (
+            <DerivedLegend
+              rows={derivedLegend.rows}
+              onVisibilityChange={derivedLegend.onVisibilityChange}
+            />
+          ) : undefined
+        }
       />
       <ViewportLoadingIndicator
         isVisible={isWaitingForFirstImage}

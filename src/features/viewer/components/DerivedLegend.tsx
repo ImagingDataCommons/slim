@@ -28,12 +28,7 @@ export function DerivedLegend({
   if (rows.length === 0 || visibleCount === 0) return null
 
   return (
-    <div
-      className={cn(
-        'pointer-events-auto absolute top-16 left-3.5 z-10 flex w-[min(320px,calc(100%-1.75rem))] flex-col gap-2 p-2.5',
-        OVERLAY_CARD,
-      )}
-    >
+    <div className={cn('flex w-full flex-col gap-2 p-2.5', OVERLAY_CARD)}>
       <button
         type="button"
         className="flex min-h-8 w-full items-center justify-between gap-2 rounded-md border border-line-soft bg-app/70 px-2 py-1 text-left transition-colors hover:bg-app"

@@ -21,6 +21,11 @@ export interface ViewportOverlaysProps {
   showSlideLabel?: boolean
   showZoomControls?: boolean
   showViewportInfo?: boolean
+  /**
+   * Extra card stacked under the slide name in the top-left column
+   * (e.g. SEG/PM legend). Uses the same corner inset and gap as the chip.
+   */
+  topLeftAccessory?: React.ReactNode
 }
 
 const ZOOM_ANIMATION_MS = 200
@@ -95,6 +100,7 @@ export function ViewportOverlays({
   showSlideLabel = true,
   showZoomControls = true,
   showViewportInfo = true,
+  topLeftAccessory,
 }: ViewportOverlaysProps): React.ReactElement {
   const zoomBy = useCallback(
     (delta: number): void => {
@@ -115,25 +121,32 @@ export function ViewportOverlays({
     view.fit(extent, { size: map.getSize(), duration: ZOOM_ANIMATION_MS })
   }, [getMap])
 
+  const showTopLeft = showSlideLabel || topLeftAccessory != null
+
   return (
     <>
-      {showSlideLabel && (
-        <div className="pointer-events-none absolute left-3.5 top-3.5 z-10 flex flex-col gap-1.5">
-          <div
-            className={`flex items-center gap-2 px-2.5 py-1.5 ${OVERLAY_CARD}`}
-          >
-            <span
-              className="max-w-[220px] truncate text-12.5 font-semibold text-ink"
-              title={slideId}
+      {showTopLeft && (
+        <div className="pointer-events-none absolute top-3.5 left-3.5 z-10 flex max-w-[min(320px,calc(100%-1.75rem))] flex-col items-start gap-1.5">
+          {showSlideLabel && (
+            <div
+              className={`flex items-center gap-2 px-2.5 py-1.5 ${OVERLAY_CARD}`}
             >
-              {slideId}
-            </span>
-            {slideDescription !== undefined && slideDescription !== '' && (
-              <span className="max-w-[220px] truncate text-12 text-ink-muted">
-                {slideDescription}
+              <span
+                className="max-w-[220px] truncate text-12.5 font-semibold text-ink"
+                title={slideId}
+              >
+                {slideId}
               </span>
-            )}
-          </div>
+              {slideDescription !== undefined && slideDescription !== '' && (
+                <span className="max-w-[220px] truncate text-12 text-ink-muted">
+                  {slideDescription}
+                </span>
+              )}
+            </div>
+          )}
+          {topLeftAccessory != null && (
+            <div className="pointer-events-auto w-full">{topLeftAccessory}</div>
+          )}
         </div>
       )}
 
