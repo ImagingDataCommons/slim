@@ -117,7 +117,7 @@ export async function openViewer(
 }
 
 /** The DMV main viewport is the largest OpenLayers viewport on the page */
-async function mainViewportClip(page: Page) {
+export async function mainViewportClip(page: Page) {
   const box = await page.evaluate(() => {
     const viewports = Array.from(document.querySelectorAll('.ol-viewport'))
     const rects = viewports.map((element) => element.getBoundingClientRect())
@@ -238,6 +238,23 @@ export async function captureSettledViewport(
     )
     .toBe(true)
   return previous
+}
+
+/**
+ * Settled main-viewport screenshot compared to a committed baseline.
+ * Baselines live next to the spec (`*-snapshots/`) and are platform-specific
+ * (Playwright appends the browser and OS). Update with
+ * `pnpm test:e2e:visual:update` on the same OS as CI (Linux).
+ */
+export async function expectSettledViewportScreenshot(
+  page: Page,
+  name: string,
+): Promise<void> {
+  await captureSettledViewport(page)
+  await expect(page).toHaveScreenshot(`${name}.png`, {
+    clip: await mainViewportClip(page),
+    animations: 'disabled',
+  })
 }
 
 /** Waits for the viewport to move away from a reference capture */

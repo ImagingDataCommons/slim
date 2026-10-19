@@ -122,8 +122,10 @@ export function useAnnotationGroups(
     showSeries: (session, seriesInstanceUID) => {
       /**
        * Unlike a manual toggle, no validation dialog is shown, and one
-       * failing group must not keep the others hidden.
+       * failing group must not keep the others hidden. Panel series filter
+       * follows the deep-linked series.
        */
+      setSelectedSeriesUID(seriesInstanceUID)
       showMatchingSeriesItems({
         items: session.volumeViewer.getAllAnnotationGroups(),
         seriesInstanceUID,

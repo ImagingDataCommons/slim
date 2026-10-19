@@ -191,6 +191,7 @@ describe('useSegmentations visibility', () => {
 
     expect([...result.current.visibleUIDs]).toEqual(['tumor'])
     expect([...test.viewer.segments.visible]).toEqual(['tumor'])
+    expect(result.current.selectedSeriesUID).toBe('seg-series')
   })
 
   it('toggles segments but ignores absent ones', () => {
@@ -270,5 +271,37 @@ describe('useSegmentations visibility', () => {
 
     expect(result.current.isInterpolationEnabled).toBe(true)
     expect(test.viewer.toggleSegmentationInterpolation).toHaveBeenCalledTimes(1)
+  })
+
+  it('re-shows currently visible segments after interpolation toggle', () => {
+    const test = createSegmentedSession()
+    const { result } = renderSegmentations(test)
+
+    act(() => {
+      result.current.onVisibilityChange({
+        segmentUID: 'tumor',
+        isVisible: true,
+      })
+      result.current.onVisibilityChange({
+        segmentUID: 'fraction',
+        isVisible: true,
+      })
+    })
+    test.viewer.hideSegment.mockClear()
+    test.viewer.showSegment.mockClear()
+
+    act(() => {
+      result.current.onDisplaySettingsChange({ interpolationEnabled: true })
+    })
+
+    expect(test.viewer.toggleSegmentationInterpolation).toHaveBeenCalledTimes(1)
+    expect(
+      test.viewer.hideSegment.mock.calls.map(([uid]) => uid).sort(),
+    ).toEqual(['fraction', 'tumor'].sort())
+    expect(
+      test.viewer.showSegment.mock.calls.map(([uid]) => uid).sort(),
+    ).toEqual(['fraction', 'tumor'].sort())
+    expect(test.viewer.hideSegment).not.toHaveBeenCalledWith('background')
+    expect(test.viewer.hideSegment).not.toHaveBeenCalledWith('absent')
   })
 })

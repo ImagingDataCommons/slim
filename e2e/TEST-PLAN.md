@@ -194,6 +194,22 @@ Playwright fakes these failures by answering requests with 404.
 - [ ] **E4** e2e. A render error shows "Something went wrong" with Reload, not a blank screen.
 - [ ] **E5** e2e. High memory use shows in the footer, and Debug lists a critical memory warning.
 
+## Visual smoke
+
+Settled main-viewport screenshots (`e2e/visual.spec.ts`) against committed baselines. Interaction tests stay elsewhere; these catch blank canvases and wrong overlay rendering. Baselines are platform-specific — update them on Linux (matching CI):
+
+```sh
+pnpm test:e2e:visual:update
+```
+
+- [ ] **VS1** e2e. H&E brightfield slide settled.
+- [ ] **VS2** e2e. Fractional TIL SEG overlay visible.
+- [ ] **VS3** e2e. Binary TIL SEG overlay visible.
+- [ ] **VS4** e2e. Parametric map overlay visible.
+- [ ] **VS5** e2e. SR ROIs visible on the RMS slide.
+- [ ] **VS6** e2e. Bone marrow ANN groups visible.
+- [ ] **VS7** e2e. H&E brightfield in light theme.
+
 ## Accessibility
 
 [axe](https://github.com/dequelabs/axe-core) checks WCAG 2.1 A and AA rules.

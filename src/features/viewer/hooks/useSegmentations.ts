@@ -125,8 +125,11 @@ export function useSegmentations(
     showSeries: (session, seriesInstanceUID) => {
       /**
        * One failing segment must not keep the others hidden. Background
-       * and absent segments stay listed but are not shown.
+       * and absent segments stay listed but are not shown. Panel series
+       * filter follows the deep-linked series so Display options apply
+       * with the same list the user opened.
        */
+      setSelectedSeriesUID(seriesInstanceUID)
       showMatchingSeriesItems({
         items: session.volumeViewer.getAllSegments(),
         seriesInstanceUID,
@@ -225,6 +228,27 @@ export function useSegmentations(
     },
     onDisplaySettingsChange: ({ interpolationEnabled }) => {
       onInterpolationChange(interpolationEnabled)
+      /**
+       * DMV rebuilds every segment's sources on toggle. Re-assert visibility
+       * from the viewer (not panel state) so a stale visibleUIDs set cannot
+       * hide segments that were just shown via "Show all".
+       */
+      const viewer = sessionRef.current?.volumeViewer
+      if (viewer === undefined) return
+      for (const segment of viewer.getAllSegments()) {
+        try {
+          if (segment.isAbsent) continue
+          if (viewer.isSegmentVisible(segment.uid)) {
+            viewer.hideSegment(segment.uid)
+            viewer.showSegment(segment.uid)
+          }
+        } catch (error) {
+          logger.error(
+            `failed to refresh segment "${segment.uid}" after interpolation toggle:`,
+            error,
+          )
+        }
+      }
     },
     dmvHandlers: {
       dicommicroscopyviewer_segment_visibility_changed: (payload) => {

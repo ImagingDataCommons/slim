@@ -349,6 +349,9 @@ export class FakeVolumeImageViewer {
   )
   readonly showSegment = vi.fn((uid: string) => this.segments.show(uid))
   readonly hideSegment = vi.fn((uid: string) => this.segments.hide(uid))
+  readonly isSegmentVisible = vi.fn((uid: string) =>
+    this.segments.visible.has(uid),
+  )
   readonly zoomToSegment = vi.fn()
 
   getAllParameterMappings(): FakeMapping[] {

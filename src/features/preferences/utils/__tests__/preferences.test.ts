@@ -40,6 +40,7 @@ describe('parsePreferences', () => {
       showViewportInfo: false,
       showSlideLabel: false,
       showZoomControls: false,
+      darkOverlayLegends: true,
       worklistHiddenColumnIds: [],
     })
   })
@@ -66,6 +67,7 @@ describe('parsePreferences', () => {
         showViewportInfo: true,
         showSlideLabel: true,
         showZoomControls: true,
+        darkOverlayLegends: true,
       }),
     )
   })

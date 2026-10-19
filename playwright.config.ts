@@ -22,10 +22,25 @@ const serverCommand = isCI
 export default defineConfig({
   testDir: 'e2e',
   outputDir: 'test-results',
+  /**
+   * One baseline per name (no OS suffix). Local and CI both use SwiftShader;
+   * maxDiffPixelRatio absorbs remaining AA jitter.
+   */
+  snapshotPathTemplate: '{testDir}/{testFileName}-snapshots/{arg}{ext}',
   /** Spreads tests of one file over workers and shards; serial groups stay together */
   fullyParallel: true,
   timeout: 90_000,
-  expect: { timeout: 30_000 },
+  expect: {
+    timeout: 30_000,
+    /**
+     * Visual smoke (`e2e/visual.spec.ts`) baselines. Soft threshold absorbs
+     * SwiftShader / font AA jitter; large regressions still fail.
+     */
+    toHaveScreenshot: {
+      maxDiffPixelRatio: 0.02,
+      animations: 'disabled',
+    },
+  },
   /**
    * IDC is a shared production proxy; keep the load modest. CI shards the
    * suite over several runners instead, one software-rendered browser each,

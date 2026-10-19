@@ -4,8 +4,6 @@ import type DicomWebManager from '../../DicomWebManager'
 import { cn } from '../../lib/utils'
 import { Button } from '../ui/button'
 import { SlimDialogFooter } from '../ui/dialog'
-import { Icon } from '../ui/icon'
-import { MonoChip } from '../ui/mono-chip'
 import { SearchInput } from '../ui/search-input'
 import {
   Select,
@@ -15,7 +13,7 @@ import {
   SelectValue,
 } from '../ui/select'
 import { Slider } from '../ui/slider'
-import { getSeriesLabel } from './dicomTagUtils'
+import { type DisplaySet, getSeriesLabel } from './dicomTagUtils'
 import { TAG_GRID_COLUMNS, TagRow } from './TagRow'
 import { useDicomTagBrowserState } from './useDicomTagBrowserState'
 
@@ -26,6 +24,12 @@ export interface DicomTagBrowserProps {
   seriesInstanceUID?: string
   /** Called by the footer "Done" button */
   onDone?: () => void
+}
+
+/** Full series label for the trigger and item textValue (avoids Radix truncating complex ItemText). */
+function seriesTriggerLabel(displaySet: DisplaySet): string {
+  const { label, description } = getSeriesLabel(displaySet)
+  return description !== '' ? `${label} — ${description}` : label
 }
 
 const DicomTagBrowser = ({
@@ -49,7 +53,6 @@ const DicomTagBrowser = ({
     totalInstances,
     hasMultipleInstances,
     instanceLabel,
-    selectedModality,
     searchInput,
     setSearchInput,
     filteredData,
@@ -67,7 +70,7 @@ const DicomTagBrowser = ({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="grid flex-none grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] gap-3 border-b border-line-soft px-5 py-3.5">
+      <div className="grid flex-none grid-cols-[minmax(0,1.6fr)_minmax(0,0.9fr)_minmax(0,1fr)] gap-3 border-b border-line-soft px-5 py-3.5">
         <div className="flex min-w-0 flex-col gap-1.5 text-12 text-ink-muted">
           <span id={seriesLabelId}>Series</span>
           <Select
@@ -75,49 +78,40 @@ const DicomTagBrowser = ({
             onValueChange={setSelectedSeriesUID}
             disabled={isLoading || displaySets.length === 0}
           >
-            <SelectTrigger className="h-9" aria-labelledby={seriesLabelId}>
-              <span className="flex min-w-0 items-center gap-2">
-                {selectedModality !== '' && (
-                  <MonoChip size="sm" className="font-semibold">
-                    {selectedModality}
-                  </MonoChip>
-                )}
-                <span className="truncate">
-                  <SelectValue
-                    placeholder={
-                      isLoading ? 'Loading series…' : 'Select a series'
-                    }
-                  />
-                </span>
-              </span>
+            <SelectTrigger
+              className="h-auto min-h-9 whitespace-normal py-1.5 [&>span]:line-clamp-none [&>span]:whitespace-normal [&>span]:wrap-break-word"
+              aria-labelledby={seriesLabelId}
+              title={
+                selectedDisplaySet !== undefined
+                  ? seriesTriggerLabel(selectedDisplaySet)
+                  : undefined
+              }
+            >
+              <SelectValue
+                placeholder={isLoading ? 'Loading series…' : 'Select a series'}
+              />
             </SelectTrigger>
             <SelectContent className="max-w-[560px]">
               {displaySets.map((displaySet) => {
-                const { label, description } = getSeriesLabel(displaySet)
+                const textValue = seriesTriggerLabel(displaySet)
                 const isActive = activeSeriesUIDs.has(
                   displaySet.SeriesInstanceUID,
                 )
+                /**
+                 * Plain-text ItemText so the trigger SelectValue mirrors the
+                 * full label. Complex children collapse to "SM…" under
+                 * line-clamp on the trigger.
+                 */
                 return (
                   <SelectItem
                     key={displaySet.SeriesInstanceUID}
                     value={displaySet.SeriesInstanceUID}
+                    textValue={textValue}
+                    title={
+                      isActive ? `${textValue} (active in viewport)` : textValue
+                    }
                   >
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span className="truncate">
-                        {label}
-                        {description !== '' ? ` — ${description}` : ''}
-                      </span>
-                      {isActive && (
-                        <>
-                          <Icon
-                            name="visibility"
-                            size={15}
-                            className="text-ink-muted"
-                          />
-                          <span className="sr-only">(active in viewport)</span>
-                        </>
-                      )}
-                    </span>
+                    {textValue}
                   </SelectItem>
                 )
               })}

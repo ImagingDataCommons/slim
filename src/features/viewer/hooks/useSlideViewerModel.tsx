@@ -33,6 +33,7 @@ import { useActiveSeriesPublisher } from './useActiveSeriesPublisher'
 import { useAnnotationDraft } from './useAnnotationDraft'
 import { useAnnotationGroups } from './useAnnotationGroups'
 import { drawStyleFor, useAnnotationTools } from './useAnnotationTools'
+import { useDMVLegendTheme } from './useDMVLegendTheme'
 import { useDmvEvents } from './useDmvEvents'
 import { useHoveredRoiTooltip } from './useHoveredRoiTooltip'
 import { useHeldKeys, useKeyboardShortcuts } from './useKeyboardShortcuts'
@@ -239,6 +240,18 @@ export function useSlideViewerModel({
   }
 
   const viewerKey = `${studyInstanceUID}/${seriesInstanceUID}/${snapshot.generation}`
+  useDMVLegendTheme({
+    getLegendRoot: () => {
+      const overlay = (
+        sessionRef.current?.volumeViewer as
+          | { segmentOverlay?: { getElement: () => HTMLElement } }
+          | undefined
+      )?.segmentOverlay
+      return overlay?.getElement()
+    },
+    appearance: preferences.darkOverlayLegends ? 'dark' : 'light',
+    viewerKey,
+  })
   const metadata = slide.volumeImages[0]
   const slideAffine = useMemo(
     () => slideAffineFromImages(slide.volumeImages),

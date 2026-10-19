@@ -6,34 +6,13 @@ import {
   type HoveredRoi,
   SERIES_DESCRIPTION_ATTRIBUTE,
 } from '../features/viewer/utils/hoveredRois'
+import { cn } from '../lib/utils'
 import { withOccurrenceKeys } from '../utils/occurrenceKeys'
 
 export interface HoveredRoiTooltipProps {
   xPosition: number
   yPosition: number
   rois: readonly HoveredRoi[]
-}
-
-const tooltipStyle: React.CSSProperties = {
-  position: 'fixed',
-  backgroundColor: 'rgba(230, 230, 230, 0.95)',
-  padding: '10px',
-  fontWeight: 'bold',
-  pointerEvents: 'none',
-  borderRadius: '4px',
-  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-  zIndex: 10000,
-  minWidth: '200px',
-  maxWidth: '400px',
-}
-
-const seriesTitleStyle: React.CSSProperties = {
-  fontSize: '13px',
-  fontWeight: 'bold',
-  color: 'rgba(0, 0, 0, 0.8)',
-  marginBottom: '8px',
-  paddingBottom: '4px',
-  borderBottom: '1px solid rgba(0, 0, 0, 0.15)',
 }
 
 function HoveredRoiRow({
@@ -52,35 +31,22 @@ function HoveredRoiRow({
       attr.name !== ANNOTATION_GROUP_LABEL_ATTRIBUTE,
   )
   return (
-    <div style={{ marginBottom: isLast ? '0' : '6px', fontSize: '12px' }}>
-      <div style={{ fontWeight: 'bold' }}>
+    <div className={cn('text-12', !isLast && 'mb-1.5')}>
+      <div className="font-semibold text-ink">
         ROI {roi.index}
         {groupLabel !== undefined && (
-          <span
-            style={{
-              fontWeight: 500,
-              marginLeft: '6px',
-              color: 'rgba(0, 0, 0, 0.7)',
-            }}
-          >
+          <span className="ml-1.5 font-medium text-ink-secondary">
             - {groupLabel.value}
           </span>
         )}
       </div>
       {otherAttributes.length > 0 && (
-        <div
-          style={{
-            marginLeft: '12px',
-            fontSize: '11px',
-            color: 'rgba(0, 0, 0, 0.8)',
-            marginTop: '2px',
-          }}
-        >
+        <div className="mt-0.5 ml-3 text-11 text-ink-body">
           {withOccurrenceKeys(otherAttributes, (attr) => attr.name).map(
             ({ item: attr, key }) => (
               <div key={`${key}-${roi.roiUid}`}>
                 {attr.name}:{' '}
-                <span style={{ fontWeight: 500 }}>{attr.value}</span>
+                <span className="font-medium text-ink">{attr.value}</span>
               </div>
             ),
           )}
@@ -98,25 +64,21 @@ const HoveredRoiTooltip = ({
 }: HoveredRoiTooltipProps): React.ReactElement => (
   <div
     role="tooltip"
-    style={{ ...tooltipStyle, top: `${yPosition}px`, left: `${xPosition}px` }}
+    className="pointer-events-none fixed z-[10000] min-w-[200px] max-w-[400px] rounded-lg border border-line bg-overlay-card/95 p-2.5 shadow-overlay"
+    style={{ top: `${yPosition}px`, left: `${xPosition}px` }}
   >
     {groupHoveredRoisBySeries(rois).map(
       ([seriesDesc, seriesRois], seriesIndex) => (
         <div
           key={seriesDesc}
-          style={{ marginBottom: seriesIndex > 0 ? '12px' : '0' }}
-        >
-          {seriesIndex > 0 && (
-            <hr
-              style={{
-                margin: '10px 0',
-                border: 'none',
-                borderTop: '1px solid rgba(0, 0, 0, 0.2)',
-              }}
-            />
+          className={cn(
+            seriesIndex > 0 && 'mt-3 border-t border-line-soft pt-2.5',
           )}
-          <div style={seriesTitleStyle}>{seriesDesc}</div>
-          <div style={{ marginLeft: '4px' }}>
+        >
+          <div className="mb-2 border-b border-line-soft pb-1 text-13 font-semibold text-ink">
+            {seriesDesc}
+          </div>
+          <div className="ml-1">
             {seriesRois.map((roi, roiIndex) => (
               <HoveredRoiRow
                 key={roi.roiUid}

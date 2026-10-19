@@ -1,0 +1,213 @@
+diff --git a/dist/dynamic-import/dicomMicroscopyViewer.min.js b/dist/dynamic-import/dicomMicroscopyViewer.min.js
+index 80e3dad4a22a0e9581597f2878053d3edd3d1c2e..2c8d47a1c3f64d50259fac973847014e06d44c97 100644
+--- a/dist/dynamic-import/dicomMicroscopyViewer.min.js
++++ b/dist/dynamic-import/dicomMicroscopyViewer.min.js
+@@ -21794,31 +21794,72 @@ var VolumeImageViewer = /*#__PURE__*/function () {
+       var _this6 = this;
+       console.debug('toggle segmentation interpolation:', this[_segmentationInterpolate]);
+       this[_segmentationInterpolate] = !this[_segmentationInterpolate];
++      var interpolate = this[_segmentationInterpolate];
++      var container = this[_map].getTargetElement() || this[_container];
+       var segments = _babel_runtime_corejs3_core_js_stable_object_values__WEBPACK_IMPORTED_MODULE_35___default()(this[_segments]);
++      /** Rebuild every segment from pyramid; never abort mid-loop (slim#451) */
+       _babel_runtime_corejs3_core_js_stable_instance_for_each__WEBPACK_IMPORTED_MODULE_19___default()(segments).call(segments, function (segment) {
+-        if (segment.usePerFrameImages) {
+-          var _context39;
+-          /** Rebuilds sources with the cached frame data instead of refetching */
+-          _babel_runtime_corejs3_core_js_stable_instance_for_each__WEBPACK_IMPORTED_MODULE_19___default()(_context39 = segment.frameLoaderParams).call(_context39, function (params) {
+-            params.interpolate = _this6[_segmentationInterpolate];
+-          });
+-          _refreshPerFrameSegmentImages(segment);
+-        } else {
+-          var currentSource = segment.layer.getSource();
+-          segment.layer.setSource(_createSegmentTileSource({
+-            tileGrid: currentSource.getTileGrid(),
+-            projection: currentSource.getProjection(),
+-            interpolate: _this6[_segmentationInterpolate],
+-            pyramid: segment.loaderParams.pyramid,
+-            segmentNumber: segment.loaderParams.channel,
+-            onTileLoadError: segment.onTileLoadError
+-          }));
+-          segment.hasLoader = false;
++        var uid = segment.segment && segment.segment.uid;
++        if (uid == null || segment.isAbsent) {
++          return;
+         }
+-        if (segment.layer.getVisible() === true) {
+-          _this6.showSegment(segment.segment.uid);
+-        } else {
+-          _this6.hideSegment(segment.segment.uid);
++        var wasVisible = segment.layer.getVisible() === true;
++        try {
++          if (segment.usePerFrameImages) {
++            var _context39;
++            _babel_runtime_corejs3_core_js_stable_instance_for_each__WEBPACK_IMPORTED_MODULE_19___default()(_context39 = segment.frameLoaderParams).call(_context39, function (params) {
++              params.interpolate = interpolate;
++              params.imageLoadFunction = null;
++            });
++            segment.hasLoader = false;
++            if (container) {
++              _installPerFrameSegmentLoaders(segment, {
++                container: container,
++                projection: _this6[_projection],
++                interpolate: interpolate
++              });
++            }
++          } else {
++            var pyramid = segment.loaderParams && segment.loaderParams.pyramid;
++            if (pyramid == null) {
++              console.warn('skip interpolation toggle for segment "' + uid + '": no pyramid');
++              return;
++            }
++            var tileGrid = new ol_tilegrid_TileGrid__WEBPACK_IMPORTED_MODULE_89__["default"]({
++              extent: pyramid.extent,
++              origins: pyramid.origins,
++              resolutions: pyramid.resolutions,
++              sizes: pyramid.gridSizes,
++              tileSizes: pyramid.tileSizes
++            });
++            segment.layer.setSource(_createSegmentTileSource({
++              tileGrid: tileGrid,
++              projection: _this6[_projection],
++              interpolate: interpolate,
++              pyramid: pyramid,
++              segmentNumber: segment.loaderParams.channel,
++              onTileLoadError: segment.onTileLoadError
++            }));
++            segment.hasLoader = false;
++            if (container) {
++              var loader = (0,_pyramid_js__WEBPACK_IMPORTED_MODULE_107__._createTileLoadFunction)(_objectSpread({
++                targetElement: container,
++                iccProfiles: []
++              }, segment.loaderParams));
++              var source = segment.layer.getSource();
++              if (source) {
++                source.setLoader(loader);
++                segment.hasLoader = true;
++              }
++            }
++          }
++          if (wasVisible) {
++            _this6.showSegment(uid);
++          } else {
++            _this6.hideSegment(uid);
++          }
++        } catch (error) {
++          console.error('failed to toggle interpolation for segment "' + uid + '":', error);
+         }
+       });
+     }
+diff --git a/src/viewer.js b/src/viewer.js
+index e5770060e0b1e6df0b4d35f0a157b4d9a230efa5..8180ca53d6c7ea6a09671d473fbc9df0ae67e83d 100644
+--- a/src/viewer.js
++++ b/src/viewer.js
+@@ -2999,33 +2999,86 @@ class VolumeImageViewer {
+     )
+     this[_segmentationInterpolate] = !this[_segmentationInterpolate]
+ 
++    const interpolate = this[_segmentationInterpolate]
++    const container = this[_map].getTargetElement() || this[_container]
+     const segments = Object.values(this[_segments])
+ 
++    /**
++     * Rebuild every segment's sources/loaders with the new flag (visible or
++     * not). Do not read layer.getSource() — a null source throws and aborts
++     * the loop after the first segment (slim#451). Mirror parametric-map
++     * toggle: new TileGrid from pyramid, reinstall loaders, restore
++     * visibility.
++     */
+     segments.forEach((segment) => {
+-      if (segment.usePerFrameImages) {
+-        /** Rebuilds sources with the cached frame data instead of refetching */
+-        segment.frameLoaderParams.forEach((params) => {
+-          params.interpolate = this[_segmentationInterpolate]
+-        })
+-        _refreshPerFrameSegmentImages(segment)
+-      } else {
+-        const currentSource = segment.layer.getSource()
+-        segment.layer.setSource(
+-          _createSegmentTileSource({
+-            tileGrid: currentSource.getTileGrid(),
+-            projection: currentSource.getProjection(),
+-            interpolate: this[_segmentationInterpolate],
+-            pyramid: segment.loaderParams.pyramid,
+-            segmentNumber: segment.loaderParams.channel,
+-            onTileLoadError: segment.onTileLoadError,
+-          }),
+-        )
+-        segment.hasLoader = false
++      const uid = segment.segment?.uid
++      if (uid == null || segment.isAbsent) {
++        return
+       }
+-      if (segment.layer.getVisible() === true) {
+-        this.showSegment(segment.segment.uid)
+-      } else {
+-        this.hideSegment(segment.segment.uid)
++      const wasVisible = segment.layer.getVisible() === true
++      try {
++        if (segment.usePerFrameImages) {
++          segment.frameLoaderParams.forEach((params) => {
++            params.interpolate = interpolate
++            params.imageLoadFunction = null
++          })
++          segment.hasLoader = false
++          if (container) {
++            _installPerFrameSegmentLoaders(segment, {
++              container,
++              projection: this[_projection],
++              interpolate,
++            })
++          }
++        } else {
++          const pyramid = segment.loaderParams?.pyramid
++          if (pyramid == null) {
++            console.warn(
++              `skip interpolation toggle for segment "${uid}": no pyramid`,
++            )
++            return
++          }
++          const tileGrid = new TileGrid({
++            extent: pyramid.extent,
++            origins: pyramid.origins,
++            resolutions: pyramid.resolutions,
++            sizes: pyramid.gridSizes,
++            tileSizes: pyramid.tileSizes,
++          })
++          segment.layer.setSource(
++            _createSegmentTileSource({
++              tileGrid,
++              projection: this[_projection],
++              interpolate,
++              pyramid,
++              segmentNumber: segment.loaderParams.channel,
++              onTileLoadError: segment.onTileLoadError,
++            }),
++          )
++          segment.hasLoader = false
++          if (container) {
++            const loader = _createTileLoadFunction({
++              targetElement: container,
++              iccProfiles: [],
++              ...segment.loaderParams,
++            })
++            const source = segment.layer.getSource()
++            if (source) {
++              source.setLoader(loader)
++              segment.hasLoader = true
++            }
++          }
++        }
++        if (wasVisible) {
++          this.showSegment(uid)
++        } else {
++          this.hideSegment(uid)
++        }
++      } catch (error) {
++        console.error(
++          `failed to toggle interpolation for segment "${uid}":`,
++          error,
++        )
+       }
+     })
+   }

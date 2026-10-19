@@ -21,6 +21,8 @@
     "test:watch": "TZ=UTC vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "test:e2e:visual": "playwright test e2e/visual.spec.ts",
+    "test:e2e:visual:update": "playwright test e2e/visual.spec.ts --update-snapshots",
     "seed:local-archive": "node scripts/seed-local-archive.mjs",
     "test:e2e:local-archive": "playwright test -c playwright.local-archive.config.ts",
     "check:compiler": "node scripts/check-react-compiler.mjs",
