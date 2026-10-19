@@ -1,8 +1,8 @@
 diff --git a/dist/dynamic-import/dicomMicroscopyViewer.min.js b/dist/dynamic-import/dicomMicroscopyViewer.min.js
-index 80e3dad4a22a0e9581597f2878053d3edd3d1c2e..2c8d47a1c3f64d50259fac973847014e06d44c97 100644
+index 80e3dad4a22a0e9581597f2878053d3edd3d1c2e..87c040335740445d69a180b12c89714e3cc8d006 100644
 --- a/dist/dynamic-import/dicomMicroscopyViewer.min.js
 +++ b/dist/dynamic-import/dicomMicroscopyViewer.min.js
-@@ -21794,31 +21794,72 @@ var VolumeImageViewer = /*#__PURE__*/function () {
+@@ -21794,33 +21794,78 @@ var VolumeImageViewer = /*#__PURE__*/function () {
        var _this6 = this;
        console.debug('toggle segmentation interpolation:', this[_segmentationInterpolate]);
        this[_segmentationInterpolate] = !this[_segmentationInterpolate];
@@ -92,16 +92,31 @@ index 80e3dad4a22a0e9581597f2878053d3edd3d1c2e..2c8d47a1c3f64d50259fac973847014e
 +          } else {
 +            _this6.hideSegment(uid);
 +          }
++          segment.layer.changed();
 +        } catch (error) {
 +          console.error('failed to toggle interpolation for segment "' + uid + '":', error);
          }
        });
++      if (_this6[_map]) {
++        _this6[_map].render();
++      }
      }
+ 
+     /**
+@@ -24923,7 +24968,7 @@ var VolumeImageViewer = /*#__PURE__*/function () {
+         var _rec$style$paletteCol, _rec$segment, _context86, _rec$segment$label, _rec$segment2;
+         var _uid2 = segmentUids[s];
+         var _rec = this[_segments][_uid2];
+-        if (_rec.segmentationType !== 'FRACTIONAL') {
++        if (_rec.isAbsent || _rec.segment && _rec.segment.isBackground === true) {
+           continue;
+         }
+         var data = (_rec$style$paletteCol = _rec.style.paletteColorLookupTable) === null || _rec$style$paletteCol === void 0 ? void 0 : _rec$style$paletteCol.data;
 diff --git a/src/viewer.js b/src/viewer.js
-index e5770060e0b1e6df0b4d35f0a157b4d9a230efa5..8180ca53d6c7ea6a09671d473fbc9df0ae67e83d 100644
+index e5770060e0b1e6df0b4d35f0a157b4d9a230efa5..5615003682f79ec32971fec00d3511aeff676835 100644
 --- a/src/viewer.js
 +++ b/src/viewer.js
-@@ -2999,33 +2999,86 @@ class VolumeImageViewer {
+@@ -2999,35 +2999,90 @@ class VolumeImageViewer {
      )
      this[_segmentationInterpolate] = !this[_segmentationInterpolate]
  
@@ -203,6 +218,7 @@ index e5770060e0b1e6df0b4d35f0a157b4d9a230efa5..8180ca53d6c7ea6a09671d473fbc9df0
 +        } else {
 +          this.hideSegment(uid)
 +        }
++        segment.layer.changed()
 +      } catch (error) {
 +        console.error(
 +          `failed to toggle interpolation for segment "${uid}":`,
@@ -210,4 +226,46 @@ index e5770060e0b1e6df0b4d35f0a157b4d9a230efa5..8180ca53d6c7ea6a09671d473fbc9df0
 +        )
        }
      })
++    this[_map]?.render()
    }
+ 
+   /**
+@@ -6510,12 +6565,14 @@ class VolumeImageViewer {
+     root.style.boxShadow = '0 1px 4px rgba(0, 0, 0, 0.12)'
+ 
+     /**
+-     * Collect fractional segments / parametric maps that have a palette so
+-     * the in-viewport legend doubles as a visibility control: hidden
+-     * overlays appear dimmed with an "off" toggle and can be re-enabled
+-     * without opening the host application's side panel (see issue #240).
+-     * The whole legend stays hidden until at least one of those overlays is
+-     * visible (see ImagingDataCommons/slim#409).
++     * Collect segments / parametric maps that have a palette so the
++     * in-viewport legend doubles as a visibility control: hidden overlays
++     * appear dimmed with an "off" toggle and can be re-enabled without
++     * opening the host application's side panel (see issue #240).
++     * BINARY and FRACTIONAL both appear when they have a palette — otherwise
++     * showing extra segments from the host panel never updates the legend
++     * (slim#451). The whole legend stays hidden until at least one of those
++     * overlays is visible (see ImagingDataCommons/slim#409).
+      */
+     const rows = []
+     let visibleCount = 0
+@@ -6524,7 +6581,7 @@ class VolumeImageViewer {
+     for (let s = 0; s < segmentUids.length; s++) {
+       const uid = segmentUids[s]
+       const rec = this[_segments][uid]
+-      if (rec.segmentationType !== 'FRACTIONAL') {
++      if (rec.isAbsent || rec.segment?.isBackground === true) {
+         continue
+       }
+       const data = rec.style.paletteColorLookupTable?.data
+@@ -6539,7 +6596,7 @@ class VolumeImageViewer {
+       const title =
+         prop?.CodeMeaning != null && String(prop.CodeMeaning).trim() !== ''
+           ? prop.CodeMeaning
+-          : (rec.segment?.label ?? 'Fractional')
++          : (rec.segment?.label ?? 'Segment')
+ 
+       rows.push({
+         title,

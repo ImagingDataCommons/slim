@@ -34,7 +34,7 @@ overrides:
 
 patchedDependencies:
   dcmjs@0.52.0: 98e09c0286526501e5322eae7b8acb9878b1b4b104ff6b318e28ec5b5c2cb495
-  dicom-microscopy-viewer@0.49.0: c418714fd9329a9927fdbe03b4e4ef501c4b6d9f451726a39af25a9176f7acfa
+  dicom-microscopy-viewer@0.49.0: 6f72298a4796471cbe19fdae9b89c1d48a15f83c8d63a8e9dd052416b368da73
 
 importers:
 
@@ -99,7 +99,7 @@ importers:
         version: 5.3.0
       dicom-microscopy-viewer:
         specifier: ^0.49.0
-        version: 0.49.0(patch_hash=c418714fd9329a9927fdbe03b4e4ef501c4b6d9f451726a39af25a9176f7acfa)
+        version: 0.49.0(patch_hash=6f72298a4796471cbe19fdae9b89c1d48a15f83c8d63a8e9dd052416b368da73)
       dicomweb-client:
         specifier: 0.10.3
         version: 0.10.3
@@ -3814,7 +3814,7 @@ snapshots:
 
   detect-node-es@1.1.0: {}
 
-  dicom-microscopy-viewer@0.49.0(patch_hash=c418714fd9329a9927fdbe03b4e4ef501c4b6d9f451726a39af25a9176f7acfa):
+  dicom-microscopy-viewer@0.49.0(patch_hash=6f72298a4796471cbe19fdae9b89c1d48a15f83c8d63a8e9dd052416b368da73):
     dependencies:
       '@cornerstonejs/codec-charls': 1.2.7
       '@cornerstonejs/codec-libjpeg-turbo-8bit': 1.2.8
