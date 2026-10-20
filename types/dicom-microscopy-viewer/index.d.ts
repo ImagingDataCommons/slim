@@ -69,6 +69,12 @@ declare module 'dicom-microscopy-viewer' {
       get imageMetadata (): metadata.VLWholeSlideMicroscopyImage[]
       activateDrawInteraction (options: object)
       deactivateDrawInteraction (): void
+      /**
+       * Preferred unit for measurement markup labels and ROI Num items
+       * (`µm` / `μm` / `mm`). Pass empty / null / undefined for view-scale auto.
+       */
+      setMeasurementUnit (unit: string | null | undefined): void
+      getMeasurementUnit (): 'μm' | 'mm' | undefined
       get isDrawInteractionActive (): boolean
       activateSelectInteraction (options: object)
       deactivateSelectInteraction (): void
