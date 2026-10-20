@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 
+import { VisibilityToggleButton } from '../../../components/panel/VisibilityToggleButton'
 import { cn } from '../../../lib/utils'
 import { lutToCssGradient } from '../../../utils/lutGradient'
 import type { DerivedLegendRow } from '../utils/derivedLegend'
@@ -15,7 +16,7 @@ const OVERLAY_CARD =
 
 /**
  * Quiet in-viewport color legend for fractional SEG and parametric maps.
- * Click a row to show or hide that overlay.
+ * Eye toggle on each row shows or hides that overlay.
  */
 export function DerivedLegend({
   rows,
@@ -52,28 +53,29 @@ function DerivedLegendRowView({
   onVisibilityChange: DerivedLegendProps['onVisibilityChange']
 }): ReactElement {
   const gradient = lutToCssGradient(row.palette)
-  const action = row.isVisible ? 'Hide' : 'Show'
 
   return (
-    <button
-      type="button"
+    <div
       className={cn(
-        'flex w-full flex-col gap-1 rounded-md text-left transition-opacity',
-        'hover:opacity-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40',
+        'flex flex-col gap-1',
         row.isVisible ? 'opacity-100' : 'opacity-40',
       )}
-      title={`${action} ${row.title}`}
-      aria-label={`${action} ${row.title}`}
-      aria-pressed={row.isVisible}
-      onClick={() => onVisibilityChange(row, !row.isVisible)}
     >
-      <span
-        className="min-w-0 truncate text-12 font-medium text-ink"
-        title={row.title}
-      >
-        {row.title}
-      </span>
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 items-center gap-1">
+        <span
+          className="min-w-0 flex-1 truncate text-12 font-medium text-ink"
+          title={row.title}
+        >
+          {row.title}
+        </span>
+        <VisibilityToggleButton
+          label={row.title}
+          isVisible={row.isVisible}
+          className="-my-0.5"
+          onChange={(isVisible) => onVisibilityChange(row, isVisible)}
+        />
+      </div>
+      <div className="flex items-center gap-2 pr-0.5">
         <span className="shrink-0 font-mono text-11 text-ink-muted">
           {row.minLabel}
         </span>
@@ -90,6 +92,6 @@ function DerivedLegendRowView({
           {row.maxLabel}
         </span>
       </div>
-    </button>
+    </div>
   )
 }
