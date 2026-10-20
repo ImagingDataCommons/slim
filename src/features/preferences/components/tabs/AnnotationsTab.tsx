@@ -98,11 +98,26 @@ export function AnnotationsTab({
   return (
     <>
       <SectionLabel>Drawing style</SectionLabel>
+      <PreferenceRow
+        label="Use finding colors"
+        description="New ROIs of a finding with a color in the site configuration use that color"
+      >
+        {(controlProps) => (
+          <Switch
+            {...controlProps}
+            size="lg"
+            checked={draft.useFindingColors}
+            onCheckedChange={(value) => onChange('useFindingColors', value)}
+          />
+        )}
+      </PreferenceRow>
       <div className="flex flex-col gap-2.5 border-b border-line-soft py-3">
         <div>
           <div className="font-medium text-ink">Stroke color</div>
           <div className="mt-0.5 text-12 text-ink-muted">
-            Outline color for new ROIs you draw
+            {draft.useFindingColors
+              ? 'Outline color for new ROIs whose finding has no configured color'
+              : 'Outline color for every new ROI you draw'}
           </div>
         </div>
         <div className="flex gap-2">

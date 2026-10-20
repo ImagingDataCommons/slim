@@ -56,6 +56,13 @@ export class RoiStyleRegistry {
    * from the category chips). Preference changes restyle these live.
    */
   private readonly preferenceStyledUids = new Set<string>()
+  /**
+   * Draw styles built from a finding's configured colors, cached per finding
+   * and drawing width so the draw interaction gets a stable object. ROIs drawn
+   * with one keep their finding color when preferences change.
+   */
+  private readonly findingDrawStyles = new Map<string, RoiStyle>()
+  private readonly findingDrawStyleSet = new WeakSet<RoiStyle>()
 
   /**
    * Seed only findings that have a viewer-config style. Findings without one
@@ -93,13 +100,35 @@ export class RoiStyleRegistry {
   }
 
   /**
-   * Style for a newly drawn ROI (and the draw preview). Always the live
-   * preference-backed default so stroke color, width, and markup text color
-   * reach DMV. Config finding styles still apply to loaded / listed ROIs via
-   * {@link findingStyle}.
+   * Style for a newly drawn ROI (and the draw preview). With
+   * `useFindingColors`, a finding that has a configured style keeps its
+   * colors and takes stroke width and point radius from the preference
+   * default; otherwise the live preference default is used as is.
    */
-  drawStyle(_key: string | undefined, defaultStyle: RoiStyle): RoiStyle {
-    return defaultStyle
+  drawStyle(
+    key: string | undefined,
+    defaultStyle: RoiStyle,
+    useFindingColors = true,
+  ): RoiStyle {
+    if (!useFindingColors || key === undefined) return defaultStyle
+    const configured = this.configured[key]
+    if (configured === undefined) return defaultStyle
+    const strokeWidth = defaultStyle.stroke?.width
+    const radius = defaultStyle.image?.circle?.radius
+    const cacheKey = `${key}|${strokeWidth}|${radius}`
+    const cached = this.findingDrawStyles.get(cacheKey)
+    if (cached !== undefined) return cached
+    const style = formatRoiStyle({
+      stroke: {
+        color: configured.stroke?.color,
+        width: strokeWidth ?? configured.stroke?.width,
+      },
+      fill: { color: configured.fill?.color },
+      radius,
+    })
+    this.findingDrawStyles.set(cacheKey, style)
+    this.findingDrawStyleSet.add(style)
+    return style
   }
 
   /** Fill color of a finding's style, used for annotation groups */
@@ -112,8 +141,10 @@ export class RoiStyleRegistry {
    * configured style exactly (color and width unchanged by preferences).
    */
   recordAddedRoi(uid: string, key: string | undefined, style: RoiStyle): void {
-    if (key === undefined || this.configured[key] !== style) {
-      this.stylesByUid[uid] = style
+    if (key !== undefined && this.configured[key] === style) return
+    this.stylesByUid[uid] = style
+    /** Drawn in its finding's color: Preferences changes must not recolor it */
+    if (!this.findingDrawStyleSet.has(style)) {
       this.preferenceStyledUids.add(uid)
     }
   }

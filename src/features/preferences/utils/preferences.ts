@@ -9,6 +9,12 @@ export interface UserPreferences {
   /** Preferred length unit for DMV markup labels and Slim measurement displays */
   units: MeasurementUnit
   compactRows: boolean
+  /**
+   * New ROIs of a finding with a configured style (config.annotations[].style)
+   * use that finding's color; off draws every new ROI with
+   * {@link UserPreferences.strokeColor}
+   */
+  useFindingColors: boolean
   /** Stroke color for new ROIs you draw */
   strokeColor: string
   /**
@@ -46,6 +52,7 @@ type BooleanPreference = {
 
 const BOOLEAN_PREFERENCES: readonly BooleanPreference[] = [
   'compactRows',
+  'useFindingColors',
   'roiFill',
   'confirmRoiRemoval',
   'showOverviewMap',
@@ -128,6 +135,7 @@ export const STROKE_COLORS = [
 export const DEFAULT_PREFERENCES: UserPreferences = {
   units: 'µm',
   compactRows: false,
+  useFindingColors: true,
   strokeColor: STROKE_COLORS[0],
   markupLabelColor: STROKE_COLORS[0],
   markupLabelFontSize: MARKUP_LABEL_FONT_SIZE_DEFAULT,
@@ -148,6 +156,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
  */
 export const ANNOTATION_PREFERENCE_KEYS = [
   'units',
+  'useFindingColors',
   'strokeColor',
   'markupLabelColor',
   'markupLabelFontSize',

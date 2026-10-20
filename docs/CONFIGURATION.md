@@ -362,7 +362,7 @@ Slim keeps **three** layers separate on purpose:
 | Layer | Where | Owns |
 | --- | --- | --- |
 | Site / protocol config | `window.config.annotations[]` | Findings, evaluations, geometry types, per-finding colors |
-| User preferences | Preferences → Annotations (localStorage) | Personal stroke width, fallback stroke color, display units, confirm-on-remove |
+| User preferences | Preferences → Annotations (localStorage) | Personal stroke width, fallback stroke color, whether finding colors apply to new drawings, display units, confirm-on-remove |
 | Draw dialog / panel | Viewer UI | Per-ROI choice among config options; restyle after draw |
 
 Do **not** put the finding catalog (labels, evaluations, geometries, per-finding
@@ -371,10 +371,13 @@ are personal drawing comfort only.
 
 | Setting | Source | Applied when drawing |
 | --- | --- | --- |
-| Stroke color | Preferences | New ROIs (geometry + measurement label text) |
-| Stroke width | Preferences | New ROIs |
+| Finding color | `annotations[].style` | New ROIs of that finding while **Use finding colors** is on (the default), and loaded / panel-listed ROIs of that finding |
+| Stroke color | Preferences | New ROIs whose finding has no configured style, or every new ROI when **Use finding colors** is off |
+| Stroke width | Preferences | New ROIs, including those drawn in a finding color |
 | Measurement units | Preferences | On-slide markup labels, annotation list, ROI details, and DMV measurement content items |
-| Finding color | `annotations[].style` | Loaded / panel-listed ROIs of that finding |
+
+ROIs drawn in their finding's color keep it when Preferences change; ROIs
+drawn in the preference color follow later stroke and fill changes.
 
 Fallbacks:
 

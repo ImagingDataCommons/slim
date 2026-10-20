@@ -24,6 +24,7 @@ describe('parsePreferences', () => {
     const stored = JSON.stringify({
       units: 'mm',
       compactRows: true,
+      useFindingColors: false,
       strokeColor: '#D9453B',
       markupLabelColor: '#1F9D6B',
       markupLabelFontSize: 16,
@@ -39,6 +40,7 @@ describe('parsePreferences', () => {
     expect(parsePreferences(stored)).toEqual({
       units: 'mm',
       compactRows: true,
+      useFindingColors: false,
       strokeColor: '#D9453B',
       markupLabelColor: '#1F9D6B',
       markupLabelFontSize: 16,

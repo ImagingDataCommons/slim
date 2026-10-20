@@ -54,12 +54,42 @@ describe('RoiStyleRegistry', () => {
     expect(registry.findingFillColor('necrosis')).toBeUndefined()
   })
 
-  it('draws with the preference default even when the finding has a config style', () => {
+  it('draws a configured finding in its colors with the preference width', () => {
     const registry = createRegistry()
 
-    expect(registry.drawStyle('tumor', DEFAULT_STYLE)).toBe(DEFAULT_STYLE)
+    const drawn = registry.drawStyle('tumor', DEFAULT_STYLE)
+    expect(drawn.stroke?.color).toEqual(TUMOR_STYLE.stroke?.color)
+    expect(drawn.fill?.color).toEqual(TUMOR_STYLE.fill?.color)
+    expect(drawn.stroke?.width).toBe(4)
+    expect(drawn.image?.circle?.radius).toBe(
+      DEFAULT_STYLE.image?.circle?.radius,
+    )
+    /** Stable object so the draw interaction is not re-bound needlessly */
+    expect(registry.drawStyle('tumor', DEFAULT_STYLE)).toBe(drawn)
     expect(registry.drawStyle('necrosis', DEFAULT_STYLE)).toBe(DEFAULT_STYLE)
     expect(registry.drawStyle(undefined, DEFAULT_STYLE)).toBe(DEFAULT_STYLE)
+  })
+
+  it('draws with the preference default when finding colors are off', () => {
+    const registry = createRegistry()
+
+    expect(registry.drawStyle('tumor', DEFAULT_STYLE, false)).toBe(
+      DEFAULT_STYLE,
+    )
+  })
+
+  it('keeps finding-colored drawings out of preference restyles', () => {
+    const registry = createRegistry()
+    const findingColored = registry.drawStyle('tumor', DEFAULT_STYLE)
+    registry.recordAddedRoi('tumor-roi', 'tumor', findingColored)
+    registry.recordAddedRoi('plain-roi', 'necrosis', DEFAULT_STYLE)
+
+    expect(registry.applyPreferenceDefaults(style([9, 9, 9], 3))).toEqual([
+      'plain-roi',
+    ])
+    expect(registry.styleForRoi('tumor-roi', 'tumor', DEFAULT_STYLE)).toBe(
+      findingColored,
+    )
   })
 
   it('keeps an added ROI style only when it differs from the configured one', () => {

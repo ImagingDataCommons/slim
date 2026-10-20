@@ -2,8 +2,11 @@ import { expect, type Page } from '@playwright/test'
 
 import { newSharedPage, test } from './fixtures'
 import {
+  configureDraw,
   goToSlideCenter,
+  mainViewportCenter,
   openViewer,
+  pressViewerShortcut,
   section,
   serveFromIdc,
   slidePanel,
@@ -255,6 +258,54 @@ test.describe('Header and dialogs', () => {
       prefs.getByRole('button', { name: 'Stroke color #d9453b' }),
     ).toHaveAttribute('aria-pressed', 'true')
     await expect(strokeWidthValue).toHaveText(widthLabel)
+  })
+
+  test('H16 new ROIs use their finding color unless Use finding colors is off', async ({
+    page,
+  }) => {
+    await openViewer(
+      page,
+      seriesUrl({ study: he.study, series: he.firstSlide }),
+    )
+    const rois = await section(slidePanel(page), 'Annotations')
+    const chip = (name: RegExp) =>
+      rois.getByRole('button', { name }).locator('[style*="background"]')
+    const center = await mainViewportCenter(page)
+
+    /** e2e.js styles Tumor magenta */
+    await pressViewerShortcut(page, 'KeyD')
+    await configureDraw(page, 'Tumor', 'Point')
+    await page.mouse.click(center.x, center.y)
+    await expect(chip(/^ROI 1 /)).toHaveCSS(
+      'background-color',
+      'rgb(255, 0, 255)',
+    )
+    await page.keyboard.press('Escape')
+
+    await openUserMenuItem(page, 'Preferences')
+    const prefs = page.getByRole('dialog')
+    await prefs.getByRole('tab', { name: 'Annotations' }).click()
+    const findingColors = prefs.getByRole('switch', {
+      name: 'Use finding colors',
+    })
+    await expect(findingColors).toBeChecked()
+    await findingColors.click()
+    await page.getByRole('button', { name: 'Save preferences' }).click()
+    await expect(prefs).toBeHidden()
+
+    await pressViewerShortcut(page, 'KeyD')
+    await configureDraw(page, 'Tumor', 'Point')
+    await page.mouse.click(center.x + 60, center.y + 40)
+    /** Default Preferences stroke color #1f5ad1 */
+    await expect(chip(/^ROI 2 /)).toHaveCSS(
+      'background-color',
+      'rgb(31, 90, 209)',
+    )
+    /** The first ROI keeps its finding color */
+    await expect(chip(/^ROI 1 /)).toHaveCSS(
+      'background-color',
+      'rgb(255, 0, 255)',
+    )
   })
 
   test('H11 turning off Confirm before removing removes ROIs at once', async ({

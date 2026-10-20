@@ -217,6 +217,7 @@ export function useSlideViewerModel({
     rois,
     draft: draft.draft,
     defaultRoiStyle,
+    useFindingColors: preferences.useFindingColors,
     measurementUnit: preferences.units,
     confirmRoiRemoval: preferences.confirmRoiRemoval,
     goToRanges: snapshot.goToRanges,
@@ -286,10 +287,16 @@ export function useSlideViewerModel({
     session.volumeViewer.activateDrawInteraction({
       geometryType: annotationDraft.geometryType,
       markup: annotationDraft.markup,
-      styleOptions: drawStyleFor(session, annotationDraft, defaultRoiStyle),
+      styleOptions: drawStyleFor(
+        session,
+        annotationDraft,
+        defaultRoiStyle,
+        preferences.useFindingColors,
+      ),
     })
   }, [
     defaultRoiStyle,
+    preferences.useFindingColors,
     interaction.isRoiDrawingActive,
     interaction.isAnnotationModalVisible,
     draft.draft,
@@ -345,7 +352,12 @@ export function useSlideViewerModel({
       rois.addDrawnRoi(
         roi,
         draft.draft,
-        drawStyleFor(session, draft.draft, defaultRoiStyle),
+        drawStyleFor(
+          session,
+          draft.draft,
+          defaultRoiStyle,
+          preferences.useFindingColors,
+        ),
       )
     },
   })

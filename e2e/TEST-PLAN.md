@@ -87,6 +87,7 @@ Open the [H&E study](http://localhost:3000/studies/2.25.211094631316408413440371
 - [ ] **H13** e2e. Search configuration filters the settings list.
 - [ ] **H14** e2e. Copy for support ticket copies the Slim version, commit and user agent.
 - [ ] **H15** e2e. The tag browser expands and collapses sequences, steps through instances and switches series.
+- [ ] **H16** e2e. A new ROI of a finding with a configured style uses that color; with Preferences → Use finding colors off, new ROIs use the Preferences stroke color and earlier ones keep theirs.
 
 ## Slide viewer
 

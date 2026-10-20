@@ -50,10 +50,11 @@ export function drawStyleFor(
   session: ViewerSession,
   draft: AnnotationDraft,
   defaultRoiStyle: RoiStyle,
+  useFindingColors = true,
 ): RoiStyle {
   const key =
     draft.finding !== undefined ? codedConceptKey(draft.finding) : undefined
-  return session.roiStyles.drawStyle(key, defaultRoiStyle)
+  return session.roiStyles.drawStyle(key, defaultRoiStyle, useFindingColors)
 }
 
 /**
@@ -67,6 +68,7 @@ export function useAnnotationTools({
   rois,
   draft,
   defaultRoiStyle,
+  useFindingColors = true,
   measurementUnit,
   confirmRoiRemoval,
   goToRanges,
@@ -86,6 +88,8 @@ export function useAnnotationTools({
   >
   draft: AnnotationDraft
   defaultRoiStyle: RoiStyle
+  /** New ROIs of a configured finding use its color (Preferences) */
+  useFindingColors?: boolean
   /** Preferred unit for DMV measurement markup and ROI Num items */
   measurementUnit: MeasurementUnit
   confirmRoiRemoval: boolean
@@ -288,7 +292,12 @@ export function useAnnotationTools({
         session.volumeViewer.activateDrawInteraction({
           geometryType,
           markup,
-          styleOptions: drawStyleFor(session, draft, defaultRoiStyle),
+          styleOptions: drawStyleFor(
+            session,
+            draft,
+            defaultRoiStyle,
+            useFindingColors,
+          ),
         })
         dispatch({ type: 'completeAnnotationConfiguration' })
       } else {
