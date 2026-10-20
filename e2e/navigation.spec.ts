@@ -26,7 +26,10 @@ test.describe('Navigation', () => {
     )
     const panel = slidePanel(page)
     const segments = await section(panel, 'Segmentations')
-    await expect(segments.getByText('1 of 5 visible')).toBeVisible()
+    /** The Series list shows the linked SEG, which the deep link turned on */
+    await expect(
+      segments.getByRole('button', { name: 'Show TILs Present' }),
+    ).toHaveAttribute('aria-pressed', 'true')
 
     await pressViewerShortcut(page, 'KeyD')
     await configureDraw(page, 'Tumor', 'Point')

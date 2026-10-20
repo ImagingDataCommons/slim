@@ -235,7 +235,9 @@ test.describe('Header and dialogs', () => {
     await prefs.getByRole('button', { name: 'Stroke color #d9453b' }).click()
     const width = prefs.getByRole('slider', { name: 'Stroke width' })
     await width.press('ArrowRight')
-    const widthLabel = await prefs.getByText(/^\d+ px$/).innerText()
+    /** First "N px" label is stroke width; label font size comes later */
+    const strokeWidthValue = prefs.getByText(/^\d+ px$/).first()
+    const widthLabel = await strokeWidthValue.innerText()
     await page.getByRole('button', { name: 'Save preferences' }).click()
     await expect(prefs).toBeHidden()
 
@@ -252,7 +254,7 @@ test.describe('Header and dialogs', () => {
     await expect(
       prefs.getByRole('button', { name: 'Stroke color #d9453b' }),
     ).toHaveAttribute('aria-pressed', 'true')
-    await expect(prefs.getByText(/^\d+ px$/)).toHaveText(widthLabel)
+    await expect(strokeWidthValue).toHaveText(widthLabel)
   })
 
   test('H11 turning off Confirm before removing removes ROIs at once', async ({

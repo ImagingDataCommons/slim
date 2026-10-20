@@ -281,17 +281,21 @@ test.describe('Annotation groups', () => {
     const bulk = groups.getByRole('group', {
       name: 'Visibility of annotation groups',
     })
-    /** The linked series holds 5 of the slide's groups */
-    await expect(bulk).toContainText(/^5 of \d+ visible/)
-    const total = /of (\d+) visible/.exec(await bulk.innerText())?.[1]
-    await bulk
-      .getByRole('button', { name: 'Show all annotation groups' })
-      .click()
-    await expect(bulk).toContainText(`${total} of ${total} visible`)
+    /**
+     * The Series list shows the linked series, whose 5 groups the link
+     * turned on, so Show all starts disabled.
+     */
+    await expect(bulk).toContainText(/^5 of 5 visible/)
+    const showAll = bulk.getByRole('button', {
+      name: 'Show all annotation groups',
+    })
+    await expect(showAll).toBeDisabled()
     await bulk
       .getByRole('button', { name: 'Hide all annotation groups' })
       .click()
-    await expect(bulk).toContainText(`0 of ${total} visible`)
+    await expect(bulk).toContainText('0 of 5 visible')
+    await showAll.click()
+    await expect(bulk).toContainText('5 of 5 visible')
   })
 
   test('A3 group color and fill change the drawing', async ({ page }) => {

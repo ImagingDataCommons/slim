@@ -176,9 +176,31 @@ test.describe('Worklist', () => {
       await page.getByRole('button', { name: 'Contains' }).click()
       await page.getByRole('option', { name: option, exact: true }).click()
       await expect(page).toHaveURL(new RegExp(`[?&]contains=${id}(&|$)`))
-      await expect(
-        page.getByText(`Searching the server for ${label}… page 2`),
-      ).toBeVisible({ timeout: 60_000 })
+      /**
+       * The first page of matches is shown with Search more; asking for more
+       * fetches the next page and the match count grows.
+       */
+      const partial = page.getByText(/first [\d,]+ matches only/)
+      /** The count is formatted with thousands separators (1,000) */
+      const matchCount = (text: string | null): number | undefined => {
+        const digits = /first ([\d,]+) matches/.exec(text ?? '')?.[1]
+        return digits === undefined
+          ? undefined
+          : Number(digits.replaceAll(',', ''))
+      }
+      await expect(partial).toBeVisible({ timeout: 60_000 })
+      const firstCount = matchCount(await partial.innerText()) ?? 0
+      await page.getByRole('button', { name: 'Search more' }).click()
+      /** Once every match is in, the "first N" note goes away */
+      await expect
+        .poll(
+          async () =>
+            (await partial.count()) === 0
+              ? Number.POSITIVE_INFINITY
+              : (matchCount(await partial.textContent()) ?? 0),
+          { timeout: 60_000 },
+        )
+        .toBeGreaterThan(firstCount)
     })
   }
 
