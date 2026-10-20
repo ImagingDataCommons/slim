@@ -299,6 +299,14 @@ async function checkCandidate(
   return { status, study }
 }
 
+function seedChecks(
+  searchClient: ContainsSearchClient | undefined,
+): ReadonlyMap<string, RowCheck> {
+  return searchClient === undefined
+    ? new Map()
+    : new Map(cacheFor(rowCheckCache, searchClient))
+}
+
 /**
  * Checks the given candidate studies a few at a time: that they have slides,
  * and that they hold the entry's SOP class when it was matched on modality.
@@ -310,12 +318,21 @@ export function useContainsRowChecks(
   entry: ContainsEntry | undefined,
   candidates: readonly ContainsCandidate[],
 ): (studyUid: string) => RowCheckState | undefined {
-  const [checks, setChecks] = useState<ReadonlyMap<string, RowCheck>>(() =>
-    searchClient === undefined
-      ? new Map()
-      : new Map(cacheFor(rowCheckCache, searchClient)),
-  )
-  const inFlight = useRef(new Set<string>())
+  /**
+   * Answers are kept per search client: on a server switch the state is
+   * re-seeded from the new client's cache, so another server's verdicts are
+   * never shown and its studies are checked again.
+   */
+  const [checkState, setCheckState] = useState(() => ({
+    client: searchClient,
+    checks: seedChecks(searchClient),
+  }))
+  let checks = checkState.checks
+  if (checkState.client !== searchClient) {
+    checks = seedChecks(searchClient)
+    setCheckState({ client: searchClient, checks })
+  }
+  const inFlight = useRef(new WeakMap<object, Set<string>>())
 
   useEffect(() => {
     if (
@@ -326,13 +343,19 @@ export function useContainsRowChecks(
       return
     }
     const cache = cacheFor(rowCheckCache, searchClient)
+    let running = inFlight.current.get(searchClient)
+    if (running === undefined) {
+      running = new Set()
+      inFlight.current.set(searchClient, running)
+    }
+    const clientInFlight = running
     const pending = candidates.filter((candidate) => {
       const key = rowCheckKey(entry, candidate.studyUid)
-      return !cache.has(key) && !inFlight.current.has(key)
+      return !cache.has(key) && !clientInFlight.has(key)
     })
     if (pending.length === 0) return
     for (const candidate of pending) {
-      inFlight.current.add(rowCheckKey(entry, candidate.studyUid))
+      clientInFlight.add(rowCheckKey(entry, candidate.studyUid))
     }
     void mapWithConcurrency(pending, CHECK_CONCURRENCY, async (candidate) => {
       const key = rowCheckKey(entry, candidate.studyUid)
@@ -343,8 +366,15 @@ export function useContainsRowChecks(
         candidate,
       )
       cache.set(key, check)
-      inFlight.current.delete(key)
-      setChecks((previous) => new Map(previous).set(key, check))
+      clientInFlight.delete(key)
+      setCheckState((previous) =>
+        previous.client === searchClient
+          ? {
+              client: searchClient,
+              checks: new Map(previous.checks).set(key, check),
+            }
+          : previous,
+      )
     })
   }, [searchClient, studyClient, entry, candidates])
 

@@ -8,7 +8,6 @@ import {
   mergeModalities,
   modalitiesNeedBackfill,
   resolveContainsStudies,
-  restrictContainsToServerSearch,
 } from '../filters'
 
 function study(fields: Record<string, unknown>): metadata.Study {
@@ -81,27 +80,6 @@ describe('filterStudiesBySearchText', () => {
 
   it('trims the search text', () => {
     expect(search('  jane ')).toEqual(['2'])
-  })
-})
-
-describe('restrictContainsToServerSearch', () => {
-  const contains = [
-    study({ StudyInstanceUID: '1', PatientID: 'P-001' }),
-    study({ StudyInstanceUID: '2', PatientID: 'P-002' }),
-  ]
-  const hits = [study({ StudyInstanceUID: '2', PatientID: 'P-002' })]
-
-  it('leaves Contains rows alone without a completed server search', () => {
-    expect(restrictContainsToServerSearch(contains, [], 'P-002')).toBe(contains)
-    expect(restrictContainsToServerSearch(contains, hits, '   ')).toBe(contains)
-  })
-
-  it('keeps only Contains rows the server search also matched', () => {
-    expect(
-      restrictContainsToServerSearch(contains, hits, 'P-002').map(
-        (item) => item.StudyInstanceUID,
-      ),
-    ).toEqual(['2'])
   })
 })
 

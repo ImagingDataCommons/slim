@@ -111,7 +111,7 @@ export function Worklist({
   const containsResult = containsSearch.result
   const serverSearch = useStudySearch({
     clients,
-    searchText: deferredSearchText,
+    searchText: containsEntry === undefined ? deferredSearchText : '',
   })
 
   const slideClient = clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]

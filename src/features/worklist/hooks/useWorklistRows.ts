@@ -9,7 +9,6 @@ import {
   filterStudiesBySearchText,
   mergeModalities,
   resolveContainsStudies,
-  restrictContainsToServerSearch,
 } from '../utils/filters'
 import type { ContainsCandidate, RowCheckState } from './useContainsSearch'
 import { useModalityBackfill } from './useModalityBackfill'
@@ -97,7 +96,7 @@ export function useWorklistRows({
       }
     }
     const result = containsResult
-    const resolved = resolveContainsStudies({
+    return resolveContainsStudies({
       entry: containsEntry,
       matches: result?.matches ?? new Map(),
       loadedStudies,
@@ -106,14 +105,6 @@ export function useWorklistRows({
         result !== undefined &&
         (!result.isExact || !loadedStudies.has(studyUid)),
     })
-    return {
-      studies: restrictContainsToServerSearch(
-        resolved.studies,
-        serverSearchMatches,
-        deferredSearchText,
-      ),
-      hasUncheckedMatches: resolved.hasUncheckedMatches,
-    }
   }, [
     containsEntry,
     containsResult,
@@ -121,7 +112,6 @@ export function useWorklistRows({
     serverSearchMatches,
     loadedStudies,
     getRowCheck,
-    deferredSearchText,
   ])
 
   const containsStudies = containsResolution.studies

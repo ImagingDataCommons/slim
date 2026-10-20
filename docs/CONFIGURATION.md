@@ -419,8 +419,8 @@ unless `mode` was `'dark'`. Set the theme explicitly in production configs:
 
 ```js
 window.config = {
-  // ...
-  mode: 'light', // or 'dark'
+  /** ... */
+  mode: 'light' /** or 'dark' */,
 }
 ```
 
@@ -453,9 +453,10 @@ Alt+G still works; it pans the slide and does not write a marker ROI.
 
 The search box queries the DICOMweb server (Patient ID, Patient Name,
 Accession Number, Study ID) so matches are not limited to the first page of
-studies. A Contains filter (annotations, SR, segmentations, parametric maps,
-presentation states) can run at the same time: Slim intersects Contains hits
-with the server search. Search needs at least two characters.
+studies. Search needs at least two characters. With a Contains filter
+(annotations, SR, segmentations, parametric maps, presentation states) on,
+the box filters the Contains results by the same fields instead of querying
+the server again.
 
 ### Disable the worklist (`disableWorklist`)
 

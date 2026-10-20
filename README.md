@@ -172,7 +172,7 @@ The configuration can be changed at build-time using the `REACT_APP_CONFIG` envi
 
 - **Theme:** omit `mode` and the app starts dark (classic Slim was light). Set `mode: 'light'` or `mode: 'dark'` in production configs, including a private `gcp.js`.
 - **Display options:** ICC, gamma, clustering, and interpolation live in the slide panel, not a settings drawer.
-- **Worklist search:** the box queries the server and can run together with Contains.
+- **Worklist search:** the box queries the server; with a Contains filter on, it filters the Contains results.
 - **Node:** build on Node 22.22+ (24 LTS). Keep `patches/dcmjs@0.52.0.patch` or Save ROIs fails.
 - **OIDC:** smoke sign-in, the name in the user menu, and sign-out on a real IdP before cutting over a GCP implicit client.
 
