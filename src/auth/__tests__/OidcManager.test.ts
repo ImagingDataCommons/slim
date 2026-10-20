@@ -235,6 +235,31 @@ describe('OidcManager', () => {
       expect(window.location.search).toBe('')
     })
 
+    it('strips callback tokens when the IdP response cannot be exchanged', async () => {
+      window.history.replaceState(
+        {},
+        '',
+        '/#access_token=secret&id_token=id&state=s',
+      )
+      const { manager, oidc } = setup()
+      oidc.signinRedirectCallback.mockRejectedValue(new Error('bad nonce'))
+
+      await expect(manager.signIn({})).rejects.toThrow('bad nonce')
+      expect(window.location.hash).toBe('')
+      expect(window.location.search).toBe('')
+    })
+
+    it('treats a top-level IdP error as a failed callback and strips the URL', async () => {
+      window.history.replaceState({}, '', '/#error=access_denied&state=s')
+      const { manager, oidc } = setup()
+
+      await expect(manager.signIn({})).rejects.toThrow(
+        'Sign-in was cancelled or failed.',
+      )
+      expect(oidc.signinRedirect).not.toHaveBeenCalled()
+      expect(window.location.hash).toBe('')
+    })
+
     it('drops an off-site return URL from the callback', async () => {
       window.history.replaceState({}, '', '/?code=c&state=s')
       const { manager, oidc } = setup()

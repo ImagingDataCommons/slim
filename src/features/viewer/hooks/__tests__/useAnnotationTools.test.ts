@@ -28,6 +28,7 @@ interface Options {
   visibleRoiUIDs?: string[]
   confirmRoiRemoval?: boolean
   draft?: AnnotationDraft
+  canWriteRois?: boolean
 }
 
 function setup({
@@ -35,6 +36,7 @@ function setup({
   visibleRoiUIDs = [],
   confirmRoiRemoval = false,
   draft = { evaluations: [] },
+  canWriteRois = true,
 }: Options = {}) {
   const test: TestSession = createTestSession()
   const rois = {
@@ -61,6 +63,7 @@ function setup({
       confirmRoiRemoval,
       goToRanges: { x: [0, 25], y: [0, 50] },
       onSave,
+      canWriteRois,
     })
     return { interaction, tools }
   })
@@ -293,6 +296,25 @@ describe('useAnnotationTools visibility and go-to', () => {
     )
     expect(viewer.activateSelectInteraction).toHaveBeenCalled()
     expect(result.current.interaction.isGoToModalVisible).toBe(false)
+  })
+
+  it('navigates without writing a marker when annotation tools are disabled', () => {
+    const { result, viewer, rois } = setup({ canWriteRois: false })
+    act(() => {
+      result.current.tools.onGoTo()
+    })
+    act(() => {
+      result.current.tools.onGoToInputChange('x', '10')
+      result.current.tools.onGoToInputChange('y', '20')
+      result.current.tools.onGoToInputChange('magnification', '10')
+    })
+
+    act(() => {
+      result.current.tools.onSlidePositionSelection()
+    })
+
+    expect(viewer.navigate).toHaveBeenCalled()
+    expect(rois.addStyledRoi).not.toHaveBeenCalled()
   })
 
   it('restores selection when Go to is cancelled', () => {

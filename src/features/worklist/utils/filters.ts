@@ -74,6 +74,27 @@ export function filterStudiesBySearchText(
   })
 }
 
+/**
+ * When Contains is on and QIDO search has hits, keep only Contains rows the
+ * server also matched so a Patient ID typed in the box is not limited to the
+ * current Contains page's local filter.
+ */
+export function restrictContainsToServerSearch(
+  containsStudies: dmv.metadata.Study[],
+  serverSearchMatches: dmv.metadata.Study[],
+  searchText: string,
+): dmv.metadata.Study[] {
+  if (searchText.trim() === '' || serverSearchMatches.length === 0) {
+    return containsStudies
+  }
+  const searchUids = new Set(
+    serverSearchMatches.map((study) => study.StudyInstanceUID),
+  )
+  return containsStudies.filter((study) =>
+    searchUids.has(study.StudyInstanceUID),
+  )
+}
+
 /** `studies` followed by the `extra` studies it does not already list. */
 export function appendMissingStudies(
   studies: dmv.metadata.Study[],

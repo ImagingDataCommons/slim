@@ -23,7 +23,7 @@ jobs:
     name: "Run e2e tests against IDC (${{ matrix.shard }}/4)"
     if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'run-e2e'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     strategy:
       # Let every shard finish so one run reports all failures
       fail-fast: false

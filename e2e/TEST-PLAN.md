@@ -177,8 +177,8 @@ Open the [H&E study](http://localhost:3000/studies/2.25.211094631316408413440371
 Playwright changes these settings per test on top of `public/config/e2e.js`.
 
 - [ ] **C1** e2e. `disableWorklist: true` hides the worklist and the Worklist link.
-- [ ] **C2** e2e. `disableAnnotationTools: true` hides Draw, Save and the other ROI tools, and their shortcuts do nothing. Go to (Alt+G) still works.
-- [ ] **C3** manual, optional. An OIDC server config signs in, shows your name in the user menu and signs out.
+- [ ] **C2** e2e. `disableAnnotationTools: true` hides Draw, Save and the other ROI tools, and their shortcuts do nothing. Go to (Alt+G) still works and does not write a marker ROI.
+- [ ] **C3** manual, optional. An OIDC server config signs in, shows your name in the user menu and signs out. Failed callbacks must not leave tokens in the URL.
 - [ ] **C4** e2e. A Google Cloud route (`/projects/<project>/locations/<location>/datasets/<dataset>/dicomStores/<store>/study/<study>`) opens a slide from that store. Playwright serves a made-up Healthcare API URL from IDC.
 - [ ] **C5** e2e. `mode: 'light'` starts in the light theme.
 - [ ] **C6** e2e. `messages.disabled: ['success']` silences success toasts; warnings still show.

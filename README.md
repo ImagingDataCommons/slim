@@ -168,6 +168,14 @@ A single-page guide covering external servers, runtime server selection, the `gc
 
 The configuration can be changed at build-time using the `REACT_APP_CONFIG` environment variable.
 
+### Slim v2 defaults operators should set
+
+- **Theme:** omit `mode` and the app starts dark (classic Slim was light). Set `mode: 'light'` or `mode: 'dark'` in production configs, including a private `gcp.js`.
+- **Display options:** ICC, gamma, clustering, and interpolation live in the slide panel, not a settings drawer.
+- **Worklist search:** the box queries the server and can run together with Contains.
+- **Node:** build on Node 22.22+ (24 LTS). Keep `patches/dcmjs@0.52.0.patch` or Save ROIs fails.
+- **OIDC:** smoke sign-in, the name in the user menu, and sign-out on a real IdP before cutting over a GCP implicit client.
+
 ### Server Configuration
 
 #### Runtime Server Selection
@@ -319,6 +327,7 @@ The following topics are documented in [docs/CONFIGURATION.md](docs/CONFIGURATIO
 | Runtime server selection (header button) | `enableServerSelection` |
 | Secondary GCP annotation store | `?gcp=<dicomWeb-url>` query parameter |
 | Annotation / finding colors | `annotations[].style` (color/fill; stroke width from User preferences) |
+| Theme (dark default) | `mode` (`'light'` or `'dark'`) |
 | Read-only annotation UI | `disableAnnotationTools` |
 | Hide study worklist | `disableWorklist` |
 | Local Orthanc / CORS troubleshooting | see [Local deployment tips](docs/CONFIGURATION.md#local-deployment-tips) |

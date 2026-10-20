@@ -207,6 +207,7 @@ export function useSlideViewerModel({
     confirmRoiRemoval: preferences.confirmRoiRemoval,
     goToRanges: snapshot.goToRanges,
     onSave: report.onGenerate,
+    canWriteRois: enableAnnotationTools,
   })
 
   /**

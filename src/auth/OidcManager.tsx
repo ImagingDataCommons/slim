@@ -210,21 +210,31 @@ export default class OidcManager implements AuthManager {
     onSignIn?: SignInCallback
     returnUrl?: string
   }): Promise<SignInOutcome> => {
-    if (isAuthorizationCodeInUrl(window.location)) {
+    if (isOidcAuthorizeCallbackUrl(window.location)) {
       /**
        * Handle the callback from the authorization server: extract the code
        * (or implicit tokens) from the callback URL, obtain user information
-       * and the access token for the DICOMweb server.
+       * and the access token for the DICOMweb server. Strip tokens from the
+       * address bar on success and on failure so they are not left in history.
        */
-      console.info('obtaining authorization')
-      const userData =
-        this._implicit != null
-          ? await this._implicit.signinRedirectCallback(window.location.href)
-          : await this._oidc.signinRedirectCallback()
-      clearAuthParamsFromUrl()
-      logger.log(`obtained user data for subject ${userData.profile.sub}`)
-      handleSignIn(userData, onSignIn, { includeReturnUrl: true })
-      return 'completed'
+      try {
+        if (!isAuthorizationCodeInUrl(window.location)) {
+          throw new CustomError(
+            errorTypes.AUTHENTICATION,
+            'Sign-in was cancelled or failed.',
+          )
+        }
+        console.info('obtaining authorization')
+        const userData =
+          this._implicit != null
+            ? await this._implicit.signinRedirectCallback(window.location.href)
+            : await this._oidc.signinRedirectCallback()
+        logger.log(`obtained user data for subject ${userData.profile.sub}`)
+        handleSignIn(userData, onSignIn, { includeReturnUrl: true })
+        return 'completed'
+      } finally {
+        clearAuthParamsFromUrl()
+      }
     }
 
     /**

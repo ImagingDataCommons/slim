@@ -59,6 +59,19 @@ describe('planToolMode', () => {
     ).toBeNull()
   })
 
+  it('restores select when translate is toggled off', () => {
+    expect(
+      planToolMode(
+        'translate',
+        { ...idle, isRoiTranslationActive: true },
+        {
+          isModifyInteractionActive: false,
+          isTranslateInteractionActive: true,
+        },
+      ),
+    ).toEqual({ deactivate: ['translate'], activateSelect: true })
+  })
+
   it('cancels the active tool', () => {
     expect(
       planToolMode(

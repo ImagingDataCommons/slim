@@ -270,6 +270,7 @@ describe('useRois DMV events', () => {
       )
     })
     expect([...result.current.selectedRoiUIDs]).toEqual(['a'])
+    expect(viewer.getROIStyle('a')).toBe(SELECTED_ROI_STYLE)
 
     act(() => {
       result.current.dmvHandlers.dicommicroscopyviewer_viewport_clicked({

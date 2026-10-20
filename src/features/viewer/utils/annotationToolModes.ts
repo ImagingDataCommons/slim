@@ -58,7 +58,7 @@ export function planToolMode(
       }
     case 'translate':
       if (viewerFlags.isTranslateInteractionActive) {
-        return { deactivate: ['translate'], activateSelect: false }
+        return { deactivate: ['translate'], activateSelect: true }
       }
       return {
         deactivate: ['modify', 'snap', 'draw', 'select'],

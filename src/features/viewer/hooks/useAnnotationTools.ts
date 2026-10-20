@@ -71,6 +71,7 @@ export function useAnnotationTools({
   confirmRoiRemoval,
   goToRanges,
   onSave,
+  canWriteRois = true,
 }: {
   sessionRef: ViewerSessionRef
   interaction: ViewerInteraction
@@ -90,6 +91,8 @@ export function useAnnotationTools({
   confirmRoiRemoval: boolean
   goToRanges: GoToRanges
   onSave: () => void
+  /** False when `disableAnnotationTools` is set: Go to navigates only */
+  canWriteRois?: boolean
 }): AnnotationToolsApi {
   const viewerOf = (): dmv.viewer.VolumeImageViewer | undefined =>
     sessionRef.current?.volumeViewer
@@ -257,11 +260,13 @@ export function useAnnotationTools({
         position: [target.x, target.y],
         level: choosePyramidLevel(target.magnification, pixelSpacings),
       })
-      const point = new dmv.scoord3d.Point({
-        coordinates: [target.x, target.y, 0],
-        frameOfReferenceUID: viewer.frameOfReferenceUID,
-      })
-      rois.addStyledRoi(new dmv.roi.ROI({ scoord3d: point }), defaultRoiStyle)
+      if (canWriteRois) {
+        const point = new dmv.scoord3d.Point({
+          coordinates: [target.x, target.y, 0],
+          frameOfReferenceUID: viewer.frameOfReferenceUID,
+        })
+        rois.addStyledRoi(new dmv.roi.ROI({ scoord3d: point }), defaultRoiStyle)
+      }
       viewer.activateSelectInteraction({})
       dispatch({ type: 'closeGoTo' })
     },

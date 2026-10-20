@@ -8,6 +8,7 @@ window.config = {
     }
   ],
   preload: true,
+  mode: 'dark',
   disableAnnotationTools: false,
   annotations: [
     {
