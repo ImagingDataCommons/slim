@@ -50,20 +50,46 @@ export function addGcpSecondaryAnnotationServer(
   }
 }
 
-export function createClientMapping({
-  baseUri,
-  gcpBaseUrl,
-  settings,
-  pathname,
-  onError,
-}: {
+export function createClientMapping(
+  options: ClientMappingOptions,
+): ClientMapping {
+  try {
+    return buildClientMapping(options)
+  } catch (error) {
+    /**
+     * Startup configs are checked by findConfigProblems; this covers servers
+     * created later (route or runtime selection). Notified once here, not in
+     * each DicomWebManager, since one server backs several storage classes.
+     */
+    NotificationMiddleware.onError(
+      NotificationMiddlewareContext.SLIM,
+      error instanceof CustomError
+        ? error
+        : new CustomError(
+            errorTypes.COMMUNICATION,
+            'The DICOMweb servers could not be set up.',
+          ),
+    )
+    throw error
+  }
+}
+
+interface ClientMappingOptions {
   baseUri: string
   gcpBaseUrl: string
   settings: ServerSettings[]
   /** Current route; `/projects/` routes point the default server at that store */
   pathname: string
   onError: DicomWebManagerErrorHandler
-}): ClientMapping {
+}
+
+function buildClientMapping({
+  baseUri,
+  gcpBaseUrl,
+  settings,
+  pathname,
+  onError,
+}: ClientMappingOptions): ClientMapping {
   const storageClassMapping: { [key: string]: number } = { default: 0 }
   const clientMapping: ClientMapping = {}
 
