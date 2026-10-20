@@ -1,7 +1,5 @@
-import { type ReactElement, useState } from 'react'
+import type { ReactElement } from 'react'
 
-import { VisibilityToggleButton } from '../../../components/panel/VisibilityToggleButton'
-import { Icon } from '../../../components/ui/icon'
 import { cn } from '../../../lib/utils'
 import { lutToCssGradient } from '../../../utils/lutGradient'
 import type { DerivedLegendRow } from '../utils/derivedLegend'
@@ -16,46 +14,33 @@ const OVERLAY_CARD =
   'rounded-lg border border-line bg-overlay-card/92 shadow-[0_1px_2px_rgb(var(--shadow-color)/0.06)]'
 
 /**
- * In-viewport color legend for fractional SEG and parametric maps. Replaces
- * DMV's built-in overlay when `showDerivedLegend: false` is set on the viewer.
+ * Quiet in-viewport color legend for fractional SEG and parametric maps.
+ * Click a row to show or hide that overlay.
  */
 export function DerivedLegend({
   rows,
   onVisibilityChange,
 }: DerivedLegendProps): ReactElement | null {
-  const [collapsed, setCollapsed] = useState(false)
   const visibleCount = rows.filter((row) => row.isVisible).length
   if (rows.length === 0 || visibleCount === 0) return null
 
   return (
-    <div className={cn('flex w-full flex-col gap-2 p-2.5', OVERLAY_CARD)}>
-      <button
-        type="button"
-        className="flex min-h-8 w-full items-center justify-between gap-2 rounded-md border border-line-soft bg-app/70 px-2 py-1 text-left transition-colors hover:bg-app"
-        aria-expanded={!collapsed}
-        aria-label={collapsed ? 'Expand legend' : 'Collapse legend'}
-        title={collapsed ? 'Expand legend' : 'Collapse legend'}
-        onClick={() => setCollapsed((current) => !current)}
-      >
-        <span className="text-12.5 font-semibold text-ink">
-          {collapsed ? `Legend (${visibleCount} visible)` : 'Legend'}
-        </span>
-        <span
-          className="grid size-6 place-items-center rounded-md bg-line-soft text-ink-secondary"
-          aria-hidden
-        >
-          <Icon name={collapsed ? 'chevron_right' : 'expand_more'} size={16} />
-        </span>
-      </button>
-      {!collapsed &&
-        rows.map((row) => (
+    <ul
+      className={cn(
+        'm-0 flex w-full list-none flex-col gap-2.5 px-2.5 py-2',
+        OVERLAY_CARD,
+      )}
+      aria-label="Overlay color legend"
+    >
+      {rows.map((row) => (
+        <li key={`${row.kind}:${row.id}`} className="min-w-0">
           <DerivedLegendRowView
-            key={`${row.kind}:${row.id}`}
             row={row}
             onVisibilityChange={onVisibilityChange}
           />
-        ))}
-    </div>
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -67,46 +52,44 @@ function DerivedLegendRowView({
   onVisibilityChange: DerivedLegendProps['onVisibilityChange']
 }): ReactElement {
   const gradient = lutToCssGradient(row.palette)
-  const muted = !row.isVisible
+  const action = row.isVisible ? 'Hide' : 'Show'
 
   return (
-    <div
+    <button
+      type="button"
       className={cn(
-        'flex flex-col gap-1.5 rounded-md border border-line-soft bg-app/50 px-2 py-1.5',
-        muted && 'opacity-45',
+        'flex w-full flex-col gap-1 rounded-md text-left transition-opacity',
+        'hover:opacity-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40',
+        row.isVisible ? 'opacity-100' : 'opacity-40',
       )}
+      title={`${action} ${row.title}`}
+      aria-label={`${action} ${row.title}`}
+      aria-pressed={row.isVisible}
+      onClick={() => onVisibilityChange(row, !row.isVisible)}
     >
-      <div className="flex min-w-0 items-center gap-1.5">
-        <span
-          className="min-w-0 flex-1 truncate text-12.5 font-semibold text-ink"
-          title={row.title}
-        >
-          {row.title}
-        </span>
-        <VisibilityToggleButton
-          label={row.title}
-          isVisible={row.isVisible}
-          className="-my-0.5"
-          onChange={(isVisible) => onVisibilityChange(row, isVisible)}
-        />
-      </div>
+      <span
+        className="min-w-0 truncate text-12 font-medium text-ink"
+        title={row.title}
+      >
+        {row.title}
+      </span>
       <div className="flex items-center gap-2">
-        <span className="shrink-0 font-mono text-11.5 font-medium text-ink-secondary">
+        <span className="shrink-0 font-mono text-11 text-ink-muted">
           {row.minLabel}
         </span>
-        <div
+        <span
           className={cn(
-            'h-2.5 min-w-0 flex-1 rounded-sm',
+            'h-1.5 min-w-0 flex-1 rounded-full',
             gradient === '' &&
               'border border-line bg-linear-to-r/srgb from-panel to-ink-muted',
           )}
           style={gradient !== '' ? { background: gradient } : undefined}
           aria-hidden
         />
-        <span className="shrink-0 font-mono text-11.5 font-medium text-ink-secondary">
+        <span className="shrink-0 font-mono text-11 text-ink-muted">
           {row.maxLabel}
         </span>
       </div>
-    </div>
+    </button>
   )
 }
