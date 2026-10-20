@@ -48,7 +48,6 @@ import { useReport } from './useReport'
 import { useRois } from './useRois'
 import { useSegmentations } from './useSegmentations'
 import { useSlidePopulation } from './useSlidePopulation'
-import { useSuppressDMVDerivedLegend } from './useSuppressDMVDerivedLegend'
 import { useViewerSession, useViewerSnapshot } from './useViewerSession'
 import { useViewportLoading } from './useViewportLoading'
 
@@ -244,17 +243,6 @@ export function useSlideViewerModel({
   }
 
   const viewerKey = `${studyInstanceUID}/${seriesInstanceUID}/${snapshot.generation}`
-  useSuppressDMVDerivedLegend({
-    getLegendRoot: () => {
-      const overlay = (
-        sessionRef.current?.volumeViewer as
-          | { segmentOverlay?: { getElement: () => HTMLElement } }
-          | undefined
-      )?.segmentOverlay
-      return overlay?.getElement()
-    },
-    viewerKey,
-  })
   const derivedLegendRows = useMemo(
     () =>
       buildDerivedLegendRows({
