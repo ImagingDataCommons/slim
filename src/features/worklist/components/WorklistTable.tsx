@@ -2,8 +2,8 @@
  * Div grid + ARIA table roles: real <table>/<tr> fight CSS grid track sizing.
  * Biome prefers semantic tags / focusable interactive roles; suppress those here.
  */
-// biome-ignore-all lint/a11y/useSemanticElements: intentional ARIA table on divs for CSS grid
-// biome-ignore-all lint/a11y/useFocusableInteractive: only data rows are keyboard targets
+/** biome-ignore-all lint/a11y/useSemanticElements: intentional ARIA table on divs for CSS grid */
+/** biome-ignore-all lint/a11y/useFocusableInteractive: only data rows are keyboard targets */
 import {
   flexRender,
   getCoreRowModel,

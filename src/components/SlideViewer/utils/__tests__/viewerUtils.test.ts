@@ -156,7 +156,7 @@ describe('constructViewers', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.spyOn(console, 'log').mockImplementation(() => undefined)
-    // biome-ignore lint/complexity/useArrowFunction: `new` needs a function implementation
+    /** biome-ignore lint/complexity/useArrowFunction: `new` needs a function implementation */
     VolumeImageViewer.mockImplementation(function () {
       return {
         activateSelectInteraction,
@@ -253,7 +253,7 @@ describe('constructViewers', () => {
 
   it('cleans up the volume viewer when the label viewer cannot be created', () => {
     const cleanup = vi.fn()
-    // biome-ignore lint/complexity/useArrowFunction: `new` needs a function implementation
+    /** biome-ignore lint/complexity/useArrowFunction: `new` needs a function implementation */
     VolumeImageViewer.mockImplementation(function () {
       return {
         activateSelectInteraction,

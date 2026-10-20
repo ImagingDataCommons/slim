@@ -1,7 +1,7 @@
 /**
  * Cards keep ARIA table roles so the worklist stays one table for AT.
  */
-// biome-ignore-all lint/a11y/useSemanticElements: intentional ARIA table on divs for CSS cards
+/** biome-ignore-all lint/a11y/useSemanticElements: intentional ARIA table on divs for CSS cards */
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import type * as React from 'react'
