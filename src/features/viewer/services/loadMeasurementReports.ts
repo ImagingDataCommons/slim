@@ -92,8 +92,9 @@ function addMeasurementReportRois(
 /**
  * Add the ROIs of the study's measurement reports in this slide's frame of
  * reference. Settles after every Comprehensive 3D SR is handled, including
- * unsuitable documents and retrieve failures, so derived-data auto-show is
- * not blocked by a pending promise.
+ * unsuitable documents and retrieve or parse failures, so a deep-linked
+ * report's ROIs are all added before onLoaded shows them. Failures are
+ * reported to the user once per load, not once per document.
  */
 export async function loadMeasurementReports(
   { session, clients, studyInstanceUID, onChange }: DerivedDataContext,
@@ -125,9 +126,14 @@ export async function loadMeasurementReports(
          * SEG/ANN/PM/SR even when no report is suitable.
          */
         let pendingCount = toRetrieve.length
+        let hasFailure = false
         const finishOne = (): void => {
           pendingCount -= 1
-          if (pendingCount === 0) resolve()
+          if (pendingCount > 0) return
+          if (hasFailure) {
+            notifyVisualizationError('Annotations could not be loaded')
+          }
+          resolve()
         }
         for (const instance of toRetrieve) {
           logger.log(`retrieve SR instance "${instance.SOPInstanceUID}"`)
@@ -150,6 +156,7 @@ export async function loadMeasurementReports(
                     onChange()
                   }
                 } catch (error: unknown) {
+                  hasFailure = true
                   logger.error(
                     'failed to parse ROIs ' +
                       `of SOP instance "${instance.SOPInstanceUID}" ` +
@@ -162,7 +169,7 @@ export async function loadMeasurementReports(
               finishOne()
             })
             .catch((error: unknown) => {
-              notifyVisualizationError('Annotations could not be loaded')
+              hasFailure = true
               logger.error(
                 'failed to load ROIs ' +
                   `of SOP instance "${instance.SOPInstanceUID}" ` +
