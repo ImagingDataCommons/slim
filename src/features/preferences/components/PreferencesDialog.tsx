@@ -14,6 +14,11 @@ import {
 } from '../hooks/usePreferencesDraft'
 import { useRuntimeInfo } from '../hooks/useRuntimeInfo'
 import {
+  loadPreferences,
+  previewAnnotationPreferences,
+  previewDrawStylePreferences,
+} from '../utils/preferences'
+import {
   ALL_TABS,
   APP_TABS,
   getTabDefinition,
@@ -54,6 +59,7 @@ export function PreferencesDialog({
     setDraftTheme,
     draft,
     update,
+    resetAnnotationDefaults,
     save,
   } = usePreferencesDraft(open, initialTab)
   const runtime = useRuntimeInfo(runtimeInfo)
@@ -64,9 +70,31 @@ export function PreferencesDialog({
   const tabId = (tab: PreferencesTab): string => `${baseId}-tab-${tab}`
   const panelId = `${baseId}-panel`
 
+  const handleOpenChange = (nextOpen: boolean): void => {
+    if (!nextOpen) {
+      /**
+       * Closing (Save, Cancel, or dismiss) re-syncs the viewer to whatever is
+       * persisted — after Save that is the new draft; after Cancel the old one.
+       */
+      const saved = loadPreferences()
+      previewAnnotationPreferences({
+        markupLabelColor: saved.markupLabelColor,
+        markupLabelFontSize: saved.markupLabelFontSize,
+        units: saved.units,
+      })
+      previewDrawStylePreferences({
+        strokeColor: saved.strokeColor,
+        strokeWidth: saved.strokeWidth,
+        roiFill: saved.roiFill,
+        roiFillOpacity: saved.roiFillOpacity,
+      })
+    }
+    onOpenChange(nextOpen)
+  }
+
   const handleSave = (): void => {
     save()
-    onOpenChange(false)
+    handleOpenChange(false)
   }
 
   const handleTabKeyDown = (event: React.KeyboardEvent): void => {
@@ -93,7 +121,7 @@ export function PreferencesDialog({
   )
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="h-[78vh] max-h-[88vh] w-[94vw] max-w-[1000px]">
         <SlimDialogHeader
           icon="manage_accounts"
@@ -136,7 +164,11 @@ export function PreferencesDialog({
                   />
                 )}
                 {activeTab === 'annotations' && (
-                  <AnnotationsTab draft={draft} onChange={update} />
+                  <AnnotationsTab
+                    draft={draft}
+                    onChange={update}
+                    onResetDefaults={resetAnnotationDefaults}
+                  />
                 )}
                 {activeTab === 'keys' && <KeysTab />}
               </div>
@@ -153,7 +185,7 @@ export function PreferencesDialog({
 
         {activeDefinition.isEditable && (
           <SlimDialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
             <Button onClick={handleSave} className="font-semibold">

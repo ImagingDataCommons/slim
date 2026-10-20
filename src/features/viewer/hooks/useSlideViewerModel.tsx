@@ -13,10 +13,17 @@ import {
   getSlideStainInfo,
 } from '../../../utils/slideDisplay'
 import { usePreferences } from '../../preferences'
+import {
+  ANNOTATION_PREFS_PREVIEW_EVENT,
+  type AnnotationPrefsPreview,
+  DRAW_STYLE_PREFS_PREVIEW_EVENT,
+  type DrawStylePrefsPreview,
+} from '../../preferences/utils/preferences'
 import type { SlideViewerViewProps } from '../components/SlideViewerView'
 import { describeStudySeries } from '../services/seriesDescription'
 import { deriveActiveRoiTool } from '../utils/activeRoiTool'
 import { buildAnnotationConfig } from '../utils/annotationConfig'
+import { applyAnnotationViewerPrefs } from '../utils/applyAnnotationViewerPrefs'
 import {
   buildDerivedLegendRows,
   type DerivedLegendRow,
@@ -82,16 +89,52 @@ export function useSlideViewerModel({
   const navigate = useNavigate()
   const preferences = usePreferences()
   const [annotationConfig] = useState(() => buildAnnotationConfig(annotations))
-  const { strokeColor, strokeWidth } = preferences
+  /** Live stroke/fill from Preferences before Save */
+  const [drawStylePreview, setDrawStylePreview] =
+    useState<DrawStylePrefsPreview | null>(null)
+  const strokeColor = drawStylePreview?.strokeColor ?? preferences.strokeColor
+  const strokeWidth = drawStylePreview?.strokeWidth ?? preferences.strokeWidth
+  const roiFill = drawStylePreview?.roiFill ?? preferences.roiFill
+  const roiFillOpacity =
+    drawStylePreview?.roiFillOpacity ?? preferences.roiFillOpacity
   const defaultRoiStyle = useMemo(
     () =>
       buildDefaultRoiStyle({
         strokeColor: hexToRgb(strokeColor),
         strokeWidth,
         radius: DEFAULT_ROI_RADIUS,
+        fill: roiFill,
+        fillOpacity: roiFillOpacity,
       }),
-    [strokeColor, strokeWidth],
+    [strokeColor, strokeWidth, roiFill, roiFillOpacity],
   )
+
+  useEffect(() => {
+    const onPreview = (event: Event): void => {
+      const detail = (event as CustomEvent<DrawStylePrefsPreview>).detail
+      if (detail === undefined) return
+      setDrawStylePreview(detail)
+    }
+    window.addEventListener(DRAW_STYLE_PREFS_PREVIEW_EVENT, onPreview)
+    return () => {
+      window.removeEventListener(DRAW_STYLE_PREFS_PREVIEW_EVENT, onPreview)
+    }
+  }, [])
+
+  /**
+   * Drop stale preview when persisted preferences change (Save / Cancel).
+   * Pref keys are intentional triggers; the body only clears preview state.
+   */
+  /** biome-ignore lint/correctness/useExhaustiveDependencies: clear on save */
+  useEffect(() => {
+    setDrawStylePreview(null)
+  }, [
+    preferences.strokeColor,
+    preferences.strokeWidth,
+    preferences.roiFill,
+    preferences.roiFillOpacity,
+  ])
+
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true)
   const [interaction, dispatchInteraction] = useReducer(
     viewerInteractionReducer,
@@ -101,7 +144,24 @@ export function useSlideViewerModel({
     describeStudySeries(studyInstanceUID, uid)
 
   const viewer = useViewerSnapshot()
-  const { sessionRef, snapshot } = viewer
+  const { sessionRef, snapshot, refreshSnapshot } = viewer
+
+  /**
+   * Preferences fill/stroke apply to in-progress draw (below) and to ROIs that
+   * still follow preference defaults — otherwise opacity looks "stuck".
+   * Depend on `refreshSnapshot` (stable), not `viewer` (new object each render).
+   */
+  useEffect(() => {
+    const session = sessionRef.current
+    if (session === undefined) return
+    const uids = session.roiStyles.applyPreferenceDefaults(defaultRoiStyle)
+    for (const uid of uids) {
+      session.volumeViewer.setROIStyle(uid, defaultRoiStyle)
+    }
+    if (uids.length > 0) {
+      refreshSnapshot()
+    }
+  }, [defaultRoiStyle, sessionRef, refreshSnapshot])
   const viewportLoading = useViewportLoading(sessionRef)
   const opticalPaths = useOpticalPaths(
     viewer,
@@ -146,9 +206,77 @@ export function useSlideViewerModel({
     onSave: report.onGenerate,
   })
 
+  /**
+   * `snapshot.generation` re-applies prefs after the volume viewer is rebuilt.
+   */
+  /** biome-ignore lint/correctness/useExhaustiveDependencies: generation gate */
   useEffect(() => {
-    sessionRef.current?.volumeViewer.setMeasurementUnit?.(preferences.units)
-  }, [preferences.units, sessionRef])
+    const volumeViewer = sessionRef.current?.volumeViewer
+    if (volumeViewer === undefined) return
+    applyAnnotationViewerPrefs(volumeViewer, {
+      units: preferences.units,
+      markupLabelColor: preferences.markupLabelColor,
+      markupLabelFontSize: preferences.markupLabelFontSize,
+    })
+  }, [
+    preferences.units,
+    preferences.markupLabelColor,
+    preferences.markupLabelFontSize,
+    snapshot.generation,
+    sessionRef,
+  ])
+
+  /**
+   * Live preview from Preferences > Annotations before Save.
+   * Re-subscribe when the viewer generation changes so the handler sees a live session.
+   */
+  /** biome-ignore lint/correctness/useExhaustiveDependencies: generation gate */
+  useEffect(() => {
+    const onPreview = (event: Event): void => {
+      const volumeViewer = sessionRef.current?.volumeViewer
+      if (volumeViewer === undefined) return
+      const detail = (event as CustomEvent<AnnotationPrefsPreview>).detail
+      if (detail === undefined) return
+      applyAnnotationViewerPrefs(volumeViewer, {
+        units: detail.units,
+        markupLabelColor: detail.markupLabelColor,
+        markupLabelFontSize: detail.markupLabelFontSize,
+      })
+    }
+    window.addEventListener(ANNOTATION_PREFS_PREVIEW_EVENT, onPreview)
+    return () => {
+      window.removeEventListener(ANNOTATION_PREFS_PREVIEW_EVENT, onPreview)
+    }
+  }, [sessionRef, snapshot.generation])
+
+  /**
+   * Draw interaction keeps the style from activate time. Re-bind when stroke
+   * prefs change so the in-progress sketch matches Preferences.
+   */
+  useEffect(() => {
+    const session = sessionRef.current
+    const annotationDraft = draft.draft
+    if (
+      session === undefined ||
+      !interaction.isRoiDrawingActive ||
+      interaction.isAnnotationModalVisible ||
+      annotationDraft.geometryType === undefined ||
+      annotationDraft.finding === undefined
+    ) {
+      return
+    }
+    session.volumeViewer.activateDrawInteraction({
+      geometryType: annotationDraft.geometryType,
+      markup: annotationDraft.markup,
+      styleOptions: drawStyleFor(session, annotationDraft, defaultRoiStyle),
+    })
+  }, [
+    defaultRoiStyle,
+    interaction.isRoiDrawingActive,
+    interaction.isAnnotationModalVisible,
+    draft.draft,
+    sessionRef,
+  ])
   useKeyboardShortcuts((action) => {
     if (isShortcutEnabled(action, enableAnnotationTools)) {
       tools.onShortcut(action)
@@ -225,7 +353,11 @@ export function useSlideViewerModel({
       clustering: annotationGroups.clustering,
       gammaCorrection: opticalPaths.gammaCorrection,
       onSessionCreated: (session) => {
-        session.volumeViewer.setMeasurementUnit?.(preferences.units)
+        applyAnnotationViewerPrefs(session.volumeViewer, {
+          units: preferences.units,
+          markupLabelColor: preferences.markupLabelColor,
+          markupLabelFontSize: preferences.markupLabelFontSize,
+        })
         dispatchInteraction({ type: 'newViewer' })
         populateSlide(session)
       },
@@ -326,6 +458,7 @@ export function useSlideViewerModel({
       enableAnnotationTools,
       activeTool: deriveActiveRoiTool(interaction),
       areRoisHidden: interaction.areRoisHidden,
+      onSelect: tools.onSelect,
       onDraw: tools.onDraw,
       onModify: tools.onModify,
       onTranslate: tools.onTranslate,

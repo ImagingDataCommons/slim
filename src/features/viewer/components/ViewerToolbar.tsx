@@ -27,6 +27,7 @@ export interface ViewerToolbarProps {
   enableAnnotationTools: boolean
   activeTool: ActiveRoiTool
   areRoisHidden: boolean
+  onSelect: () => void
   onDraw: () => void
   onModify: () => void
   onTranslate: () => void
@@ -113,6 +114,7 @@ export function ViewerToolbar({
   enableAnnotationTools,
   activeTool,
   areRoisHidden,
+  onSelect,
   onDraw,
   onModify,
   onTranslate,
@@ -137,6 +139,14 @@ export function ViewerToolbar({
 
   const tools: ToolDefinition[] = enableAnnotationTools
     ? [
+        {
+          key: 'select',
+          icon: 'arrow_selector_tool',
+          label: 'Select',
+          tooltip: formatShortcutHint('select'),
+          isActive: activeTool === 'select',
+          onClick: onSelect,
+        },
         {
           key: 'draw',
           icon: 'polyline',

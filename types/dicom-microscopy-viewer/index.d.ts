@@ -75,6 +75,18 @@ declare module 'dicom-microscopy-viewer' {
        */
       setMeasurementUnit (unit: string | null | undefined): void
       getMeasurementUnit (): 'μm' | 'mm' | undefined
+      /**
+       * Color for measurement-value labels and the dotted link line.
+       * CSS color string or `[r,g,b]` / `[r,g,b,a]`. Empty clears the preference.
+       */
+      setMarkupLabelColor (color: string | number[] | null | undefined): void
+      getMarkupLabelColor (): string | number[] | undefined
+      /**
+       * Font size (px) for measurement-value labels. Empty / null / undefined
+       * restores the library default.
+       */
+      setMarkupLabelFontSize (size: number | string | null | undefined): void
+      getMarkupLabelFontSize (): number | undefined
       get isDrawInteractionActive (): boolean
       activateSelectInteraction (options: object)
       deactivateSelectInteraction (): void

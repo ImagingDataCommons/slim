@@ -38,11 +38,24 @@ export function annotationStyleToRoiStyle(
  * and the annotation-list style of every ROI. Finding keys are
  * `codedConceptKey` values.
  */
+/**
+ * Fill alpha from an ROI style, when the 4th channel is a finite number.
+ */
+export function roiFillAlpha(style: RoiStyle | undefined): number | undefined {
+  const alpha = style?.fill?.color?.[3]
+  return typeof alpha === 'number' && Number.isFinite(alpha) ? alpha : undefined
+}
+
 export class RoiStyleRegistry {
   private readonly configured: Readonly<Record<string, RoiStyle>>
   private readonly findingStyles: Record<string, RoiStyle> = {}
   private readonly stylesByUid: Record<string, RoiStyle> = {}
   private readonly annotationStyles: Record<string, AnnotationStyle> = {}
+  /**
+   * ROIs still following Preferences → Annotations draw style (not recolored
+   * from the category chips). Preference changes restyle these live.
+   */
+  private readonly preferenceStyledUids = new Set<string>()
 
   /**
    * Seed only findings that have a viewer-config style. Findings without one
@@ -101,6 +114,7 @@ export class RoiStyleRegistry {
   recordAddedRoi(uid: string, key: string | undefined, style: RoiStyle): void {
     if (key === undefined || this.configured[key] !== style) {
       this.stylesByUid[uid] = style
+      this.preferenceStyledUids.add(uid)
     }
   }
 
@@ -116,16 +130,19 @@ export class RoiStyleRegistry {
     if (this.annotationStyles[uid] !== undefined) return
     const ownStyle = this.stylesByUid[uid]
     const findingStyle = key !== undefined ? this.findingStyles[key] : undefined
+    const stroke = (ownStyle ?? findingStyle)?.stroke?.color
     const color =
-      (ownStyle ?? findingStyle)?.stroke?.color.slice(0, 3) ??
-      DEFAULT_ANNOTATION_COLOR_PALETTE[
-        Object.keys(this.findingStyles).length %
-          DEFAULT_ANNOTATION_COLOR_PALETTE.length
-      ]
+      stroke !== undefined && stroke.length >= 3
+        ? [stroke[0], stroke[1], stroke[2]]
+        : DEFAULT_ANNOTATION_COLOR_PALETTE[
+            Object.keys(this.findingStyles).length %
+              DEFAULT_ANNOTATION_COLOR_PALETTE.length
+          ]
+    const fillAlpha = roiFillAlpha(ownStyle)
     const annotationStyle: AnnotationStyle = {
       color,
-      opacity: DEFAULT_ANNOTATION_OPACITY,
-      contourOnly: false,
+      opacity: fillAlpha ?? DEFAULT_ANNOTATION_OPACITY,
+      contourOnly: fillAlpha === 0,
     }
     this.annotationStyles[uid] = annotationStyle
     if (
@@ -152,11 +169,37 @@ export class RoiStyleRegistry {
       this.findingStyles[key] = style
     }
     this.stylesByUid[uid] = style
+    /** Chip edits leave Preferences control for this ROI */
+    this.preferenceStyledUids.delete(uid)
+  }
+
+  /**
+   * Push live Preferences draw style onto ROIs that still follow preferences.
+   * Returns the UIDs that were updated (caller should `setROIStyle`).
+   */
+  applyPreferenceDefaults(defaultStyle: RoiStyle): string[] {
+    const uids = [...this.preferenceStyledUids]
+    const fillAlpha = roiFillAlpha(defaultStyle)
+    const stroke = defaultStyle.stroke?.color
+    for (const uid of uids) {
+      this.stylesByUid[uid] = defaultStyle
+      const ann = this.annotationStyles[uid]
+      if (ann !== undefined && stroke !== undefined && stroke.length >= 3) {
+        this.annotationStyles[uid] = {
+          ...ann,
+          color: [stroke[0], stroke[1], stroke[2]],
+          opacity: fillAlpha ?? ann.opacity,
+          contourOnly: fillAlpha === 0,
+        }
+      }
+    }
+    return uids
   }
 
   forget(uid: string): void {
     delete this.stylesByUid[uid]
     delete this.annotationStyles[uid]
+    this.preferenceStyledUids.delete(uid)
   }
 
   /** Copy of the annotation-list styles, keyed by ROI UID */

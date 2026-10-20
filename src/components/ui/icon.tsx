@@ -32,6 +32,7 @@ import {
   type LucideIcon,
   type LucideProps,
   Minus,
+  MousePointer2,
   Move,
   Palette,
   PanelLeftClose,
@@ -68,6 +69,7 @@ import { cn } from '../../lib/utils'
 const ICONS = {
   account_tree: ListTree,
   add: Plus,
+  arrow_selector_tool: MousePointer2,
   arrow_downward: ArrowDown,
   arrow_upward: ArrowUp,
   bug_report: Bug,

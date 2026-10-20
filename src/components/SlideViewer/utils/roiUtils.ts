@@ -86,26 +86,34 @@ export const formatRoiRemovalMessage = (count: number): string =>
   count === 1 ? 'Annotation was removed' : `${count} annotations were removed`
 
 /** Alpha of the default ROI fill, derived from the stroke color. */
-export const DEFAULT_ROI_FILL_ALPHA = 0.2
+export const DEFAULT_ROI_FILL_ALPHA = 0.35
 
 /**
  * Default style for ROIs without a configured finding style, built from the
- * user's stroke preferences (RGB color, width in px). Uses {@link formatRoiStyle}
- * so point markers get the same stroke as polygons (DMV/OpenLayers expects it).
+ * user's stroke / fill preferences. Uses {@link formatRoiStyle} so point
+ * markers get the same stroke as polygons (DMV/OpenLayers expects it).
  */
 export const buildDefaultRoiStyle = ({
   strokeColor,
   strokeWidth,
   radius,
+  fill = true,
+  fillOpacity = DEFAULT_ROI_FILL_ALPHA,
 }: {
   strokeColor: number[]
   strokeWidth: number
   radius: number
+  /** When false, the ROI interior is fully transparent */
+  fill?: boolean
+  /** Fill alpha in `0…1` when fill is enabled */
+  fillOpacity?: number
 }): dmv.viewer.ROIStyleOptions => {
   const rgb = strokeColor.slice(0, 3)
+  const alpha = fill ? Math.min(1, Math.max(0, fillOpacity)) : 0
   return formatRoiStyle({
-    stroke: { color: rgb, width: strokeWidth },
-    fill: { color: [...rgb, DEFAULT_ROI_FILL_ALPHA] },
+    /** Explicit alpha so OL never treats stroke/fill channels differently */
+    stroke: { color: [...rgb, 1], width: strokeWidth },
+    fill: { color: [...rgb, alpha] },
     radius,
   })
 }

@@ -17,6 +17,12 @@ const dmvDist = normalizePath(path.join(dmvRoot, 'dist/dynamic-import'))
 const dmvBundle = `${dmvDist}/dicomMicroscopyViewer.min.js`
 /** `pnpm link` points node_modules at a checkout outside the pnpm store */
 const isDmvLinked = !dmvRoot.includes(`${path.sep}.pnpm${path.sep}`)
+/**
+ * Package subpath Vite prebundles to ESM. Must stay a node_modules id so the
+ * import is rewritten to `.vite/deps/…` (an absolute `@fs` alias skips that and
+ * serves raw UMD with no `export`, so `dmv.viewer` / prefs APIs break).
+ */
+const dmvOptimizeId = 'dicom-microscopy-viewer/dynamic-import'
 
 /** CRA-style PUBLIC_URL (`/`, `/slim` or a full URL) as a Vite `base` */
 function toBase(publicUrl: string | undefined): string {
@@ -134,16 +140,18 @@ export default defineConfig(({ mode }) => {
           find: /^dicom-microscopy-viewer$/,
           replacement: isTest
             ? path.join(root, 'src/__mocks__/dicomMicroscopyViewerMock.ts')
-            : 'dicom-microscopy-viewer/dynamic-import',
+            : dmvOptimizeId,
         },
       ],
     },
     /**
-     * The DMV build is a webpack UMD bundle, so it is pre-bundled even when
-     * linked. A linked checkout is re-bundled on every start.
+     * DMV ships as webpack UMD — Vite must prebundle it to ESM. Linked
+     * checkouts force re-optimize on every start so setMeasurementUnit /
+     * setMarkupLabelColor from a local rebuild are picked up.
      */
     optimizeDeps: {
-      include: ['dicom-microscopy-viewer/dynamic-import'],
+      include: [dmvOptimizeId],
+      needsInterop: [dmvOptimizeId],
       force: isDmvLinked,
     },
     server: {

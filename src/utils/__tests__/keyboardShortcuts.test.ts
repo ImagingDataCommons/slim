@@ -46,7 +46,7 @@ describe('groupShortcuts', () => {
       'Annotation tools',
       'Navigation',
     ])
-    expect(groups[0]?.shortcuts).toHaveLength(6)
+    expect(groups[0]?.shortcuts).toHaveLength(7)
     expect(groups[1]?.shortcuts.map((item) => item.action)).toEqual(['goTo'])
   })
 

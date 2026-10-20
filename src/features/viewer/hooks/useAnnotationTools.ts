@@ -27,6 +27,7 @@ import type { RoisApi } from './useRois'
 type RoiStyle = dmv.viewer.ROIStyleOptions
 
 export interface AnnotationToolsApi {
+  onSelect: () => void
   onDraw: () => void
   onModify: () => void
   onTranslate: () => void
@@ -102,6 +103,17 @@ export function useAnnotationTools({
     isModifyInteractionActive: viewer.isModifyInteractionActive,
     isTranslateInteractionActive: viewer.isTranslateInteractionActive,
   })
+
+  const onSelect = (): void => {
+    const viewer = viewerOf()
+    if (viewer === undefined) return
+    logger.log('activate selection of ROIs')
+    const plan = planToolMode('select', interaction, viewerFlags(viewer))
+    if (plan === null) return
+    applyToolModePlan(viewer, plan)
+    /** Clears draw/modify/translate and the annotation configuration dialog */
+    dispatch({ type: 'stopDrawing' })
+  }
 
   const onDraw = (): void => {
     const viewer = viewerOf()
@@ -218,6 +230,7 @@ export function useAnnotationTools({
   }
 
   return {
+    onSelect,
     onDraw,
     onModify,
     onTranslate,
@@ -297,6 +310,9 @@ export function useAnnotationTools({
       switch (action) {
         case 'cancel':
           cancelActiveInteraction()
+          break
+        case 'select':
+          onSelect()
           break
         case 'draw':
           onDraw()

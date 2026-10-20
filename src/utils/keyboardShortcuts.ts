@@ -4,6 +4,7 @@
  */
 
 export type ShortcutAction =
+  | 'select'
   | 'draw'
   | 'modify'
   | 'translate'
@@ -28,6 +29,13 @@ export interface KeyboardShortcut {
 export const SHORTCUT_MODIFIER = 'Alt'
 
 export const KEYBOARD_SHORTCUTS: readonly KeyboardShortcut[] = [
+  {
+    action: 'select',
+    code: 'KeyA',
+    key: 'A',
+    label: 'Select ROI',
+    group: 'annotation',
+  },
   {
     action: 'draw',
     code: 'KeyD',

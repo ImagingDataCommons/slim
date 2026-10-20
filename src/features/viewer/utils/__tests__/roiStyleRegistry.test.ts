@@ -129,4 +129,44 @@ describe('RoiStyleRegistry', () => {
       DEFAULT_STYLE,
     )
   })
+
+  it('mirrors preference fill alpha into the list style and live updates', () => {
+    const registry = new RoiStyleRegistry({
+      configuredStyles: {},
+      findingKeys: [],
+    })
+    const drawn = formatRoiStyle({
+      stroke: { color: [31, 90, 209, 1], width: 2 },
+      fill: { color: [31, 90, 209, 0.8] },
+      radius: 5,
+    })
+    registry.recordAddedRoi('roi-1', 'tissue', drawn)
+    registry.registerAnnotationStyle('roi-1', 'tissue', {
+      radius: 5,
+      strokeWidth: 2,
+    })
+
+    expect(registry.copyAnnotationStyles()['roi-1']).toEqual({
+      color: [31, 90, 209],
+      opacity: 0.8,
+      contourOnly: false,
+    })
+
+    const next = formatRoiStyle({
+      stroke: { color: [31, 90, 209, 1], width: 2 },
+      fill: { color: [31, 90, 209, 0.2] },
+      radius: 5,
+    })
+    expect(registry.applyPreferenceDefaults(next)).toEqual(['roi-1'])
+    expect(registry.styleForRoi('roi-1', 'tissue', DEFAULT_STYLE)).toBe(next)
+    expect(registry.copyAnnotationStyles()['roi-1']?.opacity).toBe(0.2)
+
+    registry.applyAnnotationStyle(
+      'roi-1',
+      'tissue',
+      { color: [0, 100, 0], opacity: 1, contourOnly: false },
+      style([0, 100, 0]),
+    )
+    expect(registry.applyPreferenceDefaults(drawn)).toEqual([])
+  })
 })

@@ -92,6 +92,23 @@ describe('useAnnotationTools', () => {
     expect(viewer.activateSelectInteraction).toHaveBeenCalled()
   })
 
+  it('select mode stops drawing and activates select interaction', () => {
+    const { result, viewer } = setup()
+    act(() => {
+      result.current.tools.onDraw()
+    })
+    viewer.activateSelectInteraction.mockClear()
+    viewer.deactivateDrawInteraction.mockClear()
+
+    act(() => {
+      result.current.tools.onSelect()
+    })
+
+    expect(result.current.interaction.isRoiDrawingActive).toBe(false)
+    expect(viewer.deactivateDrawInteraction).toHaveBeenCalled()
+    expect(viewer.activateSelectInteraction).toHaveBeenCalled()
+  })
+
   it('draws with the style of the chosen finding once configured', () => {
     const finding = new dcmjs.sr.coding.CodedConcept({
       value: '1',
