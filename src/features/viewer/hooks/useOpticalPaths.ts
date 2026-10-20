@@ -14,6 +14,11 @@ import { showMatchingSeriesItems } from '../utils/showSeriesItems'
 import { withItem, withoutItem } from '../utils/uidSets'
 import type { ViewerAccess } from './useViewerSession'
 
+/** Late presentation states must not override what the user chose */
+function markUserDisplayChange(session: ViewerSession | undefined): void {
+  if (session !== undefined) session.hasUserDisplayChanges = true
+}
+
 function toggleOpticalPathFlag({
   id,
   enable,
@@ -62,6 +67,14 @@ export interface OpticalPathsApi {
     isActive: boolean
   }) => void
   onStyleChange: (change: {
+    opticalPathIdentifier: string
+    styleOptions: { opacity?: number; color?: number[]; limitValues?: number[] }
+  }) => void
+  /**
+   * Live style while a slider is dragged: restyles the slide only. The panel
+   * snapshot is refreshed once, by {@link onStyleChange} on commit.
+   */
+  onStylePreview: (change: {
     opticalPathIdentifier: string
     styleOptions: { opacity?: number; color?: number[]; limitValues?: number[] }
   }) => void
@@ -137,6 +150,7 @@ export function useOpticalPaths(
     onVisibilityChange: ({ opticalPathIdentifier, isVisible }) => {
       const viewer = sessionRef.current?.volumeViewer
       if (viewer === undefined) return
+      markUserDisplayChange(sessionRef.current)
       logger.log(`change visibility of optical path ${opticalPathIdentifier}`)
       toggleOpticalPathFlag({
         id: opticalPathIdentifier,
@@ -156,6 +170,7 @@ export function useOpticalPaths(
     onActivityChange: ({ opticalPathIdentifier, isActive }) => {
       const viewer = sessionRef.current?.volumeViewer
       if (viewer === undefined) return
+      markUserDisplayChange(sessionRef.current)
       logger.log(`change activity of optical path ${opticalPathIdentifier}`)
       toggleOpticalPathFlag({
         id: opticalPathIdentifier,
@@ -175,9 +190,16 @@ export function useOpticalPaths(
     onStyleChange: ({ opticalPathIdentifier, styleOptions }) => {
       const viewer = sessionRef.current?.volumeViewer
       if (viewer === undefined) return
+      markUserDisplayChange(sessionRef.current)
       logger.log(`change style of optical path ${opticalPathIdentifier}`)
       viewer.setOpticalPathStyle(opticalPathIdentifier, styleOptions)
       refreshSnapshot()
+    },
+    onStylePreview: ({ opticalPathIdentifier, styleOptions }) => {
+      const viewer = sessionRef.current?.volumeViewer
+      if (viewer === undefined) return
+      markUserDisplayChange(sessionRef.current)
+      viewer.setOpticalPathStyle(opticalPathIdentifier, styleOptions)
     },
     onDisplaySettingsChange: (settings) => {
       const viewer = sessionRef.current?.volumeViewer

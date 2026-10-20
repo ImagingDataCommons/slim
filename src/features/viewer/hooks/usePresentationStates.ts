@@ -77,6 +77,7 @@ export function usePresentationStates({
 
   const onReset = (): void => {
     const session = sessionRef.current
+    if (session !== undefined) session.hasUserDisplayChanges = true
     setSelectedUID(undefined)
     navigate(location.pathname)
     if (session !== undefined) opticalPaths.showDefault(session)
@@ -98,12 +99,21 @@ export function usePresentationStates({
         slide: session.slide,
         onPresentationState: (presentationState, index) => {
           if (session.isDestroyed) return
+          const { requestedUID: currentRequestedUID } = latestRef.current
+          /**
+           * The first state is only a default: it must not replace optical
+           * path choices the user made while it was still loading. A state
+           * named in the URL is an explicit request and always applies.
+           */
+          const isDefaultOnly =
+            currentRequestedUID === null || currentRequestedUID === undefined
           if (
             shouldApplyPresentationState({
               index,
               sopInstanceUID: presentationState.SOPInstanceUID,
-              requestedUID: latestRef.current.requestedUID,
-            })
+              requestedUID: currentRequestedUID,
+            }) &&
+            !(isDefaultOnly && session.hasUserDisplayChanges)
           ) {
             apply(session, presentationState)
           }
@@ -121,6 +131,7 @@ export function usePresentationStates({
         )
         const session = sessionRef.current
         if (presentationState !== undefined && session !== undefined) {
+          session.hasUserDisplayChanges = true
           navigate(`${location.pathname}?state=${value}`)
           apply(session, presentationState)
         } else {

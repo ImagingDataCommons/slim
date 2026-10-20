@@ -99,6 +99,28 @@ describe('usePresentationStates', () => {
     ).toEqual(['ps-1', 'ps-2'])
   })
 
+  it('does not apply a late default state over changes the user made', () => {
+    const { result, load, receive, navigate, opticalPaths, session } = setup()
+
+    load()
+    session.hasUserDisplayChanges = true
+    receive(presentationState('ps-1'), 0)
+
+    expect(opticalPaths.showPresentationState).not.toHaveBeenCalled()
+    expect(navigate).not.toHaveBeenCalled()
+    expect(result.current.presentationStates).toHaveLength(1)
+  })
+
+  it('still applies a state the URL names after user changes', () => {
+    const { load, receive, opticalPaths, session } = setup('ps-1')
+
+    load()
+    session.hasUserDisplayChanges = true
+    receive(presentationState('ps-1'), 0)
+
+    expect(opticalPaths.showPresentationState).toHaveBeenCalledTimes(1)
+  })
+
   it('applies the state named in the URL', () => {
     const { result, load, receive, opticalPaths } = setup('ps-2')
 

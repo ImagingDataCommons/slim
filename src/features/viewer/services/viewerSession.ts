@@ -38,6 +38,12 @@ export interface ViewerSession {
   >
   /** Set once the viewers were cleaned up; late async work must stop */
   isDestroyed: boolean
+  /**
+   * Set once the user changed optical paths or picked or reset a presentation
+   * state, so a presentation state that arrives later is not auto-applied
+   * over those choices
+   */
+  hasUserDisplayChanges: boolean
 }
 
 /**
@@ -108,6 +114,7 @@ export function createViewerSession({
       pixelStatistics: new Map(),
       annotationGroupMetadata: new Map(),
       isDestroyed: false,
+      hasUserDisplayChanges: false,
     }
   } catch (error) {
     releaseViewer(volumeViewer)

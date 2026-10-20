@@ -48,6 +48,15 @@ export interface OpticalPathItemProps {
     opticalPathIdentifier: string
     styleOptions: OpticalPathStyleChange
   }) => void
+  /**
+   * Live style while a slider is dragged. It must not refresh `defaultStyle`,
+   * since a changed `defaultStyle` resets the local slider value mid-drag.
+   * Falls back to `onStyleChange`.
+   */
+  onStylePreview?: (change: {
+    opticalPathIdentifier: string
+    styleOptions: OpticalPathStyleChange
+  }) => void
   onRemoval: (opticalPathIdentifier: string) => void
 }
 
@@ -69,6 +78,7 @@ function OpticalPathItem({
   defaultStyle,
   onVisibilityChange,
   onStyleChange,
+  onStylePreview,
   onRemoval,
 }: OpticalPathItemProps): React.ReactElement {
   const identifier = opticalPath.identifier
@@ -87,7 +97,14 @@ function OpticalPathItem({
       resetKey,
     )
   /** Windowing needs live feedback on the slide while dragging */
-  const commitLive = useFrameThrottledCallback(commit)
+  const commitLive = useFrameThrottledCallback(
+    (styleOptions: OpticalPathStyleChange): void => {
+      ;(onStylePreview ?? onStyleChange)({
+        opticalPathIdentifier: identifier,
+        styleOptions,
+      })
+    },
+  )
   const previewLive = (change: OpticalPathStyleChange): void => {
     previewStyle(change)
     commitLive(change)

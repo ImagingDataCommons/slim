@@ -45,6 +45,11 @@ export interface OpticalPathListProps {
     opticalPathIdentifier: string
     styleOptions: OpticalPathStyleChange
   }) => void
+  /** Live style while dragging; falls back to `onOpticalPathStyleChange` */
+  onOpticalPathStylePreview?: (change: {
+    opticalPathIdentifier: string
+    styleOptions: OpticalPathStyleChange
+  }) => void
   onOpticalPathActivityChange: (change: {
     opticalPathIdentifier: string
     isActive: boolean
@@ -68,6 +73,7 @@ function OpticalPathList({
   defaultOpticalPathStyles,
   onOpticalPathVisibilityChange,
   onOpticalPathStyleChange,
+  onOpticalPathStylePreview,
   onOpticalPathActivityChange,
   displaySettings,
   onDisplaySettingsChange,
@@ -114,6 +120,7 @@ function OpticalPathList({
           defaultStyle={defaultOpticalPathStyles[opticalPath.identifier]}
           onVisibilityChange={onOpticalPathVisibilityChange}
           onStyleChange={onOpticalPathStyleChange}
+          onStylePreview={onOpticalPathStylePreview}
           onRemoval={handleRemoval}
           isRemovable={isSelectable}
           hasIccProfile={hasIccProfiles}

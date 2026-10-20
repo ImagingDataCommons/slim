@@ -578,6 +578,7 @@ export function useSlideViewerModel({
         activeOpticalPathIdentifiers: opticalPaths.activeIdentifiers,
         onOpticalPathVisibilityChange: opticalPaths.onVisibilityChange,
         onOpticalPathStyleChange: opticalPaths.onStyleChange,
+        onOpticalPathStylePreview: opticalPaths.onStylePreview,
         onOpticalPathActivityChange: opticalPaths.onActivityChange,
         selectedPresentationStateUID: presentationStates.selectedUID,
         hasIccProfiles: snapshot.hasIccProfiles,
