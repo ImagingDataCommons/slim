@@ -152,7 +152,8 @@ class NotificationMiddleware extends PubSub {
     this.publish(NotificationMiddlewareEvents.OnError, { source, error })
 
     if (import.meta.env.MODE === 'development') {
-      console.error(`A ${String(errorCategory)} error occurred: `, error)
+      /** Constant format string; the category may come from an external error */
+      console.error('A %s error occurred:', String(errorCategory), error)
     }
 
     if (notificationType !== NotificationType.TOAST) return
