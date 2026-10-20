@@ -1,3 +1,6 @@
+/** skipcq: JS-C1003 */
+import type * as dmv from 'dicom-microscopy-viewer'
+
 import { StorageClasses } from '../../../../data/uids'
 import type { DerivedDataContext } from '../derivedDataContext'
 import { loadMeasurementReports } from '../loadMeasurementReports'
@@ -26,7 +29,7 @@ function srInstance(
 function setup(searchResult: unknown[] | Error): {
   context: DerivedDataContext
   retrieveInstance: ReturnType<typeof vi.fn>
-  registerRoi: ReturnType<typeof vi.fn>
+  registerRoi: (roi: dmv.roi.ROI) => void
   onChange: ReturnType<typeof vi.fn>
 } {
   const retrieveInstance = vi.fn()
@@ -48,7 +51,8 @@ function setup(searchResult: unknown[] | Error): {
     studyInstanceUID: STUDY_UID,
     onChange,
   } as unknown as DerivedDataContext
-  return { context, retrieveInstance, registerRoi: vi.fn(), onChange }
+  const registerRoi = (_roi: dmv.roi.ROI): void => undefined
+  return { context, retrieveInstance, registerRoi, onChange }
 }
 
 describe('loadMeasurementReports', () => {
