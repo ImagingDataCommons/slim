@@ -58,4 +58,34 @@ describe('ViewerPanelChromeProvider', () => {
     })
     expect(result.current.isLeftPanelOpen).toBe(false)
   })
+
+  it('reopens both rails when the layout returns to desktop', () => {
+    let overlayPanels = true
+    const wrapper = ({
+      children,
+    }: {
+      children: React.ReactNode
+    }): React.ReactElement => (
+      <LayoutModeProvider
+        value={{
+          compactChrome: overlayPanels,
+          overlayPanels,
+          coarsePointer: false,
+        }}
+      >
+        <ViewerPanelChromeProvider>{children}</ViewerPanelChromeProvider>
+      </LayoutModeProvider>
+    )
+    const { result, rerender } = renderHook(() => useViewerPanelChrome(), {
+      wrapper,
+    })
+    expect(result.current.isLeftPanelOpen).toBe(false)
+
+    overlayPanels = false
+    rerender()
+
+    expect(result.current.overlayPanels).toBe(false)
+    expect(result.current.isLeftPanelOpen).toBe(true)
+    expect(result.current.isRightPanelOpen).toBe(true)
+  })
 })

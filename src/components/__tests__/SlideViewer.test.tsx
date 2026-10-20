@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import type React from 'react'
 import { MemoryRouter } from 'react-router'
-
+import { ViewerPanelChromeProvider } from '../../features/viewer/contexts/ViewerPanelChromeContext'
 import {
   fakeDmvInstances,
   resetFakeDmv,
@@ -37,23 +37,25 @@ function viewerElement(
   const slide = overrides.slide ?? createSlide('1.2.3.4')
   return (
     <MemoryRouter initialEntries={[`/studies/${STUDY_UID}/series/1.2.3.4`]}>
-      <SlideViewer
-        slide={slide}
-        clients={overrides.clients ?? createClients()}
-        studyInstanceUID={STUDY_UID}
-        seriesInstanceUID={slide.seriesInstanceUIDs[0]}
-        app={{
-          name: 'Slim',
-          version: '1.0.0',
-          homepage: 'https://example.test',
-          uid: '1.2',
-        }}
-        annotations={ANNOTATIONS}
-        enableAnnotationTools
-        enableMemoryMonitoring={false}
-        preload={false}
-        {...overrides}
-      />
+      <ViewerPanelChromeProvider>
+        <SlideViewer
+          slide={slide}
+          clients={overrides.clients ?? createClients()}
+          studyInstanceUID={STUDY_UID}
+          seriesInstanceUID={slide.seriesInstanceUIDs[0]}
+          app={{
+            name: 'Slim',
+            version: '1.0.0',
+            homepage: 'https://example.test',
+            uid: '1.2',
+          }}
+          annotations={ANNOTATIONS}
+          enableAnnotationTools
+          enableMemoryMonitoring={false}
+          preload={false}
+          {...overrides}
+        />
+      </ViewerPanelChromeProvider>
     </MemoryRouter>
   )
 }

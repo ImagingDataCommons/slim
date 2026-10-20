@@ -29,10 +29,13 @@ function useExclusivePanelState(): ViewerPanelChrome {
   const [isLeftPanelOpen, setLeftPanelOpen] = useState(() => !overlayPanels)
   const [isRightPanelOpen, setRightPanelOpen] = useState(() => !overlayPanels)
 
+  /**
+   * Overlay sheets start closed so they do not cover the canvas; desktop rails
+   * start open. Switching layout (rotation, resize) resets to that default.
+   */
   useEffect(() => {
-    if (!overlayPanels) return
-    setLeftPanelOpen(false)
-    setRightPanelOpen(false)
+    setLeftPanelOpen(!overlayPanels)
+    setRightPanelOpen(!overlayPanels)
   }, [overlayPanels])
 
   const toggleLeftPanel = useCallback((): void => {
@@ -114,12 +117,25 @@ export function ViewerPanelChromeProvider({
   )
 }
 
+const noop = (): void => {}
+
+/** Desktop rails, both open, for viewers rendered outside CaseViewer */
+const STATIC_PANEL_CHROME: ViewerPanelChrome = {
+  overlayPanels: false,
+  isLeftPanelOpen: true,
+  isRightPanelOpen: true,
+  toggleLeftPanel: noop,
+  toggleRightPanel: noop,
+  closeLeftPanel: noop,
+  closeRightPanel: noop,
+  setLeftPanelOpen: noop,
+  setRightPanelOpen: noop,
+}
+
 /**
- * Shared study/slide panel open state. Falls back to a local exclusive pair
- * when rendered outside CaseViewer (unit tests).
+ * Shared study/slide panel open state. Outside CaseViewer (unit tests) it
+ * returns static desktop chrome instead of allocating unused state.
  */
 export function useViewerPanelChrome(): ViewerPanelChrome {
-  const context = useContext(ViewerPanelChromeContext)
-  const fallback = useExclusivePanelState()
-  return context ?? fallback
+  return useContext(ViewerPanelChromeContext) ?? STATIC_PANEL_CHROME
 }

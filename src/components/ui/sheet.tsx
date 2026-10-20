@@ -41,8 +41,8 @@ export interface SheetContentProps
 }
 
 /**
- * Full-height side sheet. `forceMount` keeps children in the tree so the
- * DMV label viewer survives open/close, matching the desktop `hidden` rail.
+ * Full-height side sheet. Radix unmounts the content while closed; callers
+ * that must keep state across open/close (OverlayPanel) hold it outside.
  */
 const SheetContent = React.forwardRef<
   React.ComponentRef<typeof DialogPrimitive.Content>,
@@ -52,7 +52,6 @@ const SheetContent = React.forwardRef<
     <SheetOverlay />
     <DialogPrimitive.Content
       ref={ref}
-      forceMount
       className={cn(
         'fixed z-50 flex h-full w-[min(20rem,calc(100vw-3rem))] flex-col bg-panel text-ink shadow-modal outline-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-200 data-[state=open]:duration-200 data-[state=closed]:pointer-events-none data-[state=closed]:invisible motion-reduce:transition-none motion-reduce:animate-none motion-reduce:data-[state=open]:fade-in-0 motion-reduce:data-[state=closed]:fade-out-0',
         'pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]',
