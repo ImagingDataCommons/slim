@@ -507,3 +507,32 @@ export async function pressViewerShortcut(
   await page.keyboard.press(key)
   await page.keyboard.up('Alt')
 }
+
+/**
+ * Opens the presentation state picker and waits until its options stop
+ * changing. States arrive one by one, and a click on a list that re-renders
+ * can miss its option.
+ */
+export async function openPresentationStatePicker(
+  page: Page,
+  states: Locator,
+): Promise<Locator> {
+  await states.getByRole('combobox', { name: 'Presentation state' }).click()
+  const options = page.getByRole('option')
+  let previous = -1
+  let stableSince = Date.now()
+  await expect
+    .poll(
+      async () => {
+        const count = await options.count()
+        if (count !== previous) {
+          previous = count
+          stableSince = Date.now()
+        }
+        return count > 0 && Date.now() - stableSince >= 1000
+      },
+      { message: 'presentation state options settle', timeout: 30_000 },
+    )
+    .toBe(true)
+  return options
+}

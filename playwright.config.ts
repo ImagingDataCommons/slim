@@ -66,9 +66,16 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1600, height: 900 },
-        /** Headless Chromium renders DMV's WebGL tiles only through SwiftShader */
+        /**
+         * Headless Chromium on a GPU-less runner renders DMV's WebGL tiles in
+         * software, which needs --enable-unsafe-swiftshader. Do not also force
+         * --use-angle=swiftshader: on Linux it stalls frame production while
+         * WebGL is busy, so OpenLayers' requestAnimationFrame redraws arrive
+         * seconds late and the viewport keeps a stale frame (R2 saw hidden
+         * ROIs still drawn).
+         */
         launchOptions: {
-          args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+          args: ['--enable-unsafe-swiftshader'],
         },
       },
     },

@@ -7,6 +7,7 @@ import {
   expectViewportToDiffer,
   expectViewportToMatch,
   openDisplayOptions,
+  openPresentationStatePicker,
   openViewer,
   section,
   slidePanel,
@@ -65,9 +66,7 @@ test.describe('Optical paths on one multiplexed slide', () => {
   test('O3 presentation state applies, updates the URL and resets', async () => {
     const states = await section(slidePanel(page), 'Presentation states')
     const before = await captureSettledViewport(page)
-    const picker = states.getByRole('combobox', { name: 'Presentation state' })
-    await picker.click()
-    const options = page.getByRole('option')
+    const options = await openPresentationStatePicker(page, states)
     expect(await options.count()).toBeGreaterThan(1)
     await options.nth(1).click()
     await expect(page).toHaveURL(/[?&]state=[\d.]+/)
@@ -109,15 +108,12 @@ test.describe('Optical paths on one multiplexed slide', () => {
 
   test('O9 switching between presentation states updates the URL and the image', async () => {
     const states = await section(slidePanel(page), 'Presentation states')
-    const picker = states.getByRole('combobox', { name: 'Presentation state' })
-    await picker.click()
-    await page.getByRole('option').nth(0).click()
+    await (await openPresentationStatePicker(page, states)).nth(0).click()
     await expect(page).toHaveURL(/[?&]state=[\d.]+/)
     const firstUrl = page.url()
     const first = await captureSettledViewport(page)
 
-    await picker.click()
-    await page.getByRole('option').nth(1).click()
+    await (await openPresentationStatePicker(page, states)).nth(1).click()
     await expect(page).not.toHaveURL(firstUrl)
     await expect(page).toHaveURL(/[?&]state=[\d.]+/)
     await expectViewportToDiffer(page, first, 0.5)
@@ -135,8 +131,7 @@ test.describe('Optical paths and display options', () => {
   }) => {
     await openViewer(page, imcUrl)
     const states = await section(slidePanel(page), 'Presentation states')
-    await states.getByRole('combobox', { name: 'Presentation state' }).click()
-    await page.getByRole('option').nth(1).click()
+    await (await openPresentationStatePicker(page, states)).nth(1).click()
     await expect(page).toHaveURL(/state=/)
     const label = await states
       .getByRole('combobox', { name: 'Presentation state' })
