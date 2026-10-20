@@ -112,3 +112,26 @@ export const isOidcAuthorizeCallbackUrl = (location: {
       hashParams.get('access_token'),
   )
 }
+
+/**
+ * For a callback-shaped URL that carries no `state`, which no pending request
+ * can match, the message to show: the IdP's error_description or error when
+ * present. Undefined when the URL has a code or tokens, or a `state` the
+ * sign-in library should match (it reports error responses itself).
+ */
+export const describeCallbackWithoutState = (location: {
+  search: string
+  hash: string
+}): string | undefined => {
+  const searchParams = new URLSearchParams(location.search)
+  const hashParams = new URLSearchParams(location.hash.replace('#', '?'))
+  const read = (key: string): string | null =>
+    searchParams.get(key) ?? hashParams.get(key)
+  if (isAuthorizationCodeInUrl(location) || read('state') !== null) {
+    return undefined
+  }
+  const reason = read('error_description') ?? read('error')
+  return reason !== null && reason !== ''
+    ? `Sign-in failed: ${reason}`
+    : 'Sign-in was cancelled or failed.'
+}

@@ -249,15 +249,44 @@ describe('OidcManager', () => {
       expect(window.location.search).toBe('')
     })
 
-    it('treats a top-level IdP error as a failed callback and strips the URL', async () => {
-      window.history.replaceState({}, '', '/#error=access_denied&state=s')
+    it('lets the library settle an IdP error response and strips the URL', async () => {
+      window.history.replaceState(
+        {},
+        '',
+        '/?error=access_denied&error_description=User%20declined&state=s',
+      )
+      const { manager, oidc } = setup()
+      oidc.signinRedirectCallback.mockRejectedValue(new Error('User declined'))
+
+      await expect(manager.signIn({})).rejects.toThrow('User declined')
+      expect(oidc.signinRedirectCallback).toHaveBeenCalled()
+      expect(oidc.signinRedirect).not.toHaveBeenCalled()
+      expect(window.location.search).toBe('')
+    })
+
+    it('reports the IdP reason for an error callback without state', async () => {
+      window.history.replaceState({}, '', '/#error=access_denied')
       const { manager, oidc } = setup()
 
       await expect(manager.signIn({})).rejects.toThrow(
-        'Sign-in was cancelled or failed.',
+        'Sign-in failed: access_denied',
       )
+      expect(oidc.signinRedirectCallback).not.toHaveBeenCalled()
       expect(oidc.signinRedirect).not.toHaveBeenCalled()
       expect(window.location.hash).toBe('')
+    })
+
+    it('strips the callback URL before the sign-in callback runs', async () => {
+      window.history.replaceState({}, '', '/?code=c&state=s')
+      const { manager } = setup()
+      let searchAtSignIn: string | undefined
+      const onSignIn = vi.fn(() => {
+        searchAtSignIn = window.location.search
+      })
+
+      await expect(manager.signIn({ onSignIn })).resolves.toBe('completed')
+      expect(onSignIn).toHaveBeenCalled()
+      expect(searchAtSignIn).toBe('')
     })
 
     it('drops an off-site return URL from the callback', async () => {
@@ -324,13 +353,19 @@ describe('OidcManager', () => {
   })
 
   describe('renewAuthorization', () => {
-    it('renews silently and notifies listeners', async () => {
+    it('renews silently and notifies listeners once', async () => {
       const { manager, oidc } = setup()
-      oidc.signinSilent.mockResolvedValue(makeUser({ accessToken: 'new' }))
+      /** Like oidc-client-ts, the renew raises userLoaded for the new user */
+      oidc.signinSilent.mockImplementation(async () => {
+        const user = makeUser({ accessToken: 'new' })
+        await oidc.events.load(user)
+        return user
+      })
       const listener = vi.fn()
       manager.onAuthorizationChange(listener)
 
       await expect(manager.renewAuthorization()).resolves.toBe('Bearer new')
+      expect(listener).toHaveBeenCalledTimes(1)
       expect(listener).toHaveBeenCalledWith('Bearer new')
     })
 

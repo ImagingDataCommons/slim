@@ -452,9 +452,16 @@ export class AppSession {
       })
       .catch((error: unknown) => {
         console.error(error)
+        /** Keep the IdP's reason (e.g. access_denied) when sign-in reports one */
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.AUTH,
-          new CustomError(errorTypes.AUTHENTICATION, 'Could not sign-in user.'),
+          error instanceof CustomError &&
+            error.type === errorTypes.AUTHENTICATION
+            ? error
+            : new CustomError(
+                errorTypes.AUTHENTICATION,
+                'Could not sign-in user.',
+              ),
         )
         /**
          * The failure page has no header, so a broken custom config could
