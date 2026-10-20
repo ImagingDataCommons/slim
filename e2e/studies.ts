@@ -12,6 +12,8 @@
 interface Series {
   study: string
   series: string
+  /** Presentation state SOP Instance UID (`?state=`) */
+  state?: string
 }
 
 export const studies = {
@@ -64,11 +66,15 @@ export const studies = {
   /**
    * HTAN-HMS HTA7_920: CyCIF fluorescence plus Advanced Blending PR (gallery
    * P5 / P9). Opening the PR series resolves to the referenced SM slide.
+   * `advancedBlendingState` is a multi-channel PR that makes gamma on/off
+   * visually distinct (palette-mapped channels).
    */
   htanHms: {
     study: '2.25.219049900737444567890964056686598614067',
     advancedBlendingPr:
       '1.2.826.0.1.3680043.10.511.3.89195067478721359204133769511555576',
+    advancedBlendingState:
+      '1.2.826.0.1.3680043.10.511.3.31266721565352110991654349300148293',
   },
   /** Bone marrow WSI pediatric leukemia: rectangle ANN, 5 groups in 4 categories */
   boneMarrow: {
@@ -93,6 +99,7 @@ export function studyUrl(study: string): string {
   return `/studies/${study}`
 }
 
-export function seriesUrl({ study, series }: Series): string {
-  return `/studies/${study}/series/${series}`
+export function seriesUrl({ study, series, state }: Series): string {
+  const path = `/studies/${study}/series/${series}`
+  return state === undefined ? path : `${path}?state=${state}`
 }

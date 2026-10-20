@@ -311,6 +311,38 @@ export async function chooseOption(
   await page.getByRole('option', { name: option, exact: true }).click()
 }
 
+/** Expands Display options inside an Optical paths / overlays section */
+export async function openDisplayOptions(container: Locator): Promise<Locator> {
+  const toggle = container.getByRole('button', { name: /^Display options/ })
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  return container
+}
+
+/**
+ * Sets the Optical paths → Gamma correction switch. Gamma only affects
+ * palette-mapped layers (fluorescence PRs, SEG, PM), not RGB/ICC tiles.
+ */
+export async function setGammaCorrection(
+  page: Page,
+  enabled: boolean,
+): Promise<void> {
+  const paths = await openDisplayOptions(
+    await section(slidePanel(page), 'Optical paths'),
+  )
+  const gamma = paths.getByRole('switch', { name: 'Gamma correction' })
+  await expect(gamma).toBeVisible()
+  const isChecked = await gamma.isChecked()
+  if (isChecked !== enabled) {
+    await gamma.click()
+  }
+  if (enabled) {
+    await expect(gamma).toBeChecked()
+  } else {
+    await expect(gamma).not.toBeChecked()
+  }
+}
+
 /** Configures the Draw dialog: finding, optional grade, then geometry */
 export async function configureDraw(
   page: Page,

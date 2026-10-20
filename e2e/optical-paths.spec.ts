@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 
 import { newSharedPage, test } from './fixtures'
 import {
@@ -6,6 +6,7 @@ import {
   expectTissueRendered,
   expectViewportToDiffer,
   expectViewportToMatch,
+  openDisplayOptions,
   openViewer,
   section,
   slidePanel,
@@ -14,13 +15,6 @@ import { seriesUrl, studies } from './studies'
 
 const { htanImc, htanHms, tcgaGbm, boneMarrow } = studies
 const imcUrl = seriesUrl({ study: htanImc.study, series: htanImc.imcSlide })
-
-async function openDisplayOptions(container: Locator): Promise<Locator> {
-  const toggle = container.getByRole('button', { name: /^Display options/ })
-  await toggle.click()
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
-  return container
-}
 
 /** Each test puts the channels back the way it found them, so they share a slide */
 test.describe('Optical paths on one multiplexed slide', () => {

@@ -209,6 +209,8 @@ pnpm test:e2e:visual:update
 - [ ] **VS5** e2e. SR ROIs visible on the RMS slide.
 - [ ] **VS6** e2e. Bone marrow ANN groups visible.
 - [ ] **VS7** e2e. H&E brightfield in light theme.
+- [ ] **VS8** e2e. HTAN Advanced Blending PR with Gamma correction on (palette baseline).
+- [ ] **VS9** e2e. Same PR with Gamma correction off — must differ from VS8.
 
 ## Accessibility
 

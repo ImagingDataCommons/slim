@@ -4,10 +4,18 @@ import {
   expectTissueRendered,
   openViewer,
   overrideConfig,
+  setGammaCorrection,
 } from './helpers'
 import { seriesUrl, studies } from './studies'
 
-const { he, tcgaRead, tcgaLuad, tcgaGbm, rmsSr, boneMarrow } = studies
+const { he, tcgaRead, tcgaLuad, tcgaGbm, rmsSr, boneMarrow, htanHms } = studies
+
+/** CyCIF + Advanced Blending PR — gamma on/off paints different palette colors */
+const gammaBaselineUrl = seriesUrl({
+  study: htanHms.study,
+  series: htanHms.advancedBlendingPr,
+  state: htanHms.advancedBlendingState,
+})
 
 /**
  * Curated viewport baselines for modality smoke. Interaction coverage stays
@@ -83,5 +91,22 @@ test.describe('Visual smoke', () => {
     )
     await expectTissueRendered(page)
     await expectSettledViewportScreenshot(page, 'vs7-he-light')
+  })
+
+  test('VS8 gamma correction on (Advanced Blending PR)', async ({ page }) => {
+    /** CyCIF + multi-channel PR; openViewer can spend 2× timeout waiting */
+    test.setTimeout(420_000)
+    await openViewer(page, gammaBaselineUrl, { timeout: 180_000 })
+    await expectTissueRendered(page, 3)
+    await setGammaCorrection(page, true)
+    await expectSettledViewportScreenshot(page, 'vs8-gamma-on')
+  })
+
+  test('VS9 gamma correction off (Advanced Blending PR)', async ({ page }) => {
+    test.setTimeout(420_000)
+    await openViewer(page, gammaBaselineUrl, { timeout: 180_000 })
+    await expectTissueRendered(page, 3)
+    await setGammaCorrection(page, false)
+    await expectSettledViewportScreenshot(page, 'vs9-gamma-off')
   })
 })
