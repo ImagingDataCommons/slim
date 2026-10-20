@@ -25,7 +25,10 @@ export interface SlidePopulationSources {
   viewportLoading: Pick<ViewportLoadingApi, 'reset'>
   opticalPaths: Pick<OpticalPathsApi, 'reset' | 'showDefault' | 'showSeries'>
   presentationStates: Pick<PresentationStatesApi, 'load'>
-  rois: Pick<RoisApi, 'reset' | 'registerRoi' | 'showAll'>
+  rois: Pick<
+    RoisApi,
+    'reset' | 'registerRoi' | 'showAll' | 'onVisibilityChanges'
+  >
   annotationGroups: Pick<AnnotationGroupsApi, 'reset' | 'showSeries'>
   segmentations: Pick<SegmentationsApi, 'reset' | 'showSeries'>
   parametricMaps: Pick<ParametricMapsApi, 'reset' | 'showSeries'>
@@ -101,11 +104,31 @@ export function useSlidePopulation(
 
     opticalPaths.showDefault(session)
     presentationStates.load(session)
+    /**
+     * The SR loader settles at the first suitable report. When an SR link
+     * showed every ROI, ROIs of reports retrieved afterwards are shown as
+     * each report is added; ROIs the user hid meanwhile stay hidden.
+     */
+    let showsLateRois = false
+    const lateRoiUids: string[] = []
     loadDerivedData(
-      { session, clients, studyInstanceUID, onChange: refreshSnapshot },
+      {
+        session,
+        clients,
+        studyInstanceUID,
+        onChange: () => {
+          if (showsLateRois && lateRoiUids.length > 0 && !session.isDestroyed) {
+            latestRef.current.rois.onVisibilityChanges(
+              lateRoiUids.splice(0).map((uid) => ({ uid, isVisible: true })),
+            )
+          }
+          refreshSnapshot()
+        },
+      },
       {
         registerRoi: (roi) => {
           latestRef.current.rois.registerRoi(session, roi)
+          if (showsLateRois) lateRoiUids.push(roi.uid)
         },
         onLoaded: () => {
           const current = latestRef.current
@@ -113,6 +136,10 @@ export function useSlidePopulation(
             return
           }
           showDerivedDataset(session, current.derivedDataset, current)
+          showsLateRois =
+            classifyDerivedDataset(
+              (current.derivedDataset as { SOPClassUID: string }).SOPClassUID,
+            ).kind === 'rois'
         },
       },
     )

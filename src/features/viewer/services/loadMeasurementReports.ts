@@ -91,10 +91,11 @@ function addMeasurementReportRois(
 
 /**
  * Add the ROIs of the study's measurement reports in this slide's frame of
- * reference. Settles after every Comprehensive 3D SR is handled, including
- * unsuitable documents and retrieve or parse failures, so a deep-linked
- * report's ROIs are all added before onLoaded shows them. Failures are
- * reported to the user once per load, not once per document.
+ * reference. Settles as soon as a suitable report was added, so derived-data
+ * auto-show does not wait on slow retrieves, or else once every
+ * Comprehensive 3D SR was handled, including unsuitable documents and
+ * retrieve or parse failures. Reports added later still call `onChange`.
+ * Failures are reported to the user once, after every retrieve settled.
  */
 export async function loadMeasurementReports(
   { session, clients, studyInstanceUID, onChange }: DerivedDataContext,
@@ -122,7 +123,7 @@ export async function loadMeasurementReports(
           return
         }
         /**
-         * Resolve only after every retrieve settled so onLoaded can show
+         * Also resolve once every retrieve settled so onLoaded can show
          * SEG/ANN/PM/SR even when no report is suitable.
          */
         let pendingCount = toRetrieve.length
@@ -154,6 +155,7 @@ export async function loadMeasurementReports(
                     )
                   ) {
                     onChange()
+                    resolve()
                   }
                 } catch (error: unknown) {
                   hasFailure = true
