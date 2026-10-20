@@ -151,6 +151,22 @@ export class AppSession {
      */
     const configuredServers = [...config.servers]
     addGcpSecondaryAnnotationServer(config, window.location.search)
+    /**
+     * With server selection the default server may ship without a URL (the
+     * user picks one in the header, or a cached selection applies on start).
+     * An empty URL lets the app mount so that the header is reachable.
+     */
+    if (config.enableServerSelection === true) {
+      for (const server of config.servers) {
+        if (
+          server.storageClasses == null &&
+          (server.url ?? '').trim() === '' &&
+          (server.path ?? '').trim() === ''
+        ) {
+          server.url = ''
+        }
+      }
+    }
 
     const defaultClients = createClientMapping({
       baseUri,

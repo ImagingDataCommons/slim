@@ -94,4 +94,31 @@ describe('findConfigProblems', () => {
       ).toHaveLength(1)
     })
   })
+
+  describe('with server selection enabled', () => {
+    it('accepts a default server without a URL', () => {
+      expect(
+        findConfigProblems(
+          { servers: [server({})], enableServerSelection: true },
+          'custom',
+        ),
+      ).toEqual([])
+    })
+
+    it('still reports a storage-class server without a URL', () => {
+      const problems = findConfigProblems(
+        {
+          servers: [
+            server({
+              id: 'ann',
+              storageClasses: ['1.2.840.10008.5.1.4.1.1.91.1'],
+            }),
+          ],
+          enableServerSelection: true,
+        },
+        'custom',
+      )
+      expect(problems).toHaveLength(1)
+    })
+  })
 })

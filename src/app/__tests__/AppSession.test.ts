@@ -227,6 +227,17 @@ describe('AppSession', () => {
   })
 
   describe('server selection', () => {
+    it('starts with a default server that has no URL when selection is on', () => {
+      const config = createConfig({
+        servers: [{ id: 'primary', write: false }],
+        enableServerSelection: true,
+      })
+      const { session } = setup(config)
+
+      expect(config.servers[0].url).toBe('')
+      expect(session.getSnapshot().clients.default).toBeDefined()
+    })
+
     it('re-applies a legacy stored URL without a mode as custom', () => {
       window.localStorage.setItem(SERVER_URL_STORAGE_KEY, CUSTOM_URL)
       const { session } = setup(createConfig())
