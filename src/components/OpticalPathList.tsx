@@ -37,6 +37,10 @@ export interface OpticalPathListProps {
   defaultOpticalPathStyles: {
     [opticalPathIdentifier: string]: OpticalPathStyle
   }
+  /** Observed pixel range per optical path, once a frame was sampled */
+  opticalPathPixelRanges?: Readonly<
+    Record<string, { min: number; max: number }>
+  >
   onOpticalPathVisibilityChange: (change: {
     opticalPathIdentifier: string
     isVisible: boolean
@@ -71,6 +75,7 @@ function OpticalPathList({
   visibleOpticalPathIdentifiers,
   activeOpticalPathIdentifiers,
   defaultOpticalPathStyles,
+  opticalPathPixelRanges,
   onOpticalPathVisibilityChange,
   onOpticalPathStyleChange,
   onOpticalPathStylePreview,
@@ -118,6 +123,7 @@ function OpticalPathList({
           metadata={images}
           isVisible={visibleOpticalPathIdentifiers.has(opticalPath.identifier)}
           defaultStyle={defaultOpticalPathStyles[opticalPath.identifier]}
+          pixelRange={opticalPathPixelRanges?.[opticalPath.identifier]}
           onVisibilityChange={onOpticalPathVisibilityChange}
           onStyleChange={onOpticalPathStyleChange}
           onStylePreview={onOpticalPathStylePreview}

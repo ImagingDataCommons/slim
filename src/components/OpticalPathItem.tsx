@@ -15,7 +15,10 @@ import {
   getOpticalPathName,
   getOpticalPathSwatch,
 } from '../utils/opticalPath'
-import { maxValueForBitsAllocated } from '../utils/opticalPathLimits'
+import {
+  maxValueForBitsAllocated,
+  windowSliderBounds,
+} from '../utils/opticalPathLimits'
 import { getOpticalPathStyleSignature } from '../utils/opticalPathPartition'
 import { getSpecimenStains } from '../utils/specimen'
 import { areLayerItemPropsEqual } from '../utils/styleEquality'
@@ -40,6 +43,8 @@ export interface OpticalPathItemProps {
   isRemovable: boolean
   hasIccProfile?: boolean
   defaultStyle: OpticalPathStyle
+  /** Observed pixel range; sizes the window slider to the stored values */
+  pixelRange?: { min: number; max: number }
   onVisibilityChange: (change: {
     opticalPathIdentifier: string
     isVisible: boolean
@@ -76,6 +81,7 @@ function OpticalPathItem({
   isRemovable,
   hasIccProfile,
   defaultStyle,
+  pixelRange,
   onVisibilityChange,
   onStyleChange,
   onStylePreview,
@@ -117,6 +123,12 @@ function OpticalPathItem({
     onCommit: (limitValues) => commit({ limitValues }),
     onPreview: (limitValues) => commitLive({ limitValues }),
     resetKey,
+  })
+
+  const sliderBounds = windowSliderBounds({
+    bitsMax: maxValue,
+    pixelRange,
+    limitValues: limits.values,
   })
 
   const name = getOpticalPathName(opticalPath)
@@ -248,9 +260,9 @@ function OpticalPathItem({
           Window
           <Slider
             className="flex-1"
-            min={0}
-            max={maxValue}
-            step={1}
+            min={sliderBounds.min}
+            max={sliderBounds.max}
+            step={sliderBounds.step}
             value={limits.values}
             onValueChange={limits.preview}
             onValueCommit={limits.commit}

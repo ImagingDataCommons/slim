@@ -64,6 +64,8 @@ export interface ViewerSnapshot {
     dmv.metadata.VLWholeSlideMicroscopyImage[]
   >
   opticalPathStyles: Readonly<Record<string, OpticalPathStyle>>
+  /** Observed pixel range of each optical path whose first frame loaded */
+  opticalPathPixelRanges: Readonly<Record<string, { min: number; max: number }>>
   hasIccProfiles: boolean
   isPaletteDisplayGammaCorrectionEnabled: boolean
 }
@@ -89,6 +91,7 @@ export const EMPTY_VIEWER_SNAPSHOT: ViewerSnapshot = {
   opticalPaths: [],
   opticalPathMetadata: {},
   opticalPathStyles: {},
+  opticalPathPixelRanges: {},
   hasIccProfiles: false,
   isPaletteDisplayGammaCorrectionEnabled: false,
 }
@@ -249,6 +252,15 @@ export function readViewerSnapshot(
       byIdentifier((identifier) => ({
         ...viewer.getOpticalPathStyle(identifier),
       })),
+    ),
+    opticalPathPixelRanges: reuseEqualStyles(
+      previous.opticalPathPixelRanges,
+      Object.fromEntries(
+        [...session.pixelStatistics].map(([identifier, { min, max }]) => [
+          identifier,
+          { min, max },
+        ]),
+      ),
     ),
     /**
      * Sticky once true for this viewer generation. `getICCProfiles()` can

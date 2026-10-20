@@ -337,11 +337,22 @@ export function useSlideViewerModel({
        * sticky per generation, so only the absent-to-present change counts;
        * profiles reading [] after the ICC toggle must not refresh per tile.
        */
-      const volumeViewer = sessionRef.current?.volumeViewer
+      const session = sessionRef.current
+      const volumeViewer = session?.volumeViewer
+      /** A channel's first frame sets its window slider range, once */
+      const hasNewPixelRange =
+        session !== undefined &&
+        frameInfo.channelIdentifier !== undefined &&
+        session.pixelStatistics.has(frameInfo.channelIdentifier) &&
+        !Object.hasOwn(
+          snapshot.opticalPathPixelRanges,
+          frameInfo.channelIdentifier,
+        )
       if (
         volumeViewer !== undefined &&
-        !snapshot.hasIccProfiles &&
-        volumeViewer.getICCProfiles().length > 0
+        (hasNewPixelRange ||
+          (!snapshot.hasIccProfiles &&
+            volumeViewer.getICCProfiles().length > 0))
       ) {
         viewer.refreshSnapshot()
       }
@@ -575,6 +586,7 @@ export function useSlideViewerModel({
         metadata: snapshot.opticalPathMetadata,
         opticalPaths: snapshot.opticalPaths,
         defaultOpticalPathStyles: snapshot.opticalPathStyles,
+        opticalPathPixelRanges: snapshot.opticalPathPixelRanges,
         visibleOpticalPathIdentifiers: opticalPaths.visibleIdentifiers,
         activeOpticalPathIdentifiers: opticalPaths.activeIdentifiers,
         onOpticalPathVisibilityChange: opticalPaths.onVisibilityChange,
