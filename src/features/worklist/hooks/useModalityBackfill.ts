@@ -9,6 +9,9 @@ import { extractModalitiesFromSeries } from '../utils/studyQuery'
 
 const SERIES_REQUEST_CONCURRENCY = 6
 
+/** Batches answers that arrive close together into one render */
+const BACKFILL_FLUSH_MS = 100
+
 const NO_MODALITIES: ReadonlyMap<string, string[]> = new Map()
 
 async function collectModalitiesFromSeries(
@@ -75,13 +78,18 @@ export function useModalityBackfill(
 
     /** A server switch drops the remaining requests; a page change keeps them */
     const isCurrent = (): boolean => requested.current === asked
-    void mapWithConcurrency(uids, SERIES_REQUEST_CONCURRENCY, async (uid) => ({
-      uid,
-      modalities: isCurrent()
-        ? await collectModalitiesFromSeries(client, uid)
-        : [],
-    })).then((results) => {
-      if (!isCurrent()) return
+    /**
+     * Answers are committed as they arrive, a short batch at a time, so the
+     * column fills in progressively and one slow study does not hold back
+     * the others.
+     */
+    let pending: Array<{ uid: string; modalities: string[] }> = []
+    let isFlushScheduled = false
+    const flush = (): void => {
+      isFlushScheduled = false
+      if (!isCurrent() || pending.length === 0) return
+      const results = pending
+      pending = []
       setBackfill((previous) => {
         const merged = new Map(
           previous.client === client ? previous.modalitiesByUid : [],
@@ -89,6 +97,15 @@ export function useModalityBackfill(
         for (const { uid, modalities } of results) merged.set(uid, modalities)
         return { client, modalitiesByUid: merged }
       })
+    }
+    void mapWithConcurrency(uids, SERIES_REQUEST_CONCURRENCY, async (uid) => {
+      if (!isCurrent()) return
+      const modalities = await collectModalitiesFromSeries(client, uid)
+      pending.push({ uid, modalities })
+      if (!isFlushScheduled) {
+        isFlushScheduled = true
+        setTimeout(flush, BACKFILL_FLUSH_MS)
+      }
     })
   }, [client, missingKey])
 

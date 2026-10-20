@@ -92,4 +92,27 @@ describe('useModalityBackfill', () => {
     )
     await waitFor(() => expect(result.current.get('a')).toEqual([]))
   })
+
+  it('shows answers as they arrive instead of after the whole page', async () => {
+    let releaseSlow: (() => void) | undefined
+    const searchForSeries = vi.fn(
+      async ({ studyInstanceUID }: { studyInstanceUID?: string }) => {
+        if (studyInstanceUID === 'slow') {
+          await new Promise<void>((resolve) => {
+            releaseSlow = resolve
+          })
+        }
+        return seriesOf('SM')
+      },
+    ) as unknown as DicomWebManager['searchForSeries']
+    const client = createClient(searchForSeries)
+    const studies = [study('slow'), study('fast')]
+    const { result } = renderHook(() => useModalityBackfill(client, studies))
+
+    await waitFor(() => expect(result.current.get('fast')).toEqual(['SM']))
+    expect(result.current.has('slow')).toBe(false)
+
+    releaseSlow?.()
+    await waitFor(() => expect(result.current.get('slow')).toEqual(['SM']))
+  })
 })

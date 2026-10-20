@@ -117,9 +117,18 @@ export function useWorklistRows({
   const containsStudies = containsResolution.studies
   const hasUncheckedMatches = containsResolution.hasUncheckedMatches
 
+  /**
+   * The local filter is a substring match, so it drops studies the server
+   * matched by fuzzy person name, another name order or the caret form
+   * ("Jane Doe" for Doe^Jane). Server hits for the current text always stay.
+   */
   const filteredStudies = useMemo(
-    () => filterStudiesBySearchText(containsStudies, deferredSearchText),
-    [containsStudies, deferredSearchText],
+    () =>
+      appendMissingStudies(
+        filterStudiesBySearchText(containsStudies, deferredSearchText),
+        containsEntry === undefined ? serverSearchMatches : [],
+      ),
+    [containsStudies, deferredSearchText, containsEntry, serverSearchMatches],
   )
 
   const pageStudies = useMemo(() => {
