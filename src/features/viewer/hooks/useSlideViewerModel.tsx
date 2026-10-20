@@ -401,6 +401,7 @@ export function useSlideViewerModel({
     visibleAnnotationGroupUIDs: annotationGroups.visibleUIDs,
     visibleSegmentUIDs: segmentations.visibleUIDs,
     visibleMappingUIDs: parametricMaps.visibleUIDs,
+    viewerGeneration: snapshot.generation,
   })
   useNoIccProfileWarning(slide)
 

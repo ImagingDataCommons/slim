@@ -32,6 +32,7 @@ describe('useActiveSeriesPublisher', () => {
         useActiveSeriesPublisher({
           sessionRef: access.sessionRef,
           seriesInstanceUID: 'slide-series',
+          viewerGeneration: 1,
           visibleAnnotationGroupUIDs: new Set(),
           visibleSegmentUIDs,
           visibleMappingUIDs: new Set(),
@@ -56,6 +57,7 @@ describe('useActiveSeriesPublisher', () => {
       useActiveSeriesPublisher({
         sessionRef: access.sessionRef,
         seriesInstanceUID: 'slide-series',
+        viewerGeneration: 1,
         visibleAnnotationGroupUIDs: new Set(),
         visibleSegmentUIDs: new Set(),
         visibleMappingUIDs: new Set(),
