@@ -125,6 +125,7 @@ Open the [IMC slide](http://localhost:3000/studies/2.25.289188443974026654725116
 - [ ] **O9** e2e. Switching from one presentation state to another updates `?state=` and the image.
 - [ ] **O10** e2e. An unknown `?state=` in the URL shows the slide with the Default display.
 - [ ] **O11** e2e. The [Advanced Blending PR series](http://localhost:3000/studies/2.25.219049900737444567890964056686598614067/series/1.2.826.0.1.3680043.10.511.3.89195067478721359204133769511555576) (gallery P9) opens the referenced CyCIF slide with optical paths and presentation states. Applying that PR from the series URL is still a TODO (same as master); use O3/O4 to apply a state from the picker.
+- [ ] **O12** e2e. A slide opens with its first presentation state (in study order) applied, and `?state=` names it.
 
 ## Segmentations and parametric maps
 

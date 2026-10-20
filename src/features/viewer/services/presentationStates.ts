@@ -11,6 +11,7 @@ import { logger } from '../../../utils/logger'
 import { planDefaultOpticalPaths } from '../utils/opticalPathDefaults'
 import type { PixelStatistics } from '../utils/pixelStatistics'
 import {
+  createInOrderFirstMatch,
   matchBlendingItems,
   referencesSlideSeries,
   windowLimitValues,
@@ -30,14 +31,21 @@ export function loadPresentationStates({
   studyInstanceUID,
   slide,
   onPresentationState,
+  onDefaultPresentationState,
 }: {
   client: DicomWebManager
   studyInstanceUID: string
   slide: Slide
+  /** Every state that applies to the slide, as it arrives */
   onPresentationState: (
     presentationState: PresentationState,
     index: number,
   ) => void
+  /**
+   * The slide's first state in study order, once every earlier state was
+   * retrieved and found to belong to another slide (or failed)
+   */
+  onDefaultPresentationState?: (presentationState: PresentationState) => void
 }): void {
   logger.log('search for Presentation State instances')
   client
@@ -46,7 +54,12 @@ export function loadPresentationStates({
       queryParams: { Modality: 'PR' },
     })
     .then((matchedInstances: dwc.api.Instance[] | null): void => {
-      ;(matchedInstances ?? []).forEach((rawInstance, index) => {
+      const instances = matchedInstances ?? []
+      const settle = createInOrderFirstMatch<PresentationState>(
+        instances.length,
+        (presentationState) => onDefaultPresentationState?.(presentationState),
+      )
+      instances.forEach((rawInstance, index) => {
         const { dataset } = dmv.metadata.formatMetadata(rawInstance)
         const instance = dataset as dmv.metadata.Instance
         logger.log(`retrieve PR instance "${instance.SOPInstanceUID}"`)
@@ -66,6 +79,7 @@ export function loadPresentationStates({
                   'application of presentation states for color images ' +
                   'has not (yet) been implemented',
               )
+              settle(index)
               return
             }
             if (
@@ -76,9 +90,13 @@ export function loadPresentationStates({
                   `"${presentationState.SOPInstanceUID}"`,
               )
               onPresentationState(presentationState, index)
+              settle(index, presentationState)
+            } else {
+              settle(index)
             }
           })
           .catch((error: unknown) => {
+            settle(index)
             notifyVisualizationError('Presentation State could not be loaded')
             logger.error(
               'failed to load presentation state ' +

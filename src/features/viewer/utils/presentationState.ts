@@ -35,20 +35,31 @@ export function referencesSlideSeries(
 }
 
 /**
- * Whether a loaded presentation state should be applied: the one named in
- * the URL, or the first one found when the URL names none.
+ * Reports the first matching slot in order once every earlier slot has
+ * settled. Slots settle out of order (parallel retrievals); `settle(index)`
+ * without an item marks a slot that does not match (another slide, a
+ * failed retrieval). `onFirst` runs at most once.
  */
-export function shouldApplyPresentationState({
-  index,
-  sopInstanceUID,
-  requestedUID,
-}: {
-  index: number
-  sopInstanceUID: string
-  requestedUID: string | null | undefined
-}): boolean {
-  if (requestedUID === null || requestedUID === undefined) return index === 0
-  return sopInstanceUID === requestedUID
+export function createInOrderFirstMatch<T>(
+  count: number,
+  onFirst: (item: T) => void,
+): (index: number, item?: T) => void {
+  const outcomes: Array<{ item: T | undefined } | undefined> = new Array(count)
+  let isDone = false
+  return (index, item) => {
+    if (isDone || index < 0 || index >= count) return
+    outcomes[index] = { item }
+    for (let i = 0; i < count; i++) {
+      const outcome = outcomes[i]
+      if (outcome === undefined) return
+      if (outcome.item !== undefined) {
+        isDone = true
+        onFirst(outcome.item)
+        return
+      }
+    }
+    isDone = true
+  }
 }
 
 /**
@@ -90,6 +101,20 @@ export function upsertBySopInstanceUID<T extends { SOPInstanceUID: string }>(
   for (const item of list) byUID.set(item.SOPInstanceUID, item)
   byUID.set(instance.SOPInstanceUID, instance)
   return [...byUID.values()]
+}
+
+/**
+ * Items sorted by their position in the study's search results, so the
+ * picker lists states in the same order however retrievals finish. Items
+ * without a known position keep their place at the end.
+ */
+export function sortByStudyOrder<T extends { SOPInstanceUID: string }>(
+  list: readonly T[],
+  studyIndexByUID: ReadonlyMap<string, number>,
+): T[] {
+  const position = (item: T): number =>
+    studyIndexByUID.get(item.SOPInstanceUID) ?? Number.POSITIVE_INFINITY
+  return [...list].sort((a, b) => position(a) - position(b))
 }
 
 /** VOI window as `[lower, upper]` limit values, if the item defines one. */

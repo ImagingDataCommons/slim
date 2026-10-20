@@ -1,8 +1,8 @@
 import {
   type BlendingItem,
+  createInOrderFirstMatch,
   matchBlendingItems,
   referencesSlideSeries,
-  shouldApplyPresentationState,
   upsertBySopInstanceUID,
   windowLimitValues,
 } from '../presentationState'
@@ -28,39 +28,38 @@ describe('referencesSlideSeries', () => {
   })
 })
 
-describe('shouldApplyPresentationState', () => {
-  it('applies the first instance when none is requested', () => {
-    expect(
-      shouldApplyPresentationState({
-        index: 0,
-        sopInstanceUID: 'a',
-        requestedUID: undefined,
-      }),
-    ).toBe(true)
-    expect(
-      shouldApplyPresentationState({
-        index: 1,
-        sopInstanceUID: 'b',
-        requestedUID: null,
-      }),
-    ).toBe(false)
+describe('createInOrderFirstMatch', () => {
+  it('reports the first match once every earlier slot settled', () => {
+    const onFirst = vi.fn()
+    const settle = createInOrderFirstMatch<string>(4, onFirst)
+
+    settle(2, 'c')
+    settle(3, 'd')
+    expect(onFirst).not.toHaveBeenCalled()
+    settle(0)
+    expect(onFirst).not.toHaveBeenCalled()
+    settle(1)
+    expect(onFirst).toHaveBeenCalledOnce()
+    expect(onFirst).toHaveBeenCalledWith('c')
   })
 
-  it('applies only the requested instance otherwise', () => {
-    expect(
-      shouldApplyPresentationState({
-        index: 3,
-        sopInstanceUID: 'b',
-        requestedUID: 'b',
-      }),
-    ).toBe(true)
-    expect(
-      shouldApplyPresentationState({
-        index: 0,
-        sopInstanceUID: 'a',
-        requestedUID: 'b',
-      }),
-    ).toBe(false)
+  it('reports an early match without waiting for later slots', () => {
+    const onFirst = vi.fn()
+    const settle = createInOrderFirstMatch<string>(3, onFirst)
+
+    settle(0, 'a')
+    settle(1, 'b')
+    expect(onFirst).toHaveBeenCalledOnce()
+    expect(onFirst).toHaveBeenCalledWith('a')
+  })
+
+  it('reports nothing when no slot matches', () => {
+    const onFirst = vi.fn()
+    const settle = createInOrderFirstMatch<string>(2, onFirst)
+
+    settle(1)
+    settle(0)
+    expect(onFirst).not.toHaveBeenCalled()
   })
 })
 

@@ -10,7 +10,7 @@ import { notifyVisualizationError } from '../services/derivedDataLoaders'
 import { loadPresentationStates } from '../services/presentationStates'
 import type { ViewerSession, ViewerSessionRef } from '../services/viewerSession'
 import {
-  shouldApplyPresentationState,
+  sortByStudyOrder,
   upsertBySopInstanceUID,
 } from '../utils/presentationState'
 import { useLatestRef } from './useLatestRef'
@@ -93,33 +93,43 @@ export function usePresentationStates({
       : undefined,
     load: (session) => {
       setPresentationStates([])
+      /** Search result position of each state, for a stable picker order */
+      const studyOrder = new Map<string, number>()
       loadPresentationStates({
         client: clients[StorageClasses.ADVANCED_BLENDING_PRESENTATION_STATE],
         studyInstanceUID,
         slide: session.slide,
         onPresentationState: (presentationState, index) => {
           if (session.isDestroyed) return
-          const { requestedUID: currentRequestedUID } = latestRef.current
-          /**
-           * The first state is only a default: it must not replace optical
-           * path choices the user made while it was still loading. A state
-           * named in the URL is an explicit request and always applies.
-           */
-          const isDefaultOnly =
-            currentRequestedUID === null || currentRequestedUID === undefined
+          studyOrder.set(presentationState.SOPInstanceUID, index)
+          /** A state named in the URL is an explicit request and always applies */
           if (
-            shouldApplyPresentationState({
-              index,
-              sopInstanceUID: presentationState.SOPInstanceUID,
-              requestedUID: currentRequestedUID,
-            }) &&
-            !(isDefaultOnly && session.hasUserDisplayChanges)
+            presentationState.SOPInstanceUID === latestRef.current.requestedUID
           ) {
             apply(session, presentationState)
           }
           setPresentationStates((current) =>
-            upsertBySopInstanceUID(current, presentationState),
+            sortByStudyOrder(
+              upsertBySopInstanceUID(current, presentationState),
+              studyOrder,
+            ),
           )
+        },
+        onDefaultPresentationState: (presentationState) => {
+          if (session.isDestroyed) return
+          const { requestedUID: currentRequestedUID } = latestRef.current
+          /**
+           * The slide's first state is only a default: it applies when the
+           * URL names none, and must not replace optical path choices the
+           * user made while it was still loading.
+           */
+          if (
+            (currentRequestedUID === null ||
+              currentRequestedUID === undefined) &&
+            !session.hasUserDisplayChanges
+          ) {
+            apply(session, presentationState)
+          }
         },
       })
     },

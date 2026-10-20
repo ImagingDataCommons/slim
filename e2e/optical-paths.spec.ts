@@ -11,6 +11,7 @@ import {
   openViewer,
   section,
   slidePanel,
+  viewportDiff,
 } from './helpers'
 import { seriesUrl, studies } from './studies'
 
@@ -25,6 +26,15 @@ test.describe('Optical paths on one multiplexed slide', () => {
   test.beforeAll(async ({ browser }) => {
     page = await newSharedPage(browser)
     await openViewer(page, imcUrl)
+    /**
+     * The slide opens with its first presentation state; the tests start
+     * from the default channels, so reset once that state has applied.
+     */
+    await expect(page).toHaveURL(/[?&]state=/, { timeout: 60_000 })
+    await (await section(slidePanel(page), 'Presentation states'))
+      .getByRole('button', { name: 'Reset presentation state' })
+      .click()
+    await expect(page).not.toHaveURL(/state=/)
   })
 
   test.afterAll(async () => {
@@ -86,14 +96,23 @@ test.describe('Optical paths on one multiplexed slide', () => {
     const settings = page.getByRole('dialog')
     const before = await captureSettledViewport(page)
 
+    /**
+     * The slide is mostly black and SMA adds well under one gray level to
+     * the mean, so fixed thresholds sat at the noise floor. Compare settled
+     * captures instead: turning SMA off must change the image, and restoring
+     * it must bring the image at least halfway back.
+     */
     const opacity = settings.getByRole('spinbutton', { name: 'Opacity value' })
     const initialOpacity = await opacity.inputValue()
     await opacity.fill('0')
     await opacity.press('Enter')
-    await expectViewportToDiffer(page, before, 0.3)
+    await expectViewportToDiffer(page, before, 0.05)
+    const hidden = await captureSettledViewport(page)
+    const hiddenDiff = await viewportDiff(page, before, hidden)
+    expect(hiddenDiff).toBeGreaterThan(0.05)
     await opacity.fill(initialOpacity)
     await opacity.press('Enter')
-    await expectViewportToMatch(page, before, 0.3)
+    await expectViewportToMatch(page, before, hiddenDiff / 2)
 
     const red = settings.getByRole('spinbutton', { name: 'Red value' })
     const initialRed = await red.inputValue()
@@ -126,6 +145,17 @@ test.describe('Optical paths on one multiplexed slide', () => {
 })
 
 test.describe('Optical paths and display options', () => {
+  test('O12 a slide opens with its first presentation state', async ({
+    page,
+  }) => {
+    await openViewer(page, imcUrl)
+    await expect(page).toHaveURL(/[?&]state=[\d.]+/, { timeout: 60_000 })
+    const states = await section(slidePanel(page), 'Presentation states')
+    await expect(
+      states.getByRole('combobox', { name: 'Presentation state' }),
+    ).not.toHaveText(/^\s*$/)
+  })
+
   test('O4 presentation state from the URL is applied on load', async ({
     page,
   }) => {

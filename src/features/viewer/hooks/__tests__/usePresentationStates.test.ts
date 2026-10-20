@@ -44,8 +44,10 @@ function setup(requestedUID?: string) {
     showPresentationState: vi.fn(),
   }
   let deliver: OnPresentationState = () => {}
+  let deliverDefault: (ps: PresentationState) => void = () => {}
   vi.mocked(loadPresentationStates).mockImplementation((options) => {
     deliver = options.onPresentationState
+    deliverDefault = options.onDefaultPresentationState ?? (() => {})
   })
   const { result } = renderHook(() =>
     usePresentationStates({
@@ -68,7 +70,21 @@ function setup(requestedUID?: string) {
       deliver(ps, index)
     })
   }
-  return { ...test, result, navigate, opticalPaths, load, receive }
+  /** The loader names the slide's first state once earlier ones settled */
+  const receiveDefault = (ps: PresentationState): void => {
+    act(() => {
+      deliverDefault(ps)
+    })
+  }
+  return {
+    ...test,
+    result,
+    navigate,
+    opticalPaths,
+    load,
+    receive,
+    receiveDefault,
+  }
 }
 
 beforeEach(() => {
@@ -76,13 +92,23 @@ beforeEach(() => {
 })
 
 describe('usePresentationStates', () => {
-  it('applies the first state when the URL names none', () => {
-    const { result, load, receive, navigate, opticalPaths, session } = setup()
+  it("applies the slide's first state when the URL names none", () => {
+    const {
+      result,
+      load,
+      receive,
+      receiveDefault,
+      navigate,
+      opticalPaths,
+      session,
+    } = setup()
     const first = presentationState('ps-1')
 
     load()
-    receive(first, 0)
     receive(presentationState('ps-2'), 1)
+    receive(first, 0)
+    expect(opticalPaths.showPresentationState).not.toHaveBeenCalled()
+    receiveDefault(first)
 
     expect(opticalPaths.showPresentationState).toHaveBeenCalledTimes(1)
     expect(opticalPaths.showPresentationState).toHaveBeenCalledWith(
@@ -100,11 +126,20 @@ describe('usePresentationStates', () => {
   })
 
   it('does not apply a late default state over changes the user made', () => {
-    const { result, load, receive, navigate, opticalPaths, session } = setup()
+    const {
+      result,
+      load,
+      receive,
+      receiveDefault,
+      navigate,
+      opticalPaths,
+      session,
+    } = setup()
 
     load()
     session.hasUserDisplayChanges = true
     receive(presentationState('ps-1'), 0)
+    receiveDefault(presentationState('ps-1'))
 
     expect(opticalPaths.showPresentationState).not.toHaveBeenCalled()
     expect(navigate).not.toHaveBeenCalled()
