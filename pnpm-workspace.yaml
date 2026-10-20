@@ -4,12 +4,12 @@ strictPeerDependencies: false
 allowBuilds:
   core-js-pure: true
   dicom-microscopy-viewer: true
-  dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/e800a323390ecf48748903a27e0171a2e4b08ae4: set this to true or false
-  dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/ff48d5e8675a20994974515f6b7090ed9170f3df: true
+  dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/ff2c8c7167b5f803291bca1a2114b967a35b0e45: true
+  dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/ff48d5e8675a20994974515f6b7090ed9170f3df: set this to true or false
 
 overrides:
   # Until markup-measurement-labels lands / npm publish; remove after bump
-  dicom-microscopy-viewer: github:ImagingDataCommons/dicom-microscopy-viewer#ff48d5e
+  dicom-microscopy-viewer: github:ImagingDataCommons/dicom-microscopy-viewer#ff2c8c7
   '@types/d3-dispatch': 3.0.6
   # Dependabot high: axios inherited-proxy after interceptor cloning
   axios: 1.20.0
