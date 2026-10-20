@@ -49,4 +49,21 @@ describe('adaptRoiToAnnotation', () => {
     expect(annotation.category.CodeValue).toBe('undefined')
     expect(annotation.type.CodeValue).toBe('undefined')
   })
+
+  it('groups under the finding type when finding category is missing', () => {
+    const annotation = adaptRoiToAnnotation(
+      roiWith([
+        {
+          ValueType: 'CODE',
+          ConceptNameCodeSequence: [code('121071', 'Finding')],
+          ConceptCodeSequence: [code('108369006', 'Tumor')],
+        },
+      ]),
+    )
+    expect(annotation).toEqual({
+      uid: 'roi-1',
+      category: code('108369006', 'Tumor'),
+      type: code('108369006', 'Tumor'),
+    })
+  })
 })

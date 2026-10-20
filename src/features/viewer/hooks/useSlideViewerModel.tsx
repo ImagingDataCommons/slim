@@ -181,6 +181,7 @@ export function useSlideViewerModel({
   const rois = useRois({
     viewer,
     defaultRoiStyle,
+    findingCategories: annotationConfig.findingCategories,
     isShiftDown: heldKeys.isShiftDown,
     onDetailsVisibilityChange: (isVisible) =>
       dispatchInteraction({ type: 'setSelectedRoiModalVisible', isVisible }),

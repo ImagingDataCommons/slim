@@ -24,6 +24,8 @@ export const DEFAULT_GEOMETRY_TYPES: readonly string[] = [
 /** Drawing options derived from the configured annotations, keyed by finding */
 export interface AnnotationConfig {
   findings: CodedConcept[]
+  /** SCT Finding category (276214006) per finding key, when configured */
+  findingCategories: Readonly<Record<string, CodedConcept>>
   evaluationOptions: Readonly<Record<string, EvaluationOptions[]>>
   geometryTypes: Readonly<Record<string, readonly string[]>>
   configuredStyles: Readonly<Record<string, dmv.viewer.ROIStyleOptions>>
@@ -34,6 +36,7 @@ export function buildAnnotationConfig(
   annotations: readonly AnnotationSettings[],
 ): AnnotationConfig {
   const findings: CodedConcept[] = []
+  const findingCategories: Record<string, CodedConcept> = {}
   const evaluationOptions: Record<string, EvaluationOptions[]> = {}
   const geometryTypes: Record<string, readonly string[]> = {}
   const configuredStyles: Record<string, dmv.viewer.ROIStyleOptions> = {}
@@ -50,9 +53,20 @@ export function buildAnnotationConfig(
         ),
       }),
     )
+    if (annotation.findingCategory !== undefined) {
+      findingCategories[key] = new dcmjs.sr.coding.CodedConcept(
+        annotation.findingCategory,
+      )
+    }
     if (annotation.style !== null && annotation.style !== undefined) {
       configuredStyles[key] = formatRoiStyle(annotation.style)
     }
   }
-  return { findings, evaluationOptions, geometryTypes, configuredStyles }
+  return {
+    findings,
+    findingCategories,
+    evaluationOptions,
+    geometryTypes,
+    configuredStyles,
+  }
 }

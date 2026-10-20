@@ -11,7 +11,12 @@ window.config = {
   disableAnnotationTools: false,
   annotations: [
     {
-      finding: { value: '85756007', schemeDesignator: 'SCT', meaning: 'Tissue' }
+      finding: { value: '85756007', schemeDesignator: 'SCT', meaning: 'Tissue' },
+      findingCategory: {
+        value: '91723000',
+        schemeDesignator: 'SCT',
+        meaning: 'Anatomical structure'
+      }
     }
   ],
   // Logger configuration

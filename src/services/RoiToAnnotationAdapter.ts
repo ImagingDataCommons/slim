@@ -11,9 +11,22 @@ const UNDEFINED_CODE = {
   CodingSchemeDesignator: 'undefined',
 }
 
+function isUndefinedCode(code: {
+  CodeValue: string
+  CodingSchemeDesignator: string
+}): boolean {
+  return (
+    code.CodeValue === UNDEFINED_CODE.CodeValue &&
+    code.CodingSchemeDesignator === UNDEFINED_CODE.CodingSchemeDesignator
+  )
+}
+
 /**
  * Category and type of an ROI from its coded evaluations (named as in the
  * Segment and Annotation Group panels), for the annotation category list.
+ * When Finding category is missing but Finding type is present (common for
+ * hand-drawn ROIs before category was attached), group under the type so the
+ * panel does not show a literal "undefined" category chip.
  */
 export const adaptRoiToAnnotation = (
   roi: dmv.roi.ROI,
@@ -30,5 +43,8 @@ export const adaptRoiToAnnotation = (
       type = { ...value }
     }
   })
+  if (isUndefinedCode(category) && !isUndefinedCode(type)) {
+    category = { ...type }
+  }
   return { category, type, uid: roi.uid }
 }

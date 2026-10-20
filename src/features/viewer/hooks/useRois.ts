@@ -1,4 +1,6 @@
 /** skipcq: JS-C1003 */
+import type * as dcmjs from 'dcmjs'
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import { startTransition, useState } from 'react'
 
@@ -7,6 +9,7 @@ import {
   getRoiKey,
 } from '../../../components/SlideViewer/utils/roiUtils'
 import type { AnnotationStyle } from '../../../types/layerStyles'
+import { codedConceptKey } from '../../../utils/dicom/codedConcept'
 import { logger } from '../../../utils/logger'
 import type { VisibilityChange } from '../../../utils/visibility'
 import { notifyVisualizationError } from '../services/derivedDataLoaders'
@@ -81,11 +84,14 @@ export interface RoisApi extends RoiVisibilityState {
 export function useRois({
   viewer: { sessionRef, refreshSnapshot },
   defaultRoiStyle,
+  findingCategories = {},
   isShiftDown,
   onDetailsVisibilityChange,
 }: {
   viewer: ViewerAccess
   defaultRoiStyle: RoiStyle
+  /** Configured Finding category (276214006) keyed by finding concept */
+  findingCategories?: Readonly<Record<string, dcmjs.sr.coding.CodedConcept>>
   isShiftDown: () => boolean
   onDetailsVisibilityChange: (isVisible: boolean) => void
 }): RoisApi {
@@ -203,7 +209,14 @@ export function useRois({
     },
     addStyledRoi,
     addDrawnRoi: (roi, draft, style) => {
-      if (roi === undefined || !attachDraftEvaluations(roi, draft)) {
+      const findingKey =
+        draft.finding !== undefined ? codedConceptKey(draft.finding) : undefined
+      const findingCategory =
+        findingKey !== undefined ? findingCategories[findingKey] : undefined
+      if (
+        roi === undefined ||
+        !attachDraftEvaluations(roi, draft, findingCategory)
+      ) {
         logger.debug(`could not add ROI "${roi?.uid}"`)
         return
       }

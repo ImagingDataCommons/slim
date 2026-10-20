@@ -1,5 +1,5 @@
 import { resetFakeDmv } from '../../testing/fakeDmv'
-import { createTestSession } from '../../testing/fixtures'
+import { createTestSession, createTestSlide } from '../../testing/fixtures'
 import { EMPTY_VIEWER_SNAPSHOT, readViewerSnapshot } from '../viewerSnapshot'
 
 vi.mock('dicom-microscopy-viewer', async () => {
@@ -87,5 +87,31 @@ describe('readViewerSnapshot', () => {
     expect(snapshot.annotationGroups.map((group) => group.uid)).toEqual([
       'mine',
     ])
+  })
+
+  it('keeps hasIccProfiles true after getICCProfiles becomes empty', () => {
+    const { session, viewer } = createTestSession()
+    viewer.getICCProfiles = () => [{}, {}]
+    const withProfiles = readViewerSnapshot(session, EMPTY_VIEWER_SNAPSHOT)
+    expect(withProfiles.hasIccProfiles).toBe(true)
+
+    viewer.getICCProfiles = () => []
+    const afterToggle = readViewerSnapshot(session, withProfiles)
+    expect(afterToggle.hasIccProfiles).toBe(true)
+  })
+
+  it('resets hasIccProfiles when the viewer generation changes', () => {
+    const first = createTestSession()
+    first.viewer.getICCProfiles = () => [{}, {}]
+    const withProfiles = readViewerSnapshot(
+      first.session,
+      EMPTY_VIEWER_SNAPSHOT,
+    )
+    expect(withProfiles.hasIccProfiles).toBe(true)
+
+    const second = createTestSession(createTestSlide(), 2)
+    second.viewer.getICCProfiles = () => []
+    const nextSession = readViewerSnapshot(second.session, withProfiles)
+    expect(nextSession.hasIccProfiles).toBe(false)
   })
 })

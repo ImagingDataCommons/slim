@@ -47,11 +47,29 @@ describe('buildAnnotationConfig', () => {
       width: 3,
     })
     expect(Object.keys(config.configuredStyles)).toEqual(['SCT:108369006'])
+    expect(config.findingCategories).toEqual({})
+  })
+
+  it('maps findingCategory per finding key', () => {
+    const config = buildAnnotationConfig([
+      {
+        finding: TUMOR,
+        findingCategory: {
+          value: '49755003',
+          schemeDesignator: 'SCT',
+          meaning: 'Morphologically abnormal structure',
+        },
+      },
+    ])
+    expect(config.findingCategories['SCT:108369006']?.CodeMeaning).toBe(
+      'Morphologically abnormal structure',
+    )
   })
 
   it('is empty without configured annotations', () => {
     expect(buildAnnotationConfig([])).toEqual({
       findings: [],
+      findingCategories: {},
       evaluationOptions: {},
       geometryTypes: {},
       configuredStyles: {},

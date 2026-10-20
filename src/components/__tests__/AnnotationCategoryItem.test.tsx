@@ -62,6 +62,37 @@ describe('AnnotationCategoryItem', () => {
     ).toBeInTheDocument()
   })
 
+  it('omits the category chip when category is only a copy of the sole type', () => {
+    const tissue = {
+      CodeValue: '85756007',
+      CodeMeaning: 'Tissue',
+      CodingSchemeDesignator: 'SCT',
+      types: [
+        {
+          CodeValue: '85756007',
+          CodeMeaning: 'Tissue',
+          CodingSchemeDesignator: 'SCT',
+          uids: ['roi-1'],
+        },
+      ],
+    }
+    render(
+      <AnnotationCategoryItem
+        category={tissue}
+        onChange={vi.fn()}
+        onStyleChange={vi.fn()}
+        defaultAnnotationStyles={{ 'roi-1': style }}
+        checkedAnnotationUids={new Set(['roi-1'])}
+      />,
+    )
+    expect(
+      screen.queryByRole('button', { name: /Tissue category/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /^Tissue, 1 annotations/ }),
+    ).toBeInTheDocument()
+  })
+
   it('shows every annotation of a partly visible category', () => {
     const { onChange } = renderCategory(new Set(['roi-1']))
     fireEvent.click(

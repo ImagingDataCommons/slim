@@ -250,7 +250,14 @@ export function readViewerSnapshot(
         ...viewer.getOpticalPathStyle(identifier),
       })),
     ),
-    hasIccProfiles: viewer.getICCProfiles().length > 0,
+    /**
+     * Sticky once true for this viewer generation. `getICCProfiles()` can
+     * briefly (or lastingly) return [] after a toggle reconfigure even when
+     * the slide still has profiles — that must not disable the ICC control.
+     */
+    hasIccProfiles:
+      (previous.generation === session.generation && previous.hasIccProfiles) ||
+      viewer.getICCProfiles().length > 0,
     isPaletteDisplayGammaCorrectionEnabled:
       viewer.getPaletteDisplayGammaCorrectionEnabled(),
   }

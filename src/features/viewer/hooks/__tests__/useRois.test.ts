@@ -105,6 +105,53 @@ describe('useRois', () => {
     expect(getRoiKey(session.volumeViewer.getROI('found'))).toBe('SCT:85756007')
   })
 
+  it('attaches the configured finding category on a drawn ROI', () => {
+    const test = createTestSession()
+    const finding = new dcmjs.sr.coding.CodedConcept({
+      value: '85756007',
+      schemeDesignator: 'SCT',
+      meaning: 'Tissue',
+    })
+    const findingCategory = new dcmjs.sr.coding.CodedConcept({
+      value: '91723000',
+      schemeDesignator: 'SCT',
+      meaning: 'Anatomical structure',
+    })
+    const { result } = renderHook(() =>
+      useRois({
+        viewer: test.access,
+        defaultRoiStyle: TEST_ROI_STYLE,
+        findingCategories: { 'SCT:85756007': findingCategory },
+        isShiftDown: () => false,
+        onDetailsVisibilityChange: vi.fn(),
+      }),
+    )
+
+    act(() => {
+      result.current.addDrawnRoi(
+        createRoi('categorized'),
+        { finding, evaluations: [] },
+        OWN_STYLE,
+      )
+    })
+
+    const evaluations =
+      test.session.volumeViewer.getROI('categorized').evaluations
+    expect(evaluations).toHaveLength(2)
+    expect(evaluations[0]).toMatchObject({
+      ConceptNameCodeSequence: [
+        expect.objectContaining({ CodeValue: '276214006' }),
+      ],
+      ConceptCodeSequence: [expect.objectContaining({ CodeValue: '91723000' })],
+    })
+    expect(evaluations[1]).toMatchObject({
+      ConceptNameCodeSequence: [
+        expect.objectContaining({ CodeValue: '121071' }),
+      ],
+      ConceptCodeSequence: [expect.objectContaining({ CodeValue: '85756007' })],
+    })
+  })
+
   it('selects an ROI and restores the style of the others', () => {
     const { result, viewer } = setup()
     addRois(result, 'a', 'b')

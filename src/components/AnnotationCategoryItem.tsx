@@ -5,6 +5,7 @@ import type { AnnotationStyle } from '../types/layerStyles'
 import {
   type Category,
   collectCategoryUids,
+  getConceptKey,
   type Type,
 } from '../utils/annotationCategories'
 import {
@@ -72,25 +73,35 @@ function AnnotationCategoryItem({
 
   const categoryCode = `${category.CodeValue}:${category.CodingSchemeDesignator}`
   const categoryUids = collectCategoryUids(category)
+  /**
+   * Drawn ROIs without a distinct Finding category fall back to category=type
+   * in the adapter. Skip the category chip so "Tissue" is not shown twice.
+   */
+  const soleType = category.types.length === 1 ? category.types[0] : undefined
+  const showCategoryChip =
+    soleType === undefined ||
+    getConceptKey(category) !== getConceptKey(soleType)
 
   return (
     <fieldset
       aria-label={category.CodeMeaning}
       className="flex flex-wrap items-center gap-1.5"
     >
-      <AnnotationChip
-        isCategory
-        name={`${category.CodeMeaning} category`}
-        meaning={category.CodeMeaning}
-        detail={`All types · ${categoryCode}`}
-        title={`${category.CodeMeaning} · ${categoryCode}`}
-        uids={categoryUids}
-        style={styleOf(categoryUids)}
-        checkedAnnotationUids={checkedAnnotationUids}
-        onVisibilityChange={handleVisibilityChange}
-        onStylePreview={previewStyle}
-        onStyleCommit={commitStyle}
-      />
+      {showCategoryChip ? (
+        <AnnotationChip
+          isCategory
+          name={`${category.CodeMeaning} category`}
+          meaning={category.CodeMeaning}
+          detail={`All types · ${categoryCode}`}
+          title={`${category.CodeMeaning} · ${categoryCode}`}
+          uids={categoryUids}
+          style={styleOf(categoryUids)}
+          checkedAnnotationUids={checkedAnnotationUids}
+          onVisibilityChange={handleVisibilityChange}
+          onStylePreview={previewStyle}
+          onStyleCommit={commitStyle}
+        />
+      ) : null}
       {category.types.map((type: Type) => (
         <AnnotationChip
           key={`${type.CodingSchemeDesignator}:${type.CodeValue}:${type.CodeMeaning}`}
