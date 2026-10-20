@@ -57,6 +57,7 @@ function setup({
       rois,
       draft,
       defaultRoiStyle: TEST_ROI_STYLE,
+      measurementUnit: 'µm',
       confirmRoiRemoval,
       goToRanges: { x: [0, 25], y: [0, 50] },
       onSave,
@@ -108,6 +109,7 @@ describe('useAnnotationTools', () => {
       result.current.tools.onAnnotationConfigurationCompletion()
     })
 
+    expect(viewer.setMeasurementUnit).toHaveBeenCalledWith('µm')
     expect(viewer.activateDrawInteraction).toHaveBeenCalledWith({
       geometryType: 'polygon',
       markup: undefined,

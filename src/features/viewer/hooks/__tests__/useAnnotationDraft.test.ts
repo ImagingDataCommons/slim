@@ -24,26 +24,37 @@ const config = buildAnnotationConfig([
 const [tumor, stroma] = config.findings
 
 describe('useAnnotationDraft', () => {
-  it('offers nothing until a finding is chosen', () => {
+  it('preselects the first finding and its first geometry', () => {
     const { result } = renderHook(() => useAnnotationDraft(config))
+
+    expect(result.current.draft.finding).toBe(tumor)
+    expect(result.current.draft.geometryType).toBe('polygon')
+    expect(result.current.geometryTypes).toEqual(['polygon', 'point'])
+    expect(result.current.evaluationOptions).toHaveLength(1)
+  })
+
+  it('stays empty when the config has no findings', () => {
+    const { result } = renderHook(() =>
+      useAnnotationDraft(buildAnnotationConfig([])),
+    )
 
     expect(result.current.draft).toEqual({ evaluations: [] })
     expect(result.current.geometryTypes).toEqual([])
-    expect(result.current.evaluationOptions).toEqual([])
   })
 
   it('offers the options of the chosen finding', () => {
     const { result } = renderHook(() => useAnnotationDraft(config))
 
     act(() => {
-      result.current.onFindingChange(tumor)
+      result.current.onFindingChange(stroma)
     })
 
-    expect(result.current.geometryTypes).toEqual(['polygon', 'point'])
-    expect(result.current.evaluationOptions).toHaveLength(1)
+    expect(result.current.draft.finding).toBe(stroma)
+    expect(result.current.geometryTypes).toEqual(['point'])
+    expect(result.current.evaluationOptions).toEqual([])
   })
 
-  it('drops a geometry type the next finding does not allow', () => {
+  it('selects the first geometry the next finding allows when the current one is invalid', () => {
     const { result } = renderHook(() => useAnnotationDraft(config))
     act(() => {
       result.current.onFindingChange(tumor)
@@ -55,7 +66,7 @@ describe('useAnnotationDraft', () => {
       result.current.onFindingChange(stroma)
     })
 
-    expect(result.current.draft.geometryType).toBeUndefined()
+    expect(result.current.draft.geometryType).toBe('point')
   })
 
   it('records evaluations and the measurement choice', () => {

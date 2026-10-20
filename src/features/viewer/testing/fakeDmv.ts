@@ -177,6 +177,8 @@ export class FakeVolumeImageViewer {
   readonly deactivateSelectInteraction = vi.fn()
   readonly activateDrawInteraction = vi.fn()
   readonly deactivateDrawInteraction = vi.fn()
+  readonly setMeasurementUnit = vi.fn()
+  readonly getMeasurementUnit = vi.fn(() => undefined)
   readonly activateSnapInteraction = vi.fn()
   readonly deactivateSnapInteraction = vi.fn()
   readonly activateModifyInteraction = vi.fn(() => {

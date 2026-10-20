@@ -45,17 +45,19 @@ export function annotationDraftReducer(
   action: AnnotationDraftAction,
 ): AnnotationDraft {
   switch (action.type) {
-    case 'selectFinding':
+    case 'selectFinding': {
+      const geometryStillAllowed =
+        draft.geometryType !== undefined &&
+        action.allowedGeometryTypes?.includes(draft.geometryType) === true
       return {
         ...draft,
         finding: action.finding,
         evaluations: [],
-        geometryType:
-          draft.geometryType !== undefined &&
-          action.allowedGeometryTypes?.includes(draft.geometryType) === true
-            ? draft.geometryType
-            : undefined,
+        geometryType: geometryStillAllowed
+          ? draft.geometryType
+          : action.allowedGeometryTypes?.[0],
       }
+    }
     case 'selectGeometryType':
       return { ...draft, geometryType: action.geometryType }
     case 'setMeasurement':

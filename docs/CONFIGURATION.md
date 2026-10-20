@@ -303,10 +303,10 @@ that finding code. Colors are RGBA-style arrays (`[r, g, b]` or
 into dmv `ROIStyleOptions` via `formatRoiStyle` / `setROIStyle` and passes them
 as `styleOptions` on `activateDrawInteraction` / `addROI`.
 
-Config style is meant to **identify the finding** (color and fill). Stroke
-**width** on new drawings comes from **User preferences** (Annotations tab),
-even when the finding has a config style. `stroke.width` in config is optional
-and only used as a fallback when preferences are unavailable.
+Config style identifies findings for **loaded / listed** ROIs. New drawings use
+**User preferences** (Annotations tab) for stroke color, stroke width, and
+measurement units — including on-slide measurement label color and unit text
+passed into dicom-microscopy-viewer.
 
 ```js
 window.config = {
@@ -369,10 +369,10 @@ are personal drawing comfort only.
 
 | Setting | Source | Applied when drawing |
 | --- | --- | --- |
-| Stroke color | Preferences | Finding has **no** `annotations[].style` |
-| Stroke color | `annotations[].style.stroke.color` | Finding has a config style |
-| Stroke width | Preferences | **Always** for new ROIs (overrides config width) |
-| Measurement units | Preferences | Display only (annotation list / ROI details); DICOM stays in µm |
+| Stroke color | Preferences | New ROIs (geometry + measurement label text) |
+| Stroke width | Preferences | New ROIs |
+| Measurement units | Preferences | On-slide markup labels, annotation list, ROI details, and DMV measurement content items |
+| Finding color | `annotations[].style` | Loaded / panel-listed ROIs of that finding |
 
 Fallbacks:
 

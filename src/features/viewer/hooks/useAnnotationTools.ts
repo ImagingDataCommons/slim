@@ -4,6 +4,7 @@ import type React from 'react'
 
 import { codedConceptKey } from '../../../utils/dicom/codedConcept'
 import { logger } from '../../../utils/logger'
+import type { MeasurementUnit } from '../../preferences/utils/preferences'
 import { notifyVisualizationError } from '../services/derivedDataLoaders'
 import { publishToast } from '../services/toast'
 import type { ViewerSession, ViewerSessionRef } from '../services/viewerSession'
@@ -65,6 +66,7 @@ export function useAnnotationTools({
   rois,
   draft,
   defaultRoiStyle,
+  measurementUnit,
   confirmRoiRemoval,
   goToRanges,
   onSave,
@@ -82,6 +84,8 @@ export function useAnnotationTools({
   >
   draft: AnnotationDraft
   defaultRoiStyle: RoiStyle
+  /** Preferred unit for DMV measurement markup and ROI Num items */
+  measurementUnit: MeasurementUnit
   confirmRoiRemoval: boolean
   goToRanges: GoToRanges
   onSave: () => void
@@ -262,6 +266,7 @@ export function useAnnotationTools({
         geometryType !== undefined &&
         finding !== undefined
       ) {
+        session.volumeViewer.setMeasurementUnit?.(measurementUnit)
         session.volumeViewer.activateDrawInteraction({
           geometryType,
           markup,

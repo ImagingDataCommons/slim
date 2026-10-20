@@ -36,7 +36,7 @@ export function AnnotationsTab({
         <div>
           <div className="font-medium text-ink">Stroke color</div>
           <div className="mt-0.5 text-12 text-ink-muted">
-            Used for new ROIs when the finding has no style in the viewer config
+            Stroke and measurement-label color for new ROIs you draw
           </div>
         </div>
         <div className="flex gap-2">
@@ -89,7 +89,7 @@ export function AnnotationsTab({
       <SectionLabel>Measurements</SectionLabel>
       <PreferenceRow
         label="Measurement units"
-        description="Display only — lengths and areas in the annotation list and ROI details (DICOM stays in µm)"
+        description="On-slide measurement labels, annotation list, and ROI details"
       >
         {() => (
           <SegmentedControl

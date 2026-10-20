@@ -1,6 +1,6 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import { useMemo, useReducer, useState } from 'react'
+import { useEffect, useMemo, useReducer, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 
 import { DEFAULT_ROI_RADIUS } from '../../../components/SlideViewer/constants'
@@ -140,10 +140,15 @@ export function useSlideViewerModel({
     rois,
     draft: draft.draft,
     defaultRoiStyle,
+    measurementUnit: preferences.units,
     confirmRoiRemoval: preferences.confirmRoiRemoval,
     goToRanges: snapshot.goToRanges,
     onSave: report.onGenerate,
   })
+
+  useEffect(() => {
+    sessionRef.current?.volumeViewer.setMeasurementUnit?.(preferences.units)
+  }, [preferences.units, sessionRef])
   useKeyboardShortcuts((action) => {
     if (isShortcutEnabled(action, enableAnnotationTools)) {
       tools.onShortcut(action)
@@ -220,6 +225,7 @@ export function useSlideViewerModel({
       clustering: annotationGroups.clustering,
       gammaCorrection: opticalPaths.gammaCorrection,
       onSessionCreated: (session) => {
+        session.volumeViewer.setMeasurementUnit?.(preferences.units)
         dispatchInteraction({ type: 'newViewer' })
         populateSlide(session)
       },

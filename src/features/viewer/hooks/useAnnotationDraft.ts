@@ -27,13 +27,26 @@ export interface AnnotationDraftApi {
   onEvaluationClear: (name?: CodedConcept) => void
 }
 
+/** First finding and its first geometry, so the draw dialog is ready to confirm */
+function initialAnnotationDraft(config: AnnotationConfig): AnnotationDraft {
+  const finding = config.findings[0]
+  if (finding === undefined) return EMPTY_ANNOTATION_DRAFT
+  const geometryTypes = config.geometryTypes[codedConceptKey(finding)] ?? []
+  return {
+    finding,
+    evaluations: [],
+    geometryType: geometryTypes[0],
+  }
+}
+
 /** Choices of the annotation dialog, kept between drawings */
 export function useAnnotationDraft(
   config: AnnotationConfig,
 ): AnnotationDraftApi {
   const [draft, dispatch] = useReducer(
     annotationDraftReducer,
-    EMPTY_ANNOTATION_DRAFT,
+    config,
+    initialAnnotationDraft,
   )
   const key =
     draft.finding !== undefined ? codedConceptKey(draft.finding) : undefined

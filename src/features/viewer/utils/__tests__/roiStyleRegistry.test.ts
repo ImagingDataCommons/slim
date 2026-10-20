@@ -7,7 +7,6 @@ import {
 import { formatRoiStyle } from '../../../../components/SlideViewer/utils/roiUtils'
 import {
   annotationStyleToRoiStyle,
-  mergeConfiguredDrawStyle,
   RoiStyleRegistry,
 } from '../roiStyleRegistry'
 
@@ -43,15 +42,6 @@ describe('annotationStyleToRoiStyle', () => {
   })
 })
 
-describe('mergeConfiguredDrawStyle', () => {
-  it('keeps finding color and uses preference stroke width', () => {
-    const merged = mergeConfiguredDrawStyle(TUMOR_STYLE, DEFAULT_STYLE)
-    expect(merged.stroke?.color).toEqual(TUMOR_STYLE.stroke?.color)
-    expect(merged.stroke?.width).toBe(4)
-    expect(merged.fill?.color).toEqual(TUMOR_STYLE.fill?.color)
-  })
-})
-
 describe('RoiStyleRegistry', () => {
   it('starts configured findings with their style; others use the live default', () => {
     const registry = createRegistry()
@@ -64,12 +54,10 @@ describe('RoiStyleRegistry', () => {
     expect(registry.findingFillColor('necrosis')).toBeUndefined()
   })
 
-  it('draws configured findings with preference stroke width', () => {
+  it('draws with the preference default even when the finding has a config style', () => {
     const registry = createRegistry()
 
-    const drawn = registry.drawStyle('tumor', DEFAULT_STYLE)
-    expect(drawn.stroke?.color).toEqual(TUMOR_STYLE.stroke?.color)
-    expect(drawn.stroke?.width).toBe(4)
+    expect(registry.drawStyle('tumor', DEFAULT_STYLE)).toBe(DEFAULT_STYLE)
     expect(registry.drawStyle('necrosis', DEFAULT_STYLE)).toBe(DEFAULT_STYLE)
     expect(registry.drawStyle(undefined, DEFAULT_STYLE)).toBe(DEFAULT_STYLE)
   })

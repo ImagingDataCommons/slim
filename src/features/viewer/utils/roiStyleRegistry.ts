@@ -33,25 +33,6 @@ export function annotationStyleToRoiStyle(
 }
 
 /**
- * Finding color/fill from the viewer config, stroke width from the live
- * preference-backed default. Config without a finding style yields `defaultStyle`
- * unchanged.
- */
-export function mergeConfiguredDrawStyle(
-  configured: RoiStyle,
-  defaultStyle: RoiStyle,
-): RoiStyle {
-  return formatRoiStyle({
-    stroke: {
-      color: configured.stroke?.color,
-      width: defaultStyle.stroke?.width ?? configured.stroke?.width,
-    },
-    fill: { color: configured.fill?.color },
-    radius: configured.image?.circle?.radius,
-  })
-}
-
-/**
  * ROI styles of one viewer: configured per-finding styles, finding styles
  * picked up while ROIs are added or restyled, styles owned by single ROIs,
  * and the annotation-list style of every ROI. Finding keys are
@@ -99,14 +80,13 @@ export class RoiStyleRegistry {
   }
 
   /**
-   * Style for a newly drawn ROI of a finding (also used for the preview).
-   * Config supplies finding color/fill; preference default supplies stroke width.
+   * Style for a newly drawn ROI (and the draw preview). Always the live
+   * preference-backed default so stroke color, width, and markup text color
+   * reach DMV. Config finding styles still apply to loaded / listed ROIs via
+   * {@link findingStyle}.
    */
-  drawStyle(key: string | undefined, defaultStyle: RoiStyle): RoiStyle {
-    if (key === undefined) return defaultStyle
-    const configured = this.configured[key]
-    if (configured === undefined) return defaultStyle
-    return mergeConfiguredDrawStyle(configured, defaultStyle)
+  drawStyle(_key: string | undefined, defaultStyle: RoiStyle): RoiStyle {
+    return defaultStyle
   }
 
   /** Fill color of a finding's style, used for annotation groups */

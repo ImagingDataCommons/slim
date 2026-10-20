@@ -4,8 +4,11 @@ strictPeerDependencies: false
 allowBuilds:
   core-js-pure: true
   dicom-microscopy-viewer: true
+  dicom-microscopy-viewer@https://codeload.github.com/ImagingDataCommons/dicom-microscopy-viewer/tar.gz/2726c6b3388f079dd0a1646db3dbb6fa36258d49: true
 
 overrides:
+  # Until 0.49.2 is on npm; remove after `npm publish` from DMV
+  dicom-microscopy-viewer: github:ImagingDataCommons/dicom-microscopy-viewer#2726c6b
   '@types/d3-dispatch': 3.0.6
   # Dependabot high: axios inherited-proxy after interceptor cloning
   axios: 1.20.0
@@ -46,7 +49,7 @@ overrides:
   underscore: 1.13.8
 
 minimumReleaseAgeExclude:
-  - dicom-microscopy-viewer@0.48.23 || 0.48.24 || 0.48.25 || 0.48.26 || 0.48.27 || 0.49.0 || 0.49.1
+  - dicom-microscopy-viewer@0.48.23 || 0.48.24 || 0.48.25 || 0.48.26 || 0.48.27 || 0.49.0 || 0.49.1 || 0.49.2
   - dicomweb-client@0.11.3
 
 patchedDependencies:
