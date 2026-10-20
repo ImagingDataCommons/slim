@@ -2,7 +2,7 @@
 import type * as dcmjs from 'dcmjs'
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import { startTransition, useState } from 'react'
+import { startTransition, useLayoutEffect, useRef, useState } from 'react'
 
 import {
   formatRoiRemovalMessage,
@@ -35,6 +35,7 @@ import {
 } from '../utils/visibilityChanges'
 import { applyRoiSelection, type RoiSelection } from './roiSelection'
 import { type RoiVisibilityState, styleForRoi } from './roiVisibility'
+import { useLatestRef } from './useLatestRef'
 import type { ViewerAccess } from './useViewerSession'
 
 type RoiStyle = dmv.viewer.ROIStyleOptions
@@ -77,6 +78,11 @@ export interface RoisApi extends RoiVisibilityState {
   removeRois: () => void
   /** Re-apply the selection style, after ROIs were shown again */
   restyleSelected: () => void
+  /**
+   * ROIs shown on the map now, including show/hide changes whose state
+   * update is still pending in a transition
+   */
+  currentVisibleRoiUIDs: () => Set<string>
   dmvHandlers: RoiEventHandlers
 }
 
@@ -101,6 +107,29 @@ export function useRois({
     selectedRoi: undefined,
   }))
   const { selectedRoiUIDs, visibleRoiUIDs } = state
+
+  /**
+   * onVisibilityChanges styles the map at once but commits visibleRoiUIDs in
+   * a transition. Pending changes are kept here until that commit so code
+   * styling ROIs in between (selection, preference defaults) sees the map.
+   */
+  const committedVisibleRef = useLatestRef(visibleRoiUIDs)
+  const pendingVisibilityRef = useRef(new Map<string, boolean>())
+  useLayoutEffect(() => {
+    for (const [uid, isVisible] of pendingVisibilityRef.current) {
+      if (visibleRoiUIDs.has(uid) === isVisible) {
+        pendingVisibilityRef.current.delete(uid)
+      }
+    }
+  }, [visibleRoiUIDs])
+  const currentVisibleRoiUIDs = (): Set<string> => {
+    const visible = new Set(committedVisibleRef.current)
+    for (const [uid, isVisible] of pendingVisibilityRef.current) {
+      if (isVisible) visible.add(uid)
+      else visible.delete(uid)
+    }
+    return visible
+  }
 
   const registerRoi = (
     session: ViewerSession,
@@ -136,7 +165,7 @@ export function useRois({
     applyRoiSelection(
       session,
       selection,
-      visibleRoiUIDs,
+      currentVisibleRoiUIDs(),
       defaultRoiStyle,
       setState,
       refreshSnapshot,
@@ -179,6 +208,9 @@ export function useRois({
       },
       (applied) => {
         if (applied.length === 0) return
+        for (const { uid, isVisible } of applied) {
+          pendingVisibilityRef.current.set(uid, isVisible)
+        }
         startTransition(() => {
           setState((current) => ({
             ...current,
@@ -196,6 +228,7 @@ export function useRois({
 
   return {
     ...state,
+    currentVisibleRoiUIDs,
     reset: () => {
       setState((current) => ({
         ...current,
@@ -243,7 +276,7 @@ export function useRois({
       const { styles, selectedVisibleUIDs } = stylesForRoiSelection({
         rois: volumeViewer.getAllROIs(),
         selectedRoiUIDs: selection.selectedRoiUIDs,
-        visibleRoiUIDs,
+        visibleRoiUIDs: currentVisibleRoiUIDs(),
         selectedStyle: SELECTED_ROI_STYLE,
         styleForRoi: (roi) => styleForRoi(session, roi, defaultRoiStyle),
       })

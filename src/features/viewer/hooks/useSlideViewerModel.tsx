@@ -48,6 +48,7 @@ import { drawStyleFor, useAnnotationTools } from './useAnnotationTools'
 import { useDmvEvents } from './useDmvEvents'
 import { useHoveredRoiTooltip } from './useHoveredRoiTooltip'
 import { useHeldKeys, useKeyboardShortcuts } from './useKeyboardShortcuts'
+import { useLatestRef } from './useLatestRef'
 import { useNoIccProfileWarning } from './useNoIccProfileWarning'
 import { useOpticalPaths } from './useOpticalPaths'
 import { useParametricMaps } from './useParametricMaps'
@@ -148,22 +149,6 @@ export function useSlideViewerModel({
   const viewer = useViewerSnapshot()
   const { sessionRef, snapshot, refreshSnapshot } = viewer
 
-  /**
-   * Preferences fill/stroke apply to in-progress draw (below) and to ROIs that
-   * still follow preference defaults — otherwise opacity looks "stuck".
-   * Depend on `refreshSnapshot` (stable), not `viewer` (new object each render).
-   */
-  useEffect(() => {
-    const session = sessionRef.current
-    if (session === undefined) return
-    const uids = session.roiStyles.applyPreferenceDefaults(defaultRoiStyle)
-    for (const uid of uids) {
-      session.volumeViewer.setROIStyle(uid, defaultRoiStyle)
-    }
-    if (uids.length > 0) {
-      refreshSnapshot()
-    }
-  }, [defaultRoiStyle, sessionRef, refreshSnapshot])
   const viewportLoading = useViewportLoading(sessionRef)
   const opticalPaths = useOpticalPaths(
     viewer,
@@ -188,6 +173,35 @@ export function useSlideViewerModel({
     onDetailsVisibilityChange: (isVisible) =>
       dispatchInteraction({ type: 'setSelectedRoiModalVisible', isVisible }),
   })
+  const roiDisplayRef = useLatestRef({
+    currentVisibleRoiUIDs: rois.currentVisibleRoiUIDs,
+    selectedRoiUIDs: rois.selectedRoiUIDs,
+  })
+
+  /**
+   * Preferences fill/stroke apply to in-progress draw (below) and to ROIs that
+   * still follow preference defaults — otherwise opacity looks "stuck".
+   * The registry takes the new default for every such ROI, but only visible,
+   * unselected ones are restyled on the map: hidden ROIs stay hidden and the
+   * selection highlight stays until the selection changes.
+   * Depend on `refreshSnapshot` (stable), not `viewer` (new object each render).
+   */
+  useEffect(() => {
+    const session = sessionRef.current
+    if (session === undefined) return
+    const uids = session.roiStyles.applyPreferenceDefaults(defaultRoiStyle)
+    const { currentVisibleRoiUIDs, selectedRoiUIDs } = roiDisplayRef.current
+    const visibleRoiUIDs = currentVisibleRoiUIDs()
+    for (const uid of uids) {
+      if (visibleRoiUIDs.has(uid) && !selectedRoiUIDs.has(uid)) {
+        session.volumeViewer.setROIStyle(uid, defaultRoiStyle)
+      }
+    }
+    if (uids.length > 0) {
+      refreshSnapshot()
+    }
+  }, [defaultRoiStyle, sessionRef, refreshSnapshot, roiDisplayRef])
+
   const report = useReport({
     sessionRef,
     clients,
@@ -312,12 +326,15 @@ export function useSlideViewerModel({
       /**
        * DMV fetches ICC profiles after the viewer is created, so the snapshot
        * may predate them. Tiles only load once the profiles are in, and
-       * `loading_ended` fires for bulk annotations only.
+       * `loading_ended` fires for bulk annotations only. `hasIccProfiles` is
+       * sticky per generation, so only the absent-to-present change counts;
+       * profiles reading [] after the ICC toggle must not refresh per tile.
        */
       const volumeViewer = sessionRef.current?.volumeViewer
       if (
         volumeViewer !== undefined &&
-        volumeViewer.getICCProfiles().length > 0 !== snapshot.hasIccProfiles
+        !snapshot.hasIccProfiles &&
+        volumeViewer.getICCProfiles().length > 0
       ) {
         viewer.refreshSnapshot()
       }

@@ -4,8 +4,10 @@ import type * as dmv from 'dicom-microscopy-viewer'
 type RoiStyle = dmv.viewer.ROIStyleOptions
 
 /**
- * Style each ROI for a selection change: selected ROIs use `selectedStyle`,
- * other visible ROIs keep their own style, hidden ROIs get an empty style.
+ * Style ROIs for a selection change: selected ROIs use `selectedStyle` and
+ * other visible ROIs get their own style back. Hidden ROIs are left alone;
+ * they are already hidden, and `visibleRoiUIDs` may predate a pending show,
+ * so styling them `{}` here could hide an ROI the user just turned on.
  * Also returns which selected ROIs need to become visible.
  */
 export function stylesForRoiSelection({
@@ -27,14 +29,12 @@ export function stylesForRoiSelection({
   const styles: Array<{ uid: string; style: RoiStyle }> = []
   const selectedVisibleUIDs: string[] = []
   for (const roi of rois) {
-    let style: RoiStyle = {}
     if (selectedRoiUIDs.has(roi.uid)) {
-      style = selectedStyle
+      styles.push({ uid: roi.uid, style: selectedStyle })
       selectedVisibleUIDs.push(roi.uid)
     } else if (visibleRoiUIDs.has(roi.uid)) {
-      style = styleForRoi(roi)
+      styles.push({ uid: roi.uid, style: styleForRoi(roi) })
     }
-    styles.push({ uid: roi.uid, style })
   }
   return { styles, selectedVisibleUIDs }
 }

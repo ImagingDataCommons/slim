@@ -7,7 +7,7 @@ const selectedStyle = { stroke: { color: [1, 0, 0, 1], width: 3 } }
 const ownStyle = { stroke: { color: [0, 1, 0, 1], width: 1 } }
 
 describe('stylesForRoiSelection', () => {
-  it('styles selected, visible, and hidden ROIs', () => {
+  it('styles selected and visible ROIs and leaves hidden ones alone', () => {
     const rois = [{ uid: 'a' }, { uid: 'b' }, { uid: 'c' }] as never[]
     const { styles, selectedVisibleUIDs } = stylesForRoiSelection({
       rois,
@@ -19,7 +19,6 @@ describe('stylesForRoiSelection', () => {
     expect(styles).toEqual([
       { uid: 'a', style: selectedStyle },
       { uid: 'b', style: ownStyle },
-      { uid: 'c', style: {} },
     ])
     expect(selectedVisibleUIDs).toEqual(['a'])
   })
