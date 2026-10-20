@@ -126,7 +126,7 @@ export function ViewportOverlays({
   return (
     <>
       {showTopLeft && (
-        <div className="pointer-events-none absolute top-3.5 left-3.5 z-10 flex max-w-[min(320px,calc(100%-1.75rem))] flex-col items-start gap-1.5">
+        <div className="pointer-events-none absolute top-3.5 left-3.5 z-10 flex max-w-[min(320px,calc(100%-1.75rem))] flex-col items-start gap-3.5">
           {showSlideLabel && (
             <div
               className={`flex items-center gap-2 px-2.5 py-1.5 ${OVERLAY_CARD}`}
