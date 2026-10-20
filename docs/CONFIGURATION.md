@@ -26,6 +26,7 @@ Example configs live in [`public/config/`](../public/config/).
 - [Runtime server selection (header button)](#runtime-server-selection-header-button)
 - [Secondary GCP data source (`gcp` query parameter)](#secondary-gcp-data-source-gcp-query-parameter)
 - [Annotation colors](#annotation-colors)
+  - [User preferences vs config (drawing)](#user-preferences-vs-config-drawing)
 - [Read-only mode and worklist](#read-only-mode-and-worklist)
 - [Local deployment tips](#local-deployment-tips)
 - [Related documentation](#related-documentation)
@@ -299,7 +300,13 @@ dicom-microscopy-viewer exposes **two** style models. Slim’s config
 Each entry in `annotations` can define a `style` used when drawing SR ROIs for
 that finding code. Colors are RGBA-style arrays (`[r, g, b]` or
 `[r, g, b, a]`; RGB channels `0–255`, alpha typically `0–1`). Slim maps these
-into dmv `ROIStyleOptions` via `formatRoiStyle` / `setROIStyle`:
+into dmv `ROIStyleOptions` via `formatRoiStyle` / `setROIStyle` and passes them
+as `styleOptions` on `activateDrawInteraction` / `addROI`.
+
+Config style is meant to **identify the finding** (color and fill). Stroke
+**width** on new drawings comes from **User preferences** (Annotations tab),
+even when the finding has a config style. `stroke.width` in config is optional
+and only used as a fallback when preferences are unavailable.
 
 ```js
 window.config = {
@@ -314,7 +321,7 @@ window.config = {
       style: {
         stroke: {
           color: [255, 255, 0, 1],
-          width: 2,
+          // width omitted → user preference stroke width
         },
         fill: {
           color: [255, 255, 255, 0.2],
@@ -331,7 +338,6 @@ window.config = {
       style: {
         stroke: {
           color: [255, 0, 255, 1],
-          width: 2,
         },
         fill: {
           color: [255, 255, 255, 0.2],
@@ -342,18 +348,41 @@ window.config = {
 }
 ```
 
-Styles are keyed by finding as `CodingSchemeDesignator-CodeValue` (see
-`buildKey` in `src/components/SlideViewer/utils/roiUtils.ts`).
+Styles are keyed by finding via `codedConceptKey` (`schemeDesignator:value`).
 
 See [`public/config/local.js`](../public/config/local.js) for a full working
 example with several findings and colors.
 
+### User preferences vs config (drawing)
+
+Slim keeps **three** layers separate on purpose:
+
+| Layer | Where | Owns |
+| --- | --- | --- |
+| Site / protocol config | `window.config.annotations[]` | Findings, evaluations, geometry types, per-finding colors |
+| User preferences | Preferences → Annotations (localStorage) | Personal stroke width, fallback stroke color, display units, confirm-on-remove |
+| Draw dialog / panel | Viewer UI | Per-ROI choice among config options; restyle after draw |
+
+Do **not** put the finding catalog (labels, evaluations, geometries, per-finding
+colors) in Preferences. Those are deployment/protocol decisions. Preferences
+are personal drawing comfort only.
+
+| Setting | Source | Applied when drawing |
+| --- | --- | --- |
+| Stroke color | Preferences | Finding has **no** `annotations[].style` |
+| Stroke color | `annotations[].style.stroke.color` | Finding has a config style |
+| Stroke width | Preferences | **Always** for new ROIs (overrides config width) |
+| Measurement units | Preferences | Display only (annotation list / ROI details); DICOM stays in µm |
+
 Fallbacks:
 
-1. Finding listed in `config.annotations` **without** `style` → Slim’s default
-   ROI style (yellow stroke `[255, 234, 0]`).
+1. Finding listed in `config.annotations` **without** `style` → preference
+   stroke color and width (`buildDefaultRoiStyle`).
 2. Loaded ROI whose finding is **not** in `config.annotations` → when
-   formatted, Slim assigns a color from `DEFAULT_ANNOTATION_COLOR_PALETTE`.
+   registered, Slim assigns a color from `DEFAULT_ANNOTATION_COLOR_PALETTE`.
+
+`findingCategory` and `measurements` on config entries are currently unused by
+the viewer; omit them unless you are wiring that behavior.
 
 ### Microscopy Bulk Simple Annotations (ANN groups)
 

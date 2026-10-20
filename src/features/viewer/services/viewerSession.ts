@@ -69,7 +69,6 @@ export function createViewerSession({
   preload,
   clustering,
   annotationConfig,
-  defaultRoiStyle,
 }: {
   generation: number
   slide: Slide
@@ -77,7 +76,6 @@ export function createViewerSession({
   preload: boolean
   clustering: ClusteringSettings
   annotationConfig: AnnotationConfig
-  defaultRoiStyle: dmv.viewer.ROIStyleOptions
 }): ViewerSession {
   /** An undefined threshold lets DMV use its automatic (zoom-based) default */
   const { volumeViewer, labelViewer } = constructViewers({
@@ -105,7 +103,6 @@ export function createViewerSession({
       roiStyles: new RoiStyleRegistry({
         configuredStyles: annotationConfig.configuredStyles,
         findingKeys: annotationConfig.findings.map(codedConceptKey),
-        defaultStyle: defaultRoiStyle,
       }),
       loadingFrames: new Set(),
       pixelStatistics: new Map(),

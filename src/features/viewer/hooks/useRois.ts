@@ -101,11 +101,10 @@ export function useRois({
     roi: dmv.roi.ROI,
     key: string | undefined = getRoiKey(roi),
   ): void => {
-    session.roiStyles.registerAnnotationStyle(
-      roi.uid,
-      key,
-      defaultRoiStyle.stroke?.width,
-    )
+    session.roiStyles.registerAnnotationStyle(roi.uid, key, {
+      radius: defaultRoiStyle.image?.circle?.radius,
+      strokeWidth: defaultRoiStyle.stroke?.width,
+    })
   }
 
   const selectionOf = (
@@ -255,10 +254,10 @@ export function useRois({
     onStylesChange: ({ uids, styleOptions }) => {
       const session = sessionRef.current
       if (session === undefined) return
-      const style = annotationStyleToRoiStyle(
-        styleOptions,
-        defaultRoiStyle.stroke?.width,
-      )
+      const style = annotationStyleToRoiStyle(styleOptions, {
+        radius: defaultRoiStyle.image?.circle?.radius,
+        strokeWidth: defaultRoiStyle.stroke?.width,
+      })
       applyEach(
         uids,
         (uid) => {

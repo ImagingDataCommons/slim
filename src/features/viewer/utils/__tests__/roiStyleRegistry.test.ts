@@ -7,55 +7,70 @@ import {
 import { formatRoiStyle } from '../../../../components/SlideViewer/utils/roiUtils'
 import {
   annotationStyleToRoiStyle,
+  mergeConfiguredDrawStyle,
   RoiStyleRegistry,
 } from '../roiStyleRegistry'
 
-const style = (color: number[]): dmv.viewer.ROIStyleOptions =>
-  formatRoiStyle({ stroke: { color }, fill: { color } })
+const style = (color: number[], width = 2): dmv.viewer.ROIStyleOptions =>
+  formatRoiStyle({ stroke: { color, width }, fill: { color } })
 
-const DEFAULT_STYLE = style([1, 1, 1])
-const TUMOR_STYLE = style([200, 0, 0])
+const DEFAULT_STYLE = style([1, 1, 1], 4)
+const TUMOR_STYLE = style([200, 0, 0], 2)
 
 const createRegistry = (): RoiStyleRegistry =>
   new RoiStyleRegistry({
     configuredStyles: { tumor: TUMOR_STYLE },
     findingKeys: ['tumor', 'necrosis'],
-    defaultStyle: DEFAULT_STYLE,
   })
 
 describe('annotationStyleToRoiStyle', () => {
   it('lightens the fill unless only the contour is drawn', () => {
     const filled = annotationStyleToRoiStyle(
       { color: [10, 240, 0], opacity: 0.5, contourOnly: false },
-      4,
+      { radius: 4, strokeWidth: 3 },
     )
     expect(filled.stroke?.color).toEqual([10, 240, 0, 0.5])
+    expect(filled.stroke?.width).toBe(3)
     expect(filled.fill?.color).toEqual([35, 255, 25, 0.5])
     expect(filled.image?.circle?.radius).toBe(4)
 
-    const contour = annotationStyleToRoiStyle(
-      { color: [10, 240, 0], opacity: 0.5, contourOnly: true },
-      undefined,
-    )
+    const contour = annotationStyleToRoiStyle({
+      color: [10, 240, 0],
+      opacity: 0.5,
+      contourOnly: true,
+    })
     expect(contour.fill?.color.slice(0, 4)).toEqual([0, 0, 0, 0])
   })
 })
 
+describe('mergeConfiguredDrawStyle', () => {
+  it('keeps finding color and uses preference stroke width', () => {
+    const merged = mergeConfiguredDrawStyle(TUMOR_STYLE, DEFAULT_STYLE)
+    expect(merged.stroke?.color).toEqual(TUMOR_STYLE.stroke?.color)
+    expect(merged.stroke?.width).toBe(4)
+    expect(merged.fill?.color).toEqual(TUMOR_STYLE.fill?.color)
+  })
+})
+
 describe('RoiStyleRegistry', () => {
-  it('starts findings with their configured style, else the default', () => {
+  it('starts configured findings with their style; others use the live default', () => {
     const registry = createRegistry()
 
     expect(registry.findingStyle('tumor', DEFAULT_STYLE)).toBe(TUMOR_STYLE)
-    expect(registry.findingStyle('necrosis', TUMOR_STYLE)).toBe(DEFAULT_STYLE)
+    expect(registry.findingStyle('necrosis', DEFAULT_STYLE)).toBe(DEFAULT_STYLE)
+    expect(registry.findingStyle('necrosis', TUMOR_STYLE)).toBe(TUMOR_STYLE)
     expect(registry.findingStyle(undefined, TUMOR_STYLE)).toBe(TUMOR_STYLE)
-    expect(registry.findingFillColor('tumor')).toEqual([200, 0, 0])
+    expect(registry.findingFillColor('tumor')).toEqual(TUMOR_STYLE.fill?.color)
+    expect(registry.findingFillColor('necrosis')).toBeUndefined()
   })
 
-  it('draws with the configured style of the finding', () => {
+  it('draws configured findings with preference stroke width', () => {
     const registry = createRegistry()
 
-    expect(registry.drawStyle('tumor', DEFAULT_STYLE)).toBe(TUMOR_STYLE)
-    expect(registry.drawStyle('necrosis', TUMOR_STYLE)).toBe(TUMOR_STYLE)
+    const drawn = registry.drawStyle('tumor', DEFAULT_STYLE)
+    expect(drawn.stroke?.color).toEqual(TUMOR_STYLE.stroke?.color)
+    expect(drawn.stroke?.width).toBe(4)
+    expect(registry.drawStyle('necrosis', DEFAULT_STYLE)).toBe(DEFAULT_STYLE)
     expect(registry.drawStyle(undefined, DEFAULT_STYLE)).toBe(DEFAULT_STYLE)
   })
 
@@ -76,11 +91,16 @@ describe('RoiStyleRegistry', () => {
     const registry = new RoiStyleRegistry({
       configuredStyles: {},
       findingKeys: [],
-      defaultStyle: DEFAULT_STYLE,
     })
 
-    registry.registerAnnotationStyle('roi-1', 'tumor', undefined)
-    registry.registerAnnotationStyle('roi-1', 'tumor', undefined)
+    registry.registerAnnotationStyle('roi-1', 'tumor', {
+      radius: 5,
+      strokeWidth: 4,
+    })
+    registry.registerAnnotationStyle('roi-1', 'tumor', {
+      radius: 5,
+      strokeWidth: 4,
+    })
 
     expect(registry.copyAnnotationStyles()).toEqual({
       'roi-1': {
@@ -90,12 +110,13 @@ describe('RoiStyleRegistry', () => {
       },
     })
     expect(registry.findingFillColor('tumor')).toBeDefined()
+    expect(registry.findingStyle('tumor', DEFAULT_STYLE).stroke?.width).toBe(4)
   })
 
   it('takes the list color from the finding style when present', () => {
     const registry = createRegistry()
 
-    registry.registerAnnotationStyle('roi-1', 'tumor', undefined)
+    registry.registerAnnotationStyle('roi-1', 'tumor', { radius: 5 })
 
     expect(registry.copyAnnotationStyles()['roi-1'].color).toEqual([200, 0, 0])
   })

@@ -69,13 +69,13 @@ window.config = {
       finding: { value: '85756007', schemeDesignator: 'SCT', meaning: 'Tissue' },
       findingCategory: { value: '91723000', schemeDesignator: 'SCT', meaning: 'Anatomical structure' },
       geometryTypes: ['polygon', 'freehandpolygon'],
-      style: { stroke: { color: [255, 255, 0, 1], width: 2 }, fill: { color: [255, 255, 255, 0.2] } }
+      style: { stroke: { color: [255, 255, 0, 1] }, fill: { color: [255, 255, 255, 0.2] } }
     },
     {
       finding: { value: '108369006', schemeDesignator: 'SCT', meaning: 'Tumor' },
       findingCategory: { value: '49755003', schemeDesignator: 'SCT', meaning: 'Morphologically abnormal structure' },
       geometryTypes: ['polygon', 'freehandpolygon'],
-      style: { stroke: { color: [255, 0, 255, 1], width: 2 }, fill: { color: [255, 255, 255, 0.2] } }
+      style: { stroke: { color: [255, 0, 255, 1] }, fill: { color: [255, 255, 255, 0.2] } }
     }
   ],
   logger: { level: 'WARN', enableInProduction: false, enableInDevelopment: true }

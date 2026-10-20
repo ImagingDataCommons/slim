@@ -110,7 +110,6 @@ export function createTestSession(
     preload: false,
     clustering: { isEnabled: true, thresholdInput: '' },
     annotationConfig: buildAnnotationConfig([]),
-    defaultRoiStyle: TEST_ROI_STYLE,
   })
   const viewers = fakeDmvInstances.volumeViewers
   const viewer = viewers[viewers.length - 1]

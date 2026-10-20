@@ -11,10 +11,14 @@ import type { AnnotationStyle } from '../../../types/layerStyles'
 
 type RoiStyle = dmv.viewer.ROIStyleOptions
 
-/** ROI style for an annotation-list style; `radius` sizes point markers. */
+/**
+ * ROI style for an annotation-list style. Finding color/opacity come from the
+ * list; stroke width and point radius come from the caller's drawing defaults
+ * (usually the user preferences).
+ */
 export function annotationStyleToRoiStyle(
   styleOptions: AnnotationStyle,
-  radius: number | undefined,
+  { radius, strokeWidth }: { radius?: number; strokeWidth?: number } = {},
 ): RoiStyle {
   const opacity = styleOptions.opacity ?? DEFAULT_ANNOTATION_OPACITY
   const strokeColor = styleOptions.color ?? DEFAULT_ANNOTATION_STROKE_COLOR
@@ -23,8 +27,27 @@ export function annotationStyleToRoiStyle(
     : strokeColor.map((c) => Math.min(c + 25, 255))
   return formatRoiStyle({
     fill: { color: [...fillColor, opacity] },
-    stroke: { color: [...strokeColor, opacity] },
+    stroke: { color: [...strokeColor, opacity], width: strokeWidth },
     radius,
+  })
+}
+
+/**
+ * Finding color/fill from the viewer config, stroke width from the live
+ * preference-backed default. Config without a finding style yields `defaultStyle`
+ * unchanged.
+ */
+export function mergeConfiguredDrawStyle(
+  configured: RoiStyle,
+  defaultStyle: RoiStyle,
+): RoiStyle {
+  return formatRoiStyle({
+    stroke: {
+      color: configured.stroke?.color,
+      width: defaultStyle.stroke?.width ?? configured.stroke?.width,
+    },
+    fill: { color: configured.fill?.color },
+    radius: configured.image?.circle?.radius,
   })
 }
 
@@ -40,19 +63,24 @@ export class RoiStyleRegistry {
   private readonly stylesByUid: Record<string, RoiStyle> = {}
   private readonly annotationStyles: Record<string, AnnotationStyle> = {}
 
-  /** Each finding starts with its configured style, else `defaultStyle` */
+  /**
+   * Seed only findings that have a viewer-config style. Findings without one
+   * fall back to the live `defaultStyle` argument on each lookup, so stroke
+   * preferences stay current for the session.
+   */
   constructor({
     configuredStyles,
     findingKeys,
-    defaultStyle,
   }: {
     configuredStyles: Readonly<Record<string, RoiStyle>>
     findingKeys: readonly string[]
-    defaultStyle: RoiStyle
   }) {
     this.configured = configuredStyles
     for (const key of findingKeys) {
-      this.findingStyles[key] = configuredStyles[key] ?? defaultStyle
+      const style = configuredStyles[key]
+      if (style !== undefined) {
+        this.findingStyles[key] = style
+      }
     }
   }
 
@@ -70,10 +98,15 @@ export class RoiStyleRegistry {
     return this.stylesByUid[uid] ?? this.findingStyle(key, defaultStyle)
   }
 
-  /** Style for a newly drawn ROI of a finding (also used for the preview) */
+  /**
+   * Style for a newly drawn ROI of a finding (also used for the preview).
+   * Config supplies finding color/fill; preference default supplies stroke width.
+   */
   drawStyle(key: string | undefined, defaultStyle: RoiStyle): RoiStyle {
     if (key === undefined) return defaultStyle
-    return this.configured[key] ?? defaultStyle
+    const configured = this.configured[key]
+    if (configured === undefined) return defaultStyle
+    return mergeConfiguredDrawStyle(configured, defaultStyle)
   }
 
   /** Fill color of a finding's style, used for annotation groups */
@@ -81,7 +114,10 @@ export class RoiStyleRegistry {
     return this.findingStyles[key]?.fill?.color
   }
 
-  /** Keep `style` for a user-added ROI unless it is its finding's configured style */
+  /**
+   * Keep `style` for a user-added ROI unless it matches the finding's
+   * configured style exactly (color and width unchanged by preferences).
+   */
   recordAddedRoi(uid: string, key: string | undefined, style: RoiStyle): void {
     if (key === undefined || this.configured[key] !== style) {
       this.stylesByUid[uid] = style
@@ -95,7 +131,7 @@ export class RoiStyleRegistry {
   registerAnnotationStyle(
     uid: string,
     key: string | undefined,
-    radius: number | undefined,
+    { radius, strokeWidth }: { radius?: number; strokeWidth?: number } = {},
   ): void {
     if (this.annotationStyles[uid] !== undefined) return
     const ownStyle = this.stylesByUid[uid]
@@ -117,10 +153,10 @@ export class RoiStyleRegistry {
       ownStyle === undefined &&
       findingStyle === undefined
     ) {
-      this.findingStyles[key] = annotationStyleToRoiStyle(
-        annotationStyle,
+      this.findingStyles[key] = annotationStyleToRoiStyle(annotationStyle, {
         radius,
-      )
+        strokeWidth,
+      })
     }
   }
 

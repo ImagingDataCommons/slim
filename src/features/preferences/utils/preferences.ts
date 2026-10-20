@@ -6,9 +6,15 @@ import { sanitizeHiddenColumnIds } from '../../worklist/utils/worklistColumns'
 export type MeasurementUnit = 'µm' | 'mm'
 
 export interface UserPreferences {
+  /** Display units for lengths/areas in the annotation list and ROI details */
   units: MeasurementUnit
   compactRows: boolean
+  /**
+   * Fallback stroke for new ROIs when the finding has no `annotations[].style`
+   * in the viewer config. Config finding colors are not edited here.
+   */
   strokeColor: string
+  /** Stroke width for every new ROI you draw (overrides config width) */
   strokeWidth: number
   confirmRoiRemoval: boolean
   /** Slide thumbnail in the bottom-right corner of the viewport */

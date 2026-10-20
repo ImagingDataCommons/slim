@@ -90,7 +90,8 @@ export const DEFAULT_ROI_FILL_ALPHA = 0.2
 
 /**
  * Default style for ROIs without a configured finding style, built from the
- * user's stroke preferences (RGB color, width in px).
+ * user's stroke preferences (RGB color, width in px). Uses {@link formatRoiStyle}
+ * so point markers get the same stroke as polygons (DMV/OpenLayers expects it).
  */
 export const buildDefaultRoiStyle = ({
   strokeColor,
@@ -102,16 +103,11 @@ export const buildDefaultRoiStyle = ({
   radius: number
 }): dmv.viewer.ROIStyleOptions => {
   const rgb = strokeColor.slice(0, 3)
-  return {
+  return formatRoiStyle({
     stroke: { color: rgb, width: strokeWidth },
     fill: { color: [...rgb, DEFAULT_ROI_FILL_ALPHA] },
-    image: {
-      circle: {
-        fill: { color: rgb },
-        radius,
-      },
-    },
-  }
+    radius,
+  })
 }
 
 /**

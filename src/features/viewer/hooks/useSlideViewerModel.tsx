@@ -217,7 +217,6 @@ export function useSlideViewerModel({
       routeKey: `${location.pathname}|${studyInstanceUID}|${seriesInstanceUID}`,
       preload,
       annotationConfig,
-      defaultRoiStyle,
       clustering: annotationGroups.clustering,
       gammaCorrection: opticalPaths.gammaCorrection,
       onSessionCreated: (session) => {

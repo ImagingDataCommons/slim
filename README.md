@@ -318,7 +318,7 @@ The following topics are documented in [docs/CONFIGURATION.md](docs/CONFIGURATIO
 | External DICOMweb server | `servers[].url` |
 | Runtime server selection (header button) | `enableServerSelection` |
 | Secondary GCP annotation store | `?gcp=<dicomWeb-url>` query parameter |
-| Annotation / finding colors | `annotations[].style` |
+| Annotation / finding colors | `annotations[].style` (color/fill; stroke width from User preferences) |
 | Read-only annotation UI | `disableAnnotationTools` |
 | Hide study worklist | `disableWorklist` |
 | Local Orthanc / CORS troubleshooting | see [Local deployment tips](docs/CONFIGURATION.md#local-deployment-tips) |
@@ -379,7 +379,6 @@ window.config = {
       style: {
         stroke: {
           color: [251, 134, 4, 1],
-          width: 2,
         },
         fill: {
           color: [255, 255, 255, 0.2],
@@ -389,6 +388,9 @@ window.config = {
   ],
 }
 ```
+
+Stroke width for new ROIs comes from **User preferences** (Annotations tab), not
+from config. Omit `stroke.width` unless you need a non-preference fallback.
 
 Customize the configuration according to your needs at either build time or run time.
 
@@ -430,7 +432,6 @@ window.config = {
       style: {
         stroke: {
           color: [251, 134, 4, 1],
-          width: 2,
         },
         fill: {
           color: [255, 255, 255, 0.2],
@@ -446,7 +447,6 @@ window.config = {
       style: {
         stroke: {
           color: [255, 255, 0, 1],
-          width: 2,
         },
         fill: {
           color: [255, 255, 255, 0.2],

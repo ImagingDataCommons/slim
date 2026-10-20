@@ -36,7 +36,7 @@ export function AnnotationsTab({
         <div>
           <div className="font-medium text-ink">Stroke color</div>
           <div className="mt-0.5 text-12 text-ink-muted">
-            Applied to new ROIs you draw
+            Used for new ROIs when the finding has no style in the viewer config
           </div>
         </div>
         <div className="flex gap-2">
@@ -59,30 +59,37 @@ export function AnnotationsTab({
           ))}
         </div>
       </div>
-      <div className="flex items-center gap-3 border-b border-line-soft py-3">
-        <div id={strokeWidthLabelId} className="flex-1 font-medium text-ink">
-          Stroke width
+      <div className="flex flex-col gap-2.5 border-b border-line-soft py-3">
+        <div>
+          <div id={strokeWidthLabelId} className="font-medium text-ink">
+            Stroke width
+          </div>
+          <div className="mt-0.5 text-12 text-ink-muted">
+            Applied to every new ROI you draw, including configured findings
+          </div>
         </div>
-        <Slider
-          aria-labelledby={strokeWidthLabelId}
-          min={1}
-          max={6}
-          step={1}
-          value={[draft.strokeWidth]}
-          onValueChange={(values) => {
-            const [value] = values
-            if (value !== undefined) onChange('strokeWidth', value)
-          }}
-          className="w-[180px]"
-        />
-        <span className="w-9 text-right font-mono text-12 font-medium">
-          {draft.strokeWidth} px
-        </span>
+        <div className="flex items-center gap-3">
+          <Slider
+            aria-labelledby={strokeWidthLabelId}
+            min={1}
+            max={6}
+            step={1}
+            value={[draft.strokeWidth]}
+            onValueChange={(values) => {
+              const [value] = values
+              if (value !== undefined) onChange('strokeWidth', value)
+            }}
+            className="w-[180px]"
+          />
+          <span className="w-9 text-right font-mono text-12 font-medium">
+            {draft.strokeWidth} px
+          </span>
+        </div>
       </div>
       <SectionLabel>Measurements</SectionLabel>
       <PreferenceRow
         label="Measurement units"
-        description="Lengths and areas in the annotation list and ROI details"
+        description="Display only — lengths and areas in the annotation list and ROI details (DICOM stays in µm)"
       >
         {() => (
           <SegmentedControl

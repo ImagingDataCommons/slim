@@ -17,8 +17,7 @@ window.config = {
       finding: { value: '85756007', schemeDesignator: 'SCT', meaning: 'Tissue' },
       style: {
         stroke: {
-          color: [51, 204, 51, 1],
-          width: 2
+          color: [51, 204, 51, 1]
         },
         fill: {
           color: [255, 255, 255, 0.2]

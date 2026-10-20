@@ -79,7 +79,13 @@ describe('buildDefaultRoiStyle', () => {
     ).toEqual({
       stroke: { color: [31, 90, 209], width: 3 },
       fill: { color: [31, 90, 209, 0.2] },
-      image: { circle: { fill: { color: [31, 90, 209] }, radius: 5 } },
+      image: {
+        circle: {
+          radius: 5,
+          stroke: { color: [31, 90, 209], width: 3 },
+          fill: { color: [31, 90, 209, 0.2] },
+        },
+      },
     })
   })
 })
