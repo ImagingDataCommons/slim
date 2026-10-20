@@ -23,6 +23,8 @@ export interface StudySidePanelProps {
   refImage: dmv.metadata.VLWholeSlideMicroscopyImage
   selectedSeriesInstanceUID: string
   onSeriesSelection: (change: { seriesInstanceUID: string }) => void
+  /** Replaces the default rail width/border when rendered inside a sheet. */
+  className?: string
 }
 
 /** Left study panel: patient / study / trial metadata and the slide list. */
@@ -33,14 +35,17 @@ export function StudySidePanel({
   refImage,
   selectedSeriesInstanceUID,
   onSeriesSelection,
+  className,
 }: StudySidePanelProps): JSX.Element {
   return (
     <aside
       id={STUDY_PANEL_ID}
       aria-label="Study panel"
       className={cn(
-        'flex min-h-0 w-sidebar flex-none flex-col border-r border-line bg-panel',
-        !isOpen && 'hidden',
+        'flex min-h-0 flex-col bg-panel',
+        className === undefined && 'w-sidebar flex-none border-r border-line',
+        className === undefined && !isOpen && 'hidden',
+        className,
       )}
     >
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">

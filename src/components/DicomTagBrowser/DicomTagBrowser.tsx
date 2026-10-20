@@ -1,5 +1,6 @@
 import { type JSX, useId } from 'react'
 
+import { useLayoutMode } from '../../contexts/LayoutModeContext'
 import type DicomWebManager from '../../DicomWebManager'
 import { cn } from '../../lib/utils'
 import { Button } from '../ui/button'
@@ -38,6 +39,7 @@ const DicomTagBrowser = ({
   seriesInstanceUID = '',
   onDone,
 }: DicomTagBrowserProps): JSX.Element => {
+  const { compactChrome } = useLayoutMode()
   const id = useId()
   const seriesLabelId = `${id}-series`
   const instanceLabelId = `${id}-instance`
@@ -70,7 +72,14 @@ const DicomTagBrowser = ({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="grid flex-none grid-cols-[minmax(0,1.6fr)_minmax(0,0.9fr)_minmax(0,1fr)] gap-3 border-b border-line-soft px-5 py-3.5">
+      <div
+        className={cn(
+          'grid flex-none gap-3 border-b border-line-soft px-5 py-3.5',
+          compactChrome
+            ? 'grid-cols-1'
+            : 'grid-cols-[minmax(0,1.6fr)_minmax(0,0.9fr)_minmax(0,1fr)]',
+        )}
+      >
         <div className="flex min-w-0 flex-col gap-1.5 text-12 text-ink-muted">
           <span id={seriesLabelId}>Series</span>
           <Select
@@ -154,6 +163,8 @@ const DicomTagBrowser = ({
             onValueChange={setSearchInput}
             placeholder="Tag, keyword or value"
             clearable
+            className={compactChrome ? 'h-11' : undefined}
+            inputClassName={compactChrome ? 'text-[16px]' : undefined}
           />
         </div>
       </div>
@@ -162,7 +173,7 @@ const DicomTagBrowser = ({
         aria-label="DICOM tags"
         className="flex min-h-0 w-full flex-1 flex-col border-collapse"
       >
-        <thead className="block flex-none">
+        <thead className={cn('block flex-none', compactChrome && 'sr-only')}>
           <tr
             className={cn(
               'grid h-9 items-center gap-3 border-b border-line bg-subtle px-5 text-11 font-semibold uppercase leading-none tracking-wider text-ink-muted',
@@ -210,22 +221,36 @@ const DicomTagBrowser = ({
         </tbody>
       </table>
 
-      <SlimDialogFooter className="justify-start pl-5 text-12 text-ink-muted">
-        <span>{attributeCount} attributes</span>
-        <span className="flex-1" />
+      <SlimDialogFooter
+        className={cn(
+          'justify-start pl-5 text-12 text-ink-muted',
+          compactChrome && 'flex-wrap',
+        )}
+      >
+        <span className={compactChrome ? 'w-full pb-1' : undefined}>
+          {attributeCount} attributes
+        </span>
+        {!compactChrome && <span className="flex-1" />}
         <Button
           variant="outline"
-          className="text-ink"
+          className={cn('text-ink', compactChrome && 'min-h-11')}
           onClick={collapseAll}
           disabled={expandedKeys.size === 0}
         >
           Collapse all
         </Button>
-        <Button variant="outline" className="text-ink" onClick={expandAll}>
+        <Button
+          variant="outline"
+          className={cn('text-ink', compactChrome && 'min-h-11')}
+          onClick={expandAll}
+        >
           Expand all
         </Button>
         {onDone !== undefined && (
-          <Button onClick={onDone} className="px-4 font-semibold">
+          <Button
+            onClick={onDone}
+            className={cn('px-4 font-semibold', compactChrome && 'min-h-11')}
+          >
             Done
           </Button>
         )}

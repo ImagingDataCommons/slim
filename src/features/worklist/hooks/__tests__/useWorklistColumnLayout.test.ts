@@ -4,14 +4,33 @@ import {
   columnVisibilityForTier,
   gridTemplateForColumns,
   resolveVisibleColumnIds,
+  resolveWorklistTier,
   resolveWorklistVisibility,
   tierForWidth,
   WORKLIST_COLUMNS_BY_TIER,
 } from '../useWorklistColumnLayout'
 
+describe('resolveWorklistTier', () => {
+  it('forces cards under compact chrome before the panel is measured', () => {
+    expect(resolveWorklistTier('base', true)).toBe('card')
+    expect(resolveWorklistTier('xl', true)).toBe('card')
+  })
+
+  it('keeps the measured tier on desktop chrome', () => {
+    expect(resolveWorklistTier('base', false)).toBe('base')
+    expect(resolveWorklistTier('card', false)).toBe('card')
+  })
+})
+
 describe('tierForWidth', () => {
-  it('keeps the primary set at narrow widths', () => {
-    expect(tierForWidth(500)).toBe('base')
+  it('uses cards when the primary set cannot fit', () => {
+    expect(tierForWidth(0)).toBe('base')
+    expect(tierForWidth(500)).toBe('card')
+    expect(tierForWidth(687)).toBe('card')
+  })
+
+  it('keeps the primary set at the smallest readable table width', () => {
+    expect(tierForWidth(688)).toBe('base')
     expect(columnVisibilityForTier('base').StudyID).toBe(false)
     expect(columnVisibilityForTier('base').PatientSex).toBe(false)
   })
@@ -91,7 +110,7 @@ describe('gridTemplateForColumns', () => {
 
 describe('WORKLIST_COLUMNS_BY_TIER', () => {
   it('always ends with slides', () => {
-    for (const tier of ['base', 'md', 'lg', 'xl'] as const) {
+    for (const tier of ['card', 'base', 'md', 'lg', 'xl'] as const) {
       expect(WORKLIST_COLUMNS_BY_TIER[tier].at(-1)).toBe('Slides')
     }
   })

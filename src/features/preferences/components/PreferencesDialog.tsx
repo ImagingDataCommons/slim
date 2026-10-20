@@ -8,6 +8,8 @@ import {
   SlimDialogFooter,
   SlimDialogHeader,
 } from '../../../components/ui/dialog'
+import { useLayoutMode } from '../../../contexts/LayoutModeContext'
+import { cn } from '../../../lib/utils'
 import {
   type PreferencesTab,
   usePreferencesDraft,
@@ -52,6 +54,7 @@ export function PreferencesDialog({
   initialTab = 'general',
   runtimeInfo,
 }: PreferencesDialogProps): React.ReactElement {
+  const { compactChrome } = useLayoutMode()
   const {
     activeTab,
     setActiveTab,
@@ -122,25 +125,42 @@ export function PreferencesDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="h-[78vh] max-h-[88vh] w-[94vw] max-w-[1000px]">
+      <DialogContent
+        className={cn(
+          'w-[94vw] max-w-[1000px]',
+          compactChrome
+            ? 'h-[min(88dvh,88vh)] max-h-[min(88dvh,88vh)]'
+            : 'h-[78vh] max-h-[88vh]',
+        )}
+      >
         <SlimDialogHeader
           icon="manage_accounts"
           title="Preferences"
           subtitle={activeDefinition.subtitle}
         />
 
-        <div className="flex min-h-0 flex-1">
+        <div className={cn('flex min-h-0 flex-1', compactChrome && 'flex-col')}>
           <div
             role="tablist"
             aria-label="Preferences sections"
-            aria-orientation="vertical"
+            aria-orientation={compactChrome ? 'horizontal' : 'vertical'}
             onKeyDown={handleTabKeyDown}
-            className="flex w-[200px] flex-none flex-col gap-0.5 border-r border-line-soft bg-subtle p-3"
+            className={cn(
+              'flex flex-none gap-0.5 border-line-soft bg-subtle p-3',
+              compactChrome
+                ? 'w-full flex-row flex-wrap border-b'
+                : 'w-[200px] flex-col border-r',
+            )}
           >
             {USER_TABS.map(renderNavButton)}
             <div
               aria-hidden="true"
-              className="mx-2.5 mb-1.5 mt-3.5 text-[10.5px] font-semibold uppercase leading-none tracking-[0.06em] text-ink-muted"
+              className={cn(
+                'text-[10.5px] font-semibold uppercase leading-none tracking-[0.06em] text-ink-muted',
+                compactChrome
+                  ? 'basis-full px-2.5 pt-2'
+                  : 'mx-2.5 mb-1.5 mt-3.5',
+              )}
             >
               Application
             </div>

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 
+import { LayoutModeProvider } from '../../../../contexts/LayoutModeContext'
 import { ThemeProvider } from '../../../../contexts/ThemeContext'
 import {
   loadPreferences,
@@ -26,16 +27,25 @@ const RUNTIME: RuntimeInfo = {
 function renderDialog(
   initialTab: PreferencesTab = 'general',
   onOpenChange: (open: boolean) => void = vi.fn(),
+  compact = false,
 ): void {
   render(
     <ThemeProvider>
-      <PreferencesDialog
-        open
-        onOpenChange={onOpenChange}
-        app={APP}
-        initialTab={initialTab}
-        runtimeInfo={RUNTIME}
-      />
+      <LayoutModeProvider
+        value={{
+          compactChrome: compact,
+          overlayPanels: compact,
+          coarsePointer: compact,
+        }}
+      >
+        <PreferencesDialog
+          open
+          onOpenChange={onOpenChange}
+          app={APP}
+          initialTab={initialTab}
+          runtimeInfo={RUNTIME}
+        />
+      </LayoutModeProvider>
     </ThemeProvider>,
   )
 }
@@ -111,6 +121,20 @@ describe('PreferencesDialog', () => {
     renderDialog('keys')
     expect(screen.getByText('Draw ROI')).toBeInTheDocument()
     expect(screen.getByText('Go to position')).toBeInTheDocument()
+  })
+
+  it('stacks the Application section in the compact tablist', () => {
+    renderDialog('config', vi.fn(), true)
+    expect(screen.getByRole('tablist')).toHaveAttribute(
+      'aria-orientation',
+      'horizontal',
+    )
+    expect(screen.getByText('Application')).toBeInTheDocument()
+    expect(
+      screen.getByRole('tab', { name: 'Configuration' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'About Slim' })).toBeInTheDocument()
+    expect(screen.getByText('public/config/test.js')).toBeInTheDocument()
   })
 
   it('shows the injected configuration', () => {

@@ -19,16 +19,20 @@ import * as React from 'react'
 
 import { Icon } from '../../../components/ui/icon'
 import { Skeleton } from '../../../components/ui/skeleton'
+import { useLayoutMode } from '../../../contexts/LayoutModeContext'
 import { cn } from '../../../lib/utils'
 import {
   gridTemplateForColumns,
+  isCardLayout,
   resolveVisibleColumnIds,
+  resolveWorklistTier,
   resolveWorklistVisibility,
   useWorklistColumnLayout,
   type WorklistWidthTier,
 } from '../hooks/useWorklistColumnLayout'
 import type { WorklistColumnId } from '../utils/worklistColumns'
 import { columns } from './columns'
+import { WorklistCard, WorklistCardSkeleton } from './WorklistCard'
 
 export interface WorklistTableProps {
   data: dmv.metadata.Study[]
@@ -163,9 +167,20 @@ export function WorklistTable({
    */
   'use no memo'
   const [container, setContainer] = React.useState<HTMLElement | null>(null)
-  const tier = useWorklistColumnLayout(container)
-  const visibleIds = resolveVisibleColumnIds(tier, hiddenColumnIds)
-  const columnVisibility = resolveWorklistVisibility(tier, hiddenColumnIds)
+  const { compactChrome } = useLayoutMode()
+  const tier = resolveWorklistTier(
+    useWorklistColumnLayout(container),
+    compactChrome,
+  )
+  const showCards = isCardLayout(tier)
+  const visibleIds = resolveVisibleColumnIds(
+    showCards ? 'base' : tier,
+    hiddenColumnIds,
+  )
+  const columnVisibility = resolveWorklistVisibility(
+    showCards ? 'base' : tier,
+    hiddenColumnIds,
+  )
   const gridStyle: React.CSSProperties = {
     gridTemplateColumns: gridTemplateForColumns(visibleIds),
   }
@@ -207,9 +222,27 @@ export function WorklistTable({
 
   let body: React.ReactNode
   if (isLoading) {
-    body = (
+    const skeletonCount = Math.min(pagination.pageSize, SKELETON_MAX_ROWS)
+    const cardIndexes = Array.from(
+      { length: skeletonCount },
+      (_, index) => index,
+    )
+    body = showCards ? (
+      <>
+        <div role="row" className="sr-only">
+          <div role="cell">Loading studies…</div>
+        </div>
+        {cardIndexes.map((rowIndex) => (
+          <WorklistCardSkeleton
+            key={`skeleton-${rowIndex}`}
+            isCompact={isCompact}
+            delayMs={rowIndex * 60}
+          />
+        ))}
+      </>
+    ) : (
       <WorklistSkeletonRows
-        rowCount={Math.min(pagination.pageSize, SKELETON_MAX_ROWS)}
+        rowCount={skeletonCount}
         isCompact={isCompact}
         visibleIds={visibleIds}
         gridStyle={gridStyle}
@@ -226,6 +259,19 @@ export function WorklistTable({
         </div>
       </div>
     )
+  } else if (showCards) {
+    body = table
+      .getRowModel()
+      .rows.map((row) => (
+        <WorklistCard
+          key={row.id}
+          study={row.original}
+          hiddenColumnIds={hiddenColumnIds}
+          isCompact={isCompact}
+          onOpen={onRowClick}
+          marker={renderRowMarker?.(row.original)}
+        />
+      ))
   } else {
     body = table.getRowModel().rows.map((row) => (
       <div
@@ -272,70 +318,72 @@ export function WorklistTable({
         className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
       >
         <div role="table" className="w-full min-w-0 max-w-full text-left">
-          <div role="rowgroup" className="sticky top-0 z-10">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <div
-                key={headerGroup.id}
-                role="row"
-                className="grid h-8 w-full min-w-0 max-w-full items-center gap-2 border-b border-line bg-subtle px-5 text-11 font-semibold uppercase leading-none tracking-wider text-ink-muted sm:gap-3"
-                style={gridStyle}
-              >
-                {headerGroup.headers.map((header) => {
-                  const sorted = header.column.getIsSorted()
-                  const canSort = header.column.getCanSort()
-                  const meta = header.column.columnDef.meta
-                  const label = flexRender(
-                    header.column.columnDef.header,
-                    header.getContext(),
-                  )
-                  return (
-                    <div
-                      key={header.id}
-                      role="columnheader"
-                      aria-sort={
-                        sorted === 'asc'
-                          ? 'ascending'
-                          : sorted === 'desc'
-                            ? 'descending'
-                            : undefined
-                      }
-                      className={cn(
-                        'min-w-0 overflow-hidden text-left font-semibold',
-                        meta?.align === 'right' && 'text-right',
-                      )}
-                    >
-                      {canSort ? (
-                        <button
-                          type="button"
-                          onClick={header.column.getToggleSortingHandler()}
-                          className={cn(
-                            'inline-flex max-w-full items-center gap-1 uppercase tracking-wider transition-colors hover:text-ink',
-                            sorted !== false &&
-                              'text-primary hover:text-primary',
-                            meta?.align === 'right' && 'flex-row-reverse',
-                          )}
-                        >
-                          <span className="truncate">{label}</span>
-                          {sorted !== false && (
-                            <Icon
-                              name={
-                                sorted === 'desc'
-                                  ? 'arrow_downward'
-                                  : 'arrow_upward'
-                              }
-                              size={15}
-                            />
-                          )}
-                        </button>
-                      ) : (
-                        <span className="block truncate">{label}</span>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            ))}
-          </div>
+          {!showCards && (
+            <div role="rowgroup" className="sticky top-0 z-10">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <div
+                  key={headerGroup.id}
+                  role="row"
+                  className="grid h-8 w-full min-w-0 max-w-full items-center gap-2 border-b border-line bg-subtle px-5 text-11 font-semibold uppercase leading-none tracking-wider text-ink-muted sm:gap-3"
+                  style={gridStyle}
+                >
+                  {headerGroup.headers.map((header) => {
+                    const sorted = header.column.getIsSorted()
+                    const canSort = header.column.getCanSort()
+                    const meta = header.column.columnDef.meta
+                    const label = flexRender(
+                      header.column.columnDef.header,
+                      header.getContext(),
+                    )
+                    return (
+                      <div
+                        key={header.id}
+                        role="columnheader"
+                        aria-sort={
+                          sorted === 'asc'
+                            ? 'ascending'
+                            : sorted === 'desc'
+                              ? 'descending'
+                              : undefined
+                        }
+                        className={cn(
+                          'min-w-0 overflow-hidden text-left font-semibold',
+                          meta?.align === 'right' && 'text-right',
+                        )}
+                      >
+                        {canSort ? (
+                          <button
+                            type="button"
+                            onClick={header.column.getToggleSortingHandler()}
+                            className={cn(
+                              'inline-flex max-w-full items-center gap-1 uppercase tracking-wider transition-colors hover:text-ink',
+                              sorted !== false &&
+                                'text-primary hover:text-primary',
+                              meta?.align === 'right' && 'flex-row-reverse',
+                            )}
+                          >
+                            <span className="truncate">{label}</span>
+                            {sorted !== false && (
+                              <Icon
+                                name={
+                                  sorted === 'desc'
+                                    ? 'arrow_downward'
+                                    : 'arrow_upward'
+                                }
+                                size={15}
+                              />
+                            )}
+                          </button>
+                        ) : (
+                          <span className="block truncate">{label}</span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
           <div role="rowgroup" aria-busy={isLoading}>
             {body}
           </div>

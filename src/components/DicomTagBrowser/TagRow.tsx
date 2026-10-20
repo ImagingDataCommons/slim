@@ -1,5 +1,6 @@
 import type { JSX } from 'react'
 
+import { useLayoutMode } from '../../contexts/LayoutModeContext'
 import { cn } from '../../lib/utils'
 import { Icon } from '../ui/icon'
 import { MonoChip } from '../ui/mono-chip'
@@ -23,12 +24,15 @@ export function TagRow({
   expandedKeys,
   onToggle,
 }: TagRowProps): JSX.Element {
+  const { compactChrome } = useLayoutMode()
   const hasChildren = item.children !== undefined && item.children.length > 0
   const isExpanded = expandedKeys.has(item.key)
 
   const rowClassName = cn(
-    'grid min-h-control w-full items-center gap-3 border-b border-line-row px-5 text-left hover:bg-selected',
-    TAG_GRID_COLUMNS,
+    'grid w-full border-b border-line-row text-left hover:bg-selected',
+    compactChrome
+      ? 'grid-cols-1 gap-0.5 px-4 py-2.5'
+      : cn('min-h-control items-center gap-3 px-5', TAG_GRID_COLUMNS),
     depth > 0 ? 'bg-subtle/60' : 'bg-panel',
   )
 
@@ -37,7 +41,7 @@ export function TagRow({
       <tr className={rowClassName}>
         <td
           className="flex items-center gap-0.5 font-mono text-12 text-ink-secondary"
-          style={{ paddingLeft: depth * 18 }}
+          style={{ paddingLeft: depth * (compactChrome ? 12 : 18) }}
         >
           <span className="w-4 flex-none text-ink-muted">
             {hasChildren ? (

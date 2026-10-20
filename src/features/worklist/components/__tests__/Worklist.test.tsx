@@ -12,6 +12,7 @@ import { BrowserRouter, MemoryRouter } from 'react-router'
 
 import DicomWebManager from '../../../../DicomWebManager'
 import { StorageClasses } from '../../../../data/uids'
+import { CONTAINS_PAGE_SIZE } from '../../utils/containsSearch'
 import { Worklist } from '../Worklist'
 
 afterAll(() => {
@@ -296,6 +297,12 @@ describe('Worklist', () => {
       expect(
         await screen.findByText('1 study with Bulk annotations'),
       ).toBeInTheDocument()
+      expect(filterManager.searchForInstances).toHaveBeenCalledWith({
+        queryParams: expect.objectContaining({
+          limit: CONTAINS_PAGE_SIZE,
+          offset: 0,
+        }),
+      })
       expect(screen.getAllByRole('link', { name: /patient/ })).toHaveLength(1)
 
       fireEvent.click(

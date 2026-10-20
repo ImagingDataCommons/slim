@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { cn } from '../../lib/utils'
 
 interface SlideViewerContentProps {
-  toolbar: React.ReactNode
+  toolbar?: React.ReactNode
   overlays: React.ReactNode
   footer: React.ReactNode
   cursor: string

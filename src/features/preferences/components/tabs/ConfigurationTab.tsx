@@ -6,6 +6,7 @@ import { CopyButton } from '../../../../components/ui/copy-button'
 import { Icon } from '../../../../components/ui/icon'
 import { SearchInput } from '../../../../components/ui/search-input'
 import { SegmentedControl } from '../../../../components/ui/segmented'
+import { useLayoutMode } from '../../../../contexts/LayoutModeContext'
 import { cn } from '../../../../lib/utils'
 import { downloadTextFile } from '../../../../utils/download'
 import {
@@ -73,6 +74,7 @@ export function ConfigurationTab({
   config,
   configName,
 }: ConfigurationTabProps): React.ReactElement {
+  const { compactChrome } = useLayoutMode()
   const [query, setQuery] = useState('')
   const deferredQuery = useDeferredValue(query)
   const [onlyChanged, setOnlyChanged] = useState(false)
@@ -98,8 +100,15 @@ export function ConfigurationTab({
           onValueChange={setQuery}
           clearable
           status={`${leafMatchCount} ${leafMatchCount === 1 ? 'match' : 'matches'}`}
+          className={compactChrome ? 'h-11' : undefined}
+          inputClassName={compactChrome ? 'text-[16px]' : undefined}
         />
-        <div className="flex items-center gap-2">
+        <div
+          className={cn(
+            'flex items-center gap-2',
+            compactChrome && 'flex-wrap',
+          )}
+        >
           <button
             type="button"
             aria-pressed={onlyChanged}
@@ -124,16 +133,22 @@ export function ConfigurationTab({
             onChange={setView}
             options={VIEW_OPTIONS}
           />
-          <div className="flex-1" />
+          <div className={compactChrome ? 'w-full' : 'flex-1'} />
           <CopyButton
             text={script}
             size="sm"
-            className="h-8 rounded-lg px-3 text-ink"
+            className={cn(
+              'rounded-lg px-3 text-ink',
+              compactChrome ? 'min-h-11' : 'h-8',
+            )}
           />
           <Button
             variant="outline"
             size="sm"
-            className="h-8 rounded-lg px-3 text-ink"
+            className={cn(
+              'rounded-lg px-3 text-ink',
+              compactChrome ? 'min-h-11' : 'h-8',
+            )}
             onClick={() => {
               downloadTextFile(`${configName}.js`, script, 'text/javascript')
             }}
@@ -159,7 +174,10 @@ export function ConfigurationTab({
             <div
               key={row.path}
               className={cn(
-                'grid min-h-[32px] grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_88px] items-center gap-4 border-b border-line-row px-5',
+                'grid items-center border-b border-line-row px-5',
+                compactChrome
+                  ? 'grid-cols-1 gap-1 py-2.5'
+                  : 'min-h-[32px] grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_88px] gap-4',
                 row.isGroup && row.depth === 0 ? 'bg-subtle' : 'bg-panel',
               )}
             >
@@ -194,7 +212,7 @@ export function ConfigurationTab({
               >
                 <HighlightedText text={row.value} query={deferredQuery} />
               </div>
-              <div className="text-right">
+              <div className={compactChrome ? 'text-left' : 'text-right'}>
                 {!row.isGroup && (
                   <span
                     className={cn(

@@ -21,6 +21,8 @@ export interface ContainsPickerProps {
   onChange: (entry: ContainsEntry | undefined) => void
   /** Shown in the chip while the server is searched */
   isBusy?: boolean
+  /** Taller touch target; the Contains label stays visible */
+  compact?: boolean
 }
 
 const TRIGGER_CLASS =
@@ -34,6 +36,7 @@ export function ContainsPicker({
   value,
   onChange,
   isBusy = false,
+  compact = false,
 }: ContainsPickerProps): React.ReactElement {
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -90,18 +93,25 @@ export function ContainsPicker({
           className={cn(
             TRIGGER_CLASS,
             'rounded-lg border border-line-input bg-panel px-3 text-ink-body hover:bg-app hover:text-ink',
+            compact && 'min-h-11',
           )}
+          aria-label="Contains"
         >
           <Icon name="filter_list" size={16} className="text-ink-muted" />
           Contains
           <Icon name="expand_more" size={15} className="text-ink-muted" />
         </PopoverTrigger>
       ) : (
-        <div className="inline-flex h-9 items-stretch overflow-hidden rounded-lg border border-primary bg-primary-soft text-primary">
+        <div
+          className={cn(
+            'inline-flex max-w-full items-stretch overflow-hidden rounded-lg border border-primary bg-primary-soft text-primary',
+            compact ? 'min-h-11' : 'h-9',
+          )}
+        >
           <PopoverTrigger
             className={cn(
               TRIGGER_CLASS,
-              'h-auto pl-3 pr-2 hover:bg-primary/10',
+              'h-auto min-w-0 pl-3 pr-2 hover:bg-primary/10',
             )}
             aria-label={`Contains ${value.label}. Change`}
           >
@@ -114,19 +124,27 @@ export function ContainsPicker({
               <Icon name="filter_list" size={16} />
             )}
             <span className="font-normal text-primary/80">Contains:</span>
-            <span className="font-semibold">{value.label}</span>
+            <span className="min-w-0 truncate font-semibold">
+              {value.label}
+            </span>
           </PopoverTrigger>
           <button
             type="button"
             aria-label={`Clear ${value.label} filter`}
             onClick={() => onChange(undefined)}
-            className="grid w-8 place-items-center border-l border-primary/25 hover:bg-primary/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/40"
+            className={cn(
+              'grid place-items-center border-l border-primary/25 hover:bg-primary/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/40',
+              compact ? 'w-11' : 'w-8',
+            )}
           >
             <Icon name="close" size={15} />
           </button>
         </div>
       )}
-      <PopoverContent align="end" className="w-80 p-0">
+      <PopoverContent
+        align="end"
+        className="w-[min(20rem,calc(100vw-1.5rem))] p-0"
+      >
         <div className="border-b border-line-soft p-2">
           <SearchInput
             aria-label="Filter derived data"

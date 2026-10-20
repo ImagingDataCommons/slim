@@ -59,6 +59,29 @@ describe('ContainsPicker', () => {
     expect(screen.getByText(/Nothing matches/)).toBeInTheDocument()
   })
 
+  it('uses a 44px clear target in compact mode', () => {
+    render(
+      <ContainsPicker
+        compact
+        value={findContainsEntry('ann')}
+        onChange={() => {}}
+      />,
+    )
+
+    expect(
+      screen.getByRole('button', { name: 'Clear Bulk annotations filter' })
+        .className,
+    ).toContain('w-11')
+  })
+
+  it('keeps the Contains label in compact mode', () => {
+    render(<ContainsPicker compact onChange={() => {}} />)
+
+    expect(screen.getByRole('button', { name: 'Contains' })).toHaveTextContent(
+      'Contains',
+    )
+  })
+
   it('shows the picked entry as a clearable chip', () => {
     const onChange = vi.fn()
     render(

@@ -57,7 +57,7 @@ function ContainsRowMarker({
       <span
         role="status"
         title={`Checking for ${label}…`}
-        className="size-2.5 animate-spin rounded-full border-[1.5px] border-line border-t-primary"
+        className="size-3.5 animate-spin rounded-full border-2 border-primary/25 border-t-primary"
       >
         <span className="sr-only">Checking for {label}…</span>
       </span>
@@ -69,7 +69,7 @@ function ContainsRowMarker({
         title={`Couldn't verify that this study has ${label}`}
         className="flex text-warning"
       >
-        <Icon name="warning" size={12} />
+        <Icon name="warning" size={16} />
         <span className="sr-only">
           Couldn't verify that this study has {label}
         </span>
@@ -187,7 +187,8 @@ export function Worklist({
     [navigate],
   )
 
-  const isSearchingContains = containsSearch.status === 'searching'
+  const isInitialContainsSearch =
+    containsSearch.status === 'searching' && containsSearch.result === undefined
   let emptyMessage = getEmptyStudiesMessage(deferredSearchText)
   if (containsEntry !== undefined && deferredSearchText.trim() === '') {
     emptyMessage =
@@ -206,7 +207,7 @@ export function Worklist({
   return (
     <main
       className={cn(
-        'flex h-full min-h-0 min-w-0 w-full max-w-full flex-col gap-3 px-5 pb-4 pt-4',
+        'flex h-full min-h-0 min-w-0 w-full max-w-full flex-col gap-3 px-5 pb-4 pt-4 max-md:gap-2 max-md:px-3 max-md:pt-2',
         className,
       )}
     >
@@ -226,7 +227,10 @@ export function Worklist({
                 matchCount: containsStudies.length,
                 isApproximate: hasUncheckedMatches,
                 isPartial: containsResult?.isPartial ?? false,
+                searchedCount: containsResult?.matches.size ?? 0,
                 onRetry: containsSearch.retry,
+                onLoadMore: containsSearch.loadMore,
+                canLoadMore: containsSearch.canLoadMore,
               }
         }
         onContainsChange={handleContainsChange}
@@ -236,7 +240,7 @@ export function Worklist({
         data={tableStudies}
         isLoading={
           isLoading ||
-          isSearchingContains ||
+          isInitialContainsSearch ||
           (serverSearch.isSearching && filteredStudies.length === 0)
         }
         emptyMessage={emptyMessage}

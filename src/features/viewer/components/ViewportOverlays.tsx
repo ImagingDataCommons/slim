@@ -3,6 +3,7 @@ import type React from 'react'
 import { useCallback } from 'react'
 
 import { Icon, type IconName } from '../../../components/ui/icon'
+import { useLayoutMode } from '../../../contexts/LayoutModeContext'
 import { useViewportMetrics } from '../hooks/useViewportMetrics'
 import {
   computeScaleBar,
@@ -62,6 +63,7 @@ function ViewportInfoCard({
   getMap,
   slideAffine,
 }: Pick<ViewportOverlaysProps, 'getMap' | 'slideAffine'>): React.ReactElement {
+  const { overlayPanels } = useLayoutMode()
   const { micronsPerPixel, cursor } = useViewportMetrics(getMap, slideAffine)
   const scaleBar =
     micronsPerPixel !== undefined ? computeScaleBar(micronsPerPixel) : null
@@ -80,7 +82,7 @@ function ViewportInfoCard({
       <div className="h-[26px] w-px bg-line" />
       <div className="flex flex-col gap-[3px] text-ink-secondary">
         <span>{formatMagnificationLabel(micronsPerPixel)}</span>
-        <span>{formatCursorLabel(cursor)}</span>
+        {!overlayPanels && <span>{formatCursorLabel(cursor)}</span>}
       </div>
     </div>
   )

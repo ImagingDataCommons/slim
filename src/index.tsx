@@ -15,6 +15,7 @@ import { ConfigProblemsPage } from './app/ConfigProblemsPage'
 import { findConfigProblems } from './app/configProblems'
 import CustomErrorBoundary from './components/CustomErrorBoundary'
 import { TooltipProvider } from './components/ui/tooltip'
+import { LayoutModeProvider } from './contexts/LayoutModeContext'
 import { StudySummaryProvider } from './contexts/StudySummaryContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ToastHost } from './features/viewer/components/ToastHost'
@@ -67,7 +68,9 @@ const mountApp = async (): Promise<void> => {
     root.render(
       <CustomErrorBoundary context="App">
         <ThemeProvider defaultTheme={initialTheme}>
-          <ConfigProblemsPage problems={configProblems} />
+          <LayoutModeProvider>
+            <ConfigProblemsPage problems={configProblems} />
+          </LayoutModeProvider>
         </ThemeProvider>
       </CustomErrorBoundary>,
     )
@@ -78,17 +81,19 @@ const mountApp = async (): Promise<void> => {
   root.render(
     <CustomErrorBoundary context="App">
       <ThemeProvider defaultTheme={initialTheme}>
-        <TooltipProvider delayDuration={300}>
-          <StudySummaryProvider>
-            <App
-              config={config}
-              version={packageInfo.version}
-              name={packageInfo.name}
-              homepage="https://github.com/ImagingDataCommons/slim"
-            />
-            <ToastHost top={config.messages?.top} />
-          </StudySummaryProvider>
-        </TooltipProvider>
+        <LayoutModeProvider>
+          <TooltipProvider delayDuration={300}>
+            <StudySummaryProvider>
+              <App
+                config={config}
+                version={packageInfo.version}
+                name={packageInfo.name}
+                homepage="https://github.com/ImagingDataCommons/slim"
+              />
+              <ToastHost top={config.messages?.top} />
+            </StudySummaryProvider>
+          </TooltipProvider>
+        </LayoutModeProvider>
       </ThemeProvider>
     </CustomErrorBoundary>,
   )

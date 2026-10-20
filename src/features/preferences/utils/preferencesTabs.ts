@@ -72,8 +72,9 @@ export function getTabDefinition(
 }
 
 /**
- * Tab selected by a key in a vertical tablist (WAI-ARIA tabs pattern):
- * arrows wrap around, Home/End jump to the ends; other keys return undefined.
+ * Tab selected by a key in a tablist (WAI-ARIA tabs pattern): arrows wrap
+ * around (up/left and down/right), Home/End jump to the ends; other keys
+ * return undefined.
  */
 export function getTabForKey(
   tabs: readonly PreferencesTabDefinition[],
@@ -85,9 +86,11 @@ export function getTabForKey(
   let next: number
   switch (key) {
     case 'ArrowDown':
+    case 'ArrowRight':
       next = (index + 1) % tabs.length
       break
     case 'ArrowUp':
+    case 'ArrowLeft':
       next = (index - 1 + tabs.length) % tabs.length
       break
     case 'Home':

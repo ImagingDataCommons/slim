@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '../../../components/ui/dropdown-menu'
 import { Icon, type IconName } from '../../../components/ui/icon'
+import { useLayoutMode } from '../../../contexts/LayoutModeContext'
 import { cn } from '../../../lib/utils'
 import type { PreferencesTab } from '../../preferences'
 import { getUserIdentity } from '../utils/userIdentity'
@@ -57,24 +58,33 @@ export function UserMenu({
   onLogout,
 }: UserMenuProps): React.ReactElement {
   const { name, email, initials, subline } = getUserIdentity(user, organization)
+  const { compactChrome } = useLayoutMode()
 
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 outline-hidden transition-colors hover:bg-app focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=open]:bg-app"
+          aria-label={name}
+          className={cn(
+            'flex items-center gap-2 rounded-full py-1 pl-1 outline-hidden transition-colors hover:bg-app focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=open]:bg-app',
+            compactChrome ? 'min-h-11 min-w-11 justify-center pr-1' : 'pr-2',
+          )}
         >
           <span className="grid h-7 w-7 place-items-center rounded-full bg-primary-soft text-11 font-semibold text-primary">
             {initials !== '' ? initials : <Icon name="person" size={16} />}
           </span>
-          <span className="flex flex-col items-start leading-[1.2]">
-            <span className="text-12.5 font-medium text-ink">{name}</span>
-            {email !== undefined && (
-              <span className="text-11 text-ink-muted">{email}</span>
-            )}
-          </span>
-          <Icon name="expand_more" size={18} className="text-ink-muted" />
+          {!compactChrome && (
+            <span className="flex flex-col items-start leading-[1.2]">
+              <span className="text-12.5 font-medium text-ink">{name}</span>
+              {email !== undefined && (
+                <span className="text-11 text-ink-muted">{email}</span>
+              )}
+            </span>
+          )}
+          {!compactChrome && (
+            <Icon name="expand_more" size={18} className="text-ink-muted" />
+          )}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={6} className="w-60">

@@ -5,19 +5,27 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { mapWithConcurrency } from '../../../utils/mapWithConcurrency'
 import type { ContainsEntry } from '../utils/containsCatalog'
 import {
+  CONTAINS_MAX_PAGES,
   type ConfirmationStatus,
   type ContainsSearchClient,
   type ContainsSearchResult,
   confirmStudyContains,
   fetchSlideStudy,
+  mergeContainsMatches,
   type SlideStudyClient,
   searchStudiesContaining,
 } from '../utils/containsSearch'
 
 const CHECK_CONCURRENCY = 6
 
+interface CachedContainsSearch {
+  result: ContainsSearchResult
+  nextOffset: number
+  pages: number
+}
+
 /** Results per server and entry id, kept for the session */
-const resultCache = new WeakMap<object, Map<string, ContainsSearchResult>>()
+const resultCache = new WeakMap<object, Map<string, CachedContainsSearch>>()
 /** Row checks per server, keyed by `${entry id}|${study UID}` */
 const rowCheckCache = new WeakMap<object, Map<string, RowCheck>>()
 
@@ -40,10 +48,13 @@ export type ContainsSearchStatus = 'idle' | 'searching' | 'done' | 'error'
 
 export interface UseContainsSearchReturn {
   status: ContainsSearchStatus
-  /** Pages received so far while searching */
+  /** QIDO pages received so far */
   pages: number
   result?: ContainsSearchResult
   retry: () => void
+  /** Fetch the next QIDO page and append it */
+  loadMore: () => void
+  canLoadMore: boolean
 }
 
 interface SearchState {
@@ -51,69 +62,194 @@ interface SearchState {
   pages: number
   result?: ContainsSearchResult
   failed: boolean
+  loadingMore: boolean
+}
+
+const EMPTY_SEARCH: SearchState = {
+  requestKey: '',
+  pages: 0,
+  failed: false,
+  loadingMore: false,
+}
+
+function storeCachedResult(
+  client: object,
+  entryId: string,
+  result: ContainsSearchResult,
+  pages: number,
+  nextOffset: number,
+): CachedContainsSearch {
+  const cached: CachedContainsSearch = { result, pages, nextOffset }
+  cacheFor(resultCache, client).set(entryId, cached)
+  return cached
+}
+
+function canFetchMore(cached: CachedContainsSearch | undefined): boolean {
+  if (cached === undefined) return false
+  return cached.result.isPartial && cached.pages < CONTAINS_MAX_PAGES
 }
 
 /**
- * Lazily searches the server for studies holding the entry's SOP class. Runs
- * only while an entry is selected; results are cached for the session.
+ * Lazily searches the server for one page of studies holding the entry's SOP
+ * class. Further pages load only when the caller asks. Results are cached for
+ * the session.
  */
 export function useContainsSearch(
   client: ContainsSearchClient | undefined,
   entry: ContainsEntry | undefined,
 ): UseContainsSearchReturn {
   const [attempt, setAttempt] = useState(0)
-  const [state, setState] = useState<SearchState>({
-    requestKey: '',
-    pages: 0,
-    failed: false,
-  })
+  const [moreRequests, setMoreRequests] = useState(0)
+  const [state, setState] = useState<SearchState>(EMPTY_SEARCH)
   const generation = useRef(0)
   const requestKey = entry === undefined ? '' : `${entry.id}:${attempt}`
 
   useEffect(() => {
+    if (requestKey === '') return
+    setMoreRequests(0)
+  }, [requestKey])
+
+  useEffect(() => {
     if (client === undefined || entry === undefined) return
     const cached = resultCache.get(client)?.get(entry.id)
-    if (cached !== undefined) {
-      setState({ requestKey, pages: 0, result: cached, failed: false })
+    const loadMore = moreRequests > 0 && canFetchMore(cached)
+    if (cached !== undefined && !loadMore) {
+      setState({
+        requestKey,
+        pages: cached.pages,
+        result: cached.result,
+        failed: false,
+        loadingMore: false,
+      })
       return
     }
     const current = ++generation.current
     const isCurrent = (): boolean => current === generation.current
-    setState({ requestKey, pages: 0, failed: false })
-    searchStudiesContaining(client, entry, {
-      isCurrent,
-      onPage: (pages) => {
-        if (isCurrent()) setState({ requestKey, pages, failed: false })
-      },
-    })
-      .then((result) => {
-        if (!isCurrent()) return
-        cacheFor(resultCache, client).set(entry.id, result)
-        setState({ requestKey, pages: 0, result, failed: false })
+    if (loadMore && cached !== undefined) {
+      setState({
+        requestKey,
+        pages: cached.pages,
+        result: cached.result,
+        failed: false,
+        loadingMore: true,
       })
-      .catch((error: unknown) => {
-        if (!isCurrent()) return
-        console.error(error)
-        setState({ requestKey, pages: 0, failed: true })
+      searchStudiesContaining(client, entry, {
+        isCurrent,
+        offset: cached.nextOffset,
       })
+        .then((page) => {
+          if (!isCurrent()) return
+          const pages = cached.pages + 1
+          const merged: ContainsSearchResult = {
+            matches: mergeContainsMatches(cached.result.matches, page.matches),
+            isExact: cached.result.isExact && page.isExact,
+            isPartial: page.isPartial,
+            pageRowCount: page.pageRowCount,
+          }
+          storeCachedResult(
+            client,
+            entry.id,
+            merged,
+            pages,
+            cached.nextOffset + page.pageRowCount,
+          )
+          setState({
+            requestKey,
+            pages,
+            result: merged,
+            failed: false,
+            loadingMore: false,
+          })
+        })
+        .catch((error: unknown) => {
+          if (!isCurrent()) return
+          console.error(error)
+          setState({
+            requestKey,
+            pages: cached.pages,
+            result: cached.result,
+            failed: false,
+            loadingMore: false,
+          })
+        })
+    } else {
+      setState({ requestKey, pages: 0, failed: false, loadingMore: false })
+      searchStudiesContaining(client, entry, { isCurrent })
+        .then((result) => {
+          if (!isCurrent()) return
+          storeCachedResult(client, entry.id, result, 1, result.pageRowCount)
+          setState({
+            requestKey,
+            pages: 1,
+            result,
+            failed: false,
+            loadingMore: false,
+          })
+        })
+        .catch((error: unknown) => {
+          if (!isCurrent()) return
+          console.error(error)
+          setState({ requestKey, pages: 0, failed: true, loadingMore: false })
+        })
+    }
     return () => {
       generation.current += 1
     }
-  }, [client, entry, requestKey])
+  }, [client, entry, requestKey, moreRequests])
 
-  const retry = useCallback(() => setAttempt((value) => value + 1), [])
+  const retry = useCallback(() => {
+    if (client !== undefined && entry !== undefined) {
+      resultCache.get(client)?.delete(entry.id)
+    }
+    setMoreRequests(0)
+    setAttempt((value) => value + 1)
+  }, [client, entry])
+
+  const loadMore = useCallback(() => {
+    if (client === undefined || entry === undefined) return
+    if (!canFetchMore(resultCache.get(client)?.get(entry.id))) return
+    setMoreRequests((value) => value + 1)
+  }, [client, entry])
 
   if (entry === undefined || client === undefined) {
-    return { status: 'idle', pages: 0, retry }
+    return {
+      status: 'idle',
+      pages: 0,
+      retry,
+      loadMore,
+      canLoadMore: false,
+    }
   }
   if (state.requestKey !== requestKey) {
-    return { status: 'searching', pages: 0, retry }
+    return {
+      status: 'searching',
+      pages: 0,
+      retry,
+      loadMore,
+      canLoadMore: false,
+    }
   }
-  if (state.failed) return { status: 'error', pages: 0, retry }
-  if (state.result !== undefined) {
-    return { status: 'done', pages: 0, result: state.result, retry }
+  if (state.failed) {
+    return { status: 'error', pages: 0, retry, loadMore, canLoadMore: false }
   }
-  return { status: 'searching', pages: state.pages, retry }
+  if (state.result !== undefined && !state.loadingMore) {
+    return {
+      status: 'done',
+      pages: state.pages,
+      result: state.result,
+      retry,
+      loadMore,
+      canLoadMore: state.result.isPartial && state.pages < CONTAINS_MAX_PAGES,
+    }
+  }
+  return {
+    status: 'searching',
+    pages: state.pages,
+    result: state.result,
+    retry,
+    loadMore,
+    canLoadMore: false,
+  }
 }
 
 export interface ContainsCandidate {

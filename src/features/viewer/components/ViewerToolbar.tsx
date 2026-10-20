@@ -1,6 +1,12 @@
 import type React from 'react'
 import { useEffect, useRef, useState } from 'react'
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../../../components/ui/dropdown-menu'
 import { Icon, type IconName } from '../../../components/ui/icon'
 import { cn } from '../../../lib/utils'
 import { formatShortcutHint } from '../../../utils/keyboardShortcuts'
@@ -35,6 +41,9 @@ export interface ViewerToolbarProps {
   onToggleRoiVisibility: () => void
   onSave: () => void
   onGoTo: () => void
+  variant?: 'desktop' | 'overlay'
+  /** Tile status shown on the overlay bottom bar */
+  status?: React.ReactNode
 }
 
 function PanelToggle({
@@ -43,12 +52,14 @@ function PanelToggle({
   isExpanded,
   controls,
   onClick,
+  touch = false,
 }: {
   icon: IconName
   title: string
   isExpanded: boolean
   controls: string
   onClick?: () => void
+  touch?: boolean
 }): React.ReactElement {
   return (
     <button
@@ -59,7 +70,10 @@ function PanelToggle({
       aria-controls={controls}
       onClick={onClick}
       disabled={onClick === undefined}
-      className="grid size-8 flex-none place-items-center rounded-lg text-ink-secondary transition-colors hover:bg-app disabled:pointer-events-none disabled:opacity-40"
+      className={cn(
+        'grid flex-none place-items-center rounded-lg text-ink-secondary transition-colors hover:bg-app disabled:pointer-events-none disabled:opacity-40',
+        touch ? 'size-11' : 'size-8',
+      )}
     >
       <Icon name={icon} size={19} />
     </button>
@@ -122,6 +136,8 @@ export function ViewerToolbar({
   onToggleRoiVisibility,
   onSave,
   onGoTo,
+  variant = 'desktop',
+  status,
 }: ViewerToolbarProps): React.ReactElement {
   const toolbarRef = useRef<HTMLDivElement>(null)
   const [isCompact, setIsCompact] = useState(false)
@@ -198,18 +214,87 @@ export function ViewerToolbar({
       ]
     : []
 
+  const studyToggle = (
+    <PanelToggle
+      icon={isLeftPanelOpen ? 'left_panel_close' : 'left_panel_open'}
+      title="Toggle study panel"
+      isExpanded={isLeftPanelOpen}
+      controls={STUDY_PANEL_ID}
+      onClick={onToggleLeftPanel}
+      touch={variant === 'overlay'}
+    />
+  )
+  const slideToggle = (
+    <PanelToggle
+      icon={isRightPanelOpen ? 'right_panel_close' : 'right_panel_open'}
+      title="Toggle slide panel"
+      isExpanded={isRightPanelOpen}
+      controls={SLIDE_PANEL_ID}
+      onClick={onToggleRightPanel}
+      touch={variant === 'overlay'}
+    />
+  )
+  const pressedTool = tools.find((tool) => tool.isActive)
+
+  if (variant === 'overlay') {
+    return (
+      <div className="z-20 flex min-h-11 flex-none items-center gap-1 border-t border-line bg-panel px-2 pb-[env(safe-area-inset-bottom)]">
+        {studyToggle}
+        {tools.length > 0 && (
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                title="Annotation tools"
+                aria-label={
+                  pressedTool === undefined
+                    ? 'Annotation tools'
+                    : `Annotation tools, ${pressedTool.label} active`
+                }
+                className={cn(
+                  'grid size-11 flex-none place-items-center rounded-lg text-ink-secondary transition-colors hover:bg-app',
+                  pressedTool !== undefined && 'text-primary',
+                )}
+              >
+                <Icon name={pressedTool?.icon ?? 'polyline'} size={19} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="top" className="w-52">
+              {tools.map((tool) => (
+                <DropdownMenuItem
+                  key={tool.key}
+                  onSelect={tool.onClick}
+                  className={cn(tool.isActive && 'text-primary')}
+                >
+                  <Icon name={tool.icon} size={17} />
+                  {tool.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        <button
+          type="button"
+          title={formatShortcutHint('goTo')}
+          aria-label="Go to"
+          onClick={onGoTo}
+          className="grid size-11 flex-none place-items-center rounded-lg text-ink-secondary transition-colors hover:bg-app"
+        >
+          <Icon name="my_location" size={19} />
+        </button>
+        {slideToggle}
+        <span className="min-w-0 flex-1" />
+        {status}
+      </div>
+    )
+  }
+
   return (
     <div
       ref={toolbarRef}
       className="flex h-toolbar flex-none items-center gap-2 border-b border-line bg-panel px-2.5"
     >
-      <PanelToggle
-        icon={isLeftPanelOpen ? 'left_panel_close' : 'left_panel_open'}
-        title="Toggle study panel"
-        isExpanded={isLeftPanelOpen}
-        controls={STUDY_PANEL_ID}
-        onClick={onToggleLeftPanel}
-      />
+      {studyToggle}
       <div className="h-5 w-px flex-none bg-line" />
       <div className="flex min-w-0 flex-1 justify-center overflow-hidden">
         <div className="flex min-w-0 items-center gap-0.5 rounded-lg bg-app p-0.5">
@@ -238,13 +323,7 @@ export function ViewerToolbar({
         </div>
       </div>
       <div className="h-5 w-px flex-none bg-line" />
-      <PanelToggle
-        icon={isRightPanelOpen ? 'right_panel_close' : 'right_panel_open'}
-        title="Toggle slide panel"
-        isExpanded={isRightPanelOpen}
-        controls={SLIDE_PANEL_ID}
-        onClick={onToggleRightPanel}
-      />
+      {slideToggle}
     </div>
   )
 }

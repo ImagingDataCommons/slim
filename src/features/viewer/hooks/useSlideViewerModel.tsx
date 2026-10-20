@@ -20,6 +20,7 @@ import {
   type DrawStylePrefsPreview,
 } from '../../preferences/utils/preferences'
 import type { SlideViewerViewProps } from '../components/SlideViewerView'
+import { useViewerPanelChrome } from '../contexts/ViewerPanelChromeContext'
 import { describeStudySeries } from '../services/seriesDescription'
 import { deriveActiveRoiTool } from '../utils/activeRoiTool'
 import { buildAnnotationConfig } from '../utils/annotationConfig'
@@ -135,7 +136,8 @@ export function useSlideViewerModel({
     preferences.roiFillOpacity,
   ])
 
-  const [isRightPanelOpen, setIsRightPanelOpen] = useState(true)
+  const panelChrome = useViewerPanelChrome()
+  const isRightPanelOpen = panelChrome.isRightPanelOpen
   const [interaction, dispatchInteraction] = useReducer(
     viewerInteractionReducer,
     INITIAL_VIEWER_INTERACTION,
@@ -455,7 +457,7 @@ export function useSlideViewerModel({
       isLeftPanelOpen: isLeftPanelOpen ?? true,
       onToggleLeftPanel,
       isRightPanelOpen,
-      onToggleRightPanel: () => setIsRightPanelOpen((isOpen) => !isOpen),
+      onToggleRightPanel: panelChrome.toggleRightPanel,
       enableAnnotationTools,
       activeTool: deriveActiveRoiTool(interaction),
       areRoisHidden: interaction.areRoisHidden,

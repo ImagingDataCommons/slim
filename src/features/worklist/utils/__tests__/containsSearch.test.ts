@@ -6,11 +6,11 @@ import type * as dwc from 'dicomweb-client'
 import { StorageClasses } from '../../../../data/uids'
 import { type ContainsEntry, findContainsEntry } from '../containsCatalog'
 import {
-  CONTAINS_MAX_PAGES,
   CONTAINS_PAGE_SIZE,
   type ContainsSearchClient,
   confirmStudyContains,
   fetchSlideStudy,
+  mergeContainsMatches,
   STUDY_FIELDS,
   searchStudiesContaining,
   withEntryModality,
@@ -91,6 +91,7 @@ describe('searchStudiesContaining', () => {
     expect(client.searchForSeries).not.toHaveBeenCalled()
     expect(result.isExact).toBe(true)
     expect(result.isPartial).toBe(false)
+    expect(result.pageRowCount).toBe(4)
     expect(
       Object.fromEntries(
         [...result.matches].map(([uid, match]) => [uid, match.seriesUids]),
@@ -154,55 +155,52 @@ describe('searchStudiesContaining', () => {
     expect(client.searchForSeries).not.toHaveBeenCalled()
   })
 
-  it('keeps paging past a short page until an empty one or the cap', async () => {
-    const serverCap = 100
-    const cappedPage = (offset: number): QidoRow[] => {
-      if (offset >= serverCap * 2) return []
-      return Array.from({ length: serverCap }, (_, index) =>
-        row(`s${offset + index}`, `x${offset + index}`),
-      )
-    }
-    const cappedServer = fakeClient({
-      searchForInstances: async () => {
-        throw badRequest()
-      },
-      searchForSeries: async (options) => cappedPage(offsetOf(options)),
-    })
-
-    const result = await searchStudiesContaining(cappedServer, entry('ann'))
-    expect(cappedServer.searchForSeries).toHaveBeenCalledTimes(3)
-    expect(cappedServer.searchForSeries).toHaveBeenNthCalledWith(2, {
-      queryParams: {
-        Modality: 'ANN',
-        includefield: STUDY_FIELDS,
-        limit: CONTAINS_PAGE_SIZE,
-        offset: serverCap,
-      },
-    })
-    expect(cappedServer.searchForSeries).toHaveBeenLastCalledWith({
-      queryParams: {
-        Modality: 'ANN',
-        includefield: STUDY_FIELDS,
-        limit: CONTAINS_PAGE_SIZE,
-        offset: serverCap * 2,
-      },
-    })
-    expect(result.matches.size).toBe(serverCap * 2)
-    expect(result.isPartial).toBe(false)
-
+  it('fetches one page and marks a full page as partial', async () => {
     const fullPage = (offset: number): QidoRow[] =>
       Array.from({ length: CONTAINS_PAGE_SIZE }, (_, index) =>
-        row(`s${offset + index}`, `x${offset + index}`),
+        row(
+          `s${offset + index}`,
+          `x${offset + index}`,
+          StorageClasses.PARAMETRIC_MAP,
+        ),
       )
-    const endless = fakeClient({
-      searchForInstances: async () => {
-        throw badRequest()
-      },
-      searchForSeries: async (options) => fullPage(offsetOf(options)),
+    const client = fakeClient({
+      searchForInstances: async (options) => fullPage(offsetOf(options)),
     })
-    const capped = await searchStudiesContaining(endless, entry('ann'))
-    expect(endless.searchForSeries).toHaveBeenCalledTimes(CONTAINS_MAX_PAGES)
-    expect(capped.isPartial).toBe(true)
+
+    const result = await searchStudiesContaining(client, entry('pmap'))
+
+    expect(client.searchForInstances).toHaveBeenCalledTimes(1)
+    expect(result.isPartial).toBe(true)
+    expect(result.pageRowCount).toBe(CONTAINS_PAGE_SIZE)
+    expect(result.matches.size).toBe(CONTAINS_PAGE_SIZE)
+  })
+
+  it('fetches the given offset on a later page', async () => {
+    const client = fakeClient({
+      searchForInstances: async (options) => {
+        const offset = offsetOf(options)
+        return offset === 100
+          ? [row('s2', 'b', StorageClasses.PARAMETRIC_MAP)]
+          : [row('s1', 'a', StorageClasses.PARAMETRIC_MAP)]
+      },
+    })
+
+    const first = await searchStudiesContaining(client, entry('pmap'))
+    const second = await searchStudiesContaining(client, entry('pmap'), {
+      offset: 100,
+    })
+
+    expect(client.searchForInstances).toHaveBeenNthCalledWith(2, {
+      queryParams: {
+        SOPClassUID: StorageClasses.PARAMETRIC_MAP,
+        includefield: STUDY_FIELDS,
+        limit: CONTAINS_PAGE_SIZE,
+        offset: 100,
+      },
+    })
+    expect([...first.matches.keys()]).toEqual(['s1'])
+    expect([...second.matches.keys()]).toEqual(['s2'])
   })
 
   it('keeps the study attributes of the first match', async () => {
@@ -225,7 +223,7 @@ describe('searchStudiesContaining', () => {
     })
   })
 
-  it('stops paging once the caller is no longer current', async () => {
+  it('does not fetch when the caller is no longer current', async () => {
     const client = fakeClient({
       searchForInstances: async () => {
         throw badRequest()
@@ -239,7 +237,25 @@ describe('searchStudiesContaining', () => {
     await searchStudiesContaining(client, entry('ann'), {
       isCurrent: () => false,
     })
-    expect(client.searchForSeries).toHaveBeenCalledTimes(1)
+    expect(client.searchForSeries).not.toHaveBeenCalled()
+  })
+})
+
+describe('mergeContainsMatches', () => {
+  it('appends new studies and extra series of a known study', () => {
+    const studyOf = (uid: string): dmv.metadata.Study =>
+      ({ StudyInstanceUID: uid }) as dmv.metadata.Study
+    const first = new Map([['s1', { seriesUids: ['a'], study: studyOf('s1') }]])
+    const extra = new Map([
+      ['s1', { seriesUids: ['a', 'b'], study: studyOf('s1') }],
+      ['s2', { seriesUids: ['c'], study: studyOf('s2') }],
+    ])
+
+    const merged = mergeContainsMatches(first, extra)
+
+    expect(merged.get('s1')?.seriesUids).toEqual(['a', 'b'])
+    expect(merged.get('s1')?.study.StudyInstanceUID).toBe('s1')
+    expect(merged.get('s2')?.seriesUids).toEqual(['c'])
   })
 })
 

@@ -9,11 +9,13 @@ import SlideViewerSidebar from '../../../components/SlideViewer/SlideViewerSideb
 
 import type { EvaluationOptions } from '../../../components/SlideViewer/types'
 import type { MeasurementUnit } from '../../preferences'
+import { useViewerPanelChrome } from '../contexts/ViewerPanelChromeContext'
 import type { AnnotationConfig } from '../utils/annotationConfig'
 import type { AnnotationDraft } from '../utils/annotationDraft'
 import type { GoToField, GoToInput, GoToRanges } from '../utils/goTo'
 import { buildRoiDescription } from '../utils/selectedRoiDescription'
 import { HoveredRoiTooltipLayer } from './HoveredRoiTooltipLayer'
+import { OverlayPanel } from './OverlayPanel'
 import { RoiDescription } from './RoiDescription'
 import { AnnotationCategoriesSection } from './sections/AnnotationCategoriesSection'
 import { AnnotationConfigurationFields } from './sections/AnnotationConfigurationFields'
@@ -145,12 +147,59 @@ export function SlideViewerView({
       />
     ) : undefined
 
+  const { overlayPanels, setRightPanelOpen } = useViewerPanelChrome()
+  const slideSidebar = (
+    <SlideViewerSidebar
+      isOpen={overlayPanels || isRightPanelOpen}
+      labelViewportRef={labelViewportRef}
+      labelViewer={labelViewer}
+      className={overlayPanels ? 'min-h-0 w-full flex-1 border-0' : undefined}
+      specimenMenu={<SpecimensSection {...sidebar.specimens} />}
+      equipmentMenu={<EquipmentSection {...sidebar.equipment} />}
+      opticalPathMenu={<OpticalPathsSection {...sidebar.opticalPaths} />}
+      presentationStateMenu={
+        <PresentationStatesSection {...sidebar.presentationStates} />
+      }
+      annotationMenu={<AnnotationsSection {...sidebar.annotations} />}
+      annotationGroupMenu={
+        sidebar.annotationGroups === undefined ? undefined : (
+          <AnnotationGroupsSection {...sidebar.annotationGroups} />
+        )
+      }
+      annotationCategoryMenu={
+        <AnnotationCategoriesSection {...sidebar.annotationCategories} />
+      }
+      segmentationMenu={
+        sidebar.segmentations === undefined ? undefined : (
+          <SegmentationsSection {...sidebar.segmentations} />
+        )
+      }
+      parametricMapMenu={
+        sidebar.parametricMaps === undefined ? undefined : (
+          <ParametricMapsSection {...sidebar.parametricMaps} />
+        )
+      }
+    />
+  )
+
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1">
       <SlideViewerContent
-        toolbar={<ViewerChromeToolbar {...toolbar} />}
+        toolbar={
+          overlayPanels ? undefined : <ViewerChromeToolbar {...toolbar} />
+        }
         overlays={<ViewerChromeOverlays {...overlays} />}
-        footer={<ViewerChromeFooter {...footer} />}
+        footer={
+          overlayPanels ? (
+            <ViewerChromeToolbar
+              {...toolbar}
+              variant="overlay"
+              status={<ViewerChromeFooter {...footer} compact />}
+            />
+          ) : (
+            <ViewerChromeFooter {...footer} />
+          )
+        }
         cursor={cursor}
         isFluorescence={isFluorescence}
         showOverviewMap={showOverviewMap}
@@ -213,36 +262,18 @@ export function SlideViewerView({
         />
       </SlideViewerContent>
 
-      <SlideViewerSidebar
-        isOpen={isRightPanelOpen}
-        labelViewportRef={labelViewportRef}
-        labelViewer={labelViewer}
-        specimenMenu={<SpecimensSection {...sidebar.specimens} />}
-        equipmentMenu={<EquipmentSection {...sidebar.equipment} />}
-        opticalPathMenu={<OpticalPathsSection {...sidebar.opticalPaths} />}
-        presentationStateMenu={
-          <PresentationStatesSection {...sidebar.presentationStates} />
-        }
-        annotationMenu={<AnnotationsSection {...sidebar.annotations} />}
-        annotationGroupMenu={
-          sidebar.annotationGroups === undefined ? undefined : (
-            <AnnotationGroupsSection {...sidebar.annotationGroups} />
-          )
-        }
-        annotationCategoryMenu={
-          <AnnotationCategoriesSection {...sidebar.annotationCategories} />
-        }
-        segmentationMenu={
-          sidebar.segmentations === undefined ? undefined : (
-            <SegmentationsSection {...sidebar.segmentations} />
-          )
-        }
-        parametricMapMenu={
-          sidebar.parametricMaps === undefined ? undefined : (
-            <ParametricMapsSection {...sidebar.parametricMaps} />
-          )
-        }
-      />
+      {overlayPanels ? (
+        <OverlayPanel
+          open={isRightPanelOpen}
+          onOpenChange={setRightPanelOpen}
+          side="right"
+          title="Slide"
+        >
+          {slideSidebar}
+        </OverlayPanel>
+      ) : (
+        slideSidebar
+      )}
 
       <HoveredRoiTooltipLayer store={hoveredRoiTooltipStore} />
     </div>

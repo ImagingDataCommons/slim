@@ -83,8 +83,8 @@ the modality is shared with other SOP classes.
 2. On a 400, or when the server ignores the key and returns other SOP
    classes, fall back to `searchForSeries({ Modality })` and remember that
    choice per server for the session.
-3. Page with `limit=5000` and `offset` until a short page comes back. Stop
-   after 10 pages and mark the result partial.
+3. Fetch one QIDO page (`limit=100`). A full page is marked partial. Further
+   pages load only when the user clicks Search more, and stop after 10 pages.
 
 The result maps each Study Instance UID to its matching Series Instance UIDs
 and a study row built from the first match. These rows are the filtered
@@ -94,9 +94,9 @@ row replaces the built one when available.
 ### Hooks
 
 - `useContainsSearch(client, entry)` returns the status
-  (`idle | searching | done | error`), page progress, the result and `retry`.
-  It guards against stale responses like `useStudies`. Results are cached per
-  server and entry for the session.
+  (`idle | searching | done | error`), page progress, the result, `retry`,
+  and `loadMore`. It guards against stale responses like `useStudies`. Results
+  are cached per server and entry for the session.
 - `useContainsRowChecks(searchClient, studyClient, entry, candidates)` checks
   only the rows on the current page, 6 at a time, and caches each answer:
   - Rows not in the loaded worklist: a study search by UID with
@@ -111,13 +111,15 @@ row replaces the built one when available.
 - A failed search shows a message with Retry in the header. The normal
   worklist stays usable.
 - A failed confirmation keeps the row listed, with a "Couldn't verify" tooltip.
-- A partial result says "first 50,000 matches only".
+- A partial result says "first N matches only" and offers Search more until
+  the 10-page session cap.
 
 ## Testing
 
 - Catalog matching: labels, aliases, modality, pasted UIDs.
 - Search strategy: instance search success, fallback to modality on 400,
-  paging, page cap, and the study attributes kept from the first match.
+  one-page fetch, Search more, page cap, and the study attributes kept from
+  the first match.
 - Row checks: drops studies without slides or of another SOP class, and
   fetches rows outside the loaded worklist.
 - Components: popover filtering and keyboard selection, chip, clear, URL

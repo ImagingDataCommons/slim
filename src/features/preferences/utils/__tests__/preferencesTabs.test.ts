@@ -23,8 +23,13 @@ describe('getTabForKey', () => {
     expect(getTabForKey(ALL_TABS, 'keys', 'End')).toBe('about')
   })
 
+  it('treats left and right like up and down', () => {
+    expect(getTabForKey(ALL_TABS, 'keys', 'ArrowRight')).toBe('config')
+    expect(getTabForKey(ALL_TABS, 'config', 'ArrowLeft')).toBe('keys')
+  })
+
   it('ignores other keys and unknown tabs', () => {
-    expect(getTabForKey(ALL_TABS, 'keys', 'ArrowRight')).toBeUndefined()
+    expect(getTabForKey(ALL_TABS, 'keys', 'Enter')).toBeUndefined()
     expect(getTabForKey([], 'keys', 'ArrowDown')).toBeUndefined()
   })
 })

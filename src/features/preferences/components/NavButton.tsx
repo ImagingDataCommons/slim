@@ -1,6 +1,7 @@
 import * as React from 'react'
 
 import { Icon } from '../../../components/ui/icon'
+import { useLayoutMode } from '../../../contexts/LayoutModeContext'
 import { cn } from '../../../lib/utils'
 import type { PreferencesTabDefinition } from '../utils/preferencesTabs'
 
@@ -14,26 +15,30 @@ export interface NavButtonProps {
 
 /** One `role="tab"` entry of the Preferences sidebar (roving tabindex). */
 export const NavButton = React.forwardRef<HTMLButtonElement, NavButtonProps>(
-  ({ tab, isActive, id, panelId, onSelect }, ref) => (
-    <button
-      ref={ref}
-      id={id}
-      type="button"
-      role="tab"
-      aria-selected={isActive}
-      aria-controls={panelId}
-      tabIndex={isActive ? 0 : -1}
-      onClick={onSelect}
-      className={cn(
-        'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-13 font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40',
-        isActive
-          ? 'bg-segmented-active text-primary shadow-[0_1px_2px_rgb(var(--shadow-color)/0.1)]'
-          : 'text-ink-secondary hover:text-ink',
-      )}
-    >
-      <Icon name={tab.icon} size={18} />
-      {tab.label}
-    </button>
-  ),
+  ({ tab, isActive, id, panelId, onSelect }, ref) => {
+    const { compactChrome } = useLayoutMode()
+    return (
+      <button
+        ref={ref}
+        id={id}
+        type="button"
+        role="tab"
+        aria-selected={isActive}
+        aria-controls={panelId}
+        tabIndex={isActive ? 0 : -1}
+        onClick={onSelect}
+        className={cn(
+          'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-13 font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40',
+          compactChrome ? 'min-h-11 w-auto flex-none' : 'w-full',
+          isActive
+            ? 'bg-segmented-active text-primary shadow-[0_1px_2px_rgb(var(--shadow-color)/0.1)]'
+            : 'text-ink-secondary hover:text-ink',
+        )}
+      >
+        <Icon name={tab.icon} size={18} />
+        {tab.label}
+      </button>
+    )
+  },
 )
 NavButton.displayName = 'NavButton'

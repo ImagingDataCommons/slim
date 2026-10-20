@@ -58,74 +58,89 @@ function SlideCardSkeleton(): React.ReactElement {
  */
 export function ViewerLoadingLayout({
   isLeftPanelOpen,
+  overlayPanels = false,
 }: {
   isLeftPanelOpen: boolean
+  overlayPanels?: boolean
 }): React.ReactElement {
   return (
     <div className="flex h-full min-h-0" aria-busy="true">
-      <aside
-        id={STUDY_PANEL_ID}
-        aria-label="Study panel"
-        className={cn(
-          'flex min-h-0 w-sidebar flex-none flex-col overflow-hidden border-r border-line bg-panel',
-          !isLeftPanelOpen && 'hidden',
-        )}
-      >
-        <SectionHeader title="Patient" />
-        <KeyValueRows count={4} />
-        <PanelDivider />
-        <SectionHeader title="Study" />
-        <KeyValueRows count={5} />
-        <PanelDivider />
-        <div className="px-4 pb-2.5 pt-3 text-11 font-semibold uppercase leading-none tracking-[0.06em] text-ink-secondary">
-          Slides
-        </div>
-        <div className="flex flex-col gap-2 px-3">
-          <SlideCardSkeleton />
-          <SlideCardSkeleton />
-        </div>
-      </aside>
+      {!overlayPanels && (
+        <aside
+          id={STUDY_PANEL_ID}
+          aria-label="Study panel"
+          className={cn(
+            'flex min-h-0 w-sidebar flex-none flex-col overflow-hidden border-r border-line bg-panel',
+            !isLeftPanelOpen && 'hidden',
+          )}
+        >
+          <SectionHeader title="Patient" />
+          <KeyValueRows count={4} />
+          <PanelDivider />
+          <SectionHeader title="Study" />
+          <KeyValueRows count={5} />
+          <PanelDivider />
+          <div className="px-4 pb-2.5 pt-3 text-11 font-semibold uppercase leading-none tracking-[0.06em] text-ink-secondary">
+            Slides
+          </div>
+          <div className="flex flex-col gap-2 px-3">
+            <SlideCardSkeleton />
+            <SlideCardSkeleton />
+          </div>
+        </aside>
+      )}
 
       <main className="flex min-w-0 flex-1 overflow-hidden">
         <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="flex h-toolbar flex-none items-center gap-2 border-b border-line bg-panel px-2.5">
-            <span className="grid size-8 flex-none place-items-center text-ink-secondary opacity-40">
-              <Icon name="left_panel_close" size={19} />
-            </span>
-            <div className="h-5 w-px flex-none bg-line" />
-            <div className="flex min-w-0 flex-1 justify-center">
-              <Skeleton className="h-8 w-[min(480px,70%)] rounded-lg bg-app" />
+          {!overlayPanels && (
+            <div className="flex h-toolbar flex-none items-center gap-2 border-b border-line bg-panel px-2.5">
+              <span className="grid size-8 flex-none place-items-center text-ink-secondary opacity-40">
+                <Icon name="left_panel_close" size={19} />
+              </span>
+              <div className="h-5 w-px flex-none bg-line" />
+              <div className="flex min-w-0 flex-1 justify-center">
+                <Skeleton className="h-8 w-[min(480px,70%)] rounded-lg bg-app" />
+              </div>
+              <div className="h-5 w-px flex-none bg-line" />
+              <span className="grid size-8 flex-none place-items-center text-ink-secondary opacity-40">
+                <Icon name="right_panel_close" size={19} />
+              </span>
             </div>
-            <div className="h-5 w-px flex-none bg-line" />
-            <span className="grid size-8 flex-none place-items-center text-ink-secondary opacity-40">
-              <Icon name="right_panel_close" size={19} />
-            </span>
-          </div>
+          )}
           <div className="relative min-h-0 flex-1 overflow-hidden bg-viewport">
             <ViewportLoadingIndicator isVisible label="Loading study" />
           </div>
-          <div className="flex h-footer flex-none items-center border-t border-line bg-panel px-3.5">
+          <div
+            className={cn(
+              'flex flex-none items-center border-t border-line bg-panel px-3.5',
+              overlayPanels
+                ? 'min-h-11 pb-[env(safe-area-inset-bottom)]'
+                : 'h-footer',
+            )}
+          >
             <Skeleton className="h-2 w-40 bg-line-soft" />
           </div>
         </section>
 
-        <aside
-          id={SLIDE_PANEL_ID}
-          aria-label="Slide panel"
-          className="flex min-h-0 w-sidebar-right flex-none flex-col overflow-hidden border-l border-line bg-panel"
-        >
-          <SectionHeader />
-          <KeyValueRows count={4} />
-          <PanelDivider />
-          <SectionHeader />
-          <KeyValueRows count={3} />
-          <PanelDivider />
-          <SectionHeader />
-          <KeyValueRows count={3} />
-          <PanelDivider />
-          <SectionHeader />
-          <KeyValueRows count={2} />
-        </aside>
+        {!overlayPanels && (
+          <aside
+            id={SLIDE_PANEL_ID}
+            aria-label="Slide panel"
+            className="flex min-h-0 w-sidebar-right flex-none flex-col overflow-hidden border-l border-line bg-panel"
+          >
+            <SectionHeader />
+            <KeyValueRows count={4} />
+            <PanelDivider />
+            <SectionHeader />
+            <KeyValueRows count={3} />
+            <PanelDivider />
+            <SectionHeader />
+            <KeyValueRows count={3} />
+            <PanelDivider />
+            <SectionHeader />
+            <KeyValueRows count={2} />
+          </aside>
+        )}
       </main>
     </div>
   )

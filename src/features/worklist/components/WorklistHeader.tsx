@@ -1,11 +1,12 @@
 import type * as React from 'react'
 
 import { SearchInput } from '../../../components/ui/search-input'
+import { useLayoutMode } from '../../../contexts/LayoutModeContext'
 import { cn } from '../../../lib/utils'
 import type { ContainsSearchStatus } from '../hooks/useContainsSearch'
 import type { WorklistWidthTier } from '../hooks/useWorklistColumnLayout'
+import { isCardLayout } from '../hooks/useWorklistColumnLayout'
 import type { ContainsEntry } from '../utils/containsCatalog'
-import { CONTAINS_MAX_PAGES, CONTAINS_PAGE_SIZE } from '../utils/containsSearch'
 import { ColumnsPicker } from './ColumnsPicker'
 import { ContainsPicker } from './ContainsPicker'
 
@@ -19,7 +20,11 @@ export interface WorklistContainsState {
   /** Some matches are not checked yet, so the count may still drop */
   isApproximate: boolean
   isPartial: boolean
+  /** Raw QIDO study hits, before confirmation drops mismatches */
+  searchedCount: number
   onRetry: () => void
+  onLoadMore: () => void
+  canLoadMore: boolean
 }
 
 export interface WorklistHeaderProps {
@@ -49,9 +54,12 @@ function ContainsSummary({
     matchCount,
     isApproximate,
     isPartial,
+    searchedCount,
     onRetry,
+    onLoadMore,
+    canLoadMore,
   } = contains
-  if (status === 'searching') {
+  if (status === 'searching' && matchCount === 0) {
     return (
       <>
         Searching the server for {entry.label}…
@@ -73,12 +81,23 @@ function ContainsSummary({
       </span>
     )
   }
+  const linkClass =
+    'rounded-sm font-medium text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40'
   return (
     <>
       {isApproximate && 'Up to '}
       {matchCount} {studies(matchCount)} with {entry.label}
       {isPartial &&
-        ` · first ${(CONTAINS_PAGE_SIZE * CONTAINS_MAX_PAGES).toLocaleString('en-US')} matches only`}
+        ` · first ${searchedCount.toLocaleString('en-US')} matches only`}
+      {status === 'searching' && ' · searching…'}
+      {canLoadMore && (
+        <>
+          {' · '}
+          <button type="button" onClick={onLoadMore} className={linkClass}>
+            Search more
+          </button>
+        </>
+      )}
     </>
   )
 }
@@ -94,6 +113,10 @@ export function WorklistHeader({
   hiddenColumnIds,
   className,
 }: WorklistHeaderProps): React.ReactElement {
+  const { compactChrome, overlayPanels } = useLayoutMode()
+  const showColumns = !isCardLayout(columnTier)
+  /** Search drops to its own row below `lg` so the toolbar cannot collapse it. */
+  const stackedSearch = compactChrome || overlayPanels
   const status =
     isLoading && contains === undefined ? (
       'Loading studies…'
@@ -101,43 +124,62 @@ export function WorklistHeader({
       <ContainsSummary contains={contains} />
     ) : undefined
 
-  return (
-    <div
+  const search = (
+    <SearchInput
+      aria-label="Search studies"
+      placeholder="Search patient, ID, accession…"
+      value={searchText}
+      onValueChange={onSearchChange}
+      clearable
       className={cn(
-        'flex min-w-0 w-full flex-wrap items-center gap-x-4 gap-y-2',
-        className,
+        'min-w-0 w-full',
+        compactChrome && 'h-11',
+        stackedSearch ? 'max-w-none' : 'max-w-[340px]',
       )}
-    >
-      <div className="flex min-w-0 flex-1 items-baseline gap-3">
+      inputClassName={cn(
+        'placeholder:text-ink-faint',
+        compactChrome && 'text-[16px]',
+      )}
+    />
+  )
+
+  return (
+    <div className={cn('flex min-w-0 w-full flex-col gap-2', className)}>
+      {/**
+       * Title and tools share one wrap row. Status sits underneath so a
+       * mid-width toolbar cannot squeeze it into a single-word column.
+       */}
+      <div className="flex min-w-0 w-full flex-wrap items-center gap-x-3 gap-y-2">
         <h1 className="flex-none text-[18px] font-semibold leading-[1.2] tracking-[-0.01em] text-ink">
           Studies
         </h1>
-        {status !== undefined && (
-          <div
-            className="min-w-0 truncate text-12.5 text-ink-muted"
-            aria-live="polite"
-          >
-            {status}
-          </div>
-        )}
+        <div
+          className={cn(
+            'flex min-w-0 items-center gap-2',
+            compactChrome ? 'ml-auto flex-none' : 'ml-auto flex-1 justify-end',
+          )}
+        >
+          {showColumns && (
+            <ColumnsPicker
+              tier={columnTier}
+              hiddenColumnIds={hiddenColumnIds}
+            />
+          )}
+          <ContainsPicker
+            value={contains?.entry}
+            onChange={onContainsChange}
+            isBusy={contains?.status === 'searching'}
+            compact={compactChrome}
+          />
+          {!stackedSearch && search}
+        </div>
+        {stackedSearch && <div className="w-full min-w-0">{search}</div>}
       </div>
-      <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2 sm:flex-nowrap">
-        <ColumnsPicker tier={columnTier} hiddenColumnIds={hiddenColumnIds} />
-        <ContainsPicker
-          value={contains?.entry}
-          onChange={onContainsChange}
-          isBusy={contains?.status === 'searching'}
-        />
-        <SearchInput
-          aria-label="Search studies"
-          placeholder="Search patient, ID, accession…"
-          value={searchText}
-          onValueChange={onSearchChange}
-          clearable
-          className="min-w-0 w-full max-w-[340px] sm:w-[340px]"
-          inputClassName="placeholder:text-ink-faint"
-        />
-      </div>
+      {status !== undefined && (
+        <div className="min-w-0 text-12.5 text-ink-muted" aria-live="polite">
+          {status}
+        </div>
+      )}
     </div>
   )
 }

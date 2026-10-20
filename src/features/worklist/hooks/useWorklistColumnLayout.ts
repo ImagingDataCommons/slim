@@ -9,9 +9,26 @@ import {
 
 /**
  * How wide the worklist panel is, for column shedding. Tiers are chosen by
- * whether each set's minimum column widths fit the measured panel.
+ * whether each set's minimum column widths fit the measured panel. `card`
+ * is used when even the primary 5-column set cannot fit.
  */
-export type WorklistWidthTier = 'base' | 'md' | 'lg' | 'xl'
+export type WorklistWidthTier = 'card' | 'base' | 'md' | 'lg' | 'xl'
+
+/** Compact stacked rows instead of a CSS-grid table. */
+export function isCardLayout(tier: WorklistWidthTier): boolean {
+  return tier === 'card'
+}
+
+/**
+ * Phones use cards even before the panel is measured. The hook defaults to
+ * `base`, which would otherwise paint a 5-column skeleton on a 390px screen.
+ */
+export function resolveWorklistTier(
+  measuredTier: WorklistWidthTier,
+  compactChrome: boolean,
+): WorklistWidthTier {
+  return compactChrome ? 'card' : measuredTier
+}
 
 /** Horizontal padding on each grid row (`px-5` × 2). */
 const ROW_PAD_X = 40
@@ -66,6 +83,14 @@ export const WORKLIST_COLUMNS_BY_TIER: Record<
   WorklistWidthTier,
   WorklistColumnId[]
 > = {
+  card: [
+    'PatientName',
+    'PatientID',
+    'ModalitiesInStudy',
+    'StudyDate',
+    'AccessionNumber',
+    'Slides',
+  ],
   base: [
     'PatientName',
     'PatientID',
@@ -107,12 +132,14 @@ function minWidthForColumns(columnIds: readonly string[]): number {
 }
 
 export function tierForWidth(width: number): WorklistWidthTier {
+  /** jsdom and pre-layout boxes report 0; keep the table until we measure. */
+  if (width <= 0) return 'base'
   for (const tier of TIER_ORDER) {
     if (width >= minWidthForColumns(WORKLIST_COLUMNS_BY_TIER[tier])) {
       return tier
     }
   }
-  return 'base'
+  return 'card'
 }
 
 /**
@@ -162,7 +189,7 @@ export function columnVisibilityForTier(
 
 /**
  * Observes `element`'s width and returns the worklist column tier. Falls back
- * to `base` until the element is mounted.
+ * to `base` until the element is measured.
  */
 export function useWorklistColumnLayout(
   element: HTMLElement | null,

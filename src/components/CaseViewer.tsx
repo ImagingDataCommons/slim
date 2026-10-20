@@ -1,4 +1,4 @@
-import { type JSX, useEffect, useState } from 'react'
+import { type JSX, useEffect } from 'react'
 import {
   Route,
   Routes,
@@ -13,9 +13,14 @@ import { useStudySummary } from '../contexts/StudySummaryContext'
 import type DicomWebManager from '../DicomWebManager'
 import type { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
+import { OverlayPanel } from '../features/viewer/components/OverlayPanel'
 import { ViewerLoadingLayout } from '../features/viewer/components/ViewerLoadingLayout'
 import { ViewerMessage } from '../features/viewer/components/ViewerMessage'
 import { ViewportLoadingIndicator } from '../features/viewer/components/ViewportLoadingIndicator'
+import {
+  useViewerPanelChrome,
+  ViewerPanelChromeProvider,
+} from '../features/viewer/contexts/ViewerPanelChromeContext'
 import { useCaseViewerRouting } from '../features/viewer/hooks/useCaseViewerRouting'
 import {
   resolvedSeriesInstanceUID,
@@ -131,16 +136,21 @@ interface ViewerProps extends RouteComponentProps {
 }
 
 function Viewer(props: ViewerProps): JSX.Element | null {
+  return (
+    <ViewerPanelChromeProvider>
+      <ViewerBody {...props} />
+    </ViewerPanelChromeProvider>
+  )
+}
+
+function ViewerBody(props: ViewerProps): JSX.Element | null {
   const { clients, studyInstanceUID, location, navigate } = props
   const { slides, isLoading, error, retry } = useSlides({
     clients,
     studyInstanceUID,
   })
   const { setSummary } = useStudySummary()
-  const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true)
-  const toggleLeftPanel = (): void => {
-    setIsLeftPanelOpen((isOpen) => !isOpen)
-  }
+  const chrome = useViewerPanelChrome()
 
   const summaryImage = slides[0]?.volumeImages[0]
   useEffect(() => {
@@ -167,8 +177,20 @@ function Viewer(props: ViewerProps): JSX.Element | null {
     navigate,
   })
 
+  const handleStudySeriesSelection = (change: {
+    seriesInstanceUID: string
+  }): void => {
+    handleSeriesSelection(change)
+    if (chrome.overlayPanels) chrome.closeLeftPanel()
+  }
+
   if (isLoading) {
-    return <ViewerLoadingLayout isLeftPanelOpen={isLeftPanelOpen} />
+    return (
+      <ViewerLoadingLayout
+        isLeftPanelOpen={chrome.isLeftPanelOpen}
+        overlayPanels={chrome.overlayPanels}
+      />
+    )
   }
 
   if (error !== null) {
@@ -208,16 +230,36 @@ function Viewer(props: ViewerProps): JSX.Element | null {
     fallbackSeriesInstanceUID: volumeInstances[0].SeriesInstanceUID,
   })
 
+  const studyPanel = (
+    <StudySidePanel
+      isOpen={chrome.overlayPanels || chrome.isLeftPanelOpen}
+      clients={props.clients}
+      slides={slides}
+      refImage={refImage}
+      selectedSeriesInstanceUID={selectedSeriesInstanceUID}
+      onSeriesSelection={handleStudySeriesSelection}
+      className={
+        chrome.overlayPanels ? 'min-h-0 w-full flex-1 border-0' : undefined
+      }
+    />
+  )
+
   return (
     <div className="flex h-full min-h-0">
-      <StudySidePanel
-        isOpen={isLeftPanelOpen}
-        clients={props.clients}
-        slides={slides}
-        refImage={refImage}
-        selectedSeriesInstanceUID={selectedSeriesInstanceUID}
-        onSeriesSelection={handleSeriesSelection}
-      />
+      {chrome.overlayPanels ? (
+        <OverlayPanel
+          open={chrome.isLeftPanelOpen}
+          onOpenChange={(open) =>
+            open ? chrome.setLeftPanelOpen(true) : chrome.closeLeftPanel()
+          }
+          side="left"
+          title="Study"
+        >
+          {studyPanel}
+        </OverlayPanel>
+      ) : (
+        studyPanel
+      )}
 
       <main className="flex min-w-0 flex-1 overflow-hidden">
         <Routes>
@@ -233,8 +275,8 @@ function Viewer(props: ViewerProps): JSX.Element | null {
                 enableMemoryMonitoring={props.enableMemoryMonitoring}
                 app={props.app}
                 user={props.user}
-                isLeftPanelOpen={isLeftPanelOpen}
-                onToggleLeftPanel={toggleLeftPanel}
+                isLeftPanelOpen={chrome.isLeftPanelOpen}
+                onToggleLeftPanel={chrome.toggleLeftPanel}
               />
             }
           />
