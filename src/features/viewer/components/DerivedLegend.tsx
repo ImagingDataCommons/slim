@@ -22,8 +22,7 @@ export function DerivedLegend({
   rows,
   onVisibilityChange,
 }: DerivedLegendProps): ReactElement | null {
-  const visibleCount = rows.filter((row) => row.isVisible).length
-  if (rows.length === 0 || visibleCount === 0) return null
+  if (rows.length === 0) return null
 
   return (
     <ul

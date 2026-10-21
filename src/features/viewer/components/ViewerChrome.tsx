@@ -1,4 +1,4 @@
-import type { ComponentProps, JSX } from 'react'
+import { type ComponentProps, type JSX, useState } from 'react'
 
 import { DerivedLegend, type DerivedLegendProps } from './DerivedLegend'
 import { ViewerFooter } from './ViewerFooter'
@@ -37,7 +37,19 @@ export function ViewerChromeOverlays({
   derivedLegend,
   ...overlayProps
 }: ViewerChromeOverlaysProps): JSX.Element {
-  const legendVisible = derivedLegend.rows.some((row) => row.isVisible)
+  /**
+   * The legend appears once an overlay it lists is shown, then stays for
+   * this viewer while rows exist, so its eye toggles can turn hidden
+   * overlays back on. Slides whose overlays were never shown get no legend.
+   */
+  const [legendShownFor, setLegendShownFor] = useState<string | undefined>()
+  const hasVisibleRow = derivedLegend.rows.some((row) => row.isVisible)
+  if (hasVisibleRow && legendShownFor !== viewerKey) {
+    setLegendShownFor(viewerKey)
+  }
+  const legendVisible =
+    derivedLegend.rows.length > 0 &&
+    (hasVisibleRow || legendShownFor === viewerKey)
   return (
     <>
       <ViewportOverlays

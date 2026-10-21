@@ -145,8 +145,18 @@ export async function mainViewportCenter(
 }
 
 /** PNG of the main viewport only; whole-page shots change with panel scroll */
+/**
+ * Pixel checks measure the slide, so the in-viewport overlay legend (which
+ * stays listed with its overlays hidden) is left out of every capture.
+ */
+const HIDE_VIEWPORT_LEGEND =
+  '[aria-label="Overlay color legend"] { visibility: hidden !important; }'
+
 export async function captureViewport(page: Page): Promise<Buffer> {
-  return page.screenshot({ clip: await mainViewportClip(page) })
+  return page.screenshot({
+    clip: await mainViewportClip(page),
+    style: HIDE_VIEWPORT_LEGEND,
+  })
 }
 
 /** Decodes PNGs in the page, so the suite needs no image dependency */
