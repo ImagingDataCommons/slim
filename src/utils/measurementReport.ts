@@ -85,7 +85,9 @@ function isTextItem(item: ContentItem): item is TextContentItem {
 }
 
 function isScoord3DItem(item: ContentItem): item is Scoord3DContentItem {
+  /** A 2D SCOORD has the same attributes but no frame of reference */
   return (
+    hasValueType(item, dcmjs.sr.valueTypes.ValueTypes.SCOORD3D) &&
     'GraphicType' in item &&
     'GraphicData' in item &&
     Array.isArray(item.GraphicData)
@@ -305,7 +307,17 @@ function parseMeasurementGroup(
     warnings.push(`Content item "Image Region" not found. ${TID_1410_CONTEXT}`)
     return undefined
   }
-  const scoord3d = createScoord3D(region)
+  let scoord3d: dmv.scoord3d.Scoord3D | undefined
+  try {
+    scoord3d = createScoord3D(region)
+  } catch (error: unknown) {
+    /** One invalid region skips its own ROI, not the whole report */
+    const reason = error instanceof Error ? error.message : String(error)
+    warnings.push(
+      `Content item "Image Region" is invalid: ${reason}. ${TID_1410_CONTEXT}`,
+    )
+    return undefined
+  }
   if (scoord3d === undefined) {
     warnings.push(
       'Content item "Image Region" has unknown graphic type ' +

@@ -114,4 +114,17 @@ describe('buildRoiDescription', () => {
       buildRoiDescription(withoutPath, 0, 'mm').measurementGroups[0].identifier,
     ).toBe(DEFAULT_MEASUREMENT_GROUP)
   })
+
+  it('skips measurement children without a concept name', () => {
+    const withNameless: DescribableRoi = {
+      ...roi,
+      measurements: [
+        { ...measurement('Area', 1, 'mm2'), ContentSequence: [{}] },
+      ],
+    }
+    expect(
+      buildRoiDescription(withNameless, 0, 'mm').measurementGroups[0]
+        .identifier,
+    ).toBe(DEFAULT_MEASUREMENT_GROUP)
+  })
 })

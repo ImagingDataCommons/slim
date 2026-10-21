@@ -13,6 +13,13 @@ vi.mock('dicom-microscopy-viewer', () => {
     graphicType: string
     options: unknown
     constructor(graphicType: string, options: unknown) {
+      /** Like dmv, reject a region without a frame of reference */
+      if (
+        (options as { frameOfReferenceUID?: string }).frameOfReferenceUID ===
+        undefined
+      ) {
+        throw new Error('No frame of reference UID')
+      }
       this.graphicType = graphicType
       this.options = options
     }
@@ -282,6 +289,42 @@ describe('parseMeasurementReport', () => {
     const [rebuilt] = parsed.ROIs[0].properties.measurements
     expect(rebuilt).toBeInstanceOf(dcmjs.sr.valueTypes.NumContentItem)
     expect(rebuilt.ContentSequence).toEqual([source])
+  })
+
+  it('skips only the ROI whose image region is invalid', () => {
+    const { ReferencedFrameOfReferenceUID: _, ...noFrame } = regionItem(
+      'POLYGON',
+      [0, 0, 0, 1, 0, 0, 1, 1, 0],
+    )
+    const broken = container(code('125007', 'Measurement Group'), [
+      uidItem(code('112040', 'Tracking Unique Identifier'), '1.2.840.2'),
+      finding,
+      noFrame as ContentItem,
+    ])
+    const parsed = parseMeasurementReport(report([measurementGroup(), broken]))
+
+    expect(parsed.ROIs).toHaveLength(1)
+    expect(parsed.warnings).toEqual([
+      expect.stringMatching(/"Image Region" is invalid/),
+    ])
+  })
+
+  it('does not read a 2D SCOORD as an image region', () => {
+    const planar = {
+      ...regionItem('POLYGON', [0, 0, 1, 0, 1, 1]),
+      ValueType: 'SCOORD',
+    }
+    const group = container(code('125007', 'Measurement Group'), [
+      uidItem(code('112040', 'Tracking Unique Identifier'), '1.2.840.3'),
+      finding,
+      planar as ContentItem,
+    ])
+    const parsed = parseMeasurementReport(report([group]))
+
+    expect(parsed.ROIs).toHaveLength(0)
+    expect(parsed.warnings).toEqual([
+      expect.stringMatching(/"Image Region" not found/),
+    ])
   })
 
   it('lists a coded algorithm name once', () => {
