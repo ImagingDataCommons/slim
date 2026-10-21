@@ -38,6 +38,8 @@ export function windowSliderBounds({
     upper !== undefined && upper >= pixelRange.max
       ? upper * WINDOW_HEADROOM
       : pixelRange.max
+  /** Never past the largest storable value, which the limits are clamped to */
+  max = Math.max(Math.min(max, bitsMax), Math.min(pixelRange.max, bitsMax))
   if (max <= min) max = min + 1
   const span = max - min
   return {

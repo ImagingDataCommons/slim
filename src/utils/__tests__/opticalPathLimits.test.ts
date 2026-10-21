@@ -56,6 +56,17 @@ describe('windowSliderBounds', () => {
   })
 })
 
+describe('windowSliderBounds at the top of the value range', () => {
+  it('does not run past the largest storable value', () => {
+    const bounds = windowSliderBounds({
+      bitsMax: 255,
+      pixelRange: { min: 0, max: 200 },
+      limitValues: [0, 255],
+    })
+    expect(bounds.max).toBe(255)
+  })
+})
+
 describe('roundLimitForDisplay', () => {
   it('shows whole numbers for whole slider steps', () => {
     expect(roundLimitForDisplay(12.6, 1)).toBe(13)
