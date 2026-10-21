@@ -26,6 +26,12 @@ describe('referencesSlideSeries', () => {
     expect(referencesSlideSeries(state, ['s1'])).toBe(true)
     expect(referencesSlideSeries(state, ['nope'])).toBe(false)
   })
+
+  it('never matches a state without blending inputs', () => {
+    expect(referencesSlideSeries({ SOPInstanceUID: 'gsps' }, ['s1'])).toBe(
+      false,
+    )
+  })
 })
 
 describe('createInOrderFirstMatch', () => {

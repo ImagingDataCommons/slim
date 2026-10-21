@@ -49,16 +49,18 @@ function setup(requestedUID?: string) {
     deliver = options.onPresentationState
     deliverDefault = options.onDefaultPresentationState ?? (() => {})
   })
-  const { result } = renderHook(() =>
-    usePresentationStates({
-      sessionRef: test.access.sessionRef,
-      clients: createTestClients(),
-      studyInstanceUID: '1',
-      requestedUID,
-      location,
-      navigate,
-      opticalPaths,
-    }),
+  const { result, rerender } = renderHook(
+    ({ currentLocation }: { currentLocation: Location }) =>
+      usePresentationStates({
+        sessionRef: test.access.sessionRef,
+        clients: createTestClients(),
+        studyInstanceUID: '1',
+        requestedUID,
+        location: currentLocation,
+        navigate,
+        opticalPaths,
+      }),
+    { initialProps: { currentLocation: location } },
   )
   const load = (): void => {
     act(() => {
@@ -79,6 +81,7 @@ function setup(requestedUID?: string) {
   return {
     ...test,
     result,
+    rerender,
     navigate,
     opticalPaths,
     load,
@@ -186,6 +189,21 @@ describe('usePresentationStates', () => {
 
     expect(opticalPaths.showPresentationState).not.toHaveBeenCalled()
     expect(result.current.presentationStates).toEqual([])
+  })
+
+  it('ignores states that arrive after the URL moved to another slide', () => {
+    const { result, rerender, load, receiveDefault, navigate, opticalPaths } =
+      setup()
+
+    load()
+    rerender({
+      currentLocation: { ...location, pathname: '/studies/1/series/3' },
+    })
+    receiveDefault(presentationState('ps-1'))
+
+    expect(opticalPaths.showPresentationState).not.toHaveBeenCalled()
+    expect(navigate).not.toHaveBeenCalled()
+    expect(result.current.selectedUID).toBeUndefined()
   })
 
   it('selecting a listed state applies it', () => {

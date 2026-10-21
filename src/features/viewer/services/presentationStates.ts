@@ -7,6 +7,7 @@ import type * as dwc from 'dicomweb-client'
 
 import type DicomWebManager from '../../../DicomWebManager'
 import type { Slide } from '../../../data/slides'
+import { StorageClasses } from '../../../data/uids'
 import { logger } from '../../../utils/logger'
 import { planDefaultOpticalPaths } from '../utils/opticalPathDefaults'
 import type { PixelStatistics } from '../utils/pixelStatistics'
@@ -62,6 +63,15 @@ export function loadPresentationStates({
       instances.forEach((rawInstance, index) => {
         const { dataset } = dmv.metadata.formatMetadata(rawInstance)
         const instance = dataset as dmv.metadata.Instance
+        /** Modality PR also matches grayscale, color and pseudocolor states */
+        if (
+          instance.SOPClassUID !== undefined &&
+          instance.SOPClassUID !==
+            StorageClasses.ADVANCED_BLENDING_PRESENTATION_STATE
+        ) {
+          settle(index)
+          return
+        }
         logger.log(`retrieve PR instance "${instance.SOPInstanceUID}"`)
         client
           .retrieveInstance({

@@ -95,12 +95,19 @@ export function usePresentationStates({
       setPresentationStates([])
       /** Search result position of each state, for a stable picker order */
       const studyOrder = new Map<string, number>()
+      /**
+       * The URL moves to the next slide a frame before the old session is
+       * destroyed, so a late state also checks it still has its own slide
+       */
+      const { pathname } = latestRef.current.location
+      const isStale = (): boolean =>
+        session.isDestroyed || latestRef.current.location.pathname !== pathname
       loadPresentationStates({
         client: clients[StorageClasses.ADVANCED_BLENDING_PRESENTATION_STATE],
         studyInstanceUID,
         slide: session.slide,
         onPresentationState: (presentationState, index) => {
-          if (session.isDestroyed) return
+          if (isStale()) return
           studyOrder.set(presentationState.SOPInstanceUID, index)
           /** A state named in the URL is an explicit request and always applies */
           if (
@@ -116,7 +123,7 @@ export function usePresentationStates({
           )
         },
         onDefaultPresentationState: (presentationState) => {
-          if (session.isDestroyed) return
+          if (isStale()) return
           const { requestedUID: currentRequestedUID } = latestRef.current
           /**
            * The slide's first state is only a default: it applies when the

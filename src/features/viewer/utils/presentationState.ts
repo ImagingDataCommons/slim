@@ -24,13 +24,18 @@ export interface OpticalPathLike {
   sopInstanceUIDs: readonly string[]
 }
 
-/** Whether any blending input belongs to one of the slide's series. */
+/**
+ * Whether any blending input belongs to one of the slide's series. Other
+ * presentation state classes have no blending inputs and never match.
+ */
 export function referencesSlideSeries(
-  presentationState: PresentationStateLike<BlendingItem>,
+  presentationState: Partial<PresentationStateLike<BlendingItem>>,
   slideSeriesInstanceUIDs: readonly string[],
 ): boolean {
-  return presentationState.AdvancedBlendingSequence.some((item) =>
-    slideSeriesInstanceUIDs.includes(item.SeriesInstanceUID),
+  return (
+    presentationState.AdvancedBlendingSequence?.some((item) =>
+      slideSeriesInstanceUIDs.includes(item.SeriesInstanceUID),
+    ) ?? false
   )
 }
 
