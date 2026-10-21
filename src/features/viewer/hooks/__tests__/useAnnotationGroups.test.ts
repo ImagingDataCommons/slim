@@ -174,4 +174,28 @@ describe('useAnnotationGroups', () => {
     expect(result.current.clustering.isEnabled).toBe(true)
     expect(viewer.setAnnotationOptions).toHaveBeenCalledTimes(2)
   })
+
+  it('remembers the chosen fill, which the viewer does not report', () => {
+    const { result } = setup()
+    const styles = { nuclei: { opacity: 1, color: [255, 0, 0] } }
+    expect(result.current.withFillStyles(styles)).toBe(styles)
+
+    act(() => {
+      result.current.onStyleChange({
+        uid: 'nuclei',
+        styleOptions: { fill: true, fillOpacity: 0.3 },
+      })
+    })
+    expect(result.current.withFillStyles(styles).nuclei).toEqual({
+      opacity: 1,
+      color: [255, 0, 0],
+      fill: true,
+      fillOpacity: 0.3,
+    })
+
+    act(() => {
+      result.current.reset()
+    })
+    expect(result.current.withFillStyles(styles)).toBe(styles)
+  })
 })

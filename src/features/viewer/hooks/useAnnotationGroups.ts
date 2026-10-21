@@ -5,6 +5,7 @@ import { startTransition, useState } from 'react'
 import type { AnnotationGroupDisplaySettings } from '../../../components/AnnotationGroupList'
 import { runValidations } from '../../../contexts/ValidationContext'
 import type { Slide } from '../../../data/slides'
+import type { AnnotationGroupStyle } from '../../../types/layerStyles'
 import { codedConceptKey } from '../../../utils/dicom/codedConcept'
 import { logger } from '../../../utils/logger'
 import type { VisibilityChange } from '../../../utils/visibility'
@@ -55,6 +56,13 @@ export interface AnnotationGroupsApi {
    */
   measurementKeys: Readonly<Record<string, string>>
   /**
+   * Group styles from the viewer with the fill settings the user chose,
+   * which DMV's style getter does not report either
+   */
+  withFillStyles: (
+    styles: Readonly<Record<string, AnnotationGroupStyle>>,
+  ) => Readonly<Record<string, AnnotationGroupStyle>>
+  /**
    * Live style while a slider is dragged: restyles the slide only. The panel
    * snapshot is refreshed once, by onStyleChange on commit.
    */
@@ -70,6 +78,18 @@ export interface AnnotationGroupsApi {
   ) => void
 }
 
+/** `styles` with each group's chosen fill settings; the same object without any */
+function mergeFillStyles(
+  styles: Readonly<Record<string, AnnotationGroupStyle>>,
+  fills: Readonly<Record<string, { fill?: boolean; fillOpacity?: number }>>,
+): Readonly<Record<string, AnnotationGroupStyle>> {
+  const uids = Object.keys(fills).filter((uid) => uid in styles)
+  if (uids.length === 0) return styles
+  const merged = { ...styles }
+  for (const uid of uids) merged[uid] = { ...styles[uid], ...fills[uid] }
+  return merged
+}
+
 /** Bulk annotation groups: visibility, styles and clustering */
 export function useAnnotationGroups(
   { sessionRef, refreshSnapshot }: ViewerAccess,
@@ -78,6 +98,9 @@ export function useAnnotationGroups(
   const [visibleUIDs, setVisibleUIDs] = useState<Set<string>>(() => new Set())
   const [measurementKeys, setMeasurementKeys] = useState<
     Readonly<Record<string, string>>
+  >({})
+  const [fillStyles, setFillStyles] = useState<
+    Readonly<Record<string, { fill?: boolean; fillOpacity?: number }>>
   >({})
   const [selectedSeriesUID, setSelectedSeriesUID] = useState<
     string | undefined
@@ -137,10 +160,12 @@ export function useAnnotationGroups(
     clustering,
     displaySettings,
     measurementKeys,
+    withFillStyles: (styles) => mergeFillStyles(styles, fillStyles),
     reset: () => {
       setVisibleUIDs(new Set())
       setSelectedSeriesUID(undefined)
       setMeasurementKeys({})
+      setFillStyles({})
     },
     showSeries: (session, seriesInstanceUID) => {
       /**
@@ -172,6 +197,17 @@ export function useAnnotationGroups(
       } catch (error) {
         notifyVisualizationError('Failed to change style of annotation group.')
         throw error
+      }
+      const { fill, fillOpacity } = styleOptions
+      if (fill !== undefined || fillOpacity !== undefined) {
+        setFillStyles((current) => ({
+          ...current,
+          [uid]: {
+            ...current[uid],
+            ...(fill !== undefined ? { fill } : {}),
+            ...(fillOpacity !== undefined ? { fillOpacity } : {}),
+          },
+        }))
       }
       /** A measurement colors the group; a flat color replaces it */
       const { measurement, color } = styleOptions

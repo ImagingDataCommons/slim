@@ -635,7 +635,9 @@ export function useSlideViewerModel({
               ],
               metadata: snapshot.annotationGroupMetadata,
               onAnnotationGroupClick: annotationGroups.onClick,
-              defaultAnnotationGroupStyles: snapshot.annotationGroupStyles,
+              defaultAnnotationGroupStyles: annotationGroups.withFillStyles(
+                snapshot.annotationGroupStyles,
+              ),
               visibleAnnotationGroupUIDs: annotationGroups.visibleUIDs,
               onAnnotationGroupVisibilityChange:
                 annotationGroups.onVisibilityChange,
