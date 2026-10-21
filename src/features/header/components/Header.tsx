@@ -25,7 +25,10 @@ import type { AppInfo } from '../../../utils/appInfo'
 import { isViewerPath, parseSeriesInstanceUID } from '../../../utils/routes'
 import { PreferencesDialog, type PreferencesTab } from '../../preferences'
 import { useCustomLogo } from '../hooks/useCustomLogo'
-import { useNotifications } from '../hooks/useNotifications'
+import {
+  notificationResetKey,
+  useNotifications,
+} from '../hooks/useNotifications'
 import {
   type ServerSelectionParams,
   useServerSelection,
@@ -204,16 +207,12 @@ export function Header({
   const serverSelection = useServerSelection({ onServerSelection })
   const { serverUrl, openDialog: openServerDialog } = serverSelection
 
-  /**
-   * Reset per study, not per path: the viewer redirects within a study on
-   * its own (default series, corrected UIDs), and the warnings captured
-   * while it loaded must survive those.
-   */
   const { errors, warnings, errorCount, warningCount } = useNotifications({
-    resetKey:
-      isViewerPath(location.pathname) && params.studyInstanceUID !== undefined
-        ? `study:${params.studyInstanceUID}`
-        : location.pathname,
+    resetKey: notificationResetKey(
+      location.pathname,
+      params.studyInstanceUID,
+      isViewerPath(location.pathname),
+    ),
   })
 
   const customLogo = useCustomLogo(customLogoUrl(import.meta.env.BASE_URL))

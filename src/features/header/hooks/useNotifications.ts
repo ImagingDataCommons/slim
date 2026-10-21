@@ -27,6 +27,22 @@ export interface UseNotificationsReturn {
  */
 export const MAX_NOTIFICATIONS = 500
 
+/**
+ * When the Debug list resets: per study in the viewer, not per path, because
+ * the viewer redirects within a study on its own (default series, corrected
+ * UIDs) and the warnings captured while it loaded must survive those.
+ * Anywhere else (worklist, other pages) each path starts fresh.
+ */
+export function notificationResetKey(
+  pathname: string,
+  studyInstanceUID: string | undefined,
+  isViewer: boolean,
+): string {
+  return isViewer && studyInstanceUID !== undefined
+    ? `study:${studyInstanceUID}`
+    : pathname
+}
+
 /** `list` plus `item`, dropping the oldest entries beyond `max` */
 export function appendCapped<T>(list: T[], item: T, max: number): T[] {
   const next = [...list, item]

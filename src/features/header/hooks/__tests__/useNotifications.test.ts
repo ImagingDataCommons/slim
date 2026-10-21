@@ -8,6 +8,7 @@ import { CustomError, errorTypes } from '../../../../utils/CustomError'
 import {
   appendCapped,
   MAX_NOTIFICATIONS,
+  notificationResetKey,
   useNotifications,
 } from '../useNotifications'
 
@@ -112,5 +113,23 @@ describe('useNotifications limit', () => {
     })
     expect(result.current.warningCount).toBe(MAX_NOTIFICATIONS)
     expect(result.current.warnings[0]).toBe('warning 1')
+  })
+})
+
+describe('notificationResetKey', () => {
+  it('keeps one key for every path of a study in the viewer', () => {
+    const bare = notificationResetKey('/studies/1.2.3', '1.2.3', true)
+    const redirected = notificationResetKey(
+      '/studies/1.2.3/series/4.5.6',
+      '1.2.3',
+      true,
+    )
+    expect(redirected).toBe(bare)
+    expect(notificationResetKey('/studies/7.8.9', '7.8.9', true)).not.toBe(bare)
+  })
+
+  it('uses the path outside the viewer', () => {
+    expect(notificationResetKey('/', undefined, false)).toBe('/')
+    expect(notificationResetKey('/about', '1.2.3', false)).toBe('/about')
   })
 })
