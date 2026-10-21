@@ -304,6 +304,8 @@ describe('Worklist', () => {
       expect(
         await screen.findByText('Select a server to search for studies.'),
       ).toBeInTheDocument()
+      /** The header does not count matches of a search that never ran */
+      expect(screen.queryByText(/studies? with Bulk annotations/)).toBeNull()
     })
 
     it('shows only studies with the entry from the URL and clears it', async () => {
@@ -383,6 +385,28 @@ describe('Worklist', () => {
       expect(links[0].getAttribute('href')).toContain('1.2.3.1')
     })
 
+    it('keeps saying the Contains search failed while text is typed', async () => {
+      const filterManager = createManager()
+      filterManager.searchForInstances = vi.fn(async () => {
+        throw Object.assign(new Error('down'), { status: 503 })
+      }) as unknown as DicomWebManager['searchForInstances']
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      renderAt('/?contains=ann', filterManager)
+      await screen.findByRole('button', { name: 'Retry' })
+      fireEvent.change(screen.getByLabelText('Search studies'), {
+        target: { value: 'abc' },
+      })
+
+      /** The header and the table both say so */
+      await waitFor(() => {
+        expect(
+          screen.getAllByText(/Couldn't search for Bulk annotations\./),
+        ).toHaveLength(2)
+      })
+      expect(screen.queryByText(/No studies match/)).toBeNull()
+    })
+
     it('offers a retry when the search fails', async () => {
       const filterManager = createManager()
       const match = [
@@ -410,6 +434,39 @@ describe('Worklist', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'Retry' }))
       expect(
         await screen.findByText('1 study with Bulk annotations'),
+      ).toBeInTheDocument()
+    })
+
+    it('shows the table as searching while Search more runs with nothing listed', async () => {
+      const filterManager = createManager()
+      const ann = StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION
+      /** A full first page of studies without slides, all dropped */
+      const firstPage = Array.from({ length: CONTAINS_PAGE_SIZE }, (_, i) =>
+        uidRow(`7.7.${i}`, `annx${i}`, ann),
+      )
+      let releaseMore: (() => void) | undefined
+      filterManager.searchForInstances = vi.fn(
+        async (options: dwc.api.SearchForInstancesOptions) => {
+          if (pageOffset(options) === 0) return firstPage
+          await new Promise<void>((resolve) => {
+            releaseMore = resolve
+          })
+          return []
+        },
+      ) as unknown as DicomWebManager['searchForInstances']
+
+      renderAt('/?contains=ann', filterManager)
+      expect(
+        await screen.findByText('No studies with Bulk annotations.'),
+      ).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Search more' }))
+
+      await waitFor(() => expect(releaseMore).toBeDefined())
+      expect(screen.queryByText('No studies with Bulk annotations.')).toBeNull()
+      releaseMore?.()
+      expect(
+        await screen.findByText('No studies with Bulk annotations.'),
       ).toBeInTheDocument()
     })
 

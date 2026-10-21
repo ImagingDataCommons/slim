@@ -190,17 +190,23 @@ export function Worklist({
     [navigate],
   )
 
-  const isInitialContainsSearch =
-    containsSearch.status === 'searching' && containsSearch.result === undefined
+  const hasNoServer = serverUrl === ''
+  /**
+   * The first page, or a "Search more" page while nothing is listed yet:
+   * the table shows it is searching rather than "No studies with …"
+   */
+  const isContainsSearchPending =
+    containsSearch.status === 'searching' &&
+    (containsSearch.result === undefined || containsStudies.length === 0)
   let emptyMessage = getEmptyStudiesMessage(deferredSearchText)
-  if (serverUrl === '') {
+  if (hasNoServer) {
     /** Nothing was searched yet, whatever the filters say */
     emptyMessage = 'Select a server to search for studies.'
+  } else if (containsEntry !== undefined && containsSearch.status === 'error') {
+    /** A failed Contains search fails the list, whatever text is typed */
+    emptyMessage = `Couldn't search for ${containsEntry.label}.`
   } else if (containsEntry !== undefined && deferredSearchText.trim() === '') {
-    emptyMessage =
-      containsSearch.status === 'error'
-        ? `Couldn't search for ${containsEntry.label}.`
-        : `No studies with ${containsEntry.label}.`
+    emptyMessage = `No studies with ${containsEntry.label}.`
   } else if (serverSearch.hasError) {
     emptyMessage = "Couldn't search for studies."
   }
@@ -224,7 +230,9 @@ export function Worklist({
         columnTier={columnTier}
         hiddenColumnIds={preferences.worklistHiddenColumnIds}
         contains={
-          containsEntry === undefined || containsSearch.status === 'idle'
+          containsEntry === undefined ||
+          containsSearch.status === 'idle' ||
+          hasNoServer
             ? undefined
             : {
                 entry: containsEntry,
@@ -248,7 +256,7 @@ export function Worklist({
         data={tableStudies}
         isLoading={
           isLoading ||
-          isInitialContainsSearch ||
+          (isContainsSearchPending && !hasNoServer) ||
           (serverSearch.isSearching && filteredStudies.length === 0)
         }
         emptyMessage={emptyMessage}
