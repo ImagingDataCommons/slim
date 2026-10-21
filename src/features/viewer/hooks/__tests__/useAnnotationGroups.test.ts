@@ -148,4 +148,18 @@ describe('useAnnotationGroups', () => {
       clusteringPixelSizeThreshold: undefined,
     })
   })
+
+  it('applies quick clustering toggles on top of each other', () => {
+    const { result, viewer } = setup()
+    const on = { clusteringEnabled: true, clusteringThreshold: '' }
+    const off = { clusteringEnabled: false, clusteringThreshold: '' }
+
+    act(() => {
+      result.current.onDisplaySettingsChange(off, on)
+      result.current.onDisplaySettingsChange(on, off)
+    })
+
+    expect(result.current.clustering.isEnabled).toBe(true)
+    expect(viewer.setAnnotationOptions).toHaveBeenCalledTimes(2)
+  })
 })

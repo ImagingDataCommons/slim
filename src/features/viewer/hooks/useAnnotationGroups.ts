@@ -63,7 +63,10 @@ export interface AnnotationGroupsApi {
   }) => void
   onClick: (annotationGroupUID: string) => void
   onSeriesChange: (seriesInstanceUID: string) => void
-  onDisplaySettingsChange: (settings: AnnotationGroupDisplaySettings) => void
+  onDisplaySettingsChange: (
+    settings: AnnotationGroupDisplaySettings,
+    previous?: AnnotationGroupDisplaySettings,
+  ) => void
 }
 
 /** Bulk annotation groups: visibility, styles and clustering */
@@ -203,23 +206,22 @@ export function useAnnotationGroups(
         setVisibleUIDs(new Set())
       })
     },
-    onDisplaySettingsChange: (settings) => {
-      if (changedSettingKeys(displaySettings, settings).length === 0) return
+    onDisplaySettingsChange: (settings, previous = displaySettings) => {
+      /** Diff against `previous` so quick toggles build on each other */
+      if (changedSettingKeys(previous, settings).length === 0) return
+      const current: ClusteringSettings = {
+        isEnabled: previous.clusteringEnabled,
+        thresholdInput: previous.clusteringThreshold,
+      }
       const next: ClusteringSettings = {
         isEnabled: settings.clusteringEnabled,
         thresholdInput: settings.clusteringThreshold,
-      }
-      if (
-        clustering.isEnabled === next.isEnabled &&
-        clustering.thresholdInput === next.thresholdInput
-      ) {
-        return
       }
       setClustering(next)
       const viewer = sessionRef.current?.volumeViewer
       if (
         viewer !== undefined &&
-        shouldApplyClusteringSettings(clustering, next)
+        shouldApplyClusteringSettings(current, next)
       ) {
         applyClusteringOptions(viewer, next)
       }

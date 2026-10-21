@@ -43,8 +43,11 @@ export async function loadAnnotationGroups({
           continue
         }
         for (const item of annotations.AnnotationGroupSequence) {
+          /** A group without a property type keeps the default style */
+          const propertyType = item.AnnotationPropertyTypeCodeSequence?.[0]
+          if (propertyType === undefined) continue
           const color = roiStyles.findingFillColor(
-            codedConceptKey(item.AnnotationPropertyTypeCodeSequence[0]),
+            codedConceptKey(propertyType),
           )
           if (color === undefined) continue
           try {

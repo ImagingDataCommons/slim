@@ -50,7 +50,10 @@ export interface AnnotationGroupListProps {
   annotationGroupMeasurementKeys?: Readonly<Record<string, string>>
   /** Clustering display settings; the panel is hidden when omitted */
   displaySettings?: AnnotationGroupDisplaySettings
-  onDisplaySettingsChange?: (settings: AnnotationGroupDisplaySettings) => void
+  onDisplaySettingsChange?: (
+    settings: AnnotationGroupDisplaySettings,
+    previous?: AnnotationGroupDisplaySettings,
+  ) => void
 }
 
 /** Annotation groups of bulk simple annotations with clustering options. */

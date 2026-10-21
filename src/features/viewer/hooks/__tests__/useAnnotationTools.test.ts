@@ -41,7 +41,7 @@ function setup({
   const test: TestSession = createTestSession()
   const rois = {
     selectedRoiUIDs: new Set(selectedRoiUIDs),
-    visibleRoiUIDs: new Set(visibleRoiUIDs),
+    currentVisibleRoiUIDs: () => new Set(visibleRoiUIDs),
     addStyledRoi: vi.fn(),
     removeRois: vi.fn(),
     restyleSelected: vi.fn(),

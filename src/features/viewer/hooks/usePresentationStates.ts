@@ -97,7 +97,9 @@ export function usePresentationStates({
       const studyOrder = new Map<string, number>()
       /**
        * The URL moves to the next slide a frame before the old session is
-       * destroyed, so a late state also checks it still has its own slide
+       * destroyed, so a late state also checks it still has its own slide.
+       * Any pathname change rebuilds the session (it is part of the route
+       * key), and the new session loads its own states.
        */
       const { pathname } = latestRef.current.location
       const isStale = (): boolean =>

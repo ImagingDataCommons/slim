@@ -81,7 +81,7 @@ export function useAnnotationTools({
   rois: Pick<
     RoisApi,
     | 'selectedRoiUIDs'
-    | 'visibleRoiUIDs'
+    | 'currentVisibleRoiUIDs'
     | 'addStyledRoi'
     | 'removeRois'
     | 'restyleSelected'
@@ -188,7 +188,7 @@ export function useAnnotationTools({
     const roiCount =
       rois.selectedRoiUIDs.size > 0
         ? rois.selectedRoiUIDs.size
-        : rois.visibleRoiUIDs.size
+        : rois.currentVisibleRoiUIDs().size
     if (roiCount === 0) {
       publishToast('No annotation was selected for removal', 'warning')
       return
