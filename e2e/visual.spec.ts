@@ -5,6 +5,7 @@ import {
   openViewer,
   overrideConfig,
   setGammaCorrection,
+  waitForDeepLinkedLayer,
 } from './helpers'
 import { seriesUrl, studies } from './studies'
 
@@ -41,6 +42,8 @@ test.describe('Visual smoke', () => {
       }),
     )
     await expectTissueRendered(page)
+    /** The capture must include the overlay the link turned on */
+    await waitForDeepLinkedLayer(page, 'Segmentations')
     await expectSettledViewportScreenshot(page, 'vs2-fractional-til-seg')
   })
 
@@ -53,6 +56,8 @@ test.describe('Visual smoke', () => {
       }),
     )
     await expectTissueRendered(page)
+    /** The capture must include the overlay the link turned on */
+    await waitForDeepLinkedLayer(page, 'Segmentations')
     await expectSettledViewportScreenshot(page, 'vs3-binary-til-seg')
   })
 
@@ -65,6 +70,8 @@ test.describe('Visual smoke', () => {
       }),
     )
     await expectTissueRendered(page)
+    /** The capture must include the overlay the link turned on */
+    await waitForDeepLinkedLayer(page, 'Parametric maps')
     await expectSettledViewportScreenshot(page, 'vs4-parametric-map')
   })
 

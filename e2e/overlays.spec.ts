@@ -109,12 +109,22 @@ test.describe('Segmentations', () => {
     )
     const segments = await section(slidePanel(page), 'Segmentations')
     const series = segments.getByRole('combobox', { name: 'Series' })
+    /** The deep link selected its series; pick another and see it applied */
+    await expect(series).not.toHaveText(/All Series/, { timeout: 60_000 })
+    const selected = (await series.innerText()).trim()
     await series.click()
     const options = page.getByRole('option')
     expect(await options.count()).toBeGreaterThan(1)
-    await options.last().click()
+    const other = options
+      .filter({ hasNotText: selected })
+      .filter({ hasNotText: /All Series/ })
+      .first()
+    const otherLabel = (await other.innerText()).trim()
+    await other.click()
+    await expect(series).toHaveText(otherLabel)
+    await expect(series).not.toHaveText(selected)
     await expect(
-      segments.getByRole('button', { name: /^Show / }).first(),
+      segments.getByRole('button', { name: /^Show (?!all)/ }).first(),
     ).toBeVisible()
   })
 

@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test'
+import { type Row, sortingFns } from '@tanstack/react-table'
 
 import { test } from './fixtures'
 import { slidePanel } from './helpers'
@@ -35,13 +36,18 @@ test.describe('Worklist', () => {
     await page
       .getByRole('searchbox', { name: 'Search studies' })
       .fill(patientId)
-    await expect(page.getByText(/No studies match/)).toHaveCount(0)
     await expect(rows(page).first().getByRole('cell').nth(1)).toHaveText(
       patientId,
     )
-    for (const row of await rows(page).all()) {
-      await expect(row).toContainText(patientId)
-    }
+    /** Every listed row matches once the filter applied, not just the first */
+    await expect
+      .poll(async () => {
+        const texts = await rows(page).allInnerTexts()
+        return (
+          texts.length > 0 && texts.every((text) => text.includes(patientId))
+        )
+      })
+      .toBe(true)
   })
 
   /** IDC returns at most 100 studies per query, so this needs the server search */
@@ -66,7 +72,14 @@ test.describe('Worklist', () => {
     const ascending = await Promise.all(
       (await patientIds()).map((cell) => cell.innerText()),
     )
-    expect(ascending).toEqual([...ascending].sort((a, b) => a.localeCompare(b)))
+    /** The table's own comparator, so IDs like X-2 and X-10 order the same */
+    const byPatientId = (a: string, b: string): number =>
+      sortingFns.alphanumeric(
+        { getValue: () => a } as unknown as Row<unknown>,
+        { getValue: () => b } as unknown as Row<unknown>,
+        'PatientID',
+      )
+    expect(ascending).toEqual([...ascending].sort(byPatientId))
     await header.click()
     const descending = await Promise.all(
       (await patientIds()).map((cell) => cell.innerText()),

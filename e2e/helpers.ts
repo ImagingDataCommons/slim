@@ -293,10 +293,28 @@ export async function captureSettledViewport(
 }
 
 /**
+ * Waits for the layer a deep link turned on in a slide panel section (its
+ * toggle is pressed once its data loaded), then for the tiles to settle, so
+ * a capture includes the overlay
+ */
+export async function waitForDeepLinkedLayer(
+  page: Page,
+  sectionTitle: string,
+): Promise<void> {
+  const content = await section(slidePanel(page), sectionTitle)
+  await expect(
+    content
+      .getByRole('button', { name: /^Show (?!all)/, pressed: true })
+      .first(),
+  ).toBeVisible({ timeout: 60_000 })
+  await waitForTilesSettled(page)
+}
+
+/**
  * Settled main-viewport screenshot compared to a committed baseline.
- * Baselines live next to the spec (`*-snapshots/`) and are platform-specific
- * (Playwright appends the browser and OS). Update with
- * `pnpm test:e2e:visual:update` on the same OS as CI (Linux).
+ * Baselines live next to the spec (`*-snapshots/`), one per name for every
+ * OS (see `snapshotPathTemplate`); CI renders on Linux, so update them with
+ * `pnpm test:e2e:visual:update` there.
  */
 export async function expectSettledViewportScreenshot(
   page: Page,
