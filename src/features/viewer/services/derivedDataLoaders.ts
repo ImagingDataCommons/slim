@@ -43,7 +43,15 @@ export function loadDerivedData(
   const settled = (
     load: Promise<void>,
     kind: LoadedDerivedKind,
-  ): Promise<void> => load.finally(() => onSettled?.(kind))
+  ): Promise<void> =>
+    load.finally(() => {
+      /** allSettled would swallow a throw here; log it as before */
+      try {
+        onSettled?.(kind)
+      } catch (error: unknown) {
+        logger.error('Failed to add derived data:', error)
+      }
+    })
   Promise.allSettled([
     settled(loadMeasurementReports(context, registerRoi), 'rois'),
     settled(loadAnnotationGroups(context), 'annotationGroups'),

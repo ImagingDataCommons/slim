@@ -51,8 +51,14 @@ export function loadPresentationStates({
   /** False once the viewer that asked is gone; its errors are not shown */
   isCurrent?: () => boolean
 }): void {
+  /** Reporting never throws into the slot bookkeeping */
   const notify = (message: string): void => {
-    if (isCurrent()) notifyVisualizationError(message)
+    if (!isCurrent()) return
+    try {
+      notifyVisualizationError(message)
+    } catch (error: unknown) {
+      console.error(error)
+    }
   }
   logger.log('search for Presentation State instances')
   client
