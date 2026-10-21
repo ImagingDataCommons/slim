@@ -195,10 +195,16 @@ test.describe('Header and dialogs', () => {
       name: `Server ${customUrl}. Change server`,
     })
     await expect(serverPill).toBeVisible()
-    await expect(worklistRows(page).first()).toBeVisible({ timeout: 60_000 })
+    /** A study link: the loading placeholder and empty state are rows too */
+    await expect(worklistRows(page).first().getByRole('link')).toBeVisible({
+      timeout: 60_000,
+    })
     await page.reload()
     await expect(serverPill).toBeVisible()
-    await expect(worklistRows(page).first()).toBeVisible({ timeout: 60_000 })
+    /** A study link: the loading placeholder and empty state are rows too */
+    await expect(worklistRows(page).first().getByRole('link')).toBeVisible({
+      timeout: 60_000,
+    })
     await page.unrouteAll({ behavior: 'ignoreErrors' })
   })
 

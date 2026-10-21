@@ -11,7 +11,13 @@ function rows(page: Page) {
 async function openWorklist(page: Page): Promise<void> {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Studies' })).toBeVisible()
-  await expect(rows(page).first()).toBeVisible({ timeout: 60_000 })
+  /**
+   * A study link, not just a row: the loading placeholder and the empty
+   * state are rows too
+   */
+  await expect(rows(page).first().getByRole('link')).toBeVisible({
+    timeout: 60_000,
+  })
 }
 
 test.describe('Worklist', () => {

@@ -72,29 +72,40 @@ export async function section(panel: Locator, title: string): Promise<Locator> {
 }
 
 /**
- * Loaded and requested tile counts from the footer's "Tiles 1 234 / 1 234"
- * counter. Counts group thousands with spaces, and only the counter's own
- * text is read so a following "N failed" is never taken as digits.
+ * Loaded, requested and failed tile counts from the footer: the
+ * "Tiles 1 234 / 1 234" counter and the "N failed" span after it. Counts
+ * group thousands with spaces, and each span's own text is read so one
+ * count is never taken for another.
  */
 export async function readTileCounts(
   page: Page,
-): Promise<{ loaded: number; requested: number } | null> {
-  const counter = page
-    .locator('footer')
-    .locator('span', { hasText: /^Tiles / })
-    .first()
+): Promise<{ loaded: number; requested: number; failed: number } | null> {
+  const footer = page.locator('footer')
+  const counter = footer.locator('span', { hasText: /^Tiles / }).first()
   if ((await counter.count()) === 0) return null
-  const text = (await counter.innerText()).replace(/\s+/g, ' ')
-  const match = /^Tiles ([\d ,]+) \/ ([\d ,]+)$/.exec(text.trim())
-  if (match === null) return null
   const toNumber = (value: string): number =>
     Number(value.replace(/[\s,]/g, ''))
-  return { loaded: toNumber(match[1]), requested: toNumber(match[2]) }
+  const text = (await counter.innerText()).replace(/\s+/g, ' ').trim()
+  const match = /^Tiles ([\d ,]+) \/ ([\d ,]+)$/.exec(text)
+  if (match === null) return null
+  const failedSpan = footer
+    .locator('span', { hasText: /^[\d ,]+ failed$/ })
+    .first()
+  const failedText =
+    (await failedSpan.count()) === 0
+      ? '0 failed'
+      : (await failedSpan.innerText()).replace(/\s+/g, ' ').trim()
+  return {
+    loaded: toNumber(match[1]),
+    requested: toNumber(match[2]),
+    failed: toNumber(failedText.replace(/ failed$/, '')),
+  }
 }
 
 /**
- * Waits for the footer tile counter to report every requested tile as loaded
- * and to stay that way. Use captureSettledViewport when comparing pixels.
+ * Waits for every requested tile to have loaded or failed, and for the
+ * counts to stay put, then fails with the number of failed tiles if any
+ * did. Use captureSettledViewport when comparing pixels.
  */
 export async function waitForTilesSettled(
   page: Page,
@@ -102,25 +113,29 @@ export async function waitForTilesSettled(
 ): Promise<void> {
   let previous = ''
   let stableSince = Date.now()
+  let failed = 0
   await expect
     .poll(
       async () => {
         const counts = await readTileCounts(page)
         if (counts === null) return false
-        const key = `${counts.loaded}/${counts.requested}`
+        const key = `${counts.loaded}/${counts.requested}/${counts.failed}`
         if (key !== previous) {
           previous = key
           stableSince = Date.now()
         }
+        failed = counts.failed
+        /** Requested counts failed tiles too, so they settle as well */
         return (
           counts.requested > 0 &&
-          counts.loaded === counts.requested &&
+          counts.loaded + counts.failed >= counts.requested &&
           Date.now() - stableSince > 1500
         )
       },
-      { timeout, intervals: [500] },
+      { message: 'tiles settled', timeout, intervals: [500] },
     )
     .toBe(true)
+  expect(failed, `${failed} tile(s) failed to load`).toBe(0)
 }
 
 /** Opens a viewer URL and waits for the first slide to finish rendering */
