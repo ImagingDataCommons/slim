@@ -40,7 +40,7 @@ function setup() {
       clients,
       app,
       user: undefined,
-      visibleRoiUIDs: new Set(),
+      currentVisibleRoiUIDs: () => new Set(),
       dispatch,
     }),
   )

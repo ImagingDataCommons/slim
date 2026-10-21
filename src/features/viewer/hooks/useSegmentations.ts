@@ -158,6 +158,7 @@ export function useSegmentations(
     reset: () => {
       setVisibleUIDs(new Set())
       setSelectedSeriesUID(undefined)
+      setCustomizedColors({})
       resetInterpolation()
     },
     showSeries: (session, seriesInstanceUID) => {

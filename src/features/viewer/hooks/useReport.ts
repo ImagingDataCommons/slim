@@ -33,14 +33,15 @@ export function useReport({
   clients,
   app,
   user,
-  visibleRoiUIDs,
+  currentVisibleRoiUIDs,
   dispatch,
 }: {
   sessionRef: ViewerSessionRef
   clients: { [key: string]: DicomWebManager }
   app: AppInfo
   user: SlideViewerProps['user']
-  visibleRoiUIDs: Set<string>
+  /** Visible ROIs including toggles still in their transition */
+  currentVisibleRoiUIDs: () => Set<string>
   dispatch: React.Dispatch<ViewerInteractionAction>
 }): ReportApi {
   const [report, setReport] = useState<
@@ -84,7 +85,7 @@ export function useReport({
           metadata: viewer.getOpticalPathMetadata(opticalPaths[0].identifier),
           user,
           app,
-          visibleRoiUIDs,
+          visibleRoiUIDs: currentVisibleRoiUIDs(),
         })
       } catch (error: unknown) {
         /** dcmjs throws on SR content it can't encode; without this the click does nothing */

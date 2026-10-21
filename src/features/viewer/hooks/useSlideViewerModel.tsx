@@ -207,7 +207,7 @@ export function useSlideViewerModel({
     clients,
     app,
     user,
-    visibleRoiUIDs: rois.visibleRoiUIDs,
+    currentVisibleRoiUIDs: rois.currentVisibleRoiUIDs,
     dispatch: dispatchInteraction,
   })
   const tools = useAnnotationTools({

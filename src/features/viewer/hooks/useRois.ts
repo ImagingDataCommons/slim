@@ -230,6 +230,7 @@ export function useRois({
     ...state,
     currentVisibleRoiUIDs,
     reset: () => {
+      pendingVisibilityRef.current.clear()
       setState((current) => ({
         ...current,
         visibleRoiUIDs: new Set(),
@@ -346,11 +347,13 @@ export function useRois({
       volumeViewer.deactivateSnapInteraction()
       volumeViewer.deactivateTranslateInteraction()
       volumeViewer.deactivateModifyInteraction()
-      const plan = planRoiRemoval(selectedRoiUIDs, visibleRoiUIDs)
+      /** A toggle still in its transition counts as already applied */
+      const plan = planRoiRemoval(selectedRoiUIDs, currentVisibleRoiUIDs())
       for (const uid of plan.removedUIDs) {
         logger.log(`remove ROI "${uid}"`)
         volumeViewer.removeROI(uid)
         session.roiStyles.forget(uid)
+        pendingVisibilityRef.current.delete(uid)
       }
       publishToast(formatRoiRemovalMessage(plan.removedUIDs.length), 'success')
       setState((current) => ({

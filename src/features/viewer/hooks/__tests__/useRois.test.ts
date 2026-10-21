@@ -222,6 +222,19 @@ describe('useRois', () => {
     expect(viewer.activateSelectInteraction).toHaveBeenCalled()
   })
 
+  it('removes only what is visible when a hide is still in its transition', () => {
+    const { result, viewer } = setup()
+    addRois(result, 'a', 'b')
+
+    act(() => {
+      result.current.onVisibilityChange({ roiUID: 'a', isVisible: false })
+      result.current.removeRois()
+    })
+
+    expect(viewer.rois.map((roi) => roi.uid)).toEqual(['a'])
+    expect([...result.current.currentVisibleRoiUIDs()]).toEqual([])
+  })
+
   it('restyles ROIs from the annotation list and shows them', () => {
     const { result, viewer, session } = setup()
     addRois(result, 'a')
