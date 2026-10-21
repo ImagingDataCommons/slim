@@ -88,6 +88,8 @@ export interface UseContainsSearchReturn {
 }
 
 interface SearchState {
+  /** Server the result came from; another server's result is never shown */
+  client?: ContainsSearchClient
   requestKey: string
   pages: number
   result?: ContainsSearchResult
@@ -151,10 +153,13 @@ export function useContainsSearch(
 
   useEffect(() => {
     if (client === undefined || entry === undefined) return
+    const commit = (next: Omit<SearchState, 'client'>): void => {
+      setState({ ...next, client })
+    }
     const cached = resultCache.get(client)?.get(entry.id)
     const loadMore = moreRequests > 0 && canFetchMore(cached)
     if (cached !== undefined && !loadMore) {
-      setState({
+      commit({
         requestKey,
         pages: cached.pages,
         result: cached.result,
@@ -175,7 +180,7 @@ export function useContainsSearch(
       )
     }
     if (loadMore && cached !== undefined) {
-      setState({
+      commit({
         requestKey,
         pages: cached.pages,
         result: cached.result,
@@ -197,7 +202,7 @@ export function useContainsSearch(
             hasStoreFailures: page.hasStoreFailures,
           }
           storeCachedResult(client, entry.id, merged, pages, cursors)
-          setState({
+          commit({
             requestKey,
             pages,
             result: merged,
@@ -219,7 +224,7 @@ export function useContainsSearch(
             hasStoreFailures: true,
           }
           storeCachedResult(client, entry.id, result, pages, cached.cursors)
-          setState({
+          commit({
             requestKey,
             pages,
             result,
@@ -229,12 +234,12 @@ export function useContainsSearch(
           consumeMoreRequest()
         })
     } else {
-      setState({ requestKey, pages: 0, failed: false, loadingMore: false })
+      commit({ requestKey, pages: 0, failed: false, loadingMore: false })
       searchStoresContaining(storeClients(client), entry, { isCurrent })
         .then(({ result, cursors }) => {
           if (!isCurrent()) return
           storeCachedResult(client, entry.id, result, 1, cursors)
-          setState({
+          commit({
             requestKey,
             pages: 1,
             result,
@@ -245,7 +250,7 @@ export function useContainsSearch(
         .catch((error: unknown) => {
           if (!isCurrent()) return
           console.error(error)
-          setState({ requestKey, pages: 0, failed: true, loadingMore: false })
+          commit({ requestKey, pages: 0, failed: true, loadingMore: false })
         })
     }
     return () => {
@@ -283,7 +288,7 @@ export function useContainsSearch(
       canLoadMore: false,
     }
   }
-  if (state.requestKey !== requestKey) {
+  if (state.requestKey !== requestKey || state.client !== client) {
     return {
       status: 'searching',
       pages: 0,

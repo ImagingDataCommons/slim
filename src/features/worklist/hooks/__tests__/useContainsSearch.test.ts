@@ -183,6 +183,45 @@ describe('useContainsSearch', () => {
   })
 })
 
+describe('useContainsSearch on a server switch', () => {
+  it("never shows the previous server's result for the new one", async () => {
+    const pmap = StorageClasses.PARAMETRIC_MAP
+    const first = fakeClient(new Map([[0, [row('old', 'a', pmap)]]]))
+    const second = fakeClient(new Map())
+    second.searchForInstances = vi.fn(
+      () => new Promise<QidoRow[]>(() => undefined),
+    )
+    /** Every render, so the frame painted right after the switch is seen */
+    const renders: Array<{
+      client: ContainsSearchClient
+      matches: string[] | undefined
+    }> = []
+    const { result, rerender } = renderHook(
+      ({ client }: { client: ContainsSearchClient }) => {
+        const search = useContainsSearch(client, entry('pmap'))
+        renders.push({
+          client,
+          matches:
+            search.result === undefined
+              ? undefined
+              : [...search.result.matches.keys()],
+        })
+        return search
+      },
+      { initialProps: { client: first } },
+    )
+    await waitFor(() => {
+      expect(result.current.status).toBe('done')
+    })
+
+    rerender({ client: second })
+
+    const afterSwitch = renders.filter((render) => render.client === second)
+    expect(afterSwitch.length).toBeGreaterThan(0)
+    for (const render of afterSwitch) expect(render.matches).toBeUndefined()
+  })
+})
+
 describe('useContainsSearch across stores', () => {
   it('reports a store that keeps failing and stops offering it at the cap', async () => {
     const seg = StorageClasses.SEGMENTATION
