@@ -220,6 +220,22 @@ describe('usePresentationStates', () => {
     expect(result.current.selectedUID).toBe('ps-1')
   })
 
+  it('does not carry the last pick over to a new session', () => {
+    const { result, load, receive, opticalPaths } = setup('none')
+    load()
+    receive(presentationState('ps-1'), 0)
+    act(() => {
+      result.current.onSelect('ps-1')
+    })
+    expect(result.current.selectedUID).toBe('ps-1')
+
+    load()
+    receive(presentationState('ps-1'), 0)
+
+    expect(result.current.selectedUID).toBeUndefined()
+    expect(opticalPaths.showPresentationState).toHaveBeenCalledTimes(1)
+  })
+
   it('clearing the selection shows the default paths', () => {
     const { result, navigate, opticalPaths, session } = setup('ps-1')
 

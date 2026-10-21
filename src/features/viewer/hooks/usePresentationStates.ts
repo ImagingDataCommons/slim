@@ -93,6 +93,8 @@ export function usePresentationStates({
       : undefined,
     load: (session) => {
       setPresentationStates([])
+      /** A new session starts from what its URL names, not the last pick */
+      setSelectedUID(latestRef.current.requestedUID)
       /** Search result position of each state, for a stable picker order */
       const studyOrder = new Map<string, number>()
       /**
