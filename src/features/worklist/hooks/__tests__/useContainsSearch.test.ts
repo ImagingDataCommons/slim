@@ -166,5 +166,14 @@ describe('useContainsSearch', () => {
     })
     expect(result.current.pages).toBe(1)
     expect(client.searchForInstances).toHaveBeenCalledTimes(3)
+
+    /** Coming back shows the pages already loaded without fetching again */
+    rerender({ current: entry('pmap') })
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    })
+    expect(result.current.status).toBe('done')
+    expect(result.current.pages).toBe(2)
+    expect(client.searchForInstances).toHaveBeenCalledTimes(3)
   })
 })

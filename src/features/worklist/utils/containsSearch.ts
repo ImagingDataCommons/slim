@@ -255,6 +255,100 @@ export async function searchStudiesContaining(
   return await searchByModality(client, entry, options)
 }
 
+/** Where the next page of one store starts */
+export interface StoreCursor {
+  offset: number
+  /** The store's last page was not full, so it has no more matches */
+  isDone: boolean
+}
+
+export interface ContainsStoresPage {
+  result: ContainsSearchResult
+  /** One per store, in the order of `storeClients` */
+  cursors: StoreCursor[]
+}
+
+/** A client that can be split into one search client per store */
+interface MultiStoreClient {
+  storeSearchClients: () => ContainsSearchClient[]
+}
+
+function isMultiStoreClient(client: object): client is MultiStoreClient {
+  return (
+    typeof (client as Partial<MultiStoreClient>).storeSearchClients ===
+    'function'
+  )
+}
+
+/**
+ * The per-store clients of a client that combines several stores, or the
+ * client itself when there is only one store to page
+ */
+export function storeClients(
+  client: ContainsSearchClient,
+): ContainsSearchClient[] {
+  if (!isMultiStoreClient(client)) return [client]
+  const clients = client.storeSearchClients()
+  return clients.length > 1 ? clients : [client]
+}
+
+/**
+ * The next page of every store that may have more matches. Each store keeps
+ * its own offset and SOP class or modality strategy, so a store that
+ * rejects SOPClassUID falls back on its own. A failing store is skipped and
+ * retried with the next page; the search only fails when every store does.
+ */
+export async function searchStoresContaining(
+  clients: readonly ContainsSearchClient[],
+  entry: ContainsEntry,
+  {
+    cursors,
+    ...options
+  }: Omit<ContainsSearchOptions, 'offset'> & {
+    cursors?: readonly StoreCursor[]
+  } = {},
+): Promise<ContainsStoresPage> {
+  const outcomes = await Promise.all(
+    clients.map(async (client, index) => {
+      const cursor = cursors?.[index] ?? { offset: 0, isDone: false }
+      if (cursor.isDone) return { cursor }
+      try {
+        const result = await searchStudiesContaining(client, entry, {
+          ...options,
+          offset: cursor.offset,
+        })
+        return { cursor, result }
+      } catch (error: unknown) {
+        return { cursor, error }
+      }
+    }),
+  )
+  const searched = outcomes.filter((outcome) => !outcome.cursor.isDone)
+  const failures = searched.filter((outcome) => 'error' in outcome)
+  if (searched.length > 0 && failures.length === searched.length) {
+    throw failures[failures.length - 1].error
+  }
+  let matches: ReadonlyMap<string, ContainsMatch> = new Map()
+  let isExact = true
+  let isPartial = false
+  let pageRowCount = 0
+  const nextCursors = outcomes.map(({ cursor, result }) => {
+    if (result === undefined) return cursor
+    matches = mergeContainsMatches(matches, result.matches)
+    isExact &&= result.isExact
+    isPartial ||= result.isPartial
+    pageRowCount += result.pageRowCount
+    return {
+      offset: cursor.offset + result.pageRowCount,
+      isDone: !result.isPartial,
+    }
+  })
+  return {
+    result: { matches, isExact, isPartial, pageRowCount },
+    cursors: nextCursors,
+  }
+}
+
 /**
  * The worklist row of a study, or null when it has no slide microscopy
  * series (e.g. a radiology study with the same kind of derived data).

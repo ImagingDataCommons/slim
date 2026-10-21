@@ -237,6 +237,36 @@ describe('DicomWebManager - multi-store search', () => {
     ).rejects.toThrow()
   })
 
+  it('gives one stable search client per readable store', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        {
+          id: 'hidden',
+          url: 'https://hidden.test/dicomWeb',
+          write: false,
+          read: false,
+        },
+        { id: 'gcp', url: 'https://gcp.test/dicomWeb', write: false },
+      ],
+    })
+    const stubs = ['primary', 'hidden', 'gcp'].map(makeStubClient)
+    stubManagerClients(manager, stubs)
+    stubs[2].searchForSeries.mockResolvedValue([])
+
+    const clients = manager.storeSearchClients()
+    await clients[1].searchForSeries({ queryParams: { offset: 100 } })
+
+    expect(clients).toHaveLength(2)
+    expect(manager.storeSearchClients()).toEqual(clients)
+    expect(manager.storeSearchClients()[0]).toBe(clients[0])
+    expect(stubs[2].searchForSeries).toHaveBeenCalledWith({
+      queryParams: { offset: 100 },
+    })
+    expect(stubs[0].searchForSeries).not.toHaveBeenCalled()
+  })
+
   it('skips stores marked as not readable during searches', async () => {
     const manager = new DicomWebManager({
       baseUri,

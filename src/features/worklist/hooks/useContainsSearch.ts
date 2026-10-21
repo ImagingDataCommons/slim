@@ -13,14 +13,17 @@ import {
   fetchSlideStudy,
   mergeContainsMatches,
   type SlideStudyClient,
-  searchStudiesContaining,
+  type StoreCursor,
+  searchStoresContaining,
+  storeClients,
 } from '../utils/containsSearch'
 
 const CHECK_CONCURRENCY = 6
 
 interface CachedContainsSearch {
   result: ContainsSearchResult
-  nextOffset: number
+  /** Where the next page of each store starts */
+  cursors: StoreCursor[]
   pages: number
 }
 
@@ -77,9 +80,9 @@ function storeCachedResult(
   entryId: string,
   result: ContainsSearchResult,
   pages: number,
-  nextOffset: number,
+  cursors: StoreCursor[],
 ): CachedContainsSearch {
-  const cached: CachedContainsSearch = { result, pages, nextOffset }
+  const cached: CachedContainsSearch = { result, pages, cursors }
   cacheFor(resultCache, client).set(entryId, cached)
   return cached
 }
@@ -100,18 +103,24 @@ export function useContainsSearch(
 ): UseContainsSearchReturn {
   const [attempt, setAttempt] = useState(0)
   /**
-   * "Search more" clicks belong to the request they were made for, so a
-   * switch to another entry starts at zero in the same render
+   * Pending "Search more" clicks, for the server and request they were made
+   * for, so a switch to another entry or server starts at zero in the same
+   * render. Each loaded page consumes one click, so coming back to an entry
+   * does not fetch again.
    */
-  const [moreRequestsFor, setMoreRequestsFor] = useState({
-    requestKey: '',
-    count: 0,
-  })
+  const [moreRequestsFor, setMoreRequestsFor] = useState<{
+    client?: ContainsSearchClient
+    requestKey: string
+    count: number
+  }>({ requestKey: '', count: 0 })
   const [state, setState] = useState<SearchState>(EMPTY_SEARCH)
   const generation = useRef(0)
   const requestKey = entry === undefined ? '' : `${entry.id}:${attempt}`
   const moreRequests =
-    moreRequestsFor.requestKey === requestKey ? moreRequestsFor.count : 0
+    moreRequestsFor.client === client &&
+    moreRequestsFor.requestKey === requestKey
+      ? moreRequestsFor.count
+      : 0
 
   useEffect(() => {
     if (client === undefined || entry === undefined) return
@@ -129,6 +138,15 @@ export function useContainsSearch(
     }
     const current = ++generation.current
     const isCurrent = (): boolean => current === generation.current
+    const consumeMoreRequest = (): void => {
+      setMoreRequestsFor((pending) =>
+        pending.client === client &&
+        pending.requestKey === requestKey &&
+        pending.count > 0
+          ? { ...pending, count: pending.count - 1 }
+          : pending,
+      )
+    }
     if (loadMore && cached !== undefined) {
       setState({
         requestKey,
@@ -137,11 +155,11 @@ export function useContainsSearch(
         failed: false,
         loadingMore: true,
       })
-      searchStudiesContaining(client, entry, {
+      searchStoresContaining(storeClients(client), entry, {
         isCurrent,
-        offset: cached.nextOffset,
+        cursors: cached.cursors,
       })
-        .then((page) => {
+        .then(({ result: page, cursors }) => {
           if (!isCurrent()) return
           const pages = cached.pages + 1
           const merged: ContainsSearchResult = {
@@ -150,13 +168,7 @@ export function useContainsSearch(
             isPartial: page.isPartial,
             pageRowCount: page.pageRowCount,
           }
-          storeCachedResult(
-            client,
-            entry.id,
-            merged,
-            pages,
-            cached.nextOffset + page.pageRowCount,
-          )
+          storeCachedResult(client, entry.id, merged, pages, cursors)
           setState({
             requestKey,
             pages,
@@ -164,6 +176,7 @@ export function useContainsSearch(
             failed: false,
             loadingMore: false,
           })
+          consumeMoreRequest()
         })
         .catch((error: unknown) => {
           if (!isCurrent()) return
@@ -175,13 +188,14 @@ export function useContainsSearch(
             failed: false,
             loadingMore: false,
           })
+          consumeMoreRequest()
         })
     } else {
       setState({ requestKey, pages: 0, failed: false, loadingMore: false })
-      searchStudiesContaining(client, entry, { isCurrent })
-        .then((result) => {
+      searchStoresContaining(storeClients(client), entry, { isCurrent })
+        .then(({ result, cursors }) => {
           if (!isCurrent()) return
-          storeCachedResult(client, entry.id, result, 1, result.pageRowCount)
+          storeCachedResult(client, entry.id, result, 1, cursors)
           setState({
             requestKey,
             pages: 1,
@@ -212,8 +226,12 @@ export function useContainsSearch(
     if (client === undefined || entry === undefined) return
     if (!canFetchMore(resultCache.get(client)?.get(entry.id))) return
     setMoreRequestsFor((current) => ({
+      client,
       requestKey,
-      count: current.requestKey === requestKey ? current.count + 1 : 1,
+      count:
+        current.client === client && current.requestKey === requestKey
+          ? current.count + 1
+          : 1,
     }))
   }, [client, entry, requestKey])
 

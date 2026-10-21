@@ -33,6 +33,16 @@ const { naturalizeDataset } = dcmjs.data.DicomMetaDictionary
  */
 type AuthorizationMode = 'always' | 'never' | 'auto'
 
+/** Series and instance search against a single store */
+export interface StoreSearchClient {
+  searchForSeries: (
+    options: dwc.api.SearchForSeriesOptions,
+  ) => Promise<dwc.api.Series[]>
+  searchForInstances: (
+    options: dwc.api.SearchForInstancesOptions,
+  ) => Promise<dwc.api.Instance[]>
+}
+
 interface Store {
   id: string
   read: boolean
@@ -660,6 +670,41 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
     )
     return merged as unknown as dwc.api.Study[]
   }
+
+  private readonly storeSearchClientCache = new WeakMap<
+    Store,
+    StoreSearchClient
+  >()
+
+  /**
+   * One search client per readable store, for callers that page each store
+   * on its own (a shared QIDO offset is only right for one store). Clients
+   * are stable, so per-server state can be keyed on them.
+   */
+  storeSearchClients = (): StoreSearchClient[] =>
+    this.stores
+      .filter((store) => store.read)
+      .map((store) => {
+        let client = this.storeSearchClientCache.get(store)
+        if (client === undefined) {
+          client = {
+            searchForSeries: async (options) =>
+              await this.callStore(
+                store,
+                async (storeClient) =>
+                  await storeClient.searchForSeries(options),
+              ),
+            searchForInstances: async (options) =>
+              await this.callStore(
+                store,
+                async (storeClient) =>
+                  await storeClient.searchForInstances(options),
+              ),
+          }
+          this.storeSearchClientCache.set(store, client)
+        }
+        return client
+      })
 
   searchForSeries = async (
     options: dwc.api.SearchForSeriesOptions,

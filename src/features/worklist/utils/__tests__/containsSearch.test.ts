@@ -12,7 +12,9 @@ import {
   fetchSlideStudy,
   mergeContainsMatches,
   STUDY_FIELDS,
+  searchStoresContaining,
   searchStudiesContaining,
+  storeClients,
   withEntryModality,
 } from '../containsSearch'
 
@@ -378,5 +380,89 @@ describe('withEntryModality', () => {
   it('keeps the row when the modality is already listed', () => {
     const study = { ...base, ModalitiesInStudy: ['SM', 'ANN'] }
     expect(withEntryModality(study, entry('ann'))).toBe(study)
+  })
+})
+
+describe('searchStoresContaining', () => {
+  const ann = StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION
+  const fullPage = (prefix: string, offset: number): QidoRow[] =>
+    Array.from({ length: CONTAINS_PAGE_SIZE }, (_, index) =>
+      row(`${prefix}${offset + index}`, `${prefix}x${offset + index}`, ann),
+    )
+
+  it('pages each store from its own offset and skips finished stores', async () => {
+    const busy = fakeClient({
+      searchForInstances: async (options) =>
+        fullPage('busy', offsetOf(options)),
+    })
+    const small = fakeClient({
+      searchForInstances: onePage([row('s1', 'a', ann)]),
+    })
+
+    const first = await searchStoresContaining([busy, small], entry('ann'))
+    expect(first.result.matches.size).toBe(CONTAINS_PAGE_SIZE + 1)
+    expect(first.result.isPartial).toBe(true)
+    expect(first.cursors).toEqual([
+      { offset: CONTAINS_PAGE_SIZE, isDone: false },
+      { offset: 1, isDone: true },
+    ])
+
+    const second = await searchStoresContaining([busy, small], entry('ann'), {
+      cursors: first.cursors,
+    })
+    expect(offsetOf(busy.searchForInstances.mock.lastCall?.[0])).toBe(
+      CONTAINS_PAGE_SIZE,
+    )
+    expect(small.searchForInstances).toHaveBeenCalledTimes(1)
+    expect(second.result.matches.has(`busy${CONTAINS_PAGE_SIZE}`)).toBe(true)
+  })
+
+  it('falls back to the modality only on the store that rejects SOPClassUID', async () => {
+    const exact = fakeClient({
+      searchForInstances: onePage([row('s1', 'a', ann)]),
+    })
+    const google = fakeClient({
+      searchForInstances: async () => {
+        throw badRequest()
+      },
+      searchForSeries: onePage([row('s2', 'b')]),
+    })
+
+    const page = await searchStoresContaining([exact, google], entry('ann'))
+
+    expect([...page.result.matches.keys()]).toEqual(['s1', 's2'])
+    expect(exact.searchForSeries).not.toHaveBeenCalled()
+  })
+
+  it('keeps the other stores when one fails and throws when all fail', async () => {
+    const down = fakeClient({
+      searchForInstances: async () => {
+        throw Object.assign(new Error('down'), { status: 503 })
+      },
+    })
+    const up = fakeClient({
+      searchForInstances: onePage([row('s1', 'a', ann)]),
+    })
+
+    const page = await searchStoresContaining([down, up], entry('ann'))
+    expect([...page.result.matches.keys()]).toEqual(['s1'])
+    expect(page.cursors[0]).toEqual({ offset: 0, isDone: false })
+
+    await expect(
+      searchStoresContaining([down, down], entry('ann')),
+    ).rejects.toThrow('down')
+  })
+})
+
+describe('storeClients', () => {
+  it('splits a client with several stores and keeps a single store whole', () => {
+    const a = fakeClient()
+    const b = fakeClient()
+    const combined = { ...fakeClient(), storeSearchClients: () => [a, b] }
+    const single = { ...fakeClient(), storeSearchClients: () => [a] }
+
+    expect(storeClients(combined)).toEqual([a, b])
+    expect(storeClients(single)).toEqual([single])
+    expect(storeClients(a)).toEqual([a])
   })
 })
