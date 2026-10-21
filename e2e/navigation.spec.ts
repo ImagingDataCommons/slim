@@ -26,10 +26,17 @@ test.describe('Navigation', () => {
     )
     const panel = slidePanel(page)
     const segments = await section(panel, 'Segmentations')
-    /** The Series list shows the linked SEG, which the deep link turned on */
-    await expect(
-      segments.getByRole('button', { name: 'Show TILs Present' }),
-    ).toHaveAttribute('aria-pressed', 'true')
+    /**
+     * The Series list shows the linked SEG, which the deep link turned on.
+     * Until the link narrows the list, "All Series" holds several "TILs
+     * Present" segments, so wait for one before reading its state (a strict
+     * locator fails at once on several matches instead of waiting)
+     */
+    const tilsPresent = segments.getByRole('button', {
+      name: 'Show TILs Present',
+    })
+    await expect(tilsPresent).toHaveCount(1, { timeout: 60_000 })
+    await expect(tilsPresent).toHaveAttribute('aria-pressed', 'true')
 
     await pressViewerShortcut(page, 'KeyD')
     await configureDraw(page, 'Tumor', 'Point')
