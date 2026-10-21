@@ -98,6 +98,31 @@ describe('useSlides', () => {
     expect(result.current.error).toBeNull()
   })
 
+  it('refreshes every consumer of the study when one of them retries', async () => {
+    mockedFetch.mockImplementation(({ onError }) => {
+      onError(new Error('unreachable'))
+      return Promise.resolve()
+    })
+    const clients = clientsFor('https://a.test/dicomWeb')
+    const viewer = renderHook(() =>
+      useSlides({ clients, studyInstanceUID: '1.2.4' }),
+    )
+    const validation = renderHook(() =>
+      useSlides({ clients, studyInstanceUID: '1.2.4' }),
+    )
+    await waitFor(() => expect(validation.result.current.error).not.toBeNull())
+
+    respondWith([slide])
+    act(() => {
+      viewer.result.current.retry()
+    })
+
+    await waitFor(() =>
+      expect(validation.result.current.slides).toEqual([slide]),
+    )
+    expect(viewer.result.current.slides).toEqual([slide])
+  })
+
   it('ignores a slower fetch for the previous study', async () => {
     const clients = clientsFor('https://a.test/dicomWeb')
     const slowSlide = { volumeImages: [{}, {}] } as unknown as Slide

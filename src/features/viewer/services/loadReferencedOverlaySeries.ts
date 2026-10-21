@@ -62,8 +62,17 @@ export async function loadReferencedOverlaySeries<
       if (session.isDestroyed) return
       const reference = session.slide.volumeImages[0]
       const items: T[] = []
+      /** A malformed instance is skipped; the valid ones still load */
+      let hasMalformedInstance = false
       for (const metadata of retrievedMetadata) {
-        const item = createItem(metadata)
+        let item: T
+        try {
+          item = createItem(metadata)
+        } catch (error: unknown) {
+          hasMalformedInstance = true
+          logger.error(`${errorLogLabel}: could not read an instance: `, error)
+          continue
+        }
         if (sharesReferenceFrame(item, reference)) {
           items.push(item)
         } else if (warnOnSkipped) {
@@ -72,6 +81,7 @@ export async function loadReferencedOverlaySeries<
           console.warn(`skip ${label} instance "${uid}"`)
         }
       }
+      if (hasMalformedInstance) notifyVisualizationError(errorMessage)
       if (items.length === 0) return
       try {
         addItems(items)

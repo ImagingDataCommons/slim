@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Location, NavigateFunction } from 'react-router'
 
 import type DicomWebManager from '../../../DicomWebManager'
@@ -43,6 +43,8 @@ export function useRouteSlideResolution({
   const [unresolvedSeriesUID, setUnresolvedSeriesUID] = useState<string | null>(
     null,
   )
+  /** Derived series whose referenced slide was already looked up */
+  const resolvedDerivedSeriesRef = useRef<string | undefined>(undefined)
 
   useEffect(() => {
     const match = matchSlideForSeriesRoute({
@@ -51,9 +53,19 @@ export function useRouteSlideResolution({
       selectedSlide,
     })
 
-    if (match.kind === 'unchanged') return
+    if (match.kind === 'unchanged') {
+      /**
+       * The route names an image series of the selected slide, so a derived
+       * dataset from an earlier deep link must not be shown again.
+       */
+      resolvedDerivedSeriesRef.current = undefined
+      setDerivedDataset(null)
+      setUnresolvedSeriesUID(null)
+      return
+    }
 
     if (match.kind === 'image') {
+      resolvedDerivedSeriesRef.current = undefined
       setSelectedSlide(match.slide)
       setDerivedDataset(null)
       setUnresolvedSeriesUID(null)
@@ -75,6 +87,11 @@ export function useRouteSlideResolution({
       return
     }
 
+    /** Already resolved for this route; the selectedSlide update re-ran us */
+    if (resolvedDerivedSeriesRef.current === seriesInstanceUID) return
+    /** Another derived series' dataset must not be shown while this resolves */
+    setDerivedDataset(null)
+
     /** Set on cleanup so a superseded lookup cannot select a stale slide */
     let isCancelled = false
     void resolveDerivedSeriesSlide({
@@ -85,6 +102,7 @@ export function useRouteSlideResolution({
     }).then((resolution) => {
       if (isCancelled) return
       if (resolution.kind === 'referenced') {
+        resolvedDerivedSeriesRef.current = seriesInstanceUID
         setSelectedSlide(resolution.slide)
         setDerivedDataset(resolution.derivedDataset)
         setUnresolvedSeriesUID(null)

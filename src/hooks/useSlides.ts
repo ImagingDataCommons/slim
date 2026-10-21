@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 
 import type DicomWebManager from '../DicomWebManager'
 import type { Slide } from '../data/slides'
@@ -27,6 +33,28 @@ interface CachedSlides {
 const slidesCache = new Map<string, CachedSlides>()
 const pendingRequests = new Map<string, Promise<Slide[]>>()
 const cacheTimestamps = new Map<string, number>()
+
+/**
+ * Retry count per study, shared by every useSlides instance (CaseViewer, the
+ * validation provider, …) so a retry in one refreshes all of them.
+ */
+const retryGenerations = new Map<string, number>()
+const retryListeners = new Set<() => void>()
+
+const subscribeToRetries = (listener: () => void): (() => void) => {
+  retryListeners.add(listener)
+  return () => {
+    retryListeners.delete(listener)
+  }
+}
+
+const requestRetry = (studyInstanceUID: string): void => {
+  retryGenerations.set(
+    studyInstanceUID,
+    (retryGenerations.get(studyInstanceUID) ?? 0) + 1,
+  )
+  for (const listener of retryListeners) listener()
+}
 
 const CACHE_EXPIRATION_TIME = 30 * 60 * 1000
 /** Studies whose slide metadata stays cached; the least recent is dropped */
@@ -105,13 +133,16 @@ export const useSlides = ({
   const [slides, setSlides] = useState<Slide[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [error, setError] = useState<Error | null>(null)
-  const [attempt, setAttempt] = useState(0)
+  const attempt = useSyncExternalStore(
+    subscribeToRetries,
+    () => retryGenerations.get(studyInstanceUID ?? '') ?? 0,
+  )
 
   const retry = useCallback((): void => {
     if (studyInstanceUID !== undefined && studyInstanceUID !== '') {
       clearSlidesCache(studyInstanceUID)
     }
-    setAttempt((value) => value + 1)
+    requestRetry(studyInstanceUID ?? '')
   }, [studyInstanceUID])
 
   useEffect(() => {

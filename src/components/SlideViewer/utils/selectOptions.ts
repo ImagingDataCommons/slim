@@ -87,23 +87,28 @@ export interface PresentationStateLike {
   ContentDescription?: string
 }
 
-/** Presentation state options followed by the "Default" sentinel. */
+/**
+ * Presentation state options followed by the "Default" sentinel. A state is
+ * selected (and written to `?state=`) by its SOP Instance UID, so states
+ * without one, or repeating one already listed, are left out rather than
+ * offered as entries that could never be applied.
+ */
 export function buildPresentationStateOptions(
   presentationStates: readonly PresentationStateLike[],
 ): Array<SelectOption> {
   const used = new Set<string>([DEFAULT_PRESENTATION_STATE_VALUE])
-  const options = presentationStates.map((instance, index) => {
+  const options: SelectOption[] = []
+  for (const instance of presentationStates) {
     const uid = instance.SOPInstanceUID ?? ''
-    const value =
-      uid !== '' && !used.has(uid) ? uid : `presentation-state-${index}`
-    used.add(value)
+    if (uid === '' || used.has(uid)) continue
+    used.add(uid)
     const description = instance.ContentDescription ?? ''
-    return {
-      value,
+    options.push({
+      value: uid,
       label: description !== '' ? description : 'Untitled',
       item: undefined,
-    }
-  })
+    })
+  }
   options.push({
     value: DEFAULT_PRESENTATION_STATE_VALUE,
     label: 'Default',

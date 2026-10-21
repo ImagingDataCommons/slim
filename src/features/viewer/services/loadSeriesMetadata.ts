@@ -56,7 +56,16 @@ export async function loadSeriesMetadata({
               seriesInstanceUID: series.SeriesInstanceUID,
             })
             .then((metadata): void => {
-              onMetadata(metadata)
+              /**
+               * A failure while adding the retrieved metadata is not a
+               * retrieval failure; report it as a display problem.
+               */
+              try {
+                onMetadata(metadata)
+              } catch (error: unknown) {
+                logger.error(error)
+                notifyVisualizationError(`${label} could not be displayed.`)
+              }
               finishOne()
             })
             .catch((error: unknown) => {
