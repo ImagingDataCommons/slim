@@ -56,7 +56,7 @@ export function maskUrlSecrets(value: string): string {
     .replace(/^([a-z][a-z0-9+.-]*:\/\/)[^/?#@]+@/i, `$1${MASKED_VALUE}@`)
     .replace(
       /** Fragment parameters too, as in an implicit-grant redirect URL */
-      /([?&#])([^=&#]+)=([^&#]*)/g,
+      /([?&#])([^=&#?/]+)=([^&#]*)/g,
       (match, separator: string, name: string) =>
         isSecretKey(name) || SECRET_PARAM_PATTERN.test(name)
           ? `${separator}${name}=${MASKED_VALUE}`

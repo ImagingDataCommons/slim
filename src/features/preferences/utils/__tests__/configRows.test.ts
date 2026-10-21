@@ -110,6 +110,12 @@ describe('maskConfig', () => {
     expect(
       maskConfig('https://app.example/callback#id_token=abc&state=s1'),
     ).toBe(`https://app.example/callback#id_token=${MASKED_VALUE}&state=s1`)
+    expect(maskConfig('https://app.example/#/route?sig=abc')).toBe(
+      `https://app.example/#/route?sig=${MASKED_VALUE}`,
+    )
+    expect(maskConfig('https://app.example/app#route?key=abc')).toBe(
+      `https://app.example/app#route?key=${MASKED_VALUE}`,
+    )
   })
 
   it('masks every leaf under a secret-named group', () => {
