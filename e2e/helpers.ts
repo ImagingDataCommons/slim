@@ -166,12 +166,14 @@ async function decodeAndMeasure(
 ): Promise<{ stats: ViewportStats[]; meanDiff: number }> {
   return page.evaluate(
     async (encoded) => {
+      const widths: number[] = []
       const images = await Promise.all(
-        encoded.map(async (base64) => {
+        encoded.map(async (base64, index) => {
           const blob = await (
             await fetch(`data:image/png;base64,${base64}`)
           ).blob()
           const bitmap = await createImageBitmap(blob)
+          widths[index] = bitmap.width
           const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
           const context = canvas.getContext('2d')
           if (context === null) throw new Error('No 2D context')
@@ -194,7 +196,13 @@ async function decodeAndMeasure(
         return { mean, stdDev: Math.sqrt(sumSquares / count - mean * mean) }
       })
       let meanDiff = 0
-      if (images.length === 2 && images[0].length === images[1].length) {
+      /** Captures of different sizes never count as matching */
+      if (
+        images.length === 2 &&
+        (widths[0] !== widths[1] || images[0].length !== images[1].length)
+      ) {
+        meanDiff = Number.POSITIVE_INFINITY
+      } else if (images.length === 2) {
         let total = 0
         for (let i = 0; i < images[0].length; i += 4) {
           total += Math.abs(luminance(images[0], i) - luminance(images[1], i))

@@ -79,7 +79,13 @@ test.describe('Configuration', () => {
   test('C6 messages.disabled silences those toast tones only', async ({
     page,
   }) => {
-    await overrideConfig(page, { messages: { disabled: ['success'] } })
+    /**
+     * Toasts stay open (duration 0), so the final absence check would see a
+     * success toast that slipped through instead of one that already closed
+     */
+    await overrideConfig(page, {
+      messages: { disabled: ['success'], duration: 0 },
+    })
     await openViewer(page, heUrl)
     await pressViewerShortcut(page, 'KeyD')
     await configureDraw(page, 'Tumor', 'Point')
