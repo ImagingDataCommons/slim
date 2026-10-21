@@ -124,3 +124,12 @@ describe('NotificationMiddleware', () => {
     ])
   })
 })
+
+describe('console.warn override', () => {
+  it('does not throw for circular or BigInt arguments', () => {
+    const circular: { self?: unknown } = {}
+    circular.self = circular
+    void NotificationMiddleware
+    expect(() => console.warn('warning with', circular, 1n)).not.toThrow()
+  })
+})

@@ -90,6 +90,21 @@ export function notificationTypeForCategory(
     : NotificationType.CONSOLE
 }
 
+/**
+ * Whether a warning is about a request (retried XHRs, which are not shown).
+ * Arguments may be circular or hold BigInts, which JSON.stringify rejects; a
+ * warning must never throw from inside console.warn.
+ */
+function mentionsRequest(args: readonly unknown[]): boolean {
+  try {
+    return JSON.stringify(args).includes('request')
+  } catch {
+    return args.some(
+      (arg) => typeof arg === 'string' && arg.includes('request'),
+    )
+  }
+}
+
 class NotificationMiddleware extends PubSub {
   constructor() {
     super()
@@ -100,7 +115,7 @@ class NotificationMiddleware extends PubSub {
 
     const warn = console.warn
     console.warn = (...args: unknown[]): void => {
-      if (!JSON.stringify(args).includes('request')) {
+      if (!mentionsRequest(args)) {
         publishWarning(args)
       }
       warn.apply(console, args)

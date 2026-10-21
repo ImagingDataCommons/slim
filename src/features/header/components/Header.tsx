@@ -204,8 +204,16 @@ export function Header({
   const serverSelection = useServerSelection({ onServerSelection })
   const { serverUrl, openDialog: openServerDialog } = serverSelection
 
+  /**
+   * Reset per study, not per path: the viewer redirects within a study on
+   * its own (default series, corrected UIDs), and the warnings captured
+   * while it loaded must survive those.
+   */
   const { errors, warnings, errorCount, warningCount } = useNotifications({
-    resetKey: location.pathname,
+    resetKey:
+      isViewerPath(location.pathname) && params.studyInstanceUID !== undefined
+        ? `study:${params.studyInstanceUID}`
+        : location.pathname,
   })
 
   const customLogo = useCustomLogo(customLogoUrl(import.meta.env.BASE_URL))
