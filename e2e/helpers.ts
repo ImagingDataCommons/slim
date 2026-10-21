@@ -72,6 +72,27 @@ export async function section(panel: Locator, title: string): Promise<Locator> {
 }
 
 /**
+ * Loaded and requested tile counts from the footer's "Tiles 1 234 / 1 234"
+ * counter. Counts group thousands with spaces, and only the counter's own
+ * text is read so a following "N failed" is never taken as digits.
+ */
+export async function readTileCounts(
+  page: Page,
+): Promise<{ loaded: number; requested: number } | null> {
+  const counter = page
+    .locator('footer')
+    .locator('span', { hasText: /^Tiles / })
+    .first()
+  if ((await counter.count()) === 0) return null
+  const text = (await counter.innerText()).replace(/\s+/g, ' ')
+  const match = /^Tiles ([\d ,]+) \/ ([\d ,]+)$/.exec(text.trim())
+  if (match === null) return null
+  const toNumber = (value: string): number =>
+    Number(value.replace(/[\s,]/g, ''))
+  return { loaded: toNumber(match[1]), requested: toNumber(match[2]) }
+}
+
+/**
  * Waits for the footer tile counter to report every requested tile as loaded
  * and to stay that way. Use captureSettledViewport when comparing pixels.
  */
@@ -79,23 +100,21 @@ export async function waitForTilesSettled(
   page: Page,
   timeout = 60_000,
 ): Promise<void> {
-  const footer = page.locator('footer').filter({ hasText: 'Tiles' })
   let previous = ''
   let stableSince = Date.now()
   await expect
     .poll(
       async () => {
-        const text = (await footer.innerText()).replace(/\s+/g, ' ')
-        const match = /Tiles ([\d,]+) \/ ([\d,]+)/.exec(text)
-        if (match === null) return false
-        if (text !== previous) {
-          previous = text
+        const counts = await readTileCounts(page)
+        if (counts === null) return false
+        const key = `${counts.loaded}/${counts.requested}`
+        if (key !== previous) {
+          previous = key
           stableSince = Date.now()
         }
-        const [loaded, requested] = [match[1], match[2]]
         return (
-          requested !== '0' &&
-          loaded === requested &&
+          counts.requested > 0 &&
+          counts.loaded === counts.requested &&
           Date.now() - stableSince > 1500
         )
       },
