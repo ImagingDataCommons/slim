@@ -109,4 +109,55 @@ describe('loadPresentationStates', () => {
     )
     expect(unhandled).not.toHaveBeenCalled()
   })
+
+  it('still chooses a default when reporting a failed retrieve throws', async () => {
+    const instance = (uid: string) => ({
+      SOPClassUID: StorageClasses.ADVANCED_BLENDING_PRESENTATION_STATE,
+      SeriesInstanceUID: 'pr-series',
+      SOPInstanceUID: uid,
+    })
+    const client = {
+      searchForInstances: vi.fn(async () => [
+        instance('ps-0'),
+        instance('ps-1'),
+      ]),
+      retrieveInstance: vi.fn(
+        async ({ sopInstanceUID }: { sopInstanceUID: string }) => {
+          if (sopInstanceUID === 'ps-0') throw new Error('retrieve failed')
+          return {
+            SOPInstanceUID: 'ps-1',
+            AdvancedBlendingSequence: [{ SeriesInstanceUID: 's1' }],
+          }
+        },
+      ),
+    } as unknown as DicomWebManager
+    vi.mocked(notifyVisualizationError).mockImplementation(() => {
+      throw new Error('subscriber failed')
+    })
+    const logError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const onDefault = vi.fn()
+    const unhandled = vi.fn()
+    process.on('unhandledRejection', unhandled)
+
+    loadPresentationStates({
+      client,
+      studyInstanceUID: '1',
+      slide: {
+        seriesInstanceUIDs: ['s1'],
+        areVolumeImagesMonochrome: true,
+      } as unknown as Slide,
+      onPresentationState: vi.fn(),
+      onDefaultPresentationState: onDefault,
+    })
+    await vi.waitFor(() =>
+      expect(onDefault).toHaveBeenCalledWith(
+        expect.objectContaining({ SOPInstanceUID: 'ps-1' }),
+      ),
+    )
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    process.off('unhandledRejection', unhandled)
+    vi.mocked(notifyVisualizationError).mockReset()
+    logError.mockRestore()
+    expect(unhandled).not.toHaveBeenCalled()
+  })
 })

@@ -128,15 +128,21 @@ export function loadPresentationStates({
             }
           })
           .catch((error: unknown) => {
-            notify('Presentation State could not be loaded')
-            logger.error(
-              'failed to load presentation state ' +
-                `of SOP instance "${instance.SOPInstanceUID}" ` +
-                `of series "${instance.SeriesInstanceUID}" ` +
-                `of study "${studyInstanceUID}": `,
-              error,
-            )
-            settle(index)
+            /** The slot settles even if reporting the failure throws */
+            try {
+              notify('Presentation State could not be loaded')
+              logger.error(
+                'failed to load presentation state ' +
+                  `of SOP instance "${instance.SOPInstanceUID}" ` +
+                  `of series "${instance.SeriesInstanceUID}" ` +
+                  `of study "${studyInstanceUID}": `,
+                error,
+              )
+            } catch (reportError: unknown) {
+              console.error(reportError)
+            } finally {
+              settle(index)
+            }
           })
       })
     })
