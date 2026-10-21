@@ -117,10 +117,11 @@ describe('useSlides', () => {
       viewer.result.current.retry()
     })
 
-    await waitFor(() =>
-      expect(validation.result.current.slides).toEqual([slide]),
-    )
-    expect(viewer.result.current.slides).toEqual([slide])
+    /** Each hook renders in its own root, and the roots commit separately */
+    await waitFor(() => {
+      expect(validation.result.current.slides).toEqual([slide])
+      expect(viewer.result.current.slides).toEqual([slide])
+    })
   })
 
   it('ignores a slower fetch for the previous study', async () => {
