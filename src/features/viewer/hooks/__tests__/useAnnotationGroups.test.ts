@@ -116,6 +116,18 @@ describe('useAnnotationGroups', () => {
     expect(result.current.selectedSeriesUID).toBeUndefined()
   })
 
+  it('switching series hides groups the panel has not caught up with', () => {
+    const { result, viewer } = setup()
+    viewer.showAnnotationGroup('cells')
+
+    act(() => {
+      result.current.onSeriesChange('ann-2')
+    })
+
+    expect(viewer.hideAnnotationGroup).toHaveBeenCalledWith('cells')
+    expect(viewer.annotationGroups.visible.size).toBe(0)
+  })
+
   it('restyles a group and refreshes the panels', () => {
     const { result, viewer, access } = setup()
 

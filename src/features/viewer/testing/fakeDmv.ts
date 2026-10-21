@@ -338,6 +338,9 @@ export class FakeVolumeImageViewer {
   readonly hideAnnotationGroup = vi.fn((uid: string) =>
     this.annotationGroups.hide(uid),
   )
+  readonly isAnnotationGroupVisible = vi.fn((uid: string) =>
+    this.annotationGroups.visible.has(uid),
+  )
   readonly zoomToROI = vi.fn()
 
   getAllSegments(): FakeSegment[] {

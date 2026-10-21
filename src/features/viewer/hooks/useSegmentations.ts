@@ -22,7 +22,9 @@ import { showMatchingSeriesItems } from '../utils/showSeriesItems'
 import {
   applyUidVisibility,
   applyUidVisibilityChanges,
+  hideVisibleItems,
   mirrorDmvVisibility,
+  showItems,
 } from '../utils/uidVisibility'
 import { useInterpolationToggle } from './useInterpolationToggle'
 import type { ViewerAccess } from './useViewerSession'
@@ -248,10 +250,16 @@ export function useSegmentations(
       if (viewer === undefined) return
       /**
        * Switching series hides the previous segments; if any were shown,
-       * every present segment of the new series is shown instead.
+       * every present, non-background segment of the new series is shown
+       * instead, as for a deep link. The viewer, not panel state, says what
+       * is drawn, so a "Show all" still in its transition is hidden too.
        */
-      for (const uid of visibleUIDs) viewer.hideSegment(uid)
       const allSegments = viewer.getAllSegments()
+      const wereShown = hideVisibleItems(
+        allSegments.map((segment) => segment.uid),
+        (uid) => viewer.isSegmentVisible(uid),
+        (uid) => viewer.hideSegment(uid),
+      )
       const seriesSegments = itemsForSeries(
         allSegments,
         groupBySeries(allSegments, (segment) =>
@@ -259,17 +267,20 @@ export function useSegmentations(
         ),
         seriesInstanceUID,
       )
-      const nextVisible = new Set<string>()
-      if (visibleUIDs.size > 0) {
-        for (const segment of seriesSegments) {
-          if (!segment.isAbsent) nextVisible.add(segment.uid)
-        }
-      }
+      const nextVisible = wereShown
+        ? showItems(
+            seriesSegments
+              .filter(
+                (segment) => !segment.isAbsent && segment.isBackground !== true,
+              )
+              .map((segment) => segment.uid),
+            (uid) => viewer.showSegment(uid),
+          )
+        : new Set<string>()
       startTransition(() => {
         setSelectedSeriesUID(seriesInstanceUID)
         setVisibleUIDs(nextVisible)
       })
-      for (const uid of nextVisible) viewer.showSegment(uid)
     },
     onDisplaySettingsChange: ({ interpolationEnabled }) => {
       onInterpolationChange(interpolationEnabled)

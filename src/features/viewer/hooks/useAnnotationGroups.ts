@@ -20,6 +20,7 @@ import {
   shouldApplyClusteringSettings,
 } from '../utils/displaySettings'
 import { showMatchingSeriesItems } from '../utils/showSeriesItems'
+import { hideVisibleItems } from '../utils/uidVisibility'
 import { applyVisibilityChanges } from '../utils/visibilityChanges'
 import type { ViewerAccess } from './useViewerSession'
 
@@ -199,8 +200,16 @@ export function useAnnotationGroups(
     onSeriesChange: (seriesInstanceUID) => {
       const viewer = sessionRef.current?.volumeViewer
       if (viewer === undefined) return
-      /** Switching series hides every group shown for the previous one */
-      for (const uid of visibleUIDs) viewer.hideAnnotationGroup(uid)
+      /**
+       * Switching series hides every group shown for the previous one. The
+       * viewer, not panel state, says what is drawn, so a "Show all" still
+       * in its transition is hidden too.
+       */
+      hideVisibleItems(
+        viewer.getAllAnnotationGroups().map((group) => group.uid),
+        (uid) => viewer.isAnnotationGroupVisible(uid),
+        (uid) => viewer.hideAnnotationGroup(uid),
+      )
       startTransition(() => {
         setSelectedSeriesUID(seriesInstanceUID)
         setVisibleUIDs(new Set())

@@ -239,6 +239,46 @@ describe('useSegmentations visibility', () => {
     expect([...test.viewer.segments.visible]).toEqual(['fraction'])
   })
 
+  it('switching series skips background segments and ones that fail to show', () => {
+    const test = createSegmentedSession()
+    test.viewer.segments.add(
+      { uid: 'stroma', seriesInstanceUID: 'seg-series', number: 4 },
+      [{ SeriesInstanceUID: 'seg-series', SegmentationType: 'BINARY' }],
+    )
+    const { result } = renderSegmentations(test)
+    act(() => {
+      result.current.onVisibilityChange({
+        segmentUID: 'fraction',
+        isVisible: true,
+      })
+    })
+    const showSegment = test.viewer.showSegment.getMockImplementation()
+    test.viewer.showSegment.mockImplementation((uid: string) => {
+      if (uid === 'stroma') throw new Error('cannot draw')
+      showSegment?.(uid)
+    })
+
+    act(() => {
+      result.current.onSeriesChange('seg-series')
+    })
+
+    expect([...result.current.visibleUIDs]).toEqual(['tumor'])
+    expect([...test.viewer.segments.visible]).toEqual(['tumor'])
+  })
+
+  it('switching series hides segments the viewer draws but the panel has not caught up with', () => {
+    const test = createSegmentedSession()
+    const { result } = renderSegmentations(test)
+    test.viewer.showSegment('tumor')
+
+    act(() => {
+      result.current.onSeriesChange('frac-series')
+    })
+
+    expect(test.viewer.hideSegment).toHaveBeenCalledWith('tumor')
+    expect([...test.viewer.segments.visible]).toEqual(['fraction'])
+  })
+
   it('mirrors visibility changes made in the viewport legend', () => {
     const test = createSegmentedSession()
     const { result } = renderSegmentations(test)

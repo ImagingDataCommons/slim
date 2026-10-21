@@ -1,5 +1,6 @@
 import { startTransition } from 'react'
 
+import { logger } from '../../../utils/logger'
 import type { VisibilityChange } from '../../../utils/visibility'
 import { applyEach } from './applyEach'
 import { withItem, withoutItem } from './uidSets'
@@ -79,4 +80,46 @@ export function mirrorDmvVisibility(
       isVisible ? withItem(current, uid) : withoutItem(current, uid),
     )
   })
+}
+
+/**
+ * Hide every item the viewer reports as drawn. One that fails to hide is
+ * logged and does not keep the others shown. Returns whether any was drawn.
+ */
+export function hideVisibleItems(
+  uids: readonly string[],
+  isVisible: (uid: string) => boolean,
+  hide: (uid: string) => void,
+): boolean {
+  let wasAnyVisible = false
+  for (const uid of uids) {
+    try {
+      if (!isVisible(uid)) continue
+      wasAnyVisible = true
+      hide(uid)
+    } catch (error: unknown) {
+      logger.error(`failed to hide "${uid}":`, error)
+    }
+  }
+  return wasAnyVisible
+}
+
+/**
+ * Show each item and return those that were shown; one that fails is logged
+ * and left out, so the panel never lists an item that is not drawn.
+ */
+export function showItems(
+  uids: readonly string[],
+  show: (uid: string) => void,
+): Set<string> {
+  const shown = new Set<string>()
+  for (const uid of uids) {
+    try {
+      show(uid)
+      shown.add(uid)
+    } catch (error: unknown) {
+      logger.error(`failed to show "${uid}":`, error)
+    }
+  }
+  return shown
 }
