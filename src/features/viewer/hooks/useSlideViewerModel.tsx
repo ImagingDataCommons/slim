@@ -30,10 +30,10 @@ import {
   type DerivedLegendRow,
 } from '../utils/derivedLegend'
 import {
-  ALL_SERIES,
   buildSeriesOptions,
   groupBySeries,
   itemsForSeries,
+  shownSeries,
 } from '../utils/groupBySeries'
 import { isShortcutEnabled } from '../utils/keyboardShortcuts'
 import { slideAffineFromImages } from '../utils/slideCoordinates'
@@ -477,14 +477,20 @@ export function useSlideViewerModel({
     snapshot.annotationGroups,
     (group) => group.seriesInstanceUID,
   )
-  const groupSeriesUID = annotationGroups.selectedSeriesUID ?? ALL_SERIES
+  const groupSeriesUID = shownSeries(
+    groupsBySeries,
+    annotationGroups.selectedSeriesUID,
+  )
   const segmentsBySeries = groupBySeries(
     snapshot.segments,
     (segment) =>
       snapshot.segmentMetadata[segment.uid]?.[0]?.SeriesInstanceUID ??
       'unknown',
   )
-  const segmentSeriesUID = segmentations.selectedSeriesUID ?? ALL_SERIES
+  const segmentSeriesUID = shownSeries(
+    segmentsBySeries,
+    segmentations.selectedSeriesUID,
+  )
 
   return {
     isFluorescence: slide.areVolumeImagesMonochrome,

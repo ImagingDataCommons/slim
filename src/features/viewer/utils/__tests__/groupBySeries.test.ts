@@ -3,6 +3,7 @@ import {
   buildSeriesOptions,
   groupBySeries,
   itemsForSeries,
+  shownSeries,
 } from '../groupBySeries'
 
 interface Item {
@@ -57,5 +58,23 @@ describe('buildSeriesOptions', () => {
       { value: 's2', label: 'Series s2 (2 segments)' },
       { value: 's1', label: 'Series s1 (1 segments)' },
     ])
+  })
+})
+
+describe('shownSeries', () => {
+  const groups = new Map([['loaded', ['a', 'b']]])
+
+  it('shows the selected series while it has items', () => {
+    expect(shownSeries(groups, 'loaded')).toBe('loaded')
+  })
+
+  it('falls back to all series when the selected one has nothing loaded', () => {
+    expect(shownSeries(groups, 'dropped')).toBe(ALL_SERIES)
+    expect(shownSeries(new Map([['empty', []]]), 'empty')).toBe(ALL_SERIES)
+  })
+
+  it('keeps all series when nothing is selected', () => {
+    expect(shownSeries(groups, undefined)).toBe(ALL_SERIES)
+    expect(shownSeries(groups, ALL_SERIES)).toBe(ALL_SERIES)
   })
 })
