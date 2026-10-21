@@ -47,7 +47,12 @@ export default defineConfig({
    * so tests don't compete for a runner's few cores.
    */
   workers: isCI ? 1 : 3,
+  /**
+   * The retry records a trace for a failure, but a test that only passes on
+   * retry still fails the job, so flakes are fixed rather than hidden
+   */
   retries: isCI ? 1 : 0,
+  failOnFlakyTests: isCI,
   /** A broken environment fails everything; stop instead of burning the job timeout */
   maxFailures: isCI ? 5 : 0,
   reporter: isCI ? [['list'], ['github'], ['html', { open: 'never' }]] : 'list',

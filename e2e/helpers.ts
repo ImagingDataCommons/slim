@@ -283,7 +283,15 @@ export async function expectViewportToDiffer(
 ): Promise<void> {
   await expect
     .poll(
-      async () => viewportDiff(page, reference, await captureViewport(page)),
+      async () => {
+        const diff = await viewportDiff(
+          page,
+          reference,
+          await captureViewport(page),
+        )
+        /** A capture of another size is not a pixel change; keep waiting */
+        return Number.isFinite(diff) ? diff : Number.NEGATIVE_INFINITY
+      },
       { message: 'viewport differs from reference', timeout: 30_000 },
     )
     .toBeGreaterThan(minDiff)
@@ -295,6 +303,8 @@ export async function expectViewportToMatch(
   reference: Buffer,
   maxDiff: number,
 ): Promise<void> {
+  /** A bound derived from a size-mismatched diff would accept anything */
+  expect(Number.isFinite(maxDiff), 'maxDiff is a finite number').toBe(true)
   await expect
     .poll(
       async () => viewportDiff(page, reference, await captureViewport(page)),

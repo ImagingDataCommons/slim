@@ -27,6 +27,17 @@ const COMPACT: LayoutMode = {
   coarsePointer: true,
 }
 
+/** No custom logo, without a real request to the test origin */
+beforeEach(() => {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    new Response('', { status: 404 }),
+  )
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
 function SeedSummary(): null {
   const { setSummary } = useStudySummary()
   useEffect(() => {
