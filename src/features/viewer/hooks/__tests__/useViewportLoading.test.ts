@@ -13,10 +13,13 @@ vi.mock('dicom-microscopy-viewer', async () => {
 })
 vi.mock('../../../../utils/logger')
 
-const frame = (frameNumber: number) => ({
+/** Volume image of createTestSlide(); its label image ends in `.2` */
+const VOLUME_UID = '2.25.900000000000000000000000000000000000002.1'
+
+const frame = (frameNumber: number, sopInstanceUID = VOLUME_UID) => ({
   studyInstanceUID: 'study',
   seriesInstanceUID: 'series',
-  sopInstanceUID: 'image',
+  sopInstanceUID,
   sopClassUID: StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE,
   frameNumber,
   channelIdentifier: '1',
@@ -49,7 +52,7 @@ describe('useViewportLoading', () => {
       isLoading: true,
       isWaitingForFirstImage: true,
     })
-    expect([...session.loadingFrames]).toEqual(['image-2'])
+    expect([...session.loadingFrames]).toEqual([`${VOLUME_UID}-2`])
 
     act(() => {
       result.current.dmvHandlers.dicommicroscopyviewer_frame_loading_ended(
@@ -62,6 +65,26 @@ describe('useViewportLoading', () => {
     })
     /** Color slides have no per-channel windows to derive */
     expect(session.pixelStatistics.size).toBe(0)
+  })
+
+  it('ignores frames of the label viewer and study thumbnails', () => {
+    const { session, access } = createTestSession()
+    const { result } = renderHook(() => useViewportLoading(access.sessionRef))
+
+    act(() => {
+      const handlers = result.current.dmvHandlers
+      handlers.dicommicroscopyviewer_frame_loading_started(frame(1))
+      handlers.dicommicroscopyviewer_frame_loading_started(
+        frame(1, 'thumbnail-of-another-slide'),
+      )
+      handlers.dicommicroscopyviewer_frame_loading_ended({
+        ...frame(1, '2.25.900000000000000000000000000000000000002.2'),
+        pixelArray: new Uint8Array([1, 2]),
+      })
+    })
+
+    expect([...session.loadingFrames]).toEqual([`${VOLUME_UID}-1`])
+    expect(result.current.isWaitingForFirstImage).toBe(true)
   })
 
   it('stops waiting when loading fails and waits again after a reset', () => {
