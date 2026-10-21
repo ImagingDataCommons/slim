@@ -39,6 +39,18 @@ export function isSecretKey(key: string): boolean {
   return SECRET_KEY_PATTERN.test(key)
 }
 
+/** Keys naming a public location, e.g. `authorizationEndpoint`, `tokenUrl` */
+const LOCATION_KEY_PATTERN = /(endpoint|url|uri)$/i
+
+/**
+ * Whether a config entry holds a secret. A flag such as `sendAuthorization`
+ * carries none, and a public location keeps only its URL credentials masked.
+ */
+function isSecretEntry(key: string, item: unknown): boolean {
+  if (typeof item === 'boolean') return false
+  return isSecretKey(key) && !LOCATION_KEY_PATTERN.test(key)
+}
+
 /** Query parameter names that carry credentials in URLs (signed URLs, API keys) */
 const SECRET_PARAM_PATTERN =
   /^(key|sig|signature|auth|code|x-amz-[\w-]+|x-goog-[\w-]+)$/i
@@ -110,20 +122,21 @@ function maskAll(value: unknown): unknown {
     })
     return result
   }
-  return value === undefined ? undefined : MASKED_VALUE
+  if (value === undefined || typeof value === 'boolean') return value
+  return MASKED_VALUE
 }
 
 /**
  * Replace values under secret-looking keys with {@link MASKED_VALUE},
- * including every leaf of a nested object or array under such a key, and
- * hide credentials inside URL values (see {@link maskUrlSecrets}).
+ * including every non-flag leaf of a nested object or array under such a
+ * key, and hide credentials inside URL values (see {@link maskUrlSecrets}).
  */
 export function maskConfig(value: unknown): unknown {
   if (Array.isArray(value)) return value.map((item) => maskConfig(item))
   if (isPlainObject(value)) {
     const result: Record<string, unknown> = {}
     Object.entries(value).forEach(([key, item]) => {
-      if (!isSecretKey(key)) {
+      if (!isSecretEntry(key, item)) {
         result[key] = maskConfig(item)
       } else if (isGroupValue(item)) {
         result[key] = maskAll(item)

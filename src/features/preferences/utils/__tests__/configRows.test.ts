@@ -80,6 +80,28 @@ describe('maskConfig', () => {
     })
   })
 
+  it('keeps flags and public endpoints visible under secret-looking names', () => {
+    expect(
+      maskConfig({
+        servers: [{ url: 'https://a.example', sendAuthorization: false }],
+        oidc: {
+          authorizationEndpoint: 'https://idp.example/authorize',
+          tokenUrl: 'https://idp.example/token?client_secret=abc',
+          includeIdTokenInSilentRenew: true,
+          token: 'abc',
+        },
+      }),
+    ).toEqual({
+      servers: [{ url: 'https://a.example', sendAuthorization: false }],
+      oidc: {
+        authorizationEndpoint: 'https://idp.example/authorize',
+        tokenUrl: `https://idp.example/token?client_secret=${MASKED_VALUE}`,
+        includeIdTokenInSilentRenew: true,
+        token: MASKED_VALUE,
+      },
+    })
+  })
+
   it('hides credentials inside URL values', () => {
     expect(
       maskConfig({

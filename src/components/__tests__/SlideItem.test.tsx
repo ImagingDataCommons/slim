@@ -8,9 +8,8 @@ import SlideItem from '../SlideItem'
 
 const viewer = vi.hoisted(() => ({
   created: 0,
-  render: vi.fn(() => {
-    throw new Error('no overview')
-  }),
+  render: vi.fn(),
+  resize: vi.fn(),
   cleanup: vi.fn(),
 }))
 
@@ -22,7 +21,7 @@ vi.mock('dicom-microscopy-viewer', () => ({
       }
       render = viewer.render
       cleanup = viewer.cleanup
-      resize = vi.fn()
+      resize = viewer.resize
     },
   },
 }))
@@ -51,6 +50,10 @@ class CapturingResizeObserver {
 
 describe('SlideItem', () => {
   beforeEach(() => {
+    viewer.created = 0
+    viewer.render.mockReset()
+    viewer.resize.mockReset()
+    viewer.cleanup.mockReset()
     resizeCallbacks = []
     vi.stubGlobal('ResizeObserver', CapturingResizeObserver)
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(64)
@@ -63,6 +66,9 @@ describe('SlideItem', () => {
   })
 
   it('stops retrying an overview that cannot be shown', () => {
+    viewer.render.mockImplementation(() => {
+      throw new Error('no overview')
+    })
     const logError = vi.spyOn(logger, 'error').mockImplementation(() => {})
     const slide = {
       overviewImages: [{ SeriesInstanceUID: 'o1' }],
@@ -83,5 +89,36 @@ describe('SlideItem', () => {
     expect(viewer.cleanup).toHaveBeenCalled()
     expect(logError).toHaveBeenCalled()
     expect(resizeCallbacks).toEqual([])
+  })
+
+  it('keeps an empty thumbnail when the first resize fails', () => {
+    viewer.resize.mockImplementation(() => {
+      throw new Error('no size')
+    })
+    const logError = vi.spyOn(logger, 'error').mockImplementation(() => {})
+    let frame: FrameRequestCallback | undefined
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      frame = callback
+      return 1
+    })
+    const slide = {
+      overviewImages: [{ SeriesInstanceUID: 'o1' }],
+      thumbnailImages: [],
+      seriesInstanceUIDs: ['s1'],
+    } as unknown as Slide
+    const clients = {
+      [StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]: {} as DicomWebManager,
+    }
+
+    const { unmount } = render(
+      <SlideItem clients={clients} slide={slide} onSelect={() => {}} />,
+    )
+    resizeCallbacks[0]([], {} as ResizeObserver)
+    expect(() => frame?.(0)).not.toThrow()
+
+    expect(viewer.cleanup).toHaveBeenCalledTimes(1)
+    expect(logError).toHaveBeenCalled()
+    unmount()
+    expect(viewer.cleanup).toHaveBeenCalledTimes(1)
   })
 })
