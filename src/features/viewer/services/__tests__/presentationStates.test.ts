@@ -1,8 +1,19 @@
 import type DicomWebManager from '../../../../DicomWebManager'
 import type { Slide } from '../../../../data/slides'
+import { StorageClasses } from '../../../../data/uids'
 import { notifyVisualizationError } from '../derivedDataLoaders'
 import { loadPresentationStates } from '../presentationStates'
 
+vi.mock('dcmjs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('dcmjs')>()
+  return {
+    ...actual,
+    data: {
+      ...actual.data,
+      DicomMessage: { readFile: (dict: unknown) => ({ dict }) },
+    },
+  }
+})
 vi.mock('dicom-microscopy-viewer', () => ({
   metadata: { formatMetadata: (raw: unknown) => ({ dataset: raw }) },
 }))
@@ -43,5 +54,59 @@ describe('loadPresentationStates', () => {
   it('does not show the error of a viewer that is gone', async () => {
     await load(() => false)
     expect(notifyVisualizationError).not.toHaveBeenCalled()
+  })
+
+  it('reports a default that cannot be applied after an earlier retrieve fails', async () => {
+    const instance = (uid: string) => ({
+      SOPClassUID: StorageClasses.ADVANCED_BLENDING_PRESENTATION_STATE,
+      SeriesInstanceUID: 'pr-series',
+      SOPInstanceUID: uid,
+    })
+    let failFirst: (() => void) | undefined
+    const client = {
+      searchForInstances: vi.fn(async () => [
+        instance('ps-0'),
+        instance('ps-1'),
+      ]),
+      retrieveInstance: vi.fn(
+        ({ sopInstanceUID }: { sopInstanceUID: string }) =>
+          sopInstanceUID === 'ps-0'
+            ? new Promise((_, reject) => {
+                failFirst = () => reject(new Error('retrieve failed'))
+              })
+            : Promise.resolve({
+                SOPInstanceUID: 'ps-1',
+                AdvancedBlendingSequence: [{ SeriesInstanceUID: 's1' }],
+              }),
+      ),
+    } as unknown as DicomWebManager
+    const unhandled = vi.fn()
+    process.on('unhandledRejection', unhandled)
+
+    loadPresentationStates({
+      client,
+      studyInstanceUID: '1',
+      slide: {
+        seriesInstanceUIDs: ['s1'],
+        areVolumeImagesMonochrome: true,
+      } as unknown as Slide,
+      onPresentationState: vi.fn(),
+      onDefaultPresentationState: () => {
+        throw new Error('bad palette')
+      },
+    })
+    await vi.waitFor(() => expect(failFirst).toBeDefined())
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    failFirst?.()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    process.off('unhandledRejection', unhandled)
+
+    expect(notifyVisualizationError).toHaveBeenCalledWith(
+      'Presentation State could not be loaded',
+    )
+    expect(notifyVisualizationError).toHaveBeenCalledWith(
+      'Presentation State could not be applied',
+    )
+    expect(unhandled).not.toHaveBeenCalled()
   })
 })

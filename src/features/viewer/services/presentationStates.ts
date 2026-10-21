@@ -62,9 +62,25 @@ export function loadPresentationStates({
     })
     .then((matchedInstances: dwc.api.Instance[] | null): void => {
       const instances = matchedInstances ?? []
+      /**
+       * The default can be chosen from any slot's handler, including a
+       * failed retrieve's; one that cannot be applied is reported here
+       * rather than escaping that handler
+       */
       const settle = createInOrderFirstMatch<PresentationState>(
         instances.length,
-        (presentationState) => onDefaultPresentationState?.(presentationState),
+        (presentationState) => {
+          try {
+            onDefaultPresentationState?.(presentationState)
+          } catch (error: unknown) {
+            logger.error(
+              'failed to apply presentation state ' +
+                `"${presentationState.SOPInstanceUID}": `,
+              error,
+            )
+            notify('Presentation State could not be applied')
+          }
+        },
       )
       instances.forEach((rawInstance, index) => {
         const { dataset } = dmv.metadata.formatMetadata(rawInstance)
@@ -112,7 +128,6 @@ export function loadPresentationStates({
             }
           })
           .catch((error: unknown) => {
-            settle(index)
             notify('Presentation State could not be loaded')
             logger.error(
               'failed to load presentation state ' +
@@ -121,6 +136,7 @@ export function loadPresentationStates({
                 `of study "${studyInstanceUID}": `,
               error,
             )
+            settle(index)
           })
       })
     })
