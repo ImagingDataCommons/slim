@@ -1,5 +1,6 @@
 import type * as dcmjs from 'dcmjs'
 import type React from 'react'
+import { useId } from 'react'
 
 import type {
   Evaluation,
@@ -35,17 +36,21 @@ export interface AnnotationConfigurationFieldsProps {
   onMeasurementChange: (isActive: boolean) => void
 }
 
+/** Visible label plus a control named by it (`labelId` for aria-labelledby) */
 function Field({
   label,
   children,
 }: {
   label: string
-  children: React.ReactNode
+  children: (labelId: string) => React.ReactNode
 }): React.ReactElement {
+  const labelId = useId()
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-12 text-ink-muted">{label}</span>
-      {children}
+      <span id={labelId} className="text-12 text-ink-muted">
+        {label}
+      </span>
+      {children(labelId)}
     </div>
   )
 }
@@ -72,20 +77,23 @@ function EvaluationField({
   )?.value
   return (
     <Field label={evaluation.name.CodeMeaning}>
-      <OptionSelect
-        value={selectedConceptValue(options, selectedValue)}
-        options={options}
-        leadingOption={{ value: NO_EVALUATION_VALUE, label: 'None' }}
-        placeholder="Select…"
-        onValueChange={(value) => {
-          if (value === NO_EVALUATION_VALUE) {
-            onEvaluationClear(evaluation.name)
-            return
-          }
-          const code = findOptionItem(options, value)
-          if (code !== undefined) onEvaluationChange(evaluation.name, code)
-        }}
-      />
+      {(labelId) => (
+        <OptionSelect
+          labelledBy={labelId}
+          value={selectedConceptValue(options, selectedValue)}
+          options={options}
+          leadingOption={{ value: NO_EVALUATION_VALUE, label: 'None' }}
+          placeholder="Select…"
+          onValueChange={(value) => {
+            if (value === NO_EVALUATION_VALUE) {
+              onEvaluationClear(evaluation.name)
+              return
+            }
+            const code = findOptionItem(options, value)
+            if (code !== undefined) onEvaluationChange(evaluation.name, code)
+          }}
+        />
+      )}
     </Field>
   )
 }
@@ -111,15 +119,18 @@ export function AnnotationConfigurationFields({
   return (
     <>
       <Field label="Finding">
-        <OptionSelect
-          value={selectedConceptValue(findingOptions, selectedFinding)}
-          options={findingOptions}
-          placeholder="Select finding"
-          onValueChange={(value) => {
-            const finding = findOptionItem(findingOptions, value)
-            if (finding !== undefined) onFindingChange(finding)
-          }}
-        />
+        {(labelId) => (
+          <OptionSelect
+            labelledBy={labelId}
+            value={selectedConceptValue(findingOptions, selectedFinding)}
+            options={findingOptions}
+            placeholder="Select finding"
+            onValueChange={(value) => {
+              const finding = findOptionItem(findingOptions, value)
+              if (finding !== undefined) onFindingChange(finding)
+            }}
+          />
+        )}
       </Field>
       {selectedFinding !== undefined && (
         <>
@@ -134,12 +145,15 @@ export function AnnotationConfigurationFields({
             />
           ))}
           <Field label="ROI geometry">
-            <OptionSelect
-              value={selectedGeometryType ?? ''}
-              options={buildGeometryTypeOptions(geometryTypes)}
-              placeholder="Select geometry type"
-              onValueChange={onGeometryTypeChange}
-            />
+            {(labelId) => (
+              <OptionSelect
+                labelledBy={labelId}
+                value={selectedGeometryType ?? ''}
+                options={buildGeometryTypeOptions(geometryTypes)}
+                placeholder="Select geometry type"
+                onValueChange={onGeometryTypeChange}
+              />
+            )}
           </Field>
           <label
             htmlFor="measure-checkbox"

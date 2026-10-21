@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/a11y/noRedundantRoles: the table's display overrides (flex/block/grid) drop native table semantics in Safari/VoiceOver, so the roles are restated */
 import { type JSX, useId } from 'react'
 
 import { useLayoutMode } from '../../contexts/LayoutModeContext'
@@ -169,41 +170,77 @@ const DicomTagBrowser = ({
         </div>
       </div>
 
+      {/**
+       * Explicit roles: the display overrides below (flex/block/grid) make
+       * Safari/VoiceOver drop the native table semantics otherwise.
+       */}
       <table
+        role="table"
         aria-label="DICOM tags"
         className="flex min-h-0 w-full flex-1 flex-col border-collapse"
       >
-        <thead className={cn('block flex-none', compactChrome && 'sr-only')}>
+        <thead
+          role="rowgroup"
+          className={cn('block flex-none', compactChrome && 'sr-only')}
+        >
           <tr
+            role="row"
             className={cn(
               'grid h-9 items-center gap-3 border-b border-line bg-subtle px-5 text-11 font-semibold uppercase leading-none tracking-wider text-ink-muted',
               TAG_GRID_COLUMNS,
             )}
           >
-            <th scope="col" className="text-left font-semibold">
+            <th
+              role="columnheader"
+              scope="col"
+              className="text-left font-semibold"
+            >
               Tag
             </th>
-            <th scope="col" className="text-left font-semibold">
+            <th
+              role="columnheader"
+              scope="col"
+              className="text-left font-semibold"
+            >
               VR
             </th>
-            <th scope="col" className="text-left font-semibold">
+            <th
+              role="columnheader"
+              scope="col"
+              className="text-left font-semibold"
+            >
               Keyword
             </th>
-            <th scope="col" className="text-left font-semibold">
+            <th
+              role="columnheader"
+              scope="col"
+              className="text-left font-semibold"
+            >
               Value
             </th>
           </tr>
         </thead>
-        <tbody className="block h-[52vh] min-h-0 flex-1 overflow-auto">
+        <tbody
+          role="rowgroup"
+          className="block h-[52vh] min-h-0 flex-1 overflow-auto"
+        >
           {isLoading ? (
-            <tr>
-              <td colSpan={4} className="px-5 py-16 text-center text-ink-muted">
+            <tr role="row">
+              <td
+                role="cell"
+                colSpan={4}
+                className="px-5 py-16 text-center text-ink-muted"
+              >
                 Loading…
               </td>
             </tr>
           ) : filteredData.length === 0 ? (
-            <tr>
-              <td colSpan={4} className="px-5 py-16 text-center text-ink-muted">
+            <tr role="row">
+              <td
+                role="cell"
+                colSpan={4}
+                className="px-5 py-16 text-center text-ink-muted"
+              >
                 {isFiltering ? 'No matching tags found' : 'No tags available'}
               </td>
             </tr>

@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/a11y/noRedundantRoles: the table's display overrides (flex/block/grid) drop native table semantics in Safari/VoiceOver, so the roles are restated */
 import type { JSX } from 'react'
 
 import { useLayoutMode } from '../../contexts/LayoutModeContext'
@@ -38,8 +39,9 @@ export function TagRow({
 
   return (
     <>
-      <tr className={rowClassName}>
+      <tr role="row" className={rowClassName}>
         <td
+          role="cell"
           className="flex items-center gap-0.5 font-mono text-12 text-ink-secondary"
           style={{ paddingLeft: depth * (compactChrome ? 12 : 18) }}
         >
@@ -61,9 +63,16 @@ export function TagRow({
           </span>
           {item.tag}
         </td>
-        <td>{item.vr !== '' && <MonoChip size="sm">{item.vr}</MonoChip>}</td>
-        <td className="truncate font-medium text-ink">{item.keyword}</td>
-        <td className="break-all py-1.5 font-mono text-12 text-ink-body">
+        <td role="cell">
+          {item.vr !== '' && <MonoChip size="sm">{item.vr}</MonoChip>}
+        </td>
+        <td role="cell" className="truncate font-medium text-ink">
+          {item.keyword}
+        </td>
+        <td
+          role="cell"
+          className="break-all py-1.5 font-mono text-12 text-ink-body"
+        >
           {item.value}
         </td>
       </tr>
