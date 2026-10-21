@@ -38,6 +38,51 @@ describe('useKeyboardShortcuts', () => {
   })
 })
 
+describe('useKeyboardShortcuts with a dialog open', () => {
+  afterEach(() => {
+    document.body.replaceChildren()
+  })
+
+  function openDialog(): HTMLElement {
+    const dialog = document.createElement('div')
+    dialog.setAttribute('role', 'dialog')
+    dialog.setAttribute('aria-modal', 'true')
+    const button = document.createElement('button')
+    dialog.append(button)
+    document.body.append(dialog)
+    return button
+  }
+
+  it('lets Escape answer the dialog without cancelling the tool', () => {
+    const onShortcut = vi.fn()
+    renderHook(() => useKeyboardShortcuts(onShortcut))
+    const insideDialog = openDialog()
+
+    fireEvent.keyDown(insideDialog, { key: 'Escape', code: 'Escape' })
+    /** The dialog closed on key-down, so key-up lands outside it */
+    document.body.replaceChildren()
+    fireEvent.keyUp(document.body, { key: 'Escape', code: 'Escape' })
+    expect(onShortcut).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(document.body, { key: 'Escape', code: 'Escape' })
+    fireEvent.keyUp(document.body, { key: 'Escape', code: 'Escape' })
+    expect(onShortcut).toHaveBeenCalledWith('cancel')
+  })
+
+  it('ignores Alt shortcuts while a modal is open', () => {
+    const onShortcut = vi.fn()
+    renderHook(() => useKeyboardShortcuts(onShortcut))
+    openDialog()
+
+    fireEvent.keyUp(document.body, { key: 'd', code: 'KeyD', altKey: true })
+    expect(onShortcut).not.toHaveBeenCalled()
+
+    document.body.replaceChildren()
+    fireEvent.keyUp(document.body, { key: 'd', code: 'KeyD', altKey: true })
+    expect(onShortcut).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('useHeldKeys', () => {
   it('tracks whether Shift is held', () => {
     const { result } = renderHook(() => useHeldKeys())

@@ -2,6 +2,8 @@ import { useEffectEvent, useLayoutEffect, useRef } from 'react'
 
 import { subscribeDomEvents } from '../services/dmvEvents'
 import {
+  isInsideDialog,
+  isModalOpen,
   shortcutForKeyEvent,
   type ViewerShortcutAction,
 } from '../utils/keyboardShortcuts'
@@ -54,18 +56,39 @@ export function useKeyboardShortcuts(
     },
   )
 
-  useLayoutEffect(
-    () =>
-      subscribeDomEvents(document.body, [
-        [
-          'keyup',
-          (event) => {
-            if (!(event instanceof KeyboardEvent)) return
-            const action = shortcutForKeyEvent(event)
-            if (action !== undefined) onShortcutEvent(action)
-          },
-        ],
-      ]),
-    [],
-  )
+  useLayoutEffect(() => {
+    /**
+     * A dialog closes on Escape key-down, so its key-up lands outside it;
+     * that Escape answered the dialog and must not also cancel the tool
+     */
+    let isEscapeForDialog = false
+    return subscribeDomEvents(document.body, [
+      [
+        'keydown',
+        (event) => {
+          if (!(event instanceof KeyboardEvent) || event.key !== 'Escape') {
+            return
+          }
+          isEscapeForDialog = isInsideDialog(event.target)
+        },
+      ],
+      [
+        'keyup',
+        (event) => {
+          if (!(event instanceof KeyboardEvent)) return
+          const action = shortcutForKeyEvent(event)
+          if (action === undefined) return
+          if (action === 'cancel') {
+            const wasForDialog = isEscapeForDialog
+            isEscapeForDialog = false
+            if (wasForDialog || isInsideDialog(event.target)) return
+          } else if (isInsideDialog(event.target) || isModalOpen()) {
+            /** An open modal owns the keyboard */
+            return
+          }
+          onShortcutEvent(action)
+        },
+      ],
+    ])
+  }, [])
 }

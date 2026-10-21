@@ -49,3 +49,22 @@ export function shortcutForKeyEvent(
     ? ALT_SHORTCUTS[event.code]
     : undefined
 }
+
+const DIALOG_SELECTOR = '[role="dialog"], [role="alertdialog"]'
+
+/** Whether a key event happened inside an open dialog */
+export function isInsideDialog(target: EventTarget | null): boolean {
+  if (typeof Element === 'undefined' || !(target instanceof Element)) {
+    return false
+  }
+  return target.closest(DIALOG_SELECTOR) !== null
+}
+
+/** Whether a modal dialog is open, which owns the keyboard until it closes */
+export function isModalOpen(root: ParentNode = document): boolean {
+  return (
+    root.querySelector(
+      '[role="dialog"][aria-modal="true"], [role="alertdialog"]',
+    ) !== null
+  )
+}
