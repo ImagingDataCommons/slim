@@ -15,25 +15,40 @@ export { loadMeasurementReports } from './loadMeasurementReports'
 export { loadParametricMaps } from './loadParametricMaps'
 export { loadSegmentations } from './loadSegmentations'
 
+/** Derived data kinds with their own loader */
+export type LoadedDerivedKind =
+  | 'rois'
+  | 'annotationGroups'
+  | 'segments'
+  | 'mappings'
+
 /**
- * Load ROIs, annotation groups, segmentations and parametric maps, then call
- * `onLoaded` once every loader settled.
+ * Load ROIs, annotation groups, segmentations and parametric maps. Each
+ * kind reports `onSettled` as soon as its own loader settled, so a deep link
+ * to a SEG does not wait for a slow bulk annotation load; `onLoaded` runs
+ * once every loader settled.
  */
 export function loadDerivedData(
   context: DerivedDataContext,
   {
     registerRoi,
+    onSettled,
     onLoaded,
   }: {
     registerRoi: (roi: dmv.roi.ROI) => void
+    onSettled?: (kind: LoadedDerivedKind) => void
     onLoaded: () => void
   },
 ): void {
+  const settled = (
+    load: Promise<void>,
+    kind: LoadedDerivedKind,
+  ): Promise<void> => load.finally(() => onSettled?.(kind))
   Promise.allSettled([
-    loadMeasurementReports(context, registerRoi),
-    loadAnnotationGroups(context),
-    loadSegmentations(context),
-    loadParametricMaps(context),
+    settled(loadMeasurementReports(context, registerRoi), 'rois'),
+    settled(loadAnnotationGroups(context), 'annotationGroups'),
+    settled(loadSegmentations(context), 'segments'),
+    settled(loadParametricMaps(context), 'mappings'),
   ])
     .then(() => {
       logger.debug(

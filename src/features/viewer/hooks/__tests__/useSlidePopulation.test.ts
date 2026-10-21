@@ -70,6 +70,8 @@ function populate(sources: SlidePopulationSources) {
   return {
     ...test,
     onLoaded: () => callbacks?.onLoaded(),
+    onSettled: (kind: Parameters<NonNullable<LoadCallbacks['onSettled']>>[0]) =>
+      callbacks?.onSettled?.(kind),
     registerRoi: (uid: string) =>
       callbacks?.registerRoi({ uid } as unknown as dmv.roi.ROI),
     onChange: () => context?.onChange(),
@@ -185,5 +187,22 @@ describe('useSlidePopulation', () => {
 
     rerender({ sources: { ...initial, derivedDataset: segmentationDataset() } })
     expect(initial.segmentations.showSeries).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows a deep-linked SEG once segmentations loaded, without waiting for the rest', () => {
+    const sources = createSources(segmentationDataset())
+    const { session, onSettled, onLoaded } = populate(sources)
+
+    onSettled('annotationGroups')
+    expect(sources.segmentations.showSeries).not.toHaveBeenCalled()
+
+    onSettled('segments')
+    expect(sources.segmentations.showSeries).toHaveBeenCalledWith(
+      session,
+      'seg-series',
+    )
+
+    onLoaded()
+    expect(sources.segmentations.showSeries).toHaveBeenCalledTimes(1)
   })
 })

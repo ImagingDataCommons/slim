@@ -20,7 +20,7 @@ import type { ViewportLoadingApi } from './useViewportLoading'
 export interface SlidePopulationSources {
   clients: { [key: string]: DicomWebManager }
   studyInstanceUID: string
-  /** Derived dataset opened through the URL, shown once everything loaded */
+  /** Derived dataset opened through the URL, shown once its kind loaded */
   derivedDataset: dmv.metadata.Dataset | undefined
   refreshSnapshot: () => void
   viewportLoading: Pick<ViewportLoadingApi, 'reset'>
@@ -75,7 +75,10 @@ function showDerivedDataset(
 /** Whether a session's derived data finished loading and its URL dataset was shown */
 interface PopulationProgress {
   session: ViewerSession
+  /** Every loader settled */
   isLoaded: boolean
+  /** Kinds whose own loader settled */
+  settledKinds: Set<string>
   isShown: boolean
   /** The shown dataset is an SR, so ROIs of later reports are shown too */
   showsLateRois: boolean
@@ -89,13 +92,17 @@ function showDerivedWhenReady(
   const dataset = sources.derivedDataset
   if (
     progress === undefined ||
-    !progress.isLoaded ||
     progress.isShown ||
     progress.session.isDestroyed ||
     dataset === undefined
   ) {
     return
   }
+  /** Shown once its own kind loaded; other kinds wait for every loader */
+  const { kind } = classifyDerivedDataset(
+    (dataset as { SOPClassUID: string }).SOPClassUID,
+  )
+  if (!progress.isLoaded && !progress.settledKinds.has(kind)) return
   progress.isShown = true
   showDerivedDataset(progress.session, dataset, sources)
   progress.showsLateRois =
@@ -156,6 +163,7 @@ export function useSlidePopulation(
     const progress: PopulationProgress = {
       session,
       isLoaded: false,
+      settledKinds: new Set(),
       isShown: false,
       showsLateRois: false,
     }
@@ -183,6 +191,10 @@ export function useSlidePopulation(
         registerRoi: (roi) => {
           latestRef.current.rois.registerRoi(session, roi)
           if (progress.showsLateRois) lateRoiUids.push(roi.uid)
+        },
+        onSettled: (kind) => {
+          progress.settledKinds.add(kind)
+          showDerivedWhenReady(progress, latestRef.current)
         },
         onLoaded: () => {
           progress.isLoaded = true
