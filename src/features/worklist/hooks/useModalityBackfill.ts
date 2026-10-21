@@ -55,6 +55,17 @@ export function useModalityBackfill(
     uids: Set<string>
   }>({ client, uids: new Set() })
 
+  /** Pending batch flushes, cancelled on unmount along with the requests */
+  const flushTimers = useRef(new Set<ReturnType<typeof setTimeout>>())
+  useEffect(() => {
+    const timers = flushTimers.current
+    return () => {
+      for (const timer of timers) clearTimeout(timer)
+      timers.clear()
+      requested.current = { client: undefined, uids: new Set() }
+    }
+  }, [])
+
   const missingKey =
     client === undefined
       ? ''
@@ -86,8 +97,10 @@ export function useModalityBackfill(
      */
     let pending: Array<{ uid: string; modalities: string[] }> = []
     let isFlushScheduled = false
+    let timer: ReturnType<typeof setTimeout> | undefined
     const flush = (): void => {
       isFlushScheduled = false
+      if (timer !== undefined) flushTimers.current.delete(timer)
       if (!isCurrent() || pending.length === 0) return
       const results = pending
       pending = []
@@ -110,7 +123,8 @@ export function useModalityBackfill(
       pending.push({ uid, modalities })
       if (!isFlushScheduled) {
         isFlushScheduled = true
-        setTimeout(flush, BACKFILL_FLUSH_MS)
+        timer = setTimeout(flush, BACKFILL_FLUSH_MS)
+        flushTimers.current.add(timer)
       }
     })
   }, [client, missingKey])
