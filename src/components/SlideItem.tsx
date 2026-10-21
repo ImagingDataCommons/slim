@@ -12,6 +12,7 @@ import NotificationMiddleware, {
 } from '../services/NotificationMiddleware'
 import type { CustomError } from '../utils/CustomError'
 import { computeOverviewPreviewResizeFactor } from '../utils/computeOverviewPreviewResizeFactor'
+import { logger } from '../utils/logger'
 import {
   getIlluminationType,
   getMagnification,
@@ -25,6 +26,18 @@ export interface SlideItemProps {
   slide: Slide
   isSelected?: boolean
   onSelect: ({ seriesInstanceUID }: { seriesInstanceUID: string }) => void
+}
+
+/** Runs `step`, handing anything it throws to `recover` */
+function runOrRecover(
+  step: () => void,
+  recover: (error: unknown) => void,
+): void {
+  try {
+    step()
+  } catch (error: unknown) {
+    recover(error)
+  }
 }
 
 /**
@@ -70,11 +83,26 @@ function useOverviewViewer(
     }
 
     const observer = new ResizeObserver(() => {
-      if (viewer !== undefined) {
-        viewer.resize()
-      } else if (container.clientWidth > 0 && container.clientHeight > 0) {
-        mount()
-      }
+      runOrRecover(
+        () => {
+          if (viewer !== undefined) {
+            viewer.resize()
+          } else if (container.clientWidth > 0 && container.clientHeight > 0) {
+            mount()
+          }
+        },
+        (error) => {
+          /**
+           * A slide whose overview cannot be shown keeps an empty thumbnail
+           * instead of throwing, and retrying, on every resize
+           */
+          logger.error('overview thumbnail could not be shown', error)
+          observer.disconnect()
+          viewer?.cleanup()
+          viewer = undefined
+          container.innerHTML = ''
+        },
+      )
     })
     observer.observe(container)
 

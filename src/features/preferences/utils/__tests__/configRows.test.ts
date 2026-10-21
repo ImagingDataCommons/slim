@@ -106,6 +106,12 @@ describe('maskConfig', () => {
     })
   })
 
+  it('hides credentials in URL fragment parameters', () => {
+    expect(
+      maskConfig('https://app.example/callback#id_token=abc&state=s1'),
+    ).toBe(`https://app.example/callback#id_token=${MASKED_VALUE}&state=s1`)
+  })
+
   it('masks every leaf under a secret-named group', () => {
     expect(
       maskConfig({

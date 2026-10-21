@@ -47,15 +47,16 @@ const URL_PATTERN = /^[a-z][a-z0-9+.-]*:\/\//i
 
 /**
  * Hide credentials carried inside a URL value: the `user:password@` part and
- * query parameters with secret-looking names (`?access_token=…`). Other text
- * is returned unchanged.
+ * query or fragment parameters with secret-looking names (`?access_token=…`,
+ * `#id_token=…`). Other text is returned unchanged.
  */
 export function maskUrlSecrets(value: string): string {
   if (!URL_PATTERN.test(value)) return value
   return value
     .replace(/^([a-z][a-z0-9+.-]*:\/\/)[^/?#@]+@/i, `$1${MASKED_VALUE}@`)
     .replace(
-      /([?&])([^=&#]+)=([^&#]*)/g,
+      /** Fragment parameters too, as in an implicit-grant redirect URL */
+      /([?&#])([^=&#]+)=([^&#]*)/g,
       (match, separator: string, name: string) =>
         isSecretKey(name) || SECRET_PARAM_PATTERN.test(name)
           ? `${separator}${name}=${MASKED_VALUE}`
