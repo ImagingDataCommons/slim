@@ -195,6 +195,7 @@ Playwright fakes these failures by answering requests with 404.
 - [ ] **E3** e2e. A study that fails to load shows "Couldn't load this study". Retry loads it.
 - [ ] **E4** e2e. A render error shows "Something went wrong" with Reload, not a blank screen.
 - [ ] **E5** e2e. High memory use shows in the footer, and Debug lists a critical memory warning.
+- [ ] **E6** e2e. When the viewer bundle fails to load, the page shows "Something went wrong" with Reload, not a blank screen.
 
 ## Visual smoke
 
