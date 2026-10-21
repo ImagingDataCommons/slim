@@ -34,6 +34,13 @@ export const decodeJwtClaims = (
   return parts.length === 3 ? decodeJwtPart(parts[1]) : undefined
 }
 
+/** `kid` from the header of a compact JWT, if it names one */
+export const decodeJwtKeyId = (jwt: string): string | undefined => {
+  const parts = jwt.split('.')
+  const kid = parts.length === 3 ? decodeJwtPart(parts[0])?.kid : undefined
+  return typeof kid === 'string' ? kid : undefined
+}
+
 /** JWS algorithms accepted for ID tokens; `none` and HMAC are deliberately absent */
 const SIGNING_ALGORITHMS = new Map<string, SignatureScheme>([
   ['RS256', { kty: 'RSA', hash: 'SHA-256' }],

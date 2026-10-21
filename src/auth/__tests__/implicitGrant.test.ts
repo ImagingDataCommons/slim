@@ -337,6 +337,21 @@ describe('ImplicitGrant', () => {
       expect(await stateStore.getAllKeys()).toEqual([params.get('state')])
     })
 
+    it('fetches the signing keys again after the provider rotated them', async () => {
+      const previous = await createIdTokenSigner('previous-key')
+      oidc.signingKeys = [previous.jwk]
+      await oidc.metadataService.getSigningKeys()
+      oidc.signingKeys = [signer.jwk]
+
+      const authorizeUrl = await redirect({ returnUrl: '/studies/1' })
+      const user = await createGrant().signinRedirectCallback(
+        await callbackFor(authorizeUrl),
+      )
+
+      expect(user.profile.sub).toBe('user-1')
+      expect(oidc.metadataService.resetSigningKeys).toHaveBeenCalledTimes(1)
+    })
+
     it('completes the callback into a stored user with the original state', async () => {
       const authorizeUrl = await redirect({ returnUrl: '/studies/1' })
       const user = await createGrant().signinRedirectCallback(
