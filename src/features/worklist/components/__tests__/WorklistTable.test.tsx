@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import type { ReactNode } from 'react'
@@ -39,11 +39,13 @@ function renderTable({
   isLoading,
   data = [],
   renderRowMarker,
+  onRowClick = () => {},
 }: {
   compact: boolean
   isLoading: boolean
   data?: dmv.metadata.Study[]
   renderRowMarker?: (study: dmv.metadata.Study) => ReactNode
+  onRowClick?: (study: dmv.metadata.Study) => void
 }): ReturnType<typeof render> {
   return render(
     <LayoutModeProvider value={compact ? COMPACT : DESKTOP}>
@@ -53,7 +55,7 @@ function renderTable({
           isLoading={isLoading}
           emptyMessage="None"
           isCompact={false}
-          onRowClick={() => {}}
+          onRowClick={onRowClick}
           pagination={pagination}
           onPaginationChange={() => {}}
           renderRowMarker={renderRowMarker}
@@ -94,5 +96,37 @@ describe('WorklistTable', () => {
     expect(marker.parentElement?.className).toContain('flex-none')
     expect(marker.parentElement?.className).not.toContain('absolute')
     expect(screen.getByRole('row').className).toContain('flex')
+  })
+
+  it('places the desktop row marker inside a cell', () => {
+    renderTable({
+      compact: false,
+      isLoading: false,
+      data: [study],
+      renderRowMarker: () => <span role="status">Checking</span>,
+    })
+
+    const [, row] = screen.getAllByRole('row')
+    for (const child of Array.from(row.children)) {
+      expect(child.getAttribute('role')).toBe('cell')
+    }
+    expect(screen.getByRole('status').closest('[role="cell"]')).not.toBeNull()
+  })
+
+  it('opens on Enter on the row but leaves Enter on the link to the link', () => {
+    const onRowClick = vi.fn()
+    renderTable({ compact: false, isLoading: false, data: [study], onRowClick })
+
+    const [, row] = screen.getAllByRole('row')
+    const link = row.querySelector('a')
+    expect(link).not.toBeNull()
+    const linkEvent = fireEvent.keyDown(link as HTMLAnchorElement, {
+      key: 'Enter',
+    })
+    expect(linkEvent).toBe(true)
+    expect(onRowClick).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(row, { key: 'Enter' })
+    expect(onRowClick).toHaveBeenCalledWith(study)
   })
 })

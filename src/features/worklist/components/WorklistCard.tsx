@@ -41,6 +41,8 @@ export function WorklistCard({
       tabIndex={0}
       onClick={() => onOpen(study)}
       onKeyDown={(event) => {
+        /** Keys on the patient link inside the card are the link's own */
+        if (event.target !== event.currentTarget) return
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
           onOpen(study)
@@ -52,7 +54,10 @@ export function WorklistCard({
       )}
     >
       {marker !== undefined && (
-        <div className="flex h-5 w-5 flex-none items-center justify-center pt-0.5">
+        <div
+          role="cell"
+          className="flex h-5 w-5 flex-none items-center justify-center pt-0.5"
+        >
           {marker}
         </div>
       )}

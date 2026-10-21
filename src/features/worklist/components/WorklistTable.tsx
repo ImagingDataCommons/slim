@@ -280,6 +280,8 @@ export function WorklistTable({
         tabIndex={0}
         onClick={() => onRowClick(row.original)}
         onKeyDown={(event) => {
+          /** Keys on the patient link inside the row are the link's own */
+          if (event.target !== event.currentTarget) return
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault()
             onRowClick(row.original)
@@ -291,13 +293,17 @@ export function WorklistTable({
         )}
         style={gridStyle}
       >
-        {renderRowMarker !== undefined && (
-          <div className="pointer-events-none absolute left-1.5 top-1/2 flex -translate-y-1/2">
-            {renderRowMarker(row.original)}
-          </div>
-        )}
-        {row.getVisibleCells().map((cell) => (
+        {row.getVisibleCells().map((cell, index) => (
           <div key={cell.id} role="cell" className="min-w-0 overflow-hidden">
+            {/**
+             * The marker lives in the first cell so the row holds only
+             * cells; it is still positioned against the row
+             */}
+            {index === 0 && renderRowMarker !== undefined && (
+              <div className="pointer-events-none absolute left-1.5 top-1/2 flex -translate-y-1/2">
+                {renderRowMarker(row.original)}
+              </div>
+            )}
             {flexRender(cell.column.columnDef.cell, cell.getContext())}
           </div>
         ))}
