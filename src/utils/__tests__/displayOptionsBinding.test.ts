@@ -33,7 +33,7 @@ describe('bindDisplayOptions', () => {
     })
   })
 
-  it('replaces only the mapped flag on toggle', () => {
+  it('builds toggles made before the next render on each other', () => {
     const onChange = vi.fn()
     const options = bindDisplayOptions(
       [descriptor({ id: 'icc' }), descriptor({ id: 'gamma' })],
@@ -42,16 +42,30 @@ describe('bindDisplayOptions', () => {
       onChange,
     )
     options[0].onChange(true)
-    expect(onChange).toHaveBeenLastCalledWith({
-      iccProfileEnabled: true,
-      gammaEnabled: true,
-    })
+    expect(onChange).toHaveBeenLastCalledWith(
+      { iccProfileEnabled: true, gammaEnabled: true },
+      settings,
+    )
     options[1].onChange(false)
-    expect(onChange).toHaveBeenLastCalledWith({
-      iccProfileEnabled: false,
-      gammaEnabled: false,
-    })
+    expect(onChange).toHaveBeenLastCalledWith(
+      { iccProfileEnabled: true, gammaEnabled: false },
+      { iccProfileEnabled: true, gammaEnabled: true },
+    )
     expect(settings).toEqual({ iccProfileEnabled: false, gammaEnabled: true })
+  })
+
+  it('drops a repeated toggle that changes nothing', () => {
+    const onChange = vi.fn()
+    const [option] = bindDisplayOptions(
+      [descriptor({ id: 'icc' })],
+      settings,
+      { icc: 'iccProfileEnabled' },
+      onChange,
+    )
+    option.onChange(true)
+    option.onChange(true)
+    option.onChange(false)
+    expect(onChange).toHaveBeenCalledTimes(2)
   })
 
   it('ignores toggles of unmapped ids', () => {

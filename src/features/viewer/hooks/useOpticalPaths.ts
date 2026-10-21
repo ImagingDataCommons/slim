@@ -78,7 +78,10 @@ export interface OpticalPathsApi {
     opticalPathIdentifier: string
     styleOptions: { opacity?: number; color?: number[]; limitValues?: number[] }
   }) => void
-  onDisplaySettingsChange: (settings: OpticalPathDisplaySettings) => void
+  onDisplaySettingsChange: (
+    settings: OpticalPathDisplaySettings,
+    previous?: OpticalPathDisplaySettings,
+  ) => void
 }
 
 /** Which optical paths are shown and blended, and how colors are managed */
@@ -201,10 +204,11 @@ export function useOpticalPaths(
       markUserDisplayChange(sessionRef.current)
       viewer.setOpticalPathStyle(opticalPathIdentifier, styleOptions)
     },
-    onDisplaySettingsChange: (settings) => {
+    onDisplaySettingsChange: (settings, previous = displaySettings) => {
       const viewer = sessionRef.current?.volumeViewer
       if (viewer === undefined) return
-      const changed = changedSettingKeys(displaySettings, settings)
+      /** Diff against `previous` so a toggle is never applied twice */
+      const changed = changedSettingKeys(previous, settings)
       if (changed.includes('iccProfileEnabled')) {
         setIsIccProfileEnabled(settings.iccProfileEnabled)
         viewer.toggleICCProfiles()

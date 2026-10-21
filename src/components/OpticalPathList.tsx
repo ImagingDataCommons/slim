@@ -63,7 +63,10 @@ export interface OpticalPathListProps {
   /** Display settings for ICC profiles and gamma correction */
   displaySettings?: OpticalPathDisplaySettings
   /** Callback when display settings change */
-  onDisplaySettingsChange?: (settings: OpticalPathDisplaySettings) => void
+  onDisplaySettingsChange?: (
+    settings: OpticalPathDisplaySettings,
+    previous?: OpticalPathDisplaySettings,
+  ) => void
   /** Whether ICC profiles are available for this slide */
   hasIccProfiles?: boolean
 }
