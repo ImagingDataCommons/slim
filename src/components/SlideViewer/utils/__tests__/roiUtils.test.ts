@@ -30,8 +30,10 @@ describe('getRoiKey', () => {
   })
 
   it('is undefined for an ROI without a finding', () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     expect(getRoiKey({ uid: 'roi-2', evaluations: [] })).toBeUndefined()
+    /** Hot path: the parser reports a missing finding once, not every call */
+    expect(warn).not.toHaveBeenCalled()
     vi.restoreAllMocks()
   })
 })

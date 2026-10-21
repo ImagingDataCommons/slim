@@ -718,8 +718,10 @@ declare module 'dicom-microscopy-viewer' {
     }
 
     export interface Comprehensive3DSR extends SOPClass {
-      ContentSequence: dcmjs.sr.valueTypes.ContentItem[]
-      ContentTemplateSequence: Array<{
+      /** Type 1C in the SR Document Content module */
+      ContentSequence?: dcmjs.sr.valueTypes.ContentItem[]
+      /** Type 1C: present only when the document follows a template */
+      ContentTemplateSequence?: Array<{
         MappingResource: string
         TemplateIdentifier: string
       }>

@@ -130,14 +130,13 @@ type PlainNumItem = {
   RelationshipType?: string
 }
 
-function toCodeContentItem(item: CodeContentItem): CodeContentItem {
+/** Rebuilt CODE item, or undefined when its name or value code is missing */
+function toCodeContentItem(item: CodeContentItem): CodeContentItem | undefined {
   if (item instanceof dcmjs.sr.valueTypes.CodeContentItem) return item
   const plain = item as PlainCodeItem
   const name = plain.ConceptNameCodeSequence?.[0]
   const value = plain.ConceptCodeSequence?.[0]
-  if (name === undefined || value === undefined) {
-    throw new Error('CODE content item is missing ConceptName or ConceptCode')
-  }
+  if (name === undefined || value === undefined) return undefined
   return new dcmjs.sr.valueTypes.CodeContentItem({
     name: toCodedConcept(name),
     value: toCodedConcept(value),
@@ -145,12 +144,13 @@ function toCodeContentItem(item: CodeContentItem): CodeContentItem {
   })
 }
 
-function toTextContentItem(item: TextContentItem): TextContentItem {
+/** Rebuilt TEXT item, or undefined when its name or text is missing */
+function toTextContentItem(item: TextContentItem): TextContentItem | undefined {
   if (item instanceof dcmjs.sr.valueTypes.TextContentItem) return item
   const plain = item as PlainTextItem
   const name = plain.ConceptNameCodeSequence?.[0]
   if (name === undefined || typeof plain.TextValue !== 'string') {
-    throw new Error('TEXT content item is missing ConceptName or TextValue')
+    return undefined
   }
   return new dcmjs.sr.valueTypes.TextContentItem({
     name: toCodedConcept(name),
@@ -189,7 +189,7 @@ function toNumContentItem(item: NumContentItem): NumContentItem | undefined {
   })
 }
 
-function toEvaluationItem(item: EvaluationItem): EvaluationItem {
+function toEvaluationItem(item: EvaluationItem): EvaluationItem | undefined {
   return isTextItem(item) ? toTextContentItem(item) : toCodeContentItem(item)
 }
 
@@ -270,9 +270,24 @@ function parseMeasurementGroup(
   const algorithmName = findFirst(content, CONCEPTS.algorithmName)
   const observerType = algorithmName !== undefined ? 'Device' : 'Person'
   const algorithmVersion = findFirst(content, CONCEPTS.algorithmVersion)
+  /**
+   * A malformed CODE or TEXT item is skipped with a warning, like a NUM
+   * item, so it cannot drop every ROI of the report.
+   */
+  const addEvaluation = (item: EvaluationItem): void => {
+    const rebuilt = toEvaluationItem(item)
+    if (rebuilt !== undefined) {
+      evaluations.push(rebuilt)
+    } else {
+      warnings.push(
+        `Skipped a ${isTextItem(item) ? 'TEXT' : 'CODE'} content item without ` +
+          `a concept name or value. ${TID_1410_CONTEXT}`,
+      )
+    }
+  }
   for (const item of [algorithmName, algorithmVersion]) {
     if (item !== undefined && (isCodeItem(item) || isTextItem(item))) {
-      evaluations.push(toEvaluationItem(item))
+      addEvaluation(item)
     }
   }
 
@@ -290,8 +305,10 @@ function parseMeasurementGroup(
     return undefined
   }
 
+  /** Algorithm Name / Version were added above; do not list them twice */
   for (const item of content.filter(isCodeItem)) {
-    evaluations.push(toCodeContentItem(item))
+    if (item === algorithmName || item === algorithmVersion) continue
+    addEvaluation(item)
   }
 
   const measurements: NumContentItem[] = []
@@ -318,7 +335,7 @@ function parseROIs(
 ): dmv.roi.ROI[] {
   /** TID 1500 Measurement Report */
   const matches = findContentItemsByName({
-    content: report.ContentSequence,
+    content: report.ContentSequence ?? [],
     name: CONCEPTS.imagingMeasurements,
   })
   if (matches.length !== 1) {

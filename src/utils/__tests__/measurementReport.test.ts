@@ -221,6 +221,38 @@ describe('parseMeasurementReport', () => {
     })
   })
 
+  it('skips a malformed CODE item and still loads the ROI', () => {
+    const malformed = {
+      ConceptNameCodeSequence: [code('371441004', 'Histological grade', 'SCT')],
+      RelationshipType: 'CONTAINS',
+      ValueType: 'CODE',
+    } as unknown as ContentItem
+    const parsed = parseMeasurementReport(
+      report([measurementGroup([malformed])]),
+    )
+
+    expect(parsed.ROIs).toHaveLength(1)
+    expect(parsed.ROIs[0].properties).toMatchObject({ evaluations: [finding] })
+    expect(parsed.warnings).toEqual([
+      expect.stringMatching(/Skipped a CODE content item/),
+    ])
+  })
+
+  it('lists a coded algorithm name once', () => {
+    const algorithm = codeItem(
+      code('111001', 'Algorithm Name'),
+      code('A1', 'Seg model', '99LOCAL'),
+    )
+    const parsed = parseMeasurementReport(
+      report([measurementGroup([algorithm])]),
+    )
+    const evaluations = (
+      parsed.ROIs[0].properties as { evaluations: ContentItem[] }
+    ).evaluations
+    expect(evaluations).toHaveLength(2)
+    expect(evaluations).toEqual([algorithm, finding])
+  })
+
   it('reports missing specimen context instead of throwing', () => {
     const parsed = parseMeasurementReport(report([measurementGroup()], []))
     expect(parsed.SpecimenUID).toBeUndefined()

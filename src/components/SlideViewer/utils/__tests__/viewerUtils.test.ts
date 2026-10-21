@@ -47,6 +47,11 @@ function item(
 }
 
 describe('implementsTID1500', () => {
+  it('is false for a document without ContentTemplateSequence (Type 1C)', () => {
+    expect(implementsTID1500({})).toBe(false)
+    expect(describesSpecimenSubject({})).toBe(false)
+  })
+
   it('checks the first content template', () => {
     expect(
       implementsTID1500({

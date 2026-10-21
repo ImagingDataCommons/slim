@@ -5,24 +5,27 @@ import type * as dmv from 'dicom-microscopy-viewer'
 import { codedConceptKey } from '../../../utils/dicom/codedConcept'
 import { findContentItemsByName } from '../../../utils/sr'
 
-/** {@link codedConceptKey} of the ROI's finding, if it has one */
+const FINDING = new dcmjs.sr.coding.CodedConcept({
+  value: '121071',
+  meaning: 'Finding',
+  schemeDesignator: 'DCM',
+})
+
+/**
+ * {@link codedConceptKey} of the ROI's finding, if it has one. Runs on every
+ * visibility and style pass, so a missing finding is not logged here; the
+ * SR parser already reports it once per measurement group.
+ */
 export const getRoiKey = (
   roi: Pick<dmv.roi.ROI, 'uid' | 'evaluations'>,
 ): string | undefined => {
-  const matches = findContentItemsByName({
+  const [finding] = findContentItemsByName({
     content: roi.evaluations,
-    name: new dcmjs.sr.coding.CodedConcept({
-      value: '121071',
-      meaning: 'Finding',
-      schemeDesignator: 'DCM',
-    }),
+    name: FINDING,
   })
-  if (matches.length === 0) {
-    console.warn(`no finding found for ROI ${roi.uid}`)
-    return
-  }
-  const finding = matches[0] as dcmjs.sr.valueTypes.CodeContentItem
-  return codedConceptKey(finding.ConceptCodeSequence[0])
+  const value = (finding as dcmjs.sr.valueTypes.CodeContentItem | undefined)
+    ?.ConceptCodeSequence?.[0]
+  return value !== undefined ? codedConceptKey(value) : undefined
 }
 
 /**
