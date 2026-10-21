@@ -1,6 +1,9 @@
 import { startTransition } from 'react'
 
+import type { VisibilityChange } from '../../../utils/visibility'
+import { applyEach } from './applyEach'
 import { withItem, withoutItem } from './uidSets'
+import { applyVisibilityChanges } from './visibilityChanges'
 
 export type SetVisibleUIDs = (
   update: (current: Set<string>) => Set<string>,
@@ -30,6 +33,35 @@ export function applyUidVisibility({
     hide(uid)
     setVisibleUIDs((current) => withoutItem(current, uid))
   }
+}
+
+/**
+ * Show or hide several overlay UIDs ("Show all" / "Hide all") and commit
+ * the panel's visible set once. Changes before a failing one still apply.
+ */
+export function applyUidVisibilityChanges({
+  changes,
+  show,
+  hide,
+  setVisibleUIDs,
+}: {
+  changes: readonly VisibilityChange[]
+  show: (uid: string) => void
+  hide: (uid: string) => void
+  setVisibleUIDs: SetVisibleUIDs
+}): void {
+  applyEach(
+    changes,
+    (change): VisibilityChange => {
+      if (change.isVisible) show(change.uid)
+      else hide(change.uid)
+      return change
+    },
+    (applied) => {
+      if (applied.length === 0) return
+      setVisibleUIDs((current) => applyVisibilityChanges(current, applied))
+    },
+  )
 }
 
 /**

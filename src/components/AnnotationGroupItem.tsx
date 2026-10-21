@@ -1,7 +1,7 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import type React from 'react'
-import { memo, useMemo, useState } from 'react'
+import { memo, useMemo } from 'react'
 
 import { cn } from '../lib/utils'
 import type {
@@ -56,6 +56,13 @@ export interface AnnotationGroupItemProps {
     uid: string
     styleOptions: AnnotationGroupStyleChange
   }) => void
+  /** Live style while dragging; must not refresh defaultStyle */
+  onStylePreview?: (change: {
+    uid: string
+    styleOptions: AnnotationGroupStyleChange
+  }) => void
+  /** Measurement the group is colored by, owned by the viewer hook */
+  measurementKey?: string
 }
 
 interface AnnotationGroupLocalStyle {
@@ -75,6 +82,8 @@ function AnnotationGroupItem({
   onAnnotationGroupClick,
   onVisibilityChange,
   onStyleChange,
+  onStylePreview,
+  measurementKey = NO_MEASUREMENT,
 }: AnnotationGroupItemProps): React.ReactElement {
   const uid = annotationGroup.uid
   const commit = (styleOptions: AnnotationGroupStyleChange): void => {
@@ -90,13 +99,15 @@ function AnnotationGroupItem({
       },
       commit,
     )
-  const commitLive = useFrameThrottledCallback(commit)
+  const commitLive = useFrameThrottledCallback(
+    (styleOptions: AnnotationGroupStyleChange): void => {
+      ;(onStylePreview ?? onStyleChange)({ uid, styleOptions })
+    },
+  )
   const previewLive = (change: AnnotationGroupStyleChange): void => {
     previewStyle(change)
     commitLive(change)
   }
-  /** Select value; survives the settings popover unmounting */
-  const [measurementKey, setMeasurementKey] = useState(NO_MEASUREMENT)
 
   const item = getAnnotationGroupItem(metadata, uid)
   const { meta, attributes, count } = useMemo(
@@ -116,7 +127,6 @@ function AnnotationGroupItem({
 
   const handleMeasurementSelection = (key: string): void => {
     const option = measurementOptions.find((candidate) => candidate.key === key)
-    setMeasurementKey(option?.key ?? NO_MEASUREMENT)
     if (option !== undefined) {
       onStyleChange({
         uid,

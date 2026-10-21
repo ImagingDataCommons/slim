@@ -4,6 +4,7 @@ import { startTransition, useEffect, useMemo, useState } from 'react'
 
 import type { SegmentStyle } from '../../../types/layerStyles'
 import { logger } from '../../../utils/logger'
+import type { VisibilityChange } from '../../../utils/visibility'
 import type { DmvEventHandlers } from '../services/dmvEvents'
 import {
   applyBinarySegmentPalettes,
@@ -18,7 +19,11 @@ import {
   segmentPanelStyles,
 } from '../utils/segmentStyles'
 import { showMatchingSeriesItems } from '../utils/showSeriesItems'
-import { applyUidVisibility, mirrorDmvVisibility } from '../utils/uidVisibility'
+import {
+  applyUidVisibility,
+  applyUidVisibilityChanges,
+  mirrorDmvVisibility,
+} from '../utils/uidVisibility'
 import { useInterpolationToggle } from './useInterpolationToggle'
 import type { ViewerAccess } from './useViewerSession'
 
@@ -36,8 +41,18 @@ export interface SegmentationsApi {
     segmentUID: string
     isVisible: boolean
   }) => void
+  /** "Show all" / "Hide all": one pass, one state update; absent segments are skipped */
+  onVisibilityChanges: (changes: VisibilityChange[]) => void
   onClick: (segmentUID: string) => void
   onStyleChange: (change: {
+    segmentUID: string
+    styleOptions: { opacity?: number; color?: number[] }
+  }) => void
+  /**
+   * Live style while a slider is dragged: restyles the slide only. The panel
+   * snapshot is refreshed once, by onStyleChange on commit.
+   */
+  onStylePreview: (change: {
     segmentUID: string
     styleOptions: { opacity?: number; color?: number[] }
   }) => void
@@ -55,6 +70,29 @@ function segmentSeriesUID(
   return (
     viewer.getSegmentMetadata(segment.uid)?.[0]?.SeriesInstanceUID ?? 'unknown'
   )
+}
+
+/**
+ * Only pass a palette when the user changed color. Opacity-only updates must
+ * not send a default RGB for fractional segments or distinct colormaps are
+ * replaced by a flat LUT.
+ */
+function applySegmentStyle(
+  viewer: ViewerSession['volumeViewer'],
+  segmentUID: string,
+  { opacity, color }: { opacity?: number; color?: number[] },
+): void {
+  viewer.setSegmentStyle(segmentUID, {
+    ...(opacity !== undefined ? { opacity } : {}),
+    ...(color !== undefined
+      ? {
+          paletteColorLookupTable: createSegmentPaletteColorLookupTable(
+            color,
+            viewer.getPaletteDisplayGammaCorrectionEnabled(),
+          ),
+        }
+      : {}),
+  })
 }
 
 /**
@@ -169,6 +207,22 @@ export function useSegmentations(
         setVisibleUIDs,
       })
     },
+    onVisibilityChanges: (changes) => {
+      const viewer = sessionRef.current?.volumeViewer
+      if (viewer === undefined) return
+      const absentUIDs = new Set(
+        viewer
+          .getAllSegments()
+          .filter((segment) => segment.isAbsent)
+          .map((segment) => segment.uid),
+      )
+      applyUidVisibilityChanges({
+        changes: changes.filter((change) => !absentUIDs.has(change.uid)),
+        show: (uid) => viewer.showSegment(uid),
+        hide: (uid) => viewer.hideSegment(uid),
+        setVisibleUIDs,
+      })
+    },
     onClick: (segmentUID) => {
       sessionRef.current?.volumeViewer.zoomToSegment(segmentUID)
     },
@@ -176,27 +230,17 @@ export function useSegmentations(
       const viewer = sessionRef.current?.volumeViewer
       if (viewer === undefined) return
       logger.log(`change style of segment ${segmentUID}`)
-      const { color, opacity } = styleOptions
+      const { color } = styleOptions
       if (color !== undefined) {
         setCustomizedColors((current) => ({ ...current, [segmentUID]: color }))
       }
-      /**
-       * Only pass a palette when the user changed color. Opacity-only
-       * updates must not send a default RGB for fractional segments or
-       * distinct colormaps are replaced by a flat LUT.
-       */
-      viewer.setSegmentStyle(segmentUID, {
-        ...(opacity !== undefined ? { opacity } : {}),
-        ...(color !== undefined
-          ? {
-              paletteColorLookupTable: createSegmentPaletteColorLookupTable(
-                color,
-                viewer.getPaletteDisplayGammaCorrectionEnabled(),
-              ),
-            }
-          : {}),
-      })
+      applySegmentStyle(viewer, segmentUID, styleOptions)
       refreshSnapshot()
+    },
+    onStylePreview: ({ segmentUID, styleOptions }) => {
+      const viewer = sessionRef.current?.volumeViewer
+      if (viewer === undefined) return
+      applySegmentStyle(viewer, segmentUID, styleOptions)
     },
     onSeriesChange: (seriesInstanceUID) => {
       const viewer = sessionRef.current?.volumeViewer

@@ -5,6 +5,7 @@ import type React from 'react'
 import type { MappingStyle, MappingStyleChange } from '../types/layerStyles'
 import { buildMappingDisplayOptions } from '../utils/displayOptions'
 import { bindDisplayOptions } from '../utils/displayOptionsBinding'
+import type { VisibilityChange } from '../utils/visibility'
 import MappingItem from './MappingItem'
 import { BulkVisibilityControl } from './slim/BulkVisibilityControl'
 import { DisplayOptionsPanel } from './slim/DisplayOptionsPanel'
@@ -26,7 +27,14 @@ export interface MappingListProps {
     mappingUID: string
     isVisible: boolean
   }) => void
+  /** "Show all" / "Hide all" in one pass; falls back to one call per item */
+  onBulkMappingVisibilityChange?: (changes: VisibilityChange[]) => void
   onMappingStyleChange: (change: {
+    mappingUID: string
+    styleOptions: MappingStyleChange
+  }) => void
+  /** Live style while dragging; falls back to onMappingStyleChange */
+  onMappingStylePreview?: (change: {
     mappingUID: string
     styleOptions: MappingStyleChange
   }) => void
@@ -43,7 +51,9 @@ function MappingList({
   visibleMappingUIDs,
   defaultMappingStyles,
   onMappingVisibilityChange,
+  onBulkMappingVisibilityChange,
   onMappingStyleChange,
+  onMappingStylePreview,
   displaySettings,
   onDisplaySettingsChange,
 }: MappingListProps): React.ReactElement {
@@ -54,6 +64,10 @@ function MappingList({
         visibleUids={visibleMappingUIDs}
         itemLabel="parametric maps"
         onChange={(changes) => {
+          if (onBulkMappingVisibilityChange !== undefined) {
+            onBulkMappingVisibilityChange(changes)
+            return
+          }
           for (const { uid, isVisible } of changes) {
             onMappingVisibilityChange({ mappingUID: uid, isVisible })
           }
@@ -68,6 +82,7 @@ function MappingList({
           defaultStyle={defaultMappingStyles[mapping.uid]}
           onVisibilityChange={onMappingVisibilityChange}
           onStyleChange={onMappingStyleChange}
+          onStylePreview={onMappingStylePreview}
         />
       ))}
       {displaySettings !== undefined &&

@@ -1,10 +1,15 @@
 import { useState } from 'react'
 
 import { logger } from '../../../utils/logger'
+import type { VisibilityChange } from '../../../utils/visibility'
 import type { DmvEventHandlers } from '../services/dmvEvents'
 import type { ViewerSession } from '../services/viewerSession'
 import { showMatchingSeriesItems } from '../utils/showSeriesItems'
-import { applyUidVisibility, mirrorDmvVisibility } from '../utils/uidVisibility'
+import {
+  applyUidVisibility,
+  applyUidVisibilityChanges,
+  mirrorDmvVisibility,
+} from '../utils/uidVisibility'
 import { useInterpolationToggle } from './useInterpolationToggle'
 import type { ViewerAccess } from './useViewerSession'
 
@@ -19,7 +24,17 @@ export interface ParametricMapsApi {
     mappingUID: string
     isVisible: boolean
   }) => void
+  /** "Show all" / "Hide all": one pass, one state update */
+  onVisibilityChanges: (changes: VisibilityChange[]) => void
   onStyleChange: (change: {
+    mappingUID: string
+    styleOptions: { opacity?: number }
+  }) => void
+  /**
+   * Live style while a slider is dragged: restyles the slide only. The panel
+   * snapshot is refreshed once, by onStyleChange on commit.
+   */
+  onStylePreview: (change: {
     mappingUID: string
     styleOptions: { opacity?: number }
   }) => void
@@ -79,12 +94,28 @@ export function useParametricMaps({
         setVisibleUIDs,
       })
     },
+    onVisibilityChanges: (changes) => {
+      const viewer = sessionRef.current?.volumeViewer
+      if (viewer === undefined) return
+      applyUidVisibilityChanges({
+        changes,
+        show: (uid) => viewer.showParameterMapping(uid),
+        hide: (uid) => viewer.hideParameterMapping(uid),
+        setVisibleUIDs,
+      })
+    },
     onStyleChange: ({ mappingUID, styleOptions }) => {
       const viewer = sessionRef.current?.volumeViewer
       if (viewer === undefined) return
       logger.log(`change style of mapping ${mappingUID}`)
       viewer.setParameterMappingStyle(mappingUID, styleOptions)
       refreshSnapshot()
+    },
+    onStylePreview: ({ mappingUID, styleOptions }) => {
+      sessionRef.current?.volumeViewer.setParameterMappingStyle(
+        mappingUID,
+        styleOptions,
+      )
     },
     onDisplaySettingsChange: ({ interpolationEnabled }) => {
       onInterpolationChange(interpolationEnabled)

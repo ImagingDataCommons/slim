@@ -642,6 +642,8 @@ export function useSlideViewerModel({
               onBulkAnnotationGroupVisibilityChange:
                 annotationGroups.onVisibilityChanges,
               onAnnotationGroupStyleChange: annotationGroups.onStyleChange,
+              onAnnotationGroupStylePreview: annotationGroups.onStylePreview,
+              annotationGroupMeasurementKeys: annotationGroups.measurementKeys,
               displaySettings: annotationGroups.displaySettings,
               onDisplaySettingsChange: annotationGroups.onDisplaySettingsChange,
             }
@@ -675,7 +677,9 @@ export function useSlideViewerModel({
               defaultSegmentStyles: segmentations.panelStyles,
               visibleSegmentUIDs: segmentations.visibleUIDs,
               onSegmentVisibilityChange: segmentations.onVisibilityChange,
+              onBulkSegmentVisibilityChange: segmentations.onVisibilityChanges,
               onSegmentStyleChange: segmentations.onStyleChange,
+              onSegmentStylePreview: segmentations.onStylePreview,
               onSegmentClick: segmentations.onClick,
               displaySettings: {
                 interpolationEnabled: segmentations.isInterpolationEnabled,
@@ -691,7 +695,9 @@ export function useSlideViewerModel({
               defaultMappingStyles: snapshot.mappingStyles,
               visibleMappingUIDs: parametricMaps.visibleUIDs,
               onMappingVisibilityChange: parametricMaps.onVisibilityChange,
+              onBulkMappingVisibilityChange: parametricMaps.onVisibilityChanges,
               onMappingStyleChange: parametricMaps.onStyleChange,
+              onMappingStylePreview: parametricMaps.onStylePreview,
               displaySettings: {
                 interpolationEnabled: parametricMaps.isInterpolationEnabled,
               },

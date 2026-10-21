@@ -41,6 +41,13 @@ export interface AnnotationGroupListProps {
     uid: string
     styleOptions: AnnotationGroupStyleChange
   }) => void
+  /** Live style while dragging; falls back to onAnnotationGroupStyleChange */
+  onAnnotationGroupStylePreview?: (change: {
+    uid: string
+    styleOptions: AnnotationGroupStyleChange
+  }) => void
+  /** Measurement key each group is colored by */
+  annotationGroupMeasurementKeys?: Readonly<Record<string, string>>
   /** Clustering display settings; the panel is hidden when omitted */
   displaySettings?: AnnotationGroupDisplaySettings
   onDisplaySettingsChange?: (settings: AnnotationGroupDisplaySettings) => void
@@ -56,6 +63,8 @@ function AnnotationGroupList({
   onAnnotationGroupVisibilityChange,
   onBulkAnnotationGroupVisibilityChange,
   onAnnotationGroupStyleChange,
+  onAnnotationGroupStylePreview,
+  annotationGroupMeasurementKeys,
   displaySettings,
   onDisplaySettingsChange,
 }: AnnotationGroupListProps): React.ReactElement {
@@ -77,6 +86,8 @@ function AnnotationGroupList({
           defaultStyle={defaultAnnotationGroupStyles[annotationGroup.uid]}
           onVisibilityChange={onAnnotationGroupVisibilityChange}
           onStyleChange={onAnnotationGroupStyleChange}
+          onStylePreview={onAnnotationGroupStylePreview}
+          measurementKey={annotationGroupMeasurementKeys?.[annotationGroup.uid]}
         />
       ))}
       {displaySettings !== undefined &&

@@ -5,6 +5,7 @@ import { startTransition, useState } from 'react'
 import type { AnnotationGroupDisplaySettings } from '../../../components/AnnotationGroupList'
 import { runValidations } from '../../../contexts/ValidationContext'
 import type { Slide } from '../../../data/slides'
+import { codedConceptKey } from '../../../utils/dicom/codedConcept'
 import { logger } from '../../../utils/logger'
 import type { VisibilityChange } from '../../../utils/visibility'
 import { notifyVisualizationError } from '../services/derivedDataLoaders'
@@ -47,6 +48,19 @@ export interface AnnotationGroupsApi {
       fillOpacity?: number
     }
   }) => void
+  /**
+   * Measurement key each group is colored by, kept here because DMV's style
+   * getter does not report it and panel items remount
+   */
+  measurementKeys: Readonly<Record<string, string>>
+  /**
+   * Live style while a slider is dragged: restyles the slide only. The panel
+   * snapshot is refreshed once, by onStyleChange on commit.
+   */
+  onStylePreview: (change: {
+    uid: string
+    styleOptions: { opacity?: number; color?: number[]; fillOpacity?: number }
+  }) => void
   onClick: (annotationGroupUID: string) => void
   onSeriesChange: (seriesInstanceUID: string) => void
   onDisplaySettingsChange: (settings: AnnotationGroupDisplaySettings) => void
@@ -58,6 +72,9 @@ export function useAnnotationGroups(
   slide: Slide,
 ): AnnotationGroupsApi {
   const [visibleUIDs, setVisibleUIDs] = useState<Set<string>>(() => new Set())
+  const [measurementKeys, setMeasurementKeys] = useState<
+    Readonly<Record<string, string>>
+  >({})
   const [selectedSeriesUID, setSelectedSeriesUID] = useState<
     string | undefined
   >(undefined)
@@ -115,9 +132,11 @@ export function useAnnotationGroups(
     selectedSeriesUID,
     clustering,
     displaySettings,
+    measurementKeys,
     reset: () => {
       setVisibleUIDs(new Set())
       setSelectedSeriesUID(undefined)
+      setMeasurementKeys({})
     },
     showSeries: (session, seriesInstanceUID) => {
       /**
@@ -150,7 +169,26 @@ export function useAnnotationGroups(
         notifyVisualizationError('Failed to change style of annotation group.')
         throw error
       }
+      /** A measurement colors the group; a flat color replaces it */
+      const { measurement, color } = styleOptions
+      if (measurement !== undefined || color !== undefined) {
+        setMeasurementKeys((current) => {
+          const next = { ...current }
+          if (measurement !== undefined) {
+            next[uid] = codedConceptKey(measurement)
+          } else {
+            delete next[uid]
+          }
+          return next
+        })
+      }
       refreshSnapshot()
+    },
+    onStylePreview: ({ uid, styleOptions }) => {
+      sessionRef.current?.volumeViewer.setAnnotationGroupStyle(
+        uid,
+        styleOptions,
+      )
     },
     onClick: (annotationGroupUID) => {
       sessionRef.current?.volumeViewer.zoomToROI(annotationGroupUID)
