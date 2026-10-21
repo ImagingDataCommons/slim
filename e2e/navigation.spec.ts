@@ -28,15 +28,18 @@ test.describe('Navigation', () => {
     const segments = await section(panel, 'Segmentations')
     /**
      * The Series list shows the linked SEG, which the deep link turned on.
-     * Until the link narrows the list, "All Series" holds several "TILs
-     * Present" segments, so wait for one before reading its state (a strict
-     * locator fails at once on several matches instead of waiting)
+     * Series are listed as they load, so the list can hold one, then
+     * several, "TILs Present" segments before the link narrows it. Nothing
+     * is pressed until then, so one retrying check for the pressed toggle
+     * waits for the final state
      */
-    const tilsPresent = segments.getByRole('button', {
-      name: 'Show TILs Present',
-    })
-    await expect(tilsPresent).toHaveCount(1, { timeout: 60_000 })
-    await expect(tilsPresent).toHaveAttribute('aria-pressed', 'true')
+    await expect(
+      segments.getByRole('button', {
+        name: 'Show TILs Present',
+        exact: true,
+        pressed: true,
+      }),
+    ).toHaveCount(1, { timeout: 60_000 })
 
     await pressViewerShortcut(page, 'KeyD')
     await configureDraw(page, 'Tumor', 'Point')

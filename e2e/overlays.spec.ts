@@ -187,14 +187,20 @@ test.describe('Parametric maps', () => {
       seriesUrl({ study: tcgaGbm.study, series: tcgaGbm.parametricMap }),
     )
     const maps = await section(slidePanel(page), 'Parametric maps')
-    const toggle = maps.getByRole('button', { name: /^Show / }).last()
-    const wasVisible = (await toggle.getAttribute('aria-pressed')) === 'true'
+    /**
+     * The deep link turns its map on once parametric maps loaded; wait for
+     * that before reading the state, so a late show is not undone here
+     */
+    const shown = maps
+      .getByRole('button', { name: /^Show (?!all)/, pressed: true })
+      .first()
+    await expect(shown).toBeVisible({ timeout: 60_000 })
+    const name = (await shown.getAttribute('aria-label')) ?? ''
+    expect(name, 'shown map toggle label').not.toBe('')
+    const toggle = maps.getByRole('button', { name, exact: true })
     const before = await captureSettledViewport(page)
     await toggle.click()
-    await expect(toggle).toHaveAttribute(
-      'aria-pressed',
-      wasVisible ? 'false' : 'true',
-    )
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false')
     await expectViewportToDiffer(page, before, 0.5)
   })
 
@@ -249,8 +255,21 @@ test.describe('Annotation groups', () => {
       seriesUrl({ study: tcgaRead.study, series: tcgaRead.nucleiAnn }),
     )
     const groups = await section(slidePanel(page), 'Annotation groups')
-    const toggle = groups.getByRole('button', { name: 'Show Nuclei' })
-    await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    /**
+     * One retrying check for the pressed toggle: until the link narrows the
+     * list, several series may list a "Nuclei" group
+     */
+    await expect(
+      groups.getByRole('button', {
+        name: 'Show Nuclei',
+        exact: true,
+        pressed: true,
+      }),
+    ).toHaveCount(1, { timeout: 60_000 })
+    const toggle = groups.getByRole('button', {
+      name: 'Show Nuclei',
+      exact: true,
+    })
     await expect
       .poll(() => bulkStatuses.includes(200) && pendingBulk === 0, {
         message: 'bulk annotation data downloaded',
