@@ -2,7 +2,10 @@ import { renderHook } from '@testing-library/react'
 import type * as dmv from 'dicom-microscopy-viewer'
 
 import { StorageClasses } from '../../../../data/uids'
-import { loadDerivedData } from '../../services/derivedDataLoaders'
+import {
+  loadDerivedData,
+  notifyVisualizationError,
+} from '../../services/derivedDataLoaders'
 import { resetFakeDmv } from '../../testing/fakeDmv'
 import { createTestClients, createTestSession } from '../../testing/fixtures'
 import {
@@ -19,6 +22,7 @@ vi.mock('dicom-microscopy-viewer', async () => {
 vi.mock('../../../../utils/logger')
 vi.mock('../../services/derivedDataLoaders', () => ({
   loadDerivedData: vi.fn(),
+  notifyVisualizationError: vi.fn(),
 }))
 
 type LoadCallbacks = Parameters<typeof loadDerivedData>[1]
@@ -204,5 +208,19 @@ describe('useSlidePopulation', () => {
 
     onLoaded()
     expect(sources.segmentations.showSeries).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports a linked dataset that cannot be shown instead of throwing', () => {
+    const sources = createSources(segmentationDataset())
+    sources.segmentations.showSeries = vi.fn(() => {
+      throw new Error('cannot draw')
+    })
+    const { onSettled } = populate(sources)
+
+    expect(() => onSettled('segments')).not.toThrow()
+    expect(sources.segmentations.showSeries).toHaveBeenCalledTimes(1)
+    expect(notifyVisualizationError).toHaveBeenCalledWith(
+      'The linked dataset could not be displayed.',
+    )
   })
 })

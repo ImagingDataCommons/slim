@@ -89,8 +89,16 @@ export function loadPresentationStates({
         },
       )
       instances.forEach((rawInstance, index) => {
-        const { dataset } = dmv.metadata.formatMetadata(rawInstance)
-        const instance = dataset as dmv.metadata.Instance
+        let instance: dmv.metadata.Instance
+        try {
+          instance = dmv.metadata.formatMetadata(rawInstance)
+            .dataset as dmv.metadata.Instance
+        } catch (error: unknown) {
+          /** One malformed search result must not stop the others */
+          logger.error('skip a malformed presentation state result: ', error)
+          settle(index)
+          return
+        }
         /** Modality PR also matches grayscale, color and pseudocolor states */
         if (
           instance.SOPClassUID !== undefined &&

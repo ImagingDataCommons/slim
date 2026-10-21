@@ -4,7 +4,10 @@ import { useEffect, useRef } from 'react'
 
 import type DicomWebManager from '../../../DicomWebManager'
 import { logger } from '../../../utils/logger'
-import { loadDerivedData } from '../services/derivedDataLoaders'
+import {
+  loadDerivedData,
+  notifyVisualizationError,
+} from '../services/derivedDataLoaders'
 import type { ViewerSession } from '../services/viewerSession'
 import { classifyDerivedDataset } from '../utils/derivedDataset'
 import type { AnnotationGroupsApi } from './useAnnotationGroups'
@@ -103,11 +106,16 @@ function showDerivedWhenReady(
     (dataset as { SOPClassUID: string }).SOPClassUID,
   )
   if (!progress.isLoaded && !progress.settledKinds.has(kind)) return
+  /** Shown once: a dataset that throws would throw again */
   progress.isShown = true
-  showDerivedDataset(progress.session, dataset, sources)
-  progress.showsLateRois =
-    classifyDerivedDataset((dataset as { SOPClassUID: string }).SOPClassUID)
-      .kind === 'rois'
+  progress.showsLateRois = kind === 'rois'
+  try {
+    showDerivedDataset(progress.session, dataset, sources)
+  } catch (error: unknown) {
+    /** Reached from an effect too, where a throw would take the viewer down */
+    logger.error('failed to show the derived dataset of the URL:', error)
+    notifyVisualizationError('The linked dataset could not be displayed.')
+  }
 }
 
 /**

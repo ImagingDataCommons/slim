@@ -15,7 +15,12 @@ vi.mock('dcmjs', async (importOriginal) => {
   }
 })
 vi.mock('dicom-microscopy-viewer', () => ({
-  metadata: { formatMetadata: (raw: unknown) => ({ dataset: raw }) },
+  metadata: {
+    formatMetadata: (raw: { malformed?: boolean }) => {
+      if (raw.malformed === true) throw new Error('malformed')
+      return { dataset: raw }
+    },
+  },
 }))
 vi.mock('../../../../utils/logger')
 vi.mock('../derivedDataLoaders', async (importOriginal) => ({
@@ -159,5 +164,38 @@ describe('loadPresentationStates', () => {
     vi.mocked(notifyVisualizationError).mockReset()
     logError.mockRestore()
     expect(unhandled).not.toHaveBeenCalled()
+  })
+
+  it('keeps going past a malformed search result', async () => {
+    const good = {
+      SOPClassUID: StorageClasses.ADVANCED_BLENDING_PRESENTATION_STATE,
+      SeriesInstanceUID: 'pr-series',
+      SOPInstanceUID: 'ps-1',
+    }
+    const client = {
+      searchForInstances: vi.fn(async () => [{ malformed: true }, good]),
+      retrieveInstance: vi.fn(async () => ({
+        SOPInstanceUID: 'ps-1',
+        AdvancedBlendingSequence: [{ SeriesInstanceUID: 's1' }],
+      })),
+    } as unknown as DicomWebManager
+    const onDefault = vi.fn()
+
+    loadPresentationStates({
+      client,
+      studyInstanceUID: '1',
+      slide: {
+        seriesInstanceUIDs: ['s1'],
+        areVolumeImagesMonochrome: true,
+      } as unknown as Slide,
+      onPresentationState: vi.fn(),
+      onDefaultPresentationState: onDefault,
+    })
+
+    await vi.waitFor(() =>
+      expect(onDefault).toHaveBeenCalledWith(
+        expect.objectContaining({ SOPInstanceUID: 'ps-1' }),
+      ),
+    )
   })
 })
