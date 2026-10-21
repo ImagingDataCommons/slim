@@ -137,6 +137,14 @@ describe('createTokenDisclosurePolicy', () => {
     expect(onAuthorization).not.toHaveBeenCalled()
   })
 
+  it('does not remember a denial when the dialog could not be shown', async () => {
+    confirm.mockResolvedValue('failed')
+    const policy = createPolicy()
+
+    await expect(policy.requestAuthorization(UNKNOWN)).resolves.toBeUndefined()
+    expect(readAuthorizationDecision(UNKNOWN)).toBeUndefined()
+  })
+
   it('shares one prompt between simultaneous challenges', async () => {
     const policy = createPolicy()
 

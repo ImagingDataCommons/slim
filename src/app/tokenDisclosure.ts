@@ -143,6 +143,10 @@ export function createTokenDisclosurePolicy({
       }
       if (step === 'ask') {
         const choice = await confirm(origin, oidcAuthority)
+        /** The user never saw the question, so nothing is remembered */
+        if (choice === 'failed') {
+          return undefined
+        }
         const approved = choice === 'confirm'
         writeAuthorizationDecision(origin, approved ? 'granted' : 'denied')
         console.info(

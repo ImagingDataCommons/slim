@@ -81,8 +81,8 @@ export function ConfirmDialog({
   )
 }
 
-/** User choice */
-export type ConfirmResult = 'confirm' | 'cancel'
+/** User choice, or `failed` when the dialog could not be shown */
+export type ConfirmResult = 'confirm' | 'cancel' | 'failed'
 
 /** Settles once the dialog shown last has been answered */
 let previousDialog: Promise<unknown> = Promise.resolve()
@@ -108,13 +108,14 @@ function openConfirmDialog(options: ConfirmOptions): Promise<ConfirmResult> {
     document.body.appendChild(container)
     let isSettled = false
     /**
-     * A dialog that fails to render counts as declined, so its promise still
-     * settles and the queue moves on
+     * A dialog that fails to render settles as `failed`, so its promise
+     * still settles, the queue moves on, and no answer is recorded for a
+     * question the user never saw
      */
     const root = createRoot(container, {
       onUncaughtError: (error) => {
         console.error(error)
-        queueMicrotask(() => settle('cancel'))
+        queueMicrotask(() => settle('failed'))
       },
     })
 

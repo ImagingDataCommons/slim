@@ -44,7 +44,7 @@ describe('showConfirmDialog', () => {
     await expect(second).resolves.toBe('confirm')
   })
 
-  it('declines a dialog that fails to render and still shows the next one', async () => {
+  it('reports a dialog that fails to render and still shows the next one', async () => {
     const logError = vi.spyOn(console, 'error').mockImplementation(() => {})
     function Broken(): never {
       throw new Error('cannot render')
@@ -55,7 +55,7 @@ describe('showConfirmDialog', () => {
     })
     const next = showConfirmDialog({ title: 'Next origin?' })
 
-    await expect(broken).resolves.toBe('cancel')
+    await expect(broken).resolves.toBe('failed')
     await screen.findByRole('heading', { name: 'Next origin?' })
     await act(async () => {
       screen.getByRole('button', { name: 'Confirm' }).click()
