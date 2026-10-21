@@ -764,6 +764,61 @@ describe('DicomWebManager - authorization escalation', () => {
     expect(onError).not.toHaveBeenCalled()
   })
 
+  it('resends a request that went out before a sibling won the token', async () => {
+    const onError = vi.fn()
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [{ id: 'gcp', url: 'https://gcp.test/dicomWeb', write: false }],
+      onError,
+    })
+    const policy = consentPolicy(true)
+    manager.setAuthorizationPolicy(policy)
+    const internals = manager as unknown as {
+      stores: Array<{
+        client: {
+          requestHooks: Array<
+            (request: object, metadata: { headers: object }) => object
+          >
+          errorInterceptor: (error: unknown) => void
+        }
+      }>
+    }
+    const realClient = internals.stores[0].client
+    /** Tag a request as the real client does when it sends it */
+    const sentWith = (headers: object): Error & { status: number } => {
+      const request = {}
+      for (const hook of realClient.requestHooks) hook(request, { headers })
+      return Object.assign(httpError(401), { request })
+    }
+    const anonymousLate = sentWith({})
+
+    const stub = makeStubClient('gcp')
+    stubManagerClients(manager, [stub])
+    const study = { '0020000D': { Value: ['1.2.3'] } }
+    let releaseLate: (() => void) | undefined
+    stub.searchForStudies
+      .mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            releaseLate = () => reject(anonymousLate)
+          }),
+      )
+      .mockRejectedValueOnce(sentWith({}))
+      .mockResolvedValue([study])
+
+    const late = manager.searchForStudies({})
+    const early = manager.searchForStudies({})
+    await expect(early).resolves.toEqual([study])
+
+    /** The late 401 is still an anonymous challenge, not an expired token */
+    realClient.errorInterceptor(anonymousLate)
+    releaseLate?.()
+    await expect(late).resolves.toEqual([study])
+
+    expect(policy.requestAuthorization).toHaveBeenCalledTimes(1)
+    expect(onError).not.toHaveBeenCalled()
+  })
+
   it('does not escalate a 401 from a store that already sent the token', async () => {
     const manager = new DicomWebManager({
       baseUri,

@@ -107,8 +107,34 @@ const isAnonymousChallenge = (store: Store, error: unknown): boolean => {
     status !== undefined &&
     AUTH_CHALLENGE_STATUSES.has(status) &&
     store.authMode !== 'always' &&
-    !store.authGranted
+    (wasSentAnonymously(error) ?? !store.authGranted)
   )
+}
+
+/** Requests that went out without credentials, tagged as they are sent */
+const anonymousRequests = new WeakSet<object>()
+
+/**
+ * Request hook recording whether a request carries credentials. A 401 is
+ * judged by the request that got it: one sent before a sibling request won
+ * the token is still an anonymous challenge, not an expired token.
+ */
+const tagAnonymousRequest = (
+  request: XMLHttpRequest,
+  metadata: { headers?: Record<string, string> },
+): XMLHttpRequest => {
+  const carriesCredentials = Object.keys(metadata.headers ?? {}).some((name) =>
+    AUTH_HEADER_NAMES.has(name.toLowerCase()),
+  )
+  if (!carriesCredentials) anonymousRequests.add(request)
+  return request
+}
+
+/** Whether the failed request carried no credentials, when that is known */
+const wasSentAnonymously = (error: unknown): boolean | undefined => {
+  const request = (error as { request?: unknown } | null)?.request
+  if (typeof request !== 'object' || request === null) return undefined
+  return anonymousRequests.has(request)
 }
 
 /**
@@ -449,9 +475,12 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
         }
       }
 
-      if (serverSettings.retry !== undefined) {
-        clientSettings.requestHooks = [getXHRRetryHook(serverSettings.retry)]
-      }
+      clientSettings.requestHooks = [
+        ...(serverSettings.retry !== undefined
+          ? [getXHRRetryHook(serverSettings.retry)]
+          : []),
+        tagAnonymousRequest,
+      ]
 
       clientSettings.errorInterceptor = (
         error: dwc.api.DICOMwebClientError,
@@ -575,6 +604,13 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
     try {
       return await call(store.client)
     } catch (error: unknown) {
+      if (store.authGranted && isAnonymousChallenge(store, error)) {
+        /**
+         * Sent before a sibling request won the token for this store; send
+         * it again with the token instead of asking or renewing
+         */
+        return await call(store.client)
+      }
       if (!this.isAuthChallenge(store, error)) {
         if (isAnonymousChallenge(store, error)) {
           /**
