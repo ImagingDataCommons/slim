@@ -312,8 +312,13 @@ describe('DicomWebManager - multi-store search', () => {
     const stub = makeStubClient('spa')
     stubManagerClients(manager, [stub])
     stub.searchForStudies.mockResolvedValue(null)
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     await expect(manager.searchForStudies({})).resolves.toEqual([])
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringMatching(/other than DICOM JSON/),
+    )
+    warn.mockRestore()
   })
 
   it('skips stores marked as not readable during searches', async () => {

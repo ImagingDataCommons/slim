@@ -252,7 +252,13 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
   const seen = new Set<string>()
   for (const items of results) {
     /** A non-DICOM answer (e.g. an HTML page) parses as no matches */
-    if (!Array.isArray(items)) continue
+    if (!Array.isArray(items)) {
+      console.warn(
+        'A DICOMweb search answered with something other than DICOM JSON; ' +
+          'treating it as no matches',
+      )
+      continue
+    }
     for (const item of items) {
       const key = buildDedupKey(item, dedupTags)
       if (!seen.has(key)) {

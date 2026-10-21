@@ -100,9 +100,17 @@ const formatStudy = (row: unknown): dmv.metadata.Study =>
 
 class IgnoredMatchingKeyError extends Error {}
 
-/** A non-DICOM answer (e.g. an HTML page) reads as no rows */
+/**
+ * A non-DICOM answer (e.g. an HTML login page or a wrong path) reads as no
+ * rows; it is reported so the Debug panel shows why nothing matched
+ */
 function asRows<T>(items: readonly T[] | null | undefined): T[] {
-  return Array.isArray(items) ? [...items] : []
+  if (Array.isArray(items)) return [...items]
+  console.warn(
+    'A DICOMweb search answered with something other than DICOM JSON; ' +
+      'treating it as no matches',
+  )
+  return []
 }
 
 /**
