@@ -17,6 +17,7 @@ import {
 } from '../utils/opticalPath'
 import {
   maxValueForBitsAllocated,
+  roundLimitForDisplay,
   windowSliderBounds,
 } from '../utils/opticalPathLimits'
 import { getOpticalPathStyleSignature } from '../utils/opticalPathPartition'
@@ -130,6 +131,7 @@ function OpticalPathItem({
     pixelRange,
     limitValues: limits.values,
   })
+  const isWholeStep = sliderBounds.step >= 1
 
   const name = getOpticalPathName(opticalPath)
   /** Short label for AT / e2e (description or Brightfield / identifier). */
@@ -186,21 +188,31 @@ function OpticalPathItem({
                     Values of interest
                   </div>
                   <div className="flex items-center gap-2">
+                    {/**
+                     * Whole numbers while the slider moves in whole steps;
+                     * a fractional window takes decimals like the slider
+                     */}
                     <LimitInput
-                      integer
+                      integer={isWholeStep}
                       aria-label={`${a11yName} ${LIMIT_LABELS[0]}`}
                       min={0}
                       max={limits.values[1]}
-                      value={limits.values[0]}
+                      value={roundLimitForDisplay(
+                        limits.values[0],
+                        sliderBounds.step,
+                      )}
                       onCommit={limits.commitLower}
                     />
                     <span className="text-ink-faint">–</span>
                     <LimitInput
-                      integer
+                      integer={isWholeStep}
                       aria-label={`${a11yName} ${LIMIT_LABELS[1]}`}
                       min={limits.values[0]}
                       max={maxValue}
-                      value={limits.values[1]}
+                      value={roundLimitForDisplay(
+                        limits.values[1],
+                        sliderBounds.step,
+                      )}
                       onCommit={limits.commitUpper}
                     />
                   </div>

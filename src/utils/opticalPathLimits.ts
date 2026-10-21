@@ -46,3 +46,15 @@ export function windowSliderBounds({
     step: span >= FINE_SLIDER_STEPS ? 1 : span / FINE_SLIDER_STEPS,
   }
 }
+
+/**
+ * A window value as the limit fields show it: whole numbers for whole
+ * slider steps, otherwise as many decimals as one step needs, so a value
+ * dragged to 12.346153… reads 12.35.
+ */
+export function roundLimitForDisplay(value: number, step: number): number {
+  if (!(step > 0) || step >= 1) return Math.round(value)
+  const decimals = Math.min(6, Math.ceil(-Math.log10(step)))
+  const factor = 10 ** decimals
+  return Math.round(value * factor) / factor
+}

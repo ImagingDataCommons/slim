@@ -1,5 +1,6 @@
 import {
   maxValueForBitsAllocated,
+  roundLimitForDisplay,
   windowSliderBounds,
 } from '../opticalPathLimits'
 
@@ -52,5 +53,16 @@ describe('windowSliderBounds', () => {
       limitValues: [0, 0],
     })
     expect(bounds.max).toBeGreaterThan(bounds.min)
+  })
+})
+
+describe('roundLimitForDisplay', () => {
+  it('shows whole numbers for whole slider steps', () => {
+    expect(roundLimitForDisplay(12.6, 1)).toBe(13)
+  })
+
+  it('keeps the decimals one fractional step needs', () => {
+    expect(roundLimitForDisplay(12.346153846, 31 / 1000)).toBe(12.35)
+    expect(roundLimitForDisplay(0.123456, 0.0005)).toBe(0.1235)
   })
 })
