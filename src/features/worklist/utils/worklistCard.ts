@@ -5,7 +5,7 @@ import {
   formatDisplayDate,
   formatPersonName,
 } from '../../../utils/displayFormat'
-import { getNumberOfSlides, normalizeModalities, orDash } from './studyFields'
+import { getNumberOfSeries, normalizeModalities, orDash } from './studyFields'
 import { sanitizeHiddenColumnIds } from './worklistColumns'
 
 export interface WorklistCardFields {
@@ -14,7 +14,8 @@ export interface WorklistCardFields {
   studyDate: string
   accession: string | undefined
   modalities: string[]
-  slides: number | undefined
+  /** Every series of the study (NumberOfStudyRelatedSeries) */
+  series: number | undefined
 }
 
 /**
@@ -34,6 +35,6 @@ export function buildWorklistCardFields(
     accession:
       hidden.has('AccessionNumber') || accession === '' ? undefined : accession,
     modalities: normalizeModalities(study.ModalitiesInStudy),
-    slides: getNumberOfSlides(study),
+    series: getNumberOfSeries(study),
   }
 }

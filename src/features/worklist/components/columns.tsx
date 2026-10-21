@@ -14,7 +14,7 @@ import {
 import { buildStudyPath } from '../../../utils/routes'
 import {
   DASH,
-  getNumberOfSlides,
+  getNumberOfSeries,
   normalizeModalities,
   orDash,
 } from '../utils/studyFields'
@@ -126,10 +126,11 @@ export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
     ),
   },
   {
+    /** Id kept for stored column preferences; the count is every series */
     id: 'Slides',
-    header: 'Slides',
+    header: 'Series',
     meta: { align: 'right' },
-    accessorFn: (study) => getNumberOfSlides(study) ?? -1,
+    accessorFn: (study) => getNumberOfSeries(study) ?? -1,
     cell: ({ getValue }) => {
       const count = getValue<number>()
       return (

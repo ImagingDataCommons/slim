@@ -233,6 +233,7 @@ export function Worklist({
                 canLoadMore: containsSearch.canLoadMore,
               }
         }
+        containsEntry={containsEntry}
         onContainsChange={handleContainsChange}
       />
       <WorklistTable

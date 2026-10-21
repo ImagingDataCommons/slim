@@ -32,6 +32,11 @@ export interface WorklistHeaderProps {
   searchText: string
   onSearchChange: (value: string) => void
   contains?: WorklistContainsState
+  /**
+   * Contains entry from the URL, even when it cannot be searched (no server
+   * for its SOP class), so the chip and its clear button always show
+   */
+  containsEntry?: ContainsEntry
   onContainsChange: (entry: ContainsEntry | undefined) => void
   /** Current width tier for the Columns picker eligibility. */
   columnTier: WorklistWidthTier
@@ -108,12 +113,14 @@ export function WorklistHeader({
   searchText,
   onSearchChange,
   contains,
+  containsEntry: containsEntryProp,
   onContainsChange,
   columnTier,
   hiddenColumnIds,
   className,
 }: WorklistHeaderProps): React.ReactElement {
   const { compactChrome, overlayPanels } = useLayoutMode()
+  const containsEntry = containsEntryProp ?? contains?.entry
   const showColumns = !isCardLayout(columnTier)
   /** Search drops to its own row below `lg` so the toolbar cannot collapse it. */
   const stackedSearch = compactChrome || overlayPanels
@@ -122,6 +129,8 @@ export function WorklistHeader({
       'Loading studies…'
     ) : contains !== undefined ? (
       <ContainsSummary contains={contains} />
+    ) : containsEntry !== undefined ? (
+      `${containsEntry.label} can't be searched on this server.`
     ) : undefined
 
   const search = (
@@ -166,7 +175,7 @@ export function WorklistHeader({
             />
           )}
           <ContainsPicker
-            value={contains?.entry}
+            value={containsEntry}
             onChange={onContainsChange}
             isBusy={contains?.status === 'searching'}
             compact={compactChrome}

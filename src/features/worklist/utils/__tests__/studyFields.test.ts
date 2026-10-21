@@ -1,6 +1,6 @@
 import {
   DASH,
-  getNumberOfSlides,
+  getNumberOfSeries,
   normalizeModalities,
   orDash,
 } from '../studyFields'
@@ -18,23 +18,23 @@ describe('orDash', () => {
   })
 })
 
-describe('getNumberOfSlides', () => {
+describe('getNumberOfSeries', () => {
   it('reads numeric and string counts', () => {
-    expect(getNumberOfSlides({ NumberOfStudyRelatedSeries: 4 })).toBe(4)
-    expect(getNumberOfSlides({ NumberOfStudyRelatedSeries: '12' })).toBe(12)
-    expect(getNumberOfSlides({ NumberOfStudyRelatedSeries: 0 })).toBe(0)
+    expect(getNumberOfSeries({ NumberOfStudyRelatedSeries: 4 })).toBe(4)
+    expect(getNumberOfSeries({ NumberOfStudyRelatedSeries: '12' })).toBe(12)
+    expect(getNumberOfSeries({ NumberOfStudyRelatedSeries: 0 })).toBe(0)
   })
 
   it('returns undefined for missing or invalid counts', () => {
-    expect(getNumberOfSlides({})).toBeUndefined()
+    expect(getNumberOfSeries({})).toBeUndefined()
     expect(
-      getNumberOfSlides({ NumberOfStudyRelatedSeries: 'n/a' }),
+      getNumberOfSeries({ NumberOfStudyRelatedSeries: 'n/a' }),
     ).toBeUndefined()
     expect(
-      getNumberOfSlides({ NumberOfStudyRelatedSeries: Number.NaN }),
+      getNumberOfSeries({ NumberOfStudyRelatedSeries: Number.NaN }),
     ).toBeUndefined()
     expect(
-      getNumberOfSlides({ NumberOfStudyRelatedSeries: null }),
+      getNumberOfSeries({ NumberOfStudyRelatedSeries: null }),
     ).toBeUndefined()
   })
 })

@@ -32,7 +32,7 @@ export const WORKLIST_COLUMN_LABELS: Record<WorklistColumnId, string> = {
   AccessionNumber: 'Accession #',
   StudyID: 'Study ID',
   ReferringPhysicianName: 'Referring physician',
-  Slides: 'Slides',
+  Slides: 'Series',
 }
 
 const KNOWN_IDS = new Set<string>(WORKLIST_COLUMN_IDS)

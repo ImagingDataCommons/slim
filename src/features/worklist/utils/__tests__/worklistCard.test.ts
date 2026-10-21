@@ -26,7 +26,7 @@ describe('buildWorklistCardFields', () => {
       studyDate: '28 Jan 2021',
       accession: 'A-99',
       modalities: ['SM', 'ANN'],
-      slides: 3,
+      series: 3,
     })
   })
 

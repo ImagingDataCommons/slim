@@ -103,6 +103,31 @@ describe('WorklistHeader Contains summary', () => {
     )
   })
 
+  it('keeps the chip and its clear button when the entry cannot be searched', () => {
+    const onContainsChange = vi.fn()
+    render(
+      <LayoutModeProvider value={DESKTOP_LAYOUT_MODE}>
+        <WorklistHeader
+          isLoading={false}
+          searchText=""
+          onSearchChange={() => {}}
+          columnTier="xl"
+          hiddenColumnIds={[]}
+          containsEntry={entry}
+          onContainsChange={onContainsChange}
+        />
+      </LayoutModeProvider>,
+    )
+
+    expect(
+      screen.getByText(`${entry.label} can't be searched on this server.`),
+    ).toBeVisible()
+    fireEvent.click(
+      screen.getByRole('button', { name: `Clear ${entry.label} filter` }),
+    )
+    expect(onContainsChange).toHaveBeenCalledWith(undefined)
+  })
+
   it('keeps the Contains label on compact chrome', () => {
     renderHeader(undefined, true)
 

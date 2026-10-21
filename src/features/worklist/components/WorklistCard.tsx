@@ -65,9 +65,9 @@ export function WorklistCard({
           >
             {fields.patientName}
           </Link>
-          {fields.slides !== undefined && (
+          {fields.series !== undefined && (
             <span className="flex-none text-12.5 font-semibold text-ink-secondary">
-              {fields.slides} {fields.slides === 1 ? 'slide' : 'slides'}
+              {fields.series} series
             </span>
           )}
         </div>
