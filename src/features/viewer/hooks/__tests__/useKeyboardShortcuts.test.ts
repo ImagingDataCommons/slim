@@ -43,10 +43,10 @@ describe('useKeyboardShortcuts with a dialog open', () => {
     document.body.replaceChildren()
   })
 
+  /** Like a Radix dialog: role="dialog" and no aria-modal */
   function openDialog(): HTMLElement {
     const dialog = document.createElement('div')
     dialog.setAttribute('role', 'dialog')
-    dialog.setAttribute('aria-modal', 'true')
     const button = document.createElement('button')
     dialog.append(button)
     document.body.append(dialog)
@@ -69,12 +69,12 @@ describe('useKeyboardShortcuts with a dialog open', () => {
     expect(onShortcut).toHaveBeenCalledWith('cancel')
   })
 
-  it('ignores Alt shortcuts while a modal is open', () => {
+  it('ignores Alt shortcuts pressed inside a dialog', () => {
     const onShortcut = vi.fn()
     renderHook(() => useKeyboardShortcuts(onShortcut))
-    openDialog()
+    const insideDialog = openDialog()
 
-    fireEvent.keyUp(document.body, { key: 'd', code: 'KeyD', altKey: true })
+    fireEvent.keyUp(insideDialog, { key: 'd', code: 'KeyD', altKey: true })
     expect(onShortcut).not.toHaveBeenCalled()
 
     document.body.replaceChildren()

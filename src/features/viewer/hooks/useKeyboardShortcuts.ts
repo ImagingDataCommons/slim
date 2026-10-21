@@ -3,7 +3,6 @@ import { useEffectEvent, useLayoutEffect, useRef } from 'react'
 import { subscribeDomEvents } from '../services/dmvEvents'
 import {
   isInsideDialog,
-  isModalOpen,
   shortcutForKeyEvent,
   type ViewerShortcutAction,
 } from '../utils/keyboardShortcuts'
@@ -82,8 +81,11 @@ export function useKeyboardShortcuts(
             const wasForDialog = isEscapeForDialog
             isEscapeForDialog = false
             if (wasForDialog || isInsideDialog(event.target)) return
-          } else if (isInsideDialog(event.target) || isModalOpen()) {
-            /** An open modal owns the keyboard */
+          } else if (isInsideDialog(event.target)) {
+            /**
+             * A dialog owns the keyboard; an open modal traps focus, so its
+             * keys always come from inside it
+             */
             return
           }
           onShortcutEvent(action)

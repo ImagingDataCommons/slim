@@ -59,12 +59,3 @@ export function isInsideDialog(target: EventTarget | null): boolean {
   }
   return target.closest(DIALOG_SELECTOR) !== null
 }
-
-/** Whether a modal dialog is open, which owns the keyboard until it closes */
-export function isModalOpen(root: ParentNode = document): boolean {
-  return (
-    root.querySelector(
-      '[role="dialog"][aria-modal="true"], [role="alertdialog"]',
-    ) !== null
-  )
-}
