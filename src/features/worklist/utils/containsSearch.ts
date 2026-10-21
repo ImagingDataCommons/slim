@@ -100,6 +100,11 @@ const formatStudy = (row: unknown): dmv.metadata.Study =>
 
 class IgnoredMatchingKeyError extends Error {}
 
+/** A non-DICOM answer (e.g. an HTML page) reads as no rows */
+function asRows<T>(items: readonly T[] | null | undefined): T[] {
+  return Array.isArray(items) ? [...items] : []
+}
+
 /**
  * One QIDO page. A full page means more matches may exist; the hook fetches
  * the next offset only when the user asks.
@@ -112,7 +117,7 @@ async function fetchOnePage(
   if (!isCurrent()) {
     return { rows: [], isPartial: false }
   }
-  const items = await fetchPage(offset)
+  const items = asRows(await fetchPage(offset))
   onPage?.(1)
   return {
     rows: items,
@@ -150,14 +155,16 @@ async function searchBySopClass(
   const { sopClassUid } = entry
   const { rows, isPartial } = await fetchOnePage(
     async (pageOffset) => {
-      const items = await client.searchForInstances({
-        queryParams: {
-          SOPClassUID: sopClassUid,
-          includefield: STUDY_FIELDS,
-          limit: CONTAINS_PAGE_SIZE,
-          offset: pageOffset,
-        },
-      })
+      const items = asRows(
+        await client.searchForInstances({
+          queryParams: {
+            SOPClassUID: sopClassUid,
+            includefield: STUDY_FIELDS,
+            limit: CONTAINS_PAGE_SIZE,
+            offset: pageOffset,
+          },
+        }),
+      )
       /** A server that ignores the key returns every instance instead */
       const ignoresKey = items.some((item) => {
         const value = firstValue(item, SOP_CLASS_UID_TAG)

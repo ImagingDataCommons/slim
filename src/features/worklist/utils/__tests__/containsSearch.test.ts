@@ -471,3 +471,16 @@ describe('storeClients', () => {
     expect(storeClients(a)).toEqual([a])
   })
 })
+
+describe('non-DICOM answers', () => {
+  it('reads an HTML page answer as no matches', async () => {
+    const client = fakeClient({
+      searchForInstances: async () => null as unknown as QidoRow[],
+    })
+
+    const result = await searchStudiesContaining(client, entry('ann'))
+
+    expect(result.matches.size).toBe(0)
+    expect(result.isPartial).toBe(false)
+  })
+})

@@ -279,6 +279,31 @@ describe('DicomWebManager - multi-store search', () => {
     expect(stub.searchForStudies).not.toHaveBeenCalled()
   })
 
+  it('sends nothing to a store left without a URL', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'blank', url: '', write: true },
+        { id: 'ann', url: 'https://ann.test/dicomWeb', write: false },
+      ],
+    })
+    const [blank, ann] = ['blank', 'ann'].map(makeStubClient)
+    stubManagerClients(manager, [blank, ann])
+    ann.retrieveSeriesMetadata.mockResolvedValue([])
+
+    await manager.retrieveSeriesMetadata({
+      studyInstanceUID: '1',
+      seriesInstanceUID: '2',
+    })
+    expect(blank.retrieveSeriesMetadata).not.toHaveBeenCalled()
+    expect(ann.retrieveSeriesMetadata).toHaveBeenCalledTimes(1)
+    expect(manager.storeSearchClients()).toHaveLength(1)
+    await expect(
+      manager.storeInstances({ datasets: [] } as dwc.api.StoreInstancesOptions),
+    ).rejects.toThrow('Store is not writable.')
+    expect(blank.storeInstances).not.toHaveBeenCalled()
+  })
+
   it('reads a non-DICOM search answer as no matches', async () => {
     const manager = new DicomWebManager({
       baseUri,

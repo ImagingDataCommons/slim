@@ -196,6 +196,13 @@ const buildDedupKey = (
 }
 
 /**
+ * Stores a request may go to. One without a URL yet (a default server left
+ * blank for server selection) would send it to Slim's own origin.
+ */
+const readableStores = (stores: readonly Store[]): Store[] =>
+  stores.filter((store) => store.read && store.hasServiceUrl)
+
+/**
  * Run the same DICOMweb operation against every readable store in parallel,
  * merge the results, and de-duplicate them by the supplied DICOM tag keys.
  *
@@ -213,8 +220,7 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
   dedupTags: readonly string[],
   call: (store: Store) => Promise<T[]>,
 ): Promise<T[]> => {
-  /** A store without a URL yet would send the query to Slim's own origin */
-  const readable = stores.filter((s) => s.read && s.hasServiceUrl)
+  const readable = readableStores(stores)
   if (readable.length === 0) {
     return []
   }
@@ -270,7 +276,7 @@ const retrieveWithFallback = async <T>(
   stores: Store[],
   call: (store: Store) => Promise<T>,
 ): Promise<T> => {
-  const readable = stores.filter((s) => s.read)
+  const readable = readableStores(stores)
   if (readable.length === 0) {
     throw new CustomError(
       errorTypes.COMMUNICATION,
@@ -333,7 +339,7 @@ const retrieveWithCachedFallback = async <T>(
   call: (store: Store) => Promise<T>,
   cacheKey?: string,
 ): Promise<T> => {
-  const readable = stores.filter((s) => s.read)
+  const readable = readableStores(stores)
   if (readable.length === 0) {
     throw new CustomError(
       errorTypes.COMMUNICATION,
@@ -685,7 +691,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   storeInstances = async (
     options: dwc.api.StoreInstancesOptions,
   ): Promise<void> => {
-    const writable = this.stores.find((s) => s.write)
+    const writable = this.stores.find((s) => s.write && s.hasServiceUrl)
     if (writable === undefined) {
       return await Promise.reject(new Error('Store is not writable.'))
     }
@@ -724,29 +730,26 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
    * are stable, so per-server state can be keyed on them.
    */
   storeSearchClients = (): StoreSearchClient[] =>
-    this.stores
-      .filter((store) => store.read)
-      .map((store) => {
-        let client = this.storeSearchClientCache.get(store)
-        if (client === undefined) {
-          client = {
-            searchForSeries: async (options) =>
-              await this.callStore(
-                store,
-                async (storeClient) =>
-                  await storeClient.searchForSeries(options),
-              ),
-            searchForInstances: async (options) =>
-              await this.callStore(
-                store,
-                async (storeClient) =>
-                  await storeClient.searchForInstances(options),
-              ),
-          }
-          this.storeSearchClientCache.set(store, client)
+    readableStores(this.stores).map((store) => {
+      let client = this.storeSearchClientCache.get(store)
+      if (client === undefined) {
+        client = {
+          searchForSeries: async (options) =>
+            await this.callStore(
+              store,
+              async (storeClient) => await storeClient.searchForSeries(options),
+            ),
+          searchForInstances: async (options) =>
+            await this.callStore(
+              store,
+              async (storeClient) =>
+                await storeClient.searchForInstances(options),
+            ),
         }
-        return client
-      })
+        this.storeSearchClientCache.set(store, client)
+      }
+      return client
+    })
 
   searchForSeries = async (
     options: dwc.api.SearchForSeriesOptions,
