@@ -1,5 +1,5 @@
 import { act, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { showConfirmDialog } from '../ConfirmDialog'
 
@@ -42,5 +42,25 @@ describe('showConfirmDialog', () => {
       screen.getByRole('button', { name: 'Confirm' }).click()
     })
     await expect(second).resolves.toBe('confirm')
+  })
+
+  it('declines a dialog that fails to render and still shows the next one', async () => {
+    const logError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    function Broken(): never {
+      throw new Error('cannot render')
+    }
+    const broken = showConfirmDialog({
+      title: 'Broken origin?',
+      description: <Broken />,
+    })
+    const next = showConfirmDialog({ title: 'Next origin?' })
+
+    await expect(broken).resolves.toBe('cancel')
+    await screen.findByRole('heading', { name: 'Next origin?' })
+    await act(async () => {
+      screen.getByRole('button', { name: 'Confirm' }).click()
+    })
+    await expect(next).resolves.toBe('confirm')
+    logError.mockRestore()
   })
 })

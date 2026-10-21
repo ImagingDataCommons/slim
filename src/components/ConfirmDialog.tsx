@@ -95,8 +95,10 @@ let previousDialog: Promise<unknown> = Promise.resolve()
 export function showConfirmDialog(
   options: ConfirmOptions,
 ): Promise<ConfirmResult> {
-  const result = previousDialog.then(() => openConfirmDialog(options))
-  previousDialog = result
+  const open = (): Promise<ConfirmResult> => openConfirmDialog(options)
+  /** One dialog that fails must not hold back or fail the ones after it */
+  const result = previousDialog.then(open, open)
+  previousDialog = result.catch(() => undefined)
   return result
 }
 
@@ -104,8 +106,17 @@ function openConfirmDialog(options: ConfirmOptions): Promise<ConfirmResult> {
   return new Promise<ConfirmResult>((resolve) => {
     const container = document.createElement('div')
     document.body.appendChild(container)
-    const root = createRoot(container)
     let isSettled = false
+    /**
+     * A dialog that fails to render counts as declined, so its promise still
+     * settles and the queue moves on
+     */
+    const root = createRoot(container, {
+      onUncaughtError: (error) => {
+        console.error(error)
+        queueMicrotask(() => settle('cancel'))
+      },
+    })
 
     const settle = (result: ConfirmResult): void => {
       if (isSettled) return
