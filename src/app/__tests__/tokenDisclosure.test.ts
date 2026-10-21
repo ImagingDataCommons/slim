@@ -81,14 +81,30 @@ describe('createTokenDisclosurePolicy', () => {
     ).resolves.toBeUndefined()
   })
 
-  it('credentials configured origins without asking', async () => {
-    await expect(createPolicy().requestAuthorization(CONFIGURED)).resolves.toBe(
+  it('credentials configured origins without asking, for the session only', async () => {
+    const policy = createPolicy()
+    await expect(policy.requestAuthorization(CONFIGURED)).resolves.toBe(
       'Bearer t',
     )
 
     expect(confirm).not.toHaveBeenCalled()
-    expect(readAuthorizationDecision(CONFIGURED)).toBe('granted')
     expect(onAuthorization).toHaveBeenCalledWith('Bearer t')
+    /** The config authorizes it; nothing is remembered past this session */
+    expect(policy.isPreAuthorized(CONFIGURED)).toBe(true)
+    expect(readAuthorizationDecision(CONFIGURED)).toBeUndefined()
+  })
+
+  it('stops pre-authorizing an origin removed from the configuration', async () => {
+    await createPolicy().requestAuthorization(CONFIGURED)
+
+    const afterRedeploy = createTokenDisclosurePolicy({
+      auth: createAuth(),
+      configuredOrigins: new Set(),
+      oidcAuthority: AUTHORITY,
+      confirm,
+      onAuthorization,
+    })
+    expect(afterRedeploy.isPreAuthorized(CONFIGURED)).toBe(false)
   })
 
   it('refuses insecure origins even when configured', async () => {

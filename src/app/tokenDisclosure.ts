@@ -84,6 +84,13 @@ export function createTokenDisclosurePolicy({
    * different managers share a single prompt.
    */
   const disclosureGate = createSingleFlight<string | undefined>()
+  /**
+   * Configured origins credentialed after a 401, for this session only. The
+   * configuration file is what authorizes them, so the grant is not written
+   * to storage: an origin later removed from the config must not keep
+   * receiving the token through a remembered decision.
+   */
+  const configuredGrants = new Set<string>()
 
   /**
    * Decide whether the access token may be disclosed to an origin, prompting
@@ -149,8 +156,8 @@ export function createTokenDisclosurePolicy({
         if (!approved) {
           return undefined
         }
-      } else {
-        writeAuthorizationDecision(origin, 'granted')
+      } else if (readAuthorizationDecision(origin) !== 'granted') {
+        configuredGrants.add(origin)
         console.info(
           `approved disclosure of access token to ${origin} ` +
             '(origin present in the deployed configuration)',
@@ -183,6 +190,7 @@ export function createTokenDisclosurePolicy({
 
   return {
     isPreAuthorized: (origin: string): boolean =>
+      configuredGrants.has(origin) ||
       readAuthorizationDecision(origin) === 'granted',
 
     /**
