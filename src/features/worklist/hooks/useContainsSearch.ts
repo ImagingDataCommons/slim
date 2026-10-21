@@ -59,6 +59,10 @@ function isSettledCheck(check: RowCheck | undefined, now: number): boolean {
   return now - (unknownCheckedAt.get(check) ?? 0) < UNKNOWN_ROW_CHECK_TTL_MS
 }
 
+function isCachedRowCheck(client: object, key: string): boolean {
+  return rowCheckCache.get(client)?.has(key) ?? false
+}
+
 /** Drop the entry's "unknown" verdicts so a retry checks those rows again */
 function forgetUnknownRowChecks(client: object, entry: ContainsEntry): void {
   const checks = rowCheckCache.get(client)
@@ -448,10 +452,16 @@ export function useContainsRowChecks(
   return useCallback(
     (studyUid: string): RowCheckState | undefined => {
       if (entry === undefined) return undefined
-      const check = checks.get(rowCheckKey(entry, studyUid))
-      if (check !== undefined) return check
+      const key = rowCheckKey(entry, studyUid)
+      const check = checks.get(key)
+      /** Retry dropped this "unknown" verdict; it is being checked again */
+      const isRetried =
+        check?.status === 'unknown' &&
+        searchClient !== undefined &&
+        !isCachedRowCheck(searchClient, key)
+      if (check !== undefined && !isRetried) return check
       return candidateUids.has(studyUid) ? { status: 'checking' } : undefined
     },
-    [entry, checks, candidateUids],
+    [entry, checks, candidateUids, searchClient],
   )
 }

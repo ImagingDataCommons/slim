@@ -257,4 +257,60 @@ describe('useContainsRowChecks', () => {
     })
     vi.restoreAllMocks()
   })
+
+  it('shows a row as checking again while Retry re-checks it', async () => {
+    const seg = StorageClasses.SEGMENTATION
+    let isDown = true
+    let release: (() => void) | undefined
+    const client = fakeClient(new Map())
+    client.searchForInstances = vi.fn(
+      async (
+        options: dwc.api.SearchForInstancesOptions,
+      ): Promise<QidoRow[]> => {
+        if (options.studyInstanceUID === undefined) return []
+        if (isDown) throw Object.assign(new Error('down'), { status: 503 })
+        await new Promise<void>((resolve) => {
+          release = resolve
+        })
+        return [row('s1', 'a', seg)]
+      },
+    )
+    const studyClient = { searchForStudies: vi.fn(async () => []) }
+    const candidate: ContainsCandidate = {
+      studyUid: 's1',
+      seriesUids: ['a'],
+      needsStudy: false,
+      needsSopClass: true,
+    }
+    const { result, rerender } = renderHook(
+      ({ candidates }: { candidates: ContainsCandidate[] }) => ({
+        search: useContainsSearch(client, entry('seg')),
+        getCheck: useContainsRowChecks(
+          client,
+          studyClient,
+          entry('seg'),
+          candidates,
+        ),
+      }),
+      { initialProps: { candidates: [candidate] } },
+    )
+    await waitFor(() => {
+      expect(result.current.getCheck('s1')).toEqual({ status: 'unknown' })
+    })
+
+    isDown = false
+    act(() => {
+      result.current.search.retry()
+    })
+    rerender({ candidates: [{ ...candidate }] })
+    expect(result.current.getCheck('s1')).toEqual({ status: 'checking' })
+
+    await waitFor(() => expect(release).toBeDefined())
+    await act(async () => {
+      release?.()
+    })
+    await waitFor(() => {
+      expect(result.current.getCheck('s1')).toEqual({ status: 'match' })
+    })
+  })
 })
