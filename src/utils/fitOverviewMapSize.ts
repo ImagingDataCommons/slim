@@ -141,8 +141,9 @@ export type OverviewCardMapBox = {
 
 /**
  * Narrow viewport-derived bounds to the overview card: the card's inner width
- * caps both the preferred and maximum width, and its inner height becomes the
- * preferred height. The maximum height still follows the viewport so the
+ * caps both the preferred and maximum width, and its inner height caps the
+ * preferred height, which keeps the viewport-fraction limit on short
+ * viewports. The maximum height still follows the viewport so the
  * minimum-side growth can exceed the card height for very tall slides.
  */
 export function constrainBoundsToCard(
@@ -154,7 +155,7 @@ export function constrainBoundsToCard(
     ...bounds,
     maxMapWidth,
     preferredMaxWidth: maxMapWidth,
-    preferredMaxHeight: Math.min(bounds.maxMapHeight, card.height),
+    preferredMaxHeight: Math.min(bounds.preferredMaxHeight, card.height),
     minMapWidth: Math.min(bounds.minMapWidth, maxMapWidth),
   }
 }

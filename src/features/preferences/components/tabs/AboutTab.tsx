@@ -116,25 +116,28 @@ export function AboutTab({ app, runtime }: AboutTabProps): React.ReactElement {
                 >
                   {row.label}
                 </dt>
-                <dd
-                  className={cn(
-                    'min-w-0 flex-1 truncate',
-                    row.isCode
-                      ? 'font-mono text-12 text-ink'
-                      : 'text-12.5 text-ink',
-                    row.isMissing === true && 'italic text-ink-muted',
+                {/** A dl group holds only dt and dd, so the copy button sits in the dd */}
+                <dd className="flex min-w-0 flex-1 items-center gap-4 self-stretch">
+                  <span
+                    className={cn(
+                      'min-w-0 flex-1 truncate',
+                      row.isCode
+                        ? 'font-mono text-12 text-ink'
+                        : 'text-12.5 text-ink',
+                      row.isMissing === true && 'italic text-ink-muted',
+                    )}
+                    title={row.copyValue ?? row.value}
+                  >
+                    {row.value}
+                  </span>
+                  {row.copyValue !== undefined && (
+                    <CopyButton
+                      text={row.copyValue}
+                      aria-label={`Copy ${row.label}`}
+                      className="h-[26px] text-11.5"
+                    />
                   )}
-                  title={row.copyValue ?? row.value}
-                >
-                  {row.value}
                 </dd>
-                {row.copyValue !== undefined && (
-                  <CopyButton
-                    text={row.copyValue}
-                    aria-label={`Copy ${row.label}`}
-                    className="h-[26px] text-11.5"
-                  />
-                )}
               </div>
             ))}
           </dl>
