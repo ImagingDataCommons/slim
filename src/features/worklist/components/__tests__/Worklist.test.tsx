@@ -306,6 +306,7 @@ describe('Worklist', () => {
       ).toBeInTheDocument()
       /** The header does not count matches of a search that never ran */
       expect(screen.queryByText(/studies? with Bulk annotations/)).toBeNull()
+      expect(screen.queryByText(/can't be searched on this server/)).toBeNull()
     })
 
     it('shows only studies with the entry from the URL and clears it', async () => {

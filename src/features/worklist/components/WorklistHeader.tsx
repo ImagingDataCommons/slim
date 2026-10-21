@@ -40,6 +40,11 @@ export interface WorklistHeaderProps {
    */
   containsEntry?: ContainsEntry
   onContainsChange: (entry: ContainsEntry | undefined) => void
+  /**
+   * No server is selected yet, so nothing was searched; the table says so
+   * and the status line stays empty
+   */
+  hasNoServer?: boolean
   /** Current width tier for the Columns picker eligibility. */
   columnTier: WorklistWidthTier
   /** Column ids the user has turned off. */
@@ -123,6 +128,7 @@ export function WorklistHeader({
   contains,
   containsEntry: containsEntryProp,
   onContainsChange,
+  hasNoServer = false,
   columnTier,
   hiddenColumnIds,
   className,
@@ -132,14 +138,16 @@ export function WorklistHeader({
   const showColumns = !isCardLayout(columnTier)
   /** Search drops to its own row below `lg` so the toolbar cannot collapse it. */
   const stackedSearch = compactChrome || overlayPanels
-  const status =
-    isLoading && contains === undefined ? (
-      'Loading studies…'
-    ) : contains !== undefined ? (
-      <ContainsSummary contains={contains} />
-    ) : containsEntry !== undefined ? (
-      `${containsEntry.label} can't be searched on this server.`
-    ) : undefined
+  let status: React.ReactNode
+  if (hasNoServer) {
+    status = undefined
+  } else if (isLoading && contains === undefined) {
+    status = 'Loading studies…'
+  } else if (contains !== undefined) {
+    status = <ContainsSummary contains={contains} />
+  } else if (containsEntry !== undefined) {
+    status = `${containsEntry.label} can't be searched on this server.`
+  }
 
   const search = (
     <SearchInput

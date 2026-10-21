@@ -250,6 +250,7 @@ export function Worklist({
         }
         containsEntry={containsEntry}
         onContainsChange={handleContainsChange}
+        hasNoServer={hasNoServer}
       />
       <WorklistTable
         className="flex-1"
