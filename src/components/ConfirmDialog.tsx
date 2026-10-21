@@ -42,7 +42,14 @@ export function ConfirmDialog({
   const isDestructive = variant === 'destructive'
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onCancel()}>
-      <DialogContent className="max-w-[420px]">
+      {/**
+       * A click outside (a toast, the page) is not an answer; only the
+       * buttons and Escape are, as with master's confirm dialogs
+       */}
+      <DialogContent
+        className="max-w-[420px]"
+        onInteractOutside={(event) => event.preventDefault()}
+      >
         <div className="flex gap-3 px-5 pb-5 pt-[18px]">
           <span
             className={cn(

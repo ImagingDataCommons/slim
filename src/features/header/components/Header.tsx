@@ -366,7 +366,7 @@ export function Header({
                         {currentServerUrl}
                       </div>
                       <div className="mt-1 text-11 font-normal opacity-70">
-                        Click to change or copy the server
+                        Click to change the server
                       </div>
                     </>
                   ) : (

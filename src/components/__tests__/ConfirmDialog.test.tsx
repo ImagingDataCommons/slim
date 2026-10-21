@@ -1,4 +1,4 @@
-import { act, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { showConfirmDialog } from '../ConfirmDialog'
@@ -62,5 +62,39 @@ describe('showConfirmDialog', () => {
     })
     await expect(next).resolves.toBe('confirm')
     logError.mockRestore()
+  })
+
+  it('does not take a click outside as an answer, but Escape cancels', async () => {
+    let settled: string | undefined
+    const result = showConfirmDialog({ title: 'Send token?' }).then(
+      (choice) => {
+        settled = choice
+        return choice
+      },
+    )
+    const dialog = await screen
+      .findByRole('alertdialog')
+      .catch(async () => await screen.findByRole('dialog'))
+
+    /** Radix starts listening for outside presses on the next tick */
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    })
+    const overlay = document.querySelector('.bg-scrim\\/36')
+    expect(overlay).not.toBeNull()
+    fireEvent.pointerDown(overlay as Element, {
+      button: 0,
+      pointerType: 'mouse',
+    })
+    fireEvent.pointerUp(overlay as Element, { button: 0, pointerType: 'mouse' })
+    fireEvent.click(overlay as Element)
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(settled).toBeUndefined()
+    expect(dialog).toBeInTheDocument()
+
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    await expect(result).resolves.toBe('cancel')
   })
 })
