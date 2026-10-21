@@ -134,6 +134,23 @@ describe('Worklist', () => {
     })
   })
 
+  it('asks for a server instead of failing when the default has no URL', async () => {
+    const blank = new DicomWebManager({
+      baseUri: 'http://mockserver.org',
+      settings: [{ id: 'blank', url: '', write: false }],
+    })
+    renderWithRouter(
+      <Worklist
+        clients={{ [StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]: blank }}
+      />,
+    )
+
+    expect(
+      await screen.findByText('Select a server to search for studies.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/Search for studies failed/)).toBeNull()
+  })
+
   it('links each patient name to its study', async () => {
     const { findAllByRole } = renderWithRouter(
       <Worklist clients={clientMapping} />,

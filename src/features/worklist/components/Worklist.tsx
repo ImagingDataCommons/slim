@@ -192,7 +192,10 @@ export function Worklist({
 
   const isInitialContainsSearch =
     containsSearch.status === 'searching' && containsSearch.result === undefined
-  let emptyMessage = getEmptyStudiesMessage(deferredSearchText)
+  let emptyMessage =
+    serverUrl === ''
+      ? 'Select a server to search for studies.'
+      : getEmptyStudiesMessage(deferredSearchText)
   if (containsEntry !== undefined && deferredSearchText.trim() === '') {
     emptyMessage =
       containsSearch.status === 'error'

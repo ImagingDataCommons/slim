@@ -58,6 +58,8 @@ interface Store {
   authRefusalReported: boolean
   client: dwc.api.DICOMwebClient
   settings: ServerSettings
+  /** False for a default server left blank until the user picks one */
+  hasServiceUrl: boolean
 }
 
 /**
@@ -211,7 +213,8 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
   dedupTags: readonly string[],
   call: (store: Store) => Promise<T[]>,
 ): Promise<T[]> => {
-  const readable = stores.filter((s) => s.read)
+  /** A store without a URL yet would send the query to Slim's own origin */
+  const readable = stores.filter((s) => s.read && s.hasServiceUrl)
   if (readable.length === 0) {
     return []
   }
@@ -242,6 +245,8 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
   const merged: T[] = []
   const seen = new Set<string>()
   for (const items of results) {
+    /** A non-DICOM answer (e.g. an HTML page) parses as no matches */
+    if (!Array.isArray(items)) continue
     for (const item of items) {
       const key = buildDedupKey(item, dedupTags)
       if (!seen.has(key)) {
@@ -517,6 +522,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
         authRefusalReported: false,
         client: new dwc.api.DICOMwebClient(clientSettings),
         settings: serverSettings,
+        hasServiceUrl: serviceUrl.trim() !== '',
       })
     })
   }

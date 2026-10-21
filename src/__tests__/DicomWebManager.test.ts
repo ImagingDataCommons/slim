@@ -267,6 +267,30 @@ describe('DicomWebManager - multi-store search', () => {
     expect(stubs[0].searchForSeries).not.toHaveBeenCalled()
   })
 
+  it('does not search a store left without a URL', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [{ id: 'blank', url: '', write: false }],
+    })
+    const stub = makeStubClient('blank')
+    stubManagerClients(manager, [stub])
+
+    await expect(manager.searchForStudies({})).resolves.toEqual([])
+    expect(stub.searchForStudies).not.toHaveBeenCalled()
+  })
+
+  it('reads a non-DICOM search answer as no matches', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [{ id: 'spa', url: 'https://spa.test/dicomWeb', write: false }],
+    })
+    const stub = makeStubClient('spa')
+    stubManagerClients(manager, [stub])
+    stub.searchForStudies.mockResolvedValue(null)
+
+    await expect(manager.searchForStudies({})).resolves.toEqual([])
+  })
+
   it('skips stores marked as not readable during searches', async () => {
     const manager = new DicomWebManager({
       baseUri,
