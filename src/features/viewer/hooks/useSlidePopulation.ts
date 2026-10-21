@@ -1,5 +1,6 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
+import { useEffect, useRef } from 'react'
 
 import type DicomWebManager from '../../../DicomWebManager'
 import { logger } from '../../../utils/logger'
@@ -71,6 +72,37 @@ function showDerivedDataset(
   }
 }
 
+/** Whether a session's derived data finished loading and its URL dataset was shown */
+interface PopulationProgress {
+  session: ViewerSession
+  isLoaded: boolean
+  isShown: boolean
+  /** The shown dataset is an SR, so ROIs of later reports are shown too */
+  showsLateRois: boolean
+}
+
+/** Show the URL's derived dataset once the session's data has loaded */
+function showDerivedWhenReady(
+  progress: PopulationProgress | undefined,
+  sources: SlidePopulationSources,
+): void {
+  const dataset = sources.derivedDataset
+  if (
+    progress === undefined ||
+    !progress.isLoaded ||
+    progress.isShown ||
+    progress.session.isDestroyed ||
+    dataset === undefined
+  ) {
+    return
+  }
+  progress.isShown = true
+  showDerivedDataset(progress.session, dataset, sources)
+  progress.showsLateRois =
+    classifyDerivedDataset((dataset as { SOPClassUID: string }).SOPClassUID)
+      .kind === 'rois'
+}
+
 /**
  * Fill new viewers: reset the per-viewer panel state, show the default
  * optical paths, then load presentation states and derived data. Loads
@@ -80,6 +112,18 @@ export function useSlidePopulation(
   sources: SlidePopulationSources,
 ): (session: ViewerSession) => void {
   const latestRef = useLatestRef(sources)
+  const progressRef = useRef<PopulationProgress | undefined>(undefined)
+  /**
+   * An in-app link to a derived series of the same slide rebuilds the
+   * session before its referenced slide is looked up, so the dataset can
+   * arrive after the loads finished; show it then
+   */
+  const { derivedDataset } = sources
+  useEffect(() => {
+    if (derivedDataset === undefined) return
+    showDerivedWhenReady(progressRef.current, latestRef.current)
+  }, [derivedDataset, latestRef])
+
   return (session) => {
     const {
       clients,
@@ -109,7 +153,13 @@ export function useSlidePopulation(
      * showed every ROI, ROIs of reports retrieved afterwards are shown as
      * each report is added; ROIs the user hid meanwhile stay hidden.
      */
-    let showsLateRois = false
+    const progress: PopulationProgress = {
+      session,
+      isLoaded: false,
+      isShown: false,
+      showsLateRois: false,
+    }
+    progressRef.current = progress
     const lateRoiUids: string[] = []
     loadDerivedData(
       {
@@ -117,7 +167,11 @@ export function useSlidePopulation(
         clients,
         studyInstanceUID,
         onChange: () => {
-          if (showsLateRois && lateRoiUids.length > 0 && !session.isDestroyed) {
+          if (
+            progress.showsLateRois &&
+            lateRoiUids.length > 0 &&
+            !session.isDestroyed
+          ) {
             latestRef.current.rois.onVisibilityChanges(
               lateRoiUids.splice(0).map((uid) => ({ uid, isVisible: true })),
             )
@@ -128,18 +182,11 @@ export function useSlidePopulation(
       {
         registerRoi: (roi) => {
           latestRef.current.rois.registerRoi(session, roi)
-          if (showsLateRois) lateRoiUids.push(roi.uid)
+          if (progress.showsLateRois) lateRoiUids.push(roi.uid)
         },
         onLoaded: () => {
-          const current = latestRef.current
-          if (session.isDestroyed || current.derivedDataset === undefined) {
-            return
-          }
-          showDerivedDataset(session, current.derivedDataset, current)
-          showsLateRois =
-            classifyDerivedDataset(
-              (current.derivedDataset as { SOPClassUID: string }).SOPClassUID,
-            ).kind === 'rois'
+          progress.isLoaded = true
+          showDerivedWhenReady(progress, latestRef.current)
         },
       },
     )

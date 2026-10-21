@@ -160,4 +160,30 @@ describe('useSlidePopulation', () => {
 
     expect(sources.rois.onVisibilityChanges).not.toHaveBeenCalled()
   })
+
+  it('shows a derived dataset that arrives after the loads finished', () => {
+    const test = createTestSession()
+    let callbacks: LoadCallbacks | undefined
+    vi.mocked(loadDerivedData).mockImplementation((_, receivedCallbacks) => {
+      callbacks = receivedCallbacks
+    })
+    const initial = createSources(undefined)
+    const { result, rerender } = renderHook(
+      ({ sources }: { sources: SlidePopulationSources }) =>
+        useSlidePopulation(sources),
+      { initialProps: { sources: initial } },
+    )
+    result.current(test.session)
+    callbacks?.onLoaded()
+    expect(initial.segmentations.showSeries).not.toHaveBeenCalled()
+
+    rerender({ sources: { ...initial, derivedDataset: segmentationDataset() } })
+    expect(initial.segmentations.showSeries).toHaveBeenCalledWith(
+      test.session,
+      'seg-series',
+    )
+
+    rerender({ sources: { ...initial, derivedDataset: segmentationDataset() } })
+    expect(initial.segmentations.showSeries).toHaveBeenCalledTimes(1)
+  })
 })
