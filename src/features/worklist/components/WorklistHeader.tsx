@@ -25,6 +25,8 @@ export interface WorklistContainsState {
   onRetry: () => void
   onLoadMore: () => void
   canLoadMore: boolean
+  /** The last page could not be fetched from every server */
+  hasStoreFailures?: boolean
 }
 
 export interface WorklistHeaderProps {
@@ -63,6 +65,7 @@ function ContainsSummary({
     onRetry,
     onLoadMore,
     canLoadMore,
+    hasStoreFailures = false,
   } = contains
   if (status === 'searching' && matchCount === 0) {
     return (
@@ -95,6 +98,11 @@ function ContainsSummary({
       {isPartial &&
         ` · first ${searchedCount.toLocaleString('en-US')} matches only`}
       {status === 'searching' && ' · searching…'}
+      {hasStoreFailures && (
+        <span className="text-warning">
+          {' · '}some servers could not be searched
+        </span>
+      )}
       {canLoadMore && (
         <>
           {' · '}

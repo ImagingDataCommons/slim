@@ -14,15 +14,16 @@ const BACKFILL_FLUSH_MS = 100
 
 const NO_MODALITIES: ReadonlyMap<string, string[]> = new Map()
 
+/** Modalities of the study's series, or undefined when the query failed */
 async function collectModalitiesFromSeries(
   client: DicomWebManager,
   studyInstanceUID: string,
-): Promise<string[]> {
+): Promise<string[] | undefined> {
   try {
     const seriesList = await client.searchForSeries({ studyInstanceUID })
     return extractModalitiesFromSeries(seriesList ?? [])
   } catch {
-    return []
+    return undefined
   }
 }
 
@@ -101,6 +102,11 @@ export function useModalityBackfill(
     void mapWithConcurrency(uids, SERIES_REQUEST_CONCURRENCY, async (uid) => {
       if (!isCurrent()) return
       const modalities = await collectModalitiesFromSeries(client, uid)
+      if (modalities === undefined) {
+        /** Not remembered, so the study is asked again on the next change */
+        asked.uids.delete(uid)
+        return
+      }
       pending.push({ uid, modalities })
       if (!isFlushScheduled) {
         isFlushScheduled = true

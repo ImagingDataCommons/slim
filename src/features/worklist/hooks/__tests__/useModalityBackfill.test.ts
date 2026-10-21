@@ -81,16 +81,24 @@ describe('useModalityBackfill', () => {
     await waitFor(() => expect(result.current.get('a')).toEqual(['SR']))
   })
 
-  it('treats a failed series query as no modalities', async () => {
-    const client = createClient(
-      vi.fn(async () => {
-        throw new Error('network')
-      }),
+  it('asks again about a study whose series query failed', async () => {
+    let isDown = true
+    const searchForSeries = vi.fn(async () => {
+      if (isDown) throw new Error('network')
+      return seriesOf('SM')
+    }) as unknown as DicomWebManager['searchForSeries']
+    const client = createClient(searchForSeries)
+    const { result, rerender } = renderHook(
+      ({ studies }) => useModalityBackfill(client, studies),
+      { initialProps: { studies: [study('a')] } },
     )
-    const { result } = renderHook(() =>
-      useModalityBackfill(client, [study('a')]),
-    )
-    await waitFor(() => expect(result.current.get('a')).toEqual([]))
+    await waitFor(() => expect(searchForSeries).toHaveBeenCalledTimes(1))
+    await new Promise((resolve) => setTimeout(resolve, 150))
+    expect(result.current.has('a')).toBe(false)
+
+    isDown = false
+    rerender({ studies: [study('a'), study('b')] })
+    await waitFor(() => expect(result.current.get('a')).toEqual(['SM']))
   })
 
   it('shows answers as they arrive instead of after the whole page', async () => {

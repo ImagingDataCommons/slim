@@ -53,9 +53,12 @@ function ContainsRowMarker({
   label: string
 }): React.ReactElement | null {
   if (check?.status === 'checking') {
+    /**
+     * Not a live region: a page of candidates would announce up to one per
+     * row at once. The text is still read when the row is reached.
+     */
     return (
       <span
-        role="status"
         title={`Checking for ${label}…`}
         className="size-3.5 animate-spin rounded-full border-2 border-primary/25 border-t-primary"
       >
@@ -231,6 +234,7 @@ export function Worklist({
                 onRetry: containsSearch.retry,
                 onLoadMore: containsSearch.loadMore,
                 canLoadMore: containsSearch.canLoadMore,
+                hasStoreFailures: containsResult?.hasStoreFailures ?? false,
               }
         }
         containsEntry={containsEntry}

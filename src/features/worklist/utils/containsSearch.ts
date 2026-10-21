@@ -62,6 +62,8 @@ export interface ContainsSearchResult {
   isPartial: boolean
   /** QIDO rows in this page; add to the offset to fetch the next page */
   pageRowCount: number
+  /** The last page could not be fetched from every store */
+  hasStoreFailures?: boolean
 }
 
 export interface ContainsSearchOptions {
@@ -346,7 +348,13 @@ export async function searchStoresContaining(
     }
   })
   return {
-    result: { matches, isExact, isPartial, pageRowCount },
+    result: {
+      matches,
+      isExact,
+      isPartial,
+      pageRowCount,
+      hasStoreFailures: failures.length > 0,
+    },
     cursors: nextCursors,
   }
 }

@@ -12,7 +12,12 @@ import {
   CONTAINS_PAGE_SIZE,
   type ContainsSearchClient,
 } from '../../utils/containsSearch'
-import { useContainsSearch } from '../useContainsSearch'
+import {
+  type ContainsCandidate,
+  UNKNOWN_ROW_CHECK_TTL_MS,
+  useContainsRowChecks,
+  useContainsSearch,
+} from '../useContainsSearch'
 
 const entry = (id: string): ContainsEntry => {
   const found = findContainsEntry(id)
@@ -175,5 +180,81 @@ describe('useContainsSearch', () => {
     expect(result.current.status).toBe('done')
     expect(result.current.pages).toBe(2)
     expect(client.searchForInstances).toHaveBeenCalledTimes(3)
+  })
+})
+
+describe('useContainsSearch across stores', () => {
+  it('reports a store that keeps failing and stops offering it at the cap', async () => {
+    const seg = StorageClasses.SEGMENTATION
+    const logError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const healthy = fakeClient(new Map([[0, [row('s1', 'a', seg)]]]))
+    const broken = fakeClient(new Map())
+    broken.searchForInstances = vi.fn(async (): Promise<QidoRow[]> => {
+      throw Object.assign(new Error('down'), { status: 503 })
+    })
+    const combined = {
+      ...fakeClient(new Map()),
+      storeSearchClients: () => [healthy, broken],
+    }
+
+    const { result } = renderHook(() =>
+      useContainsSearch(combined, entry('seg')),
+    )
+    await waitFor(() => {
+      expect(result.current.status).toBe('done')
+    })
+    expect(result.current.result?.hasStoreFailures).toBe(true)
+    expect(result.current.canLoadMore).toBe(true)
+
+    for (let page = 1; page < CONTAINS_MAX_PAGES; page++) {
+      act(() => {
+        result.current.loadMore()
+      })
+      await waitFor(() => {
+        expect(result.current.pages).toBe(page + 1)
+      })
+    }
+
+    expect(result.current.canLoadMore).toBe(false)
+    expect(result.current.result?.hasStoreFailures).toBe(true)
+    expect([...(result.current.result?.matches.keys() ?? [])]).toEqual(['s1'])
+    logError.mockRestore()
+  })
+})
+
+describe('useContainsRowChecks', () => {
+  it('checks a row again once an unknown verdict is stale', async () => {
+    const seg = StorageClasses.SEGMENTATION
+    let isDown = true
+    const client = fakeClient(new Map())
+    client.searchForInstances = vi.fn(async (): Promise<QidoRow[]> => {
+      if (isDown) throw Object.assign(new Error('down'), { status: 503 })
+      return [row('s1', 'a', seg)]
+    })
+    const studyClient = { searchForStudies: vi.fn(async () => []) }
+    const candidate: ContainsCandidate = {
+      studyUid: 's1',
+      seriesUids: ['a'],
+      needsStudy: false,
+      needsSopClass: true,
+    }
+    const { result, rerender } = renderHook(
+      ({ candidates }: { candidates: ContainsCandidate[] }) =>
+        useContainsRowChecks(client, studyClient, entry('seg'), candidates),
+      { initialProps: { candidates: [candidate] } },
+    )
+    await waitFor(() => {
+      expect(result.current('s1')).toEqual({ status: 'unknown' })
+    })
+
+    isDown = false
+    const later = Date.now() + UNKNOWN_ROW_CHECK_TTL_MS + 1
+    vi.spyOn(Date, 'now').mockReturnValue(later)
+    rerender({ candidates: [{ ...candidate }] })
+
+    await waitFor(() => {
+      expect(result.current('s1')).toEqual({ status: 'match' })
+    })
+    vi.restoreAllMocks()
   })
 })

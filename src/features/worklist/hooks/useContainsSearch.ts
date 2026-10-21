@@ -47,6 +47,29 @@ function cacheFor<T>(
 const rowCheckKey = (entry: ContainsEntry, studyUid: string): string =>
   `${entry.id}|${studyUid}`
 
+/** An "unknown" verdict (a check that failed) is asked again after this */
+export const UNKNOWN_ROW_CHECK_TTL_MS = 30_000
+/** When each "unknown" verdict was reached */
+const unknownCheckedAt = new WeakMap<RowCheck, number>()
+
+/** Whether a remembered verdict can be shown without checking again */
+function isSettledCheck(check: RowCheck | undefined, now: number): boolean {
+  if (check === undefined) return false
+  if (check.status !== 'unknown') return true
+  return now - (unknownCheckedAt.get(check) ?? 0) < UNKNOWN_ROW_CHECK_TTL_MS
+}
+
+/** Drop the entry's "unknown" verdicts so a retry checks those rows again */
+function forgetUnknownRowChecks(client: object, entry: ContainsEntry): void {
+  const checks = rowCheckCache.get(client)
+  if (checks === undefined) return
+  for (const [key, check] of checks) {
+    if (check.status === 'unknown' && key.startsWith(`${entry.id}|`)) {
+      checks.delete(key)
+    }
+  }
+}
+
 export type ContainsSearchStatus = 'idle' | 'searching' | 'done' | 'error'
 
 export interface UseContainsSearchReturn {
@@ -167,6 +190,7 @@ export function useContainsSearch(
             isExact: cached.result.isExact && page.isExact,
             isPartial: page.isPartial,
             pageRowCount: page.pageRowCount,
+            hasStoreFailures: page.hasStoreFailures,
           }
           storeCachedResult(client, entry.id, merged, pages, cursors)
           setState({
@@ -181,10 +205,20 @@ export function useContainsSearch(
         .catch((error: unknown) => {
           if (!isCurrent()) return
           console.error(error)
+          /**
+           * A failed attempt counts as a page, so a store that keeps failing
+           * stops being offered at the cap, and the header says why
+           */
+          const pages = cached.pages + 1
+          const result: ContainsSearchResult = {
+            ...cached.result,
+            hasStoreFailures: true,
+          }
+          storeCachedResult(client, entry.id, result, pages, cached.cursors)
           setState({
             requestKey,
-            pages: cached.pages,
-            result: cached.result,
+            pages,
+            result,
             failed: false,
             loadingMore: false,
           })
@@ -218,6 +252,7 @@ export function useContainsSearch(
   const retry = useCallback(() => {
     if (client !== undefined && entry !== undefined) {
       resultCache.get(client)?.delete(entry.id)
+      forgetUnknownRowChecks(client, entry)
     }
     setAttempt((value) => value + 1)
   }, [client, entry])
@@ -373,9 +408,10 @@ export function useContainsRowChecks(
       inFlight.current.set(searchClient, running)
     }
     const clientInFlight = running
+    const now = Date.now()
     const pending = candidates.filter((candidate) => {
       const key = rowCheckKey(entry, candidate.studyUid)
-      return !cache.has(key) && !clientInFlight.has(key)
+      return !isSettledCheck(cache.get(key), now) && !clientInFlight.has(key)
     })
     if (pending.length === 0) return
     for (const candidate of pending) {
@@ -389,6 +425,7 @@ export function useContainsRowChecks(
         entry,
         candidate,
       )
+      if (check.status === 'unknown') unknownCheckedAt.set(check, Date.now())
       cache.set(key, check)
       clientInFlight.delete(key)
       setCheckState((previous) =>

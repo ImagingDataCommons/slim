@@ -76,6 +76,26 @@ describe('WorklistHeader Contains summary', () => {
     expect(screen.getByText(/first 1,000 matches only/)).toBeInTheDocument()
   })
 
+  it('says when some servers could not be searched', () => {
+    renderHeader({
+      entry,
+      status: 'done',
+      pages: 2,
+      matchCount: 3,
+      isApproximate: false,
+      isPartial: true,
+      searchedCount: 3,
+      onRetry: () => {},
+      onLoadMore: () => {},
+      canLoadMore: true,
+      hasStoreFailures: true,
+    })
+
+    expect(
+      screen.getByText(/some servers could not be searched/),
+    ).toBeInTheDocument()
+  })
+
   it('stacks search under the toolbar when overlay panels are on', () => {
     render(
       <LayoutModeProvider
