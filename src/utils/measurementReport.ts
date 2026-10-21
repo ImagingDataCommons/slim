@@ -128,6 +128,7 @@ type PlainNumItem = {
   ConceptNameCodeSequence?: NumContentItem['ConceptNameCodeSequence']
   MeasuredValueSequence?: NumContentItem['MeasuredValueSequence']
   RelationshipType?: string
+  ContentSequence?: ContentItem[]
 }
 
 /** Rebuilt CODE item, or undefined when its name or value code is missing */
@@ -181,12 +182,20 @@ function toNumContentItem(item: NumContentItem): NumContentItem | undefined {
   ) {
     return undefined
   }
-  return new dcmjs.sr.valueTypes.NumContentItem({
+  const rebuilt = new dcmjs.sr.valueTypes.NumContentItem({
     name: toCodedConcept(name),
     value: numeric,
     unit: toCodedConcept(unit),
     relationshipType: plain.RelationshipType ?? 'CONTAINS',
   })
+  /**
+   * Keep child items such as Source of Measurement, which tie a value to its
+   * optical path and must survive a save of the loaded ROI.
+   */
+  if (plain.ContentSequence !== undefined && plain.ContentSequence.length > 0) {
+    rebuilt.ContentSequence = plain.ContentSequence
+  }
+  return rebuilt
 }
 
 function toEvaluationItem(item: EvaluationItem): EvaluationItem | undefined {

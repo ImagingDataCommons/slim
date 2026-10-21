@@ -17,7 +17,9 @@ export function findContentItemsByName({
   content: ContentItem[]
   name: CodedConceptLike
 }): ContentItem[] {
-  return content.filter((item) =>
-    isSameCodedConcept(item.ConceptNameCodeSequence[0], name),
-  )
+  return content.filter((item) => {
+    /** Malformed items without a concept name never match */
+    const concept = item.ConceptNameCodeSequence?.[0]
+    return concept !== undefined && isSameCodedConcept(concept, name)
+  })
 }
