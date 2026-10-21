@@ -22,6 +22,8 @@ export interface UseStudySearchReturn {
 }
 
 interface SearchResult {
+  /** Server the result came from; another server's result is never shown */
+  client?: DicomWebManager
   query: string
   studies: dmv.metadata.Study[]
   failed: boolean
@@ -86,14 +88,16 @@ export function useStudySearch({
           studiesByUid.set(formatted.StudyInstanceUID, formatted)
         }
       }
-      setResult({ query, studies: [...studiesByUid.values()], failed })
+      setResult({ client, query, studies: [...studiesByUid.values()], failed })
     }
 
     const timer = setTimeout(() => {
       /** A row that cannot be formatted fails the search instead of hanging it */
       search().catch((error: unknown) => {
         console.error(error)
-        if (isCurrent()) setResult({ query, studies: [], failed: true })
+        if (isCurrent()) {
+          setResult({ client, query, studies: [], failed: true })
+        }
       })
     }, SEARCH_DEBOUNCE_MS)
     return () => {
@@ -102,7 +106,8 @@ export function useStudySearch({
     }
   }, [client, query])
 
-  const isCurrentResult = willSearch && result.query === query
+  const isCurrentResult =
+    willSearch && result.query === query && result.client === client
   return {
     matches: isCurrentResult ? result.studies : [],
     isSearching: willSearch && !isCurrentResult,

@@ -98,6 +98,32 @@ describe('useStudies', () => {
     expect(uids(result.current.studies)).toEqual(['new'])
   })
 
+  it("never shows the previous server's studies for the new one", async () => {
+    const oldClients = createClients(async () => [studyJson('old', ['SM'])])
+    const newClients = createClients(
+      () => new Promise<dwc.api.Study[]>(() => undefined),
+    )
+    const renders: Array<{ clients: Clients; uids: string[] }> = []
+    const { result, rerender } = renderHook(
+      ({ clients }: { clients: Clients }) => {
+        const value = useStudies({ clients })
+        renders.push({ clients, uids: uids(value.studies) })
+        return value
+      },
+      { initialProps: { clients: oldClients } },
+    )
+    await waitFor(() => expect(uids(result.current.studies)).toEqual(['old']))
+
+    rerender({ clients: newClients })
+
+    const afterSwitch = renders.filter(
+      (render) => render.clients === newClients,
+    )
+    expect(afterSwitch.length).toBeGreaterThan(0)
+    for (const render of afterSwitch) expect(render.uids).toEqual([])
+    expect(result.current.isLoading).toBe(true)
+  })
+
   it('reports a failed search', async () => {
     const onError = vi
       .spyOn(NotificationMiddleware, 'onError')

@@ -131,6 +131,31 @@ describe('useStudySearch', () => {
     logError.mockRestore()
   })
 
+  it("never shows the previous server's matches for the new one", async () => {
+    const oldClients = createClients(async () => [studyJson('1.1', 'P-1')])
+    const newClients = createClients(
+      () => new Promise<dwc.api.Study[]>(() => undefined),
+    )
+    const renders: Array<{ clients: Clients; count: number }> = []
+    const { result, rerender } = renderHook(
+      ({ clients }: { clients: Clients }) => {
+        const value = useStudySearch({ clients, searchText: 'P-1' })
+        renders.push({ clients, count: value.matches.length })
+        return value
+      },
+      { initialProps: { clients: oldClients } },
+    )
+    await waitFor(() => expect(result.current.matches).toHaveLength(1))
+
+    rerender({ clients: newClients })
+
+    const afterSwitch = renders.filter(
+      (render) => render.clients === newClients,
+    )
+    expect(afterSwitch.length).toBeGreaterThan(0)
+    for (const render of afterSwitch) expect(render.count).toBe(0)
+  })
+
   it('only queries for the text once typing pauses', async () => {
     const search = vi.fn(
       async (_params: QueryParams): Promise<dwc.api.Study[]> => [],
