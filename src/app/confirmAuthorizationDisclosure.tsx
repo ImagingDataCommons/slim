@@ -13,7 +13,7 @@ import {
  *
  * @param origin - Origin of the server that asked for credentials
  * @param authority - Issuer of the token, from the OIDC configuration
- * @returns User choice, or `superseded` when another prompt replaced this one
+ * @returns User choice; waits for any prompt already showing
  */
 export async function confirmAuthorizationDisclosure(
   origin: string,

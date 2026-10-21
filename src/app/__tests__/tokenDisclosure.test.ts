@@ -137,17 +137,6 @@ describe('createTokenDisclosurePolicy', () => {
     expect(onAuthorization).not.toHaveBeenCalled()
   })
 
-  it('does not remember a denial when the dialog was superseded', async () => {
-    confirm.mockResolvedValue('superseded')
-    const policy = createPolicy()
-
-    await expect(policy.requestAuthorization(UNKNOWN)).resolves.toBeUndefined()
-    expect(readAuthorizationDecision(UNKNOWN)).toBeUndefined()
-    confirm.mockResolvedValue('confirm')
-    await expect(policy.requestAuthorization(UNKNOWN)).resolves.toBe('Bearer t')
-    expect(readAuthorizationDecision(UNKNOWN)).toBe('granted')
-  })
-
   it('shares one prompt between simultaneous challenges', async () => {
     const policy = createPolicy()
 

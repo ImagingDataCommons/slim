@@ -143,10 +143,6 @@ export function createTokenDisclosurePolicy({
       }
       if (step === 'ask') {
         const choice = await confirm(origin, oidcAuthority)
-        /** A newer dialog replaced this one; leave the remembered decision alone */
-        if (choice === 'superseded') {
-          return undefined
-        }
         const approved = choice === 'confirm'
         writeAuthorizationDecision(origin, approved ? 'granted' : 'denied')
         console.info(

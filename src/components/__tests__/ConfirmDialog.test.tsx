@@ -26,14 +26,20 @@ describe('showConfirmDialog', () => {
     await expect(result).resolves.toBe('cancel')
   })
 
-  it('resolves the prior dialog as superseded when a new one opens', async () => {
+  it('shows a dialog opened meanwhile after the first is answered', async () => {
     const first = showConfirmDialog({ title: 'First origin?' })
     await screen.findByRole('heading', { name: 'First origin?' })
     const second = showConfirmDialog({ title: 'Second origin?' })
-    await expect(first).resolves.toBe('superseded')
-    const confirm = await screen.findByRole('button', { name: 'Confirm' })
+    expect(screen.queryByRole('heading', { name: 'Second origin?' })).toBeNull()
+
     await act(async () => {
-      confirm.click()
+      screen.getByRole('button', { name: 'Cancel' }).click()
+    })
+    await expect(first).resolves.toBe('cancel')
+
+    await screen.findByRole('heading', { name: 'Second origin?' })
+    await act(async () => {
+      screen.getByRole('button', { name: 'Confirm' }).click()
     })
     await expect(second).resolves.toBe('confirm')
   })
