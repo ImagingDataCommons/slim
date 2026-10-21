@@ -97,6 +97,14 @@ function addMeasurementReportRois(
  * retrieve or parse failures. Reports added later still call `onChange`.
  * Failures are reported to the user once, after every retrieve settled.
  */
+/** Errors of a viewer that is gone are not shown over the next one */
+function notifyUnlessDestroyed(
+  session: DerivedDataContext['session'],
+  message: string,
+): void {
+  if (!session.isDestroyed) notifyVisualizationError(message)
+}
+
 export async function loadMeasurementReports(
   { session, clients, studyInstanceUID, onChange }: DerivedDataContext,
   registerRoi: (roi: dmv.roi.ROI) => void,
@@ -132,7 +140,7 @@ export async function loadMeasurementReports(
           pendingCount -= 1
           if (pendingCount > 0) return
           if (hasFailure) {
-            notifyVisualizationError('Annotations could not be loaded')
+            notifyUnlessDestroyed(session, 'Annotations could not be loaded')
           }
           resolve()
         }
@@ -185,7 +193,7 @@ export async function loadMeasurementReports(
       })
       .catch((error: unknown) => {
         logger.error(error)
-        notifyVisualizationError('Annotations could not be loaded')
+        notifyUnlessDestroyed(session, 'Annotations could not be loaded')
         reject(toError(error))
       })
   })

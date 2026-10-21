@@ -18,6 +18,7 @@ export async function loadAnnotationGroups({
   onChange,
 }: DerivedDataContext): Promise<void> {
   await loadSeriesMetadata({
+    isCurrent: () => !session.isDestroyed,
     client: clients[StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION],
     studyInstanceUID,
     modality: 'ANN',

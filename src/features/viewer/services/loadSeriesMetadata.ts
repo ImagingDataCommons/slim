@@ -17,6 +17,7 @@ export async function loadSeriesMetadata({
   modality,
   label,
   onMetadata,
+  isCurrent = () => true,
 }: {
   client: DicomWebManager
   studyInstanceUID: string
@@ -24,7 +25,12 @@ export async function loadSeriesMetadata({
   /** Name of the instances in log and error messages */
   label: string
   onMetadata: (metadata: dwc.api.Metadata[]) => void
+  /** False once the viewer that asked is gone; its errors are not shown */
+  isCurrent?: () => boolean
 }): Promise<void> {
+  const notify = (message: string): void => {
+    if (isCurrent()) notifyVisualizationError(message)
+  }
   return await new Promise<void>((resolve, reject) => {
     logger.log(`search for ${label} instances`)
     client
@@ -64,22 +70,20 @@ export async function loadSeriesMetadata({
                 onMetadata(metadata)
               } catch (error: unknown) {
                 logger.error(error)
-                notifyVisualizationError(`${label} could not be displayed.`)
+                notify(`${label} could not be displayed.`)
               }
               finishOne()
             })
             .catch((error: unknown) => {
               logger.error(error)
-              notifyVisualizationError(
-                `Retrieval of metadata of ${label} instances failed.`,
-              )
+              notify(`Retrieval of metadata of ${label} instances failed.`)
               finishOne()
             })
         }
       })
       .catch((error: unknown) => {
         logger.error(error)
-        notifyVisualizationError(`Search for ${label} instances failed.`)
+        notify(`Search for ${label} instances failed.`)
         reject(toError(error))
       })
   })

@@ -54,6 +54,7 @@ export async function loadReferencedOverlaySeries<
   errorLogLabel,
 }: LoadReferencedOverlaySeriesOptions<T>): Promise<void> {
   await loadSeriesMetadata({
+    isCurrent: () => !session.isDestroyed,
     client,
     studyInstanceUID,
     modality,

@@ -110,6 +110,7 @@ export function usePresentationStates({
         client: clients[StorageClasses.ADVANCED_BLENDING_PRESENTATION_STATE],
         studyInstanceUID,
         slide: session.slide,
+        isCurrent: () => !isStale(),
         onPresentationState: (presentationState, index) => {
           if (isStale()) return
           studyOrder.set(presentationState.SOPInstanceUID, index)

@@ -115,4 +115,14 @@ describe('loadMeasurementReports', () => {
       'Annotations could not be loaded',
     )
   })
+
+  it('does not show the error of a viewer that is gone', async () => {
+    const { context, registerRoi } = setup(new Error('search failed'))
+    ;(context.session as { isDestroyed: boolean }).isDestroyed = true
+
+    await expect(loadMeasurementReports(context, registerRoi)).rejects.toThrow(
+      'search failed',
+    )
+    expect(notifyVisualizationError).not.toHaveBeenCalled()
+  })
 })

@@ -33,6 +33,7 @@ export function loadPresentationStates({
   slide,
   onPresentationState,
   onDefaultPresentationState,
+  isCurrent = () => true,
 }: {
   client: DicomWebManager
   studyInstanceUID: string
@@ -47,7 +48,12 @@ export function loadPresentationStates({
    * retrieved and found to belong to another slide (or failed)
    */
   onDefaultPresentationState?: (presentationState: PresentationState) => void
+  /** False once the viewer that asked is gone; its errors are not shown */
+  isCurrent?: () => boolean
 }): void {
+  const notify = (message: string): void => {
+    if (isCurrent()) notifyVisualizationError(message)
+  }
   logger.log('search for Presentation State instances')
   client
     .searchForInstances({
@@ -107,7 +113,7 @@ export function loadPresentationStates({
           })
           .catch((error: unknown) => {
             settle(index)
-            notifyVisualizationError('Presentation State could not be loaded')
+            notify('Presentation State could not be loaded')
             logger.error(
               'failed to load presentation state ' +
                 `of SOP instance "${instance.SOPInstanceUID}" ` +
@@ -120,7 +126,7 @@ export function loadPresentationStates({
     })
     .catch((error: unknown) => {
       logger.error(error)
-      notifyVisualizationError('Presentation State could not be loaded')
+      notify('Presentation State could not be loaded')
     })
 }
 
