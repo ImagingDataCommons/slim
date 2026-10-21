@@ -328,9 +328,11 @@ export async function searchStoresContaining(
   if (searched.length > 0 && failures.length === searched.length) {
     throw failures[failures.length - 1].error
   }
+  for (const failure of failures) console.error(failure.error)
   let matches: ReadonlyMap<string, ContainsMatch> = new Map()
   let isExact = true
-  let isPartial = false
+  /** A store that failed may still hold matches; "Search more" retries it */
+  let isPartial = failures.length > 0
   let pageRowCount = 0
   const nextCursors = outcomes.map(({ cursor, result }) => {
     if (result === undefined) return cursor

@@ -90,7 +90,11 @@ export function useStudySearch({
     }
 
     const timer = setTimeout(() => {
-      void search()
+      /** A row that cannot be formatted fails the search instead of hanging it */
+      search().catch((error: unknown) => {
+        console.error(error)
+        if (isCurrent()) setResult({ query, studies: [], failed: true })
+      })
     }, SEARCH_DEBOUNCE_MS)
     return () => {
       clearTimeout(timer)

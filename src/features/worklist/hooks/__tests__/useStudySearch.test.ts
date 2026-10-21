@@ -6,6 +6,23 @@ import DicomWebManager from '../../../../DicomWebManager'
 import { StorageClasses } from '../../../../data/uids'
 import { useStudySearch } from '../useStudySearch'
 
+vi.mock('dicom-microscopy-viewer', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('dicom-microscopy-viewer')>()
+  return {
+    ...actual,
+    metadata: {
+      ...actual.metadata,
+      formatMetadata: (dataset: object) => {
+        if ('unformattable' in dataset) throw new Error('cannot format')
+        return actual.metadata.formatMetadata(
+          dataset as Parameters<typeof actual.metadata.formatMetadata>[0],
+        )
+      },
+    },
+  }
+})
+
 type Clients = { [key: string]: DicomWebManager }
 type QueryParams = Record<string, unknown>
 
@@ -98,6 +115,20 @@ describe('useStudySearch', () => {
       isSearching: false,
       hasError: true,
     })
+  })
+
+  it('reports an error instead of hanging when a row cannot be formatted', async () => {
+    const logError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const clients = createClients(
+      async () => [{ unformattable: true }] as unknown as dwc.api.Study[],
+    )
+    const { result } = renderHook(() =>
+      useStudySearch({ clients, searchText: 'P-9' }),
+    )
+
+    await waitFor(() => expect(result.current.isSearching).toBe(false))
+    expect(result.current.hasError).toBe(true)
+    logError.mockRestore()
   })
 
   it('only queries for the text once typing pauses', async () => {

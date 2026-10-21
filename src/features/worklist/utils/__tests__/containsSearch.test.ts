@@ -444,9 +444,14 @@ describe('searchStoresContaining', () => {
       searchForInstances: onePage([row('s1', 'a', ann)]),
     })
 
+    const logError = vi.spyOn(console, 'error').mockImplementation(() => {})
     const page = await searchStoresContaining([down, up], entry('ann'))
     expect([...page.result.matches.keys()]).toEqual(['s1'])
     expect(page.cursors[0]).toEqual({ offset: 0, isDone: false })
+    /** The failed store is offered again through "Search more" */
+    expect(page.result.isPartial).toBe(true)
+    expect(logError).toHaveBeenCalled()
+    logError.mockRestore()
 
     await expect(
       searchStoresContaining([down, down], entry('ann')),
