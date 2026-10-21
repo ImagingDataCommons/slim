@@ -105,7 +105,7 @@ export function Worklist({
   const containsClient =
     containsEntry === undefined
       ? undefined
-      : (clients[containsEntry.sopClassUids[0]] ??
+      : (clients[containsEntry.sopClassUid] ??
         clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE])
   const containsSearch = useContainsSearch(containsClient, containsEntry)
   const containsResult = containsSearch.result

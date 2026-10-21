@@ -124,4 +124,47 @@ describe('useContainsSearch', () => {
     })
     expect(client.searchForInstances).toHaveBeenCalledTimes(CONTAINS_MAX_PAGES)
   })
+
+  it('does not carry a Search more click over to another cached entry', async () => {
+    const fullPage = (sopClassUid: string, offset: number): QidoRow[] =>
+      Array.from({ length: CONTAINS_PAGE_SIZE }, (_, index) =>
+        row(`${sopClassUid}-${offset + index}`, `x${index}`, sopClassUid),
+      )
+    const client = fakeClient(new Map())
+    client.searchForInstances = vi.fn(
+      async (
+        options: dwc.api.SearchForInstancesOptions,
+      ): Promise<QidoRow[]> => {
+        const { SOPClassUID } = options.queryParams as { SOPClassUID: string }
+        return fullPage(SOPClassUID, offsetOf(options))
+      },
+    )
+    const { result, rerender } = renderHook(
+      ({ current }: { current: ContainsEntry }) =>
+        useContainsSearch(client, current),
+      { initialProps: { current: entry('seg') } },
+    )
+    await waitFor(() => {
+      expect(result.current.status).toBe('done')
+    })
+
+    rerender({ current: entry('pmap') })
+    await waitFor(() => {
+      expect(result.current.pages).toBe(1)
+    })
+    act(() => {
+      result.current.loadMore()
+    })
+    await waitFor(() => {
+      expect(result.current.pages).toBe(2)
+    })
+    expect(client.searchForInstances).toHaveBeenCalledTimes(3)
+
+    rerender({ current: entry('seg') })
+    await waitFor(() => {
+      expect(result.current.status).toBe('done')
+    })
+    expect(result.current.pages).toBe(1)
+    expect(client.searchForInstances).toHaveBeenCalledTimes(3)
+  })
 })

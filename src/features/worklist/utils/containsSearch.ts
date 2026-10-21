@@ -145,33 +145,28 @@ async function searchBySopClass(
   options: ContainsSearchOptions,
 ): Promise<ContainsSearchResult> {
   const offset = options.offset ?? 0
-  const rows: unknown[] = []
-  let isPartial = false
-  for (const sopClassUid of entry.sopClassUids) {
-    const result = await fetchOnePage(
-      async (pageOffset) => {
-        const items = await client.searchForInstances({
-          queryParams: {
-            SOPClassUID: sopClassUid,
-            includefield: STUDY_FIELDS,
-            limit: CONTAINS_PAGE_SIZE,
-            offset: pageOffset,
-          },
-        })
-        /** A server that ignores the key returns every instance instead */
-        const ignoresKey = items.some((item) => {
-          const value = firstValue(item, SOP_CLASS_UID_TAG)
-          return value !== undefined && value !== sopClassUid
-        })
-        if (ignoresKey) throw new IgnoredMatchingKeyError()
-        return items
-      },
-      offset,
-      options,
-    )
-    rows.push(...result.rows)
-    isPartial ||= result.isPartial
-  }
+  const { sopClassUid } = entry
+  const { rows, isPartial } = await fetchOnePage(
+    async (pageOffset) => {
+      const items = await client.searchForInstances({
+        queryParams: {
+          SOPClassUID: sopClassUid,
+          includefield: STUDY_FIELDS,
+          limit: CONTAINS_PAGE_SIZE,
+          offset: pageOffset,
+        },
+      })
+      /** A server that ignores the key returns every instance instead */
+      const ignoresKey = items.some((item) => {
+        const value = firstValue(item, SOP_CLASS_UID_TAG)
+        return value !== undefined && value !== sopClassUid
+      })
+      if (ignoresKey) throw new IgnoredMatchingKeyError()
+      return items
+    },
+    offset,
+    options,
+  )
   return {
     matches: groupByStudy(rows),
     isExact: true,
@@ -322,12 +317,7 @@ export async function confirmStudyContains(
         queryParams: { limit: 1, includefield: SOP_CLASS_UID_TAG },
       })
       const sopClassUid = firstValue(instance, SOP_CLASS_UID_TAG)
-      if (
-        sopClassUid !== undefined &&
-        entry.sopClassUids.includes(sopClassUid)
-      ) {
-        return 'match'
-      }
+      if (sopClassUid === entry.sopClassUid) return 'match'
     } catch {
       hasFailure = true
     }

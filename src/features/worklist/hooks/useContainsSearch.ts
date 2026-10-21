@@ -99,15 +99,19 @@ export function useContainsSearch(
   entry: ContainsEntry | undefined,
 ): UseContainsSearchReturn {
   const [attempt, setAttempt] = useState(0)
-  const [moreRequests, setMoreRequests] = useState(0)
+  /**
+   * "Search more" clicks belong to the request they were made for, so a
+   * switch to another entry starts at zero in the same render
+   */
+  const [moreRequestsFor, setMoreRequestsFor] = useState({
+    requestKey: '',
+    count: 0,
+  })
   const [state, setState] = useState<SearchState>(EMPTY_SEARCH)
   const generation = useRef(0)
   const requestKey = entry === undefined ? '' : `${entry.id}:${attempt}`
-
-  useEffect(() => {
-    if (requestKey === '') return
-    setMoreRequests(0)
-  }, [requestKey])
+  const moreRequests =
+    moreRequestsFor.requestKey === requestKey ? moreRequestsFor.count : 0
 
   useEffect(() => {
     if (client === undefined || entry === undefined) return
@@ -201,15 +205,17 @@ export function useContainsSearch(
     if (client !== undefined && entry !== undefined) {
       resultCache.get(client)?.delete(entry.id)
     }
-    setMoreRequests(0)
     setAttempt((value) => value + 1)
   }, [client, entry])
 
   const loadMore = useCallback(() => {
     if (client === undefined || entry === undefined) return
     if (!canFetchMore(resultCache.get(client)?.get(entry.id))) return
-    setMoreRequests((value) => value + 1)
-  }, [client, entry])
+    setMoreRequestsFor((current) => ({
+      requestKey,
+      count: current.requestKey === requestKey ? current.count + 1 : 1,
+    }))
+  }, [client, entry, requestKey])
 
   if (entry === undefined || client === undefined) {
     return {
