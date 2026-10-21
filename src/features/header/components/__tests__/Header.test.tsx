@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { useEffect } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router'
-
+import { TooltipProvider } from '../../../../components/ui/tooltip'
 import {
   DESKTOP_LAYOUT_MODE,
   type LayoutMode,
@@ -49,33 +49,61 @@ function SeedSummary(): null {
   return null
 }
 
-function renderHeader(mode: LayoutMode): void {
+function renderHeader(mode: LayoutMode, baseURL?: string): void {
   render(
     <MemoryRouter initialEntries={['/studies/2.25.1/series/1.2.3']}>
       <ThemeProvider>
-        <LayoutModeProvider value={mode}>
-          <StudySummaryProvider>
-            <SeedSummary />
-            <Routes>
-              <Route
-                path="/studies/:studyInstanceUID/*"
-                element={
-                  <Header
-                    app={APP}
-                    showWorklistButton
-                    showServerSelectionButton
-                    onServerSelection={vi.fn()}
-                    clients={{ default: {} as never }}
-                  />
-                }
-              />
-            </Routes>
-          </StudySummaryProvider>
-        </LayoutModeProvider>
+        <TooltipProvider>
+          <LayoutModeProvider value={mode}>
+            <StudySummaryProvider>
+              <SeedSummary />
+              <Routes>
+                <Route
+                  path="/studies/:studyInstanceUID/*"
+                  element={
+                    <Header
+                      app={APP}
+                      showWorklistButton
+                      showServerSelectionButton
+                      onServerSelection={vi.fn()}
+                      clients={{ default: { baseURL } as never }}
+                    />
+                  }
+                />
+              </Routes>
+            </StudySummaryProvider>
+          </LayoutModeProvider>
+        </TooltipProvider>
       </ThemeProvider>
     </MemoryRouter>,
   )
 }
+
+describe('Header server pill', () => {
+  const DESKTOP: LayoutMode = {
+    compactChrome: false,
+    overlayPanels: false,
+    coarsePointer: false,
+  }
+
+  it('names the server it is connected to', () => {
+    renderHeader(DESKTOP, 'https://dicom.example/dicomWeb')
+    expect(
+      screen.getByRole('button', {
+        name: 'Server https://dicom.example/dicomWeb. Change server',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('offers to select a server while the default is blank', () => {
+    renderHeader(DESKTOP, '')
+    expect(
+      screen.getByRole('button', {
+        name: 'No server selected. Select a server',
+      }),
+    ).toHaveTextContent('No server selected')
+  })
+})
 
 describe('Header compact chrome', () => {
   it('keeps the crumb and hides secondary actions behind More', async () => {

@@ -294,6 +294,18 @@ describe('Worklist', () => {
     ): number =>
       Number((options.queryParams as { offset?: number } | undefined)?.offset)
 
+    it('asks for a server under a Contains filter when the default has no URL', async () => {
+      const blank = new DicomWebManager({
+        baseUri: 'http://mockserver.org',
+        settings: [{ id: 'blank', url: '', write: false }],
+      })
+      renderAt('/?contains=ann', blank)
+
+      expect(
+        await screen.findByText('Select a server to search for studies.'),
+      ).toBeInTheDocument()
+    })
+
     it('shows only studies with the entry from the URL and clears it', async () => {
       const filterManager = createManager()
       filterManager.searchForInstances = vi.fn(

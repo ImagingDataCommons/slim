@@ -227,6 +227,8 @@ export function Header({
   const { compactChrome } = useLayoutMode()
   const currentServerUrl =
     clients?.default?.baseURL ?? defaultClients?.default?.baseURL ?? serverUrl
+  /** A default server left blank for server selection */
+  const hasServer = (currentServerUrl ?? '') !== ''
   const defaultServerUrl = defaultClients?.default?.baseURL
   const isInViewer = isViewerPath(location.pathname)
   const studyInstanceUID = params.studyInstanceUID
@@ -237,8 +239,15 @@ export function Header({
 
   const serverPillContent = (
     <>
-      <span className="h-[7px] w-[7px] flex-none rounded-full bg-success" />
-      <span className="truncate font-mono text-12">{currentServerUrl}</span>
+      <span
+        className={cn(
+          'h-[7px] w-[7px] flex-none rounded-full',
+          hasServer ? 'bg-success' : 'bg-ink-faint',
+        )}
+      />
+      <span className={cn('truncate text-12', hasServer && 'font-mono')}>
+        {hasServer ? currentServerUrl : 'No server selected'}
+      </span>
     </>
   )
   const serverPillClassName =
@@ -328,36 +337,44 @@ export function Header({
 
         {!compactChrome && (
           <div className="flex min-w-0 flex-1 justify-center">
-            {showServerSelectionButton &&
-              currentServerUrl !== undefined &&
-              currentServerUrl !== '' && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label={`Server ${currentServerUrl}. Change server`}
-                      onClick={openServerDialog}
-                      className={cn(
-                        serverPillClassName,
-                        'hover:border-line-hover',
-                      )}
-                    >
-                      {serverPillContent}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side="bottom"
-                    className="max-w-[min(640px,90vw)] px-2.5 py-1.5"
+            {showServerSelectionButton && currentServerUrl !== undefined && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={
+                      hasServer
+                        ? `Server ${currentServerUrl}. Change server`
+                        : 'No server selected. Select a server'
+                    }
+                    onClick={openServerDialog}
+                    className={cn(
+                      serverPillClassName,
+                      'hover:border-line-hover',
+                    )}
                   >
-                    <div className="break-all font-mono text-11.5 leading-[1.45]">
-                      {currentServerUrl}
-                    </div>
-                    <div className="mt-1 text-11 font-normal opacity-70">
-                      Click to change or copy the server
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              )}
+                    {serverPillContent}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="bottom"
+                  className="max-w-[min(640px,90vw)] px-2.5 py-1.5"
+                >
+                  {hasServer ? (
+                    <>
+                      <div className="break-all font-mono text-11.5 leading-[1.45]">
+                        {currentServerUrl}
+                      </div>
+                      <div className="mt-1 text-11 font-normal opacity-70">
+                        Click to change or copy the server
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-11.5">Click to select a server</div>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
         )}
 
