@@ -12,6 +12,36 @@ describe('buildSeriesSelectionPath', () => {
         studyInstanceUID: '1.2.3',
         seriesInstanceUID: '4.5',
         pathname: '/studies/1.2.3/series/9.9',
+        search: '?gcp=projects/p/x&access_token=a%2Bb',
+      }),
+    ).toBe('/studies/1.2.3/series/4.5?gcp=projects/p/x&access_token=a%2Bb')
+  })
+
+  it("leaves another slide's presentation state behind", () => {
+    expect(
+      buildSeriesSelectionPath({
+        studyInstanceUID: '1.2.3',
+        seriesInstanceUID: '4.5',
+        pathname: '/studies/1.2.3/series/9.9',
+        search: '?gcp=projects/p/x&state=7',
+      }),
+    ).toBe('/studies/1.2.3/series/4.5?gcp=projects/p/x')
+    expect(
+      buildSeriesSelectionPath({
+        studyInstanceUID: '1.2.3',
+        seriesInstanceUID: '4.5',
+        pathname: '/studies/1.2.3/series/9.9',
+        search: '?state=7',
+      }),
+    ).toBe('/studies/1.2.3/series/4.5')
+  })
+
+  it('keeps the presentation state when the same series is selected', () => {
+    expect(
+      buildSeriesSelectionPath({
+        studyInstanceUID: '1.2.3',
+        seriesInstanceUID: '4.5',
+        pathname: '/studies/1.2.3/series/4.5',
         search: '?state=7',
       }),
     ).toBe('/studies/1.2.3/series/4.5?state=7')

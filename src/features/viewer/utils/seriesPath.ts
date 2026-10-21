@@ -26,11 +26,25 @@ function seriesPathname({
 
 /**
  * Viewer URL for a series of the current study. The query string is only
- * carried over from series routes.
+ * carried over from series routes, and a presentation state (`?state=`)
+ * only to the same series: it belongs to the slide it was applied to.
  */
 export function buildSeriesSelectionPath(params: SeriesPathParams): string {
   const path = seriesPathname(params)
-  return hasSeriesInPath(params.pathname) ? `${path}${params.search}` : path
+  if (!hasSeriesInPath(params.pathname)) return path
+  if (parseSeriesInstanceUID(params.pathname) === params.seriesInstanceUID) {
+    return `${path}${params.search}`
+  }
+  return `${path}${withoutQueryParam(params.search, 'state')}`
+}
+
+/** `search` without `name`, leaving the other parameters as written */
+function withoutQueryParam(search: string, name: string): string {
+  const kept = search
+    .replace(/^\?/, '')
+    .split('&')
+    .filter((part) => part !== '' && part.split('=')[0] !== name)
+  return kept.length > 0 ? `?${kept.join('&')}` : ''
 }
 
 /**
