@@ -58,6 +58,8 @@ export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
     id: 'PatientID',
     header: 'Patient ID',
     accessorFn: (study) => study.PatientID ?? '',
+    /** Fixed, so the order does not depend on which rows TanStack samples */
+    sortingFn: 'alphanumeric',
     cell: ({ getValue }) => <MonoCell value={getValue<string>()} />,
   },
   {
