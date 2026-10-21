@@ -478,15 +478,9 @@ describe('non-DICOM answers', () => {
       searchForInstances: async () => null as unknown as QidoRow[],
     })
 
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-
     const result = await searchStudiesContaining(client, entry('ann'))
 
     expect(result.matches.size).toBe(0)
     expect(result.isPartial).toBe(false)
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringMatching(/other than DICOM JSON/),
-    )
-    warn.mockRestore()
   })
 })

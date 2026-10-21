@@ -312,12 +312,17 @@ describe('DicomWebManager - multi-store search', () => {
     const stub = makeStubClient('spa')
     stubManagerClients(manager, [stub])
     stub.searchForStudies.mockResolvedValue(null)
+    stub.searchForSeries.mockResolvedValue(null)
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     await expect(manager.searchForStudies({})).resolves.toEqual([])
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringMatching(/other than DICOM JSON/),
-    )
+    await expect(manager.searchForSeries({})).resolves.toEqual([])
+    await expect(
+      manager.storeSearchClients()[0].searchForSeries({}),
+    ).resolves.toEqual([])
+    /** Reported once for the server, by name */
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/"spa"/))
     warn.mockRestore()
   })
 

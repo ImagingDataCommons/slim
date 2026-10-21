@@ -60,6 +60,8 @@ interface Store {
   settings: ServerSettings
   /** False for a default server left blank until the user picks one */
   hasServiceUrl: boolean
+  /** Set once a non-DICOM search answer was reported, to report it once */
+  nonDicomAnswerReported: boolean
 }
 
 /**
@@ -203,6 +205,24 @@ const readableStores = (stores: readonly Store[]): Store[] =>
   stores.filter((store) => store.read && store.hasServiceUrl)
 
 /**
+ * A search answer as rows. A non-DICOM answer (e.g. an HTML login page or a
+ * wrong path) reads as no rows and is reported once per store, by name, so
+ * the Debug panel says why that server matched nothing.
+ */
+const searchRows = <T>(store: Store, items: unknown): T[] => {
+  if (Array.isArray(items)) return items as T[]
+  if (!store.nonDicomAnswerReported) {
+    store.nonDicomAnswerReported = true
+    console.warn(
+      `The DICOMweb server "${store.id}" (${store.origin}) answered a ` +
+        'search with something other than DICOM JSON; treating it as no ' +
+        'matches',
+    )
+  }
+  return []
+}
+
+/**
  * Run the same DICOMweb operation against every readable store in parallel,
  * merge the results, and de-duplicate them by the supplied DICOM tag keys.
  *
@@ -250,16 +270,8 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
 
   const merged: T[] = []
   const seen = new Set<string>()
-  for (const items of results) {
-    /** A non-DICOM answer (e.g. an HTML page) parses as no matches */
-    if (!Array.isArray(items)) {
-      console.warn(
-        'A DICOMweb search answered with something other than DICOM JSON; ' +
-          'treating it as no matches',
-      )
-      continue
-    }
-    for (const item of items) {
+  for (const [index, answer] of results.entries()) {
+    for (const item of searchRows<T>(readable[index], answer)) {
       const key = buildDedupKey(item, dedupTags)
       if (!seen.has(key)) {
         seen.add(key)
@@ -535,6 +547,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
         client: new dwc.api.DICOMwebClient(clientSettings),
         settings: serverSettings,
         hasServiceUrl: serviceUrl.trim() !== '',
+        nonDicomAnswerReported: false,
       })
     })
   }
@@ -741,15 +754,22 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       if (client === undefined) {
         client = {
           searchForSeries: async (options) =>
-            await this.callStore(
+            searchRows<dwc.api.Series>(
               store,
-              async (storeClient) => await storeClient.searchForSeries(options),
+              await this.callStore(
+                store,
+                async (storeClient) =>
+                  await storeClient.searchForSeries(options),
+              ),
             ),
           searchForInstances: async (options) =>
-            await this.callStore(
+            searchRows<dwc.api.Instance>(
               store,
-              async (storeClient) =>
-                await storeClient.searchForInstances(options),
+              await this.callStore(
+                store,
+                async (storeClient) =>
+                  await storeClient.searchForInstances(options),
+              ),
             ),
         }
         this.storeSearchClientCache.set(store, client)
