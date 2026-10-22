@@ -289,6 +289,67 @@ describe('useSlides', () => {
     expect(renders[0]).toBe(true)
   })
 
+  it('keeps showing its slides when another consumer evicts or refetches them', async () => {
+    const clients = clientsFor('https://a.test/dicomWeb')
+    respondWith([slide])
+    const viewer = renderHook(() =>
+      useSlides({ clients, studyInstanceUID: 'shared' }),
+    )
+    await waitFor(() => expect(viewer.result.current.slides).toEqual([slide]))
+
+    /** Another consumer finds the entry gone and fetches new slide objects */
+    clearSlidesCache('shared')
+    const refetched = { volumeImages: [{}] } as unknown as Slide
+    respondWith([refetched])
+    const dialog = renderHook(() =>
+      useSlides({ clients, studyInstanceUID: 'shared' }),
+    )
+    await waitFor(() => expect(dialog.result.current.slides[0]).toBe(refetched))
+    viewer.rerender()
+
+    expect(viewer.result.current.isLoading).toBe(false)
+    expect(viewer.result.current.slides[0]).toBe(slide)
+  })
+
+  it('shows loading, not an old error, when returning to a study', async () => {
+    const clients = clientsFor('https://a.test/dicomWeb')
+    mockedFetch.mockImplementation(
+      ({ studyInstanceUID, onSuccess, onError }) => {
+        if (studyInstanceUID === 'failing') onError(new Error('unreachable'))
+        else onSuccess([slide])
+        return Promise.resolve()
+      },
+    )
+    /** The second study is cached, so visiting it fetches nothing */
+    const other = renderHook(() =>
+      useSlides({ clients, studyInstanceUID: 'fine' }),
+    )
+    await waitFor(() => expect(other.result.current.slides).toEqual([slide]))
+    other.unmount()
+    const renders: Array<{ study: string; hasError: boolean }> = []
+    const { result, rerender } = renderHook(
+      ({ studyInstanceUID }) => {
+        const value = useSlides({ clients, studyInstanceUID })
+        renders.push({
+          study: studyInstanceUID,
+          hasError: value.error !== null,
+        })
+        return value
+      },
+      { initialProps: { studyInstanceUID: 'failing' } },
+    )
+    await waitFor(() => expect(result.current.error).not.toBeNull())
+    rerender({ studyInstanceUID: 'fine' })
+    await waitFor(() => expect(result.current.slides).toEqual([slide]))
+    mockedFetch.mockImplementation(() => new Promise(() => undefined))
+    renders.length = 0
+
+    rerender({ studyInstanceUID: 'failing' })
+
+    expect(renders[0]).toEqual({ study: 'failing', hasError: false })
+    expect(result.current.isLoading).toBe(true)
+  })
+
   it('keeps only the most recently loaded studies cached', async () => {
     respondWith([slide])
     const clients = clientsFor('https://a.test/dicomWeb')
