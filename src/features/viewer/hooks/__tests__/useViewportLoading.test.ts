@@ -88,7 +88,7 @@ describe('useViewportLoading', () => {
   })
 
   it('stops waiting when loading fails and waits again after a reset', () => {
-    const { access } = createTestSession()
+    const { session, access } = createTestSession()
     const { result } = renderHook(() => useViewportLoading(access.sessionRef))
 
     act(() => {
@@ -97,9 +97,45 @@ describe('useViewportLoading', () => {
     expect(result.current.isWaitingForFirstImage).toBe(false)
 
     act(() => {
-      result.current.reset()
+      result.current.reset(session)
     })
     expect(result.current.isWaitingForFirstImage).toBe(true)
+  })
+
+  it('announces the color profile until the map has drawn the corrected tiles', () => {
+    const { session, access } = createTestSession()
+    /** A color slide whose image carries an ICC profile */
+    Object.assign(session.slide, { areVolumeImagesMonochrome: false })
+    Object.assign(session.slide.volumeImages[0], {
+      OpticalPathSequence: [{ ICCProfile: 'profile' }],
+    })
+    const map = session.volumeViewer.getMap()
+    const { result } = renderHook(() => useViewportLoading(access.sessionRef))
+    const handlers = () => result.current.dmvHandlers
+    act(() => {
+      result.current.reset(session)
+      handlers().dicommicroscopyviewer_frame_loading_started(frame(1))
+      handlers().dicommicroscopyviewer_frame_loading_ended(frame(1))
+    })
+    expect(result.current.statusLabel).toBe('Applying color profile')
+
+    vi.spyOn(session.volumeViewer, 'getICCProfiles').mockReturnValue([{}])
+    act(() => {
+      handlers().dicommicroscopyviewer_frame_loading_started(frame(2))
+      handlers().dicommicroscopyviewer_frame_loading_ended(frame(2))
+    })
+    /** Loaded, but decoded, corrected and drawn only later */
+    expect(result.current.statusLabel).toBe('Applying color profile')
+
+    const onRenderComplete = vi
+      .mocked(map.on)
+      .mock.calls.find(([type]) => String(type) === 'rendercomplete')?.[1] as
+      | (() => void)
+      | undefined
+    act(() => {
+      onRenderComplete?.()
+    })
+    expect(result.current.statusLabel).toBeUndefined()
   })
 
   it('ignores frame events without a session', () => {

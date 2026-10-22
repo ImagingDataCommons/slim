@@ -12,7 +12,8 @@ export type ViewerChromeOverlaysProps = ComponentProps<
   typeof ViewportOverlays
 > & {
   viewerKey: string
-  isWaitingForFirstImage: boolean
+  /** Viewport status pill text; hidden when undefined */
+  statusLabel: string | undefined
   derivedLegend: DerivedLegendProps
 }
 
@@ -30,10 +31,10 @@ export function ViewerChromeToolbar(
   return <ViewerToolbar {...props} />
 }
 
-/** Viewport overlays and first-tile loading indicator. */
+/** Viewport overlays and the slide's loading status. */
 export function ViewerChromeOverlays({
   viewerKey,
-  isWaitingForFirstImage,
+  statusLabel,
   derivedLegend,
   ...overlayProps
 }: ViewerChromeOverlaysProps): JSX.Element {
@@ -42,6 +43,11 @@ export function ViewerChromeOverlays({
    * this viewer while rows exist, so its eye toggles can turn hidden
    * overlays back on. Slides whose overlays were never shown get no legend.
    */
+  /** The pill fades out with the text it last showed */
+  const [lastStatusLabel, setLastStatusLabel] = useState('Loading slide')
+  if (statusLabel !== undefined && statusLabel !== lastStatusLabel) {
+    setLastStatusLabel(statusLabel)
+  }
   const [legendShownFor, setLegendShownFor] = useState<string | undefined>()
   const hasVisibleRow = derivedLegend.rows.some((row) => row.isVisible)
   if (hasVisibleRow && legendShownFor !== viewerKey) {
@@ -65,8 +71,8 @@ export function ViewerChromeOverlays({
         }
       />
       <ViewportLoadingIndicator
-        isVisible={isWaitingForFirstImage}
-        label="Loading slide"
+        isVisible={statusLabel !== undefined}
+        label={statusLabel ?? lastStatusLabel}
       />
     </>
   )

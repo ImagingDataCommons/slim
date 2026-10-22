@@ -153,7 +153,7 @@ export function useSlidePopulation(
       parametricMaps,
       hoveredRoiTooltip,
     } = latestRef.current
-    viewportLoading.reset()
+    viewportLoading.reset(session)
     opticalPaths.reset()
     rois.reset()
     annotationGroups.reset()

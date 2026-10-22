@@ -531,7 +531,7 @@ export function useSlideViewerModel({
       showSlideLabel: preferences.showSlideLabel,
       showZoomControls: preferences.showZoomControls,
       showViewportInfo: preferences.showViewportInfo,
-      isWaitingForFirstImage: viewportLoading.isWaitingForFirstImage,
+      statusLabel: viewportLoading.statusLabel,
       derivedLegend: {
         rows: derivedLegendRows,
         onVisibilityChange: onDerivedLegendVisibilityChange,
