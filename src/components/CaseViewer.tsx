@@ -5,6 +5,7 @@ import type { AnnotationSettings } from '../AppConfig'
 import type { User } from '../auth'
 import { useStudySummary } from '../contexts/StudySummaryContext'
 import type DicomWebManager from '../DicomWebManager'
+import type { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
 import { OverlayPanel } from '../features/viewer/components/OverlayPanel'
 import { ViewerLoadingLayout } from '../features/viewer/components/ViewerLoadingLayout'
@@ -29,6 +30,12 @@ import { parseSeriesInstanceUID, RoutePaths } from '../utils/routes'
 import { StudySidePanel } from './CaseViewer/StudySidePanel'
 /** skipcq: JS-W1028 - SlideViewer has a default export */
 import SlideViewer from './SlideViewer'
+
+/** Stable empty slide list, so the route resolution does not start over */
+const NO_SLIDES: Slide[] = []
+
+/** Highlights no slide */
+const NO_SERIES = ''
 
 function ParametrizedSlideViewer({
   clients,
@@ -134,9 +141,17 @@ function ViewerBody(props: ViewerProps): JSX.Element | null {
   })
   const { setSummary } = useStudySummary()
   const routeSeriesInstanceUID = parseSeriesInstanceUID(location.pathname)
+  /**
+   * For one render after a study change, useSlides still answers the
+   * previous study; its slides would make the route look like a derived
+   * series of this one
+   */
+  const isStudySlides = slides.every(
+    (slide) => slide.volumeImages[0]?.StudyInstanceUID === studyInstanceUID,
+  )
   const resolution = useRouteSlideResolution({
     clients,
-    slides,
+    slides: isStudySlides ? slides : NO_SLIDES,
     studyInstanceUID,
     seriesInstanceUID: routeSeriesInstanceUID,
     location,
@@ -222,9 +237,9 @@ function ViewerBody(props: ViewerProps): JSX.Element | null {
    */
   const selectedSeriesInstanceUID =
     resolution.shownSeriesInstanceUID ??
-    (routeSeriesInstanceUID !== ''
-      ? routeSeriesInstanceUID
-      : volumeInstances[0].SeriesInstanceUID)
+    (routeSeriesInstanceUID === ''
+      ? volumeInstances[0].SeriesInstanceUID
+      : NO_SERIES)
 
   const studyPanel = (
     <StudySidePanel

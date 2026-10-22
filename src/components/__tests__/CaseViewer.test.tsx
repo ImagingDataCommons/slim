@@ -8,16 +8,17 @@ import {
   useNavigate,
 } from 'react-router'
 
+import { resolveDerivedSeriesSlide } from '../../features/viewer/services/resolveDerivedSeries'
 import CaseViewer from '../CaseViewer'
 
 const mockSlides = [
   {
     seriesInstanceUIDs: ['1.2.3.1'],
-    volumeImages: [{ SeriesInstanceUID: '1.2.3.1' }],
+    volumeImages: [{ StudyInstanceUID: '1.2.3', SeriesInstanceUID: '1.2.3.1' }],
   },
   {
     seriesInstanceUIDs: ['1.2.3.2'],
-    volumeImages: [{ SeriesInstanceUID: '1.2.3.2' }],
+    volumeImages: [{ StudyInstanceUID: '1.2.3', SeriesInstanceUID: '1.2.3.2' }],
   },
 ]
 
@@ -62,21 +63,19 @@ vi.mock('../SlideItem', () => ({
 
 vi.mock('../../features/viewer/services/resolveDerivedSeries', () => ({
   /** 9.9 refers to the second slide; any other series to none */
-  resolveDerivedSeriesSlide: async ({
-    seriesInstanceUID,
-  }: {
-    seriesInstanceUID: string
-  }) =>
-    seriesInstanceUID === '9.9'
-      ? {
-          kind: 'referenced',
-          slide: mockSlides[1],
-          derivedDataset: {
-            SeriesInstanceUID: '9.9',
-            SOPInstanceUID: '9.9.1',
-          },
-        }
-      : { kind: 'unresolved' },
+  resolveDerivedSeriesSlide: vi.fn(
+    async ({ seriesInstanceUID }: { seriesInstanceUID: string }) =>
+      seriesInstanceUID === '9.9'
+        ? {
+            kind: 'referenced',
+            slide: mockSlides[1],
+            derivedDataset: {
+              SeriesInstanceUID: '9.9',
+              SOPInstanceUID: '9.9.1',
+            },
+          }
+        : { kind: 'unresolved' },
+  ),
 }))
 
 vi.mock('../Patient', () => ({ __esModule: true, default: () => null }))
@@ -109,7 +108,7 @@ function probe(location: {
   )
 }
 
-function renderAt(path: string): void {
+function renderAt(path: string, studyInstanceUID = '1.2.3'): void {
   render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
@@ -118,7 +117,7 @@ function renderAt(path: string): void {
           element={
             <CaseViewer
               clients={{}}
-              studyInstanceUID="1.2.3"
+              studyInstanceUID={studyInstanceUID}
               app={{
                 name: 'Slim',
                 version: '1.0.0',
@@ -227,5 +226,13 @@ describe('CaseViewer', () => {
     renderAt('/studies/1.2.3/series/8.8%20')
 
     expect(await screen.findByText('Series not found')).toBeInTheDocument()
+  })
+
+  it('does not look up the route against the slides of another study', () => {
+    vi.mocked(resolveDerivedSeriesSlide).mockClear()
+    /** useSlides still answers study 1.2.3 for the first render */
+    renderAt('/studies/4.5.6/series/7.7', '4.5.6')
+
+    expect(resolveDerivedSeriesSlide).not.toHaveBeenCalled()
   })
 })

@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Location, NavigateFunction } from 'react-router'
 
-import { searchWithoutAuthResponse } from '../../../auth/oidcUser'
+import {
+  hashWithoutAuthResponse,
+  searchWithoutAuthResponse,
+} from '../../../auth/oidcUser'
 import type DicomWebManager from '../../../DicomWebManager'
 import type { Slide } from '../../../data/slides'
 import { logger } from '../../../utils/logger'
@@ -40,7 +43,7 @@ export function useRouteSlideResolution({
   slides: readonly Slide[]
   studyInstanceUID: string
   seriesInstanceUID: string
-  location: Pick<Location, 'pathname' | 'search'>
+  location: Pick<Location, 'pathname' | 'search' | 'hash'>
   navigate: NavigateFunction
 }): RouteSlideResolution {
   const [selectedSlide, setSelectedSlide] = useState(
@@ -53,6 +56,25 @@ export function useRouteSlideResolution({
   )
   /** Derived series whose referenced slide was already looked up */
   const resolvedDerivedSeriesRef = useRef<string | undefined>(undefined)
+  /**
+   * Another study, server or slide list (a retry) starts over: a slide or
+   * dataset resolved from the previous ones must not be kept
+   */
+  const [source, setSource] = useState({ slides, clients, studyInstanceUID })
+  if (
+    source.slides !== slides ||
+    source.clients !== clients ||
+    source.studyInstanceUID !== studyInstanceUID
+  ) {
+    setSource({ slides, clients, studyInstanceUID })
+    setSelectedSlide(findSeriesSlide(slides, seriesInstanceUID))
+    setDerivedDataset(null)
+    setUnresolvedSeriesUID(null)
+  }
+  /** biome-ignore lint/correctness/useExhaustiveDependencies: reset on change */
+  useEffect(() => {
+    resolvedDerivedSeriesRef.current = undefined
+  }, [slides, clients, studyInstanceUID])
   /**
    * Read when correcting the URL, so a query change (such as `?state=`) does
    * not restart a derived-series lookup in flight
@@ -91,6 +113,7 @@ export function useRouteSlideResolution({
               `/series/${match.correctedSeriesUID}`,
             ),
             search: searchWithoutAuthResponse(currentLocation.search),
+            hash: hashWithoutAuthResponse(currentLocation.hash),
           },
           { replace: true },
         )
