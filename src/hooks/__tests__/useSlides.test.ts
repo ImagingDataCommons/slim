@@ -444,6 +444,36 @@ describe('useSlides', () => {
     await waitFor(() => expect(standIn.result.current.slides).toEqual([slide]))
   })
 
+  it("caches a server's fetch although the study was retried on another server", async () => {
+    const onX = clientsFor('https://x.test/dicomWeb')
+    const onY = clientsFor('https://y.test/dicomWeb')
+    let finishY: (() => void) | undefined
+    mockedFetch.mockImplementation(({ clients, onSuccess, onError }) => {
+      if (clients === onY) {
+        /** The fetch started before the retry */
+        finishY ??= () => onSuccess([slide])
+      } else {
+        onError(new Error('unreachable'))
+      }
+      return Promise.resolve()
+    })
+    const x = renderHook(() =>
+      useSlides({ clients: onX, studyInstanceUID: 'both' }),
+    )
+    renderHook(() => useSlides({ clients: onY, studyInstanceUID: 'both' }))
+    await waitFor(() => expect(x.result.current.error).not.toBeNull())
+    await waitFor(() => expect(finishY).toBeDefined())
+
+    act(() => {
+      x.result.current.retry()
+    })
+    act(() => {
+      finishY?.()
+    })
+
+    expect(getCachedSlides('both')).toEqual([slide])
+  })
+
   it('keeps only the most recently loaded studies cached', async () => {
     respondWith([slide])
     const clients = clientsFor('https://a.test/dicomWeb')
