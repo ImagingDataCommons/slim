@@ -222,4 +222,10 @@ describe('CaseViewer', () => {
       )
     }
   })
+
+  it('reports a percent-encoded series that is not found', async () => {
+    renderAt('/studies/1.2.3/series/8.8%20')
+
+    expect(await screen.findByText('Series not found')).toBeInTheDocument()
+  })
 })

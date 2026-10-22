@@ -204,4 +204,22 @@ describe('useStudySearch', () => {
     expect(result.current.matches).toHaveLength(1)
     expect(search).toHaveBeenCalledTimes(4)
   })
+
+  it('still sends the wildcard queries when one exact query fails', async () => {
+    const search = vi.fn(async (params: QueryParams) => {
+      if (params.StudyID !== undefined) {
+        throw Object.assign(new Error('500'), { status: 500 })
+      }
+      return params.PatientID === '*P-9*' ? [studyJson('9.9', 'P-90')] : []
+    })
+    const clients = createClients(search)
+    const { result } = renderHook(() =>
+      useStudySearch({ clients, searchText: 'P-9' }),
+    )
+
+    await waitFor(() => expect(result.current.isSearching).toBe(false))
+    expect(result.current.matches.map((study) => study.PatientID)).toEqual([
+      'P-90',
+    ])
+  })
 })

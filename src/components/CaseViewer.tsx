@@ -20,10 +20,7 @@ import {
   resolvedSeriesInstanceUID,
   useRouteSlideResolution,
 } from '../features/viewer/hooks/useRouteSlideResolution'
-import {
-  presentationStateUIDFromSearch,
-  selectedSeriesForStudyPath,
-} from '../features/viewer/utils/routeSlide'
+import { presentationStateUIDFromSearch } from '../features/viewer/utils/routeSlide'
 import { useSlides } from '../hooks/useSlides'
 import type { AppInfo } from '../utils/appInfo'
 import { buildStudySummary } from '../utils/displayFormat'
@@ -43,8 +40,11 @@ function ParametrizedSlideViewer({
   annotations,
   isLeftPanelOpen,
   onToggleLeftPanel,
+  seriesInstanceUID,
   resolution,
 }: {
+  /** Series UID of the route, as the resolution read it */
+  seriesInstanceUID: string
   /** Slide of the series route, resolved where the slide list reads it too */
   resolution: RouteSlideResolution
   clients: { [key: string]: DicomWebManager }
@@ -57,10 +57,7 @@ function ParametrizedSlideViewer({
   isLeftPanelOpen: boolean
   onToggleLeftPanel: () => void
 }): JSX.Element | null {
-  const { studyInstanceUID = '', seriesInstanceUID = '' } = useParams<{
-    studyInstanceUID: string
-    seriesInstanceUID: string
-  }>()
+  const { studyInstanceUID = '' } = useParams<{ studyInstanceUID: string }>()
   const location = useLocation()
   const { selectedSlide, derivedDataset, unresolvedSeriesUID } = resolution
 
@@ -220,18 +217,14 @@ function ViewerBody(props: ViewerProps): JSX.Element | null {
   const refImage = volumeInstances[0]
 
   /**
-   * The slide list highlights the slide resolved for the route, so a derived
-   * series route shows its slide, and nothing while it is looked up or when
-   * it is not found
+   * The slide list highlights the series resolved for the route: none while
+   * a derived series is looked up or when it is not found
    */
   const selectedSeriesInstanceUID =
-    resolution.routeSlide !== undefined
-      ? resolvedSeriesInstanceUID(resolution.routeSlide, routeSeriesInstanceUID)
-      : selectedSeriesForStudyPath({
-          slides,
-          pathname: location.pathname,
-          fallbackSeriesInstanceUID: volumeInstances[0].SeriesInstanceUID,
-        })
+    resolution.shownSeriesInstanceUID ??
+    (routeSeriesInstanceUID !== ''
+      ? routeSeriesInstanceUID
+      : volumeInstances[0].SeriesInstanceUID)
 
   const studyPanel = (
     <StudySidePanel
@@ -279,6 +272,7 @@ function ViewerBody(props: ViewerProps): JSX.Element | null {
                 user={props.user}
                 isLeftPanelOpen={chrome.isLeftPanelOpen}
                 onToggleLeftPanel={chrome.toggleLeftPanel}
+                seriesInstanceUID={routeSeriesInstanceUID}
                 resolution={resolution}
               />
             }

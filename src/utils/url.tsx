@@ -67,6 +67,31 @@ export const joinUrl = (path: string, uri: string): string => {
   return url.toString()
 }
 
+/** Parameters of an authorize response that grants a code or an ID token */
+const AUTH_GRANT_KEYS = ['code', 'id_token', 'session_state']
+
+/** Query or fragment parameters of a location */
+const locationParams = (location: {
+  search: string
+  hash: string
+}): URLSearchParams[] => [
+  new URLSearchParams(location.search),
+  new URLSearchParams(location.hash.replace('#', '?')),
+]
+
+const hasAny = (params: URLSearchParams, keys: readonly string[]): boolean =>
+  keys.some((key) => Boolean(params.get(key)))
+
+/**
+ * Whether query or fragment parameters are an authorize response, success
+ * or error. The one rule for "is this a sign-in callback": the app shell
+ * routes by it, and the viewer strips such parameters before writing the
+ * URL back. A bare `error` counts, as a silent renew can answer
+ * `error=login_required` without a `state`.
+ */
+export const isAuthResponseParams = (params: URLSearchParams): boolean =>
+  hasAny(params, [...AUTH_GRANT_KEYS, 'access_token', 'error'])
+
 /**
  * Check whether a URL contains an OAuth 2.0 authorization code.
  *
@@ -76,30 +101,8 @@ export const joinUrl = (path: string, uri: string): string => {
 export const isAuthorizationCodeInUrl = (location: {
   search: string
   hash: string
-}): boolean => {
-  const searchParams = new URLSearchParams(location.search)
-  const hashParams = new URLSearchParams(location.hash.replace('#', '?'))
-
-  return Boolean(
-    searchParams.get('code') ??
-      searchParams.get('id_token') ??
-      searchParams.get('session_state') ??
-      hashParams.get('code') ??
-      hashParams.get('id_token') ??
-      hashParams.get('session_state'),
-  )
-}
-
-/** Parameters only an authorize response carries */
-const AUTH_RESPONSE_KEYS = ['code', 'id_token', 'session_state', 'access_token']
-
-/**
- * Whether query or fragment parameters are an authorize response: tokens or
- * a code, or an error answering a request (`error` with its `state`).
- */
-export const isAuthResponseParams = (params: URLSearchParams): boolean =>
-  AUTH_RESPONSE_KEYS.some((key) => Boolean(params.get(key))) ||
-  (Boolean(params.get('error')) && params.has('state'))
+}): boolean =>
+  locationParams(location).some((params) => hasAny(params, AUTH_GRANT_KEYS))
 
 /**
  * True when the URL looks like an OIDC authorize redirect back to the app
@@ -110,14 +113,7 @@ export const isAuthResponseParams = (params: URLSearchParams): boolean =>
 export const isOidcAuthorizeCallbackUrl = (location: {
   search: string
   hash: string
-}): boolean => {
-  const searchParams = new URLSearchParams(location.search)
-  const hashParams = new URLSearchParams(location.hash.replace('#', '?'))
-  /** A silent renew can answer `error=login_required` without a `state` */
-  return [searchParams, hashParams].some(
-    (params) => isAuthResponseParams(params) || Boolean(params.get('error')),
-  )
-}
+}): boolean => locationParams(location).some(isAuthResponseParams)
 
 /**
  * For a callback-shaped URL that carries no `state`, which no pending request

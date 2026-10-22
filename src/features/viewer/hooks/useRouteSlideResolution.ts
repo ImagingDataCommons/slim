@@ -17,11 +17,11 @@ export interface RouteSlideResolution {
   /** Series from the URL that resolved to no slide of this study */
   unresolvedSeriesUID: string | null
   /**
-   * Slide resolved for the current route: undefined while a derived series
-   * is looked up or when it resolves to none, even though `selectedSlide`
-   * still shows the previous slide meanwhile
+   * Image series the slide list highlights for the route: undefined while a
+   * derived series is looked up or when it resolves to no slide, even though
+   * `selectedSlide` still shows the previous slide meanwhile
    */
-  routeSlide: Slide | undefined
+  shownSeriesInstanceUID: string | undefined
 }
 
 /**
@@ -100,8 +100,12 @@ export function useRouteSlideResolution({
 
     /** Already resolved for this route; the selectedSlide update re-ran us */
     if (resolvedDerivedSeriesRef.current === seriesInstanceUID) return
-    /** Another derived series' dataset must not be shown while this resolves */
+    /**
+     * Another derived series' dataset must not be shown while this resolves,
+     * nor an earlier "not found" for this one while it is tried again
+     */
     setDerivedDataset(null)
+    setUnresolvedSeriesUID(null)
 
     /** Set on cleanup so a superseded lookup cannot select a stale slide */
     let isCancelled = false
@@ -145,12 +149,16 @@ export function useRouteSlideResolution({
     derivedDataset !== null &&
     derivedDataset.SeriesInstanceUID === seriesInstanceUID &&
     selectedSlide != null
+  const routeSlide =
+    routeImageSlide ?? (isDerivedResolved ? selectedSlide : undefined)
   return {
     selectedSlide: routeImageSlide ?? selectedSlide,
     derivedDataset,
     unresolvedSeriesUID,
-    routeSlide:
-      routeImageSlide ?? (isDerivedResolved ? selectedSlide : undefined),
+    shownSeriesInstanceUID:
+      routeSlide != null
+        ? resolvedSeriesInstanceUID(routeSlide, seriesInstanceUID)
+        : undefined,
   }
 }
 

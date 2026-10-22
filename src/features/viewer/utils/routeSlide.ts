@@ -49,28 +49,6 @@ export function presentationStateUIDFromSearch(
 }
 
 /**
- * Series UID to highlight in the slide list: corrected from the path when it
- * matches a slide, otherwise the path value or the first volume series.
- */
-export function selectedSeriesForStudyPath({
-  slides,
-  pathname,
-  fallbackSeriesInstanceUID,
-}: {
-  slides: readonly Slide[]
-  pathname: string
-  fallbackSeriesInstanceUID: string
-}): string {
-  const seriesFromPath = parseSeriesInstanceUID(pathname)
-  if (seriesFromPath === '') return fallbackSeriesInstanceUID
-  /** Matched like the viewer route, so both agree on the slide */
-  const slideForPath = findSeriesSlide(slides, seriesFromPath)
-  return slideForPath !== undefined
-    ? (canonicalRouteSeriesUID(slideForPath, seriesFromPath) ?? seriesFromPath)
-    : seriesFromPath
-}
-
-/**
  * Pathname with a mangled series UID of `slide` replaced by its canonical
  * UID, so the URL correction does not count as a new route. Derived series
  * (not series of the slide) keep their own UID.

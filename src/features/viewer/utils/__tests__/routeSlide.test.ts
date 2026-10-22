@@ -4,7 +4,6 @@ import {
   findSeriesSlide,
   matchSlideForSeriesRoute,
   presentationStateUIDFromSearch,
-  selectedSeriesForStudyPath,
 } from '../routeSlide'
 
 function slide(partial: {
@@ -54,48 +53,6 @@ describe('presentationStateUIDFromSearch', () => {
   it('returns undefined without state', () => {
     expect(presentationStateUIDFromSearch('')).toBeUndefined()
     expect(presentationStateUIDFromSearch('?gcp=x')).toBeUndefined()
-  })
-})
-
-describe('selectedSeriesForStudyPath', () => {
-  it('uses the fallback when the path has no series', () => {
-    expect(
-      selectedSeriesForStudyPath({
-        slides,
-        pathname: '/studies/1.2.3',
-        fallbackSeriesInstanceUID: '1.2.3',
-      }),
-    ).toBe('1.2.3')
-  })
-
-  it('corrects a mangled series UID that matches a slide', () => {
-    expect(
-      selectedSeriesForStudyPath({
-        slides,
-        pathname: '/studies/s/series/1.2.3.2.0.1.0',
-        fallbackSeriesInstanceUID: '1.2.3',
-      }),
-    ).toBe('1.2.3.2.0.1')
-  })
-
-  it('highlights no slide for a derived series named after one', () => {
-    expect(
-      selectedSeriesForStudyPath({
-        slides,
-        pathname: '/studies/s/series/1.2.3.7',
-        fallbackSeriesInstanceUID: '1.2.3',
-      }),
-    ).toBe('1.2.3.7')
-  })
-
-  it('keeps an unknown series UID from the path', () => {
-    expect(
-      selectedSeriesForStudyPath({
-        slides,
-        pathname: '/studies/s/series/9.9.9',
-        fallbackSeriesInstanceUID: '1.2.3',
-      }),
-    ).toBe('9.9.9')
   })
 })
 

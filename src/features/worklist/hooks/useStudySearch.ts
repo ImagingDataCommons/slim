@@ -97,8 +97,12 @@ export function useStudySearch({
             studiesByUid.set(formatted.StudyInstanceUID, formatted)
           }
         }
-        /** A failing server would fail the next stage too */
-        if (studiesByUid.size > 0 || failed) break
+        /**
+         * A server failing every query would fail the next stage too; one
+         * failing query (an attribute it cannot search) must not stop it
+         */
+        const stageFailed = responses.every((response) => response.failed)
+        if (studiesByUid.size > 0 || stageFailed) break
       }
       setResult({ client, query, studies: [...studiesByUid.values()], failed })
     }

@@ -157,6 +157,41 @@ describe('useRouteSlideResolution', () => {
 
     expect(seen).not.toContain(IMAGE_SERIES)
   })
+
+  it('does not show an earlier "not found" while a series is tried again', async () => {
+    const slide = createTestSlide(IMAGE_SERIES)
+    const slides = [slide]
+    const clients = createTestClients()
+    const navigate = vi.fn()
+    vi.mocked(resolveDerivedSeriesSlide).mockResolvedValueOnce({
+      kind: 'unresolved',
+    })
+    const { result, rerender } = renderHook(
+      ({ seriesInstanceUID }: { seriesInstanceUID: string }) =>
+        useRouteSlideResolution({
+          clients,
+          slides,
+          studyInstanceUID: '2.25.1',
+          seriesInstanceUID,
+          location: { pathname: `/series/${seriesInstanceUID}`, search: '' },
+          navigate,
+        }),
+      { initialProps: { seriesInstanceUID: DERIVED_SERIES } },
+    )
+    await waitFor(() =>
+      expect(result.current.unresolvedSeriesUID).toBe(DERIVED_SERIES),
+    )
+    /** Lookups that are still running */
+    vi.mocked(resolveDerivedSeriesSlide).mockReturnValue(
+      new Promise(() => undefined),
+    )
+
+    rerender({ seriesInstanceUID: `${DERIVED_SERIES}1` })
+    rerender({ seriesInstanceUID: DERIVED_SERIES })
+
+    expect(result.current.unresolvedSeriesUID).toBeNull()
+    expect(result.current.shownSeriesInstanceUID).toBeUndefined()
+  })
 })
 
 describe('resolvedSeriesInstanceUID', () => {

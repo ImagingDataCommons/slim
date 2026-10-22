@@ -142,10 +142,13 @@ describe('isAuthResponseParams', () => {
     }
   })
 
-  it('does not take an app error parameter for a response', () => {
-    expect(isAuthResponseParams(new URLSearchParams('error=x&gcp=y'))).toBe(
-      false,
-    )
+  it('recognizes an error without a state, as a silent renew sends', () => {
+    expect(
+      isAuthResponseParams(new URLSearchParams('error=login_required')),
+    ).toBe(true)
+  })
+
+  it('does not take a presentation state for a response', () => {
     expect(isAuthResponseParams(new URLSearchParams('state=pr-1'))).toBe(false)
   })
 })

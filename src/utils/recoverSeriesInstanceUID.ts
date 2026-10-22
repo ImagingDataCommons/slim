@@ -79,7 +79,6 @@ export function findSlideBySeriesInstanceUID<
 export function seriesUidFromSlide(
   slide: { seriesInstanceUIDs: string[] },
   preferredSeriesInstanceUID?: string,
-  options: { allowPrefix?: boolean } = {},
 ): string {
   if (
     preferredSeriesInstanceUID !== undefined &&
@@ -88,7 +87,6 @@ export function seriesUidFromSlide(
     const recovered = recoverSeriesInstanceUID(
       preferredSeriesInstanceUID,
       slide.seriesInstanceUIDs,
-      options,
     )
     if (recovered !== undefined) {
       return recovered
