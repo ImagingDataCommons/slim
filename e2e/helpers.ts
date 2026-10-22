@@ -1,5 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 
+import { seriesUrl, studies } from './studies'
+
 export interface ViewportStats {
   mean: number
   stdDev: number
@@ -197,7 +199,7 @@ export async function captureViewport(page: Page): Promise<Buffer> {
 async function decodeAndMeasure(
   page: Page,
   pngs: Buffer[],
-): Promise<{ stats: ViewportStats[]; meanDiff: number }> {
+): Promise<{ stats: ViewportStats[]; meanDiff: number; colorDiff: number }> {
   return page.evaluate(
     async (encoded) => {
       const widths: number[] = []
@@ -230,20 +232,29 @@ async function decodeAndMeasure(
         return { mean, stdDev: Math.sqrt(sumSquares / count - mean * mean) }
       })
       let meanDiff = 0
+      let colorDiff = 0
       /** Captures of different sizes never count as matching */
       if (
         images.length === 2 &&
         (widths[0] !== widths[1] || images[0].length !== images[1].length)
       ) {
         meanDiff = Number.POSITIVE_INFINITY
+        colorDiff = Number.POSITIVE_INFINITY
       } else if (images.length === 2) {
         let total = 0
+        let colorTotal = 0
         for (let i = 0; i < images[0].length; i += 4) {
           total += Math.abs(luminance(images[0], i) - luminance(images[1], i))
+          for (let channel = 0; channel < 3; channel++) {
+            colorTotal += Math.abs(
+              images[0][i + channel] - images[1][i + channel],
+            )
+          }
         }
         meanDiff = total / (images[0].length / 4)
+        colorDiff = colorTotal / ((images[0].length / 4) * 3)
       }
-      return { stats, meanDiff }
+      return { stats, meanDiff, colorDiff }
     },
     pngs.map((png) => png.toString('base64')),
   )
@@ -263,6 +274,19 @@ export async function viewportDiff(
   after: Buffer,
 ): Promise<number> {
   return (await decodeAndMeasure(page, [before, after])).meanDiff
+}
+
+/**
+ * Mean absolute per-channel (RGB) difference between two viewport captures.
+ * Unlike viewportDiff it also sees hue shifts at equal brightness, such as
+ * an ICC color correction.
+ */
+export async function viewportColorDiff(
+  page: Page,
+  before: Buffer,
+  after: Buffer,
+): Promise<number> {
+  return (await decodeAndMeasure(page, [before, after])).colorDiff
 }
 
 /**
@@ -616,3 +640,52 @@ export async function openPresentationStatePicker(
     .toBe(true)
   return options
 }
+
+/** Brightfield slide whose image carries an ICC profile */
+export const iccSlideUrl = seriesUrl({
+  study: studies.tcgaGbm.study,
+  series: studies.tcgaGbm.dx1Slide,
+})
+
+/** Bulk data of the ICC Profile attribute of an optical path */
+const ICC_PROFILE_REQUEST = /\/bulkdata\/00480105\/\d+\/00282000/
+
+/**
+ * Holds back the ICC profile responses so the first tiles are drawn without
+ * color correction, as on a slow network. Resolves when they are released.
+ */
+export async function delayIccProfiles(
+  page: Page,
+  delayMs: number,
+): Promise<void> {
+  await page.route(ICC_PROFILE_REQUEST, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, delayMs))
+    await route.continue()
+  })
+}
+
+/** Fails the ICC profile requests, so the slide is drawn without correction */
+export async function blockIccProfiles(page: Page): Promise<void> {
+  await page.route(ICC_PROFILE_REQUEST, (route) => route.abort())
+}
+
+/** The viewport status pill, while it is shown */
+export function statusPill(page: Page, label: string) {
+  return page
+    .getByRole('status')
+    .locator('[aria-hidden="false"]', { hasText: label })
+}
+
+/** Settled capture of the slide once its color profile has been drawn */
+export async function captureCorrectedViewport(page: Page): Promise<Buffer> {
+  await expect(statusPill(page, 'Applying color profile')).toHaveCount(0, {
+    timeout: 60_000,
+  })
+  return captureSettledViewport(page, { quietMs: 1000 })
+}
+
+/**
+ * A capture differing by less than this matches; the ICC correction of this
+ * slide changes the image by several times more
+ */
+export const SAME_IMAGE = 1.5

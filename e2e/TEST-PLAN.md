@@ -119,6 +119,10 @@ Open the [IMC slide](http://localhost:3000/studies/2.25.289188443974026654725116
 - [ ] **O3** e2e. Picking a presentation state adds `?state=` and recolors the slide. Reset clears it.
 - [ ] **O4** e2e. Reloading with `?state=` in the URL keeps that state.
 - [ ] **O5** e2e. On the [DX1 slide](http://localhost:3000/studies/2.25.169142599340531625361659178384453215494/series/1.3.6.1.4.1.5962.99.1.1127304153.1690914100.1637509876697.2.0), Display options → ICC profiles shifts the colors.
+- [ ] **ICC1** e2e. On the [DX1 slide](http://localhost:3000/studies/2.25.169142599340531625361659178384453215494/series/1.3.6.1.4.1.5962.99.1.1127304153.1690914100.1637509876697.2.0), the first view is color corrected, also when the ICC profile arrives after the first tiles were requested (the test holds the profile back).
+- [ ] **ICC2** e2e. On a wide-gamut (Display P3) screen, the slide stays on screen while the ICC profile is applied; it never blanks.
+- [ ] **ICC3** e2e. "Applying color profile" shows from the first image until the corrected colors are drawn.
+- [ ] **ICC4** e2e. Display options → ICC profiles off shows the uncorrected colors, on again the corrected ones.
 - [ ] **O6** e2e. On the [bone marrow ANN](http://localhost:3000/studies/1.2.826.0.1.3680043.8.498.68164890741340078452950522749989442436/series/1.2.826.0.1.3680043.10.511.3.32704286069299586301112252202253953), the clustering threshold accepts `0.0005`.
 - [ ] **O7** e2e. Channel color and opacity change the image.
 - [ ] **O8** e2e. On the [parametric map](http://localhost:3000/studies/2.25.169142599340531625361659178384453215494/series/1.2.826.0.1.3680043.10.511.3.75366725734262349592517155782982171), Display options → Gamma correction changes the overlay. It applies to palette colors (maps and binary segments), not to channels.
