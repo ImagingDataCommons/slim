@@ -43,8 +43,8 @@ function lookupClients(clients: {
  * lack it (a failed retrieve would reach the app's error handling) and
  * records the store the retrieve then asks first. Clients are asked one at
  * a time, so stores after the one with the series are never contacted (or
- * asked for credentials); a client whose search or retrieve fails is
- * skipped.
+ * asked for credentials); a client whose search or retrieve fails, or
+ * whose retrieve finds nothing, is skipped.
  */
 async function retrieveFromStoreWithSeries(
   clients: { [key: string]: DicomWebManager },
@@ -67,10 +67,11 @@ async function retrieveFromStoreWithSeries(
     }
     if (series.length === 0) continue
     try {
-      return await client.retrieveSeriesMetadata({
+      const metadata = await client.retrieveSeriesMetadata({
         studyInstanceUID,
         seriesInstanceUID,
       })
+      if (metadata.length > 0) return metadata
     } catch (error) {
       /** Listed but not served here; another client may serve it */
       logger.warn(

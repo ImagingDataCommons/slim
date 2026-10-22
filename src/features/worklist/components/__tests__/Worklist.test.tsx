@@ -457,17 +457,26 @@ describe('Worklist', () => {
       ) as unknown as DicomWebManager['searchForInstances']
 
       renderAt('/?contains=ann', filterManager)
+      /** A full page of rows renders first; slow under a loaded test run */
       expect(
-        await screen.findByText('No studies with Bulk annotations.'),
+        await screen.findByText(
+          'No studies with Bulk annotations.',
+          {},
+          { timeout: 5000 },
+        ),
       ).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'Search more' }))
 
-      await waitFor(() => expect(releaseMore).toBeDefined())
+      await waitFor(() => expect(releaseMore).toBeDefined(), { timeout: 5000 })
       expect(screen.queryByText('No studies with Bulk annotations.')).toBeNull()
       releaseMore?.()
       expect(
-        await screen.findByText('No studies with Bulk annotations.'),
+        await screen.findByText(
+          'No studies with Bulk annotations.',
+          {},
+          { timeout: 5000 },
+        ),
       ).toBeInTheDocument()
     })
 

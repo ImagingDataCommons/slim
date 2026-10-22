@@ -122,6 +122,24 @@ describe('resolveDerivedSeriesSlide', () => {
     expect(resolution.kind).toBe('referenced')
   })
 
+  it('asks the next client when one lists the series but returns no metadata', async () => {
+    const slide = createTestSlide(IMAGE_SERIES)
+    const listsOnly = client([derivedMetadata])
+    vi.mocked(listsOnly.retrieveSeriesMetadata).mockResolvedValue([])
+    const serves = client([derivedMetadata])
+    const resolution = await resolveDerivedSeriesSlide({
+      clients: {
+        [StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]: listsOnly,
+        [StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION]: serves,
+      },
+      slides: [slide],
+      studyInstanceUID: STUDY,
+      seriesInstanceUID: DERIVED_SERIES,
+    })
+
+    expect(resolution.kind).toBe('referenced')
+  })
+
   it('is unresolved when no store has the series', async () => {
     const resolution = await resolveDerivedSeriesSlide({
       clients: { [StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]: client() },

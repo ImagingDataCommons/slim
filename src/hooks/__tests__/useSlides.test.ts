@@ -218,6 +218,77 @@ describe('useSlides', () => {
     expect(result.current.slides).toEqual([])
   })
 
+  it('returns a cached study as loaded while another fetch runs', async () => {
+    const clients = clientsFor('https://a.test/dicomWeb')
+    mockedFetch.mockImplementation(({ studyInstanceUID, onSuccess }) => {
+      /** The second study never answers */
+      if (studyInstanceUID === 'loaded') onSuccess([slide])
+      return Promise.resolve()
+    })
+    const renders: Array<{ study: string; isLoading: boolean }> = []
+    const { result, rerender } = renderHook(
+      ({ studyInstanceUID }) => {
+        const value = useSlides({ clients, studyInstanceUID })
+        renders.push({ study: studyInstanceUID, isLoading: value.isLoading })
+        return value
+      },
+      { initialProps: { studyInstanceUID: 'loaded' } },
+    )
+    await waitFor(() => expect(result.current.slides).toEqual([slide]))
+    rerender({ studyInstanceUID: 'pending' })
+    await waitFor(() => expect(result.current.isLoading).toBe(true))
+    renders.length = 0
+
+    rerender({ studyInstanceUID: 'loaded' })
+
+    /** The first render back is already loaded */
+    expect(renders[0]).toEqual({ study: 'loaded', isLoading: false })
+  })
+
+  it('does not return expired slides as loaded', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const clients = clientsFor('https://a.test/dicomWeb')
+      respondWith([slide])
+      const first = renderHook(() =>
+        useSlides({ clients, studyInstanceUID: 'old' }),
+      )
+      await waitFor(() => expect(first.result.current.slides).toEqual([slide]))
+      first.unmount()
+      vi.advanceTimersByTime(31 * 60 * 1000)
+      mockedFetch.mockImplementation(() => new Promise(() => undefined))
+
+      const { result } = renderHook(() =>
+        useSlides({ clients, studyInstanceUID: 'old' }),
+      )
+
+      expect(result.current).toMatchObject({ slides: [], isLoading: true })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not take a study without clients as loaded once clients arrive', async () => {
+    mockedFetch.mockImplementation(() => new Promise(() => undefined))
+    type Props = { clients?: { [key: string]: DicomWebManager } }
+    const renders: boolean[] = []
+    const { result, rerender } = renderHook(
+      ({ clients }: Props) => {
+        const value = useSlides({ clients, studyInstanceUID: 'later' })
+        renders.push(value.isLoading)
+        return value
+      },
+      { initialProps: {} as Props },
+    )
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    renders.length = 0
+
+    rerender({ clients: clientsFor('') })
+
+    /** The first render with clients has not loaded the study yet */
+    expect(renders[0]).toBe(true)
+  })
+
   it('keeps only the most recently loaded studies cached', async () => {
     respondWith([slide])
     const clients = clientsFor('https://a.test/dicomWeb')
