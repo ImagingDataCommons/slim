@@ -7,6 +7,7 @@ import { StorageClasses } from '../../data/uids'
 import { fetchImageMetadata } from '../../services/fetchImageMetadata'
 import {
   clearSlidesCache,
+  getCachedSlides,
   isSlidesCached,
   MAX_CACHED_STUDIES,
   useSlides,
@@ -348,6 +349,99 @@ describe('useSlides', () => {
 
     expect(renders[0]).toEqual({ study: 'failing', hasError: false })
     expect(result.current.isLoading).toBe(true)
+  })
+
+  it('shows loading, not an old result, back from a study still loading', async () => {
+    const clients = clientsFor('https://a.test/dicomWeb')
+    mockedFetch.mockImplementation(({ studyInstanceUID, onError }) => {
+      if (studyInstanceUID === 'failing') onError(new Error('unreachable'))
+      /** The other study never answers */
+      return Promise.resolve()
+    })
+    const renders: Array<{ study: string; hasError: boolean }> = []
+    const { result, rerender } = renderHook(
+      ({ studyInstanceUID }) => {
+        const value = useSlides({ clients, studyInstanceUID })
+        renders.push({
+          study: studyInstanceUID,
+          hasError: value.error !== null,
+        })
+        return value
+      },
+      { initialProps: { studyInstanceUID: 'failing' } },
+    )
+    await waitFor(() => expect(result.current.error).not.toBeNull())
+    rerender({ studyInstanceUID: 'pending' })
+    await waitFor(() => expect(result.current.isLoading).toBe(true))
+    mockedFetch.mockImplementation(() => new Promise(() => undefined))
+    renders.length = 0
+
+    rerender({ studyInstanceUID: 'failing' })
+
+    expect(renders[0]).toEqual({ study: 'failing', hasError: false })
+  })
+
+  it('does not show evicted slides as loaded when coming back', async () => {
+    const clients = clientsFor('https://a.test/dicomWeb')
+    mockedFetch.mockImplementation(({ studyInstanceUID, onSuccess }) => {
+      if (studyInstanceUID === 'first') onSuccess([slide])
+      return Promise.resolve()
+    })
+    const renders: Array<{ study: string; isLoading: boolean }> = []
+    const { result, rerender } = renderHook(
+      ({ studyInstanceUID }) => {
+        const value = useSlides({ clients, studyInstanceUID })
+        renders.push({ study: studyInstanceUID, isLoading: value.isLoading })
+        return value
+      },
+      { initialProps: { studyInstanceUID: 'first' } },
+    )
+    await waitFor(() => expect(result.current.slides).toEqual([slide]))
+    rerender({ studyInstanceUID: 'pending' })
+    clearSlidesCache('first')
+    mockedFetch.mockImplementation(() => new Promise(() => undefined))
+    renders.length = 0
+
+    rerender({ studyInstanceUID: 'first' })
+
+    expect(renders[0]).toEqual({ study: 'first', isLoading: true })
+  })
+
+  it('does not let a superseded attempt overwrite the cache', async () => {
+    const clients = clientsFor('https://a.test/dicomWeb')
+    const newer = { volumeImages: [{}] } as unknown as Slide
+    let finishOlder: (() => void) | undefined
+    mockedFetch.mockImplementationOnce(({ onSuccess }) => {
+      finishOlder = () => onSuccess([slide])
+      return Promise.resolve()
+    })
+    const { result } = renderHook(() =>
+      useSlides({ clients, studyInstanceUID: 'retried' }),
+    )
+    await waitFor(() => expect(finishOlder).toBeDefined())
+    respondWith([newer])
+    act(() => {
+      result.current.retry()
+    })
+    await waitFor(() => expect(result.current.slides[0]).toBe(newer))
+
+    act(() => {
+      finishOlder?.()
+    })
+
+    expect(getCachedSlides('retried')?.[0]).toBe(newer)
+  })
+
+  it('follows the cache without a study', async () => {
+    const clients = clientsFor('https://a.test/dicomWeb')
+    mockedFetch.mockImplementation(() => new Promise(() => undefined))
+    const standIn = renderHook(() => useSlides())
+    expect(standIn.result.current.slides).toEqual([])
+    respondWith([slide])
+
+    renderHook(() => useSlides({ clients, studyInstanceUID: 'latest' }))
+
+    await waitFor(() => expect(standIn.result.current.slides).toEqual([slide]))
   })
 
   it('keeps only the most recently loaded studies cached', async () => {

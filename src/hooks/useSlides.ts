@@ -60,6 +60,28 @@ const CACHE_EXPIRATION_TIME = 30 * 60 * 1000
 /** Studies whose slide metadata stays cached; the least recent is dropped */
 export const MAX_CACHED_STUDIES = 10
 
+/**
+ * Most recently cached entry, the stand-in for callers without a study, and
+ * the listeners told when it changes
+ */
+let latestEntry: CachedSlides | undefined
+const latestEntryListeners = new Set<() => void>()
+
+const subscribeToLatestEntry = (listener: () => void): (() => void) => {
+  latestEntryListeners.add(listener)
+  return () => {
+    latestEntryListeners.delete(listener)
+  }
+}
+
+/** Call after any cache change */
+const updateLatestEntry = (): void => {
+  const latest = [...slidesCache.values()].at(-1)
+  if (latest === latestEntry) return
+  latestEntry = latest
+  for (const listener of latestEntryListeners) listener()
+}
+
 /** Cache `slides` as the most recent entry, evicting the least recent */
 const cacheSlides = (studyInstanceUID: string, entry: CachedSlides): void => {
   slidesCache.delete(studyInstanceUID)
@@ -71,6 +93,7 @@ const cacheSlides = (studyInstanceUID: string, entry: CachedSlides): void => {
     slidesCache.delete(oldest)
     cacheTimestamps.delete(oldest)
   }
+  updateLatestEntry()
 }
 
 const isExpired = (studyInstanceUID: string): boolean =>
@@ -84,6 +107,7 @@ const cleanupExpiredCache = (): void => {
       cacheTimestamps.delete(key)
     }
   }
+  updateLatestEntry()
 }
 
 const getServerUrl = (clients: { [key: string]: DicomWebManager }): string =>
@@ -124,6 +148,7 @@ export const clearSlidesCache = (studyInstanceUID?: string): void => {
     cacheTimestamps.clear()
     pendingRequests.clear()
   }
+  updateLatestEntry()
 }
 
 export const getCachedSlides = (
@@ -167,6 +192,22 @@ export const useSlides = ({
   )
   /** Study and server a fetch is running for */
   const [pendingKey, setPendingKey] = useState<string | undefined>(undefined)
+  /**
+   * Study and server this instance serves. When they change, what it
+   * delivered before is dropped: coming back to them later must not show
+   * that old result, which the cache or a new fetch answers instead
+   */
+  const key =
+    clients == null || studyInstanceUID === undefined || studyInstanceUID === ''
+      ? ''
+      : `${getServerUrl(clients)}|${studyInstanceUID}`
+  const [servedKey, setServedKey] = useState(key)
+  if (servedKey !== key) {
+    setServedKey(key)
+    setDelivered(undefined)
+    setPendingKey(undefined)
+  }
+  const latest = useSyncExternalStore(subscribeToLatestEntry, () => latestEntry)
   const attempt = useSyncExternalStore(
     subscribeToRetries,
     () => retryGenerations.get(studyInstanceUID ?? '') ?? 0,
@@ -182,21 +223,28 @@ export const useSlides = ({
   useEffect(() => {
     cleanupExpiredCache()
     setPendingKey(undefined)
-
-    /** Without a study, the most recently cached slides stand in */
-    if (studyInstanceUID === undefined || studyInstanceUID === '') {
-      const latest = [...slidesCache.values()].at(-1)
-      setDelivered({ key: '', slides: latest?.slides ?? [], error: null })
+    /** Without a study, or without clients, there is nothing to fetch */
+    if (
+      studyInstanceUID === undefined ||
+      studyInstanceUID === '' ||
+      clients === null ||
+      clients === undefined
+    ) {
       return
     }
-    /** A study without clients has nothing to load from */
-    if (clients === null || clients === undefined) return
 
     const serverUrl = getServerUrl(clients)
     const key = `${serverUrl}|${studyInstanceUID}`
     const cachedSlides = readCachedSlides(clients, studyInstanceUID)
     if (cachedSlides !== undefined) {
-      setDelivered({ key, slides: cachedSlides, error: null })
+      /** Usually what the first render already answered; keep that object */
+      setDelivered((current) =>
+        current?.key === key &&
+        current.slides === cachedSlides &&
+        current.error === null
+          ? current
+          : { key, slides: cachedSlides, error: null },
+      )
       return
     }
     setPendingKey(key)
@@ -215,8 +263,13 @@ export const useSlides = ({
             clients,
             studyInstanceUID,
             onSuccess: (newSlides) => {
-              /** Not cached when empty, so data added to the store later shows up */
-              if (newSlides.length > 0) {
+              /**
+               * Not cached when empty, so data added to the store later shows
+               * up, nor when a retry has started since: its newer answer wins
+               */
+              const isLatestAttempt =
+                (retryGenerations.get(studyInstanceUID) ?? 0) === attempt
+              if (newSlides.length > 0 && isLatestAttempt) {
                 cacheSlides(studyInstanceUID, {
                   serverUrl,
                   slides: newSlides,
@@ -259,18 +312,19 @@ export const useSlides = ({
   }, [clients, studyInstanceUID, attempt])
 
   return useMemo(() => {
+    /** Without a study, the most recently cached slides stand in */
     if (studyInstanceUID === undefined || studyInstanceUID === '') {
       return {
-        slides: delivered?.key === '' ? delivered.slides : NO_SLIDES,
+        slides: latest?.slides ?? NO_SLIDES,
         isLoading: false,
         error: null,
         retry,
       }
     }
+    /** A study without clients has nothing to load from */
     if (clients === null || clients === undefined) {
       return { slides: NO_SLIDES, isLoading: false, error: null, retry }
     }
-    const key = `${getServerUrl(clients)}|${studyInstanceUID}`
     if (delivered?.key === key) {
       const isRefetching = pendingKey === key
       return {
@@ -288,5 +342,5 @@ export const useSlides = ({
     return cachedSlides !== undefined
       ? { slides: cachedSlides, isLoading: false, error: null, retry }
       : { slides: NO_SLIDES, isLoading: true, error: null, retry }
-  }, [clients, studyInstanceUID, delivered, pendingKey, retry])
+  }, [clients, studyInstanceUID, key, latest, delivered, pendingKey, retry])
 }
