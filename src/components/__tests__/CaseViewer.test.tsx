@@ -8,7 +8,6 @@ import {
   useNavigate,
 } from 'react-router'
 
-import { resolveDerivedSeriesSlide } from '../../features/viewer/services/resolveDerivedSeries'
 import CaseViewer from '../CaseViewer'
 
 const mockSlides = [
@@ -159,8 +158,9 @@ describe('CaseViewer', () => {
     expect(await screen.findByTestId('slide-viewer')).toHaveTextContent(
       '1.2.3.1',
     )
+    /** The sign-in response was consumed before the viewer rendered */
     expect(screen.getByTestId('location')).toHaveTextContent(
-      '/studies/1.2.3/series/1.2.3.1?gcp=https%3A%2F%2Fstore.example&access_token=t#x',
+      '/studies/1.2.3/series/1.2.3.1?gcp=https%3A%2F%2Fstore.example#x',
     )
   })
 
@@ -226,13 +226,5 @@ describe('CaseViewer', () => {
     renderAt('/studies/1.2.3/series/8.8%20')
 
     expect(await screen.findByText('Series not found')).toBeInTheDocument()
-  })
-
-  it('does not look up the route against the slides of another study', () => {
-    vi.mocked(resolveDerivedSeriesSlide).mockClear()
-    /** useSlides still answers study 1.2.3 for the first render */
-    renderAt('/studies/4.5.6/series/7.7', '4.5.6')
-
-    expect(resolveDerivedSeriesSlide).not.toHaveBeenCalled()
   })
 })

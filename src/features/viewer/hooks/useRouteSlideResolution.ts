@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Location, NavigateFunction } from 'react-router'
 
 import {
@@ -55,7 +55,9 @@ export function useRouteSlideResolution({
     null,
   )
   /** Derived series whose referenced slide was already looked up */
-  const resolvedDerivedSeriesRef = useRef<string | undefined>(undefined)
+  const [resolvedDerivedSeriesUID, setResolvedDerivedSeriesUID] = useState<
+    string | undefined
+  >(undefined)
   /**
    * Another study, server or slide list (a retry) starts over: a slide or
    * dataset resolved from the previous ones must not be kept
@@ -70,11 +72,8 @@ export function useRouteSlideResolution({
     setSelectedSlide(findSeriesSlide(slides, seriesInstanceUID))
     setDerivedDataset(null)
     setUnresolvedSeriesUID(null)
+    setResolvedDerivedSeriesUID(undefined)
   }
-  /** biome-ignore lint/correctness/useExhaustiveDependencies: reset on change */
-  useEffect(() => {
-    resolvedDerivedSeriesRef.current = undefined
-  }, [slides, clients, studyInstanceUID])
   /**
    * Read when correcting the URL, so a query change (such as `?state=`) does
    * not restart a derived-series lookup in flight
@@ -95,7 +94,7 @@ export function useRouteSlideResolution({
        * The route names an image series, so a derived dataset from an
        * earlier deep link must not be shown again.
        */
-      resolvedDerivedSeriesRef.current = undefined
+      setResolvedDerivedSeriesUID(undefined)
       if (match.kind === 'image') setSelectedSlide(match.slide)
       setDerivedDataset(null)
       setUnresolvedSeriesUID(null)
@@ -122,7 +121,7 @@ export function useRouteSlideResolution({
     }
 
     /** Already resolved for this route; the selectedSlide update re-ran us */
-    if (resolvedDerivedSeriesRef.current === seriesInstanceUID) return
+    if (resolvedDerivedSeriesUID === seriesInstanceUID) return
     /**
      * Another derived series' dataset must not be shown while this resolves,
      * nor an earlier "not found" for this one while it is tried again
@@ -140,7 +139,7 @@ export function useRouteSlideResolution({
     }).then((resolution) => {
       if (isCancelled) return
       if (resolution.kind === 'referenced') {
-        resolvedDerivedSeriesRef.current = seriesInstanceUID
+        setResolvedDerivedSeriesUID(seriesInstanceUID)
         setSelectedSlide(resolution.slide)
         setDerivedDataset(resolution.derivedDataset)
         setUnresolvedSeriesUID(null)
@@ -159,6 +158,7 @@ export function useRouteSlideResolution({
     studyInstanceUID,
     seriesInstanceUID,
     selectedSlide,
+    resolvedDerivedSeriesUID,
     routingRef,
   ])
 

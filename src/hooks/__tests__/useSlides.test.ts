@@ -151,6 +151,38 @@ describe('useSlides', () => {
     expect(result.current.slides).toEqual([slide])
   })
 
+  it("never returns the previous study's slides for the new one", async () => {
+    const clients = clientsFor('https://a.test/dicomWeb')
+    const otherSlide = { volumeImages: [{}, {}] } as unknown as Slide
+    mockedFetch.mockImplementation(({ studyInstanceUID, onSuccess }) => {
+      onSuccess(studyInstanceUID === 'a' ? [slide] : [otherSlide])
+      return Promise.resolve()
+    })
+    const seen: Array<{ study: string; slides: Slide[]; isLoading: boolean }> =
+      []
+    const { result, rerender } = renderHook(
+      ({ studyInstanceUID }) => {
+        const value = useSlides({ clients, studyInstanceUID })
+        seen.push({
+          study: studyInstanceUID,
+          slides: value.slides,
+          isLoading: value.isLoading,
+        })
+        return value
+      },
+      { initialProps: { studyInstanceUID: 'a' } },
+    )
+    await waitFor(() => expect(result.current.slides).toEqual([slide]))
+
+    rerender({ studyInstanceUID: 'b' })
+    await waitFor(() => expect(result.current.slides).toEqual([otherSlide]))
+
+    for (const render of seen.filter((entry) => entry.study === 'b')) {
+      expect(render.slides).not.toContain(slide)
+      if (render.slides.length === 0) expect(render.isLoading).toBe(true)
+    }
+  })
+
   it('keeps only the most recently loaded studies cached', async () => {
     respondWith([slide])
     const clients = clientsFor('https://a.test/dicomWeb')

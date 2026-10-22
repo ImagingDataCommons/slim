@@ -1,10 +1,15 @@
 import {
+  hashWithoutAuthResponse,
+  searchWithoutAuthResponse,
+} from '../../../auth/oidcUser'
+import {
   buildSeriesPath,
   hasSeriesInPath,
   isProjectsPath,
   parseSeriesInstanceUID,
   withSeriesInProjectPath,
 } from '../../../utils/routes'
+import { editSearch } from '../../../utils/url'
 
 export interface SeriesPathParams {
   studyInstanceUID: string
@@ -32,28 +37,21 @@ function seriesPathname({
 export function buildSeriesSelectionPath(params: SeriesPathParams): string {
   const path = seriesPathname(params)
   if (!hasSeriesInPath(params.pathname)) return path
+  const search = searchWithoutAuthResponse(params.search)
   if (parseSeriesInstanceUID(params.pathname) === params.seriesInstanceUID) {
-    return `${path}${params.search}`
+    return `${path}${search}`
   }
-  return `${path}${withoutQueryParam(params.search, 'state')}`
-}
-
-/** `search` without `name`, leaving the other parameters as written */
-function withoutQueryParam(search: string, name: string): string {
-  const kept = search
-    .replace(/^\?/, '')
-    .split('&')
-    .filter((part) => part !== '' && part.split('=')[0] !== name)
-  return kept.length > 0 ? `?${kept.join('&')}` : ''
+  return `${path}${editSearch(search, { remove: ['state'] })}`
 }
 
 /**
  * Path to redirect a study route without a series to, or `undefined` when the
  * route already names a series or the study has no default series.
  *
- * Keeps the query and hash: `?gcp=` routes derived data to a secondary store
- * and `?access_token=` may carry the credentials, so dropping them changes
- * which servers the viewer talks to and how.
+ * Keeps the query and hash: `?gcp=` routes derived data to a secondary store,
+ * so dropping it changes which servers the viewer talks to. A sign-in
+ * response is dropped: the viewer renders only once sign-in has consumed it,
+ * and writing it back would replay the callback on reload.
  */
 export function defaultSeriesRedirectPath({
   defaultSeriesInstanceUID,
@@ -70,5 +68,5 @@ export function defaultSeriesRedirectPath({
     ...params,
     seriesInstanceUID: defaultSeriesInstanceUID,
   })
-  return `${path}${search}${hash}`
+  return `${path}${searchWithoutAuthResponse(search)}${hashWithoutAuthResponse(hash)}`
 }

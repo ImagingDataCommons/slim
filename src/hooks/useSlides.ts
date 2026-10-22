@@ -86,6 +86,18 @@ const cleanupExpiredCache = (): void => {
 const getServerUrl = (clients: { [key: string]: DicomWebManager }): string =>
   clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]?.baseURL ?? ''
 
+/** Study and server a result belongs to; empty without a study */
+const resultKey = (
+  clients: { [key: string]: DicomWebManager } | undefined,
+  studyInstanceUID: string | undefined,
+): string =>
+  clients == null || studyInstanceUID == null || studyInstanceUID === ''
+    ? ''
+    : `${getServerUrl(clients)}|${studyInstanceUID}`
+
+/** Stable empty list while the current study's slides are not loaded */
+const NO_SLIDES: Slide[] = []
+
 export const clearSlidesCache = (studyInstanceUID?: string): void => {
   if (
     studyInstanceUID !== null &&
@@ -133,6 +145,8 @@ export const useSlides = ({
   const [slides, setSlides] = useState<Slide[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [error, setError] = useState<Error | null>(null)
+  /** Study and server the slides and error above were loaded for */
+  const [loadedKey, setLoadedKey] = useState<string | undefined>(undefined)
   const attempt = useSyncExternalStore(
     subscribeToRetries,
     () => retryGenerations.get(studyInstanceUID ?? '') ?? 0,
@@ -168,15 +182,18 @@ export const useSlides = ({
         setIsLoading(false)
         setError(null)
       }
+      setLoadedKey('')
       return
     }
 
     const serverUrl = getServerUrl(clients)
     const cachedData = slidesCache.get(studyInstanceUID)
+    const key = resultKey(clients, studyInstanceUID)
     if (cachedData !== undefined && cachedData.serverUrl === serverUrl) {
       setSlides(cachedData.slides)
       setIsLoading(false)
       setError(null)
+      setLoadedKey(key)
       return
     }
 
@@ -221,11 +238,13 @@ export const useSlides = ({
           if (!isCurrent) return
           setSlides(newSlides)
           setError(null)
+          setLoadedKey(key)
         })
         .catch((err: unknown) => {
           if (!isCurrent) return
           setError(err instanceof Error ? err : new Error(String(err)))
           setSlides([])
+          setLoadedKey(key)
         })
         .finally(() => {
           pendingRequests.delete(requestKey)
@@ -239,13 +258,18 @@ export const useSlides = ({
     }
   }, [clients, studyInstanceUID, attempt])
 
+  /**
+   * Until the effect has run for a new study or server, the state above
+   * still holds the previous one's result; it is never returned as this one's
+   */
+  const isCurrentResult = loadedKey === resultKey(clients, studyInstanceUID)
   return useMemo(
     () => ({
-      slides,
-      isLoading,
-      error,
+      slides: isCurrentResult ? slides : NO_SLIDES,
+      isLoading: isLoading || !isCurrentResult,
+      error: isCurrentResult ? error : null,
       retry,
     }),
-    [slides, isLoading, error, retry],
+    [isCurrentResult, slides, isLoading, error, retry],
   )
 }

@@ -4,7 +4,11 @@ import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../services/NotificationMiddleware'
 import { CustomError, errorTypes } from '../utils/CustomError'
-import { editSearch, isAuthResponseParams } from '../utils/url'
+import {
+  editSearch,
+  isAuthResponseParams,
+  isOidcAuthorizeCallbackUrl,
+} from '../utils/url'
 import type { User } from '.'
 
 /** Query and fragment parameters an authorize redirect may append */
@@ -103,7 +107,7 @@ export const searchWithoutAuthResponse = (search: string): string =>
 
 /** Hash to write back to the URL: none when it holds an implicit response */
 export const hashWithoutAuthResponse = (hash: string): string =>
-  isAuthResponseParams(new URLSearchParams(hash.replace(/^#/, ''))) ? '' : hash
+  isOidcAuthorizeCallbackUrl({ search: '', hash }) ? '' : hash
 
 /**
  * Drop authorize response parameters from the address bar so tokens are not
