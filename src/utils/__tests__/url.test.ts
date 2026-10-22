@@ -2,6 +2,7 @@ import {
   editSearch,
   GCP_HEALTHCARE_V1_BASE,
   isAuthorizationCodeInUrl,
+  isAuthResponseParams,
   isOidcAuthorizeCallbackUrl,
   normalizeServerUrl,
 } from '../url'
@@ -126,5 +127,25 @@ describe('editSearch', () => {
   it('returns an empty string when nothing is left', () => {
     expect(editSearch('?state=a', { remove: ['state'] })).toBe('')
     expect(editSearch('', {})).toBe('')
+  })
+})
+
+describe('isAuthResponseParams', () => {
+  it('recognizes tokens, codes and errors answering a request', () => {
+    for (const search of [
+      'code=a&state=s',
+      'access_token=t',
+      'id_token=t',
+      'error=access_denied&state=s',
+    ]) {
+      expect(isAuthResponseParams(new URLSearchParams(search))).toBe(true)
+    }
+  })
+
+  it('does not take an app error parameter for a response', () => {
+    expect(isAuthResponseParams(new URLSearchParams('error=x&gcp=y'))).toBe(
+      false,
+    )
+    expect(isAuthResponseParams(new URLSearchParams('state=pr-1'))).toBe(false)
   })
 })

@@ -3,7 +3,10 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { resolveDerivedSeriesSlide } from '../../services/resolveDerivedSeries'
 import { resetFakeDmv } from '../../testing/fakeDmv'
 import { createTestClients, createTestSlide } from '../../testing/fixtures'
-import { useRouteSlideResolution } from '../useRouteSlideResolution'
+import {
+  resolvedSeriesInstanceUID,
+  useRouteSlideResolution,
+} from '../useRouteSlideResolution'
 
 vi.mock('dicom-microscopy-viewer', async () => {
   const actual = await vi.importActual<typeof import('../../testing/fakeDmv')>(
@@ -153,5 +156,14 @@ describe('useRouteSlideResolution', () => {
     rerender({ seriesInstanceUID: second.seriesInstanceUIDs[0] })
 
     expect(seen).not.toContain(IMAGE_SERIES)
+  })
+})
+
+describe('resolvedSeriesInstanceUID', () => {
+  it('shows the slide series a derived series is named after', () => {
+    const slide = {
+      seriesInstanceUIDs: ['1.2.3.1', '1.2.3.2'],
+    } as unknown as Parameters<typeof resolvedSeriesInstanceUID>[0]
+    expect(resolvedSeriesInstanceUID(slide, '1.2.3.2.5')).toBe('1.2.3.2')
   })
 })

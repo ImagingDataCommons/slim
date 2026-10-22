@@ -116,7 +116,7 @@ const recordingPolicy = (
 }
 
 describe('DicomWebManager - multi-store search', () => {
-  it('prefers the first configured store again once it answers', async () => {
+  it('keeps the store a retrieve found working across later searches', async () => {
     const manager = new DicomWebManager({
       baseUri,
       settings: [
@@ -135,23 +135,21 @@ describe('DicomWebManager - multi-store search', () => {
       '0020000D': { vr: 'UI', Value: ['1.2.3'] },
       '0020000E': { vr: 'UI', Value: ['1.2.3.9'] },
     }
-    const options = {
-      studyInstanceUID: '1.2.3',
-    } as dwc.api.SearchForSeriesOptions
-    primaryStub.searchForSeries.mockRejectedValueOnce(httpError(503))
-    secondaryStub.searchForSeries.mockResolvedValue([row])
-    await manager.searchForSeries(options)
+    const series = { studyInstanceUID: '1.2.3', seriesInstanceUID: '1.2.3.9' }
+    /** The primary lists the series but cannot serve its metadata */
+    primaryStub.retrieveSeriesMetadata.mockRejectedValue(httpError(404))
+    secondaryStub.retrieveSeriesMetadata.mockResolvedValue([])
+    await manager.retrieveSeriesMetadata(series)
+    primaryStub.retrieveSeriesMetadata.mockClear()
     primaryStub.searchForSeries.mockResolvedValue([row])
-    await manager.searchForSeries(options)
-    primaryStub.retrieveSeriesMetadata.mockResolvedValue([])
+    secondaryStub.searchForSeries.mockResolvedValue([row])
 
-    await manager.retrieveSeriesMetadata({
+    await manager.searchForSeries({
       studyInstanceUID: '1.2.3',
-      seriesInstanceUID: '1.2.3.9',
-    })
+    } as dwc.api.SearchForSeriesOptions)
+    await manager.retrieveSeriesMetadata(series)
 
-    expect(primaryStub.retrieveSeriesMetadata).toHaveBeenCalledTimes(1)
-    expect(secondaryStub.retrieveSeriesMetadata).not.toHaveBeenCalled()
+    expect(primaryStub.retrieveSeriesMetadata).not.toHaveBeenCalled()
   })
 
   it('remembers the first configured store with a series, not the fastest', async () => {

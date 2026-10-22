@@ -1,17 +1,17 @@
-import { isAuthResponse } from '../../../auth/oidcUser'
 import type { Slide } from '../../../data/slides'
 import {
   findSlideBySeriesInstanceUID,
   recoverSeriesInstanceUID,
 } from '../../../utils/recoverSeriesInstanceUID'
 import { parseSeriesInstanceUID } from '../../../utils/routes'
+import { isAuthResponseParams } from '../../../utils/url'
 
 /**
  * Route recovery only undoes the trailing `.0` of menu key mangling: a
  * longer UID that extends a slide series may be a derived series named
  * after it, which must be looked up, not shown as the slide.
  */
-export const ROUTE_RECOVERY = { allowPrefix: false }
+const ROUTE_RECOVERY = { allowPrefix: false }
 
 /** Slide whose series list includes `seriesInstanceUID` (or a mangled form). */
 export function findSeriesSlide(
@@ -43,7 +43,7 @@ export function presentationStateUIDFromSearch(
   const searchParams = new URLSearchParams(
     search.startsWith('?') ? search.slice(1) : search,
   )
-  if (isAuthResponse(searchParams)) return undefined
+  if (isAuthResponseParams(searchParams)) return undefined
   const stateParam = searchParams.get('state')
   return stateParam !== null ? stateParam : undefined
 }

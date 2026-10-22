@@ -90,6 +90,17 @@ export const isAuthorizationCodeInUrl = (location: {
   )
 }
 
+/** Parameters only an authorize response carries */
+const AUTH_RESPONSE_KEYS = ['code', 'id_token', 'session_state', 'access_token']
+
+/**
+ * Whether query or fragment parameters are an authorize response: tokens or
+ * a code, or an error answering a request (`error` with its `state`).
+ */
+export const isAuthResponseParams = (params: URLSearchParams): boolean =>
+  AUTH_RESPONSE_KEYS.some((key) => Boolean(params.get(key))) ||
+  (Boolean(params.get('error')) && params.has('state'))
+
 /**
  * True when the URL looks like an OIDC authorize redirect back to the app
  * (success or error). Used to detect silent-renew iframe callbacks that must
@@ -100,16 +111,11 @@ export const isOidcAuthorizeCallbackUrl = (location: {
   search: string
   hash: string
 }): boolean => {
-  if (isAuthorizationCodeInUrl(location)) {
-    return true
-  }
   const searchParams = new URLSearchParams(location.search)
   const hashParams = new URLSearchParams(location.hash.replace('#', '?'))
-  return Boolean(
-    searchParams.get('error') ??
-      searchParams.get('access_token') ??
-      hashParams.get('error') ??
-      hashParams.get('access_token'),
+  /** A silent renew can answer `error=login_required` without a `state` */
+  return [searchParams, hashParams].some(
+    (params) => isAuthResponseParams(params) || Boolean(params.get('error')),
   )
 }
 

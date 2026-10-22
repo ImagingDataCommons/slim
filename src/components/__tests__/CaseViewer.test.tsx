@@ -1,6 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import type * as React from 'react'
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
+import {
+  MemoryRouter,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from 'react-router'
 
 import CaseViewer from '../CaseViewer'
 
@@ -55,11 +61,22 @@ vi.mock('../SlideItem', () => ({
 }))
 
 vi.mock('../../features/viewer/services/resolveDerivedSeries', () => ({
-  resolveDerivedSeriesSlide: async () => ({
-    kind: 'referenced',
-    slide: mockSlides[1],
-    derivedDataset: { SeriesInstanceUID: '9.9', SOPInstanceUID: '9.9.1' },
-  }),
+  /** 9.9 refers to the second slide; any other series to none */
+  resolveDerivedSeriesSlide: async ({
+    seriesInstanceUID,
+  }: {
+    seriesInstanceUID: string
+  }) =>
+    seriesInstanceUID === '9.9'
+      ? {
+          kind: 'referenced',
+          slide: mockSlides[1],
+          derivedDataset: {
+            SeriesInstanceUID: '9.9',
+            SOPInstanceUID: '9.9.1',
+          },
+        }
+      : { kind: 'unresolved' },
 }))
 
 vi.mock('../Patient', () => ({ __esModule: true, default: () => null }))
@@ -68,6 +85,25 @@ vi.mock('../ClinicalTrial', () => ({ __esModule: true, default: () => null }))
 
 function LocationProbe(): React.ReactElement {
   const location = useLocation()
+  const navigate = useNavigate()
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => navigate('/studies/1.2.3/series/8.8')}
+      >
+        open missing series
+      </button>
+      {probe(location)}
+    </>
+  )
+}
+
+function probe(location: {
+  pathname: string
+  search: string
+  hash: string
+}): React.ReactElement {
   return (
     <output data-testid="location">{`${location.pathname}${location.search}${location.hash}`}</output>
   )
@@ -168,5 +204,22 @@ describe('CaseViewer', () => {
       'aria-pressed',
       'true',
     )
+  })
+
+  it('highlights no slide for a series that is not found', async () => {
+    renderAt('/studies/1.2.3/series/1.2.3.1')
+    expect(await screen.findByTestId('slide-viewer')).toHaveTextContent(
+      '1.2.3.1',
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'open missing series' }))
+
+    expect(await screen.findByText('Series not found')).toBeInTheDocument()
+    for (const name of ['1.2.3.1', '1.2.3.2']) {
+      expect(screen.getByRole('button', { name })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+    }
   })
 })

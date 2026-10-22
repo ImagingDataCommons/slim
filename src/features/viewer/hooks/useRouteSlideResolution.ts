@@ -8,11 +8,7 @@ import { logger } from '../../../utils/logger'
 import { seriesUidFromSlide } from '../../../utils/recoverSeriesInstanceUID'
 import { resolveDerivedSeriesSlide } from '../services/resolveDerivedSeries'
 import type { ReferencingInstance } from '../utils/referencedSlide'
-import {
-  findSeriesSlide,
-  matchSlideForSeriesRoute,
-  ROUTE_RECOVERY,
-} from '../utils/routeSlide'
+import { findSeriesSlide, matchSlideForSeriesRoute } from '../utils/routeSlide'
 import { useLatestRef } from './useLatestRef'
 
 export interface RouteSlideResolution {
@@ -20,6 +16,12 @@ export interface RouteSlideResolution {
   derivedDataset: ReferencingInstance | null
   /** Series from the URL that resolved to no slide of this study */
   unresolvedSeriesUID: string | null
+  /**
+   * Slide resolved for the current route: undefined while a derived series
+   * is looked up or when it resolves to none, even though `selectedSlide`
+   * still shows the previous slide meanwhile
+   */
+  routeSlide: Slide | undefined
 }
 
 /**
@@ -58,6 +60,8 @@ export function useRouteSlideResolution({
   const routingRef = useLatestRef({ location, navigate })
 
   useEffect(() => {
+    /** Nothing to resolve before the study's slides load, or off a series route */
+    if (slides.length === 0 || seriesInstanceUID === '') return
     const match = matchSlideForSeriesRoute({
       slides,
       seriesInstanceUID,
@@ -137,10 +141,16 @@ export function useRouteSlideResolution({
    * the render before the effect selects it.
    */
   const routeImageSlide = findSeriesSlide(slides, seriesInstanceUID)
+  const isDerivedResolved =
+    derivedDataset !== null &&
+    derivedDataset.SeriesInstanceUID === seriesInstanceUID &&
+    selectedSlide != null
   return {
     selectedSlide: routeImageSlide ?? selectedSlide,
     derivedDataset,
     unresolvedSeriesUID,
+    routeSlide:
+      routeImageSlide ?? (isDerivedResolved ? selectedSlide : undefined),
   }
 }
 
@@ -149,6 +159,9 @@ export function resolvedSeriesInstanceUID(
   selectedSlide: Slide,
   seriesInstanceUID: string,
 ): string {
-  /** Matched like the route, so a derived series is not taken for its slide */
-  return seriesUidFromSlide(selectedSlide, seriesInstanceUID, ROUTE_RECOVERY)
+  /**
+   * Once the slide is known, a derived series named after one of its series
+   * (a longer UID) shows that series rather than the slide's first
+   */
+  return seriesUidFromSlide(selectedSlide, seriesInstanceUID)
 }

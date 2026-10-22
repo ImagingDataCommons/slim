@@ -1,17 +1,10 @@
-import { type JSX, useEffect, useState } from 'react'
-import {
-  Route,
-  Routes,
-  useLocation,
-  useNavigate,
-  useParams,
-} from 'react-router'
+import { type JSX, useEffect } from 'react'
+import { Route, Routes, useLocation, useParams } from 'react-router'
 
 import type { AnnotationSettings } from '../AppConfig'
 import type { User } from '../auth'
 import { useStudySummary } from '../contexts/StudySummaryContext'
 import type DicomWebManager from '../DicomWebManager'
-import type { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
 import { OverlayPanel } from '../features/viewer/components/OverlayPanel'
 import { ViewerLoadingLayout } from '../features/viewer/components/ViewerLoadingLayout'
@@ -23,6 +16,7 @@ import {
 } from '../features/viewer/contexts/ViewerPanelChromeContext'
 import { useCaseViewerRouting } from '../features/viewer/hooks/useCaseViewerRouting'
 import {
+  type RouteSlideResolution,
   resolvedSeriesInstanceUID,
   useRouteSlideResolution,
 } from '../features/viewer/hooks/useRouteSlideResolution'
@@ -39,16 +33,8 @@ import { StudySidePanel } from './CaseViewer/StudySidePanel'
 /** skipcq: JS-W1028 - SlideViewer has a default export */
 import SlideViewer from './SlideViewer'
 
-interface ShownSeries {
-  /** Series named in the route, which may be a derived series */
-  routeSeriesInstanceUID: string
-  /** Image series of the slide the viewer shows for it */
-  seriesInstanceUID: string
-}
-
 function ParametrizedSlideViewer({
   clients,
-  slides,
   user,
   app,
   preload,
@@ -57,12 +43,11 @@ function ParametrizedSlideViewer({
   annotations,
   isLeftPanelOpen,
   onToggleLeftPanel,
-  onSeriesShown,
+  resolution,
 }: {
-  /** Reports the image series shown for the route, for the slide list */
-  onSeriesShown: (shown: ShownSeries | undefined) => void
+  /** Slide of the series route, resolved where the slide list reads it too */
+  resolution: RouteSlideResolution
   clients: { [key: string]: DicomWebManager }
-  slides: Slide[]
   user?: User
   app: AppInfo
   preload: boolean
@@ -77,33 +62,9 @@ function ParametrizedSlideViewer({
     seriesInstanceUID: string
   }>()
   const location = useLocation()
-  const navigate = useNavigate()
-  const { selectedSlide, derivedDataset, unresolvedSeriesUID } =
-    useRouteSlideResolution({
-      clients,
-      slides,
-      studyInstanceUID,
-      seriesInstanceUID,
-      location,
-      navigate,
-    })
+  const { selectedSlide, derivedDataset, unresolvedSeriesUID } = resolution
 
   const presentationStateUID = presentationStateUIDFromSearch(location.search)
-
-  const shownSeriesInstanceUID =
-    selectedSlide != null
-      ? resolvedSeriesInstanceUID(selectedSlide, seriesInstanceUID)
-      : undefined
-  useEffect(() => {
-    onSeriesShown(
-      shownSeriesInstanceUID === undefined
-        ? undefined
-        : {
-            routeSeriesInstanceUID: seriesInstanceUID,
-            seriesInstanceUID: shownSeriesInstanceUID,
-          },
-    )
-  }, [onSeriesShown, seriesInstanceUID, shownSeriesInstanceUID])
 
   if (unresolvedSeriesUID === seriesInstanceUID) {
     return (
@@ -175,7 +136,15 @@ function ViewerBody(props: ViewerProps): JSX.Element | null {
     studyInstanceUID,
   })
   const { setSummary } = useStudySummary()
-  const [shownSeries, setShownSeries] = useState<ShownSeries | undefined>()
+  const routeSeriesInstanceUID = parseSeriesInstanceUID(location.pathname)
+  const resolution = useRouteSlideResolution({
+    clients,
+    slides,
+    studyInstanceUID,
+    seriesInstanceUID: routeSeriesInstanceUID,
+    location,
+    navigate,
+  })
   const chrome = useViewerPanelChrome()
 
   const summaryImage = slides[0]?.volumeImages[0]
@@ -250,13 +219,14 @@ function ViewerBody(props: ViewerProps): JSX.Element | null {
   }
   const refImage = volumeInstances[0]
 
-  /** A derived series route highlights the slide the viewer resolved */
-  const routeSeriesInstanceUID = parseSeriesInstanceUID(location.pathname)
+  /**
+   * The slide list highlights the slide resolved for the route, so a derived
+   * series route shows its slide, and nothing while it is looked up or when
+   * it is not found
+   */
   const selectedSeriesInstanceUID =
-    shownSeries !== undefined &&
-    routeSeriesInstanceUID !== '' &&
-    shownSeries.routeSeriesInstanceUID === routeSeriesInstanceUID
-      ? shownSeries.seriesInstanceUID
+    resolution.routeSlide !== undefined
+      ? resolvedSeriesInstanceUID(resolution.routeSlide, routeSeriesInstanceUID)
       : selectedSeriesForStudyPath({
           slides,
           pathname: location.pathname,
@@ -301,7 +271,6 @@ function ViewerBody(props: ViewerProps): JSX.Element | null {
             element={
               <ParametrizedSlideViewer
                 clients={props.clients}
-                slides={slides}
                 preload={props.preload}
                 annotations={props.annotations}
                 enableAnnotationTools={props.enableAnnotationTools}
@@ -310,7 +279,7 @@ function ViewerBody(props: ViewerProps): JSX.Element | null {
                 user={props.user}
                 isLeftPanelOpen={chrome.isLeftPanelOpen}
                 onToggleLeftPanel={chrome.toggleLeftPanel}
-                onSeriesShown={setShownSeries}
+                resolution={resolution}
               />
             }
           />
