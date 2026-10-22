@@ -61,4 +61,39 @@ describe('useRouteSlideResolution', () => {
     await waitFor(() => expect(result.current.derivedDataset).toBeNull())
     expect(result.current.selectedSlide).toBe(slide)
   })
+
+  it('keeps a derived-series lookup in flight when only the query changes', async () => {
+    const slide = createTestSlide(IMAGE_SERIES)
+    const derivedDataset = {
+      SeriesInstanceUID: DERIVED_SERIES,
+      SOPInstanceUID: '2.25.7',
+    }
+    vi.mocked(resolveDerivedSeriesSlide).mockClear()
+    vi.mocked(resolveDerivedSeriesSlide).mockResolvedValue({
+      kind: 'referenced',
+      slide,
+      derivedDataset,
+    } as never)
+    const clients = createTestClients()
+    const navigate = vi.fn()
+    const slides = [slide]
+    const { result, rerender } = renderHook(
+      ({ search }: { search: string }) =>
+        useRouteSlideResolution({
+          clients,
+          slides,
+          studyInstanceUID: '2.25.1',
+          seriesInstanceUID: DERIVED_SERIES,
+          location: { pathname: `/series/${DERIVED_SERIES}`, search },
+          navigate,
+        }),
+      { initialProps: { search: '' } },
+    )
+    rerender({ search: '?state=2.25.9' })
+
+    await waitFor(() =>
+      expect(result.current.derivedDataset).toBe(derivedDataset),
+    )
+    expect(resolveDerivedSeriesSlide).toHaveBeenCalledTimes(1)
+  })
 })

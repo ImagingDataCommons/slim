@@ -56,6 +56,7 @@ function setup(requestedUID?: string) {
         clients: createTestClients(),
         studyInstanceUID: '1',
         requestedUID,
+        routePathname: currentLocation.pathname,
         location: currentLocation,
         navigate,
         opticalPaths,
@@ -119,7 +120,7 @@ describe('usePresentationStates', () => {
       first,
     )
     expect(navigate).toHaveBeenCalledWith(
-      { pathname: location.pathname, search: 'x=1&state=ps-1' },
+      { pathname: location.pathname, search: 'x=1&state=ps-1', hash: '' },
       { replace: true },
     )
     expect(result.current.selectedUID).toBe('ps-1')
@@ -215,7 +216,12 @@ describe('usePresentationStates', () => {
       result.current.onSelect('ps-1')
     })
 
-    expect(navigate).toHaveBeenCalledWith(`${location.pathname}?state=ps-1`)
+    /** Replaced in place, keeping the other parameters */
+    expect(navigate).toHaveBeenCalledTimes(1)
+    expect(navigate).toHaveBeenCalledWith(
+      { pathname: location.pathname, search: 'x=1&state=ps-1', hash: '' },
+      { replace: true },
+    )
     expect(opticalPaths.showPresentationState).toHaveBeenCalledTimes(1)
     expect(result.current.selectedUID).toBe('ps-1')
   })
@@ -244,7 +250,10 @@ describe('usePresentationStates', () => {
     })
 
     expect(result.current.selectedUID).toBeUndefined()
-    expect(navigate).toHaveBeenCalledWith(location.pathname)
+    expect(navigate).toHaveBeenCalledWith(
+      { pathname: location.pathname, search: 'x=1', hash: '' },
+      { replace: true },
+    )
     expect(opticalPaths.showDefault).toHaveBeenCalledWith(session)
   })
 })

@@ -1,9 +1,14 @@
 /** skipcq: JS-C1003 */
 import * as dmv from 'dicom-microscopy-viewer'
+/** skipcq: JS-C1003 */
+import type * as dwc from 'dicomweb-client'
 import { useEffect, useRef, useState } from 'react'
 import type DicomWebManager from '../../../DicomWebManager'
 import { StorageClasses } from '../../../data/uids'
-import { buildStudySearchQueries } from '../utils/studyQuery'
+import {
+  buildStudySearchQueries,
+  type StudyQueryParams,
+} from '../utils/studyQuery'
 
 const SEARCH_DEBOUNCE_MS = 400
 
@@ -57,36 +62,43 @@ export function useStudySearch({
     const generation = ++searchGeneration.current
     const isCurrent = (): boolean => generation === searchGeneration.current
     setResult(NO_RESULT)
-    const queries = buildStudySearchQueries(query)
-    if (client === undefined || queries.length === 0) return
+    const stages = buildStudySearchQueries(query)
+    if (client === undefined || stages.length === 0) return
+
+    const runQuery = async (
+      queryParams: StudyQueryParams,
+    ): Promise<{ studies: dwc.api.Study[]; failed: boolean }> => {
+      try {
+        return {
+          studies: await client.searchForStudies({ queryParams }),
+          failed: false,
+        }
+      } catch (error: unknown) {
+        if (isRejectedQuery(error)) {
+          return { studies: [], failed: false }
+        }
+        return { studies: [], failed: true }
+      }
+    }
 
     const search = async (): Promise<void> => {
-      const responses = await Promise.all(
-        queries.map(async (queryParams) => {
-          try {
-            return {
-              studies: await client.searchForStudies({ queryParams }),
-              failed: false,
-            }
-          } catch (error: unknown) {
-            if (isRejectedQuery(error)) {
-              return { studies: [], failed: false }
-            }
-            return { studies: [], failed: true }
-          }
-        }),
-      )
-      if (!isCurrent()) return
       const studiesByUid = new Map<string, dmv.metadata.Study>()
       let failed = false
-      for (const response of responses) {
-        if (response.failed) failed = true
-        for (const study of response.studies) {
-          /** DMV types formatted metadata as the generic Dataset */
-          const formatted = dmv.metadata.formatMetadata(study)
-            .dataset as dmv.metadata.Study
-          studiesByUid.set(formatted.StudyInstanceUID, formatted)
+      /** A later stage only runs while the earlier ones found nothing */
+      for (const stage of stages) {
+        const responses = await Promise.all(stage.map(runQuery))
+        if (!isCurrent()) return
+        for (const response of responses) {
+          if (response.failed) failed = true
+          for (const study of response.studies) {
+            /** DMV types formatted metadata as the generic Dataset */
+            const formatted = dmv.metadata.formatMetadata(study)
+              .dataset as dmv.metadata.Study
+            studiesByUid.set(formatted.StudyInstanceUID, formatted)
+          }
         }
+        /** A failing server would fail the next stage too */
+        if (studiesByUid.size > 0 || failed) break
       }
       setResult({ client, query, studies: [...studiesByUid.values()], failed })
     }

@@ -36,6 +36,7 @@ export function usePresentationStates({
   clients,
   studyInstanceUID,
   requestedUID,
+  routePathname,
   location,
   navigate,
   opticalPaths,
@@ -45,6 +46,8 @@ export function usePresentationStates({
   studyInstanceUID: string
   /** Presentation state named in the URL */
   requestedUID: string | undefined
+  /** Route of the session; a change rebuilds it */
+  routePathname: string
   location: Location
   navigate: NavigateFunction
   opticalPaths: Pick<OpticalPathsApi, 'showDefault' | 'showPresentationState'>
@@ -54,24 +57,44 @@ export function usePresentationStates({
   >([])
   const [selectedUID, setSelectedUID] = useState(requestedUID)
   /** Retrievals finish later; they must see the URL of that moment */
-  const latestRef = useLatestRef({ requestedUID, location, opticalPaths })
+  const latestRef = useLatestRef({
+    requestedUID,
+    routePathname,
+    location,
+    opticalPaths,
+  })
+
+  /**
+   * Set or clear the `state` URL parameter in place, keeping the other
+   * parameters (such as `gcp`) and the hash.
+   */
+  const replaceStateParam = (value: string | undefined): void => {
+    const { location: currentLocation } = latestRef.current
+    const searchParams = new URLSearchParams(currentLocation.search)
+    if (value === undefined) {
+      searchParams.delete('state')
+    } else {
+      searchParams.set('state', value)
+    }
+    navigate(
+      {
+        pathname: currentLocation.pathname,
+        search: searchParams.toString(),
+        hash: currentLocation.hash,
+      },
+      { replace: true },
+    )
+  }
 
   const apply = (
     session: ViewerSession,
     presentationState: PresentationState,
   ): void => {
-    const { location: currentLocation, opticalPaths: currentOpticalPaths } =
-      latestRef.current
-    currentOpticalPaths.showPresentationState(session, presentationState)
-    const searchParams = new URLSearchParams(currentLocation.search)
-    searchParams.set('state', presentationState.SOPInstanceUID)
-    navigate(
-      {
-        pathname: currentLocation.pathname,
-        search: searchParams.toString(),
-      },
-      { replace: true },
+    latestRef.current.opticalPaths.showPresentationState(
+      session,
+      presentationState,
     )
+    replaceStateParam(presentationState.SOPInstanceUID)
     setSelectedUID(presentationState.SOPInstanceUID)
   }
 
@@ -79,7 +102,7 @@ export function usePresentationStates({
     const session = sessionRef.current
     if (session !== undefined) session.hasUserDisplayChanges = true
     setSelectedUID(undefined)
-    navigate(location.pathname)
+    replaceStateParam(undefined)
     if (session !== undefined) opticalPaths.showDefault(session)
   }
 
@@ -100,12 +123,13 @@ export function usePresentationStates({
       /**
        * The URL moves to the next slide a frame before the old session is
        * destroyed, so a late state also checks it still has its own slide.
-       * Any pathname change rebuilds the session (it is part of the route
+       * Any route change rebuilds the session (it is part of the route
        * key), and the new session loads its own states.
        */
-      const { pathname } = latestRef.current.location
+      const { routePathname: sessionPathname } = latestRef.current
       const isStale = (): boolean =>
-        session.isDestroyed || latestRef.current.location.pathname !== pathname
+        session.isDestroyed ||
+        latestRef.current.routePathname !== sessionPathname
       loadPresentationStates({
         client: clients[StorageClasses.ADVANCED_BLENDING_PRESENTATION_STATE],
         studyInstanceUID,
@@ -154,7 +178,6 @@ export function usePresentationStates({
         const session = sessionRef.current
         if (presentationState !== undefined && session !== undefined) {
           session.hasUserDisplayChanges = true
-          navigate(`${location.pathname}?state=${value}`)
           apply(session, presentationState)
         } else {
           notifyVisualizationError('Presentation State could not be found')

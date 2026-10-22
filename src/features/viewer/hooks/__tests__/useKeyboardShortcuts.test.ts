@@ -94,6 +94,15 @@ describe('useHeldKeys', () => {
     expect(result.current.isShiftDown()).toBe(false)
   })
 
+  it('forgets held keys when the window loses focus', () => {
+    const { result } = renderHook(() => useHeldKeys())
+
+    fireEvent.keyDown(document.body, { key: 'Shift', code: 'ShiftLeft' })
+    fireEvent.blur(window)
+
+    expect(result.current.isShiftDown()).toBe(false)
+  })
+
   it('stops tracking on unmount', () => {
     const { result, unmount } = renderHook(() => useHeldKeys())
 

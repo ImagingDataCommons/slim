@@ -375,5 +375,23 @@ describe('AppSession', () => {
         message: 'Down for maintenance',
       })
     })
+
+    it('notifies a 500 once whatever the number of configured messages', () => {
+      const { session } = setup(createConfig())
+      vi.mocked(NotificationMiddleware.onError).mockClear()
+      session.handleDicomWebError(
+        { request: new XMLHttpRequest(), response: '', status: 500 },
+        {
+          id: 'primary',
+          write: false,
+          errorMessages: [
+            { status: 401, message: 'Sign in' },
+            { status: 403, message: 'Forbidden' },
+            { status: 404, message: 'Not found' },
+          ],
+        },
+      )
+      expect(NotificationMiddleware.onError).toHaveBeenCalledTimes(1)
+    })
   })
 })

@@ -70,10 +70,17 @@ export function validateGoToInput(
 ): GoToValidation {
   const x = fieldStatus(input.x, ranges.x)
   const y = fieldStatus(input.y, ranges.y)
-  const magnification = fieldStatus(input.magnification, [
+  const magnificationInRange = fieldStatus(input.magnification, [
     MIN_GO_TO_MAGNIFICATION,
     MAX_GO_TO_MAGNIFICATION,
   ])
+  /** Exclusive lower bound: zero has no pyramid level to go to */
+  const magnification = {
+    ...magnificationInRange,
+    isValid:
+      magnificationInRange.isValid &&
+      magnificationInRange.value !== MIN_GO_TO_MAGNIFICATION,
+  }
   const fields = {
     x: { isEmpty: x.isEmpty, isValid: x.isValid },
     y: { isEmpty: y.isEmpty, isValid: y.isValid },

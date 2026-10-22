@@ -1,6 +1,7 @@
 import type { Slide } from '../../../data/slides'
 import {
   findSlideBySeriesInstanceUID,
+  recoverSeriesInstanceUID,
   seriesUidFromSlide,
 } from '../../../utils/recoverSeriesInstanceUID'
 import { parseSeriesInstanceUID } from '../../../utils/routes'
@@ -47,6 +48,25 @@ export function selectedSeriesForStudyPath({
   return slideForPath !== undefined
     ? seriesUidFromSlide(slideForPath, seriesFromPath)
     : seriesFromPath
+}
+
+/**
+ * Pathname with a mangled series UID of `slide` replaced by its canonical
+ * UID, so the URL correction does not count as a new route. Derived series
+ * (not series of the slide) keep their own UID.
+ */
+export function canonicalSeriesPathname(
+  pathname: string,
+  slide: { seriesInstanceUIDs: string[] },
+): string {
+  const seriesFromPath = parseSeriesInstanceUID(pathname)
+  if (seriesFromPath === '') return pathname
+  const recovered = recoverSeriesInstanceUID(
+    seriesFromPath,
+    slide.seriesInstanceUIDs,
+  )
+  if (recovered === undefined || recovered === seriesFromPath) return pathname
+  return pathname.replace(`/series/${seriesFromPath}`, `/series/${recovered}`)
 }
 
 export type SyncRouteSlideMatch =

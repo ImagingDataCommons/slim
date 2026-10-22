@@ -20,7 +20,7 @@ export function useHeldKeys(): HeldKeys {
 
   useLayoutEffect(() => {
     const keysDown = keysDownRef.current
-    return subscribeDomEvents(document.body, [
+    const unsubscribeBody = subscribeDomEvents(document.body, [
       [
         'keyup',
         (event) => {
@@ -34,6 +34,19 @@ export function useHeldKeys(): HeldKeys {
         },
       ],
     ])
+    /** A key released while another window has focus sends no keyup here */
+    const unsubscribeWindow = subscribeDomEvents(window, [
+      [
+        'blur',
+        () => {
+          keysDown.clear()
+        },
+      ],
+    ])
+    return () => {
+      unsubscribeBody()
+      unsubscribeWindow()
+    }
   }, [])
 
   return {

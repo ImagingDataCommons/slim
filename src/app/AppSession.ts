@@ -273,20 +273,18 @@ export class AppSession {
       )
     }
 
-    if (serverSettings.errorMessages !== undefined) {
-      serverSettings.errorMessages.forEach((setting: ErrorMessageSettings) => {
-        if (error.status === setting.status) {
-          this.update({
-            error: {
-              status: error.status,
-              message: setting.message,
-            },
-          })
-        } else if (error.status === 500) {
-          logServerError()
-        }
+    const configuredMessage = serverSettings.errorMessages?.find(
+      (setting: ErrorMessageSettings) => setting.status === error.status,
+    )
+    if (configuredMessage !== undefined) {
+      this.update({
+        error: {
+          status: error.status,
+          message: configuredMessage.message,
+        },
       })
     } else if (error.status === 500) {
+      /** Once per failure, whatever the number of configured messages */
       logServerError()
     }
   }

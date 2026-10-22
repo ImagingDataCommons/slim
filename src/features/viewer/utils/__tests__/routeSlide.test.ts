@@ -1,5 +1,6 @@
 import type { Slide } from '../../../../data/slides'
 import {
+  canonicalSeriesPathname,
   findSeriesSlide,
   matchSlideForSeriesRoute,
   presentationStateUIDFromSearch,
@@ -128,5 +129,25 @@ describe('findSeriesSlide', () => {
   it('finds by exact or mangled series UID', () => {
     expect(findSeriesSlide(slides, '1.2.3')).toBe(slides[0])
     expect(findSeriesSlide(slides, '1.2.3.2.0.1.0')).toBe(slides[1])
+  })
+})
+
+describe('canonicalSeriesPathname', () => {
+  const image = slide({ label: 'a', seriesInstanceUIDs: ['1.2.3'] })
+
+  it('replaces a mangled series UID of the slide', () => {
+    expect(canonicalSeriesPathname('/studies/9/series/1.2.3.0', image)).toBe(
+      '/studies/9/series/1.2.3',
+    )
+  })
+
+  it('keeps a canonical or derived series UID', () => {
+    expect(canonicalSeriesPathname('/studies/9/series/1.2.3', image)).toBe(
+      '/studies/9/series/1.2.3',
+    )
+    expect(canonicalSeriesPathname('/studies/9/series/4.5.6', image)).toBe(
+      '/studies/9/series/4.5.6',
+    )
+    expect(canonicalSeriesPathname('/studies/9', image)).toBe('/studies/9')
   })
 })

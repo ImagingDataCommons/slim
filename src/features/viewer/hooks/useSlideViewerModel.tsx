@@ -36,6 +36,7 @@ import {
   shownSeries,
 } from '../utils/groupBySeries'
 import { isShortcutEnabled } from '../utils/keyboardShortcuts'
+import { canonicalSeriesPathname } from '../utils/routeSlide'
 import { slideAffineFromImages } from '../utils/slideCoordinates'
 import {
   INITIAL_VIEWER_INTERACTION,
@@ -154,11 +155,14 @@ export function useSlideViewerModel({
     viewer,
     snapshot.isPaletteDisplayGammaCorrectionEnabled,
   )
+  /** Route of the viewers; a mangled series UID correction keeps it */
+  const routePathname = canonicalSeriesPathname(location.pathname, slide)
   const presentationStates = usePresentationStates({
     sessionRef,
     clients,
     studyInstanceUID,
     requestedUID: selectedPresentationStateUID,
+    routePathname,
     location,
     navigate,
     opticalPaths,
@@ -391,7 +395,7 @@ export function useSlideViewerModel({
     useViewerSession(viewer, {
       slide,
       clients,
-      routeKey: `${location.pathname}|${studyInstanceUID}|${seriesInstanceUID}`,
+      routeKey: `${routePathname}|${studyInstanceUID}|${seriesInstanceUID}`,
       preload,
       annotationConfig,
       clustering: annotationGroups.clustering,

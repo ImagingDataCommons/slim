@@ -19,7 +19,6 @@ export function groupBySeries<T>(
   return groups
 }
 
-/** Items of `selected`, or all items for `ALL_SERIES`/an unset selection. */
 /**
  * The series a list shows: the selected one while it has items, otherwise
  * all series. A deep link can select a series whose items never reached the
@@ -34,6 +33,7 @@ export function shownSeries(
   return (groups.get(selected)?.length ?? 0) > 0 ? selected : ALL_SERIES
 }
 
+/** Items of `selected`, or all items for `ALL_SERIES`/an unset selection. */
 export function itemsForSeries<T>(
   items: readonly T[],
   groups: ReadonlyMap<string, readonly T[]>,

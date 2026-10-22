@@ -8,6 +8,7 @@ import { seriesUidFromSlide } from '../../../utils/recoverSeriesInstanceUID'
 import { resolveDerivedSeriesSlide } from '../services/resolveDerivedSeries'
 import type { ReferencingInstance } from '../utils/referencedSlide'
 import { findSeriesSlide, matchSlideForSeriesRoute } from '../utils/routeSlide'
+import { useLatestRef } from './useLatestRef'
 
 export interface RouteSlideResolution {
   selectedSlide: Slide | null | undefined
@@ -45,6 +46,11 @@ export function useRouteSlideResolution({
   )
   /** Derived series whose referenced slide was already looked up */
   const resolvedDerivedSeriesRef = useRef<string | undefined>(undefined)
+  /**
+   * Read when correcting the URL, so a query change (such as `?state=`) does
+   * not restart a derived-series lookup in flight
+   */
+  const routingRef = useLatestRef({ location, navigate })
 
   useEffect(() => {
     const match = matchSlideForSeriesRoute({
@@ -73,13 +79,15 @@ export function useRouteSlideResolution({
         logger.warn(
           `Corrected mangled series UID in route: "${seriesInstanceUID}" → "${match.correctedSeriesUID}"`,
         )
-        navigate(
+        const { location: currentLocation, navigate: currentNavigate } =
+          routingRef.current
+        currentNavigate(
           {
-            pathname: location.pathname.replace(
+            pathname: currentLocation.pathname.replace(
               `/series/${seriesInstanceUID}`,
               `/series/${match.correctedSeriesUID}`,
             ),
-            search: location.search,
+            search: currentLocation.search,
           },
           { replace: true },
         )
@@ -121,9 +129,7 @@ export function useRouteSlideResolution({
     studyInstanceUID,
     seriesInstanceUID,
     selectedSlide,
-    navigate,
-    location.pathname,
-    location.search,
+    routingRef,
   ])
 
   return { selectedSlide, derivedDataset, unresolvedSeriesUID }
