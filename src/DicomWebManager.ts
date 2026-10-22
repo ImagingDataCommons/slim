@@ -239,6 +239,8 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
   stores: Store[],
   dedupTags: readonly string[],
   call: (store: Store) => Promise<T[]>,
+  /** Called with each store's rows, in configured store order */
+  onStoreRows?: (store: Store, rows: T[]) => void,
 ): Promise<T[]> => {
   const readable = readableStores(stores)
   if (readable.length === 0) {
@@ -271,7 +273,9 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
   const merged: T[] = []
   const seen = new Set<string>()
   for (const [index, answer] of results.entries()) {
-    for (const item of searchRows<T>(readable[index], answer)) {
+    const rows = searchRows<T>(readable[index], answer)
+    onStoreRows?.(readable[index], rows)
+    for (const item of rows) {
       const key = buildDedupKey(item, dedupTags)
       if (!seen.has(key)) {
         seen.add(key)
@@ -784,16 +788,20 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
     const merged = await searchAcrossStores(
       this.stores,
       [STUDY_INSTANCE_UID_TAG, SERIES_INSTANCE_UID_TAG],
-      async (store) => {
-        const rows = (await this.callStore(
+      async (store) =>
+        await this.callStore(
           store,
-          async (client) => await client.searchForSeries(options),
-        )) as unknown as DicomJsonObject[]
-        /**
-         * Remember the store that has each series, so a later retrieve goes
-         * there first instead of failing on the other stores
-         */
-        for (const row of searchRows<DicomJsonObject>(store, rows)) {
+          async (client) =>
+            (await client.searchForSeries(
+              options,
+            )) as unknown as DicomJsonObject[],
+        ),
+      /**
+       * Remember the first configured store that has each series, so a later
+       * retrieve goes there first instead of failing on the other stores
+       */
+      (store, rows) => {
+        for (const row of rows) {
           const studyInstanceUID = getDicomTagValue(row, STUDY_INSTANCE_UID_TAG)
           const seriesInstanceUID = getDicomTagValue(
             row,
@@ -809,7 +817,6 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
             seriesStoreCache.set(cacheKey, store)
           }
         }
-        return rows
       },
     )
     return merged as unknown as dwc.api.Series[]

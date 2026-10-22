@@ -87,22 +87,24 @@ export const readReturnUrl = (userData: UserData): string | undefined => {
 export const currentReturnUrl = (): string =>
   `${window.location.pathname}${window.location.search}`
 
+/** Whether query parameters carry an authorize response */
+export const isAuthResponse = (searchParams: URLSearchParams): boolean =>
+  ['code', 'id_token', 'access_token'].some((key) => searchParams.has(key))
+
 /**
- * Remove authorize response parameters, when they are there, from query
- * parameters the app writes back to the URL. The router can still hold the
+ * Query string to write back to the URL, without the parameters of an
+ * authorize response when there is one. The router can still hold the
  * callback URL after `clearAuthParamsFromUrl` cleaned the address bar.
  */
-export const deleteAuthResponseParams = (
-  searchParams: URLSearchParams,
-): boolean => {
-  const isCallback = ['code', 'id_token', 'access_token'].some((key) =>
-    searchParams.has(key),
-  )
-  if (!isCallback) return false
-  for (const key of AUTH_RESPONSE_PARAMS) {
-    searchParams.delete(key)
+export const searchWithoutAuthResponse = (search: string): string => {
+  const searchParams = new URLSearchParams(search)
+  if (isAuthResponse(searchParams)) {
+    for (const key of AUTH_RESPONSE_PARAMS) {
+      searchParams.delete(key)
+    }
   }
-  return true
+  const cleaned = searchParams.toString()
+  return cleaned === '' ? '' : `?${cleaned}`
 }
 
 /**

@@ -1,8 +1,8 @@
+import { isAuthResponse } from '../../../auth/oidcUser'
 import type { Slide } from '../../../data/slides'
 import {
   findSlideBySeriesInstanceUID,
   recoverSeriesInstanceUID,
-  seriesUidFromSlide,
 } from '../../../utils/recoverSeriesInstanceUID'
 import { parseSeriesInstanceUID } from '../../../utils/routes'
 
@@ -34,8 +34,8 @@ function canonicalRouteSeriesUID(
 }
 
 /**
- * Presentation state from `?state=`, ignored when `access_token` is present
- * so OIDC callbacks cannot be mistaken for a PR UID.
+ * Presentation state from `?state=`, ignored on a sign-in callback so its
+ * OAuth `state` cannot be mistaken for a PR UID.
  */
 export function presentationStateUIDFromSearch(
   search: string,
@@ -43,7 +43,7 @@ export function presentationStateUIDFromSearch(
   const searchParams = new URLSearchParams(
     search.startsWith('?') ? search.slice(1) : search,
   )
-  if (searchParams.has('access_token')) return undefined
+  if (isAuthResponse(searchParams)) return undefined
   const stateParam = searchParams.get('state')
   return stateParam !== null ? stateParam : undefined
 }
@@ -63,9 +63,10 @@ export function selectedSeriesForStudyPath({
 }): string {
   const seriesFromPath = parseSeriesInstanceUID(pathname)
   if (seriesFromPath === '') return fallbackSeriesInstanceUID
-  const slideForPath = findSlideBySeriesInstanceUID(slides, seriesFromPath)
+  /** Matched like the viewer route, so both agree on the slide */
+  const slideForPath = findSeriesSlide(slides, seriesFromPath)
   return slideForPath !== undefined
-    ? seriesUidFromSlide(slideForPath, seriesFromPath)
+    ? (canonicalRouteSeriesUID(slideForPath, seriesFromPath) ?? seriesFromPath)
     : seriesFromPath
 }
 

@@ -108,7 +108,10 @@ describe('useRouteSlideResolution', () => {
         slides,
         studyInstanceUID: '2.25.1',
         seriesInstanceUID: `${IMAGE_SERIES}.0`,
-        location: { pathname: `/series/${IMAGE_SERIES}.0`, search: '?x=1' },
+        location: {
+          pathname: `/series/${IMAGE_SERIES}.0`,
+          search: '?x=1&code=abc&state=nonce',
+        },
         navigate,
       }),
     )

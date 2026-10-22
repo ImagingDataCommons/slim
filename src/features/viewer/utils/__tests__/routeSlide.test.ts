@@ -39,6 +39,12 @@ describe('presentationStateUIDFromSearch', () => {
     ).toBeUndefined()
   })
 
+  it('ignores the OAuth state of an authorization code callback', () => {
+    expect(
+      presentationStateUIDFromSearch('?code=abc&state=nonce'),
+    ).toBeUndefined()
+  })
+
   it('returns undefined without state', () => {
     expect(presentationStateUIDFromSearch('')).toBeUndefined()
     expect(presentationStateUIDFromSearch('?gcp=x')).toBeUndefined()
@@ -64,6 +70,16 @@ describe('selectedSeriesForStudyPath', () => {
         fallbackSeriesInstanceUID: '1.2.3',
       }),
     ).toBe('1.2.3.2.0.1')
+  })
+
+  it('highlights no slide for a derived series named after one', () => {
+    expect(
+      selectedSeriesForStudyPath({
+        slides,
+        pathname: '/studies/s/series/1.2.3.7',
+        fallbackSeriesInstanceUID: '1.2.3',
+      }),
+    ).toBe('1.2.3.7')
   })
 
   it('keeps an unknown series UID from the path', () => {

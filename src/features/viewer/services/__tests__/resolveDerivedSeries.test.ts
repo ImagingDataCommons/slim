@@ -68,7 +68,7 @@ describe('resolveDerivedSeriesSlide', () => {
     expect(slideClient.retrieveSeriesMetadata).not.toHaveBeenCalled()
   })
 
-  it('stops at the slide client when it has the series', async () => {
+  it('retrieves from the first client in order that has the series', async () => {
     const slide = createTestSlide(IMAGE_SERIES)
     const slideClient = client([derivedMetadata])
     const annotationClient = client([derivedMetadata])
@@ -82,7 +82,26 @@ describe('resolveDerivedSeriesSlide', () => {
       seriesInstanceUID: DERIVED_SERIES,
     })
 
-    expect(annotationClient.searchForSeries).not.toHaveBeenCalled()
+    expect(slideClient.retrieveSeriesMetadata).toHaveBeenCalledTimes(1)
+    expect(annotationClient.retrieveSeriesMetadata).not.toHaveBeenCalled()
+  })
+
+  it('asks the other clients when one search fails', async () => {
+    const slide = createTestSlide(IMAGE_SERIES)
+    const failing = client()
+    vi.mocked(failing.searchForSeries).mockRejectedValue(new Error('500'))
+    const annotationClient = client([derivedMetadata])
+    const resolution = await resolveDerivedSeriesSlide({
+      clients: {
+        [StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]: failing,
+        [StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION]: annotationClient,
+      },
+      slides: [slide],
+      studyInstanceUID: STUDY,
+      seriesInstanceUID: DERIVED_SERIES,
+    })
+
+    expect(resolution.kind).toBe('referenced')
   })
 
   it('is unresolved when no store has the series', async () => {

@@ -1,9 +1,9 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Location, NavigateFunction } from 'react-router'
 
-import { deleteAuthResponseParams } from '../../../auth/oidcUser'
+import { searchWithoutAuthResponse } from '../../../auth/oidcUser'
 import type DicomWebManager from '../../../DicomWebManager'
 import { StorageClasses } from '../../../data/uids'
 import { logger } from '../../../utils/logger'
@@ -57,6 +57,8 @@ export function usePresentationStates({
     PresentationState[]
   >([])
   const [selectedUID, setSelectedUID] = useState(requestedUID)
+  /** Route of the session the states were last loaded for */
+  const loadedPathnameRef = useRef<string | undefined>(undefined)
   /** Retrievals finish later; they must see the URL of that moment */
   const latestRef = useLatestRef({
     requestedUID,
@@ -69,30 +71,33 @@ export function usePresentationStates({
 
   /**
    * Set or clear the `state` URL parameter, keeping the other parameters
-   * (such as `gcp`) and the hash. A user's pick adds a history entry, so
-   * Back returns to the previous one; automatic changes replace the entry.
+   * (such as `gcp`). A user's pick adds a history entry, so Back returns to
+   * the previous one; automatic changes replace the entry. The hash is
+   * dropped: it can hold the tokens of an implicit sign-in.
    */
   const writeStateParam = (
     value: string | undefined,
     { replace }: { replace: boolean },
   ): void => {
     const { location: currentLocation } = latestRef.current
-    const searchParams = new URLSearchParams(currentLocation.search)
-    /** Tokens of a sign-in callback must not be written back */
-    const wasCallback = deleteAuthResponseParams(searchParams)
+    const searchParams = new URLSearchParams(
+      searchWithoutAuthResponse(currentLocation.search),
+    )
     if (value === undefined) {
       searchParams.delete('state')
     } else {
       searchParams.set('state', value)
     }
-    navigate(
-      {
-        pathname: currentLocation.pathname,
-        search: searchParams.toString(),
-        hash: wasCallback ? '' : currentLocation.hash,
-      },
-      { replace },
-    )
+    const search = searchParams.toString()
+    /** The same URL again would only add a Back step */
+    if (
+      !replace &&
+      search === currentLocation.search.replace(/^\?/, '') &&
+      currentLocation.hash === ''
+    ) {
+      return
+    }
+    navigate({ pathname: currentLocation.pathname, search }, { replace })
   }
 
   const apply = (
@@ -126,6 +131,7 @@ export function usePresentationStates({
       selectedUID: shownUID,
       presentationStates: listed,
       opticalPaths: currentOpticalPaths,
+      routePathname: currentPathname,
     } = latestRef.current
     if (
       session === undefined ||
@@ -134,6 +140,11 @@ export function usePresentationStates({
     ) {
       return
     }
+    /**
+     * History that also moved to another route rebuilds the session, which
+     * loads the URL's state itself; the current session is the old route's
+     */
+    if (currentPathname !== loadedPathnameRef.current) return
     if (requestedUID === undefined) {
       currentOpticalPaths.showDefault(session)
       setSelectedUID(undefined)
@@ -169,6 +180,7 @@ export function usePresentationStates({
        * key), and the new session loads its own states.
        */
       const { routePathname: sessionPathname } = latestRef.current
+      loadedPathnameRef.current = sessionPathname
       const isStale = (): boolean =>
         session.isDestroyed ||
         latestRef.current.routePathname !== sessionPathname

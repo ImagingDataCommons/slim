@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Location, NavigateFunction } from 'react-router'
 
+import { searchWithoutAuthResponse } from '../../../auth/oidcUser'
 import type DicomWebManager from '../../../DicomWebManager'
 import type { Slide } from '../../../data/slides'
 import { logger } from '../../../utils/logger'
@@ -81,7 +82,7 @@ export function useRouteSlideResolution({
               `/series/${seriesInstanceUID}`,
               `/series/${match.correctedSeriesUID}`,
             ),
-            search: currentLocation.search,
+            search: searchWithoutAuthResponse(currentLocation.search),
           },
           { replace: true },
         )
@@ -101,24 +102,17 @@ export function useRouteSlideResolution({
       slides,
       studyInstanceUID,
       seriesInstanceUID,
-    }).then(
-      (resolution) => {
-        if (isCancelled) return
-        if (resolution.kind === 'referenced') {
-          resolvedDerivedSeriesRef.current = seriesInstanceUID
-          setSelectedSlide(resolution.slide)
-          setDerivedDataset(resolution.derivedDataset)
-          setUnresolvedSeriesUID(null)
-          return
-        }
-        setUnresolvedSeriesUID(seriesInstanceUID)
-      },
-      (error: unknown) => {
-        /** A failed lookup must end in "not found", not an endless spinner */
-        logger.error(`failed to resolve series "${seriesInstanceUID}":`, error)
-        if (!isCancelled) setUnresolvedSeriesUID(seriesInstanceUID)
-      },
-    )
+    }).then((resolution) => {
+      if (isCancelled) return
+      if (resolution.kind === 'referenced') {
+        resolvedDerivedSeriesRef.current = seriesInstanceUID
+        setSelectedSlide(resolution.slide)
+        setDerivedDataset(resolution.derivedDataset)
+        setUnresolvedSeriesUID(null)
+        return
+      }
+      setUnresolvedSeriesUID(seriesInstanceUID)
+    })
 
     return () => {
       isCancelled = true

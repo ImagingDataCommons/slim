@@ -127,7 +127,7 @@ describe('usePresentationStates', () => {
       first,
     )
     expect(navigate).toHaveBeenCalledWith(
-      { pathname: location.pathname, search: 'x=1&state=ps-1', hash: '' },
+      { pathname: location.pathname, search: 'x=1&state=ps-1' },
       { replace: true },
     )
     expect(result.current.selectedUID).toBe('ps-1')
@@ -226,7 +226,7 @@ describe('usePresentationStates', () => {
     /** A new history entry, keeping the other parameters */
     expect(navigate).toHaveBeenCalledTimes(1)
     expect(navigate).toHaveBeenCalledWith(
-      { pathname: location.pathname, search: 'x=1&state=ps-1', hash: '' },
+      { pathname: location.pathname, search: 'x=1&state=ps-1' },
       { replace: false },
     )
     expect(opticalPaths.showPresentationState).toHaveBeenCalledTimes(1)
@@ -250,7 +250,8 @@ describe('usePresentationStates', () => {
   })
 
   it('clearing the selection shows the default paths', () => {
-    const { result, navigate, opticalPaths, session } = setup('ps-1')
+    const { result, rerender, navigate, opticalPaths, session } = setup('ps-1')
+    rerender({ currentLocation: { ...location, search: '?x=1&state=ps-1' } })
 
     act(() => {
       result.current.onSelect(undefined)
@@ -258,7 +259,7 @@ describe('usePresentationStates', () => {
 
     expect(result.current.selectedUID).toBeUndefined()
     expect(navigate).toHaveBeenCalledWith(
-      { pathname: location.pathname, search: 'x=1', hash: '' },
+      { pathname: location.pathname, search: 'x=1' },
       { replace: false },
     )
     expect(opticalPaths.showDefault).toHaveBeenCalledWith(session)
@@ -293,6 +294,35 @@ describe('usePresentationStates', () => {
     expect(opticalPaths.showDefault).toHaveBeenCalledWith(session)
   })
 
+  it('adds no history entry for the state already shown', () => {
+    const { result, rerender, load, receive, navigate } = setup('ps-1')
+    rerender({ currentLocation: { ...location, search: '?x=1&state=ps-1' } })
+    load()
+    receive(presentationState('ps-1'), 0)
+    navigate.mockClear()
+
+    act(() => {
+      result.current.onSelect('ps-1')
+    })
+
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it('ignores Back to a state of another route', () => {
+    const { result, rerender, load, receive, opticalPaths } = setup('none')
+    load()
+    receive(presentationState('ps-1'), 0)
+    opticalPaths.showPresentationState.mockClear()
+
+    rerender({
+      currentLocation: { ...location, pathname: '/studies/1/series/3' },
+      requestedUID: 'ps-1',
+    })
+
+    expect(opticalPaths.showPresentationState).not.toHaveBeenCalled()
+    expect(result.current.selectedUID).toBeUndefined()
+  })
+
   it('drops sign-in callback parameters when writing the state', () => {
     const { result, rerender, load, receive, navigate } = setup('none')
     rerender({
@@ -310,7 +340,7 @@ describe('usePresentationStates', () => {
     })
 
     expect(navigate).toHaveBeenLastCalledWith(
-      { pathname: location.pathname, search: 'x=1&state=ps-1', hash: '' },
+      { pathname: location.pathname, search: 'x=1&state=ps-1' },
       { replace: false },
     )
   })
