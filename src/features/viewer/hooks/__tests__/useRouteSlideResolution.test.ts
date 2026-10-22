@@ -253,6 +253,63 @@ describe('useRouteSlideResolution', () => {
     await waitFor(() => expect(result.current.selectedSlide).toBe(reloaded))
     expect(resolveDerivedSeriesSlide).toHaveBeenCalledTimes(2)
   })
+
+  it('shows a derived series again after visiting another one', async () => {
+    const slide = createTestSlide(IMAGE_SERIES)
+    const slides = [slide]
+    const clients = createTestClients()
+    const navigate = vi.fn()
+    const OTHER_DERIVED = `${DERIVED_SERIES}1`
+    const datasetFor = (seriesInstanceUID: string) => ({
+      SeriesInstanceUID: seriesInstanceUID,
+      SOPInstanceUID: `${seriesInstanceUID}.1`,
+    })
+    vi.mocked(resolveDerivedSeriesSlide).mockImplementation(
+      async ({ seriesInstanceUID }) =>
+        seriesInstanceUID === DERIVED_SERIES
+          ? ({
+              kind: 'referenced',
+              slide,
+              derivedDataset: datasetFor(DERIVED_SERIES),
+            } as never)
+          : { kind: 'unresolved' },
+    )
+    const { result, rerender } = renderHook(
+      ({ seriesInstanceUID }: { seriesInstanceUID: string }) =>
+        useRouteSlideResolution({
+          clients,
+          slides,
+          studyInstanceUID: '2.25.1',
+          seriesInstanceUID,
+          location: {
+            pathname: `/series/${seriesInstanceUID}`,
+            search: '',
+            hash: '',
+          },
+          navigate,
+        }),
+      { initialProps: { seriesInstanceUID: DERIVED_SERIES } },
+    )
+    await waitFor(() =>
+      expect(result.current.derivedDataset?.SeriesInstanceUID).toBe(
+        DERIVED_SERIES,
+      ),
+    )
+
+    rerender({ seriesInstanceUID: OTHER_DERIVED })
+    await waitFor(() =>
+      expect(result.current.unresolvedSeriesUID).toBe(OTHER_DERIVED),
+    )
+    rerender({ seriesInstanceUID: DERIVED_SERIES })
+
+    await waitFor(() =>
+      expect(result.current.derivedDataset?.SeriesInstanceUID).toBe(
+        DERIVED_SERIES,
+      ),
+    )
+    expect(result.current.unresolvedSeriesUID).toBeNull()
+    expect(result.current.shownSeriesInstanceUID).toBe(IMAGE_SERIES)
+  })
 })
 
 describe('resolvedSeriesInstanceUID', () => {

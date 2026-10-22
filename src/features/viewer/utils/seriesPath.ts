@@ -9,7 +9,6 @@ import {
   parseSeriesInstanceUID,
   withSeriesInProjectPath,
 } from '../../../utils/routes'
-import { editSearch } from '../../../utils/url'
 
 export interface SeriesPathParams {
   studyInstanceUID: string
@@ -37,11 +36,12 @@ function seriesPathname({
 export function buildSeriesSelectionPath(params: SeriesPathParams): string {
   const path = seriesPathname(params)
   if (!hasSeriesInPath(params.pathname)) return path
-  const search = searchWithoutAuthResponse(params.search)
-  if (parseSeriesInstanceUID(params.pathname) === params.seriesInstanceUID) {
-    return `${path}${search}`
-  }
-  return `${path}${editSearch(search, { remove: ['state'] })}`
+  const isSameSeries =
+    parseSeriesInstanceUID(params.pathname) === params.seriesInstanceUID
+  return `${path}${searchWithoutAuthResponse(
+    params.search,
+    isSameSeries ? [] : ['state'],
+  )}`
 }
 
 /**

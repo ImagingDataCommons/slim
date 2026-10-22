@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Location, NavigateFunction } from 'react-router'
 
 import {
@@ -54,9 +54,20 @@ export function useRouteSlideResolution({
   const [unresolvedSeriesUID, setUnresolvedSeriesUID] = useState<string | null>(
     null,
   )
-  /** Derived series whose referenced slide was already looked up */
-  const [resolvedDerivedSeriesUID, setResolvedDerivedSeriesUID] = useState<
-    string | undefined
+  /**
+   * The lookup that resolved the selected slide, so the selectedSlide update
+   * it causes does not start it again. Holds what it was resolved from: a
+   * new study, server or slide list, or another derived series looked up
+   * since, makes it stale.
+   */
+  const resolvedLookupRef = useRef<
+    | {
+        seriesInstanceUID: string
+        slides: readonly Slide[]
+        clients: { [key: string]: DicomWebManager }
+        studyInstanceUID: string
+      }
+    | undefined
   >(undefined)
   /**
    * Another study, server or slide list (a retry) starts over: a slide or
@@ -72,7 +83,6 @@ export function useRouteSlideResolution({
     setSelectedSlide(findSeriesSlide(slides, seriesInstanceUID))
     setDerivedDataset(null)
     setUnresolvedSeriesUID(null)
-    setResolvedDerivedSeriesUID(undefined)
   }
   /**
    * Read when correcting the URL, so a query change (such as `?state=`) does
@@ -94,7 +104,7 @@ export function useRouteSlideResolution({
        * The route names an image series, so a derived dataset from an
        * earlier deep link must not be shown again.
        */
-      setResolvedDerivedSeriesUID(undefined)
+      resolvedLookupRef.current = undefined
       if (match.kind === 'image') setSelectedSlide(match.slide)
       setDerivedDataset(null)
       setUnresolvedSeriesUID(null)
@@ -121,7 +131,18 @@ export function useRouteSlideResolution({
     }
 
     /** Already resolved for this route; the selectedSlide update re-ran us */
-    if (resolvedDerivedSeriesUID === seriesInstanceUID) return
+    const resolved = resolvedLookupRef.current
+    if (
+      resolved !== undefined &&
+      resolved.seriesInstanceUID === seriesInstanceUID &&
+      resolved.slides === slides &&
+      resolved.clients === clients &&
+      resolved.studyInstanceUID === studyInstanceUID
+    ) {
+      return
+    }
+    /** Returning to this series later must look it up again */
+    resolvedLookupRef.current = undefined
     /**
      * Another derived series' dataset must not be shown while this resolves,
      * nor an earlier "not found" for this one while it is tried again
@@ -139,7 +160,12 @@ export function useRouteSlideResolution({
     }).then((resolution) => {
       if (isCancelled) return
       if (resolution.kind === 'referenced') {
-        setResolvedDerivedSeriesUID(seriesInstanceUID)
+        resolvedLookupRef.current = {
+          seriesInstanceUID,
+          slides,
+          clients,
+          studyInstanceUID,
+        }
         setSelectedSlide(resolution.slide)
         setDerivedDataset(resolution.derivedDataset)
         setUnresolvedSeriesUID(null)
@@ -158,7 +184,6 @@ export function useRouteSlideResolution({
     studyInstanceUID,
     seriesInstanceUID,
     selectedSlide,
-    resolvedDerivedSeriesUID,
     routingRef,
   ])
 

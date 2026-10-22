@@ -4,11 +4,7 @@ import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../services/NotificationMiddleware'
 import { CustomError, errorTypes } from '../utils/CustomError'
-import {
-  editSearch,
-  isAuthResponseParams,
-  isOidcAuthorizeCallbackUrl,
-} from '../utils/url'
+import { editSearch, hashParams, isAuthResponseParams } from '../utils/url'
 import type { User } from '.'
 
 /** Query and fragment parameters an authorize redirect may append */
@@ -94,20 +90,23 @@ export const currentReturnUrl = (): string =>
 
 /**
  * Query string to write back to the URL, without the parameters of an
- * authorize response when there is one. The router can still hold the
- * callback URL after `clearAuthParamsFromUrl` cleaned the address bar.
- * Other parameters are kept as written.
+ * authorize response when there is one, and without `remove`. The router
+ * can still hold the callback URL after `clearAuthParamsFromUrl` cleaned
+ * the address bar. Other parameters are kept as written.
  */
-export const searchWithoutAuthResponse = (search: string): string =>
+export const searchWithoutAuthResponse = (
+  search: string,
+  remove: readonly string[] = [],
+): string =>
   editSearch(search, {
     remove: isAuthResponseParams(new URLSearchParams(search))
-      ? AUTH_RESPONSE_PARAMS
-      : [],
+      ? [...AUTH_RESPONSE_PARAMS, ...remove]
+      : remove,
   })
 
 /** Hash to write back to the URL: none when it holds an implicit response */
 export const hashWithoutAuthResponse = (hash: string): string =>
-  isOidcAuthorizeCallbackUrl({ search: '', hash }) ? '' : hash
+  isAuthResponseParams(hashParams(hash)) ? '' : hash
 
 /**
  * Drop authorize response parameters from the address bar so tokens are not

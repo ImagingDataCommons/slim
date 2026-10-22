@@ -70,13 +70,17 @@ export const joinUrl = (path: string, uri: string): string => {
 /** Parameters of an authorize response that grants a code or an ID token */
 const AUTH_GRANT_KEYS = ['code', 'id_token', 'session_state']
 
+/** Parameters of a URL fragment such as `#access_token=…&state=…` */
+export const hashParams = (hash: string): URLSearchParams =>
+  new URLSearchParams(hash.replace('#', '?'))
+
 /** Query or fragment parameters of a location */
 const locationParams = (location: {
   search: string
   hash: string
 }): URLSearchParams[] => [
   new URLSearchParams(location.search),
-  new URLSearchParams(location.hash.replace('#', '?')),
+  hashParams(location.hash),
 ]
 
 const hasAny = (params: URLSearchParams, keys: readonly string[]): boolean =>

@@ -86,14 +86,32 @@ const cleanupExpiredCache = (): void => {
 const getServerUrl = (clients: { [key: string]: DicomWebManager }): string =>
   clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]?.baseURL ?? ''
 
-/** Study and server a result belongs to; empty without a study */
+/**
+ * Study and server a result belongs to. Empty only without a study, where
+ * the most recently cached slides stand in; a study without clients gets
+ * its own key and no slides
+ */
 const resultKey = (
   clients: { [key: string]: DicomWebManager } | undefined,
   studyInstanceUID: string | undefined,
 ): string =>
-  clients == null || studyInstanceUID == null || studyInstanceUID === ''
+  studyInstanceUID == null || studyInstanceUID === ''
     ? ''
-    : `${getServerUrl(clients)}|${studyInstanceUID}`
+    : `${clients == null ? '' : getServerUrl(clients)}|${studyInstanceUID}`
+
+/** Slides cached for the study on this server, if any */
+const cachedSlidesFor = (
+  clients: { [key: string]: DicomWebManager } | undefined,
+  studyInstanceUID: string | undefined,
+): Slide[] | undefined => {
+  if (clients == null || studyInstanceUID == null || studyInstanceUID === '') {
+    return undefined
+  }
+  const cached = slidesCache.get(studyInstanceUID)
+  return cached !== undefined && cached.serverUrl === getServerUrl(clients)
+    ? cached.slides
+    : undefined
+}
 
 /** Stable empty list while the current study's slides are not loaded */
 const NO_SLIDES: Slide[] = []
@@ -162,6 +180,19 @@ export const useSlides = ({
   useEffect(() => {
     cleanupExpiredCache()
 
+    const key = resultKey(clients, studyInstanceUID)
+    /** A study without clients has nothing to load from */
+    if (
+      (clients === null || clients === undefined) &&
+      studyInstanceUID !== undefined &&
+      studyInstanceUID !== ''
+    ) {
+      setSlides([])
+      setIsLoading(false)
+      setError(null)
+      setLoadedKey(key)
+      return
+    }
     /** Without a study, fall back to the most recently cached slides */
     if (
       clients === null ||
@@ -188,7 +219,6 @@ export const useSlides = ({
 
     const serverUrl = getServerUrl(clients)
     const cachedData = slidesCache.get(studyInstanceUID)
-    const key = resultKey(clients, studyInstanceUID)
     if (cachedData !== undefined && cachedData.serverUrl === serverUrl) {
       setSlides(cachedData.slides)
       setIsLoading(false)
@@ -263,13 +293,15 @@ export const useSlides = ({
    * still holds the previous one's result; it is never returned as this one's
    */
   const isCurrentResult = loadedKey === resultKey(clients, studyInstanceUID)
-  return useMemo(
-    () => ({
-      slides: isCurrentResult ? slides : NO_SLIDES,
-      isLoading: isLoading || !isCurrentResult,
-      error: isCurrentResult ? error : null,
-      retry,
-    }),
-    [isCurrentResult, slides, isLoading, error, retry],
-  )
+  /** A cached study is returned at once, without a loading render */
+  const cachedSlides = isCurrentResult
+    ? undefined
+    : cachedSlidesFor(clients, studyInstanceUID)
+  return useMemo(() => {
+    if (isCurrentResult) return { slides, isLoading, error, retry }
+    if (cachedSlides !== undefined) {
+      return { slides: cachedSlides, isLoading: false, error: null, retry }
+    }
+    return { slides: NO_SLIDES, isLoading: true, error: null, retry }
+  }, [isCurrentResult, cachedSlides, slides, isLoading, error, retry])
 }

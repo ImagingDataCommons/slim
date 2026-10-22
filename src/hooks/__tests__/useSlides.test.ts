@@ -183,6 +183,41 @@ describe('useSlides', () => {
     }
   })
 
+  it('returns a cached study in the first render', async () => {
+    const clients = clientsFor('https://a.test/dicomWeb')
+    respondWith([slide])
+    const first = renderHook(() =>
+      useSlides({ clients, studyInstanceUID: 'cached' }),
+    )
+    await waitFor(() => expect(first.result.current.slides).toEqual([slide]))
+    first.unmount()
+
+    const firstRenders: Array<{ slides: Slide[]; isLoading: boolean }> = []
+    renderHook(() => {
+      const value = useSlides({ clients, studyInstanceUID: 'cached' })
+      firstRenders.push({ slides: value.slides, isLoading: value.isLoading })
+      return value
+    })
+
+    expect(firstRenders[0]).toEqual({ slides: [slide], isLoading: false })
+  })
+
+  it("never gives a study without clients another study's slides", async () => {
+    const clients = clientsFor('https://a.test/dicomWeb')
+    respondWith([slide])
+    const first = renderHook(() =>
+      useSlides({ clients, studyInstanceUID: 'a' }),
+    )
+    await waitFor(() => expect(first.result.current.slides).toEqual([slide]))
+
+    const { result } = renderHook(() =>
+      useSlides({ clients: undefined, studyInstanceUID: 'b' }),
+    )
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.slides).toEqual([])
+  })
+
   it('keeps only the most recently loaded studies cached', async () => {
     respondWith([slide])
     const clients = clientsFor('https://a.test/dicomWeb')
