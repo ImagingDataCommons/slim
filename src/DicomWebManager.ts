@@ -780,17 +780,37 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   searchForSeries = async (
     options: dwc.api.SearchForSeriesOptions,
   ): Promise<dwc.api.Series[]> => {
+    const seriesStoreCache = getSeriesStoreCache(this.stores)
     const merged = await searchAcrossStores(
       this.stores,
       [STUDY_INSTANCE_UID_TAG, SERIES_INSTANCE_UID_TAG],
-      async (store) =>
-        await this.callStore(
+      async (store) => {
+        const rows = (await this.callStore(
           store,
-          async (client) =>
-            (await client.searchForSeries(
-              options,
-            )) as unknown as DicomJsonObject[],
-        ),
+          async (client) => await client.searchForSeries(options),
+        )) as unknown as DicomJsonObject[]
+        /**
+         * Remember the store that has each series, so a later retrieve goes
+         * there first instead of failing on the other stores
+         */
+        for (const row of searchRows<DicomJsonObject>(store, rows)) {
+          const studyInstanceUID = getDicomTagValue(row, STUDY_INSTANCE_UID_TAG)
+          const seriesInstanceUID = getDicomTagValue(
+            row,
+            SERIES_INSTANCE_UID_TAG,
+          )
+          if (studyInstanceUID === undefined || seriesInstanceUID === undefined)
+            continue
+          const cacheKey = buildSeriesCacheKey(
+            studyInstanceUID,
+            seriesInstanceUID,
+          )
+          if (!seriesStoreCache.has(cacheKey)) {
+            seriesStoreCache.set(cacheKey, store)
+          }
+        }
+        return rows
+      },
     )
     return merged as unknown as dwc.api.Series[]
   }

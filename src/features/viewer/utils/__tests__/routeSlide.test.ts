@@ -85,7 +85,27 @@ describe('matchSlideForSeriesRoute', () => {
         seriesInstanceUID: '1.2.3',
         selectedSlide: slides[0],
       }),
-    ).toEqual({ kind: 'unchanged' })
+    ).toEqual({ kind: 'unchanged', correctedSeriesUID: undefined })
+  })
+
+  it('corrects a mangled UID of the selected slide', () => {
+    expect(
+      matchSlideForSeriesRoute({
+        slides,
+        seriesInstanceUID: '1.2.3.0',
+        selectedSlide: slides[0],
+      }),
+    ).toEqual({ kind: 'unchanged', correctedSeriesUID: '1.2.3' })
+  })
+
+  it('looks up a derived series named after a slide series', () => {
+    expect(
+      matchSlideForSeriesRoute({
+        slides,
+        seriesInstanceUID: '1.2.3.7',
+        selectedSlide: slides[0],
+      }),
+    ).toEqual({ kind: 'lookupDerived' })
   })
 
   it('returns the image slide and optional UID correction', () => {
@@ -147,6 +167,9 @@ describe('canonicalSeriesPathname', () => {
     )
     expect(canonicalSeriesPathname('/studies/9/series/4.5.6', image)).toBe(
       '/studies/9/series/4.5.6',
+    )
+    expect(canonicalSeriesPathname('/studies/9/series/1.2.3.7', image)).toBe(
+      '/studies/9/series/1.2.3.7',
     )
     expect(canonicalSeriesPathname('/studies/9', image)).toBe('/studies/9')
   })

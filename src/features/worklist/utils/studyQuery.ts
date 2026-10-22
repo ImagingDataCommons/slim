@@ -24,43 +24,39 @@ export function buildStudyQueryParams(): StudyQueryParams {
 }
 
 /**
- * QIDO queries that find the studies a worklist search refers to, in stages
- * sent one after the other until a stage matches. Servers differ in what
+ * QIDO queries that find the studies a worklist search refers to, one per
+ * attribute and matching style, exact ones first. Servers differ in what
  * they honor: Google Cloud Healthcare (IDC) ignores `*` wildcards and
  * matches only exact values or fuzzy person names, while dcm4chee matches
- * wildcards. The exact stage covers either for a whole value; the wildcard
- * stage follows only when it finds nothing, so a search costs a few queries
- * per store. Queries a server rejects return nothing. A term that already
- * contains `*` or `?` is sent as typed, in one stage. Terms shorter than
- * {@link STUDY_SEARCH_MIN_LENGTH} skip the server (local filter still runs).
+ * wildcards. Sending both styles covers either; queries a server rejects
+ * return nothing. A term that already contains `*` or `?` is sent as typed.
+ * Terms shorter than {@link STUDY_SEARCH_MIN_LENGTH} skip the server (local
+ * filter still runs).
  */
 export function buildStudySearchQueries(
   searchText: string,
-): StudyQueryParams[][] {
+): StudyQueryParams[] {
   const term = searchText.trim()
   if (term.length < STUDY_SEARCH_MIN_LENGTH) return []
-  const withBase = (criteria: StudyQueryParams[]): StudyQueryParams[] =>
-    criteria.map((criterion) => ({
-      ...buildStudyQueryParams(),
-      ...criterion,
-      limit: STUDY_SEARCH_RESULT_LIMIT,
-    }))
-  const exact = withBase([
+  const exact: StudyQueryParams[] = [
     { PatientID: term },
     { PatientName: term, fuzzymatching: true },
     { AccessionNumber: term },
     { StudyID: term },
-  ])
-  if (/[*?]/.test(term)) return [exact]
-  const wildcard = `*${term}*`
-  return [
-    exact,
-    withBase([
-      { PatientID: wildcard },
-      { PatientName: wildcard, fuzzymatching: true },
-      { AccessionNumber: wildcard },
-    ]),
   ]
+  const wildcard = `*${term}*`
+  const partial: StudyQueryParams[] = /[*?]/.test(term)
+    ? []
+    : [
+        { PatientID: wildcard },
+        { PatientName: wildcard, fuzzymatching: true },
+        { AccessionNumber: wildcard },
+      ]
+  return [...exact, ...partial].map((criteria) => ({
+    ...buildStudyQueryParams(),
+    ...criteria,
+    limit: STUDY_SEARCH_RESULT_LIMIT,
+  }))
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

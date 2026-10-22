@@ -50,18 +50,25 @@ function setup(requestedUID?: string) {
     deliverDefault = options.onDefaultPresentationState ?? (() => {})
   })
   const { result, rerender } = renderHook(
-    ({ currentLocation }: { currentLocation: Location }) =>
+    (props: { currentLocation: Location; requestedUID?: string }) =>
       usePresentationStates({
         sessionRef: test.access.sessionRef,
         clients: createTestClients(),
         studyInstanceUID: '1',
-        requestedUID,
-        routePathname: currentLocation.pathname,
-        location: currentLocation,
+        /** Rerenders keep the URL's state unless they name one */
+        requestedUID:
+          'requestedUID' in props ? props.requestedUID : requestedUID,
+        routePathname: props.currentLocation.pathname,
+        location: props.currentLocation,
         navigate,
         opticalPaths,
       }),
-    { initialProps: { currentLocation: location } },
+    {
+      initialProps: { currentLocation: location } as {
+        currentLocation: Location
+        requestedUID?: string
+      },
+    },
   )
   const load = (): void => {
     act(() => {
@@ -216,11 +223,11 @@ describe('usePresentationStates', () => {
       result.current.onSelect('ps-1')
     })
 
-    /** Replaced in place, keeping the other parameters */
+    /** A new history entry, keeping the other parameters */
     expect(navigate).toHaveBeenCalledTimes(1)
     expect(navigate).toHaveBeenCalledWith(
       { pathname: location.pathname, search: 'x=1&state=ps-1', hash: '' },
-      { replace: true },
+      { replace: false },
     )
     expect(opticalPaths.showPresentationState).toHaveBeenCalledTimes(1)
     expect(result.current.selectedUID).toBe('ps-1')
@@ -252,8 +259,59 @@ describe('usePresentationStates', () => {
     expect(result.current.selectedUID).toBeUndefined()
     expect(navigate).toHaveBeenCalledWith(
       { pathname: location.pathname, search: 'x=1', hash: '' },
-      { replace: true },
+      { replace: false },
     )
     expect(opticalPaths.showDefault).toHaveBeenCalledWith(session)
+  })
+
+  it('shows the state the URL names after Back', () => {
+    const { result, rerender, load, receive, opticalPaths, session } =
+      setup('none')
+    load()
+    receive(presentationState('ps-1'), 0)
+    receive(presentationState('ps-2'), 1)
+    act(() => {
+      result.current.onSelect('ps-1')
+    })
+    rerender({ currentLocation: location, requestedUID: 'ps-1' })
+    act(() => {
+      result.current.onSelect('ps-2')
+    })
+    rerender({ currentLocation: location, requestedUID: 'ps-2' })
+
+    rerender({ currentLocation: location, requestedUID: 'ps-1' })
+
+    expect(result.current.selectedUID).toBe('ps-1')
+    expect(opticalPaths.showPresentationState).toHaveBeenLastCalledWith(
+      session,
+      expect.objectContaining({ SOPInstanceUID: 'ps-1' }),
+    )
+
+    rerender({ currentLocation: location, requestedUID: undefined })
+
+    expect(result.current.selectedUID).toBeUndefined()
+    expect(opticalPaths.showDefault).toHaveBeenCalledWith(session)
+  })
+
+  it('drops sign-in callback parameters when writing the state', () => {
+    const { result, rerender, load, receive, navigate } = setup('none')
+    rerender({
+      currentLocation: {
+        ...location,
+        search: '?x=1&access_token=secret&token_type=Bearer&state=oauth',
+        hash: '#id_token=secret',
+      },
+    })
+    load()
+    receive(presentationState('ps-1'), 0)
+
+    act(() => {
+      result.current.onSelect('ps-1')
+    })
+
+    expect(navigate).toHaveBeenLastCalledWith(
+      { pathname: location.pathname, search: 'x=1&state=ps-1', hash: '' },
+      { replace: false },
+    )
   })
 })

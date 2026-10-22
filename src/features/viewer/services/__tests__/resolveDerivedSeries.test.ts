@@ -25,21 +25,29 @@ const derivedMetadata = {
   },
 }
 
+/** Client whose stores have the series when `metadata` is given */
 function client(
-  retrieveSeriesMetadata: () => Promise<unknown[]>,
+  metadata?: unknown[],
+  options: { failRetrieve?: boolean } = {},
 ): DicomWebManager {
   return {
-    retrieveSeriesMetadata: vi.fn(retrieveSeriesMetadata),
+    searchForSeries: vi.fn(async () =>
+      metadata === undefined
+        ? []
+        : [{ '0020000E': { Value: [DERIVED_SERIES] } }],
+    ),
+    retrieveSeriesMetadata: vi.fn(async () => {
+      if (options.failRetrieve === true) throw new Error('500')
+      return metadata ?? []
+    }),
   } as unknown as DicomWebManager
 }
 
 describe('resolveDerivedSeriesSlide', () => {
   it('finds a derived series on a store of its storage class', async () => {
     const slide = createTestSlide(IMAGE_SERIES)
-    const slideClient = client(async () => {
-      throw new Error('404')
-    })
-    const annotationClient = client(async () => [derivedMetadata])
+    const slideClient = client()
+    const annotationClient = client([derivedMetadata])
     const resolution = await resolveDerivedSeriesSlide({
       clients: {
         default: slideClient,
@@ -55,13 +63,15 @@ describe('resolveDerivedSeriesSlide', () => {
     if (resolution.kind === 'referenced') {
       expect(resolution.slide).toBe(slide)
     }
-    expect(slideClient.retrieveSeriesMetadata).toHaveBeenCalledTimes(1)
+    /** Stores without the series are searched, never asked to retrieve */
+    expect(slideClient.searchForSeries).toHaveBeenCalledTimes(1)
+    expect(slideClient.retrieveSeriesMetadata).not.toHaveBeenCalled()
   })
 
   it('stops at the slide client when it has the series', async () => {
     const slide = createTestSlide(IMAGE_SERIES)
-    const slideClient = client(async () => [derivedMetadata])
-    const annotationClient = client(async () => [derivedMetadata])
+    const slideClient = client([derivedMetadata])
+    const annotationClient = client([derivedMetadata])
     await resolveDerivedSeriesSlide({
       clients: {
         [StorageClasses.MICROSCOPY_BULK_SIMPLE_ANNOTATION]: annotationClient,
@@ -72,13 +82,26 @@ describe('resolveDerivedSeriesSlide', () => {
       seriesInstanceUID: DERIVED_SERIES,
     })
 
-    expect(annotationClient.retrieveSeriesMetadata).not.toHaveBeenCalled()
+    expect(annotationClient.searchForSeries).not.toHaveBeenCalled()
   })
 
   it('is unresolved when no store has the series', async () => {
-    const empty = client(async () => [])
     const resolution = await resolveDerivedSeriesSlide({
-      clients: { [StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]: empty },
+      clients: { [StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]: client() },
+      slides: [createTestSlide(IMAGE_SERIES)],
+      studyInstanceUID: STUDY,
+      seriesInstanceUID: DERIVED_SERIES,
+    })
+
+    expect(resolution.kind).toBe('unresolved')
+  })
+
+  it('is unresolved instead of rejecting when metadata cannot be read', async () => {
+    const malformed = client([{ '0020000E': { vr: 'XX' } }], {
+      failRetrieve: true,
+    })
+    const resolution = await resolveDerivedSeriesSlide({
+      clients: { [StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]: malformed },
       slides: [createTestSlide(IMAGE_SERIES)],
       studyInstanceUID: STUDY,
       seriesInstanceUID: DERIVED_SERIES,

@@ -116,6 +116,43 @@ const recordingPolicy = (
 }
 
 describe('DicomWebManager - multi-store search', () => {
+  it('retrieves a searched series from the store that has it first', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
+      ],
+    })
+    const primaryStub = makeStubClient('primary')
+    const secondaryStub = makeStubClient('secondary')
+    stubManagerClients(manager, [primaryStub, secondaryStub])
+    primaryStub.searchForSeries.mockResolvedValue([])
+    secondaryStub.searchForSeries.mockResolvedValue([
+      {
+        '0020000D': { vr: 'UI', Value: ['1.2.3'] },
+        '0020000E': { vr: 'UI', Value: ['1.2.3.9'] },
+      },
+    ])
+    secondaryStub.retrieveSeriesMetadata.mockResolvedValue([])
+
+    await manager.searchForSeries({
+      studyInstanceUID: '1.2.3',
+      queryParams: { SeriesInstanceUID: '1.2.3.9' },
+    } as dwc.api.SearchForSeriesOptions)
+    await manager.retrieveSeriesMetadata({
+      studyInstanceUID: '1.2.3',
+      seriesInstanceUID: '1.2.3.9',
+    })
+
+    expect(primaryStub.retrieveSeriesMetadata).not.toHaveBeenCalled()
+    expect(secondaryStub.retrieveSeriesMetadata).toHaveBeenCalledTimes(1)
+  })
+
   it('merges searchForSeries results across stores and de-duplicates by SeriesInstanceUID', async () => {
     const manager = new DicomWebManager({
       baseUri,

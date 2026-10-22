@@ -6,12 +6,31 @@ import {
 } from '../../../utils/recoverSeriesInstanceUID'
 import { parseSeriesInstanceUID } from '../../../utils/routes'
 
+/**
+ * Route recovery only undoes the trailing `.0` of menu key mangling: a
+ * longer UID that extends a slide series may be a derived series named
+ * after it, which must be looked up, not shown as the slide.
+ */
+const ROUTE_RECOVERY = { allowPrefix: false }
+
 /** Slide whose series list includes `seriesInstanceUID` (or a mangled form). */
 export function findSeriesSlide(
   slides: readonly Slide[],
   seriesInstanceUID: string,
 ): Slide | undefined {
-  return findSlideBySeriesInstanceUID(slides, seriesInstanceUID)
+  return findSlideBySeriesInstanceUID(slides, seriesInstanceUID, ROUTE_RECOVERY)
+}
+
+/** Canonical series UID of `slide` for a route UID, if it is one of them */
+function canonicalRouteSeriesUID(
+  slide: { seriesInstanceUIDs: string[] },
+  seriesInstanceUID: string,
+): string | undefined {
+  return recoverSeriesInstanceUID(
+    seriesInstanceUID,
+    slide.seriesInstanceUIDs,
+    ROUTE_RECOVERY,
+  )
 }
 
 /**
@@ -44,7 +63,7 @@ export function selectedSeriesForStudyPath({
 }): string {
   const seriesFromPath = parseSeriesInstanceUID(pathname)
   if (seriesFromPath === '') return fallbackSeriesInstanceUID
-  const slideForPath = findSeriesSlide(slides, seriesFromPath)
+  const slideForPath = findSlideBySeriesInstanceUID(slides, seriesFromPath)
   return slideForPath !== undefined
     ? seriesUidFromSlide(slideForPath, seriesFromPath)
     : seriesFromPath
@@ -61,16 +80,17 @@ export function canonicalSeriesPathname(
 ): string {
   const seriesFromPath = parseSeriesInstanceUID(pathname)
   if (seriesFromPath === '') return pathname
-  const recovered = recoverSeriesInstanceUID(
-    seriesFromPath,
-    slide.seriesInstanceUIDs,
-  )
+  const recovered = canonicalRouteSeriesUID(slide, seriesFromPath)
   if (recovered === undefined || recovered === seriesFromPath) return pathname
   return pathname.replace(`/series/${seriesFromPath}`, `/series/${recovered}`)
 }
 
 export type SyncRouteSlideMatch =
-  | { kind: 'unchanged' }
+  | {
+      kind: 'unchanged'
+      /** Canonical series UID when the route was mangled */
+      correctedSeriesUID?: string
+    }
   | {
       kind: 'image'
       slide: Slide
@@ -93,23 +113,24 @@ export function matchSlideForSeriesRoute({
   seriesInstanceUID: string
   selectedSlide: Slide | null | undefined
 }): SyncRouteSlideMatch {
-  const currentSlideMatchesSeries =
-    selectedSlide != null &&
-    findSlideBySeriesInstanceUID([selectedSlide], seriesInstanceUID) ===
-      selectedSlide
+  const correction = (slide: Slide): string | undefined => {
+    const canonical = canonicalRouteSeriesUID(slide, seriesInstanceUID)
+    return canonical !== seriesInstanceUID ? canonical : undefined
+  }
 
-  if (selectedSlide != null && currentSlideMatchesSeries) {
-    return { kind: 'unchanged' }
+  if (
+    selectedSlide != null &&
+    findSeriesSlide([selectedSlide], seriesInstanceUID) === selectedSlide
+  ) {
+    return { kind: 'unchanged', correctedSeriesUID: correction(selectedSlide) }
   }
 
   const imageSlide = findSeriesSlide(slides, seriesInstanceUID)
   if (imageSlide !== undefined) {
-    const resolvedSeriesUID = seriesUidFromSlide(imageSlide, seriesInstanceUID)
     return {
       kind: 'image',
       slide: imageSlide,
-      correctedSeriesUID:
-        resolvedSeriesUID !== seriesInstanceUID ? resolvedSeriesUID : undefined,
+      correctedSeriesUID: correction(imageSlide),
     }
   }
 

@@ -96,4 +96,59 @@ describe('useRouteSlideResolution', () => {
     )
     expect(resolveDerivedSeriesSlide).toHaveBeenCalledTimes(1)
   })
+
+  it('corrects a mangled series UID in the first URL', async () => {
+    const slide = createTestSlide(IMAGE_SERIES)
+    const slides = [slide]
+    const clients = createTestClients()
+    const navigate = vi.fn()
+    renderHook(() =>
+      useRouteSlideResolution({
+        clients,
+        slides,
+        studyInstanceUID: '2.25.1',
+        seriesInstanceUID: `${IMAGE_SERIES}.0`,
+        location: { pathname: `/series/${IMAGE_SERIES}.0`, search: '?x=1' },
+        navigate,
+      }),
+    )
+
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith(
+        { pathname: `/series/${IMAGE_SERIES}`, search: '?x=1' },
+        { replace: true },
+      ),
+    )
+  })
+
+  it('returns the slide of a new image route in the same render', () => {
+    const first = createTestSlide(IMAGE_SERIES)
+    const second = createTestSlide(
+      '2.25.900000000000000000000000000000000000003',
+    )
+    const slides = [first, second]
+    const clients = createTestClients()
+    const navigate = vi.fn()
+    const seen: Array<string | undefined> = []
+    const { rerender } = renderHook(
+      ({ seriesInstanceUID }: { seriesInstanceUID: string }) => {
+        const value = useRouteSlideResolution({
+          clients,
+          slides,
+          studyInstanceUID: '2.25.1',
+          seriesInstanceUID,
+          location: { pathname: `/series/${seriesInstanceUID}`, search: '' },
+          navigate,
+        })
+        seen.push(value.selectedSlide?.seriesInstanceUIDs[0])
+        return value
+      },
+      { initialProps: { seriesInstanceUID: IMAGE_SERIES } },
+    )
+    seen.length = 0
+
+    rerender({ seriesInstanceUID: second.seriesInstanceUIDs[0] })
+
+    expect(seen).not.toContain(IMAGE_SERIES)
+  })
 })

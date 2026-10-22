@@ -1,8 +1,9 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Location, NavigateFunction } from 'react-router'
 
+import { deleteAuthResponseParams } from '../../../auth/oidcUser'
 import type DicomWebManager from '../../../DicomWebManager'
 import { StorageClasses } from '../../../data/uids'
 import { logger } from '../../../utils/logger'
@@ -62,15 +63,23 @@ export function usePresentationStates({
     routePathname,
     location,
     opticalPaths,
+    selectedUID,
+    presentationStates,
   })
 
   /**
-   * Set or clear the `state` URL parameter in place, keeping the other
-   * parameters (such as `gcp`) and the hash.
+   * Set or clear the `state` URL parameter, keeping the other parameters
+   * (such as `gcp`) and the hash. A user's pick adds a history entry, so
+   * Back returns to the previous one; automatic changes replace the entry.
    */
-  const replaceStateParam = (value: string | undefined): void => {
+  const writeStateParam = (
+    value: string | undefined,
+    { replace }: { replace: boolean },
+  ): void => {
     const { location: currentLocation } = latestRef.current
     const searchParams = new URLSearchParams(currentLocation.search)
+    /** Tokens of a sign-in callback must not be written back */
+    const wasCallback = deleteAuthResponseParams(searchParams)
     if (value === undefined) {
       searchParams.delete('state')
     } else {
@@ -80,21 +89,22 @@ export function usePresentationStates({
       {
         pathname: currentLocation.pathname,
         search: searchParams.toString(),
-        hash: currentLocation.hash,
+        hash: wasCallback ? '' : currentLocation.hash,
       },
-      { replace: true },
+      { replace },
     )
   }
 
   const apply = (
     session: ViewerSession,
     presentationState: PresentationState,
+    { replace = true }: { replace?: boolean } = {},
   ): void => {
     latestRef.current.opticalPaths.showPresentationState(
       session,
       presentationState,
     )
-    replaceStateParam(presentationState.SOPInstanceUID)
+    writeStateParam(presentationState.SOPInstanceUID, { replace })
     setSelectedUID(presentationState.SOPInstanceUID)
   }
 
@@ -102,9 +112,41 @@ export function usePresentationStates({
     const session = sessionRef.current
     if (session !== undefined) session.hasUserDisplayChanges = true
     setSelectedUID(undefined)
-    replaceStateParam(undefined)
+    writeStateParam(undefined, { replace: false })
     if (session !== undefined) opticalPaths.showDefault(session)
   }
+
+  /**
+   * Back and Forward change the URL's state without a pick: show the state
+   * it names, or the default display when it names none.
+   */
+  useEffect(() => {
+    const session = sessionRef.current
+    const {
+      selectedUID: shownUID,
+      presentationStates: listed,
+      opticalPaths: currentOpticalPaths,
+    } = latestRef.current
+    if (
+      session === undefined ||
+      session.isDestroyed ||
+      requestedUID === shownUID
+    ) {
+      return
+    }
+    if (requestedUID === undefined) {
+      currentOpticalPaths.showDefault(session)
+      setSelectedUID(undefined)
+      return
+    }
+    /** A state not loaded yet is applied by the load that brings it */
+    const presentationState = listed.find(
+      (instance) => instance.SOPInstanceUID === requestedUID,
+    )
+    if (presentationState === undefined) return
+    currentOpticalPaths.showPresentationState(session, presentationState)
+    setSelectedUID(requestedUID)
+  }, [requestedUID, sessionRef, latestRef])
 
   return {
     presentationStates,
@@ -178,7 +220,7 @@ export function usePresentationStates({
         const session = sessionRef.current
         if (presentationState !== undefined && session !== undefined) {
           session.hasUserDisplayChanges = true
-          apply(session, presentationState)
+          apply(session, presentationState, { replace: false })
         } else {
           notifyVisualizationError('Presentation State could not be found')
           logger.log(

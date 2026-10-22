@@ -88,6 +88,24 @@ export const currentReturnUrl = (): string =>
   `${window.location.pathname}${window.location.search}`
 
 /**
+ * Remove authorize response parameters, when they are there, from query
+ * parameters the app writes back to the URL. The router can still hold the
+ * callback URL after `clearAuthParamsFromUrl` cleaned the address bar.
+ */
+export const deleteAuthResponseParams = (
+  searchParams: URLSearchParams,
+): boolean => {
+  const isCallback = ['code', 'id_token', 'access_token'].some((key) =>
+    searchParams.has(key),
+  )
+  if (!isCallback) return false
+  for (const key of AUTH_RESPONSE_PARAMS) {
+    searchParams.delete(key)
+  }
+  return true
+}
+
+/**
  * Drop authorize response parameters from the address bar so tokens are not
  * left in history and a reload does not replay the callback.
  */

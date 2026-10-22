@@ -38,6 +38,31 @@ function lookupClients(clients: {
 }
 
 /**
+ * Metadata of the series from the first client whose stores have it. A
+ * search finds the series without failing on stores that lack it (a failed
+ * retrieve would reach the app's error handling), and records the store
+ * the retrieve then asks first.
+ */
+async function retrieveFromStoreWithSeries(
+  clients: { [key: string]: DicomWebManager },
+  studyInstanceUID: string,
+  seriesInstanceUID: string,
+): Promise<object[] | undefined> {
+  for (const client of lookupClients(clients)) {
+    const series = await client.searchForSeries({
+      studyInstanceUID,
+      queryParams: { SeriesInstanceUID: seriesInstanceUID },
+    })
+    if (series.length === 0) continue
+    return await client.retrieveSeriesMetadata({
+      studyInstanceUID,
+      seriesInstanceUID,
+    })
+  }
+  return undefined
+}
+
+/**
  * Fetch series metadata and, when it references an image slide of the study,
  * return that slide and the naturalized derived instance.
  */
@@ -52,23 +77,17 @@ export async function resolveDerivedSeriesSlide({
   studyInstanceUID: string
   seriesInstanceUID: string
 }): Promise<DerivedSeriesResolution> {
-  for (const client of lookupClients(clients)) {
-    let derivedSeriesMetadata: Awaited<
-      ReturnType<DicomWebManager['retrieveSeriesMetadata']>
-    >
-    try {
-      derivedSeriesMetadata = await client.retrieveSeriesMetadata({
-        studyInstanceUID,
-        seriesInstanceUID,
-      })
-    } catch (error) {
-      logger.warn(
-        `Failed to retrieve metadata of series "${seriesInstanceUID}"`,
-        error,
-      )
-      continue
-    }
-    if (derivedSeriesMetadata.length === 0) continue
+  try {
+    const derivedSeriesMetadata = await retrieveFromStoreWithSeries(
+      clients,
+      studyInstanceUID,
+      seriesInstanceUID,
+    )
+    if (
+      derivedSeriesMetadata === undefined ||
+      derivedSeriesMetadata.length === 0
+    )
+      return { kind: 'unresolved' }
     const naturalizedDerivedMetadata = naturalizeDataset(
       derivedSeriesMetadata[0],
     )
@@ -85,11 +104,12 @@ export async function resolveDerivedSeriesSlide({
         }
       }
     }
-    /** Found but references no slide of the study; other stores agree */
+    return { kind: 'unresolved' }
+  } catch (error) {
     logger.warn(
-      `Series "${seriesInstanceUID}" references no slide of this study`,
+      `Failed to resolve referenced slide for series "${seriesInstanceUID}"`,
+      error,
     )
     return { kind: 'unresolved' }
   }
-  return { kind: 'unresolved' }
 }

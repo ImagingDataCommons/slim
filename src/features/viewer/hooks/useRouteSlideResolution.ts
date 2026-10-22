@@ -59,22 +59,16 @@ export function useRouteSlideResolution({
       selectedSlide,
     })
 
-    if (match.kind === 'unchanged') {
+    if (match.kind === 'unchanged' || match.kind === 'image') {
       /**
-       * The route names an image series of the selected slide, so a derived
-       * dataset from an earlier deep link must not be shown again.
+       * The route names an image series, so a derived dataset from an
+       * earlier deep link must not be shown again.
        */
       resolvedDerivedSeriesRef.current = undefined
+      if (match.kind === 'image') setSelectedSlide(match.slide)
       setDerivedDataset(null)
       setUnresolvedSeriesUID(null)
-      return
-    }
-
-    if (match.kind === 'image') {
-      resolvedDerivedSeriesRef.current = undefined
-      setSelectedSlide(match.slide)
-      setDerivedDataset(null)
-      setUnresolvedSeriesUID(null)
+      /** Also on first load, so links copied from the URL are canonical */
       if (match.correctedSeriesUID !== undefined) {
         logger.warn(
           `Corrected mangled series UID in route: "${seriesInstanceUID}" → "${match.correctedSeriesUID}"`,
@@ -107,17 +101,24 @@ export function useRouteSlideResolution({
       slides,
       studyInstanceUID,
       seriesInstanceUID,
-    }).then((resolution) => {
-      if (isCancelled) return
-      if (resolution.kind === 'referenced') {
-        resolvedDerivedSeriesRef.current = seriesInstanceUID
-        setSelectedSlide(resolution.slide)
-        setDerivedDataset(resolution.derivedDataset)
-        setUnresolvedSeriesUID(null)
-        return
-      }
-      setUnresolvedSeriesUID(seriesInstanceUID)
-    })
+    }).then(
+      (resolution) => {
+        if (isCancelled) return
+        if (resolution.kind === 'referenced') {
+          resolvedDerivedSeriesRef.current = seriesInstanceUID
+          setSelectedSlide(resolution.slide)
+          setDerivedDataset(resolution.derivedDataset)
+          setUnresolvedSeriesUID(null)
+          return
+        }
+        setUnresolvedSeriesUID(seriesInstanceUID)
+      },
+      (error: unknown) => {
+        /** A failed lookup must end in "not found", not an endless spinner */
+        logger.error(`failed to resolve series "${seriesInstanceUID}":`, error)
+        if (!isCancelled) setUnresolvedSeriesUID(seriesInstanceUID)
+      },
+    )
 
     return () => {
       isCancelled = true
@@ -132,7 +133,17 @@ export function useRouteSlideResolution({
     routingRef,
   ])
 
-  return { selectedSlide, derivedDataset, unresolvedSeriesUID }
+  /**
+   * The slide of an image series route is known while rendering; using it
+   * at once keeps the viewers from being built for the previous slide in
+   * the render before the effect selects it.
+   */
+  const routeImageSlide = findSeriesSlide(slides, seriesInstanceUID)
+  return {
+    selectedSlide: routeImageSlide ?? selectedSlide,
+    derivedDataset,
+    unresolvedSeriesUID,
+  }
 }
 
 /** Canonical series UID for the viewer once a slide is selected. */
