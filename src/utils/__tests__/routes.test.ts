@@ -22,7 +22,9 @@ const gcpStorePath =
 
 describe('route templates', () => {
   it('embed the configured parameter names', () => {
-    expect(RoutePaths.STUDY).toBe(`/studies/:${RouteParams.STUDY_INSTANCE_UID}/*`)
+    expect(RoutePaths.STUDY).toBe(
+      `/studies/:${RouteParams.STUDY_INSTANCE_UID}/*`,
+    )
     expect(RoutePaths.SERIES).toBe(
       `/series/:${RouteParams.SERIES_INSTANCE_UID}`,
     )
@@ -54,7 +56,9 @@ describe('path builders', () => {
 
 describe('parseSeriesInstanceUID', () => {
   it('returns the series UID at the end of a path', () => {
-    expect(parseSeriesInstanceUID('/studies/1.2.3/series/4.5.6')).toBe(seriesUID)
+    expect(parseSeriesInstanceUID('/studies/1.2.3/series/4.5.6')).toBe(
+      seriesUID,
+    )
   })
 
   it('returns the series UID followed by further segments', () => {
@@ -93,7 +97,9 @@ describe('path predicates', () => {
 
 describe('getProjectStorePath', () => {
   it('returns the store path up to the study segment', () => {
-    expect(getProjectStorePath(`${gcpStorePath}/study/1.2.3`)).toBe(gcpStorePath)
+    expect(getProjectStorePath(`${gcpStorePath}/study/1.2.3`)).toBe(
+      gcpStorePath,
+    )
   })
 
   it('returns the full pathname when /study/ is not present', () => {

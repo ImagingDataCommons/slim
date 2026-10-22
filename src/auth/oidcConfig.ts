@@ -1,5 +1,6 @@
 import type { OidcSettings } from '../AppConfig'
 import { clearAuthorizationDecisions } from '../utils/authPolicy'
+import { readStorage, removeStorage, writeStorage } from '../utils/safeStorage'
 
 /** localStorage key for the OIDC config entered in server selection */
 export const OIDC_CONFIG_STORAGE_KEY = 'slim_oidc_config'
@@ -9,6 +10,12 @@ export const OIDC_RESET_PARAM = 'resetOidc'
 
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value !== ''
+
+const optionalString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
 
 /**
  * Quote unquoted keys so JavaScript object notation parses as JSON,
@@ -46,13 +53,10 @@ export const parseOidcConfig = (
   } catch {
     return undefined
   }
-  if (typeof parsed !== 'object' || parsed === null) {
+  if (!isRecord(parsed)) {
     return undefined
   }
-  const { authority, clientId, scope, ...optional } = parsed as Record<
-    string,
-    unknown
-  >
+  const { authority, clientId, scope, ...optional } = parsed
   if (
     !isNonEmptyString(authority) ||
     !isNonEmptyString(clientId) ||
@@ -64,9 +68,9 @@ export const parseOidcConfig = (
     authority,
     clientId,
     scope,
-    grantType: optional.grantType as OidcSettings['grantType'],
-    authorizationEndpoint: optional.authorizationEndpoint as string | undefined,
-    endSessionEndpoint: optional.endSessionEndpoint as string | undefined,
+    grantType: optionalString(optional.grantType),
+    authorizationEndpoint: optionalString(optional.authorizationEndpoint),
+    endSessionEndpoint: optionalString(optional.endSessionEndpoint),
   }
 }
 
@@ -96,7 +100,7 @@ export const getOidcConfigToApply = (
 
 /** The raw cached entry, or an empty string when there is none */
 export const readCachedOidcConfigInput = (): string =>
-  window.localStorage.getItem(OIDC_CONFIG_STORAGE_KEY) ?? ''
+  readStorage(OIDC_CONFIG_STORAGE_KEY) ?? ''
 
 export const readCachedOidcConfig = (): OidcSettings | undefined =>
   parseOidcConfig(readCachedOidcConfigInput())
@@ -112,9 +116,9 @@ const replaceCachedOidcConfigInput = (input: string): void => {
   }
   clearAuthorizationDecisions()
   if (input === '') {
-    window.localStorage.removeItem(OIDC_CONFIG_STORAGE_KEY)
+    removeStorage(OIDC_CONFIG_STORAGE_KEY)
   } else {
-    window.localStorage.setItem(OIDC_CONFIG_STORAGE_KEY, input)
+    writeStorage(OIDC_CONFIG_STORAGE_KEY, input)
   }
 }
 

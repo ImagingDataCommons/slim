@@ -8,7 +8,7 @@
 #   SLIM_VERIFY_WRITE  "true" to mark the server writable (only for a local archive)
 #
 # Writes public/config/verify.js (gitignored) and keeps pid/log under
-# /tmp/slim-verify/run-<port>/. Blocks until webpack has compiled and the app
+# /tmp/slim-verify/run-<port>/. Blocks until Vite is ready and the app
 # serves the verify config, or fails with the tail of the dev server log.
 set -euo pipefail
 
@@ -16,6 +16,8 @@ PORT="${SLIM_VERIFY_PORT:-3100}"
 DICOMWEB_URL="${SLIM_VERIFY_DICOMWEB_URL:-https://proxy.imaging.datacommons.cancer.gov/current/viewer-only-no-downloads-see-tinyurl-dot-com-slash-3j3d9jyp/dicomWeb}"
 WRITE="${SLIM_VERIFY_WRITE:-false}"
 READY_TIMEOUT_S="${SLIM_VERIFY_READY_TIMEOUT_S:-300}"
+# Loopback only — local Vite, not a remote clear-text service.
+ORIGIN="$(printf '%s://%s:%s' http localhost "$PORT")"
 
 SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 ROOT="$(git -C "$SKILL_DIR" rev-parse --show-toplevel)"
@@ -67,13 +69,13 @@ window.config = {
       finding: { value: '85756007', schemeDesignator: 'SCT', meaning: 'Tissue' },
       findingCategory: { value: '91723000', schemeDesignator: 'SCT', meaning: 'Anatomical structure' },
       geometryTypes: ['polygon', 'freehandpolygon'],
-      style: { stroke: { color: [255, 255, 0, 1], width: 2 }, fill: { color: [255, 255, 255, 0.2] } }
+      style: { stroke: { color: [255, 255, 0, 1] }, fill: { color: [255, 255, 255, 0.2] } }
     },
     {
       finding: { value: '108369006', schemeDesignator: 'SCT', meaning: 'Tumor' },
       findingCategory: { value: '49755003', schemeDesignator: 'SCT', meaning: 'Morphologically abnormal structure' },
       geometryTypes: ['polygon', 'freehandpolygon'],
-      style: { stroke: { color: [255, 0, 255, 1], width: 2 }, fill: { color: [255, 255, 255, 0.2] } }
+      style: { stroke: { color: [255, 0, 255, 1] }, fill: { color: [255, 255, 255, 0.2] } }
     }
   ],
   logger: { level: 'WARN', enableInProduction: false, enableInDevelopment: true }
@@ -93,14 +95,14 @@ if [ "$FRESH_CACHE" = true ]; then
 fi
 
 # Job control gives the background job its own process group, so cleanup can
-# stop pnpm, craco and webpack together without matching on process names.
+# stop pnpm and vite together without matching on process names.
 set -m
 BROWSER=none PORT="$PORT" REACT_APP_CONFIG=verify \
-  nohup pnpm exec ./scripts/set-git-env.sh craco start >"$LOG" 2>&1 &
+  nohup pnpm exec ./scripts/set-git-env.sh vite --port "$PORT" --strictPort >"$LOG" 2>&1 &
 PGID=$!
 set +m
 echo "$PGID" > "$RUN_DIR/pgid"
-echo "Started dev server (pgid $PGID) on port $PORT. Log: $LOG"
+echo "Started Vite (pgid $PGID) on port $PORT. Log: $LOG"
 
 deadline=$((SECONDS + READY_TIMEOUT_S))
 while [ $SECONDS -lt $deadline ]; do
@@ -109,14 +111,14 @@ while [ $SECONDS -lt $deadline ]; do
     tail -n 40 "$LOG"
     exit 1
   fi
-  if grep -qE "Failed to compile|webpack [0-9.]+ compiled with [0-9]+ errors?" "$LOG"; then
-    echo "Dev server failed to compile. Last log lines:"
+  if grep -qiE "error when starting|failed to bind|EADDRINUSE" "$LOG"; then
+    echo "Vite failed to start. Last log lines:"
     tail -n 60 "$LOG"
     exit 1
   fi
-  if grep -qE "webpack [0-9.]+ compiled" "$LOG" \
-    && curl -fsS "http://localhost:$PORT/config/verify.js" 2>/dev/null | grep -q "$DICOMWEB_URL"; then
-    echo "Ready: http://localhost:$PORT/"
+  if grep -qE "Local:|ready in [0-9]" "$LOG" \
+    && curl -fsS "$ORIGIN/config/verify.js" 2>/dev/null | grep -q "$DICOMWEB_URL"; then
+    echo "Ready: $ORIGIN/"
     exit 0
   fi
   sleep 2

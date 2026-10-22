@@ -15,6 +15,8 @@
  * whereas forgetting a denial silently widens what the token is disclosed to.
  */
 
+import { readStorage, removeStorage, writeStorage } from './safeStorage'
+
 export type AuthorizationDecision = 'granted' | 'denied'
 
 const STORAGE_KEY = 'slim_authorization_policy'
@@ -85,18 +87,18 @@ export const isSecureOrigin = (origin: string): boolean => {
 }
 
 const readPolicy = (): PolicyRecord => {
+  const raw = readStorage(STORAGE_KEY)
+  if (raw === null) {
+    return {}
+  }
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (raw === null) {
-      return {}
-    }
     const parsed: unknown = JSON.parse(raw)
     if (typeof parsed !== 'object' || parsed === null) {
       return {}
     }
     return parsed as PolicyRecord
   } catch {
-    /** Private browsing or corrupted entry: fall back to asking again. */
+    /** Corrupted entry: fall back to asking again. */
     return {}
   }
 }
@@ -139,16 +141,12 @@ export const writeAuthorizationDecision = (
   decision: AuthorizationDecision,
   now: number = Date.now(),
 ): void => {
-  try {
-    const policy = readPolicy()
-    policy[origin] =
-      decision === 'granted'
-        ? { decision, expiresAt: now + GRANT_LIFETIME_MS }
-        : { decision }
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(policy))
-  } catch {
-    /** Non-persistent storage is not fatal; the user is simply asked again. */
-  }
+  const policy = readPolicy()
+  policy[origin] =
+    decision === 'granted'
+      ? { decision, expiresAt: now + GRANT_LIFETIME_MS }
+      : { decision }
+  writeStorage(STORAGE_KEY, JSON.stringify(policy))
 }
 
 /**
@@ -157,9 +155,5 @@ export const writeAuthorizationDecision = (
  * @returns Nothing
  */
 export const clearAuthorizationDecisions = (): void => {
-  try {
-    window.localStorage.removeItem(STORAGE_KEY)
-  } catch {
-    /** Nothing to clear if storage is unavailable. */
-  }
+  removeStorage(STORAGE_KEY)
 }

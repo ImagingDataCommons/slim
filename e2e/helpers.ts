@@ -1,0 +1,691 @@
+import { expect, type Locator, type Page } from '@playwright/test'
+
+import { seriesUrl, studies } from './studies'
+
+export interface ViewportStats {
+  mean: number
+  stdDev: number
+}
+
+export const IDC_PROXY =
+  'https://proxy.imaging.datacommons.cancer.gov/current/viewer-only-no-downloads-see-tinyurl-dot-com-slash-3j3d9jyp/dicomWeb'
+
+/** Merges `overrides` into public/config/e2e.js for every page load of `page` */
+export async function overrideConfig(
+  page: Page,
+  overrides: Record<string, unknown>,
+): Promise<void> {
+  await page.route('**/config/e2e.js', async (route) => {
+    const response = await route.fetch()
+    await route.fulfill({
+      response,
+      body: `${await response.text()}\nObject.assign(window.config, ${JSON.stringify(overrides)})\n`,
+    })
+  })
+}
+
+/** Answers requests below `fakeBase` from the IDC proxy, so any server URL can serve real data */
+export async function serveFromIdc(
+  page: Page,
+  fakeBase: string,
+): Promise<void> {
+  await page.route(`${fakeBase}/**`, async (route) => {
+    const response = await route.fetch({
+      url: route.request().url().replace(fakeBase, IDC_PROXY),
+    })
+    await route.fulfill({ response })
+  })
+}
+
+export function slidePanel(page: Page): Locator {
+  return page.getByRole('complementary', { name: 'Slide panel' })
+}
+
+export function studyPanel(page: Page): Locator {
+  return page.getByRole('complementary', { name: 'Study panel' })
+}
+
+/** Collapsible panel section header, e.g. "Segmentations" or "Specimens 1" */
+export function sectionButton(panel: Locator, title: string): Locator {
+  return panel.getByRole('button', { name: new RegExp(`^${title}( \\d+)?$`) })
+}
+
+/** Opens a collapsed panel section the way a user clicks its title */
+export async function expandSection(
+  panel: Locator,
+  title: string,
+): Promise<void> {
+  const button = sectionButton(panel, title)
+  await expect(button).toBeVisible()
+  if ((await button.getAttribute('aria-expanded')) !== 'true') {
+    await button.click()
+  }
+  await expect(button).toHaveAttribute('aria-expanded', 'true')
+}
+
+/** Expands a section and returns its content, so same-named layers don't clash */
+export async function section(panel: Locator, title: string): Promise<Locator> {
+  await expandSection(panel, title)
+  const contentId = await sectionButton(panel, title).getAttribute(
+    'aria-controls',
+  )
+  expect(contentId, `${title} content id`).not.toBeNull()
+  return panel.page().locator(`[id="${contentId}"]`)
+}
+
+/**
+ * Loaded, requested and failed tile counts from the footer: the
+ * "Tiles 1 234 / 1 234" counter and the "N failed" span after it. Counts
+ * group thousands with spaces, and each span's own text is read so one
+ * count is never taken for another.
+ */
+export async function readTileCounts(
+  page: Page,
+): Promise<{ loaded: number; requested: number; failed: number } | null> {
+  const footer = page.locator('footer')
+  const counter = footer.locator('span', { hasText: /^Tiles / }).first()
+  if ((await counter.count()) === 0) return null
+  const toNumber = (value: string): number =>
+    Number(value.replace(/[\s,]/g, ''))
+  const text = (await counter.innerText()).replace(/\s+/g, ' ').trim()
+  const match = /^Tiles ([\d ,]+) \/ ([\d ,]+)$/.exec(text)
+  if (match === null) return null
+  const failedSpan = footer
+    .locator('span', { hasText: /^[\d ,]+ failed$/ })
+    .first()
+  const failedText =
+    (await failedSpan.count()) === 0
+      ? '0 failed'
+      : (await failedSpan.innerText()).replace(/\s+/g, ' ').trim()
+  return {
+    loaded: toNumber(match[1]),
+    requested: toNumber(match[2]),
+    failed: toNumber(failedText.replace(/ failed$/, '')),
+  }
+}
+
+/**
+ * Waits for every requested tile to have loaded or failed, and for the
+ * counts to stay put, then fails with the number of failed tiles if any
+ * did. Use captureSettledViewport when comparing pixels.
+ */
+export async function waitForTilesSettled(
+  page: Page,
+  timeout = 60_000,
+): Promise<void> {
+  let previous = ''
+  let stableSince = Date.now()
+  let failed = 0
+  await expect
+    .poll(
+      async () => {
+        const counts = await readTileCounts(page)
+        if (counts === null) return false
+        const key = `${counts.loaded}/${counts.requested}/${counts.failed}`
+        if (key !== previous) {
+          previous = key
+          stableSince = Date.now()
+        }
+        failed = counts.failed
+        /** Requested counts failed tiles too, so they settle as well */
+        return (
+          counts.requested > 0 &&
+          counts.loaded + counts.failed >= counts.requested &&
+          Date.now() - stableSince > 1500
+        )
+      },
+      { message: 'tiles settled', timeout, intervals: [500] },
+    )
+    .toBe(true)
+  expect(failed, `${failed} tile(s) failed to load`).toBe(0)
+}
+
+/** Opens a viewer URL and waits for the first slide to finish rendering */
+export async function openViewer(
+  page: Page,
+  url: string,
+  options?: { timeout?: number },
+): Promise<void> {
+  const timeout = options?.timeout ?? 60_000
+  await page.goto(url)
+  await expect(slidePanel(page)).toBeVisible({ timeout })
+  await waitForTilesSettled(page, timeout)
+}
+
+/** The DMV main viewport is the largest OpenLayers viewport on the page */
+export async function mainViewportClip(page: Page) {
+  const box = await page.evaluate(() => {
+    const viewports = Array.from(document.querySelectorAll('.ol-viewport'))
+    const rects = viewports.map((element) => element.getBoundingClientRect())
+    const largest = rects.sort(
+      (a, b) => b.width * b.height - a.width * a.height,
+    )[0]
+    return largest === undefined
+      ? null
+      : {
+          x: largest.x,
+          y: largest.y,
+          width: largest.width,
+          height: largest.height,
+        }
+  })
+  expect(box, 'main viewport').not.toBeNull()
+  return box as { x: number; y: number; width: number; height: number }
+}
+
+export async function mainViewportCenter(
+  page: Page,
+): Promise<{ x: number; y: number }> {
+  const clip = await mainViewportClip(page)
+  return { x: clip.x + clip.width / 2, y: clip.y + clip.height / 2 }
+}
+
+/** PNG of the main viewport only; whole-page shots change with panel scroll */
+/**
+ * Pixel checks measure the slide, so the in-viewport overlay legend (which
+ * stays listed with its overlays hidden) is left out of every capture.
+ */
+const HIDE_VIEWPORT_LEGEND =
+  '[aria-label="Overlay color legend"] { visibility: hidden !important; }'
+
+export async function captureViewport(page: Page): Promise<Buffer> {
+  return page.screenshot({
+    clip: await mainViewportClip(page),
+    style: HIDE_VIEWPORT_LEGEND,
+  })
+}
+
+/** Decodes PNGs in the page, so the suite needs no image dependency */
+async function decodeAndMeasure(
+  page: Page,
+  pngs: Buffer[],
+): Promise<{ stats: ViewportStats[]; meanDiff: number; colorDiff: number }> {
+  return page.evaluate(
+    async (encoded) => {
+      const widths: number[] = []
+      const images = await Promise.all(
+        encoded.map(async (base64, index) => {
+          const blob = await (
+            await fetch(`data:image/png;base64,${base64}`)
+          ).blob()
+          const bitmap = await createImageBitmap(blob)
+          widths[index] = bitmap.width
+          const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
+          const context = canvas.getContext('2d')
+          if (context === null) throw new Error('No 2D context')
+          context.drawImage(bitmap, 0, 0)
+          return context.getImageData(0, 0, bitmap.width, bitmap.height).data
+        }),
+      )
+      const luminance = (data: Uint8ClampedArray, i: number): number =>
+        0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
+      const stats = images.map((data) => {
+        let sum = 0
+        let sumSquares = 0
+        const count = data.length / 4
+        for (let i = 0; i < data.length; i += 4) {
+          const value = luminance(data, i)
+          sum += value
+          sumSquares += value * value
+        }
+        const mean = sum / count
+        return { mean, stdDev: Math.sqrt(sumSquares / count - mean * mean) }
+      })
+      let meanDiff = 0
+      let colorDiff = 0
+      /** Captures of different sizes never count as matching */
+      if (
+        images.length === 2 &&
+        (widths[0] !== widths[1] || images[0].length !== images[1].length)
+      ) {
+        meanDiff = Number.POSITIVE_INFINITY
+        colorDiff = Number.POSITIVE_INFINITY
+      } else if (images.length === 2) {
+        let total = 0
+        let colorTotal = 0
+        for (let i = 0; i < images[0].length; i += 4) {
+          total += Math.abs(luminance(images[0], i) - luminance(images[1], i))
+          for (let channel = 0; channel < 3; channel++) {
+            colorTotal += Math.abs(
+              images[0][i + channel] - images[1][i + channel],
+            )
+          }
+        }
+        meanDiff = total / (images[0].length / 4)
+        colorDiff = colorTotal / ((images[0].length / 4) * 3)
+      }
+      return { stats, meanDiff, colorDiff }
+    },
+    pngs.map((png) => png.toString('base64')),
+  )
+}
+
+export async function viewportStats(
+  page: Page,
+  png: Buffer,
+): Promise<ViewportStats> {
+  return (await decodeAndMeasure(page, [png])).stats[0]
+}
+
+/** Mean absolute luminance difference between two viewport captures */
+export async function viewportDiff(
+  page: Page,
+  before: Buffer,
+  after: Buffer,
+): Promise<number> {
+  return (await decodeAndMeasure(page, [before, after])).meanDiff
+}
+
+/**
+ * Mean absolute per-channel (RGB) difference between two viewport captures.
+ * Unlike viewportDiff it also sees hue shifts at equal brightness, such as
+ * an ICC color correction.
+ */
+export async function viewportColorDiff(
+  page: Page,
+  before: Buffer,
+  after: Buffer,
+): Promise<number> {
+  return (await decodeAndMeasure(page, [before, after])).colorDiff
+}
+
+/**
+ * WebGL paints after the last tile arrives and layer changes repaint over a
+ * few frames, so pixel checks wait until captures stop changing. Layers that
+ * draw in bursts need a longer quiet period than two captures in a row.
+ */
+export async function captureSettledViewport(
+  page: Page,
+  { quietMs = 0, timeout = 30_000 } = {},
+): Promise<Buffer> {
+  await waitForTilesSettled(page)
+  let previous = await captureViewport(page)
+  let lastChange = Date.now()
+  await expect
+    .poll(
+      async () => {
+        const next = await captureViewport(page)
+        const isUnchanged = (await viewportDiff(page, previous, next)) < 0.01
+        previous = next
+        if (!isUnchanged) lastChange = Date.now()
+        return isUnchanged && Date.now() - lastChange >= quietMs
+      },
+      { message: 'viewport stops changing', timeout, intervals: [250] },
+    )
+    .toBe(true)
+  return previous
+}
+
+/**
+ * Waits for the layer a deep link turned on in a slide panel section (its
+ * toggle is pressed once its data loaded), then for the tiles to settle, so
+ * a capture includes the overlay
+ */
+export async function waitForDeepLinkedLayer(
+  page: Page,
+  sectionTitle: string,
+): Promise<void> {
+  const content = await section(slidePanel(page), sectionTitle)
+  await expect(
+    content
+      .getByRole('button', { name: /^Show (?!all)/, pressed: true })
+      .first(),
+  ).toBeVisible({ timeout: 60_000 })
+  await waitForTilesSettled(page)
+}
+
+/**
+ * Settled main-viewport screenshot compared to a committed baseline.
+ * Baselines live next to the spec (`*-snapshots/`), one per name for every
+ * OS (see `snapshotPathTemplate`); CI renders on Linux, so update them with
+ * `pnpm test:e2e:visual:update` there.
+ */
+export async function expectSettledViewportScreenshot(
+  page: Page,
+  name: string,
+): Promise<void> {
+  await captureSettledViewport(page)
+  await expect(page).toHaveScreenshot(`${name}.png`, {
+    clip: await mainViewportClip(page),
+    animations: 'disabled',
+  })
+}
+
+/** Waits for the viewport to move away from a reference capture */
+export async function expectViewportToDiffer(
+  page: Page,
+  reference: Buffer,
+  minDiff: number,
+): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const diff = await viewportDiff(
+          page,
+          reference,
+          await captureViewport(page),
+        )
+        /** A capture of another size is not a pixel change; keep waiting */
+        return Number.isFinite(diff) ? diff : Number.NEGATIVE_INFINITY
+      },
+      { message: 'viewport differs from reference', timeout: 30_000 },
+    )
+    .toBeGreaterThan(minDiff)
+}
+
+/** Waits for the viewport to come back to a reference capture */
+export async function expectViewportToMatch(
+  page: Page,
+  reference: Buffer,
+  maxDiff: number,
+): Promise<void> {
+  /** A bound derived from a size-mismatched diff would accept anything */
+  expect(Number.isFinite(maxDiff), 'maxDiff is a finite number').toBe(true)
+  await expect
+    .poll(
+      async () => viewportDiff(page, reference, await captureViewport(page)),
+      { message: 'viewport matches reference', timeout: 30_000 },
+    )
+    .toBeLessThan(maxDiff)
+}
+
+/**
+ * Asserts tissue is painted: a blank canvas has a luminance spread near 0,
+ * brightfield H&E about 39 and sparse fluorescence on black about 9.
+ */
+export async function expectTissueRendered(
+  page: Page,
+  minSpread = 10,
+): Promise<void> {
+  await expect
+    .poll(
+      async () =>
+        (await viewportStats(page, await captureViewport(page))).stdDev,
+      { message: 'viewport luminance spread', timeout: 30_000 },
+    )
+    .toBeGreaterThan(minSpread)
+}
+
+export async function chooseOption(
+  page: Page,
+  trigger: Locator,
+  option: string,
+): Promise<void> {
+  await trigger.click()
+  await page.getByRole('option', { name: option, exact: true }).click()
+}
+
+/** Expands Display options inside an Optical paths / overlays section */
+export async function openDisplayOptions(container: Locator): Promise<Locator> {
+  const toggle = container.getByRole('button', { name: /^Display options/ })
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  return container
+}
+
+/**
+ * Sets the Optical paths → Gamma correction switch. Gamma only affects
+ * palette-mapped layers (fluorescence PRs, SEG, PM), not RGB/ICC tiles.
+ */
+export async function setGammaCorrection(
+  page: Page,
+  enabled: boolean,
+): Promise<void> {
+  const paths = await openDisplayOptions(
+    await section(slidePanel(page), 'Optical paths'),
+  )
+  const gamma = paths.getByRole('switch', { name: 'Gamma correction' })
+  await expect(gamma).toBeVisible()
+  const isChecked = await gamma.isChecked()
+  if (isChecked !== enabled) {
+    await gamma.click()
+  }
+  if (enabled) {
+    await expect(gamma).toBeChecked()
+  } else {
+    await expect(gamma).not.toBeChecked()
+  }
+}
+
+/** Configures the Draw dialog: finding, optional grade, then geometry */
+export async function configureDraw(
+  page: Page,
+  finding: string,
+  geometry: string,
+  grade?: string,
+): Promise<void> {
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByText('Configure annotation')).toBeVisible()
+  const selects = dialog.getByRole('combobox')
+  await chooseOption(page, selects.first(), finding)
+  if (grade !== undefined) await chooseOption(page, selects.nth(1), grade)
+  await chooseOption(page, selects.last(), geometry)
+  await dialog.getByRole('button', { name: 'Start drawing' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(
+    page.getByRole('button', { name: 'Draw', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true')
+}
+
+/**
+ * Clicks the corners of a 240 × 160 px rectangle, `offsetX` px from the
+ * viewport center, and closes it on the first point. Returns the rectangle.
+ */
+export async function drawPolygon(
+  page: Page,
+  offsetX = 0,
+): Promise<{ left: number; right: number; top: number; bottom: number }> {
+  const center = await mainViewportCenter(page)
+  const x = center.x + offsetX
+  const rectangle = {
+    left: x - 120,
+    right: x + 120,
+    top: center.y - 80,
+    bottom: center.y + 80,
+  }
+  const corners = [
+    [rectangle.left, rectangle.top],
+    [rectangle.right, rectangle.top],
+    [rectangle.right, rectangle.bottom],
+    [rectangle.left, rectangle.bottom],
+    [rectangle.left, rectangle.top],
+  ]
+  for (const [cornerX, cornerY] of corners) {
+    await page.mouse.click(cornerX, cornerY)
+  }
+  return rectangle
+}
+
+/** Labels as shown in the Draw dialog (e2e config Tumor finding). */
+export const GEOMETRY_LABELS = [
+  'Point',
+  'Circle',
+  'Box',
+  'Polygon',
+  'Line',
+  'Polygon (freehand)',
+  'Line (freehand)',
+] as const
+
+export type GeometryLabel = (typeof GEOMETRY_LABELS)[number]
+
+/**
+ * Draws one ROI of `geometry` near the viewport center, shifted by `offsetX`.
+ * Call after configureDraw / Start drawing.
+ */
+export async function drawGeometry(
+  page: Page,
+  geometry: GeometryLabel,
+  offsetX = 0,
+): Promise<void> {
+  const center = await mainViewportCenter(page)
+  const x = center.x + offsetX
+  const y = center.y
+  switch (geometry) {
+    case 'Point':
+      await page.mouse.click(x, y)
+      break
+    case 'Line':
+      await page.mouse.click(x - 80, y - 40)
+      await page.waitForTimeout(200)
+      /** Finish the line: OpenLayers ends a LineString on double-click. */
+      await page.mouse.dblclick(x + 80, y + 40)
+      break
+    case 'Box':
+      /** OL box: first click anchors a corner, move, second click finishes. */
+      await page.mouse.click(x - 70, y - 50)
+      await page.mouse.move(x + 70, y + 50, { steps: 10 })
+      await page.mouse.click(x + 70, y + 50)
+      break
+    case 'Circle':
+      await page.mouse.click(x, y)
+      await page.waitForTimeout(200)
+      await page.mouse.click(x + 60, y)
+      break
+    case 'Polygon':
+      await drawPolygon(page, offsetX)
+      break
+    case 'Line (freehand)':
+      await page.mouse.move(x - 90, y)
+      await page.mouse.down()
+      for (const [dx, dy] of [
+        [-30, -40],
+        [40, 20],
+        [90, 0],
+      ] as const) {
+        await page.mouse.move(x + dx, y + dy, { steps: 5 })
+      }
+      await page.mouse.up()
+      break
+    case 'Polygon (freehand)':
+      await page.mouse.move(x - 60, y - 50)
+      await page.mouse.down()
+      for (const [dx, dy] of [
+        [60, -50],
+        [60, 50],
+        [-60, 50],
+        [-60, -50],
+      ] as const) {
+        await page.mouse.move(x + dx, y + dy, { steps: 5 })
+      }
+      await page.mouse.up()
+      break
+    default: {
+      const unexpected: never = geometry
+      throw new Error(`Unsupported geometry: ${unexpected}`)
+    }
+  }
+}
+
+/** Go to marks the slide center with a point ROI drawn in the default style */
+export async function goToSlideCenter(page: Page): Promise<void> {
+  await pressViewerShortcut(page, 'KeyG')
+  const dialog = page.getByRole('dialog')
+  const center = async (label: string): Promise<string> => {
+    const [min, max] = (
+      (await dialog.getByLabel(label).getAttribute('placeholder')) ?? '0 – 0'
+    )
+      .split(' – ')
+      .map(Number)
+    return ((min + max) / 2).toFixed(2)
+  }
+  await dialog
+    .getByLabel('X coordinate (mm)')
+    .fill(await center('X coordinate (mm)'))
+  await dialog
+    .getByLabel('Y coordinate (mm)')
+    .fill(await center('Y coordinate (mm)'))
+  await dialog.getByLabel('Magnification').fill('2')
+  await dialog.getByRole('button', { name: 'Go to position' }).click()
+  await expect(dialog).toBeHidden()
+}
+
+/** Alt shortcuts fire on keyup and need focus on the page, not a field */
+export async function pressViewerShortcut(
+  page: Page,
+  key: string,
+): Promise<void> {
+  const center = await mainViewportCenter(page)
+  await page.mouse.move(center.x, center.y)
+  await page.keyboard.down('Alt')
+  await page.keyboard.press(key)
+  await page.keyboard.up('Alt')
+}
+
+/**
+ * Opens the presentation state picker and waits until its options stop
+ * changing. States arrive one by one, and a click on a list that re-renders
+ * can miss its option.
+ */
+export async function openPresentationStatePicker(
+  page: Page,
+  states: Locator,
+): Promise<Locator> {
+  await states.getByRole('combobox', { name: 'Presentation state' }).click()
+  const options = page.getByRole('option')
+  let previous = -1
+  let stableSince = Date.now()
+  await expect
+    .poll(
+      async () => {
+        const count = await options.count()
+        if (count !== previous) {
+          previous = count
+          stableSince = Date.now()
+        }
+        return count > 0 && Date.now() - stableSince >= 1000
+      },
+      { message: 'presentation state options settle', timeout: 30_000 },
+    )
+    .toBe(true)
+  return options
+}
+
+/** Brightfield slide whose image carries an ICC profile */
+export const iccSlideUrl = seriesUrl({
+  study: studies.tcgaGbm.study,
+  series: studies.tcgaGbm.dx1Slide,
+})
+
+/** Bulk data of the ICC Profile attribute of an optical path */
+const ICC_PROFILE_REQUEST = /\/bulkdata\/00480105\/\d+\/00282000/
+
+/**
+ * Holds back the ICC profile responses so the first tiles are drawn without
+ * color correction, as on a slow network. Resolves when they are released.
+ */
+export async function delayIccProfiles(
+  page: Page,
+  delayMs: number,
+): Promise<void> {
+  await page.route(ICC_PROFILE_REQUEST, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, delayMs))
+    await route.continue()
+  })
+}
+
+/** Fails the ICC profile requests, so the slide is drawn without correction */
+export async function blockIccProfiles(page: Page): Promise<void> {
+  await page.route(ICC_PROFILE_REQUEST, (route) => route.abort())
+}
+
+/** The viewport status pill, while it is shown */
+export function statusPill(page: Page, label: string) {
+  return page
+    .getByRole('status')
+    .locator('[aria-hidden="false"]', { hasText: label })
+}
+
+/** Settled capture of the slide once its color profile has been drawn */
+export async function captureCorrectedViewport(page: Page): Promise<Buffer> {
+  await expect(statusPill(page, 'Applying color profile')).toHaveCount(0, {
+    timeout: 60_000,
+  })
+  return captureSettledViewport(page, { quietMs: 1000 })
+}
+
+/**
+ * A capture differing by less than this matches; the ICC correction of this
+ * slide changes the image by several times more
+ */
+export const SAME_IMAGE = 1.5

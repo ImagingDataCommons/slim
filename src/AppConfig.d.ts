@@ -1,4 +1,4 @@
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import * as dcmjs from 'dcmjs'
 
 export type DicomWebManagerErrorHandler = (
@@ -38,10 +38,14 @@ export interface AnnotationSettings {
   evaluations?: EvaluationSetting[]
   measurements?: MeasurementSetting[]
   geometryTypes?: string[]
+  /**
+   * Per-finding draw style. Color/fill identify the finding. `stroke.width` is
+   * optional; User preferences stroke width wins when drawing.
+   */
   style?: {
     stroke: {
       color: number[]
-      width: number
+      width?: number
     }
     fill: {
       color: number[]
@@ -115,6 +119,7 @@ export default interface AppConfig {
   disableWorklist?: boolean
   disableAnnotationTools?: boolean
   enableServerSelection?: boolean
+  /** Default theme until the user picks one: 'light', else dark */
   mode?: string
   preload?: boolean
   messages?: {

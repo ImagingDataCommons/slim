@@ -2,8 +2,6 @@ shamefullyHoist: true
 strictPeerDependencies: false
 
 allowBuilds:
-  '@parcel/watcher': true
-  core-js: true
   core-js-pure: true
   dicom-microscopy-viewer: true
 
@@ -33,14 +31,8 @@ overrides:
   source-map-js: 1.2.2
   # Dependabot high: fast-uri authority injection & host confusion (CVE-2026-84292, CVE-2026-84394)
   fast-uri: 3.1.8
-  # Dependabot high: SVGO removeScripts (CRA still pulls 1.x via @svgr; no SVG imports in app)
-  svgo: 2.8.4
   # Dependabot high: browserslist RegExp ReDoS
   browserslist: 4.28.7
-  # Dependabot high: webpack-dev-middleware path traversal (GHSA-g84c-rxfj-3j2c; no 5.x patch, CRA's dev server 4.x runs on 7.x)
-  webpack-dev-middleware: 7.4.6
-  # Dependabot high: node-forge RSA PKCS#1 v1.5 (selfsigned 5.x uses @peculiar/x509 instead)
-  selfsigned: 5.5.0
   nth-check: 2.0.1
   wrap-ansi: 7.0.0
   make-dir: 3.1.0
@@ -48,12 +40,17 @@ overrides:
   express: 4.21.0
   jsdom>form-data: 3.0.5
   path-to-regexp: 0.1.13
-  rollup: 3.30.0
   semver: 7.5.2
   serialize-javascript: 7.0.5
   tar: 7.5.16
   underscore: 1.13.8
 
 minimumReleaseAgeExclude:
-  - dicom-microscopy-viewer@0.48.23 || 0.48.24 || 0.48.25 || 0.48.26 || 0.48.27 || 0.49.0
+  - dicom-microscopy-viewer@0.48.23 || 0.48.24 || 0.48.25 || 0.48.26 || 0.48.27 || 0.49.0 || 0.49.1 || 0.49.2 || 0.49.3 || 0.49.4 || 0.49.5
   - dicomweb-client@0.11.3
+
+patchedDependencies:
+  # Saving ROIs: dcmjs rejects every valid TrackingIdentifier when building a
+  # measurement group (it counts CodedConcept items, and .filter() on the Array
+  # subclass calls new TrackingIdentifier(0), which throws). Still in dcmjs latest.
+  dcmjs@0.52.0: patches/dcmjs@0.52.0.patch

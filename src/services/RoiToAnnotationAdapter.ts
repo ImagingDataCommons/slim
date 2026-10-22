@@ -1,50 +1,50 @@
-// skipcq: JS-C1003
-
-// skipcq: JS-C1003
-import * as dcmjs from 'dcmjs'
 import type * as dmv from 'dicom-microscopy-viewer'
 import type { AnnotationCategoryAndType } from '../components/AnnotationCategoryList'
+import {
+  FINDING_CATEGORY_CODE,
+  FINDING_TYPE_CODE,
+} from '../utils/roiDescription'
 
+const UNDEFINED_CODE = {
+  CodeValue: 'undefined',
+  CodeMeaning: 'undefined',
+  CodingSchemeDesignator: 'undefined',
+}
+
+function isUndefinedCode(code: {
+  CodeValue: string
+  CodingSchemeDesignator: string
+}): boolean {
+  return (
+    code.CodeValue === UNDEFINED_CODE.CodeValue &&
+    code.CodingSchemeDesignator === UNDEFINED_CODE.CodingSchemeDesignator
+  )
+}
+
+/**
+ * Category and type of an ROI from its coded evaluations (named as in the
+ * Segment and Annotation Group panels), for the annotation category list.
+ * When Finding category is missing but Finding type is present (common for
+ * hand-drawn ROIs before category was attached), group under the type so the
+ * panel does not show a literal "undefined" category chip.
+ */
 export const adaptRoiToAnnotation = (
   roi: dmv.roi.ROI,
 ): AnnotationCategoryAndType => {
-  const { uid, evaluations } = roi
-
-  const result = {
-    category: {
-      CodeValue: 'undefined',
-      CodeMeaning: 'undefined',
-      CodingSchemeDesignator: 'undefined',
-    },
-    type: {
-      CodeValue: 'undefined',
-      CodeMeaning: 'undefined',
-      CodingSchemeDesignator: 'undefined',
-    },
+  let category = UNDEFINED_CODE
+  let type = UNDEFINED_CODE
+  roi.evaluations.forEach((item) => {
+    if (item.ValueType !== 'CODE' || !('ConceptCodeSequence' in item)) return
+    const value = item.ConceptCodeSequence[0]
+    const nameValue = item.ConceptNameCodeSequence[0].CodeValue
+    if (nameValue === FINDING_CATEGORY_CODE) {
+      category = { ...value }
+    } else if (nameValue === FINDING_TYPE_CODE) {
+      type = { ...value }
+    }
+  })
+  if (isUndefinedCode(category) && !isUndefinedCode(type)) {
+    category = { ...type }
   }
-
-  evaluations.forEach(
-    (
-      item:
-        | dcmjs.sr.valueTypes.TextContentItem
-        | dcmjs.sr.valueTypes.CodeContentItem,
-    ) => {
-      const nameValue = item.ConceptNameCodeSequence[0].CodeValue
-      if (item.ValueType === dcmjs.sr.valueTypes.ValueTypes.CODE) {
-        const codeContentItem = item as dcmjs.sr.valueTypes.CodeContentItem
-        const value = codeContentItem.ConceptCodeSequence[0]
-        // For consistency with Segment and Annotation Group
-        if (nameValue === '276214006') {
-          result.category = { ...value }
-        } else if (nameValue === '121071') {
-          result.type = { ...value }
-        }
-      }
-    },
-  )
-
-  return {
-    ...result,
-    uid,
-  }
+  return { category, type, uid: roi.uid }
 }

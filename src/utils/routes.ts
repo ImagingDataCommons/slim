@@ -25,7 +25,7 @@ const Segments = {
   studies: 'studies',
   series: 'series',
   logout: 'logout',
-  // GCP Healthcare DICOM store path segments.
+  /** GCP Healthcare DICOM store path segments */
   projects: 'projects',
   locations: 'locations',
   datasets: 'datasets',
@@ -55,9 +55,9 @@ export const RoutePaths = {
   LOGOUT: `/${Segments.logout}`,
 } as const
 
-// Without leading slash - for splitting/checking strings that may appear mid-path.
+/** Without leading slash, for strings that may appear mid-path */
 const SERIES_PREFIX = `${Segments.series}/`
-// With leading slash - for path segment manipulation where we need the full segment.
+/** With leading slash, for manipulating full path segments */
 const SERIES_PATH_PREFIX = `/${Segments.series}/`
 const PROJECTS_PATH_PREFIX = `/${Segments.projects}/`
 const STUDY_PATH_PREFIX = `/${Segments.study}/`

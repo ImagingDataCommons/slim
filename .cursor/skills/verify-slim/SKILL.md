@@ -5,7 +5,7 @@ description: Launch the Slim slide microscopy viewer (React SPA in this repo) ag
 
 # Verify Slim
 
-Slim is a client-only React app (CRA via craco) that reads everything from a DICOMweb server. Verification runs the repo's real dev server on its own port. It points at the IDC public read-only DICOMweb proxy, which serves real slides, SEG, ANN, and SR objects with CORS for any `localhost` port. No Docker, credentials, or seed data are needed.
+Slim is a client-only React app (Vite) that reads everything from a DICOMweb server. Verification runs the repo's real Vite dev server on its own port. It points at the IDC public read-only DICOMweb proxy, which serves real slides, SEG, ANN, and SR objects with CORS for any `localhost` port. No Docker, credentials, or seed data are needed.
 
 All helpers live in `.cursor/skills/verify-slim/scripts/` and are executable. Run them from the repo root.
 
@@ -22,7 +22,7 @@ All helpers live in `.cursor/skills/verify-slim/scripts/` and are executable. Ru
 .cursor/skills/verify-slim/scripts/setup-harness.sh
 ```
 
-This installs Playwright 1.62.1 into `~/.cache/slim-verify/harness` and makes sure `chromium-headless-shell` build 1234 exists in Playwright's per-user cache. Don't import Playwright from the repo's `node_modules`: it's only a transitive pnpm package there, not a declared dependency.
+This installs Playwright into `~/.cache/slim-verify/harness` and makes sure Chromium exists in Playwright's per-user cache. Prefer the harness over the repo's Playwright so agent runs stay isolated from `pnpm test:e2e`.
 
 Agent sandboxes set `PLAYWRIGHT_BROWSERS_PATH` to a throwaway temp dir. Both `setup-harness.sh` and `drive.mjs` override it to the stable per-user cache. Run them with full permissions (network plus writes outside the workspace).
 
@@ -37,8 +37,8 @@ pnpm install                                   # only if node_modules is missing
 
 - Refuses to start if this skill already runs an instance on the port, or if any other process holds the port.
 - Writes `public/config/verify.js`. That config points at the IDC proxy with `write: false`, keeps the worklist, annotation tools, and server selection enabled, and has no OIDC.
-- Starts `pnpm exec ./scripts/set-git-env.sh craco start` with `PORT`, `BROWSER=none`, and `REACT_APP_CONFIG=verify`. This is what `pnpm start` does, minus the cache wipe.
-- Blocks until the log shows `webpack <version> compiled` and `/config/verify.js` is served. It exits 1 and prints the log tail on `Failed to compile`, an early exit, or after 300 seconds.
+- Starts `pnpm exec ./scripts/set-git-env.sh vite --port <port> --strictPort` with `BROWSER=none` and `REACT_APP_CONFIG=verify`.
+- Blocks until the log shows Vite ready (`Local:` / `ready in`) and `/config/verify.js` is served. It exits 1 and prints the log tail on startup failure, an early exit, or after 300 seconds.
 
 A cold start takes about 20 seconds. Ready means the bundle compiled and the config is served. Doctor's CORS check plus the `worklist` journey prove the data path.
 
@@ -59,8 +59,8 @@ This check is read-only. It confirms the following:
 
 - The recorded process group is alive.
 - The port's listener belongs to that group, not someone else's server.
-- The latest webpack status is not a failure. A source edit that breaks the build shows up here.
-- `index.html` loads `config/verify.js`, and that file points at the expected server.
+- Vite has reported ready. A source edit that breaks the build shows up here.
+- `index.html` loads and `config/verify.js` points at the expected server.
 - The DICOMweb server answers QIDO with CORS for this origin.
 
 It also prints the Slim HEAD and the `dicom-microscopy-viewer` version, and says whether DMV is linked. Run it first whenever anything looks off. If it fails, read `/tmp/slim-verify/run-<port>/dev-server.log` before relaunching.

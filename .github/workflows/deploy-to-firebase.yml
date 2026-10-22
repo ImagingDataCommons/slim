@@ -91,8 +91,8 @@ jobs:
           else
             pnpm install --frozen-lockfile --ignore-scripts
           fi
-          # allowBuilds in pnpm-workspace.yaml: core-js(+pure) and dicom-microscopy-viewer
-          pnpm rebuild dicom-microscopy-viewer core-js core-js-pure
+          # allowBuilds in pnpm-workspace.yaml: core-js-pure and dicom-microscopy-viewer
+          pnpm rebuild dicom-microscopy-viewer core-js-pure
           # Build DMV if dist files are missing (git dependency in package.json)
           if [ ! -f "node_modules/dicom-microscopy-viewer/dist/dynamic-import/dicomMicroscopyViewer.min.js" ]; then
             echo "DMV dist files missing - building from git dependency"
@@ -177,6 +177,9 @@ jobs:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
           firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_SLIM }}"
           projectId: idc-external-006
+          # 15.34.1 checks the Service Usage API, which the deploy service
+          # account may not read (HTTP 403); unpin once it is granted
+          firebaseToolsVersion: 15.34.0
 
       - name: Deploy to live
         if: github.event_name == 'push'
@@ -185,4 +188,7 @@ jobs:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
           firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_SLIM }}"
           projectId: idc-external-006
+          # 15.34.1 checks the Service Usage API, which the deploy service
+          # account may not read (HTTP 403); unpin once it is granted
+          firebaseToolsVersion: 15.34.0
           channelId: live

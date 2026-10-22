@@ -6,6 +6,15 @@
 export function recoverSeriesInstanceUID(
   seriesInstanceUID: string,
   candidateUIDs: readonly string[],
+  {
+    allowPrefix = true,
+  }: {
+    /**
+     * Accept the longest prefix. Off where a longer UID may be another
+     * series, such as a derived series named after its source.
+     */
+    allowPrefix?: boolean
+  } = {},
 ): string | undefined {
   if (seriesInstanceUID === '' || candidateUIDs.length === 0) {
     return undefined
@@ -23,6 +32,8 @@ export function recoverSeriesInstanceUID(
     }
   }
 
+  if (!allowPrefix) return undefined
+
   let longestPrefix: string | undefined
   for (const uid of candidateUIDs) {
     if (
@@ -38,7 +49,11 @@ export function recoverSeriesInstanceUID(
 
 export function findSlideBySeriesInstanceUID<
   T extends { seriesInstanceUIDs: string[] },
->(slides: readonly T[], seriesInstanceUID: string): T | undefined {
+>(
+  slides: readonly T[],
+  seriesInstanceUID: string,
+  options: { allowPrefix?: boolean } = {},
+): T | undefined {
   const exact = slides.find((slide) =>
     slide.seriesInstanceUIDs.includes(seriesInstanceUID),
   )
@@ -47,7 +62,11 @@ export function findSlideBySeriesInstanceUID<
   }
 
   const allUIDs = slides.flatMap((slide) => slide.seriesInstanceUIDs)
-  const recovered = recoverSeriesInstanceUID(seriesInstanceUID, allUIDs)
+  const recovered = recoverSeriesInstanceUID(
+    seriesInstanceUID,
+    allUIDs,
+    options,
+  )
   if (recovered === undefined) {
     return undefined
   }
