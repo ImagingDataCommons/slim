@@ -127,7 +127,11 @@ describe('usePresentationStates', () => {
       first,
     )
     expect(navigate).toHaveBeenCalledWith(
-      { pathname: location.pathname, search: 'x=1&state=ps-1' },
+      {
+        pathname: location.pathname,
+        search: '?x=1&state=ps-1',
+        hash: '',
+      },
       { replace: true },
     )
     expect(result.current.selectedUID).toBe('ps-1')
@@ -226,7 +230,11 @@ describe('usePresentationStates', () => {
     /** A new history entry, keeping the other parameters */
     expect(navigate).toHaveBeenCalledTimes(1)
     expect(navigate).toHaveBeenCalledWith(
-      { pathname: location.pathname, search: 'x=1&state=ps-1' },
+      {
+        pathname: location.pathname,
+        search: '?x=1&state=ps-1',
+        hash: '',
+      },
       { replace: false },
     )
     expect(opticalPaths.showPresentationState).toHaveBeenCalledTimes(1)
@@ -259,7 +267,7 @@ describe('usePresentationStates', () => {
 
     expect(result.current.selectedUID).toBeUndefined()
     expect(navigate).toHaveBeenCalledWith(
-      { pathname: location.pathname, search: 'x=1' },
+      { pathname: location.pathname, search: '?x=1', hash: '' },
       { replace: false },
     )
     expect(opticalPaths.showDefault).toHaveBeenCalledWith(session)
@@ -323,6 +331,56 @@ describe('usePresentationStates', () => {
     expect(result.current.selectedUID).toBeUndefined()
   })
 
+  it('keeps other parameters as written and adds no entry for the same URL', () => {
+    const { result, rerender, load, receive, navigate } = setup('ps-1')
+    const search =
+      '?gcp=https://healthcare.googleapis.com/v1/projects/p&state=ps-1'
+    rerender({ currentLocation: { ...location, search, hash: '#view' } })
+    load()
+    receive(presentationState('ps-1'), 0)
+    receive(presentationState('ps-2'), 1)
+    navigate.mockClear()
+
+    act(() => {
+      result.current.onSelect('ps-1')
+    })
+    expect(navigate).not.toHaveBeenCalled()
+
+    act(() => {
+      result.current.onSelect('ps-2')
+    })
+    expect(navigate).toHaveBeenCalledWith(
+      {
+        pathname: location.pathname,
+        search:
+          '?gcp=https://healthcare.googleapis.com/v1/projects/p&state=ps-2',
+        hash: '#view',
+      },
+      { replace: false },
+    )
+  })
+
+  it('drops an implicit sign-in response from the hash', () => {
+    const { result, rerender, load, receive, navigate } = setup('none')
+    rerender({
+      currentLocation: {
+        ...location,
+        hash: '#access_token=secret&id_token=secret&state=oauth',
+      },
+    })
+    load()
+    receive(presentationState('ps-1'), 0)
+
+    act(() => {
+      result.current.onSelect('ps-1')
+    })
+
+    expect(navigate).toHaveBeenLastCalledWith(
+      { pathname: location.pathname, search: '?x=1&state=ps-1', hash: '' },
+      { replace: false },
+    )
+  })
+
   it('drops sign-in callback parameters when writing the state', () => {
     const { result, rerender, load, receive, navigate } = setup('none')
     rerender({
@@ -340,7 +398,11 @@ describe('usePresentationStates', () => {
     })
 
     expect(navigate).toHaveBeenLastCalledWith(
-      { pathname: location.pathname, search: 'x=1&state=ps-1' },
+      {
+        pathname: location.pathname,
+        search: '?x=1&state=ps-1',
+        hash: '',
+      },
       { replace: false },
     )
   })

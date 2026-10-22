@@ -54,6 +54,14 @@ vi.mock('../SlideItem', () => ({
   ),
 }))
 
+vi.mock('../../features/viewer/services/resolveDerivedSeries', () => ({
+  resolveDerivedSeriesSlide: async () => ({
+    kind: 'referenced',
+    slide: mockSlides[1],
+    derivedDataset: { SeriesInstanceUID: '9.9', SOPInstanceUID: '9.9.1' },
+  }),
+}))
+
 vi.mock('../Patient', () => ({ __esModule: true, default: () => null }))
 vi.mock('../Study', () => ({ __esModule: true, default: () => null }))
 vi.mock('../ClinicalTrial', () => ({ __esModule: true, default: () => null }))
@@ -140,6 +148,18 @@ describe('CaseViewer', () => {
     renderAt('/studies/1.2.3/series/1.2.3.1')
 
     fireEvent.click(screen.getByRole('button', { name: '1.2.3.2' }))
+
+    expect(await screen.findByTestId('slide-viewer')).toHaveTextContent(
+      '1.2.3.2',
+    )
+    expect(screen.getByRole('button', { name: '1.2.3.2' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('highlights the slide a derived series route resolved to', async () => {
+    renderAt('/studies/1.2.3/series/9.9')
 
     expect(await screen.findByTestId('slide-viewer')).toHaveTextContent(
       '1.2.3.2',

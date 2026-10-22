@@ -4,6 +4,7 @@ import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../services/NotificationMiddleware'
 import { CustomError, errorTypes } from '../utils/CustomError'
+import { editSearch } from '../utils/url'
 import type { User } from '.'
 
 /** Query and fragment parameters an authorize redirect may append */
@@ -87,25 +88,28 @@ export const readReturnUrl = (userData: UserData): string | undefined => {
 export const currentReturnUrl = (): string =>
   `${window.location.pathname}${window.location.search}`
 
-/** Whether query parameters carry an authorize response */
+/** Whether query parameters carry an authorize response, errors included */
 export const isAuthResponse = (searchParams: URLSearchParams): boolean =>
-  ['code', 'id_token', 'access_token'].some((key) => searchParams.has(key))
+  ['code', 'id_token', 'access_token', 'error'].some((key) =>
+    searchParams.has(key),
+  )
 
 /**
  * Query string to write back to the URL, without the parameters of an
  * authorize response when there is one. The router can still hold the
  * callback URL after `clearAuthParamsFromUrl` cleaned the address bar.
+ * Other parameters are kept as written.
  */
-export const searchWithoutAuthResponse = (search: string): string => {
-  const searchParams = new URLSearchParams(search)
-  if (isAuthResponse(searchParams)) {
-    for (const key of AUTH_RESPONSE_PARAMS) {
-      searchParams.delete(key)
-    }
-  }
-  const cleaned = searchParams.toString()
-  return cleaned === '' ? '' : `?${cleaned}`
-}
+export const searchWithoutAuthResponse = (search: string): string =>
+  editSearch(search, {
+    remove: isAuthResponse(new URLSearchParams(search))
+      ? AUTH_RESPONSE_PARAMS
+      : [],
+  })
+
+/** Hash to write back to the URL: none when it holds an implicit response */
+export const hashWithoutAuthResponse = (hash: string): string =>
+  isAuthResponse(new URLSearchParams(hash.replace(/^#/, ''))) ? '' : hash
 
 /**
  * Drop authorize response parameters from the address bar so tokens are not

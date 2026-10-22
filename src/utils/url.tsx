@@ -135,3 +135,48 @@ export const describeCallbackWithoutState = (location: {
     ? `Sign-in failed: ${reason}`
     : 'Sign-in was cancelled or failed.'
 }
+
+/** Decoded name of one raw `name=value` query segment */
+const segmentName = (segment: string): string => {
+  const name = segment.split('=')[0].replace(/\+/g, ' ')
+  try {
+    return decodeURIComponent(name)
+  } catch {
+    return name
+  }
+}
+
+/**
+ * Remove or set query parameters while keeping every other segment exactly
+ * as written, so values such as a `gcp` store URL are not re-encoded.
+ * Returns `?…`, or an empty string when no parameter is left.
+ */
+export const editSearch = (
+  search: string,
+  {
+    remove = [],
+    set,
+  }: { remove?: readonly string[]; set?: readonly [string, string] },
+): string => {
+  const segments: string[] = []
+  let isSet = false
+  for (const segment of search.replace(/^\?/, '').split('&')) {
+    const name = segmentName(segment)
+    if (segment === '' || remove.includes(name)) continue
+    if (set !== undefined && name === set[0]) {
+      /** Set in place, once, so the order and the URL stay stable */
+      if (!isSet) {
+        segments.push(
+          `${encodeURIComponent(set[0])}=${encodeURIComponent(set[1])}`,
+        )
+        isSet = true
+      }
+      continue
+    }
+    segments.push(segment)
+  }
+  if (set !== undefined && !isSet) {
+    segments.push(`${encodeURIComponent(set[0])}=${encodeURIComponent(set[1])}`)
+  }
+  return segments.length > 0 ? `?${segments.join('&')}` : ''
+}

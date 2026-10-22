@@ -3,10 +3,14 @@ import type * as dmv from 'dicom-microscopy-viewer'
 import { useEffect, useRef, useState } from 'react'
 import type { Location, NavigateFunction } from 'react-router'
 
-import { searchWithoutAuthResponse } from '../../../auth/oidcUser'
+import {
+  hashWithoutAuthResponse,
+  searchWithoutAuthResponse,
+} from '../../../auth/oidcUser'
 import type DicomWebManager from '../../../DicomWebManager'
 import { StorageClasses } from '../../../data/uids'
 import { logger } from '../../../utils/logger'
+import { editSearch } from '../../../utils/url'
 import { notifyVisualizationError } from '../services/derivedDataLoaders'
 import { loadPresentationStates } from '../services/presentationStates'
 import type { ViewerSession, ViewerSessionRef } from '../services/viewerSession'
@@ -57,8 +61,8 @@ export function usePresentationStates({
     PresentationState[]
   >([])
   const [selectedUID, setSelectedUID] = useState(requestedUID)
-  /** Route of the session the states were last loaded for */
-  const loadedPathnameRef = useRef<string | undefined>(undefined)
+  /** Route of the last Back/Forward check */
+  const previousRouteRef = useRef(routePathname)
   /** Retrievals finish later; they must see the URL of that moment */
   const latestRef = useLatestRef({
     requestedUID,
@@ -71,33 +75,26 @@ export function usePresentationStates({
 
   /**
    * Set or clear the `state` URL parameter, keeping the other parameters
-   * (such as `gcp`). A user's pick adds a history entry, so Back returns to
-   * the previous one; automatic changes replace the entry. The hash is
-   * dropped: it can hold the tokens of an implicit sign-in.
+   * (such as `gcp`) as written. A user's pick adds a history entry, so Back
+   * returns to the previous one; automatic changes replace the entry.
+   * Sign-in response parameters, in the query or the hash, are dropped.
    */
   const writeStateParam = (
     value: string | undefined,
     { replace }: { replace: boolean },
   ): void => {
     const { location: currentLocation } = latestRef.current
-    const searchParams = new URLSearchParams(
+    const currentSearch = editSearch(currentLocation.search, {})
+    const search = editSearch(
       searchWithoutAuthResponse(currentLocation.search),
+      value === undefined ? { remove: ['state'] } : { set: ['state', value] },
     )
-    if (value === undefined) {
-      searchParams.delete('state')
-    } else {
-      searchParams.set('state', value)
-    }
-    const search = searchParams.toString()
+    const hash = hashWithoutAuthResponse(currentLocation.hash)
     /** The same URL again would only add a Back step */
-    if (
-      !replace &&
-      search === currentLocation.search.replace(/^\?/, '') &&
-      currentLocation.hash === ''
-    ) {
+    if (!replace && search === currentSearch && hash === currentLocation.hash) {
       return
     }
-    navigate({ pathname: currentLocation.pathname, search }, { replace })
+    navigate({ pathname: currentLocation.pathname, search, hash }, { replace })
   }
 
   const apply = (
@@ -126,12 +123,18 @@ export function usePresentationStates({
    * it names, or the default display when it names none.
    */
   useEffect(() => {
+    /**
+     * History that also moved to another route rebuilds the session, which
+     * loads the URL's state itself; the current session is the old route's
+     */
+    const isRouteChange = previousRouteRef.current !== routePathname
+    previousRouteRef.current = routePathname
+    if (isRouteChange) return
     const session = sessionRef.current
     const {
       selectedUID: shownUID,
       presentationStates: listed,
       opticalPaths: currentOpticalPaths,
-      routePathname: currentPathname,
     } = latestRef.current
     if (
       session === undefined ||
@@ -140,11 +143,6 @@ export function usePresentationStates({
     ) {
       return
     }
-    /**
-     * History that also moved to another route rebuilds the session, which
-     * loads the URL's state itself; the current session is the old route's
-     */
-    if (currentPathname !== loadedPathnameRef.current) return
     if (requestedUID === undefined) {
       currentOpticalPaths.showDefault(session)
       setSelectedUID(undefined)
@@ -157,7 +155,7 @@ export function usePresentationStates({
     if (presentationState === undefined) return
     currentOpticalPaths.showPresentationState(session, presentationState)
     setSelectedUID(requestedUID)
-  }, [requestedUID, sessionRef, latestRef])
+  }, [requestedUID, routePathname, sessionRef, latestRef])
 
   return {
     presentationStates,
@@ -180,7 +178,6 @@ export function usePresentationStates({
        * key), and the new session loads its own states.
        */
       const { routePathname: sessionPathname } = latestRef.current
-      loadedPathnameRef.current = sessionPathname
       const isStale = (): boolean =>
         session.isDestroyed ||
         latestRef.current.routePathname !== sessionPathname

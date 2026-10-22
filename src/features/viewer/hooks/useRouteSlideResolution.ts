@@ -8,7 +8,11 @@ import { logger } from '../../../utils/logger'
 import { seriesUidFromSlide } from '../../../utils/recoverSeriesInstanceUID'
 import { resolveDerivedSeriesSlide } from '../services/resolveDerivedSeries'
 import type { ReferencingInstance } from '../utils/referencedSlide'
-import { findSeriesSlide, matchSlideForSeriesRoute } from '../utils/routeSlide'
+import {
+  findSeriesSlide,
+  matchSlideForSeriesRoute,
+  ROUTE_RECOVERY,
+} from '../utils/routeSlide'
 import { useLatestRef } from './useLatestRef'
 
 export interface RouteSlideResolution {
@@ -145,5 +149,6 @@ export function resolvedSeriesInstanceUID(
   selectedSlide: Slide,
   seriesInstanceUID: string,
 ): string {
-  return seriesUidFromSlide(selectedSlide, seriesInstanceUID)
+  /** Matched like the route, so a derived series is not taken for its slide */
+  return seriesUidFromSlide(selectedSlide, seriesInstanceUID, ROUTE_RECOVERY)
 }

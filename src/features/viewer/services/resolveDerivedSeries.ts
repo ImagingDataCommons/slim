@@ -39,40 +39,38 @@ function lookupClients(clients: {
 
 /**
  * Metadata of the series from the first client, in lookup order, whose
- * stores have it. Searches find the series without failing on stores that
- * lack it (a failed retrieve would reach the app's error handling), run
- * together, and record the store the retrieve then asks first. A client
- * whose search fails is skipped.
+ * stores have it. A search finds the series without failing on stores that
+ * lack it (a failed retrieve would reach the app's error handling) and
+ * records the store the retrieve then asks first. Clients are asked one at
+ * a time, so stores after the one with the series are never contacted (or
+ * asked for credentials); a client whose search fails is skipped.
  */
 async function retrieveFromStoreWithSeries(
   clients: { [key: string]: DicomWebManager },
   studyInstanceUID: string,
   seriesInstanceUID: string,
 ): Promise<object[] | undefined> {
-  const candidates = lookupClients(clients)
-  const hasSeries = await Promise.all(
-    candidates.map(async (client) => {
-      try {
-        const series = await client.searchForSeries({
-          studyInstanceUID,
-          queryParams: { SeriesInstanceUID: seriesInstanceUID },
-        })
-        return series.length > 0
-      } catch (error) {
-        logger.warn(
-          `Failed to search for series "${seriesInstanceUID}" on a server`,
-          error,
-        )
-        return false
-      }
-    }),
-  )
-  const client = candidates.find((_, index) => hasSeries[index])
-  if (client === undefined) return undefined
-  return await client.retrieveSeriesMetadata({
-    studyInstanceUID,
-    seriesInstanceUID,
-  })
+  for (const client of lookupClients(clients)) {
+    let series: unknown[]
+    try {
+      series = await client.searchForSeries({
+        studyInstanceUID,
+        queryParams: { SeriesInstanceUID: seriesInstanceUID },
+      })
+    } catch (error) {
+      logger.warn(
+        `Failed to search for series "${seriesInstanceUID}" on a server`,
+        error,
+      )
+      continue
+    }
+    if (series.length === 0) continue
+    return await client.retrieveSeriesMetadata({
+      studyInstanceUID,
+      seriesInstanceUID,
+    })
+  }
+  return undefined
 }
 
 /**

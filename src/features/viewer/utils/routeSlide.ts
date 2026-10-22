@@ -11,7 +11,7 @@ import { parseSeriesInstanceUID } from '../../../utils/routes'
  * longer UID that extends a slide series may be a derived series named
  * after it, which must be looked up, not shown as the slide.
  */
-const ROUTE_RECOVERY = { allowPrefix: false }
+export const ROUTE_RECOVERY = { allowPrefix: false }
 
 /** Slide whose series list includes `seriesInstanceUID` (or a mangled form). */
 export function findSeriesSlide(

@@ -83,7 +83,8 @@ describe('resolveDerivedSeriesSlide', () => {
     })
 
     expect(slideClient.retrieveSeriesMetadata).toHaveBeenCalledTimes(1)
-    expect(annotationClient.retrieveSeriesMetadata).not.toHaveBeenCalled()
+    /** Stores after the one with the series are never contacted */
+    expect(annotationClient.searchForSeries).not.toHaveBeenCalled()
   })
 
   it('asks the other clients when one search fails', async () => {

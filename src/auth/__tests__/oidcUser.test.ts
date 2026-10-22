@@ -102,6 +102,14 @@ describe('searchWithoutAuthResponse', () => {
     )
   })
 
+  it('drops the parameters of an error response', () => {
+    expect(
+      searchWithoutAuthResponse(
+        '?gcp=x&error=access_denied&error_description=no&state=nonce',
+      ),
+    ).toBe('?gcp=x')
+  })
+
   it('keeps a presentation state outside a callback', () => {
     expect(searchWithoutAuthResponse('?gcp=x&state=pr-1')).toBe(
       '?gcp=x&state=pr-1',

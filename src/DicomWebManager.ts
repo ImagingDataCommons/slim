@@ -798,7 +798,9 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
         ),
       /**
        * Remember the first configured store that has each series, so a later
-       * retrieve goes there first instead of failing on the other stores
+       * retrieve goes there first instead of failing on the other stores. A
+       * store found later replaces one configured after it, so a store that
+       * failed one search is preferred again once it answers.
        */
       (store, rows) => {
         for (const row of rows) {
@@ -813,7 +815,11 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
             studyInstanceUID,
             seriesInstanceUID,
           )
-          if (!seriesStoreCache.has(cacheKey)) {
+          const cached = seriesStoreCache.get(cacheKey)
+          if (
+            cached === undefined ||
+            this.stores.indexOf(store) < this.stores.indexOf(cached)
+          ) {
             seriesStoreCache.set(cacheKey, store)
           }
         }

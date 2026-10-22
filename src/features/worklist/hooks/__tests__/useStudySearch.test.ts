@@ -175,14 +175,10 @@ describe('useStudySearch', () => {
     expect(search.mock.calls[0]?.[0].limit).toBe(100)
   })
 
-  it('merges exact and partial matches, exact ones first', async () => {
-    const search = vi.fn(async (params: QueryParams) => {
-      if (params.PatientID === '*P-9*') {
-        return [studyJson('9.90', 'P-90'), studyJson('9.9', 'P-9')]
-      }
-      if (params.PatientID === 'P-9') return [studyJson('9.9', 'P-9')]
-      return []
-    })
+  it('sends the wildcard queries only when the exact ones find nothing', async () => {
+    const search = vi.fn(async (params: QueryParams) =>
+      params.PatientID === '*P-9*' ? [studyJson('9.9', 'P-90')] : [],
+    )
     const clients = createClients(search)
     const { result } = renderHook(() =>
       useStudySearch({ clients, searchText: 'P-9' }),
@@ -190,9 +186,22 @@ describe('useStudySearch', () => {
 
     await waitFor(() => expect(result.current.isSearching).toBe(false))
     expect(result.current.matches.map((study) => study.PatientID)).toEqual([
-      'P-9',
       'P-90',
     ])
     expect(search).toHaveBeenCalledTimes(7)
+  })
+
+  it('skips the wildcard queries once the exact ones match', async () => {
+    const search = vi.fn(async (params: QueryParams) =>
+      params.PatientID === 'P-9' ? [studyJson('9.9', 'P-9')] : [],
+    )
+    const clients = createClients(search)
+    const { result } = renderHook(() =>
+      useStudySearch({ clients, searchText: 'P-9' }),
+    )
+
+    await waitFor(() => expect(result.current.isSearching).toBe(false))
+    expect(result.current.matches).toHaveLength(1)
+    expect(search).toHaveBeenCalledTimes(4)
   })
 })

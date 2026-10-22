@@ -1,4 +1,4 @@
-import { type JSX, useEffect } from 'react'
+import { type JSX, useEffect, useState } from 'react'
 import {
   Route,
   Routes,
@@ -34,10 +34,17 @@ import { useSlides } from '../hooks/useSlides'
 import type { AppInfo } from '../utils/appInfo'
 import { buildStudySummary } from '../utils/displayFormat'
 import { type RouteComponentProps, withRouter } from '../utils/router'
-import { RoutePaths } from '../utils/routes'
+import { parseSeriesInstanceUID, RoutePaths } from '../utils/routes'
 import { StudySidePanel } from './CaseViewer/StudySidePanel'
 /** skipcq: JS-W1028 - SlideViewer has a default export */
 import SlideViewer from './SlideViewer'
+
+interface ShownSeries {
+  /** Series named in the route, which may be a derived series */
+  routeSeriesInstanceUID: string
+  /** Image series of the slide the viewer shows for it */
+  seriesInstanceUID: string
+}
 
 function ParametrizedSlideViewer({
   clients,
@@ -50,7 +57,10 @@ function ParametrizedSlideViewer({
   annotations,
   isLeftPanelOpen,
   onToggleLeftPanel,
+  onSeriesShown,
 }: {
+  /** Reports the image series shown for the route, for the slide list */
+  onSeriesShown: (shown: ShownSeries | undefined) => void
   clients: { [key: string]: DicomWebManager }
   slides: Slide[]
   user?: User
@@ -79,6 +89,21 @@ function ParametrizedSlideViewer({
     })
 
   const presentationStateUID = presentationStateUIDFromSearch(location.search)
+
+  const shownSeriesInstanceUID =
+    selectedSlide != null
+      ? resolvedSeriesInstanceUID(selectedSlide, seriesInstanceUID)
+      : undefined
+  useEffect(() => {
+    onSeriesShown(
+      shownSeriesInstanceUID === undefined
+        ? undefined
+        : {
+            routeSeriesInstanceUID: seriesInstanceUID,
+            seriesInstanceUID: shownSeriesInstanceUID,
+          },
+    )
+  }, [onSeriesShown, seriesInstanceUID, shownSeriesInstanceUID])
 
   if (unresolvedSeriesUID === seriesInstanceUID) {
     return (
@@ -150,6 +175,7 @@ function ViewerBody(props: ViewerProps): JSX.Element | null {
     studyInstanceUID,
   })
   const { setSummary } = useStudySummary()
+  const [shownSeries, setShownSeries] = useState<ShownSeries | undefined>()
   const chrome = useViewerPanelChrome()
 
   const summaryImage = slides[0]?.volumeImages[0]
@@ -224,11 +250,18 @@ function ViewerBody(props: ViewerProps): JSX.Element | null {
   }
   const refImage = volumeInstances[0]
 
-  const selectedSeriesInstanceUID = selectedSeriesForStudyPath({
-    slides,
-    pathname: location.pathname,
-    fallbackSeriesInstanceUID: volumeInstances[0].SeriesInstanceUID,
-  })
+  /** A derived series route highlights the slide the viewer resolved */
+  const routeSeriesInstanceUID = parseSeriesInstanceUID(location.pathname)
+  const selectedSeriesInstanceUID =
+    shownSeries !== undefined &&
+    routeSeriesInstanceUID !== '' &&
+    shownSeries.routeSeriesInstanceUID === routeSeriesInstanceUID
+      ? shownSeries.seriesInstanceUID
+      : selectedSeriesForStudyPath({
+          slides,
+          pathname: location.pathname,
+          fallbackSeriesInstanceUID: volumeInstances[0].SeriesInstanceUID,
+        })
 
   const studyPanel = (
     <StudySidePanel
@@ -277,6 +310,7 @@ function ViewerBody(props: ViewerProps): JSX.Element | null {
                 user={props.user}
                 isLeftPanelOpen={chrome.isLeftPanelOpen}
                 onToggleLeftPanel={chrome.toggleLeftPanel}
+                onSeriesShown={setShownSeries}
               />
             }
           />

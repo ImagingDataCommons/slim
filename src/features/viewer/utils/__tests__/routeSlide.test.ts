@@ -39,6 +39,12 @@ describe('presentationStateUIDFromSearch', () => {
     ).toBeUndefined()
   })
 
+  it('ignores the OAuth state of an error callback', () => {
+    expect(
+      presentationStateUIDFromSearch('?error=access_denied&state=nonce'),
+    ).toBeUndefined()
+  })
+
   it('ignores the OAuth state of an authorization code callback', () => {
     expect(
       presentationStateUIDFromSearch('?code=abc&state=nonce'),
