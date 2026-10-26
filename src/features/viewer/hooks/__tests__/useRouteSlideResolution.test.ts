@@ -1,0 +1,322 @@
+import { renderHook, waitFor } from '@testing-library/react'
+import type { Slide } from '../../../../data/slides'
+
+import { resolveDerivedSeriesSlide } from '../../services/resolveDerivedSeries'
+import { resetFakeDmv } from '../../testing/fakeDmv'
+import { createTestClients, createTestSlide } from '../../testing/fixtures'
+import {
+  resolvedSeriesInstanceUID,
+  useRouteSlideResolution,
+} from '../useRouteSlideResolution'
+
+vi.mock('dicom-microscopy-viewer', async () => {
+  const actual = await vi.importActual<typeof import('../../testing/fakeDmv')>(
+    '../../testing/fakeDmv',
+  )
+  return actual.fakeDmvModule
+})
+vi.mock('../../../../utils/logger')
+vi.mock('../../services/resolveDerivedSeries', () => ({
+  resolveDerivedSeriesSlide: vi.fn(),
+}))
+
+const IMAGE_SERIES = '2.25.900000000000000000000000000000000000002'
+const DERIVED_SERIES = '2.25.900000000000000000000000000000000000099'
+
+beforeEach(() => {
+  resetFakeDmv()
+})
+
+describe('useRouteSlideResolution', () => {
+  it('looks a derived series up once and drops it on the image series', async () => {
+    const slide = createTestSlide(IMAGE_SERIES)
+    const derivedDataset = {
+      SeriesInstanceUID: DERIVED_SERIES,
+      SOPInstanceUID: '2.25.7',
+    }
+    vi.mocked(resolveDerivedSeriesSlide).mockResolvedValue({
+      kind: 'referenced',
+      slide,
+      derivedDataset,
+    } as never)
+    const clients = createTestClients()
+    const navigate = vi.fn()
+    const slides = [slide]
+    const { result, rerender } = renderHook(
+      ({ seriesInstanceUID }: { seriesInstanceUID: string }) =>
+        useRouteSlideResolution({
+          clients,
+          slides,
+          studyInstanceUID: '2.25.1',
+          seriesInstanceUID,
+          location: {
+            pathname: `/series/${seriesInstanceUID}`,
+            search: '',
+            hash: '',
+          },
+          navigate,
+        }),
+      { initialProps: { seriesInstanceUID: DERIVED_SERIES } },
+    )
+
+    await waitFor(() =>
+      expect(result.current.derivedDataset).toBe(derivedDataset),
+    )
+    expect(result.current.selectedSlide).toBe(slide)
+    expect(resolveDerivedSeriesSlide).toHaveBeenCalledTimes(1)
+
+    rerender({ seriesInstanceUID: IMAGE_SERIES })
+
+    await waitFor(() => expect(result.current.derivedDataset).toBeNull())
+    expect(result.current.selectedSlide).toBe(slide)
+  })
+
+  it('keeps a derived-series lookup in flight when only the query changes', async () => {
+    const slide = createTestSlide(IMAGE_SERIES)
+    const derivedDataset = {
+      SeriesInstanceUID: DERIVED_SERIES,
+      SOPInstanceUID: '2.25.7',
+    }
+    vi.mocked(resolveDerivedSeriesSlide).mockClear()
+    vi.mocked(resolveDerivedSeriesSlide).mockResolvedValue({
+      kind: 'referenced',
+      slide,
+      derivedDataset,
+    } as never)
+    const clients = createTestClients()
+    const navigate = vi.fn()
+    const slides = [slide]
+    const { result, rerender } = renderHook(
+      ({ search }: { search: string }) =>
+        useRouteSlideResolution({
+          clients,
+          slides,
+          studyInstanceUID: '2.25.1',
+          seriesInstanceUID: DERIVED_SERIES,
+          location: { pathname: `/series/${DERIVED_SERIES}`, search, hash: '' },
+          navigate,
+        }),
+      { initialProps: { search: '' } },
+    )
+    rerender({ search: '?state=2.25.9' })
+
+    await waitFor(() =>
+      expect(result.current.derivedDataset).toBe(derivedDataset),
+    )
+    expect(resolveDerivedSeriesSlide).toHaveBeenCalledTimes(1)
+  })
+
+  it('corrects a mangled series UID in the first URL', async () => {
+    const slide = createTestSlide(IMAGE_SERIES)
+    const slides = [slide]
+    const clients = createTestClients()
+    const navigate = vi.fn()
+    renderHook(() =>
+      useRouteSlideResolution({
+        clients,
+        slides,
+        studyInstanceUID: '2.25.1',
+        seriesInstanceUID: `${IMAGE_SERIES}.0`,
+        location: {
+          pathname: `/series/${IMAGE_SERIES}.0`,
+          search: '?x=1&code=abc&state=nonce',
+          hash: '#view',
+        },
+        navigate,
+      }),
+    )
+
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith(
+        { pathname: `/series/${IMAGE_SERIES}`, search: '?x=1', hash: '#view' },
+        { replace: true },
+      ),
+    )
+  })
+
+  it('returns the slide of a new image route in the same render', () => {
+    const first = createTestSlide(IMAGE_SERIES)
+    const second = createTestSlide(
+      '2.25.900000000000000000000000000000000000003',
+    )
+    const slides = [first, second]
+    const clients = createTestClients()
+    const navigate = vi.fn()
+    const seen: Array<string | undefined> = []
+    const { rerender } = renderHook(
+      ({ seriesInstanceUID }: { seriesInstanceUID: string }) => {
+        const value = useRouteSlideResolution({
+          clients,
+          slides,
+          studyInstanceUID: '2.25.1',
+          seriesInstanceUID,
+          location: {
+            pathname: `/series/${seriesInstanceUID}`,
+            search: '',
+            hash: '',
+          },
+          navigate,
+        })
+        seen.push(value.selectedSlide?.seriesInstanceUIDs[0])
+        return value
+      },
+      { initialProps: { seriesInstanceUID: IMAGE_SERIES } },
+    )
+    seen.length = 0
+
+    rerender({ seriesInstanceUID: second.seriesInstanceUIDs[0] })
+
+    expect(seen).not.toContain(IMAGE_SERIES)
+  })
+
+  it('does not show an earlier "not found" while a series is tried again', async () => {
+    const slide = createTestSlide(IMAGE_SERIES)
+    const slides = [slide]
+    const clients = createTestClients()
+    const navigate = vi.fn()
+    vi.mocked(resolveDerivedSeriesSlide).mockResolvedValueOnce({
+      kind: 'unresolved',
+    })
+    const { result, rerender } = renderHook(
+      ({ seriesInstanceUID }: { seriesInstanceUID: string }) =>
+        useRouteSlideResolution({
+          clients,
+          slides,
+          studyInstanceUID: '2.25.1',
+          seriesInstanceUID,
+          location: {
+            pathname: `/series/${seriesInstanceUID}`,
+            search: '',
+            hash: '',
+          },
+          navigate,
+        }),
+      { initialProps: { seriesInstanceUID: DERIVED_SERIES } },
+    )
+    await waitFor(() =>
+      expect(result.current.unresolvedSeriesUID).toBe(DERIVED_SERIES),
+    )
+    /** Lookups that are still running */
+    vi.mocked(resolveDerivedSeriesSlide).mockReturnValue(
+      new Promise(() => undefined),
+    )
+
+    rerender({ seriesInstanceUID: `${DERIVED_SERIES}1` })
+    rerender({ seriesInstanceUID: DERIVED_SERIES })
+
+    expect(result.current.unresolvedSeriesUID).toBeNull()
+    expect(result.current.shownSeriesInstanceUID).toBeUndefined()
+  })
+
+  it('looks a resolved derived series up again for a new slide list', async () => {
+    const slide = createTestSlide(IMAGE_SERIES)
+    vi.mocked(resolveDerivedSeriesSlide).mockClear()
+    vi.mocked(resolveDerivedSeriesSlide).mockResolvedValue({
+      kind: 'referenced',
+      slide,
+      derivedDataset: {
+        SeriesInstanceUID: DERIVED_SERIES,
+        SOPInstanceUID: '2.25.7',
+      },
+    } as never)
+    const clients = createTestClients()
+    const navigate = vi.fn()
+    const { result, rerender } = renderHook(
+      ({ slides }: { slides: Slide[] }) =>
+        useRouteSlideResolution({
+          clients,
+          slides,
+          studyInstanceUID: '2.25.1',
+          seriesInstanceUID: DERIVED_SERIES,
+          location: {
+            pathname: `/series/${DERIVED_SERIES}`,
+            search: '',
+            hash: '',
+          },
+          navigate,
+        }),
+      { initialProps: { slides: [slide] } },
+    )
+    await waitFor(() => expect(result.current.derivedDataset).not.toBeNull())
+
+    const reloaded = createTestSlide(IMAGE_SERIES)
+    vi.mocked(resolveDerivedSeriesSlide).mockResolvedValue({
+      kind: 'referenced',
+      slide: reloaded,
+      derivedDataset: {
+        SeriesInstanceUID: DERIVED_SERIES,
+        SOPInstanceUID: '2.25.7',
+      },
+    } as never)
+    rerender({ slides: [reloaded] })
+
+    await waitFor(() => expect(result.current.selectedSlide).toBe(reloaded))
+    expect(resolveDerivedSeriesSlide).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows a derived series again after visiting another one', async () => {
+    const slide = createTestSlide(IMAGE_SERIES)
+    const slides = [slide]
+    const clients = createTestClients()
+    const navigate = vi.fn()
+    const OTHER_DERIVED = `${DERIVED_SERIES}1`
+    const datasetFor = (seriesInstanceUID: string) => ({
+      SeriesInstanceUID: seriesInstanceUID,
+      SOPInstanceUID: `${seriesInstanceUID}.1`,
+    })
+    vi.mocked(resolveDerivedSeriesSlide).mockImplementation(
+      async ({ seriesInstanceUID }) =>
+        seriesInstanceUID === DERIVED_SERIES
+          ? ({
+              kind: 'referenced',
+              slide,
+              derivedDataset: datasetFor(DERIVED_SERIES),
+            } as never)
+          : { kind: 'unresolved' },
+    )
+    const { result, rerender } = renderHook(
+      ({ seriesInstanceUID }: { seriesInstanceUID: string }) =>
+        useRouteSlideResolution({
+          clients,
+          slides,
+          studyInstanceUID: '2.25.1',
+          seriesInstanceUID,
+          location: {
+            pathname: `/series/${seriesInstanceUID}`,
+            search: '',
+            hash: '',
+          },
+          navigate,
+        }),
+      { initialProps: { seriesInstanceUID: DERIVED_SERIES } },
+    )
+    await waitFor(() =>
+      expect(result.current.derivedDataset?.SeriesInstanceUID).toBe(
+        DERIVED_SERIES,
+      ),
+    )
+
+    rerender({ seriesInstanceUID: OTHER_DERIVED })
+    await waitFor(() =>
+      expect(result.current.unresolvedSeriesUID).toBe(OTHER_DERIVED),
+    )
+    rerender({ seriesInstanceUID: DERIVED_SERIES })
+
+    await waitFor(() =>
+      expect(result.current.derivedDataset?.SeriesInstanceUID).toBe(
+        DERIVED_SERIES,
+      ),
+    )
+    expect(result.current.unresolvedSeriesUID).toBeNull()
+    expect(result.current.shownSeriesInstanceUID).toBe(IMAGE_SERIES)
+  })
+})
+
+describe('resolvedSeriesInstanceUID', () => {
+  it('shows the slide series a derived series is named after', () => {
+    const slide = {
+      seriesInstanceUIDs: ['1.2.3.1', '1.2.3.2'],
+    } as unknown as Parameters<typeof resolvedSeriesInstanceUID>[0]
+    expect(resolvedSeriesInstanceUID(slide, '1.2.3.2.5')).toBe('1.2.3.2')
+  })
+})

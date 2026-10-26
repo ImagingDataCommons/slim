@@ -13,22 +13,19 @@ function createStudyMetadata(StudyInstanceUID: string): Study {
     ModalitiesInStudy: [],
     isLoaded: false,
     series: [] as Series[],
-    /**
-     * @param {object} instance
-     */
     addInstanceToSeries(instance: Instance) {
       this.addInstancesToSeries([instance])
     },
-    /**
-     * @param {object[]} instances
-     * @param {string} instances[].SeriesInstanceUID
-     * @param {string} instances[].StudyDescription
-     */
+    /** All `instances` must belong to the same series. */
     addInstancesToSeries(instances: Instance[]) {
-      const { SeriesInstanceUID } = instances[0]
+      if (instances.length === 0) return
+      const { SeriesInstanceUID, StudyDescription } = instances[0]
 
-      if (this.StudyDescription !== '' && this.StudyDescription !== undefined) {
-        this.StudyDescription = String(instances[0].StudyDescription ?? '')
+      if (
+        this.StudyDescription === '' &&
+        typeof StudyDescription === 'string'
+      ) {
+        this.StudyDescription = StudyDescription
       }
 
       const seriesUID = String(SeriesInstanceUID)

@@ -43,6 +43,22 @@ jobs:
           docker compose logs --tail=80 app || true
           exit 1
 
+      - name: Test compiled styles
+        run: |
+          # The build must run Tailwind (@tailwindcss/vite); raw directives
+          # mean src/styles/globals.css was not compiled. Vite emits the
+          # stylesheet as assets/index-<hash>.css.
+          css_path=$(curl -s http://localhost:8008/ | grep -o 'assets/[^"]*\.css' | head -1)
+          test -n "$css_path"
+          css=$(curl -s "http://localhost:8008/$css_path")
+          if echo "$css" | grep -qE '@tailwind|@apply|@theme|@custom-variant|@plugin|@utility|@import ?["'\'']tailwindcss'; then
+            echo "Unprocessed Tailwind directives found in $css_path"
+            exit 1
+          fi
+          echo "$css" | grep -q '\.flex{display:flex}'
+          # Theme tokens from the @theme block
+          echo "$css" | grep -q '\.text-11\\\.5{font-size:var(--text-11_5)}'
+
       - name: Test DICOMweb service
         run: |
           # Poll instead of a fixed sleep: the archive can take a while to boot.

@@ -1,4 +1,4 @@
-// Use symbols to prevent exposing private attributes
+/** Symbols keep the subscription state private */
 const _subscriptions = Symbol('subscriptions')
 const _lastSubscriptionId = Symbol('lastSubscriptionId')
 

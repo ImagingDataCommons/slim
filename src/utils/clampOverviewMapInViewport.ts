@@ -3,10 +3,20 @@ import type OlMap from 'ol/Map'
 import type View from 'ol/View'
 
 import {
+  constrainBoundsToCard,
   fitOverviewMapSize,
-  OVERVIEW_EDGE_INSET_PX,
   overviewMapSizeBounds,
 } from './fitOverviewMapSize'
+
+/** Overview card offset from the right/bottom viewport edges (px). */
+const OVERVIEW_CARD_INSET_PX = 14
+
+/** Card padding (2px) and border (1px) on both sides of the mini-map (px). */
+const OVERVIEW_CARD_CHROME_PX = 6
+
+/** Inner mini-map box of the 192px-wide overview card (px). */
+const OVERVIEW_CARD_MAP_WIDTH_PX = 186
+const OVERVIEW_CARD_MAP_HEIGHT_PX = 120
 
 /** OpenLayers View internals used to retarget locked overview resolutions. */
 type OverviewViewInternals = View & {
@@ -118,23 +128,6 @@ function syncOverviewOpenLayersMap(volumeViewer: object): void {
   }
 }
 
-function syncCollapseButtonLayout(overview: HTMLElement): void {
-  const collapseButton = overview.querySelector(':scope > button')
-  if (!(collapseButton instanceof HTMLElement)) {
-    return
-  }
-  collapseButton.style.margin = '0'
-  if (overview.classList.contains('ol-collapsed')) {
-    collapseButton.style.position = ''
-    collapseButton.style.bottom = ''
-    collapseButton.style.left = ''
-  } else {
-    collapseButton.style.position = 'absolute'
-    collapseButton.style.bottom = '0'
-    collapseButton.style.left = '0'
-  }
-}
-
 export type ClampOverviewMapOptions = {
   /**
    * VolumeImageViewer instance. When provided, retargets the overview view's
@@ -144,9 +137,9 @@ export type ClampOverviewMapOptions = {
 }
 
 /**
- * Fit overview map size into the viewport; keep left/bottom insets equal.
+ * Fit overview map size into the bottom-right overview card of the viewport.
  *
- * Slim owns runtime inset/size because craco loads the published DMV bundle;
+ * Slim owns runtime inset/size because it loads the published DMV bundle;
  * keep constants in sync with DMV `_updateOverviewMapSize` /
  * {@link fitOverviewMapSize}.
  */
@@ -160,32 +153,25 @@ export function clampOverviewMapInViewport(
     return
   }
 
-  const chromeY = verticalChromePx(mapEl)
-  const chromeX = horizontalChromePx(mapEl)
-  const bounds = overviewMapSizeBounds(
-    container.clientWidth,
-    container.clientHeight,
-    chromeX,
-    chromeY,
+  const chromeY = verticalChromePx(mapEl) + OVERVIEW_CARD_CHROME_PX
+  const chromeX = horizontalChromePx(mapEl) + OVERVIEW_CARD_CHROME_PX
+  const bounds = constrainBoundsToCard(
+    overviewMapSizeBounds(
+      container.clientWidth,
+      container.clientHeight,
+      chromeX,
+      chromeY,
+    ),
+    { width: OVERVIEW_CARD_MAP_WIDTH_PX, height: OVERVIEW_CARD_MAP_HEIGHT_PX },
   )
 
-  overview.style.left = `${OVERVIEW_EDGE_INSET_PX}px`
-  overview.style.bottom = `${OVERVIEW_EDGE_INSET_PX}px`
+  overview.style.right = `${OVERVIEW_CARD_INSET_PX}px`
+  overview.style.bottom = `${OVERVIEW_CARD_INSET_PX}px`
   overview.style.top = 'auto'
-  overview.style.right = 'auto'
+  overview.style.left = 'auto'
   overview.style.margin = '0'
-  overview.style.padding = '0'
   mapEl.style.margin = '0'
   mapEl.style.padding = '0'
-
-  const scale = container.querySelector('.ol-scale-line')
-  if (scale instanceof HTMLElement) {
-    scale.style.bottom = `${OVERVIEW_EDGE_INSET_PX}px`
-    scale.style.right = `${OVERVIEW_EDGE_INSET_PX}px`
-    scale.style.margin = '0'
-  }
-
-  syncCollapseButtonLayout(overview)
 
   const height =
     Number.parseFloat(mapEl.style.height || '') || mapEl.clientHeight
@@ -223,17 +209,16 @@ export function observeOverviewMapClamp(
   container: HTMLElement,
   options: ClampOverviewMapOptions = {},
 ): () => void {
-  let scheduled = false
+  let clampFrame: number | undefined
   let isClamping = false
-  let resizeScheduled = false
+  let resizeFrame: number | undefined
 
   const clamp = (): void => {
-    if (scheduled || isClamping) {
+    if (clampFrame !== undefined || isClamping) {
       return
     }
-    scheduled = true
-    requestAnimationFrame(() => {
-      scheduled = false
+    clampFrame = requestAnimationFrame(() => {
+      clampFrame = undefined
       isClamping = true
       try {
         clampOverviewMapInViewport(container, options)
@@ -244,12 +229,11 @@ export function observeOverviewMapClamp(
   }
 
   const onContainerResize = (): void => {
-    if (resizeScheduled) {
+    if (resizeFrame !== undefined) {
       return
     }
-    resizeScheduled = true
-    requestAnimationFrame(() => {
-      resizeScheduled = false
+    resizeFrame = requestAnimationFrame(() => {
+      resizeFrame = undefined
       const viewer = options.volumeViewer as { resize?: () => void } | undefined
       viewer?.resize?.()
       clamp()
@@ -274,8 +258,13 @@ export function observeOverviewMapClamp(
 
   clamp()
 
+  /** Pending frames would otherwise resize a viewer that was cleaned up */
   return () => {
     mutationObserver.disconnect()
     resizeObserver.disconnect()
+    if (clampFrame !== undefined) cancelAnimationFrame(clampFrame)
+    if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame)
+    clampFrame = undefined
+    resizeFrame = undefined
   }
 }

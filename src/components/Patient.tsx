@@ -1,59 +1,47 @@
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import React from 'react'
+import type React from 'react'
+
 import {
   formatAdmittingDiagnoses,
+  formatDisplayDate,
   formatPatientSpeciesCodeSequence,
-  parseDate,
-  parseName,
-  parseSex,
-} from '../utils/values'
-import Description from './Description'
+  formatPersonName,
+  formatSex,
+} from '../utils/displayFormat'
+import type { KeyValueItem } from '../utils/keyValue'
+import { SlimKeyValueGrid } from './slim/SlimKeyValueGrid'
 
-interface PatientProps {
+export interface PatientProps {
   metadata: dmv.metadata.Study | dmv.metadata.SOPClass
 }
 
 /**
- * React component representing a DICOM Patient Information Entity that
- * displays common study-level, patient-related attributes of contained
- * DICOM Slide Microscopy images.
+ * Patient information entity: study-level, patient-related attributes of the
+ * contained slide microscopy images.
  */
-class Patient extends React.Component<PatientProps, Record<string, never>> {
-  render(): React.ReactNode {
-    const meta = this.props.metadata as unknown as Record<string, unknown>
-    const species = formatPatientSpeciesCodeSequence(
-      meta.PatientSpeciesCodeSequence,
-    )
-    const admittingDiagnosis = formatAdmittingDiagnoses(meta)
-    const attributes = [
-      {
-        name: 'ID',
-        value: this.props.metadata.PatientID,
-      },
-      {
-        name: 'Name',
-        value: parseName(this.props.metadata.PatientName),
-      },
-      ...(species !== undefined ? [{ name: 'Species', value: species }] : []),
-      {
-        name: 'Sex',
-        value: parseSex(this.props.metadata.PatientSex),
-      },
-      {
-        name: 'Birthdate',
-        value: parseDate(this.props.metadata.PatientBirthDate),
-      },
-      {
-        name: 'Age',
-        value: meta.PatientAge as string | undefined,
-      },
-      ...(admittingDiagnosis !== undefined
-        ? [{ name: 'Admitting diagnosis', value: admittingDiagnosis }]
-        : []),
-    ]
-    return <Description attributes={attributes} />
-  }
+function Patient({ metadata }: PatientProps): React.ReactElement {
+  const species = formatPatientSpeciesCodeSequence(
+    metadata.PatientSpeciesCodeSequence,
+  )
+  /** Spread copies the own dataset attributes, including non-standard keys */
+  const admittingDiagnosis = formatAdmittingDiagnoses({ ...metadata })
+  const age = metadata.PatientAge
+  const items: KeyValueItem[] = [
+    { label: 'Name', value: formatPersonName(metadata.PatientName) },
+    { label: 'Patient ID', value: metadata.PatientID },
+    {
+      label: 'Birth date',
+      value: formatDisplayDate(metadata.PatientBirthDate),
+    },
+    { label: 'Sex', value: formatSex(metadata.PatientSex) },
+    ...(age !== undefined && age !== '' ? [{ label: 'Age', value: age }] : []),
+    ...(species !== undefined ? [{ label: 'Species', value: species }] : []),
+    ...(admittingDiagnosis !== undefined
+      ? [{ label: 'Diagnosis', value: admittingDiagnosis }]
+      : []),
+  ]
+  return <SlimKeyValueGrid items={items} />
 }
 
 export default Patient

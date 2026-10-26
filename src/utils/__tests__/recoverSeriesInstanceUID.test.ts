@@ -20,7 +20,7 @@ describe('recoverSeriesInstanceUID', () => {
   })
 
   it('stops stripping at the first existing UID', () => {
-    // "...2.0.0" → "...2.0" exists in candidates, do not strip further to "...2"
+    /** "...2.0.0" → "...2.0" exists in candidates, do not strip further to "...2" */
     expect(recoverSeriesInstanceUID(`${uids[0]}.0.0`, uids)).toBe(uids[1])
   })
 
@@ -29,9 +29,9 @@ describe('recoverSeriesInstanceUID', () => {
   })
 
   it('prefers the longest prefix when strip does not match', () => {
-    expect(
-      recoverSeriesInstanceUID('1.2.3.4.5.6.7.8.9.2.0.1.9', uids),
-    ).toBe(uids[2])
+    expect(recoverSeriesInstanceUID('1.2.3.4.5.6.7.8.9.2.0.1.9', uids)).toBe(
+      uids[2],
+    )
   })
 
   it('returns undefined when nothing matches', () => {
