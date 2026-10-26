@@ -21,6 +21,8 @@ overrides:
   # Dependabot high: js-yaml quadratic merge-key chains (v3 and v4 lines)
   js-yaml@3: 3.15.2
   js-yaml@4: 4.3.2
+  # Dependabot high: launch-editor file existence check bypass on Windows (GHSA-587h-7wmj-h5pm)
+  launch-editor: 2.14.2
   # Dependabot high: postcss sourceMappingURL path traversal (no 7.x patch; force 8.x)
   postcss: 8.5.25
   # Dependabot high: nanoid generators can loop indefinitely (GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8)
@@ -33,6 +35,8 @@ overrides:
   source-map-js: 1.2.2
   # Dependabot high: fast-uri authority injection & host confusion (CVE-2026-84292, CVE-2026-84394)
   fast-uri: 3.1.8
+  # Dependabot high: follow-redirects leaks credential headers on cross-origin redirects (GHSA-q3jh-wrc6-jgq8, GHSA-8r9p-f939-6h3c)
+  follow-redirects: 1.16.1
   # Dependabot high: SVGO removeScripts (CRA still pulls 1.x via @svgr; no SVG imports in app)
   svgo: 2.8.4
   # Dependabot high: browserslist RegExp ReDoS
