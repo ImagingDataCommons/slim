@@ -59,8 +59,10 @@ export const INITIAL_MEMORY_WARNING_STATE: MemoryWarningState = {
 }
 
 /**
- * Warn only when the level changes; critical warnings are additionally
+ * Warn only when the level rises; critical warnings are additionally
  * throttled so oscillating around the threshold does not spam the user.
+ * Dropping from critical to high stays silent, since the user has already
+ * seen the stronger warning.
  */
 export function evaluateMemoryWarning(
   input: MemoryWarningInput,
@@ -86,7 +88,7 @@ export function evaluateMemoryWarning(
         'Consider refreshing the page or closing other tabs.',
     }
   }
-  if (input.level === 'high') {
+  if (input.level === 'high' && state.level !== 'critical') {
     return {
       state: nextState,
       message: `High memory usage: ${percentage}% used. ${input.remaining} remaining.`,

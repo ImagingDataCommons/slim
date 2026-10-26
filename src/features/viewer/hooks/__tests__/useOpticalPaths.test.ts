@@ -115,6 +115,21 @@ describe('useOpticalPaths', () => {
     expect(access.refreshSnapshot).toHaveBeenCalled()
   })
 
+  it('previews a style on the slide without refreshing the snapshot', () => {
+    const { result, viewer, access, session } = setup()
+
+    act(() => {
+      result.current.onStylePreview({
+        opticalPathIdentifier: '1',
+        styleOptions: { opacity: 0.25 },
+      })
+    })
+
+    expect(viewer.getOpticalPathStyle('1').opacity).toBe(0.25)
+    expect(access.refreshSnapshot).not.toHaveBeenCalled()
+    expect(session.hasUserDisplayChanges).toBe(true)
+  })
+
   it('follows the viewer gamma until the user picks one', () => {
     const { result, viewer } = setup(true)
     expect(result.current.displaySettings).toEqual({

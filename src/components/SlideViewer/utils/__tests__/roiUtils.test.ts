@@ -30,8 +30,10 @@ describe('getRoiKey', () => {
   })
 
   it('is undefined for an ROI without a finding', () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     expect(getRoiKey({ uid: 'roi-2', evaluations: [] })).toBeUndefined()
+    /** Hot path: the parser reports a missing finding once, not every call */
+    expect(warn).not.toHaveBeenCalled()
     vi.restoreAllMocks()
   })
 })
@@ -77,9 +79,35 @@ describe('buildDefaultRoiStyle', () => {
         radius: 5,
       }),
     ).toEqual({
-      stroke: { color: [31, 90, 209], width: 3 },
-      fill: { color: [31, 90, 209, 0.2] },
-      image: { circle: { fill: { color: [31, 90, 209] }, radius: 5 } },
+      stroke: { color: [31, 90, 209, 1], width: 3 },
+      fill: { color: [31, 90, 209, 0.35] },
+      image: {
+        circle: {
+          radius: 5,
+          stroke: { color: [31, 90, 209, 1], width: 3 },
+          fill: { color: [31, 90, 209, 0.35] },
+        },
+      },
     })
+  })
+
+  it('honours fill opacity and disables fill when asked', () => {
+    expect(
+      buildDefaultRoiStyle({
+        strokeColor: [31, 90, 209],
+        strokeWidth: 2,
+        radius: 5,
+        fillOpacity: 0.45,
+      }).fill?.color,
+    ).toEqual([31, 90, 209, 0.45])
+    expect(
+      buildDefaultRoiStyle({
+        strokeColor: [31, 90, 209],
+        strokeWidth: 2,
+        radius: 5,
+        fill: false,
+        fillOpacity: 0.45,
+      }).fill?.color,
+    ).toEqual([31, 90, 209, 0])
   })
 })

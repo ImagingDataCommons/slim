@@ -9,17 +9,21 @@ import { extractModalitiesFromSeries } from '../utils/studyQuery'
 
 const SERIES_REQUEST_CONCURRENCY = 6
 
+/** Batches answers that arrive close together into one render */
+const BACKFILL_FLUSH_MS = 100
+
 const NO_MODALITIES: ReadonlyMap<string, string[]> = new Map()
 
+/** Modalities of the study's series, or undefined when the query failed */
 async function collectModalitiesFromSeries(
   client: DicomWebManager,
   studyInstanceUID: string,
-): Promise<string[]> {
+): Promise<string[] | undefined> {
   try {
     const seriesList = await client.searchForSeries({ studyInstanceUID })
     return extractModalitiesFromSeries(seriesList ?? [])
   } catch {
-    return []
+    return undefined
   }
 }
 
@@ -51,6 +55,17 @@ export function useModalityBackfill(
     uids: Set<string>
   }>({ client, uids: new Set() })
 
+  /** Pending batch flushes, cancelled on unmount along with the requests */
+  const flushTimers = useRef(new Set<ReturnType<typeof setTimeout>>())
+  useEffect(() => {
+    const timers = flushTimers.current
+    return () => {
+      for (const timer of timers) clearTimeout(timer)
+      timers.clear()
+      requested.current = { client: undefined, uids: new Set() }
+    }
+  }, [])
+
   const missingKey =
     client === undefined
       ? ''
@@ -75,13 +90,20 @@ export function useModalityBackfill(
 
     /** A server switch drops the remaining requests; a page change keeps them */
     const isCurrent = (): boolean => requested.current === asked
-    void mapWithConcurrency(uids, SERIES_REQUEST_CONCURRENCY, async (uid) => ({
-      uid,
-      modalities: isCurrent()
-        ? await collectModalitiesFromSeries(client, uid)
-        : [],
-    })).then((results) => {
-      if (!isCurrent()) return
+    /**
+     * Answers are committed as they arrive, a short batch at a time, so the
+     * column fills in progressively and one slow study does not hold back
+     * the others.
+     */
+    let pending: Array<{ uid: string; modalities: string[] }> = []
+    let isFlushScheduled = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const flush = (): void => {
+      isFlushScheduled = false
+      if (timer !== undefined) flushTimers.current.delete(timer)
+      if (!isCurrent() || pending.length === 0) return
+      const results = pending
+      pending = []
       setBackfill((previous) => {
         const merged = new Map(
           previous.client === client ? previous.modalitiesByUid : [],
@@ -89,6 +111,21 @@ export function useModalityBackfill(
         for (const { uid, modalities } of results) merged.set(uid, modalities)
         return { client, modalitiesByUid: merged }
       })
+    }
+    void mapWithConcurrency(uids, SERIES_REQUEST_CONCURRENCY, async (uid) => {
+      if (!isCurrent()) return
+      const modalities = await collectModalitiesFromSeries(client, uid)
+      if (modalities === undefined) {
+        /** Not remembered, so the study is asked again on the next change */
+        asked.uids.delete(uid)
+        return
+      }
+      pending.push({ uid, modalities })
+      if (!isFlushScheduled) {
+        isFlushScheduled = true
+        timer = setTimeout(flush, BACKFILL_FLUSH_MS)
+        flushTimers.current.add(timer)
+      }
     })
   }, [client, missingKey])
 

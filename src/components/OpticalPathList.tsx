@@ -37,11 +37,20 @@ export interface OpticalPathListProps {
   defaultOpticalPathStyles: {
     [opticalPathIdentifier: string]: OpticalPathStyle
   }
+  /** Observed pixel range per optical path, once a frame was sampled */
+  opticalPathPixelRanges?: Readonly<
+    Record<string, { min: number; max: number }>
+  >
   onOpticalPathVisibilityChange: (change: {
     opticalPathIdentifier: string
     isVisible: boolean
   }) => void
   onOpticalPathStyleChange: (change: {
+    opticalPathIdentifier: string
+    styleOptions: OpticalPathStyleChange
+  }) => void
+  /** Live style while dragging; falls back to `onOpticalPathStyleChange` */
+  onOpticalPathStylePreview?: (change: {
     opticalPathIdentifier: string
     styleOptions: OpticalPathStyleChange
   }) => void
@@ -54,7 +63,10 @@ export interface OpticalPathListProps {
   /** Display settings for ICC profiles and gamma correction */
   displaySettings?: OpticalPathDisplaySettings
   /** Callback when display settings change */
-  onDisplaySettingsChange?: (settings: OpticalPathDisplaySettings) => void
+  onDisplaySettingsChange?: (
+    settings: OpticalPathDisplaySettings,
+    previous?: OpticalPathDisplaySettings,
+  ) => void
   /** Whether ICC profiles are available for this slide */
   hasIccProfiles?: boolean
 }
@@ -66,8 +78,10 @@ function OpticalPathList({
   visibleOpticalPathIdentifiers,
   activeOpticalPathIdentifiers,
   defaultOpticalPathStyles,
+  opticalPathPixelRanges,
   onOpticalPathVisibilityChange,
   onOpticalPathStyleChange,
+  onOpticalPathStylePreview,
   onOpticalPathActivityChange,
   displaySettings,
   onDisplaySettingsChange,
@@ -112,8 +126,10 @@ function OpticalPathList({
           metadata={images}
           isVisible={visibleOpticalPathIdentifiers.has(opticalPath.identifier)}
           defaultStyle={defaultOpticalPathStyles[opticalPath.identifier]}
+          pixelRange={opticalPathPixelRanges?.[opticalPath.identifier]}
           onVisibilityChange={onOpticalPathVisibilityChange}
           onStyleChange={onOpticalPathStyleChange}
+          onStylePreview={onOpticalPathStylePreview}
           onRemoval={handleRemoval}
           isRemovable={isSelectable}
           hasIccProfile={hasIccProfiles}

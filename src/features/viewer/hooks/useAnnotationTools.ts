@@ -4,6 +4,7 @@ import type React from 'react'
 
 import { codedConceptKey } from '../../../utils/dicom/codedConcept'
 import { logger } from '../../../utils/logger'
+import type { MeasurementUnit } from '../../preferences/utils/preferences'
 import { notifyVisualizationError } from '../services/derivedDataLoaders'
 import { publishToast } from '../services/toast'
 import type { ViewerSession, ViewerSessionRef } from '../services/viewerSession'
@@ -26,6 +27,7 @@ import type { RoisApi } from './useRois'
 type RoiStyle = dmv.viewer.ROIStyleOptions
 
 export interface AnnotationToolsApi {
+  onSelect: () => void
   onDraw: () => void
   onModify: () => void
   onTranslate: () => void
@@ -48,10 +50,11 @@ export function drawStyleFor(
   session: ViewerSession,
   draft: AnnotationDraft,
   defaultRoiStyle: RoiStyle,
+  useFindingColors = true,
 ): RoiStyle {
   const key =
     draft.finding !== undefined ? codedConceptKey(draft.finding) : undefined
-  return session.roiStyles.drawStyle(key, defaultRoiStyle)
+  return session.roiStyles.drawStyle(key, defaultRoiStyle, useFindingColors)
 }
 
 /**
@@ -65,9 +68,12 @@ export function useAnnotationTools({
   rois,
   draft,
   defaultRoiStyle,
+  useFindingColors = true,
+  measurementUnit,
   confirmRoiRemoval,
   goToRanges,
   onSave,
+  canWriteRois = true,
 }: {
   sessionRef: ViewerSessionRef
   interaction: ViewerInteraction
@@ -75,16 +81,22 @@ export function useAnnotationTools({
   rois: Pick<
     RoisApi,
     | 'selectedRoiUIDs'
-    | 'visibleRoiUIDs'
+    | 'currentVisibleRoiUIDs'
     | 'addStyledRoi'
     | 'removeRois'
     | 'restyleSelected'
   >
   draft: AnnotationDraft
   defaultRoiStyle: RoiStyle
+  /** New ROIs of a configured finding use its color (Preferences) */
+  useFindingColors?: boolean
+  /** Preferred unit for DMV measurement markup and ROI Num items */
+  measurementUnit: MeasurementUnit
   confirmRoiRemoval: boolean
   goToRanges: GoToRanges
   onSave: () => void
+  /** False when `disableAnnotationTools` is set: Go to navigates only */
+  canWriteRois?: boolean
 }): AnnotationToolsApi {
   const viewerOf = (): dmv.viewer.VolumeImageViewer | undefined =>
     sessionRef.current?.volumeViewer
@@ -98,6 +110,17 @@ export function useAnnotationTools({
     isModifyInteractionActive: viewer.isModifyInteractionActive,
     isTranslateInteractionActive: viewer.isTranslateInteractionActive,
   })
+
+  const onSelect = (): void => {
+    const viewer = viewerOf()
+    if (viewer === undefined) return
+    logger.log('activate selection of ROIs')
+    const plan = planToolMode('select', interaction, viewerFlags(viewer))
+    if (plan === null) return
+    applyToolModePlan(viewer, plan)
+    /** Clears draw/modify/translate and the annotation configuration dialog */
+    dispatch({ type: 'stopDrawing' })
+  }
 
   const onDraw = (): void => {
     const viewer = viewerOf()
@@ -165,7 +188,7 @@ export function useAnnotationTools({
     const roiCount =
       rois.selectedRoiUIDs.size > 0
         ? rois.selectedRoiUIDs.size
-        : rois.visibleRoiUIDs.size
+        : rois.currentVisibleRoiUIDs().size
     if (roiCount === 0) {
       publishToast('No annotation was selected for removal', 'warning')
       return
@@ -214,6 +237,7 @@ export function useAnnotationTools({
   }
 
   return {
+    onSelect,
     onDraw,
     onModify,
     onTranslate,
@@ -240,11 +264,13 @@ export function useAnnotationTools({
         position: [target.x, target.y],
         level: choosePyramidLevel(target.magnification, pixelSpacings),
       })
-      const point = new dmv.scoord3d.Point({
-        coordinates: [target.x, target.y, 0],
-        frameOfReferenceUID: viewer.frameOfReferenceUID,
-      })
-      rois.addStyledRoi(new dmv.roi.ROI({ scoord3d: point }), defaultRoiStyle)
+      if (canWriteRois) {
+        const point = new dmv.scoord3d.Point({
+          coordinates: [target.x, target.y, 0],
+          frameOfReferenceUID: viewer.frameOfReferenceUID,
+        })
+        rois.addStyledRoi(new dmv.roi.ROI({ scoord3d: point }), defaultRoiStyle)
+      }
       viewer.activateSelectInteraction({})
       dispatch({ type: 'closeGoTo' })
     },
@@ -262,10 +288,16 @@ export function useAnnotationTools({
         geometryType !== undefined &&
         finding !== undefined
       ) {
+        session.volumeViewer.setMeasurementUnit?.(measurementUnit)
         session.volumeViewer.activateDrawInteraction({
           geometryType,
           markup,
-          styleOptions: drawStyleFor(session, draft, defaultRoiStyle),
+          styleOptions: drawStyleFor(
+            session,
+            draft,
+            defaultRoiStyle,
+            useFindingColors,
+          ),
         })
         dispatch({ type: 'completeAnnotationConfiguration' })
       } else {
@@ -292,6 +324,9 @@ export function useAnnotationTools({
       switch (action) {
         case 'cancel':
           cancelActiveInteraction()
+          break
+        case 'select':
+          onSelect()
           break
         case 'draw':
           onDraw()

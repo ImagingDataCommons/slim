@@ -2,10 +2,10 @@ import type * as React from 'react'
 
 import { cn } from '../../lib/utils'
 import type { KeyValueItem } from '../../utils/keyValue'
-import { withOccurrenceKeys } from '../../utils/occurrenceKeys'
 import { Button } from '../ui/button'
 import { Icon } from '../ui/icon'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
+import { SlimKeyValueGrid } from './SlimKeyValueGrid'
 
 export interface InfoDetailsButtonProps {
   /** Accessible name, e.g. "Details for Nuclei" */
@@ -46,16 +46,10 @@ export function InfoDetailsButton({
         align="start"
         className="w-auto max-w-[280px] px-3 py-2 text-12"
       >
-        <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-0.5">
-          {withOccurrenceKeys(items, (item) => item.label).map(
-            ({ item, key }) => (
-              <div key={key} className="contents">
-                <dt className="text-ink-muted">{item.label}</dt>
-                <dd className="wrap-break-word text-ink">{item.value}</dd>
-              </div>
-            ),
-          )}
-        </dl>
+        <SlimKeyValueGrid
+          items={items}
+          className="grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-0.5 [&>div]:text-12"
+        />
       </PopoverContent>
     </Popover>
   )

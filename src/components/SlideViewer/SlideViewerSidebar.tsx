@@ -23,6 +23,8 @@ export interface SlideViewerSidebarProps {
   annotationCategoryMenu: React.ReactNode
   segmentationMenu: React.ReactNode
   parametricMapMenu: React.ReactNode
+  /** Replaces the default rail width/border when rendered inside a sheet. */
+  className?: string
 }
 
 /**
@@ -44,6 +46,7 @@ const SlideViewerSidebar = ({
   annotationCategoryMenu,
   segmentationMenu,
   parametricMapMenu,
+  className,
 }: SlideViewerSidebarProps): React.ReactElement => {
   const handleLabelOpenChange = useCallback((): void => {
     requestAnimationFrame(() => labelViewer?.resize())
@@ -54,8 +57,11 @@ const SlideViewerSidebar = ({
       id={SLIDE_PANEL_ID}
       aria-label="Slide panel"
       className={cn(
-        'flex min-h-0 w-sidebar-right flex-none flex-col border-l border-line bg-panel',
-        !isOpen && 'hidden',
+        'flex min-h-0 flex-col bg-panel',
+        className === undefined &&
+          'w-sidebar-right flex-none border-l border-line',
+        className === undefined && !isOpen && 'hidden',
+        className,
       )}
     >
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-4">

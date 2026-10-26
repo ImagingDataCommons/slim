@@ -116,6 +116,117 @@ const recordingPolicy = (
 }
 
 describe('DicomWebManager - multi-store search', () => {
+  it('keeps the store a retrieve found working across later searches', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
+      ],
+    })
+    const primaryStub = makeStubClient('primary')
+    const secondaryStub = makeStubClient('secondary')
+    stubManagerClients(manager, [primaryStub, secondaryStub])
+    const row = {
+      '0020000D': { vr: 'UI', Value: ['1.2.3'] },
+      '0020000E': { vr: 'UI', Value: ['1.2.3.9'] },
+    }
+    const series = { studyInstanceUID: '1.2.3', seriesInstanceUID: '1.2.3.9' }
+    /** The primary lists the series but cannot serve its metadata */
+    primaryStub.retrieveSeriesMetadata.mockRejectedValue(httpError(404))
+    secondaryStub.retrieveSeriesMetadata.mockResolvedValue([])
+    await manager.retrieveSeriesMetadata(series)
+    primaryStub.retrieveSeriesMetadata.mockClear()
+    primaryStub.searchForSeries.mockResolvedValue([row])
+    secondaryStub.searchForSeries.mockResolvedValue([row])
+
+    await manager.searchForSeries({
+      studyInstanceUID: '1.2.3',
+    } as dwc.api.SearchForSeriesOptions)
+    await manager.retrieveSeriesMetadata(series)
+
+    expect(primaryStub.retrieveSeriesMetadata).not.toHaveBeenCalled()
+  })
+
+  it('remembers the first configured store with a series, not the fastest', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
+      ],
+    })
+    const primaryStub = makeStubClient('primary')
+    const secondaryStub = makeStubClient('secondary')
+    stubManagerClients(manager, [primaryStub, secondaryStub])
+    const row = {
+      '0020000D': { vr: 'UI', Value: ['1.2.3'] },
+      '0020000E': { vr: 'UI', Value: ['1.2.3.9'] },
+    }
+    primaryStub.searchForSeries.mockImplementation(
+      async () =>
+        await new Promise((resolve) => setTimeout(() => resolve([row]), 5)),
+    )
+    secondaryStub.searchForSeries.mockResolvedValue([row])
+    primaryStub.retrieveSeriesMetadata.mockResolvedValue([])
+
+    await manager.searchForSeries({
+      studyInstanceUID: '1.2.3',
+    } as dwc.api.SearchForSeriesOptions)
+    await manager.retrieveSeriesMetadata({
+      studyInstanceUID: '1.2.3',
+      seriesInstanceUID: '1.2.3.9',
+    })
+
+    expect(primaryStub.retrieveSeriesMetadata).toHaveBeenCalledTimes(1)
+    expect(secondaryStub.retrieveSeriesMetadata).not.toHaveBeenCalled()
+  })
+
+  it('retrieves a searched series from the store that has it first', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
+      ],
+    })
+    const primaryStub = makeStubClient('primary')
+    const secondaryStub = makeStubClient('secondary')
+    stubManagerClients(manager, [primaryStub, secondaryStub])
+    primaryStub.searchForSeries.mockResolvedValue([])
+    secondaryStub.searchForSeries.mockResolvedValue([
+      {
+        '0020000D': { vr: 'UI', Value: ['1.2.3'] },
+        '0020000E': { vr: 'UI', Value: ['1.2.3.9'] },
+      },
+    ])
+    secondaryStub.retrieveSeriesMetadata.mockResolvedValue([])
+
+    await manager.searchForSeries({
+      studyInstanceUID: '1.2.3',
+      queryParams: { SeriesInstanceUID: '1.2.3.9' },
+    } as dwc.api.SearchForSeriesOptions)
+    await manager.retrieveSeriesMetadata({
+      studyInstanceUID: '1.2.3',
+      seriesInstanceUID: '1.2.3.9',
+    })
+
+    expect(primaryStub.retrieveSeriesMetadata).not.toHaveBeenCalled()
+    expect(secondaryStub.retrieveSeriesMetadata).toHaveBeenCalledTimes(1)
+  })
+
   it('merges searchForSeries results across stores and de-duplicates by SeriesInstanceUID', async () => {
     const manager = new DicomWebManager({
       baseUri,
@@ -235,6 +346,95 @@ describe('DicomWebManager - multi-store search', () => {
         studyInstanceUID: '1.2.3',
       } as dwc.api.SearchForSeriesOptions),
     ).rejects.toThrow()
+  })
+
+  it('gives one stable search client per readable store', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        {
+          id: 'hidden',
+          url: 'https://hidden.test/dicomWeb',
+          write: false,
+          read: false,
+        },
+        { id: 'gcp', url: 'https://gcp.test/dicomWeb', write: false },
+      ],
+    })
+    const stubs = ['primary', 'hidden', 'gcp'].map(makeStubClient)
+    stubManagerClients(manager, stubs)
+    stubs[2].searchForSeries.mockResolvedValue([])
+
+    const clients = manager.storeSearchClients()
+    await clients[1].searchForSeries({ queryParams: { offset: 100 } })
+
+    expect(clients).toHaveLength(2)
+    expect(manager.storeSearchClients()).toEqual(clients)
+    expect(manager.storeSearchClients()[0]).toBe(clients[0])
+    expect(stubs[2].searchForSeries).toHaveBeenCalledWith({
+      queryParams: { offset: 100 },
+    })
+    expect(stubs[0].searchForSeries).not.toHaveBeenCalled()
+  })
+
+  it('does not search a store left without a URL', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [{ id: 'blank', url: '', write: false }],
+    })
+    const stub = makeStubClient('blank')
+    stubManagerClients(manager, [stub])
+
+    await expect(manager.searchForStudies({})).resolves.toEqual([])
+    expect(stub.searchForStudies).not.toHaveBeenCalled()
+  })
+
+  it('sends nothing to a store left without a URL', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'blank', url: '', write: true },
+        { id: 'ann', url: 'https://ann.test/dicomWeb', write: false },
+      ],
+    })
+    const [blank, ann] = ['blank', 'ann'].map(makeStubClient)
+    stubManagerClients(manager, [blank, ann])
+    ann.retrieveSeriesMetadata.mockResolvedValue([])
+
+    await manager.retrieveSeriesMetadata({
+      studyInstanceUID: '1',
+      seriesInstanceUID: '2',
+    })
+    expect(blank.retrieveSeriesMetadata).not.toHaveBeenCalled()
+    expect(ann.retrieveSeriesMetadata).toHaveBeenCalledTimes(1)
+    expect(manager.storeSearchClients()).toHaveLength(1)
+    await expect(
+      manager.storeInstances({ datasets: [] } as dwc.api.StoreInstancesOptions),
+    ).rejects.toThrow('Store is not writable.')
+    expect(blank.storeInstances).not.toHaveBeenCalled()
+  })
+
+  it('reads a non-DICOM search answer as no matches', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [{ id: 'spa', url: 'https://spa.test/dicomWeb', write: false }],
+    })
+    const stub = makeStubClient('spa')
+    stubManagerClients(manager, [stub])
+    stub.searchForStudies.mockResolvedValue(null)
+    stub.searchForSeries.mockResolvedValue(null)
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    await expect(manager.searchForStudies({})).resolves.toEqual([])
+    await expect(manager.searchForSeries({})).resolves.toEqual([])
+    await expect(
+      manager.storeSearchClients()[0].searchForSeries({}),
+    ).resolves.toEqual([])
+    /** Reported once for the server, by name */
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/"spa"/))
+    warn.mockRestore()
   })
 
   it('skips stores marked as not readable during searches', async () => {
@@ -731,6 +931,61 @@ describe('DicomWebManager - authorization escalation', () => {
       status: 401,
     })
 
+    expect(onError).not.toHaveBeenCalled()
+  })
+
+  it('resends a request that went out before a sibling won the token', async () => {
+    const onError = vi.fn()
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [{ id: 'gcp', url: 'https://gcp.test/dicomWeb', write: false }],
+      onError,
+    })
+    const policy = consentPolicy(true)
+    manager.setAuthorizationPolicy(policy)
+    const internals = manager as unknown as {
+      stores: Array<{
+        client: {
+          requestHooks: Array<
+            (request: object, metadata: { headers: object }) => object
+          >
+          errorInterceptor: (error: unknown) => void
+        }
+      }>
+    }
+    const realClient = internals.stores[0].client
+    /** Tag a request as the real client does when it sends it */
+    const sentWith = (headers: object): Error & { status: number } => {
+      const request = {}
+      for (const hook of realClient.requestHooks) hook(request, { headers })
+      return Object.assign(httpError(401), { request })
+    }
+    const anonymousLate = sentWith({})
+
+    const stub = makeStubClient('gcp')
+    stubManagerClients(manager, [stub])
+    const study = { '0020000D': { Value: ['1.2.3'] } }
+    let releaseLate: (() => void) | undefined
+    stub.searchForStudies
+      .mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            releaseLate = () => reject(anonymousLate)
+          }),
+      )
+      .mockRejectedValueOnce(sentWith({}))
+      .mockResolvedValue([study])
+
+    const late = manager.searchForStudies({})
+    const early = manager.searchForStudies({})
+    await expect(early).resolves.toEqual([study])
+
+    /** The late 401 is still an anonymous challenge, not an expired token */
+    realClient.errorInterceptor(anonymousLate)
+    releaseLate?.()
+    await expect(late).resolves.toEqual([study])
+
+    expect(policy.requestAuthorization).toHaveBeenCalledTimes(1)
     expect(onError).not.toHaveBeenCalled()
   })
 

@@ -1,16 +1,21 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Location, NavigateFunction } from 'react-router'
 
+import {
+  hashWithoutAuthResponse,
+  searchWithoutAuthResponse,
+} from '../../../auth/oidcUser'
 import type DicomWebManager from '../../../DicomWebManager'
 import { StorageClasses } from '../../../data/uids'
 import { logger } from '../../../utils/logger'
+import { editSearch } from '../../../utils/url'
 import { notifyVisualizationError } from '../services/derivedDataLoaders'
 import { loadPresentationStates } from '../services/presentationStates'
 import type { ViewerSession, ViewerSessionRef } from '../services/viewerSession'
 import {
-  shouldApplyPresentationState,
+  sortByStudyOrder,
   upsertBySopInstanceUID,
 } from '../utils/presentationState'
 import { useLatestRef } from './useLatestRef'
@@ -36,6 +41,7 @@ export function usePresentationStates({
   clients,
   studyInstanceUID,
   requestedUID,
+  routePathname,
   location,
   navigate,
   opticalPaths,
@@ -45,6 +51,8 @@ export function usePresentationStates({
   studyInstanceUID: string
   /** Presentation state named in the URL */
   requestedUID: string | undefined
+  /** Route of the session; a change rebuilds it */
+  routePathname: string
   location: Location
   navigate: NavigateFunction
   opticalPaths: Pick<OpticalPathsApi, 'showDefault' | 'showPresentationState'>
@@ -53,34 +61,101 @@ export function usePresentationStates({
     PresentationState[]
   >([])
   const [selectedUID, setSelectedUID] = useState(requestedUID)
+  /** Route of the last Back/Forward check */
+  const previousRouteRef = useRef(routePathname)
   /** Retrievals finish later; they must see the URL of that moment */
-  const latestRef = useLatestRef({ requestedUID, location, opticalPaths })
+  const latestRef = useLatestRef({
+    requestedUID,
+    routePathname,
+    location,
+    opticalPaths,
+    selectedUID,
+    presentationStates,
+  })
+
+  /**
+   * Set or clear the `state` URL parameter, keeping the other parameters
+   * (such as `gcp`) as written. A user's pick adds a history entry, so Back
+   * returns to the previous one; automatic changes replace the entry.
+   * Sign-in response parameters, in the query or the hash, are dropped.
+   */
+  const writeStateParam = (
+    value: string | undefined,
+    { replace }: { replace: boolean },
+  ): void => {
+    const { location: currentLocation } = latestRef.current
+    const currentSearch = editSearch(currentLocation.search, {})
+    const search = editSearch(
+      searchWithoutAuthResponse(currentLocation.search),
+      value === undefined ? { remove: ['state'] } : { set: ['state', value] },
+    )
+    const hash = hashWithoutAuthResponse(currentLocation.hash)
+    /** The same URL again would only add a Back step */
+    if (!replace && search === currentSearch && hash === currentLocation.hash) {
+      return
+    }
+    navigate({ pathname: currentLocation.pathname, search, hash }, { replace })
+  }
 
   const apply = (
     session: ViewerSession,
     presentationState: PresentationState,
+    { replace = true }: { replace?: boolean } = {},
   ): void => {
-    const { location: currentLocation, opticalPaths: currentOpticalPaths } =
-      latestRef.current
-    currentOpticalPaths.showPresentationState(session, presentationState)
-    const searchParams = new URLSearchParams(currentLocation.search)
-    searchParams.set('state', presentationState.SOPInstanceUID)
-    navigate(
-      {
-        pathname: currentLocation.pathname,
-        search: searchParams.toString(),
-      },
-      { replace: true },
+    latestRef.current.opticalPaths.showPresentationState(
+      session,
+      presentationState,
     )
+    writeStateParam(presentationState.SOPInstanceUID, { replace })
     setSelectedUID(presentationState.SOPInstanceUID)
   }
 
   const onReset = (): void => {
     const session = sessionRef.current
+    if (session !== undefined) session.hasUserDisplayChanges = true
     setSelectedUID(undefined)
-    navigate(location.pathname)
+    writeStateParam(undefined, { replace: false })
     if (session !== undefined) opticalPaths.showDefault(session)
   }
+
+  /**
+   * Back and Forward change the URL's state without a pick: show the state
+   * it names, or the default display when it names none.
+   */
+  useEffect(() => {
+    /**
+     * History that also moved to another route rebuilds the session, which
+     * loads the URL's state itself; the current session is the old route's
+     */
+    const isRouteChange = previousRouteRef.current !== routePathname
+    previousRouteRef.current = routePathname
+    if (isRouteChange) return
+    const session = sessionRef.current
+    const {
+      selectedUID: shownUID,
+      presentationStates: listed,
+      opticalPaths: currentOpticalPaths,
+    } = latestRef.current
+    if (
+      session === undefined ||
+      session.isDestroyed ||
+      requestedUID === shownUID
+    ) {
+      return
+    }
+    if (requestedUID === undefined) {
+      currentOpticalPaths.showDefault(session)
+      setSelectedUID(undefined)
+      return
+    }
+    /** A state not loaded yet is applied by the load that brings it */
+    const presentationState = listed.find(
+      (instance) => instance.SOPInstanceUID === requestedUID,
+    )
+    if (presentationState === undefined) return
+    currentOpticalPaths.showPresentationState(session, presentationState)
+    setSelectedUID(requestedUID)
+  }, [requestedUID, routePathname, sessionRef, latestRef])
 
   return {
     presentationStates,
@@ -92,24 +167,56 @@ export function usePresentationStates({
       : undefined,
     load: (session) => {
       setPresentationStates([])
+      /** A new session starts from what its URL names, not the last pick */
+      setSelectedUID(latestRef.current.requestedUID)
+      /** Search result position of each state, for a stable picker order */
+      const studyOrder = new Map<string, number>()
+      /**
+       * The URL moves to the next slide a frame before the old session is
+       * destroyed, so a late state also checks it still has its own slide.
+       * Any route change rebuilds the session (it is part of the route
+       * key), and the new session loads its own states.
+       */
+      const { routePathname: sessionPathname } = latestRef.current
+      const isStale = (): boolean =>
+        session.isDestroyed ||
+        latestRef.current.routePathname !== sessionPathname
       loadPresentationStates({
         client: clients[StorageClasses.ADVANCED_BLENDING_PRESENTATION_STATE],
         studyInstanceUID,
         slide: session.slide,
+        isCurrent: () => !isStale(),
         onPresentationState: (presentationState, index) => {
-          if (session.isDestroyed) return
+          if (isStale()) return
+          studyOrder.set(presentationState.SOPInstanceUID, index)
+          /** A state named in the URL is an explicit request and always applies */
           if (
-            shouldApplyPresentationState({
-              index,
-              sopInstanceUID: presentationState.SOPInstanceUID,
-              requestedUID: latestRef.current.requestedUID,
-            })
+            presentationState.SOPInstanceUID === latestRef.current.requestedUID
           ) {
             apply(session, presentationState)
           }
           setPresentationStates((current) =>
-            upsertBySopInstanceUID(current, presentationState),
+            sortByStudyOrder(
+              upsertBySopInstanceUID(current, presentationState),
+              studyOrder,
+            ),
           )
+        },
+        onDefaultPresentationState: (presentationState) => {
+          if (isStale()) return
+          const { requestedUID: currentRequestedUID } = latestRef.current
+          /**
+           * The slide's first state is only a default: it applies when the
+           * URL names none, and must not replace optical path choices the
+           * user made while it was still loading.
+           */
+          if (
+            (currentRequestedUID === null ||
+              currentRequestedUID === undefined) &&
+            !session.hasUserDisplayChanges
+          ) {
+            apply(session, presentationState)
+          }
         },
       })
     },
@@ -121,8 +228,8 @@ export function usePresentationStates({
         )
         const session = sessionRef.current
         if (presentationState !== undefined && session !== undefined) {
-          navigate(`${location.pathname}?state=${value}`)
-          apply(session, presentationState)
+          session.hasUserDisplayChanges = true
+          apply(session, presentationState, { replace: false })
         } else {
           notifyVisualizationError('Presentation State could not be found')
           logger.log(

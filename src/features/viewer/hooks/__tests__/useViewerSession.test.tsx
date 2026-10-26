@@ -4,11 +4,7 @@ import { ErrorBoundary } from 'react-error-boundary'
 
 import { observeOverviewMapClamp } from '../../../../utils/clampOverviewMapInViewport'
 import { fakeDmvInstances, resetFakeDmv } from '../../testing/fakeDmv'
-import {
-  createTestClients,
-  createTestSlide,
-  TEST_ROI_STYLE,
-} from '../../testing/fixtures'
+import { createTestClients, createTestSlide } from '../../testing/fixtures'
 import { buildAnnotationConfig } from '../../utils/annotationConfig'
 import {
   useViewerSession,
@@ -56,7 +52,6 @@ function options(
     routeKey: 'route',
     preload: false,
     annotationConfig: buildAnnotationConfig([]),
-    defaultRoiStyle: TEST_ROI_STYLE,
     clustering: { isEnabled: true, thresholdInput: '' },
     gammaCorrection: undefined,
     onSessionCreated: vi.fn(),

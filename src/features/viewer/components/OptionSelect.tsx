@@ -1,4 +1,5 @@
 import type React from 'react'
+import { useId } from 'react'
 
 import {
   Select,
@@ -23,6 +24,11 @@ export interface OptionSelectProps {
   /** Rendered before `options`, e.g. a "None" entry */
   leadingOption?: OptionSelectOption
   'aria-label'?: string
+  /**
+   * Id of a visible label. The trigger is then named by that label followed
+   * by its own text, e.g. "Finding, Tumor", instead of only the value.
+   */
+  labelledBy?: string
 }
 
 /** Radix select over a flat list of `{ value, label }` options. */
@@ -34,10 +40,19 @@ export function OptionSelect({
   triggerClassName = 'w-full',
   leadingOption,
   'aria-label': ariaLabel,
+  labelledBy,
 }: OptionSelectProps): React.ReactElement {
+  const triggerId = useId()
   return (
     <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger className={triggerClassName} aria-label={ariaLabel}>
+      <SelectTrigger
+        id={triggerId}
+        className={triggerClassName}
+        aria-label={ariaLabel}
+        aria-labelledby={
+          labelledBy !== undefined ? `${labelledBy} ${triggerId}` : undefined
+        }
+      >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>

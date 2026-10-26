@@ -88,4 +88,27 @@ describe('usePreferencesDraft', () => {
     expect(window.localStorage.getItem('slim-theme')).toBe('dark')
     expect(document.documentElement).toHaveClass('dark')
   })
+
+  it('resets annotation fields on the draft without touching other prefs', () => {
+    const { result } = renderDraft({ open: true, initialTab: 'annotations' })
+    act(() => {
+      result.current.update('strokeWidth', 6)
+      result.current.update('units', 'mm')
+      result.current.update('compactRows', true)
+    })
+    act(() => {
+      result.current.save()
+    })
+    expect(loadPreferences().strokeWidth).toBe(6)
+    act(() => {
+      result.current.resetAnnotationDefaults()
+    })
+    expect(result.current.draft.strokeWidth).toBe(
+      DEFAULT_PREFERENCES.strokeWidth,
+    )
+    expect(result.current.draft.units).toBe(DEFAULT_PREFERENCES.units)
+    expect(result.current.draft.compactRows).toBe(true)
+    /** Reset is draft-only until Save */
+    expect(loadPreferences().strokeWidth).toBe(6)
+  })
 })

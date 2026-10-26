@@ -4,7 +4,9 @@ import {
   authorizationFromUser,
   clearAuthParamsFromUrl,
   createUser,
+  hashWithoutAuthResponse,
   readReturnUrl,
+  searchWithoutAuthResponse,
 } from '../oidcUser'
 import { makeProfile, makeUser } from '../testing/fakeUserManager'
 
@@ -86,5 +88,46 @@ describe('clearAuthParamsFromUrl', () => {
       '/studies/1?gcp=keep',
     )
     expect(window.location.hash).toBe('')
+  })
+})
+
+describe('searchWithoutAuthResponse', () => {
+  it('drops the parameters of an authorize response', () => {
+    expect(
+      searchWithoutAuthResponse(
+        '?gcp=x&code=abc&state=nonce&session_state=s&iss=i',
+      ),
+    ).toBe('?gcp=x')
+    expect(searchWithoutAuthResponse('?access_token=t&token_type=Bearer')).toBe(
+      '',
+    )
+  })
+
+  it('drops the parameters of an error response', () => {
+    expect(
+      searchWithoutAuthResponse(
+        '?gcp=x&error=access_denied&error_description=no&state=nonce',
+      ),
+    ).toBe('?gcp=x')
+  })
+
+  it('drops an error response without a state', () => {
+    expect(searchWithoutAuthResponse('?gcp=x&error=login_required')).toBe(
+      '?gcp=x',
+    )
+  })
+
+  it('keeps a presentation state outside a callback', () => {
+    expect(searchWithoutAuthResponse('?gcp=x&state=pr-1')).toBe(
+      '?gcp=x&state=pr-1',
+    )
+  })
+})
+
+describe('hashWithoutAuthResponse', () => {
+  it('drops an implicit response or an error, and keeps other hashes', () => {
+    expect(hashWithoutAuthResponse('#access_token=t&state=s')).toBe('')
+    expect(hashWithoutAuthResponse('#error=login_required')).toBe('')
+    expect(hashWithoutAuthResponse('#view')).toBe('#view')
   })
 })

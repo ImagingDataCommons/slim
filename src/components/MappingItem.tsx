@@ -29,6 +29,11 @@ export interface MappingItemProps {
     mappingUID: string
     styleOptions: MappingStyleChange
   }) => void
+  /** Live style while dragging; must not refresh defaultStyle */
+  onStylePreview?: (change: {
+    mappingUID: string
+    styleOptions: MappingStyleChange
+  }) => void
 }
 
 /** One Real World Value Mapping with its value range and opacity. */
@@ -39,6 +44,7 @@ function MappingItem({
   defaultStyle,
   onVisibilityChange,
   onStyleChange,
+  onStylePreview,
 }: MappingItemProps): React.ReactElement {
   const commit = (styleOptions: MappingStyleChange): void => {
     onStyleChange({ mappingUID: mapping.uid, styleOptions })
@@ -47,7 +53,14 @@ function MappingItem({
     { opacity: defaultStyle.opacity },
     commit,
   )
-  const commitLive = useFrameThrottledCallback(commit)
+  const commitLive = useFrameThrottledCallback(
+    (styleOptions: MappingStyleChange): void => {
+      ;(onStylePreview ?? onStyleChange)({
+        mappingUID: mapping.uid,
+        styleOptions,
+      })
+    },
+  )
   const previewLive = (change: MappingStyleChange): void => {
     previewStyle(change)
     commitLive(change)

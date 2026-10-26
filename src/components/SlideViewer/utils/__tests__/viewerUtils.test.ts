@@ -47,6 +47,11 @@ function item(
 }
 
 describe('implementsTID1500', () => {
+  it('is false for a document without ContentTemplateSequence (Type 1C)', () => {
+    expect(implementsTID1500({})).toBe(false)
+    expect(describesSpecimenSubject({})).toBe(false)
+  })
+
   it('checks the first content template', () => {
     expect(
       implementsTID1500({
@@ -156,7 +161,7 @@ describe('constructViewers', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.spyOn(console, 'log').mockImplementation(() => undefined)
-    // biome-ignore lint/complexity/useArrowFunction: `new` needs a function implementation
+    /** biome-ignore lint/complexity/useArrowFunction: `new` needs a function implementation */
     VolumeImageViewer.mockImplementation(function () {
       return {
         activateSelectInteraction,
@@ -183,6 +188,7 @@ describe('constructViewers', () => {
         metadata: [image],
         preload: true,
         useTileGridResolutions: false,
+        showDerivedLegend: false,
         annotationOptions: undefined,
       }),
     )
@@ -252,7 +258,7 @@ describe('constructViewers', () => {
 
   it('cleans up the volume viewer when the label viewer cannot be created', () => {
     const cleanup = vi.fn()
-    // biome-ignore lint/complexity/useArrowFunction: `new` needs a function implementation
+    /** biome-ignore lint/complexity/useArrowFunction: `new` needs a function implementation */
     VolumeImageViewer.mockImplementation(function () {
       return {
         activateSelectInteraction,

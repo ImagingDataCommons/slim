@@ -6,7 +6,9 @@ import {
   DialogContent,
   SlimDialogHeader,
 } from '../../../../components/ui/dialog'
+import { useLayoutMode } from '../../../../contexts/LayoutModeContext'
 import type DicomWebManager from '../../../../DicomWebManager'
+import { cn } from '../../../../lib/utils'
 
 export interface DicomTagBrowserDialogProps {
   open: boolean
@@ -27,9 +29,17 @@ export function DicomTagBrowserDialog({
   seriesInstanceUID,
   subtitle,
 }: DicomTagBrowserDialogProps): React.ReactElement {
+  const { compactChrome } = useLayoutMode()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[88vh] w-[94vw] max-w-[1120px]">
+      <DialogContent
+        className={cn(
+          'w-[94vw] max-w-[1120px]',
+          compactChrome
+            ? 'h-[min(88dvh,88vh)] max-h-[min(88dvh,88vh)]'
+            : 'max-h-[88vh]',
+        )}
+      >
         <SlimDialogHeader
           icon="manage_search"
           title="DICOM tag browser"

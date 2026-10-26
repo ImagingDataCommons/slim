@@ -26,7 +26,20 @@ test.describe('Navigation', () => {
     )
     const panel = slidePanel(page)
     const segments = await section(panel, 'Segmentations')
-    await expect(segments.getByText('1 of 5 visible')).toBeVisible()
+    /**
+     * The Series list shows the linked SEG, which the deep link turned on.
+     * Series are listed as they load, so the list can hold one, then
+     * several, "TILs Present" segments before the link narrows it. Nothing
+     * is pressed until then, so one retrying check for the pressed toggle
+     * waits for the final state
+     */
+    await expect(
+      segments.getByRole('button', {
+        name: 'Show TILs Present',
+        exact: true,
+        pressed: true,
+      }),
+    ).toHaveCount(1, { timeout: 60_000 })
 
     await pressViewerShortcut(page, 'KeyD')
     await configureDraw(page, 'Tumor', 'Point')

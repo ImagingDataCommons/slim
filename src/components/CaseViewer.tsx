@@ -1,56 +1,40 @@
-import { type JSX, useCallback, useEffect, useState } from 'react'
-import {
-  Route,
-  Routes,
-  useLocation,
-  useNavigate,
-  useParams,
-} from 'react-router'
+import { type JSX, useEffect } from 'react'
+import { Route, Routes, useLocation, useParams } from 'react-router'
 
 import type { AnnotationSettings } from '../AppConfig'
 import type { User } from '../auth'
 import { useStudySummary } from '../contexts/StudySummaryContext'
 import type DicomWebManager from '../DicomWebManager'
-import type { Slide } from '../data/slides'
 import { StorageClasses } from '../data/uids'
+import { OverlayPanel } from '../features/viewer/components/OverlayPanel'
 import { ViewerLoadingLayout } from '../features/viewer/components/ViewerLoadingLayout'
 import { ViewerMessage } from '../features/viewer/components/ViewerMessage'
 import { ViewportLoadingIndicator } from '../features/viewer/components/ViewportLoadingIndicator'
 import {
+  useViewerPanelChrome,
+  ViewerPanelChromeProvider,
+} from '../features/viewer/contexts/ViewerPanelChromeContext'
+import { useCaseViewerRouting } from '../features/viewer/hooks/useCaseViewerRouting'
+import {
+  type RouteSlideResolution,
   resolvedSeriesInstanceUID,
   useRouteSlideResolution,
 } from '../features/viewer/hooks/useRouteSlideResolution'
-import { STUDY_PANEL_ID } from '../features/viewer/utils/panelIds'
-import {
-  presentationStateUIDFromSearch,
-  selectedSeriesForStudyPath,
-} from '../features/viewer/utils/routeSlide'
-import {
-  buildSeriesSelectionPath,
-  defaultSeriesRedirectPath,
-} from '../features/viewer/utils/seriesPath'
+import { presentationStateUIDFromSearch } from '../features/viewer/utils/routeSlide'
 import { useSlides } from '../hooks/useSlides'
-import { cn } from '../lib/utils'
 import type { AppInfo } from '../utils/appInfo'
 import { buildStudySummary } from '../utils/displayFormat'
-import { logger } from '../utils/logger'
 import { type RouteComponentProps, withRouter } from '../utils/router'
-import { RoutePaths } from '../utils/routes'
-import ClinicalTrial from './ClinicalTrial'
-import Patient from './Patient'
-import SlideList from './SlideList'
+import { parseSeriesInstanceUID, RoutePaths } from '../utils/routes'
+import { StudySidePanel } from './CaseViewer/StudySidePanel'
 /** skipcq: JS-W1028 - SlideViewer has a default export */
 import SlideViewer from './SlideViewer'
-import Study from './Study'
-import {
-  CountBadge,
-  PanelDivider,
-  SlimCollapsibleSection,
-} from './slim/SlimCollapsibleSection'
+
+/** Highlights no slide */
+const NO_SERIES = ''
 
 function ParametrizedSlideViewer({
   clients,
-  slides,
   user,
   app,
   preload,
@@ -59,9 +43,14 @@ function ParametrizedSlideViewer({
   annotations,
   isLeftPanelOpen,
   onToggleLeftPanel,
+  seriesInstanceUID,
+  resolution,
 }: {
+  /** Series UID of the route, as the resolution read it */
+  seriesInstanceUID: string
+  /** Slide of the series route, resolved where the slide list reads it too */
+  resolution: RouteSlideResolution
   clients: { [key: string]: DicomWebManager }
-  slides: Slide[]
   user?: User
   app: AppInfo
   preload: boolean
@@ -71,21 +60,9 @@ function ParametrizedSlideViewer({
   isLeftPanelOpen: boolean
   onToggleLeftPanel: () => void
 }): JSX.Element | null {
-  const { studyInstanceUID = '', seriesInstanceUID = '' } = useParams<{
-    studyInstanceUID: string
-    seriesInstanceUID: string
-  }>()
+  const { studyInstanceUID = '' } = useParams<{ studyInstanceUID: string }>()
   const location = useLocation()
-  const navigate = useNavigate()
-  const { selectedSlide, derivedDataset, unresolvedSeriesUID } =
-    useRouteSlideResolution({
-      clients,
-      slides,
-      studyInstanceUID,
-      seriesInstanceUID,
-      location,
-      navigate,
-    })
+  const { selectedSlide, derivedDataset, unresolvedSeriesUID } = resolution
 
   const presentationStateUID = presentationStateUIDFromSearch(location.search)
 
@@ -145,17 +122,30 @@ interface ViewerProps extends RouteComponentProps {
 }
 
 function Viewer(props: ViewerProps): JSX.Element | null {
+  return (
+    <ViewerPanelChromeProvider>
+      <ViewerBody {...props} />
+    </ViewerPanelChromeProvider>
+  )
+}
+
+function ViewerBody(props: ViewerProps): JSX.Element | null {
   const { clients, studyInstanceUID, location, navigate } = props
   const { slides, isLoading, error, retry } = useSlides({
     clients,
     studyInstanceUID,
   })
   const { setSummary } = useStudySummary()
-  const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true)
-  const toggleLeftPanel = useCallback(
-    () => setIsLeftPanelOpen((isOpen) => !isOpen),
-    [],
-  )
+  const routeSeriesInstanceUID = parseSeriesInstanceUID(location.pathname)
+  const resolution = useRouteSlideResolution({
+    clients,
+    slides,
+    studyInstanceUID,
+    seriesInstanceUID: routeSeriesInstanceUID,
+    location,
+    navigate,
+  })
+  const chrome = useViewerPanelChrome()
 
   const summaryImage = slides[0]?.volumeImages[0]
   useEffect(() => {
@@ -173,46 +163,29 @@ function Viewer(props: ViewerProps): JSX.Element | null {
     serverUrl != null && serverUrl !== '' ? serverUrl : 'the server'
 
   const defaultSeriesInstanceUID = summaryImage?.SeriesInstanceUID
-  useEffect(() => {
-    if (isLoading || error !== null) return
-    const redirectPath = defaultSeriesRedirectPath({
-      studyInstanceUID,
-      defaultSeriesInstanceUID,
-      pathname: location.pathname,
-      search: location.search,
-      hash: location.hash,
-    })
-    if (redirectPath !== undefined) navigate(redirectPath, { replace: true })
-  }, [
+  const { handleSeriesSelection } = useCaseViewerRouting({
     isLoading,
     error,
     studyInstanceUID,
     defaultSeriesInstanceUID,
-    location.pathname,
-    location.search,
-    location.hash,
+    location,
     navigate,
-  ])
+  })
 
-  const handleSeriesSelection = ({
-    seriesInstanceUID,
-  }: {
+  const handleStudySeriesSelection = (change: {
     seriesInstanceUID: string
   }): void => {
-    logger.log(`switch to series "${seriesInstanceUID}"`)
-    navigate(
-      buildSeriesSelectionPath({
-        studyInstanceUID,
-        seriesInstanceUID,
-        pathname: location.pathname,
-        search: location.search,
-      }),
-      { replace: true },
-    )
+    handleSeriesSelection(change)
+    if (chrome.overlayPanels) chrome.closeLeftPanel()
   }
 
   if (isLoading) {
-    return <ViewerLoadingLayout isLeftPanelOpen={isLeftPanelOpen} />
+    return (
+      <ViewerLoadingLayout
+        isLeftPanelOpen={chrome.isLeftPanelOpen}
+        overlayPanels={chrome.overlayPanels}
+      />
+    )
   }
 
   if (error !== null) {
@@ -246,57 +219,46 @@ function Viewer(props: ViewerProps): JSX.Element | null {
   }
   const refImage = volumeInstances[0]
 
-  const selectedSeriesInstanceUID = selectedSeriesForStudyPath({
-    slides,
-    pathname: location.pathname,
-    fallbackSeriesInstanceUID: volumeInstances[0].SeriesInstanceUID,
-  })
+  /**
+   * The slide list highlights the series resolved for the route: none while
+   * a derived series is looked up or when it is not found
+   */
+  const selectedSeriesInstanceUID =
+    resolution.shownSeriesInstanceUID ??
+    (routeSeriesInstanceUID === ''
+      ? volumeInstances[0].SeriesInstanceUID
+      : NO_SERIES)
+
+  const studyPanel = (
+    <StudySidePanel
+      isOpen={chrome.overlayPanels || chrome.isLeftPanelOpen}
+      clients={props.clients}
+      slides={slides}
+      refImage={refImage}
+      selectedSeriesInstanceUID={selectedSeriesInstanceUID}
+      onSeriesSelection={handleStudySeriesSelection}
+      className={
+        chrome.overlayPanels ? 'min-h-0 w-full flex-1 border-0' : undefined
+      }
+    />
+  )
 
   return (
     <div className="flex h-full min-h-0">
-      <aside
-        id={STUDY_PANEL_ID}
-        aria-label="Study panel"
-        className={cn(
-          'flex min-h-0 w-sidebar flex-none flex-col border-r border-line bg-panel',
-          !isLeftPanelOpen && 'hidden',
-        )}
-      >
-        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-          <SlimCollapsibleSection title="Patient" padding="indent">
-            <Patient metadata={refImage} />
-          </SlimCollapsibleSection>
-          <SlimCollapsibleSection title="Study" padding="indent">
-            <Study metadata={refImage} />
-          </SlimCollapsibleSection>
-          {refImage.ClinicalTrialSponsorName != null && (
-            <>
-              <SlimCollapsibleSection
-                title="Clinical trial"
-                padding="indent"
-                defaultOpen={false}
-                divider={false}
-              >
-                <ClinicalTrial metadata={refImage} />
-              </SlimCollapsibleSection>
-              <PanelDivider className="mb-1" />
-            </>
-          )}
-
-          <div className="flex items-center gap-2 px-4 pb-2.5 pt-3">
-            <span className="text-11 font-semibold uppercase leading-none tracking-[0.06em] text-ink-secondary">
-              Slides
-            </span>
-            <CountBadge count={slides.length} />
-          </div>
-          <SlideList
-            clients={props.clients}
-            metadata={slides}
-            selectedSeriesInstanceUID={selectedSeriesInstanceUID}
-            onSeriesSelection={handleSeriesSelection}
-          />
-        </div>
-      </aside>
+      {chrome.overlayPanels ? (
+        <OverlayPanel
+          open={chrome.isLeftPanelOpen}
+          onOpenChange={(open) =>
+            open ? chrome.setLeftPanelOpen(true) : chrome.closeLeftPanel()
+          }
+          side="left"
+          title="Study"
+        >
+          {studyPanel}
+        </OverlayPanel>
+      ) : (
+        studyPanel
+      )}
 
       <main className="flex min-w-0 flex-1 overflow-hidden">
         <Routes>
@@ -305,15 +267,16 @@ function Viewer(props: ViewerProps): JSX.Element | null {
             element={
               <ParametrizedSlideViewer
                 clients={props.clients}
-                slides={slides}
                 preload={props.preload}
                 annotations={props.annotations}
                 enableAnnotationTools={props.enableAnnotationTools}
                 enableMemoryMonitoring={props.enableMemoryMonitoring}
                 app={props.app}
                 user={props.user}
-                isLeftPanelOpen={isLeftPanelOpen}
-                onToggleLeftPanel={toggleLeftPanel}
+                isLeftPanelOpen={chrome.isLeftPanelOpen}
+                onToggleLeftPanel={chrome.toggleLeftPanel}
+                seriesInstanceUID={routeSeriesInstanceUID}
+                resolution={resolution}
               />
             }
           />

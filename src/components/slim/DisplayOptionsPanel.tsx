@@ -1,6 +1,7 @@
 import type * as React from 'react'
 import { useId, useState } from 'react'
 
+import { useDraftInput } from '../../hooks/useDraftInput'
 import { cn } from '../../lib/utils'
 import {
   type DisplayOption,
@@ -8,6 +9,7 @@ import {
 } from '../../utils/displayOptionsBinding'
 import { Icon } from '../ui/icon'
 import { Switch } from '../ui/switch'
+import { LabeledControlRow } from './LabeledControlRow'
 
 export type { DisplayOption } from '../../utils/displayOptionsBinding'
 
@@ -37,8 +39,7 @@ function AdditionalInputField({
 }): React.ReactElement {
   const labelId = useId()
   const descriptionId = useId()
-  /** Text typed while focused, so parent-side normalization can't eat "0." */
-  const [draft, setDraft] = useState<string | null>(null)
+  const { displayValue, onChange, clearDraft } = useDraftInput(input.inputValue)
 
   return (
     <div className="flex flex-col gap-1.5 pb-3 pt-2.5">
@@ -50,12 +51,12 @@ function AdditionalInputField({
           inputMode="decimal"
           aria-labelledby={labelId}
           aria-describedby={descriptionId}
-          value={draft ?? input.inputValue}
+          value={displayValue}
           onChange={(event) => {
-            setDraft(event.target.value)
+            onChange(event.target.value)
             input.onInputChange(event.target.value)
           }}
-          onBlur={() => setDraft(null)}
+          onBlur={clearDraft}
           placeholder={input.placeholder}
           className="h-full min-w-0 flex-1 border-0 bg-transparent px-2.5 font-mono text-12 text-ink outline-hidden placeholder:text-ink-fainter"
         />
@@ -75,32 +76,22 @@ function DisplayOptionRow({
 }: {
   option: DisplayOption
 }): React.ReactElement {
-  const labelId = useId()
-  const descriptionId = useId()
   return (
-    <div className="flex items-center gap-3 border-b border-line-row py-2.5">
-      <div className="min-w-0 flex-1">
-        <div
-          id={labelId}
-          className={cn(
-            'text-12.5 font-medium',
-            option.disabled === true ? 'text-ink-faint' : 'text-ink',
-          )}
-        >
-          {option.label}
-        </div>
-        <div id={descriptionId} className="mt-0.5 text-11.5 text-ink-muted">
-          {option.description}
-        </div>
-      </div>
-      <Switch
-        aria-labelledby={labelId}
-        aria-describedby={descriptionId}
-        checked={option.enabled && option.disabled !== true}
-        onCheckedChange={option.onChange}
-        disabled={option.disabled}
-      />
-    </div>
+    <LabeledControlRow
+      label={option.label}
+      description={option.description}
+      density="compact"
+      labelDisabled={option.disabled === true}
+    >
+      {(controlProps) => (
+        <Switch
+          {...controlProps}
+          checked={option.enabled && option.disabled !== true}
+          onCheckedChange={option.onChange}
+          disabled={option.disabled}
+        />
+      )}
+    </LabeledControlRow>
   )
 }
 

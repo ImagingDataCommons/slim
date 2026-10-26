@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { SlimLogoMark } from '../../../../components/slim/SlimLogoMark'
 import { CopyButton } from '../../../../components/ui/copy-button'
 import { Icon } from '../../../../components/ui/icon'
+import { useLayoutMode } from '../../../../contexts/LayoutModeContext'
 import { cn } from '../../../../lib/utils'
 import type { AppInfo } from '../../../../utils/appInfo'
 import { buildSupportInfo, getAboutLinks } from '../../utils/about'
@@ -17,6 +18,7 @@ export interface AboutTabProps {
 }
 
 export function AboutTab({ app, runtime }: AboutTabProps): React.ReactElement {
+  const { compactChrome } = useLayoutMode()
   const { rows, supportText } = useMemo(
     () =>
       buildSupportInfo({
@@ -66,7 +68,10 @@ export function AboutTab({ app, runtime }: AboutTabProps): React.ReactElement {
               href={link.href}
               target="_blank"
               rel="noreferrer"
-              className="flex h-8 items-center gap-1.5 rounded-lg border border-line-input bg-panel px-3 text-12.5 font-medium text-ink transition-colors hover:border-line-hover hover:bg-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
+              className={cn(
+                'flex items-center gap-1.5 rounded-lg border border-line-input bg-panel px-3 text-12.5 font-medium text-ink transition-colors hover:border-line-hover hover:bg-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40',
+                compactChrome ? 'min-h-11' : 'h-8',
+              )}
             >
               <Icon name={link.icon} size={16} className="text-ink-secondary" />
               {link.label}
@@ -77,7 +82,12 @@ export function AboutTab({ app, runtime }: AboutTabProps): React.ReactElement {
         </div>
 
         <section>
-          <div className="mb-2 flex items-center justify-between gap-3">
+          <div
+            className={cn(
+              'mb-2 flex items-center justify-between gap-3',
+              compactChrome && 'flex-col items-start',
+            )}
+          >
             <h3 className="text-11 font-semibold uppercase tracking-[0.06em] text-ink-secondary">
               Build information
             </h3>
@@ -91,30 +101,43 @@ export function AboutTab({ app, runtime }: AboutTabProps): React.ReactElement {
             {rows.map((row) => (
               <div
                 key={row.id}
-                className="flex min-h-[44px] items-center gap-4 border-b border-line-soft px-4 py-2 last:border-b-0"
+                className={cn(
+                  'flex min-h-[44px] border-b border-line-soft px-4 py-2 last:border-b-0',
+                  compactChrome
+                    ? 'flex-col items-start gap-1 py-2.5'
+                    : 'items-center gap-4',
+                )}
               >
-                <dt className="w-[200px] flex-none text-12.5 text-ink-secondary">
+                <dt
+                  className={cn(
+                    'text-12.5 text-ink-secondary',
+                    compactChrome ? 'w-auto' : 'w-[200px] flex-none',
+                  )}
+                >
                   {row.label}
                 </dt>
-                <dd
-                  className={cn(
-                    'min-w-0 flex-1 truncate',
-                    row.isCode
-                      ? 'font-mono text-12 text-ink'
-                      : 'text-12.5 text-ink',
-                    row.isMissing === true && 'italic text-ink-muted',
+                {/** A dl group holds only dt and dd, so the copy button sits in the dd */}
+                <dd className="flex min-w-0 flex-1 items-center gap-4 self-stretch">
+                  <span
+                    className={cn(
+                      'min-w-0 flex-1 truncate',
+                      row.isCode
+                        ? 'font-mono text-12 text-ink'
+                        : 'text-12.5 text-ink',
+                      row.isMissing === true && 'italic text-ink-muted',
+                    )}
+                    title={row.copyValue ?? row.value}
+                  >
+                    {row.value}
+                  </span>
+                  {row.copyValue !== undefined && (
+                    <CopyButton
+                      text={row.copyValue}
+                      aria-label={`Copy ${row.label}`}
+                      className="h-[26px] text-11.5"
+                    />
                   )}
-                  title={row.copyValue ?? row.value}
-                >
-                  {row.value}
                 </dd>
-                {row.copyValue !== undefined && (
-                  <CopyButton
-                    text={row.copyValue}
-                    aria-label={`Copy ${row.label}`}
-                    className="h-[26px] text-11.5"
-                  />
-                )}
               </div>
             ))}
           </dl>

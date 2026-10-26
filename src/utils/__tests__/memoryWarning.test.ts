@@ -82,6 +82,17 @@ describe('evaluateMemoryWarning', () => {
     expect(later.state.lastCriticalAt).toBe(30000)
   })
 
+  it('stays silent when usage drops from critical to high', () => {
+    const first = evaluateMemoryWarning(
+      critical,
+      INITIAL_MEMORY_WARNING_STATE,
+      0,
+    )
+    const decision = evaluateMemoryWarning(high, first.state, 1000)
+    expect(decision.message).toBeNull()
+    expect(decision.state.level).toBe('high')
+  })
+
   it('tracks the level but stays silent without a usage percentage', () => {
     const decision = evaluateMemoryWarning(
       { ...high, usagePercentage: null },

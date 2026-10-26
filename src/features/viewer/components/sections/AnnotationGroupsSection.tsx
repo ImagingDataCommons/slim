@@ -1,9 +1,8 @@
 import type React from 'react'
 
 import AnnotationGroupList from '../../../../components/AnnotationGroupList'
-import { SlimCollapsibleSection } from '../../../../components/slim/SlimCollapsibleSection'
 import type { SeriesOption } from '../../utils/groupBySeries'
-import { SeriesSelect } from '../OptionSelect'
+import { SeriesFilteredSection } from './SeriesFilteredSection'
 
 export type AnnotationGroupsSectionProps = React.ComponentProps<
   typeof AnnotationGroupList
@@ -21,13 +20,14 @@ export function AnnotationGroupsSection({
   ...listProps
 }: AnnotationGroupsSectionProps): React.ReactElement {
   return (
-    <SlimCollapsibleSection title="Annotation groups" defaultOpen={false}>
-      <SeriesSelect
-        value={selectedSeriesUID}
-        options={seriesOptions}
-        onValueChange={onSeriesChange}
-      />
+    <SeriesFilteredSection
+      title="Annotation groups"
+      defaultOpen={false}
+      seriesOptions={seriesOptions}
+      selectedSeriesUID={selectedSeriesUID}
+      onSeriesChange={onSeriesChange}
+    >
       <AnnotationGroupList {...listProps} />
-    </SlimCollapsibleSection>
+    </SeriesFilteredSection>
   )
 }

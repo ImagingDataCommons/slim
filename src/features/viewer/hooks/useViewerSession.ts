@@ -67,7 +67,6 @@ export interface ViewerSessionOptions {
   routeKey: string
   preload: boolean
   annotationConfig: AnnotationConfig
-  defaultRoiStyle: dmv.viewer.ROIStyleOptions
   clustering: ClusteringSettings
   /** Gamma correction chosen by the user, carried over to new viewers */
   gammaCorrection: boolean | undefined
@@ -94,7 +93,6 @@ export function useViewerSession(
     routeKey,
     preload,
     annotationConfig,
-    defaultRoiStyle,
     clustering,
     gammaCorrection,
     onSessionCreated,
@@ -110,7 +108,6 @@ export function useViewerSession(
   const creationRef = useLatestRef({
     preload,
     annotationConfig,
-    defaultRoiStyle,
     clustering,
     gammaCorrection,
     onSessionCreated,
@@ -153,7 +150,6 @@ export function useViewerSession(
       preload: options.preload,
       clustering: options.clustering,
       annotationConfig: options.annotationConfig,
-      defaultRoiStyle: options.defaultRoiStyle,
     })
     sessionRef.current = session
 

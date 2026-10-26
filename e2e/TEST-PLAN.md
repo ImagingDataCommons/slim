@@ -35,14 +35,19 @@ pnpm test:e2e:local-archive      # Playwright against http://localhost:8008
 
 ## Studies
 
+These are **feature fixtures** for interactive checks. The IDC sample matrix used for cross-tier screenshot galleries (huge WSI, mixed transfer syntax, CyCIF, CATCH, and so on) lives in [`fedorov/idc-webapp-testing`](https://github.com/fedorov/idc-webapp-testing/blob/main/idc-viewer-test-samples.md). A few series below are shared with that gallery (P9, P11, P15).
+
 | Name | What it covers | Link |
 | --- | --- | --- |
 | H&E | 6 brightfield slides, label and overview images | [study](http://localhost:3000/studies/2.25.211094631316408413440371843585977094852) |
-| TIL maps | Binary and fractional SEG, nuclei ANN (~500k polygons) | [nuclei SEG](http://localhost:3000/studies/2.25.312916405820155829215771528638931942827/series/1.2.826.0.1.3680043.10.511.3.11534436557194942782874737859569974) · [fractional SEG](http://localhost:3000/studies/2.25.312916405820155829215771528638931942827/series/1.2.826.0.1.3680043.10.511.3.44304577929953804027133272057932075) · [nuclei ANN](http://localhost:3000/studies/2.25.312916405820155829215771528638931942827/series/1.2.826.0.1.3680043.10.511.3.65930042075829390210508226259517515) |
+| TIL maps | Fractional SEG, nuclei SEG and ANN (~500k polygons) | [nuclei SEG](http://localhost:3000/studies/2.25.312916405820155829215771528638931942827/series/1.2.826.0.1.3680043.10.511.3.11534436557194942782874737859569974) · [fractional SEG](http://localhost:3000/studies/2.25.312916405820155829215771528638931942827/series/1.2.826.0.1.3680043.10.511.3.44304577929953804027133272057932075) · [nuclei ANN](http://localhost:3000/studies/2.25.312916405820155829215771528638931942827/series/1.2.826.0.1.3680043.10.511.3.65930042075829390210508226259517515) |
+| Binary TIL | Binary TIL SEG (gallery P11) | [binary SEG](http://localhost:3000/studies/2.25.62992225306345560076014492175754966026/series/1.2.826.0.1.3680043.10.511.3.83696154008696806253659241324786415) |
 | Parametric map | Aggressiveness score map, ICC profile | [parametric map](http://localhost:3000/studies/2.25.169142599340531625361659178384453215494/series/1.2.826.0.1.3680043.10.511.3.75366725734262349592517155782982171) · [DX1 slide](http://localhost:3000/studies/2.25.169142599340531625361659178384453215494/series/1.3.6.1.4.1.5962.99.1.1127304153.1690914100.1637509876697.2.0) |
 | SR ROIs | 9 manual ROIs, fractional 4-segment SEG (JPEG-LS lossless), lossless JPEG 2000 slide | [SR](http://localhost:3000/studies/2.25.266314239954879564284639768519696615904/series/1.2.826.0.1.3680043.10.511.3.65352168153070950281170547035589843) · [study](http://localhost:3000/studies/2.25.266314239954879564284639768519696615904) |
 | Multiplexed | 28-channel IMC, 9 presentation states | [IMC slide](http://localhost:3000/studies/2.25.289188443974026654725116153923555879592/series/1.3.6.1.4.1.5962.99.1.1997905734.514527437.1655560347462.4.0) |
+| Advanced Blending PR | CyCIF study; PR series deep-link (gallery P9) | [PR series](http://localhost:3000/studies/2.25.219049900737444567890964056686598614067/series/1.2.826.0.1.3680043.10.511.3.89195067478721359204133769511555576) |
 | Bone marrow | Rectangle ANN, 47 groups on the slide | [ANN](http://localhost:3000/studies/1.2.826.0.1.3680043.8.498.68164890741340078452950522749989442436/series/1.2.826.0.1.3680043.10.511.3.32704286069299586301112252202253953) |
+| CATCH ANN | Manual multi-group tissue regions (gallery P15) | [ANN](http://localhost:3000/studies/2.25.254291509001065670401884248884211292605/series/1.2.826.0.1.3680043.10.511.3.81784194830928094232699134273951295) |
 | JPEG 2000 | Lossy JPEG 2000 tiles | [slide](http://localhost:3000/studies/2.25.114227083156133646516769539915340013624/series/1.3.6.1.4.1.5962.99.1.2903380917.963766137.1639285953461.2.0) |
 
 ## Worklist
@@ -82,6 +87,7 @@ Open the [H&E study](http://localhost:3000/studies/2.25.211094631316408413440371
 - [ ] **H13** e2e. Search configuration filters the settings list.
 - [ ] **H14** e2e. Copy for support ticket copies the Slim version, commit and user agent.
 - [ ] **H15** e2e. The tag browser expands and collapses sequences, steps through instances and switches series.
+- [ ] **H16** e2e. A new ROI of a finding with a configured style uses that color; with Preferences → Use finding colors off, new ROIs use the Preferences stroke color and earlier ones keep theirs.
 
 ## Slide viewer
 
@@ -113,11 +119,17 @@ Open the [IMC slide](http://localhost:3000/studies/2.25.289188443974026654725116
 - [ ] **O3** e2e. Picking a presentation state adds `?state=` and recolors the slide. Reset clears it.
 - [ ] **O4** e2e. Reloading with `?state=` in the URL keeps that state.
 - [ ] **O5** e2e. On the [DX1 slide](http://localhost:3000/studies/2.25.169142599340531625361659178384453215494/series/1.3.6.1.4.1.5962.99.1.1127304153.1690914100.1637509876697.2.0), Display options → ICC profiles shifts the colors.
+- [ ] **ICC1** e2e. On the [DX1 slide](http://localhost:3000/studies/2.25.169142599340531625361659178384453215494/series/1.3.6.1.4.1.5962.99.1.1127304153.1690914100.1637509876697.2.0), the first view is color corrected, also when the ICC profile arrives after the first tiles were requested (the test holds the profile back).
+- [ ] **ICC2** e2e. On a wide-gamut (Display P3) screen, the slide stays on screen while the ICC profile is applied; it never blanks.
+- [ ] **ICC3** e2e. "Applying color profile" shows from the first image until the corrected colors are drawn.
+- [ ] **ICC4** e2e. Display options → ICC profiles off shows the uncorrected colors, on again the corrected ones.
 - [ ] **O6** e2e. On the [bone marrow ANN](http://localhost:3000/studies/1.2.826.0.1.3680043.8.498.68164890741340078452950522749989442436/series/1.2.826.0.1.3680043.10.511.3.32704286069299586301112252202253953), the clustering threshold accepts `0.0005`.
 - [ ] **O7** e2e. Channel color and opacity change the image.
 - [ ] **O8** e2e. On the [parametric map](http://localhost:3000/studies/2.25.169142599340531625361659178384453215494/series/1.2.826.0.1.3680043.10.511.3.75366725734262349592517155782982171), Display options → Gamma correction changes the overlay. It applies to palette colors (maps and binary segments), not to channels.
 - [ ] **O9** e2e. Switching from one presentation state to another updates `?state=` and the image.
 - [ ] **O10** e2e. An unknown `?state=` in the URL shows the slide with the Default display.
+- [ ] **O11** e2e. The [Advanced Blending PR series](http://localhost:3000/studies/2.25.219049900737444567890964056686598614067/series/1.2.826.0.1.3680043.10.511.3.89195067478721359204133769511555576) (gallery P9) opens the referenced CyCIF slide with optical paths and presentation states. Applying that PR from the series URL is still a TODO (same as master); use O3/O4 to apply a state from the picker.
+- [ ] **O12** e2e. A slide opens with its first presentation state (in study order) applied, and `?state=` names it.
 
 ## Segmentations and parametric maps
 
@@ -126,6 +138,7 @@ Open the [IMC slide](http://localhost:3000/studies/2.25.289188443974026654725116
 - [ ] **S3** e2e. Toggling STROMA and moving its opacity slider changes the overlay.
 - [ ] **S4** e2e. The Series dropdown switches between segmentation series.
 - [ ] **S5** e2e. On the nuclei SEG, segment details open, segment color changes the overlay and Segment interpolation toggles.
+- [ ] **S6** e2e. The [binary TIL SEG](http://localhost:3000/studies/2.25.62992225306345560076014492175754966026/series/1.2.826.0.1.3680043.10.511.3.83696154008696806253659241324786415) (gallery P11) opens the slide with that binary segment visible.
 - [ ] **P1** e2e. On the [parametric map](http://localhost:3000/studies/2.25.169142599340531625361659178384453215494/series/1.2.826.0.1.3680043.10.511.3.75366725734262349592517155782982171), the map shows and hides.
 - [ ] **P2** e2e. Parametric map opacity changes the overlay and interpolation toggles.
 
@@ -136,6 +149,7 @@ Open the [IMC slide](http://localhost:3000/studies/2.25.289188443974026654725116
 - [ ] **A3** e2e. On the bone marrow ANN, group color and fill change the drawing.
 - [ ] **A4** manual. Color by measurement recolors the shapes, and measurement names with a hyphen (LOINC codes) display in full. No IDC ANN series has measurements, so this needs your own data. The picker itself has unit tests (`AnnotationGroupItem.test.tsx`).
 - [ ] **A5** e2e. Clicking a group's name zooms to that group.
+- [ ] **A6** e2e. The [CATCH multi-group tissue ANN](http://localhost:3000/studies/2.25.254291509001065670401884248884211292605/series/1.2.826.0.1.3680043.10.511.3.81784194830928094232699134273951295) (gallery P15) loads with more than one group already on; Hide all then Show all cover every group.
 
 ## SR ROIs
 
@@ -169,8 +183,8 @@ Open the [H&E study](http://localhost:3000/studies/2.25.211094631316408413440371
 Playwright changes these settings per test on top of `public/config/e2e.js`.
 
 - [ ] **C1** e2e. `disableWorklist: true` hides the worklist and the Worklist link.
-- [ ] **C2** e2e. `disableAnnotationTools: true` hides Draw, Save and the other ROI tools, and their shortcuts do nothing. Go to (Alt+G) still works.
-- [ ] **C3** manual, optional. An OIDC server config signs in, shows your name in the user menu and signs out.
+- [ ] **C2** e2e. `disableAnnotationTools: true` hides Draw, Save and the other ROI tools, and their shortcuts do nothing. Go to (Alt+G) still works and does not write a marker ROI.
+- [ ] **C3** manual, optional. An OIDC server config signs in, shows your name in the user menu and signs out. Failed callbacks must not leave tokens in the URL.
 - [ ] **C4** e2e. A Google Cloud route (`/projects/<project>/locations/<location>/datasets/<dataset>/dicomStores/<store>/study/<study>`) opens a slide from that store. Playwright serves a made-up Healthcare API URL from IDC.
 - [ ] **C5** e2e. `mode: 'light'` starts in the light theme.
 - [ ] **C6** e2e. `messages.disabled: ['success']` silences success toasts; warnings still show.
@@ -185,6 +199,25 @@ Playwright fakes these failures by answering requests with 404.
 - [ ] **E3** e2e. A study that fails to load shows "Couldn't load this study". Retry loads it.
 - [ ] **E4** e2e. A render error shows "Something went wrong" with Reload, not a blank screen.
 - [ ] **E5** e2e. High memory use shows in the footer, and Debug lists a critical memory warning.
+- [ ] **E6** e2e. When the viewer bundle fails to load, the page shows "Something went wrong" with Reload, not a blank screen.
+
+## Visual smoke
+
+Settled main-viewport screenshots (`e2e/visual.spec.ts`) against committed baselines. Interaction tests stay elsewhere; these catch blank canvases and wrong overlay rendering. Baselines are platform-specific — update them on Linux (matching CI):
+
+```sh
+pnpm test:e2e:visual:update
+```
+
+- [ ] **VS1** e2e. H&E brightfield slide settled.
+- [ ] **VS2** e2e. Fractional TIL SEG overlay visible.
+- [ ] **VS3** e2e. Binary TIL SEG overlay visible.
+- [ ] **VS4** e2e. Parametric map overlay visible.
+- [ ] **VS5** e2e. SR ROIs visible on the RMS slide.
+- [ ] **VS6** e2e. Bone marrow ANN groups visible.
+- [ ] **VS7** e2e. H&E brightfield in light theme.
+- [ ] **VS8** e2e. HTAN Advanced Blending PR with Gamma correction on (palette baseline).
+- [ ] **VS9** e2e. Same PR with Gamma correction off — must differ from VS8.
 
 ## Accessibility
 

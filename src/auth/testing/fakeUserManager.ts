@@ -11,6 +11,7 @@ import {
 } from 'oidc-client-ts'
 import type { Mock } from 'vitest'
 
+import { bytesToBase64Url as encodeBytesBase64Url } from '../base64Url'
 import type { OidcUserManager } from '../OidcManager'
 
 export const ISSUER = 'https://idp.example.com'
@@ -22,6 +23,8 @@ export interface FakeUserManager extends OidcUserManager {
   readonly userLoadedListeners: UserLoadedCallback[]
   readonly tokenExpiringListeners: AccessTokenCallback[]
   stored: User | null
+  /** Keys the provider publishes now; replace to simulate a rotation */
+  signingKeys: SigningKey[]
   getUser: Mock<(...args: []) => Promise<User | null>>
   storeUser: Mock<(...args: [User | null]) => Promise<void>>
   signinRedirect: Mock<(...args: [SigninRedirectArgs?]) => Promise<void>>
@@ -44,6 +47,7 @@ export function createFakeUserManager(
     ...metadata,
     ...settings.metadataSeed,
   }
+  let cachedKeys: SigningKey[] | undefined
   const userLoadedListeners: UserLoadedCallback[] = []
   const tokenExpiringListeners: AccessTokenCallback[] = []
 
@@ -52,6 +56,7 @@ export function createFakeUserManager(
     userLoadedListeners,
     tokenExpiringListeners,
     stored: null,
+    signingKeys,
     settings: {
       client_id: settings.client_id,
       scope: settings.scope ?? 'openid',
@@ -71,7 +76,14 @@ export function createFakeUserManager(
       getIssuer: () => Promise.resolve(resolvedMetadata.issuer ?? ''),
       getUserInfoEndpoint: () =>
         Promise.resolve(resolvedMetadata.userinfo_endpoint ?? ''),
-      getSigningKeys: () => Promise.resolve(signingKeys),
+      /** Cached until reset, like oidc-client-ts */
+      getSigningKeys: vi.fn(() => {
+        cachedKeys ??= fake.signingKeys
+        return Promise.resolve(cachedKeys)
+      }),
+      resetSigningKeys: vi.fn(() => {
+        cachedKeys = undefined
+      }),
     },
     events: {
       load: async (user: User): Promise<void> => {
@@ -159,7 +171,7 @@ export const encodeBase64Url = (value: string): string =>
   binaryToBase64Url(toUtf8Binary(value))
 
 const bytesToBase64Url = (bytes: ArrayBuffer): string =>
-  binaryToBase64Url(String.fromCharCode(...new Uint8Array(bytes)))
+  encodeBytesBase64Url(new Uint8Array(bytes))
 
 const toBytes = (binary: string): Uint8Array<ArrayBuffer> =>
   Uint8Array.from(binary, (char) => char.charCodeAt(0))

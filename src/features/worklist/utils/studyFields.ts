@@ -6,8 +6,12 @@ export function orDash(value: string | undefined | null): string {
   return value === undefined || value === null || value === '' ? DASH : value
 }
 
-/** NumberOfStudyRelatedSeries as a finite number, if the server returned one. */
-export function getNumberOfSlides(study: {
+/**
+ * NumberOfStudyRelatedSeries as a finite number, if the server returned one.
+ * It counts every series of the study (slides and derived data such as SEG,
+ * ANN, SR and PR), so it is labeled "Series", not "Slides".
+ */
+export function getNumberOfSeries(study: {
   NumberOfStudyRelatedSeries?: unknown
 }): number | undefined {
   const value = study.NumberOfStudyRelatedSeries

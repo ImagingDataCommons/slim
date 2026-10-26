@@ -79,6 +79,20 @@ test.describe('Error handling', () => {
     await expect(page.getByRole('button', { name: /Reload/ })).toBeVisible()
   })
 
+  test('E6 a viewer bundle that fails to load shows the error page', async ({
+    page,
+  }) => {
+    /** A stale cached page asking for a chunk a redeploy removed */
+    await page.route(/\/(src\/App\.tsx|assets\/App-[^/]+\.js)(\?|$)/, (route) =>
+      route.fulfill({ status: 404 }),
+    )
+    await page.goto('/')
+    await expect(
+      page.getByRole('heading', { name: 'Something went wrong' }),
+    ).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByRole('button', { name: /Reload/ })).toBeVisible()
+  })
+
   test('E5 high memory use shows in the footer and warns in Debug', async ({
     page,
   }) => {

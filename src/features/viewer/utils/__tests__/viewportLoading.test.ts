@@ -7,26 +7,28 @@ import {
   type ViewportLoadingEvent,
   type ViewportLoadingPhase,
   viewportLoadingReducer,
+  viewportStatusLabel,
 } from '../viewportLoading'
 
-describe('viewportLoadingReducer', () => {
-  const reduce = (actions: ViewportLoadingAction[]) =>
-    actions.reduce(viewportLoadingReducer, INITIAL_VIEWPORT_LOADING)
+const reduce = (actions: ViewportLoadingAction[]) =>
+  actions.reduce(viewportLoadingReducer, INITIAL_VIEWPORT_LOADING)
 
+describe('viewportLoadingReducer', () => {
   it('tracks the busy flag and the first-image phase together', () => {
     expect(reduce([{ type: 'loadingStarted' }])).toEqual({
       isLoading: true,
       phase: 'loading',
+      colorProfile: 'none',
     })
     expect(
       reduce([{ type: 'loadingStarted' }, { type: 'loadingEnded' }]),
-    ).toEqual({ isLoading: false, phase: 'ready' })
+    ).toEqual({ isLoading: false, phase: 'ready', colorProfile: 'none' })
   })
 
   it('keeps the busy flag when loading fails', () => {
     expect(
       reduce([{ type: 'loadingStarted' }, { type: 'loadingFailed' }]),
-    ).toEqual({ isLoading: true, phase: 'ready' })
+    ).toEqual({ isLoading: true, phase: 'ready', colorProfile: 'none' })
   })
 
   it('ends loading once the last pending frame settles', () => {
@@ -36,13 +38,13 @@ describe('viewportLoadingReducer', () => {
         type: 'frameSettled',
         hasPendingFrames: true,
       }),
-    ).toEqual({ isLoading: true, phase: 'loading' })
+    ).toEqual({ isLoading: true, phase: 'loading', colorProfile: 'none' })
     expect(
       viewportLoadingReducer(started, {
         type: 'frameSettled',
         hasPendingFrames: false,
       }),
-    ).toEqual({ isLoading: false, phase: 'ready' })
+    ).toEqual({ isLoading: false, phase: 'ready', colorProfile: 'none' })
   })
 
   it('waits again after a reset', () => {
@@ -64,6 +66,56 @@ describe('viewportLoadingReducer', () => {
 
 const run = (events: ViewportLoadingEvent[]): ViewportLoadingPhase =>
   events.reduce(nextViewportLoadingPhase, INITIAL_VIEWPORT_LOADING_PHASE)
+
+describe('color profile', () => {
+  const start = (hasColorProfiles: boolean) =>
+    ({ type: 'frameStarted', hasColorProfiles }) as const
+  const settle = (hasPendingFrames: boolean) =>
+    ({ type: 'frameSettled', hasPendingFrames }) as const
+
+  it('announces the profile from the first image until it is drawn again', () => {
+    const steps = [
+      { type: 'reset', expectsColorProfile: true },
+      start(false),
+      settle(false),
+      start(true),
+      settle(true),
+      settle(false),
+      { type: 'colorProfileDrawn' },
+    ] as const
+    const labels: Array<string | undefined> = []
+    steps.reduce((state, action) => {
+      const next = viewportLoadingReducer(state, action)
+      labels.push(viewportStatusLabel(next))
+      return next
+    }, INITIAL_VIEWPORT_LOADING)
+
+    expect(labels).toEqual([
+      'Loading slide',
+      'Loading slide',
+      'Applying color profile',
+      'Applying color profile',
+      'Applying color profile',
+      /** Loaded, not yet drawn */
+      'Applying color profile',
+      undefined,
+    ])
+  })
+
+  it('says nothing about a profile the image does not have', () => {
+    const state = reduce([{ type: 'reset' }, settle(false)])
+    expect(viewportStatusLabel(state)).toBeUndefined()
+  })
+
+  it('stops announcing a profile that never arrives', () => {
+    const state = reduce([
+      { type: 'reset', expectsColorProfile: true },
+      settle(false),
+      { type: 'colorProfileTimedOut' },
+    ])
+    expect(viewportStatusLabel(state)).toBeUndefined()
+  })
+})
 
 describe('nextViewportLoadingPhase', () => {
   it('starts waiting for the first image', () => {

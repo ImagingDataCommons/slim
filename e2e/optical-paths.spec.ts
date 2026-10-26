@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 
 import { newSharedPage, test } from './fixtures'
 import {
@@ -6,21 +6,17 @@ import {
   expectTissueRendered,
   expectViewportToDiffer,
   expectViewportToMatch,
+  openDisplayOptions,
+  openPresentationStatePicker,
   openViewer,
   section,
   slidePanel,
+  viewportDiff,
 } from './helpers'
 import { seriesUrl, studies } from './studies'
 
-const { htanImc, tcgaGbm, boneMarrow } = studies
+const { htanImc, htanHms, tcgaGbm, boneMarrow } = studies
 const imcUrl = seriesUrl({ study: htanImc.study, series: htanImc.imcSlide })
-
-async function openDisplayOptions(container: Locator): Promise<Locator> {
-  const toggle = container.getByRole('button', { name: /^Display options/ })
-  await toggle.click()
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
-  return container
-}
 
 /** Each test puts the channels back the way it found them, so they share a slide */
 test.describe('Optical paths on one multiplexed slide', () => {
@@ -30,6 +26,15 @@ test.describe('Optical paths on one multiplexed slide', () => {
   test.beforeAll(async ({ browser }) => {
     page = await newSharedPage(browser)
     await openViewer(page, imcUrl)
+    /**
+     * The slide opens with its first presentation state; the tests start
+     * from the default channels, so reset once that state has applied.
+     */
+    await expect(page).toHaveURL(/[?&]state=/, { timeout: 60_000 })
+    await (await section(slidePanel(page), 'Presentation states'))
+      .getByRole('button', { name: 'Reset presentation state' })
+      .click()
+    await expect(page).not.toHaveURL(/state=/)
   })
 
   test.afterAll(async () => {
@@ -71,9 +76,7 @@ test.describe('Optical paths on one multiplexed slide', () => {
   test('O3 presentation state applies, updates the URL and resets', async () => {
     const states = await section(slidePanel(page), 'Presentation states')
     const before = await captureSettledViewport(page)
-    const picker = states.getByRole('combobox', { name: 'Presentation state' })
-    await picker.click()
-    const options = page.getByRole('option')
+    const options = await openPresentationStatePicker(page, states)
     expect(await options.count()).toBeGreaterThan(1)
     await options.nth(1).click()
     await expect(page).toHaveURL(/[?&]state=[\d.]+/)
@@ -93,14 +96,23 @@ test.describe('Optical paths on one multiplexed slide', () => {
     const settings = page.getByRole('dialog')
     const before = await captureSettledViewport(page)
 
+    /**
+     * The slide is mostly black and SMA adds well under one gray level to
+     * the mean, so fixed thresholds sat at the noise floor. Compare settled
+     * captures instead: turning SMA off must change the image, and restoring
+     * it must bring the image at least halfway back.
+     */
     const opacity = settings.getByRole('spinbutton', { name: 'Opacity value' })
     const initialOpacity = await opacity.inputValue()
     await opacity.fill('0')
     await opacity.press('Enter')
-    await expectViewportToDiffer(page, before, 0.3)
+    await expectViewportToDiffer(page, before, 0.05)
+    const hidden = await captureSettledViewport(page)
+    const hiddenDiff = await viewportDiff(page, before, hidden)
+    expect(hiddenDiff).toBeGreaterThan(0.05)
     await opacity.fill(initialOpacity)
     await opacity.press('Enter')
-    await expectViewportToMatch(page, before, 0.3)
+    await expectViewportToMatch(page, before, hiddenDiff / 2)
 
     const red = settings.getByRole('spinbutton', { name: 'Red value' })
     const initialRed = await red.inputValue()
@@ -115,15 +127,12 @@ test.describe('Optical paths on one multiplexed slide', () => {
 
   test('O9 switching between presentation states updates the URL and the image', async () => {
     const states = await section(slidePanel(page), 'Presentation states')
-    const picker = states.getByRole('combobox', { name: 'Presentation state' })
-    await picker.click()
-    await page.getByRole('option').nth(0).click()
+    await (await openPresentationStatePicker(page, states)).nth(0).click()
     await expect(page).toHaveURL(/[?&]state=[\d.]+/)
     const firstUrl = page.url()
     const first = await captureSettledViewport(page)
 
-    await picker.click()
-    await page.getByRole('option').nth(1).click()
+    await (await openPresentationStatePicker(page, states)).nth(1).click()
     await expect(page).not.toHaveURL(firstUrl)
     await expect(page).toHaveURL(/[?&]state=[\d.]+/)
     await expectViewportToDiffer(page, first, 0.5)
@@ -136,13 +145,23 @@ test.describe('Optical paths on one multiplexed slide', () => {
 })
 
 test.describe('Optical paths and display options', () => {
+  test('O12 a slide opens with its first presentation state', async ({
+    page,
+  }) => {
+    await openViewer(page, imcUrl)
+    await expect(page).toHaveURL(/[?&]state=[\d.]+/, { timeout: 60_000 })
+    const states = await section(slidePanel(page), 'Presentation states')
+    await expect(
+      states.getByRole('combobox', { name: 'Presentation state' }),
+    ).not.toHaveText(/^\s*$/)
+  })
+
   test('O4 presentation state from the URL is applied on load', async ({
     page,
   }) => {
     await openViewer(page, imcUrl)
     const states = await section(slidePanel(page), 'Presentation states')
-    await states.getByRole('combobox', { name: 'Presentation state' }).click()
-    await page.getByRole('option').nth(1).click()
+    await (await openPresentationStatePicker(page, states)).nth(1).click()
     await expect(page).toHaveURL(/state=/)
     const label = await states
       .getByRole('combobox', { name: 'Presentation state' })
@@ -221,5 +240,37 @@ test.describe('Optical paths and display options', () => {
     await threshold.fill('0.0005')
     await threshold.blur()
     await expect(threshold).toHaveValue('0.0005')
+  })
+
+  /**
+   * Deep-link to an Advanced Blending PR series (gallery P9). Slim resolves the
+   * referenced fluorescence slide; applying that PR from the series URL is still
+   * a TODO (showDerivedDataset treats it as unsupported).
+   */
+  test('O11 Advanced Blending PR series link opens the referenced slide', async ({
+    page,
+  }) => {
+    /** openViewer can spend up to 2× its timeout (panel + tiles) on CyCIF */
+    test.setTimeout(420_000)
+    await openViewer(
+      page,
+      seriesUrl({
+        study: htanHms.study,
+        series: htanHms.advancedBlendingPr,
+      }),
+      { timeout: 180_000 },
+    )
+    await expectTissueRendered(page, 3)
+    const paths = await section(slidePanel(page), 'Optical paths')
+    await expect(
+      slidePanel(page).getByRole('button', { name: /^Optical paths \d+$/ }),
+    ).toBeVisible()
+    await expect(
+      paths.getByRole('button', { name: /^Show / }).first(),
+    ).toBeVisible()
+    const states = await section(slidePanel(page), 'Presentation states')
+    await expect(
+      states.getByRole('combobox', { name: 'Presentation state' }),
+    ).toBeVisible()
   })
 })

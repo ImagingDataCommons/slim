@@ -1,5 +1,10 @@
 import type { IdTokenClaims, SigningKey } from 'oidc-client-ts'
 
+import {
+  base64UrlToBinary,
+  base64UrlToUtf8,
+  bytesToBase64Url,
+} from './base64Url'
 import type { IdTokenCrypto, SignatureScheme } from './idTokenCrypto'
 import { jwkFromX5c } from './x509'
 
@@ -9,36 +14,12 @@ const CLOCK_SKEW_SECONDS = 300
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
-const decodeBase64UrlToBinary = (input: string): string => {
-  const base64 = input.replace(/-/g, '+').replace(/_/g, '/')
-  const padded = base64.padEnd(
-    base64.length + ((4 - (base64.length % 4)) % 4),
-    '=',
-  )
-  return window.atob(padded)
-}
-
-const decodeBase64Url = (input: string): string => {
-  const percentEncoded = Array.from(
-    decodeBase64UrlToBinary(input),
-    (char) => `%${char.charCodeAt(0).toString(16).padStart(2, '0')}`,
-  ).join('')
-  return decodeURIComponent(percentEncoded)
-}
-
 const binaryToBytes = (binary: string): Uint8Array<ArrayBuffer> =>
   Uint8Array.from(binary, (char) => char.charCodeAt(0))
 
-const bytesToBase64Url = (bytes: Uint8Array): string =>
-  window
-    .btoa(String.fromCharCode(...bytes))
-    .replaceAll('+', '-')
-    .replaceAll('/', '_')
-    .replace(/[=]+$/, '')
-
 const decodeJwtPart = (part: string): Record<string, unknown> | undefined => {
   try {
-    const decoded: unknown = JSON.parse(decodeBase64Url(part))
+    const decoded: unknown = JSON.parse(base64UrlToUtf8(part))
     return isRecord(decoded) ? decoded : undefined
   } catch {
     return undefined
@@ -51,6 +32,13 @@ export const decodeJwtClaims = (
 ): Record<string, unknown> | undefined => {
   const parts = jwt.split('.')
   return parts.length === 3 ? decodeJwtPart(parts[1]) : undefined
+}
+
+/** `kid` from the header of a compact JWT, if it names one */
+export const decodeJwtKeyId = (jwt: string): string | undefined => {
+  const parts = jwt.split('.')
+  const kid = parts.length === 3 ? decodeJwtPart(parts[0])?.kid : undefined
+  return typeof kid === 'string' ? kid : undefined
 }
 
 /** JWS algorithms accepted for ID tokens; `none` and HMAC are deliberately absent */
@@ -133,7 +121,7 @@ export async function verifyIdToken({
       (kid === undefined || key.kid === kid) &&
       (key.use === undefined || key.use === 'sig'),
   )
-  const signature = binaryToBytes(decodeBase64UrlToBinary(signaturePart ?? ''))
+  const signature = binaryToBytes(base64UrlToBinary(signaturePart ?? ''))
   const signingInput = binaryToBytes(`${headerPart}.${payloadPart}`)
   let isVerified = false
   for (const key of candidates) {

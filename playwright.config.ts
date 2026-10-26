@@ -22,17 +22,37 @@ const serverCommand = isCI
 export default defineConfig({
   testDir: 'e2e',
   outputDir: 'test-results',
+  /**
+   * One baseline per name (no OS suffix). Local and CI both use SwiftShader;
+   * maxDiffPixelRatio absorbs remaining AA jitter.
+   */
+  snapshotPathTemplate: '{testDir}/{testFileName}-snapshots/{arg}{ext}',
   /** Spreads tests of one file over workers and shards; serial groups stay together */
   fullyParallel: true,
   timeout: 90_000,
-  expect: { timeout: 30_000 },
+  expect: {
+    timeout: 30_000,
+    /**
+     * Visual smoke (`e2e/visual.spec.ts`) baselines. Soft threshold absorbs
+     * SwiftShader / font AA jitter; large regressions still fail.
+     */
+    toHaveScreenshot: {
+      maxDiffPixelRatio: 0.02,
+      animations: 'disabled',
+    },
+  },
   /**
    * IDC is a shared production proxy; keep the load modest. CI shards the
    * suite over several runners instead, one software-rendered browser each,
    * so tests don't compete for a runner's few cores.
    */
   workers: isCI ? 1 : 3,
+  /**
+   * The retry records a trace for a failure, but a test that only passes on
+   * retry still fails the job, so flakes are fixed rather than hidden
+   */
   retries: isCI ? 1 : 0,
+  failOnFlakyTests: isCI,
   /** A broken environment fails everything; stop instead of burning the job timeout */
   maxFailures: isCI ? 5 : 0,
   reporter: isCI ? [['list'], ['github'], ['html', { open: 'never' }]] : 'list',
@@ -51,9 +71,16 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1600, height: 900 },
-        /** Headless Chromium renders DMV's WebGL tiles only through SwiftShader */
+        /**
+         * Headless Chromium on a GPU-less runner renders DMV's WebGL tiles in
+         * software, which needs --enable-unsafe-swiftshader. Do not also force
+         * --use-angle=swiftshader: on Linux it stalls frame production while
+         * WebGL is busy, so OpenLayers' requestAnimationFrame redraws arrive
+         * seconds late and the viewport keeps a stale frame (R2 saw hidden
+         * ROIs still drawn).
+         */
         launchOptions: {
-          args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+          args: ['--enable-unsafe-swiftshader'],
         },
       },
     },

@@ -91,9 +91,20 @@ function addMeasurementReportRois(
 
 /**
  * Add the ROIs of the study's measurement reports in this slide's frame of
- * reference. Settles once a suitable report was added (or none exist);
- * studies holding only unsuitable reports never settle.
+ * reference. Settles as soon as a suitable report was added, so derived-data
+ * auto-show does not wait on slow retrieves, or else once every
+ * Comprehensive 3D SR was handled, including unsuitable documents and
+ * retrieve or parse failures. Reports added later still call `onChange`.
+ * Failures are reported to the user once, after every retrieve settled.
  */
+/** Errors of a viewer that is gone are not shown over the next one */
+function notifyUnlessDestroyed(
+  session: DerivedDataContext['session'],
+  message: string,
+): void {
+  if (!session.isDestroyed) notifyVisualizationError(message)
+}
+
 export async function loadMeasurementReports(
   { session, clients, studyInstanceUID, onChange }: DerivedDataContext,
   registerRoi: (roi: dmv.roi.ROI) => void,
@@ -107,17 +118,33 @@ export async function loadMeasurementReports(
         queryParams: { Modality: 'SR' },
       })
       .then((matchedInstances): void => {
-        const instances = matchedInstances ?? []
-        if (instances.length === 0) {
+        const toRetrieve: dmv.metadata.Instance[] = []
+        for (const rawInstance of matchedInstances ?? []) {
+          const { dataset } = dmv.metadata.formatMetadata(rawInstance)
+          const instance = dataset as dmv.metadata.Instance
+          if (instance.SOPClassUID === StorageClasses.COMPREHENSIVE_3D_SR) {
+            toRetrieve.push(instance)
+          }
+        }
+        if (toRetrieve.length === 0) {
           resolve()
           return
         }
-        for (const rawInstance of instances) {
-          const { dataset } = dmv.metadata.formatMetadata(rawInstance)
-          const instance = dataset as dmv.metadata.Instance
-          if (instance.SOPClassUID !== StorageClasses.COMPREHENSIVE_3D_SR) {
-            continue
+        /**
+         * Also resolve once every retrieve settled so onLoaded can show
+         * SEG/ANN/PM/SR even when no report is suitable.
+         */
+        let pendingCount = toRetrieve.length
+        let hasFailure = false
+        const finishOne = (): void => {
+          pendingCount -= 1
+          if (pendingCount > 0) return
+          if (hasFailure) {
+            notifyUnlessDestroyed(session, 'Annotations could not be loaded')
           }
+          resolve()
+        }
+        for (const instance of toRetrieve) {
           logger.log(`retrieve SR instance "${instance.SOPInstanceUID}"`)
           client
             .retrieveInstance({
@@ -126,23 +153,33 @@ export async function loadMeasurementReports(
               sopInstanceUID: instance.SOPInstanceUID,
             })
             .then((retrievedInstance): void => {
-              if (session.isDestroyed) {
-                resolve()
-                return
+              if (!session.isDestroyed) {
+                try {
+                  if (
+                    addMeasurementReportRois(
+                      session,
+                      retrievedInstance,
+                      registerRoi,
+                    )
+                  ) {
+                    onChange()
+                    resolve()
+                  }
+                } catch (error: unknown) {
+                  hasFailure = true
+                  logger.error(
+                    'failed to parse ROIs ' +
+                      `of SOP instance "${instance.SOPInstanceUID}" ` +
+                      `of series "${instance.SeriesInstanceUID}" ` +
+                      `of study "${studyInstanceUID}": `,
+                    error,
+                  )
+                }
               }
-              if (
-                addMeasurementReportRois(
-                  session,
-                  retrievedInstance,
-                  registerRoi,
-                )
-              ) {
-                onChange()
-                resolve()
-              }
+              finishOne()
             })
             .catch((error: unknown) => {
-              notifyVisualizationError('Annotations could not be loaded')
+              hasFailure = true
               logger.error(
                 'failed to load ROIs ' +
                   `of SOP instance "${instance.SOPInstanceUID}" ` +
@@ -150,12 +187,13 @@ export async function loadMeasurementReports(
                   `of study "${studyInstanceUID}": `,
                 error,
               )
+              finishOne()
             })
         }
       })
       .catch((error: unknown) => {
         logger.error(error)
-        notifyVisualizationError('Annotations could not be loaded')
+        notifyUnlessDestroyed(session, 'Annotations could not be loaded')
         reject(toError(error))
       })
   })

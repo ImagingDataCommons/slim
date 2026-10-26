@@ -177,6 +177,11 @@ export class FakeVolumeImageViewer {
   readonly deactivateSelectInteraction = vi.fn()
   readonly activateDrawInteraction = vi.fn()
   readonly deactivateDrawInteraction = vi.fn()
+  readonly setMeasurementUnit = vi.fn()
+  readonly setMarkupLabelColor = vi.fn()
+  readonly setMarkupLabelFontSize = vi.fn()
+  readonly getMarkupLabelColor = vi.fn()
+  readonly getMeasurementUnit = vi.fn(() => undefined)
   readonly activateSnapInteraction = vi.fn()
   readonly deactivateSnapInteraction = vi.fn()
   readonly activateModifyInteraction = vi.fn(() => {
@@ -333,6 +338,9 @@ export class FakeVolumeImageViewer {
   readonly hideAnnotationGroup = vi.fn((uid: string) =>
     this.annotationGroups.hide(uid),
   )
+  readonly isAnnotationGroupVisible = vi.fn((uid: string) =>
+    this.annotationGroups.visible.has(uid),
+  )
   readonly zoomToROI = vi.fn()
 
   getAllSegments(): FakeSegment[] {
@@ -349,6 +357,9 @@ export class FakeVolumeImageViewer {
   )
   readonly showSegment = vi.fn((uid: string) => this.segments.show(uid))
   readonly hideSegment = vi.fn((uid: string) => this.segments.hide(uid))
+  readonly isSegmentVisible = vi.fn((uid: string) =>
+    this.segments.visible.has(uid),
+  )
   readonly zoomToSegment = vi.fn()
 
   getAllParameterMappings(): FakeMapping[] {

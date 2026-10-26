@@ -6,6 +6,8 @@ import { Icon, type IconName } from './icon'
 
 const Dialog = DialogPrimitive.Root
 
+const DialogTrigger = DialogPrimitive.Trigger
+
 const DialogOverlay = React.forwardRef<
   React.ComponentRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
@@ -13,7 +15,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-scrim/36 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+      'fixed inset-0 z-[60] bg-scrim/36 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       className,
     )}
     {...props}
@@ -34,7 +36,7 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed inset-0 z-50 m-auto flex h-fit w-[calc(100vw-48px)] max-w-lg max-h-[calc(100vh-48px)] flex-col overflow-hidden rounded-[14px] border border-line bg-panel text-ink shadow-modal data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-[0.98] data-[state=open]:zoom-in-[0.98]',
+        'fixed inset-0 z-[60] m-auto flex h-fit w-[calc(100vw-48px)] max-w-lg max-h-[calc(100vh-48px)] flex-col overflow-hidden rounded-[14px] border border-line bg-panel text-ink shadow-modal data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-[0.98] data-[state=open]:zoom-in-[0.98]',
         className,
       )}
       {...props}
@@ -120,7 +122,9 @@ function SlimDialogHeader({
       <div className="min-w-0 flex-1">
         <DialogTitle>{title}</DialogTitle>
         {subtitle !== undefined && (
-          <DialogDescription className="mt-0.5">{subtitle}</DialogDescription>
+          <DialogDescription className="mt-0.5 truncate">
+            {subtitle}
+          </DialogDescription>
         )}
       </div>
       {actions}
@@ -161,6 +165,7 @@ export {
   DialogContent,
   DialogDescription,
   DialogTitle,
+  DialogTrigger,
   SlimDialogFooter,
   SlimDialogHeader,
 }

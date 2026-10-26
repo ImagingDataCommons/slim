@@ -39,6 +39,43 @@ export function isSecretKey(key: string): boolean {
   return SECRET_KEY_PATTERN.test(key)
 }
 
+/** Keys naming a public location, e.g. `authorizationEndpoint`, `tokenUrl` */
+const LOCATION_KEY_PATTERN = /(endpoint|url|uri)$/i
+
+/**
+ * Whether a config entry holds a secret. A flag such as `sendAuthorization`
+ * carries none, and a public location keeps only its URL credentials masked.
+ */
+function isSecretEntry(key: string, item: unknown): boolean {
+  if (typeof item === 'boolean') return false
+  return isSecretKey(key) && !LOCATION_KEY_PATTERN.test(key)
+}
+
+/** Query parameter names that carry credentials in URLs (signed URLs, API keys) */
+const SECRET_PARAM_PATTERN =
+  /^(key|sig|signature|auth|code|x-amz-[\w-]+|x-goog-[\w-]+)$/i
+
+const URL_PATTERN = /^[a-z][a-z0-9+.-]*:\/\//i
+
+/**
+ * Hide credentials carried inside a URL value: the `user:password@` part and
+ * query or fragment parameters with secret-looking names (`?access_token=…`,
+ * `#id_token=…`). Other text is returned unchanged.
+ */
+export function maskUrlSecrets(value: string): string {
+  if (!URL_PATTERN.test(value)) return value
+  return value
+    .replace(/^([a-z][a-z0-9+.-]*:\/\/)[^/?#@]+@/i, `$1${MASKED_VALUE}@`)
+    .replace(
+      /** Fragment parameters too, as in an implicit-grant redirect URL */
+      /([?&#])([^=&#?/]+)=([^&#]*)/g,
+      (match, separator: string, name: string) =>
+        isSecretKey(name) || SECRET_PARAM_PATTERN.test(name)
+          ? `${separator}${name}=${MASKED_VALUE}`
+          : match,
+    )
+}
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
@@ -85,19 +122,21 @@ function maskAll(value: unknown): unknown {
     })
     return result
   }
-  return value === undefined ? undefined : MASKED_VALUE
+  if (value === undefined || typeof value === 'boolean') return value
+  return MASKED_VALUE
 }
 
 /**
  * Replace values under secret-looking keys with {@link MASKED_VALUE},
- * including every leaf of a nested object or array under such a key.
+ * including every non-flag leaf of a nested object or array under such a
+ * key, and hide credentials inside URL values (see {@link maskUrlSecrets}).
  */
 export function maskConfig(value: unknown): unknown {
   if (Array.isArray(value)) return value.map((item) => maskConfig(item))
   if (isPlainObject(value)) {
     const result: Record<string, unknown> = {}
     Object.entries(value).forEach(([key, item]) => {
-      if (!isSecretKey(key)) {
+      if (!isSecretEntry(key, item)) {
         result[key] = maskConfig(item)
       } else if (isGroupValue(item)) {
         result[key] = maskAll(item)
@@ -107,7 +146,7 @@ export function maskConfig(value: unknown): unknown {
     })
     return result
   }
-  return value
+  return typeof value === 'string' ? maskUrlSecrets(value) : value
 }
 
 /** Depth-first flatten of a config object into group and leaf rows. */

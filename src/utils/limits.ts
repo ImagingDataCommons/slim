@@ -1,8 +1,6 @@
-export type LimitSide = 'lower' | 'upper'
+import { clamp } from './math'
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value))
-}
+export type LimitSide = 'lower' | 'upper'
 
 /**
  * Clamps a `[lower, upper]` window into `[min, max]` and keeps

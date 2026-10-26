@@ -238,7 +238,7 @@ function worklistRows(page) {
 async function openWorklist(page) {
   await page.goto(`${baseUrl}/`)
   await page.getByRole('heading', { name: 'Studies' }).waitFor({ timeout: 30000 })
-  await page.getByText(/\d+ slide microscopy stud/).waitFor({ timeout: 90000 })
+  await page.getByText(/Showing 1–\d+ of \d+/).waitFor({ timeout: 90000 })
   await worklistRows(page).first().getByRole('link').waitFor({ timeout: 60000 })
 }
 
@@ -247,7 +247,7 @@ async function openWorklist(page) {
 async function worklist(page) {
   await openWorklist(page)
   const rows = await worklistRows(page).count()
-  const summary = await page.getByText(/\d+ slide microscopy stud/).textContent()
+  const summary = await page.getByText(/Showing 1–\d+ of \d+/).textContent()
   check('worklist lists studies from the DICOMweb server', rows > 0, `${rows} rows, "${summary}"`)
   check(
     'QIDO studies query succeeded',

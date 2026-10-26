@@ -111,7 +111,8 @@ describe('constrainBoundsToCard', () => {
     const base = overviewMapSizeBounds(300, 200)
     const bounds = constrainBoundsToCard(base, card)
     expect(bounds.maxMapWidth).toBe(base.maxMapWidth)
-    expect(bounds.preferredMaxHeight).toBe(base.maxMapHeight)
+    expect(bounds.preferredMaxHeight).toBe(base.preferredMaxHeight)
+    expect(bounds.preferredMaxHeight).toBeLessThan(base.maxMapHeight)
     expect(bounds.minMapWidth).toBeLessThanOrEqual(bounds.maxMapWidth)
   })
 

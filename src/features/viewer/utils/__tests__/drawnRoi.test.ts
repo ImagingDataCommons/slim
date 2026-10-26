@@ -55,4 +55,45 @@ describe('attachDraftEvaluations', () => {
     expect(roi.addEvaluation).toHaveBeenCalledTimes(2)
     expect(evaluations).toHaveLength(2)
   })
+
+  it('attaches finding category before the finding type when provided', () => {
+    const evaluations: unknown[] = []
+    const roi = {
+      addEvaluation: vi.fn((item: unknown) => {
+        evaluations.push(item)
+      }),
+    }
+    const finding = new dcmjs.sr.coding.CodedConcept({
+      value: '85756007',
+      schemeDesignator: 'SCT',
+      meaning: 'Tissue',
+    })
+    const findingCategory = new dcmjs.sr.coding.CodedConcept({
+      value: '91723000',
+      schemeDesignator: 'SCT',
+      meaning: 'Anatomical structure',
+    })
+    const draft: AnnotationDraft = {
+      finding,
+      evaluations: [],
+      geometryType: 'polygon',
+    }
+
+    expect(attachDraftEvaluations(roi as never, draft, findingCategory)).toBe(
+      true,
+    )
+    expect(roi.addEvaluation).toHaveBeenCalledTimes(2)
+    expect(evaluations[0]).toMatchObject({
+      ConceptNameCodeSequence: [
+        expect.objectContaining({ CodeValue: '276214006' }),
+      ],
+      ConceptCodeSequence: [expect.objectContaining({ CodeValue: '91723000' })],
+    })
+    expect(evaluations[1]).toMatchObject({
+      ConceptNameCodeSequence: [
+        expect.objectContaining({ CodeValue: '121071' }),
+      ],
+      ConceptCodeSequence: [expect.objectContaining({ CodeValue: '85756007' })],
+    })
+  })
 })

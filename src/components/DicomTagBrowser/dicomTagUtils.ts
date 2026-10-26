@@ -1,3 +1,4 @@
+export { toggleSetValue } from '../../utils/set'
 export type {
   DisplaySet,
   SeriesLike,
@@ -10,7 +11,6 @@ export {
   getSeriesLabel,
   sortInstancesByNumber,
   sortSeriesByNumber,
-  toggleSetValue,
   toTagRecord,
 } from './seriesDisplay'
 export type { TagInfo } from './tagRows'

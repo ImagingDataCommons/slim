@@ -81,14 +81,30 @@ describe('createTokenDisclosurePolicy', () => {
     ).resolves.toBeUndefined()
   })
 
-  it('credentials configured origins without asking', async () => {
-    await expect(createPolicy().requestAuthorization(CONFIGURED)).resolves.toBe(
+  it('credentials configured origins without asking, for the session only', async () => {
+    const policy = createPolicy()
+    await expect(policy.requestAuthorization(CONFIGURED)).resolves.toBe(
       'Bearer t',
     )
 
     expect(confirm).not.toHaveBeenCalled()
-    expect(readAuthorizationDecision(CONFIGURED)).toBe('granted')
     expect(onAuthorization).toHaveBeenCalledWith('Bearer t')
+    /** The config authorizes it; nothing is remembered past this session */
+    expect(policy.isPreAuthorized(CONFIGURED)).toBe(true)
+    expect(readAuthorizationDecision(CONFIGURED)).toBeUndefined()
+  })
+
+  it('stops pre-authorizing an origin removed from the configuration', async () => {
+    await createPolicy().requestAuthorization(CONFIGURED)
+
+    const afterRedeploy = createTokenDisclosurePolicy({
+      auth: createAuth(),
+      configuredOrigins: new Set(),
+      oidcAuthority: AUTHORITY,
+      confirm,
+      onAuthorization,
+    })
+    expect(afterRedeploy.isPreAuthorized(CONFIGURED)).toBe(false)
   })
 
   it('refuses insecure origins even when configured', async () => {
@@ -121,15 +137,12 @@ describe('createTokenDisclosurePolicy', () => {
     expect(onAuthorization).not.toHaveBeenCalled()
   })
 
-  it('does not remember a denial when the dialog was superseded', async () => {
-    confirm.mockResolvedValue('superseded')
+  it('does not remember a denial when the dialog could not be shown', async () => {
+    confirm.mockResolvedValue('failed')
     const policy = createPolicy()
 
     await expect(policy.requestAuthorization(UNKNOWN)).resolves.toBeUndefined()
     expect(readAuthorizationDecision(UNKNOWN)).toBeUndefined()
-    confirm.mockResolvedValue('confirm')
-    await expect(policy.requestAuthorization(UNKNOWN)).resolves.toBe('Bearer t')
-    expect(readAuthorizationDecision(UNKNOWN)).toBe('granted')
   })
 
   it('shares one prompt between simultaneous challenges', async () => {

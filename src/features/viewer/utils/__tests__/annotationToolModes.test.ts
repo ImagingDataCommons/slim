@@ -6,6 +6,18 @@ const idle = {
 }
 
 describe('planToolMode', () => {
+  it('plans select mode', () => {
+    expect(
+      planToolMode('select', idle, {
+        isModifyInteractionActive: false,
+        isTranslateInteractionActive: false,
+      }),
+    ).toEqual({
+      deactivate: ['draw', 'modify', 'snap', 'translate'],
+      activateSelect: true,
+    })
+  })
+
   it('plans draw start and stop', () => {
     expect(
       planToolMode('draw', idle, {
@@ -45,6 +57,19 @@ describe('planToolMode', () => {
         isTranslateInteractionActive: false,
       }),
     ).toBeNull()
+  })
+
+  it('restores select when translate is toggled off', () => {
+    expect(
+      planToolMode(
+        'translate',
+        { ...idle, isRoiTranslationActive: true },
+        {
+          isModifyInteractionActive: false,
+          isTranslateInteractionActive: true,
+        },
+      ),
+    ).toEqual({ deactivate: ['translate'], activateSelect: true })
   })
 
   it('cancels the active tool', () => {

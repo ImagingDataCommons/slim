@@ -23,8 +23,17 @@ export interface UseStudiesReturn {
  * requests cannot be aborted through dicomweb-client, so superseded responses
  * are dropped instead.
  */
+const NO_STUDIES: dmv.metadata.Study[] = []
+
 export function useStudies({ clients }: UseStudiesOptions): UseStudiesReturn {
-  const [studies, setStudies] = useState<dmv.metadata.Study[]>([])
+  /**
+   * Studies with the clients they came from, so the previous server's list
+   * is never shown for a new one, not even for the frame before the effect
+   */
+  const [loaded, setLoaded] = useState<{
+    clients?: UseStudiesOptions['clients']
+    studies: dmv.metadata.Study[]
+  }>({ studies: NO_STUDIES })
   const [isLoading, setIsLoading] = useState(true)
 
   /** Incremented per search and on cleanup so superseded responses are dropped */
@@ -34,30 +43,28 @@ export function useStudies({ clients }: UseStudiesOptions): UseStudiesReturn {
     const generation = ++searchGeneration.current
     const isCurrent = (): boolean => generation === searchGeneration.current
     const client = clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE]
-    /** Keep the same empty array when already clear to avoid a render loop */
-    setStudies((previous) => (previous.length === 0 ? previous : []))
-    if (client === undefined) {
-      setIsLoading(false)
-      return
-    }
+    /** Nothing to load or store; the return below says so directly */
+    if (client === undefined) return
 
     setIsLoading(true)
     client
       .searchForStudies({ queryParams: buildStudyQueryParams() })
       .then((results) => {
         if (!isCurrent()) return
-        setStudies(
-          results.map(
+        setLoaded({
+          clients,
+          studies: results.map(
             /** DMV types formatted metadata as the generic Dataset */
             (study) =>
               dmv.metadata.formatMetadata(study).dataset as dmv.metadata.Study,
           ),
-        )
+        })
         setIsLoading(false)
       })
       .catch((error: unknown) => {
         if (!isCurrent()) return
         console.error(error)
+        setLoaded({ clients, studies: NO_STUDIES })
         setIsLoading(false)
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.DICOMWEB,
@@ -73,5 +80,12 @@ export function useStudies({ clients }: UseStudiesOptions): UseStudiesReturn {
     }
   }, [clients])
 
-  return { studies, isLoading }
+  if (clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE] === undefined) {
+    return { studies: NO_STUDIES, isLoading: false }
+  }
+  const isCurrentList = loaded.clients === clients
+  return {
+    studies: isCurrentList ? loaded.studies : NO_STUDIES,
+    isLoading: isCurrentList ? isLoading : true,
+  }
 }

@@ -1,9 +1,10 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
+import { startTransition, useEffect, useMemo, useState } from 'react'
 
 import type { SegmentStyle } from '../../../types/layerStyles'
 import { logger } from '../../../utils/logger'
+import type { VisibilityChange } from '../../../utils/visibility'
 import type { DmvEventHandlers } from '../services/dmvEvents'
 import {
   applyBinarySegmentPalettes,
@@ -17,7 +18,15 @@ import {
   recommendedBinarySegmentColors,
   segmentPanelStyles,
 } from '../utils/segmentStyles'
-import { withItem, withItems, withoutItem } from '../utils/uidSets'
+import { showMatchingSeriesItems } from '../utils/showSeriesItems'
+import {
+  applyUidVisibility,
+  applyUidVisibilityChanges,
+  hideVisibleItems,
+  mirrorDmvVisibility,
+  showItems,
+} from '../utils/uidVisibility'
+import { useInterpolationToggle } from './useInterpolationToggle'
 import type { ViewerAccess } from './useViewerSession'
 
 export interface SegmentationsApi {
@@ -34,8 +43,18 @@ export interface SegmentationsApi {
     segmentUID: string
     isVisible: boolean
   }) => void
+  /** "Show all" / "Hide all": one pass, one state update; absent segments are skipped */
+  onVisibilityChanges: (changes: VisibilityChange[]) => void
   onClick: (segmentUID: string) => void
   onStyleChange: (change: {
+    segmentUID: string
+    styleOptions: { opacity?: number; color?: number[] }
+  }) => void
+  /**
+   * Live style while a slider is dragged: restyles the slide only. The panel
+   * snapshot is refreshed once, by onStyleChange on commit.
+   */
+  onStylePreview: (change: {
     segmentUID: string
     styleOptions: { opacity?: number; color?: number[] }
   }) => void
@@ -53,6 +72,29 @@ function segmentSeriesUID(
   return (
     viewer.getSegmentMetadata(segment.uid)?.[0]?.SeriesInstanceUID ?? 'unknown'
   )
+}
+
+/**
+ * Only pass a palette when the user changed color. Opacity-only updates must
+ * not send a default RGB for fractional segments or distinct colormaps are
+ * replaced by a flat LUT.
+ */
+function applySegmentStyle(
+  viewer: ViewerSession['volumeViewer'],
+  segmentUID: string,
+  { opacity, color }: { opacity?: number; color?: number[] },
+): void {
+  viewer.setSegmentStyle(segmentUID, {
+    ...(opacity !== undefined ? { opacity } : {}),
+    ...(color !== undefined
+      ? {
+          paletteColorLookupTable: createSegmentPaletteColorLookupTable(
+            color,
+            viewer.getPaletteDisplayGammaCorrectionEnabled(),
+          ),
+        }
+      : {}),
+  })
 }
 
 /**
@@ -79,8 +121,11 @@ export function useSegmentations(
   const [customizedColors, setCustomizedColors] = useState<
     Record<string, number[]>
   >({})
-  const [isInterpolationEnabled, setIsInterpolationEnabled] = useState(false)
-  const isInterpolationEnabledRef = useRef(false)
+  const { isInterpolationEnabled, resetInterpolation, onInterpolationChange } =
+    useInterpolationToggle(
+      () => sessionRef.current?.volumeViewer.toggleSegmentationInterpolation(),
+      false,
+    )
 
   const { generation, segments, segmentMetadata, segmentStyles } = snapshot
   /** Segment Sequence lookups are only redone when segments are added */
@@ -115,53 +160,28 @@ export function useSegmentations(
     reset: () => {
       setVisibleUIDs(new Set())
       setSelectedSeriesUID(undefined)
-      isInterpolationEnabledRef.current = false
-      setIsInterpolationEnabled(false)
+      setCustomizedColors({})
+      resetInterpolation()
     },
     showSeries: (session, seriesInstanceUID) => {
-      const allSegments = session.volumeViewer.getAllSegments()
-      const matching = allSegments.filter(
-        (segment) => segment.seriesInstanceUID === seriesInstanceUID,
-      )
-      logger.debug(
-        'auto-load Segmentation: found ' +
-          `${matching.length} matching segment(s) ` +
-          `out of ${allSegments.length} total ` +
-          `for series "${seriesInstanceUID}"`,
-      )
       /**
        * One failing segment must not keep the others hidden. Background
-       * segments stay listed but are not shown.
+       * and absent segments stay listed but are not shown. Panel series
+       * filter follows the deep-linked series so Display options apply
+       * with the same list the user opened.
        */
-      const shown: string[] = []
-      for (const segment of matching) {
-        if (segment.isAbsent) {
-          logger.debug(
-            `auto-load Segmentation: skipping absent segment "${segment.uid}"`,
-          )
-          continue
-        }
-        if (segment.isBackground === true) {
-          logger.debug(
-            `skipping auto-show for background segment "${segment.uid}"`,
-          )
-          continue
-        }
-        try {
-          session.volumeViewer.showSegment(segment.uid)
-          shown.push(segment.uid)
-        } catch (error) {
-          logger.error(`failed to auto-show segment "${segment.uid}":`, error)
-        }
-      }
-      logger.debug(
-        'auto-load Segmentation: showing ' +
-          `${shown.length}/${matching.length} segment(s)`,
-      )
-      if (shown.length > 0) {
-        setVisibleUIDs((current) => withItems(current, shown))
-      }
-      logger.debug('Loading Segmentation')
+      setSelectedSeriesUID(seriesInstanceUID)
+      showMatchingSeriesItems({
+        items: session.volumeViewer.getAllSegments(),
+        seriesInstanceUID,
+        label: 'Segmentation',
+        getSeriesInstanceUID: (segment) => segment.seriesInstanceUID,
+        getId: (segment) => segment.uid,
+        show: (uid) => session.volumeViewer.showSegment(uid),
+        setVisible: setVisibleUIDs,
+        shouldSkip: (segment) =>
+          segment.isAbsent || segment.isBackground === true,
+      })
     },
     onVisibilityChange: ({ segmentUID, isVisible }) => {
       const viewer = sessionRef.current?.volumeViewer
@@ -176,15 +196,35 @@ export function useSegmentations(
         return
       }
       logger.log(`change visibility of segment ${segmentUID}`)
-      if (isVisible) {
-        logger.log(`show segment ${segmentUID}`)
-        viewer.showSegment(segmentUID)
-        setVisibleUIDs((current) => withItem(current, segmentUID))
-      } else {
-        logger.log(`hide segment ${segmentUID}`)
-        viewer.hideSegment(segmentUID)
-        setVisibleUIDs((current) => withoutItem(current, segmentUID))
-      }
+      applyUidVisibility({
+        uid: segmentUID,
+        isVisible,
+        show: (uid) => {
+          logger.log(`show segment ${uid}`)
+          viewer.showSegment(uid)
+        },
+        hide: (uid) => {
+          logger.log(`hide segment ${uid}`)
+          viewer.hideSegment(uid)
+        },
+        setVisibleUIDs,
+      })
+    },
+    onVisibilityChanges: (changes) => {
+      const viewer = sessionRef.current?.volumeViewer
+      if (viewer === undefined) return
+      const absentUIDs = new Set(
+        viewer
+          .getAllSegments()
+          .filter((segment) => segment.isAbsent)
+          .map((segment) => segment.uid),
+      )
+      applyUidVisibilityChanges({
+        changes: changes.filter((change) => !absentUIDs.has(change.uid)),
+        show: (uid) => viewer.showSegment(uid),
+        hide: (uid) => viewer.hideSegment(uid),
+        setVisibleUIDs,
+      })
     },
     onClick: (segmentUID) => {
       sessionRef.current?.volumeViewer.zoomToSegment(segmentUID)
@@ -193,37 +233,33 @@ export function useSegmentations(
       const viewer = sessionRef.current?.volumeViewer
       if (viewer === undefined) return
       logger.log(`change style of segment ${segmentUID}`)
-      const { color, opacity } = styleOptions
+      const { color } = styleOptions
       if (color !== undefined) {
         setCustomizedColors((current) => ({ ...current, [segmentUID]: color }))
       }
-      /**
-       * Only pass a palette when the user changed color. Opacity-only
-       * updates must not send a default RGB for fractional segments or
-       * distinct colormaps are replaced by a flat LUT.
-       */
-      viewer.setSegmentStyle(segmentUID, {
-        ...(opacity !== undefined ? { opacity } : {}),
-        ...(color !== undefined
-          ? {
-              paletteColorLookupTable: createSegmentPaletteColorLookupTable(
-                color,
-                viewer.getPaletteDisplayGammaCorrectionEnabled(),
-              ),
-            }
-          : {}),
-      })
+      applySegmentStyle(viewer, segmentUID, styleOptions)
       refreshSnapshot()
+    },
+    onStylePreview: ({ segmentUID, styleOptions }) => {
+      const viewer = sessionRef.current?.volumeViewer
+      if (viewer === undefined) return
+      applySegmentStyle(viewer, segmentUID, styleOptions)
     },
     onSeriesChange: (seriesInstanceUID) => {
       const viewer = sessionRef.current?.volumeViewer
       if (viewer === undefined) return
       /**
        * Switching series hides the previous segments; if any were shown,
-       * every present segment of the new series is shown instead.
+       * every present, non-background segment of the new series is shown
+       * instead, as for a deep link. The viewer, not panel state, says what
+       * is drawn, so a "Show all" still in its transition is hidden too.
        */
-      for (const uid of visibleUIDs) viewer.hideSegment(uid)
       const allSegments = viewer.getAllSegments()
+      const wereShown = hideVisibleItems(
+        allSegments.map((segment) => segment.uid),
+        (uid) => viewer.isSegmentVisible(uid),
+        (uid) => viewer.hideSegment(uid),
+      )
       const seriesSegments = itemsForSeries(
         allSegments,
         groupBySeries(allSegments, (segment) =>
@@ -231,23 +267,44 @@ export function useSegmentations(
         ),
         seriesInstanceUID,
       )
-      const nextVisible = new Set<string>()
-      if (visibleUIDs.size > 0) {
-        for (const segment of seriesSegments) {
-          if (!segment.isAbsent) nextVisible.add(segment.uid)
-        }
-      }
+      const nextVisible = wereShown
+        ? showItems(
+            seriesSegments
+              .filter(
+                (segment) => !segment.isAbsent && segment.isBackground !== true,
+              )
+              .map((segment) => segment.uid),
+            (uid) => viewer.showSegment(uid),
+          )
+        : new Set<string>()
       startTransition(() => {
         setSelectedSeriesUID(seriesInstanceUID)
         setVisibleUIDs(nextVisible)
       })
-      for (const uid of nextVisible) viewer.showSegment(uid)
     },
     onDisplaySettingsChange: ({ interpolationEnabled }) => {
-      if (interpolationEnabled === isInterpolationEnabledRef.current) return
-      isInterpolationEnabledRef.current = interpolationEnabled
-      setIsInterpolationEnabled(interpolationEnabled)
-      sessionRef.current?.volumeViewer.toggleSegmentationInterpolation()
+      onInterpolationChange(interpolationEnabled)
+      /**
+       * DMV rebuilds every segment's sources on toggle. Re-assert visibility
+       * from the viewer (not panel state) so a stale visibleUIDs set cannot
+       * hide segments that were just shown via "Show all".
+       */
+      const viewer = sessionRef.current?.volumeViewer
+      if (viewer === undefined) return
+      for (const segment of viewer.getAllSegments()) {
+        try {
+          if (segment.isAbsent) continue
+          if (viewer.isSegmentVisible(segment.uid)) {
+            viewer.hideSegment(segment.uid)
+            viewer.showSegment(segment.uid)
+          }
+        } catch (error) {
+          logger.error(
+            `failed to refresh segment "${segment.uid}" after interpolation toggle:`,
+            error,
+          )
+        }
+      }
     },
     dmvHandlers: {
       dicommicroscopyviewer_segment_visibility_changed: (payload) => {
@@ -255,15 +312,11 @@ export function useSegmentations(
          * The in-viewport legend already changed the overlay; only mirror
          * it into the panel.
          */
-        if (payload?.segmentUID == null || payload.isVisible == null) return
-        const { segmentUID, isVisible } = payload
-        startTransition(() => {
-          setVisibleUIDs((current) =>
-            isVisible
-              ? withItem(current, segmentUID)
-              : withoutItem(current, segmentUID),
-          )
-        })
+        mirrorDmvVisibility(
+          setVisibleUIDs,
+          payload?.segmentUID,
+          payload?.isVisible,
+        )
       },
     },
   }

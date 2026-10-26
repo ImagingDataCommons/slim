@@ -40,7 +40,7 @@ describe('annotationDraftReducer', () => {
       finding: tumor,
       allowedGeometryTypes: ['point'],
     })
-    expect(dropped.geometryType).toBeUndefined()
+    expect(dropped.geometryType).toBe('point')
   })
 
   it('replaces the value of an evaluation with the same name', () => {

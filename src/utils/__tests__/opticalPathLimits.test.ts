@@ -1,4 +1,8 @@
-import { maxValueForBitsAllocated } from '../opticalPathLimits'
+import {
+  maxValueForBitsAllocated,
+  roundLimitForDisplay,
+  windowSliderBounds,
+} from '../opticalPathLimits'
 
 describe('maxValueForBitsAllocated', () => {
   it('defaults to 8-bit when BitsAllocated is missing', () => {
@@ -7,5 +11,69 @@ describe('maxValueForBitsAllocated', () => {
 
   it('uses the stated bit depth', () => {
     expect(maxValueForBitsAllocated(16)).toBe(65535)
+  })
+})
+
+describe('windowSliderBounds', () => {
+  it('uses the bit depth until a frame was sampled', () => {
+    expect(
+      windowSliderBounds({
+        bitsMax: 65535,
+        pixelRange: undefined,
+        limitValues: [2, 33],
+      }),
+    ).toEqual({ min: 0, max: 65535, step: 1 })
+  })
+
+  it('fits the observed range so a narrow window is not pinned at zero', () => {
+    const bounds = windowSliderBounds({
+      bitsMax: 65535,
+      pixelRange: { min: 0, max: 48 },
+      limitValues: [2.03, 32.56],
+    })
+    expect(bounds.min).toBe(0)
+    expect(bounds.max).toBe(48)
+    expect(bounds.step).toBeCloseTo(0.048)
+  })
+
+  it('leaves room above a window wider than the sampled frame', () => {
+    expect(
+      windowSliderBounds({
+        bitsMax: 65535,
+        pixelRange: { min: 10, max: 900 },
+        limitValues: [5, 4000],
+      }),
+    ).toEqual({ min: 0, max: 5000, step: 1 })
+  })
+
+  it('never returns an empty range', () => {
+    const bounds = windowSliderBounds({
+      bitsMax: 255,
+      pixelRange: { min: 0, max: 0 },
+      limitValues: [0, 0],
+    })
+    expect(bounds.max).toBeGreaterThan(bounds.min)
+  })
+})
+
+describe('windowSliderBounds at the top of the value range', () => {
+  it('does not run past the largest storable value', () => {
+    const bounds = windowSliderBounds({
+      bitsMax: 255,
+      pixelRange: { min: 0, max: 200 },
+      limitValues: [0, 255],
+    })
+    expect(bounds.max).toBe(255)
+  })
+})
+
+describe('roundLimitForDisplay', () => {
+  it('shows whole numbers for whole slider steps', () => {
+    expect(roundLimitForDisplay(12.6, 1)).toBe(13)
+  })
+
+  it('keeps the decimals one fractional step needs', () => {
+    expect(roundLimitForDisplay(12.346153846, 31 / 1000)).toBe(12.35)
+    expect(roundLimitForDisplay(0.123456, 0.0005)).toBe(0.1235)
   })
 })

@@ -1,16 +1,15 @@
 /** skipcq: JS-C1003 */
+import type * as dcmjs from 'dcmjs'
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import { startTransition, useState } from 'react'
+import { startTransition, useLayoutEffect, useRef, useState } from 'react'
 
-import {
-  SELECTION_FILL_COLOR,
-  SELECTION_STROKE_COLOR,
-} from '../../../components/SlideViewer/constants'
 import {
   formatRoiRemovalMessage,
   getRoiKey,
 } from '../../../components/SlideViewer/utils/roiUtils'
 import type { AnnotationStyle } from '../../../types/layerStyles'
+import { codedConceptKey } from '../../../utils/dicom/codedConcept'
 import { logger } from '../../../utils/logger'
 import type { VisibilityChange } from '../../../utils/visibility'
 import { notifyVisualizationError } from '../services/derivedDataLoaders'
@@ -28,35 +27,20 @@ import {
   visibleUidsAfterSelection,
 } from '../utils/roiSelectionStyles'
 import { annotationStyleToRoiStyle } from '../utils/roiStyleRegistry'
+import { SELECTED_ROI_STYLE } from '../utils/selectedRoiStyle'
 import { withItem } from '../utils/uidSets'
 import {
   applyVisibilityChanges,
   removeHiddenUids,
 } from '../utils/visibilityChanges'
+import { applyRoiSelection, type RoiSelection } from './roiSelection'
+import { type RoiVisibilityState, styleForRoi } from './roiVisibility'
+import { useLatestRef } from './useLatestRef'
 import type { ViewerAccess } from './useViewerSession'
 
 type RoiStyle = dmv.viewer.ROIStyleOptions
 
-export const SELECTED_ROI_STYLE: RoiStyle = {
-  stroke: { color: [...SELECTION_STROKE_COLOR, 1], width: 3 },
-  fill: { color: [...SELECTION_FILL_COLOR, 0.5] },
-  image: {
-    circle: {
-      radius: 5,
-      fill: { color: [...SELECTION_STROKE_COLOR, 1] },
-    },
-  },
-}
-
-interface RoiSelection {
-  selectedRoiUIDs: Set<string>
-  /** Last selected or double-clicked ROI, described in the details dialog */
-  selectedRoi?: dmv.roi.ROI
-}
-
-interface RoiState extends RoiSelection {
-  visibleRoiUIDs: Set<string>
-}
+export { SELECTED_ROI_STYLE }
 
 type RoiEventHandlers = Required<
   Pick<
@@ -69,7 +53,7 @@ type RoiEventHandlers = Required<
   >
 >
 
-export interface RoisApi extends RoiState {
+export interface RoisApi extends RoiVisibilityState {
   /** New viewers start with no ROI shown */
   reset: () => void
   /** Give an ROI loaded from a report its list style */
@@ -94,6 +78,11 @@ export interface RoisApi extends RoiState {
   removeRois: () => void
   /** Re-apply the selection style, after ROIs were shown again */
   restyleSelected: () => void
+  /**
+   * ROIs shown on the map now, including show/hide changes whose state
+   * update is still pending in a transition
+   */
+  currentVisibleRoiUIDs: () => Set<string>
   dmvHandlers: RoiEventHandlers
 }
 
@@ -101,34 +90,56 @@ export interface RoisApi extends RoiState {
 export function useRois({
   viewer: { sessionRef, refreshSnapshot },
   defaultRoiStyle,
+  findingCategories = {},
   isShiftDown,
   onDetailsVisibilityChange,
 }: {
   viewer: ViewerAccess
   defaultRoiStyle: RoiStyle
+  /** Configured Finding category (276214006) keyed by finding concept */
+  findingCategories?: Readonly<Record<string, dcmjs.sr.coding.CodedConcept>>
   isShiftDown: () => boolean
   onDetailsVisibilityChange: (isVisible: boolean) => void
 }): RoisApi {
-  const [state, setState] = useState<RoiState>(() => ({
+  const [state, setState] = useState<RoiVisibilityState>(() => ({
     selectedRoiUIDs: new Set(),
     visibleRoiUIDs: new Set(),
     selectedRoi: undefined,
   }))
   const { selectedRoiUIDs, visibleRoiUIDs } = state
 
-  const styleForRoi = (session: ViewerSession, roi: dmv.roi.ROI): RoiStyle =>
-    session.roiStyles.styleForRoi(roi.uid, getRoiKey(roi), defaultRoiStyle)
+  /**
+   * onVisibilityChanges styles the map at once but commits visibleRoiUIDs in
+   * a transition. Pending changes are kept here until that commit so code
+   * styling ROIs in between (selection, preference defaults) sees the map.
+   */
+  const committedVisibleRef = useLatestRef(visibleRoiUIDs)
+  const pendingVisibilityRef = useRef(new Map<string, boolean>())
+  useLayoutEffect(() => {
+    for (const [uid, isVisible] of pendingVisibilityRef.current) {
+      if (visibleRoiUIDs.has(uid) === isVisible) {
+        pendingVisibilityRef.current.delete(uid)
+      }
+    }
+  }, [visibleRoiUIDs])
+  const currentVisibleRoiUIDs = (): Set<string> => {
+    const visible = new Set(committedVisibleRef.current)
+    for (const [uid, isVisible] of pendingVisibilityRef.current) {
+      if (isVisible) visible.add(uid)
+      else visible.delete(uid)
+    }
+    return visible
+  }
 
   const registerRoi = (
     session: ViewerSession,
     roi: dmv.roi.ROI,
     key: string | undefined = getRoiKey(roi),
   ): void => {
-    session.roiStyles.registerAnnotationStyle(
-      roi.uid,
-      key,
-      defaultRoiStyle.stroke?.width,
-    )
+    session.roiStyles.registerAnnotationStyle(roi.uid, key, {
+      radius: defaultRoiStyle.image?.circle?.radius,
+      strokeWidth: defaultRoiStyle.stroke?.width,
+    })
   }
 
   const selectionOf = (
@@ -150,19 +161,15 @@ export function useRois({
     }
   }
 
-  /** Select, then give visible unselected ROIs back their own style */
   const select = (session: ViewerSession, selection: RoiSelection): void => {
-    setState((current) => ({ ...current, ...selection }))
-    for (const roi of session.volumeViewer.getAllROIs()) {
-      if (
-        selection.selectedRoiUIDs.has(roi.uid) ||
-        !visibleRoiUIDs.has(roi.uid)
-      ) {
-        continue
-      }
-      session.volumeViewer.setROIStyle(roi.uid, styleForRoi(session, roi))
-    }
-    refreshSnapshot()
+    applyRoiSelection(
+      session,
+      selection,
+      currentVisibleRoiUIDs(),
+      defaultRoiStyle,
+      setState,
+      refreshSnapshot,
+    )
   }
 
   const addStyledRoi = (roi: dmv.roi.ROI, style: RoiStyle): void => {
@@ -189,7 +196,10 @@ export function useRois({
         if (isVisible) {
           logger.log(`show ROI ${uid}`)
           const roi = volumeViewer.getROI(uid)
-          volumeViewer.setROIStyle(roi.uid, styleForRoi(session, roi))
+          volumeViewer.setROIStyle(
+            roi.uid,
+            styleForRoi(session, roi, defaultRoiStyle),
+          )
           return { uid: roi.uid, isVisible }
         }
         logger.log(`hide ROI ${uid}`)
@@ -198,6 +208,9 @@ export function useRois({
       },
       (applied) => {
         if (applied.length === 0) return
+        for (const { uid, isVisible } of applied) {
+          pendingVisibilityRef.current.set(uid, isVisible)
+        }
         startTransition(() => {
           setState((current) => ({
             ...current,
@@ -215,7 +228,9 @@ export function useRois({
 
   return {
     ...state,
+    currentVisibleRoiUIDs,
     reset: () => {
+      pendingVisibilityRef.current.clear()
       setState((current) => ({
         ...current,
         visibleRoiUIDs: new Set(),
@@ -228,7 +243,14 @@ export function useRois({
     },
     addStyledRoi,
     addDrawnRoi: (roi, draft, style) => {
-      if (roi === undefined || !attachDraftEvaluations(roi, draft)) {
+      const findingKey =
+        draft.finding !== undefined ? codedConceptKey(draft.finding) : undefined
+      const findingCategory =
+        findingKey !== undefined ? findingCategories[findingKey] : undefined
+      if (
+        roi === undefined ||
+        !attachDraftEvaluations(roi, draft, findingCategory)
+      ) {
         logger.debug(`could not add ROI "${roi?.uid}"`)
         return
       }
@@ -255,9 +277,9 @@ export function useRois({
       const { styles, selectedVisibleUIDs } = stylesForRoiSelection({
         rois: volumeViewer.getAllROIs(),
         selectedRoiUIDs: selection.selectedRoiUIDs,
-        visibleRoiUIDs,
+        visibleRoiUIDs: currentVisibleRoiUIDs(),
         selectedStyle: SELECTED_ROI_STYLE,
-        styleForRoi: (roi) => styleForRoi(session, roi),
+        styleForRoi: (roi) => styleForRoi(session, roi, defaultRoiStyle),
       })
       for (const { uid: roiUid, style } of styles) {
         volumeViewer.setROIStyle(roiUid, style)
@@ -279,10 +301,10 @@ export function useRois({
     onStylesChange: ({ uids, styleOptions }) => {
       const session = sessionRef.current
       if (session === undefined) return
-      const style = annotationStyleToRoiStyle(
-        styleOptions,
-        defaultRoiStyle.stroke?.width,
-      )
+      const style = annotationStyleToRoiStyle(styleOptions, {
+        radius: defaultRoiStyle.image?.circle?.radius,
+        strokeWidth: defaultRoiStyle.stroke?.width,
+      })
       applyEach(
         uids,
         (uid) => {
@@ -325,11 +347,13 @@ export function useRois({
       volumeViewer.deactivateSnapInteraction()
       volumeViewer.deactivateTranslateInteraction()
       volumeViewer.deactivateModifyInteraction()
-      const plan = planRoiRemoval(selectedRoiUIDs, visibleRoiUIDs)
+      /** A toggle still in its transition counts as already applied */
+      const plan = planRoiRemoval(selectedRoiUIDs, currentVisibleRoiUIDs())
       for (const uid of plan.removedUIDs) {
         logger.log(`remove ROI "${uid}"`)
         volumeViewer.removeROI(uid)
         session.roiStyles.forget(uid)
+        pendingVisibilityRef.current.delete(uid)
       }
       publishToast(formatRoiRemovalMessage(plan.removedUIDs.length), 'success')
       setState((current) => ({
@@ -359,9 +383,11 @@ export function useRois({
           'scoord3d' in payload
         ) {
           select(session, {
-            selectedRoiUIDs: isShiftDown()
-              ? new Set([...selectedRoiUIDs, payload.uid])
-              : new Set([payload.uid]),
+            selectedRoiUIDs: nextSelectedRoiUIDs(
+              selectedRoiUIDs,
+              payload.uid,
+              isShiftDown(),
+            ),
             selectedRoi: payload,
           })
         } else {

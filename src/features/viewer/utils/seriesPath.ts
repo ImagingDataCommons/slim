@@ -1,4 +1,8 @@
 import {
+  hashWithoutAuthResponse,
+  searchWithoutAuthResponse,
+} from '../../../auth/oidcUser'
+import {
   buildSeriesPath,
   hasSeriesInPath,
   isProjectsPath,
@@ -26,20 +30,28 @@ function seriesPathname({
 
 /**
  * Viewer URL for a series of the current study. The query string is only
- * carried over from series routes.
+ * carried over from series routes, and a presentation state (`?state=`)
+ * only to the same series: it belongs to the slide it was applied to.
  */
 export function buildSeriesSelectionPath(params: SeriesPathParams): string {
   const path = seriesPathname(params)
-  return hasSeriesInPath(params.pathname) ? `${path}${params.search}` : path
+  if (!hasSeriesInPath(params.pathname)) return path
+  const isSameSeries =
+    parseSeriesInstanceUID(params.pathname) === params.seriesInstanceUID
+  return `${path}${searchWithoutAuthResponse(
+    params.search,
+    isSameSeries ? [] : ['state'],
+  )}`
 }
 
 /**
  * Path to redirect a study route without a series to, or `undefined` when the
  * route already names a series or the study has no default series.
  *
- * Keeps the query and hash: `?gcp=` routes derived data to a secondary store
- * and `?access_token=` may carry the credentials, so dropping them changes
- * which servers the viewer talks to and how.
+ * Keeps the query and hash: `?gcp=` routes derived data to a secondary store,
+ * so dropping it changes which servers the viewer talks to. A sign-in
+ * response is dropped: the viewer renders only once sign-in has consumed it,
+ * and writing it back would replay the callback on reload.
  */
 export function defaultSeriesRedirectPath({
   defaultSeriesInstanceUID,
@@ -56,5 +68,5 @@ export function defaultSeriesRedirectPath({
     ...params,
     seriesInstanceUID: defaultSeriesInstanceUID,
   })
-  return `${path}${search}${hash}`
+  return `${path}${searchWithoutAuthResponse(search)}${hashWithoutAuthResponse(hash)}`
 }

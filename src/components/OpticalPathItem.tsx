@@ -15,7 +15,11 @@ import {
   getOpticalPathName,
   getOpticalPathSwatch,
 } from '../utils/opticalPath'
-import { maxValueForBitsAllocated } from '../utils/opticalPathLimits'
+import {
+  maxValueForBitsAllocated,
+  roundLimitForDisplay,
+  windowSliderBounds,
+} from '../utils/opticalPathLimits'
 import { getOpticalPathStyleSignature } from '../utils/opticalPathPartition'
 import { getSpecimenStains } from '../utils/specimen'
 import { areLayerItemPropsEqual } from '../utils/styleEquality'
@@ -40,11 +44,22 @@ export interface OpticalPathItemProps {
   isRemovable: boolean
   hasIccProfile?: boolean
   defaultStyle: OpticalPathStyle
+  /** Observed pixel range; sizes the window slider to the stored values */
+  pixelRange?: { min: number; max: number }
   onVisibilityChange: (change: {
     opticalPathIdentifier: string
     isVisible: boolean
   }) => void
   onStyleChange: (change: {
+    opticalPathIdentifier: string
+    styleOptions: OpticalPathStyleChange
+  }) => void
+  /**
+   * Live style while a slider is dragged. It must not refresh `defaultStyle`,
+   * since a changed `defaultStyle` resets the local slider value mid-drag.
+   * Falls back to `onStyleChange`.
+   */
+  onStylePreview?: (change: {
     opticalPathIdentifier: string
     styleOptions: OpticalPathStyleChange
   }) => void
@@ -67,8 +82,10 @@ function OpticalPathItem({
   isRemovable,
   hasIccProfile,
   defaultStyle,
+  pixelRange,
   onVisibilityChange,
   onStyleChange,
+  onStylePreview,
   onRemoval,
 }: OpticalPathItemProps): React.ReactElement {
   const identifier = opticalPath.identifier
@@ -87,7 +104,14 @@ function OpticalPathItem({
       resetKey,
     )
   /** Windowing needs live feedback on the slide while dragging */
-  const commitLive = useFrameThrottledCallback(commit)
+  const commitLive = useFrameThrottledCallback(
+    (styleOptions: OpticalPathStyleChange): void => {
+      ;(onStylePreview ?? onStyleChange)({
+        opticalPathIdentifier: identifier,
+        styleOptions,
+      })
+    },
+  )
   const previewLive = (change: OpticalPathStyleChange): void => {
     previewStyle(change)
     commitLive(change)
@@ -101,6 +125,13 @@ function OpticalPathItem({
     onPreview: (limitValues) => commitLive({ limitValues }),
     resetKey,
   })
+
+  const sliderBounds = windowSliderBounds({
+    bitsMax: maxValue,
+    pixelRange,
+    limitValues: limits.values,
+  })
+  const isWholeStep = sliderBounds.step >= 1
 
   const name = getOpticalPathName(opticalPath)
   /** Short label for AT / e2e (description or Brightfield / identifier). */
@@ -157,21 +188,31 @@ function OpticalPathItem({
                     Values of interest
                   </div>
                   <div className="flex items-center gap-2">
+                    {/**
+                     * Whole numbers while the slider moves in whole steps;
+                     * a fractional window takes decimals like the slider
+                     */}
                     <LimitInput
-                      integer
+                      integer={isWholeStep}
                       aria-label={`${a11yName} ${LIMIT_LABELS[0]}`}
                       min={0}
                       max={limits.values[1]}
-                      value={limits.values[0]}
+                      value={roundLimitForDisplay(
+                        limits.values[0],
+                        sliderBounds.step,
+                      )}
                       onCommit={limits.commitLower}
                     />
                     <span className="text-ink-faint">–</span>
                     <LimitInput
-                      integer
+                      integer={isWholeStep}
                       aria-label={`${a11yName} ${LIMIT_LABELS[1]}`}
                       min={limits.values[0]}
                       max={maxValue}
-                      value={limits.values[1]}
+                      value={roundLimitForDisplay(
+                        limits.values[1],
+                        sliderBounds.step,
+                      )}
                       onCommit={limits.commitUpper}
                     />
                   </div>
@@ -231,9 +272,9 @@ function OpticalPathItem({
           Window
           <Slider
             className="flex-1"
-            min={0}
-            max={maxValue}
-            step={1}
+            min={sliderBounds.min}
+            max={sliderBounds.max}
+            step={sliderBounds.step}
             value={limits.values}
             onValueChange={limits.preview}
             onValueCommit={limits.commit}

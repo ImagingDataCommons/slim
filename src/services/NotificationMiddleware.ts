@@ -90,6 +90,21 @@ export function notificationTypeForCategory(
     : NotificationType.CONSOLE
 }
 
+/**
+ * Whether a warning is about a request (retried XHRs, which are not shown).
+ * Arguments may be circular or hold BigInts, which JSON.stringify rejects; a
+ * warning must never throw from inside console.warn.
+ */
+function mentionsRequest(args: readonly unknown[]): boolean {
+  try {
+    return JSON.stringify(args).includes('request')
+  } catch {
+    return args.some(
+      (arg) => typeof arg === 'string' && arg.includes('request'),
+    )
+  }
+}
+
 class NotificationMiddleware extends PubSub {
   constructor() {
     super()
@@ -100,7 +115,7 @@ class NotificationMiddleware extends PubSub {
 
     const warn = console.warn
     console.warn = (...args: unknown[]): void => {
-      if (!JSON.stringify(args).includes('request')) {
+      if (!mentionsRequest(args)) {
         publishWarning(args)
       }
       warn.apply(console, args)
@@ -152,7 +167,8 @@ class NotificationMiddleware extends PubSub {
     this.publish(NotificationMiddlewareEvents.OnError, { source, error })
 
     if (import.meta.env.MODE === 'development') {
-      console.error(`A ${String(errorCategory)} error occurred: `, error)
+      /** Constant format string; the category may come from an external error */
+      console.error('A %s error occurred:', String(errorCategory), error)
     }
 
     if (notificationType !== NotificationType.TOAST) return

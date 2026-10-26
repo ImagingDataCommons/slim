@@ -6,7 +6,8 @@ import { Header, type ServerSelectionParams } from '../features/header'
 import type { AppInfo } from '../utils/appInfo'
 import type { ClientMapping } from './clientMapping'
 
-const PAGE_CONTENT_CLASS_NAME = 'flex-1 min-h-0 overflow-hidden flex flex-col'
+const PAGE_CONTENT_CLASS_NAME =
+  'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden'
 
 export interface PageOptions {
   showWorklistButton: boolean
@@ -44,7 +45,7 @@ export function AppPage({
 }: AppPageProps): JSX.Element {
   return (
     <AppShell>
-      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <Header
           app={app}
           user={user}

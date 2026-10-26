@@ -22,10 +22,11 @@ const isBlank = (value: string | undefined): boolean =>
  * `config` is whatever `config/<configName>.js` assigned to `window.config`,
  * so it is checked defensively. On `/projects/.../dicomStores/...` routes the
  * default server (no `storageClasses`) gets its URL from the route, so it
- * may leave `url` and `path` empty.
+ * may leave `url` and `path` empty. With `enableServerSelection` the user can
+ * pick the default server in the header, so it may be left empty too.
  */
 export function findConfigProblems(
-  config: Pick<AppConfig, 'servers'> | undefined,
+  config: Pick<AppConfig, 'servers' | 'enableServerSelection'> | undefined,
   configName: string,
   pathname = '',
 ): ConfigProblem[] {
@@ -48,9 +49,13 @@ export function findConfigProblems(
   }
   const envKey = ENV_URL_KEY_BY_CONFIG.get(configName)
   const isUrlFromRoute = isProjectsPath(pathname)
+  const canSelectServer = config.enableServerSelection === true
   return config.servers
     .filter((server) => isBlank(server.url) && isBlank(server.path))
-    .filter((server) => !(isUrlFromRoute && server.storageClasses == null))
+    .filter(
+      (server) =>
+        !((isUrlFromRoute || canSelectServer) && server.storageClasses == null),
+    )
     .map((server) => ({
       message: `The DICOMweb server "${server.id}" has no URL.`,
       hint:

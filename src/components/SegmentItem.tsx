@@ -39,6 +39,11 @@ export interface SegmentItemProps {
     segmentUID: string
     styleOptions: SegmentStyleChange
   }) => void
+  /** Live style while dragging; must not refresh defaultStyle */
+  onStylePreview?: (change: {
+    segmentUID: string
+    styleOptions: SegmentStyleChange
+  }) => void
   onClick: (segmentUID: string) => void
 }
 
@@ -55,6 +60,7 @@ function SegmentItem({
   defaultStyle,
   onVisibilityChange,
   onStyleChange,
+  onStylePreview,
   onClick,
 }: SegmentItemProps): React.ReactElement {
   /**
@@ -71,7 +77,14 @@ function SegmentItem({
     },
     commit,
   )
-  const commitLive = useFrameThrottledCallback(commit)
+  const commitLive = useFrameThrottledCallback(
+    (styleOptions: SegmentStyleChange): void => {
+      ;(onStylePreview ?? onStyleChange)({
+        segmentUID: segment.uid,
+        styleOptions,
+      })
+    },
+  )
   const previewLive = (change: SegmentStyleChange): void => {
     previewStyle(change)
     commitLive(change)

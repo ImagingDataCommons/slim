@@ -107,8 +107,12 @@ export function getDependencyVersion(
   const declared =
     packageJson.dependencies?.[name] ?? packageJson.devDependencies?.[name]
   if (declared === undefined) return 'unknown'
-  const version = declared.replace(/^[^0-9]*/, '')
-  return version !== '' ? version : 'unknown'
+  /** Git / URL / workspace specs are not publish versions */
+  if (/^(github:|git\+|https?:|file:|link:|workspace:)/i.test(declared)) {
+    return 'unknown'
+  }
+  const match = declared.match(/\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/)
+  return match?.[0] ?? 'unknown'
 }
 
 /** "chrome 128.0 · Mac OS", falling back to the raw user agent. */

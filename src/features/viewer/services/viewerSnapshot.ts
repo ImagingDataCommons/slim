@@ -64,6 +64,8 @@ export interface ViewerSnapshot {
     dmv.metadata.VLWholeSlideMicroscopyImage[]
   >
   opticalPathStyles: Readonly<Record<string, OpticalPathStyle>>
+  /** Observed pixel range of each optical path whose first frame loaded */
+  opticalPathPixelRanges: Readonly<Record<string, { min: number; max: number }>>
   hasIccProfiles: boolean
   isPaletteDisplayGammaCorrectionEnabled: boolean
 }
@@ -89,6 +91,7 @@ export const EMPTY_VIEWER_SNAPSHOT: ViewerSnapshot = {
   opticalPaths: [],
   opticalPathMetadata: {},
   opticalPathStyles: {},
+  opticalPathPixelRanges: {},
   hasIccProfiles: false,
   isPaletteDisplayGammaCorrectionEnabled: false,
 }
@@ -250,7 +253,23 @@ export function readViewerSnapshot(
         ...viewer.getOpticalPathStyle(identifier),
       })),
     ),
-    hasIccProfiles: viewer.getICCProfiles().length > 0,
+    opticalPathPixelRanges: reuseEqualStyles(
+      previous.opticalPathPixelRanges,
+      Object.fromEntries(
+        [...session.pixelStatistics].map(([identifier, { min, max }]) => [
+          identifier,
+          { min, max },
+        ]),
+      ),
+    ),
+    /**
+     * Sticky once true for this viewer generation. `getICCProfiles()` can
+     * briefly (or lastingly) return [] after a toggle reconfigure even when
+     * the slide still has profiles — that must not disable the ICC control.
+     */
+    hasIccProfiles:
+      (previous.generation === session.generation && previous.hasIccProfiles) ||
+      viewer.getICCProfiles().length > 0,
     isPaletteDisplayGammaCorrectionEnabled:
       viewer.getPaletteDisplayGammaCorrectionEnabled(),
   }

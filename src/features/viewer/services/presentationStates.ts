@@ -7,10 +7,12 @@ import type * as dwc from 'dicomweb-client'
 
 import type DicomWebManager from '../../../DicomWebManager'
 import type { Slide } from '../../../data/slides'
+import { StorageClasses } from '../../../data/uids'
 import { logger } from '../../../utils/logger'
 import { planDefaultOpticalPaths } from '../utils/opticalPathDefaults'
 import type { PixelStatistics } from '../utils/pixelStatistics'
 import {
+  createInOrderFirstMatch,
   matchBlendingItems,
   referencesSlideSeries,
   windowLimitValues,
@@ -30,15 +32,34 @@ export function loadPresentationStates({
   studyInstanceUID,
   slide,
   onPresentationState,
+  onDefaultPresentationState,
+  isCurrent = () => true,
 }: {
   client: DicomWebManager
   studyInstanceUID: string
   slide: Slide
+  /** Every state that applies to the slide, as it arrives */
   onPresentationState: (
     presentationState: PresentationState,
     index: number,
   ) => void
+  /**
+   * The slide's first state in study order, once every earlier state was
+   * retrieved and found to belong to another slide (or failed)
+   */
+  onDefaultPresentationState?: (presentationState: PresentationState) => void
+  /** False once the viewer that asked is gone; its errors are not shown */
+  isCurrent?: () => boolean
 }): void {
+  /** Reporting never throws into the slot bookkeeping */
+  const notify = (message: string): void => {
+    if (!isCurrent()) return
+    try {
+      notifyVisualizationError(message)
+    } catch (error: unknown) {
+      console.error(error)
+    }
+  }
   logger.log('search for Presentation State instances')
   client
     .searchForInstances({
@@ -46,9 +67,47 @@ export function loadPresentationStates({
       queryParams: { Modality: 'PR' },
     })
     .then((matchedInstances: dwc.api.Instance[] | null): void => {
-      ;(matchedInstances ?? []).forEach((rawInstance, index) => {
-        const { dataset } = dmv.metadata.formatMetadata(rawInstance)
-        const instance = dataset as dmv.metadata.Instance
+      const instances = matchedInstances ?? []
+      /**
+       * The default can be chosen from any slot's handler, including a
+       * failed retrieve's; one that cannot be applied is reported here
+       * rather than escaping that handler
+       */
+      const settle = createInOrderFirstMatch<PresentationState>(
+        instances.length,
+        (presentationState) => {
+          try {
+            onDefaultPresentationState?.(presentationState)
+          } catch (error: unknown) {
+            logger.error(
+              'failed to apply presentation state ' +
+                `"${presentationState.SOPInstanceUID}": `,
+              error,
+            )
+            notify('Presentation State could not be applied')
+          }
+        },
+      )
+      instances.forEach((rawInstance, index) => {
+        let instance: dmv.metadata.Instance
+        try {
+          instance = dmv.metadata.formatMetadata(rawInstance)
+            .dataset as dmv.metadata.Instance
+        } catch (error: unknown) {
+          /** One malformed search result must not stop the others */
+          logger.error('skip a malformed presentation state result: ', error)
+          settle(index)
+          return
+        }
+        /** Modality PR also matches grayscale, color and pseudocolor states */
+        if (
+          instance.SOPClassUID !== undefined &&
+          instance.SOPClassUID !==
+            StorageClasses.ADVANCED_BLENDING_PRESENTATION_STATE
+        ) {
+          settle(index)
+          return
+        }
         logger.log(`retrieve PR instance "${instance.SOPInstanceUID}"`)
         client
           .retrieveInstance({
@@ -66,6 +125,7 @@ export function loadPresentationStates({
                   'application of presentation states for color images ' +
                   'has not (yet) been implemented',
               )
+              settle(index)
               return
             }
             if (
@@ -76,23 +136,33 @@ export function loadPresentationStates({
                   `"${presentationState.SOPInstanceUID}"`,
               )
               onPresentationState(presentationState, index)
+              settle(index, presentationState)
+            } else {
+              settle(index)
             }
           })
           .catch((error: unknown) => {
-            notifyVisualizationError('Presentation State could not be loaded')
-            logger.error(
-              'failed to load presentation state ' +
-                `of SOP instance "${instance.SOPInstanceUID}" ` +
-                `of series "${instance.SeriesInstanceUID}" ` +
-                `of study "${studyInstanceUID}": `,
-              error,
-            )
+            /** The slot settles even if reporting the failure throws */
+            try {
+              notify('Presentation State could not be loaded')
+              logger.error(
+                'failed to load presentation state ' +
+                  `of SOP instance "${instance.SOPInstanceUID}" ` +
+                  `of series "${instance.SeriesInstanceUID}" ` +
+                  `of study "${studyInstanceUID}": `,
+                error,
+              )
+            } catch (reportError: unknown) {
+              console.error(reportError)
+            } finally {
+              settle(index)
+            }
           })
       })
     })
     .catch((error: unknown) => {
       logger.error(error)
-      notifyVisualizationError('Presentation State could not be loaded')
+      notify('Presentation State could not be loaded')
     })
 }
 

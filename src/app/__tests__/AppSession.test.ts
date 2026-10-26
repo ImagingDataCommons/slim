@@ -227,6 +227,17 @@ describe('AppSession', () => {
   })
 
   describe('server selection', () => {
+    it('starts with a default server that has no URL when selection is on', () => {
+      const config = createConfig({
+        servers: [{ id: 'primary', write: false }],
+        enableServerSelection: true,
+      })
+      const { session } = setup(config)
+
+      expect(config.servers[0].url).toBe('')
+      expect(session.getSnapshot().clients.default).toBeDefined()
+    })
+
     it('re-applies a legacy stored URL without a mode as custom', () => {
       window.localStorage.setItem(SERVER_URL_STORAGE_KEY, CUSTOM_URL)
       const { session } = setup(createConfig())
@@ -363,6 +374,24 @@ describe('AppSession', () => {
         status: 503,
         message: 'Down for maintenance',
       })
+    })
+
+    it('notifies a 500 once whatever the number of configured messages', () => {
+      const { session } = setup(createConfig())
+      vi.mocked(NotificationMiddleware.onError).mockClear()
+      session.handleDicomWebError(
+        { request: new XMLHttpRequest(), response: '', status: 500 },
+        {
+          id: 'primary',
+          write: false,
+          errorMessages: [
+            { status: 401, message: 'Sign in' },
+            { status: 403, message: 'Forbidden' },
+            { status: 404, message: 'Not found' },
+          ],
+        },
+      )
+      expect(NotificationMiddleware.onError).toHaveBeenCalledTimes(1)
     })
   })
 })

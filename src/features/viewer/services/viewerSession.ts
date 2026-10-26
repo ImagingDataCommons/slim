@@ -38,6 +38,12 @@ export interface ViewerSession {
   >
   /** Set once the viewers were cleaned up; late async work must stop */
   isDestroyed: boolean
+  /**
+   * Set once the user changed optical paths or picked or reset a presentation
+   * state, so a presentation state that arrives later is not auto-applied
+   * over those choices
+   */
+  hasUserDisplayChanges: boolean
 }
 
 /**
@@ -69,7 +75,6 @@ export function createViewerSession({
   preload,
   clustering,
   annotationConfig,
-  defaultRoiStyle,
 }: {
   generation: number
   slide: Slide
@@ -77,7 +82,6 @@ export function createViewerSession({
   preload: boolean
   clustering: ClusteringSettings
   annotationConfig: AnnotationConfig
-  defaultRoiStyle: dmv.viewer.ROIStyleOptions
 }): ViewerSession {
   /** An undefined threshold lets DMV use its automatic (zoom-based) default */
   const { volumeViewer, labelViewer } = constructViewers({
@@ -105,12 +109,12 @@ export function createViewerSession({
       roiStyles: new RoiStyleRegistry({
         configuredStyles: annotationConfig.configuredStyles,
         findingKeys: annotationConfig.findings.map(codedConceptKey),
-        defaultStyle: defaultRoiStyle,
       }),
       loadingFrames: new Set(),
       pixelStatistics: new Map(),
       annotationGroupMetadata: new Map(),
       isDestroyed: false,
+      hasUserDisplayChanges: false,
     }
   } catch (error) {
     releaseViewer(volumeViewer)

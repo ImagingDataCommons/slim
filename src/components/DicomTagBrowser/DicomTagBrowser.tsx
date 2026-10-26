@@ -1,25 +1,11 @@
-import {
-  type JSX,
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useState,
-} from 'react'
+/** biome-ignore-all lint/a11y/noRedundantRoles: the table's display overrides (flex/block/grid) drop native table semantics in Safari/VoiceOver, so the roles are restated */
+import { type JSX, useId } from 'react'
 
+import { useLayoutMode } from '../../contexts/LayoutModeContext'
 import type DicomWebManager from '../../DicomWebManager'
-import { useActiveSeries } from '../../hooks/useActiveSeries'
-import { useDebounce } from '../../hooks/useDebounce'
-import { useSlides } from '../../hooks/useSlides'
 import { cn } from '../../lib/utils'
-import DicomMetadataStore, {
-  EVENTS,
-  type Series,
-} from '../../services/DICOMMetadataStore'
-import { formatGroupedNumber } from '../../utils/displayFormat'
 import { Button } from '../ui/button'
 import { SlimDialogFooter } from '../ui/dialog'
-import { Icon } from '../ui/icon'
 import { SearchInput } from '../ui/search-input'
 import {
   Select,
@@ -29,20 +15,9 @@ import {
   SelectValue,
 } from '../ui/select'
 import { Slider } from '../ui/slider'
-import {
-  buildDisplaySets,
-  buildTagTree,
-  collectExpandableKeys,
-  countRows,
-  filterTagTree,
-  getInstanceDimensions,
-  getSeriesLabel,
-  getSortedTags,
-  sortInstancesByNumber,
-  type TagTreeNode,
-  toggleSetValue,
-  toTagRecord,
-} from './dicomTagUtils'
+import { type DisplaySet, getSeriesLabel } from './dicomTagUtils'
+import { TAG_GRID_COLUMNS, TagRow } from './TagRow'
+import { useDicomTagBrowserState } from './useDicomTagBrowserState'
 
 export interface DicomTagBrowserProps {
   clients: { [key: string]: DicomWebManager }
@@ -53,87 +28,10 @@ export interface DicomTagBrowserProps {
   onDone?: () => void
 }
 
-const TAG_GRID_COLUMNS = 'grid-cols-[150px_52px_minmax(0,1fr)_minmax(0,1.4fr)]'
-
-const NO_KEYS: ReadonlySet<string> = new Set()
-
-/** Recursive tag row with expandable sequence items */
-interface TagRowProps {
-  item: TagTreeNode
-  depth: number
-  expandedKeys: ReadonlySet<string>
-  onToggle: (key: string) => void
-}
-
-const TagRow = ({
-  item,
-  depth,
-  expandedKeys,
-  onToggle,
-}: TagRowProps): JSX.Element => {
-  const hasChildren = item.children !== undefined && item.children.length > 0
-  const isExpanded = expandedKeys.has(item.key)
-
-  const rowClassName = cn(
-    'grid min-h-control w-full items-center gap-3 border-b border-line-row px-5 text-left hover:bg-selected',
-    TAG_GRID_COLUMNS,
-    depth > 0 ? 'bg-subtle/60' : 'bg-panel',
-  )
-
-  return (
-    <>
-      <tr className={rowClassName}>
-        <td
-          className="flex items-center gap-0.5 font-mono text-12 text-ink-secondary"
-          style={{ paddingLeft: depth * 18 }}
-        >
-          <span className="w-4 flex-none text-ink-muted">
-            {hasChildren ? (
-              <button
-                type="button"
-                aria-expanded={isExpanded}
-                aria-label={`${item.tag} ${item.keyword}`.trim()}
-                onClick={() => onToggle(item.key)}
-                className="grid place-items-center rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
-              >
-                <Icon
-                  name={isExpanded ? 'expand_more' : 'chevron_right'}
-                  size={16}
-                />
-              </button>
-            ) : null}
-          </span>
-          {item.tag}
-        </td>
-        <td>
-          {item.vr !== '' && (
-            <span className="rounded-sm bg-chip px-[5px] py-0.5 font-mono text-11 font-medium text-chip-foreground">
-              {item.vr}
-            </span>
-          )}
-        </td>
-        <td className="truncate font-medium text-ink">{item.keyword}</td>
-        <td className="break-all py-1.5 font-mono text-12 text-ink-body">
-          {item.value}
-        </td>
-      </tr>
-      {hasChildren &&
-        isExpanded &&
-        item.children?.map((child) => (
-          <TagRow
-            key={child.key}
-            item={child}
-            depth={depth + 1}
-            expandedKeys={expandedKeys}
-            onToggle={onToggle}
-          />
-        ))}
-    </>
-  )
-}
-
-function readStudySeries(studyInstanceUID: string): Series[] {
-  return [...(DicomMetadataStore.getStudy(studyInstanceUID)?.series ?? [])]
+/** Full series label for the trigger and item textValue (avoids Radix truncating complex ItemText). */
+function seriesTriggerLabel(displaySet: DisplaySet): string {
+  const { label, description } = getSeriesLabel(displaySet)
+  return description !== '' ? `${label} — ${description}` : label
 }
 
 const DicomTagBrowser = ({
@@ -142,166 +40,88 @@ const DicomTagBrowser = ({
   seriesInstanceUID = '',
   onDone,
 }: DicomTagBrowserProps): JSX.Element => {
+  const { compactChrome } = useLayoutMode()
   const id = useId()
   const seriesLabelId = `${id}-series`
   const instanceLabelId = `${id}-instance`
 
-  const { slides, isLoading } = useSlides({ clients, studyInstanceUID })
-  const activeSeriesUIDs = useActiveSeries()
-  const [studySeries, setStudySeries] = useState<Series[]>(() =>
-    readStudySeries(studyInstanceUID),
-  )
-  const [selectedSeriesUID, setSelectedSeriesUID] = useState(seriesInstanceUID)
-  const [instanceNumber, setInstanceNumber] = useState(1)
-  const [searchInput, setSearchInput] = useState('')
-  /** Manual expansion, valid only for the filter query it was made under */
-  const [expansion, setExpansion] = useState<{
-    query: string
-    keys: ReadonlySet<string>
-  }>({ query: '', keys: NO_KEYS })
-
-  const filterQuery = useDebounce(searchInput, 300)
-
-  useEffect(() => {
-    const handler = (): void => {
-      setStudySeries(readStudySeries(studyInstanceUID))
-    }
-    const seriesAddedSubscription = DicomMetadataStore.subscribe(
-      EVENTS.SERIES_ADDED,
-      handler,
-    )
-    const instancesAddedSubscription = DicomMetadataStore.subscribe(
-      EVENTS.INSTANCES_ADDED,
-      handler,
-    )
-    handler()
-    return () => {
-      seriesAddedSubscription.unsubscribe()
-      instancesAddedSubscription.unsubscribe()
-    }
-  }, [studyInstanceUID])
-
-  const displaySets = useMemo(
-    () => buildDisplaySets(slides, studySeries),
-    [slides, studySeries],
-  )
-
-  /** Falls back to the first series until the selected one is loaded */
-  const selectedDisplaySet =
-    displaySets.find(
-      (displaySet) => displaySet.SeriesInstanceUID === selectedSeriesUID,
-    ) ?? displaySets[0]
-
-  const sortedImages = useMemo(
-    () =>
-      selectedDisplaySet !== undefined
-        ? sortInstancesByNumber(selectedDisplaySet.images)
-        : [],
-    [selectedDisplaySet],
-  )
-  const totalInstances = Math.max(sortedImages.length, 1)
-  const currentInstanceNumber = Math.min(instanceNumber, totalInstances)
-  const currentImage = sortedImages[currentInstanceNumber - 1]
-  const currentMetadata = useMemo(
-    () => (currentImage !== undefined ? toTagRecord(currentImage) : undefined),
-    [currentImage],
-  )
-
-  const tableData = useMemo(
-    () =>
-      currentMetadata !== undefined
-        ? buildTagTree(getSortedTags(currentMetadata))
-        : [],
-    [currentMetadata],
-  )
-  const filterResult = useMemo(
-    () => filterTagTree(tableData, filterQuery),
-    [tableData, filterQuery],
-  )
-  const filteredData = filterResult.tree
-  const isFiltering = filterQuery.trim() !== ''
-
-  const expandedKeys: ReadonlySet<string> =
-    expansion.query === filterQuery
-      ? expansion.keys
-      : isFiltering
-        ? filterResult.matchedKeys
-        : NO_KEYS
-
-  const handleToggleExpand = useCallback(
-    (key: string) => {
-      setExpansion({
-        query: filterQuery,
-        keys: toggleSetValue(expandedKeys, key),
-      })
-    },
-    [filterQuery, expandedKeys],
-  )
-
-  const dimensions = getInstanceDimensions(currentMetadata)
-  const instanceLabel =
-    dimensions?.columns !== undefined && dimensions.rows !== undefined
-      ? `${formatGroupedNumber(dimensions.columns)} × ${formatGroupedNumber(dimensions.rows)} px`
-      : ''
-  const selectedModality = selectedDisplaySet?.Modality ?? ''
-  const hasMultipleInstances = sortedImages.length > 1
+  const {
+    isLoading,
+    activeSeriesUIDs,
+    displaySets,
+    selectedDisplaySet,
+    setSelectedSeriesUID,
+    setInstanceNumber,
+    currentInstanceNumber,
+    totalInstances,
+    hasMultipleInstances,
+    instanceLabel,
+    searchInput,
+    setSearchInput,
+    filteredData,
+    isFiltering,
+    expandedKeys,
+    handleToggleExpand,
+    collapseAll,
+    expandAll,
+    attributeCount,
+  } = useDicomTagBrowserState({
+    clients,
+    studyInstanceUID,
+    seriesInstanceUID,
+  })
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="grid flex-none grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] gap-3 border-b border-line-soft px-5 py-3.5">
+      <div
+        className={cn(
+          'grid flex-none gap-3 border-b border-line-soft px-5 py-3.5',
+          compactChrome
+            ? 'grid-cols-1'
+            : 'grid-cols-[minmax(0,1.6fr)_minmax(0,0.9fr)_minmax(0,1fr)]',
+        )}
+      >
         <div className="flex min-w-0 flex-col gap-1.5 text-12 text-ink-muted">
           <span id={seriesLabelId}>Series</span>
           <Select
             value={selectedDisplaySet?.SeriesInstanceUID ?? ''}
-            onValueChange={(value) => {
-              setSelectedSeriesUID(value)
-              setInstanceNumber(1)
-            }}
+            onValueChange={setSelectedSeriesUID}
             disabled={isLoading || displaySets.length === 0}
           >
-            <SelectTrigger className="h-9" aria-labelledby={seriesLabelId}>
-              <span className="flex min-w-0 items-center gap-2">
-                {selectedModality !== '' && (
-                  <span className="rounded-sm bg-chip px-[5px] py-0.5 font-mono text-11 font-semibold text-chip-foreground">
-                    {selectedModality}
-                  </span>
-                )}
-                <span className="truncate">
-                  <SelectValue
-                    placeholder={
-                      isLoading ? 'Loading series…' : 'Select a series'
-                    }
-                  />
-                </span>
-              </span>
+            <SelectTrigger
+              className="h-auto min-h-9 whitespace-normal py-1.5 [&>span]:line-clamp-none [&>span]:whitespace-normal [&>span]:wrap-break-word"
+              aria-labelledby={seriesLabelId}
+              title={
+                selectedDisplaySet !== undefined
+                  ? seriesTriggerLabel(selectedDisplaySet)
+                  : undefined
+              }
+            >
+              <SelectValue
+                placeholder={isLoading ? 'Loading series…' : 'Select a series'}
+              />
             </SelectTrigger>
             <SelectContent className="max-w-[560px]">
               {displaySets.map((displaySet) => {
-                const { label, description } = getSeriesLabel(displaySet)
+                const textValue = seriesTriggerLabel(displaySet)
                 const isActive = activeSeriesUIDs.has(
                   displaySet.SeriesInstanceUID,
                 )
+                /**
+                 * Plain-text ItemText so the trigger SelectValue mirrors the
+                 * full label. Complex children collapse to "SM…" under
+                 * line-clamp on the trigger.
+                 */
                 return (
                   <SelectItem
                     key={displaySet.SeriesInstanceUID}
                     value={displaySet.SeriesInstanceUID}
+                    textValue={textValue}
+                    title={
+                      isActive ? `${textValue} (active in viewport)` : textValue
+                    }
                   >
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span className="truncate">
-                        {label}
-                        {description !== '' ? ` — ${description}` : ''}
-                      </span>
-                      {isActive && (
-                        <>
-                          <Icon
-                            name="visibility"
-                            size={15}
-                            className="text-ink-muted"
-                          />
-                          <span className="sr-only">(active in viewport)</span>
-                        </>
-                      )}
-                    </span>
+                    {textValue}
                   </SelectItem>
                 )
               })}
@@ -344,45 +164,83 @@ const DicomTagBrowser = ({
             onValueChange={setSearchInput}
             placeholder="Tag, keyword or value"
             clearable
+            className={compactChrome ? 'h-11' : undefined}
+            inputClassName={compactChrome ? 'text-[16px]' : undefined}
           />
         </div>
       </div>
 
+      {/**
+       * Explicit roles: the display overrides below (flex/block/grid) make
+       * Safari/VoiceOver drop the native table semantics otherwise.
+       */}
       <table
+        role="table"
         aria-label="DICOM tags"
         className="flex min-h-0 w-full flex-1 flex-col border-collapse"
       >
-        <thead className="block flex-none">
+        <thead
+          role="rowgroup"
+          className={cn('block flex-none', compactChrome && 'sr-only')}
+        >
           <tr
+            role="row"
             className={cn(
               'grid h-9 items-center gap-3 border-b border-line bg-subtle px-5 text-11 font-semibold uppercase leading-none tracking-wider text-ink-muted',
               TAG_GRID_COLUMNS,
             )}
           >
-            <th scope="col" className="text-left font-semibold">
+            <th
+              role="columnheader"
+              scope="col"
+              className="text-left font-semibold"
+            >
               Tag
             </th>
-            <th scope="col" className="text-left font-semibold">
+            <th
+              role="columnheader"
+              scope="col"
+              className="text-left font-semibold"
+            >
               VR
             </th>
-            <th scope="col" className="text-left font-semibold">
+            <th
+              role="columnheader"
+              scope="col"
+              className="text-left font-semibold"
+            >
               Keyword
             </th>
-            <th scope="col" className="text-left font-semibold">
+            <th
+              role="columnheader"
+              scope="col"
+              className="text-left font-semibold"
+            >
               Value
             </th>
           </tr>
         </thead>
-        <tbody className="block h-[52vh] min-h-0 flex-1 overflow-auto">
+        <tbody
+          role="rowgroup"
+          className="block h-[52vh] min-h-0 flex-1 overflow-auto"
+        >
           {isLoading ? (
-            <tr>
-              <td colSpan={4} className="px-5 py-16 text-center text-ink-muted">
+            <tr role="row">
+              <td
+                role="cell"
+                colSpan={4}
+                className="px-5 py-16 text-center text-ink-muted"
+              >
                 Loading…
               </td>
             </tr>
           ) : filteredData.length === 0 ? (
-            <tr>
-              <td colSpan={4} className="px-5 py-16 text-center text-ink-muted">
+            <tr role="row">
+              <td
+                role="cell"
+                colSpan={4}
+                className="px-5 py-16 text-center text-ink-muted"
+              >
                 {isFiltering ? 'No matching tags found' : 'No tags available'}
               </td>
             </tr>
@@ -400,31 +258,36 @@ const DicomTagBrowser = ({
         </tbody>
       </table>
 
-      <SlimDialogFooter className="justify-start pl-5 text-12 text-ink-muted">
-        <span>{countRows(filteredData, expandedKeys)} attributes</span>
-        <span className="flex-1" />
+      <SlimDialogFooter
+        className={cn(
+          'justify-start pl-5 text-12 text-ink-muted',
+          compactChrome && 'flex-wrap',
+        )}
+      >
+        <span className={compactChrome ? 'w-full pb-1' : undefined}>
+          {attributeCount} attributes
+        </span>
+        {!compactChrome && <span className="flex-1" />}
         <Button
           variant="outline"
-          className="text-ink"
-          onClick={() => setExpansion({ query: filterQuery, keys: NO_KEYS })}
+          className={cn('text-ink', compactChrome && 'min-h-11')}
+          onClick={collapseAll}
           disabled={expandedKeys.size === 0}
         >
           Collapse all
         </Button>
         <Button
           variant="outline"
-          className="text-ink"
-          onClick={() =>
-            setExpansion({
-              query: filterQuery,
-              keys: new Set(collectExpandableKeys(filteredData)),
-            })
-          }
+          className={cn('text-ink', compactChrome && 'min-h-11')}
+          onClick={expandAll}
         >
           Expand all
         </Button>
         {onDone !== undefined && (
-          <Button onClick={onDone} className="px-4 font-semibold">
+          <Button
+            onClick={onDone}
+            className={cn('px-4 font-semibold', compactChrome && 'min-h-11')}
+          >
             Done
           </Button>
         )}

@@ -5,24 +5,27 @@ import type * as dmv from 'dicom-microscopy-viewer'
 import { codedConceptKey } from '../../../utils/dicom/codedConcept'
 import { findContentItemsByName } from '../../../utils/sr'
 
-/** {@link codedConceptKey} of the ROI's finding, if it has one */
+const FINDING = new dcmjs.sr.coding.CodedConcept({
+  value: '121071',
+  meaning: 'Finding',
+  schemeDesignator: 'DCM',
+})
+
+/**
+ * {@link codedConceptKey} of the ROI's finding, if it has one. Runs on every
+ * visibility and style pass, so a missing finding is not logged here; the
+ * SR parser already reports it once per measurement group.
+ */
 export const getRoiKey = (
   roi: Pick<dmv.roi.ROI, 'uid' | 'evaluations'>,
 ): string | undefined => {
-  const matches = findContentItemsByName({
+  const [finding] = findContentItemsByName({
     content: roi.evaluations,
-    name: new dcmjs.sr.coding.CodedConcept({
-      value: '121071',
-      meaning: 'Finding',
-      schemeDesignator: 'DCM',
-    }),
+    name: FINDING,
   })
-  if (matches.length === 0) {
-    console.warn(`no finding found for ROI ${roi.uid}`)
-    return
-  }
-  const finding = matches[0] as dcmjs.sr.valueTypes.CodeContentItem
-  return codedConceptKey(finding.ConceptCodeSequence[0])
+  const value = (finding as dcmjs.sr.valueTypes.CodeContentItem | undefined)
+    ?.ConceptCodeSequence?.[0]
+  return value !== undefined ? codedConceptKey(value) : undefined
 }
 
 /**
@@ -86,32 +89,36 @@ export const formatRoiRemovalMessage = (count: number): string =>
   count === 1 ? 'Annotation was removed' : `${count} annotations were removed`
 
 /** Alpha of the default ROI fill, derived from the stroke color. */
-export const DEFAULT_ROI_FILL_ALPHA = 0.2
+export const DEFAULT_ROI_FILL_ALPHA = 0.35
 
 /**
  * Default style for ROIs without a configured finding style, built from the
- * user's stroke preferences (RGB color, width in px).
+ * user's stroke / fill preferences. Uses {@link formatRoiStyle} so point
+ * markers get the same stroke as polygons (DMV/OpenLayers expects it).
  */
 export const buildDefaultRoiStyle = ({
   strokeColor,
   strokeWidth,
   radius,
+  fill = true,
+  fillOpacity = DEFAULT_ROI_FILL_ALPHA,
 }: {
   strokeColor: number[]
   strokeWidth: number
   radius: number
+  /** When false, the ROI interior is fully transparent */
+  fill?: boolean
+  /** Fill alpha in `0…1` when fill is enabled */
+  fillOpacity?: number
 }): dmv.viewer.ROIStyleOptions => {
   const rgb = strokeColor.slice(0, 3)
-  return {
-    stroke: { color: rgb, width: strokeWidth },
-    fill: { color: [...rgb, DEFAULT_ROI_FILL_ALPHA] },
-    image: {
-      circle: {
-        fill: { color: rgb },
-        radius,
-      },
-    },
-  }
+  const alpha = fill ? Math.min(1, Math.max(0, fillOpacity)) : 0
+  return formatRoiStyle({
+    /** Explicit alpha so OL never treats stroke/fill channels differently */
+    stroke: { color: [...rgb, 1], width: strokeWidth },
+    fill: { color: [...rgb, alpha] },
+    radius,
+  })
 }
 
 /**

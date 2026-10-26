@@ -1,11 +1,11 @@
-import { useCallback, useLayoutEffect, useRef } from 'react'
+import { useEffectEvent, useLayoutEffect, useRef } from 'react'
 
 import { subscribeDomEvents } from '../services/dmvEvents'
 import {
+  isInsideDialog,
   shortcutForKeyEvent,
   type ViewerShortcutAction,
 } from '../utils/keyboardShortcuts'
-import { useLatestRef } from './useLatestRef'
 
 export interface HeldKeys {
   /** Whether Shift is held, for additive ROI selection */
@@ -20,7 +20,7 @@ export function useHeldKeys(): HeldKeys {
 
   useLayoutEffect(() => {
     const keysDown = keysDownRef.current
-    return subscribeDomEvents(document.body, [
+    const unsubscribeBody = subscribeDomEvents(document.body, [
       [
         'keyup',
         (event) => {
@@ -34,36 +34,76 @@ export function useHeldKeys(): HeldKeys {
         },
       ],
     ])
+    /** A key released while another window has focus sends no keyup here */
+    const unsubscribeWindow = subscribeDomEvents(window, [
+      [
+        'blur',
+        () => {
+          keysDown.clear()
+        },
+      ],
+    ])
+    return () => {
+      unsubscribeBody()
+      unsubscribeWindow()
+    }
   }, [])
 
-  const isShiftDown = useCallback(
-    (): boolean => keysDownRef.current.has('Shift'),
-    [],
-  )
-  return { isShiftDown }
+  return {
+    isShiftDown: (): boolean => keysDownRef.current.has('Shift'),
+  }
 }
 
 /**
  * Run viewer shortcuts on key release, listening on `document.body` like the
- * DMV viewport does.
+ * DMV viewport does. `useEffectEvent` keeps the latest handler without
+ * re-subscribing.
  */
 export function useKeyboardShortcuts(
   onShortcut: (action: ViewerShortcutAction) => void,
 ): void {
-  const onShortcutRef = useLatestRef(onShortcut)
-
-  useLayoutEffect(
-    () =>
-      subscribeDomEvents(document.body, [
-        [
-          'keyup',
-          (event) => {
-            if (!(event instanceof KeyboardEvent)) return
-            const action = shortcutForKeyEvent(event)
-            if (action !== undefined) onShortcutRef.current(action)
-          },
-        ],
-      ]),
-    [onShortcutRef],
+  const onShortcutEvent = useEffectEvent(
+    (action: ViewerShortcutAction): void => {
+      onShortcut(action)
+    },
   )
+
+  useLayoutEffect(() => {
+    /**
+     * A dialog closes on Escape key-down, so its key-up lands outside it;
+     * that Escape answered the dialog and must not also cancel the tool
+     */
+    let isEscapeForDialog = false
+    return subscribeDomEvents(document.body, [
+      [
+        'keydown',
+        (event) => {
+          if (!(event instanceof KeyboardEvent) || event.key !== 'Escape') {
+            return
+          }
+          isEscapeForDialog = isInsideDialog(event.target)
+        },
+      ],
+      [
+        'keyup',
+        (event) => {
+          if (!(event instanceof KeyboardEvent)) return
+          const action = shortcutForKeyEvent(event)
+          if (action === undefined) return
+          if (action === 'cancel') {
+            const wasForDialog = isEscapeForDialog
+            isEscapeForDialog = false
+            if (wasForDialog || isInsideDialog(event.target)) return
+          } else if (isInsideDialog(event.target)) {
+            /**
+             * A dialog owns the keyboard; an open modal traps focus, so its
+             * keys always come from inside it
+             */
+            return
+          }
+          onShortcutEvent(action)
+        },
+      ],
+    ])
+  }, [])
 }

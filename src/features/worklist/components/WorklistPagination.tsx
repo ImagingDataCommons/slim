@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../../components/ui/select'
+import { useLayoutMode } from '../../../contexts/LayoutModeContext'
 import { cn } from '../../../lib/utils'
 import {
   clampPageIndex,
@@ -35,6 +36,7 @@ export function WorklistPagination({
   pageSizeOptions = [20, 50, 100, 200, 500],
   className,
 }: WorklistPaginationProps): React.ReactElement {
+  const { compactChrome } = useLayoutMode()
   const { pageIndex, pageSize } = pagination
   const { pageCount, startItem, endItem } = getPageRange(
     pageIndex,
@@ -51,37 +53,41 @@ export function WorklistPagination({
   return (
     <div
       className={cn(
-        'flex h-10 flex-none items-center gap-3 border-t border-line pl-5 pr-4 text-12.5 text-ink-muted',
+        'flex h-10 flex-none items-center gap-3 border-t border-line pl-5 pr-4 text-12.5 text-ink-muted max-md:h-11 max-md:pl-3 max-md:pr-3',
         className,
       )}
     >
       <div>
-        Showing {startItem}–{endItem} of {totalCount}
+        {compactChrome
+          ? `${startItem}–${endItem} of ${totalCount}`
+          : `Showing ${startItem}–${endItem} of ${totalCount}`}
       </div>
       <div className="flex-1" />
-      <div className="flex items-center gap-1.5">
-        Rows per page
-        <Select
-          value={String(pageSize)}
-          onValueChange={(value) =>
-            onPaginationChange({ pageIndex: 0, pageSize: Number(value) })
-          }
-        >
-          <SelectTrigger
-            aria-label="Rows per page"
-            className="h-[30px] w-[68px] rounded-md pl-2.5 pr-1.5 text-ink"
+      {!compactChrome && (
+        <div className="flex items-center gap-1.5">
+          Rows per page
+          <Select
+            value={String(pageSize)}
+            onValueChange={(value) =>
+              onPaginationChange({ pageIndex: 0, pageSize: Number(value) })
+            }
           >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {pageSizeOptions.map((size) => (
-              <SelectItem key={size} value={String(size)}>
-                {size}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+            <SelectTrigger
+              aria-label="Rows per page"
+              className="h-[30px] w-[68px] rounded-md pl-2.5 pr-1.5 text-ink"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {pageSizeOptions.map((size) => (
+                <SelectItem key={size} value={String(size)}>
+                  {size}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       <nav aria-label="Pagination" className="flex gap-1">
         <Button
           variant="outline"
@@ -89,37 +95,38 @@ export function WorklistPagination({
           aria-label="Previous page"
           disabled={pageIndex === 0}
           onClick={() => goTo(pageIndex - 1)}
-          className={ARROW_BUTTON}
+          className={cn(ARROW_BUTTON, compactChrome && 'min-h-11 min-w-11')}
         >
           <Icon name="chevron_left" size={18} />
         </Button>
-        {getVisiblePages(pageIndex, pageCount).map((page, position, pages) =>
-          page === null ? (
-            <span
-              key={`gap-after-${String(pages[position - 1])}`}
-              className="grid h-[30px] w-5 place-items-center text-ink-faint"
-            >
-              …
-            </span>
-          ) : (
-            <Button
-              key={page}
-              variant={page === pageIndex ? 'selected' : 'outline'}
-              size="page"
-              aria-current={page === pageIndex ? 'page' : undefined}
-              onClick={() => goTo(page)}
-            >
-              {page + 1}
-            </Button>
-          ),
-        )}
+        {!compactChrome &&
+          getVisiblePages(pageIndex, pageCount).map((page, position, pages) =>
+            page === null ? (
+              <span
+                key={`gap-after-${String(pages[position - 1])}`}
+                className="grid h-[30px] w-5 place-items-center text-ink-faint"
+              >
+                …
+              </span>
+            ) : (
+              <Button
+                key={page}
+                variant={page === pageIndex ? 'selected' : 'outline'}
+                size="page"
+                aria-current={page === pageIndex ? 'page' : undefined}
+                onClick={() => goTo(page)}
+              >
+                {page + 1}
+              </Button>
+            ),
+          )}
         <Button
           variant="outline"
           size="page"
           aria-label="Next page"
           disabled={pageIndex >= pageCount - 1}
           onClick={() => goTo(pageIndex + 1)}
-          className={ARROW_BUTTON}
+          className={cn(ARROW_BUTTON, compactChrome && 'min-h-11 min-w-11')}
         >
           <Icon name="chevron_right" size={18} />
         </Button>

@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test'
+import { type Row, sortingFns } from '@tanstack/react-table'
 
 import { test } from './fixtures'
 import { slidePanel } from './helpers'
@@ -11,15 +12,18 @@ function rows(page: Page) {
 async function openWorklist(page: Page): Promise<void> {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Studies' })).toBeVisible()
-  await expect(rows(page).first()).toBeVisible({ timeout: 60_000 })
+  /**
+   * A study link, not just a row: the loading placeholder and the empty
+   * state are rows too
+   */
+  await expect(rows(page).first().getByRole('link')).toBeVisible({
+    timeout: 60_000,
+  })
 }
 
 test.describe('Worklist', () => {
   test('W1 lists slide microscopy studies with a count', async ({ page }) => {
     await openWorklist(page)
-    await expect(
-      page.getByText(/\d+ slide microscopy stud(y|ies)/),
-    ).toBeVisible()
     await expect(rows(page)).toHaveCount(20)
     await expect(page.getByText(/Showing 1–20 of \d+/)).toBeVisible()
   })
@@ -32,13 +36,18 @@ test.describe('Worklist', () => {
     await page
       .getByRole('searchbox', { name: 'Search studies' })
       .fill(patientId)
-    await expect(page.getByText(/No studies match/)).toHaveCount(0)
     await expect(rows(page).first().getByRole('cell').nth(1)).toHaveText(
       patientId,
     )
-    for (const row of await rows(page).all()) {
-      await expect(row).toContainText(patientId)
-    }
+    /** Every listed row matches once the filter applied, not just the first */
+    await expect
+      .poll(async () => {
+        const texts = await rows(page).allInnerTexts()
+        return (
+          texts.length > 0 && texts.every((text) => text.includes(patientId))
+        )
+      })
+      .toBe(true)
   })
 
   /** IDC returns at most 100 studies per query, so this needs the server search */
@@ -63,7 +72,14 @@ test.describe('Worklist', () => {
     const ascending = await Promise.all(
       (await patientIds()).map((cell) => cell.innerText()),
     )
-    expect(ascending).toEqual([...ascending].sort((a, b) => a.localeCompare(b)))
+    /** The table's own comparator, so IDs like X-2 and X-10 order the same */
+    const byPatientId = (a: string, b: string): number =>
+      sortingFns.alphanumeric(
+        { getValue: () => a } as unknown as Row<unknown>,
+        { getValue: () => b } as unknown as Row<unknown>,
+        'PatientID',
+      )
+    expect(ascending).toEqual([...ascending].sort(byPatientId))
     await header.click()
     const descending = await Promise.all(
       (await patientIds()).map((cell) => cell.innerText()),
@@ -179,9 +195,31 @@ test.describe('Worklist', () => {
       await page.getByRole('button', { name: 'Contains' }).click()
       await page.getByRole('option', { name: option, exact: true }).click()
       await expect(page).toHaveURL(new RegExp(`[?&]contains=${id}(&|$)`))
-      await expect(
-        page.getByText(`Searching the server for ${label}… page 2`),
-      ).toBeVisible({ timeout: 60_000 })
+      /**
+       * The first page of matches is shown with Search more; asking for more
+       * fetches the next page and the match count grows.
+       */
+      const partial = page.getByText(/first [\d,]+ matches only/)
+      /** The count is formatted with thousands separators (1,000) */
+      const matchCount = (text: string | null): number | undefined => {
+        const digits = /first ([\d,]+) matches/.exec(text ?? '')?.[1]
+        return digits === undefined
+          ? undefined
+          : Number(digits.replaceAll(',', ''))
+      }
+      await expect(partial).toBeVisible({ timeout: 60_000 })
+      const firstCount = matchCount(await partial.innerText()) ?? 0
+      await page.getByRole('button', { name: 'Search more' }).click()
+      /** Once every match is in, the "first N" note goes away */
+      await expect
+        .poll(
+          async () =>
+            (await partial.count()) === 0
+              ? Number.POSITIVE_INFINITY
+              : (matchCount(await partial.textContent()) ?? 0),
+          { timeout: 60_000 },
+        )
+        .toBeGreaterThan(firstCount)
     })
   }
 

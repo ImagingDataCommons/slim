@@ -1,4 +1,4 @@
-export type ActiveRoiTool = 'draw' | 'modify' | 'translate' | null
+export type ActiveRoiTool = 'select' | 'draw' | 'modify' | 'translate'
 
 export interface RoiToolFlags {
   isRoiDrawingActive: boolean
@@ -11,5 +11,5 @@ export function deriveActiveRoiTool(flags: RoiToolFlags): ActiveRoiTool {
   if (flags.isRoiDrawingActive) return 'draw'
   if (flags.isRoiModificationActive) return 'modify'
   if (flags.isRoiTranslationActive) return 'translate'
-  return null
+  return 'select'
 }

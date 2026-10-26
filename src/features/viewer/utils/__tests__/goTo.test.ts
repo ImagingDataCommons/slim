@@ -39,12 +39,13 @@ describe('validateGoToInput', () => {
     })
   })
 
-  it('accepts zero magnification like the original range check', () => {
+  it('rejects zero magnification', () => {
     const result = validateGoToInput(
       { x: '1', y: '11', magnification: '0' },
       ranges,
     )
-    expect(result.fields.magnification.isValid).toBe(true)
+    expect(result.fields.magnification.isValid).toBe(false)
+    expect(result.target).toBeUndefined()
   })
 })
 

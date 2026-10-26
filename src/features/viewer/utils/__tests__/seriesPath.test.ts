@@ -12,6 +12,47 @@ describe('buildSeriesSelectionPath', () => {
         studyInstanceUID: '1.2.3',
         seriesInstanceUID: '4.5',
         pathname: '/studies/1.2.3/series/9.9',
+        search: '?gcp=projects/p/x&view=a%2Bb',
+      }),
+    ).toBe('/studies/1.2.3/series/4.5?gcp=projects/p/x&view=a%2Bb')
+  })
+
+  it('drops a sign-in response the router still holds', () => {
+    expect(
+      buildSeriesSelectionPath({
+        studyInstanceUID: '1.2.3',
+        seriesInstanceUID: '9.9',
+        pathname: '/studies/1.2.3/series/9.9',
+        search: '?gcp=projects/p/x&code=abc&state=nonce&session_state=s',
+      }),
+    ).toBe('/studies/1.2.3/series/9.9?gcp=projects/p/x')
+  })
+
+  it("leaves another slide's presentation state behind", () => {
+    expect(
+      buildSeriesSelectionPath({
+        studyInstanceUID: '1.2.3',
+        seriesInstanceUID: '4.5',
+        pathname: '/studies/1.2.3/series/9.9',
+        search: '?gcp=projects/p/x&state=7',
+      }),
+    ).toBe('/studies/1.2.3/series/4.5?gcp=projects/p/x')
+    expect(
+      buildSeriesSelectionPath({
+        studyInstanceUID: '1.2.3',
+        seriesInstanceUID: '4.5',
+        pathname: '/studies/1.2.3/series/9.9',
+        search: '?state=7',
+      }),
+    ).toBe('/studies/1.2.3/series/4.5')
+  })
+
+  it('keeps the presentation state when the same series is selected', () => {
+    expect(
+      buildSeriesSelectionPath({
+        studyInstanceUID: '1.2.3',
+        seriesInstanceUID: '4.5',
+        pathname: '/studies/1.2.3/series/4.5',
         search: '?state=7',
       }),
     ).toBe('/studies/1.2.3/series/4.5?state=7')
@@ -67,12 +108,22 @@ describe('defaultSeriesRedirectPath', () => {
         studyInstanceUID: '1.2.3',
         defaultSeriesInstanceUID: '4.5',
         pathname: '/studies/1.2.3',
-        search: '?gcp=https%3A%2F%2Fstore.example&access_token=abc',
+        search: '?gcp=https%3A%2F%2Fstore.example',
         hash: '#panel',
       }),
-    ).toBe(
-      '/studies/1.2.3/series/4.5?gcp=https%3A%2F%2Fstore.example&access_token=abc#panel',
-    )
+    ).toBe('/studies/1.2.3/series/4.5?gcp=https%3A%2F%2Fstore.example#panel')
+  })
+
+  it('drops a sign-in response from the query and the hash', () => {
+    expect(
+      defaultSeriesRedirectPath({
+        studyInstanceUID: '1.2.3',
+        defaultSeriesInstanceUID: '4.5',
+        pathname: '/studies/1.2.3',
+        search: '?gcp=x&access_token=abc&token_type=Bearer',
+        hash: '#id_token=t&state=s',
+      }),
+    ).toBe('/studies/1.2.3/series/4.5?gcp=x')
   })
 
   it('keeps the GCP store prefix and query', () => {

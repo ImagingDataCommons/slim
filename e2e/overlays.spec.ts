@@ -12,7 +12,7 @@ import {
 } from './helpers'
 import { seriesUrl, studies } from './studies'
 
-const { tcgaRead, tcgaGbm, rmsSr, boneMarrow } = studies
+const { tcgaRead, tcgaLuad, tcgaGbm, rmsSr, boneMarrow, catchAnn } = studies
 const srUrl = seriesUrl({ study: rmsSr.study, series: rmsSr.sr })
 
 /** Name of the first layer shown in a section, read from its "Show …" toggle */
@@ -109,12 +109,22 @@ test.describe('Segmentations', () => {
     )
     const segments = await section(slidePanel(page), 'Segmentations')
     const series = segments.getByRole('combobox', { name: 'Series' })
+    /** The deep link selected its series; pick another and see it applied */
+    await expect(series).not.toHaveText(/All Series/, { timeout: 60_000 })
+    const selected = (await series.innerText()).trim()
     await series.click()
     const options = page.getByRole('option')
     expect(await options.count()).toBeGreaterThan(1)
-    await options.last().click()
+    const other = options
+      .filter({ hasNotText: selected })
+      .filter({ hasNotText: /All Series/ })
+      .first()
+    const otherLabel = (await other.innerText()).trim()
+    await other.click()
+    await expect(series).toHaveText(otherLabel)
+    await expect(series).not.toHaveText(selected)
     await expect(
-      segments.getByRole('button', { name: /^Show / }).first(),
+      segments.getByRole('button', { name: /^Show (?!all)/ }).first(),
     ).toBeVisible()
   })
 
@@ -154,6 +164,30 @@ test.describe('Segmentations', () => {
     await expect(interpolation).toBeChecked({ checked: !wasOn })
     await expect(options).toContainText(wasOn ? 'Interp. off' : 'Interp. on')
   })
+
+  test('S6 binary TIL SEG link opens the slide with that segmentation visible', async ({
+    page,
+  }) => {
+    await openViewer(
+      page,
+      seriesUrl({ study: tcgaLuad.study, series: tcgaLuad.binaryTilSeg }),
+    )
+    await expectTissueRendered(page)
+    const segments = await section(slidePanel(page), 'Segmentations')
+    const visibleToggle = page.getByRole('button', {
+      name: /^Show (?!all)/,
+      pressed: true,
+    })
+    await expect(segments.locator(visibleToggle)).toHaveCount(1)
+    await expect(
+      segments
+        .locator('div')
+        .filter({ has: visibleToggle })
+        .filter({ hasText: /Binary/i })
+        .filter({ hasNotText: /Fractional/i })
+        .first(),
+    ).toBeVisible()
+  })
 })
 
 test.describe('Parametric maps', () => {
@@ -163,14 +197,20 @@ test.describe('Parametric maps', () => {
       seriesUrl({ study: tcgaGbm.study, series: tcgaGbm.parametricMap }),
     )
     const maps = await section(slidePanel(page), 'Parametric maps')
-    const toggle = maps.getByRole('button', { name: /^Show / }).last()
-    const wasVisible = (await toggle.getAttribute('aria-pressed')) === 'true'
+    /**
+     * The deep link turns its map on once parametric maps loaded; wait for
+     * that before reading the state, so a late show is not undone here
+     */
+    const shown = maps
+      .getByRole('button', { name: /^Show (?!all)/, pressed: true })
+      .first()
+    await expect(shown).toBeVisible({ timeout: 60_000 })
+    const name = (await shown.getAttribute('aria-label')) ?? ''
+    expect(name, 'shown map toggle label').not.toBe('')
+    const toggle = maps.getByRole('button', { name, exact: true })
     const before = await captureSettledViewport(page)
     await toggle.click()
-    await expect(toggle).toHaveAttribute(
-      'aria-pressed',
-      wasVisible ? 'false' : 'true',
-    )
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false')
     await expectViewportToDiffer(page, before, 0.5)
   })
 
@@ -225,8 +265,21 @@ test.describe('Annotation groups', () => {
       seriesUrl({ study: tcgaRead.study, series: tcgaRead.nucleiAnn }),
     )
     const groups = await section(slidePanel(page), 'Annotation groups')
-    const toggle = groups.getByRole('button', { name: 'Show Nuclei' })
-    await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    /**
+     * One retrying check for the pressed toggle: until the link narrows the
+     * list, several series may list a "Nuclei" group
+     */
+    await expect(
+      groups.getByRole('button', {
+        name: 'Show Nuclei',
+        exact: true,
+        pressed: true,
+      }),
+    ).toHaveCount(1, { timeout: 60_000 })
+    const toggle = groups.getByRole('button', {
+      name: 'Show Nuclei',
+      exact: true,
+    })
     await expect
       .poll(() => bulkStatuses.includes(200) && pendingBulk === 0, {
         message: 'bulk annotation data downloaded',
@@ -257,17 +310,21 @@ test.describe('Annotation groups', () => {
     const bulk = groups.getByRole('group', {
       name: 'Visibility of annotation groups',
     })
-    /** The linked series holds 5 of the slide's groups */
-    await expect(bulk).toContainText(/^5 of \d+ visible/)
-    const total = /of (\d+) visible/.exec(await bulk.innerText())?.[1]
-    await bulk
-      .getByRole('button', { name: 'Show all annotation groups' })
-      .click()
-    await expect(bulk).toContainText(`${total} of ${total} visible`)
+    /**
+     * The Series list shows the linked series, whose 5 groups the link
+     * turned on, so Show all starts disabled.
+     */
+    await expect(bulk).toContainText(/^5 of 5 visible/)
+    const showAll = bulk.getByRole('button', {
+      name: 'Show all annotation groups',
+    })
+    await expect(showAll).toBeDisabled()
     await bulk
       .getByRole('button', { name: 'Hide all annotation groups' })
       .click()
-    await expect(bulk).toContainText(`0 of ${total} visible`)
+    await expect(bulk).toContainText('0 of 5 visible')
+    await showAll.click()
+    await expect(bulk).toContainText('5 of 5 visible')
   })
 
   test('A3 group color and fill change the drawing', async ({ page }) => {
@@ -312,6 +369,43 @@ test.describe('Annotation groups', () => {
     await groups.getByRole('button', { name, exact: true }).nth(index).click()
     await expect(scale).not.toHaveText(overview)
     await expectViewportToDiffer(page, before, 2)
+  })
+
+  test('A6 CATCH multi-group tissue ANN show all and hide all', async ({
+    page,
+  }) => {
+    /** openViewer can spend up to 2× its timeout (panel + tiles) */
+    test.setTimeout(300_000)
+    await openViewer(
+      page,
+      seriesUrl({ study: catchAnn.study, series: catchAnn.ann }),
+      { timeout: 120_000 },
+    )
+    await expectTissueRendered(page)
+    const groups = await section(slidePanel(page), 'Annotation groups')
+    const bulk = groups.getByRole('group', {
+      name: 'Visibility of annotation groups',
+    })
+    const showAll = bulk.getByRole('button', {
+      name: 'Show all annotation groups',
+    })
+    const hideAll = bulk.getByRole('button', {
+      name: 'Hide all annotation groups',
+    })
+    /**
+     * Deep-link turns every group of the series on after derived data loads.
+     * Wait for that settled state before reading N — tiles can settle first.
+     */
+    await expect(showAll).toBeDisabled({ timeout: 60_000 })
+    const counts = /(\d+) of (\d+) visible/.exec(await bulk.innerText())
+    expect(counts, 'visible/total group counts').not.toBeNull()
+    const total = counts?.[2] ?? '0'
+    expect(Number(total)).toBeGreaterThan(1)
+    await expect(bulk).toContainText(`${total} of ${total} visible`)
+    await hideAll.click()
+    await expect(bulk).toContainText(`0 of ${total} visible`)
+    await showAll.click()
+    await expect(bulk).toContainText(`${total} of ${total} visible`)
   })
 })
 

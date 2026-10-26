@@ -151,6 +151,22 @@ export class AppSession {
      */
     const configuredServers = [...config.servers]
     addGcpSecondaryAnnotationServer(config, window.location.search)
+    /**
+     * With server selection the default server may ship without a URL (the
+     * user picks one in the header, or a cached selection applies on start).
+     * An empty URL lets the app mount so that the header is reachable.
+     */
+    if (config.enableServerSelection === true) {
+      for (const server of config.servers) {
+        if (
+          server.storageClasses == null &&
+          (server.url ?? '').trim() === '' &&
+          (server.path ?? '').trim() === ''
+        ) {
+          server.url = ''
+        }
+      }
+    }
 
     const defaultClients = createClientMapping({
       baseUri,
@@ -257,20 +273,18 @@ export class AppSession {
       )
     }
 
-    if (serverSettings.errorMessages !== undefined) {
-      serverSettings.errorMessages.forEach((setting: ErrorMessageSettings) => {
-        if (error.status === setting.status) {
-          this.update({
-            error: {
-              status: error.status,
-              message: setting.message,
-            },
-          })
-        } else if (error.status === 500) {
-          logServerError()
-        }
+    const configuredMessage = serverSettings.errorMessages?.find(
+      (setting: ErrorMessageSettings) => setting.status === error.status,
+    )
+    if (configuredMessage !== undefined) {
+      this.update({
+        error: {
+          status: error.status,
+          message: configuredMessage.message,
+        },
       })
     } else if (error.status === 500) {
+      /** Once per failure, whatever the number of configured messages */
       logServerError()
     }
   }
@@ -452,9 +466,16 @@ export class AppSession {
       })
       .catch((error: unknown) => {
         console.error(error)
+        /** Keep the IdP's reason (e.g. access_denied) when sign-in reports one */
         NotificationMiddleware.onError(
           NotificationMiddlewareContext.AUTH,
-          new CustomError(errorTypes.AUTHENTICATION, 'Could not sign-in user.'),
+          error instanceof CustomError &&
+            error.type === errorTypes.AUTHENTICATION
+            ? error
+            : new CustomError(
+                errorTypes.AUTHENTICATION,
+                'Could not sign-in user.',
+              ),
         )
         /**
          * The failure page has no header, so a broken custom config could

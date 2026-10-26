@@ -26,6 +26,11 @@ declare module 'dicom-microscopy-viewer' {
       annotationOptions?: object
       errorInterceptor?: (error: CustomError) => void
       paletteDisplayGammaCorrection?: boolean
+      /**
+       * When false, skip the in-viewport SEG/PM color legend so the host can
+       * render its own (dicom-microscopy-viewer#296). Defaults to true.
+       */
+      showDerivedLegend?: boolean
     }
 
     export interface ROIStyleOptions {
@@ -64,6 +69,24 @@ declare module 'dicom-microscopy-viewer' {
       get imageMetadata (): metadata.VLWholeSlideMicroscopyImage[]
       activateDrawInteraction (options: object)
       deactivateDrawInteraction (): void
+      /**
+       * Preferred unit for measurement markup labels and ROI Num items
+       * (`µm` / `μm` / `mm`). Pass empty / null / undefined for view-scale auto.
+       */
+      setMeasurementUnit (unit: string | null | undefined): void
+      getMeasurementUnit (): 'μm' | 'mm' | undefined
+      /**
+       * Color for measurement-value labels and the dotted link line.
+       * CSS color string or `[r,g,b]` / `[r,g,b,a]`. Empty clears the preference.
+       */
+      setMarkupLabelColor (color: string | number[] | null | undefined): void
+      getMarkupLabelColor (): string | number[] | undefined
+      /**
+       * Font size (px) for measurement-value labels. Empty / null / undefined
+       * restores the library default.
+       */
+      setMarkupLabelFontSize (size: number | string | null | undefined): void
+      getMarkupLabelFontSize (): number | undefined
       get isDrawInteractionActive (): boolean
       activateSelectInteraction (options: object)
       deactivateSelectInteraction (): void
@@ -695,8 +718,10 @@ declare module 'dicom-microscopy-viewer' {
     }
 
     export interface Comprehensive3DSR extends SOPClass {
-      ContentSequence: dcmjs.sr.valueTypes.ContentItem[]
-      ContentTemplateSequence: Array<{
+      /** Type 1C in the SR Document Content module */
+      ContentSequence?: dcmjs.sr.valueTypes.ContentItem[]
+      /** Type 1C: present only when the document follows a template */
+      ContentTemplateSequence?: Array<{
         MappingResource: string
         TemplateIdentifier: string
       }>

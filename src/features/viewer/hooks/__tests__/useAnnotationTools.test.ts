@@ -28,6 +28,7 @@ interface Options {
   visibleRoiUIDs?: string[]
   confirmRoiRemoval?: boolean
   draft?: AnnotationDraft
+  canWriteRois?: boolean
 }
 
 function setup({
@@ -35,11 +36,12 @@ function setup({
   visibleRoiUIDs = [],
   confirmRoiRemoval = false,
   draft = { evaluations: [] },
+  canWriteRois = true,
 }: Options = {}) {
   const test: TestSession = createTestSession()
   const rois = {
     selectedRoiUIDs: new Set(selectedRoiUIDs),
-    visibleRoiUIDs: new Set(visibleRoiUIDs),
+    currentVisibleRoiUIDs: () => new Set(visibleRoiUIDs),
     addStyledRoi: vi.fn(),
     removeRois: vi.fn(),
     restyleSelected: vi.fn(),
@@ -57,9 +59,11 @@ function setup({
       rois,
       draft,
       defaultRoiStyle: TEST_ROI_STYLE,
+      measurementUnit: 'µm',
       confirmRoiRemoval,
       goToRanges: { x: [0, 25], y: [0, 50] },
       onSave,
+      canWriteRois,
     })
     return { interaction, tools }
   })
@@ -91,6 +95,23 @@ describe('useAnnotationTools', () => {
     expect(viewer.activateSelectInteraction).toHaveBeenCalled()
   })
 
+  it('select mode stops drawing and activates select interaction', () => {
+    const { result, viewer } = setup()
+    act(() => {
+      result.current.tools.onDraw()
+    })
+    viewer.activateSelectInteraction.mockClear()
+    viewer.deactivateDrawInteraction.mockClear()
+
+    act(() => {
+      result.current.tools.onSelect()
+    })
+
+    expect(result.current.interaction.isRoiDrawingActive).toBe(false)
+    expect(viewer.deactivateDrawInteraction).toHaveBeenCalled()
+    expect(viewer.activateSelectInteraction).toHaveBeenCalled()
+  })
+
   it('draws with the style of the chosen finding once configured', () => {
     const finding = new dcmjs.sr.coding.CodedConcept({
       value: '1',
@@ -108,6 +129,7 @@ describe('useAnnotationTools', () => {
       result.current.tools.onAnnotationConfigurationCompletion()
     })
 
+    expect(viewer.setMeasurementUnit).toHaveBeenCalledWith('µm')
     expect(viewer.activateDrawInteraction).toHaveBeenCalledWith({
       geometryType: 'polygon',
       markup: undefined,
@@ -274,6 +296,25 @@ describe('useAnnotationTools visibility and go-to', () => {
     )
     expect(viewer.activateSelectInteraction).toHaveBeenCalled()
     expect(result.current.interaction.isGoToModalVisible).toBe(false)
+  })
+
+  it('navigates without writing a marker when annotation tools are disabled', () => {
+    const { result, viewer, rois } = setup({ canWriteRois: false })
+    act(() => {
+      result.current.tools.onGoTo()
+    })
+    act(() => {
+      result.current.tools.onGoToInputChange('x', '10')
+      result.current.tools.onGoToInputChange('y', '20')
+      result.current.tools.onGoToInputChange('magnification', '10')
+    })
+
+    act(() => {
+      result.current.tools.onSlidePositionSelection()
+    })
+
+    expect(viewer.navigate).toHaveBeenCalled()
+    expect(rois.addStyledRoi).not.toHaveBeenCalled()
   })
 
   it('restores selection when Go to is cancelled', () => {

@@ -116,6 +116,18 @@ describe('useAnnotationGroups', () => {
     expect(result.current.selectedSeriesUID).toBeUndefined()
   })
 
+  it('switching series hides groups the panel has not caught up with', () => {
+    const { result, viewer } = setup()
+    viewer.showAnnotationGroup('cells')
+
+    act(() => {
+      result.current.onSeriesChange('ann-2')
+    })
+
+    expect(viewer.hideAnnotationGroup).toHaveBeenCalledWith('cells')
+    expect(viewer.annotationGroups.visible.size).toBe(0)
+  })
+
   it('restyles a group and refreshes the panels', () => {
     const { result, viewer, access } = setup()
 
@@ -147,5 +159,43 @@ describe('useAnnotationGroups', () => {
     expect(viewer.setAnnotationOptions).toHaveBeenCalledWith({
       clusteringPixelSizeThreshold: undefined,
     })
+  })
+
+  it('applies quick clustering toggles on top of each other', () => {
+    const { result, viewer } = setup()
+    const on = { clusteringEnabled: true, clusteringThreshold: '' }
+    const off = { clusteringEnabled: false, clusteringThreshold: '' }
+
+    act(() => {
+      result.current.onDisplaySettingsChange(off, on)
+      result.current.onDisplaySettingsChange(on, off)
+    })
+
+    expect(result.current.clustering.isEnabled).toBe(true)
+    expect(viewer.setAnnotationOptions).toHaveBeenCalledTimes(2)
+  })
+
+  it('remembers the chosen fill, which the viewer does not report', () => {
+    const { result } = setup()
+    const styles = { nuclei: { opacity: 1, color: [255, 0, 0] } }
+    expect(result.current.withFillStyles(styles)).toBe(styles)
+
+    act(() => {
+      result.current.onStyleChange({
+        uid: 'nuclei',
+        styleOptions: { fill: true, fillOpacity: 0.3 },
+      })
+    })
+    expect(result.current.withFillStyles(styles).nuclei).toEqual({
+      opacity: 1,
+      color: [255, 0, 0],
+      fill: true,
+      fillOpacity: 0.3,
+    })
+
+    act(() => {
+      result.current.reset()
+    })
+    expect(result.current.withFillStyles(styles)).toBe(styles)
   })
 })

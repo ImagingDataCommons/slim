@@ -2,6 +2,7 @@ import type React from 'react'
 import { useSyncExternalStore } from 'react'
 
 import HoveredRoiTooltip from '../../../components/HoveredRoiTooltip'
+import { useLayoutMode } from '../../../contexts/LayoutModeContext'
 import type { ExternalStore } from '../services/externalStore'
 import type { HoveredRoi } from '../utils/hoveredRois'
 
@@ -27,10 +28,11 @@ export interface HoveredRoiTooltipLayerProps {
 export function HoveredRoiTooltipLayer({
   store,
 }: HoveredRoiTooltipLayerProps): React.ReactElement | null {
+  const { coarsePointer } = useLayoutMode()
   const { isVisible, x, y, rois } = useSyncExternalStore(
     store.subscribe,
     store.getSnapshot,
   )
-  if (!isVisible || rois.length === 0) return null
+  if (coarsePointer || !isVisible || rois.length === 0) return null
   return <HoveredRoiTooltip xPosition={x} yPosition={y} rois={rois} />
 }

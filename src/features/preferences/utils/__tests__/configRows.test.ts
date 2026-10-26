@@ -80,6 +80,66 @@ describe('maskConfig', () => {
     })
   })
 
+  it('keeps flags and public endpoints visible under secret-looking names', () => {
+    expect(
+      maskConfig({
+        servers: [{ url: 'https://a.example', sendAuthorization: false }],
+        oidc: {
+          authorizationEndpoint: 'https://idp.example/authorize',
+          tokenUrl: 'https://idp.example/token?client_secret=abc',
+          includeIdTokenInSilentRenew: true,
+          token: 'abc',
+        },
+      }),
+    ).toEqual({
+      servers: [{ url: 'https://a.example', sendAuthorization: false }],
+      oidc: {
+        authorizationEndpoint: 'https://idp.example/authorize',
+        tokenUrl: `https://idp.example/token?client_secret=${MASKED_VALUE}`,
+        includeIdTokenInSilentRenew: true,
+        token: MASKED_VALUE,
+      },
+    })
+  })
+
+  it('hides credentials inside URL values', () => {
+    expect(
+      maskConfig({
+        servers: [
+          { url: 'https://user:pass@archive.example/rs' },
+          { url: 'https://archive.example/rs?access_token=XYZ&limit=5' },
+          { url: 'https://store.example/rs?X-Goog-Signature=abc&study=1' },
+          { url: 'https://plain.example/dicomWeb' },
+        ],
+        organization: 'Lab: user@example.org',
+      }),
+    ).toEqual({
+      servers: [
+        { url: `https://${MASKED_VALUE}@archive.example/rs` },
+        {
+          url: `https://archive.example/rs?access_token=${MASKED_VALUE}&limit=5`,
+        },
+        {
+          url: `https://store.example/rs?X-Goog-Signature=${MASKED_VALUE}&study=1`,
+        },
+        { url: 'https://plain.example/dicomWeb' },
+      ],
+      organization: 'Lab: user@example.org',
+    })
+  })
+
+  it('hides credentials in URL fragment parameters', () => {
+    expect(
+      maskConfig('https://app.example/callback#id_token=abc&state=s1'),
+    ).toBe(`https://app.example/callback#id_token=${MASKED_VALUE}&state=s1`)
+    expect(maskConfig('https://app.example/#/route?sig=abc')).toBe(
+      `https://app.example/#/route?sig=${MASKED_VALUE}`,
+    )
+    expect(maskConfig('https://app.example/app#route?key=abc')).toBe(
+      `https://app.example/app#route?key=${MASKED_VALUE}`,
+    )
+  })
+
   it('masks every leaf under a secret-named group', () => {
     expect(
       maskConfig({

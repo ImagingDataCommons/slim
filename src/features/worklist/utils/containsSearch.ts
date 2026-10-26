@@ -7,7 +7,9 @@ import type { ContainsEntry } from './containsCatalog'
 import { normalizeModalities } from './studyFields'
 import { buildStudyQueryParams } from './studyQuery'
 
-export const CONTAINS_PAGE_SIZE = 5000
+/** One QIDO page. Small enough for IDC SEG/OT dumps, covers five worklist pages. */
+export const CONTAINS_PAGE_SIZE = 100
+/** Cap on "Search more" so a modality fallback cannot walk the whole store. */
 export const CONTAINS_MAX_PAGES = 10
 
 const STUDY_UID_TAG = '0020000D'
@@ -56,8 +58,12 @@ export interface ContainsSearchResult {
   matches: ReadonlyMap<string, ContainsMatch>
   /** Matched on SOP class; otherwise only on modality and needs checking */
   isExact: boolean
-  /** Stopped at the page cap, so later matches are missing */
+  /** This page was full, so later matches may exist */
   isPartial: boolean
+  /** QIDO rows in this page; add to the offset to fetch the next page */
+  pageRowCount: number
+  /** The last page could not be fetched from every store */
+  hasStoreFailures?: boolean
 }
 
 export interface ContainsSearchOptions {
@@ -65,6 +71,8 @@ export interface ContainsSearchOptions {
   onPage?: (pages: number) => void
   /** Stop paging once the caller no longer wants the result */
   isCurrent?: () => boolean
+  /** QIDO offset of this page; default 0 */
+  offset?: number
 }
 
 type SearchStrategy = 'sopClass' | 'modality'
@@ -93,27 +101,31 @@ const formatStudy = (row: unknown): dmv.metadata.Study =>
 class IgnoredMatchingKeyError extends Error {}
 
 /**
- * Pages until an empty response or the page cap. A short page is not treated
- * as the end: some servers (e.g. IDC) cap below the requested Limit, so the
- * next offset may still hold matches.
+ * A non-DICOM answer reads as no rows. DicomWebManager already reports it
+ * once per server; this only guards other clients
  */
-async function collectPages(
+function asRows<T>(items: readonly T[] | null | undefined): T[] {
+  return Array.isArray(items) ? [...items] : []
+}
+
+/**
+ * One QIDO page. A full page means more matches may exist; the hook fetches
+ * the next offset only when the user asks.
+ */
+async function fetchOnePage(
   fetchPage: (offset: number) => Promise<unknown[]>,
+  offset: number,
   { onPage, isCurrent = () => true }: ContainsSearchOptions,
 ): Promise<{ rows: unknown[]; isPartial: boolean }> {
-  const rows: unknown[] = []
-  for (let page = 0; page < CONTAINS_MAX_PAGES; page++) {
-    const items = await fetchPage(rows.length)
-    if (items.length === 0) {
-      return { rows, isPartial: false }
-    }
-    rows.push(...items)
-    onPage?.(page + 1)
-    if (!isCurrent()) {
-      return { rows, isPartial: false }
-    }
+  if (!isCurrent()) {
+    return { rows: [], isPartial: false }
   }
-  return { rows, isPartial: true }
+  const items = asRows(await fetchPage(offset))
+  onPage?.(1)
+  return {
+    rows: items,
+    isPartial: items.length >= CONTAINS_PAGE_SIZE,
+  }
 }
 
 function groupByStudy(rows: unknown[]): Map<string, ContainsMatch> {
@@ -142,18 +154,20 @@ async function searchBySopClass(
   entry: ContainsEntry,
   options: ContainsSearchOptions,
 ): Promise<ContainsSearchResult> {
-  const rows: unknown[] = []
-  let isPartial = false
-  for (const sopClassUid of entry.sopClassUids) {
-    const result = await collectPages(async (offset) => {
-      const items = await client.searchForInstances({
-        queryParams: {
-          SOPClassUID: sopClassUid,
-          includefield: STUDY_FIELDS,
-          limit: CONTAINS_PAGE_SIZE,
-          offset,
-        },
-      })
+  const offset = options.offset ?? 0
+  const { sopClassUid } = entry
+  const { rows, isPartial } = await fetchOnePage(
+    async (pageOffset) => {
+      const items = asRows(
+        await client.searchForInstances({
+          queryParams: {
+            SOPClassUID: sopClassUid,
+            includefield: STUDY_FIELDS,
+            limit: CONTAINS_PAGE_SIZE,
+            offset: pageOffset,
+          },
+        }),
+      )
       /** A server that ignores the key returns every instance instead */
       const ignoresKey = items.some((item) => {
         const value = firstValue(item, SOP_CLASS_UID_TAG)
@@ -161,11 +175,16 @@ async function searchBySopClass(
       })
       if (ignoresKey) throw new IgnoredMatchingKeyError()
       return items
-    }, options)
-    rows.push(...result.rows)
-    isPartial ||= result.isPartial
+    },
+    offset,
+    options,
+  )
+  return {
+    matches: groupByStudy(rows),
+    isExact: true,
+    isPartial,
+    pageRowCount: rows.length,
   }
-  return { matches: groupByStudy(rows), isExact: true, isPartial }
 }
 
 async function searchByModality(
@@ -173,27 +192,54 @@ async function searchByModality(
   entry: ContainsEntry,
   options: ContainsSearchOptions,
 ): Promise<ContainsSearchResult> {
-  const { rows, isPartial } = await collectPages(
-    async (offset) =>
+  const offset = options.offset ?? 0
+  const { rows, isPartial } = await fetchOnePage(
+    async (pageOffset) =>
       await client.searchForSeries({
         queryParams: {
           Modality: entry.modality,
           includefield: STUDY_FIELDS,
           limit: CONTAINS_PAGE_SIZE,
-          offset,
+          offset: pageOffset,
         },
       }),
+    offset,
     options,
   )
   return {
     matches: groupByStudy(rows),
     isExact: !entry.needsConfirmation,
     isPartial,
+    pageRowCount: rows.length,
   }
 }
 
 /**
- * Studies on the server holding series of the entry's SOP class. Matches on
+ * Merge extra Contains matches into a base map, keeping the first study row
+ * and appending series UIDs that were not already listed.
+ */
+export function mergeContainsMatches(
+  base: ReadonlyMap<string, ContainsMatch>,
+  extra: ReadonlyMap<string, ContainsMatch>,
+): Map<string, ContainsMatch> {
+  const merged = new Map(base)
+  for (const [studyUid, match] of extra) {
+    const current = merged.get(studyUid)
+    if (current === undefined) {
+      merged.set(studyUid, match)
+      continue
+    }
+    const seriesUids = [...current.seriesUids]
+    for (const seriesUid of match.seriesUids) {
+      if (!seriesUids.includes(seriesUid)) seriesUids.push(seriesUid)
+    }
+    merged.set(studyUid, { seriesUids, study: current.study })
+  }
+  return merged
+}
+
+/**
+ * One page of studies holding series of the entry's SOP class. Matches on
  * SOPClassUID at the instance level, and falls back to the series modality on
  * servers that reject or ignore that key (Google Cloud Healthcare rejects it).
  * Not limited to slide microscopy studies; see `fetchSlideStudy`.
@@ -206,7 +252,9 @@ export async function searchStudiesContaining(
   if (strategyByClient.get(client) !== 'modality') {
     try {
       const result = await searchBySopClass(client, entry, options)
-      strategyByClient.set(client, 'sopClass')
+      if (options.isCurrent?.() ?? true) {
+        strategyByClient.set(client, 'sopClass')
+      }
       return result
     } catch (error: unknown) {
       if (!isBadRequest(error) && !(error instanceof IgnoredMatchingKeyError)) {
@@ -217,6 +265,108 @@ export async function searchStudiesContaining(
     }
   }
   return await searchByModality(client, entry, options)
+}
+
+/** Where the next page of one store starts */
+export interface StoreCursor {
+  offset: number
+  /** The store's last page was not full, so it has no more matches */
+  isDone: boolean
+}
+
+export interface ContainsStoresPage {
+  result: ContainsSearchResult
+  /** One per store, in the order of `storeClients` */
+  cursors: StoreCursor[]
+}
+
+/** A client that can be split into one search client per store */
+interface MultiStoreClient {
+  storeSearchClients: () => ContainsSearchClient[]
+}
+
+function isMultiStoreClient(client: object): client is MultiStoreClient {
+  return (
+    typeof (client as Partial<MultiStoreClient>).storeSearchClients ===
+    'function'
+  )
+}
+
+/**
+ * The per-store clients of a client that combines several stores, or the
+ * client itself when there is only one store to page
+ */
+export function storeClients(
+  client: ContainsSearchClient,
+): ContainsSearchClient[] {
+  if (!isMultiStoreClient(client)) return [client]
+  const clients = client.storeSearchClients()
+  return clients.length > 1 ? clients : [client]
+}
+
+/**
+ * The next page of every store that may have more matches. Each store keeps
+ * its own offset and SOP class or modality strategy, so a store that
+ * rejects SOPClassUID falls back on its own. A failing store is skipped and
+ * retried with the next page; the search only fails when every store does.
+ */
+export async function searchStoresContaining(
+  clients: readonly ContainsSearchClient[],
+  entry: ContainsEntry,
+  {
+    cursors,
+    ...options
+  }: Omit<ContainsSearchOptions, 'offset'> & {
+    cursors?: readonly StoreCursor[]
+  } = {},
+): Promise<ContainsStoresPage> {
+  const outcomes = await Promise.all(
+    clients.map(async (client, index) => {
+      const cursor = cursors?.[index] ?? { offset: 0, isDone: false }
+      if (cursor.isDone) return { cursor }
+      try {
+        const result = await searchStudiesContaining(client, entry, {
+          ...options,
+          offset: cursor.offset,
+        })
+        return { cursor, result }
+      } catch (error: unknown) {
+        return { cursor, error }
+      }
+    }),
+  )
+  const searched = outcomes.filter((outcome) => !outcome.cursor.isDone)
+  const failures = searched.filter((outcome) => 'error' in outcome)
+  if (searched.length > 0 && failures.length === searched.length) {
+    throw failures[failures.length - 1].error
+  }
+  for (const failure of failures) console.error(failure.error)
+  let matches: ReadonlyMap<string, ContainsMatch> = new Map()
+  let isExact = true
+  /** A store that failed may still hold matches; "Search more" retries it */
+  let isPartial = failures.length > 0
+  let pageRowCount = 0
+  const nextCursors = outcomes.map(({ cursor, result }) => {
+    if (result === undefined) return cursor
+    matches = mergeContainsMatches(matches, result.matches)
+    isExact &&= result.isExact
+    isPartial ||= result.isPartial
+    pageRowCount += result.pageRowCount
+    return {
+      offset: cursor.offset + result.pageRowCount,
+      isDone: !result.isPartial,
+    }
+  })
+  return {
+    result: {
+      matches,
+      isExact,
+      isPartial,
+      pageRowCount,
+      hasStoreFailures: failures.length > 0,
+    },
+    cursors: nextCursors,
+  }
 }
 
 /**
@@ -281,12 +431,7 @@ export async function confirmStudyContains(
         queryParams: { limit: 1, includefield: SOP_CLASS_UID_TAG },
       })
       const sopClassUid = firstValue(instance, SOP_CLASS_UID_TAG)
-      if (
-        sopClassUid !== undefined &&
-        entry.sopClassUids.includes(sopClassUid)
-      ) {
-        return 'match'
-      }
+      if (sopClassUid === entry.sopClassUid) return 'match'
     } catch {
       hasFailure = true
     }

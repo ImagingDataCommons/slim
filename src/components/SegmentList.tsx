@@ -5,6 +5,7 @@ import type React from 'react'
 import type { SegmentStyle, SegmentStyleChange } from '../types/layerStyles'
 import { buildSegmentDisplayOptions } from '../utils/displayOptions'
 import { bindDisplayOptions } from '../utils/displayOptionsBinding'
+import type { VisibilityChange } from '../utils/visibility'
 import SegmentItem from './SegmentItem'
 import { BulkVisibilityControl } from './slim/BulkVisibilityControl'
 import { DisplayOptionsPanel } from './slim/DisplayOptionsPanel'
@@ -26,7 +27,14 @@ export interface SegmentListProps {
     segmentUID: string
     isVisible: boolean
   }) => void
+  /** "Show all" / "Hide all" in one pass; falls back to one call per item */
+  onBulkSegmentVisibilityChange?: (changes: VisibilityChange[]) => void
   onSegmentStyleChange: (change: {
+    segmentUID: string
+    styleOptions: SegmentStyleChange
+  }) => void
+  /** Live style while dragging; falls back to onSegmentStyleChange */
+  onSegmentStylePreview?: (change: {
     segmentUID: string
     styleOptions: SegmentStyleChange
   }) => void
@@ -43,7 +51,9 @@ function SegmentList({
   metadata,
   defaultSegmentStyles,
   onSegmentVisibilityChange,
+  onBulkSegmentVisibilityChange,
   onSegmentStyleChange,
+  onSegmentStylePreview,
   onSegmentClick,
   displaySettings,
   onDisplaySettingsChange,
@@ -55,6 +65,10 @@ function SegmentList({
         visibleUids={visibleSegmentUIDs}
         itemLabel="segments"
         onChange={(changes) => {
+          if (onBulkSegmentVisibilityChange !== undefined) {
+            onBulkSegmentVisibilityChange(changes)
+            return
+          }
           for (const { uid, isVisible } of changes) {
             onSegmentVisibilityChange({ segmentUID: uid, isVisible })
           }
@@ -69,6 +83,7 @@ function SegmentList({
           defaultStyle={defaultSegmentStyles[segment.uid]}
           onVisibilityChange={onSegmentVisibilityChange}
           onStyleChange={onSegmentStyleChange}
+          onStylePreview={onSegmentStylePreview}
           onClick={onSegmentClick}
         />
       ))}

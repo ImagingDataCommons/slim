@@ -1,6 +1,7 @@
 import {
   type IdTokenClaims,
   type MetadataService,
+  type SigningKey,
   State,
   type StateStore,
   User,
@@ -10,6 +11,7 @@ import {
 import { v4 as generateUuid } from 'uuid'
 import {
   decodeJwtClaims,
+  decodeJwtKeyId,
   validateIdTokenClaims,
   verifyIdToken,
 } from './idToken'
@@ -104,6 +106,7 @@ export interface ImplicitGrantHost {
     | 'getIssuer'
     | 'getUserInfoEndpoint'
     | 'getSigningKeys'
+    | 'resetSigningKeys'
   >
   events: Pick<UserManagerEvents, 'load'>
   getUser: () => Promise<User | null>
@@ -223,6 +226,19 @@ export class ImplicitGrant {
     })
   }
 
+  /**
+   * The provider's keys are cached for the page's lifetime; when none matches
+   * the token's `kid` they were rotated, so they are fetched again once.
+   */
+  private async signingKeysFor(idToken: string): Promise<SigningKey[]> {
+    const { metadataService } = this.oidc
+    const keys = (await metadataService.getSigningKeys()) ?? []
+    const kid = decodeJwtKeyId(idToken)
+    if (kid === undefined || keys.some((key) => key.kid === kid)) return keys
+    metadataService.resetSigningKeys()
+    return (await metadataService.getSigningKeys()) ?? []
+  }
+
   private async complete(
     callback: ImplicitCallback,
     requestType: string,
@@ -250,7 +266,7 @@ export class ImplicitGrant {
     await verifyIdToken({
       idToken: callback.idToken,
       accessToken: callback.accessToken,
-      keys: (await this.oidc.metadataService.getSigningKeys()) ?? [],
+      keys: await this.signingKeysFor(callback.idToken),
       crypto: this.crypto ?? (await loadIdTokenCrypto()),
     })
     const now = nowInSeconds()

@@ -7,8 +7,8 @@ const NONE = {
 }
 
 describe('deriveActiveRoiTool', () => {
-  it('returns null when no tool is active', () => {
-    expect(deriveActiveRoiTool(NONE)).toBeNull()
+  it('returns select when no drawing or edit tool is active', () => {
+    expect(deriveActiveRoiTool(NONE)).toBe('select')
   })
 
   it('maps each flag to its tool', () => {

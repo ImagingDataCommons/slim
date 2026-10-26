@@ -1,6 +1,6 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import { useState } from 'react'
+import { startTransition, useState } from 'react'
 
 import { logger } from '../../../utils/logger'
 import {
@@ -10,8 +10,33 @@ import {
 import type { ViewerSession } from '../services/viewerSession'
 import { changedSettingKeys } from '../utils/displaySettings'
 import { sortByIdentifier } from '../utils/opticalPathOrder'
-import { withItem, withItems, withoutItem } from '../utils/uidSets'
+import { showMatchingSeriesItems } from '../utils/showSeriesItems'
+import { withItem, withoutItem } from '../utils/uidSets'
 import type { ViewerAccess } from './useViewerSession'
+
+/** Late presentation states must not override what the user chose */
+function markUserDisplayChange(session: ViewerSession | undefined): void {
+  if (session !== undefined) session.hasUserDisplayChanges = true
+}
+
+function toggleOpticalPathFlag({
+  id,
+  enable,
+  apply,
+  setIds,
+}: {
+  id: string
+  enable: boolean
+  apply: (id: string) => void
+  setIds: (update: (current: Set<string>) => Set<string>) => void
+}): void {
+  apply(id)
+  startTransition(() => {
+    setIds((current) =>
+      enable ? withItem(current, id) : withoutItem(current, id),
+    )
+  })
+}
 
 export interface OpticalPathDisplaySettings {
   iccProfileEnabled: boolean
@@ -45,7 +70,18 @@ export interface OpticalPathsApi {
     opticalPathIdentifier: string
     styleOptions: { opacity?: number; color?: number[]; limitValues?: number[] }
   }) => void
-  onDisplaySettingsChange: (settings: OpticalPathDisplaySettings) => void
+  /**
+   * Live style while a slider is dragged: restyles the slide only. The panel
+   * snapshot is refreshed once, by {@link onStyleChange} on commit.
+   */
+  onStylePreview: (change: {
+    opticalPathIdentifier: string
+    styleOptions: { opacity?: number; color?: number[]; limitValues?: number[] }
+  }) => void
+  onDisplaySettingsChange: (
+    settings: OpticalPathDisplaySettings,
+    previous?: OpticalPathDisplaySettings,
+  ) => void
 }
 
 /** Which optical paths are shown and blended, and how colors are managed */
@@ -69,8 +105,10 @@ export function useOpticalPaths(
   }
 
   const showIdentifiers = (shown: Set<string>): void => {
-    setVisibleIdentifiers(new Set(shown))
-    setActiveIdentifiers(new Set(shown))
+    startTransition(() => {
+      setVisibleIdentifiers(new Set(shown))
+      setActiveIdentifiers(new Set(shown))
+    })
     refreshSnapshot()
   }
 
@@ -98,84 +136,79 @@ export function useOpticalPaths(
       )
     },
     showSeries: (session, seriesInstanceUID) => {
-      const allOpticalPaths = session.volumeViewer.getAllOpticalPaths()
-      const matching = allOpticalPaths.filter(
-        (opticalPath) => opticalPath.seriesInstanceUID === seriesInstanceUID,
-      )
-      logger.debug(
-        'auto-load Optical Path: found ' +
-          `${matching.length} matching optical path(s) ` +
-          `out of ${allOpticalPaths.length} total ` +
-          `for series "${seriesInstanceUID}"`,
-      )
-      const shown: string[] = []
-      for (const { identifier } of matching) {
-        try {
-          session.volumeViewer.showOpticalPath(identifier)
-          shown.push(identifier)
-        } catch (error) {
-          logger.error(
-            `failed to auto-show optical path "${identifier}":`,
-            error,
-          )
-        }
-      }
-      logger.debug(
-        'auto-load Optical Path: showing ' +
-          `${shown.length}/${matching.length} optical path(s)`,
-      )
-      if (shown.length > 0) {
-        setVisibleIdentifiers((current) => withItems(current, shown))
-      }
-      logger.debug('Loading Optical Path')
+      showMatchingSeriesItems({
+        items: session.volumeViewer.getAllOpticalPaths(),
+        seriesInstanceUID,
+        label: 'Optical Path',
+        getSeriesInstanceUID: (path) => path.seriesInstanceUID,
+        getId: (path) => path.identifier,
+        show: (id) => session.volumeViewer.showOpticalPath(id),
+        setVisible: (update) => {
+          startTransition(() => {
+            setVisibleIdentifiers(update)
+          })
+        },
+      })
     },
     onVisibilityChange: ({ opticalPathIdentifier, isVisible }) => {
       const viewer = sessionRef.current?.volumeViewer
       if (viewer === undefined) return
+      markUserDisplayChange(sessionRef.current)
       logger.log(`change visibility of optical path ${opticalPathIdentifier}`)
-      if (isVisible) {
-        logger.log(`show optical path ${opticalPathIdentifier}`)
-        viewer.showOpticalPath(opticalPathIdentifier)
-        setVisibleIdentifiers((current) =>
-          withItem(current, opticalPathIdentifier),
-        )
-      } else {
-        logger.log(`hide optical path ${opticalPathIdentifier}`)
-        viewer.hideOpticalPath(opticalPathIdentifier)
-        setVisibleIdentifiers((current) =>
-          withoutItem(current, opticalPathIdentifier),
-        )
-      }
+      toggleOpticalPathFlag({
+        id: opticalPathIdentifier,
+        enable: isVisible,
+        apply: (id) => {
+          if (isVisible) {
+            logger.log(`show optical path ${id}`)
+            viewer.showOpticalPath(id)
+          } else {
+            logger.log(`hide optical path ${id}`)
+            viewer.hideOpticalPath(id)
+          }
+        },
+        setIds: setVisibleIdentifiers,
+      })
     },
     onActivityChange: ({ opticalPathIdentifier, isActive }) => {
       const viewer = sessionRef.current?.volumeViewer
       if (viewer === undefined) return
+      markUserDisplayChange(sessionRef.current)
       logger.log(`change activity of optical path ${opticalPathIdentifier}`)
-      if (isActive) {
-        logger.log(`activate optical path ${opticalPathIdentifier}`)
-        viewer.activateOpticalPath(opticalPathIdentifier)
-        setActiveIdentifiers((current) =>
-          withItem(current, opticalPathIdentifier),
-        )
-      } else {
-        logger.log(`deactivate optical path ${opticalPathIdentifier}`)
-        viewer.deactivateOpticalPath(opticalPathIdentifier)
-        setActiveIdentifiers((current) =>
-          withoutItem(current, opticalPathIdentifier),
-        )
-      }
+      toggleOpticalPathFlag({
+        id: opticalPathIdentifier,
+        enable: isActive,
+        apply: (id) => {
+          if (isActive) {
+            logger.log(`activate optical path ${id}`)
+            viewer.activateOpticalPath(id)
+          } else {
+            logger.log(`deactivate optical path ${id}`)
+            viewer.deactivateOpticalPath(id)
+          }
+        },
+        setIds: setActiveIdentifiers,
+      })
     },
     onStyleChange: ({ opticalPathIdentifier, styleOptions }) => {
       const viewer = sessionRef.current?.volumeViewer
       if (viewer === undefined) return
+      markUserDisplayChange(sessionRef.current)
       logger.log(`change style of optical path ${opticalPathIdentifier}`)
       viewer.setOpticalPathStyle(opticalPathIdentifier, styleOptions)
       refreshSnapshot()
     },
-    onDisplaySettingsChange: (settings) => {
+    onStylePreview: ({ opticalPathIdentifier, styleOptions }) => {
       const viewer = sessionRef.current?.volumeViewer
       if (viewer === undefined) return
-      const changed = changedSettingKeys(displaySettings, settings)
+      markUserDisplayChange(sessionRef.current)
+      viewer.setOpticalPathStyle(opticalPathIdentifier, styleOptions)
+    },
+    onDisplaySettingsChange: (settings, previous = displaySettings) => {
+      const viewer = sessionRef.current?.volumeViewer
+      if (viewer === undefined) return
+      /** Diff against `previous` so a toggle is never applied twice */
+      const changed = changedSettingKeys(previous, settings)
       if (changed.includes('iccProfileEnabled')) {
         setIsIccProfileEnabled(settings.iccProfileEnabled)
         viewer.toggleICCProfiles()

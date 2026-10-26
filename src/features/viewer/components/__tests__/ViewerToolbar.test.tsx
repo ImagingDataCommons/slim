@@ -12,6 +12,7 @@ function renderToolbar(): void {
       enableAnnotationTools
       activeTool="draw"
       areRoisHidden={false}
+      onSelect={vi.fn()}
       onDraw={vi.fn()}
       onModify={vi.fn()}
       onTranslate={vi.fn()}
@@ -27,6 +28,7 @@ describe('ViewerToolbar', () => {
   it('shows the keyboard shortcut of each tool in its tooltip', () => {
     renderToolbar()
     const tooltips = {
+      Select: 'Select ROI [Alt+A]',
       Draw: 'Draw ROI [Alt+D]',
       Modify: 'Modify ROIs [Alt+M]',
       Translate: 'Translate ROIs [Alt+T]',

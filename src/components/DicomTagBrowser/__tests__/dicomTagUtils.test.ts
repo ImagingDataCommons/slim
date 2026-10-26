@@ -304,6 +304,16 @@ describe('buildDisplaySets', () => {
 })
 
 describe('getSortedTags', () => {
+  it('lists bulk data references once', () => {
+    const tags = getSortedTags({
+      PatientID: 'P-1',
+      bulkdataReferences: { ICCProfile: { BulkDataURI: 'https://x/icc' } },
+    })
+    expect(
+      tags.filter((tag) => tag.keyword === 'bulkdataReferences'),
+    ).toHaveLength(1)
+  })
+
   it('returns tags sorted by tag value and appends bulkdata references', () => {
     const tags = getSortedTags({
       SOPInstanceUID: '1.2.3',

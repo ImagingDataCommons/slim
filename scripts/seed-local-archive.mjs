@@ -58,8 +58,8 @@ async function listInstances() {
   const params = new URLSearchParams({
     includefield: '00080008',
   })
-  params.append('includefield', '00280010')
-  params.append('includefield', '00280011')
+  params.append('includefield', '00480006')
+  params.append('includefield', '00480007')
   const url = `${IDC}/studies/${STUDY}/series/${SERIES}/instances?${params}`
   const response = await fetch(url, {
     headers: { Accept: 'application/dicom+json' },
@@ -79,8 +79,9 @@ async function listInstances() {
   return rows
     .map((row) => {
       const uid = row?.['00080018']?.Value?.[0]
-      const rowsN = Number(row?.['00280010']?.Value?.[0] ?? 0)
-      const colsN = Number(row?.['00280011']?.Value?.[0] ?? 0)
+      /** Total Pixel Matrix size; Rows/Columns are only the tile size */
+      const rowsN = Number(row?.['00480006']?.Value?.[0] ?? 0)
+      const colsN = Number(row?.['00480007']?.Value?.[0] ?? 0)
       const imageType = (row?.['00080008']?.Value ?? []).map(String)
       return {
         uid,

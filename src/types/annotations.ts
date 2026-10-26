@@ -10,10 +10,14 @@ export interface AnnotationSettings {
   evaluations?: EvaluationSetting[]
   measurements?: MeasurementSetting[]
   geometryTypes?: string[]
+  /**
+   * Per-finding draw style. Color/fill identify the finding; `stroke.width` is
+   * optional and is overridden by the user's stroke-width preference when drawing.
+   */
   style?: {
     stroke: {
       color: number[]
-      width: number
+      width?: number
     }
     fill: {
       color: number[]

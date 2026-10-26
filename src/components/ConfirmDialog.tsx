@@ -42,7 +42,14 @@ export function ConfirmDialog({
   const isDestructive = variant === 'destructive'
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onCancel()}>
-      <DialogContent className="max-w-[420px]">
+      {/**
+       * A click outside (a toast, the page) is not an answer; only the
+       * buttons and Escape are, as with master's confirm dialogs
+       */}
+      <DialogContent
+        className="max-w-[420px]"
+        onInteractOutside={(event) => event.preventDefault()}
+      >
         <div className="flex gap-3 px-5 pb-5 pt-[18px]">
           <span
             className={cn(
@@ -81,36 +88,51 @@ export function ConfirmDialog({
   )
 }
 
-/** User choice, or `superseded` when a newer dialog replaced this one */
-export type ConfirmResult = 'confirm' | 'cancel' | 'superseded'
+/** User choice, or `failed` when the dialog could not be shown */
+export type ConfirmResult = 'confirm' | 'cancel' | 'failed'
 
-/** Settles the dialog opened by the last `showConfirmDialog` call, if open */
-let settleOpenDialog: ((result: ConfirmResult) => void) | undefined
+/** Settles once the dialog shown last has been answered */
+let previousDialog: Promise<unknown> = Promise.resolve()
 
 /**
  * Shows a confirmation dialog outside the React tree and resolves with the
- * user's choice. Opening a new dialog settles the previous promise as
- * `superseded` (not `cancel`) so callers do not treat replacement as denial.
+ * user's choice. Dialogs opened while one is showing wait their turn, so
+ * every question gets its own answer instead of one replacing another.
  */
 export function showConfirmDialog(
   options: ConfirmOptions,
 ): Promise<ConfirmResult> {
-  settleOpenDialog?.('superseded')
+  const open = (): Promise<ConfirmResult> => openConfirmDialog(options)
+  /** One dialog that fails must not hold back or fail the ones after it */
+  const result = previousDialog.then(open, open)
+  previousDialog = result.catch(() => undefined)
+  return result
+}
+
+function openConfirmDialog(options: ConfirmOptions): Promise<ConfirmResult> {
   return new Promise<ConfirmResult>((resolve) => {
     const container = document.createElement('div')
     document.body.appendChild(container)
-    const root = createRoot(container)
     let isSettled = false
+    /**
+     * A dialog that fails to render settles as `failed`, so its promise
+     * still settles, the queue moves on, and no answer is recorded for a
+     * question the user never saw
+     */
+    const root = createRoot(container, {
+      onUncaughtError: (error) => {
+        console.error(error)
+        queueMicrotask(() => settle('failed'))
+      },
+    })
 
     const settle = (result: ConfirmResult): void => {
       if (isSettled) return
       isSettled = true
-      if (settleOpenDialog === settle) settleOpenDialog = undefined
       root.unmount()
       container.parentNode?.removeChild(container)
       resolve(result)
     }
-    settleOpenDialog = settle
 
     root.render(
       <ConfirmDialog

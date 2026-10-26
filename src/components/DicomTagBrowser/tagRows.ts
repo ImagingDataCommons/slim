@@ -320,10 +320,16 @@ function processMetadataKeyword(
   return rowsForUnmappedKeyword(keyword, vrHint, value, depth)
 }
 
-/** Tag rows of a dataset; sequences nest their items as children. */
+/**
+ * Tag rows of a dataset; sequences nest their items as children. At the top
+ * level, `bulkdataReferences` is left to getSortedTags, which lists it as one
+ * special row; listing it here too gave two rows with the same key.
+ */
 function getRows(metadata: Record<string, unknown>, depth = 0): TagInfo[] {
   if (metadata === undefined || metadata === null) return []
-  const keywords = Object.keys(metadata).filter((key) => key !== '_vrMap')
+  const keywords = Object.keys(metadata).filter(
+    (key) => key !== '_vrMap' && !(depth === 0 && key === 'bulkdataReferences'),
+  )
 
   return keywords.flatMap((keyword) =>
     processMetadataKeyword(metadata, keyword, depth),

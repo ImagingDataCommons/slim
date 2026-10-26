@@ -1,5 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import type * as dmv from 'dicom-microscopy-viewer'
+import { useState } from 'react'
+
+import { codedConceptKey } from '../../utils/dicom/codedConcept'
 
 import AnnotationGroupItem, {
   type AnnotationGroupItemProps,
@@ -35,6 +38,29 @@ const nucleiWithMeasurements = {
   ],
 } as unknown as dmv.metadata.MicroscopyBulkSimpleAnnotations
 
+/**
+ * Owns the measurement key like useAnnotationGroups: a measurement style sets
+ * it, a flat color clears it.
+ */
+function Harness(props: AnnotationGroupItemProps): React.ReactElement {
+  const [measurementKey, setMeasurementKey] = useState(props.measurementKey)
+  return (
+    <AnnotationGroupItem
+      {...props}
+      measurementKey={measurementKey}
+      onStyleChange={(change) => {
+        props.onStyleChange(change)
+        const { measurement, color } = change.styleOptions
+        if (measurement !== undefined) {
+          setMeasurementKey(codedConceptKey(measurement))
+        } else if (color !== undefined) {
+          setMeasurementKey(undefined)
+        }
+      }}
+    />
+  )
+}
+
 function renderItem(
   overrides: Partial<AnnotationGroupItemProps> = {},
 ): AnnotationGroupItemProps {
@@ -51,7 +77,7 @@ function renderItem(
     onStyleChange: vi.fn(),
     ...overrides,
   }
-  render(<AnnotationGroupItem {...props} />)
+  render(<Harness {...props} />)
   fireEvent.click(
     screen.getByRole('button', { name: 'Display settings for Nuclei' }),
   )
@@ -107,6 +133,15 @@ describe('AnnotationGroupItem color by measurement', () => {
     expect(
       screen.queryByRole('img', { name: 'Colored by measurement' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('shows the measurement the viewer colors by after a remount', () => {
+    renderItem({ measurementKey: codedConceptKey(area) })
+
+    expect(
+      screen.getByRole('img', { name: 'Colored by measurement' }),
+    ).toBeInTheDocument()
+    expect(measurementPicker()).toHaveTextContent('Area')
   })
 
   it('disables the measurements while the group is hidden', () => {

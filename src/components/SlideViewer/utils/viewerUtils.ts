@@ -93,6 +93,8 @@ export const constructViewers = ({
        * first paint (see #389).
        */
       useTileGridResolutions: false,
+      /** Slim owns the in-viewport SEG/PM color legend. */
+      showDerivedLegend: false,
       preload,
       annotationOptions:
         clusteringPixelSizeThreshold !== undefined
@@ -129,11 +131,12 @@ export const constructViewers = ({
 }
 
 /**
- * Checks if a report implements TID1500
+ * Checks if a report implements TID1500. ContentTemplateSequence is Type 1C,
+ * so a document without it simply does not qualify.
  */
 export const implementsTID1500 = (
   report: Pick<dmv.metadata.Comprehensive3DSR, 'ContentTemplateSequence'>,
-): boolean => report.ContentTemplateSequence[0]?.TemplateIdentifier === '1500'
+): boolean => report.ContentTemplateSequence?.[0]?.TemplateIdentifier === '1500'
 
 /**
  * Checks if a report describes a specimen subject
@@ -142,7 +145,7 @@ export const describesSpecimenSubject = (
   report: Pick<dmv.metadata.Comprehensive3DSR, 'ContentSequence'>,
 ): boolean => {
   const [subjectClass] = findContentItemsByName({
-    content: report.ContentSequence,
+    content: report.ContentSequence ?? [],
     name: SUBJECT_CLASS,
   })
   if (subjectClass === undefined) return false
@@ -158,7 +161,7 @@ export const containsROIAnnotations = (
   report: Pick<dmv.metadata.Comprehensive3DSR, 'ContentSequence'>,
 ): boolean => {
   const [measurements] = findContentItemsByName({
-    content: report.ContentSequence,
+    content: report.ContentSequence ?? [],
     name: IMAGING_MEASUREMENTS,
   })
   if (measurements === undefined) return false

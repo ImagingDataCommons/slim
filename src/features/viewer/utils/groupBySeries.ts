@@ -19,6 +19,20 @@ export function groupBySeries<T>(
   return groups
 }
 
+/**
+ * The series a list shows: the selected one while it has items, otherwise
+ * all series. A deep link can select a series whose items never reached the
+ * viewer (another slide, a malformed instance); the list then shows the
+ * loaded series instead of an empty list without a picker.
+ */
+export function shownSeries(
+  groups: ReadonlyMap<string, readonly unknown[]>,
+  selected: string | undefined,
+): string {
+  if (selected === undefined || selected === ALL_SERIES) return ALL_SERIES
+  return (groups.get(selected)?.length ?? 0) > 0 ? selected : ALL_SERIES
+}
+
 /** Items of `selected`, or all items for `ALL_SERIES`/an unset selection. */
 export function itemsForSeries<T>(
   items: readonly T[],

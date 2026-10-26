@@ -13,6 +13,13 @@ vi.mock('dicom-microscopy-viewer', () => {
     graphicType: string
     options: unknown
     constructor(graphicType: string, options: unknown) {
+      /** Like dmv, reject a region without a frame of reference */
+      if (
+        (options as { frameOfReferenceUID?: string }).frameOfReferenceUID ===
+        undefined
+      ) {
+        throw new Error('No frame of reference UID')
+      }
       this.graphicType = graphicType
       this.options = options
     }
@@ -219,6 +226,120 @@ describe('parseMeasurementReport', () => {
       observerType: 'Device',
       evaluations: [algorithm, finding],
     })
+  })
+
+  it('skips a malformed CODE item and still loads the ROI', () => {
+    const malformed = {
+      ConceptNameCodeSequence: [code('371441004', 'Histological grade', 'SCT')],
+      RelationshipType: 'CONTAINS',
+      ValueType: 'CODE',
+    } as unknown as ContentItem
+    const parsed = parseMeasurementReport(
+      report([measurementGroup([malformed])]),
+    )
+
+    expect(parsed.ROIs).toHaveLength(1)
+    expect(parsed.ROIs[0].properties).toMatchObject({ evaluations: [finding] })
+    expect(parsed.warnings).toEqual([
+      expect.stringMatching(/Skipped a CODE content item/),
+    ])
+  })
+
+  it('skips a CODE item without a concept name and still loads the ROI', () => {
+    const nameless = {
+      RelationshipType: 'CONTAINS',
+      ValueType: 'CODE',
+      ConceptCodeSequence: [code('G1', 'Grade 1', '99LOCAL')],
+    } as unknown as ContentItem
+    const parsed = parseMeasurementReport(
+      report([measurementGroup([nameless])]),
+    )
+
+    expect(parsed.ROIs).toHaveLength(1)
+    expect(parsed.warnings).toEqual([
+      expect.stringMatching(/Skipped a CODE content item/),
+    ])
+  })
+
+  it('keeps the source of a measurement so it stays tied to its channel', () => {
+    const source = {
+      ConceptNameCodeSequence: [code('121112', 'Source of Measurement')],
+      RelationshipType: 'INFERRED FROM',
+      ValueType: 'IMAGE',
+      ReferencedSOPSequence: [
+        {
+          ReferencedSOPClassUID: '1.2.840.10008.5.1.4.1.1.77.1.6',
+          ReferencedSOPInstanceUID: '1.2.3',
+          ReferencedOpticalPathIdentifier: '2',
+        },
+      ],
+    } as unknown as ContentItem
+    const measurement = { ...numItem(area), ContentSequence: [source] }
+    const parsed = parseMeasurementReport(
+      report([
+        container(code('125007', 'Measurement Group'), [
+          uidItem(code('112040', 'Tracking Unique Identifier'), '1.2.840.1'),
+          finding,
+          regionItem('POLYGON', [0, 0, 0, 1, 0, 0, 1, 1, 0]),
+          measurement as ContentItem,
+        ]),
+      ]),
+    )
+
+    const [rebuilt] = parsed.ROIs[0].properties.measurements
+    expect(rebuilt).toBeInstanceOf(dcmjs.sr.valueTypes.NumContentItem)
+    expect(rebuilt.ContentSequence).toEqual([source])
+  })
+
+  it('skips only the ROI whose image region is invalid', () => {
+    const { ReferencedFrameOfReferenceUID: _, ...noFrame } = regionItem(
+      'POLYGON',
+      [0, 0, 0, 1, 0, 0, 1, 1, 0],
+    )
+    const broken = container(code('125007', 'Measurement Group'), [
+      uidItem(code('112040', 'Tracking Unique Identifier'), '1.2.840.2'),
+      finding,
+      noFrame as ContentItem,
+    ])
+    const parsed = parseMeasurementReport(report([measurementGroup(), broken]))
+
+    expect(parsed.ROIs).toHaveLength(1)
+    expect(parsed.warnings).toEqual([
+      expect.stringMatching(/"Image Region" is invalid/),
+    ])
+  })
+
+  it('does not read a 2D SCOORD as an image region', () => {
+    const planar = {
+      ...regionItem('POLYGON', [0, 0, 1, 0, 1, 1]),
+      ValueType: 'SCOORD',
+    }
+    const group = container(code('125007', 'Measurement Group'), [
+      uidItem(code('112040', 'Tracking Unique Identifier'), '1.2.840.3'),
+      finding,
+      planar as ContentItem,
+    ])
+    const parsed = parseMeasurementReport(report([group]))
+
+    expect(parsed.ROIs).toHaveLength(0)
+    expect(parsed.warnings).toEqual([
+      expect.stringMatching(/"Image Region" not found/),
+    ])
+  })
+
+  it('lists a coded algorithm name once', () => {
+    const algorithm = codeItem(
+      code('111001', 'Algorithm Name'),
+      code('A1', 'Seg model', '99LOCAL'),
+    )
+    const parsed = parseMeasurementReport(
+      report([measurementGroup([algorithm])]),
+    )
+    const evaluations = (
+      parsed.ROIs[0].properties as { evaluations: ContentItem[] }
+    ).evaluations
+    expect(evaluations).toHaveLength(2)
+    expect(evaluations).toEqual([algorithm, finding])
   })
 
   it('reports missing specimen context instead of throwing', () => {

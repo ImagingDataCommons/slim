@@ -40,7 +40,7 @@ window.config = {
       },
       geometryTypes: ['polygon', 'freehandpolygon'],
       style: {
-        stroke: { color: [255, 255, 0, 1], width: 2 },
+        stroke: { color: [255, 255, 0, 1] },
         fill: { color: [255, 255, 255, 0.2] }
       }
     },
@@ -71,7 +71,7 @@ window.config = {
         }
       ],
       style: {
-        stroke: { color: [255, 0, 255, 1], width: 2 },
+        stroke: { color: [255, 0, 255, 1] },
         fill: { color: [255, 255, 255, 0.2] }
       }
     },
@@ -88,7 +88,7 @@ window.config = {
       },
       geometryTypes: ['line', 'freehandline'],
       style: {
-        stroke: { color: [51, 102, 255, 1], width: 2 },
+        stroke: { color: [51, 102, 255, 1] },
         fill: { color: [255, 255, 255, 0.2] }
       }
     }

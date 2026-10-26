@@ -9,6 +9,7 @@ import {
   expectViewportToMatch,
   mainViewportCenter,
   openViewer,
+  readTileCounts,
   sectionButton,
   slidePanel,
   studyPanel,
@@ -172,7 +173,7 @@ test.describe('Slide viewer on one H&E slide', () => {
 
   test('V8 footer reports tile progress and memory', async () => {
     const footer = page.locator('footer').filter({ hasText: 'Tiles' })
-    await expect(footer).toContainText(/Tiles [\d,]+ \/ [\d,]+/)
+    await expect.poll(async () => readTileCounts(page)).not.toBeNull()
     await expect(footer).toContainText(/Memory/)
     await expect(footer).not.toContainText('failed')
   })

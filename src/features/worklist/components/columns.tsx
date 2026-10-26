@@ -1,8 +1,10 @@
 import type { ColumnDef, RowData } from '@tanstack/react-table'
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
+import type * as React from 'react'
 import { Link } from 'react-router'
 
+import { MonoChip } from '../../../components/ui/mono-chip'
 import {
   formatDisplayDate,
   formatDisplayTime,
@@ -12,10 +14,16 @@ import {
 import { buildStudyPath } from '../../../utils/routes'
 import {
   DASH,
-  getNumberOfSlides,
+  getNumberOfSeries,
   normalizeModalities,
   orDash,
 } from '../utils/studyFields'
+
+function MonoCell({ value }: { value: string }): React.ReactElement {
+  return (
+    <span className="block truncate font-mono text-12.5">{orDash(value)}</span>
+  )
+}
 
 declare module '@tanstack/react-table' {
   interface ColumnMeta<TData extends RowData, TValue> {
@@ -23,16 +31,24 @@ declare module '@tanstack/react-table' {
   }
 }
 
-/** Grid template shared by the header row and the study rows. */
-export const WORKLIST_GRID_COLUMNS =
-  'grid-cols-[1.6fr_1fr_1fr_.9fr_.6fr_1fr_.8fr_1.1fr_1fr_1.2fr_.7fr]'
-
-/** Column definitions (sorting accessors + cells) for the worklist grid. */
+/**
+ * DOM order of worklist columns. Hidden columns are omitted by TanStack, so
+ * remaining cells pack left-to-right into `WORKLIST_GRID_TEMPLATE_BY_TIER`:
+ * - base: name, id, modality, date, slides
+ * - md: + sex, accession
+ * - lg: + study id
+ * - xl: + birth, time, referring
+ *
+ * Each sortable column names its comparator: TanStack's automatic choice
+ * samples only some rows, so the same column could sort differently for a
+ * small search result and a full page.
+ */
 export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
   {
     id: 'PatientName',
     header: 'Patient name',
     accessorFn: (study) => formatPersonName(study.PatientName),
+    sortingFn: 'text',
     cell: ({ getValue, row }) => (
       <Link
         to={buildStudyPath(row.original.StudyInstanceUID)}
@@ -47,22 +63,21 @@ export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
     id: 'PatientID',
     header: 'Patient ID',
     accessorFn: (study) => study.PatientID ?? '',
-    cell: ({ getValue }) => (
-      <span className="block truncate font-mono text-12.5">
-        {orDash(getValue<string>())}
-      </span>
-    ),
+    sortingFn: 'alphanumeric',
+    cell: ({ getValue }) => <MonoCell value={getValue<string>()} />,
   },
   {
     id: 'PatientBirthDate',
     header: 'Birth date',
     accessorFn: (study) => study.PatientBirthDate ?? '',
+    sortingFn: 'basic',
     cell: ({ getValue }) => orDash(formatDisplayDate(getValue<string>())),
   },
   {
     id: 'PatientSex',
     header: 'Sex',
     accessorFn: (study) => study.PatientSex ?? '',
+    sortingFn: 'text',
     cell: ({ getValue }) => orDash(formatSex(getValue<string>())),
   },
   {
@@ -74,14 +89,9 @@ export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
       const modalities = getValue<string[]>()
       if (modalities.length === 0) return DASH
       return (
-        <span className="flex flex-wrap gap-1">
+        <span className="flex flex-wrap content-center gap-1">
           {modalities.map((modality) => (
-            <span
-              key={modality}
-              className="rounded-sm bg-chip px-1.5 py-[3px] font-mono text-11 font-semibold leading-none text-chip-foreground"
-            >
-              {modality}
-            </span>
+            <MonoChip key={modality}>{modality}</MonoChip>
           ))}
         </span>
       )
@@ -91,12 +101,14 @@ export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
     id: 'StudyDate',
     header: 'Study date',
     accessorFn: (study) => study.StudyDate ?? '',
+    sortingFn: 'basic',
     cell: ({ getValue }) => orDash(formatDisplayDate(getValue<string>())),
   },
   {
     id: 'StudyTime',
     header: 'Time',
     accessorFn: (study) => study.StudyTime ?? '',
+    sortingFn: 'basic',
     cell: ({ getValue }) => (
       <span className="text-ink-muted">
         {orDash(formatDisplayTime(getValue<string>()))}
@@ -107,35 +119,32 @@ export const columns: Array<ColumnDef<dmv.metadata.Study>> = [
     id: 'AccessionNumber',
     header: 'Accession #',
     accessorFn: (study) => study.AccessionNumber ?? '',
-    cell: ({ getValue }) => (
-      <span className="block truncate font-mono text-12.5">
-        {orDash(getValue<string>())}
-      </span>
-    ),
+    sortingFn: 'alphanumeric',
+    cell: ({ getValue }) => <MonoCell value={getValue<string>()} />,
   },
   {
     id: 'StudyID',
     header: 'Study ID',
     accessorFn: (study) => study.StudyID ?? '',
-    cell: ({ getValue }) => (
-      <span className="block truncate font-mono text-12.5">
-        {orDash(getValue<string>())}
-      </span>
-    ),
+    sortingFn: 'alphanumeric',
+    cell: ({ getValue }) => <MonoCell value={getValue<string>()} />,
   },
   {
     id: 'ReferringPhysicianName',
     header: 'Referring physician',
     accessorFn: (study) => formatPersonName(study.ReferringPhysicianName),
+    sortingFn: 'text',
     cell: ({ getValue }) => (
       <span className="block truncate">{orDash(getValue<string>())}</span>
     ),
   },
   {
+    /** Id kept for stored column preferences; the count is every series */
     id: 'Slides',
-    header: 'Slides',
+    header: 'Series',
     meta: { align: 'right' },
-    accessorFn: (study) => getNumberOfSlides(study) ?? -1,
+    accessorFn: (study) => getNumberOfSeries(study) ?? -1,
+    sortingFn: 'basic',
     cell: ({ getValue }) => {
       const count = getValue<number>()
       return (

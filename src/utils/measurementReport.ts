@@ -9,6 +9,7 @@ import NotificationMiddleware, {
 } from '../services/NotificationMiddleware'
 import { CustomError, errorTypes } from './CustomError'
 import type { KeyValueItem } from './keyValue'
+import { ALGORITHM_NAME_CODE, FINDING_TYPE_CODE } from './roiDescription'
 import { findContentItemsByName, hasValueType } from './sr'
 
 type ContentItem = dcmjs.sr.valueTypes.ContentItem
@@ -58,8 +59,8 @@ const CONCEPTS = {
   imagingMeasurements: concept('126010', 'Imaging Measurements'),
   measurementGroup: concept('125007', 'Measurement Group'),
   trackingUID: concept('112040', 'Tracking Unique Identifier'),
-  finding: concept('121071', 'Finding'),
-  algorithmName: concept('111001', 'Algorithm Name'),
+  finding: concept(FINDING_TYPE_CODE, 'Finding'),
+  algorithmName: concept(ALGORITHM_NAME_CODE, 'Algorithm Name'),
   algorithmVersion: concept('111003', 'Algorithm Version'),
   imageRegion: concept('111030', 'Image Region'),
   specimenUID: concept('121039', 'Specimen UID'),
@@ -84,7 +85,9 @@ function isTextItem(item: ContentItem): item is TextContentItem {
 }
 
 function isScoord3DItem(item: ContentItem): item is Scoord3DContentItem {
+  /** A 2D SCOORD has the same attributes but no frame of reference */
   return (
+    hasValueType(item, dcmjs.sr.valueTypes.ValueTypes.SCOORD3D) &&
     'GraphicType' in item &&
     'GraphicData' in item &&
     Array.isArray(item.GraphicData)
@@ -127,16 +130,16 @@ type PlainNumItem = {
   ConceptNameCodeSequence?: NumContentItem['ConceptNameCodeSequence']
   MeasuredValueSequence?: NumContentItem['MeasuredValueSequence']
   RelationshipType?: string
+  ContentSequence?: ContentItem[]
 }
 
-function toCodeContentItem(item: CodeContentItem): CodeContentItem {
+/** Rebuilt CODE item, or undefined when its name or value code is missing */
+function toCodeContentItem(item: CodeContentItem): CodeContentItem | undefined {
   if (item instanceof dcmjs.sr.valueTypes.CodeContentItem) return item
   const plain = item as PlainCodeItem
   const name = plain.ConceptNameCodeSequence?.[0]
   const value = plain.ConceptCodeSequence?.[0]
-  if (name === undefined || value === undefined) {
-    throw new Error('CODE content item is missing ConceptName or ConceptCode')
-  }
+  if (name === undefined || value === undefined) return undefined
   return new dcmjs.sr.valueTypes.CodeContentItem({
     name: toCodedConcept(name),
     value: toCodedConcept(value),
@@ -144,12 +147,13 @@ function toCodeContentItem(item: CodeContentItem): CodeContentItem {
   })
 }
 
-function toTextContentItem(item: TextContentItem): TextContentItem {
+/** Rebuilt TEXT item, or undefined when its name or text is missing */
+function toTextContentItem(item: TextContentItem): TextContentItem | undefined {
   if (item instanceof dcmjs.sr.valueTypes.TextContentItem) return item
   const plain = item as PlainTextItem
   const name = plain.ConceptNameCodeSequence?.[0]
   if (name === undefined || typeof plain.TextValue !== 'string') {
-    throw new Error('TEXT content item is missing ConceptName or TextValue')
+    return undefined
   }
   return new dcmjs.sr.valueTypes.TextContentItem({
     name: toCodedConcept(name),
@@ -180,15 +184,23 @@ function toNumContentItem(item: NumContentItem): NumContentItem | undefined {
   ) {
     return undefined
   }
-  return new dcmjs.sr.valueTypes.NumContentItem({
+  const rebuilt = new dcmjs.sr.valueTypes.NumContentItem({
     name: toCodedConcept(name),
     value: numeric,
     unit: toCodedConcept(unit),
     relationshipType: plain.RelationshipType ?? 'CONTAINS',
   })
+  /**
+   * Keep child items such as Source of Measurement, which tie a value to its
+   * optical path and must survive a save of the loaded ROI.
+   */
+  if (plain.ContentSequence !== undefined && plain.ContentSequence.length > 0) {
+    rebuilt.ContentSequence = plain.ContentSequence
+  }
+  return rebuilt
 }
 
-function toEvaluationItem(item: EvaluationItem): EvaluationItem {
+function toEvaluationItem(item: EvaluationItem): EvaluationItem | undefined {
   return isTextItem(item) ? toTextContentItem(item) : toCodeContentItem(item)
 }
 
@@ -269,9 +281,24 @@ function parseMeasurementGroup(
   const algorithmName = findFirst(content, CONCEPTS.algorithmName)
   const observerType = algorithmName !== undefined ? 'Device' : 'Person'
   const algorithmVersion = findFirst(content, CONCEPTS.algorithmVersion)
+  /**
+   * A malformed CODE or TEXT item is skipped with a warning, like a NUM
+   * item, so it cannot drop every ROI of the report.
+   */
+  const addEvaluation = (item: EvaluationItem): void => {
+    const rebuilt = toEvaluationItem(item)
+    if (rebuilt !== undefined) {
+      evaluations.push(rebuilt)
+    } else {
+      warnings.push(
+        `Skipped a ${isTextItem(item) ? 'TEXT' : 'CODE'} content item without ` +
+          `a concept name or value. ${TID_1410_CONTEXT}`,
+      )
+    }
+  }
   for (const item of [algorithmName, algorithmVersion]) {
     if (item !== undefined && (isCodeItem(item) || isTextItem(item))) {
-      evaluations.push(toEvaluationItem(item))
+      addEvaluation(item)
     }
   }
 
@@ -280,7 +307,17 @@ function parseMeasurementGroup(
     warnings.push(`Content item "Image Region" not found. ${TID_1410_CONTEXT}`)
     return undefined
   }
-  const scoord3d = createScoord3D(region)
+  let scoord3d: dmv.scoord3d.Scoord3D | undefined
+  try {
+    scoord3d = createScoord3D(region)
+  } catch (error: unknown) {
+    /** One invalid region skips its own ROI, not the whole report */
+    const reason = error instanceof Error ? error.message : String(error)
+    warnings.push(
+      `Content item "Image Region" is invalid: ${reason}. ${TID_1410_CONTEXT}`,
+    )
+    return undefined
+  }
   if (scoord3d === undefined) {
     warnings.push(
       'Content item "Image Region" has unknown graphic type ' +
@@ -289,8 +326,10 @@ function parseMeasurementGroup(
     return undefined
   }
 
+  /** Algorithm Name / Version were added above; do not list them twice */
   for (const item of content.filter(isCodeItem)) {
-    evaluations.push(toCodeContentItem(item))
+    if (item === algorithmName || item === algorithmVersion) continue
+    addEvaluation(item)
   }
 
   const measurements: NumContentItem[] = []
@@ -317,7 +356,7 @@ function parseROIs(
 ): dmv.roi.ROI[] {
   /** TID 1500 Measurement Report */
   const matches = findContentItemsByName({
-    content: report.ContentSequence,
+    content: report.ContentSequence ?? [],
     name: CONCEPTS.imagingMeasurements,
   })
   if (matches.length !== 1) {

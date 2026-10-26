@@ -49,3 +49,13 @@ export function shortcutForKeyEvent(
     ? ALT_SHORTCUTS[event.code]
     : undefined
 }
+
+const DIALOG_SELECTOR = '[role="dialog"], [role="alertdialog"]'
+
+/** Whether a key event happened inside an open dialog */
+export function isInsideDialog(target: EventTarget | null): boolean {
+  if (typeof Element === 'undefined' || !(target instanceof Element)) {
+    return false
+  }
+  return target.closest(DIALOG_SELECTOR) !== null
+}

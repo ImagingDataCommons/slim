@@ -38,6 +38,51 @@ describe('useKeyboardShortcuts', () => {
   })
 })
 
+describe('useKeyboardShortcuts with a dialog open', () => {
+  afterEach(() => {
+    document.body.replaceChildren()
+  })
+
+  /** Like a Radix dialog: role="dialog" and no aria-modal */
+  function openDialog(): HTMLElement {
+    const dialog = document.createElement('div')
+    dialog.setAttribute('role', 'dialog')
+    const button = document.createElement('button')
+    dialog.append(button)
+    document.body.append(dialog)
+    return button
+  }
+
+  it('lets Escape answer the dialog without cancelling the tool', () => {
+    const onShortcut = vi.fn()
+    renderHook(() => useKeyboardShortcuts(onShortcut))
+    const insideDialog = openDialog()
+
+    fireEvent.keyDown(insideDialog, { key: 'Escape', code: 'Escape' })
+    /** The dialog closed on key-down, so key-up lands outside it */
+    document.body.replaceChildren()
+    fireEvent.keyUp(document.body, { key: 'Escape', code: 'Escape' })
+    expect(onShortcut).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(document.body, { key: 'Escape', code: 'Escape' })
+    fireEvent.keyUp(document.body, { key: 'Escape', code: 'Escape' })
+    expect(onShortcut).toHaveBeenCalledWith('cancel')
+  })
+
+  it('ignores Alt shortcuts pressed inside a dialog', () => {
+    const onShortcut = vi.fn()
+    renderHook(() => useKeyboardShortcuts(onShortcut))
+    const insideDialog = openDialog()
+
+    fireEvent.keyUp(insideDialog, { key: 'd', code: 'KeyD', altKey: true })
+    expect(onShortcut).not.toHaveBeenCalled()
+
+    document.body.replaceChildren()
+    fireEvent.keyUp(document.body, { key: 'd', code: 'KeyD', altKey: true })
+    expect(onShortcut).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('useHeldKeys', () => {
   it('tracks whether Shift is held', () => {
     const { result } = renderHook(() => useHeldKeys())
@@ -46,6 +91,15 @@ describe('useHeldKeys', () => {
     expect(result.current.isShiftDown()).toBe(true)
 
     fireEvent.keyUp(document.body, { key: 'Shift', code: 'ShiftLeft' })
+    expect(result.current.isShiftDown()).toBe(false)
+  })
+
+  it('forgets held keys when the window loses focus', () => {
+    const { result } = renderHook(() => useHeldKeys())
+
+    fireEvent.keyDown(document.body, { key: 'Shift', code: 'ShiftLeft' })
+    fireEvent.blur(window)
+
     expect(result.current.isShiftDown()).toBe(false)
   })
 

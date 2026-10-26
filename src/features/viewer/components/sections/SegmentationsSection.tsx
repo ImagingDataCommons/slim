@@ -1,9 +1,8 @@
 import type React from 'react'
 
 import SegmentList from '../../../../components/SegmentList'
-import { SlimCollapsibleSection } from '../../../../components/slim/SlimCollapsibleSection'
 import type { SeriesOption } from '../../utils/groupBySeries'
-import { SeriesSelect } from '../OptionSelect'
+import { SeriesFilteredSection } from './SeriesFilteredSection'
 
 export type SegmentationsSectionProps = React.ComponentProps<
   typeof SegmentList
@@ -21,13 +20,13 @@ export function SegmentationsSection({
   ...listProps
 }: SegmentationsSectionProps): React.ReactElement {
   return (
-    <SlimCollapsibleSection title="Segmentations">
-      <SeriesSelect
-        value={selectedSeriesUID}
-        options={seriesOptions}
-        onValueChange={onSeriesChange}
-      />
+    <SeriesFilteredSection
+      title="Segmentations"
+      seriesOptions={seriesOptions}
+      selectedSeriesUID={selectedSeriesUID}
+      onSeriesChange={onSeriesChange}
+    >
       <SegmentList {...listProps} />
-    </SlimCollapsibleSection>
+    </SeriesFilteredSection>
   )
 }

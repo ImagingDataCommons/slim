@@ -132,3 +132,20 @@ describe('presentation state value mapping', () => {
     expect(fromPresentationStateValue('1.2')).toBe('1.2')
   })
 })
+
+describe('buildPresentationStateOptions', () => {
+  it('lists each selectable state once, then Default', () => {
+    const options = buildPresentationStateOptions([
+      { SOPInstanceUID: '1.2.3', ContentDescription: 'DAPI' },
+      { SOPInstanceUID: '1.2.3', ContentDescription: 'Duplicate' },
+      { ContentDescription: 'No UID' },
+      { SOPInstanceUID: '1.2.4' },
+    ])
+
+    expect(options.map((option) => [option.value, option.label])).toEqual([
+      ['1.2.3', 'DAPI'],
+      ['1.2.4', 'Untitled'],
+      [expect.any(String), 'Default'],
+    ])
+  })
+})

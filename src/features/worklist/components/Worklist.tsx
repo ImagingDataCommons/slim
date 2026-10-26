@@ -6,7 +6,6 @@ import {
   useCallback,
   useDeferredValue,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -19,26 +18,23 @@ import { cn } from '../../../lib/utils'
 import { buildStudyPath } from '../../../utils/routes'
 import { usePreferences } from '../../preferences'
 import {
-  type ContainsCandidate,
   type RowCheckState,
   useContainsRowChecks,
   useContainsSearch,
 } from '../hooks/useContainsSearch'
-import { useModalityBackfill } from '../hooks/useModalityBackfill'
 import { useStudies } from '../hooks/useStudies'
 import { useStudySearch } from '../hooks/useStudySearch'
+import type { WorklistWidthTier } from '../hooks/useWorklistColumnLayout'
+import {
+  useWorklistCandidates,
+  useWorklistRows,
+} from '../hooks/useWorklistRows'
 import {
   CONTAINS_PARAM,
   type ContainsEntry,
   findContainsEntry,
 } from '../utils/containsCatalog'
-import { withEntryModality } from '../utils/containsSearch'
-import {
-  appendMissingStudies,
-  filterStudiesBySearchText,
-  getEmptyStudiesMessage,
-  mergeModalities,
-} from '../utils/filters'
+import { getEmptyStudiesMessage } from '../utils/filters'
 import { clampPagination } from '../utils/pagination'
 import { WorklistHeader } from './WorklistHeader'
 import { WorklistPagination } from './WorklistPagination'
@@ -49,8 +45,6 @@ export interface WorklistProps {
   className?: string
 }
 
-const NO_CANDIDATES: readonly ContainsCandidate[] = []
-
 function ContainsRowMarker({
   check,
   label,
@@ -59,11 +53,14 @@ function ContainsRowMarker({
   label: string
 }): React.ReactElement | null {
   if (check?.status === 'checking') {
+    /**
+     * Not a live region: a page of candidates would announce up to one per
+     * row at once. The text is still read when the row is reached.
+     */
     return (
       <span
-        role="status"
         title={`Checking for ${label}…`}
-        className="size-2.5 animate-spin rounded-full border-[1.5px] border-line border-t-primary"
+        className="size-3.5 animate-spin rounded-full border-2 border-primary/25 border-t-primary"
       >
         <span className="sr-only">Checking for {label}…</span>
       </span>
@@ -75,7 +72,7 @@ function ContainsRowMarker({
         title={`Couldn't verify that this study has ${label}`}
         className="flex text-warning"
       >
-        <Icon name="warning" size={12} />
+        <Icon name="warning" size={16} />
         <span className="sr-only">
           Couldn't verify that this study has {label}
         </span>
@@ -101,13 +98,17 @@ export function Worklist({
     pageSize: 20,
   })
   const [pageStudyUids, setPageStudyUids] = useState<readonly string[]>([])
+  const [columnTier, setColumnTier] = useState<WorklistWidthTier>('base')
+  const handleTierChange = useCallback((tier: WorklistWidthTier) => {
+    setColumnTier(tier)
+  }, [])
 
   const containsEntry = findContainsEntry(searchParams.get(CONTAINS_PARAM))
   /** Derived data may live on another store than the slides */
   const containsClient =
     containsEntry === undefined
       ? undefined
-      : (clients[containsEntry.sopClassUids[0]] ??
+      : (clients[containsEntry.sopClassUid] ??
         clients[StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE])
   const containsSearch = useContainsSearch(containsClient, containsEntry)
   const containsResult = containsSearch.result
@@ -136,68 +137,33 @@ export function Worklist({
     previousServerUrl.current = serverUrl
   }, [serverUrl, setSearchParams])
 
-  const loadedStudies = useMemo(
-    () => new Map(studies.map((study) => [study.StudyInstanceUID, study])),
-    [studies],
-  )
-  const needsCheck = (studyUid: string): boolean =>
-    containsResult !== undefined &&
-    (!containsResult.isExact || !loadedStudies.has(studyUid))
-
-  const candidates = useMemo(() => {
-    if (containsResult === undefined) return NO_CANDIDATES
-    return pageStudyUids.flatMap((studyUid) => {
-      const match = containsResult.matches.get(studyUid)
-      const needsStudy = !loadedStudies.has(studyUid)
-      const needsSopClass = !containsResult.isExact
-      if (match === undefined || (!needsStudy && !needsSopClass)) return []
-      return [
-        { studyUid, seriesUids: match.seriesUids, needsStudy, needsSopClass },
-      ]
-    })
-  }, [containsResult, pageStudyUids, loadedStudies])
+  const { loadedStudies, candidates } = useWorklistCandidates({
+    studies,
+    containsResult,
+    pageStudyUids,
+  })
   const getRowCheck = useContainsRowChecks(
     containsClient,
     slideClient,
     containsEntry,
     candidates,
   )
-
-  let containsStudies = appendMissingStudies(studies, serverSearch.matches)
-  let hasUncheckedMatches = false
-  if (containsEntry !== undefined) {
-    containsStudies = []
-    for (const [studyUid, match] of containsResult?.matches ?? []) {
-      const check = getRowCheck(studyUid)
-      if (check?.status === 'mismatch') continue
-      if (check === undefined && needsCheck(studyUid)) {
-        hasUncheckedMatches = true
-      }
-      const loaded = loadedStudies.get(studyUid)
-      const fetched =
-        check !== undefined && 'study' in check ? check.study : undefined
-      containsStudies.push(
-        loaded ?? withEntryModality(fetched ?? match.study, containsEntry),
-      )
-    }
-  }
-  const filteredStudies = useMemo(
-    () => filterStudiesBySearchText(containsStudies, deferredSearchText),
-    [containsStudies, deferredSearchText],
-  )
-  const pagination = clampPagination(
-    requestedPagination,
-    filteredStudies.length,
-  )
-  const pageStudies = useMemo(() => {
-    const onPage = new Set(pageStudyUids)
-    return filteredStudies.filter((study) => onPage.has(study.StudyInstanceUID))
-  }, [filteredStudies, pageStudyUids])
-  const backfilledModalities = useModalityBackfill(slideClient, pageStudies)
-  const tableStudies = useMemo(
-    () => mergeModalities(filteredStudies, backfilledModalities),
-    [filteredStudies, backfilledModalities],
-  )
+  const {
+    containsStudies,
+    hasUncheckedMatches,
+    filteredStudies,
+    tableStudies,
+  } = useWorklistRows({
+    studies,
+    serverSearchMatches: serverSearch.matches,
+    containsEntry,
+    containsResult,
+    loadedStudies,
+    getRowCheck,
+    deferredSearchText,
+    pageStudyUids,
+    slideClient,
+  })
 
   const handleSearchChange = useCallback((value: string): void => {
     setSearchText(value)
@@ -224,31 +190,49 @@ export function Worklist({
     [navigate],
   )
 
-  const isSearchingContains = containsSearch.status === 'searching'
+  const hasNoServer = serverUrl === ''
+  /**
+   * The first page, or a "Search more" page while nothing is listed yet:
+   * the table shows it is searching rather than "No studies with …"
+   */
+  const isContainsSearchPending =
+    containsSearch.status === 'searching' &&
+    (containsSearch.result === undefined || containsStudies.length === 0)
   let emptyMessage = getEmptyStudiesMessage(deferredSearchText)
-  if (containsEntry !== undefined && deferredSearchText.trim() === '') {
-    emptyMessage =
-      containsSearch.status === 'error'
-        ? `Couldn't search for ${containsEntry.label}.`
-        : `No studies with ${containsEntry.label}.`
+  if (hasNoServer) {
+    /** Nothing was searched yet, whatever the filters say */
+    emptyMessage = 'Select a server to search for studies.'
+  } else if (containsEntry !== undefined && containsSearch.status === 'error') {
+    /** A failed Contains search fails the list, whatever text is typed */
+    emptyMessage = `Couldn't search for ${containsEntry.label}.`
+  } else if (containsEntry !== undefined && deferredSearchText.trim() === '') {
+    emptyMessage = `No studies with ${containsEntry.label}.`
   } else if (serverSearch.hasError) {
     emptyMessage = "Couldn't search for studies."
   }
 
+  const pagination = clampPagination(
+    requestedPagination,
+    filteredStudies.length,
+  )
+
   return (
     <main
       className={cn(
-        'flex h-full min-h-0 flex-col gap-3 px-5 pb-4 pt-4',
+        'flex h-full min-h-0 min-w-0 w-full max-w-full flex-col gap-3 px-5 pb-4 pt-4 max-md:gap-2 max-md:px-3 max-md:pt-2',
         className,
       )}
     >
       <WorklistHeader
-        totalCount={studies.length}
         isLoading={isLoading}
         searchText={searchText}
         onSearchChange={handleSearchChange}
+        columnTier={columnTier}
+        hiddenColumnIds={preferences.worklistHiddenColumnIds}
         contains={
-          containsEntry === undefined || containsSearch.status === 'idle'
+          containsEntry === undefined ||
+          containsSearch.status === 'idle' ||
+          hasNoServer
             ? undefined
             : {
                 entry: containsEntry,
@@ -257,21 +241,29 @@ export function Worklist({
                 matchCount: containsStudies.length,
                 isApproximate: hasUncheckedMatches,
                 isPartial: containsResult?.isPartial ?? false,
+                searchedCount: containsResult?.matches.size ?? 0,
                 onRetry: containsSearch.retry,
+                onLoadMore: containsSearch.loadMore,
+                canLoadMore: containsSearch.canLoadMore,
+                hasStoreFailures: containsResult?.hasStoreFailures ?? false,
               }
         }
+        containsEntry={containsEntry}
         onContainsChange={handleContainsChange}
+        hasNoServer={hasNoServer}
       />
       <WorklistTable
         className="flex-1"
         data={tableStudies}
         isLoading={
           isLoading ||
-          isSearchingContains ||
+          (isContainsSearchPending && !hasNoServer) ||
           (serverSearch.isSearching && filteredStudies.length === 0)
         }
         emptyMessage={emptyMessage}
         isCompact={preferences.compactRows}
+        hiddenColumnIds={preferences.worklistHiddenColumnIds}
+        onTierChange={handleTierChange}
         onRowClick={handleRowClick}
         pagination={pagination}
         onPaginationChange={setPagination}

@@ -15,7 +15,7 @@ import NotificationMiddleware, {
 import { CustomError, errorTypes } from '../utils/CustomError'
 import { logger } from '../utils/logger'
 import {
-  isAuthorizationCodeInUrl,
+  describeCallbackWithoutState,
   isOidcAuthorizeCallbackUrl,
   joinUrl,
 } from '../utils/url'
@@ -210,18 +210,30 @@ export default class OidcManager implements AuthManager {
     onSignIn?: SignInCallback
     returnUrl?: string
   }): Promise<SignInOutcome> => {
-    if (isAuthorizationCodeInUrl(window.location)) {
+    if (isOidcAuthorizeCallbackUrl(window.location)) {
       /**
        * Handle the callback from the authorization server: extract the code
        * (or implicit tokens) from the callback URL, obtain user information
-       * and the access token for the DICOMweb server.
+       * and the access token for the DICOMweb server. Strip tokens from the
+       * address bar on success and on failure so they are not left in history,
+       * and before handleSignIn so its return URL check sees the clean URL.
+       * An error response with `state` goes to the library too, which drops
+       * the pending request and reports the IdP's error_description.
        */
-      console.info('obtaining authorization')
-      const userData =
-        this._implicit != null
-          ? await this._implicit.signinRedirectCallback(window.location.href)
-          : await this._oidc.signinRedirectCallback()
-      clearAuthParamsFromUrl()
+      let userData: UserData
+      try {
+        const callbackError = describeCallbackWithoutState(window.location)
+        if (callbackError !== undefined) {
+          throw new CustomError(errorTypes.AUTHENTICATION, callbackError)
+        }
+        console.info('obtaining authorization')
+        userData =
+          this._implicit != null
+            ? await this._implicit.signinRedirectCallback(window.location.href)
+            : await this._oidc.signinRedirectCallback()
+      } finally {
+        clearAuthParamsFromUrl()
+      }
       logger.log(`obtained user data for subject ${userData.profile.sub}`)
       handleSignIn(userData, onSignIn, { includeReturnUrl: true })
       return 'completed'
@@ -337,9 +349,8 @@ export default class OidcManager implements AuthManager {
       if (userData == null || userData.expired === true) {
         return undefined
       }
-      const authorization = authorizationFromUser(userData)
-      this._notifyAuthorization(authorization)
-      return authorization
+      /** Listeners were notified by the userLoaded event the renew raised */
+      return authorizationFromUser(userData)
     } catch (error) {
       console.warn('silent authorization renew failed', error)
       return undefined

@@ -7,6 +7,7 @@ import NotificationMiddleware, {
 } from '../services/NotificationMiddleware'
 import type { AppInfo } from './appInfo'
 import { CustomError, errorTypes } from './CustomError'
+import { FINDING_TYPE_CODE } from './roiDescription'
 
 const generateReport = ({
   rois,
@@ -103,7 +104,7 @@ const generateReport = ({
 
     const findingType = roi.evaluations.find(
       (item: sr.valueTypes.ContentItem) => {
-        return item.ConceptNameCodeSequence[0].CodeValue === '121071'
+        return item.ConceptNameCodeSequence[0].CodeValue === FINDING_TYPE_CODE
       },
     ) as sr.valueTypes.CodeContentItem | undefined
 
@@ -150,7 +151,9 @@ const generateReport = ({
         }),
         qualitativeEvaluations: roi.evaluations.filter(
           (item: sr.valueTypes.ContentItem) => {
-            return item.ConceptNameCodeSequence[0].CodeValue !== '121071'
+            return (
+              item.ConceptNameCodeSequence[0].CodeValue !== FINDING_TYPE_CODE
+            )
           },
         ),
         measurements: roi.measurements,

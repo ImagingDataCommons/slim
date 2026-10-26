@@ -24,7 +24,8 @@ export interface DescribableMeasurement extends ContentItemLike {
     NumericValue: number
     MeasurementUnitsCodeSequence: readonly CodeLike[]
   }>
-  ContentSequence?: readonly ContentItemLike[]
+  /** Child items come from the loaded SR as-is and may lack a concept name */
+  ContentSequence?: ReadonlyArray<Partial<ContentItemLike>>
 }
 
 export interface DescribableRoi {
@@ -55,8 +56,8 @@ export const DEFAULT_MEASUREMENT_GROUP = 'default'
 
 const SOURCE_OF_MEASUREMENT = { CodeValue: '121112', scheme: 'DCM' } as const
 
-function isSourceOfMeasurement(item: ContentItemLike): boolean {
-  const name = item.ConceptNameCodeSequence[0]
+function isSourceOfMeasurement(item: Partial<ContentItemLike>): boolean {
+  const name = item.ConceptNameCodeSequence?.[0]
   return (
     name?.CodeValue === SOURCE_OF_MEASUREMENT.CodeValue &&
     name.CodingSchemeDesignator === SOURCE_OF_MEASUREMENT.scheme

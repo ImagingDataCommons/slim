@@ -12,6 +12,7 @@ import NotificationMiddleware, {
 } from '../services/NotificationMiddleware'
 import type { CustomError } from '../utils/CustomError'
 import { computeOverviewPreviewResizeFactor } from '../utils/computeOverviewPreviewResizeFactor'
+import { logger } from '../utils/logger'
 import {
   getIlluminationType,
   getMagnification,
@@ -25,6 +26,18 @@ export interface SlideItemProps {
   slide: Slide
   isSelected?: boolean
   onSelect: ({ seriesInstanceUID }: { seriesInstanceUID: string }) => void
+}
+
+/** Runs `step`, handing anything it throws to `recover` */
+function runOrRecover(
+  step: () => void,
+  recover: (error: unknown) => void,
+): void {
+  try {
+    step()
+  } catch (error: unknown) {
+    recover(error)
+  }
 }
 
 /**
@@ -46,6 +59,28 @@ function useOverviewViewer(
 
     let viewer: dmv.viewer.OverviewImageViewer | undefined
     let resizeFrame: number | undefined
+    let observer: ResizeObserver | undefined
+
+    const disposeViewer = (): void => {
+      runOrRecover(
+        () => viewer?.cleanup(),
+        (error) => {
+          logger.error('overview thumbnail could not be cleaned up', error)
+        },
+      )
+      viewer = undefined
+    }
+
+    /**
+     * A slide whose overview cannot be shown keeps an empty thumbnail
+     * instead of throwing, and retrying, on every resize
+     */
+    const giveUp = (error: unknown): void => {
+      logger.error('overview thumbnail could not be shown', error)
+      observer?.disconnect()
+      disposeViewer()
+      container.innerHTML = ''
+    }
 
     const mount = (): void => {
       container.innerHTML = ''
@@ -66,22 +101,26 @@ function useOverviewViewer(
         },
       })
       viewer.render({ container })
-      resizeFrame = requestAnimationFrame(() => viewer?.resize())
+      resizeFrame = requestAnimationFrame(() => {
+        runOrRecover(() => viewer?.resize(), giveUp)
+      })
     }
 
-    const observer = new ResizeObserver(() => {
-      if (viewer !== undefined) {
-        viewer.resize()
-      } else if (container.clientWidth > 0 && container.clientHeight > 0) {
-        mount()
-      }
+    observer = new ResizeObserver(() => {
+      runOrRecover(() => {
+        if (viewer !== undefined) {
+          viewer.resize()
+        } else if (container.clientWidth > 0 && container.clientHeight > 0) {
+          mount()
+        }
+      }, giveUp)
     })
     observer.observe(container)
 
     return () => {
-      observer.disconnect()
+      observer?.disconnect()
       if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame)
-      viewer?.cleanup()
+      disposeViewer()
     }
   }, [client, metadata])
 

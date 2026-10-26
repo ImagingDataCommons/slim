@@ -1,10 +1,8 @@
 /** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import { type JSX, useMemo, useReducer, useState } from 'react'
+import { useEffect, useMemo, useReducer, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 
-import { ConfirmDialog } from '../../../components/ConfirmDialog'
-import Report from '../../../components/Report'
 import { DEFAULT_ROI_RADIUS } from '../../../components/SlideViewer/constants'
 import type { SlideViewerProps } from '../../../components/SlideViewer/types'
 import { buildDefaultRoiStyle } from '../../../components/SlideViewer/utils/roiUtils'
@@ -15,34 +13,30 @@ import {
   getSlideStainInfo,
 } from '../../../utils/slideDisplay'
 import { usePreferences } from '../../preferences'
-import { HoveredRoiTooltipLayer } from '../components/HoveredRoiTooltipLayer'
-import { RoiDescription } from '../components/RoiDescription'
-import { AnnotationCategoriesSection } from '../components/sections/AnnotationCategoriesSection'
-import { AnnotationConfigurationFields } from '../components/sections/AnnotationConfigurationFields'
-import { AnnotationGroupsSection } from '../components/sections/AnnotationGroupsSection'
-import { AnnotationsSection } from '../components/sections/AnnotationsSection'
-import { EquipmentSection } from '../components/sections/EquipmentSection'
-import { OpticalPathsSection } from '../components/sections/OpticalPathsSection'
-import { ParametricMapsSection } from '../components/sections/ParametricMapsSection'
-import { PresentationStatesSection } from '../components/sections/PresentationStatesSection'
-import { SegmentationsSection } from '../components/sections/SegmentationsSection'
-import { SpecimensSection } from '../components/sections/SpecimensSection'
-import { ViewerFooter } from '../components/ViewerFooter'
-import { ViewerToolbar } from '../components/ViewerToolbar'
-import { ViewportLoadingIndicator } from '../components/ViewportLoadingIndicator'
-import { ViewportOverlays } from '../components/ViewportOverlays'
+import {
+  ANNOTATION_PREFS_PREVIEW_EVENT,
+  type AnnotationPrefsPreview,
+  DRAW_STYLE_PREFS_PREVIEW_EVENT,
+  type DrawStylePrefsPreview,
+} from '../../preferences/utils/preferences'
+import type { SlideViewerViewProps } from '../components/SlideViewerView'
+import { useViewerPanelChrome } from '../contexts/ViewerPanelChromeContext'
 import { describeStudySeries } from '../services/seriesDescription'
 import { deriveActiveRoiTool } from '../utils/activeRoiTool'
 import { buildAnnotationConfig } from '../utils/annotationConfig'
-import type { GoToField, GoToInput, GoToRanges } from '../utils/goTo'
+import { applyAnnotationViewerPrefs } from '../utils/applyAnnotationViewerPrefs'
 import {
-  ALL_SERIES,
+  buildDerivedLegendRows,
+  type DerivedLegendRow,
+} from '../utils/derivedLegend'
+import {
   buildSeriesOptions,
   groupBySeries,
   itemsForSeries,
+  shownSeries,
 } from '../utils/groupBySeries'
 import { isShortcutEnabled } from '../utils/keyboardShortcuts'
-import { buildRoiDescription } from '../utils/selectedRoiDescription'
+import { canonicalSeriesPathname } from '../utils/routeSlide'
 import { slideAffineFromImages } from '../utils/slideCoordinates'
 import {
   INITIAL_VIEWER_INTERACTION,
@@ -55,6 +49,7 @@ import { drawStyleFor, useAnnotationTools } from './useAnnotationTools'
 import { useDmvEvents } from './useDmvEvents'
 import { useHoveredRoiTooltip } from './useHoveredRoiTooltip'
 import { useHeldKeys, useKeyboardShortcuts } from './useKeyboardShortcuts'
+import { useLatestRef } from './useLatestRef'
 import { useNoIccProfileWarning } from './useNoIccProfileWarning'
 import { useOpticalPaths } from './useOpticalPaths'
 import { useParametricMaps } from './useParametricMaps'
@@ -71,58 +66,11 @@ export type SlideViewerModelProps = Omit<
   keyof RouteComponentProps
 >
 
-export interface SlideViewerModalProps {
-  isAnnotationModalVisible: boolean
-  onAnnotationConfigurationCompletion: () => void
-  onAnnotationConfigurationCancellation: () => void
-  isAnnotationOkDisabled: boolean
-  annotationConfigurations: JSX.Element
-  isSelectedRoiModalVisible: boolean
-  onRoiSelectionCancellation: () => void
-  selectedRoiInformation: JSX.Element | undefined
-  isGoToModalVisible: boolean
-  goToInput: GoToInput
-  goToRanges: GoToRanges
-  onGoToInputChange: (field: GoToField, value: string) => void
-  onSlidePositionSelection: () => void
-  onSlidePositionSelectionCancellation: () => void
-  isReportModalVisible: boolean
-  onReportVerification: () => void
-  onReportCancellation: () => void
-  report: JSX.Element | undefined
-}
-
-export interface SlideViewerModel {
-  isFluorescence: boolean
-  showOverviewMap: boolean
-  cursor: 'progress' | 'default'
-  volumeViewportRef: ReturnType<typeof useViewerSession>['volumeViewportRef']
-  labelViewportRef: ReturnType<typeof useViewerSession>['labelViewportRef']
-  onViewportResize: ReturnType<typeof useViewerSession>['onViewportResize']
-  isRightPanelOpen: boolean
-  labelViewer: dmv.viewer.LabelImageViewer | undefined
-  toolbar: JSX.Element
-  overlays: JSX.Element
-  footer: JSX.Element
-  modalProps: SlideViewerModalProps
-  confirmDialog: JSX.Element
-  sidebar: {
-    specimenMenu: JSX.Element
-    equipmentMenu: JSX.Element
-    opticalPathMenu: JSX.Element
-    presentationStateMenu: JSX.Element
-    annotationMenu: JSX.Element
-    annotationGroupMenu: JSX.Element | undefined
-    annotationCategoryMenu: JSX.Element
-    segmentationMenu: JSX.Element | undefined
-    parametricMapMenu: JSX.Element | undefined
-  }
-  hoveredRoiTooltip: JSX.Element
-}
+export type SlideViewerModel = SlideViewerViewProps
 
 /**
- * Owns SlideViewer hook orchestration and builds the props/menus the shell
- * renders. Keeps `SlideViewer` as thin JSX.
+ * Owns SlideViewer hook orchestration and returns data props for
+ * `SlideViewerView`. Keeps this module free of JSX.
  */
 export function useSlideViewerModel({
   slide,
@@ -144,17 +92,54 @@ export function useSlideViewerModel({
   const navigate = useNavigate()
   const preferences = usePreferences()
   const [annotationConfig] = useState(() => buildAnnotationConfig(annotations))
-  const { strokeColor, strokeWidth } = preferences
+  /** Live stroke/fill from Preferences before Save */
+  const [drawStylePreview, setDrawStylePreview] =
+    useState<DrawStylePrefsPreview | null>(null)
+  const strokeColor = drawStylePreview?.strokeColor ?? preferences.strokeColor
+  const strokeWidth = drawStylePreview?.strokeWidth ?? preferences.strokeWidth
+  const roiFill = drawStylePreview?.roiFill ?? preferences.roiFill
+  const roiFillOpacity =
+    drawStylePreview?.roiFillOpacity ?? preferences.roiFillOpacity
   const defaultRoiStyle = useMemo(
     () =>
       buildDefaultRoiStyle({
         strokeColor: hexToRgb(strokeColor),
         strokeWidth,
         radius: DEFAULT_ROI_RADIUS,
+        fill: roiFill,
+        fillOpacity: roiFillOpacity,
       }),
-    [strokeColor, strokeWidth],
+    [strokeColor, strokeWidth, roiFill, roiFillOpacity],
   )
-  const [isRightPanelOpen, setIsRightPanelOpen] = useState(true)
+
+  useEffect(() => {
+    const onPreview = (event: Event): void => {
+      const detail = (event as CustomEvent<DrawStylePrefsPreview>).detail
+      if (detail === undefined) return
+      setDrawStylePreview(detail)
+    }
+    window.addEventListener(DRAW_STYLE_PREFS_PREVIEW_EVENT, onPreview)
+    return () => {
+      window.removeEventListener(DRAW_STYLE_PREFS_PREVIEW_EVENT, onPreview)
+    }
+  }, [])
+
+  /**
+   * Drop stale preview when persisted preferences change (Save / Cancel).
+   * Pref keys are intentional triggers; the body only clears preview state.
+   */
+  /** biome-ignore lint/correctness/useExhaustiveDependencies: clear on save */
+  useEffect(() => {
+    setDrawStylePreview(null)
+  }, [
+    preferences.strokeColor,
+    preferences.strokeWidth,
+    preferences.roiFill,
+    preferences.roiFillOpacity,
+  ])
+
+  const panelChrome = useViewerPanelChrome()
+  const isRightPanelOpen = panelChrome.isRightPanelOpen
   const [interaction, dispatchInteraction] = useReducer(
     viewerInteractionReducer,
     INITIAL_VIEWER_INTERACTION,
@@ -163,17 +148,21 @@ export function useSlideViewerModel({
     describeStudySeries(studyInstanceUID, uid)
 
   const viewer = useViewerSnapshot()
-  const { sessionRef, snapshot } = viewer
+  const { sessionRef, snapshot, refreshSnapshot } = viewer
+
   const viewportLoading = useViewportLoading(sessionRef)
   const opticalPaths = useOpticalPaths(
     viewer,
     snapshot.isPaletteDisplayGammaCorrectionEnabled,
   )
+  /** Route of the viewers; a mangled series UID correction keeps it */
+  const routePathname = canonicalSeriesPathname(location.pathname, slide)
   const presentationStates = usePresentationStates({
     sessionRef,
     clients,
     studyInstanceUID,
     requestedUID: selectedPresentationStateUID,
+    routePathname,
     location,
     navigate,
     opticalPaths,
@@ -183,16 +172,46 @@ export function useSlideViewerModel({
   const rois = useRois({
     viewer,
     defaultRoiStyle,
+    findingCategories: annotationConfig.findingCategories,
     isShiftDown: heldKeys.isShiftDown,
     onDetailsVisibilityChange: (isVisible) =>
       dispatchInteraction({ type: 'setSelectedRoiModalVisible', isVisible }),
   })
+  const roiDisplayRef = useLatestRef({
+    currentVisibleRoiUIDs: rois.currentVisibleRoiUIDs,
+    selectedRoiUIDs: rois.selectedRoiUIDs,
+  })
+
+  /**
+   * Preferences fill/stroke apply to in-progress draw (below) and to ROIs that
+   * still follow preference defaults — otherwise opacity looks "stuck".
+   * The registry takes the new default for every such ROI, but only visible,
+   * unselected ones are restyled on the map: hidden ROIs stay hidden and the
+   * selection highlight stays until the selection changes.
+   * Depend on `refreshSnapshot` (stable), not `viewer` (new object each render).
+   */
+  useEffect(() => {
+    const session = sessionRef.current
+    if (session === undefined) return
+    const uids = session.roiStyles.applyPreferenceDefaults(defaultRoiStyle)
+    const { currentVisibleRoiUIDs, selectedRoiUIDs } = roiDisplayRef.current
+    const visibleRoiUIDs = currentVisibleRoiUIDs()
+    for (const uid of uids) {
+      if (visibleRoiUIDs.has(uid) && !selectedRoiUIDs.has(uid)) {
+        session.volumeViewer.setROIStyle(uid, defaultRoiStyle)
+      }
+    }
+    if (uids.length > 0) {
+      refreshSnapshot()
+    }
+  }, [defaultRoiStyle, sessionRef, refreshSnapshot, roiDisplayRef])
+
   const report = useReport({
     sessionRef,
     clients,
     app,
     user,
-    visibleRoiUIDs: rois.visibleRoiUIDs,
+    currentVisibleRoiUIDs: rois.currentVisibleRoiUIDs,
     dispatch: dispatchInteraction,
   })
   const tools = useAnnotationTools({
@@ -202,10 +221,91 @@ export function useSlideViewerModel({
     rois,
     draft: draft.draft,
     defaultRoiStyle,
+    useFindingColors: preferences.useFindingColors,
+    measurementUnit: preferences.units,
     confirmRoiRemoval: preferences.confirmRoiRemoval,
     goToRanges: snapshot.goToRanges,
     onSave: report.onGenerate,
+    canWriteRois: enableAnnotationTools,
   })
+
+  /**
+   * `snapshot.generation` re-applies prefs after the volume viewer is rebuilt.
+   */
+  /** biome-ignore lint/correctness/useExhaustiveDependencies: generation gate */
+  useEffect(() => {
+    const volumeViewer = sessionRef.current?.volumeViewer
+    if (volumeViewer === undefined) return
+    applyAnnotationViewerPrefs(volumeViewer, {
+      units: preferences.units,
+      markupLabelColor: preferences.markupLabelColor,
+      markupLabelFontSize: preferences.markupLabelFontSize,
+    })
+  }, [
+    preferences.units,
+    preferences.markupLabelColor,
+    preferences.markupLabelFontSize,
+    snapshot.generation,
+    sessionRef,
+  ])
+
+  /**
+   * Live preview from Preferences > Annotations before Save.
+   * Re-subscribe when the viewer generation changes so the handler sees a live session.
+   */
+  /** biome-ignore lint/correctness/useExhaustiveDependencies: generation gate */
+  useEffect(() => {
+    const onPreview = (event: Event): void => {
+      const volumeViewer = sessionRef.current?.volumeViewer
+      if (volumeViewer === undefined) return
+      const detail = (event as CustomEvent<AnnotationPrefsPreview>).detail
+      if (detail === undefined) return
+      applyAnnotationViewerPrefs(volumeViewer, {
+        units: detail.units,
+        markupLabelColor: detail.markupLabelColor,
+        markupLabelFontSize: detail.markupLabelFontSize,
+      })
+    }
+    window.addEventListener(ANNOTATION_PREFS_PREVIEW_EVENT, onPreview)
+    return () => {
+      window.removeEventListener(ANNOTATION_PREFS_PREVIEW_EVENT, onPreview)
+    }
+  }, [sessionRef, snapshot.generation])
+
+  /**
+   * Draw interaction keeps the style from activate time. Re-bind when stroke
+   * prefs change so the in-progress sketch matches Preferences.
+   */
+  useEffect(() => {
+    const session = sessionRef.current
+    const annotationDraft = draft.draft
+    if (
+      session === undefined ||
+      !interaction.isRoiDrawingActive ||
+      interaction.isAnnotationModalVisible ||
+      annotationDraft.geometryType === undefined ||
+      annotationDraft.finding === undefined
+    ) {
+      return
+    }
+    session.volumeViewer.activateDrawInteraction({
+      geometryType: annotationDraft.geometryType,
+      markup: annotationDraft.markup,
+      styleOptions: drawStyleFor(
+        session,
+        annotationDraft,
+        defaultRoiStyle,
+        preferences.useFindingColors,
+      ),
+    })
+  }, [
+    defaultRoiStyle,
+    preferences.useFindingColors,
+    interaction.isRoiDrawingActive,
+    interaction.isAnnotationModalVisible,
+    draft.draft,
+    sessionRef,
+  ])
   useKeyboardShortcuts((action) => {
     if (isShortcutEnabled(action, enableAnnotationTools)) {
       tools.onShortcut(action)
@@ -237,12 +337,26 @@ export function useSlideViewerModel({
       /**
        * DMV fetches ICC profiles after the viewer is created, so the snapshot
        * may predate them. Tiles only load once the profiles are in, and
-       * `loading_ended` fires for bulk annotations only.
+       * `loading_ended` fires for bulk annotations only. `hasIccProfiles` is
+       * sticky per generation, so only the absent-to-present change counts;
+       * profiles reading [] after the ICC toggle must not refresh per tile.
        */
-      const volumeViewer = sessionRef.current?.volumeViewer
+      const session = sessionRef.current
+      const volumeViewer = session?.volumeViewer
+      /** A channel's first frame sets its window slider range, once */
+      const hasNewPixelRange =
+        session !== undefined &&
+        frameInfo.channelIdentifier !== undefined &&
+        session.pixelStatistics.has(frameInfo.channelIdentifier) &&
+        !Object.hasOwn(
+          snapshot.opticalPathPixelRanges,
+          frameInfo.channelIdentifier,
+        )
       if (
         volumeViewer !== undefined &&
-        volumeViewer.getICCProfiles().length > 0 !== snapshot.hasIccProfiles
+        (hasNewPixelRange ||
+          (!snapshot.hasIccProfiles &&
+            volumeViewer.getICCProfiles().length > 0))
       ) {
         viewer.refreshSnapshot()
       }
@@ -253,7 +367,12 @@ export function useSlideViewerModel({
       rois.addDrawnRoi(
         roi,
         draft.draft,
-        drawStyleFor(session, draft.draft, defaultRoiStyle),
+        drawStyleFor(
+          session,
+          draft.draft,
+          defaultRoiStyle,
+          preferences.useFindingColors,
+        ),
       )
     },
   })
@@ -276,13 +395,17 @@ export function useSlideViewerModel({
     useViewerSession(viewer, {
       slide,
       clients,
-      routeKey: `${location.pathname}|${studyInstanceUID}|${seriesInstanceUID}`,
+      routeKey: `${routePathname}|${studyInstanceUID}|${seriesInstanceUID}`,
       preload,
       annotationConfig,
-      defaultRoiStyle,
       clustering: annotationGroups.clustering,
       gammaCorrection: opticalPaths.gammaCorrection,
       onSessionCreated: (session) => {
+        applyAnnotationViewerPrefs(session.volumeViewer, {
+          units: preferences.units,
+          markupLabelColor: preferences.markupLabelColor,
+          markupLabelFontSize: preferences.markupLabelFontSize,
+        })
         dispatchInteraction({ type: 'newViewer' })
         populateSlide(session)
       },
@@ -293,6 +416,7 @@ export function useSlideViewerModel({
     visibleAnnotationGroupUIDs: annotationGroups.visibleUIDs,
     visibleSegmentUIDs: segmentations.visibleUIDs,
     visibleMappingUIDs: parametricMaps.visibleUIDs,
+    viewerGeneration: snapshot.generation,
   })
   useNoIccProfileWarning(slide)
 
@@ -305,6 +429,45 @@ export function useSlideViewerModel({
   }
 
   const viewerKey = `${studyInstanceUID}/${seriesInstanceUID}/${snapshot.generation}`
+  const derivedLegendRows = useMemo(
+    () =>
+      buildDerivedLegendRows({
+        segments: snapshot.segments,
+        segmentMetadata: snapshot.segmentMetadata,
+        segmentStyles: snapshot.segmentStyles,
+        visibleSegmentUIDs: segmentations.visibleUIDs,
+        mappings: snapshot.mappings,
+        mappingMetadata: snapshot.mappingMetadata,
+        mappingStyles: snapshot.mappingStyles,
+        visibleMappingUIDs: parametricMaps.visibleUIDs,
+      }),
+    [
+      snapshot.segments,
+      snapshot.segmentMetadata,
+      snapshot.segmentStyles,
+      segmentations.visibleUIDs,
+      snapshot.mappings,
+      snapshot.mappingMetadata,
+      snapshot.mappingStyles,
+      parametricMaps.visibleUIDs,
+    ],
+  )
+  const onDerivedLegendVisibilityChange = (
+    row: DerivedLegendRow,
+    isVisible: boolean,
+  ): void => {
+    if (row.kind === 'segment') {
+      segmentations.onVisibilityChange({
+        segmentUID: row.id,
+        isVisible,
+      })
+      return
+    }
+    parametricMaps.onVisibilityChange({
+      mappingUID: row.id,
+      isVisible,
+    })
+  }
   const metadata = slide.volumeImages[0]
   const slideAffine = useMemo(
     () => slideAffineFromImages(slide.volumeImages),
@@ -318,14 +481,20 @@ export function useSlideViewerModel({
     snapshot.annotationGroups,
     (group) => group.seriesInstanceUID,
   )
-  const groupSeriesUID = annotationGroups.selectedSeriesUID ?? ALL_SERIES
+  const groupSeriesUID = shownSeries(
+    groupsBySeries,
+    annotationGroups.selectedSeriesUID,
+  )
   const segmentsBySeries = groupBySeries(
     snapshot.segments,
     (segment) =>
       snapshot.segmentMetadata[segment.uid]?.[0]?.SeriesInstanceUID ??
       'unknown',
   )
-  const segmentSeriesUID = segmentations.selectedSeriesUID ?? ALL_SERIES
+  const segmentSeriesUID = shownSeries(
+    segmentsBySeries,
+    segmentations.selectedSeriesUID,
+  )
 
   return {
     isFluorescence: slide.areVolumeImagesMonochrome,
@@ -336,50 +505,44 @@ export function useSlideViewerModel({
     onViewportResize,
     isRightPanelOpen,
     labelViewer: snapshot.labelViewer,
-    toolbar: (
-      <ViewerToolbar
-        isLeftPanelOpen={isLeftPanelOpen ?? true}
-        onToggleLeftPanel={onToggleLeftPanel}
-        isRightPanelOpen={isRightPanelOpen}
-        onToggleRightPanel={() => setIsRightPanelOpen((isOpen) => !isOpen)}
-        enableAnnotationTools={enableAnnotationTools}
-        activeTool={deriveActiveRoiTool(interaction)}
-        areRoisHidden={interaction.areRoisHidden}
-        onDraw={tools.onDraw}
-        onModify={tools.onModify}
-        onTranslate={tools.onTranslate}
-        onRemove={tools.onRemove}
-        onToggleRoiVisibility={tools.onToggleRoiVisibility}
-        onSave={report.onGenerate}
-        onGoTo={tools.onGoTo}
-      />
-    ),
-    overlays: (
-      <>
-        <ViewportOverlays
-          key={viewerKey}
-          getMap={snapshot.getMap}
-          slideAffine={slideAffine}
-          slideId={getSlideDisplayId(slide)}
-          slideDescription={getSlideStainInfo(slide)}
-          showSlideLabel={preferences.showSlideLabel}
-          showZoomControls={preferences.showZoomControls}
-          showViewportInfo={preferences.showViewportInfo}
-        />
-        <ViewportLoadingIndicator
-          isVisible={viewportLoading.isWaitingForFirstImage}
-          label="Loading slide"
-        />
-      </>
-    ),
-    footer: (
-      <ViewerFooter
-        resetKey={viewerKey}
-        enableMemoryMonitoring={enableMemoryMonitoring ?? true}
-        sopInstanceUIDs={volumeSopInstanceUIDs}
-      />
-    ),
-    modalProps: {
+    toolbar: {
+      isLeftPanelOpen: isLeftPanelOpen ?? true,
+      onToggleLeftPanel,
+      isRightPanelOpen,
+      onToggleRightPanel: panelChrome.toggleRightPanel,
+      enableAnnotationTools,
+      activeTool: deriveActiveRoiTool(interaction),
+      areRoisHidden: interaction.areRoisHidden,
+      onSelect: tools.onSelect,
+      onDraw: tools.onDraw,
+      onModify: tools.onModify,
+      onTranslate: tools.onTranslate,
+      onRemove: tools.onRemove,
+      onToggleRoiVisibility: tools.onToggleRoiVisibility,
+      onSave: report.onGenerate,
+      onGoTo: tools.onGoTo,
+    },
+    overlays: {
+      viewerKey,
+      getMap: snapshot.getMap,
+      slideAffine,
+      slideId: getSlideDisplayId(slide),
+      slideDescription: getSlideStainInfo(slide),
+      showSlideLabel: preferences.showSlideLabel,
+      showZoomControls: preferences.showZoomControls,
+      showViewportInfo: preferences.showViewportInfo,
+      statusLabel: viewportLoading.statusLabel,
+      derivedLegend: {
+        rows: derivedLegendRows,
+        onVisibilityChange: onDerivedLegendVisibilityChange,
+      },
+    },
+    footer: {
+      viewerKey,
+      enableMemoryMonitoring: enableMemoryMonitoring ?? true,
+      sopInstanceUIDs: volumeSopInstanceUIDs,
+    },
+    modals: {
       isAnnotationModalVisible: interaction.isAnnotationModalVisible,
       onAnnotationConfigurationCompletion:
         tools.onAnnotationConfigurationCompletion,
@@ -388,34 +551,23 @@ export function useSlideViewerModel({
       isAnnotationOkDisabled:
         draft.draft.finding === undefined ||
         draft.draft.geometryType === undefined,
-      annotationConfigurations: (
-        <AnnotationConfigurationFields
-          findings={annotationConfig.findings}
-          selectedFinding={draft.draft.finding}
-          evaluationOptions={draft.evaluationOptions}
-          selectedEvaluations={draft.draft.evaluations}
-          geometryTypes={draft.geometryTypes}
-          selectedGeometryType={draft.draft.geometryType}
-          isMeasurementActive={draft.draft.markup === 'measurement'}
-          onFindingChange={draft.onFindingChange}
-          onEvaluationChange={draft.onEvaluationChange}
-          onEvaluationClear={draft.onEvaluationClear}
-          onGeometryTypeChange={draft.onGeometryTypeChange}
-          onMeasurementChange={draft.onMeasurementChange}
-        />
-      ),
+      annotationConfig,
+      draft: draft.draft,
+      evaluationOptions: draft.evaluationOptions,
+      geometryTypes: draft.geometryTypes,
+      onFindingChange: draft.onFindingChange,
+      onEvaluationChange: draft.onEvaluationChange,
+      onEvaluationClear: draft.onEvaluationClear,
+      onGeometryTypeChange: draft.onGeometryTypeChange,
+      onMeasurementChange: draft.onMeasurementChange,
       isSelectedRoiModalVisible: interaction.isSelectedRoiModalVisible,
       onRoiSelectionCancellation: tools.onRoiDetailsCancellation,
-      selectedRoiInformation:
-        describedRoi !== undefined ? (
-          <RoiDescription
-            description={buildRoiDescription(
-              describedRoi,
-              snapshot.rois.findIndex((r) => r.uid === describedRoi.uid),
-              preferences.units,
-            )}
-          />
-        ) : undefined,
+      describedRoi,
+      describedRoiIndex:
+        describedRoi !== undefined
+          ? snapshot.rois.findIndex((r) => r.uid === describedRoi.uid)
+          : -1,
+      measurementUnits: preferences.units,
       isGoToModalVisible: interaction.isGoToModalVisible,
       goToInput: interaction.goToInput,
       goToRanges: snapshot.goToRanges,
@@ -426,157 +578,145 @@ export function useSlideViewerModel({
       isReportModalVisible: interaction.isReportModalVisible,
       onReportVerification: report.onVerify,
       onReportCancellation: report.onCancel,
-      report:
-        report.report !== undefined ? (
-          <Report dataset={report.report} />
-        ) : undefined,
+      reportDataset: report.report,
     },
-    confirmDialog: (
-      <ConfirmDialog
-        open={interaction.isRoiRemovalConfirmVisible}
-        title={
-          rois.selectedRoiUIDs.size > 0
-            ? 'Remove selected annotations?'
-            : 'Remove all visible annotations?'
-        }
-        description="Unsaved annotations cannot be recovered."
-        confirmLabel="Remove"
-        variant="destructive"
-        onConfirm={tools.onRoiRemovalConfirmation}
-        onCancel={tools.onRoiRemovalCancellation}
-      />
-    ),
+    confirm: {
+      open: interaction.isRoiRemovalConfirmVisible,
+      title:
+        rois.selectedRoiUIDs.size > 0
+          ? 'Remove selected annotations?'
+          : 'Remove all visible annotations?',
+      onConfirm: tools.onRoiRemovalConfirmation,
+      onCancel: tools.onRoiRemovalCancellation,
+    },
     sidebar: {
-      specimenMenu: <SpecimensSection metadata={metadata} />,
-      equipmentMenu: <EquipmentSection metadata={metadata} />,
-      opticalPathMenu: (
-        <OpticalPathsSection
-          metadata={snapshot.opticalPathMetadata}
-          opticalPaths={snapshot.opticalPaths}
-          defaultOpticalPathStyles={snapshot.opticalPathStyles}
-          visibleOpticalPathIdentifiers={opticalPaths.visibleIdentifiers}
-          activeOpticalPathIdentifiers={opticalPaths.activeIdentifiers}
-          onOpticalPathVisibilityChange={opticalPaths.onVisibilityChange}
-          onOpticalPathStyleChange={opticalPaths.onStyleChange}
-          onOpticalPathActivityChange={opticalPaths.onActivityChange}
-          selectedPresentationStateUID={presentationStates.selectedUID}
-          hasIccProfiles={snapshot.hasIccProfiles}
-          displaySettings={opticalPaths.displaySettings}
-          onDisplaySettingsChange={opticalPaths.onDisplaySettingsChange}
-        />
-      ),
-      presentationStateMenu: (
-        <PresentationStatesSection
-          presentationStates={presentationStates.presentationStates}
-          selectedPresentationStateUID={presentationStates.selectedUID}
-          onSelect={presentationStates.onSelect}
-          onReset={presentationStates.onReset}
-        />
-      ),
-      annotationMenu: (
-        <AnnotationsSection
-          enableAnnotationTools={enableAnnotationTools}
-          rois={snapshot.rois}
-          selectedRoiUIDs={rois.selectedRoiUIDs}
-          visibleRoiUIDs={rois.visibleRoiUIDs}
-          getRoiColor={(roi) =>
-            snapshot.roiColors[roi.uid] ?? 'rgb(var(--primary))'
-          }
-          onSelection={rois.onSelection}
-          onVisibilityChange={rois.onVisibilityChange}
-          onBulkVisibilityChange={rois.onVisibilityChanges}
-        />
-      ),
-      annotationGroupMenu:
-        snapshot.annotationGroups.length > 0 ? (
-          <AnnotationGroupsSection
-            seriesOptions={buildSeriesOptions({
-              groups: groupsBySeries,
-              allLabel: 'All',
-              unit: 'groups',
-              describeSeries,
-            })}
-            selectedSeriesUID={groupSeriesUID}
-            onSeriesChange={annotationGroups.onSeriesChange}
-            annotationGroups={[
-              ...itemsForSeries(
-                snapshot.annotationGroups,
-                groupsBySeries,
-                groupSeriesUID,
+      specimens: { metadata },
+      equipment: { metadata },
+      opticalPaths: {
+        metadata: snapshot.opticalPathMetadata,
+        opticalPaths: snapshot.opticalPaths,
+        defaultOpticalPathStyles: snapshot.opticalPathStyles,
+        opticalPathPixelRanges: snapshot.opticalPathPixelRanges,
+        visibleOpticalPathIdentifiers: opticalPaths.visibleIdentifiers,
+        activeOpticalPathIdentifiers: opticalPaths.activeIdentifiers,
+        onOpticalPathVisibilityChange: opticalPaths.onVisibilityChange,
+        onOpticalPathStyleChange: opticalPaths.onStyleChange,
+        onOpticalPathStylePreview: opticalPaths.onStylePreview,
+        onOpticalPathActivityChange: opticalPaths.onActivityChange,
+        selectedPresentationStateUID: presentationStates.selectedUID,
+        hasIccProfiles: snapshot.hasIccProfiles,
+        displaySettings: opticalPaths.displaySettings,
+        onDisplaySettingsChange: opticalPaths.onDisplaySettingsChange,
+      },
+      presentationStates: {
+        presentationStates: presentationStates.presentationStates,
+        selectedPresentationStateUID: presentationStates.selectedUID,
+        onSelect: presentationStates.onSelect,
+        onReset: presentationStates.onReset,
+      },
+      annotations: {
+        enableAnnotationTools,
+        rois: snapshot.rois,
+        selectedRoiUIDs: rois.selectedRoiUIDs,
+        visibleRoiUIDs: rois.visibleRoiUIDs,
+        getRoiColor: (roi: dmv.roi.ROI) =>
+          snapshot.roiColors[roi.uid] ?? 'rgb(var(--primary))',
+        onSelection: rois.onSelection,
+        onVisibilityChange: rois.onVisibilityChange,
+        onBulkVisibilityChange: rois.onVisibilityChanges,
+      },
+      annotationGroups:
+        snapshot.annotationGroups.length > 0
+          ? {
+              seriesOptions: buildSeriesOptions({
+                groups: groupsBySeries,
+                allLabel: 'All',
+                unit: 'groups',
+                describeSeries,
+              }),
+              selectedSeriesUID: groupSeriesUID,
+              onSeriesChange: annotationGroups.onSeriesChange,
+              annotationGroups: [
+                ...itemsForSeries(
+                  snapshot.annotationGroups,
+                  groupsBySeries,
+                  groupSeriesUID,
+                ),
+              ],
+              metadata: snapshot.annotationGroupMetadata,
+              onAnnotationGroupClick: annotationGroups.onClick,
+              defaultAnnotationGroupStyles: annotationGroups.withFillStyles(
+                snapshot.annotationGroupStyles,
               ),
-            ]}
-            metadata={snapshot.annotationGroupMetadata}
-            onAnnotationGroupClick={annotationGroups.onClick}
-            defaultAnnotationGroupStyles={snapshot.annotationGroupStyles}
-            visibleAnnotationGroupUIDs={annotationGroups.visibleUIDs}
-            onAnnotationGroupVisibilityChange={
-              annotationGroups.onVisibilityChange
+              visibleAnnotationGroupUIDs: annotationGroups.visibleUIDs,
+              onAnnotationGroupVisibilityChange:
+                annotationGroups.onVisibilityChange,
+              onBulkAnnotationGroupVisibilityChange:
+                annotationGroups.onVisibilityChanges,
+              onAnnotationGroupStyleChange: annotationGroups.onStyleChange,
+              onAnnotationGroupStylePreview: annotationGroups.onStylePreview,
+              annotationGroupMeasurementKeys: annotationGroups.measurementKeys,
+              displaySettings: annotationGroups.displaySettings,
+              onDisplaySettingsChange: annotationGroups.onDisplaySettingsChange,
             }
-            onBulkAnnotationGroupVisibilityChange={
-              annotationGroups.onVisibilityChanges
+          : undefined,
+      annotationCategories: {
+        annotations: snapshot.annotations,
+        onChange: rois.onVisibilityChanges,
+        checkedAnnotationUids: rois.visibleRoiUIDs,
+        onStyleChange: rois.onStylesChange,
+        defaultAnnotationStyles: snapshot.annotationStyles,
+      },
+      segmentations:
+        snapshot.segments.length > 0
+          ? {
+              seriesOptions: buildSeriesOptions({
+                groups: segmentsBySeries,
+                allLabel: `All Series (${snapshot.segments.length} segments)`,
+                unit: 'segments',
+                describeSeries,
+              }),
+              selectedSeriesUID: segmentSeriesUID,
+              onSeriesChange: segmentations.onSeriesChange,
+              segments: [
+                ...itemsForSeries(
+                  snapshot.segments,
+                  segmentsBySeries,
+                  segmentSeriesUID,
+                ),
+              ],
+              metadata: snapshot.segmentMetadata,
+              defaultSegmentStyles: segmentations.panelStyles,
+              visibleSegmentUIDs: segmentations.visibleUIDs,
+              onSegmentVisibilityChange: segmentations.onVisibilityChange,
+              onBulkSegmentVisibilityChange: segmentations.onVisibilityChanges,
+              onSegmentStyleChange: segmentations.onStyleChange,
+              onSegmentStylePreview: segmentations.onStylePreview,
+              onSegmentClick: segmentations.onClick,
+              displaySettings: {
+                interpolationEnabled: segmentations.isInterpolationEnabled,
+              },
+              onDisplaySettingsChange: segmentations.onDisplaySettingsChange,
             }
-            onAnnotationGroupStyleChange={annotationGroups.onStyleChange}
-            displaySettings={annotationGroups.displaySettings}
-            onDisplaySettingsChange={annotationGroups.onDisplaySettingsChange}
-          />
-        ) : undefined,
-      annotationCategoryMenu: (
-        <AnnotationCategoriesSection
-          annotations={snapshot.annotations}
-          onChange={rois.onVisibilityChanges}
-          checkedAnnotationUids={rois.visibleRoiUIDs}
-          onStyleChange={rois.onStylesChange}
-          defaultAnnotationStyles={snapshot.annotationStyles}
-        />
-      ),
-      segmentationMenu:
-        snapshot.segments.length > 0 ? (
-          <SegmentationsSection
-            seriesOptions={buildSeriesOptions({
-              groups: segmentsBySeries,
-              allLabel: `All Series (${snapshot.segments.length} segments)`,
-              unit: 'segments',
-              describeSeries,
-            })}
-            selectedSeriesUID={segmentSeriesUID}
-            onSeriesChange={segmentations.onSeriesChange}
-            segments={[
-              ...itemsForSeries(
-                snapshot.segments,
-                segmentsBySeries,
-                segmentSeriesUID,
-              ),
-            ]}
-            metadata={snapshot.segmentMetadata}
-            defaultSegmentStyles={segmentations.panelStyles}
-            visibleSegmentUIDs={segmentations.visibleUIDs}
-            onSegmentVisibilityChange={segmentations.onVisibilityChange}
-            onSegmentStyleChange={segmentations.onStyleChange}
-            onSegmentClick={segmentations.onClick}
-            displaySettings={{
-              interpolationEnabled: segmentations.isInterpolationEnabled,
-            }}
-            onDisplaySettingsChange={segmentations.onDisplaySettingsChange}
-          />
-        ) : undefined,
-      parametricMapMenu:
-        snapshot.mappings.length > 0 ? (
-          <ParametricMapsSection
-            mappings={snapshot.mappings}
-            metadata={snapshot.mappingMetadata}
-            defaultMappingStyles={snapshot.mappingStyles}
-            visibleMappingUIDs={parametricMaps.visibleUIDs}
-            onMappingVisibilityChange={parametricMaps.onVisibilityChange}
-            onMappingStyleChange={parametricMaps.onStyleChange}
-            displaySettings={{
-              interpolationEnabled: parametricMaps.isInterpolationEnabled,
-            }}
-            onDisplaySettingsChange={parametricMaps.onDisplaySettingsChange}
-          />
-        ) : undefined,
+          : undefined,
+      parametricMaps:
+        snapshot.mappings.length > 0
+          ? {
+              mappings: snapshot.mappings,
+              metadata: snapshot.mappingMetadata,
+              defaultMappingStyles: snapshot.mappingStyles,
+              visibleMappingUIDs: parametricMaps.visibleUIDs,
+              onMappingVisibilityChange: parametricMaps.onVisibilityChange,
+              onBulkMappingVisibilityChange: parametricMaps.onVisibilityChanges,
+              onMappingStyleChange: parametricMaps.onStyleChange,
+              onMappingStylePreview: parametricMaps.onStylePreview,
+              displaySettings: {
+                interpolationEnabled: parametricMaps.isInterpolationEnabled,
+              },
+              onDisplaySettingsChange: parametricMaps.onDisplaySettingsChange,
+            }
+          : undefined,
     },
-    hoveredRoiTooltip: (
-      <HoveredRoiTooltipLayer store={hoveredRoiTooltipApi.store} />
-    ),
+    hoveredRoiTooltipStore: hoveredRoiTooltipApi.store,
   }
 }

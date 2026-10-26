@@ -1,15 +1,17 @@
-import { useReducer } from 'react'
+import { useEffect, useReducer } from 'react'
 
 import { StorageClasses } from '../../../data/uids'
 import { logger } from '../../../utils/logger'
 import { notifyVisualizationError } from '../services/derivedDataLoaders'
 import type { DmvEventHandlers } from '../services/dmvEvents'
-import type { ViewerSessionRef } from '../services/viewerSession'
+import type { ViewerSession, ViewerSessionRef } from '../services/viewerSession'
+import { hasIccProfile } from '../utils/iccProfile'
 import { recordFirstFrameStatistics } from '../utils/pixelStatistics'
 import {
   INITIAL_VIEWPORT_LOADING,
   isViewportLoading,
   viewportLoadingReducer,
+  viewportStatusLabel,
 } from '../utils/viewportLoading'
 
 type LoadingEventHandlers = Required<
@@ -29,9 +31,43 @@ export interface ViewportLoadingApi {
   isLoading: boolean
   /** The first image of the slide has not arrived yet */
   isWaitingForFirstImage: boolean
-  /** Back to waiting, for new viewers */
-  reset: () => void
+  /**
+   * What the viewport status pill says while the slide is not settled: its
+   * first image, or the ICC color profile that redraws it. None when settled
+   */
+  statusLabel: string | undefined
+  /** Back to waiting, for the new viewers of `session` */
+  reset: (session: ViewerSession) => void
   dmvHandlers: LoadingEventHandlers
+}
+
+/**
+ * After this long without the profile applied (a failed or empty fetch,
+ * which DMV only logs), the status pill stops announcing it
+ */
+const COLOR_PROFILE_TIMEOUT_MS = 20_000
+
+/** SOP Instance UIDs of each session's volume images, built once per session */
+const volumeInstanceUIDs = new WeakMap<ViewerSession, ReadonlySet<string>>()
+
+/**
+ * Whether a frame belongs to the slide in the main viewport. DMV publishes
+ * on `document.body`, so study thumbnails and the label viewer send frame
+ * events too; their small frames finish first and must neither end the
+ * first-image wait nor set a channel's window statistics.
+ */
+function isVolumeFrame(
+  session: ViewerSession,
+  sopInstanceUID: string,
+): boolean {
+  let uids = volumeInstanceUIDs.get(session)
+  if (uids === undefined) {
+    uids = new Set(
+      session.slide.volumeImages.map((image) => image.SOPInstanceUID),
+    )
+    volumeInstanceUIDs.set(session, uids)
+  }
+  return uids.has(sopInstanceUID)
 }
 
 /**
@@ -60,13 +96,29 @@ export function useViewportLoading(
       notifyVisualizationError(message)
     },
     dicommicroscopyviewer_frame_loading_started: (frameInfo) => {
-      sessionRef.current?.loadingFrames.add(
+      const session = sessionRef.current
+      if (
+        session === undefined ||
+        !isVolumeFrame(session, frameInfo.sopInstanceUID)
+      ) {
+        return
+      }
+      session.loadingFrames.add(
         `${frameInfo.sopInstanceUID}-${frameInfo.frameNumber}`,
       )
+      dispatch({
+        type: 'frameStarted',
+        hasColorProfiles: session.volumeViewer.getICCProfiles().length > 0,
+      })
     },
     dicommicroscopyviewer_frame_loading_ended: (frameInfo) => {
       const session = sessionRef.current
-      if (session === undefined) return
+      if (
+        session === undefined ||
+        !isVolumeFrame(session, frameInfo.sopInstanceUID)
+      ) {
+        return
+      }
       session.loadingFrames.delete(
         `${frameInfo.sopInstanceUID}-${frameInfo.frameNumber}`,
       )
@@ -91,11 +143,50 @@ export function useViewportLoading(
     },
   }
 
+  const { colorProfile } = loading
+  /**
+   * Loaded frames are decoded and color corrected before they are drawn, so
+   * the announcement lasts until the map has rendered every tile in view
+   */
+  useEffect(() => {
+    if (colorProfile !== 'drawing') return
+    const map = sessionRef.current?.volumeViewer.getMap()
+    if (map === undefined) {
+      dispatch({ type: 'colorProfileDrawn' })
+      return
+    }
+    const onRenderComplete = (): void => {
+      dispatch({ type: 'colorProfileDrawn' })
+    }
+    map.on('rendercomplete', onRenderComplete)
+    return () => {
+      map.un('rendercomplete', onRenderComplete)
+    }
+  }, [colorProfile, sessionRef])
+  useEffect(() => {
+    if (colorProfile === 'none') return
+    const timer = setTimeout(() => {
+      dispatch({ type: 'colorProfileTimedOut' })
+    }, COLOR_PROFILE_TIMEOUT_MS)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [colorProfile])
+
   return {
     isLoading: loading.isLoading,
     isWaitingForFirstImage: isViewportLoading(loading.phase),
-    reset: () => {
-      dispatch({ type: 'reset' })
+    statusLabel: viewportStatusLabel(loading),
+    reset: (session) => {
+      const image = session.slide.volumeImages[0]
+      dispatch({
+        type: 'reset',
+        /** New viewers start with ICC profiles enabled */
+        expectsColorProfile:
+          image !== undefined &&
+          !session.slide.areVolumeImagesMonochrome &&
+          hasIccProfile(image),
+      })
     },
     dmvHandlers,
   }

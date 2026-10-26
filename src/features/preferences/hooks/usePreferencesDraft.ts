@@ -5,6 +5,7 @@ import {
   loadPreferences,
   savePreferences,
   type UserPreferences,
+  withAnnotationDefaults,
 } from '../utils/preferences'
 import type { PreferencesTab } from '../utils/preferencesTabs'
 
@@ -20,6 +21,8 @@ export interface UsePreferencesDraftReturn {
     key: K,
     value: UserPreferences[K],
   ) => void
+  /** Restore Annotations-tab fields to factory defaults (draft only) */
+  resetAnnotationDefaults: () => void
   /** Persist the draft preferences and theme */
   save: () => void
 }
@@ -58,6 +61,10 @@ export function usePreferencesDraft(
     [],
   )
 
+  const resetAnnotationDefaults = useCallback((): void => {
+    setDraft((previous) => withAnnotationDefaults(previous))
+  }, [])
+
   const save = useCallback((): void => {
     savePreferences(draft)
     setTheme(draftTheme)
@@ -70,6 +77,7 @@ export function usePreferencesDraft(
     setDraftTheme,
     draft,
     update,
+    resetAnnotationDefaults,
     save,
   }
 }

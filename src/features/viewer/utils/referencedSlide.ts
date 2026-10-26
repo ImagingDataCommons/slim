@@ -47,7 +47,7 @@ function imageLibraryReferencedSOPInstanceUID(
 ): string | undefined {
   const imageLibrary = instance.ContentSequence?.find(
     (item) =>
-      item.ConceptNameCodeSequence[0]?.CodeValue ===
+      item.ConceptNameCodeSequence?.[0]?.CodeValue ===
       IMAGE_LIBRARY_CONCEPT_NAME_CODE,
   )
   return imageLibrary?.ContentSequence?.[0]?.ContentSequence?.[0]

@@ -10,39 +10,57 @@ export const STUDY_SEARCH_RESULT_LIMIT = 100
 
 export type StudyQueryParams = Record<string, string | number | boolean>
 
-/** Slide microscopy studies, with the series count used for "Slides". */
+/**
+ * Slide microscopy studies. Do not request `NumberOfStudyRelatedSeries` via
+ * `includefield`: Google Healthcare (IDC) rejects that attribute with HTTP 400
+ * ("not a supported … attribute"), which also breaks StudyID search queries
+ * that reuse these params. Servers that return the series count by default
+ * (e.g. dcm4chee) still populate the Slides column without `includefield`.
+ */
 export function buildStudyQueryParams(): StudyQueryParams {
   return {
     ModalitiesInStudy: 'SM',
-    includefield: 'NumberOfStudyRelatedSeries',
   }
 }
 
 /**
- * QIDO queries that find the studies a worklist search refers to, one per
- * attribute and matching style. Servers differ in what they honor: Google
- * Cloud Healthcare (IDC) ignores `*` wildcards and matches only exact values
- * or fuzzy person names, while dcm4chee matches wildcards. Sending both styles
- * covers either; queries a server rejects return nothing. A term that already
- * contains `*` or `?` is sent as typed. Terms shorter than
+ * QIDO queries that find the studies a worklist search refers to, in stages
+ * sent one after the other until a stage matches. Servers differ in what
+ * they honor: Google Cloud Healthcare (IDC) ignores `*` wildcards and
+ * matches only exact values or fuzzy person names, while dcm4chee matches
+ * wildcards. The exact stage covers either for a whole value; the wildcard
+ * stage follows only when it finds nothing, so a search costs a few queries
+ * per store. Queries a server rejects return nothing. A term that already
+ * contains `*` or `?` is sent as typed, in one stage. Terms shorter than
  * {@link STUDY_SEARCH_MIN_LENGTH} skip the server (local filter still runs).
  */
 export function buildStudySearchQueries(
   searchText: string,
-): StudyQueryParams[] {
+): StudyQueryParams[][] {
   const term = searchText.trim()
   if (term.length < STUDY_SEARCH_MIN_LENGTH) return []
-  const values = /[*?]/.test(term) ? [term] : [term, `*${term}*`]
-  return [
-    ...values.map((value) => ({ PatientID: value })),
-    ...values.map((value) => ({ PatientName: value, fuzzymatching: true })),
-    ...values.map((value) => ({ AccessionNumber: value })),
+  const withBase = (criteria: StudyQueryParams[]): StudyQueryParams[] =>
+    criteria.map((criterion) => ({
+      ...buildStudyQueryParams(),
+      ...criterion,
+      limit: STUDY_SEARCH_RESULT_LIMIT,
+    }))
+  const exact = withBase([
+    { PatientID: term },
+    { PatientName: term, fuzzymatching: true },
+    { AccessionNumber: term },
     { StudyID: term },
-  ].map((criteria) => ({
-    ...buildStudyQueryParams(),
-    ...criteria,
-    limit: STUDY_SEARCH_RESULT_LIMIT,
-  }))
+  ])
+  if (/[*?]/.test(term)) return [exact]
+  const wildcard = `*${term}*`
+  return [
+    exact,
+    withBase([
+      { PatientID: wildcard },
+      { PatientName: wildcard, fuzzymatching: true },
+      { AccessionNumber: wildcard },
+    ]),
+  ]
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

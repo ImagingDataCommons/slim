@@ -5,6 +5,7 @@ import type { ViewerInteraction } from './viewerInteraction'
  * Callers still activate the target interaction and update React state.
  */
 export type ToolMode =
+  | 'select'
   | 'draw'
   | 'modify'
   | 'translate'
@@ -34,6 +35,11 @@ export function planToolMode(
   },
 ): ToolModePlan | null {
   switch (mode) {
+    case 'select':
+      return {
+        deactivate: ['draw', 'modify', 'snap', 'translate'],
+        activateSelect: true,
+      }
     case 'draw':
       if (interaction.isRoiDrawingActive) {
         return { deactivate: ['draw'], activateSelect: true }
@@ -52,7 +58,7 @@ export function planToolMode(
       }
     case 'translate':
       if (viewerFlags.isTranslateInteractionActive) {
-        return { deactivate: ['translate'], activateSelect: false }
+        return { deactivate: ['translate'], activateSelect: true }
       }
       return {
         deactivate: ['modify', 'snap', 'draw', 'select'],
