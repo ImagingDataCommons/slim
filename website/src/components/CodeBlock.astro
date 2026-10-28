@@ -1,0 +1,18 @@
+---
+import CopyButton from './CopyButton.tsx'
+
+interface Props {
+  code: string
+  title?: string
+}
+
+const { code, title } = Astro.props
+---
+
+<div class="overflow-hidden rounded-card border border-line bg-subtle">
+  <div class="flex items-center justify-between gap-3 border-b border-line px-4 py-2">
+    <span class="font-mono text-11 uppercase tracking-[0.1em] text-ink-muted">{title ?? 'Shell'}</span>
+    <CopyButton client:visible text={code} />
+  </div>
+  <pre class="overflow-x-auto p-4 text-13 leading-relaxed text-ink-body"><code>{code}</code></pre>
+</div>

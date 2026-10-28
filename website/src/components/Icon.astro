@@ -1,0 +1,36 @@
+---
+import {
+  Layers,
+  ListFilter,
+  Microscope,
+  Network,
+  PanelsTopLeft,
+  PenTool,
+  Shapes,
+  SlidersHorizontal,
+  type LucideIcon,
+} from 'lucide-react'
+
+/** Icons that content files may name in their `icon` field */
+const icons: Record<string, LucideIcon> = {
+  Layers,
+  ListFilter,
+  Microscope,
+  Network,
+  PanelsTopLeft,
+  PenTool,
+  Shapes,
+  SlidersHorizontal,
+}
+
+interface Props {
+  name: string
+  class?: string
+}
+
+const { name, class: className } = Astro.props
+const Component = icons[name]
+if (!Component) throw new Error(`Unknown icon "${name}". Add it to Icon.astro.`)
+---
+
+<Component className={className} aria-hidden="true" />
