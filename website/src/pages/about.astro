@@ -1,7 +1,6 @@
 ---
 import { ArrowUpRight } from 'lucide-react'
 import CitationCopy from '../components/CitationCopy.astro'
-import IdcLogo from '../components/IdcLogo.astro'
 import SectionHeading from '../components/SectionHeading.astro'
 import { site } from '../data/site'
 import BaseLayout from '../layouts/BaseLayout.astro'
@@ -66,9 +65,6 @@ const related = [
   <section class="border-y border-line bg-subtle">
     <div class="container-site grid grid-cols-1 gap-12 py-20 lg:grid-cols-2">
       <div class="flex flex-col gap-4">
-        <a href={site.links.idcCrdc} target="_blank" rel="noopener" class="mb-2 inline-flex w-fit rounded-md">
-          <IdcLogo height={48} class="max-w-full [&_img]:h-auto [&_img]:max-w-full" />
-        </a>
         <SectionHeading
           eyebrow="Team and funding"
           title="Developed and supported by the NCI Imaging Data Commons"

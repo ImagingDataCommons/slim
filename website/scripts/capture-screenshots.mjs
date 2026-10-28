@@ -281,13 +281,10 @@ async function renderOgImage(browser) {
         `@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-${weight}-normal.woff2`,
       ),
     ).then((buffer) => buffer.toString('base64'))
-  const [regular, semibold, logo, idcLogo, viewer] = await Promise.all([
+  const [regular, semibold, logo, viewer] = await Promise.all([
     font(400),
     font(600),
     readFile(new URL('public/favicon.svg', root)).then((buffer) =>
-      buffer.toString('base64'),
-    ),
-    readFile(new URL('public/brand/nci-idc-reverse.svg', root)).then((buffer) =>
       buffer.toString('base64'),
     ),
     readFile(new URL('public/screenshots/viewer-dark.webp', root)).then(
@@ -314,7 +311,7 @@ async function renderOgImage(browser) {
     .shot img { display: block; width: 100%; }
     .idc { position: absolute; left: 72px; bottom: 60px; }
     .idc span { display: block; font-size: 15px; color: rgb(var(--ink-muted)); letter-spacing: 0.02em; }
-    .idc img { display: block; margin-top: 12px; height: 46px; }
+    .idc strong { display: block; margin-top: 8px; font-size: 24px; font-weight: 600; }
   </style></head><body>
     <div class="glow"></div>
     <div class="copy">
@@ -324,7 +321,7 @@ async function renderOgImage(browser) {
     </div>
     <div class="idc">
       <span>Developed and supported by</span>
-      <img src="data:image/svg+xml;base64,${idcLogo}" alt="">
+      <strong>NCI Imaging Data Commons</strong>
     </div>
     <div class="shot"><img src="data:image/webp;base64,${viewer}" alt=""></div>
   </body></html>`

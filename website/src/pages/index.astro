@@ -4,7 +4,6 @@ import { buttonVariants } from '@slim/components/ui/button'
 import GithubMark from '../components/GithubMark.astro'
 import ExampleCard from '../components/ExampleCard.astro'
 import Icon from '../components/Icon.astro'
-import IdcLogo from '../components/IdcLogo.astro'
 import IdcSupport from '../components/IdcSupport.astro'
 import ProductPreview from '../components/ProductPreview.tsx'
 import RunYourOwn from '../components/RunYourOwn.astro'
@@ -123,10 +122,9 @@ const dateFormat = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeZone
           href={site.links.idcCrdc}
           target="_blank"
           rel="noopener"
-          class="mt-2 flex flex-col items-center gap-2.5 rounded-md opacity-90 transition-opacity hover:opacity-100 sm:flex-row sm:gap-3"
+          class="mt-2 rounded-md text-13 text-ink-muted transition-colors hover:text-ink"
         >
-          <span class="text-13 text-ink-muted">Developed and supported by</span>
-          <IdcLogo height={30} />
+          Developed and supported by the <span class="font-medium text-ink-secondary">NCI Imaging Data Commons</span>
         </a>
       </div>
       <div class="w-full max-w-5xl">

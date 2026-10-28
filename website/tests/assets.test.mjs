@@ -64,17 +64,15 @@ test('the social card exists', () => {
   assert.ok(exists('/og.png'))
 })
 
-test('the IDC logo referenced by IdcLogo.astro exists in both versions', () => {
-  const component = readFileSync(
-    new URL('src/components/IdcLogo.astro', website),
-    'utf8',
-  )
-  const sources = [...component.matchAll(/src="([^"]+)"/g)].map(
-    (match) => match[1],
-  )
-  assert.equal(sources.length, 2)
-  assert.deepEqual(
-    sources.filter((path) => !exists(path)),
-    [],
-  )
+/** US government logos must not appear, since showing them can read as an endorsement */
+test('no NCI or NIH logo is shipped or referenced', () => {
+  assert.ok(!existsSync(new URL('public/brand/', website)))
+  const sources = readdirSync(new URL('src/', website), { recursive: true })
+    .filter((path) => /\.(astro|tsx?|mdx?)$/.test(path))
+    .filter((path) =>
+      /brand\/|nci-idc|IdcLogo/.test(
+        readFileSync(new URL(`src/${path}`, website), 'utf8'),
+      ),
+    )
+  assert.deepEqual(sources, [])
 })

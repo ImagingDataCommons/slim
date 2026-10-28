@@ -55,7 +55,7 @@ export const site = {
     idcForum: 'https://discourse.canceridc.dev',
     idcProxyPolicy: 'https://learn.canceridc.dev/portal/proxy-policy',
     crdc: 'https://datacommons.cancer.gov',
-    /** IDC's page in the NCI Cancer Research Data Commons; where the IDC logo links */
+    /** IDC's page in the NCI Cancer Research Data Commons */
     idcCrdc: 'https://datacommons.cancer.gov/repository/imaging-data-commons',
     paper: 'https://doi.org/10.1038/s41467-023-37224-2',
     dicomweb: 'https://www.dicomstandard.org/dicomweb',

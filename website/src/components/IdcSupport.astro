@@ -2,7 +2,6 @@
 import { ArrowUpRight } from 'lucide-react'
 import { buttonVariants } from '@slim/components/ui/button'
 import { site } from '../data/site'
-import IdcLogo from './IdcLogo.astro'
 
 /** Facts from IDC's page in the Cancer Research Data Commons (site.links.idcCrdc) */
 const facts = [
@@ -20,9 +19,6 @@ const facts = [
   <div class="container-site grid grid-cols-1 items-center gap-12 py-20 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
     <div class="flex flex-col items-start gap-6">
       <p class="eyebrow">Developed and supported by</p>
-      <a href={site.links.idcCrdc} target="_blank" rel="noopener" class="inline-flex rounded-md">
-        <IdcLogo height={56} class="max-w-full [&_img]:h-auto [&_img]:max-w-full" />
-      </a>
       <h2 id="idc-support-title" class="text-3xl leading-tight sm:text-section">
         The slide microscopy viewer of the NCI Imaging Data Commons
       </h2>
