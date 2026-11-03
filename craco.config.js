@@ -142,7 +142,7 @@ module.exports = {
         '^.+\\.[t|j]sx?$': 'babel-jest'
       }
       config.transformIgnorePatterns = [
-        'node_modules/(?!(ol|dicom-microscopy-viewer|dicomweb-client|@cornerstonejs|dicomicc|rbush|color-rgba|color-parse|color-name|color-space|quickselect|earcut)/)'
+        '/node_modules/(?!(.pnpm/(ol|dicom-microscopy-viewer|dicomweb-client|@cornerstonejs|dicomicc|rbush|color-rgba|color-parse|color-name|color-space|quickselect|earcut|uuid))|ol|dicom-microscopy-viewer|dicomweb-client|@cornerstonejs|dicomicc|rbush|color-rgba|color-parse|color-name|color-space|quickselect|earcut|uuid)/'
       ]
       config.moduleNameMapper = {
         'dicom-microscopy-viewer': '<rootDir>/src/__mocks__/dicomMicroscopyViewerMock.js',
