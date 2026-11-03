@@ -58,13 +58,15 @@ export const getXHRRetryHook = (
    * @param metadata - Metadata about the request
    * @param metadata.url - URL
    * @param metadata.method - HTTP method
+   * @param metadata.signal - Signal of the request; once it is aborted, no
+   * further attempts are made
    * @returns - XHR request instance (potentially modified)
    */
   return (
     request: XMLHttpRequest,
     metadata: DICOMwebClientRequestHookMetadata,
   ): XMLHttpRequest => {
-    const { url, method } = metadata
+    const { url, method, signal } = metadata
 
     if (!RETRYABLE_METHODS.has(method.toUpperCase())) {
       return request
@@ -93,7 +95,16 @@ export const getXHRRetryHook = (
         randomize: retryOptions.randomize,
       })
 
+      /** Cancel a scheduled retry when the request is aborted while waiting */
+      const stopOnAbort = (): void => {
+        operation.stop()
+      }
+      signal?.addEventListener('abort', stopOnAbort, { once: true })
+
       operation.attempt(function operationAttempt(currentAttempt) {
+        if (signal?.aborted === true) {
+          return
+        }
         if (currentAttempt > 1) {
           console.warn(`Requesting ${url}... (attempt: ${currentAttempt})`)
           /** open() empties author request headers; re-apply those + responseType. */
@@ -112,6 +123,7 @@ export const getXHRRetryHook = (
           }
 
           if (
+            signal?.aborted !== true &&
             retryOptions.retryableStatusCodes.includes(request.status) &&
             operation.retry(
               new Error(
@@ -123,6 +135,7 @@ export const getXHRRetryHook = (
             return
           }
 
+          signal?.removeEventListener('abort', stopOnAbort)
           if (downstreamOnReadyStateChange != null) {
             downstreamOnReadyStateChange.call(request, ev)
           }

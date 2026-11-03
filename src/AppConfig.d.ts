@@ -11,6 +11,11 @@ export interface DICOMwebClientRequestHookMetadata {
   method: string
   /** Combined request headers from dicomweb-client (needed to re-apply after retry open()). */
   headers?: Record<string, string>
+  /**
+   * Signal of the request, passed by dicomweb-client versions that support
+   * the `request.signal` option. Hooks must not resend an aborted request.
+   */
+  signal?: AbortSignal
 }
 
 export interface RetryRequestSettings {
