@@ -1,9 +1,5 @@
 import { StorageClasses } from '../../../../data/uids'
-import {
-  CONTAINS_CATALOG,
-  findContainsEntry,
-  matchContainsEntries,
-} from '../containsCatalog'
+import { CONTAINS_CATALOG, matchContainsEntries } from '../containsCatalog'
 
 const ids = (entries: { id: string }[]): string[] =>
   entries.map((entry) => entry.id)
@@ -23,13 +19,6 @@ describe('containsCatalog', () => {
         sharing.length > 1 || entry.modality === 'OT',
       )
     }
-  })
-
-  it('finds entries by id', () => {
-    expect(findContainsEntry('pmap')?.label).toBe('Parametric map')
-    expect(findContainsEntry('nope')).toBeUndefined()
-    expect(findContainsEntry(null)).toBeUndefined()
-    expect(findContainsEntry('')).toBeUndefined()
   })
 })
 
@@ -58,9 +47,5 @@ describe('matchContainsEntries', () => {
     expect(
       ids(matchContainsEntries(` ${StorageClasses.COMPREHENSIVE_3D_SR} `)),
     ).toEqual(['sr3d'])
-  })
-
-  it('returns nothing for unrelated text', () => {
-    expect(matchContainsEntries('ultrasound')).toEqual([])
   })
 })

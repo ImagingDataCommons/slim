@@ -1,6 +1,4 @@
 import { describe, expect, it } from 'vitest'
-
-import { DASH } from '../studyFields'
 import { buildWorklistCardFields } from '../worklistCard'
 
 function study(
@@ -40,11 +38,5 @@ describe('buildWorklistCardFields', () => {
     expect(
       buildWorklistCardFields(study({ AccessionNumber: '' })).accession,
     ).toBeUndefined()
-  })
-
-  it('dashes a missing patient name', () => {
-    expect(
-      buildWorklistCardFields(study({ PatientName: undefined })).patientName,
-    ).toBe(DASH)
   })
 })

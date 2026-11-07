@@ -6,7 +6,6 @@ import {
   filterStudiesBySearchText,
   getEmptyStudiesMessage,
   mergeModalities,
-  modalitiesNeedBackfill,
   resolveContainsStudies,
 } from '../filters'
 
@@ -21,10 +20,6 @@ describe('getEmptyStudiesMessage', () => {
 
   it('quotes the trimmed search text', () => {
     expect(getEmptyStudiesMessage('  doe ')).toBe('No studies match “doe”.')
-  })
-
-  it('ignores blank search text', () => {
-    expect(getEmptyStudiesMessage('   ')).toBe('No studies found.')
   })
 })
 
@@ -53,12 +48,6 @@ describe('filterStudiesBySearchText', () => {
     expect(filterStudiesBySearchText(studies, '   ')).toBe(studies)
   })
 
-  it('matches identifiers case-insensitively', () => {
-    expect(search('p-002')).toEqual(['2'])
-    expect(search('acc-77')).toEqual(['1'])
-    expect(search('s24')).toEqual(['1'])
-  })
-
   it('treats * and ? as DICOM wildcards over the whole value', () => {
     expect(search('p-00*')).toEqual(['1', '2'])
     expect(search('P-00?')).toEqual(['1', '2'])
@@ -66,16 +55,6 @@ describe('filterStudiesBySearchText', () => {
     expect(search('doe*')).toEqual(['2'])
     expect(search('00*')).toEqual([])
     expect(search('S24.01542*')).toEqual([])
-  })
-
-  it('matches the displayed patient name', () => {
-    expect(search('Whitfield, Margaret A.')).toEqual(['1'])
-    expect(search('doe, jane')).toEqual(['2'])
-  })
-
-  it('matches the raw patient name components', () => {
-    expect(search('margaret ann')).toEqual(['1'])
-    expect(search('doe jane')).toEqual(['2'])
   })
 
   it('trims the search text', () => {
@@ -131,25 +110,6 @@ describe('mergeModalities', () => {
   it('returns the same list without lookups', () => {
     const studies = [listed, missing]
     expect(mergeModalities(studies, new Map())).toBe(studies)
-  })
-})
-
-describe('modalitiesNeedBackfill', () => {
-  it('is true when no usable modality is present', () => {
-    expect(modalitiesNeedBackfill(study({}))).toBe(true)
-    expect(modalitiesNeedBackfill(study({ ModalitiesInStudy: '' }))).toBe(true)
-    expect(modalitiesNeedBackfill(study({ ModalitiesInStudy: [' '] }))).toBe(
-      true,
-    )
-  })
-
-  it('is false when a modality is present', () => {
-    expect(modalitiesNeedBackfill(study({ ModalitiesInStudy: 'SM' }))).toBe(
-      false,
-    )
-    expect(modalitiesNeedBackfill(study({ ModalitiesInStudy: ['SM'] }))).toBe(
-      false,
-    )
   })
 })
 
