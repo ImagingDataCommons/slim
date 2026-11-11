@@ -117,11 +117,13 @@ export const clearAuthParamsFromUrl = (): void => {
   for (const key of AUTH_RESPONSE_PARAMS) {
     url.searchParams.delete(key)
   }
-  /** Implicit / hybrid responses put tokens in the hash fragment. */
-  url.hash = ''
+  /**
+   * Implicit / hybrid responses put tokens in the hash fragment; any other
+   * fragment belongs to the app and is kept.
+   */
   window.history.replaceState(
     {},
     document.title,
-    `${url.pathname}${url.search}`,
+    `${url.pathname}${url.search}${hashWithoutAuthResponse(url.hash)}`,
   )
 }

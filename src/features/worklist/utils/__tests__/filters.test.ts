@@ -114,7 +114,9 @@ describe('mergeModalities', () => {
 })
 
 describe('resolveContainsStudies', () => {
-  const entry = CONTAINS_CATALOG.find((item) => item.id === 'ann')!
+  const found = CONTAINS_CATALOG.find((item) => item.id === 'ann')
+  if (found === undefined) throw new Error('catalog has no "ann" entry')
+  const entry = found
   const matchStudy = study({ StudyInstanceUID: '1', PatientID: 'from-match' })
   const loaded = study({ StudyInstanceUID: '1', PatientID: 'loaded' })
   const fetched = study({ StudyInstanceUID: '1', PatientID: 'fetched' })

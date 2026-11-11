@@ -382,6 +382,11 @@ export class AppSession {
     if (returnUrl != null && returnUrl !== '') {
       const current = `${window.location.pathname}${window.location.search}`
       if (returnUrl !== current) {
+        /**
+         * A full load, not a router navigation: the constructor builds the
+         * DICOMweb clients from the URL it starts on (the `gcp` secondary
+         * store, the server path), and the callback URL carries neither.
+         */
         window.location.assign(returnUrl)
       }
     }

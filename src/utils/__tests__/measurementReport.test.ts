@@ -261,6 +261,48 @@ describe('parseMeasurementReport', () => {
     ])
   })
 
+  it('warns about a NUM item without units and still loads the ROI', () => {
+    const unitless = {
+      ConceptNameCodeSequence: [code('42798000', 'Area', 'SCT')],
+      RelationshipType: 'CONTAINS',
+      ValueType: 'NUM',
+      MeasuredValueSequence: [{ NumericValue: 1.5 }],
+    } as unknown as ContentItem
+    const parsed = parseMeasurementReport(
+      report([measurementGroup([unitless])]),
+    )
+
+    expect(parsed.ROIs).toHaveLength(1)
+    /** Only the valid area from the group fixture is kept */
+    expect(parsed.ROIs[0].properties.measurements).toHaveLength(1)
+    expect(parsed.warnings).toEqual([
+      expect.stringMatching(/Skipped a NUM content item/),
+    ])
+  })
+
+  it('does not read an empty decimal string as a measured value of 0', () => {
+    const empty = {
+      ConceptNameCodeSequence: [code('42798000', 'Area', 'SCT')],
+      RelationshipType: 'CONTAINS',
+      ValueType: 'NUM',
+      MeasuredValueSequence: [
+        {
+          NumericValue: ' ',
+          MeasurementUnitsCodeSequence: [
+            code('mm2', 'Square Millimeter', 'UCUM'),
+          ],
+        },
+      ],
+    } as unknown as ContentItem
+    const parsed = parseMeasurementReport(report([measurementGroup([empty])]))
+
+    /** Only the valid area from the group fixture is kept */
+    expect(parsed.ROIs[0].properties.measurements).toHaveLength(1)
+    expect(parsed.warnings).toEqual([
+      expect.stringMatching(/Skipped a NUM content item/),
+    ])
+  })
+
   it('keeps the source of a measurement so it stays tied to its channel', () => {
     const source = {
       ConceptNameCodeSequence: [code('121112', 'Source of Measurement')],

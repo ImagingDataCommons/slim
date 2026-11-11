@@ -169,13 +169,15 @@ function toNumContentItem(item: NumContentItem): NumContentItem | undefined {
   if (name === undefined) return undefined
   const measured = plain.MeasuredValueSequence?.[0]
   const unit = measured?.MeasurementUnitsCodeSequence?.[0]
+  /** Typed as a number, but a DS value can arrive as its decimal string */
+  const numericValue: unknown = measured?.NumericValue
   const numeric =
     typeof measured?.FloatingPointValue === 'number'
       ? measured.FloatingPointValue
-      : typeof measured?.NumericValue === 'number'
-        ? measured.NumericValue
-        : typeof measured?.NumericValue === 'string'
-          ? Number(measured.NumericValue)
+      : typeof numericValue === 'number'
+        ? numericValue
+        : typeof numericValue === 'string' && numericValue.trim() !== ''
+          ? Number(numericValue)
           : undefined
   if (
     numeric === undefined ||
@@ -335,7 +337,14 @@ function parseMeasurementGroup(
   const measurements: NumContentItem[] = []
   for (const item of content.filter(isNumItem)) {
     const rebuilt = toNumContentItem(item)
-    if (rebuilt !== undefined) measurements.push(rebuilt)
+    if (rebuilt !== undefined) {
+      measurements.push(rebuilt)
+    } else {
+      warnings.push(
+        'Skipped a NUM content item without a concept name, a numeric ' +
+          `value or measurement units. ${TID_1410_CONTEXT}`,
+      )
+    }
   }
 
   return new dmv.roi.ROI({
