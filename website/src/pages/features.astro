@@ -1,0 +1,63 @@
+---
+import FeatureSection from '../components/FeatureSection.astro'
+import Icon from '../components/Icon.astro'
+import SectionHeading from '../components/SectionHeading.astro'
+import SupportMatrix from '../components/SupportMatrix.astro'
+import BaseLayout from '../layouts/BaseLayout.astro'
+import { featureAnchor, getFeatures } from '../lib/content'
+
+const features = await getFeatures()
+---
+
+<BaseLayout
+  title="Features"
+  description="Whole slide images, vector annotations, AI segmentations, parametric maps and presentation states: what Slim displays, creates and stores in DICOM."
+>
+  <section class="relative overflow-hidden border-b border-line">
+    <div class="bg-grid pointer-events-none absolute inset-0" aria-hidden="true"></div>
+    <div class="container-site relative py-20">
+      <SectionHeading
+        level="h1"
+        eyebrow="Features"
+        title="Built around the DICOM standard"
+        lead="Slim reads images and their derived data from the same DICOMweb archive, and saves annotations back to it. Nothing is stored in a proprietary format."
+      />
+      <nav aria-label="Features on this page" class="mt-10 flex flex-wrap gap-2">
+        {
+          features.map((feature) => (
+            <a
+              href={`#${featureAnchor(feature)}`}
+              class="inline-flex items-center gap-1.5 rounded-full border border-line bg-panel px-3 py-1.5 text-13 text-ink-secondary hover:border-line-hover hover:text-ink"
+            >
+              <Icon name={feature.data.icon} class="size-3.5 text-primary" />
+              {feature.data.eyebrow}
+            </a>
+          ))
+        }
+        <a
+          href="#support-matrix"
+          class="inline-flex items-center rounded-full border border-primary/40 bg-primary-soft px-3 py-1.5 text-13 font-medium text-primary-hover hover:border-primary"
+        >
+          DICOM support matrix
+        </a>
+      </nav>
+    </div>
+  </section>
+
+  <div class="container-site flex flex-col gap-28 py-24">
+    {features.map((feature, index) => <FeatureSection feature={feature} reverse={index % 2 === 1} />)}
+  </div>
+
+  <section id="support-matrix" class="scroll-mt-20 border-t border-line bg-subtle">
+    <div class="container-site py-24">
+      <SectionHeading
+        eyebrow="DICOM support"
+        title="Supported DICOM objects"
+        lead="What Slim can display, create and store, with a public example for each type. Open any row to see that object in the live demo."
+      />
+      <div class="mt-12">
+        <SupportMatrix />
+      </div>
+    </div>
+  </section>
+</BaseLayout>

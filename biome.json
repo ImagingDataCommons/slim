@@ -9,6 +9,7 @@
     "includes": [
       "src/**/*.{ts,tsx,js,jsx}",
       "!src/__mocks__",
+      "website/**/*.{ts,tsx,mjs}",
       "e2e/**/*.ts",
       "!e2e/.cache",
       "playwright.config.ts",

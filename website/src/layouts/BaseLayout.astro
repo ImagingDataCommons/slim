@@ -1,0 +1,42 @@
+---
+import '@fontsource/ibm-plex-sans/400.css'
+import '@fontsource/ibm-plex-sans/500.css'
+import '@fontsource/ibm-plex-sans/600.css'
+import '@fontsource/ibm-plex-mono/400.css'
+import '@fontsource/ibm-plex-mono/500.css'
+import '../styles/site.css'
+
+import Footer from '../components/Footer.astro'
+import Header from '../components/Header.astro'
+import Seo from '../components/Seo.astro'
+import ThemeScript from '../components/ThemeScript.astro'
+
+interface Props {
+  title?: string
+  description?: string
+  image?: string
+  type?: 'website' | 'article'
+}
+
+const { title, description, image, type } = Astro.props
+---
+
+<!doctype html>
+<html lang="en" class="dark" style="color-scheme: dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <ThemeScript />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="/logo192.png" />
+    <Seo title={title} description={description} image={image} type={type} />
+  </head>
+  <body class="min-h-screen">
+    <Header />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>

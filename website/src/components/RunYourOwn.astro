@@ -1,0 +1,139 @@
+---
+import { ArrowUpRight, Info } from 'lucide-react'
+import { site } from '../data/site'
+import CodeBlock from './CodeBlock.astro'
+import Tabs from './Tabs.astro'
+
+const tabs = [
+  { id: 'docker', label: 'Docker Compose' },
+  { id: 'build', label: 'Static build' },
+  { id: 'configure', label: 'Configure' },
+  { id: 'develop', label: 'Develop' },
+]
+
+const servers = [
+  {
+    name: 'Google Cloud Healthcare API',
+    note: 'Used by the NCI Imaging Data Commons, with OIDC sign-in.',
+  },
+  {
+    name: 'dcm4chee-arc-light',
+    note: 'Ships with the Docker Compose stack, read and write.',
+  },
+  {
+    name: 'Orthanc',
+    note: 'Through its DICOMweb plugin at /dicom-web, with CORS enabled.',
+  },
+  {
+    name: 'Any DICOMweb server',
+    note: 'QIDO-RS and WADO-RS to view, STOW-RS to save annotations.',
+  },
+]
+
+const configExample = `window.config = {
+  path: '/',
+  servers: [
+    {
+      id: 'orthanc',
+      url: 'http://localhost:8042/dicom-web',
+      write: true,
+    },
+  ],
+  enableServerSelection: true,
+}`
+---
+
+<div class="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+  <Tabs label="Ways to run Slim" tabs={tabs}>
+    <div slot="docker" class="flex flex-col gap-3">
+      <p class="text-ink-secondary">
+        Runs Slim behind NGINX together with a dcm4chee-arc-light archive. The app is served at <code
+          class="font-mono text-13 text-ink">http://localhost:8008</code
+        > and DICOMweb at <code class="font-mono text-13 text-ink">/dcm4chee-arc/aets/DCM4CHEE/rs</code>.
+      </p>
+      <CodeBlock
+        code={`git clone https://github.com/ImagingDataCommons/slim.git
+cd slim
+docker-compose up -d`}
+      />
+      <p class="text-13 text-ink-muted">Then store slides in the archive with STOW-RS, for example:</p>
+      <CodeBlock
+        code={`pip install dicomweb-client
+dicomweb_client --url http://localhost:8008/dcm4chee-arc/aets/DCM4CHEE/rs \\
+  store instances /path/to/slide/*.dcm`}
+      />
+    </div>
+    <div slot="build" class="flex flex-col gap-3">
+      <p class="text-ink-secondary">
+        Slim builds to plain static files, so any web server or bucket can host it. Download the
+        source of a <a href={site.links.releases} class="text-primary underline underline-offset-2 hover:text-primary-hover">release</a>,
+        then build with Node.js 24 and pnpm:
+      </p>
+      <CodeBlock
+        code={`pnpm install
+REACT_APP_CONFIG=local PUBLIC_URL=/ pnpm run build
+# serve the build/ folder at PUBLIC_URL`}
+      />
+      <p class="text-13 text-ink-muted">
+        <code class="font-mono">PUBLIC_URL</code> is where the viewer will live, either a path such as <code
+          class="font-mono">/slim</code
+        > or a full URL.
+      </p>
+    </div>
+    <div slot="configure" class="flex flex-col gap-3">
+      <p class="text-ink-secondary">
+        Each deployment has a configuration file in <code class="font-mono text-13 text-ink"
+          >public/config/</code
+        >, picked at build time with <code class="font-mono text-13 text-ink">REACT_APP_CONFIG</code>.
+        It sets the DICOMweb servers, sign-in, annotation presets and which panels are shown.
+      </p>
+      <CodeBlock title="public/config/orthanc.js" code={configExample} />
+      <a
+        href={site.links.configuration}
+        class="inline-flex w-fit items-center gap-1 text-13 font-medium text-primary hover:underline"
+      >
+        Configuration reference
+        <ArrowUpRight className="size-3.5" aria-hidden="true" />
+      </a>
+    </div>
+    <div slot="develop" class="flex flex-col gap-3">
+      <p class="text-ink-secondary">
+        Start the Vite development server on <code class="font-mono text-13 text-ink"
+          >http://localhost:3000</code
+        >. It talks to the Docker Compose archive by default.
+      </p>
+      <CodeBlock
+        code={`pnpm install
+pnpm run start`}
+      />
+      <a
+        href={site.links.contributing}
+        class="inline-flex w-fit items-center gap-1 text-13 font-medium text-primary hover:underline"
+      >
+        Contributing guide
+        <ArrowUpRight className="size-3.5" aria-hidden="true" />
+      </a>
+    </div>
+  </Tabs>
+
+  <aside class="flex flex-col gap-4">
+    <h3 class="text-base">Works with your archive</h3>
+    <ul class="flex flex-col gap-3">
+      {
+        servers.map((server) => (
+          <li class="card px-4 py-3">
+            <p class="text-sm font-medium text-ink">{server.name}</p>
+            <p class="mt-0.5 text-13 text-ink-muted">{server.note}</p>
+          </li>
+        ))
+      }
+    </ul>
+    <p class="flex gap-2 rounded-card border border-line bg-subtle px-4 py-3 text-13 text-ink-secondary">
+      <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+      <span>
+        The worklist's Slides column reads <code class="font-mono text-12">NumberOfStudyRelatedSeries</code>.
+        Servers that don't return it in study searches leave the column empty.
+      </span>
+    </p>
+  </aside>
+</div>

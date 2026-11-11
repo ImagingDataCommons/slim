@@ -1,0 +1,163 @@
+---
+import { ArrowUpRight, Check, Minus } from 'lucide-react'
+import { buttonVariants } from '@slim/components/ui/button'
+import { type Capability, capabilityLabels, matrix } from '../data/matrix'
+import { site } from '../data/site'
+import { collectionUrl, exampleUrl, getExample, idcVersion } from '../lib/examples'
+
+const capabilities: Capability[] = ['display', 'create', 'store']
+
+function formatSize(sizeMB: number | undefined): string | undefined {
+  if (sizeMB === undefined) return undefined
+  if (sizeMB >= 1024) return `${(sizeMB / 1024).toFixed(1)} GB`
+  if (sizeMB < 1) return '< 1 MB'
+  return `${Math.round(sizeMB)} MB`
+}
+---
+
+<div class="card relative max-lg:overflow-x-auto">
+  <table class="w-full min-w-[760px] border-collapse text-left text-sm">
+    <caption class="sr-only">
+      DICOM objects supported by Slim, what it can do with each, and a public example from IDC
+    </caption>
+    <thead>
+      <tr class="border-b border-line text-ink-muted">
+        <th scope="col" class="px-5 py-3 font-mono text-11 font-medium uppercase tracking-[0.1em]">
+          DICOM object
+        </th>
+        {
+          capabilities.map((capability) => (
+            <th scope="col" class="w-20 px-2 py-3 text-center font-mono text-11 font-medium uppercase tracking-[0.1em]">
+              {capabilityLabels[capability]}
+            </th>
+          ))
+        }
+        <th scope="col" class="px-5 py-3 font-mono text-11 font-medium uppercase tracking-[0.1em]">
+          Try it on IDC data
+        </th>
+      </tr>
+    </thead>
+    {
+      matrix.map((group) => (
+        <tbody>
+          <tr>
+            <th
+              scope="colgroup"
+              colspan={capabilities.length + 2}
+              class="bg-subtle px-5 py-2 text-12 font-semibold text-ink-secondary"
+            >
+              {group.title}
+            </th>
+          </tr>
+          {group.rows.map((row) => {
+            const example = getExample(row.example)
+            const href = example ? exampleUrl(example) : undefined
+            const cardId = `matrix-${row.id}-detail`
+            const size = formatSize(example?.sizeMB)
+            return (
+              <tr id={`matrix-${row.id}`} class="border-t border-line-soft align-top first:border-t-0">
+                <th scope="row" class="px-5 py-4 font-normal">
+                  <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <a
+                      href={row.standard}
+                      target="_blank"
+                      rel="noopener"
+                      class="font-medium text-ink hover:text-primary"
+                    >
+                      {row.name}
+                    </a>
+                    {row.variant && <span class="chip">{row.variant}</span>}
+                  </div>
+                  <p class="mt-1 text-13 text-ink-muted">{row.note}</p>
+                  <p class="mt-1 font-mono text-11 text-ink-muted">{row.sopClassUID}</p>
+                </th>
+                {capabilities.map((capability) => {
+                  const supported = row.capabilities.includes(capability)
+                  return (
+                    <td class="px-2 py-4 text-center">
+                      {supported ? (
+                        <Check className="mx-auto size-4 text-success" aria-hidden="true" />
+                      ) : (
+                        <Minus className="mx-auto size-4 text-ink-fainter" aria-hidden="true" />
+                      )}
+                      <span class="sr-only">{supported ? 'Yes' : 'No'}</span>
+                    </td>
+                  )
+                })}
+                <td class="px-5 py-4">
+                  {href && example ? (
+                    <div class="group relative flex items-start justify-between gap-4">
+                      <div class="min-w-0">
+                        <a
+                          href={collectionUrl(example.collection)}
+                          target="_blank"
+                          rel="noopener"
+                          class="font-mono text-12 text-ink-secondary hover:text-primary"
+                        >
+                          {example.collectionName}
+                        </a>
+                        <p class="mt-0.5 text-13 text-ink-muted">{example.caption}</p>
+                      </div>
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener"
+                        aria-describedby={cardId}
+                        class:list={[buttonVariants({ variant: 'outline', size: 'sm' }), 'shrink-0']}
+                      >
+                        Open in Slim
+                        <ArrowUpRight className="size-3.5" aria-hidden="true" />
+                      </a>
+                      <div
+                        id={cardId}
+                        role="tooltip"
+                        class="pointer-events-none invisible absolute bottom-full right-0 z-20 mb-2 w-80 translate-y-1 rounded-card border border-line bg-panel p-4 text-13 opacity-0 shadow-menu transition group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 max-lg:hidden"
+                      >
+                        <p class="font-medium text-ink">{example.caption}</p>
+                        {example.detail && <p class="mt-1 text-ink-secondary">{example.detail}</p>}
+                        <dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-12">
+                          <dt class="text-ink-muted">Collection</dt>
+                          <dd class="text-ink-body">{example.collectionName}</dd>
+                          {example.seriesDescription && (
+                            <>
+                              <dt class="text-ink-muted">Series</dt>
+                              <dd class="text-ink-body">{example.seriesDescription}</dd>
+                            </>
+                          )}
+                          {size && (
+                            <>
+                              <dt class="text-ink-muted">Size</dt>
+                              <dd class="text-ink-body">{size}</dd>
+                            </>
+                          )}
+                          <dt class="text-ink-muted">License</dt>
+                          <dd class="text-ink-body">{example.license}</dd>
+                        </dl>
+                        <p class="mt-3 break-all font-mono text-11 text-ink-muted">
+                          {example.seriesInstanceUID}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p class="text-13 text-ink-muted">
+                      No public example in IDC {idcVersion} yet.
+                    </p>
+                  )}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      ))
+    }
+  </table>
+</div>
+<p class="mt-4 text-13 text-ink-muted">
+  Examples are public data from the <a href={site.links.idc} class="text-primary underline underline-offset-2 hover:text-primary-hover"
+    >NCI Imaging Data Commons</a
+  > ({idcVersion}), served through the IDC public proxy under its <a
+    href={site.links.idcProxyPolicy}
+    class="text-primary underline underline-offset-2 hover:text-primary-hover">usage policy</a
+  >. Large slides can take a moment to load. Object names link to their definition in the DICOM
+  standard.
+</p>

@@ -51,3 +51,13 @@ jobs:
 
       - name: Test
         run: pnpm run test
+
+      # The website shares tokens and components with the app, so app changes can break it
+      - name: Website check
+        run: pnpm --filter slim-website run check
+
+      - name: Website test
+        run: pnpm --filter slim-website run test
+
+      - name: Website build
+        run: pnpm --filter slim-website run build

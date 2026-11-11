@@ -1,0 +1,89 @@
+---
+/**
+ * Accessible tabs without a framework. Each tab's content comes from the slot
+ * named after its id.
+ */
+interface Props {
+  label: string
+  tabs: { id: string; label: string }[]
+  class?: string
+}
+
+const { label, tabs, class: className } = Astro.props
+const baseId = `tabs-${tabs.map((tab) => tab.id).join('-')}`
+const panels = await Promise.all(tabs.map((tab) => Astro.slots.render(tab.id)))
+---
+
+<div data-tabs class:list={['flex flex-col gap-4', className]}>
+  <div
+    role="tablist"
+    aria-label={label}
+    class="inline-flex w-fit max-w-full overflow-x-auto rounded-lg bg-segmented p-[3px]"
+  >
+    {
+      tabs.map((tab, index) => (
+        <button
+          type="button"
+          role="tab"
+          id={`${baseId}-${tab.id}-tab`}
+          aria-controls={`${baseId}-${tab.id}`}
+          aria-selected={index === 0 ? 'true' : 'false'}
+          tabindex={index === 0 ? 0 : -1}
+          class="whitespace-nowrap rounded-md px-3 py-1.5 text-13 text-ink-secondary hover:text-ink aria-selected:bg-segmented-active aria-selected:font-medium aria-selected:text-ink aria-selected:shadow-segmented"
+        >
+          {tab.label}
+        </button>
+      ))
+    }
+  </div>
+  {
+    tabs.map((tab, index) => (
+      <div
+        role="tabpanel"
+        id={`${baseId}-${tab.id}`}
+        aria-labelledby={`${baseId}-${tab.id}-tab`}
+        tabindex="0"
+        hidden={index !== 0}
+        set:html={panels[index]}
+      />
+    ))
+  }
+</div>
+
+<script>
+  /** Wires up every tab group on the page: click, arrow keys, Home and End */
+  for (const root of document.querySelectorAll<HTMLElement>('[data-tabs]')) {
+    const tabs = [...root.querySelectorAll<HTMLButtonElement>(':scope > [role="tablist"] > [role="tab"]')]
+    const panels = tabs.map((tab) => document.getElementById(tab.getAttribute('aria-controls') ?? ''))
+
+    const select = (index: number, focus: boolean): void => {
+      tabs.forEach((tab, i) => {
+        const selected = i === index
+        tab.setAttribute('aria-selected', String(selected))
+        tab.tabIndex = selected ? 0 : -1
+        panels[i]?.toggleAttribute('hidden', !selected)
+      })
+      if (focus) tabs[index]?.focus()
+    }
+
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => select(index, false))
+      tab.addEventListener('keydown', (event) => {
+        const last = tabs.length - 1
+        const next =
+          event.key === 'ArrowRight'
+            ? (index + 1) % tabs.length
+            : event.key === 'ArrowLeft'
+              ? (index - 1 + tabs.length) % tabs.length
+              : event.key === 'Home'
+                ? 0
+                : event.key === 'End'
+                  ? last
+                  : undefined
+        if (next === undefined) return
+        event.preventDefault()
+        select(next, true)
+      })
+    })
+  }
+</script>

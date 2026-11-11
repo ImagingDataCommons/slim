@@ -1,0 +1,92 @@
+name: viewer/deploy
+
+# Publishes the Slim viewer to https://slim-app.web.app, built against the IDC
+# public proxy. The website's "Open in Slim" links point here.
+on:
+  push:
+    branches: [master]
+    paths:
+      - "src/**"
+      - "public/**"
+      - "index.html"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "vite.config.ts"
+      - "tsconfig*.json"
+      - "scripts/**"
+      - ".github/workflows/deploy-viewer.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-viewer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: "Deploy the viewer"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # A git-hosted dicom-microscopy-viewer runs a nested install that ignores
+      # this workspace's allowBuilds.
+      - name: Allow dependency build scripts
+        run: pnpm config set strict-dep-builds false --global
+
+      - name: Install dependencies
+        # Install without lifecycle scripts, then rebuild only the packages that
+        # need prepare (dicom-microscopy-viewer dist/).
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm rebuild dicom-microscopy-viewer core-js-pure
+          if [ ! -f "node_modules/dicom-microscopy-viewer/dist/dynamic-import/dicomMicroscopyViewer.min.js" ]; then
+            (cd node_modules/dicom-microscopy-viewer && pnpm run build)
+          fi
+
+      - name: Require preview DICOMweb URL
+        env:
+          SLIM_PREVIEW_DICOMWEB_URL: ${{ secrets.SLIM_PREVIEW_DICOMWEB_URL }}
+        run: |
+          if [ -z "${SLIM_PREVIEW_DICOMWEB_URL}" ]; then
+            echo "::error::Set Actions secret SLIM_PREVIEW_DICOMWEB_URL (the IDC proxy, read by public/config/preview.js)."
+            exit 1
+          fi
+
+      - name: Build
+        env:
+          REACT_APP_CONFIG: preview
+          PUBLIC_URL: /
+          SLIM_PREVIEW_DICOMWEB_URL: ${{ secrets.SLIM_PREVIEW_DICOMWEB_URL }}
+        run: pnpm run build
+
+      # The Firebase CLI skips gitignored directories, and the build output is
+      # gitignored, so the deploy runs from a copy outside the checkout.
+      - name: Stage the deploy
+        run: |
+          mkdir -p "$RUNNER_TEMP/viewer"
+          cp -R build "$RUNNER_TEMP/viewer/build"
+          jq '.hosting.site = "slim-app"' firebase.json > "$RUNNER_TEMP/viewer/firebase.json"
+
+      - name: Deploy to Firebase
+        uses: FirebaseExtended/action-hosting-deploy@500ac625ca2dd40cbd15f7659af953801858032a # v0.11.0
+        with:
+          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_SLIM }}"
+          projectId: slim-website
+          entryPoint: ${{ runner.temp }}/viewer
+          channelId: live

@@ -1,0 +1,134 @@
+---
+import { ArrowLeft, ArrowRight, ArrowUpRight } from 'lucide-react'
+import { type CollectionEntry, render } from 'astro:content'
+import { site } from '../../data/site'
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { summarizeEntry } from '../../lib/changelog'
+import { getChangelog, getHighlights } from '../../lib/content'
+
+type Props =
+  | { kind: 'highlight'; entry: CollectionEntry<'releases'> }
+  | {
+      kind: 'changelog'
+      entry: CollectionEntry<'changelog'>
+      newer?: CollectionEntry<'changelog'>
+      older?: CollectionEntry<'changelog'>
+    }
+
+export async function getStaticPaths() {
+  const highlights = await getHighlights()
+  const changelog = await getChangelog()
+  return [
+    ...highlights.map((entry) => ({
+      params: { slug: entry.id },
+      props: { kind: 'highlight' as const, entry },
+    })),
+    ...changelog.map((entry, index) => ({
+      params: { slug: entry.id },
+      props: {
+        kind: 'changelog' as const,
+        entry,
+        newer: changelog[index - 1],
+        older: changelog[index + 1],
+      },
+    })),
+  ]
+}
+
+const props = Astro.props
+const { Content } = await render(props.entry)
+const dateFormat = new Intl.DateTimeFormat('en', { dateStyle: 'long', timeZone: 'UTC' })
+
+const title =
+  props.kind === 'highlight' ? props.entry.data.title : `Slim v${props.entry.data.version}`
+const description =
+  props.kind === 'highlight'
+    ? props.entry.data.summary
+    : summarizeEntry({ body: props.entry.body ?? '' }) || `Changes in Slim v${props.entry.data.version}`
+const releaseUrl =
+  props.kind === 'changelog' ? `${site.links.releases}/tag/v${props.entry.data.version}` : undefined
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  type="article"
+  image={props.kind === 'highlight' ? props.entry.data.image : undefined}
+>
+  <article class="container-site py-16">
+    <a href="/release-notes/" class="inline-flex items-center gap-1 text-13 text-ink-muted hover:text-ink">
+      <ArrowLeft className="size-3.5" aria-hidden="true" />
+      Release notes
+    </a>
+    <header class="mt-6 flex max-w-reading flex-col gap-4">
+      <p class="eyebrow">
+        <time datetime={props.entry.data.date.toISOString()}>{dateFormat.format(props.entry.data.date)}</time>
+      </p>
+      <h1 class="text-4xl leading-tight sm:text-5xl">{title}</h1>
+      {props.kind === 'highlight' && <p class="text-lead text-ink-secondary">{props.entry.data.summary}</p>}
+      <div class="flex flex-wrap items-center gap-3 text-13">
+        {
+          props.kind === 'highlight' &&
+            props.entry.data.tags.map((tag) => <span class="chip">{tag}</span>)
+        }
+        {
+          releaseUrl && (
+            <a href={releaseUrl} class="inline-flex items-center gap-1 text-primary hover:underline">
+              GitHub release
+              <ArrowUpRight className="size-3.5" aria-hidden="true" />
+            </a>
+          )
+        }
+        {
+          props.kind === 'changelog' && props.entry.data.compareUrl && (
+            <a href={props.entry.data.compareUrl} class="inline-flex items-center gap-1 text-primary hover:underline">
+              Compare changes
+              <ArrowUpRight className="size-3.5" aria-hidden="true" />
+            </a>
+          )
+        }
+      </div>
+    </header>
+
+    {
+      props.kind === 'highlight' && props.entry.data.image && (
+        <img
+          src={props.entry.data.image}
+          alt={`Slim: ${title}`}
+          width="1440"
+          height="900"
+          class="mt-10 w-full max-w-5xl rounded-card border border-line shadow-modal"
+        />
+      )
+    }
+
+    <div
+      class:list={[
+        'prose-slim mt-10',
+        props.kind === 'changelog' && '[&_h2]:mt-8 [&_h2]:border-0 [&_h2]:pt-0 [&_h2]:text-lg',
+      ]}
+    >
+      <Content />
+    </div>
+
+    {
+      props.kind === 'changelog' && (
+        <nav aria-label="Other versions" class="mt-16 flex max-w-reading justify-between gap-4 border-t border-line pt-6 text-sm">
+          {props.older ? (
+            <a href={`/release-notes/${props.older.id}/`} class="inline-flex items-center gap-1.5 text-ink-secondary hover:text-ink">
+              <ArrowLeft className="size-4" aria-hidden="true" />v{props.older.data.version}
+            </a>
+          ) : (
+            <span />
+          )}
+          {props.newer && (
+            <a href={`/release-notes/${props.newer.id}/`} class="inline-flex items-center gap-1.5 text-ink-secondary hover:text-ink">
+              v{props.newer.data.version}
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </a>
+          )}
+        </nav>
+      )
+    }
+  </article>
+</BaseLayout>

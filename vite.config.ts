@@ -185,8 +185,9 @@ export default defineConfig(({ mode }) => {
       environmentOptions: { jsdom: { url: 'http://localhost/' } },
       globals: true,
       setupFiles: ['src/setupTests.tsx'],
-      /** Playwright owns e2e/ */
-      exclude: [...configDefaults.exclude, 'e2e/**'],
+      /** Website uses node:test; Playwright owns e2e/ */
+      exclude: [...configDefaults.exclude, 'website/**', 'e2e/**'],
+
       /** Matches the CRA Jest preset, which reset mocks before each test */
       mockReset: true,
     },

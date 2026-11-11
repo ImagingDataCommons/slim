@@ -1,0 +1,121 @@
+---
+import { ArrowRight, Rss } from 'lucide-react'
+import SectionHeading from '../../components/SectionHeading.astro'
+import { site } from '../../data/site'
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { summarizeEntry } from '../../lib/changelog'
+import { getChangelog, getHighlights } from '../../lib/content'
+
+const highlights = await getHighlights()
+const changelog = await getChangelog()
+
+const byYear = Map.groupBy(changelog, (entry) => entry.data.date.getUTCFullYear())
+const dateFormat = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeZone: 'UTC' })
+---
+
+<BaseLayout
+  title="Release notes"
+  description="Release highlights and the full changelog of Slim, the DICOM slide microscopy viewer."
+>
+  <section class="container-site py-20">
+    <SectionHeading
+      level="h1"
+      eyebrow="Release notes"
+      title="What's new in Slim"
+      lead="Highlights of major releases, followed by every version from the changelog."
+    >
+      <div class="mt-2 flex flex-wrap gap-4 text-13">
+        <a href="/rss.xml" class="inline-flex items-center gap-1.5 text-primary hover:underline">
+          <Rss className="size-3.5" aria-hidden="true" />
+          Subscribe via RSS
+        </a>
+        <a href={site.links.releases} class="text-ink-secondary hover:text-ink">GitHub releases</a>
+      </div>
+    </SectionHeading>
+
+    <div class="mt-12 grid gap-4">
+      {
+        highlights.map((entry) => (
+          <a
+            href={`/release-notes/${entry.id}/`}
+            class="card group grid grid-cols-1 gap-6 overflow-hidden transition-colors hover:border-line-hover md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"
+          >
+            <div class="flex flex-col gap-3 p-6 sm:p-8">
+              <p class="eyebrow">
+                Highlight · {dateFormat.format(entry.data.date)}
+                {entry.data.version && <> · v{entry.data.version}</>}
+              </p>
+              <h2 class="text-2xl">{entry.data.title}</h2>
+              <p class="text-sm text-ink-secondary">{entry.data.summary}</p>
+              <div class="flex flex-wrap gap-1.5">
+                {entry.data.tags.map((tag) => (
+                  <span class="chip">{tag}</span>
+                ))}
+              </div>
+              <span class="mt-auto inline-flex items-center gap-1 pt-2 text-13 font-medium text-primary">
+                Read the release
+                <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+              </span>
+            </div>
+            {entry.data.image && (
+              <img
+                src={entry.data.image}
+                alt=""
+                width="1440"
+                height="900"
+                loading="lazy"
+                class="h-full w-full border-line object-cover object-left-top max-md:border-t md:border-l"
+              />
+            )}
+          </a>
+        ))
+      }
+    </div>
+
+    <h2 class="mt-20 text-2xl">Changelog</h2>
+    {
+      [...byYear].map(([year, entries]) => (
+        <section class="mt-8" aria-labelledby={`year-${year}`}>
+          <h3 id={`year-${year}`} class="eyebrow">
+            {year}
+          </h3>
+          <ol class="mt-3 divide-y divide-line-soft border-y border-line-soft">
+            {entries.map((entry) => (
+              <li>
+                <a
+                  href={`/release-notes/${entry.id}/`}
+                  class="group grid grid-cols-[6.5rem_1fr] items-baseline gap-4 py-3.5 sm:grid-cols-[6.5rem_1fr_auto_7rem]"
+                >
+                  <span class:list={['font-mono text-sm', entry.data.isMinor ? 'font-medium text-ink' : 'text-ink-secondary']}>
+                    v{entry.data.version}
+                  </span>
+                  <span class="truncate text-sm text-ink-body group-hover:text-ink">
+                    {summarizeEntry({ body: entry.body ?? '' }) || 'Maintenance release'}
+                  </span>
+                  <span class="hidden gap-1.5 sm:flex">
+                    {entry.data.featureCount > 0 && (
+                      <span class="chip">
+                        {entry.data.featureCount} feature{entry.data.featureCount > 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {entry.data.fixCount > 0 && (
+                      <span class="chip">
+                        {entry.data.fixCount} fix{entry.data.fixCount > 1 ? 'es' : ''}
+                      </span>
+                    )}
+                  </span>
+                  <time
+                    datetime={entry.data.date.toISOString()}
+                    class="hidden text-right font-mono text-12 text-ink-muted sm:block"
+                  >
+                    {dateFormat.format(entry.data.date)}
+                  </time>
+                </a>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ))
+    }
+  </section>
+</BaseLayout>
