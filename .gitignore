@@ -18,6 +18,14 @@ public/config/*
 !public/config/demo.js
 !public/config/local.js
 !public/config/preview.js
+!public/config/e2e.js
+
+# Playwright
+/test-results
+/test-results-local-archive
+/playwright-report
+/e2e/.cache
+/e2e/.local-archive-seed.json
 
 # misc
 .DS_Store

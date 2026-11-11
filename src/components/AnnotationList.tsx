@@ -1,96 +1,59 @@
-import { Menu, Switch } from 'antd'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import React from 'react'
-import { FaEye, FaEyeSlash } from 'react-icons/fa'
+import type React from 'react'
 
+import { usePreferences } from '../features/preferences'
+import type { VisibilityChange } from '../utils/visibility'
 import AnnotationItem from './AnnotationItem'
+import { BulkVisibilityControl } from './slim/BulkVisibilityControl'
 
-interface AnnotationListProps {
+export interface AnnotationListProps {
   rois: dmv.roi.ROI[]
   selectedRoiUIDs: Set<string>
   visibleRoiUIDs: Set<string>
-  onVisibilityChange: ({
-    roiUID,
-    isVisible,
-  }: {
-    roiUID: string
-    isVisible: boolean
-  }) => void
+  /** CSS color of the ROI stroke */
+  getRoiColor: (roi: dmv.roi.ROI) => string
+  onVisibilityChange: (change: { roiUID: string; isVisible: boolean }) => void
+  onBulkVisibilityChange: (changes: VisibilityChange[]) => void
   onSelection: (uid: string) => void
 }
 
-/**
- * React component representing a list of Region of Interest (ROI)
- * annotations.
- */
-class AnnotationList extends React.Component<
-  AnnotationListProps,
-  Record<string, never>
-> {
-  constructor(props: AnnotationListProps) {
-    super(props)
-    this.handleMenuItemSelection = this.handleMenuItemSelection.bind(this)
-    this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
-  }
+/** Region of interest (ROI) rows of the Annotations section. */
+function AnnotationList({
+  rois,
+  selectedRoiUIDs,
+  visibleRoiUIDs,
+  getRoiColor,
+  onVisibilityChange,
+  onBulkVisibilityChange,
+  onSelection,
+}: AnnotationListProps): React.ReactElement {
+  const { units } = usePreferences()
 
-  handleVisibilityChange(
-    checked: boolean,
-    _event: React.MouseEvent<HTMLButtonElement>,
-  ): void {
-    if (checked) {
-      this.props.rois.forEach((roi) => {
-        this.props.onVisibilityChange({ roiUID: roi.uid, isVisible: checked })
-      })
-    } else {
-      this.props.visibleRoiUIDs.forEach((roiUID) => {
-        this.props.onVisibilityChange({ roiUID, isVisible: checked })
-      })
-    }
-  }
-
-  handleMenuItemSelection(object: { key: string }): void {
-    this.props.onSelection(object.key)
-  }
-
-  render(): React.ReactNode {
-    const items = this.props.rois.map((roi, index) => (
-      <AnnotationItem
-        key={roi.uid}
-        roi={roi}
-        index={index}
-        isVisible={this.props.visibleRoiUIDs.has(roi.uid)}
-        onVisibilityChange={this.props.onVisibilityChange}
+  return (
+    <div className="flex flex-col gap-0.5">
+      <BulkVisibilityControl
+        className="mb-1"
+        itemLabel="annotations"
+        uids={rois.map((roi) => roi.uid)}
+        visibleUids={visibleRoiUIDs}
+        onChange={onBulkVisibilityChange}
       />
-    ))
-
-    return (
-      <>
-        <div
-          style={{
-            paddingLeft: '14px',
-            paddingTop: '7px',
-            paddingBottom: '7px',
-          }}
-        >
-          <Switch
-            size="small"
-            onChange={this.handleVisibilityChange}
-            checked={this.props.visibleRoiUIDs.size > 0}
-            checkedChildren={<FaEye />}
-            unCheckedChildren={<FaEyeSlash />}
-          />
-        </div>
-        <Menu
-          selectedKeys={[...this.props.selectedRoiUIDs.values()]}
-          onSelect={this.handleMenuItemSelection}
-          onClick={this.handleMenuItemSelection}
-        >
-          {items}
-        </Menu>
-      </>
-    )
-  }
+      {rois.map((roi, index) => (
+        <AnnotationItem
+          key={roi.uid}
+          roi={roi}
+          index={index}
+          color={getRoiColor(roi)}
+          isSelected={selectedRoiUIDs.has(roi.uid)}
+          isVisible={visibleRoiUIDs.has(roi.uid)}
+          units={units}
+          onSelection={onSelection}
+          onVisibilityChange={onVisibilityChange}
+        />
+      ))}
+    </div>
+  )
 }
 
 export default AnnotationList

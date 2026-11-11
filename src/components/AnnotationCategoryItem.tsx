@@ -1,218 +1,123 @@
-import { SettingOutlined } from '@ant-design/icons'
-import { Button, Checkbox, Menu, Popover, Space, Tooltip } from 'antd'
-import type { CheckboxChangeEvent } from 'antd/es/checkbox'
-import { useCallback, useMemo } from 'react'
-import type { Category, Type } from './AnnotationCategoryList'
-import ColorSettingsMenu from './ColorSettingsMenu'
-import type { StyleOptions } from './SlideViewer/types'
+import type React from 'react'
+import { useState } from 'react'
 
-function AnnotationTypeRow({
-  type,
-  checkedAnnotationUids,
-  onCheckboxChange,
-  onStyleChange,
-  defaultAnnotationStyles,
-}: {
-  type: Type
+import type { AnnotationStyle } from '../types/layerStyles'
+import {
+  type Category,
+  collectCategoryUids,
+  getConceptKey,
+  type Type,
+} from '../utils/annotationCategories'
+import {
+  computeBulkVisibility,
+  type VisibilityChange,
+} from '../utils/visibility'
+import { AnnotationChip } from './AnnotationChip'
+
+/** Not every annotation UID has a style entry */
+export type AnnotationStyleMap = Record<string, AnnotationStyle | undefined>
+
+export type AnnotationStyleChangeHandler = (change: {
+  uids: string[]
+  styleOptions: AnnotationStyle
+}) => void
+
+export type AnnotationVisibilityChangeHandler = (
+  changes: VisibilityChange[],
+) => void
+
+export interface AnnotationCategoryItemProps {
+  category: Category
+  onChange: AnnotationVisibilityChangeHandler
+  onStyleChange: AnnotationStyleChangeHandler
+  defaultAnnotationStyles: AnnotationStyleMap
   checkedAnnotationUids: Set<string>
-  onCheckboxChange: (type: Type, e: CheckboxChangeEvent) => void
-  onStyleChange: (arg: { uid: string; styleOptions: StyleOptions }) => void
-  defaultAnnotationStyles: {
-    [annotationUID: string]: {
-      opacity: number
-      color: number[]
-      contourOnly: boolean
-    }
-  }
-}): JSX.Element {
-  const { CodeMeaning, CodingSchemeDesignator, CodeValue, uids } = type
-  const shortenedCodeMeaning = CodeMeaning.slice(0, 22)
-  const displayCodeMeaning =
-    shortenedCodeMeaning === CodeMeaning
-      ? CodeMeaning
-      : `${shortenedCodeMeaning}...`
-  const isChecked = uids.every((uid: string) => checkedAnnotationUids.has(uid))
-  const indeterminateType =
-    !isChecked && uids.some((uid: string) => checkedAnnotationUids.has(uid))
-  const handleChange = useCallback(
-    (e: CheckboxChangeEvent) => onCheckboxChange(type, e),
-    [type, onCheckboxChange],
-  )
-  return (
-    <div
-      style={{
-        paddingLeft: '25px',
-        width: '100%',
-        display: 'flex',
-        flexDirection: 'row',
-      }}
-    >
-      <Checkbox
-        indeterminate={indeterminateType}
-        checked={isChecked}
-        onChange={handleChange}
-      />
-      <div style={{ paddingLeft: '5px' }}>
-        <Tooltip
-          title={`${CodeValue}:${CodingSchemeDesignator}`}
-          mouseEnterDelay={1}
-        >
-          {displayCodeMeaning}
-        </Tooltip>
-        <Popover
-          placement="topLeft"
-          overlayStyle={{ width: '350px' }}
-          title="Display Settings"
-          content={
-            <ColorSettingsMenu
-              annotationGroupsUIDs={type.uids}
-              onStyleChange={onStyleChange}
-              defaultStyle={defaultAnnotationStyles[type.uids[0]]}
-            />
-          }
-        >
-          <Button
-            type="primary"
-            shape="circle"
-            style={{ marginLeft: '10px' }}
-            icon={<SettingOutlined />}
-          />
-        </Popover>
-      </div>
-    </div>
-  )
 }
 
-const AnnotationCategoryItem = ({
+/** A chip for the whole category, then one chip per annotation type. */
+function AnnotationCategoryItem({
   category,
   onChange,
   checkedAnnotationUids,
   onStyleChange,
   defaultAnnotationStyles,
-  ...props
-}: {
-  category: Category
-  onChange: (arg: { roiUID: string; isVisible: boolean }) => void
-  onStyleChange: (arg: { uid: string; styleOptions: StyleOptions }) => void
-  defaultAnnotationStyles: {
-    [annotationUID: string]: {
-      opacity: number
-      color: number[]
-      contourOnly: boolean
-    }
+}: AnnotationCategoryItemProps): React.ReactElement {
+  /**
+   * The viewer's style map is mutated in place, so the chips keep the styles
+   * the user picked instead of relying on the map to re-render them.
+   */
+  const [editedStyles, setEditedStyles] = useState<AnnotationStyleMap>({})
+  const styleOf = (uids: string[]): AnnotationStyle | undefined =>
+    editedStyles[uids[0]] ?? defaultAnnotationStyles[uids[0]]
+
+  const previewStyle = (uids: string[], style: AnnotationStyle): void => {
+    setEditedStyles((styles) => ({
+      ...styles,
+      ...Object.fromEntries(uids.map((uid) => [uid, style])),
+    }))
   }
-  checkedAnnotationUids: Set<string>
-}): JSX.Element => {
-  const { types } = category
 
-  const handleChangeCheckedType = useCallback(
-    ({ type, isVisible }: { type: Type; isVisible: boolean }): void => {
-      type.uids.forEach((uid: string) => {
-        onChange({ roiUID: uid, isVisible })
-      })
-    },
-    [onChange],
-  )
+  const commitStyle = (uids: string[], style: AnnotationStyle): void => {
+    previewStyle(uids, style)
+    onStyleChange({ uids, styleOptions: style })
+  }
 
-  const onCheckCategoryChange = useCallback(
-    (e: CheckboxChangeEvent): void => {
-      const isVisible = e.target.checked
-      types.forEach((type: Type) => {
-        handleChangeCheckedType({ type, isVisible })
-      })
-    },
-    [types, handleChangeCheckedType],
-  )
-
-  const checkAll = types.every((type: Type) =>
-    type.uids.every((uid: string) => checkedAnnotationUids.has(uid)),
-  )
-  const indeterminate =
-    !checkAll &&
-    types.some((type: Type) =>
-      type.uids.some((uid: string) => checkedAnnotationUids.has(uid)),
+  const handleVisibilityChange = (uids: string[], isVisible: boolean): void => {
+    const changes = computeBulkVisibility(
+      uids,
+      checkedAnnotationUids,
+      isVisible,
     )
+    if (changes.length > 0) onChange(changes)
+  }
 
-  const categoryColorSettingsContent = useMemo(
-    () => (
-      <ColorSettingsMenu
-        annotationGroupsUIDs={types.reduce<string[]>((acc, type) => {
-          acc.push(...type.uids)
-          return acc
-        }, [])}
-        onStyleChange={onStyleChange}
-        defaultStyle={defaultAnnotationStyles[types[0].uids[0]]}
-      />
-    ),
-    [types, onStyleChange, defaultAnnotationStyles],
-  )
-
-  const handleCheckboxChangeType = useCallback(
-    (type: Type, e: CheckboxChangeEvent): void => {
-      handleChangeCheckedType({ type, isVisible: e.target.checked })
-    },
-    [handleChangeCheckedType],
-  )
-
-  const categoryHeader = useMemo(
-    () => (
-      <Checkbox
-        indeterminate={indeterminate}
-        checked={checkAll}
-        onChange={onCheckCategoryChange}
-      >
-        <Tooltip
-          title={`${category.CodeValue}:${category.CodingSchemeDesignator}`}
-          mouseEnterDelay={1}
-        >
-          {category.CodeMeaning}
-        </Tooltip>
-        <Popover
-          placement="topLeft"
-          overlayStyle={{ width: '350px' }}
-          title="Display Settings"
-          content={categoryColorSettingsContent}
-        >
-          <Button
-            type="primary"
-            shape="circle"
-            style={{ marginLeft: '10px' }}
-            icon={<SettingOutlined />}
-          />
-        </Popover>
-      </Checkbox>
-    ),
-    [
-      indeterminate,
-      checkAll,
-      onCheckCategoryChange,
-      category.CodeValue,
-      category.CodingSchemeDesignator,
-      category.CodeMeaning,
-      categoryColorSettingsContent,
-    ],
-  )
+  const categoryCode = `${category.CodeValue}:${category.CodingSchemeDesignator}`
+  const categoryUids = collectCategoryUids(category)
+  /**
+   * Drawn ROIs without a distinct Finding category fall back to category=type
+   * in the adapter. Skip the category chip so "Tissue" is not shown twice.
+   */
+  const soleType = category.types.length === 1 ? category.types[0] : undefined
+  const showCategoryChip =
+    soleType === undefined ||
+    getConceptKey(category) !== getConceptKey(soleType)
 
   return (
-    <Menu.Item style={{ height: '100%', paddingLeft: '3px' }} {...props}>
-      <Space align="start">
-        <div style={{ paddingLeft: '14px', color: 'black' }}>
-          <Space direction="vertical" align="end">
-            {categoryHeader}
-            {types.map((type: Type) => (
-              <AnnotationTypeRow
-                key={`${type.CodingSchemeDesignator}:${type.CodeMeaning}`}
-                type={type}
-                checkedAnnotationUids={checkedAnnotationUids}
-                onCheckboxChange={handleCheckboxChangeType}
-                onStyleChange={onStyleChange}
-                defaultAnnotationStyles={defaultAnnotationStyles}
-              />
-            ))}
-          </Space>
-        </div>
-      </Space>
-    </Menu.Item>
+    <fieldset
+      aria-label={category.CodeMeaning}
+      className="flex flex-wrap items-center gap-1.5"
+    >
+      {showCategoryChip ? (
+        <AnnotationChip
+          isCategory
+          name={`${category.CodeMeaning} category`}
+          meaning={category.CodeMeaning}
+          detail={`All types · ${categoryCode}`}
+          title={`${category.CodeMeaning} · ${categoryCode}`}
+          uids={categoryUids}
+          style={styleOf(categoryUids)}
+          checkedAnnotationUids={checkedAnnotationUids}
+          onVisibilityChange={handleVisibilityChange}
+          onStylePreview={previewStyle}
+          onStyleCommit={commitStyle}
+        />
+      ) : null}
+      {category.types.map((type: Type) => (
+        <AnnotationChip
+          key={`${type.CodingSchemeDesignator}:${type.CodeValue}:${type.CodeMeaning}`}
+          name={type.CodeMeaning}
+          meaning={type.CodeMeaning}
+          detail={`${category.CodeMeaning} · ${type.CodeValue}:${type.CodingSchemeDesignator}`}
+          title={`${category.CodeMeaning} · ${type.CodeMeaning}`}
+          uids={type.uids}
+          style={styleOf(type.uids)}
+          checkedAnnotationUids={checkedAnnotationUids}
+          onVisibilityChange={handleVisibilityChange}
+          onStylePreview={previewStyle}
+          onStyleCommit={commitStyle}
+        />
+      ))}
+    </fieldset>
   )
 }
 

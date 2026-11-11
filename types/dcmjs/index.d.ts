@@ -2,13 +2,26 @@ declare module 'dcmjs' {
 
   declare namespace data {
 
+    /** Dataset keyed by attribute keyword, e.g. `{ StudyInstanceUID: '1.2' }` */
+    export type NaturalizedDataset = Record<string, unknown>
+
+    export interface DicomJsonElement {
+      vr: string
+      Value?: unknown[]
+      InlineBinary?: string
+      BulkDataURI?: string
+    }
+
+    /** DICOM JSON dataset keyed by tag, e.g. `{ '0020000D': { vr: 'UI' } }` */
+    export type DicomJsonDataset = Record<string, DicomJsonElement>
+
     export class DicomMetaDictionary {
       static uid (): string
       static date (): string
       static time (): string
       static dateTime (): string
-      static denaturalizeDataset (object): object
-      static naturalizeDataset (object): object
+      static denaturalizeDataset (dataset: object): DicomJsonDataset
+      static naturalizeDataset (dataset: object): NaturalizedDataset
       static namifyDataset (object): object
       static cleanDataset (object): object
       static punctuateTag (string): string
@@ -17,7 +30,7 @@ declare module 'dcmjs' {
 
     export class DicomDict {
       constructor (meta: object)
-      dict: object
+      dict: DicomJsonDataset
       write (writeOptions?: object): ArrayBuffer
     }
 

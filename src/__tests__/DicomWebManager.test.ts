@@ -1,23 +1,25 @@
-// skipcq: JS-C1003
-import * as dwc from 'dicomweb-client'
+/** skipcq: JS-C1003 */
+
+import type * as dwc from 'dicomweb-client'
+import type { Mock } from 'vitest'
 
 import DicomWebManager from '../DicomWebManager'
 
 interface StubClient {
   baseURL: string
   headers: Record<string, string>
-  searchForStudies: jest.Mock
-  searchForSeries: jest.Mock
-  searchForInstances: jest.Mock
-  retrieveStudyMetadata: jest.Mock
-  retrieveSeriesMetadata: jest.Mock
-  retrieveInstance: jest.Mock
-  retrieveInstanceMetadata: jest.Mock
-  retrieveInstanceFrames: jest.Mock
-  retrieveInstanceRendered: jest.Mock
-  retrieveInstanceFramesRendered: jest.Mock
-  retrieveBulkData: jest.Mock
-  storeInstances: jest.Mock
+  searchForStudies: Mock
+  searchForSeries: Mock
+  searchForInstances: Mock
+  retrieveStudyMetadata: Mock
+  retrieveSeriesMetadata: Mock
+  retrieveInstance: Mock
+  retrieveInstanceMetadata: Mock
+  retrieveInstanceFrames: Mock
+  retrieveInstanceRendered: Mock
+  retrieveInstanceFramesRendered: Mock
+  retrieveBulkData: Mock
+  storeInstances: Mock
 }
 
 interface ManagerInternals {
@@ -32,18 +34,18 @@ interface ManagerInternals {
 const makeStubClient = (id: string): StubClient => ({
   baseURL: `https://example.test/${id}/dicomWeb`,
   headers: {},
-  searchForStudies: jest.fn(),
-  searchForSeries: jest.fn(),
-  searchForInstances: jest.fn(),
-  retrieveStudyMetadata: jest.fn(),
-  retrieveSeriesMetadata: jest.fn(),
-  retrieveInstance: jest.fn(),
-  retrieveInstanceMetadata: jest.fn(),
-  retrieveInstanceFrames: jest.fn(),
-  retrieveInstanceRendered: jest.fn(),
-  retrieveInstanceFramesRendered: jest.fn(),
-  retrieveBulkData: jest.fn(),
-  storeInstances: jest.fn(),
+  searchForStudies: vi.fn(),
+  searchForSeries: vi.fn(),
+  searchForInstances: vi.fn(),
+  retrieveStudyMetadata: vi.fn(),
+  retrieveSeriesMetadata: vi.fn(),
+  retrieveInstance: vi.fn(),
+  retrieveInstanceMetadata: vi.fn(),
+  retrieveInstanceFrames: vi.fn(),
+  retrieveInstanceRendered: vi.fn(),
+  retrieveInstanceFramesRendered: vi.fn(),
+  retrieveBulkData: vi.fn(),
+  storeInstances: vi.fn(),
 })
 
 /**
@@ -71,11 +73,11 @@ const httpError = (status: number): Error & { status: number } =>
 const allowAllPolicy = (
   token = 'Bearer abc',
 ): {
-  isPreAuthorized: jest.Mock
-  requestAuthorization: jest.Mock
+  isPreAuthorized: Mock
+  requestAuthorization: Mock
 } => ({
-  isPreAuthorized: jest.fn().mockReturnValue(true),
-  requestAuthorization: jest.fn().mockResolvedValue(token),
+  isPreAuthorized: vi.fn().mockReturnValue(true),
+  requestAuthorization: vi.fn().mockResolvedValue(token),
 })
 
 /** Policy that grants only when challenged, mimicking the consent prompt. */
@@ -83,13 +85,11 @@ const consentPolicy = (
   approved: boolean,
   token = 'Bearer abc',
 ): {
-  isPreAuthorized: jest.Mock
-  requestAuthorization: jest.Mock
+  isPreAuthorized: Mock
+  requestAuthorization: Mock
 } => ({
-  isPreAuthorized: jest.fn().mockReturnValue(false),
-  requestAuthorization: jest
-    .fn()
-    .mockResolvedValue(approved ? token : undefined),
+  isPreAuthorized: vi.fn().mockReturnValue(false),
+  requestAuthorization: vi.fn().mockResolvedValue(approved ? token : undefined),
 })
 
 /**
@@ -100,15 +100,15 @@ const consentPolicy = (
 const recordingPolicy = (
   token = 'Bearer abc',
 ): {
-  isPreAuthorized: jest.Mock
-  requestAuthorization: jest.Mock
+  isPreAuthorized: Mock
+  requestAuthorization: Mock
   granted: Set<string>
 } => {
   const granted = new Set<string>()
   return {
     granted,
-    isPreAuthorized: jest.fn((origin: string) => granted.has(origin)),
-    requestAuthorization: jest.fn(async (origin: string) => {
+    isPreAuthorized: vi.fn((origin: string) => granted.has(origin)),
+    requestAuthorization: vi.fn(async (origin: string) => {
       granted.add(origin)
       return await Promise.resolve(token)
     }),
@@ -116,12 +116,127 @@ const recordingPolicy = (
 }
 
 describe('DicomWebManager - multi-store search', () => {
+  it('keeps the store a retrieve found working across later searches', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
+      ],
+    })
+    const primaryStub = makeStubClient('primary')
+    const secondaryStub = makeStubClient('secondary')
+    stubManagerClients(manager, [primaryStub, secondaryStub])
+    const row = {
+      '0020000D': { vr: 'UI', Value: ['1.2.3'] },
+      '0020000E': { vr: 'UI', Value: ['1.2.3.9'] },
+    }
+    const series = { studyInstanceUID: '1.2.3', seriesInstanceUID: '1.2.3.9' }
+    /** The primary lists the series but cannot serve its metadata */
+    primaryStub.retrieveSeriesMetadata.mockRejectedValue(httpError(404))
+    secondaryStub.retrieveSeriesMetadata.mockResolvedValue([])
+    await manager.retrieveSeriesMetadata(series)
+    primaryStub.retrieveSeriesMetadata.mockClear()
+    primaryStub.searchForSeries.mockResolvedValue([row])
+    secondaryStub.searchForSeries.mockResolvedValue([row])
+
+    await manager.searchForSeries({
+      studyInstanceUID: '1.2.3',
+    } as dwc.api.SearchForSeriesOptions)
+    await manager.retrieveSeriesMetadata(series)
+
+    expect(primaryStub.retrieveSeriesMetadata).not.toHaveBeenCalled()
+  })
+
+  it('remembers the first configured store with a series, not the fastest', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
+      ],
+    })
+    const primaryStub = makeStubClient('primary')
+    const secondaryStub = makeStubClient('secondary')
+    stubManagerClients(manager, [primaryStub, secondaryStub])
+    const row = {
+      '0020000D': { vr: 'UI', Value: ['1.2.3'] },
+      '0020000E': { vr: 'UI', Value: ['1.2.3.9'] },
+    }
+    primaryStub.searchForSeries.mockImplementation(
+      async () =>
+        await new Promise((resolve) => setTimeout(() => resolve([row]), 5)),
+    )
+    secondaryStub.searchForSeries.mockResolvedValue([row])
+    primaryStub.retrieveSeriesMetadata.mockResolvedValue([])
+
+    await manager.searchForSeries({
+      studyInstanceUID: '1.2.3',
+    } as dwc.api.SearchForSeriesOptions)
+    await manager.retrieveSeriesMetadata({
+      studyInstanceUID: '1.2.3',
+      seriesInstanceUID: '1.2.3.9',
+    })
+
+    expect(primaryStub.retrieveSeriesMetadata).toHaveBeenCalledTimes(1)
+    expect(secondaryStub.retrieveSeriesMetadata).not.toHaveBeenCalled()
+  })
+
+  it('retrieves a searched series from the store that has it first', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
+      ],
+    })
+    const primaryStub = makeStubClient('primary')
+    const secondaryStub = makeStubClient('secondary')
+    stubManagerClients(manager, [primaryStub, secondaryStub])
+    primaryStub.searchForSeries.mockResolvedValue([])
+    secondaryStub.searchForSeries.mockResolvedValue([
+      {
+        '0020000D': { vr: 'UI', Value: ['1.2.3'] },
+        '0020000E': { vr: 'UI', Value: ['1.2.3.9'] },
+      },
+    ])
+    secondaryStub.retrieveSeriesMetadata.mockResolvedValue([])
+
+    await manager.searchForSeries({
+      studyInstanceUID: '1.2.3',
+      queryParams: { SeriesInstanceUID: '1.2.3.9' },
+    } as dwc.api.SearchForSeriesOptions)
+    await manager.retrieveSeriesMetadata({
+      studyInstanceUID: '1.2.3',
+      seriesInstanceUID: '1.2.3.9',
+    })
+
+    expect(primaryStub.retrieveSeriesMetadata).not.toHaveBeenCalled()
+    expect(secondaryStub.retrieveSeriesMetadata).toHaveBeenCalledTimes(1)
+  })
+
   it('merges searchForSeries results across stores and de-duplicates by SeriesInstanceUID', async () => {
     const manager = new DicomWebManager({
       baseUri,
       settings: [
         { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
-        { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
       ],
     })
 
@@ -135,7 +250,7 @@ describe('DicomWebManager - multi-store search', () => {
         '0020000E': { vr: 'UI', Value: ['1.2.3.A'] },
         '00080060': { vr: 'CS', Value: ['ANN'] },
       },
-      // Same SeriesInstanceUID appears in both stores; should be deduped.
+      /** Same SeriesInstanceUID appears in both stores; should be deduped. */
       {
         '0020000D': { vr: 'UI', Value: ['1.2.3'] },
         '0020000E': { vr: 'UI', Value: ['1.2.3.SHARED'] },
@@ -175,7 +290,11 @@ describe('DicomWebManager - multi-store search', () => {
       baseUri,
       settings: [
         { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
-        { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
       ],
     })
 
@@ -197,9 +316,8 @@ describe('DicomWebManager - multi-store search', () => {
 
     expect(merged.length).toBe(1)
     expect(
-      (merged[0] as unknown as Record<string, { Value?: string[] }>)[
-        '0020000E'
-      ]?.Value?.[0],
+      (merged[0] as unknown as Record<string, { Value?: string[] }>)['0020000E']
+        ?.Value?.[0],
     ).toBe('1.2.3.B')
   })
 
@@ -208,7 +326,11 @@ describe('DicomWebManager - multi-store search', () => {
       baseUri,
       settings: [
         { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
-        { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
       ],
     })
 
@@ -226,6 +348,95 @@ describe('DicomWebManager - multi-store search', () => {
     ).rejects.toThrow()
   })
 
+  it('gives one stable search client per readable store', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        {
+          id: 'hidden',
+          url: 'https://hidden.test/dicomWeb',
+          write: false,
+          read: false,
+        },
+        { id: 'gcp', url: 'https://gcp.test/dicomWeb', write: false },
+      ],
+    })
+    const stubs = ['primary', 'hidden', 'gcp'].map(makeStubClient)
+    stubManagerClients(manager, stubs)
+    stubs[2].searchForSeries.mockResolvedValue([])
+
+    const clients = manager.storeSearchClients()
+    await clients[1].searchForSeries({ queryParams: { offset: 100 } })
+
+    expect(clients).toHaveLength(2)
+    expect(manager.storeSearchClients()).toEqual(clients)
+    expect(manager.storeSearchClients()[0]).toBe(clients[0])
+    expect(stubs[2].searchForSeries).toHaveBeenCalledWith({
+      queryParams: { offset: 100 },
+    })
+    expect(stubs[0].searchForSeries).not.toHaveBeenCalled()
+  })
+
+  it('does not search a store left without a URL', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [{ id: 'blank', url: '', write: false }],
+    })
+    const stub = makeStubClient('blank')
+    stubManagerClients(manager, [stub])
+
+    await expect(manager.searchForStudies({})).resolves.toEqual([])
+    expect(stub.searchForStudies).not.toHaveBeenCalled()
+  })
+
+  it('sends nothing to a store left without a URL', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'blank', url: '', write: true },
+        { id: 'ann', url: 'https://ann.test/dicomWeb', write: false },
+      ],
+    })
+    const [blank, ann] = ['blank', 'ann'].map(makeStubClient)
+    stubManagerClients(manager, [blank, ann])
+    ann.retrieveSeriesMetadata.mockResolvedValue([])
+
+    await manager.retrieveSeriesMetadata({
+      studyInstanceUID: '1',
+      seriesInstanceUID: '2',
+    })
+    expect(blank.retrieveSeriesMetadata).not.toHaveBeenCalled()
+    expect(ann.retrieveSeriesMetadata).toHaveBeenCalledTimes(1)
+    expect(manager.storeSearchClients()).toHaveLength(1)
+    await expect(
+      manager.storeInstances({ datasets: [] } as dwc.api.StoreInstancesOptions),
+    ).rejects.toThrow('Store is not writable.')
+    expect(blank.storeInstances).not.toHaveBeenCalled()
+  })
+
+  it('reads a non-DICOM search answer as no matches', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [{ id: 'spa', url: 'https://spa.test/dicomWeb', write: false }],
+    })
+    const stub = makeStubClient('spa')
+    stubManagerClients(manager, [stub])
+    stub.searchForStudies.mockResolvedValue(null)
+    stub.searchForSeries.mockResolvedValue(null)
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    await expect(manager.searchForStudies({})).resolves.toEqual([])
+    await expect(manager.searchForSeries({})).resolves.toEqual([])
+    await expect(
+      manager.storeSearchClients()[0].searchForSeries({}),
+    ).resolves.toEqual([])
+    /** Reported once for the server, by name */
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/"spa"/))
+    warn.mockRestore()
+  })
+
   it('skips stores marked as not readable during searches', async () => {
     const manager = new DicomWebManager({
       baseUri,
@@ -236,7 +447,11 @@ describe('DicomWebManager - multi-store search', () => {
           write: false,
           read: false,
         },
-        { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
       ],
     })
 
@@ -268,7 +483,11 @@ describe('DicomWebManager - multi-store retrieve fallback', () => {
       baseUri,
       settings: [
         { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
-        { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
       ],
     })
 
@@ -295,7 +514,11 @@ describe('DicomWebManager - multi-store retrieve fallback', () => {
       baseUri,
       settings: [
         { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
-        { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
       ],
     })
 
@@ -327,7 +550,11 @@ describe('DicomWebManager - multi-store retrieve fallback', () => {
       baseUri,
       settings: [
         { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
-        { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
       ],
     })
 
@@ -352,7 +579,11 @@ describe('DicomWebManager - storeInstances and headers', () => {
       baseUri,
       settings: [
         { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
-        { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: true },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: true,
+        },
       ],
     })
 
@@ -375,7 +606,11 @@ describe('DicomWebManager - storeInstances and headers', () => {
       baseUri,
       settings: [
         { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
-        { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
       ],
     })
 
@@ -395,7 +630,11 @@ describe('DicomWebManager - storeInstances and headers', () => {
       baseUri,
       settings: [
         { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
-        { id: 'secondary', url: 'https://secondary.test/dicomWeb', write: false },
+        {
+          id: 'secondary',
+          url: 'https://secondary.test/dicomWeb',
+          write: false,
+        },
       ],
     })
     manager.setAuthorizationPolicy(allowAllPolicy())
@@ -423,7 +662,7 @@ describe('DicomWebManager - storeInstances and headers', () => {
         },
       ],
     })
-    // The primary is in auto mode; approve its origin so it carries the token.
+    /** The primary is in auto mode; approve its origin so it carries the token. */
     manager.setAuthorizationPolicy(allowAllPolicy())
 
     const primaryStub = makeStubClient('primary')
@@ -437,14 +676,16 @@ describe('DicomWebManager - storeInstances and headers', () => {
 
     expect(primaryStub.headers.Authorization).toBe('Bearer abc')
     expect(openStub.headers.Authorization).toBeUndefined()
-    // Non-credential headers are still propagated to the open store.
+    /** Non-credential headers are still propagated to the open store. */
     expect(openStub.headers['X-Custom']).toBe('value')
   })
 
   it('withholds the token from an unchallenged server until it asks', () => {
     const manager = new DicomWebManager({
       baseUri,
-      settings: [{ id: 'open', url: 'https://open.test/dicomWeb', write: false }],
+      settings: [
+        { id: 'open', url: 'https://open.test/dicomWeb', write: false },
+      ],
     })
     manager.setAuthorizationPolicy(consentPolicy(true))
 
@@ -453,7 +694,7 @@ describe('DicomWebManager - storeInstances and headers', () => {
 
     manager.updateHeaders({ Authorization: 'Bearer abc' })
 
-    // Nothing has returned 401, so the server never sees the credential.
+    /** Nothing has returned 401, so the server never sees the credential. */
     expect(openStub.headers.Authorization).toBeUndefined()
   })
 
@@ -526,7 +767,11 @@ describe('DicomWebManager - authorization escalation', () => {
     const manager = new DicomWebManager({
       baseUri,
       settings: [
-        { id: 'untrusted', url: 'https://untrusted.test/dicomWeb', write: false },
+        {
+          id: 'untrusted',
+          url: 'https://untrusted.test/dicomWeb',
+          write: false,
+        },
       ],
     })
     manager.setAuthorizationPolicy(consentPolicy(false))
@@ -539,7 +784,7 @@ describe('DicomWebManager - authorization escalation', () => {
     await expect(manager.searchForStudies({})).rejects.toMatchObject({
       status: 401,
     })
-    // One attempt only: no retry, and the credential was never attached.
+    /** One attempt only: no retry, and the credential was never attached. */
     expect(stub.searchForStudies).toHaveBeenCalledTimes(1)
     expect(stub.headers.Authorization).toBeUndefined()
   })
@@ -596,16 +841,20 @@ describe('DicomWebManager - authorization escalation', () => {
       manager.searchForInstances({}),
     ])
 
-    // Three simultaneous challenges, one consent prompt.
+    /** Three simultaneous challenges, one consent prompt. */
     expect(policy.requestAuthorization).toHaveBeenCalledTimes(1)
   })
 
   it('does not route a refused challenge through the DICOMweb error handler', async () => {
-    const onError = jest.fn()
+    const onError = vi.fn()
     const manager = new DicomWebManager({
       baseUri,
       settings: [
-        { id: 'untrusted', url: 'https://untrusted.test/dicomWeb', write: false },
+        {
+          id: 'untrusted',
+          url: 'https://untrusted.test/dicomWeb',
+          write: false,
+        },
       ],
       onError,
     })
@@ -632,7 +881,11 @@ describe('DicomWebManager - authorization escalation', () => {
     const manager = new DicomWebManager({
       baseUri,
       settings: [
-        { id: 'untrusted', url: 'https://untrusted.test/dicomWeb', write: false },
+        {
+          id: 'untrusted',
+          url: 'https://untrusted.test/dicomWeb',
+          write: false,
+        },
       ],
     })
     const policy = consentPolicy(false)
@@ -649,12 +902,12 @@ describe('DicomWebManager - authorization escalation', () => {
       })
     }
 
-    // Asked once; the answer stands for the rest of the session.
+    /** Asked once; the answer stands for the rest of the session. */
     expect(policy.requestAuthorization).toHaveBeenCalledTimes(1)
   })
 
   it('does not route an unauthorized sendAuthorization: false store through the error handler', async () => {
-    const onError = jest.fn()
+    const onError = vi.fn()
     const manager = new DicomWebManager({
       baseUri,
       settings: [
@@ -678,6 +931,61 @@ describe('DicomWebManager - authorization escalation', () => {
       status: 401,
     })
 
+    expect(onError).not.toHaveBeenCalled()
+  })
+
+  it('resends a request that went out before a sibling won the token', async () => {
+    const onError = vi.fn()
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [{ id: 'gcp', url: 'https://gcp.test/dicomWeb', write: false }],
+      onError,
+    })
+    const policy = consentPolicy(true)
+    manager.setAuthorizationPolicy(policy)
+    const internals = manager as unknown as {
+      stores: Array<{
+        client: {
+          requestHooks: Array<
+            (request: object, metadata: { headers: object }) => object
+          >
+          errorInterceptor: (error: unknown) => void
+        }
+      }>
+    }
+    const realClient = internals.stores[0].client
+    /** Tag a request as the real client does when it sends it */
+    const sentWith = (headers: object): Error & { status: number } => {
+      const request = {}
+      for (const hook of realClient.requestHooks) hook(request, { headers })
+      return Object.assign(httpError(401), { request })
+    }
+    const anonymousLate = sentWith({})
+
+    const stub = makeStubClient('gcp')
+    stubManagerClients(manager, [stub])
+    const study = { '0020000D': { Value: ['1.2.3'] } }
+    let releaseLate: (() => void) | undefined
+    stub.searchForStudies
+      .mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            releaseLate = () => reject(anonymousLate)
+          }),
+      )
+      .mockRejectedValueOnce(sentWith({}))
+      .mockResolvedValue([study])
+
+    const late = manager.searchForStudies({})
+    const early = manager.searchForStudies({})
+    await expect(early).resolves.toEqual([study])
+
+    /** The late 401 is still an anonymous challenge, not an expired token */
+    realClient.errorInterceptor(anonymousLate)
+    releaseLate?.()
+    await expect(late).resolves.toEqual([study])
+
+    expect(policy.requestAuthorization).toHaveBeenCalledTimes(1)
     expect(onError).not.toHaveBeenCalled()
   })
 
@@ -729,7 +1037,7 @@ describe('DicomWebManager - authorization escalation', () => {
     const secondaryStub = makeStubClient('secondary')
     stubManagerClients(manager, [primaryStub, secondaryStub])
 
-    // Only the primary is challenged.
+    /** Only the primary is challenged. */
     primaryStub.searchForStudies
       .mockRejectedValueOnce(httpError(401))
       .mockResolvedValue([])
@@ -738,7 +1046,7 @@ describe('DicomWebManager - authorization escalation', () => {
     await manager.searchForStudies({})
 
     expect(primaryStub.headers.Authorization).toBe('Bearer abc')
-    // Same origin, same grant: no need to be refused once on its own account.
+    /** Same origin, same grant: no need to be refused once on its own account. */
     expect(secondaryStub.headers.Authorization).toBe('Bearer abc')
   })
 
@@ -764,7 +1072,7 @@ describe('DicomWebManager - authorization escalation', () => {
     await manager.searchForStudies({})
 
     expect(gcpStub.headers.Authorization).toBe('Bearer abc')
-    // Consent is per origin; this one was never approved.
+    /** Consent is per origin; this one was never approved. */
     expect(otherStub.headers.Authorization).toBeUndefined()
   })
 
@@ -795,7 +1103,7 @@ describe('DicomWebManager - authorization escalation', () => {
     await manager.searchForStudies({})
 
     expect(primaryStub.headers.Authorization).toBe('Bearer abc')
-    // An explicit operator override outranks a grant for the same origin.
+    /** An explicit operator override outranks a grant for the same origin. */
     expect(openStub.headers.Authorization).toBeUndefined()
   })
 
@@ -843,7 +1151,7 @@ describe('DicomWebManager - authorization escalation', () => {
     const gcpStub = makeStubClient('gcp')
     stubManagerClients(manager, [gcpStub])
 
-    // Token arrives before the policy is installed.
+    /** Token arrives before the policy is installed. */
     manager.updateHeaders({ Authorization: 'Bearer abc' })
     expect(gcpStub.headers.Authorization).toBeUndefined()
 

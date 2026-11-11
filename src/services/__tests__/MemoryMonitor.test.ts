@@ -1,0 +1,100 @@
+import {
+  createMemoryInfo,
+  memoryMonitor,
+  unavailableMemoryInfo,
+} from '../MemoryMonitor'
+
+afterEach(() => {
+  Reflect.deleteProperty(performance, 'memory')
+})
+
+describe('createMemoryInfo', () => {
+  it('derives usage, remaining bytes and thresholds', () => {
+    const info = createMemoryInfo('chrome', 850, 900, 1000, 7)
+    expect(info).toEqual({
+      usedJSHeapSize: 850,
+      totalJSHeapSize: 900,
+      jsHeapSizeLimit: 1000,
+      usagePercentage: 85,
+      remainingBytes: 150,
+      isHighUsage: true,
+      isCriticalUsage: false,
+      apiMethod: 'chrome',
+      timestamp: 7,
+    })
+  })
+
+  it('clamps usage at 100% and remaining bytes at zero', () => {
+    const info = createMemoryInfo('modern', 1200, 1200, 1000, 0)
+    expect(info.usagePercentage).toBe(100)
+    expect(info.remainingBytes).toBe(0)
+    expect(info.isCriticalUsage).toBe(true)
+  })
+})
+
+describe('memoryMonitor.measure', () => {
+  it('reports unavailable without a memory API', async () => {
+    const { memory } = await memoryMonitor.measure()
+    expect(memory).toEqual({
+      ...unavailableMemoryInfo(),
+      timestamp: memory.timestamp,
+    })
+  })
+
+  it('reads performance.memory and notifies subscribers', async () => {
+    Object.defineProperty(performance, 'memory', {
+      configurable: true,
+      value: {
+        usedJSHeapSize: 950,
+        totalJSHeapSize: 960,
+        jsHeapSizeLimit: 1000,
+      },
+    })
+    const listener = vi.fn()
+    const unsubscribe = memoryMonitor.subscribe(listener)
+    const { memory } = await memoryMonitor.measure()
+    unsubscribe()
+    expect(memory.apiMethod).toBe('chrome')
+    expect(memory.isCriticalUsage).toBe(true)
+    expect(listener).toHaveBeenCalledWith(memory)
+  })
+})
+
+describe('memoryMonitor polling', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.spyOn(memoryMonitor, 'measure').mockResolvedValue({
+      memory: unavailableMemoryInfo(),
+    })
+  })
+
+  afterEach(() => {
+    memoryMonitor.stopMonitoring()
+    vi.useRealTimers()
+  })
+
+  it('measures once per interval until stopped', async () => {
+    memoryMonitor.startMonitoring(1000)
+    await vi.advanceTimersByTimeAsync(2500)
+    expect(memoryMonitor.measure).toHaveBeenCalledTimes(3)
+
+    memoryMonitor.stopMonitoring()
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(memoryMonitor.measure).toHaveBeenCalledTimes(3)
+  })
+
+  it('keeps a single polling chain when restarted during a measurement', async () => {
+    memoryMonitor.startMonitoring(1000)
+    memoryMonitor.stopMonitoring()
+    memoryMonitor.startMonitoring(1000)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(memoryMonitor.measure).toHaveBeenCalledTimes(2)
+
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(memoryMonitor.measure).toHaveBeenCalledTimes(3)
+
+    memoryMonitor.stopMonitoring()
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(memoryMonitor.measure).toHaveBeenCalledTimes(3)
+  })
+})

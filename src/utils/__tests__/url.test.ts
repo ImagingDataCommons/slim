@@ -1,6 +1,8 @@
 import {
+  editSearch,
   GCP_HEALTHCARE_V1_BASE,
   isAuthorizationCodeInUrl,
+  isAuthResponseParams,
   isOidcAuthorizeCallbackUrl,
   normalizeServerUrl,
 } from '../url'
@@ -103,5 +105,50 @@ describe('isOidcAuthorizeCallbackUrl', () => {
       isOidcAuthorizeCallbackUrl({ search: '?state=presentation', hash: '' }),
     ).toBe(false)
     expect(isOidcAuthorizeCallbackUrl({ search: '', hash: '' })).toBe(false)
+  })
+})
+
+describe('editSearch', () => {
+  const gcp = 'gcp=https://healthcare.googleapis.com/v1/projects/p'
+
+  it('keeps other segments as written', () => {
+    expect(editSearch(`?${gcp}&state=a`, { remove: ['state'] })).toBe(`?${gcp}`)
+  })
+
+  it('sets a parameter in place, or appends it', () => {
+    expect(editSearch(`?state=a&${gcp}`, { set: ['state', 'b'] })).toBe(
+      `?state=b&${gcp}`,
+    )
+    expect(editSearch(`?${gcp}`, { set: ['state', 'b'] })).toBe(
+      `?${gcp}&state=b`,
+    )
+  })
+
+  it('returns an empty string when nothing is left', () => {
+    expect(editSearch('?state=a', { remove: ['state'] })).toBe('')
+    expect(editSearch('', {})).toBe('')
+  })
+})
+
+describe('isAuthResponseParams', () => {
+  it('recognizes tokens, codes and errors answering a request', () => {
+    for (const search of [
+      'code=a&state=s',
+      'access_token=t',
+      'id_token=t',
+      'error=access_denied&state=s',
+    ]) {
+      expect(isAuthResponseParams(new URLSearchParams(search))).toBe(true)
+    }
+  })
+
+  it('recognizes an error without a state, as a silent renew sends', () => {
+    expect(
+      isAuthResponseParams(new URLSearchParams('error=login_required')),
+    ).toBe(true)
+  })
+
+  it('does not take a presentation state for a response', () => {
+    expect(isAuthResponseParams(new URLSearchParams('state=pr-1'))).toBe(false)
   })
 })

@@ -1,33 +1,40 @@
-import { Modal } from 'antd'
 import type React from 'react'
 
-interface ReportModalProps {
+import { Button } from '../ui/button'
+import { ViewerModal } from './ViewerModal'
+
+export interface ReportModalProps {
   isVisible: boolean
   onOk: () => void
   onCancel: () => void
   children: React.ReactNode
 }
 
-/**
- * Modal component for verifying and saving reports
- */
-const ReportModal: React.FC<ReportModalProps> = ({
+/** Modal for verifying the structured report before saving ROIs. */
+const ReportModal = ({
   isVisible,
   onOk,
   onCancel,
   children,
-}) => {
-  return (
-    <Modal
-      open={isVisible}
-      title="Verify and save report"
-      onOk={onOk}
-      onCancel={onCancel}
-      okText="Save"
-    >
-      {children}
-    </Modal>
-  )
-}
+}: ReportModalProps): React.ReactElement => (
+  <ViewerModal
+    isVisible={isVisible}
+    onCancel={onCancel}
+    icon="save"
+    title="Save annotations"
+    subtitle="Verify the report before storing it on the server"
+    widthClassName="max-w-[640px]"
+    footer={
+      <>
+        <Button variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button onClick={onOk}>Save</Button>
+      </>
+    }
+  >
+    {children}
+  </ViewerModal>
+)
 
 export default ReportModal

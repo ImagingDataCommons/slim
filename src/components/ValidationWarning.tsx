@@ -1,81 +1,101 @@
-import { Tooltip } from 'antd'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import type React from 'react'
-import { useEffect, useState } from 'react'
-import { FaExclamationTriangle } from 'react-icons/fa'
+import { useEffect, useMemo } from 'react'
+
 import { useValidation } from '../contexts/ValidationContext'
 import type { Slide } from '../data/slides'
+import { cn } from '../lib/utils'
+import { Icon } from './ui/icon'
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 
-interface ValidationWarningProps {
+export interface ValidationWarningProps {
   annotationGroup?: dmv.annotation.AnnotationGroup
-  onEvent?: () => void
   slide?: Slide
-  iconColor?: string
-  iconSize?: string
-  style?: React.CSSProperties
-  position?: {
-    top?: string
-    right?: string
-  }
+  size?: number
+  /**
+   * Render a focusable trigger that also opens on click or tap. Disable it
+   * when the warning sits inside another button; the message then reaches
+   * assistive technology through the icon's accessible name only.
+   */
+  interactive?: boolean
+  className?: string
 }
 
-const ValidationWarning: React.FC<ValidationWarningProps> = ({
+/** Inline warning icon shown when the slide or annotation group fails validation. */
+function ValidationWarning({
   slide,
   annotationGroup,
-  iconColor = '#e69500',
-  iconSize = '1.3em',
-  position = { top: '4px', right: '4px' },
-  style,
-}) => {
-  const [show, setShow] = useState(false)
-  const [tooltipText, setTooltipText] = useState<string | undefined>(undefined)
-
+  size = 16,
+  interactive = true,
+  className,
+}: ValidationWarningProps): React.ReactElement | null {
   const { runValidations } = useValidation()
 
-  useEffect(() => {
+  const message = useMemo((): string | undefined => {
     const validationResult = runValidations({
       dialog: false,
       context: { annotationGroup, slide },
     })
-    if (!validationResult.isValid) {
-      setShow(true)
-      setTooltipText(validationResult.message)
-      // Only log warnings in development environment
-      if (process.env.NODE_ENV === 'development') {
-        console.warn(validationResult.message)
-      }
-    } else {
-      setShow(false)
-      setTooltipText(undefined)
-    }
+    return validationResult.isValid
+      ? undefined
+      : (validationResult.message ?? 'Validation warning')
   }, [slide, annotationGroup, runValidations])
 
-  if (!show) {
+  useEffect(() => {
+    if (message !== undefined && import.meta.env.MODE === 'development') {
+      console.warn(message)
+    }
+  }, [message])
+
+  if (message === undefined) {
     return null
   }
 
+  const icon = <Icon name="warning" size={size} filled />
+  const iconClassName = cn('inline-flex flex-none text-warning', className)
+
+  if (!interactive) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            role="img"
+            aria-label={`Warning: ${message}`}
+            className={iconClassName}
+          >
+            {icon}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-[280px]">{message}</TooltipContent>
+      </Tooltip>
+    )
+  }
+
   return (
-    <Tooltip title={tooltipText}>
-      <div
-        style={{
-          ...style,
-          position: 'absolute',
-          top: position.top,
-          right: position.right,
-          zIndex: 2,
-          pointerEvents: 'auto',
-        }}
-      >
-        <FaExclamationTriangle
-          style={{
-            color: iconColor,
-            fontSize: iconSize,
-            textShadow: '0 2px 6px rgba(0,0,0,0.25), 0 0px 2px #fff',
-          }}
-        />
-      </div>
-    </Tooltip>
+    <Popover>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label={`Warning: ${message}`}
+              className={cn(
+                iconClassName,
+                'rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40',
+              )}
+            >
+              {icon}
+            </button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-[280px]">{message}</TooltipContent>
+      </Tooltip>
+      <PopoverContent className="w-auto max-w-[280px] px-3 py-2 text-12">
+        {message}
+      </PopoverContent>
+    </Popover>
   )
 }
 

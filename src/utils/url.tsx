@@ -67,6 +67,35 @@ export const joinUrl = (path: string, uri: string): string => {
   return url.toString()
 }
 
+/** Parameters of an authorize response that grants a code or an ID token */
+const AUTH_GRANT_KEYS = ['code', 'id_token', 'session_state']
+
+/** Parameters of a URL fragment such as `#access_token=…&state=…` */
+export const hashParams = (hash: string): URLSearchParams =>
+  new URLSearchParams(hash.replace('#', '?'))
+
+/** Query or fragment parameters of a location */
+const locationParams = (location: {
+  search: string
+  hash: string
+}): URLSearchParams[] => [
+  new URLSearchParams(location.search),
+  hashParams(location.hash),
+]
+
+const hasAny = (params: URLSearchParams, keys: readonly string[]): boolean =>
+  keys.some((key) => Boolean(params.get(key)))
+
+/**
+ * Whether query or fragment parameters are an authorize response, success
+ * or error. The one rule for "is this a sign-in callback": the app shell
+ * routes by it, and the viewer strips such parameters before writing the
+ * URL back. A bare `error` counts, as a silent renew can answer
+ * `error=login_required` without a `state`.
+ */
+export const isAuthResponseParams = (params: URLSearchParams): boolean =>
+  hasAny(params, [...AUTH_GRANT_KEYS, 'access_token', 'error'])
+
 /**
  * Check whether a URL contains an OAuth 2.0 authorization code.
  *
@@ -76,19 +105,8 @@ export const joinUrl = (path: string, uri: string): string => {
 export const isAuthorizationCodeInUrl = (location: {
   search: string
   hash: string
-}): boolean => {
-  const searchParams = new URLSearchParams(location.search)
-  const hashParams = new URLSearchParams(location.hash.replace('#', '?'))
-
-  return Boolean(
-    searchParams.get('code') ??
-      searchParams.get('id_token') ??
-      searchParams.get('session_state') ??
-      hashParams.get('code') ??
-      hashParams.get('id_token') ??
-      hashParams.get('session_state'),
-  )
-}
+}): boolean =>
+  locationParams(location).some((params) => hasAny(params, AUTH_GRANT_KEYS))
 
 /**
  * True when the URL looks like an OIDC authorize redirect back to the app
@@ -99,16 +117,72 @@ export const isAuthorizationCodeInUrl = (location: {
 export const isOidcAuthorizeCallbackUrl = (location: {
   search: string
   hash: string
-}): boolean => {
-  if (isAuthorizationCodeInUrl(location)) {
-    return true
-  }
+}): boolean => locationParams(location).some(isAuthResponseParams)
+
+/**
+ * For a callback-shaped URL that carries no `state`, which no pending request
+ * can match, the message to show: the IdP's error_description or error when
+ * present. Undefined when the URL has a code or tokens, or a `state` the
+ * sign-in library should match (it reports error responses itself).
+ */
+export const describeCallbackWithoutState = (location: {
+  search: string
+  hash: string
+}): string | undefined => {
   const searchParams = new URLSearchParams(location.search)
   const hashParams = new URLSearchParams(location.hash.replace('#', '?'))
-  return Boolean(
-    searchParams.get('error') ??
-      searchParams.get('access_token') ??
-      hashParams.get('error') ??
-      hashParams.get('access_token'),
-  )
+  const read = (key: string): string | null =>
+    searchParams.get(key) ?? hashParams.get(key)
+  if (isAuthorizationCodeInUrl(location) || read('state') !== null) {
+    return undefined
+  }
+  const reason = read('error_description') ?? read('error')
+  return reason !== null && reason !== ''
+    ? `Sign-in failed: ${reason}`
+    : 'Sign-in was cancelled or failed.'
+}
+
+/** Decoded name of one raw `name=value` query segment */
+const segmentName = (segment: string): string => {
+  const name = segment.split('=')[0].replace(/\+/g, ' ')
+  try {
+    return decodeURIComponent(name)
+  } catch {
+    return name
+  }
+}
+
+/**
+ * Remove or set query parameters while keeping every other segment exactly
+ * as written, so values such as a `gcp` store URL are not re-encoded.
+ * Returns `?…`, or an empty string when no parameter is left.
+ */
+export const editSearch = (
+  search: string,
+  {
+    remove = [],
+    set,
+  }: { remove?: readonly string[]; set?: readonly [string, string] },
+): string => {
+  const segments: string[] = []
+  let isSet = false
+  for (const segment of search.replace(/^\?/, '').split('&')) {
+    const name = segmentName(segment)
+    if (segment === '' || remove.includes(name)) continue
+    if (set !== undefined && name === set[0]) {
+      /** Set in place, once, so the order and the URL stay stable */
+      if (!isSet) {
+        segments.push(
+          `${encodeURIComponent(set[0])}=${encodeURIComponent(set[1])}`,
+        )
+        isSet = true
+      }
+      continue
+    }
+    segments.push(segment)
+  }
+  if (set !== undefined && !isSet) {
+    segments.push(`${encodeURIComponent(set[0])}=${encodeURIComponent(set[1])}`)
+  }
+  return segments.length > 0 ? `?${segments.join('&')}` : ''
 }

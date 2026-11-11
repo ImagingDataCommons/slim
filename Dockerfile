@@ -25,12 +25,12 @@ RUN corepack enable && corepack prepare pnpm@11.9.0 --activate
 WORKDIR /usr/local/share/mghcomputationalpathology/slim
 
 # Install dependencies first and then include code for efficient caching
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches ./patches
 
 RUN pnpm install --frozen-lockfile
 
-COPY craco.config.js .
-COPY tsconfig.json .
+COPY vite.config.ts index.html tsconfig.json tsconfig.app.json tsconfig.node.json ./
 COPY types ./types
 COPY public ./public
 COPY scripts ./scripts
@@ -78,7 +78,7 @@ FROM lib AS test
 
 RUN useradd -m -s /bin/bash tester && \
     mkdir -p artifacts/coverage artifacts/results && \
-    chown -R tester:tester artifacts
+    chown -R tester:tester artifacts node_modules
 
 USER tester
 

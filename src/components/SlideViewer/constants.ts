@@ -1,12 +1,12 @@
 /**
  * Default ROI stroke color
  */
-export const DEFAULT_ROI_STROKE_COLOR = [255, 234, 0] // [0, 126, 163]
+export const DEFAULT_ROI_STROKE_COLOR = [255, 234, 0]
 
 /**
  * Default ROI fill color
  */
-export const DEFAULT_ROI_FILL_COLOR = [255, 234, 0, 0.2] // [0, 126, 163, 0.2]
+export const DEFAULT_ROI_FILL_COLOR = [255, 234, 0, 0.2]
 
 /**
  * Default ROI stroke width
