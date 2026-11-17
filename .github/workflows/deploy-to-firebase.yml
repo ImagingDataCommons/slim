@@ -11,6 +11,10 @@ on:
   # this workflow -> Run workflow, with the pull request's number. It goes to a
   # Firebase channel of its own; the pull request's ordinary preview is not
   # touched. Steps that only run then are marked "manual run only".
+  #
+  # The ainotelayer steps follow its main branch on purpose, unlike the pinned
+  # actions here: the tool is still being tried out on this repository and
+  # changes often. Pin them to a release once it settles.
   workflow_dispatch:
     inputs:
       pr:
@@ -47,7 +51,7 @@ jobs:
       - name: Look up the pull request
         id: pr
         if: github.event_name == 'workflow_dispatch'
-        uses: igoroctaviano/ainotelayer/pull-request@7f77c54d9afa26e318df41ab8d1b036f5198ade6
+        uses: igoroctaviano/ainotelayer/pull-request@main
         with:
           pr: ${{ inputs.pr }}
 
@@ -137,7 +141,7 @@ jobs:
       - name: Prepare source locations
         id: stamp
         if: github.event_name == 'workflow_dispatch'
-        uses: igoroctaviano/ainotelayer/stamp@7f77c54d9afa26e318df41ab8d1b036f5198ade6
+        uses: igoroctaviano/ainotelayer/stamp@main
 
       - name: Build
         env:
@@ -207,7 +211,7 @@ jobs:
       # pull request.
       - name: Add review notes
         if: github.event_name == 'workflow_dispatch'
-        uses: igoroctaviano/ainotelayer@7f77c54d9afa26e318df41ab8d1b036f5198ade6
+        uses: igoroctaviano/ainotelayer@main
         with:
           dir: build
           pr: ${{ inputs.pr }}
@@ -228,7 +232,7 @@ jobs:
       # and the list of notes.
       - name: Post the notes overview
         if: github.event_name == 'workflow_dispatch'
-        uses: igoroctaviano/ainotelayer/summary@7f77c54d9afa26e318df41ab8d1b036f5198ade6
+        uses: igoroctaviano/ainotelayer/summary@main
         with:
           pr: ${{ inputs.pr }}
           preview-url: ${{ steps.notes.outputs.details_url }}
