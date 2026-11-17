@@ -7,6 +7,16 @@ on:
     types: [opened, synchronize, reopened, edited]
   push:
     branches: [master]
+  # A preview with review notes, only when someone asks for it: Actions ->
+  # this workflow -> Run workflow, with the pull request's number. It goes to a
+  # Firebase channel of its own; the pull request's ordinary preview is not
+  # touched. Steps that only run then are marked "manual run only".
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request to build a preview with review notes for
+        required: true
+        type: number
 
 permissions:
   contents: read
@@ -14,8 +24,8 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: deploy-firebase-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: deploy-firebase-${{ inputs.pr && format('notes-{0}', inputs.pr) || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 
 jobs:
   deploy-firebase:
@@ -24,6 +34,7 @@ jobs:
     # On pull_request edited, only re-run when the body changed (dmv-branch updates).
     if: >
       github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
       (
         github.event.pull_request.head.repo.full_name == github.repository &&
         (github.event.action != 'edited' || github.event.changes.body != null)
@@ -31,8 +42,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      # Manual run only: finds the pull request's commit, branch and
+      # description, and refuses pull requests from forks.
+      - name: Look up the pull request
+        id: pr
+        if: github.event_name == 'workflow_dispatch'
+        uses: igoroctaviano/ainotelayer/pull-request@7f77c54d9afa26e318df41ab8d1b036f5198ade6
+        with:
+          pr: ${{ inputs.pr }}
+
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Empty, so the usual commit, except on a manual run
+          ref: ${{ steps.pr.outputs.sha }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
@@ -50,11 +73,11 @@ jobs:
 
       - name: Resolve DMV branch for preview
         id: dmv
-        if: github.event_name == 'pull_request'
+        if: github.event_name != 'push'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_BODY: ${{ github.event.pull_request.body }}
-          HEAD_REF: ${{ github.head_ref }}
+          PR_BODY: ${{ github.event.pull_request.body || steps.pr.outputs.body }}
+          HEAD_REF: ${{ github.head_ref || steps.pr.outputs.ref }}
         run: ./scripts/resolve-dmv-preview-branch.sh
 
       - name: Install dependencies
@@ -108,13 +131,22 @@ jobs:
             exit 1
           fi
 
+      # Manual run only: lets a note name the source file and line of the
+      # element it is on, by wrapping the Vite config from outside. Nothing in
+      # this repository changes, and it does nothing for a non-Vite build.
+      - name: Prepare source locations
+        id: stamp
+        if: github.event_name == 'workflow_dispatch'
+        uses: igoroctaviano/ainotelayer/stamp@7f77c54d9afa26e318df41ab8d1b036f5198ade6
+
       - name: Build
         env:
           REACT_APP_CONFIG: preview
           PUBLIC_URL: /
           SLIM_PREVIEW_DICOMWEB_URL: ${{ secrets.SLIM_PREVIEW_DICOMWEB_URL }}
           REACT_APP_DMV_GIT_SHA: ${{ steps.dmv.outputs.sha }}
-        run: pnpm run build
+        # The extra arguments are empty except on a manual run
+        run: pnpm run build ${{ steps.stamp.outputs.args }}
 
       - name: Comment DMV status on PR
         if: github.event_name == 'pull_request'
@@ -169,6 +201,38 @@ jobs:
           else
             gh pr comment "${PR_NUMBER}" --body "${BODY}"
           fi
+
+      # Manual run only: adds the notes layer to the built files. Reviewers
+      # right-click the preview to pin notes; the notes are comments on the
+      # pull request.
+      - name: Add review notes
+        if: github.event_name == 'workflow_dispatch'
+        uses: igoroctaviano/ainotelayer@7f77c54d9afa26e318df41ab8d1b036f5198ade6
+        with:
+          dir: build
+          pr: ${{ inputs.pr }}
+
+      # Manual run only. No repoToken: this deploy adds no comment or check.
+      - name: Deploy preview with review notes
+        id: notes
+        if: github.event_name == 'workflow_dispatch'
+        uses: FirebaseExtended/action-hosting-deploy@500ac625ca2dd40cbd15f7659af953801858032a # v0.11.0
+        with:
+          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_SLIM }}"
+          projectId: idc-external-006
+          # Same pin as the deploys below
+          firebaseToolsVersion: 15.34.0
+          channelId: notes-pr-${{ inputs.pr }}
+
+      # Manual run only: one comment on the pull request with the preview link
+      # and the list of notes.
+      - name: Post the notes overview
+        if: github.event_name == 'workflow_dispatch'
+        uses: igoroctaviano/ainotelayer/summary@7f77c54d9afa26e318df41ab8d1b036f5198ade6
+        with:
+          pr: ${{ inputs.pr }}
+          preview-url: ${{ steps.notes.outputs.details_url }}
+          status: false
 
       - name: Deploy preview
         if: github.event_name == 'pull_request'
