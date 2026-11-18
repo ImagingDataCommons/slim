@@ -62,7 +62,7 @@
     "react-router-dom": "^6.30.6",
     "retry": "^0.13.1",
     "tailwind-merge": "^3.6.0",
-    "uuid": "^8.3.2"
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.15.0",
