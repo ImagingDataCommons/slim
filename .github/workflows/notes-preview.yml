@@ -128,9 +128,12 @@ jobs:
 
       # Lets a note name the source file and line of the element it is on, by
       # wrapping the Vite config from outside. Nothing in this repository
-      # changes, and it does nothing for a non-Vite build.
+      # changes, and it does nothing for a non-Vite build. Notes work without
+      # it, so a failure here does not stop the preview: the build then runs
+      # as usual.
       - name: Prepare source locations
         id: stamp
+        continue-on-error: true
         uses: igoroctaviano/ainotelayer/stamp@main
 
       # Same settings as the build in deploy-to-firebase.yml
@@ -142,12 +145,17 @@ jobs:
           REACT_APP_DMV_GIT_SHA: ${{ steps.dmv.outputs.sha }}
         run: pnpm run build ${{ steps.stamp.outputs.args }}
 
-      # Adds the notes layer to the built files
+      # Adds the notes layer to the built files. The branch and commit are the
+      # ones checked out above, so notes link to the source that was built
+      # even when the pull request gets new commits during this run.
       - name: Add review notes
         uses: igoroctaviano/ainotelayer@main
         with:
           dir: build
           pr: ${{ inputs.pr }}
+          key: pr-${{ inputs.pr }}
+          branch: ${{ steps.pr.outputs.ref }}
+          sha: ${{ steps.pr.outputs.sha }}
 
       # No repoToken: this deploy adds no comment or check of its own
       - name: Deploy preview with review notes
@@ -159,6 +167,9 @@ jobs:
           # Same pin as deploy-to-firebase.yml
           firebaseToolsVersion: 15.34.0
           channelId: notes-pr-${{ inputs.pr }}
+          # The longest Firebase allows; the default of 7 days is short for a
+          # review. Each run starts the 30 days again.
+          expires: 30d
 
       # One comment on the pull request with the preview link and the notes
       - name: Post the notes overview
