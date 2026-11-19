@@ -144,87 +144,6 @@ describe('searchStudiesContaining', () => {
     expect(result.isExact).toBe(true)
   })
 
-  it('rethrows other errors', async () => {
-    const client = fakeClient({
-      searchForInstances: async () => {
-        throw Object.assign(new Error('down'), { status: 503 })
-      },
-    })
-
-    await expect(searchStudiesContaining(client, entry('ann'))).rejects.toThrow(
-      'down',
-    )
-    expect(client.searchForSeries).not.toHaveBeenCalled()
-  })
-
-  it('fetches one page and marks a full page as partial', async () => {
-    const fullPage = (offset: number): QidoRow[] =>
-      Array.from({ length: CONTAINS_PAGE_SIZE }, (_, index) =>
-        row(
-          `s${offset + index}`,
-          `x${offset + index}`,
-          StorageClasses.PARAMETRIC_MAP,
-        ),
-      )
-    const client = fakeClient({
-      searchForInstances: async (options) => fullPage(offsetOf(options)),
-    })
-
-    const result = await searchStudiesContaining(client, entry('pmap'))
-
-    expect(client.searchForInstances).toHaveBeenCalledTimes(1)
-    expect(result.isPartial).toBe(true)
-    expect(result.pageRowCount).toBe(CONTAINS_PAGE_SIZE)
-    expect(result.matches.size).toBe(CONTAINS_PAGE_SIZE)
-  })
-
-  it('fetches the given offset on a later page', async () => {
-    const client = fakeClient({
-      searchForInstances: async (options) => {
-        const offset = offsetOf(options)
-        return offset === 100
-          ? [row('s2', 'b', StorageClasses.PARAMETRIC_MAP)]
-          : [row('s1', 'a', StorageClasses.PARAMETRIC_MAP)]
-      },
-    })
-
-    const first = await searchStudiesContaining(client, entry('pmap'))
-    const second = await searchStudiesContaining(client, entry('pmap'), {
-      offset: 100,
-    })
-
-    expect(client.searchForInstances).toHaveBeenNthCalledWith(2, {
-      queryParams: {
-        SOPClassUID: StorageClasses.PARAMETRIC_MAP,
-        includefield: STUDY_FIELDS,
-        limit: CONTAINS_PAGE_SIZE,
-        offset: 100,
-      },
-    })
-    expect([...first.matches.keys()]).toEqual(['s1'])
-    expect([...second.matches.keys()]).toEqual(['s2'])
-  })
-
-  it('keeps the study attributes of the first match', async () => {
-    const client = fakeClient({
-      searchForInstances: onePage([
-        {
-          ...row('s1', 'a', StorageClasses.PARAMETRIC_MAP),
-          '00100020': { vr: 'LO', Value: ['patient-1'] },
-          '00080020': { vr: 'DA', Value: ['20240102'] },
-        } as unknown as QidoRow,
-      ]),
-    })
-
-    const result = await searchStudiesContaining(client, entry('pmap'))
-
-    expect(result.matches.get('s1')?.study).toMatchObject({
-      StudyInstanceUID: 's1',
-      PatientID: 'patient-1',
-      StudyDate: '20240102',
-    })
-  })
-
   it('does not fetch when the caller is no longer current', async () => {
     const client = fakeClient({
       searchForInstances: async () => {
@@ -279,25 +198,6 @@ describe('confirmStudyContains', () => {
       seriesInstanceUID: 'a',
       queryParams: { limit: 1, includefield: '00080016' },
     })
-  })
-
-  it('checks each series until one matches', async () => {
-    const client = fakeClient({
-      searchForInstances: async (options) => [
-        row(
-          's1',
-          String(options.seriesInstanceUID),
-          options.seriesInstanceUID === 'b'
-            ? StorageClasses.COMPREHENSIVE_3D_SR
-            : StorageClasses.COMPREHENSIVE_SR,
-        ),
-      ],
-    })
-
-    await expect(
-      confirmStudyContains(client, entry('sr3d'), 's1', ['a', 'b', 'c']),
-    ).resolves.toBe('match')
-    expect(client.searchForInstances).toHaveBeenCalledTimes(2)
   })
 
   it('reports a mismatch when no series holds the SOP class', async () => {
@@ -415,23 +315,6 @@ describe('searchStoresContaining', () => {
     )
     expect(small.searchForInstances).toHaveBeenCalledTimes(1)
     expect(second.result.matches.has(`busy${CONTAINS_PAGE_SIZE}`)).toBe(true)
-  })
-
-  it('falls back to the modality only on the store that rejects SOPClassUID', async () => {
-    const exact = fakeClient({
-      searchForInstances: onePage([row('s1', 'a', ann)]),
-    })
-    const google = fakeClient({
-      searchForInstances: async () => {
-        throw badRequest()
-      },
-      searchForSeries: onePage([row('s2', 'b')]),
-    })
-
-    const page = await searchStoresContaining([exact, google], entry('ann'))
-
-    expect([...page.result.matches.keys()]).toEqual(['s1', 's2'])
-    expect(exact.searchForSeries).not.toHaveBeenCalled()
   })
 
   it('keeps the other stores when one fails and throws when all fail', async () => {

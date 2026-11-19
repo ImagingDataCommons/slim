@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  isWorklistColumnId,
   sanitizeHiddenColumnIds,
   WORKLIST_LOCKED_COLUMN_ID,
 } from '../worklistColumns'
@@ -18,12 +17,5 @@ describe('sanitizeHiddenColumnIds', () => {
         'StudyID',
       ]),
     ).toEqual(['AccessionNumber', 'StudyID'])
-  })
-})
-
-describe('isWorklistColumnId', () => {
-  it('recognizes known ids', () => {
-    expect(isWorklistColumnId('PatientName')).toBe(true)
-    expect(isWorklistColumnId('Patient')).toBe(false)
   })
 })

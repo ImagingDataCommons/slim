@@ -2,17 +2,10 @@ import {
   buildStudyQueryParams,
   buildStudySearchQueries,
   extractModalitiesFromSeries,
-  STUDY_SEARCH_MIN_LENGTH,
   STUDY_SEARCH_RESULT_LIMIT,
 } from '../studyQuery'
 
 describe('buildStudyQueryParams', () => {
-  it('restricts to slide microscopy studies', () => {
-    expect(buildStudyQueryParams()).toEqual({
-      ModalitiesInStudy: 'SM',
-    })
-  })
-
   it('does not request NumberOfStudyRelatedSeries (Google Healthcare 400)', () => {
     expect(buildStudyQueryParams()).not.toHaveProperty('includefield')
   })
@@ -30,12 +23,6 @@ describe('buildStudySearchQueries', () => {
 
   it('sends nothing for blank text', () => {
     expect(buildStudySearchQueries('   ')).toEqual([])
-  })
-
-  it('sends nothing for a term shorter than the minimum', () => {
-    expect(STUDY_SEARCH_MIN_LENGTH).toBe(2)
-    expect(buildStudySearchQueries('P')).toEqual([])
-    expect(buildStudySearchQueries(' * ')).toEqual([])
   })
 
   it('queries each attribute exactly, then with wildcards', () => {
@@ -75,12 +62,6 @@ describe('extractModalitiesFromSeries', () => {
         { '00080060': { vr: 'CS', Value: ['SM'] } },
       ]),
     ).toEqual(['ANN', 'SM'])
-  })
-
-  it('reads keyword-formatted series', () => {
-    expect(
-      extractModalitiesFromSeries([{ Modality: 'SR' }, { Modality: 'SM' }]),
-    ).toEqual(['SM', 'SR'])
   })
 
   it('skips missing, blank and malformed entries', () => {

@@ -89,6 +89,19 @@ describe('clearAuthParamsFromUrl', () => {
     )
     expect(window.location.hash).toBe('')
   })
+
+  it('keeps a fragment that is not an authorize response', () => {
+    window.history.replaceState({}, '', '/studies/1?code=c&state=s#roi=2')
+    clearAuthParamsFromUrl()
+    expect(window.location.search).toBe('')
+    expect(window.location.hash).toBe('#roi=2')
+  })
+
+  it('removes a fragment that carries an implicit error response', () => {
+    window.history.replaceState({}, '', '/#error=login_required&state=s')
+    clearAuthParamsFromUrl()
+    expect(window.location.hash).toBe('')
+  })
 })
 
 describe('searchWithoutAuthResponse', () => {

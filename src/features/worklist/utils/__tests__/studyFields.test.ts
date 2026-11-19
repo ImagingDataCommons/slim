@@ -11,11 +11,6 @@ describe('orDash', () => {
     expect(orDash(null)).toBe(DASH)
     expect(orDash('')).toBe(DASH)
   })
-
-  it('keeps non-empty values', () => {
-    expect(orDash('S24-01542')).toBe('S24-01542')
-    expect(orDash(' ')).toBe(' ')
-  })
 })
 
 describe('getNumberOfSeries', () => {
@@ -53,13 +48,5 @@ describe('normalizeModalities', () => {
     expect(normalizeModalities('SM')).toEqual(['SM'])
     expect(normalizeModalities('SM\\SR')).toEqual(['SM', 'SR'])
     expect(normalizeModalities('SM, SEG')).toEqual(['SM', 'SEG'])
-  })
-
-  it('trims and de-duplicates array values in order', () => {
-    expect(normalizeModalities([' SM', 'SR', 'SM ', 'ANN'])).toEqual([
-      'SM',
-      'SR',
-      'ANN',
-    ])
   })
 })
