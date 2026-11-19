@@ -1,5 +1,9 @@
 # A preview with review notes, only when someone asks for it: Actions -> this
-# workflow -> Run workflow, with the pull request's number.
+# workflow -> Run workflow. Either type the pull request's number, or leave it
+# empty and choose the pull request's branch under "Use workflow from".
+#
+# Choosing a branch runs that branch's copy of this file, so the branch has to
+# contain it. Starting from master with a number always works.
 #
 # It builds that pull request the way deploy-to-firebase.yml does, adds the
 # notes layer, and deploys to a Firebase channel of its own
@@ -19,8 +23,8 @@ on:
   workflow_dispatch:
     inputs:
       pr:
-        description: Pull request to build a preview with review notes for
-        required: true
+        description: Pull request number (empty = the pull request of the branch chosen above)
+        required: false
         type: number
 
 permissions:
@@ -28,7 +32,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: notes-preview-${{ inputs.pr }}
+  group: notes-preview-${{ inputs.pr || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -37,7 +41,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      # Finds the pull request's commit, branch and description, and refuses
+      # Finds the pull request, from its number or else from the branch this
+      # run was started from, with its commit, branch and description. Refuses
       # pull requests from forks: the build uses repository secrets.
       - name: Look up the pull request
         id: pr
@@ -152,8 +157,8 @@ jobs:
         uses: igoroctaviano/ainotelayer@main
         with:
           dir: build
-          pr: ${{ inputs.pr }}
-          key: pr-${{ inputs.pr }}
+          pr: ${{ steps.pr.outputs.number }}
+          key: pr-${{ steps.pr.outputs.number }}
           branch: ${{ steps.pr.outputs.ref }}
           sha: ${{ steps.pr.outputs.sha }}
 
@@ -166,7 +171,7 @@ jobs:
           projectId: idc-external-006
           # Same pin as deploy-to-firebase.yml
           firebaseToolsVersion: 15.34.0
-          channelId: notes-pr-${{ inputs.pr }}
+          channelId: notes-pr-${{ steps.pr.outputs.number }}
           # The longest Firebase allows; the default of 7 days is short for a
           # review. Each run starts the 30 days again.
           expires: 30d
@@ -175,6 +180,6 @@ jobs:
       - name: Post the notes overview
         uses: igoroctaviano/ainotelayer/summary@main
         with:
-          pr: ${{ inputs.pr }}
+          pr: ${{ steps.pr.outputs.number }}
           preview-url: ${{ steps.deploy.outputs.details_url }}
           status: false
