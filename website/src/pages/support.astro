@@ -1,0 +1,106 @@
+---
+import { ArrowUpRight, Bug, GitPullRequest, MessagesSquare } from 'lucide-react'
+import SectionHeading from '../components/SectionHeading.astro'
+import { site } from '../data/site'
+import BaseLayout from '../layouts/BaseLayout.astro'
+
+const channels = [
+  {
+    icon: Bug,
+    title: 'Report a bug or request a feature',
+    body: 'Open an issue on GitHub. Include the Slim version from the header, your browser, and the DICOMweb server you use.',
+    href: site.links.newIssue,
+    cta: 'Open an issue',
+  },
+  {
+    icon: MessagesSquare,
+    title: 'Ask a question',
+    body: 'Questions about Slim with IDC data, or about DICOM slide microscopy in general, are welcome on the IDC user forum.',
+    href: site.links.idcForum,
+    cta: 'Visit the forum',
+  },
+  {
+    icon: GitPullRequest,
+    title: 'Contribute',
+    body: 'Fixes and features are welcome as pull requests. The contributing guide covers style, tests and how releases work.',
+    href: site.links.contributing,
+    cta: 'Read the guide',
+  },
+]
+
+const faq = [
+  {
+    question: 'Which DICOMweb servers does Slim work with?',
+    answer:
+      'Any server that implements QIDO-RS and WADO-RS. Slim is used daily with the Google Cloud Healthcare API and ships a Docker Compose setup with dcm4chee-arc-light. Orthanc works through its DICOMweb plugin.',
+  },
+  {
+    question: 'The worklist shows a communication error, but curl works.',
+    answer:
+      'Check that the server allows the Slim origin through CORS, that the configured URL is the DICOMweb root, and that an HTTPS deployment is not calling a plain-HTTP archive.',
+  },
+  {
+    question: 'Can I use Slim without IDC?',
+    answer:
+      'Yes. IDC is one deployment. Configure your own archive in public/config and build or run the Docker image.',
+  },
+  {
+    question: 'Where are annotations saved?',
+    answer:
+      'As DICOM Comprehensive 3D SR objects, stored with STOW-RS on a server configured with write access.',
+  },
+]
+---
+
+<BaseLayout
+  title="Support"
+  description="Where to report bugs, ask questions and contribute to Slim."
+>
+  <section class="container-site py-20">
+    <SectionHeading
+      level="h1"
+      eyebrow="Support"
+      title="Get help with Slim"
+      lead="Slim is supported by its maintainers and community in the open."
+    />
+    <ul class="mt-12 grid gap-4 md:grid-cols-3">
+      {
+        channels.map((channel) => (
+          <li class="card flex flex-col gap-3 p-6">
+            <span class="flex size-9 items-center justify-center rounded-tile bg-primary-soft text-primary">
+              <channel.icon className="size-[18px]" aria-hidden="true" />
+            </span>
+            <h2 class="text-lg">{channel.title}</h2>
+            <p class="text-sm text-ink-secondary">{channel.body}</p>
+            <a
+              href={channel.href}
+              class="mt-auto inline-flex items-center gap-1 pt-2 text-sm font-medium text-primary hover:underline"
+            >
+              {channel.cta}
+              <ArrowUpRight className="size-3.5" aria-hidden="true" />
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+
+    <div class="mt-20 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
+      <SectionHeading eyebrow="FAQ" title="Common questions" />
+      <div class="divide-y divide-line-soft border-y border-line-soft">
+        {
+          faq.map((item) => (
+            <details class="group py-4">
+              <summary class="flex cursor-pointer list-none items-center justify-between gap-4 font-medium text-ink [&::-webkit-details-marker]:hidden">
+                {item.question}
+                <span class="text-ink-muted transition-transform group-open:rotate-45" aria-hidden="true">
+                  +
+                </span>
+              </summary>
+              <p class="mt-3 text-sm text-ink-secondary">{item.answer}</p>
+            </details>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+</BaseLayout>

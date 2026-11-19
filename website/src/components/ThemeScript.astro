@@ -1,0 +1,65 @@
+---
+import { THEME_COLOR, THEME_STORAGE_KEY } from '../data/theme'
+
+/**
+ * Runs before first paint. Dark is the default: only a stored 'light' (or
+ * 'system' on a light OS) switches the page to the light theme.
+ */
+const config = JSON.stringify({ key: THEME_STORAGE_KEY, colors: THEME_COLOR })
+---
+
+<meta name="theme-color" content={THEME_COLOR.dark} />
+<script is:inline define:vars={{ config }}>
+  ;(function () {
+    var options = JSON.parse(config)
+    var root = document.documentElement
+
+    function systemPrefersLight() {
+      return (
+        !!window.matchMedia &&
+        window.matchMedia('(prefers-color-scheme: light)').matches
+      )
+    }
+
+    function resolve(stored) {
+      if (stored === 'light') return 'light'
+      if (stored === 'system' && systemPrefersLight()) return 'light'
+      return 'dark'
+    }
+
+    function apply(theme) {
+      root.classList.toggle('dark', theme === 'dark')
+      root.style.colorScheme = theme
+      var meta = document.querySelector('meta[name="theme-color"]')
+      if (meta) meta.setAttribute('content', options.colors[theme])
+    }
+
+    var stored = null
+    try {
+      stored = window.localStorage.getItem(options.key)
+    } catch (e) {}
+    apply(resolve(stored))
+
+    window.slimTheme = {
+      get: function () {
+        return root.classList.contains('dark') ? 'dark' : 'light'
+      },
+      set: function (theme) {
+        try {
+          window.localStorage.setItem(options.key, theme)
+        } catch (e) {}
+        /** Without this, elements with colour transitions fade between themes one by one */
+        root.classList.add('theme-switching')
+        apply(theme)
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            root.classList.remove('theme-switching')
+          })
+        })
+        window.dispatchEvent(
+          new CustomEvent('slim-theme-change', { detail: theme }),
+        )
+      },
+    }
+  })()
+</script>

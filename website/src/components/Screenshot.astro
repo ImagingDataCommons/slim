@@ -1,0 +1,37 @@
+---
+/**
+ * A screenshot of the app in both themes. Only the image for the active theme
+ * is displayed, and lazy images that are not displayed are never fetched.
+ */
+interface Props {
+  name: string
+  alt: string
+  class?: string
+  eager?: boolean
+}
+
+const { name, alt, class: className, eager = false } = Astro.props
+const loading = eager ? 'eager' : 'lazy'
+const common = {
+  width: 1440,
+  height: 900,
+  alt,
+  loading,
+  decoding: 'async',
+} as const
+---
+
+<figure
+  class:list={[
+    'overflow-hidden rounded-card border border-line bg-viewport shadow-modal',
+    className,
+  ]}
+>
+  <img
+    src={`/screenshots/${name}-dark.webp`}
+    class="hidden h-auto w-full dark:block"
+    fetchpriority={eager ? 'high' : undefined}
+    {...common}
+  />
+  <img src={`/screenshots/${name}-light.webp`} class="block h-auto w-full dark:hidden" {...common} />
+</figure>

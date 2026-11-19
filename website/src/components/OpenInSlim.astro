@@ -1,0 +1,34 @@
+---
+import { ArrowUpRight } from 'lucide-react'
+import { buttonVariants } from '@slim/components/ui/button'
+import { exampleUrl, getExample } from '../lib/examples'
+
+interface Props {
+  example: string | undefined
+  label?: string
+  variant?: 'default' | 'outline' | 'link' | 'secondary'
+  size?: 'sm' | 'default'
+  class?: string
+}
+
+const { example: id, label = 'Open in Slim', variant = 'outline', size = 'sm', class: className } =
+  Astro.props
+const example = getExample(id)
+const href = example ? exampleUrl(example) : undefined
+---
+
+{
+  href && example && (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener"
+      class:list={[buttonVariants({ variant, size }), className]}
+      title={`${example.caption} · ${example.collectionName} on IDC`}
+    >
+      {label}
+      <ArrowUpRight className="size-3.5" aria-hidden="true" />
+      <span class="sr-only">(opens the demo in a new tab)</span>
+    </a>
+  )
+}

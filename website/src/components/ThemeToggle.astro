@@ -1,0 +1,39 @@
+---
+import { Moon, Sun } from 'lucide-react'
+import { buttonVariants } from '@slim/components/ui/button'
+---
+
+<button
+  type="button"
+  data-theme-toggle
+  class={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
+  aria-label="Switch to light theme"
+  title="Switch theme"
+>
+  <Sun className="hidden size-[18px] dark:block" aria-hidden="true" />
+  <Moon className="block size-[18px] dark:hidden" aria-hidden="true" />
+</button>
+
+<script>
+  declare global {
+    interface Window {
+      slimTheme?: { get: () => 'dark' | 'light'; set: (theme: 'dark' | 'light') => void }
+    }
+  }
+
+  function label(button: HTMLButtonElement): void {
+    const isDark = window.slimTheme?.get() === 'dark'
+    button.setAttribute('aria-label', isDark ? 'Switch to light theme' : 'Switch to dark theme')
+  }
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]')) {
+    label(button)
+    button.addEventListener('click', () => {
+      const next = window.slimTheme?.get() === 'dark' ? 'light' : 'dark'
+      window.slimTheme?.set(next)
+      for (const other of document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]')) {
+        label(other)
+      }
+    })
+  }
+</script>

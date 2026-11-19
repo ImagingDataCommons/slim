@@ -1,0 +1,20 @@
+---
+import { buttonVariants } from '@slim/components/ui/button'
+import { demoUrl } from '../data/site'
+import BaseLayout from '../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="Page not found" description="This page does not exist.">
+  <section class="container-site flex flex-col items-center gap-5 py-32 text-center">
+    <p class="eyebrow">404</p>
+    <h1 class="text-4xl sm:text-section">This tile didn't load</h1>
+    <p class="max-w-md text-ink-secondary">
+      The page you were looking for doesn't exist. If you followed a viewer link, it probably
+      belongs to the demo app rather than this site.
+    </p>
+    <div class="flex flex-wrap justify-center gap-3">
+      <a href="/" class={buttonVariants()}>Back to home</a>
+      <a href={demoUrl} class={buttonVariants({ variant: 'outline' })}>Open the demo</a>
+    </div>
+  </section>
+</BaseLayout>

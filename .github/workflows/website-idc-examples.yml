@@ -1,0 +1,58 @@
+name: website/verify-idc-examples
+
+# The support matrix on the website links to public IDC series. IDC releases
+# can retire or replace series, so check weekly that every link still resolves
+# on the IDC proxy, and open an issue when one breaks or a new type appears.
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  verify:
+    name: "Verify IDC examples"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+
+      - name: Verify examples against IDC
+        id: verify
+        # The script only uses Node built-ins, so no install is needed
+        env:
+          IDC_REPORT_PATH: ${{ runner.temp }}/idc-examples-report.md
+        run: node website/scripts/find-idc-examples.mjs --verify
+
+      - name: Open or update an issue
+        if: failure() && steps.verify.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPORT_PATH: ${{ runner.temp }}/idc-examples-report.md
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          TITLE="Website: IDC examples in the support matrix need attention"
+          {
+            if [ -f "${REPORT_PATH}" ]; then cat "${REPORT_PATH}"; else echo "The check failed before writing a report."; fi
+            echo
+            echo "Run \`pnpm --filter slim-website find-idc-examples\` to pick new examples, then commit \`website/src/data/idc-examples.json\`."
+            echo
+            echo "Workflow run: ${RUN_URL}"
+          } > "${RUNNER_TEMP}/issue-body.md"
+          EXISTING=$(gh issue list --state open --search "in:title \"${TITLE}\"" --json number --jq '.[0].number // empty')
+          if [ -n "${EXISTING}" ]; then
+            gh issue comment "${EXISTING}" --body-file "${RUNNER_TEMP}/issue-body.md"
+          else
+            gh issue create --title "${TITLE}" --body-file "${RUNNER_TEMP}/issue-body.md"
+          fi
