@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Slim</title>
+    <script type="text/javascript">
+      /*
+       * Hack for GitHub Pages (https://github.com/rafgraph/spa-github-pages)
+       * or other deployments that may serve the app out of a bucket.
+       * This script takes the current URL and converts the path and query
+       * string into just a query string, and then redirects the browser
+       * to the new URL with only a query string and hash fragment,
+       * e.g. https://www.foo.tld/one/two?a=b&c=d#qwe, becomes
+       * https://www.foo.tld/?/one/two&a=b~and~c=d#qwe.
+       * Note: this 404.html file must be at least 512 bytes for it to work
+       * with Internet Explorer (it is currently > 512 bytes)
+       */
+
+      // Account for "slim" path prefix in "https://imagingdatacommons.github.io/slim".
+      (function(l) {
+        var pathSegments = l.pathname.split('/').slice(1)
+        var numPathSegmentsToKeep = pathSegments.indexOf('studies');
+
+        if (numPathSegmentsToKeep >= 0 && !pathSegments.includes('?')) {
+          var addressSegments = [
+            l.protocol,
+            '//',
+            l.hostname,
+            (l.port ? ':' + l.port : ''),
+          ];
+          var address = addressSegments.join('');
+          var pathToKeep = l.pathname.split('/').slice(0, 1 + numPathSegmentsToKeep).join('/');
+          var pathToModify = l.pathname.slice(1).split('/').slice(numPathSegmentsToKeep).join('/');
+          var updatedPathSegments = [
+            pathToKeep,
+            '/?/',
+            pathToModify.replace(/&/g, '~and~'),
+            (l.search ? '~query~' + l.search.slice(1).replace(/&/g, '~and~') : ''),
+            l.hash
+          ];
+          var updatedPath = updatedPathSegments.join('')
+          l.replace(address + updatedPath);
+        }
+      }(window.location))
+    </script>
+  </head>
+  <body>
+  </body>
+</html>
