@@ -5,14 +5,9 @@ import type { User } from '../auth'
 import NotificationMiddleware, {
   NotificationMiddlewareContext,
 } from '../services/NotificationMiddleware'
+import type { AppInfo } from './appInfo'
 import { CustomError, errorTypes } from './CustomError'
-
-interface AppInfo {
-  name: string
-  version: string
-  uid: string
-  organization?: string
-}
+import { FINDING_TYPE_CODE } from './roiDescription'
 
 const generateReport = ({
   rois,
@@ -30,13 +25,13 @@ const generateReport = ({
   isReportModalVisible: boolean
   generatedReport: dmv.metadata.Comprehensive3DSR
 } => {
-  // Metadata should be sorted such that the image with the highest
-  // resolution is the last item in the array.
+  /** Metadata is sorted so that the highest resolution image comes last */
   const refImage = metadata[metadata.length - 1]
-  // We assume that there is only one specimen (tissue section) per
-  // ontainer (slide). Only the tissue section is tracked with a unique
-  // identifier, even if the section may be composed of different biological
-  // samples.
+  /**
+   * Only one specimen (tissue section) per container (slide) is supported;
+   * the section is tracked with a single identifier even if it is composed
+   * of different biological samples.
+   */
   if ((refImage.SpecimenDescriptionSequence?.length ?? 0) > 1) {
     NotificationMiddleware.onError(
       NotificationMiddlewareContext.SLIM,
@@ -107,11 +102,11 @@ const generateReport = ({
       continue
     }
 
-    let findingType = roi.evaluations.find(
+    const findingType = roi.evaluations.find(
       (item: sr.valueTypes.ContentItem) => {
-        return item.ConceptNameCodeSequence[0].CodeValue === '121071'
+        return item.ConceptNameCodeSequence[0].CodeValue === FINDING_TYPE_CODE
       },
-    )
+    ) as sr.valueTypes.CodeContentItem | undefined
 
     if (findingType === undefined) {
       NotificationMiddleware.onError(
@@ -121,9 +116,20 @@ const generateReport = ({
           `No finding type was specified for ROI "${String(roi.uid)}"`,
         ),
       )
+      continue
     }
 
-    findingType = findingType as sr.valueTypes.CodeContentItem
+    const findingCode = findingType.ConceptCodeSequence?.[0]
+    if (findingCode === undefined) {
+      NotificationMiddleware.onError(
+        NotificationMiddlewareContext.SLIM,
+        new CustomError(
+          errorTypes.ENCODINGANDDECODING,
+          `No finding type was specified for ROI "${String(roi.uid)}"`,
+        ),
+      )
+      continue
+    }
 
     const trackingIdentifier = new sr.templates.TrackingIdentifier({
       uid: roi.properties.trackingUID ?? roi.uid,
@@ -139,14 +145,15 @@ const generateReport = ({
           frameOfReferenceUID: roi.scoord3d.frameOfReferenceUID,
         }),
         findingType: new sr.coding.CodedConcept({
-          value: findingType.ConceptCodeSequence[0].CodeValue,
-          schemeDesignator:
-            findingType.ConceptCodeSequence[0].CodingSchemeDesignator,
-          meaning: findingType.ConceptCodeSequence[0].CodeMeaning,
+          value: findingCode.CodeValue,
+          schemeDesignator: findingCode.CodingSchemeDesignator,
+          meaning: findingCode.CodeMeaning,
         }),
         qualitativeEvaluations: roi.evaluations.filter(
           (item: sr.valueTypes.ContentItem) => {
-            return item.ConceptNameCodeSequence[0].CodeValue !== '121071'
+            return (
+              item.ConceptNameCodeSequence[0].CodeValue !== FINDING_TYPE_CODE
+            )
           },
         ),
         measurements: roi.measurements,
@@ -185,7 +192,7 @@ const generateReport = ({
     sopInstanceUID: data.DicomMetaDictionary.uid(),
     instanceNumber: 1,
     manufacturer: 'MGH Computational Pathology',
-    previousVersions: undefined, // TODO
+    previousVersions: undefined,
   })
 
   return {

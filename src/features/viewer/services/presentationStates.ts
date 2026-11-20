@@ -1,0 +1,274 @@
+/** skipcq: JS-C1003 */
+import * as dcmjs from 'dcmjs'
+/** skipcq: JS-C1003 */
+import * as dmv from 'dicom-microscopy-viewer'
+/** skipcq: JS-C1003 */
+import type * as dwc from 'dicomweb-client'
+
+import type DicomWebManager from '../../../DicomWebManager'
+import type { Slide } from '../../../data/slides'
+import { StorageClasses } from '../../../data/uids'
+import { logger } from '../../../utils/logger'
+import { planDefaultOpticalPaths } from '../utils/opticalPathDefaults'
+import type { PixelStatistics } from '../utils/pixelStatistics'
+import {
+  createInOrderFirstMatch,
+  matchBlendingItems,
+  referencesSlideSeries,
+  windowLimitValues,
+} from '../utils/presentationState'
+import { notifyVisualizationError } from './derivedDataLoaders'
+
+type PresentationState = dmv.metadata.AdvancedBlendingPresentationState
+type VolumeViewer = dmv.viewer.VolumeImageViewer
+
+/**
+ * Retrieve the study's Presentation States and pass those that reference the
+ * slide to `onPresentationState`, with their position in the search result.
+ * Only monochrome slides are supported.
+ */
+export function loadPresentationStates({
+  client,
+  studyInstanceUID,
+  slide,
+  onPresentationState,
+  onDefaultPresentationState,
+  isCurrent = () => true,
+}: {
+  client: DicomWebManager
+  studyInstanceUID: string
+  slide: Slide
+  /** Every state that applies to the slide, as it arrives */
+  onPresentationState: (
+    presentationState: PresentationState,
+    index: number,
+  ) => void
+  /**
+   * The slide's first state in study order, once every earlier state was
+   * retrieved and found to belong to another slide (or failed)
+   */
+  onDefaultPresentationState?: (presentationState: PresentationState) => void
+  /** False once the viewer that asked is gone; its errors are not shown */
+  isCurrent?: () => boolean
+}): void {
+  /** Reporting never throws into the slot bookkeeping */
+  const notify = (message: string): void => {
+    if (!isCurrent()) return
+    try {
+      notifyVisualizationError(message)
+    } catch (error: unknown) {
+      console.error(error)
+    }
+  }
+  logger.log('search for Presentation State instances')
+  client
+    .searchForInstances({
+      studyInstanceUID,
+      queryParams: { Modality: 'PR' },
+    })
+    .then((matchedInstances: dwc.api.Instance[] | null): void => {
+      const instances = matchedInstances ?? []
+      /**
+       * The default can be chosen from any slot's handler, including a
+       * failed retrieve's; one that cannot be applied is reported here
+       * rather than escaping that handler
+       */
+      const settle = createInOrderFirstMatch<PresentationState>(
+        instances.length,
+        (presentationState) => {
+          try {
+            onDefaultPresentationState?.(presentationState)
+          } catch (error: unknown) {
+            logger.error(
+              'failed to apply presentation state ' +
+                `"${presentationState.SOPInstanceUID}": `,
+              error,
+            )
+            notify('Presentation State could not be applied')
+          }
+        },
+      )
+      instances.forEach((rawInstance, index) => {
+        let instance: dmv.metadata.Instance
+        try {
+          instance = dmv.metadata.formatMetadata(rawInstance)
+            .dataset as dmv.metadata.Instance
+        } catch (error: unknown) {
+          /** One malformed search result must not stop the others */
+          logger.error('skip a malformed presentation state result: ', error)
+          settle(index)
+          return
+        }
+        /** Modality PR also matches grayscale, color and pseudocolor states */
+        if (
+          instance.SOPClassUID !== undefined &&
+          instance.SOPClassUID !==
+            StorageClasses.ADVANCED_BLENDING_PRESENTATION_STATE
+        ) {
+          settle(index)
+          return
+        }
+        logger.log(`retrieve PR instance "${instance.SOPInstanceUID}"`)
+        client
+          .retrieveInstance({
+            studyInstanceUID,
+            seriesInstanceUID: instance.SeriesInstanceUID,
+            sopInstanceUID: instance.SOPInstanceUID,
+          })
+          .then((retrievedInstance: dwc.api.Dataset): void => {
+            const data = dcmjs.data.DicomMessage.readFile(retrievedInstance)
+            const presentationState = dmv.metadata.formatMetadata(data.dict)
+              .dataset as PresentationState
+            if (!slide.areVolumeImagesMonochrome) {
+              logger.log(
+                `ignore presentation state "${instance.SOPInstanceUID}", ` +
+                  'application of presentation states for color images ' +
+                  'has not (yet) been implemented',
+              )
+              settle(index)
+              return
+            }
+            if (
+              referencesSlideSeries(presentationState, slide.seriesInstanceUIDs)
+            ) {
+              logger.log(
+                'include Advanced Blending Presentation State instance ' +
+                  `"${presentationState.SOPInstanceUID}"`,
+              )
+              onPresentationState(presentationState, index)
+              settle(index, presentationState)
+            } else {
+              settle(index)
+            }
+          })
+          .catch((error: unknown) => {
+            /** The slot settles even if reporting the failure throws */
+            try {
+              notify('Presentation State could not be loaded')
+              logger.error(
+                'failed to load presentation state ' +
+                  `of SOP instance "${instance.SOPInstanceUID}" ` +
+                  `of series "${instance.SeriesInstanceUID}" ` +
+                  `of study "${studyInstanceUID}": `,
+                error,
+              )
+            } catch (reportError: unknown) {
+              console.error(reportError)
+            } finally {
+              settle(index)
+            }
+          })
+      })
+    })
+    .catch((error: unknown) => {
+      logger.error(error)
+      notify('Presentation State could not be loaded')
+    })
+}
+
+type BlendingItem = PresentationState['AdvancedBlendingSequence'][number]
+type PaletteItem = BlendingItem['PaletteColorLookupTableSequence'][number]
+
+function paletteColorLookupTable(
+  item: PaletteItem,
+): dmv.color.PaletteColorLookupTable {
+  return new dmv.color.PaletteColorLookupTable({
+    uid: item.PaletteColorLookupTableUID ?? '',
+    redDescriptor: item.RedPaletteColorLookupTableDescriptor,
+    greenDescriptor: item.GreenPaletteColorLookupTableDescriptor,
+    blueDescriptor: item.BluePaletteColorLookupTableDescriptor,
+    /**
+     * Pass the LUT data through as retrieved. The element size of Palette
+     * Color Lookup Table Data is governed by the third value of the
+     * descriptor (bits per entry), not by the VR, so dicom-microscopy-viewer
+     * reinterprets the bytes accordingly. In particular, conformant
+     * Presentation States encode 8-bit entries (descriptor [n, first, 8])
+     * byte-packed inside the OW element; eagerly wrapping in a Uint16Array
+     * here would halve the entry count and break the LUT.
+     */
+    redData: item.RedPaletteColorLookupTableData ?? undefined,
+    greenData: item.GreenPaletteColorLookupTableData ?? undefined,
+    blueData: item.BluePaletteColorLookupTableData ?? undefined,
+    redSegmentedData: item.SegmentedRedPaletteColorLookupTableData ?? undefined,
+    greenSegmentedData:
+      item.SegmentedGreenPaletteColorLookupTableData ?? undefined,
+    blueSegmentedData:
+      item.SegmentedBluePaletteColorLookupTableData ?? undefined,
+  })
+}
+
+/**
+ * Show exactly the optical paths a Presentation State blends, with its
+ * palettes and windows. Returns the identifiers now shown.
+ */
+export function applyPresentationState(
+  viewer: VolumeViewer,
+  presentationState: PresentationState,
+): Set<string> {
+  logger.log(
+    `apply Presentation State instance "${presentationState.SOPInstanceUID}"`,
+  )
+  const opticalPaths = viewer.getAllOpticalPaths()
+  for (const { identifier } of opticalPaths) {
+    viewer.hideOpticalPath(identifier)
+    viewer.deactivateOpticalPath(identifier)
+    viewer.setOpticalPathStyle(
+      identifier,
+      viewer.getOpticalPathDefaultStyle(identifier),
+    )
+  }
+  const shown = new Set<string>()
+  matchBlendingItems(
+    opticalPaths,
+    presentationState.AdvancedBlendingSequence,
+  ).forEach((blendingItem, identifier) => {
+    const lutItem = blendingItem.PaletteColorLookupTableSequence?.[0]
+    viewer.setOpticalPathStyle(identifier, {
+      opacity: 1,
+      paletteColorLookupTable:
+        lutItem !== undefined ? paletteColorLookupTable(lutItem) : undefined,
+      limitValues: windowLimitValues(blendingItem),
+    })
+    viewer.activateOpticalPath(identifier)
+    viewer.showOpticalPath(identifier)
+    shown.add(identifier)
+  })
+  return shown
+}
+
+/**
+ * Reset every optical path to its default style and show the viewer's
+ * default selection. Returns the identifiers now shown.
+ */
+export function applyDefaultPresentationState(
+  viewer: VolumeViewer,
+  sortedOpticalPaths: readonly dmv.opticalPath.OpticalPath[],
+  pixelStatistics: ReadonlyMap<string, PixelStatistics>,
+): Set<string> {
+  for (const { identifier } of sortedOpticalPaths) {
+    viewer.setOpticalPathStyle(
+      identifier,
+      viewer.getOpticalPathDefaultStyle(identifier),
+    )
+    viewer.hideOpticalPath(identifier)
+    viewer.deactivateOpticalPath(identifier)
+  }
+  const { visibleIdentifiers, colorAssignments } =
+    planDefaultOpticalPaths(sortedOpticalPaths)
+  for (const { identifier, color } of colorAssignments) {
+    const stats = pixelStatistics.get(identifier)
+    viewer.setOpticalPathStyle(identifier, {
+      ...viewer.getOpticalPathStyle(identifier),
+      color,
+      ...(stats !== undefined ? { limitValues: [stats.min, stats.max] } : {}),
+    })
+  }
+  logger.log(
+    `selected n=${visibleIdentifiers.length} optical paths ` +
+      'for visualization',
+  )
+  for (const identifier of visibleIdentifiers) {
+    viewer.showOpticalPath(identifier)
+  }
+  return new Set(visibleIdentifiers)
+}

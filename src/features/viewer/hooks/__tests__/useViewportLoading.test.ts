@@ -1,0 +1,157 @@
+import { act, renderHook } from '@testing-library/react'
+
+import { StorageClasses } from '../../../../data/uids'
+import { resetFakeDmv } from '../../testing/fakeDmv'
+import { createTestSession } from '../../testing/fixtures'
+import { useViewportLoading } from '../useViewportLoading'
+
+vi.mock('dicom-microscopy-viewer', async () => {
+  const actual = await vi.importActual<typeof import('../../testing/fakeDmv')>(
+    '../../testing/fakeDmv',
+  )
+  return actual.fakeDmvModule
+})
+vi.mock('../../../../utils/logger')
+
+/** Volume image of createTestSlide(); its label image ends in `.2` */
+const VOLUME_UID = '2.25.900000000000000000000000000000000000002.1'
+
+const frame = (frameNumber: number, sopInstanceUID = VOLUME_UID) => ({
+  studyInstanceUID: 'study',
+  seriesInstanceUID: 'series',
+  sopInstanceUID,
+  sopClassUID: StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE,
+  frameNumber,
+  channelIdentifier: '1',
+})
+
+beforeEach(() => {
+  resetFakeDmv()
+})
+
+describe('useViewportLoading', () => {
+  it('waits for the first image until all requested frames settle', () => {
+    const { session, access } = createTestSession()
+    const { result } = renderHook(() => useViewportLoading(access.sessionRef))
+    expect(result.current).toMatchObject({
+      isLoading: false,
+      isWaitingForFirstImage: true,
+    })
+
+    act(() => {
+      const handlers = result.current.dmvHandlers
+      handlers.dicommicroscopyviewer_loading_started(null)
+      handlers.dicommicroscopyviewer_frame_loading_started(frame(1))
+      handlers.dicommicroscopyviewer_frame_loading_started(frame(2))
+      handlers.dicommicroscopyviewer_frame_loading_ended({
+        ...frame(1),
+        pixelArray: new Uint8Array([1, 2]),
+      })
+    })
+    expect(result.current).toMatchObject({
+      isLoading: true,
+      isWaitingForFirstImage: true,
+    })
+    expect([...session.loadingFrames]).toEqual([`${VOLUME_UID}-2`])
+
+    act(() => {
+      result.current.dmvHandlers.dicommicroscopyviewer_frame_loading_ended(
+        frame(2),
+      )
+    })
+    expect(result.current).toMatchObject({
+      isLoading: false,
+      isWaitingForFirstImage: false,
+    })
+    /** Color slides have no per-channel windows to derive */
+    expect(session.pixelStatistics.size).toBe(0)
+  })
+
+  it('ignores frames of the label viewer and study thumbnails', () => {
+    const { session, access } = createTestSession()
+    const { result } = renderHook(() => useViewportLoading(access.sessionRef))
+
+    act(() => {
+      const handlers = result.current.dmvHandlers
+      handlers.dicommicroscopyviewer_frame_loading_started(frame(1))
+      handlers.dicommicroscopyviewer_frame_loading_started(
+        frame(1, 'thumbnail-of-another-slide'),
+      )
+      handlers.dicommicroscopyviewer_frame_loading_ended({
+        ...frame(1, '2.25.900000000000000000000000000000000000002.2'),
+        pixelArray: new Uint8Array([1, 2]),
+      })
+    })
+
+    expect([...session.loadingFrames]).toEqual([`${VOLUME_UID}-1`])
+    expect(result.current.isWaitingForFirstImage).toBe(true)
+  })
+
+  it('stops waiting when loading fails and waits again after a reset', () => {
+    const { session, access } = createTestSession()
+    const { result } = renderHook(() => useViewportLoading(access.sessionRef))
+
+    act(() => {
+      result.current.dmvHandlers.dicommicroscopyviewer_loading_error(null)
+    })
+    expect(result.current.isWaitingForFirstImage).toBe(false)
+
+    act(() => {
+      result.current.reset(session)
+    })
+    expect(result.current.isWaitingForFirstImage).toBe(true)
+  })
+
+  it('announces the color profile until the map has drawn the corrected tiles', () => {
+    const { session, access } = createTestSession()
+    /** A color slide whose image carries an ICC profile */
+    Object.assign(session.slide, { areVolumeImagesMonochrome: false })
+    Object.assign(session.slide.volumeImages[0], {
+      OpticalPathSequence: [{ ICCProfile: 'profile' }],
+    })
+    const map = session.volumeViewer.getMap()
+    const { result } = renderHook(() => useViewportLoading(access.sessionRef))
+    const handlers = () => result.current.dmvHandlers
+    act(() => {
+      result.current.reset(session)
+      handlers().dicommicroscopyviewer_frame_loading_started(frame(1))
+      handlers().dicommicroscopyviewer_frame_loading_ended(frame(1))
+    })
+    expect(result.current.statusLabel).toBe('Applying color profile')
+
+    vi.spyOn(session.volumeViewer, 'getICCProfiles').mockReturnValue([{}])
+    act(() => {
+      handlers().dicommicroscopyviewer_frame_loading_started(frame(2))
+      handlers().dicommicroscopyviewer_frame_loading_ended(frame(2))
+    })
+    /** Loaded, but decoded, corrected and drawn only later */
+    expect(result.current.statusLabel).toBe('Applying color profile')
+
+    const onRenderComplete = vi
+      .mocked(map.on)
+      .mock.calls.find(([type]) => String(type) === 'rendercomplete')?.[1] as
+      | (() => void)
+      | undefined
+    act(() => {
+      onRenderComplete?.()
+    })
+    expect(result.current.statusLabel).toBeUndefined()
+  })
+
+  it('ignores frame events without a session', () => {
+    const { result } = renderHook(() =>
+      useViewportLoading({ current: undefined }),
+    )
+
+    act(() => {
+      result.current.dmvHandlers.dicommicroscopyviewer_frame_loading_started(
+        frame(1),
+      )
+      result.current.dmvHandlers.dicommicroscopyviewer_frame_loading_ended(
+        frame(1),
+      )
+    })
+
+    expect(result.current.isWaitingForFirstImage).toBe(true)
+  })
+})

@@ -12,7 +12,10 @@ needed. Without `.env`, start/build defaults to `REACT_APP_CONFIG=local` and
 `SLIM_LOCAL_DICOMWEB_URL` defaults to the docker-compose DICOMweb URL.
 Committed `demo` / `preview` configs require `SLIM_DEMO_DICOMWEB_URL` /
 `SLIM_PREVIEW_DICOMWEB_URL` in `.env` or as GitHub Actions secrets/variables
-(see `scripts/inject-slim-env.mjs`).
+(see `scripts/slimEnv.mjs`). Builds write these to `public/config/env.js`; the
+dev server serves its own copy, so several servers with different configs can
+run side by side. If a server ends up without a URL, Slim shows which setting
+is missing instead of starting.
 
 For the full type definitions, see [`src/AppConfig.d.ts`](../src/AppConfig.d.ts).
 Example configs live in [`public/config/`](../public/config/).
@@ -23,7 +26,10 @@ Example configs live in [`public/config/`](../public/config/).
 - [Runtime server selection (header button)](#runtime-server-selection-header-button)
 - [Secondary GCP data source (`gcp` query parameter)](#secondary-gcp-data-source-gcp-query-parameter)
 - [Annotation colors](#annotation-colors)
+  - [User preferences vs config (drawing)](#user-preferences-vs-config-drawing)
+- [Theme (`mode`)](#theme-mode)
 - [Read-only mode and worklist](#read-only-mode-and-worklist)
+- [Build and save notes](#build-and-save-notes)
 - [Local deployment tips](#local-deployment-tips)
 - [Related documentation](#related-documentation)
 
@@ -204,9 +210,9 @@ window.config = {
 }
 ```
 
-When enabled, a **Select server** button appears in the header (Ant Design
-`ApiOutlined` icon; often called the “link” icon in issue discussions).
-Clicking it opens the **Select DICOMweb server** dialog.
+When enabled, a **Select server** button (server icon) appears in the header,
+and the server URL pill becomes clickable.
+Either one opens the **Select DICOMweb server** dialog.
 
 Reference configs that already enable this:
 
@@ -233,6 +239,10 @@ Persistence and behavior:
 - Mode is stored in `localStorage` as `slim_server_selection_mode`
   (`default` | `custom`).
 - The custom URL is stored as `slim_selected_server`.
+- A stored URL without a mode (saved by older Slim versions) is treated as
+  `custom`, so existing users keep their server after upgrading.
+- The pill is read-only text, and not focusable, when
+  `enableServerSelection` is off.
 - On a custom switch, Slim creates a temporary client with `read: true` and
   **`write: false`**, re-applies the current Bearer token when OIDC is in use,
   and maps **all** SOP-class clients to that single client (so a prior `?gcp=`
@@ -292,7 +302,13 @@ dicom-microscopy-viewer exposes **two** style models. Slim’s config
 Each entry in `annotations` can define a `style` used when drawing SR ROIs for
 that finding code. Colors are RGBA-style arrays (`[r, g, b]` or
 `[r, g, b, a]`; RGB channels `0–255`, alpha typically `0–1`). Slim maps these
-into dmv `ROIStyleOptions` via `formatRoiStyle` / `setROIStyle`:
+into dmv `ROIStyleOptions` via `formatRoiStyle` / `setROIStyle` and passes them
+as `styleOptions` on `activateDrawInteraction` / `addROI`.
+
+Config style identifies findings for **loaded / listed** ROIs. New drawings use
+**User preferences** (Annotations tab) for stroke color, stroke width, and
+measurement units — including on-slide measurement label color and unit text
+passed into dicom-microscopy-viewer.
 
 ```js
 window.config = {
@@ -307,7 +323,7 @@ window.config = {
       style: {
         stroke: {
           color: [255, 255, 0, 1],
-          width: 2,
+          // width omitted → user preference stroke width
         },
         fill: {
           color: [255, 255, 255, 0.2],
@@ -324,7 +340,6 @@ window.config = {
       style: {
         stroke: {
           color: [255, 0, 255, 1],
-          width: 2,
         },
         fill: {
           color: [255, 255, 255, 0.2],
@@ -335,18 +350,44 @@ window.config = {
 }
 ```
 
-Styles are keyed by finding as `CodingSchemeDesignator-CodeValue` (see
-`buildKey` in `src/components/SlideViewer/utils/roiUtils.ts`).
+Styles are keyed by finding via `codedConceptKey` (`schemeDesignator:value`).
 
 See [`public/config/local.js`](../public/config/local.js) for a full working
 example with several findings and colors.
 
+### User preferences vs config (drawing)
+
+Slim keeps **three** layers separate on purpose:
+
+| Layer | Where | Owns |
+| --- | --- | --- |
+| Site / protocol config | `window.config.annotations[]` | Findings, evaluations, geometry types, per-finding colors |
+| User preferences | Preferences → Annotations (localStorage) | Personal stroke width, fallback stroke color, whether finding colors apply to new drawings, display units, confirm-on-remove |
+| Draw dialog / panel | Viewer UI | Per-ROI choice among config options; restyle after draw |
+
+Do **not** put the finding catalog (labels, evaluations, geometries, per-finding
+colors) in Preferences. Those are deployment/protocol decisions. Preferences
+are personal drawing comfort only.
+
+| Setting | Source | Applied when drawing |
+| --- | --- | --- |
+| Finding color | `annotations[].style` | New ROIs of that finding while **Use finding colors** is on (the default), and loaded / panel-listed ROIs of that finding |
+| Stroke color | Preferences | New ROIs whose finding has no configured style, or every new ROI when **Use finding colors** is off |
+| Stroke width | Preferences | New ROIs, including those drawn in a finding color |
+| Measurement units | Preferences | On-slide markup labels, annotation list, ROI details, and DMV measurement content items |
+
+ROIs drawn in their finding's color keep it when Preferences change; ROIs
+drawn in the preference color follow later stroke and fill changes.
+
 Fallbacks:
 
-1. Finding listed in `config.annotations` **without** `style` → Slim’s default
-   ROI style (yellow stroke `[255, 234, 0]`).
+1. Finding listed in `config.annotations` **without** `style` → preference
+   stroke color and width (`buildDefaultRoiStyle`).
 2. Loaded ROI whose finding is **not** in `config.annotations` → when
-   formatted, Slim assigns a color from `DEFAULT_ANNOTATION_COLOR_PALETTE`.
+   registered, Slim assigns a color from `DEFAULT_ANNOTATION_COLOR_PALETTE`.
+
+`findingCategory` and `measurements` on config entries are currently unused by
+the viewer; omit them unless you are wiring that behavior.
 
 ### Microscopy Bulk Simple Annotations (ANN groups)
 
@@ -374,12 +415,32 @@ not all restyle immediately.
 - **Bulk ANN hover highlight** uses dmv’s `highlightColor` (default
   `[140, 184, 198]`), which is separate from Slim’s ROI selection style.
 
+## Theme (`mode`)
+
+Slim v2 defaults to **dark** when `mode` is omitted. Classic Slim was light
+unless `mode` was `'dark'`. Set the theme explicitly in production configs:
+
+```js
+window.config = {
+  /** ... */
+  mode: 'light' /** or 'dark' */,
+}
+```
+
+Users can still switch Light / Dark / System in Preferences (`slim-theme` in
+`localStorage`). `mode: 'system'` in the config file is not read; only
+`'light'` overrides the dark default.
+
+The public demo (`public/config/demo.js`) and local/preview configs set
+`mode: 'dark'`. A private `gcp.js` (gitignored) used for IDC production must
+set `mode` too, or the site will flip to dark on deploy.
+
 ## Read-only mode and worklist
 
 ### Disable annotation tools (`disableAnnotationTools`)
 
-Set `disableAnnotationTools: true` to hide the slide toolbar that contains
-annotation creation / editing controls (default is `false`, tools enabled):
+Set `disableAnnotationTools: true` to hide Draw, Modify, Translate, Remove,
+Hide, and Save (default is `false`, tools enabled):
 
 ```js
 window.config = {
@@ -388,8 +449,17 @@ window.config = {
 }
 ```
 
-Existing annotations remain viewable. The same flag also hides other controls
-bundled in that toolbar (for example **Go to**), not only draw/edit/save.
+Existing annotations remain viewable. **Go to** stays on the toolbar and
+Alt+G still works; it pans the slide and does not write a marker ROI.
+
+### Worklist search and Contains
+
+The search box queries the DICOMweb server (Patient ID, Patient Name,
+Accession Number, Study ID) so matches are not limited to the first page of
+studies. Search needs at least two characters. With a Contains filter
+(annotations, SR, segmentations, parametric maps, presentation states) on,
+the box filters the Contains results by the same fields instead of querying
+the server again.
 
 ### Disable the worklist (`disableWorklist`)
 
@@ -417,6 +487,17 @@ window.config = {
   enableServerSelection: false,
 }
 ```
+
+## Build and save notes
+
+- **Node.js 22.22 or newer** is required (24 LTS in CI and Docker). Vite 8
+  will not install on Node 16/18/20.
+- Saving ROIs needs the `dcmjs@0.52.0` pnpm patch
+  (`patches/dcmjs@0.52.0.patch`). Do not drop it until upstream dcmjs accepts
+  valid `TrackingIdentifier` values.
+- `pnpm run build:firebase` still sets `REACT_APP_CONFIG=gcp`. There is no
+  committed `public/config/gcp.js`; inject that file (with an explicit
+  `mode`) before using that script. The GitHub Action uses `preview` instead.
 
 ## Local deployment tips
 

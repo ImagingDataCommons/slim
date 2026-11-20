@@ -168,6 +168,14 @@ A single-page guide covering external servers, runtime server selection, the `gc
 
 The configuration can be changed at build-time using the `REACT_APP_CONFIG` environment variable.
 
+### Slim v2 defaults operators should set
+
+- **Theme:** omit `mode` and the app starts dark (classic Slim was light). Set `mode: 'light'` or `mode: 'dark'` in production configs, including a private `gcp.js`.
+- **Display options:** ICC, gamma, clustering, and interpolation live in the slide panel, not a settings drawer.
+- **Worklist search:** the box queries the server; with a Contains filter on, it filters the Contains results.
+- **Node:** build on Node 22.22+ (24 LTS). Keep `patches/dcmjs@0.52.0.patch` or Save ROIs fails.
+- **OIDC:** smoke sign-in, the name in the user menu, and sign-out on a real IdP before cutting over a GCP implicit client.
+
 ### Server Configuration
 
 #### Runtime Server Selection
@@ -244,7 +252,7 @@ This feature was implemented in response to [issue #159](https://github.com/Imag
 
 ### Messages/popups configuration
 
-Configure message popup notifications that appear at the top of the screen. By default, all message popups are enabled.
+Configure the transient message popups (toasts). By default, all message popups are enabled and stack at the bottom centre of the window, at most three at a time.
 
 ```js
 window.config = {
@@ -259,9 +267,9 @@ window.config = {
 
 **Options:**
 
-- `disabled`: Disable specific message types or all messages
-- `duration`: How long messages are shown (in seconds)
-- `top`: Distance from top of screen (in pixels)
+- `disabled`: Disable specific message types or all messages. Error notifications (sign-in failures, rejected or failed server requests, viewer errors) are always shown.
+- `duration`: How long messages are shown (in seconds); `0` keeps them until dismissed. Error notifications always close after 3 seconds.
+- `top`: Anchor the stack this many pixels from the top of the window instead of the bottom
 
 **Available message types:**
 
@@ -291,7 +299,7 @@ messages: {
 **Defaults** (if not specified):
 
 - `duration`: 5 seconds
-- `top`: 100 pixels
+- `top`: not set (bottom centre)
 
 ### Memory monitoring configuration
 
@@ -318,7 +326,8 @@ The following topics are documented in [docs/CONFIGURATION.md](docs/CONFIGURATIO
 | External DICOMweb server | `servers[].url` |
 | Runtime server selection (header button) | `enableServerSelection` |
 | Secondary GCP annotation store | `?gcp=<dicomWeb-url>` query parameter |
-| Annotation / finding colors | `annotations[].style` |
+| Annotation / finding colors | `annotations[].style` (color/fill; stroke width from User preferences) |
+| Theme (dark default) | `mode` (`'light'` or `'dark'`) |
 | Read-only annotation UI | `disableAnnotationTools` |
 | Hide study worklist | `disableWorklist` |
 | Local Orthanc / CORS troubleshooting | see [Local deployment tips](docs/CONFIGURATION.md#local-deployment-tips) |
@@ -327,7 +336,7 @@ The following topics are documented in [docs/CONFIGURATION.md](docs/CONFIGURATIO
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (LTS recommended)
+- [Node.js](https://nodejs.org/) 22.22 or newer (24 LTS recommended)
 - [pnpm](https://pnpm.io/) `11.9.0` (see `packageManager` in `package.json`)
 
 Download the latest release from [github.com/ImagingDataCommons/slim/releases](https://github.com/ImagingDataCommons/slim/releases), then install dependencies and build the app:
@@ -379,7 +388,6 @@ window.config = {
       style: {
         stroke: {
           color: [251, 134, 4, 1],
-          width: 2,
         },
         fill: {
           color: [255, 255, 255, 0.2],
@@ -389,6 +397,9 @@ window.config = {
   ],
 }
 ```
+
+Stroke width for new ROIs comes from **User preferences** (Annotations tab), not
+from config. Omit `stroke.width` unless you need a non-preference fallback.
 
 Customize the configuration according to your needs at either build time or run time.
 
@@ -430,7 +441,6 @@ window.config = {
       style: {
         stroke: {
           color: [251, 134, 4, 1],
-          width: 2,
         },
         fill: {
           color: [255, 255, 255, 0.2],
@@ -446,7 +456,6 @@ window.config = {
       style: {
         stroke: {
           color: [255, 255, 0, 1],
-          width: 2,
         },
         fill: {
           color: [255, 255, 255, 0.2],
@@ -467,11 +476,13 @@ Existing configs continue to work without changes:
 
 Deep links are restored after login through the OIDC `state` parameter (not `localStorage`). Silent token renewal reuses the same registered redirect URI (no additional IdP redirect URI is required).
 
+Sign-in hashes the PKCE challenge in the code flow and checks the ID token signature against the provider's published keys in the implicit flow. Browsers only offer the Web Crypto API over HTTPS and on `localhost`, so on plain-HTTP deployments Slim does both in JavaScript instead. Serving Slim over HTTPS is still recommended because it keeps tokens from being exposed on the network.
+
 ## Development
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (LTS recommended)
+- [Node.js](https://nodejs.org/) 22.22 or newer (24 LTS recommended)
 - [pnpm](https://pnpm.io/) `11.9.0` (see `packageManager` in `package.json`)
 
 Install dependencies and run the app for local development:
@@ -489,7 +500,7 @@ The configuration can be specified using the `REACT_APP_CONFIG` environment vari
 REACT_APP_CONFIG=local pnpm run start
 ```
 
-Copy [`.env.example`](.env.example) to `.env` (gitignored) and adjust as needed. Without `.env`, start/build defaults to `REACT_APP_CONFIG=local` and `SLIM_LOCAL_DICOMWEB_URL` defaults to the docker-compose DICOMweb URL. Committed `demo` / `preview` configs require `SLIM_DEMO_DICOMWEB_URL` / `SLIM_PREVIEW_DICOMWEB_URL` in `.env` or CI (see `scripts/inject-slim-env.mjs`).
+Copy [`.env.example`](.env.example) to `.env` (gitignored) and adjust as needed. Without `.env`, start/build defaults to `REACT_APP_CONFIG=local` and `SLIM_LOCAL_DICOMWEB_URL` defaults to the docker-compose DICOMweb URL. Committed `demo` / `preview` configs require `SLIM_DEMO_DICOMWEB_URL` / `SLIM_PREVIEW_DICOMWEB_URL` in `.env` or CI (see [`scripts/slimEnv.mjs`](scripts/slimEnv.mjs)).
 
 ### Upgrading from older Slim versions
 
@@ -504,10 +515,15 @@ Useful scripts:
 
 | Command | Description |
 | ------- | ----------- |
-| `pnpm run start` | Start the development server |
-| `pnpm run build` | Create a production build |
-| `pnpm run test` | Run lint checks and tests |
-| `pnpm run lint` | Check for lint issues |
+| `pnpm run start` (or `dev`) | Start the Vite development server on port 3000 |
+| `pnpm run build` | Create a production build in `build/` |
+| `pnpm run test` | Run the unit tests once with Vitest |
+| `pnpm run test:watch` | Run Vitest in watch mode |
+| `pnpm run test:e2e` | Run Playwright end-to-end tests (see [CONTRIBUTING.md](CONTRIBUTING.md)) |
+| `pnpm run test:e2e:ui` | Run Playwright end-to-end tests with the UI runner |
+| `pnpm run typecheck` | Type-check with `tsc` (TypeScript 7) |
+| `pnpm run check:compiler` | Fail if the React Compiler bails out on any component or hook |
+| `pnpm run lint` | Check for lint and format issues with Biome |
 | `pnpm run lint:fix` | Auto-fix lint issues |
 | `pnpm run fmt` | Format source code |
 
@@ -560,11 +576,12 @@ If neither applies, the preview uses the version in `package.json`. Editing the 
    pnpm run start
    ```
 
-   When linked, `craco.config.js` registers the DMV `dist/` folder as a webpack watch dependency so Slim rebuilds after DMV watch emits a new bundle. Restart Slim after linking or after changing `craco.config.js`.
+   When linked, Vite pre-bundles the DMV `dist/dynamic-import` bundle on every start and watches `dicomMicroscopyViewer.min.js`. When DMV watch emits a new bundle, the dev server re-runs the dependency optimizer and restarts itself. The worker and WebAssembly decoders under `/static/js/` are served straight from the linked `dist/` folder. Restart Slim after linking or after changing `vite.config.ts`.
 
 ### Notes
 
-- Running `pnpm install` in Slim removes the link — re-run step 3 afterward.
+- Running `pnpm install` in Slim removes the link — re-run step 2 afterward.
+- If a tab that stayed open across a DMV rebuild logs `Invalid hook call`, hard-reload it: it still holds modules from the previous optimizer run.
 - Do not add `link:` overrides to `package.json`; the commands above are sufficient.
 - Slim imports OpenLayers CSS directly (`ol/ol.css`), so `ol` is listed as a direct dependency. This keeps linked dev working when DMV's transitive dependencies are not hoisted into Slim's `node_modules`.
 - If Slim still serves a stale DMV bundle, confirm step 3 (realpath must not contain `.pnpm`) and that DMV watch logged `[emitted] dicomMicroscopyViewer.min.js` for your change.
@@ -573,7 +590,10 @@ If neither applies, the preview uses the version in `package.json`. Editing the 
   ```bash
   pnpm unlink dicom-microscopy-viewer
   pnpm install
+  pnpm run start --force
   ```
+
+  `--force` makes Vite discard the dependency cache that still holds the linked bundle.
 
 ## Related projects
 

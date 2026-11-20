@@ -1,0 +1,409 @@
+import { act, renderHook } from '@testing-library/react'
+import type * as dmv from 'dicom-microscopy-viewer'
+import type { Location } from 'react-router'
+
+import { loadPresentationStates } from '../../services/presentationStates'
+import { resetFakeDmv } from '../../testing/fakeDmv'
+import { createTestClients, createTestSession } from '../../testing/fixtures'
+import { usePresentationStates } from '../usePresentationStates'
+
+vi.mock('dicom-microscopy-viewer', async () => {
+  const actual = await vi.importActual<typeof import('../../testing/fakeDmv')>(
+    '../../testing/fakeDmv',
+  )
+  return actual.fakeDmvModule
+})
+vi.mock('../../../../utils/logger')
+vi.mock('../../services/presentationStates', () => ({
+  loadPresentationStates: vi.fn(),
+}))
+
+type PresentationState = dmv.metadata.AdvancedBlendingPresentationState
+type OnPresentationState = Parameters<
+  typeof loadPresentationStates
+>[0]['onPresentationState']
+
+function presentationState(uid: string): PresentationState {
+  const fields: Partial<PresentationState> = { SOPInstanceUID: uid }
+  return fields as PresentationState
+}
+
+const location: Location = {
+  pathname: '/studies/1/series/2',
+  search: '?x=1',
+  hash: '',
+  state: null,
+  key: 'default',
+}
+
+function setup(requestedUID?: string) {
+  const test = createTestSession()
+  const navigate = vi.fn()
+  const opticalPaths = {
+    showDefault: vi.fn(),
+    showPresentationState: vi.fn(),
+  }
+  let deliver: OnPresentationState = () => {}
+  let deliverDefault: (ps: PresentationState) => void = () => {}
+  vi.mocked(loadPresentationStates).mockImplementation((options) => {
+    deliver = options.onPresentationState
+    deliverDefault = options.onDefaultPresentationState ?? (() => {})
+  })
+  const { result, rerender } = renderHook(
+    (props: { currentLocation: Location; requestedUID?: string }) =>
+      usePresentationStates({
+        sessionRef: test.access.sessionRef,
+        clients: createTestClients(),
+        studyInstanceUID: '1',
+        /** Rerenders keep the URL's state unless they name one */
+        requestedUID:
+          'requestedUID' in props ? props.requestedUID : requestedUID,
+        routePathname: props.currentLocation.pathname,
+        location: props.currentLocation,
+        navigate,
+        opticalPaths,
+      }),
+    {
+      initialProps: { currentLocation: location } as {
+        currentLocation: Location
+        requestedUID?: string
+      },
+    },
+  )
+  const load = (): void => {
+    act(() => {
+      result.current.load(test.session)
+    })
+  }
+  const receive = (ps: PresentationState, index: number): void => {
+    act(() => {
+      deliver(ps, index)
+    })
+  }
+  /** The loader names the slide's first state once earlier ones settled */
+  const receiveDefault = (ps: PresentationState): void => {
+    act(() => {
+      deliverDefault(ps)
+    })
+  }
+  return {
+    ...test,
+    result,
+    rerender,
+    navigate,
+    opticalPaths,
+    load,
+    receive,
+    receiveDefault,
+  }
+}
+
+beforeEach(() => {
+  resetFakeDmv()
+})
+
+describe('usePresentationStates', () => {
+  it("applies the slide's first state when the URL names none", () => {
+    const {
+      result,
+      load,
+      receive,
+      receiveDefault,
+      navigate,
+      opticalPaths,
+      session,
+    } = setup()
+    const first = presentationState('ps-1')
+
+    load()
+    receive(presentationState('ps-2'), 1)
+    receive(first, 0)
+    expect(opticalPaths.showPresentationState).not.toHaveBeenCalled()
+    receiveDefault(first)
+
+    expect(opticalPaths.showPresentationState).toHaveBeenCalledTimes(1)
+    expect(opticalPaths.showPresentationState).toHaveBeenCalledWith(
+      session,
+      first,
+    )
+    expect(navigate).toHaveBeenCalledWith(
+      {
+        pathname: location.pathname,
+        search: '?x=1&state=ps-1',
+        hash: '',
+      },
+      { replace: true },
+    )
+    expect(result.current.selectedUID).toBe('ps-1')
+    expect(
+      result.current.presentationStates.map((ps) => ps.SOPInstanceUID),
+    ).toEqual(['ps-1', 'ps-2'])
+  })
+
+  it('does not apply a late default state over changes the user made', () => {
+    const {
+      result,
+      load,
+      receive,
+      receiveDefault,
+      navigate,
+      opticalPaths,
+      session,
+    } = setup()
+
+    load()
+    session.hasUserDisplayChanges = true
+    receive(presentationState('ps-1'), 0)
+    receiveDefault(presentationState('ps-1'))
+
+    expect(opticalPaths.showPresentationState).not.toHaveBeenCalled()
+    expect(navigate).not.toHaveBeenCalled()
+    expect(result.current.presentationStates).toHaveLength(1)
+  })
+
+  it('still applies a state the URL names after user changes', () => {
+    const { load, receive, opticalPaths, session } = setup('ps-1')
+
+    load()
+    session.hasUserDisplayChanges = true
+    receive(presentationState('ps-1'), 0)
+
+    expect(opticalPaths.showPresentationState).toHaveBeenCalledTimes(1)
+  })
+
+  it('applies the state named in the URL', () => {
+    const { result, load, receive, opticalPaths } = setup('ps-2')
+
+    load()
+    receive(presentationState('ps-1'), 0)
+    receive(presentationState('ps-2'), 1)
+
+    expect(opticalPaths.showPresentationState).toHaveBeenCalledTimes(1)
+    expect(result.current.selectedUID).toBe('ps-2')
+  })
+
+  it('reports no selection when the URL names a state the study lacks', () => {
+    const { result, load, receive, opticalPaths } = setup('unknown')
+
+    load()
+    receive(presentationState('ps-1'), 0)
+
+    expect(opticalPaths.showPresentationState).not.toHaveBeenCalled()
+    expect(result.current.selectedUID).toBeUndefined()
+  })
+
+  it('ignores states retrieved for released viewers', () => {
+    const { result, load, receive, session, opticalPaths } = setup()
+
+    load()
+    session.isDestroyed = true
+    receive(presentationState('ps-1'), 0)
+
+    expect(opticalPaths.showPresentationState).not.toHaveBeenCalled()
+    expect(result.current.presentationStates).toEqual([])
+  })
+
+  it('ignores states that arrive after the URL moved to another slide', () => {
+    const { result, rerender, load, receiveDefault, navigate, opticalPaths } =
+      setup()
+
+    load()
+    rerender({
+      currentLocation: { ...location, pathname: '/studies/1/series/3' },
+    })
+    receiveDefault(presentationState('ps-1'))
+
+    expect(opticalPaths.showPresentationState).not.toHaveBeenCalled()
+    expect(navigate).not.toHaveBeenCalled()
+    expect(result.current.selectedUID).toBeUndefined()
+  })
+
+  it('selecting a listed state applies it', () => {
+    const { result, load, receive, navigate, opticalPaths } = setup('none')
+    load()
+    receive(presentationState('ps-1'), 0)
+
+    act(() => {
+      result.current.onSelect('ps-1')
+    })
+
+    /** A new history entry, keeping the other parameters */
+    expect(navigate).toHaveBeenCalledTimes(1)
+    expect(navigate).toHaveBeenCalledWith(
+      {
+        pathname: location.pathname,
+        search: '?x=1&state=ps-1',
+        hash: '',
+      },
+      { replace: false },
+    )
+    expect(opticalPaths.showPresentationState).toHaveBeenCalledTimes(1)
+    expect(result.current.selectedUID).toBe('ps-1')
+  })
+
+  it('does not carry the last pick over to a new session', () => {
+    const { result, load, receive, opticalPaths } = setup('none')
+    load()
+    receive(presentationState('ps-1'), 0)
+    act(() => {
+      result.current.onSelect('ps-1')
+    })
+    expect(result.current.selectedUID).toBe('ps-1')
+
+    load()
+    receive(presentationState('ps-1'), 0)
+
+    expect(result.current.selectedUID).toBeUndefined()
+    expect(opticalPaths.showPresentationState).toHaveBeenCalledTimes(1)
+  })
+
+  it('clearing the selection shows the default paths', () => {
+    const { result, rerender, navigate, opticalPaths, session } = setup('ps-1')
+    rerender({ currentLocation: { ...location, search: '?x=1&state=ps-1' } })
+
+    act(() => {
+      result.current.onSelect(undefined)
+    })
+
+    expect(result.current.selectedUID).toBeUndefined()
+    expect(navigate).toHaveBeenCalledWith(
+      { pathname: location.pathname, search: '?x=1', hash: '' },
+      { replace: false },
+    )
+    expect(opticalPaths.showDefault).toHaveBeenCalledWith(session)
+  })
+
+  it('shows the state the URL names after Back', () => {
+    const { result, rerender, load, receive, opticalPaths, session } =
+      setup('none')
+    load()
+    receive(presentationState('ps-1'), 0)
+    receive(presentationState('ps-2'), 1)
+    act(() => {
+      result.current.onSelect('ps-1')
+    })
+    rerender({ currentLocation: location, requestedUID: 'ps-1' })
+    act(() => {
+      result.current.onSelect('ps-2')
+    })
+    rerender({ currentLocation: location, requestedUID: 'ps-2' })
+
+    rerender({ currentLocation: location, requestedUID: 'ps-1' })
+
+    expect(result.current.selectedUID).toBe('ps-1')
+    expect(opticalPaths.showPresentationState).toHaveBeenLastCalledWith(
+      session,
+      expect.objectContaining({ SOPInstanceUID: 'ps-1' }),
+    )
+
+    rerender({ currentLocation: location, requestedUID: undefined })
+
+    expect(result.current.selectedUID).toBeUndefined()
+    expect(opticalPaths.showDefault).toHaveBeenCalledWith(session)
+  })
+
+  it('adds no history entry for the state already shown', () => {
+    const { result, rerender, load, receive, navigate } = setup('ps-1')
+    rerender({ currentLocation: { ...location, search: '?x=1&state=ps-1' } })
+    load()
+    receive(presentationState('ps-1'), 0)
+    navigate.mockClear()
+
+    act(() => {
+      result.current.onSelect('ps-1')
+    })
+
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it('ignores Back to a state of another route', () => {
+    const { result, rerender, load, receive, opticalPaths } = setup('none')
+    load()
+    receive(presentationState('ps-1'), 0)
+    opticalPaths.showPresentationState.mockClear()
+
+    rerender({
+      currentLocation: { ...location, pathname: '/studies/1/series/3' },
+      requestedUID: 'ps-1',
+    })
+
+    expect(opticalPaths.showPresentationState).not.toHaveBeenCalled()
+    expect(result.current.selectedUID).toBeUndefined()
+  })
+
+  it('keeps other parameters as written and adds no entry for the same URL', () => {
+    const { result, rerender, load, receive, navigate } = setup('ps-1')
+    const search =
+      '?gcp=https://healthcare.googleapis.com/v1/projects/p&state=ps-1'
+    rerender({ currentLocation: { ...location, search, hash: '#view' } })
+    load()
+    receive(presentationState('ps-1'), 0)
+    receive(presentationState('ps-2'), 1)
+    navigate.mockClear()
+
+    act(() => {
+      result.current.onSelect('ps-1')
+    })
+    expect(navigate).not.toHaveBeenCalled()
+
+    act(() => {
+      result.current.onSelect('ps-2')
+    })
+    expect(navigate).toHaveBeenCalledWith(
+      {
+        pathname: location.pathname,
+        search:
+          '?gcp=https://healthcare.googleapis.com/v1/projects/p&state=ps-2',
+        hash: '#view',
+      },
+      { replace: false },
+    )
+  })
+
+  it('drops an implicit sign-in response from the hash', () => {
+    const { result, rerender, load, receive, navigate } = setup('none')
+    rerender({
+      currentLocation: {
+        ...location,
+        hash: '#access_token=secret&id_token=secret&state=oauth',
+      },
+    })
+    load()
+    receive(presentationState('ps-1'), 0)
+
+    act(() => {
+      result.current.onSelect('ps-1')
+    })
+
+    expect(navigate).toHaveBeenLastCalledWith(
+      { pathname: location.pathname, search: '?x=1&state=ps-1', hash: '' },
+      { replace: false },
+    )
+  })
+
+  it('drops sign-in callback parameters when writing the state', () => {
+    const { result, rerender, load, receive, navigate } = setup('none')
+    rerender({
+      currentLocation: {
+        ...location,
+        search: '?x=1&access_token=secret&token_type=Bearer&state=oauth',
+        hash: '#id_token=secret',
+      },
+    })
+    load()
+    receive(presentationState('ps-1'), 0)
+
+    act(() => {
+      result.current.onSelect('ps-1')
+    })
+
+    expect(navigate).toHaveBeenLastCalledWith(
+      {
+        pathname: location.pathname,
+        search: '?x=1&state=ps-1',
+        hash: '',
+      },
+      { replace: false },
+    )
+  })
+})
