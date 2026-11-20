@@ -1,0 +1,72 @@
+/**
+ * Entry point for the shadcn/Tailwind-based components (see
+ * AnnotationGroupDisplaySettings.tsx and components/ui/*).
+ */
+@tailwind base;
+
+@layer base {
+  /**
+   * Tailwind's `preflight` base reset is disabled globally (tailwind.config.js)
+   * so it doesn't also reset antd's own markup elsewhere in the app. Every
+   * Tailwind utility (border-*, w-*, focus rings, ...) is written assuming
+   * that reset is in effect, so instead of skipping it we scope an equivalent
+   * to just this component tree — applied via the `dmv-ui` class on the
+   * popover trigger and, separately, the portalled popover content.
+   *
+   * Skipping this (as an earlier version did) doesn't just break box-sizing:
+   * without `border-style: solid`, buttons/inputs fall back to the browser's
+   * native default border style — an inset/outset 3D bevel — which is what
+   * made the panel look like a legacy OS dialog despite every element having
+   * the intended border *color* and *width*.
+   *
+   * Tailwind v3's `@layer` doesn't emit native CSS cascade layers — it just
+   * orders plain rules in the output — so normal specificity still decides
+   * ties. `.dmv-ui button` (0,1,1) would otherwise beat a plain utility class
+   * like `.bg-neutral-200` (0,1,0) regardless of source order, silently
+   * eating every bg-, text-, or font- utility on a button/input/select. Wrap
+   * the scope in `:where()`, which always contributes zero specificity, so
+   * these resets sit at plain-element specificity (0,0,1) — exactly how
+   * Tailwind's own preflight avoids this — and any utility class wins.
+   */
+  :where(.dmv-ui),
+  :where(.dmv-ui) *,
+  :where(.dmv-ui) *::before,
+  :where(.dmv-ui) *::after {
+    box-sizing: border-box;
+    border-width: 0;
+    border-style: solid;
+  }
+
+  :where(.dmv-ui) button,
+  :where(.dmv-ui) input,
+  :where(.dmv-ui) select {
+    font-family: inherit;
+    font-size: 100%;
+    font-weight: inherit;
+    line-height: inherit;
+    color: inherit;
+    margin: 0;
+    padding: 0;
+    background-color: transparent;
+    background-image: none;
+  }
+
+  :where(.dmv-ui) button,
+  :where(.dmv-ui) select {
+    text-transform: none;
+  }
+
+  :where(.dmv-ui) button {
+    cursor: pointer;
+    -webkit-appearance: button;
+    appearance: button;
+  }
+
+  :where(.dmv-ui) input {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+}
+
+@tailwind components;
+@tailwind utilities;

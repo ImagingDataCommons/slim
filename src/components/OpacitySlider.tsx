@@ -13,30 +13,32 @@ const OpacitySlider: React.FC<OpacitySliderProps> = ({
   label = 'Opacity',
 }) => {
   return (
-    <Row justify="center" align="middle">
-      <Col span={6}>{label}</Col>
-      <Col span={12}>
-        <Slider
-          range={false}
-          min={0}
-          max={1}
-          step={0.01}
-          value={opacity}
-          onChange={onChange}
-        />
-      </Col>
-      <Col span={6}>
-        <InputNumber
-          min={0}
-          max={1}
-          size="small"
-          step={0.1}
-          style={{ width: '65px' }}
-          value={opacity}
-          onChange={onChange}
-        />
-      </Col>
-    </Row>
+    <div style={{ padding: '0 8px 8px' }}>
+      <div style={{ marginBottom: 4 }}>{label}</div>
+      <Row gutter={8} align="middle">
+        <Col span={18}>
+          <Slider
+            range={false}
+            min={0}
+            max={1}
+            step={0.01}
+            value={opacity}
+            onChange={onChange}
+          />
+        </Col>
+        <Col span={6}>
+          <InputNumber
+            min={0}
+            max={1}
+            size="small"
+            step={0.1}
+            style={{ width: '100%' }}
+            value={opacity}
+            onChange={onChange}
+          />
+        </Col>
+      </Row>
+    </div>
   )
 }
 

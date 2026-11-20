@@ -218,6 +218,8 @@ declare module 'dicom-microscopy-viewer' {
         styleOptions?: {
           opacity?: number
           color?: number[]
+          filled?: boolean
+          fillOpacity?: number
           measurement?: dcmjs.sr.coding.CodedConcept
         }
       ): void
@@ -227,12 +229,16 @@ declare module 'dicom-microscopy-viewer' {
         styleOptions: {
           opacity?: number
           color?: number[]
+          filled?: boolean
+          fillOpacity?: number
           measurement?: dcmjs.sr.coding.CodedConcept
         }
       ): void
       getAnnotationGroupStyle (annotationGroupUID: string): {
         opacity: number
         color: number[]
+        filled: boolean
+        fillOpacity: number
       }
       isAnnotationGroupVisible (annotationGroupUID: string): boolean
       getAllAnnotationGroups (): dwc.annotation.AnnotationGroup[]
