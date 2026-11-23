@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useEffect } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { TooltipProvider } from '../../../../components/ui/tooltip'
@@ -136,5 +136,18 @@ describe('Header desktop chrome', () => {
     expect(
       screen.queryByRole('button', { name: 'More' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('switches between dark and light from the header', () => {
+    renderHeader(DESKTOP_LAYOUT_MODE)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Switch to light theme' }),
+    )
+    expect(document.documentElement).toHaveClass('light')
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Switch to dark theme' }),
+    )
+    expect(document.documentElement).toHaveClass('dark')
   })
 })

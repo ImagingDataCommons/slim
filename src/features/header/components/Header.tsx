@@ -19,6 +19,7 @@ import {
 } from '../../../components/ui/tooltip'
 import { useLayoutMode } from '../../../contexts/LayoutModeContext'
 import { useStudySummary } from '../../../contexts/StudySummaryContext'
+import { useTheme } from '../../../contexts/ThemeContext'
 import type DicomWebManager from '../../../DicomWebManager'
 import { cn } from '../../../lib/utils'
 import type { AppInfo } from '../../../utils/appInfo'
@@ -128,6 +129,21 @@ function HeaderCrumb({
   return <span className="font-semibold text-ink">{crumb}</span>
 }
 
+/** Light/dark switch; System stays available in Preferences */
+function useThemeToggle(): {
+  icon: IconName
+  title: string
+  toggle: () => void
+} {
+  const { resolvedTheme, setTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+  return {
+    icon: isDark ? 'light_mode' : 'dark_mode',
+    title: isDark ? 'Switch to light theme' : 'Switch to dark theme',
+    toggle: () => setTheme(isDark ? 'light' : 'dark'),
+  }
+}
+
 function HeaderOverflowMenu({
   issueCount,
   onDebug,
@@ -139,6 +155,7 @@ function HeaderOverflowMenu({
   onTags?: () => void
   onServer?: () => void
 }): React.ReactElement {
+  const themeToggle = useThemeToggle()
   const hasBadge = issueCount > 0
   return (
     <DropdownMenu modal={false}>
@@ -185,8 +202,28 @@ function HeaderOverflowMenu({
             Select server
           </DropdownMenuItem>
         )}
+        <DropdownMenuItem onSelect={themeToggle.toggle}>
+          <Icon
+            name={themeToggle.icon}
+            size={18}
+            className="text-ink-secondary"
+          />
+          {themeToggle.title}
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  )
+}
+
+function ThemeToggleButton(): React.ReactElement {
+  const { icon, title, toggle } = useThemeToggle()
+  return (
+    <HeaderIconButton
+      icon={icon}
+      title={title}
+      compact={false}
+      onClick={toggle}
+    />
   )
 }
 
@@ -415,6 +452,7 @@ export function Header({
                   onClick={openServerDialog}
                 />
               )}
+              <ThemeToggleButton />
               <HeaderDivider className="mx-2" />
             </>
           )}
