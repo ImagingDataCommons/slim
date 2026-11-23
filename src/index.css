@@ -43,7 +43,12 @@
   border: 0 !important;
   border-radius: 6px;
   overflow: hidden;
-  background: rgb(var(--viewport)) !important;
+  background: rgb(var(--overview-map)) !important;
+}
+
+/* Fluorescence slides are dark, so their overview stays dark too */
+[data-fluorescence] .ol-overviewmap .ol-overviewmap-map {
+  background: rgb(var(--viewport-fluorescence)) !important;
 }
 
 .ol-overviewmap-box {

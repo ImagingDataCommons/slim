@@ -54,6 +54,7 @@ const SlideViewerContent: React.FC<SlideViewerContentProps> = ({
       {toolbar}
       <div
         data-overview-map={showOverviewMap ? undefined : 'hidden'}
+        data-fluorescence={isFluorescence || undefined}
         className={cn(
           'relative min-h-0 flex-1 overflow-hidden',
           isFluorescence ? 'bg-viewport-fluorescence' : 'bg-viewport',

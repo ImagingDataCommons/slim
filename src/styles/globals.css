@@ -160,6 +160,8 @@
 
     --viewport: 251 249 250; /* #fbf9fa */
     --viewport-fluorescence: 11 16 32; /* #0b1020 */
+    /* Behind brightfield overview thumbnails: close to the white of the glass */
+    --overview-map: 251 249 250; /* #fbf9fa */
     --overlay-card: 255 255 255;
     --scrim: 15 26 42;
     --stripe-a: 245 247 250; /* #f5f7fa */
@@ -219,8 +221,10 @@
     --destructive-soft: 60 26 26;
     --destructive-hover: 44 24 28;
 
-    --viewport: 10 14 21; /* #0a0e15 */
+    /* Mid gray around brightfield slides; near black is kept for fluorescence */
+    --viewport: 46 50 58; /* #2e323a */
     --viewport-fluorescence: 5 7 11; /* #05070b */
+    --overview-map: 236 236 239; /* #ececef */
     --overlay-card: 21 27 38;
     --scrim: 0 0 0;
     --stripe-a: 24 31 43;
