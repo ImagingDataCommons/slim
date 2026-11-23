@@ -45,7 +45,8 @@ export interface AnnotationGroupsApi {
     styleOptions: {
       opacity?: number
       color?: number[]
-      measurement?: dcmjs.sr.coding.CodedConcept
+      /** `null` stops coloring by a measurement */
+      measurement?: dcmjs.sr.coding.CodedConcept | null
       fill?: boolean
       fillOpacity?: number
     }
@@ -209,15 +210,18 @@ export function useAnnotationGroups(
           },
         }))
       }
-      /** A measurement colors the group; a flat color replaces it */
-      const { measurement, color } = styleOptions
-      if (measurement !== undefined || color !== undefined) {
+      /**
+       * DMV keeps coloring by a measurement until `measurement: null`; a new
+       * color only changes the end color of the heat map
+       */
+      const { measurement } = styleOptions
+      if (measurement !== undefined) {
         setMeasurementKeys((current) => {
           const next = { ...current }
-          if (measurement !== undefined) {
-            next[uid] = codedConceptKey(measurement)
-          } else {
+          if (measurement === null) {
             delete next[uid]
+          } else {
+            next[uid] = codedConceptKey(measurement)
           }
           return next
         })

@@ -137,7 +137,10 @@ function AnnotationGroupItem({
     const defaultColor = toRGB(defaultStyle.color)
     if (defaultColor === undefined) return
     previewStyle({ color: toEditableColor(defaultStyle.color) })
-    onStyleChange({ uid, styleOptions: { color: defaultColor } })
+    onStyleChange({
+      uid,
+      styleOptions: { color: defaultColor, measurement: null },
+    })
   }
 
   return (

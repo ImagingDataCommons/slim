@@ -142,6 +142,40 @@ describe('useAnnotationGroups', () => {
     expect(access.refreshSnapshot).toHaveBeenCalled()
   })
 
+  it('keeps coloring by a measurement when only the color changes', () => {
+    const { result } = setup()
+    const area = {
+      CodeValue: '42798000',
+      CodingSchemeDesignator: 'SCT',
+      CodeMeaning: 'Area',
+    }
+
+    act(() => {
+      result.current.onStyleChange({
+        uid: 'nuclei',
+        styleOptions: { measurement: area as never },
+      })
+    })
+    const key = result.current.measurementKeys.nuclei
+    expect(key).toBeDefined()
+
+    act(() => {
+      result.current.onStyleChange({
+        uid: 'nuclei',
+        styleOptions: { color: [0, 128, 255] },
+      })
+    })
+    expect(result.current.measurementKeys.nuclei).toBe(key)
+
+    act(() => {
+      result.current.onStyleChange({
+        uid: 'nuclei',
+        styleOptions: { color: [255, 0, 0], measurement: null },
+      })
+    })
+    expect(result.current.measurementKeys.nuclei).toBeUndefined()
+  })
+
   it('pushes clustering changes to the viewer', () => {
     const { result, viewer } = setup()
 

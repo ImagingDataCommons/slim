@@ -252,7 +252,8 @@ declare module 'dicom-microscopy-viewer' {
         styleOptions: {
           opacity?: number
           color?: number[]
-          measurement?: dcmjs.sr.coding.CodedConcept
+          /** `null` clears it from DMV 0.51.1; ignored before */
+          measurement?: dcmjs.sr.coding.CodedConcept | null
         }
       ): void
       getAnnotationGroupStyle (annotationGroupUID: string): {
