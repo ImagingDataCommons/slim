@@ -439,8 +439,8 @@ set `mode` too, or the site will flip to dark on deploy.
 
 ### Disable annotation tools (`disableAnnotationTools`)
 
-Set `disableAnnotationTools: true` to hide Draw, Modify, Translate, Remove,
-Hide, and Save (default is `false`, tools enabled):
+Set `disableAnnotationTools: true` to hide Select, Draw, Modify, Translate,
+Remove, Hide, and Save (default is `false`, tools enabled):
 
 ```js
 window.config = {
@@ -451,6 +451,12 @@ window.config = {
 
 Existing annotations remain viewable. **Go to** stays on the toolbar and
 Alt+G still works; it pans the slide and does not write a marker ROI.
+
+### Preload (`preload`)
+
+`preload` (default `true`) loads the next coarser resolution level ahead of
+time, so zooming shows a sharper placeholder while the new tiles load. Set
+`preload: false` to request fewer tiles.
 
 ### Worklist search and Contains
 

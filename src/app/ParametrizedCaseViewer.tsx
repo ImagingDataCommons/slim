@@ -28,7 +28,11 @@ export function ParametrizedCaseViewer({
   }
 
   const enableAnnotationTools = !(config.disableAnnotationTools ?? false)
-  const preload = config.preload ?? false
+  /**
+   * On by default: DMV used to turn preloading on for any given value, so
+   * Slim always preloaded one level
+   */
+  const preload = config.preload ?? true
   return (
     <ValidationProvider clients={clients} studyInstanceUID={studyInstanceUID}>
       <CaseViewer
