@@ -21,6 +21,7 @@ import {
 } from '../../preferences/utils/preferences'
 import type { SlideViewerViewProps } from '../components/SlideViewerView'
 import { useViewerPanelChrome } from '../contexts/ViewerPanelChromeContext'
+import { applyFrameStatisticsWindow } from '../services/presentationStates'
 import { describeStudySeries } from '../services/seriesDescription'
 import { deriveActiveRoiTool } from '../utils/activeRoiTool'
 import { buildAnnotationConfig } from '../utils/annotationConfig'
@@ -352,6 +353,25 @@ export function useSlideViewerModel({
           snapshot.opticalPathPixelRanges,
           frameInfo.channelIdentifier,
         )
+      /**
+       * Like the classic viewer: without a presentation state, a channel's
+       * first frame sets its window, unless the user already changed it
+       */
+      const channel = frameInfo.channelIdentifier
+      const statistics =
+        channel !== undefined
+          ? session?.pixelStatistics.get(channel)
+          : undefined
+      if (
+        hasNewPixelRange &&
+        session !== undefined &&
+        channel !== undefined &&
+        statistics !== undefined &&
+        !session.isPresentationStateShown &&
+        !session.userWindowedOpticalPaths.has(channel)
+      ) {
+        applyFrameStatisticsWindow(session.volumeViewer, channel, statistics)
+      }
       if (
         volumeViewer !== undefined &&
         (hasNewPixelRange ||

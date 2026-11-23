@@ -130,6 +130,39 @@ describe('useOpticalPaths', () => {
     expect(session.hasUserDisplayChanges).toBe(true)
   })
 
+  it('remembers windows the user set and whether a presentation state is shown', () => {
+    const { result, session } = setup()
+
+    act(() => {
+      result.current.onStylePreview({
+        opticalPathIdentifier: '1',
+        styleOptions: { opacity: 0.5 },
+      })
+    })
+    /** Opacity alone is not a window */
+    expect(session.userWindowedOpticalPaths.has('1')).toBe(false)
+
+    act(() => {
+      result.current.onStyleChange({
+        opticalPathIdentifier: '1',
+        styleOptions: { limitValues: [10, 200] },
+      })
+      result.current.showPresentationState(session, {
+        SOPInstanceUID: '1.2.3',
+        AdvancedBlendingSequence: [],
+      } as never)
+    })
+    expect(session.userWindowedOpticalPaths.has('1')).toBe(true)
+    expect(session.isPresentationStateShown).toBe(true)
+
+    /** The default display (Reset) lets first frames set windows again */
+    act(() => {
+      result.current.showDefault(session)
+    })
+    expect(session.userWindowedOpticalPaths.size).toBe(0)
+    expect(session.isPresentationStateShown).toBe(false)
+  })
+
   it('follows the viewer gamma until the user picks one', () => {
     const { result, viewer } = setup(true)
     expect(result.current.displaySettings).toEqual({

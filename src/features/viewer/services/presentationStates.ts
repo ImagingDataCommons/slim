@@ -237,6 +237,21 @@ export function applyPresentationState(
 }
 
 /**
+ * Window a channel to the pixel range of its first loaded frame, as the
+ * default display does once statistics are known
+ */
+export function applyFrameStatisticsWindow(
+  viewer: VolumeViewer,
+  opticalPathIdentifier: string,
+  statistics: PixelStatistics,
+): void {
+  viewer.setOpticalPathStyle(opticalPathIdentifier, {
+    ...viewer.getOpticalPathStyle(opticalPathIdentifier),
+    limitValues: [statistics.min, statistics.max],
+  })
+}
+
+/**
  * Reset every optical path to its default style and show the viewer's
  * default selection. Returns the identifiers now shown.
  */
