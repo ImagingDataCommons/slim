@@ -184,4 +184,79 @@ describe('getXHRRetryHook', () => {
     expect(laterWrapper).toHaveBeenCalledTimes(1)
     expect(clientHandler).not.toHaveBeenCalled()
   })
+
+  describe('with an abort signal', () => {
+    /** Retry delay long enough to abort while a retry is scheduled. */
+    const slowRetryOptions = {
+      ...fastRetryOptions,
+      minTimeout: 30,
+      maxTimeout: 30,
+    }
+
+    const applyHookWithSignal = (xhr: FakeXHR, signal: AbortSignal): void => {
+      getXHRRetryHook(slowRetryOptions)(xhr as unknown as XMLHttpRequest, {
+        url: 'https://example.com/studies',
+        method: 'GET',
+        headers: { Accept: 'application/dicom+json' },
+        signal,
+      })
+    }
+
+    it('does not re-send when aborted while a retry is scheduled', async () => {
+      const xhr = new FakeXHR()
+      xhr.statusQueue = [500, 200]
+      const controller = new AbortController()
+      applyHookWithSignal(xhr, controller.signal)
+
+      xhr.send()
+      /** First response arrived; the retry is waiting for its timeout. */
+      await flush(5)
+      controller.abort()
+      await flush(100)
+
+      expect(xhr.sendCount).toBe(1)
+      expect(xhr.openCalls).toEqual([])
+    })
+
+    it('does not retry a response that arrives after the abort', async () => {
+      const xhr = new FakeXHR()
+      xhr.statusQueue = [503, 200]
+      const clientHandler = jest.fn()
+      xhr.onreadystatechange = clientHandler
+      const controller = new AbortController()
+      applyHookWithSignal(xhr, controller.signal)
+
+      xhr.send()
+      controller.abort()
+      await flush(100)
+
+      expect(xhr.sendCount).toBe(1)
+      expect(clientHandler).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not send when the signal is already aborted', async () => {
+      const xhr = new FakeXHR()
+      const controller = new AbortController()
+      controller.abort()
+      applyHookWithSignal(xhr, controller.signal)
+
+      xhr.send()
+      await flush()
+
+      expect(xhr.sendCount).toBe(0)
+    })
+
+    it('stops listening to the signal once the request has finished', async () => {
+      const xhr = new FakeXHR()
+      xhr.statusQueue = [200]
+      const controller = new AbortController()
+      const removeSpy = jest.spyOn(controller.signal, 'removeEventListener')
+      applyHookWithSignal(xhr, controller.signal)
+
+      xhr.send()
+      await flush()
+
+      expect(removeSpy).toHaveBeenCalledWith('abort', expect.any(Function))
+    })
+  })
 })
