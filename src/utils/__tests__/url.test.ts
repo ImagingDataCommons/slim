@@ -73,12 +73,20 @@ describe('normalizeServerUrl', () => {
 describe('isSignInCallbackUrl', () => {
   const at = (search: string, hash = '') => ({ search, hash })
 
-  it('always takes a code, tokens or a state as the sign-in callback', () => {
+  it('takes a code or ID token, or an error or token with a state', () => {
     expect(isSignInCallbackUrl(at('?code=c&state=s'), false)).toBe(true)
     expect(isSignInCallbackUrl(at('', '#id_token=t'), false)).toBe(true)
     expect(isSignInCallbackUrl(at('?error=access_denied&state=s'), false)).toBe(
       true,
     )
+    expect(isSignInCallbackUrl(at('', '#access_token=x&state=s'), false)).toBe(
+      true,
+    )
+  })
+
+  it('never takes a state alone, which Slim uses for presentation states', () => {
+    expect(isSignInCallbackUrl(at('?state=1.2.826.0.1.3'), false)).toBe(false)
+    expect(isSignInCallbackUrl(at('?state=1.2.826.0.1.3'), true)).toBe(false)
   })
 
   it('takes a bare error or token only while a sign-in is pending', () => {

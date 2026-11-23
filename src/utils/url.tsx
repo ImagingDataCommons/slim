@@ -121,18 +121,20 @@ export const isOidcAuthorizeCallbackUrl = (location: {
 
 /**
  * Whether the main window should treat the URL as its sign-in callback. A
- * code, tokens or a `state` always count. A bare `error` or `access_token`
- * only counts while this browser has a sign-in request pending, so a deep
- * link that happens to carry such a parameter still opens the app. (The
- * silent-renew iframe keeps the broad rule of isOidcAuthorizeCallbackUrl.)
+ * code or ID token always counts. An `error` or `access_token` counts with a
+ * `state`, or while this tab has a sign-in pending, so a deep link that only
+ * looks like a callback still opens the app. A `state` alone never counts:
+ * Slim uses `?state=` for presentation states. (The silent-renew iframe keeps
+ * the broad rule of isOidcAuthorizeCallbackUrl.)
  */
 export const isSignInCallbackUrl = (
   location: { search: string; hash: string },
   hasPendingSignInRequest: boolean,
 ): boolean =>
   isAuthorizationCodeInUrl(location) ||
-  locationParams(location).some((params) => hasAny(params, ['state'])) ||
-  (hasPendingSignInRequest && isOidcAuthorizeCallbackUrl(location))
+  (isOidcAuthorizeCallbackUrl(location) &&
+    (hasPendingSignInRequest ||
+      locationParams(location).some((params) => hasAny(params, ['state']))))
 
 /**
  * For a callback-shaped URL that carries no `state`, which no pending request

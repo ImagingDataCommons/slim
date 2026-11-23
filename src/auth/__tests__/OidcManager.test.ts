@@ -137,6 +137,7 @@ describe('OidcManager', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     window.history.replaceState({}, '', '/')
+    window.sessionStorage.clear()
   })
 
   describe('settings', () => {
@@ -265,10 +266,11 @@ describe('OidcManager', () => {
     })
 
     it('reports the IdP reason for an error callback without state', async () => {
+      const { manager, oidc } = setup()
+      /** This tab starts the redirect; the IdP answers without a state */
+      await expect(manager.signIn({})).resolves.toBe('redirected')
+      oidc.signinRedirect.mockClear()
       window.history.replaceState({}, '', '/#error=access_denied')
-      const { manager, oidc, stores } = setup()
-      /** The redirect this tab started is still pending */
-      await stores.stateStore.set('pending-request', '{}')
 
       await expect(manager.signIn({})).rejects.toThrow(
         'Sign-in failed: access_denied',
@@ -285,6 +287,32 @@ describe('OidcManager', () => {
       await expect(manager.signIn({})).resolves.toBe('redirected')
       expect(oidc.signinRedirectCallback).not.toHaveBeenCalled()
       expect(oidc.signinRedirect).toHaveBeenCalled()
+    })
+
+    it('opens a presentation state link, whose state is not an OIDC state', async () => {
+      window.history.replaceState(
+        {},
+        '',
+        '/studies/1/series/2?state=1.2.826.0.1.3680043.10.511.3.1094',
+      )
+      const { manager, oidc } = setup()
+
+      await expect(manager.signIn({})).resolves.toBe('redirected')
+      expect(oidc.signinRedirectCallback).not.toHaveBeenCalled()
+      expect(window.location.search).toBe(
+        '?state=1.2.826.0.1.3680043.10.511.3.1094',
+      )
+    })
+
+    it('ignores a sign-in this tab started too long ago', async () => {
+      const { manager, oidc } = setup()
+      await expect(manager.signIn({})).resolves.toBe('redirected')
+      const now = Date.now()
+      vi.spyOn(Date, 'now').mockReturnValue(now + 16 * 60 * 1000)
+      window.history.replaceState({}, '', '/studies/1?error=foo')
+
+      await expect(manager.signIn({})).resolves.toBe('redirected')
+      expect(oidc.signinRedirectCallback).not.toHaveBeenCalled()
     })
 
     it('strips the callback URL before the sign-in callback runs', async () => {
