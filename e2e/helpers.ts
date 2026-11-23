@@ -186,7 +186,7 @@ export async function mainViewportCenter(
  * stays listed with its overlays hidden) is left out of every capture.
  */
 const HIDE_VIEWPORT_LEGEND =
-  '[aria-label="Overlay color legend"] { visibility: hidden !important; }'
+  '[data-slot="overlay-legend"] { visibility: hidden !important; }'
 
 export async function captureViewport(page: Page): Promise<Buffer> {
   return page.screenshot({

@@ -53,6 +53,10 @@ export function ViewerChromeOverlays({
   if (hasVisibleRow && legendShownFor !== viewerKey) {
     setLegendShownFor(viewerKey)
   }
+  /** Collapsed for the slide it was collapsed on, as in the classic viewer */
+  const [legendCollapsedFor, setLegendCollapsedFor] = useState<
+    string | undefined
+  >()
   const legendVisible =
     derivedLegend.rows.length > 0 &&
     (hasVisibleRow || legendShownFor === viewerKey)
@@ -66,6 +70,10 @@ export function ViewerChromeOverlays({
             <DerivedLegend
               rows={derivedLegend.rows}
               onVisibilityChange={derivedLegend.onVisibilityChange}
+              collapsed={legendCollapsedFor === viewerKey}
+              onCollapsedChange={(collapsed) =>
+                setLegendCollapsedFor(collapsed ? viewerKey : undefined)
+              }
             />
           ) : undefined
         }

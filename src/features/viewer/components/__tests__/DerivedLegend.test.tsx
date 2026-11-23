@@ -38,6 +38,46 @@ describe('DerivedLegend', () => {
     )
   })
 
+  it('collapses to a header that counts the visible overlays', () => {
+    const onCollapsedChange = vi.fn()
+    const { rerender } = render(
+      <DerivedLegend
+        rows={[row(true), { ...row(false), id: 'seg-2' }]}
+        onVisibilityChange={vi.fn()}
+        onCollapsedChange={onCollapsedChange}
+      />,
+    )
+
+    const header = screen.getByRole('button', { name: 'Legend' })
+    expect(header).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(header)
+    expect(onCollapsedChange).toHaveBeenCalledWith(true)
+
+    rerender(
+      <DerivedLegend
+        rows={[row(true), { ...row(false), id: 'seg-2' }]}
+        onVisibilityChange={vi.fn()}
+        collapsed
+        onCollapsedChange={onCollapsedChange}
+      />,
+    )
+    expect(
+      screen.getByRole('button', { name: 'Legend (1 visible)' }),
+    ).toHaveAttribute('aria-expanded', 'false')
+    expect(
+      screen.queryByRole('list', { name: 'Overlay color legend' }),
+    ).not.toBeInTheDocument()
+    /** The controlled list stays in the DOM, hidden */
+    const collapsedHeader = screen.getByRole('button', {
+      name: 'Legend (1 visible)',
+    })
+    const list = document.getElementById(
+      collapsedHeader.getAttribute('aria-controls') ?? '',
+    )
+    expect(list).not.toBeNull()
+    expect(list).not.toBeVisible()
+  })
+
   it('renders nothing without rows', () => {
     const { container } = render(
       <DerivedLegend rows={[]} onVisibilityChange={vi.fn()} />,
