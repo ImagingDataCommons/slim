@@ -17,6 +17,7 @@ import { logger } from '../utils/logger'
 import {
   describeCallbackWithoutState,
   isOidcAuthorizeCallbackUrl,
+  isSignInCallbackUrl,
   joinUrl,
 } from '../utils/url'
 import type {
@@ -168,6 +169,8 @@ export default class OidcManager implements AuthManager {
   private readonly _oidc: OidcUserManager
   /** Set when the configuration asks for the implicit grant */
   private readonly _implicit?: ImplicitGrant
+  /** Pending sign-in requests, to tell a callback from a look-alike link */
+  private readonly _stateStore: OidcStores['stateStore']
   private readonly _authorizationListeners = new Set<AuthorizationCallback>()
 
   constructor(
@@ -178,6 +181,7 @@ export default class OidcManager implements AuthManager {
       createUserManager = (managerSettings) => new UserManager(managerSettings),
     }: OidcManagerOptions = {},
   ) {
+    this._stateStore = stores.stateStore
     this._oidc = createUserManager(
       buildUserManagerSettings(appUri, settings, stores),
     )
@@ -210,7 +214,10 @@ export default class OidcManager implements AuthManager {
     onSignIn?: SignInCallback
     returnUrl?: string
   }): Promise<SignInOutcome> => {
-    if (isOidcAuthorizeCallbackUrl(window.location)) {
+    const hasPendingSignInRequest =
+      isOidcAuthorizeCallbackUrl(window.location) &&
+      (await this._stateStore.getAllKeys()).length > 0
+    if (isSignInCallbackUrl(window.location, hasPendingSignInRequest)) {
       /**
        * Handle the callback from the authorization server: extract the code
        * (or implicit tokens) from the callback URL, obtain user information

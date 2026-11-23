@@ -266,7 +266,9 @@ describe('OidcManager', () => {
 
     it('reports the IdP reason for an error callback without state', async () => {
       window.history.replaceState({}, '', '/#error=access_denied')
-      const { manager, oidc } = setup()
+      const { manager, oidc, stores } = setup()
+      /** The redirect this tab started is still pending */
+      await stores.stateStore.set('pending-request', '{}')
 
       await expect(manager.signIn({})).rejects.toThrow(
         'Sign-in failed: access_denied',
@@ -274,6 +276,15 @@ describe('OidcManager', () => {
       expect(oidc.signinRedirectCallback).not.toHaveBeenCalled()
       expect(oidc.signinRedirect).not.toHaveBeenCalled()
       expect(window.location.hash).toBe('')
+    })
+
+    it('opens a deep link that only looks like a callback when no sign-in is pending', async () => {
+      window.history.replaceState({}, '', '/studies/1?error=foo')
+      const { manager, oidc } = setup()
+
+      await expect(manager.signIn({})).resolves.toBe('redirected')
+      expect(oidc.signinRedirectCallback).not.toHaveBeenCalled()
+      expect(oidc.signinRedirect).toHaveBeenCalled()
     })
 
     it('strips the callback URL before the sign-in callback runs', async () => {
