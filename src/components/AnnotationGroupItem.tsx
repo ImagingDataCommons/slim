@@ -17,7 +17,7 @@ import {
 } from '../utils/annotationGroup'
 import { measurementOptionToConcept } from '../utils/annotationGroupMeasurement'
 import { rgbToHex, toEditableColor, toRGB } from '../utils/color'
-import { formatGroupedNumber } from '../utils/displayFormat'
+import { formatLocaleInteger } from '../utils/displayFormat'
 import { toKeyValueItems } from '../utils/keyValue'
 import { areLayerItemPropsEqual } from '../utils/styleEquality'
 import ColorSlider from './ColorSlider'
@@ -181,8 +181,12 @@ function AnnotationGroupItem({
         )}
       </div>
       {count !== undefined && (
-        <span className="flex-none font-mono text-11.5 font-medium text-ink-secondary">
-          {formatGroupedNumber(count)}
+        <span
+          className="flex-none font-mono text-11.5 font-medium text-ink-secondary"
+          title={`${formatLocaleInteger(count)} annotations in this group`}
+        >
+          {formatLocaleInteger(count)}
+          <span className="sr-only"> annotations</span>
         </span>
       )}
       <InfoDetailsButton label={`Details for ${label}`} items={details} />

@@ -120,6 +120,14 @@ export function buildStudySummary(
   }
 }
 
+/** Integer in the reader's locale: 258843 → "258,843" (en-US). */
+export function formatLocaleInteger(value: number): string {
+  if (!Number.isFinite(value)) return ''
+  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(
+    Math.round(value),
+  )
+}
+
 /** Integer with space thousands separators: 18402 → "18 402". */
 export function formatGroupedNumber(value: number): string {
   if (!Number.isFinite(value)) return ''

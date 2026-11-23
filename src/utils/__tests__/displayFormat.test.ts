@@ -4,6 +4,7 @@ import {
   formatDisplayDate,
   formatDisplayTime,
   formatGroupedNumber,
+  formatLocaleInteger,
   formatMultiValue,
   formatPatientSpeciesCodeSequence,
   formatPersonName,
@@ -118,6 +119,16 @@ describe('formatPersonName', () => {
     expect(formatPersonName('^Jane')).toBe('Jane')
     expect(formatPersonName('')).toBe('')
     expect(formatPersonName(undefined)).toBe('')
+  })
+})
+
+describe('formatLocaleInteger', () => {
+  it('formats whole numbers in the reader locale', () => {
+    expect(formatLocaleInteger(258843)).toBe(
+      new Intl.NumberFormat().format(258843),
+    )
+    expect(formatLocaleInteger(12.6)).toBe('13')
+    expect(formatLocaleInteger(Number.NaN)).toBe('')
   })
 })
 
