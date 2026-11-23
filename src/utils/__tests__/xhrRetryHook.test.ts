@@ -221,7 +221,7 @@ describe('getXHRRetryHook', () => {
     it('does not retry a response that arrives after the abort', async () => {
       const xhr = new FakeXHR()
       xhr.statusQueue = [503, 200]
-      const clientHandler = jest.fn()
+      const clientHandler = vi.fn()
       xhr.onreadystatechange = clientHandler
       const controller = new AbortController()
       applyHookWithSignal(xhr, controller.signal)
@@ -250,7 +250,7 @@ describe('getXHRRetryHook', () => {
       const xhr = new FakeXHR()
       xhr.statusQueue = [200]
       const controller = new AbortController()
-      const removeSpy = jest.spyOn(controller.signal, 'removeEventListener')
+      const removeSpy = vi.spyOn(controller.signal, 'removeEventListener')
       applyHookWithSignal(xhr, controller.signal)
 
       xhr.send()
