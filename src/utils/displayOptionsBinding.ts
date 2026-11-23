@@ -44,7 +44,9 @@ export function summarizeDisplayOptions(
   return options
     .map((option) => {
       const label = option.shortLabel ?? option.label
-      if (option.disabled === true) return `${label} n/a`
+      if (option.disabled === true && option.busy !== true) {
+        return `${label} n/a`
+      }
       return `${label} ${option.enabled ? 'on' : 'off'}`
     })
     .join(' · ')

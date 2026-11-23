@@ -6,6 +6,8 @@ export interface DisplayOptionDescriptor<Id extends string = string> {
   description: string
   enabled: boolean
   disabled?: boolean
+  /** Disabled only until a change in progress settles, not unavailable */
+  busy?: boolean
 }
 
 export interface DisplayInputDescriptor {
@@ -40,6 +42,7 @@ export function buildOpticalPathDisplayOptions(settings: {
           : 'Apply the embedded color profile for accurate stain color.',
       enabled: settings.iccProfileEnabled,
       disabled: hasNoIccProfiles || isUpdatingColors,
+      busy: !hasNoIccProfiles && isUpdatingColors,
     },
     {
       id: 'gamma',
@@ -49,7 +52,8 @@ export function buildOpticalPathDisplayOptions(settings: {
         ? 'Affects segmentations, parametric maps and palette-colored channels; none is shown.'
         : 'Correct palette display for monitor gamma.',
       enabled: settings.gammaEnabled,
-      disabled: hasNoPalette,
+      /** Turning it on has no visible effect, but it can always be turned off */
+      disabled: hasNoPalette && !settings.gammaEnabled,
     },
   ]
 }

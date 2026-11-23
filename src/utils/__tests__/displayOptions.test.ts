@@ -46,16 +46,24 @@ describe('buildOpticalPathDisplayOptions', () => {
       isUpdatingColors: true,
     })
     expect(icc.disabled).toBe(true)
+    expect(icc.busy).toBe(true)
     expect(icc.description).toBe('Updating colors in the viewport…')
   })
 
-  it('disables gamma when nothing shown is palette colored', () => {
+  it('disables turning gamma on when nothing shown is palette colored', () => {
     const [, noPalette] = buildOpticalPathDisplayOptions({
+      iccProfileEnabled: true,
+      gammaEnabled: false,
+      usesPalette: false,
+    })
+    expect(noPalette.disabled).toBe(true)
+    /** Gamma that is on can still be turned off */
+    const [, onWithoutPalette] = buildOpticalPathDisplayOptions({
       iccProfileEnabled: true,
       gammaEnabled: true,
       usesPalette: false,
     })
-    expect(noPalette.disabled).toBe(true)
+    expect(onWithoutPalette.disabled).toBe(false)
     const [, withPalette] = buildOpticalPathDisplayOptions({
       iccProfileEnabled: true,
       gammaEnabled: true,

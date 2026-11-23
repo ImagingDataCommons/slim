@@ -96,4 +96,12 @@ describe('summarizeDisplayOptions', () => {
       summarizeDisplayOptions([descriptor({ label: 'ICC', disabled: true })]),
     ).toBe('ICC n/a')
   })
+
+  it('keeps on/off for an option that is only busy', () => {
+    expect(
+      summarizeDisplayOptions([
+        descriptor({ label: 'ICC', enabled: true, disabled: true, busy: true }),
+      ]),
+    ).toBe('ICC on')
+  })
 })
