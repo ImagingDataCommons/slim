@@ -69,6 +69,10 @@ export interface OpticalPathListProps {
   ) => void
   /** Whether ICC profiles are available for this slide */
   hasIccProfiles?: boolean
+  /** The image is being drawn again after an ICC toggle */
+  isUpdatingColors?: boolean
+  /** Something shown is colored through a palette; gamma has an effect */
+  usesPalette?: boolean
 }
 
 /** Active optical paths plus a selector to add inactive ones. */
@@ -86,6 +90,8 @@ function OpticalPathList({
   displaySettings,
   onDisplaySettingsChange,
   hasIccProfiles,
+  isUpdatingColors,
+  usesPalette,
 }: OpticalPathListProps): React.ReactElement | null {
   const [selectedIdentifier, setSelectedIdentifier] = useState<
     string | undefined
@@ -174,6 +180,8 @@ function OpticalPathList({
               buildOpticalPathDisplayOptions({
                 ...displaySettings,
                 hasIccProfiles,
+                isUpdatingColors,
+                usesPalette,
               }),
               displaySettings,
               { icc: 'iccProfileEnabled', gamma: 'gammaEnabled' },

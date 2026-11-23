@@ -19,16 +19,27 @@ describe('viewportLoadingReducer', () => {
       isLoading: true,
       phase: 'loading',
       colorProfile: 'none',
+      isColorProfileToggle: false,
     })
     expect(
       reduce([{ type: 'loadingStarted' }, { type: 'loadingEnded' }]),
-    ).toEqual({ isLoading: false, phase: 'ready', colorProfile: 'none' })
+    ).toEqual({
+      isLoading: false,
+      phase: 'ready',
+      colorProfile: 'none',
+      isColorProfileToggle: false,
+    })
   })
 
   it('keeps the busy flag when loading fails', () => {
     expect(
       reduce([{ type: 'loadingStarted' }, { type: 'loadingFailed' }]),
-    ).toEqual({ isLoading: true, phase: 'ready', colorProfile: 'none' })
+    ).toEqual({
+      isLoading: true,
+      phase: 'ready',
+      colorProfile: 'none',
+      isColorProfileToggle: false,
+    })
   })
 
   it('ends loading once the last pending frame settles', () => {
@@ -38,13 +49,23 @@ describe('viewportLoadingReducer', () => {
         type: 'frameSettled',
         hasPendingFrames: true,
       }),
-    ).toEqual({ isLoading: true, phase: 'loading', colorProfile: 'none' })
+    ).toEqual({
+      isLoading: true,
+      phase: 'loading',
+      colorProfile: 'none',
+      isColorProfileToggle: false,
+    })
     expect(
       viewportLoadingReducer(started, {
         type: 'frameSettled',
         hasPendingFrames: false,
       }),
-    ).toEqual({ isLoading: false, phase: 'ready', colorProfile: 'none' })
+    ).toEqual({
+      isLoading: false,
+      phase: 'ready',
+      colorProfile: 'none',
+      isColorProfileToggle: false,
+    })
   })
 
   it('waits again after a reset', () => {
@@ -105,6 +126,65 @@ describe('color profile', () => {
   it('says nothing about a profile the image does not have', () => {
     const state = reduce([{ type: 'reset' }, settle(false)])
     expect(viewportStatusLabel(state)).toBeUndefined()
+  })
+
+  it('announces a toggle until the image is drawn again, ignoring older frames', () => {
+    const settled = reduce([{ type: 'reset' }, start(false), settle(false)])
+    expect(viewportStatusLabel(settled)).toBeUndefined()
+
+    const toggled = viewportLoadingReducer(settled, {
+      type: 'colorProfileToggled',
+    })
+    expect(toggled.isColorProfileToggle).toBe(true)
+    expect(viewportStatusLabel(toggled)).toBe('Updating colors')
+
+    /** A frame from before the swap settling does not end the redraw */
+    const stale = viewportLoadingReducer(toggled, settle(false))
+    expect(stale.colorProfile).toBe('requested')
+
+    const drawn = [
+      start(false),
+      settle(false),
+      { type: 'colorProfileDrawn' } as const,
+    ].reduce(viewportLoadingReducer, stale)
+    expect(drawn.colorProfile).toBe('none')
+    expect(drawn.isColorProfileToggle).toBe(false)
+    expect(viewportStatusLabel(drawn)).toBeUndefined()
+  })
+
+  it('waits for the swap DMV reports, not for frames, when it can', () => {
+    const toggled = reduce([
+      { type: 'reset' },
+      start(false),
+      settle(false),
+      { type: 'colorProfileToggled', awaitsSwap: true },
+    ])
+    expect(toggled.colorProfile).toBe('swapping')
+    expect(viewportStatusLabel(toggled)).toBe('Updating colors')
+
+    /** Old-layer frames during the swap do not move it on */
+    const panned = [start(false), settle(false)].reduce(
+      viewportLoadingReducer,
+      toggled,
+    )
+    expect(panned.colorProfile).toBe('swapping')
+
+    const swapped = viewportLoadingReducer(panned, {
+      type: 'colorProfileSwapped',
+    })
+    expect(swapped.colorProfile).toBe('drawing')
+    const drawn = viewportLoadingReducer(swapped, { type: 'colorProfileDrawn' })
+    expect(drawn.colorProfile).toBe('none')
+    expect(drawn.isColorProfileToggle).toBe(false)
+  })
+
+  it('ignores a swap that arrives after the slide was reset', () => {
+    const state = reduce([
+      { type: 'colorProfileToggled', awaitsSwap: true },
+      { type: 'reset' },
+      { type: 'colorProfileSwapped' },
+    ])
+    expect(state.colorProfile).toBe('none')
   })
 
   it('stops announcing a profile that never arrives', () => {

@@ -102,6 +102,43 @@ describe('useViewportLoading', () => {
     expect(result.current.isWaitingForFirstImage).toBe(true)
   })
 
+  it('keeps "Updating colors" from an ICC toggle until the swap is drawn', async () => {
+    const { session, access } = createTestSession()
+    const map = session.volumeViewer.getMap()
+    const { result } = renderHook(() => useViewportLoading(access.sessionRef))
+    let finishSwap: () => void = () => {}
+    const swap = new Promise<void>((resolve) => {
+      finishSwap = resolve
+    })
+    act(() => {
+      result.current.reset(session)
+      result.current.dmvHandlers.dicommicroscopyviewer_frame_loading_started(
+        frame(1),
+      )
+      result.current.dmvHandlers.dicommicroscopyviewer_frame_loading_ended(
+        frame(1),
+      )
+      result.current.colorProfileToggled(swap)
+    })
+    expect(result.current.isUpdatingColors).toBe(true)
+    expect(result.current.statusLabel).toBe('Updating colors')
+
+    await act(async () => {
+      finishSwap()
+      await swap
+    })
+    const onRenderComplete = vi
+      .mocked(map.on)
+      .mock.calls.findLast(
+        ([type]) => String(type) === 'rendercomplete',
+      )?.[1] as (() => void) | undefined
+    act(() => {
+      onRenderComplete?.()
+    })
+    expect(result.current.isUpdatingColors).toBe(false)
+    expect(result.current.statusLabel).toBeUndefined()
+  })
+
   it('announces the color profile until the map has drawn the corrected tiles', () => {
     const { session, access } = createTestSession()
     /** A color slide whose image carries an ICC profile */
@@ -126,6 +163,8 @@ describe('useViewportLoading', () => {
     })
     /** Loaded, but decoded, corrected and drawn only later */
     expect(result.current.statusLabel).toBe('Applying color profile')
+    /** A frame is requested so an already finished map reports again */
+    expect(map.render).toHaveBeenCalled()
 
     const onRenderComplete = vi
       .mocked(map.on)

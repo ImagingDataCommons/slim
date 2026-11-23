@@ -20,8 +20,14 @@ export function buildOpticalPathDisplayOptions(settings: {
   iccProfileEnabled: boolean
   gammaEnabled: boolean
   hasIccProfiles?: boolean
+  /** The image is being drawn again after an ICC toggle */
+  isUpdatingColors?: boolean
+  /** Something shown is colored through a palette (SEG, map, channel) */
+  usesPalette?: boolean
 }): Array<DisplayOptionDescriptor<'icc' | 'gamma'>> {
   const hasNoIccProfiles = settings.hasIccProfiles === false
+  const isUpdatingColors = settings.isUpdatingColors === true
+  const hasNoPalette = settings.usesPalette === false
   return [
     {
       id: 'icc',
@@ -29,16 +35,21 @@ export function buildOpticalPathDisplayOptions(settings: {
       shortLabel: 'ICC',
       description: hasNoIccProfiles
         ? 'This slide has no ICC profiles.'
-        : 'Apply the embedded color profile for accurate stain color.',
+        : isUpdatingColors
+          ? 'Updating colors in the viewport…'
+          : 'Apply the embedded color profile for accurate stain color.',
       enabled: settings.iccProfileEnabled,
-      disabled: hasNoIccProfiles,
+      disabled: hasNoIccProfiles || isUpdatingColors,
     },
     {
       id: 'gamma',
       label: 'Gamma correction',
       shortLabel: 'Gamma',
-      description: 'Correct palette display for monitor gamma.',
+      description: hasNoPalette
+        ? 'Affects segmentations, parametric maps and palette-colored channels; none is shown.'
+        : 'Correct palette display for monitor gamma.',
       enabled: settings.gammaEnabled,
+      disabled: hasNoPalette,
     },
   ]
 }

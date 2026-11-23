@@ -36,6 +36,13 @@ export interface ViewportLoadingApi {
    * first image, or the ICC color profile that redraws it. None when settled
    */
   statusLabel: string | undefined
+  /** The image is being drawn again after an ICC profile toggle */
+  isUpdatingColors: boolean
+  /**
+   * Announce the redraw that follows an ICC profile toggle; `swap` settles
+   * once DMV swapped its tile loaders (DMV 0.50.1 and later)
+   */
+  colorProfileToggled: (swap?: PromiseLike<unknown>) => void
   /** Back to waiting, for the new viewers of `session` */
   reset: (session: ViewerSession) => void
   dmvHandlers: LoadingEventHandlers
@@ -143,7 +150,15 @@ export function useViewportLoading(
     },
   }
 
-  const { colorProfile } = loading
+  const { colorProfile, isColorProfileToggle } = loading
+  /** Busy cursor over the whole page while a toggle redraws the image */
+  useEffect(() => {
+    if (!isColorProfileToggle) return
+    document.body.classList.add('cursor-progress')
+    return () => {
+      document.body.classList.remove('cursor-progress')
+    }
+  }, [isColorProfileToggle])
   /**
    * Loaded frames are decoded and color corrected before they are drawn, so
    * the announcement lasts until the map has rendered every tile in view
@@ -159,6 +174,11 @@ export function useViewportLoading(
       dispatch({ type: 'colorProfileDrawn' })
     }
     map.on('rendercomplete', onRenderComplete)
+    /**
+     * Ask for a frame, so a map that already finished rendering before this
+     * listener was attached still reports rendercomplete
+     */
+    map.render()
     return () => {
       map.un('rendercomplete', onRenderComplete)
     }
@@ -177,6 +197,14 @@ export function useViewportLoading(
     isLoading: loading.isLoading,
     isWaitingForFirstImage: isViewportLoading(loading.phase),
     statusLabel: viewportStatusLabel(loading),
+    isUpdatingColors: isColorProfileToggle,
+    colorProfileToggled: (swap) => {
+      dispatch({ type: 'colorProfileToggled', awaitsSwap: swap !== undefined })
+      swap?.then(
+        () => dispatch({ type: 'colorProfileSwapped' }),
+        () => dispatch({ type: 'colorProfileTimedOut' }),
+      )
+    },
     reset: (session) => {
       const image = session.slide.volumeImages[0]
       dispatch({

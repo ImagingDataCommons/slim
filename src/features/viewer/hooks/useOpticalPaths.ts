@@ -78,10 +78,14 @@ export interface OpticalPathsApi {
     opticalPathIdentifier: string
     styleOptions: { opacity?: number; color?: number[]; limitValues?: number[] }
   }) => void
+  /**
+   * Returns the tile loader swap of an ICC toggle when DMV reports it
+   * (0.50.1 and later), so callers can tell when the redraw can begin
+   */
   onDisplaySettingsChange: (
     settings: OpticalPathDisplaySettings,
     previous?: OpticalPathDisplaySettings,
-  ) => void
+  ) => PromiseLike<unknown> | undefined
 }
 
 /** Which optical paths are shown and blended, and how colors are managed */
@@ -206,18 +210,20 @@ export function useOpticalPaths(
     },
     onDisplaySettingsChange: (settings, previous = displaySettings) => {
       const viewer = sessionRef.current?.volumeViewer
-      if (viewer === undefined) return
+      if (viewer === undefined) return undefined
       /** Diff against `previous` so a toggle is never applied twice */
       const changed = changedSettingKeys(previous, settings)
+      let iccSwap: PromiseLike<unknown> | undefined
       if (changed.includes('iccProfileEnabled')) {
         setIsIccProfileEnabled(settings.iccProfileEnabled)
-        viewer.toggleICCProfiles()
+        iccSwap = viewer.toggleICCProfiles() ?? undefined
       }
       if (changed.includes('gammaEnabled')) {
         setGammaCorrection(settings.gammaEnabled)
         viewer.setPaletteDisplayGammaCorrectionEnabled(settings.gammaEnabled)
         refreshSnapshot()
       }
+      return iccSwap
     },
   }
 }

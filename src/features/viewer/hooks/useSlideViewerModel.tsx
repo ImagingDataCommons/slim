@@ -605,8 +605,30 @@ export function useSlideViewerModel({
         onOpticalPathActivityChange: opticalPaths.onActivityChange,
         selectedPresentationStateUID: presentationStates.selectedUID,
         hasIccProfiles: snapshot.hasIccProfiles,
+        isUpdatingColors: viewportLoading.isUpdatingColors,
+        usesPalette:
+          segmentations.visibleUIDs.size > 0 ||
+          parametricMaps.visibleUIDs.size > 0 ||
+          [...opticalPaths.visibleIdentifiers].some(
+            (identifier) =>
+              snapshot.opticalPathStyles[identifier]
+                ?.paletteColorLookupTable !== undefined,
+          ),
         displaySettings: opticalPaths.displaySettings,
-        onDisplaySettingsChange: opticalPaths.onDisplaySettingsChange,
+        onDisplaySettingsChange: (settings, previous) => {
+          const before = previous ?? opticalPaths.displaySettings
+          const iccSwap = opticalPaths.onDisplaySettingsChange(
+            settings,
+            previous,
+          )
+          /** Without a viewer nothing was toggled, so nothing redraws */
+          if (
+            settings.iccProfileEnabled !== before.iccProfileEnabled &&
+            sessionRef.current !== undefined
+          ) {
+            viewportLoading.colorProfileToggled(iccSwap)
+          }
+        },
       },
       presentationStates: {
         presentationStates: presentationStates.presentationStates,

@@ -263,7 +263,8 @@ declare module 'dicom-microscopy-viewer' {
       getAnnotationGroupMetadata (
         annotationGroupUID: string
       ): metadata.MicroscopyBulkSimpleAnnotations
-      toggleICCProfiles (): void;
+      /** Returns the swap's promise from DMV 0.50.1; void before */
+      toggleICCProfiles (): Promise<void> | void;
       getICCProfiles (): any[];
       setPaletteDisplayGammaCorrectionEnabled (enabled: boolean): void;
       getPaletteDisplayGammaCorrectionEnabled (): boolean;

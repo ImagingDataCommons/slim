@@ -129,6 +129,7 @@ function createFakeMap(): {
   getViewport: () => HTMLElement
   on: Mock
   un: Mock
+  render: Mock
 } {
   const viewport = document.createElement('div')
   const view = {
@@ -147,6 +148,7 @@ function createFakeMap(): {
     getViewport: () => viewport,
     on: vi.fn(),
     un: vi.fn(),
+    render: vi.fn(),
   }
 }
 

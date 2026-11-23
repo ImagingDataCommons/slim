@@ -37,6 +37,32 @@ describe('buildOpticalPathDisplayOptions', () => {
     })
     expect(icc.disabled).toBe(false)
   })
+
+  it('locks ICC while the viewport redraws after a toggle', () => {
+    const [icc] = buildOpticalPathDisplayOptions({
+      iccProfileEnabled: false,
+      gammaEnabled: false,
+      hasIccProfiles: true,
+      isUpdatingColors: true,
+    })
+    expect(icc.disabled).toBe(true)
+    expect(icc.description).toBe('Updating colors in the viewport…')
+  })
+
+  it('disables gamma when nothing shown is palette colored', () => {
+    const [, noPalette] = buildOpticalPathDisplayOptions({
+      iccProfileEnabled: true,
+      gammaEnabled: true,
+      usesPalette: false,
+    })
+    expect(noPalette.disabled).toBe(true)
+    const [, withPalette] = buildOpticalPathDisplayOptions({
+      iccProfileEnabled: true,
+      gammaEnabled: true,
+      usesPalette: true,
+    })
+    expect(withPalette.disabled).toBe(false)
+  })
 })
 
 describe('buildSegmentDisplayOptions', () => {
