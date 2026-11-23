@@ -106,6 +106,14 @@ export function validateGoToInput(
 }
 
 /**
+ * Size of a screen pixel (mm) at `magnification`, with 10 µm per pixel
+ * at 1×, the convention of the magnification readout
+ */
+export function goToResolution(magnification: number): number {
+  return PIXEL_SPACING_AT_1X_MM / magnification
+}
+
+/**
  * Index of the pyramid level whose pixel spacing (mm) is closest to the one
  * implied by `magnification`; the first level wins ties.
  */

@@ -15,6 +15,7 @@ import {
   choosePyramidLevel,
   type GoToField,
   type GoToRanges,
+  goToResolution,
   validateGoToInput,
 } from '../utils/goTo'
 import type { ViewerShortcutAction } from '../utils/keyboardShortcuts'
@@ -260,9 +261,15 @@ export function useAnnotationTools({
         { length: viewer.numLevels },
         (_, level) => viewer.getPixelSpacing(level)[0],
       )
+      /**
+       * `resolution` lands on the exact magnification (DMV 0.50.1 and
+       * later). Older DMV ignores it and animates to `level` as an
+       * OpenLayers zoom index, which lands too far out with free zoom
+       */
       viewer.navigate({
         position: [target.x, target.y],
         level: choosePyramidLevel(target.magnification, pixelSpacings),
+        resolution: goToResolution(target.magnification),
       })
       if (canWriteRois) {
         const point = new dmv.scoord3d.Point({

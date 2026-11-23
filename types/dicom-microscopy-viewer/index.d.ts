@@ -58,7 +58,8 @@ declare module 'dicom-microscopy-viewer' {
     export class VolumeImageViewer {
       constructor (options: VolumeImageViewerOptions)
       render (options: object): void
-      navigate (options: { level?: number, position?: number[] })
+      /** `resolution` (mm per screen pixel) needs a DMV that supports it */
+      navigate (options: { level?: number, position?: number[], resolution?: number })
       cleanup (): void
       get numLevels (): number
       get frameOfReferenceUID (): string

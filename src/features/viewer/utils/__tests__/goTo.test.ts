@@ -1,6 +1,7 @@
 import {
   choosePyramidLevel,
   EMPTY_GO_TO_INPUT,
+  goToResolution,
   validateGoToInput,
 } from '../goTo'
 
@@ -46,6 +47,13 @@ describe('validateGoToInput', () => {
     )
     expect(result.fields.magnification.isValid).toBe(false)
     expect(result.target).toBeUndefined()
+  })
+})
+
+describe('goToResolution', () => {
+  it('uses 10 µm per screen pixel at 1×, like the magnification readout', () => {
+    expect(goToResolution(1)).toBeCloseTo(0.01, 12)
+    expect(goToResolution(40)).toBeCloseTo(0.00025, 12)
   })
 })
 
