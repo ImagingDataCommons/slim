@@ -17,9 +17,10 @@
   left: auto;
   top: auto;
   margin: 0;
-  padding: 2px !important;
-  border-radius: 8px;
-  background: rgb(var(--panel));
+  /* A thin, constant frame: the thumbnail fills the card up to its border */
+  padding: 0 !important;
+  border-radius: 7px;
+  background: rgb(var(--panel) / 0.6);
   border: 1px solid rgb(var(--line));
   box-shadow: 0 2px 8px rgb(var(--shadow-color) / 0.08);
 }
@@ -43,12 +44,13 @@
   border: 0 !important;
   border-radius: 6px;
   overflow: hidden;
-  background: rgb(var(--overview-map)) !important;
+  /* Slightly see-through, so space the thumbnail does not cover stays quiet */
+  background: rgb(var(--overview-map) / 0.85) !important;
 }
 
 /* Fluorescence slides are dark, so their overview stays dark too */
 [data-fluorescence] .ol-overviewmap .ol-overviewmap-map {
-  background: rgb(var(--viewport-fluorescence)) !important;
+  background: rgb(var(--viewport-fluorescence) / 0.85) !important;
 }
 
 .ol-overviewmap-box {
