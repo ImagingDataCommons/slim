@@ -6,7 +6,7 @@ import { notifyVisualizationError } from '../services/derivedDataLoaders'
 import type { DmvEventHandlers } from '../services/dmvEvents'
 import type { ViewerSession, ViewerSessionRef } from '../services/viewerSession'
 import { hasIccProfile } from '../utils/iccProfile'
-import { recordFirstFrameStatistics } from '../utils/pixelStatistics'
+import { recordFrameStatistics } from '../utils/pixelStatistics'
 import {
   INITIAL_VIEWPORT_LOADING,
   isViewportLoading,
@@ -138,7 +138,7 @@ export function useViewportLoading(
           StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE &&
         session.slide.areVolumeImagesMonochrome
       ) {
-        recordFirstFrameStatistics(
+        recordFrameStatistics(
           session.pixelStatistics,
           frameInfo.channelIdentifier,
           frameInfo.pixelArray,

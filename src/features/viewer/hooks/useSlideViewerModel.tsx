@@ -344,29 +344,32 @@ export function useSlideViewerModel({
        */
       const session = sessionRef.current
       const volumeViewer = session?.volumeViewer
-      /** A channel's first frame sets its window slider range, once */
-      const hasNewPixelRange =
-        session !== undefined &&
-        frameInfo.channelIdentifier !== undefined &&
-        session.pixelStatistics.has(frameInfo.channelIdentifier) &&
-        !Object.hasOwn(
-          snapshot.opticalPathPixelRanges,
-          frameInfo.channelIdentifier,
-        )
       /**
-       * Like the classic viewer: without a presentation state, a channel's
-       * first frame sets its window, unless the user already changed it
+       * A channel's sampled pixel range grew (its first frames): its window
+       * slider range follows
        */
       const channel = frameInfo.channelIdentifier
       const statistics =
         channel !== undefined
           ? session?.pixelStatistics.get(channel)
           : undefined
+      const shownRange =
+        channel !== undefined
+          ? snapshot.opticalPathPixelRanges[channel]
+          : undefined
+      const hasNewPixelRange =
+        statistics !== undefined &&
+        (shownRange === undefined ||
+          shownRange.min !== statistics.min ||
+          shownRange.max !== statistics.max)
+      /**
+       * Like the classic viewer: without a presentation state, the sampled
+       * range sets the channel's window, unless the user already changed it
+       */
       if (
         hasNewPixelRange &&
         session !== undefined &&
         channel !== undefined &&
-        statistics !== undefined &&
         !session.isPresentationStateShown &&
         !session.userWindowedOpticalPaths.has(channel)
       ) {

@@ -196,6 +196,18 @@ describe('SlideViewer', () => {
     })
 
     expect(volumeViewer.getOpticalPathStyle('1').limitValues).toEqual([5, 900])
+
+    /** A later frame of the sample widens the window */
+    act(() => {
+      dispatchDmvEvent('dicommicroscopyviewer_frame_loading_ended', {
+        frameNumber: 2,
+        sopInstanceUID: '1.2.3.4.1',
+        sopClassUID: StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE,
+        channelIdentifier: '1',
+        pixelArray: new Uint16Array([2, 1800]),
+      })
+    })
+    expect(volumeViewer.getOpticalPathStyle('1').limitValues).toEqual([2, 1800])
   })
 
   it('cleans up the viewers on unmount', async () => {
