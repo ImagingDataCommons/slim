@@ -111,7 +111,14 @@ function MappingItem({
       <InlineOpacityRow
         label={mapping.label}
         opacity={style.opacity}
-        onChange={(opacity) => previewLive({ opacity })}
+        dimmed={!isVisible}
+        onChange={(opacity) => {
+          /** Setting the opacity of a hidden map shows it */
+          if (!isVisible) {
+            onVisibilityChange({ mappingUID: mapping.uid, isVisible: true })
+          }
+          previewLive({ opacity })
+        }}
         onCommit={(opacity) => updateStyle({ opacity })}
       />
     </div>

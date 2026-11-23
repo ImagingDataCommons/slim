@@ -70,6 +70,23 @@ describe('SegmentItem', () => {
     expect(screen.getByText('51%')).toBeInTheDocument()
   })
 
+  it('fades the opacity of a hidden segment and shows it when changed', () => {
+    const { onVisibilityChange, onStyleChange } = renderItem({
+      isVisible: false,
+    })
+    const slider = screen.getByRole('slider', { name: 'Opacity of Nuclei' })
+    expect(slider.closest('[data-dimmed]')).not.toBeNull()
+    fireEvent.keyDown(slider, { key: 'ArrowRight' })
+    expect(onVisibilityChange).toHaveBeenCalledWith({
+      segmentUID: 'segment-1',
+      isVisible: true,
+    })
+    expect(onStyleChange).toHaveBeenCalledWith({
+      segmentUID: 'segment-1',
+      styleOptions: { opacity: 0.51 },
+    })
+  })
+
   it('disables the controls of an absent segment', () => {
     const { onVisibilityChange } = renderItem({ segment: makeSegment(true) })
     const toggle = screen.getByRole('button', { name: 'Show Nuclei' })

@@ -195,7 +195,14 @@ function SegmentItem({
         label={label}
         opacity={style.opacity}
         disabled={isAbsent}
-        onChange={(opacity) => previewLive({ opacity })}
+        dimmed={!isVisible && !isAbsent}
+        onChange={(opacity) => {
+          /** Setting the opacity of a hidden segment shows it */
+          if (!isVisible) {
+            onVisibilityChange({ segmentUID: segment.uid, isVisible: true })
+          }
+          previewLive({ opacity })
+        }}
         onCommit={(opacity) => updateStyle({ opacity })}
       />
     </div>

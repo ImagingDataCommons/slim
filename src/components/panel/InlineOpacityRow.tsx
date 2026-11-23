@@ -1,5 +1,6 @@
 import type * as React from 'react'
 
+import { cn } from '../../lib/utils'
 import { Slider } from '../ui/slider'
 
 export interface InlineOpacityRowProps {
@@ -7,6 +8,8 @@ export interface InlineOpacityRowProps {
   label: string
   opacity: number
   disabled?: boolean
+  /** The layer is hidden: the row is shown faded but stays usable */
+  dimmed?: boolean
   /** Continuous updates while dragging */
   onChange: (opacity: number) => void
   /** Final value on release or keyboard change */
@@ -18,11 +21,18 @@ export function InlineOpacityRow({
   label,
   opacity,
   disabled = false,
+  dimmed = false,
   onChange,
   onCommit,
 }: InlineOpacityRowProps): React.ReactElement {
   return (
-    <div className="flex items-center gap-2 text-11.5 text-ink-muted">
+    <div
+      data-dimmed={dimmed || undefined}
+      className={cn(
+        'flex items-center gap-2 text-11.5 text-ink-muted transition-opacity',
+        dimmed && 'opacity-45 hover:opacity-80 focus-within:opacity-80',
+      )}
+    >
       Opacity
       <Slider
         className="flex-1"
