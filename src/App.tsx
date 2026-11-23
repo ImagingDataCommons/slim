@@ -82,6 +82,8 @@ function ParametrizedCaseViewer({
         app={app}
         enableAnnotationTools={enableAnnotationTools}
         studyInstanceUID={studyInstanceUID}
+        useViv={config.useViv === true}
+        vivSettings={config.vivSettings}
       />
     </ValidationProvider>
   )

@@ -5,6 +5,8 @@ declare module 'dicomweb-client' {
     export interface DICOMwebClientRequestHookMetadata {
       url: string
       method: string
+      /** Request headers the client will send (e.g. Range on retrieveBulkData). */
+      headers?: Record<string, string>
     }
 
     export type DICOMwebClientRequestHook = (request: XMLHttpRequest, metadata: DICOMwebClientRequestHookMetadata) => XMLHttpRequest
@@ -83,7 +85,11 @@ declare module 'dicomweb-client' {
 
     export interface RetrieveBulkDataOptions {
       BulkDataURI: string
-      mediaTypes?: string[]
+      mediaTypes?:
+        | string[]
+        | Array<{ mediaType: string; transferSyntaxUID?: string }>
+      /** Start/end byte offsets (inclusive). Only valid with single-part octet-stream. */
+      byteRange?: [number, number] | number[]
     }
 
     export interface RetrieveInstanceFramesRenderedOptions {
@@ -136,6 +142,9 @@ declare module 'dicomweb-client' {
     export interface DICOMwebClient {
       headers: { [key: string]: string }
       baseURL: string
+      /** Present on the concrete {@link DICOMwebClient} implementation; used for retries and Viv tile abort. */
+      requestHooks?: DICOMwebClientRequestHook[]
+      errorInterceptor?: (error: DICOMwebClientError) => void
       // STOW-RS
       storeInstances(options: StoreInstancesOptions): Promise<void>
       // QIDO-RS
