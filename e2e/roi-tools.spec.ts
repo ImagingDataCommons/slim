@@ -95,7 +95,7 @@ test.describe('ROI tools', () => {
     await expect(rois.getByRole('button', { name: /^ROI 1 / })).toHaveCount(0)
   })
 
-  test('D5 Go to validates input and centers on slide coordinates', async ({
+  test('D5 Go to validates input, centers on slide coordinates and zooms to the magnification', async ({
     page,
   }) => {
     await openViewer(page, slideUrl)
@@ -123,6 +123,10 @@ test.describe('ROI tools', () => {
     await dialog.getByRole('button', { name: 'Go to position' }).click()
     await expect(dialog).toBeHidden()
     await expectViewportToDiffer(page, before, 5)
+    /** Lands on the requested magnification, not the closest pyramid level */
+    await expect(
+      page.getByRole('main').getByText('10× · 1.00 µm/px', { exact: true }),
+    ).toBeVisible()
   })
 
   /**
