@@ -287,11 +287,17 @@ export default class OidcManager implements AuthManager {
         returnUrl: returnUrl ?? currentReturnUrl(),
       }
       markPendingSignIn()
-      if (this._implicit != null) {
-        await this._implicit.signinRedirect(state)
-      } else {
-        /** Stays pending until the page unloads (or is restored from bfcache) */
-        await this._oidc.signinRedirect({ state })
+      try {
+        if (this._implicit != null) {
+          await this._implicit.signinRedirect(state)
+        } else {
+          /** Stays pending until the page unloads (or is restored from bfcache) */
+          await this._oidc.signinRedirect({ state })
+        }
+      } catch (error) {
+        /** No redirect happened, so no answer is on its way */
+        clearPendingSignIn()
+        throw error
       }
       return 'redirected'
     }

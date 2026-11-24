@@ -304,6 +304,16 @@ describe('OidcManager', () => {
       )
     })
 
+    it('forgets the pending sign-in when the redirect fails', async () => {
+      const { manager, oidc } = setup()
+      oidc.signinRedirect.mockRejectedValueOnce(new Error('IdP unreachable'))
+      await expect(manager.signIn({})).rejects.toThrow('IdP unreachable')
+      window.history.replaceState({}, '', '/studies/1?error=foo')
+
+      await expect(manager.signIn({})).resolves.toBe('redirected')
+      expect(oidc.signinRedirectCallback).not.toHaveBeenCalled()
+    })
+
     it('ignores a sign-in this tab started too long ago', async () => {
       const { manager, oidc } = setup()
       await expect(manager.signIn({})).resolves.toBe('redirected')
