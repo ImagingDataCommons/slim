@@ -73,6 +73,11 @@ interface AnnotationGroupLocalStyle {
   fillOpacity: number
 }
 
+/** "annotation" or "annotations" for a count */
+function annotationNoun(count: number): string {
+  return count === 1 ? 'annotation' : 'annotations'
+}
+
 /** One annotation group with visibility, style and measurement coloring. */
 function AnnotationGroupItem({
   annotationGroup,
@@ -186,10 +191,10 @@ function AnnotationGroupItem({
       {count !== undefined && (
         <span
           className="flex-none font-mono text-11.5 font-medium text-ink-secondary"
-          title={`${formatLocaleInteger(count)} annotations in this group`}
+          title={`${formatLocaleInteger(count)} ${annotationNoun(count)} in this group`}
         >
           {formatLocaleInteger(count)}
-          <span className="sr-only"> annotations</span>
+          <span className="sr-only"> {annotationNoun(count)}</span>
         </span>
       )}
       <InfoDetailsButton label={`Details for ${label}`} items={details} />

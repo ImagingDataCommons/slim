@@ -49,7 +49,7 @@ export function buildOpticalPathDisplayOptions(settings: {
       label: 'Gamma correction',
       shortLabel: 'Gamma',
       description: hasNoPalette
-        ? 'Affects segmentations, parametric maps and palette-colored channels; none is shown.'
+        ? 'Affects segmentations, parametric maps and palette-colored channels, none of which is shown now.'
         : 'Correct palette display for monitor gamma.',
       enabled: settings.gammaEnabled,
       /** Turning it on has no visible effect, but it can always be turned off */

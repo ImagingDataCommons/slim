@@ -90,8 +90,8 @@ export interface OpticalPathsApi {
     styleOptions: { opacity?: number; color?: number[]; limitValues?: number[] }
   }) => void
   /**
-   * Returns the tile loader swap of an ICC toggle when DMV reports it
-   * (0.50.1 and later), so callers can tell when the redraw can begin
+   * Returns the tile loader swap of an ICC toggle, so callers can tell when
+   * the redraw can begin
    */
   onDisplaySettingsChange: (
     settings: OpticalPathDisplaySettings,

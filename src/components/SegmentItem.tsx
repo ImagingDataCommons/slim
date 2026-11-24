@@ -20,6 +20,7 @@ import { InlineOpacityRow } from './panel/InlineOpacityRow'
 import { LayerSettingsPopover } from './panel/LayerSettingsPopover'
 import { useFrameThrottledCallback } from './panel/useFrameThrottledCallback'
 import { useLayerStyle } from './panel/useLayerStyle'
+import { useShowOnAdjust } from './panel/useShowOnAdjust'
 import { VisibilityToggleButton } from './panel/VisibilityToggleButton'
 import { InfoDetailsButton } from './slim/InfoDetailsButton'
 
@@ -93,6 +94,10 @@ function SegmentItem({
   /** Listed in the Segment Sequence but no frames contain it */
   const isAbsent = segment.isAbsent === true
   const isVisible = !isAbsent && isVisibleProp
+  /** Setting the opacity of a hidden segment shows it */
+  const showOnAdjust = useShowOnAdjust(isVisible, () => {
+    onVisibilityChange({ segmentUID: segment.uid, isVisible: true })
+  })
   const segmentationType = getSegmentationType({
     SegmentationType: metadata?.[0]?.SegmentationType,
   })
@@ -197,13 +202,13 @@ function SegmentItem({
         disabled={isAbsent}
         dimmed={!isVisible && !isAbsent}
         onChange={(opacity) => {
-          /** Setting the opacity of a hidden segment shows it */
-          if (!isVisible) {
-            onVisibilityChange({ segmentUID: segment.uid, isVisible: true })
-          }
+          showOnAdjust.onAdjust()
           previewLive({ opacity })
         }}
-        onCommit={(opacity) => updateStyle({ opacity })}
+        onCommit={(opacity) => {
+          showOnAdjust.onAdjustEnd()
+          updateStyle({ opacity })
+        }}
       />
     </div>
   )

@@ -12,7 +12,6 @@ import type { AnnotationDraft } from '../utils/annotationDraft'
 import { planToolMode } from '../utils/annotationToolModes'
 import { applyToolModePlan } from '../utils/applyToolModePlan'
 import {
-  choosePyramidLevel,
   type GoToField,
   type GoToRanges,
   goToResolution,
@@ -257,18 +256,9 @@ export function useAnnotationTools({
         `select slide position (${target.x}, ${target.y}) ` +
           `at ${target.magnification}x magnification`,
       )
-      const pixelSpacings = Array.from(
-        { length: viewer.numLevels },
-        (_, level) => viewer.getPixelSpacing(level)[0],
-      )
-      /**
-       * `resolution` lands on the exact magnification (DMV 0.50.1 and
-       * later). Older DMV ignores it and animates to `level` as an
-       * OpenLayers zoom index, which lands too far out with free zoom
-       */
+      /** `resolution` lands on the exact magnification */
       viewer.navigate({
         position: [target.x, target.y],
-        level: choosePyramidLevel(target.magnification, pixelSpacings),
         resolution: goToResolution(target.magnification),
       })
       if (canWriteRois) {

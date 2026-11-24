@@ -288,7 +288,6 @@ describe('useAnnotationTools visibility and go-to', () => {
 
     expect(viewer.navigate).toHaveBeenCalledWith({
       position: [10, 20],
-      level: expect.any(Number),
       /** 10× at 10 µm per screen pixel at 1× */
       resolution: expect.closeTo(0.001, 12),
     })

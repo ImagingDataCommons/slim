@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from 'react'
+import { useEffect, useReducer, useRef } from 'react'
 
 import { StorageClasses } from '../../../data/uids'
 import { logger } from '../../../utils/logger'
@@ -40,7 +40,7 @@ export interface ViewportLoadingApi {
   isUpdatingColors: boolean
   /**
    * Announce the redraw that follows an ICC profile toggle; `swap` settles
-   * once DMV swapped its tile loaders (DMV 0.50.1 and later)
+   * once DMV swapped its tile loaders
    */
   colorProfileToggled: (swap?: PromiseLike<unknown>) => void
   /** Back to waiting, for the new viewers of `session` */
@@ -84,6 +84,11 @@ function isVolumeFrame(
 export function useViewportLoading(
   sessionRef: ViewerSessionRef,
 ): ViewportLoadingApi {
+  /**
+   * Bumped by each ICC toggle and each reset, so a swap that settles after a
+   * newer toggle or another slide is ignored
+   */
+  const colorProfileToggleRef = useRef(0)
   const [loading, dispatch] = useReducer(
     viewportLoadingReducer,
     INITIAL_VIEWPORT_LOADING,
@@ -199,13 +204,21 @@ export function useViewportLoading(
     statusLabel: viewportStatusLabel(loading),
     isUpdatingColors: isColorProfileToggle,
     colorProfileToggled: (swap) => {
+      colorProfileToggleRef.current += 1
+      const toggle = colorProfileToggleRef.current
+      const isCurrent = (): boolean => toggle === colorProfileToggleRef.current
       dispatch({ type: 'colorProfileToggled', awaitsSwap: swap !== undefined })
       swap?.then(
-        () => dispatch({ type: 'colorProfileSwapped' }),
-        () => dispatch({ type: 'colorProfileTimedOut' }),
+        () => {
+          if (isCurrent()) dispatch({ type: 'colorProfileSwapped' })
+        },
+        () => {
+          if (isCurrent()) dispatch({ type: 'colorProfileTimedOut' })
+        },
       )
     },
     reset: (session) => {
+      colorProfileToggleRef.current += 1
       const image = session.slide.volumeImages[0]
       dispatch({
         type: 'reset',

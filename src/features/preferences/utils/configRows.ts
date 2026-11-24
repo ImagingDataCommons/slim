@@ -27,7 +27,7 @@ export const CONFIG_DEFAULTS: Record<string, unknown> = {
   disableAnnotationTools: false,
   enableServerSelection: false,
   enableMemoryMonitoring: true,
-  preload: false,
+  preload: true,
   'servers[0].read': true,
   'servers[0].write': false,
 }
