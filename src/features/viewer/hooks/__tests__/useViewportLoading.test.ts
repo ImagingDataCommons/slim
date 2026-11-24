@@ -139,6 +139,49 @@ describe('useViewportLoading', () => {
     expect(result.current.statusLabel).toBeUndefined()
   })
 
+  it('ignores the swap of an earlier toggle that settles late', async () => {
+    const { session, access } = createTestSession()
+    const map = session.volumeViewer.getMap()
+    const { result } = renderHook(() => useViewportLoading(access.sessionRef))
+    let finishFirstSwap: () => void = () => {}
+    const firstSwap = new Promise<void>((resolve) => {
+      finishFirstSwap = resolve
+    })
+    const secondSwap = new Promise<void>(() => {})
+    act(() => {
+      result.current.reset(session)
+      result.current.dmvHandlers.dicommicroscopyviewer_frame_loading_started(
+        frame(1),
+      )
+      result.current.dmvHandlers.dicommicroscopyviewer_frame_loading_ended(
+        frame(1),
+      )
+      result.current.colorProfileToggled(firstSwap)
+      /** Another slide, then a new toggle before the first swap settles */
+      result.current.reset(session)
+      result.current.dmvHandlers.dicommicroscopyviewer_frame_loading_started(
+        frame(1),
+      )
+      result.current.dmvHandlers.dicommicroscopyviewer_frame_loading_ended(
+        frame(1),
+      )
+      result.current.colorProfileToggled(secondSwap)
+    })
+    const renderListeners = (): number =>
+      vi
+        .mocked(map.on)
+        .mock.calls.filter(([type]) => String(type) === 'rendercomplete').length
+    const listenersBefore = renderListeners()
+
+    await act(async () => {
+      finishFirstSwap()
+      await firstSwap
+    })
+    /** Still waiting for the second swap: no redraw was awaited yet */
+    expect(renderListeners()).toBe(listenersBefore)
+    expect(result.current.isUpdatingColors).toBe(true)
+  })
+
   it('announces the color profile until the map has drawn the corrected tiles', () => {
     const { session, access } = createTestSession()
     /** A color slide whose image carries an ICC profile */
