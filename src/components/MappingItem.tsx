@@ -14,6 +14,7 @@ import { areLayerItemPropsEqual } from '../utils/styleEquality'
 import { InlineOpacityRow } from './panel/InlineOpacityRow'
 import { useFrameThrottledCallback } from './panel/useFrameThrottledCallback'
 import { useLayerStyle } from './panel/useLayerStyle'
+import { useShowOnAdjust } from './panel/useShowOnAdjust'
 import { VisibilityToggleButton } from './panel/VisibilityToggleButton'
 
 export interface MappingItemProps {
@@ -53,6 +54,10 @@ function MappingItem({
     { opacity: defaultStyle.opacity },
     commit,
   )
+  /** Setting the opacity of a hidden map shows it */
+  const showOnAdjust = useShowOnAdjust(isVisible, () => {
+    onVisibilityChange({ mappingUID: mapping.uid, isVisible: true })
+  })
   const commitLive = useFrameThrottledCallback(
     (styleOptions: MappingStyleChange): void => {
       ;(onStylePreview ?? onStyleChange)({
@@ -113,13 +118,13 @@ function MappingItem({
         opacity={style.opacity}
         dimmed={!isVisible}
         onChange={(opacity) => {
-          /** Setting the opacity of a hidden map shows it */
-          if (!isVisible) {
-            onVisibilityChange({ mappingUID: mapping.uid, isVisible: true })
-          }
+          showOnAdjust.onAdjust()
           previewLive({ opacity })
         }}
-        onCommit={(opacity) => updateStyle({ opacity })}
+        onCommit={(opacity) => {
+          showOnAdjust.onAdjustEnd()
+          updateStyle({ opacity })
+        }}
       />
     </div>
   )
