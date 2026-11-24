@@ -135,6 +135,22 @@ describe('AnnotationGroupItem color by measurement', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('stops the measurement coloring when None is chosen without an RGB default', () => {
+    const { onStyleChange } = renderItem({
+      defaultStyle: { opacity: 1, color: [] },
+    })
+    chooseMeasurement('Area')
+    chooseMeasurement('None')
+
+    expect(onStyleChange).toHaveBeenLastCalledWith({
+      uid,
+      styleOptions: { measurement: null },
+    })
+    expect(
+      screen.queryByRole('img', { name: 'Colored by measurement' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('shows the measurement the viewer colors by after a remount', () => {
     renderItem({ measurementKey: codedConceptKey(area) })
 

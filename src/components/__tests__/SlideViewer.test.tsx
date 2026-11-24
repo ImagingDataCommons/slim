@@ -179,7 +179,7 @@ describe('SlideViewer', () => {
     expect(iccSwitch()).not.toHaveAttribute('aria-disabled')
   })
 
-  it("windows a monochrome channel to its first frame's pixel range", async () => {
+  it('windows a monochrome channel to the pixel range of its first frames', async () => {
     const slide = createSlide('1.2.3.4')
     Object.assign(slide, { areVolumeImagesMonochrome: true })
     await renderViewer({ slide })
