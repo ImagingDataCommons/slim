@@ -166,7 +166,7 @@ describe('SlideViewer', () => {
     )
     const iccSwitch = (): HTMLElement =>
       within(panel).getByRole('switch', { name: 'ICC profiles' })
-    expect(iccSwitch()).toBeDisabled()
+    expect(iccSwitch()).toHaveAttribute('aria-disabled', 'true')
 
     vi.spyOn(volumeViewer, 'getICCProfiles').mockReturnValue([{}])
     act(() => {
@@ -175,7 +175,7 @@ describe('SlideViewer', () => {
       })
     })
 
-    expect(iccSwitch()).toBeEnabled()
+    expect(iccSwitch()).not.toHaveAttribute('aria-disabled')
   })
 
   it('cleans up the viewers on unmount', async () => {
@@ -225,7 +225,6 @@ describe('SlideViewer', () => {
 
     expect(volumeViewer.navigate).toHaveBeenCalledWith({
       position: [10, 20],
-      level: expect.any(Number),
       /** 10× at 10 µm per screen pixel at 1× */
       resolution: expect.closeTo(0.001, 12),
     })

@@ -76,19 +76,33 @@ function DisplayOptionRow({
 }: {
   option: DisplayOption
 }): React.ReactElement {
+  const isLocked = option.disabled === true
+  const isBusy = isLocked && option.busy === true
   return (
     <LabeledControlRow
       label={option.label}
       description={option.description}
       density="compact"
-      labelDisabled={option.disabled === true}
+      labelDisabled={isLocked && !isBusy}
     >
       {(controlProps) => (
         <Switch
           {...controlProps}
-          checked={option.enabled && option.disabled !== true}
-          onCheckedChange={option.onChange}
-          disabled={option.disabled}
+          /** A busy switch keeps showing the state being applied */
+          checked={option.enabled && (!isLocked || isBusy)}
+          /**
+           * aria-disabled rather than disabled: a switch that locks right
+           * after it is toggled keeps keyboard focus
+           */
+          aria-disabled={isLocked || undefined}
+          aria-busy={isBusy || undefined}
+          onCheckedChange={(checked) => {
+            if (!isLocked) option.onChange(checked)
+          }}
+          className={cn(
+            isLocked && 'cursor-not-allowed',
+            isBusy ? 'opacity-60' : isLocked && 'bg-line!',
+          )}
         />
       )}
     </LabeledControlRow>
