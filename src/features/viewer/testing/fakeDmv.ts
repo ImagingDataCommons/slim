@@ -202,7 +202,15 @@ export class FakeVolumeImageViewer {
   readonly hideROIs = vi.fn()
   readonly showROIs = vi.fn()
   readonly setAnnotationOptions = vi.fn()
-  readonly toggleICCProfiles = vi.fn()
+  iccProfilesEnabled = true
+  /** Settles like DMV: the state changes once the loaders are swapped */
+  readonly toggleICCProfiles = vi.fn(
+    (): Promise<void> =>
+      Promise.resolve().then(() => {
+        this.iccProfilesEnabled = !this.iccProfilesEnabled
+      }),
+  )
+  readonly isICCProfilesEnabled = vi.fn(() => this.iccProfilesEnabled)
   readonly toggleSegmentationInterpolation = vi.fn()
   readonly toggleParametricMapInterpolation = vi.fn()
 

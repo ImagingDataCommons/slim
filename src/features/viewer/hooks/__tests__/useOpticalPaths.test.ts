@@ -184,11 +184,11 @@ describe('useOpticalPaths', () => {
     expect(viewer.toggleICCProfiles).not.toHaveBeenCalled()
   })
 
-  it('toggles ICC profiles and re-enables them for new viewers', () => {
+  it('toggles ICC profiles and re-enables them for new viewers', async () => {
     const { result, viewer } = setup()
 
-    act(() => {
-      result.current.onDisplaySettingsChange({
+    await act(async () => {
+      await result.current.onDisplaySettingsChange({
         iccProfileEnabled: false,
         gammaEnabled: true,
       })
@@ -199,6 +199,57 @@ describe('useOpticalPaths', () => {
     act(() => {
       result.current.reset()
     })
+    expect(result.current.displaySettings.iccProfileEnabled).toBe(true)
+  })
+
+  it('shows the ICC state DMV kept when a toggle fails', async () => {
+    const { result, viewer } = setup()
+    /** DMV reports the failure and resolves without changing its state */
+    viewer.toggleICCProfiles.mockReturnValueOnce(Promise.resolve())
+
+    let swap: PromiseLike<unknown> | undefined
+    act(() => {
+      swap = result.current.onDisplaySettingsChange({
+        iccProfileEnabled: false,
+        gammaEnabled: true,
+      })
+    })
+    /** The switch follows the click while the loaders are swapped */
+    expect(result.current.displaySettings.iccProfileEnabled).toBe(false)
+
+    await act(async () => {
+      await swap
+    })
+    expect(result.current.displaySettings.iccProfileEnabled).toBe(true)
+  })
+
+  it('ignores a toggle that settles after the slide changed', async () => {
+    const { result, viewer, access } = setup()
+    let swapLoaders = (): void => {}
+    viewer.toggleICCProfiles.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        swapLoaders = resolve
+      }),
+    )
+
+    let swap: PromiseLike<unknown> | undefined
+    act(() => {
+      swap = result.current.onDisplaySettingsChange({
+        iccProfileEnabled: false,
+        gammaEnabled: true,
+      })
+    })
+    act(() => {
+      /** The next slide's session replaces this one */
+      Object.assign(access.sessionRef, { current: undefined })
+      result.current.reset()
+    })
+
+    await act(async () => {
+      swapLoaders()
+      await swap
+    })
+    expect(viewer.isICCProfilesEnabled).not.toHaveBeenCalled()
     expect(result.current.displaySettings.iccProfileEnabled).toBe(true)
   })
 })

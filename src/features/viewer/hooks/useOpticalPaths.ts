@@ -232,7 +232,15 @@ export function useOpticalPaths(
       let iccSwap: PromiseLike<unknown> | undefined
       if (changed.includes('iccProfileEnabled')) {
         setIsIccProfileEnabled(settings.iccProfileEnabled)
-        iccSwap = viewer.toggleICCProfiles() ?? undefined
+        iccSwap = viewer.toggleICCProfiles()?.then(() => {
+          /**
+           * DMV keeps its state when a toggle fails and only reports the
+           * error, so show what it applied unless the slide changed meanwhile
+           */
+          if (sessionRef.current?.volumeViewer === viewer) {
+            setIsIccProfileEnabled(viewer.isICCProfilesEnabled())
+          }
+        })
       }
       if (changed.includes('gammaEnabled')) {
         setGammaCorrection(settings.gammaEnabled)
