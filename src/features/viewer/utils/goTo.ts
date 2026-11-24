@@ -112,24 +112,3 @@ export function validateGoToInput(
 export function goToResolution(magnification: number): number {
   return PIXEL_SPACING_AT_1X_MM / magnification
 }
-
-/**
- * Index of the pyramid level whose pixel spacing (mm) is closest to the one
- * implied by `magnification`; the first level wins ties.
- */
-export function choosePyramidLevel(
-  magnification: number,
-  pixelSpacings: readonly number[],
-): number {
-  const target = PIXEL_SPACING_AT_1X_MM / magnification
-  let bestLevel = 0
-  let bestDiff = Number.POSITIVE_INFINITY
-  pixelSpacings.forEach((spacing, level) => {
-    const diff = Math.abs(target - spacing)
-    if (diff < bestDiff) {
-      bestDiff = diff
-      bestLevel = level
-    }
-  })
-  return bestLevel
-}

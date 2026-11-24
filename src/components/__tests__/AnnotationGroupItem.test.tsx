@@ -166,3 +166,30 @@ describe('AnnotationGroupItem color by measurement', () => {
     ).not.toBeInTheDocument()
   })
 })
+
+describe('AnnotationGroupItem annotation count', () => {
+  const withCount = (
+    count: number,
+  ): dmv.metadata.MicroscopyBulkSimpleAnnotations =>
+    ({
+      ...nucleiWithMeasurements,
+      AnnotationGroupSequence: [
+        {
+          ...nucleiWithMeasurements.AnnotationGroupSequence[0],
+          NumberOfAnnotations: count,
+        },
+      ],
+    }) as unknown as dmv.metadata.MicroscopyBulkSimpleAnnotations
+
+  it('names a single annotation in the singular', () => {
+    renderItem({ metadata: withCount(1) })
+    expect(screen.getByTitle('1 annotation in this group')).toBeInTheDocument()
+  })
+
+  it('names other counts in the plural', () => {
+    renderItem({ metadata: withCount(1200) })
+    expect(
+      screen.getByTitle(/^1.?200 annotations in this group$/),
+    ).toBeInTheDocument()
+  })
+})

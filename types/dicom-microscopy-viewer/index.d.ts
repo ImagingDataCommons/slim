@@ -58,7 +58,7 @@ declare module 'dicom-microscopy-viewer' {
     export class VolumeImageViewer {
       constructor (options: VolumeImageViewerOptions)
       render (options: object): void
-      /** `resolution` (mm per screen pixel) needs a DMV that supports it */
+      /** `resolution` is mm per screen pixel and wins over `level` */
       navigate (options: { level?: number, position?: number[], resolution?: number })
       cleanup (): void
       get numLevels (): number
@@ -264,8 +264,8 @@ declare module 'dicom-microscopy-viewer' {
       getAnnotationGroupMetadata (
         annotationGroupUID: string
       ): metadata.MicroscopyBulkSimpleAnnotations
-      /** Returns the swap's promise from DMV 0.50.1; void before */
-      toggleICCProfiles (): Promise<void> | void;
+      /** Settles once the tile loaders are swapped */
+      toggleICCProfiles (): Promise<void>;
       getICCProfiles (): any[];
       setPaletteDisplayGammaCorrectionEnabled (enabled: boolean): void;
       getPaletteDisplayGammaCorrectionEnabled (): boolean;

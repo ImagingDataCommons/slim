@@ -1,9 +1,4 @@
-import {
-  choosePyramidLevel,
-  EMPTY_GO_TO_INPUT,
-  goToResolution,
-  validateGoToInput,
-} from '../goTo'
+import { EMPTY_GO_TO_INPUT, goToResolution, validateGoToInput } from '../goTo'
 
 const ranges = { x: [0, 20], y: [10, 30] } as const
 
@@ -54,25 +49,5 @@ describe('goToResolution', () => {
   it('uses 10 µm per screen pixel at 1×, like the magnification readout', () => {
     expect(goToResolution(1)).toBeCloseTo(0.01, 12)
     expect(goToResolution(40)).toBeCloseTo(0.00025, 12)
-  })
-})
-
-describe('choosePyramidLevel', () => {
-  const spacings = [0.00025, 0.0005, 0.001, 0.002, 0.004]
-
-  it('picks the level closest to 10 µm / magnification', () => {
-    expect(choosePyramidLevel(40, spacings)).toBe(0)
-    expect(choosePyramidLevel(20, spacings)).toBe(1)
-    expect(choosePyramidLevel(10, spacings)).toBe(2)
-    expect(choosePyramidLevel(2.5, spacings)).toBe(4)
-  })
-
-  it('keeps the first level on ties and for empty pyramids', () => {
-    expect(choosePyramidLevel(10, [0.001, 0.001])).toBe(0)
-    expect(choosePyramidLevel(10, [])).toBe(0)
-  })
-
-  it('falls back to the first level for zero magnification', () => {
-    expect(choosePyramidLevel(0, spacings)).toBe(0)
   })
 })
