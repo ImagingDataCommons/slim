@@ -45,11 +45,11 @@ export interface ViewerSession {
    */
   hasUserDisplayChanges: boolean
   /**
-   * A presentation state's windows are shown, so a channel's first frame
-   * does not set its window
+   * A presentation state's windows are shown, so a channel's first frames
+   * do not set its window
    */
   isPresentationStateShown: boolean
-  /** Channels whose window the user changed; their first frame keeps it */
+  /** Channels whose window the user changed; their first frames keep it */
   userWindowedOpticalPaths: Set<string>
 }
 

@@ -237,8 +237,8 @@ export function applyPresentationState(
 }
 
 /**
- * Window a channel to the pixel range of its first loaded frame, as the
- * default display does once statistics are known
+ * Window a channel to the pixel range sampled from its first loaded frames,
+ * as the default display does once statistics are known
  */
 export function applyFrameStatisticsWindow(
   viewer: VolumeViewer,

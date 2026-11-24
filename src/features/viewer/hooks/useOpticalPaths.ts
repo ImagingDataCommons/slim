@@ -19,7 +19,7 @@ function markUserDisplayChange(session: ViewerSession | undefined): void {
   if (session !== undefined) session.hasUserDisplayChanges = true
 }
 
-/** A window the user set is kept when the channel's first frame arrives */
+/** A window the user set is kept when the channel's first frames arrive */
 function markUserWindow(
   session: ViewerSession | undefined,
   opticalPathIdentifier: string,
