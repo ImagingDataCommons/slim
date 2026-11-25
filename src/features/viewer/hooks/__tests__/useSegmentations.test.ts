@@ -86,12 +86,13 @@ beforeEach(() => {
 })
 
 describe('useSegmentations palettes', () => {
-  it('draws every BINARY segment through its recommended color', () => {
+  it('draws every listed BINARY segment through its recommended color', () => {
     const test = createSegmentedSession()
     renderSegmentations(test)
 
+    /** Background segments are not listed, so Slim never styles them */
     const styled = test.viewer.setSegmentStyle.mock.calls.map(([uid]) => uid)
-    expect(styled).toEqual(['tumor', 'background', 'absent'])
+    expect(styled).toEqual(['tumor', 'absent'])
     expect(test.viewer.getSegmentStyle('tumor')).toMatchObject({
       opacity: 1,
       paletteColorLookupTable: {
@@ -117,7 +118,7 @@ describe('useSegmentations palettes', () => {
 
     refresh(false)
 
-    expect(test.viewer.setSegmentStyle).toHaveBeenCalledTimes(3)
+    expect(test.viewer.setSegmentStyle).toHaveBeenCalledTimes(2)
     expect(test.viewer.getSegmentStyle('tumor')).toMatchObject({
       paletteColorLookupTable: {
         options: { applyDisplayGammaCorrection: false },

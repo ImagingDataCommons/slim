@@ -118,6 +118,7 @@ function SegmentItem({
     <div className="flex flex-col gap-2.5 rounded-lg border border-line px-3 py-2.5">
       <div className="flex items-center gap-2">
         <span
+          data-slot="segment-swatch"
           className={cn(
             'h-3 w-3 flex-none rounded-[3px]',
             isAbsent && 'border border-dashed border-line-input',

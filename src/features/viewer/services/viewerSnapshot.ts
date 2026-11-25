@@ -165,9 +165,15 @@ export function readViewerSnapshot(
       slide.seriesInstanceUIDs.includes(group.referencedSeriesInstanceUID),
     ),
   )
+  /**
+   * Background segments (Segment Number equal to Pixel Padding Value, or
+   * coded as (DCM, 125040, "Background")) cover everything outside the
+   * labelled tissue. They are left out of the panel, its counts, "Show all"
+   * and the legend, so they are never drawn.
+   */
   const segments = reuseIdenticalArray<dmv.segment.Segment>(
     previous.segments,
-    viewer.getAllSegments(),
+    viewer.getAllSegments().filter((segment) => segment.isBackground !== true),
   )
   const mappings = reuseIdenticalArray(
     previous.mappings,

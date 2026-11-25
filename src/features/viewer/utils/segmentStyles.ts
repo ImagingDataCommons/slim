@@ -55,8 +55,22 @@ export function binarySegmentColors(
 }
 
 /**
- * Segment list styles: BINARY segments show their color, the others their
- * palette.
+ * Color drawn by a two-entry palette (transparent 0, segment 1), as DMV
+ * builds for LABELMAP segments and Slim for recolored ones. Display gamma
+ * resamples between the entries only, so entry 1 is the drawn color. Longer
+ * palettes are gradients and have no single color.
+ */
+export function flatPaletteColor(
+  palette: SegmentStyle['paletteColorLookupTable'],
+): number[] | undefined {
+  const data = palette?.data
+  return data?.length === 2 ? data[1] : undefined
+}
+
+/**
+ * Segment list styles: BINARY segments show their color, segments drawn
+ * through a two-entry palette (LABELMAP) the color of that palette, and the
+ * others their palette.
  */
 export function segmentPanelStyles(
   segments: readonly SegmentLike[],
@@ -66,13 +80,14 @@ export function segmentPanelStyles(
   const styles: Record<string, SegmentStyle> = {}
   for (const { uid } of segments) {
     const opacity = viewerStyles[uid]?.opacity ?? 1
+    const paletteColorLookupTable =
+      viewerStyles[uid]?.paletteColorLookupTable ?? undefined
     styles[uid] = Object.hasOwn(binaryColors, uid)
       ? { opacity, color: binaryColors[uid] }
       : {
           opacity,
-          color: undefined,
-          paletteColorLookupTable:
-            viewerStyles[uid]?.paletteColorLookupTable ?? undefined,
+          color: flatPaletteColor(paletteColorLookupTable),
+          paletteColorLookupTable,
         }
   }
   return styles

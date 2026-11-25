@@ -68,6 +68,22 @@ describe('readViewerSnapshot', () => {
     expect(second.opticalPathStyles['1'].opacity).toBe(0.5)
   })
 
+  it('leaves background segments out', () => {
+    const { session, viewer } = createTestSession()
+    viewer.segments.add({
+      uid: 'background',
+      seriesInstanceUID: 's',
+      number: 0,
+      isBackground: true,
+    })
+    viewer.segments.add({ uid: 'tumor', seriesInstanceUID: 's', number: 1 })
+
+    const snapshot = readViewerSnapshot(session, EMPTY_VIEWER_SNAPSHOT)
+
+    expect(snapshot.segments.map((segment) => segment.uid)).toEqual(['tumor'])
+    expect(Object.keys(snapshot.segmentStyles)).toEqual(['tumor'])
+  })
+
   it('lists only annotation groups of the slide series', () => {
     const { session, viewer } = createTestSession()
     const [slideSeries] = session.slide.seriesInstanceUIDs

@@ -1,5 +1,6 @@
 import {
   binarySegmentColors,
+  flatPaletteColor,
   recommendedBinarySegmentColors,
   segmentPanelStyles,
 } from '../segmentStyles'
@@ -69,5 +70,50 @@ describe('segmentPanelStyles', () => {
       binary: { opacity: 0.5, color: [9, 9, 9] },
       labelmap: { opacity: 0.8, color: undefined, paletteColorLookupTable },
     })
+  })
+
+  it('shows the drawn color of segments with a two-entry palette (LABELMAP)', () => {
+    const flat = {
+      data: [
+        [0, 0, 0],
+        [0, 255, 0],
+      ],
+    }
+    const gradient = {
+      data: [
+        [0, 0, 0],
+        [128, 0, 0],
+        [255, 0, 0],
+      ],
+    }
+    const styles = segmentPanelStyles(
+      [
+        { uid: 'labelmap', number: 2 },
+        { uid: 'fractional', number: 1 },
+      ],
+      {
+        labelmap: { opacity: 0.75, paletteColorLookupTable: flat },
+        fractional: { opacity: 0.75, paletteColorLookupTable: gradient },
+      },
+      {},
+    )
+
+    expect(styles.labelmap.color).toEqual([0, 255, 0])
+    expect(styles.fractional.color).toBeUndefined()
+  })
+})
+
+describe('flatPaletteColor', () => {
+  it('is the segment entry of a two-entry palette only', () => {
+    expect(
+      flatPaletteColor({
+        data: [
+          [0, 0, 0],
+          [1, 2, 3],
+        ],
+      }),
+    ).toEqual([1, 2, 3])
+    expect(flatPaletteColor({ data: [[1, 2, 3]] })).toBeUndefined()
+    expect(flatPaletteColor(undefined)).toBeUndefined()
   })
 })
