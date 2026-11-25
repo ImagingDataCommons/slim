@@ -95,6 +95,56 @@ function distance(a: number[], b: number[]): number {
   return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
 }
 
+/**
+ * Opacity a segment is drawn with: per changed pixel, how far it moved from
+ * the slide towards the segment color, (after - before) / (color - before),
+ * on the channel where color and slide differ most. Median over the pixels.
+ */
+async function blendOpacity(
+  page: Page,
+  before: Buffer,
+  after: Buffer,
+  color: number[],
+): Promise<number> {
+  return page.evaluate(
+    async ([encodedBefore, encodedAfter, rgb]) => {
+      const decode = async (base64: string): Promise<Uint8ClampedArray> => {
+        const blob = await (
+          await fetch(`data:image/png;base64,${base64}`)
+        ).blob()
+        const bitmap = await createImageBitmap(blob)
+        const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
+        const context = canvas.getContext('2d')
+        if (context === null) throw new Error('No 2D context')
+        context.drawImage(bitmap, 0, 0)
+        return context.getImageData(0, 0, bitmap.width, bitmap.height).data
+      }
+      const [a, b] = await Promise.all([
+        decode(encodedBefore as string),
+        decode(encodedAfter as string),
+      ])
+      const target = rgb as number[]
+      const alphas: number[] = []
+      for (let i = 0; i < a.length; i += 4) {
+        let gap = 0
+        let alpha = 0
+        for (let channel = 0; channel < 3; channel++) {
+          const channelGap = target[channel] - a[i + channel]
+          if (Math.abs(channelGap) > Math.abs(gap)) {
+            gap = channelGap
+            alpha = (b[i + channel] - a[i + channel]) / channelGap
+          }
+        }
+        /** Pixels the segment covers and where its color stands out */
+        if (Math.abs(gap) > 60 && alpha > 0.1) alphas.push(alpha)
+      }
+      alphas.sort((x, y) => x - y)
+      return alphas.length === 0 ? 0 : alphas[Math.floor(alphas.length / 2)]
+    },
+    [before.toString('base64'), after.toString('base64'), color],
+  )
+}
+
 test.describe('LABELMAP segmentation', () => {
   test.beforeEach(async ({ page }) => {
     await serveLabelmap(page)
@@ -166,5 +216,40 @@ test.describe('LABELMAP segmentation', () => {
       await toggle.click()
       await expect(toggle).toHaveAttribute('aria-pressed', 'false')
     }
+  })
+
+  test('L3 a segment is drawn at the opacity its panel shows', async ({
+    page,
+  }) => {
+    await openViewer(page, labelmapUrl)
+    await expectTissueRendered(page)
+    await waitForDeepLinkedLayer(page, 'Segmentations')
+    const segments = await section(slidePanel(page), 'Segmentations')
+    const [, swatch] = await swatchColors(segments)
+
+    await segments.getByRole('button', { name: 'Hide all segments' }).click()
+    await expect(segments.getByText('0 of 4 visible')).toBeVisible()
+    const slideOnly = await captureSettledViewport(page)
+    const toggle = segments.getByRole('button', {
+      name: `Show ${labelmap.labels[1]}`,
+      exact: true,
+    })
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    await expect(
+      segments.getByRole('slider', {
+        name: `Opacity of ${labelmap.labels[1]}`,
+      }),
+    ).toHaveAttribute('aria-valuenow', String(SEGMENT_OPACITY))
+
+    /** dicom-microscopy-viewer before 0.51.3 drew it at 1 (fully opaque) */
+    const opacity = await blendOpacity(
+      page,
+      slideOnly,
+      await captureSettledViewport(page),
+      swatch,
+    )
+    expect(opacity).toBeGreaterThan(SEGMENT_OPACITY - 0.05)
+    expect(opacity).toBeLessThan(SEGMENT_OPACITY + 0.05)
   })
 })
