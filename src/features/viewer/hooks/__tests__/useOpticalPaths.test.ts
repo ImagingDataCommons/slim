@@ -38,6 +38,38 @@ describe('useOpticalPaths', () => {
     expect(access.refreshSnapshot).toHaveBeenCalled()
   })
 
+  it('windows every sampled channel on Reset, also the hidden ones', () => {
+    const { result, session, viewer } = setup()
+    viewer.opticalPaths.splice(0, 1, {
+      identifier: 'dapi',
+      isMonochromatic: true,
+      seriesInstanceUID: 's',
+    })
+    viewer.opticalPaths.push({
+      identifier: 'fitc',
+      isMonochromatic: true,
+      seriesInstanceUID: 's',
+    })
+    session.pixelStatistics.set('dapi', {
+      min: 3,
+      max: 400,
+      numFramesSampled: 4,
+    })
+    session.pixelStatistics.set('fitc', {
+      min: 10,
+      max: 900,
+      numFramesSampled: 4,
+    })
+
+    act(() => {
+      result.current.showDefault(session)
+    })
+
+    expect(viewer.getOpticalPathStyle('dapi').limitValues).toEqual([3, 400])
+    expect(viewer.isOpticalPathVisible('fitc')).toBe(false)
+    expect(viewer.getOpticalPathStyle('fitc').limitValues).toEqual([10, 900])
+  })
+
   it('shows the first monochrome path in white when none has a palette', () => {
     const { result, session, viewer } = setup()
     viewer.opticalPaths.splice(0, 1, {
