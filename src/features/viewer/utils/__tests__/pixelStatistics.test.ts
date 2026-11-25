@@ -1,26 +1,36 @@
 import {
   computePixelRange,
+  FRAMES_SAMPLED_PER_OPTICAL_PATH,
   mergePixelStatistics,
   type PixelStatistics,
-  recordFirstFrameStatistics,
+  recordFrameStatistics,
 } from '../pixelStatistics'
 
-describe('recordFirstFrameStatistics', () => {
-  it('records the first frame of each optical path only', () => {
+describe('recordFrameStatistics', () => {
+  it('folds the first few frames of each optical path, then stops', () => {
     const statistics = new Map<string, PixelStatistics>()
-    recordFirstFrameStatistics(statistics, '1', new Uint8Array([4, 9]))
-    recordFirstFrameStatistics(statistics, '1', new Uint8Array([0, 255]))
-    recordFirstFrameStatistics(statistics, '2', new Uint8Array([7]))
+    recordFrameStatistics(statistics, '1', new Uint8Array([4, 9]))
+    recordFrameStatistics(statistics, '1', new Uint8Array([2, 30]))
+    recordFrameStatistics(statistics, '2', new Uint8Array([7]))
+    for (let frame = 2; frame < FRAMES_SAMPLED_PER_OPTICAL_PATH; frame++) {
+      recordFrameStatistics(statistics, '1', new Uint8Array([5]))
+    }
+    /** Past the sample: ignored */
+    recordFrameStatistics(statistics, '1', new Uint8Array([0, 255]))
 
-    expect(statistics.get('1')).toEqual({ min: 4, max: 9, numFramesSampled: 1 })
+    expect(statistics.get('1')).toEqual({
+      min: 2,
+      max: 30,
+      numFramesSampled: FRAMES_SAMPLED_PER_OPTICAL_PATH,
+    })
     expect(statistics.get('2')).toEqual({ min: 7, max: 7, numFramesSampled: 1 })
   })
 
   it('ignores missing and empty pixel data', () => {
     const statistics = new Map<string, PixelStatistics>()
-    recordFirstFrameStatistics(statistics, '1', null)
-    recordFirstFrameStatistics(statistics, '1', undefined)
-    recordFirstFrameStatistics(statistics, '1', new Uint8Array(0))
+    recordFrameStatistics(statistics, '1', null)
+    recordFrameStatistics(statistics, '1', undefined)
+    recordFrameStatistics(statistics, '1', new Uint8Array(0))
 
     expect(statistics.size).toBe(0)
   })

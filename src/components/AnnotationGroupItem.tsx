@@ -139,10 +139,17 @@ function AnnotationGroupItem({
       })
       return
     }
+    /** None always stops the measurement coloring, with or without a color */
     const defaultColor = toRGB(defaultStyle.color)
-    if (defaultColor === undefined) return
+    if (defaultColor === undefined) {
+      onStyleChange({ uid, styleOptions: { measurement: null } })
+      return
+    }
     previewStyle({ color: toEditableColor(defaultStyle.color) })
-    onStyleChange({ uid, styleOptions: { color: defaultColor } })
+    onStyleChange({
+      uid,
+      styleOptions: { color: defaultColor, measurement: null },
+    })
   }
 
   return (

@@ -40,7 +40,7 @@ const nucleiWithMeasurements = {
 
 /**
  * Owns the measurement key like useAnnotationGroups: a measurement style sets
- * it, a flat color clears it.
+ * it, `measurement: null` clears it, and a color alone keeps it.
  */
 function Harness(props: AnnotationGroupItemProps): React.ReactElement {
   const [measurementKey, setMeasurementKey] = useState(props.measurementKey)
@@ -50,11 +50,11 @@ function Harness(props: AnnotationGroupItemProps): React.ReactElement {
       measurementKey={measurementKey}
       onStyleChange={(change) => {
         props.onStyleChange(change)
-        const { measurement, color } = change.styleOptions
-        if (measurement !== undefined) {
-          setMeasurementKey(codedConceptKey(measurement))
-        } else if (color !== undefined) {
+        const { measurement } = change.styleOptions
+        if (measurement === null) {
           setMeasurementKey(undefined)
+        } else if (measurement !== undefined) {
+          setMeasurementKey(codedConceptKey(measurement))
         }
       }}
     />
@@ -128,7 +128,23 @@ describe('AnnotationGroupItem color by measurement', () => {
 
     expect(onStyleChange).toHaveBeenLastCalledWith({
       uid,
-      styleOptions: { color: [255, 0, 0] },
+      styleOptions: { color: [255, 0, 0], measurement: null },
+    })
+    expect(
+      screen.queryByRole('img', { name: 'Colored by measurement' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('stops the measurement coloring when None is chosen without an RGB default', () => {
+    const { onStyleChange } = renderItem({
+      defaultStyle: { opacity: 1, color: [] },
+    })
+    chooseMeasurement('Area')
+    chooseMeasurement('None')
+
+    expect(onStyleChange).toHaveBeenLastCalledWith({
+      uid,
+      styleOptions: { measurement: null },
     })
     expect(
       screen.queryByRole('img', { name: 'Colored by measurement' }),

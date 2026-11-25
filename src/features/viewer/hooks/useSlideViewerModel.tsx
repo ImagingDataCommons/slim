@@ -21,6 +21,7 @@ import {
 } from '../../preferences/utils/preferences'
 import type { SlideViewerViewProps } from '../components/SlideViewerView'
 import { useViewerPanelChrome } from '../contexts/ViewerPanelChromeContext'
+import { applyFrameStatisticsWindow } from '../services/presentationStates'
 import { describeStudySeries } from '../services/seriesDescription'
 import { deriveActiveRoiTool } from '../utils/activeRoiTool'
 import { buildAnnotationConfig } from '../utils/annotationConfig'
@@ -343,15 +344,37 @@ export function useSlideViewerModel({
        */
       const session = sessionRef.current
       const volumeViewer = session?.volumeViewer
-      /** A channel's first frame sets its window slider range, once */
+      /**
+       * A channel's sampled pixel range grew (its first frames): its window
+       * slider range follows
+       */
+      const channel = frameInfo.channelIdentifier
+      const statistics =
+        channel !== undefined
+          ? session?.pixelStatistics.get(channel)
+          : undefined
+      const shownRange =
+        channel !== undefined
+          ? snapshot.opticalPathPixelRanges[channel]
+          : undefined
       const hasNewPixelRange =
+        statistics !== undefined &&
+        (shownRange === undefined ||
+          shownRange.min !== statistics.min ||
+          shownRange.max !== statistics.max)
+      /**
+       * Like the classic viewer: without a presentation state, the sampled
+       * range sets the channel's window, unless the user already changed it
+       */
+      if (
+        hasNewPixelRange &&
         session !== undefined &&
-        frameInfo.channelIdentifier !== undefined &&
-        session.pixelStatistics.has(frameInfo.channelIdentifier) &&
-        !Object.hasOwn(
-          snapshot.opticalPathPixelRanges,
-          frameInfo.channelIdentifier,
-        )
+        channel !== undefined &&
+        !session.isPresentationStateShown &&
+        !session.userWindowedOpticalPaths.has(channel)
+      ) {
+        applyFrameStatisticsWindow(session.volumeViewer, channel, statistics)
+      }
       if (
         volumeViewer !== undefined &&
         (hasNewPixelRange ||

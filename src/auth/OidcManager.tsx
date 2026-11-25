@@ -15,8 +15,15 @@ import NotificationMiddleware, {
 import { CustomError, errorTypes } from '../utils/CustomError'
 import { logger } from '../utils/logger'
 import {
+  getSessionStorage,
+  readFromStorage,
+  removeFromStorage,
+  writeToStorage,
+} from '../utils/safeStorage'
+import {
   describeCallbackWithoutState,
   isOidcAuthorizeCallbackUrl,
+  isSignInCallbackUrl,
   joinUrl,
 } from '../utils/url'
 import type {
@@ -36,6 +43,34 @@ import {
   readReturnUrl,
 } from './oidcUser'
 import { installPkceFallback } from './pkce'
+
+/**
+ * A sign-in redirect this tab started, so its answer can be told from a deep
+ * link that only looks like one. Kept per tab (sessionStorage survives the
+ * round trip to the provider) and ignored once older than oidc-client-ts's
+ * default stale state age.
+ */
+const PENDING_SIGN_IN_KEY = 'slim.pendingSignIn'
+const PENDING_SIGN_IN_MAX_AGE_MS = 15 * 60 * 1000
+
+function markPendingSignIn(): void {
+  writeToStorage(getSessionStorage(), PENDING_SIGN_IN_KEY, String(Date.now()))
+}
+
+function clearPendingSignIn(): void {
+  removeFromStorage(getSessionStorage(), PENDING_SIGN_IN_KEY)
+}
+
+function hasPendingSignIn(): boolean {
+  const startedAt = Number(
+    readFromStorage(getSessionStorage(), PENDING_SIGN_IN_KEY),
+  )
+  return (
+    Number.isFinite(startedAt) &&
+    startedAt > 0 &&
+    Date.now() - startedAt < PENDING_SIGN_IN_MAX_AGE_MS
+  )
+}
 
 interface ReturnUrlState {
   returnUrl: string
@@ -210,7 +245,7 @@ export default class OidcManager implements AuthManager {
     onSignIn?: SignInCallback
     returnUrl?: string
   }): Promise<SignInOutcome> => {
-    if (isOidcAuthorizeCallbackUrl(window.location)) {
+    if (isSignInCallbackUrl(window.location, hasPendingSignIn())) {
       /**
        * Handle the callback from the authorization server: extract the code
        * (or implicit tokens) from the callback URL, obtain user information
@@ -233,6 +268,7 @@ export default class OidcManager implements AuthManager {
             : await this._oidc.signinRedirectCallback()
       } finally {
         clearAuthParamsFromUrl()
+        clearPendingSignIn()
       }
       logger.log(`obtained user data for subject ${userData.profile.sub}`)
       handleSignIn(userData, onSignIn, { includeReturnUrl: true })
@@ -250,11 +286,18 @@ export default class OidcManager implements AuthManager {
       const state: ReturnUrlState = {
         returnUrl: returnUrl ?? currentReturnUrl(),
       }
-      if (this._implicit != null) {
-        await this._implicit.signinRedirect(state)
-      } else {
-        /** Stays pending until the page unloads (or is restored from bfcache) */
-        await this._oidc.signinRedirect({ state })
+      markPendingSignIn()
+      try {
+        if (this._implicit != null) {
+          await this._implicit.signinRedirect(state)
+        } else {
+          /** Stays pending until the page unloads (or is restored from bfcache) */
+          await this._oidc.signinRedirect({ state })
+        }
+      } catch (error) {
+        /** No redirect happened, so no answer is on its way */
+        clearPendingSignIn()
+        throw error
       }
       return 'redirected'
     }

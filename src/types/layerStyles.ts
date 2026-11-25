@@ -59,7 +59,8 @@ export interface AnnotationGroupStyle {
 export interface AnnotationGroupStyleChange {
   opacity?: number
   color?: RGB
-  measurement?: dcmjs.sr.coding.CodedConcept
+  /** `null` stops coloring by a measurement */
+  measurement?: dcmjs.sr.coding.CodedConcept | null
   fill?: boolean
   fillOpacity?: number
 }

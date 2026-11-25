@@ -19,6 +19,17 @@ function markUserDisplayChange(session: ViewerSession | undefined): void {
   if (session !== undefined) session.hasUserDisplayChanges = true
 }
 
+/** A window the user set is kept when the channel's first frames arrive */
+function markUserWindow(
+  session: ViewerSession | undefined,
+  opticalPathIdentifier: string,
+  styleOptions: { limitValues?: number[] },
+): void {
+  if (session !== undefined && styleOptions.limitValues !== undefined) {
+    session.userWindowedOpticalPaths.add(opticalPathIdentifier)
+  }
+}
+
 function toggleOpticalPathFlag({
   id,
   enable,
@@ -126,6 +137,8 @@ export function useOpticalPaths(
     },
     showDefault: (session) => {
       const { volumeViewer } = session
+      session.isPresentationStateShown = false
+      session.userWindowedOpticalPaths.clear()
       showIdentifiers(
         applyDefaultPresentationState(
           volumeViewer,
@@ -135,6 +148,7 @@ export function useOpticalPaths(
       )
     },
     showPresentationState: (session, presentationState) => {
+      session.isPresentationStateShown = true
       showIdentifiers(
         applyPresentationState(session.volumeViewer, presentationState),
       )
@@ -198,6 +212,7 @@ export function useOpticalPaths(
       const viewer = sessionRef.current?.volumeViewer
       if (viewer === undefined) return
       markUserDisplayChange(sessionRef.current)
+      markUserWindow(sessionRef.current, opticalPathIdentifier, styleOptions)
       logger.log(`change style of optical path ${opticalPathIdentifier}`)
       viewer.setOpticalPathStyle(opticalPathIdentifier, styleOptions)
       refreshSnapshot()
@@ -206,6 +221,7 @@ export function useOpticalPaths(
       const viewer = sessionRef.current?.volumeViewer
       if (viewer === undefined) return
       markUserDisplayChange(sessionRef.current)
+      markUserWindow(sessionRef.current, opticalPathIdentifier, styleOptions)
       viewer.setOpticalPathStyle(opticalPathIdentifier, styleOptions)
     },
     onDisplaySettingsChange: (settings, previous = displaySettings) => {
@@ -216,7 +232,15 @@ export function useOpticalPaths(
       let iccSwap: PromiseLike<unknown> | undefined
       if (changed.includes('iccProfileEnabled')) {
         setIsIccProfileEnabled(settings.iccProfileEnabled)
-        iccSwap = viewer.toggleICCProfiles() ?? undefined
+        iccSwap = viewer.toggleICCProfiles()?.then(() => {
+          /**
+           * DMV keeps its state when a toggle fails and only reports the
+           * error, so show what it applied unless the slide changed meanwhile
+           */
+          if (sessionRef.current?.volumeViewer === viewer) {
+            setIsIccProfileEnabled(viewer.isICCProfilesEnabled())
+          }
+        })
       }
       if (changed.includes('gammaEnabled')) {
         setGammaCorrection(settings.gammaEnabled)

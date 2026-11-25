@@ -27,15 +27,23 @@ export function computePixelRange(
 }
 
 /**
- * Record the statistics of an optical path's first loaded frame; later
- * frames of the same path are ignored.
+ * Frames sampled per optical path. More than one, so a first tile that is
+ * mostly background does not set a window that clips the tissue
  */
-export function recordFirstFrameStatistics(
+export const FRAMES_SAMPLED_PER_OPTICAL_PATH = 4
+
+/**
+ * Fold an optical path's frame into its statistics, for its first
+ * {@link FRAMES_SAMPLED_PER_OPTICAL_PATH} loaded frames; later frames of the
+ * same path are ignored.
+ */
+export function recordFrameStatistics(
   statistics: Map<string, PixelStatistics>,
   opticalPathIdentifier: string,
   pixels: ArrayLike<number> | null | undefined,
 ): void {
-  if (statistics.has(opticalPathIdentifier) || pixels == null) return
+  const sampled = statistics.get(opticalPathIdentifier)?.numFramesSampled ?? 0
+  if (sampled >= FRAMES_SAMPLED_PER_OPTICAL_PATH || pixels == null) return
   const range = computePixelRange(pixels)
   if (range === undefined) return
   statistics.set(

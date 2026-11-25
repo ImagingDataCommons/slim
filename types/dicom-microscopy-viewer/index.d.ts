@@ -252,7 +252,8 @@ declare module 'dicom-microscopy-viewer' {
         styleOptions: {
           opacity?: number
           color?: number[]
-          measurement?: dcmjs.sr.coding.CodedConcept
+          /** `null` stops coloring by a measurement */
+          measurement?: dcmjs.sr.coding.CodedConcept | null
         }
       ): void
       getAnnotationGroupStyle (annotationGroupUID: string): {
@@ -264,8 +265,10 @@ declare module 'dicom-microscopy-viewer' {
       getAnnotationGroupMetadata (
         annotationGroupUID: string
       ): metadata.MicroscopyBulkSimpleAnnotations
-      /** Settles once the tile loaders are swapped */
+      /** Settles once the tile loaders are swapped; never rejects */
       toggleICCProfiles (): Promise<void>;
+      /** Whether ICC profiles are applied; unchanged by a toggle that failed */
+      isICCProfilesEnabled (): boolean;
       getICCProfiles (): any[];
       setPaletteDisplayGammaCorrectionEnabled (enabled: boolean): void;
       getPaletteDisplayGammaCorrectionEnabled (): boolean;

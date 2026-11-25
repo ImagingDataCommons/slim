@@ -44,6 +44,13 @@ export interface ViewerSession {
    * over those choices
    */
   hasUserDisplayChanges: boolean
+  /**
+   * A presentation state's windows are shown, so a channel's first frames
+   * do not set its window
+   */
+  isPresentationStateShown: boolean
+  /** Channels whose window the user changed; their first frames keep it */
+  userWindowedOpticalPaths: Set<string>
 }
 
 /**
@@ -115,6 +122,8 @@ export function createViewerSession({
       annotationGroupMetadata: new Map(),
       isDestroyed: false,
       hasUserDisplayChanges: false,
+      isPresentationStateShown: false,
+      userWindowedOpticalPaths: new Set(),
     }
   } catch (error) {
     releaseViewer(volumeViewer)

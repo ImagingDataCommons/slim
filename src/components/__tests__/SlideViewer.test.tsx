@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import type React from 'react'
 import { MemoryRouter } from 'react-router'
+import { StorageClasses } from '../../data/uids'
 import { ViewerPanelChromeProvider } from '../../features/viewer/contexts/ViewerPanelChromeContext'
 import {
   fakeDmvInstances,
@@ -176,6 +177,37 @@ describe('SlideViewer', () => {
     })
 
     expect(iccSwitch()).not.toHaveAttribute('aria-disabled')
+  })
+
+  it('windows a monochrome channel to the pixel range of its first frames', async () => {
+    const slide = createSlide('1.2.3.4')
+    Object.assign(slide, { areVolumeImagesMonochrome: true })
+    await renderViewer({ slide })
+    const [volumeViewer] = fakeDmvInstances.volumeViewers
+
+    act(() => {
+      dispatchDmvEvent('dicommicroscopyviewer_frame_loading_ended', {
+        frameNumber: 1,
+        sopInstanceUID: '1.2.3.4.1',
+        sopClassUID: StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE,
+        channelIdentifier: '1',
+        pixelArray: new Uint16Array([40, 5, 900, 120]),
+      })
+    })
+
+    expect(volumeViewer.getOpticalPathStyle('1').limitValues).toEqual([5, 900])
+
+    /** A later frame of the sample widens the window */
+    act(() => {
+      dispatchDmvEvent('dicommicroscopyviewer_frame_loading_ended', {
+        frameNumber: 2,
+        sopInstanceUID: '1.2.3.4.1',
+        sopClassUID: StorageClasses.VL_WHOLE_SLIDE_MICROSCOPY_IMAGE,
+        channelIdentifier: '1',
+        pixelArray: new Uint16Array([2, 1800]),
+      })
+    })
+    expect(volumeViewer.getOpticalPathStyle('1').limitValues).toEqual([2, 1800])
   })
 
   it('cleans up the viewers on unmount', async () => {
