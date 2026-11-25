@@ -61,7 +61,13 @@ function SegmentList({
   return (
     <div className="flex flex-col gap-1.5">
       <BulkVisibilityControl
-        uids={segments.map((segment) => segment.uid)}
+        /**
+         * Absent segments (listed, but no frames contain them) can never be
+         * shown, so they are left out of the count and of Show all
+         */
+        uids={segments
+          .filter((segment) => segment.isAbsent !== true)
+          .map((segment) => segment.uid)}
         visibleUids={visibleSegmentUIDs}
         itemLabel="segments"
         onChange={(changes) => {
