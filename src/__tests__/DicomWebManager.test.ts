@@ -4,6 +4,7 @@ import type * as dwc from 'dicomweb-client'
 import type { Mock } from 'vitest'
 
 import DicomWebManager from '../DicomWebManager'
+import NotificationMiddleware from '../services/NotificationMiddleware'
 
 interface StubClient {
   baseURL: string
@@ -319,6 +320,62 @@ describe('DicomWebManager - multi-store search', () => {
       (merged[0] as unknown as Record<string, { Value?: string[] }>)['0020000E']
         ?.Value?.[0],
     ).toBe('1.2.3.B')
+  })
+
+  it('reports a store that fails a search the others answer, once', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        { id: 'gcp', url: 'https://gcp.test/store', write: false },
+      ],
+    })
+    const primaryStub = makeStubClient('primary')
+    const gcpStub = makeStubClient('gcp')
+    stubManagerClients(manager, [primaryStub, gcpStub])
+    primaryStub.searchForSeries.mockResolvedValue([])
+    primaryStub.searchForInstances.mockResolvedValue([])
+    gcpStub.searchForSeries.mockRejectedValue(httpError(404))
+    gcpStub.searchForInstances.mockRejectedValue(httpError(404))
+    const onError = vi
+      .spyOn(NotificationMiddleware, 'onError')
+      .mockImplementation(() => {})
+
+    await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
+    await manager.searchForInstances({ studyInstanceUID: '1.2.3' })
+
+    expect(onError).toHaveBeenCalledTimes(1)
+    expect(onError.mock.calls[0][1].message).toMatch(
+      /"gcp" at https:\/\/gcp\.test\/store could not be searched \(HTTP 404\)/,
+    )
+    onError.mockRestore()
+  })
+
+  it('leaves an unauthorized search to the sign-in handling', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        { id: 'gcp', url: 'https://gcp.test/dicomWeb', write: false },
+      ],
+    })
+    const primaryStub = makeStubClient('primary')
+    const gcpStub = makeStubClient('gcp')
+    stubManagerClients(manager, [primaryStub, gcpStub])
+    primaryStub.searchForSeries.mockResolvedValue([])
+    gcpStub.searchForSeries.mockRejectedValue(httpError(403))
+    const onError = vi
+      .spyOn(NotificationMiddleware, 'onError')
+      .mockImplementation(() => {})
+
+    await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
+
+    /** The sign-in notice may be shown; the failed-search one is not */
+    const messages = onError.mock.calls.map(([, error]) => error.message)
+    expect(
+      messages.some((message) => /could not be searched/.test(message)),
+    ).toBe(false)
+    onError.mockRestore()
   })
 
   it('throws the last error when every store fails a search', async () => {

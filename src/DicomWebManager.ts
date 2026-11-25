@@ -62,6 +62,8 @@ interface Store {
   hasServiceUrl: boolean
   /** Set once a non-DICOM search answer was reported, to report it once */
   nonDicomAnswerReported: boolean
+  /** Set once a failed search was reported, to report it once */
+  searchFailureReported: boolean
 }
 
 /**
@@ -223,6 +225,31 @@ const searchRows = <T>(store: Store, items: unknown): T[] => {
 }
 
 /**
+ * Tell the user that a store failed a search the other stores answered, once
+ * per store. Searches only fail on a wrong URL or an unreachable server (no
+ * matches is a 200), so without this a mistyped `gcp=` store would silently
+ * show nothing. Authorization failures are left to the sign-in handling.
+ */
+const reportFailedSearch = (store: Store, error: unknown): void => {
+  const status = (error as { status?: unknown } | null)?.status
+  if (status === 401 || status === 403 || store.searchFailureReported) {
+    return
+  }
+  store.searchFailureReported = true
+  const reason =
+    typeof status === 'number' && status > 0 ? ` (HTTP ${status})` : ''
+  NotificationMiddleware.onError(
+    NotificationMiddlewareContext.DICOMWEB,
+    new CustomError(
+      errorTypes.COMMUNICATION,
+      `The DICOMweb server "${store.id}" at ` +
+        `${store.settings.url ?? store.origin} could not be searched` +
+        `${reason}, so its data is not shown. Check its URL.`,
+    ),
+  )
+}
+
+/**
  * Run the same DICOMweb operation against every readable store in parallel,
  * merge the results, and de-duplicate them by the supplied DICOM tag keys.
  *
@@ -248,6 +275,7 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
   }
   let lastError: unknown
   let failureCount = 0
+  const failures = new Map<Store, unknown>()
   const results = await Promise.all(
     readable.map(async (store) => {
       try {
@@ -255,6 +283,7 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
       } catch (error: unknown) {
         lastError = error
         failureCount += 1
+        failures.set(store, error)
         if (import.meta.env.MODE === 'development') {
           console.warn(
             `search against store "${store.id}" failed; ` +
@@ -268,6 +297,9 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
   )
   if (failureCount === readable.length) {
     throw lastError
+  }
+  for (const [store, error] of failures) {
+    reportFailedSearch(store, error)
   }
 
   const merged: T[] = []
@@ -552,6 +584,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
         settings: serverSettings,
         hasServiceUrl: serviceUrl.trim() !== '',
         nonDicomAnswerReported: false,
+        searchFailureReported: false,
       })
     })
   }
