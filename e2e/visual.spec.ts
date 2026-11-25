@@ -4,9 +4,12 @@ import {
   expectTissueRendered,
   openViewer,
   overrideConfig,
+  section,
   setGammaCorrection,
+  slidePanel,
   waitForDeepLinkedLayer,
 } from './helpers'
+import { labelmap, serveLabelmap } from './labelmap'
 import { seriesUrl, studies } from './studies'
 
 const { he, tcgaRead, tcgaLuad, tcgaGbm, rmsSr, boneMarrow, htanHms } = studies
@@ -115,5 +118,24 @@ test.describe('Visual smoke', () => {
     await expectTissueRendered(page, 3)
     await setGammaCorrection(page, false)
     await expectSettledViewportScreenshot(page, 'vs9-gamma-off')
+  })
+
+  test('VS10 LABELMAP SEG without its background segment', async ({ page }) => {
+    /** Synthetic LABELMAP served into the RMS study (e2e/labelmap.ts) */
+    await serveLabelmap(page)
+    await openViewer(
+      page,
+      seriesUrl({ study: labelmap.study, series: labelmap.series }),
+    )
+    await expectTissueRendered(page)
+    await waitForDeepLinkedLayer(page, 'Segmentations')
+    /**
+     * "Show all" is how a background segment got drawn: four bands inside
+     * an ellipse are expected, a background would flood the rest
+     */
+    const segments = await section(slidePanel(page), 'Segmentations')
+    await segments.getByRole('button', { name: 'Hide all segments' }).click()
+    await segments.getByRole('button', { name: 'Show all segments' }).click()
+    await expectSettledViewportScreenshot(page, 'vs10-labelmap-seg')
   })
 })
