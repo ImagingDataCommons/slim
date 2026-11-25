@@ -351,6 +351,36 @@ describe('DicomWebManager - multi-store search', () => {
     onError.mockRestore()
   })
 
+  it('reports a failing server once across the managers that share it', async () => {
+    /** One manager per storage class, all built from the same settings */
+    const settings = [
+      { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+      { id: 'gcp', url: 'https://gcp.test/shared-store', write: false },
+    ]
+    const managers = [0, 1, 2].map(
+      () => new DicomWebManager({ baseUri, settings }),
+    )
+    for (const manager of managers) {
+      const primaryStub = makeStubClient('primary')
+      const gcpStub = makeStubClient('gcp')
+      stubManagerClients(manager, [primaryStub, gcpStub])
+      primaryStub.searchForSeries.mockResolvedValue([])
+      gcpStub.searchForSeries.mockRejectedValue(httpError(0))
+    }
+    const onError = vi
+      .spyOn(NotificationMiddleware, 'onError')
+      .mockImplementation(() => {})
+
+    for (const manager of managers) {
+      await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
+    }
+
+    expect(onError).toHaveBeenCalledTimes(1)
+    /** No status (e.g. a CORS-blocked 404): the message names none */
+    expect(onError.mock.calls[0][1].message).not.toMatch(/HTTP/)
+    onError.mockRestore()
+  })
+
   it('leaves an unauthorized search to the sign-in handling', async () => {
     const manager = new DicomWebManager({
       baseUri,

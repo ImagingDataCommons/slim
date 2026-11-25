@@ -62,8 +62,6 @@ interface Store {
   hasServiceUrl: boolean
   /** Set once a non-DICOM search answer was reported, to report it once */
   nonDicomAnswerReported: boolean
-  /** Set once a failed search was reported, to report it once */
-  searchFailureReported: boolean
 }
 
 /**
@@ -225,17 +223,30 @@ const searchRows = <T>(store: Store, items: unknown): T[] => {
 }
 
 /**
+ * Servers whose failed search was already reported. Keyed by the configured
+ * settings, which every storage class's manager shares, so one wrong server
+ * is reported once rather than once per storage class.
+ */
+const reportedSearchFailures = new WeakSet<ServerSettings>()
+
+/**
  * Tell the user that a store failed a search the other stores answered, once
- * per store. Searches only fail on a wrong URL or an unreachable server (no
- * matches is a 200), so without this a mistyped `gcp=` store would silently
- * show nothing. Authorization failures are left to the sign-in handling.
+ * per configured server. Searches only fail on a wrong URL or an unreachable
+ * server (no matches is a 200), so without this a mistyped `gcp=` store would
+ * silently show nothing. Authorization failures are left to the sign-in
+ * handling. A wrong path on a server without CORS headers on its errors
+ * gives no status at all.
  */
 const reportFailedSearch = (store: Store, error: unknown): void => {
   const status = (error as { status?: unknown } | null)?.status
-  if (status === 401 || status === 403 || store.searchFailureReported) {
+  if (
+    status === 401 ||
+    status === 403 ||
+    reportedSearchFailures.has(store.settings)
+  ) {
     return
   }
-  store.searchFailureReported = true
+  reportedSearchFailures.add(store.settings)
   const reason =
     typeof status === 'number' && status > 0 ? ` (HTTP ${status})` : ''
   NotificationMiddleware.onError(
@@ -584,7 +595,6 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
         settings: serverSettings,
         hasServiceUrl: serviceUrl.trim() !== '',
         nonDicomAnswerReported: false,
-        searchFailureReported: false,
       })
     })
   }
