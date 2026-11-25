@@ -1,8 +1,8 @@
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import * as dcmjs from 'dcmjs'
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import * as dmv from 'dicom-microscopy-viewer'
 import * as dwc from 'dicomweb-client'
 
@@ -33,6 +33,16 @@ const { naturalizeDataset } = dcmjs.data.DicomMetaDictionary
  */
 type AuthorizationMode = 'always' | 'never' | 'auto'
 
+/** Series and instance search against a single store */
+export interface StoreSearchClient {
+  searchForSeries: (
+    options: dwc.api.SearchForSeriesOptions,
+  ) => Promise<dwc.api.Series[]>
+  searchForInstances: (
+    options: dwc.api.SearchForInstancesOptions,
+  ) => Promise<dwc.api.Instance[]>
+}
+
 interface Store {
   id: string
   read: boolean
@@ -48,6 +58,10 @@ interface Store {
   authRefusalReported: boolean
   client: dwc.api.DICOMwebClient
   settings: ServerSettings
+  /** False for a default server left blank until the user picks one */
+  hasServiceUrl: boolean
+  /** Set once a non-DICOM search answer was reported, to report it once */
+  nonDicomAnswerReported: boolean
 }
 
 /**
@@ -78,6 +92,74 @@ const AUTH_CHALLENGE_STATUSES = new Set([401, 403])
 const getErrorStatus = (error: unknown): number | undefined => {
   const status = (error as { status?: unknown } | null)?.status
   return typeof status === 'number' ? status : undefined
+}
+
+/**
+ * Whether a server refused a request that we deliberately sent without
+ * credentials.
+ *
+ * This is distinct from a 401 against a credentialed store, which means the
+ * token expired. These must not be conflated: the application responds to the
+ * latter by renewing the session, up to an interactive redirect to the
+ * identity provider. Doing that here would drag the user through a sign-in
+ * they may have just declined, and could not help anyway — the request failed
+ * because the credential was withheld, not because it was stale.
+ */
+const isAnonymousChallenge = (store: Store, error: unknown): boolean => {
+  const status = getErrorStatus(error)
+  return (
+    status !== undefined &&
+    AUTH_CHALLENGE_STATUSES.has(status) &&
+    store.authMode !== 'always' &&
+    (wasSentAnonymously(error) ?? !store.authGranted)
+  )
+}
+
+/** Requests that went out without credentials, tagged as they are sent */
+const anonymousRequests = new WeakSet<object>()
+
+/**
+ * Request hook recording whether a request carries credentials. A 401 is
+ * judged by the request that got it: one sent before a sibling request won
+ * the token is still an anonymous challenge, not an expired token.
+ */
+const tagAnonymousRequest = (
+  request: XMLHttpRequest,
+  metadata: { headers?: Record<string, string> },
+): XMLHttpRequest => {
+  const carriesCredentials = Object.keys(metadata.headers ?? {}).some((name) =>
+    AUTH_HEADER_NAMES.has(name.toLowerCase()),
+  )
+  if (!carriesCredentials) anonymousRequests.add(request)
+  return request
+}
+
+/** Whether the failed request carried no credentials, when that is known */
+const wasSentAnonymously = (error: unknown): boolean | undefined => {
+  const request = (error as { request?: unknown } | null)?.request
+  if (typeof request !== 'object' || request === null) return undefined
+  return anonymousRequests.has(request)
+}
+
+/**
+ * Tell the user their token was withheld from a server that wants it, once
+ * per store. Reported directly rather than through the DICOMweb error
+ * handler, which would treat the 401 as an expired session and start a
+ * pointless re-authentication.
+ */
+const reportWithheldAuthorization = (store: Store): void => {
+  if (store.authRefusalReported) {
+    return
+  }
+  store.authRefusalReported = true
+  NotificationMiddleware.onError(
+    NotificationMiddlewareContext.DICOMWEB,
+    new CustomError(
+      errorTypes.COMMUNICATION,
+      `The DICOMweb server at ${store.origin} requires sign-in, but your ` +
+        'access token was not sent to it.',
+    ),
+  )
 }
 
 /** DICOM JSON tag keys used for cross-store deduplication of search results. */
@@ -116,6 +198,31 @@ const buildDedupKey = (
 }
 
 /**
+ * Stores a request may go to. One without a URL yet (a default server left
+ * blank for server selection) would send it to Slim's own origin.
+ */
+const readableStores = (stores: readonly Store[]): Store[] =>
+  stores.filter((store) => store.read && store.hasServiceUrl)
+
+/**
+ * A search answer as rows. A non-DICOM answer (e.g. an HTML login page or a
+ * wrong path) reads as no rows and is reported once per store, by name, so
+ * the Debug panel says why that server matched nothing.
+ */
+const searchRows = <T>(store: Store, items: unknown): T[] => {
+  if (Array.isArray(items)) return items as T[]
+  if (!store.nonDicomAnswerReported) {
+    store.nonDicomAnswerReported = true
+    console.warn(
+      `The DICOMweb server "${store.id}" (${store.origin}) answered a ` +
+        'search with something other than DICOM JSON; treating it as no ' +
+        'matches',
+    )
+  }
+  return []
+}
+
+/**
  * Run the same DICOMweb operation against every readable store in parallel,
  * merge the results, and de-duplicate them by the supplied DICOM tag keys.
  *
@@ -132,8 +239,10 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
   stores: Store[],
   dedupTags: readonly string[],
   call: (store: Store) => Promise<T[]>,
+  /** Called with each store's rows, in configured store order */
+  onStoreRows?: (store: Store, rows: T[]) => void,
 ): Promise<T[]> => {
-  const readable = stores.filter((s) => s.read)
+  const readable = readableStores(stores)
   if (readable.length === 0) {
     return []
   }
@@ -146,7 +255,7 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
       } catch (error: unknown) {
         lastError = error
         failureCount += 1
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.MODE === 'development') {
           console.warn(
             `search against store "${store.id}" failed; ` +
               'continuing with the remaining stores',
@@ -163,8 +272,10 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
 
   const merged: T[] = []
   const seen = new Set<string>()
-  for (const items of results) {
-    for (const item of items) {
+  for (const [index, answer] of results.entries()) {
+    const rows = searchRows<T>(readable[index], answer)
+    onStoreRows?.(readable[index], rows)
+    for (const item of rows) {
       const key = buildDedupKey(item, dedupTags)
       if (!seen.has(key)) {
         seen.add(key)
@@ -187,7 +298,7 @@ const retrieveWithFallback = async <T>(
   stores: Store[],
   call: (store: Store) => Promise<T>,
 ): Promise<T> => {
-  const readable = stores.filter((s) => s.read)
+  const readable = readableStores(stores)
   if (readable.length === 0) {
     throw new CustomError(
       errorTypes.COMMUNICATION,
@@ -200,7 +311,7 @@ const retrieveWithFallback = async <T>(
       return await call(store)
     } catch (error: unknown) {
       lastError = error
-      if (process.env.NODE_ENV === 'development') {
+      if (import.meta.env.MODE === 'development') {
         console.debug(
           `retrieve against store "${store.id}" failed; ` +
             'falling back to the next configured store',
@@ -215,10 +326,20 @@ const retrieveWithFallback = async <T>(
 }
 
 /**
- * Cache mapping series UIDs to the store that successfully served them.
- * Keyed by "studyInstanceUID/seriesInstanceUID".
+ * Per manager (keyed by its store list), maps
+ * "studyInstanceUID/seriesInstanceUID" to the store that served the series.
+ * Weakly held, so managers replaced by a server switch are not retained.
  */
-const seriesStoreCache = new Map<string, Store>()
+const seriesStoreCaches = new WeakMap<Store[], Map<string, Store>>()
+
+const getSeriesStoreCache = (stores: Store[]): Map<string, Store> => {
+  let cache = seriesStoreCaches.get(stores)
+  if (cache === undefined) {
+    cache = new Map()
+    seriesStoreCaches.set(stores, cache)
+  }
+  return cache
+}
 
 /**
  * Build the cache key for a series.
@@ -240,7 +361,7 @@ const retrieveWithCachedFallback = async <T>(
   call: (store: Store) => Promise<T>,
   cacheKey?: string,
 ): Promise<T> => {
-  const readable = stores.filter((s) => s.read)
+  const readable = readableStores(stores)
   if (readable.length === 0) {
     throw new CustomError(
       errorTypes.COMMUNICATION,
@@ -249,6 +370,7 @@ const retrieveWithCachedFallback = async <T>(
   }
 
   /** Reorder stores to try the cached one first if available. */
+  const seriesStoreCache = getSeriesStoreCache(stores)
   let orderedStores = readable
   const cachedStore = cacheKey != null ? seriesStoreCache.get(cacheKey) : null
   if (cachedStore != null && readable.includes(cachedStore)) {
@@ -266,7 +388,7 @@ const retrieveWithCachedFallback = async <T>(
       return result
     } catch (error: unknown) {
       lastError = error
-      if (process.env.NODE_ENV === 'development') {
+      if (import.meta.env.MODE === 'development') {
         console.debug(
           `retrieve against store "${store.id}" failed; ` +
             'falling back to the next configured store',
@@ -311,7 +433,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       this.handleError = onError
     } else {
       this.handleError = (error, serverSettings) => {
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.MODE === 'development') {
           console.error(error, serverSettings)
         }
       }
@@ -347,16 +469,9 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       } else if (serverSettings.path !== undefined) {
         serviceUrl = joinUrl(serverSettings.path, baseUri)
       } else {
-        NotificationMiddleware.onError(
-          NotificationMiddlewareContext.SLIM,
-          new CustomError(
-            errorTypes.COMMUNICATION,
-            'Either path or full URL needs to be configured for server.',
-          ),
-        )
         throw new CustomError(
           errorTypes.COMMUNICATION,
-          'Either path or full URL needs to be configured for server.',
+          `The DICOMweb server "${serverSettings.id}" needs a "url" or a "path".`,
         )
       }
 
@@ -393,15 +508,18 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
         }
       }
 
-      if (serverSettings.retry !== undefined) {
-        clientSettings.requestHooks = [getXHRRetryHook(serverSettings.retry)]
-      }
+      clientSettings.requestHooks = [
+        ...(serverSettings.retry !== undefined
+          ? [getXHRRetryHook(serverSettings.retry)]
+          : []),
+        tagAnonymousRequest,
+      ]
 
       clientSettings.errorInterceptor = (
         error: dwc.api.DICOMwebClientError,
       ) => {
         const store = this.stores[storeIndex]
-        if (store !== undefined && this.isAnonymousChallenge(store, error)) {
+        if (store !== undefined && isAnonymousChallenge(store, error)) {
           /**
            * The store was queried anonymously and the server asked for
            * credentials. `callStore` owns this case: it escalates if it can and
@@ -432,6 +550,8 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
         authRefusalReported: false,
         client: new dwc.api.DICOMwebClient(clientSettings),
         settings: serverSettings,
+        hasServiceUrl: serviceUrl.trim() !== '',
+        nonDicomAnswerReported: false,
       })
     })
   }
@@ -477,59 +597,14 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   }
 
   /**
-   * Whether a server refused a request that we deliberately sent without
-   * credentials.
-   *
-   * This is distinct from a 401 against a credentialed store, which means the
-   * token expired. These must not be conflated: the application responds to the
-   * latter by renewing the session, up to an interactive redirect to the
-   * identity provider. Doing that here would drag the user through a sign-in
-   * they may have just declined, and could not help anyway — the request failed
-   * because the credential was withheld, not because it was stale.
-   */
-  private readonly isAnonymousChallenge = (
-    store: Store,
-    error: unknown,
-  ): boolean => {
-    const status = getErrorStatus(error)
-    return (
-      status !== undefined &&
-      AUTH_CHALLENGE_STATUSES.has(status) &&
-      store.authMode !== 'always' &&
-      !store.authGranted
-    )
-  }
-
-  /**
-   * Whether such a challenge can still be escalated from, i.e. the store is
-   * negotiating, has not already been refused, and a policy exists to ask.
+   * Whether an anonymous challenge can still be escalated from, i.e. the store
+   * is negotiating, has not already been refused, and a policy exists to ask.
    */
   private readonly isAuthChallenge = (store: Store, error: unknown): boolean =>
-    this.isAnonymousChallenge(store, error) &&
+    isAnonymousChallenge(store, error) &&
     store.authMode === 'auto' &&
     !store.authRefused &&
     this.authorizationPolicy !== undefined
-
-  /**
-   * Tell the user their token was withheld from a server that wants it, once
-   * per store. Reported directly rather than through the DICOMweb error
-   * handler, which would treat the 401 as an expired session and start a
-   * pointless re-authentication.
-   */
-  private readonly reportWithheldAuthorization = (store: Store): void => {
-    if (store.authRefusalReported) {
-      return
-    }
-    store.authRefusalReported = true
-    NotificationMiddleware.onError(
-      NotificationMiddlewareContext.DICOMWEB,
-      new CustomError(
-        errorTypes.COMMUNICATION,
-        `The DICOMweb server at ${store.origin} requires sign-in, but your ` +
-          'access token was not sent to it.',
-      ),
-    )
-  }
 
   /**
    * Ask the policy for a token for this store's origin, collapsing concurrent
@@ -564,14 +639,21 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
     try {
       return await call(store.client)
     } catch (error: unknown) {
+      if (store.authGranted && isAnonymousChallenge(store, error)) {
+        /**
+         * Sent before a sibling request won the token for this store; send
+         * it again with the token instead of asking or renewing
+         */
+        return await call(store.client)
+      }
       if (!this.isAuthChallenge(store, error)) {
-        if (this.isAnonymousChallenge(store, error)) {
+        if (isAnonymousChallenge(store, error)) {
           /**
            * Already refused, or configured `sendAuthorization: false` against a
            * server that wants credentials. The interceptor stayed quiet, so say
            * so here.
            */
-          this.reportWithheldAuthorization(store)
+          reportWithheldAuthorization(store)
         }
         throw error
       }
@@ -579,7 +661,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       if (authorization === undefined) {
         /** Consent refused, or no token exists to send. */
         store.authRefused = true
-        this.reportWithheldAuthorization(store)
+        reportWithheldAuthorization(store)
         throw error
       }
       store.authGranted = true
@@ -605,16 +687,16 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
    * anonymous requests. Non-credential headers propagate to every store.
    */
   updateHeaders = (fields: { [name: string]: string }): void => {
-    for (const f in fields) {
-      const isAuthHeader = AUTH_HEADER_NAMES.has(f.toLowerCase())
+    for (const [name, value] of Object.entries(fields)) {
+      const isAuthHeader = AUTH_HEADER_NAMES.has(name.toLowerCase())
       if (isAuthHeader) {
-        this.currentAuthorization = fields[f]
+        this.currentAuthorization = value
       }
       for (const store of this.stores) {
         if (isAuthHeader && !this.mayAttachAuthorization(store)) {
           continue
         }
-        store.client.headers[f] = fields[f]
+        store.client.headers[name] = value
       }
     }
   }
@@ -632,7 +714,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   storeInstances = async (
     options: dwc.api.StoreInstancesOptions,
   ): Promise<void> => {
-    const writable = this.stores.find((s) => s.write)
+    const writable = this.stores.find((s) => s.write && s.hasServiceUrl)
     if (writable === undefined) {
       return await Promise.reject(new Error('Store is not writable.'))
     }
@@ -660,9 +742,49 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
     return merged as unknown as dwc.api.Study[]
   }
 
+  private readonly storeSearchClientCache = new WeakMap<
+    Store,
+    StoreSearchClient
+  >()
+
+  /**
+   * One search client per readable store, for callers that page each store
+   * on its own (a shared QIDO offset is only right for one store). Clients
+   * are stable, so per-server state can be keyed on them.
+   */
+  storeSearchClients = (): StoreSearchClient[] =>
+    readableStores(this.stores).map((store) => {
+      let client = this.storeSearchClientCache.get(store)
+      if (client === undefined) {
+        client = {
+          searchForSeries: async (options) =>
+            searchRows<dwc.api.Series>(
+              store,
+              await this.callStore(
+                store,
+                async (storeClient) =>
+                  await storeClient.searchForSeries(options),
+              ),
+            ),
+          searchForInstances: async (options) =>
+            searchRows<dwc.api.Instance>(
+              store,
+              await this.callStore(
+                store,
+                async (storeClient) =>
+                  await storeClient.searchForInstances(options),
+              ),
+            ),
+        }
+        this.storeSearchClientCache.set(store, client)
+      }
+      return client
+    })
+
   searchForSeries = async (
     options: dwc.api.SearchForSeriesOptions,
   ): Promise<dwc.api.Series[]> => {
+    const seriesStoreCache = getSeriesStoreCache(this.stores)
     const merged = await searchAcrossStores(
       this.stores,
       [STUDY_INSTANCE_UID_TAG, SERIES_INSTANCE_UID_TAG],
@@ -674,6 +796,29 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
               options,
             )) as unknown as DicomJsonObject[],
         ),
+      /**
+       * Remember the first configured store that has each series, so a later
+       * retrieve goes there first instead of failing on the other stores. A
+       * store already remembered (also by a retrieve that worked) is kept.
+       */
+      (store, rows) => {
+        for (const row of rows) {
+          const studyInstanceUID = getDicomTagValue(row, STUDY_INSTANCE_UID_TAG)
+          const seriesInstanceUID = getDicomTagValue(
+            row,
+            SERIES_INSTANCE_UID_TAG,
+          )
+          if (studyInstanceUID === undefined || seriesInstanceUID === undefined)
+            continue
+          const cacheKey = buildSeriesCacheKey(
+            studyInstanceUID,
+            seriesInstanceUID,
+          )
+          if (!seriesStoreCache.has(cacheKey)) {
+            seriesStoreCache.set(cacheKey, store)
+          }
+        }
+      },
     )
     return merged as unknown as dwc.api.Series[]
   }
@@ -708,7 +853,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
         ),
     )
     const naturalized = naturalizeDataset(studySummaryMetadata)
-    DicomMetadataStore.addStudy(naturalized as Record<string, unknown>)
+    DicomMetadataStore.addStudy(naturalized)
     return studySummaryMetadata
   }
 
@@ -729,10 +874,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
       cacheKey,
     )
     const naturalized = seriesSummaryMetadata.map(naturalizeDataset)
-    DicomMetadataStore.addSeriesMetadata(
-      naturalized as Array<Record<string, unknown>>,
-      true,
-    )
+    DicomMetadataStore.addSeriesMetadata(naturalized, true)
     return seriesSummaryMetadata
   }
 

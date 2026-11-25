@@ -24,8 +24,8 @@ if [ -z "${REACT_APP_DMV_GIT_SHA:-}" ]; then
   fi
 fi
 
-# Default config name when .env is absent (fresh clone).
-export REACT_APP_CONFIG="${REACT_APP_CONFIG:-local}"
+# REACT_APP_CONFIG is read from the shell or .env; vite.config.ts and
+# inject-slim-env.mjs default it to 'local'.
 
 # Expose SLIM_* env vars to public/config/*.js via window.slim.env
 node "$SCRIPT_DIR/inject-slim-env.mjs" || exit $?

@@ -1,3 +1,5 @@
 #!/usr/bin/env sh
-# Fast checks on every commit: lint + format (biome check runs both)
+# Fast checks on every commit: lint + format (biome check runs both), then
+# React Compiler bailouts (a few seconds)
 pnpm run lint
+pnpm run check:compiler

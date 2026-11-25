@@ -1,582 +1,297 @@
-import { EyeOutlined, SearchOutlined } from '@ant-design/icons'
-import { Input, Select, Slider, Table, Typography } from 'antd'
-import { useEffect, useMemo, useState } from 'react'
+/** biome-ignore-all lint/a11y/noRedundantRoles: the table's display overrides (flex/block/grid) drop native table semantics in Safari/VoiceOver, so the roles are restated */
+import { type JSX, useId } from 'react'
 
+import { useLayoutMode } from '../../contexts/LayoutModeContext'
 import type DicomWebManager from '../../DicomWebManager'
-import './DicomTagBrowser.css'
-import { useActiveSeries } from '../../hooks/useActiveSeries'
-import { useDebounce } from '../../hooks/useDebounce'
-import { useSlides } from '../../hooks/useSlides'
-import DicomMetadataStore, {
-  EVENTS,
-  type Series,
-  type Study,
-} from '../../services/DICOMMetadataStore'
-import { formatDicomDate } from '../../utils/formatDicomDate'
-import { logger } from '../../utils/logger'
-import { getSortedTags, type TagInfo } from './dicomTagUtils'
+import { cn } from '../../lib/utils'
+import { Button } from '../ui/button'
+import { SlimDialogFooter } from '../ui/dialog'
+import { SearchInput } from '../ui/search-input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select'
+import { Slider } from '../ui/slider'
+import { type DisplaySet, getSeriesLabel } from './dicomTagUtils'
+import { TAG_GRID_COLUMNS, TagRow } from './TagRow'
+import { useDicomTagBrowserState } from './useDicomTagBrowserState'
 
-const { Option } = Select
-
-interface DisplaySet {
-  displaySetInstanceUID: number
-  SeriesDate?: string
-  SeriesTime?: string
-  SeriesNumber: string
-  SeriesDescription?: string
-  SeriesInstanceUID?: string
-  Modality: string
-  images: unknown[]
-}
-
-interface TableDataItem {
-  key: string
-  tag: string
-  vr: string
-  keyword: string
-  value: string
-  children?: TableDataItem[]
-}
-
-interface DicomTagBrowserProps {
+export interface DicomTagBrowserProps {
   clients: { [key: string]: DicomWebManager }
   studyInstanceUID: string
+  /** Series selected when the browser opens */
   seriesInstanceUID?: string
+  /** Called by the footer "Done" button */
+  onDone?: () => void
 }
 
-function bucketContainsSopInstance(bucket: unknown[], sop: string): boolean {
-  if (sop === '') return false
-  for (const existing of bucket) {
-    if ((existing as Record<string, unknown>).SOPInstanceUID === sop) {
-      return true
-    }
-  }
-  return false
+/** Full series label for the trigger and item textValue (avoids Radix truncating complex ItemText). */
+function seriesTriggerLabel(displaySet: DisplaySet): string {
+  const { label, description } = getSeriesLabel(displaySet)
+  return description !== '' ? `${label} — ${description}` : label
 }
 
 const DicomTagBrowser = ({
   clients,
   studyInstanceUID,
   seriesInstanceUID = '',
+  onDone,
 }: DicomTagBrowserProps): JSX.Element => {
-  const { slides, isLoading } = useSlides({ clients, studyInstanceUID })
-  const activeSeriesUIDs = useActiveSeries()
-  const [study, setStudy] = useState<Study | undefined>(undefined)
+  const { compactChrome } = useLayoutMode()
+  const id = useId()
+  const seriesLabelId = `${id}-series`
+  const instanceLabelId = `${id}-instance`
 
-  const [displaySets, setDisplaySets] = useState<DisplaySet[]>([])
-  const [selectedDisplaySetInstanceUID, setSelectedDisplaySetInstanceUID] =
-    useState(0)
-  const [instanceNumber, setInstanceNumber] = useState(1)
-  const [filterValue, setFilterValue] = useState('')
-  const [expandedKeys, setExpandedKeys] = useState<string[]>([])
-  const [searchInput, setSearchInput] = useState('')
-
-  const debouncedSearchValue = useDebounce(searchInput, 300)
-
-  useEffect(() => {
-    if (debouncedSearchValue === '') {
-      setFilterValue('')
-      setExpandedKeys([])
-    } else {
-      setFilterValue(debouncedSearchValue)
-    }
-  }, [debouncedSearchValue])
-
-  useEffect(() => {
-    const handler = (_event: unknown): void => {
-      const study: Study | undefined = Object.assign(
-        {},
-        DicomMetadataStore.getStudy(studyInstanceUID),
-      )
-      setStudy(study)
-    }
-    const seriesAddedSubscription = DicomMetadataStore.subscribe(
-      EVENTS.SERIES_ADDED,
-      handler,
-    )
-    const instancesAddedSubscription = DicomMetadataStore.subscribe(
-      EVENTS.INSTANCES_ADDED,
-      handler,
-    )
-
-    const study = Object.assign(
-      {},
-      DicomMetadataStore.getStudy(studyInstanceUID),
-    )
-    setStudy(study)
-
-    return () => {
-      seriesAddedSubscription.unsubscribe()
-      instancesAddedSubscription.unsubscribe()
-    }
-  }, [studyInstanceUID])
-
-  useEffect(() => {
-    let displaySets: DisplaySet[] = []
-    let derivedDisplaySets: DisplaySet[] = []
-    const processedSeries: string[] = []
-    let index = 0
-
-    if (slides.length > 0) {
-      displaySets = slides
-        .flatMap((slide): DisplaySet[] => {
-          /** One row per SeriesInstanceUID; volume/overview/label often share a series. */
-          const imagesBySeries = new Map<string, unknown[]>()
-
-          const addImages = (
-            images: unknown[] | undefined,
-            imageType: string,
-          ): void => {
-            if (images?.[0] === undefined) return
-            logger.debug(
-              `Found ${images.length} ${imageType} image(s) for slide ${slide.containerIdentifier}`,
-            )
-            for (const image of images) {
-              const img = image as Record<string, unknown>
-              const seriesUID = img.SeriesInstanceUID as string | undefined
-              if (seriesUID === undefined || seriesUID === '') continue
-
-              let bucket = imagesBySeries.get(seriesUID)
-              if (bucket === undefined) {
-                processedSeries.push(seriesUID)
-                bucket = []
-                imagesBySeries.set(seriesUID, bucket)
-              }
-
-              const sop =
-                typeof img.SOPInstanceUID === 'string' ? img.SOPInstanceUID : ''
-              if (!bucketContainsSopInstance(bucket, sop)) {
-                bucket.push(image)
-              }
-            }
-          }
-
-          addImages(slide.volumeImages, 'volume')
-          addImages(slide.overviewImages, 'overview')
-          addImages(slide.labelImages, 'label')
-
-          const slideDisplaySets: DisplaySet[] = []
-          for (const images of imagesBySeries.values()) {
-            if (images[0] === undefined) continue
-            const img = images[0] as Record<string, unknown>
-            const {
-              SeriesDate,
-              SeriesTime,
-              SeriesNumber,
-              SeriesInstanceUID,
-              SeriesDescription,
-              Modality,
-            } = img
-            slideDisplaySets.push({
-              displaySetInstanceUID: index,
-              SeriesDate: SeriesDate as string | undefined,
-              SeriesTime: SeriesTime as string | undefined,
-              SeriesInstanceUID: SeriesInstanceUID as string,
-              SeriesNumber: String(SeriesNumber),
-              SeriesDescription: SeriesDescription as string | undefined,
-              Modality: Modality as string,
-              images,
-            })
-            index++
-          }
-          return slideDisplaySets
-        })
-        .filter((set): set is DisplaySet => set !== null && set !== undefined)
-    }
-
-    if (study !== undefined && study.series?.length > 0) {
-      derivedDisplaySets = study.series
-        .filter((s) => !processedSeries.includes(s.SeriesInstanceUID))
-        .map((series: Series): DisplaySet => {
-          const ds: DisplaySet = {
-            displaySetInstanceUID: index,
-            SeriesDate: series.SeriesDate,
-            SeriesTime: series.SeriesTime,
-            SeriesNumber: String(series.SeriesNumber),
-            SeriesDescription: series.SeriesDescription,
-            SeriesInstanceUID: series.SeriesInstanceUID,
-            Modality: series.Modality,
-            images: series?.instances?.length > 0 ? series.instances : [series],
-          }
-          index++
-          return ds
-        })
-    }
-
-    setDisplaySets([...displaySets, ...derivedDisplaySets])
-  }, [slides, study])
-
-  const sortedDisplaySets = useMemo(() => {
-    return [...displaySets].sort((a, b) => {
-      const aNum = Number(a.SeriesNumber)
-      const bNum = Number(b.SeriesNumber)
-      // Normalize non-numeric/missing values to Infinity to sort them last
-      const aSafe =
-        Number.isNaN(aNum) ||
-        a.SeriesNumber === undefined ||
-        a.SeriesNumber === ''
-          ? Infinity
-          : aNum
-      const bSafe =
-        Number.isNaN(bNum) ||
-        b.SeriesNumber === undefined ||
-        b.SeriesNumber === ''
-          ? Infinity
-          : bNum
-      return aSafe - bSafe
-    })
-  }, [displaySets])
-
-  const displaySetList = useMemo(() => {
-    return sortedDisplaySets.map((displaySet, index) => {
-      const {
-        SeriesDate = '',
-        SeriesTime = '',
-        SeriesNumber = '',
-        SeriesDescription = '',
-        Modality = '',
-        SeriesInstanceUID,
-      } = displaySet
-
-      const dateStr = `${SeriesDate}:${SeriesTime}`.split('.')[0]
-      const displayDate = formatDicomDate(dateStr)
-
-      return {
-        value: index,
-        label: `${SeriesNumber} (${Modality}): ${SeriesDescription}`,
-        description: displayDate,
-        seriesInstanceUID: SeriesInstanceUID ?? '',
-      }
-    })
-  }, [sortedDisplaySets])
-
-  useEffect(() => {
-    if (sortedDisplaySets.length === 0) return
-
-    if (seriesInstanceUID !== '') {
-      const matchingIndex = sortedDisplaySets.findIndex(
-        (displaySet) => displaySet.SeriesInstanceUID === seriesInstanceUID,
-      )
-      if (matchingIndex !== -1) {
-        setSelectedDisplaySetInstanceUID(matchingIndex)
-        setInstanceNumber(1)
-        return
-      }
-    }
-
-    setSelectedDisplaySetInstanceUID((currentIndex) => {
-      const needsReset =
-        currentIndex >= sortedDisplaySets.length || currentIndex < 0
-      return needsReset ? 0 : currentIndex
-    })
-  }, [seriesInstanceUID, sortedDisplaySets])
-
-  useEffect(() => {
-    const currentIndex = selectedDisplaySetInstanceUID
-    const needsReset =
-      currentIndex >= sortedDisplaySets.length || currentIndex < 0
-    if (needsReset && sortedDisplaySets.length > 0) {
-      setInstanceNumber(1)
-    }
-  }, [selectedDisplaySetInstanceUID, sortedDisplaySets.length])
-
-  const showInstanceList =
-    sortedDisplaySets[selectedDisplaySetInstanceUID]?.images.length > 1
-
-  const instanceSliderMarks = useMemo(() => {
-    if (sortedDisplaySets[selectedDisplaySetInstanceUID] === undefined)
-      return {}
-    const totalInstances =
-      sortedDisplaySets[selectedDisplaySetInstanceUID].images.length
-
-    const marks: Record<number, string> = {
-      1: '1',
-      [Math.ceil(totalInstances / 2)]: String(Math.ceil(totalInstances / 2)),
-      [totalInstances]: String(totalInstances),
-    }
-
-    return marks
-  }, [selectedDisplaySetInstanceUID, sortedDisplaySets])
-
-  const columns = [
-    {
-      title: 'Tag',
-      dataIndex: 'tag',
-      key: 'tag',
-      width: '30%',
-    },
-    {
-      title: 'VR',
-      dataIndex: 'vr',
-      key: 'vr',
-      width: '5%',
-    },
-    {
-      title: 'Keyword',
-      dataIndex: 'keyword',
-      key: 'keyword',
-      width: '30%',
-    },
-    {
-      title: 'Value',
-      dataIndex: 'value',
-      key: 'value',
-      width: '40%',
-    },
-  ]
-
-  const tableData = useMemo(() => {
-    const transformTagsToTableData = (
-      tags: TagInfo[],
-      parentKey = '',
-    ): TableDataItem[] => {
-      return tags.map((tag, index) => {
-        // Create a unique key using tag value if available, otherwise use index
-        const keyBase: string =
-          tag.tag !== '' ? tag.tag.replace(/[(),]/g, '') : index.toString()
-        const currentKey: string =
-          parentKey !== '' ? `${parentKey}-${keyBase}` : keyBase
-
-        const item: TableDataItem = {
-          key: currentKey,
-          tag: tag.tag,
-          vr: tag.vr,
-          keyword: tag.keyword,
-          value: tag.value,
-        }
-
-        if (tag.children !== undefined && tag.children.length > 0) {
-          item.children = transformTagsToTableData(tag.children, currentKey)
-        }
-
-        return item
-      })
-    }
-
-    if (sortedDisplaySets[selectedDisplaySetInstanceUID] === undefined)
-      return []
-    const images = sortedDisplaySets[selectedDisplaySetInstanceUID]?.images
-    const sortedMetadata = Array.isArray(images)
-      ? [...images].sort((a, b) => {
-          if (
-            a.InstanceNumber !== undefined &&
-            b.InstanceNumber !== undefined
-          ) {
-            return Number(a.InstanceNumber) - Number(b.InstanceNumber)
-          }
-          return 0 // keep original order if either is missing InstanceNumber
-        })
-      : []
-    const metadata = sortedMetadata[instanceNumber - 1]
-    const tags = getSortedTags(metadata)
-    return transformTagsToTableData(tags)
-  }, [instanceNumber, selectedDisplaySetInstanceUID, sortedDisplaySets])
-
-  const filteredData = useMemo(() => {
-    if (filterValue === undefined || filterValue === '') return tableData
-
-    const searchLower = filterValue.toLowerCase()
-    const matchedKeys = new Set<string>()
-
-    const nodeMatches = (node: TableDataItem): boolean => {
-      return (
-        (node.tag?.toLowerCase() ?? '').includes(searchLower) ||
-        (node.vr?.toLowerCase() ?? '').includes(searchLower) ||
-        (node.keyword?.toLowerCase() ?? '').includes(searchLower) ||
-        (node.value?.toString().toLowerCase() ?? '').includes(searchLower)
-      )
-    }
-
-    const findMatchingPaths = (
-      node: TableDataItem,
-      parentPath: TableDataItem[] = [],
-    ): TableDataItem[][] => {
-      const currentPath = [...parentPath, node]
-      let matchingPaths: TableDataItem[][] = []
-
-      if (nodeMatches(node)) {
-        matchingPaths.push(currentPath)
-      }
-
-      node.children?.forEach((child) => {
-        const childPaths = findMatchingPaths(child, currentPath)
-        matchingPaths = [...matchingPaths, ...childPaths]
-      })
-
-      return matchingPaths
-    }
-
-    const matchingPaths = tableData.flatMap((node) => findMatchingPaths(node))
-
-    const reconstructTree = (
-      paths: TableDataItem[][],
-      level = 0,
-    ): TableDataItem[] => {
-      if (paths.length === 0 || level >= paths[0].length) return []
-
-      const nodesAtLevel = new Map<
-        string,
-        {
-          node: TableDataItem
-          childPaths: TableDataItem[][]
-        }
-      >()
-
-      paths.forEach((path) => {
-        if (level < path.length) {
-          const node = path[level]
-          if (!nodesAtLevel.has(node.key)) {
-            nodesAtLevel.set(node.key, {
-              node: { ...node },
-              childPaths: [],
-            })
-          }
-          if (level + 1 < path.length) {
-            nodesAtLevel.get(node.key)?.childPaths.push(path)
-          }
-        }
-      })
-
-      return Array.from(nodesAtLevel.values()).map(({ node, childPaths }) => {
-        matchedKeys.add(node.key)
-        const children = reconstructTree(childPaths, level + 1)
-        return children.length > 0 ? { ...node, children } : node
-      })
-    }
-
-    const filtered = reconstructTree(matchingPaths)
-    setExpandedKeys(Array.from(matchedKeys))
-
-    return filtered
-  }, [tableData, filterValue])
-
-  if (isLoading) {
-    return <div>Loading...</div>
-  }
+  const {
+    isLoading,
+    activeSeriesUIDs,
+    displaySets,
+    selectedDisplaySet,
+    setSelectedSeriesUID,
+    setInstanceNumber,
+    currentInstanceNumber,
+    totalInstances,
+    hasMultipleInstances,
+    instanceLabel,
+    searchInput,
+    setSearchInput,
+    filteredData,
+    isFiltering,
+    expandedKeys,
+    handleToggleExpand,
+    collapseAll,
+    expandAll,
+    attributeCount,
+  } = useDicomTagBrowserState({
+    clients,
+    studyInstanceUID,
+    seriesInstanceUID,
+  })
 
   return (
-    <div className="dicom-tag-browser">
+    <div className="flex min-h-0 flex-1 flex-col">
       <div
-        style={{
-          width: '100%',
-          padding: '16px 20px 20px',
-        }}
+        className={cn(
+          'grid flex-none gap-3 border-b border-line-soft px-5 py-3.5',
+          compactChrome
+            ? 'grid-cols-1'
+            : 'grid-cols-[minmax(0,1.6fr)_minmax(0,0.9fr)_minmax(0,1fr)]',
+        )}
       >
-        <div style={{ display: 'flex', gap: '24px', marginBottom: '32px' }}>
-          <div style={{ flex: 1 }}>
-            <Typography.Text
-              strong
-              style={{ display: 'block', marginBottom: '8px' }}
+        <div className="flex min-w-0 flex-col gap-1.5 text-12 text-ink-muted">
+          <span id={seriesLabelId}>Series</span>
+          <Select
+            value={selectedDisplaySet?.SeriesInstanceUID ?? ''}
+            onValueChange={setSelectedSeriesUID}
+            disabled={isLoading || displaySets.length === 0}
+          >
+            <SelectTrigger
+              className="h-auto min-h-9 whitespace-normal py-1.5 [&>span]:line-clamp-none [&>span]:whitespace-normal [&>span]:wrap-break-word"
+              aria-labelledby={seriesLabelId}
+              title={
+                selectedDisplaySet !== undefined
+                  ? seriesTriggerLabel(selectedDisplaySet)
+                  : undefined
+              }
             >
-              Series
-            </Typography.Text>
-            <Select
-              style={{ width: '100%' }}
-              value={selectedDisplaySetInstanceUID}
-              onChange={(value) => {
-                setSelectedDisplaySetInstanceUID(value)
-                setInstanceNumber(1)
-              }}
-              optionLabelProp="label"
-              optionFilterProp="label"
-            >
-              {displaySetList.map((item) => {
-                const isActive = item.seriesInstanceUID
-                  ? activeSeriesUIDs.has(item.seriesInstanceUID)
-                  : false
+              <SelectValue
+                placeholder={isLoading ? 'Loading series…' : 'Select a series'}
+              />
+            </SelectTrigger>
+            <SelectContent className="max-w-[560px]">
+              {displaySets.map((displaySet) => {
+                const textValue = seriesTriggerLabel(displaySet)
+                const isActive = activeSeriesUIDs.has(
+                  displaySet.SeriesInstanceUID,
+                )
+                /**
+                 * Plain-text ItemText so the trigger SelectValue mirrors the
+                 * full label. Complex children collapse to "SM…" under
+                 * line-clamp on the trigger.
+                 */
                 return (
-                  <Option
-                    key={item.value}
-                    value={item.value}
-                    label={item.label}
+                  <SelectItem
+                    key={displaySet.SeriesInstanceUID}
+                    value={displaySet.SeriesInstanceUID}
+                    textValue={textValue}
+                    title={
+                      isActive ? `${textValue} (active in viewport)` : textValue
+                    }
                   >
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: 8,
-                        minWidth: 0,
-                      }}
-                    >
-                      <span
-                        style={{
-                          width: 16,
-                          flexShrink: 0,
-                          display: 'flex',
-                          justifyContent: 'center',
-                        }}
-                        title={isActive ? 'Active in viewport' : undefined}
-                      >
-                        {isActive ? (
-                          <EyeOutlined
-                            style={{ color: 'rgba(0, 0, 0, 0.65)' }}
-                          />
-                        ) : null}
-                      </span>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div>{item.label}</div>
-                        <div
-                          style={{
-                            fontSize: '12px',
-                            color: 'rgba(0, 0, 0, 0.45)',
-                          }}
-                        >
-                          {item.description}
-                        </div>
-                      </div>
-                    </div>
-                  </Option>
+                    {textValue}
+                  </SelectItem>
                 )
               })}
-            </Select>
-          </div>
-
-          {showInstanceList && (
-            <div style={{ flex: 1 }}>
-              <Typography.Text
-                strong
-                style={{ display: 'block', marginBottom: '8px' }}
-              >
-                Instance Number: {instanceNumber}
-              </Typography.Text>
-              <Slider
-                min={1}
-                max={
-                  sortedDisplaySets[selectedDisplaySetInstanceUID]?.images
-                    .length
-                }
-                value={instanceNumber}
-                onChange={(value) => setInstanceNumber(value)}
-                marks={instanceSliderMarks}
-                tooltip={{
-                  formatter: (value: number | undefined) =>
-                    value !== undefined ? `Instance ${value}` : '',
-                }}
-              />
-            </div>
-          )}
+            </SelectContent>
+          </Select>
         </div>
 
-        <Input
-          style={{ marginBottom: '20px' }}
-          placeholder="Search DICOM tags..."
-          prefix={<SearchOutlined />}
-          onChange={(e) => setSearchInput(e.target.value)}
-          value={searchInput}
-        />
+        <div className="flex min-w-0 flex-col gap-1.5 text-12 text-ink-muted">
+          <span className="flex justify-between gap-2">
+            <span id={instanceLabelId}>Instance</span>
+            <span className="truncate font-mono text-11.5 font-medium text-ink-secondary">
+              {instanceLabel}
+            </span>
+          </span>
+          <div className="flex h-9 min-w-0 items-center gap-2.5">
+            <Slider
+              aria-labelledby={instanceLabelId}
+              min={1}
+              max={Math.max(totalInstances, 2)}
+              step={1}
+              value={[currentInstanceNumber]}
+              disabled={!hasMultipleInstances}
+              onValueChange={(values) => {
+                const [value] = values
+                if (value !== undefined) setInstanceNumber(value)
+              }}
+              className="min-w-[80px] flex-1"
+            />
+            <span className="flex-none font-mono text-12 font-medium text-ink">
+              {currentInstanceNumber} / {totalInstances}
+            </span>
+          </div>
+        </div>
 
-        <Table
-          columns={columns}
-          dataSource={filteredData}
-          pagination={false}
-          expandable={{
-            expandedRowKeys: expandedKeys,
-            onExpandedRowsChange: (keys) => setExpandedKeys(keys as string[]),
-          }}
-          size="small"
-          scroll={{ y: 500 }}
-        />
+        <div className="flex min-w-0 flex-col gap-1.5 text-12 text-ink-muted">
+          <span aria-hidden="true">Filter</span>
+          <SearchInput
+            aria-label="Filter tags"
+            value={searchInput}
+            onValueChange={setSearchInput}
+            placeholder="Tag, keyword or value"
+            clearable
+            className={compactChrome ? 'h-11' : undefined}
+            inputClassName={compactChrome ? 'text-[16px]' : undefined}
+          />
+        </div>
       </div>
+
+      {/**
+       * Explicit roles: the display overrides below (flex/block/grid) make
+       * Safari/VoiceOver drop the native table semantics otherwise.
+       */}
+      <table
+        role="table"
+        aria-label="DICOM tags"
+        className="flex min-h-0 w-full flex-1 flex-col border-collapse"
+      >
+        <thead
+          role="rowgroup"
+          className={cn('block flex-none', compactChrome && 'sr-only')}
+        >
+          <tr
+            role="row"
+            className={cn(
+              'grid h-9 items-center gap-3 border-b border-line bg-subtle px-5 text-11 font-semibold uppercase leading-none tracking-wider text-ink-muted',
+              TAG_GRID_COLUMNS,
+            )}
+          >
+            <th
+              role="columnheader"
+              scope="col"
+              className="text-left font-semibold"
+            >
+              Tag
+            </th>
+            <th
+              role="columnheader"
+              scope="col"
+              className="text-left font-semibold"
+            >
+              VR
+            </th>
+            <th
+              role="columnheader"
+              scope="col"
+              className="text-left font-semibold"
+            >
+              Keyword
+            </th>
+            <th
+              role="columnheader"
+              scope="col"
+              className="text-left font-semibold"
+            >
+              Value
+            </th>
+          </tr>
+        </thead>
+        <tbody
+          role="rowgroup"
+          className="block h-[52vh] min-h-0 flex-1 overflow-auto"
+        >
+          {isLoading ? (
+            <tr role="row">
+              <td
+                role="cell"
+                colSpan={4}
+                className="px-5 py-16 text-center text-ink-muted"
+              >
+                Loading…
+              </td>
+            </tr>
+          ) : filteredData.length === 0 ? (
+            <tr role="row">
+              <td
+                role="cell"
+                colSpan={4}
+                className="px-5 py-16 text-center text-ink-muted"
+              >
+                {isFiltering ? 'No matching tags found' : 'No tags available'}
+              </td>
+            </tr>
+          ) : (
+            filteredData.map((item) => (
+              <TagRow
+                key={item.key}
+                item={item}
+                depth={0}
+                expandedKeys={expandedKeys}
+                onToggle={handleToggleExpand}
+              />
+            ))
+          )}
+        </tbody>
+      </table>
+
+      <SlimDialogFooter
+        className={cn(
+          'justify-start pl-5 text-12 text-ink-muted',
+          compactChrome && 'flex-wrap',
+        )}
+      >
+        <span className={compactChrome ? 'w-full pb-1' : undefined}>
+          {attributeCount} attributes
+        </span>
+        {!compactChrome && <span className="flex-1" />}
+        <Button
+          variant="outline"
+          className={cn('text-ink', compactChrome && 'min-h-11')}
+          onClick={collapseAll}
+          disabled={expandedKeys.size === 0}
+        >
+          Collapse all
+        </Button>
+        <Button
+          variant="outline"
+          className={cn('text-ink', compactChrome && 'min-h-11')}
+          onClick={expandAll}
+        >
+          Expand all
+        </Button>
+        {onDone !== undefined && (
+          <Button
+            onClick={onDone}
+            className={cn('px-4 font-semibold', compactChrome && 'min-h-11')}
+          >
+            Done
+          </Button>
+        )}
+      </SlimDialogFooter>
     </div>
   )
 }

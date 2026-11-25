@@ -1,39 +1,37 @@
-// skipcq: JS-C1003
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
-import React from 'react'
-import { parseDate, parseTime } from '../utils/values'
-import Description from './Description'
+import type React from 'react'
 
-interface StudyProps {
+import { formatPersonName, formatStudyDateTime } from '../utils/displayFormat'
+import type { KeyValueItem } from '../utils/keyValue'
+import { SlimKeyValueGrid } from './slim/SlimKeyValueGrid'
+
+export interface StudyProps {
   metadata: dmv.metadata.Study | dmv.metadata.SOPClass
 }
 
 /**
- * React component representing a DICOM Study Information Entity that displays
- * common study-level attributes of contained DICOM Slide Microscopy images.
+ * Study information entity: common study-level attributes of the contained
+ * slide microscopy images.
  */
-class Study extends React.Component<StudyProps> {
-  render(): React.ReactNode {
-    const attributes = [
-      {
-        name: 'Accession #',
-        value: this.props.metadata.AccessionNumber,
-      },
-      {
-        name: 'ID',
-        value: this.props.metadata.StudyID,
-      },
-      {
-        name: 'Date',
-        value: parseDate(this.props.metadata.StudyDate),
-      },
-      {
-        name: 'Time',
-        value: parseTime(this.props.metadata.StudyTime),
-      },
-    ]
-    return <Description attributes={attributes} />
-  }
+function Study({ metadata }: StudyProps): React.ReactElement {
+  const description = metadata.StudyDescription
+  const items: KeyValueItem[] = [
+    { label: 'Study ID', value: metadata.StudyID },
+    { label: 'Accession #', value: metadata.AccessionNumber },
+    {
+      label: 'Date',
+      value: formatStudyDateTime(metadata.StudyDate, metadata.StudyTime),
+    },
+    {
+      label: 'Referring',
+      value: formatPersonName(metadata.ReferringPhysicianName),
+    },
+    ...(description !== undefined && description !== ''
+      ? [{ label: 'Description', value: description }]
+      : []),
+  ]
+  return <SlimKeyValueGrid items={items} />
 }
 
 export default Study

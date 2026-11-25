@@ -1,42 +1,31 @@
-// skipcq: JS-C1003 - dcmjs uses nested namespaces (dcmjs.sr.coding.CodedConcept)
+/** skipcq: JS-C1003 - dcmjs uses nested namespaces (dcmjs.sr.coding.CodedConcept) */
 import * as dcmjs from 'dcmjs'
-// skipcq: JS-C1003 - dmv uses nested namespaces (dmv.roi, dmv.scoord3d)
+/** skipcq: JS-C1003 - dmv uses nested namespaces (dmv.roi, dmv.scoord3d) */
 import type * as dmv from 'dicom-microscopy-viewer'
+import { codedConceptKey } from '../../../utils/dicom/codedConcept'
 import { findContentItemsByName } from '../../../utils/sr'
 
-/**
- * Builds a key for a concept based on its coding scheme and value
- */
-export const buildKey = (concept: {
-  CodeValue: string
-  CodeMeaning: string
-  CodingSchemeDesignator: string
-  CodingSchemeVersion?: string
-}): string => {
-  const codingScheme = concept.CodingSchemeDesignator
-  const codeValue = concept.CodeValue
-  return `${codingScheme}-${codeValue}`
-}
+const FINDING = new dcmjs.sr.coding.CodedConcept({
+  value: '121071',
+  meaning: 'Finding',
+  schemeDesignator: 'DCM',
+})
 
 /**
- * Gets the ROI key from a ROI object
+ * {@link codedConceptKey} of the ROI's finding, if it has one. Runs on every
+ * visibility and style pass, so a missing finding is not logged here; the
+ * SR parser already reports it once per measurement group.
  */
-export const getRoiKey = (roi: dmv.roi.ROI): string | undefined => {
-  const matches = findContentItemsByName({
+export const getRoiKey = (
+  roi: Pick<dmv.roi.ROI, 'uid' | 'evaluations'>,
+): string | undefined => {
+  const [finding] = findContentItemsByName({
     content: roi.evaluations,
-    name: new dcmjs.sr.coding.CodedConcept({
-      value: '121071',
-      meaning: 'Finding',
-      schemeDesignator: 'DCM',
-    }),
+    name: FINDING,
   })
-  if (matches.length === 0) {
-    console.warn(`no finding found for ROI ${roi.uid}`)
-    return
-  }
-  const finding = matches[0] as dcmjs.sr.valueTypes.CodeContentItem
-  const findingName = finding.ConceptCodeSequence[0]
-  return buildKey(findingName)
+  const value = (finding as dcmjs.sr.valueTypes.CodeContentItem | undefined)
+    ?.ConceptCodeSequence?.[0]
+  return value !== undefined ? codedConceptKey(value) : undefined
 }
 
 /**
@@ -76,6 +65,60 @@ export const areROIsEqual = (a: dmv.roi.ROI, b: dmv.roi.ROI): boolean => {
     }
   }
   return true
+}
+
+/**
+ * CSS color for an ROI stroke color (`[r, g, b]` or `[r, g, b, a]`, alpha
+ * ignored); `fallback` when the color is missing or malformed.
+ */
+export const roiStrokeToCssColor = (
+  color: readonly number[] | undefined,
+  fallback: string,
+): string => {
+  if (color === undefined || color.length < 3) return fallback
+  const channels = color.slice(0, 3)
+  if (!channels.every((channel) => Number.isFinite(channel))) return fallback
+  const [r, g, b] = channels.map((channel) =>
+    Math.round(Math.min(255, Math.max(0, channel))),
+  )
+  return `rgb(${r}, ${g}, ${b})`
+}
+
+/** "Annotation was removed" / "3 annotations were removed" */
+export const formatRoiRemovalMessage = (count: number): string =>
+  count === 1 ? 'Annotation was removed' : `${count} annotations were removed`
+
+/** Alpha of the default ROI fill, derived from the stroke color. */
+export const DEFAULT_ROI_FILL_ALPHA = 0.35
+
+/**
+ * Default style for ROIs without a configured finding style, built from the
+ * user's stroke / fill preferences. Uses {@link formatRoiStyle} so point
+ * markers get the same stroke as polygons (DMV/OpenLayers expects it).
+ */
+export const buildDefaultRoiStyle = ({
+  strokeColor,
+  strokeWidth,
+  radius,
+  fill = true,
+  fillOpacity = DEFAULT_ROI_FILL_ALPHA,
+}: {
+  strokeColor: number[]
+  strokeWidth: number
+  radius: number
+  /** When false, the ROI interior is fully transparent */
+  fill?: boolean
+  /** Fill alpha in `0…1` when fill is enabled */
+  fillOpacity?: number
+}): dmv.viewer.ROIStyleOptions => {
+  const rgb = strokeColor.slice(0, 3)
+  const alpha = fill ? Math.min(1, Math.max(0, fillOpacity)) : 0
+  return formatRoiStyle({
+    /** Explicit alpha so OL never treats stroke/fill channels differently */
+    stroke: { color: [...rgb, 1], width: strokeWidth },
+    fill: { color: [...rgb, alpha] },
+    radius,
+  })
 }
 
 /**

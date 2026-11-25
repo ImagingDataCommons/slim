@@ -1,0 +1,30 @@
+diff --git a/build/dcmjs.es.js b/build/dcmjs.es.js
+index 5ed19896c12057fc95a6bb5450750e4e81cd04b0..3e02ce9897f42e89a02217f10b0219a2586ae52f 100644
+--- a/build/dcmjs.es.js
++++ b/build/dcmjs.es.js
+@@ -27246,9 +27246,7 @@ var _MeasurementsAndQualitatitiveEvaluations = /*#__PURE__*/function (_Template1
+     if (!(options.trackingIdentifier instanceof TrackingIdentifier)) {
+       throw new Error("Option 'trackingIdentifier' must have type TrackingIdentifier.");
+     }
+-    if (!Array.isArray(options.trackingIdentifier) || options.trackingIdentifier.filter(function (item) {
+-      return item instanceof CodedConcept;
+-    }).length < 2) {
++    if (!Array.isArray(options.trackingIdentifier) || options.trackingIdentifier.length < 2) {
+       throw new Error("Option 'trackingIdentifier' must include a human readable tracking " + "identifier and a tracking unique identifier.");
+     }
+     (_groupItem$ContentSeq = groupItem.ContentSequence).push.apply(_groupItem$ContentSeq, _toConsumableArray(options.trackingIdentifier));
+diff --git a/build/dcmjs.js b/build/dcmjs.js
+index 4df765665144e5b0757fd498e3693fa39f70bb4d..77f3c558f68320ec7422d47f1a7c3fd0feaeb0df 100644
+--- a/build/dcmjs.js
++++ b/build/dcmjs.js
+@@ -27252,9 +27252,7 @@
+ 	    if (!(options.trackingIdentifier instanceof TrackingIdentifier)) {
+ 	      throw new Error("Option 'trackingIdentifier' must have type TrackingIdentifier.");
+ 	    }
+-	    if (!Array.isArray(options.trackingIdentifier) || options.trackingIdentifier.filter(function (item) {
+-	      return item instanceof CodedConcept;
+-	    }).length < 2) {
++	    if (!Array.isArray(options.trackingIdentifier) || options.trackingIdentifier.length < 2) {
+ 	      throw new Error("Option 'trackingIdentifier' must include a human readable tracking " + "identifier and a tracking unique identifier.");
+ 	    }
+ 	    (_groupItem$ContentSeq = groupItem.ContentSequence).push.apply(_groupItem$ContentSeq, _toConsumableArray(options.trackingIdentifier));

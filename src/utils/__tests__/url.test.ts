@@ -1,7 +1,10 @@
 import {
+  editSearch,
   GCP_HEALTHCARE_V1_BASE,
   isAuthorizationCodeInUrl,
+  isAuthResponseParams,
   isOidcAuthorizeCallbackUrl,
+  isSignInCallbackUrl,
   normalizeServerUrl,
 } from '../url'
 
@@ -67,6 +70,33 @@ describe('normalizeServerUrl', () => {
   })
 })
 
+describe('isSignInCallbackUrl', () => {
+  const at = (search: string, hash = '') => ({ search, hash })
+
+  it('takes a code or ID token, or an error or token with a state', () => {
+    expect(isSignInCallbackUrl(at('?code=c&state=s'), false)).toBe(true)
+    expect(isSignInCallbackUrl(at('', '#id_token=t'), false)).toBe(true)
+    expect(isSignInCallbackUrl(at('?error=access_denied&state=s'), false)).toBe(
+      true,
+    )
+    expect(isSignInCallbackUrl(at('', '#access_token=x&state=s'), false)).toBe(
+      true,
+    )
+  })
+
+  it('never takes a state alone, which Slim uses for presentation states', () => {
+    expect(isSignInCallbackUrl(at('?state=1.2.826.0.1.3'), false)).toBe(false)
+    expect(isSignInCallbackUrl(at('?state=1.2.826.0.1.3'), true)).toBe(false)
+  })
+
+  it('takes a bare error or token only while a sign-in is pending', () => {
+    expect(isSignInCallbackUrl(at('?error=foo'), false)).toBe(false)
+    expect(isSignInCallbackUrl(at('', '#access_token=x'), false)).toBe(false)
+    expect(isSignInCallbackUrl(at('?error=foo'), true)).toBe(true)
+    expect(isSignInCallbackUrl(at('?tab=1'), true)).toBe(false)
+  })
+})
+
 describe('isOidcAuthorizeCallbackUrl', () => {
   it('detects authorization code and implicit success responses', () => {
     expect(
@@ -103,5 +133,50 @@ describe('isOidcAuthorizeCallbackUrl', () => {
       isOidcAuthorizeCallbackUrl({ search: '?state=presentation', hash: '' }),
     ).toBe(false)
     expect(isOidcAuthorizeCallbackUrl({ search: '', hash: '' })).toBe(false)
+  })
+})
+
+describe('editSearch', () => {
+  const gcp = 'gcp=https://healthcare.googleapis.com/v1/projects/p'
+
+  it('keeps other segments as written', () => {
+    expect(editSearch(`?${gcp}&state=a`, { remove: ['state'] })).toBe(`?${gcp}`)
+  })
+
+  it('sets a parameter in place, or appends it', () => {
+    expect(editSearch(`?state=a&${gcp}`, { set: ['state', 'b'] })).toBe(
+      `?state=b&${gcp}`,
+    )
+    expect(editSearch(`?${gcp}`, { set: ['state', 'b'] })).toBe(
+      `?${gcp}&state=b`,
+    )
+  })
+
+  it('returns an empty string when nothing is left', () => {
+    expect(editSearch('?state=a', { remove: ['state'] })).toBe('')
+    expect(editSearch('', {})).toBe('')
+  })
+})
+
+describe('isAuthResponseParams', () => {
+  it('recognizes tokens, codes and errors answering a request', () => {
+    for (const search of [
+      'code=a&state=s',
+      'access_token=t',
+      'id_token=t',
+      'error=access_denied&state=s',
+    ]) {
+      expect(isAuthResponseParams(new URLSearchParams(search))).toBe(true)
+    }
+  })
+
+  it('recognizes an error without a state, as a silent renew sends', () => {
+    expect(
+      isAuthResponseParams(new URLSearchParams('error=login_required')),
+    ).toBe(true)
+  })
+
+  it('does not take a presentation state for a response', () => {
+    expect(isAuthResponseParams(new URLSearchParams('state=pr-1'))).toBe(false)
   })
 })

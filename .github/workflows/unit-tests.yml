@@ -43,6 +43,9 @@ jobs:
       - name: Typecheck
         run: pnpm run typecheck
 
+      - name: React Compiler check
+        run: pnpm run check:compiler
+
       - name: Build
         run: pnpm run build
 

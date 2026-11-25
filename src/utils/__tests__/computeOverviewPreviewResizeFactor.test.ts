@@ -37,9 +37,7 @@ describe('computeOverviewPreviewResizeFactor', () => {
       0,
     )
     expect(factor).toBe(SLIDE_PREVIEW_HEIGHT_PX / rows)
-    expect(cols * factor).toBe(
-      (cols * SLIDE_PREVIEW_HEIGHT_PX) / rows,
-    )
+    expect(cols * factor).toBe((cols * SLIDE_PREVIEW_HEIGHT_PX) / rows)
     expect(factor).toBeLessThan(SLIDE_PREVIEW_FALLBACK_WIDTH_PX / cols)
   })
 
