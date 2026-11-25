@@ -228,6 +228,44 @@ describe('DicomWebManager - multi-store search', () => {
     expect(secondaryStub.retrieveSeriesMetadata).toHaveBeenCalledTimes(1)
   })
 
+  it('retrieves frames from the server another manager found the series on', async () => {
+    /**
+     * SEG series are searched through the Segmentation manager, LABELMAP
+     * frames retrieved through the Labelmap Segmentation one; both are built
+     * from the same server settings.
+     */
+    const settings = [
+      { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+      { id: 'gcp', url: 'https://gcp.test/dicomWeb', write: false },
+    ]
+    const searching = new DicomWebManager({ baseUri, settings })
+    const retrieving = new DicomWebManager({ baseUri, settings })
+    const search = [makeStubClient('primary'), makeStubClient('gcp')]
+    const retrieve = [makeStubClient('primary'), makeStubClient('gcp')]
+    stubManagerClients(searching, search)
+    stubManagerClients(retrieving, retrieve)
+    search[0].searchForSeries.mockResolvedValue([])
+    search[1].searchForSeries.mockResolvedValue([
+      {
+        '0020000D': { vr: 'UI', Value: ['7.7'] },
+        '0020000E': { vr: 'UI', Value: ['7.7.1'] },
+      },
+    ])
+    retrieve[0].retrieveInstanceFrames.mockRejectedValue(httpError(404))
+    retrieve[1].retrieveInstanceFrames.mockResolvedValue([new ArrayBuffer(1)])
+
+    await searching.searchForSeries({ studyInstanceUID: '7.7' })
+    await retrieving.retrieveInstanceFrames({
+      studyInstanceUID: '7.7',
+      seriesInstanceUID: '7.7.1',
+      sopInstanceUID: '7.7.1.1',
+      frameNumbers: [1],
+    })
+
+    expect(retrieve[0].retrieveInstanceFrames).not.toHaveBeenCalled()
+    expect(retrieve[1].retrieveInstanceFrames).toHaveBeenCalledTimes(1)
+  })
+
   it('merges searchForSeries results across stores and de-duplicates by SeriesInstanceUID', async () => {
     const manager = new DicomWebManager({
       baseUri,

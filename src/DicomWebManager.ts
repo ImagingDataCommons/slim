@@ -369,19 +369,25 @@ const retrieveWithFallback = async <T>(
 }
 
 /**
- * Per manager (keyed by its store list), maps
- * "studyInstanceUID/seriesInstanceUID" to the store that served the series.
- * Weakly held, so managers replaced by a server switch are not retained.
+ * Maps "studyInstanceUID/seriesInstanceUID" to the configured server that
+ * has the series. Shared by every manager: each storage class has its own
+ * manager over the same servers, and the one that searched for a series is
+ * often not the one that retrieves it (SEG metadata is searched through the
+ * Segmentation manager, LABELMAP frames are retrieved through the Labelmap
+ * Segmentation one). Keyed by the server settings those managers share.
  */
-const seriesStoreCaches = new WeakMap<Store[], Map<string, Store>>()
+const seriesServers = new Map<string, ServerSettings>()
 
-const getSeriesStoreCache = (stores: Store[]): Map<string, Store> => {
-  let cache = seriesStoreCaches.get(stores)
-  if (cache === undefined) {
-    cache = new Map()
-    seriesStoreCaches.set(stores, cache)
-  }
-  return cache
+/** This manager's store for the server remembered for a series */
+const rememberedStore = (
+  readable: readonly Store[],
+  cacheKey: string | undefined,
+): Store | undefined => {
+  if (cacheKey == null) return undefined
+  const settings = seriesServers.get(cacheKey)
+  return settings === undefined
+    ? undefined
+    : readable.find((store) => store.settings === settings)
 }
 
 /**
@@ -413,10 +419,9 @@ const retrieveWithCachedFallback = async <T>(
   }
 
   /** Reorder stores to try the cached one first if available. */
-  const seriesStoreCache = getSeriesStoreCache(stores)
   let orderedStores = readable
-  const cachedStore = cacheKey != null ? seriesStoreCache.get(cacheKey) : null
-  if (cachedStore != null && readable.includes(cachedStore)) {
+  const cachedStore = rememberedStore(readable, cacheKey)
+  if (cachedStore !== undefined) {
     orderedStores = [cachedStore, ...readable.filter((s) => s !== cachedStore)]
   }
 
@@ -426,7 +431,7 @@ const retrieveWithCachedFallback = async <T>(
       const result = await call(store)
       /** Cache the successful store for future requests to this series. */
       if (cacheKey != null) {
-        seriesStoreCache.set(cacheKey, store)
+        seriesServers.set(cacheKey, store.settings)
       }
       return result
     } catch (error: unknown) {
@@ -827,7 +832,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   searchForSeries = async (
     options: dwc.api.SearchForSeriesOptions,
   ): Promise<dwc.api.Series[]> => {
-    const seriesStoreCache = getSeriesStoreCache(this.stores)
+    const readable = readableStores(this.stores)
     const merged = await searchAcrossStores(
       this.stores,
       [STUDY_INSTANCE_UID_TAG, SERIES_INSTANCE_UID_TAG],
@@ -857,8 +862,13 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
             studyInstanceUID,
             seriesInstanceUID,
           )
-          if (!seriesStoreCache.has(cacheKey)) {
-            seriesStoreCache.set(cacheKey, store)
+          /**
+           * Keep a server this manager has (the first configured, or one a
+           * retrieve confirmed); replace one it does not, e.g. from before a
+           * server switch.
+           */
+          if (rememberedStore(readable, cacheKey) === undefined) {
+            seriesServers.set(cacheKey, store.settings)
           }
         }
       },
