@@ -261,21 +261,24 @@ export function applyDefaultPresentationState(
   pixelStatistics: ReadonlyMap<string, PixelStatistics>,
 ): Set<string> {
   for (const { identifier } of sortedOpticalPaths) {
-    viewer.setOpticalPathStyle(
-      identifier,
-      viewer.getOpticalPathDefaultStyle(identifier),
-    )
+    /**
+     * Every sampled channel gets its window back, shown or not: its
+     * statistics are complete, so no later frame would set it again
+     */
+    const stats = pixelStatistics.get(identifier)
+    viewer.setOpticalPathStyle(identifier, {
+      ...viewer.getOpticalPathDefaultStyle(identifier),
+      ...(stats !== undefined ? { limitValues: [stats.min, stats.max] } : {}),
+    })
     viewer.hideOpticalPath(identifier)
     viewer.deactivateOpticalPath(identifier)
   }
   const { visibleIdentifiers, colorAssignments } =
     planDefaultOpticalPaths(sortedOpticalPaths)
   for (const { identifier, color } of colorAssignments) {
-    const stats = pixelStatistics.get(identifier)
     viewer.setOpticalPathStyle(identifier, {
       ...viewer.getOpticalPathStyle(identifier),
       color,
-      ...(stats !== undefined ? { limitValues: [stats.min, stats.max] } : {}),
     })
   }
   logger.log(
