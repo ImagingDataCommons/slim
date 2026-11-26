@@ -56,7 +56,7 @@ describe('buildSeriesOptions', () => {
     ).toEqual([
       { value: 'all', label: 'All Series (3 segments)' },
       { value: 's2', label: 'Series s2 (2 segments)' },
-      { value: 's1', label: 'Series s1 (1 segments)' },
+      { value: 's1', label: 'Series s1 (1 segment)' },
     ])
   })
 })

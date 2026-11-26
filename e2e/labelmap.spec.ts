@@ -10,7 +10,7 @@ import {
   waitForDeepLinkedLayer,
 } from './helpers'
 import { labelmap, serveLabelmap } from './labelmap'
-import { seriesUrl } from './studies'
+import { seriesUrl, studies } from './studies'
 
 /** DMV draws a segment at 75 % opacity over the slide by default */
 const SEGMENT_OPACITY = 0.75
@@ -251,5 +251,44 @@ test.describe('LABELMAP segmentation', () => {
     )
     expect(opacity).toBeGreaterThan(SEGMENT_OPACITY - 0.05)
     expect(opacity).toBeLessThan(SEGMENT_OPACITY + 0.05)
+  })
+  test('L4 segments still loading are announced below the slide', async ({
+    page,
+  }) => {
+    /** The slide alone, so nothing of the SEG loads before Show all */
+    await openViewer(
+      page,
+      seriesUrl({ study: studies.rmsSr.study, series: studies.rmsSr.slide }),
+    )
+    const segments = await section(slidePanel(page), 'Segmentations')
+
+    /** Hold the SEG frames until the announcement has been checked */
+    let release: () => void = () => {}
+    const released = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await page.route(
+      (url) =>
+        url.pathname.includes(`/series/${labelmap.series}/`) &&
+        url.pathname.includes('/frames/'),
+      async (route) => {
+        await released
+        await route.fallback()
+      },
+    )
+    await segments.getByRole('button', { name: 'Show all segments' }).click()
+
+    const status = page.locator('[role="status"][data-placement="bottom"]')
+    const pill = status.locator(':scope > div')
+    await expect(pill).toHaveAttribute('aria-hidden', 'false')
+    await expect(pill).toContainText('Loading segments')
+    await expect(
+      page.locator('[style*="cursor: progress"]').first(),
+    ).toBeAttached()
+
+    release()
+    await expect(pill).toHaveAttribute('aria-hidden', 'true', {
+      timeout: 30_000,
+    })
   })
 })

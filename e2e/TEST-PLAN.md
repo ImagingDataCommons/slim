@@ -136,11 +136,12 @@ Open the [IMC slide](http://localhost:3000/studies/2.25.289188443974026654725116
 - [ ] **S1** e2e. The [fractional SEG](http://localhost:3000/studies/2.25.312916405820155829215771528638931942827/series/1.2.826.0.1.3680043.10.511.3.44304577929953804027133272057932075) link opens the slide with only that segment on ("1 of 5 visible", the Fractional TILs Present row). The [nuclei SEG](http://localhost:3000/studies/2.25.312916405820155829215771528638931942827/series/1.2.826.0.1.3680043.10.511.3.11534436557194942782874737859569974) link does the same for Nuclei (manual).
 - [ ] **S2** e2e. On the [SR study](http://localhost:3000/studies/2.25.266314239954879564284639768519696615904), Show all segments gives "4 of 4" and Hide all gives "0 of 4".
 - [ ] **S3** e2e. Toggling STROMA and moving its opacity slider changes the overlay.
-- [ ] **S4** e2e. The Series dropdown switches between segmentation series.
+- [ ] **S4** e2e. The Series dropdown switches between segmentation series. Manual: typing in it filters the series (the PanopTILs study has 41).
 - [ ] **S5** e2e. On the nuclei SEG, segment details open, segment color changes the overlay and Segment interpolation toggles.
 - [ ] **S6** e2e. The [binary TIL SEG](http://localhost:3000/studies/2.25.62992225306345560076014492175754966026/series/1.2.826.0.1.3680043.10.511.3.83696154008696806253659241324786415) (gallery P11) opens the slide with that binary segment visible.
 - [ ] **L1** e2e. A LABELMAP SEG link lists its segments without the Background segment (Segment Number equal to Pixel Padding Value, or coded (DCM, 125040)); "Show all" gives "4 of 4". Synthetic data, see below.
 - [ ] **L2** e2e. Each LABELMAP segment is drawn in the color of its swatch, and the swatches differ.
+- [ ] **L4** e2e. Segments turned on while their frames load are announced at the bottom of the viewport ("Loading segments · n of m frames"), with the busy cursor, until the last frame arrives. Manual: the same for parametric maps and bulk annotations.
 - [ ] **P1** e2e. On the [parametric map](http://localhost:3000/studies/2.25.169142599340531625361659178384453215494/series/1.2.826.0.1.3680043.10.511.3.75366725734262349592517155782982171), the map shows and hides.
 - [ ] **P2** e2e. Parametric map opacity changes the overlay and interpolation toggles.
 
