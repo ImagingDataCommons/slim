@@ -462,6 +462,112 @@ describe('DicomWebManager - multi-store search', () => {
     onError.mockRestore()
   })
 
+  /** A manager whose second store answers scoped searches with 404 */
+  const managerWithScoped404 = (
+    id: string,
+  ): { manager: DicomWebManager; other: StubClient } => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        { id, url: `https://${id}.test/dicomWeb`, write: false },
+      ],
+    })
+    const primary = makeStubClient('primary')
+    const other = makeStubClient(id)
+    stubManagerClients(manager, [primary, other])
+    primary.searchForSeries.mockResolvedValue([])
+    primary.searchForInstances.mockResolvedValue([])
+    other.searchForSeries.mockRejectedValue(httpError(404))
+    other.searchForInstances.mockRejectedValue(httpError(404))
+    return { manager, other }
+  }
+
+  it('probes a store once for searches that fail together', async () => {
+    const { manager, other } = managerWithScoped404('together')
+    other.searchForStudies.mockResolvedValue([])
+    const onError = vi
+      .spyOn(NotificationMiddleware, 'onError')
+      .mockImplementation(() => {})
+
+    await Promise.all([
+      manager.searchForSeries({ studyInstanceUID: '1.2.3' }),
+      manager.searchForInstances({ studyInstanceUID: '1.2.3' }),
+      manager.searchForSeries({ studyInstanceUID: '4.5.6' }),
+    ])
+    await settleReports()
+
+    expect(other.searchForStudies).toHaveBeenCalledTimes(1)
+    expect(onError).not.toHaveBeenCalled()
+    onError.mockRestore()
+  })
+
+  it('probes the store again once its answer is old', async () => {
+    const { manager, other } = managerWithScoped404('later')
+    other.searchForStudies
+      .mockResolvedValueOnce([])
+      .mockRejectedValue(httpError(404))
+    const onError = vi
+      .spyOn(NotificationMiddleware, 'onError')
+      .mockImplementation(() => {})
+    const now = vi.spyOn(Date, 'now').mockReturnValue(0)
+
+    await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
+    await settleReports()
+    expect(onError).not.toHaveBeenCalled()
+
+    /** Past the five minutes an answer stands: the store now fails */
+    now.mockReturnValue(5 * 60 * 1000 + 1)
+    await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
+    await settleReports()
+
+    expect(other.searchForStudies).toHaveBeenCalledTimes(2)
+    expect(onError).toHaveBeenCalledTimes(1)
+    now.mockRestore()
+    onError.mockRestore()
+  })
+
+  it('takes a refused or rejected probe as a server that answers', async () => {
+    const policy = consentPolicy(true)
+    for (const status of [400, 401, 403]) {
+      const { manager, other } = managerWithScoped404(`refuses-${status}`)
+      manager.setAuthorizationPolicy(policy)
+      other.searchForStudies.mockRejectedValue(httpError(status))
+      const onError = vi
+        .spyOn(NotificationMiddleware, 'onError')
+        .mockImplementation(() => {})
+
+      await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
+      await settleReports()
+
+      expect(onError).not.toHaveBeenCalled()
+      onError.mockRestore()
+    }
+    /** The probe never asks for authorization */
+    expect(policy.requestAuthorization).not.toHaveBeenCalled()
+  })
+
+  it('logs a report that fails instead of rejecting unhandled', async () => {
+    const { manager, other } = managerWithScoped404('throws')
+    other.searchForStudies.mockRejectedValue(httpError(404))
+    const onError = vi
+      .spyOn(NotificationMiddleware, 'onError')
+      .mockImplementation(() => {
+        throw new Error('subscriber failed')
+      })
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
+    await settleReports()
+
+    expect(consoleError).toHaveBeenCalledWith(
+      'failed to report a failed search:',
+      expect.any(Error),
+    )
+    consoleError.mockRestore()
+    onError.mockRestore()
+  })
+
   it('reports a later failure of another kind for the same server', async () => {
     const manager = new DicomWebManager({
       baseUri,

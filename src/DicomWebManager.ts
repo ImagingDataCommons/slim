@@ -230,14 +230,60 @@ const searchRows = <T>(store: Store, items: unknown): T[] => {
  */
 const reportedSearchFailures = new WeakMap<ServerSettings, Set<string>>()
 
-/**
- * Servers that answered a plain study search. On those, a 404 from a search
- * scoped to one study only means the server does not hold that study.
- */
-const answeringServers = new WeakSet<ServerSettings>()
-
 /** Searches the store as a whole, to tell a wrong URL from a missing study */
 type SearchProbe = (store: Store) => Promise<unknown>
+
+/**
+ * One study from the store, unscoped: answers on a server that only lacks
+ * the study a scoped search asked for, and fails on a wrong URL. Sent as the
+ * store's client stands, without asking for authorization, since the user
+ * did not ask for it.
+ */
+const probeStudySearch: SearchProbe = async (store) =>
+  await store.client.searchForStudies({ queryParams: { limit: 1 } })
+
+/** How long a probe's answer stands before the server is probed again */
+const PROBE_ANSWER_MS = 5 * 60 * 1000
+
+/**
+ * Per server, whether it answers a plain study search: on one that does, a
+ * 404 from a search scoped to one study only means it does not hold that
+ * study. Probes in flight are shared, and an answer is reused for a while
+ * only, so a server that later breaks is reported.
+ */
+const serverProbes = new WeakMap<
+  ServerSettings,
+  { answers: Promise<boolean>; startedAt: number }
+>()
+
+/**
+ * Whether the server answers at this URL. Any response that is not a 404 or
+ * a server error counts: a refused or rejected probe (401, 403, 400 for a
+ * query parameter it does not take) still comes from a DICOMweb server.
+ */
+const serverAnswers = async (
+  store: Store,
+  probe: SearchProbe,
+): Promise<boolean> => {
+  const known = serverProbes.get(store.settings)
+  if (known !== undefined && Date.now() - known.startedAt < PROBE_ANSWER_MS) {
+    return await known.answers
+  }
+  const answers = probe(store).then(
+    () => true,
+    (error: unknown) => {
+      const status = (error as { status?: unknown } | null)?.status
+      return (
+        typeof status === 'number' &&
+        status > 0 &&
+        status !== 404 &&
+        status < 500
+      )
+    },
+  )
+  serverProbes.set(store.settings, { answers, startedAt: Date.now() })
+  return await answers
+}
 
 /**
  * Tell the user that a store failed a search the other stores answered, once
@@ -259,15 +305,12 @@ const reportFailedSearch = async (
 ): Promise<void> => {
   const status = (error as { status?: unknown } | null)?.status
   if (status === 401 || status === 403) return
-  if (status === 404 && probe !== undefined) {
-    if (answeringServers.has(store.settings)) return
-    try {
-      await probe(store)
-      answeringServers.add(store.settings)
-      return
-    } catch {
-      /** The store fails as a whole: report the search's own failure */
-    }
+  if (
+    status === 404 &&
+    probe !== undefined &&
+    (await serverAnswers(store, probe))
+  ) {
+    return
   }
   const hasStatus = typeof status === 'number' && status > 0
   const kind = hasStatus ? String(status) : 'unreachable'
@@ -344,7 +387,9 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
     throw lastError
   }
   for (const [store, error] of failures) {
-    void reportFailedSearch(store, error, probe)
+    reportFailedSearch(store, error, probe).catch((reportError: unknown) => {
+      console.error('failed to report a failed search:', reportError)
+    })
   }
 
   const merged: T[] = []
@@ -823,17 +868,6 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
     )
   }
 
-  /**
-   * One study from the store, unscoped: answers on a server that only lacks
-   * the study a scoped search asked for, and fails on a wrong URL
-   */
-  private readonly probeStudySearch: SearchProbe = async (store) =>
-    await this.callStore(
-      store,
-      async (client) =>
-        await client.searchForStudies({ queryParams: { limit: 1 } }),
-    )
-
   searchForStudies = async (
     options: dwc.api.SearchForStudiesOptions,
   ): Promise<dwc.api.Study[]> => {
@@ -934,7 +968,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
           }
         }
       },
-      options.studyInstanceUID != null ? this.probeStudySearch : undefined,
+      options.studyInstanceUID != null ? probeStudySearch : undefined,
     )
     return merged as unknown as dwc.api.Series[]
   }
@@ -954,7 +988,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
             )) as unknown as DicomJsonObject[],
         ),
       undefined,
-      options.studyInstanceUID != null ? this.probeStudySearch : undefined,
+      options.studyInstanceUID != null ? probeStudySearch : undefined,
     )
     return merged as unknown as dwc.api.Instance[]
   }
