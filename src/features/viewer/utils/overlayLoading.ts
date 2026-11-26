@@ -59,6 +59,8 @@ export function overlayLoadingReducer(
       return state.pending.size === 0 && state.frameTotal === 0
         ? state
         : INITIAL_OVERLAY_LOADING
+    default:
+      return state
   }
 }
 

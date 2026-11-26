@@ -188,11 +188,11 @@ const buildDedupKey = (
 ): string => {
   const parts: string[] = []
   for (const tag of tags) {
-    const v = getDicomTagValue(obj, tag)
-    if (v === undefined) {
+    const value = getDicomTagValue(obj, tag)
+    if (value === undefined) {
       return JSON.stringify(obj)
     }
-    parts.push(v)
+    parts.push(value)
   }
   return parts.join('|')
 }

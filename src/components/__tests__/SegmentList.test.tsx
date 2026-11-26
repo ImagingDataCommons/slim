@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+/** skipcq: JS-C1003 */
 import type * as dmv from 'dicom-microscopy-viewer'
 import type { Mock } from 'vitest'
 

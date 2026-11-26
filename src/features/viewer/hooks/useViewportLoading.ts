@@ -241,7 +241,7 @@ export function useViewportLoading(
 
   /** Restarted by every overlay event; fires only when they stop coming */
   useEffect(() => {
-    if (overlays.pending.size === 0) return
+    if (overlays.pending.size === 0) return undefined
     const timer = setTimeout(() => {
       annotationLoadsRef.current = []
       dispatchOverlays({ type: 'reset' })

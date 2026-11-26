@@ -48,7 +48,7 @@ describe('loadSeriesMetadata', () => {
     /** Retrievals finish in reverse series order: 3, then 2, then 1 */
     const finish = new Map<string, () => void>()
     const client = {
-      searchForSeries: vi.fn(async () => series),
+      searchForSeries: vi.fn(() => Promise.resolve(series)),
       retrieveSeriesMetadata: vi.fn(
         async ({ seriesInstanceUID }: { seriesInstanceUID: string }) => {
           await new Promise<void>((resolve) => {
@@ -81,15 +81,17 @@ describe('loadSeriesMetadata', () => {
 
   it('does not hold back the series after a failed one', async () => {
     const client = {
-      searchForSeries: vi.fn(async () => [
-        { SeriesInstanceUID: '1.1', SeriesNumber: 1 },
-        { SeriesInstanceUID: '1.2', SeriesNumber: 2 },
-      ]),
+      searchForSeries: vi.fn(() =>
+        Promise.resolve([
+          { SeriesInstanceUID: '1.1', SeriesNumber: 1 },
+          { SeriesInstanceUID: '1.2', SeriesNumber: 2 },
+        ]),
+      ),
       retrieveSeriesMetadata: vi.fn(
-        async ({ seriesInstanceUID }: { seriesInstanceUID: string }) => {
-          if (seriesInstanceUID === '1.1') throw new Error('not found')
-          return [{ uid: seriesInstanceUID }]
-        },
+        ({ seriesInstanceUID }: { seriesInstanceUID: string }) =>
+          seriesInstanceUID === '1.1'
+            ? Promise.reject(new Error('not found'))
+            : Promise.resolve([{ uid: seriesInstanceUID }]),
       ),
     } as unknown as DicomWebManager
     const onMetadata = vi.fn()

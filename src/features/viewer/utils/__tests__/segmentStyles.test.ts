@@ -114,6 +114,7 @@ describe('flatPaletteColor', () => {
       }),
     ).toEqual([1, 2, 3])
     expect(flatPaletteColor({ data: [[1, 2, 3]] })).toBeUndefined()
+    /** skipcq: JS-W1042 - the palette argument is required */
     expect(flatPaletteColor(undefined)).toBeUndefined()
   })
 })

@@ -384,7 +384,7 @@ describe('DicomWebManager - multi-store search', () => {
     gcpStub.searchForStudies.mockRejectedValue(httpError(404))
     const onError = vi
       .spyOn(NotificationMiddleware, 'onError')
-      .mockImplementation(() => {})
+      .mockImplementation(() => undefined)
 
     await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
     await manager.searchForInstances({ studyInstanceUID: '1.2.3' })
@@ -415,7 +415,7 @@ describe('DicomWebManager - multi-store search', () => {
     }
     const onError = vi
       .spyOn(NotificationMiddleware, 'onError')
-      .mockImplementation(() => {})
+      .mockImplementation(() => undefined)
 
     for (const manager of managers) {
       await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
@@ -450,7 +450,7 @@ describe('DicomWebManager - multi-store search', () => {
     otherStub.searchForStudies.mockResolvedValue([])
     const onError = vi
       .spyOn(NotificationMiddleware, 'onError')
-      .mockImplementation(() => {})
+      .mockImplementation(() => undefined)
 
     await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
     await manager.searchForInstances({ studyInstanceUID: '1.2.3' })
@@ -488,7 +488,7 @@ describe('DicomWebManager - multi-store search', () => {
     other.searchForStudies.mockResolvedValue([])
     const onError = vi
       .spyOn(NotificationMiddleware, 'onError')
-      .mockImplementation(() => {})
+      .mockImplementation(() => undefined)
 
     await Promise.all([
       manager.searchForSeries({ studyInstanceUID: '1.2.3' }),
@@ -509,7 +509,7 @@ describe('DicomWebManager - multi-store search', () => {
       .mockRejectedValue(httpError(404))
     const onError = vi
       .spyOn(NotificationMiddleware, 'onError')
-      .mockImplementation(() => {})
+      .mockImplementation(() => undefined)
     const now = vi.spyOn(Date, 'now').mockReturnValue(0)
 
     await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
@@ -535,7 +535,7 @@ describe('DicomWebManager - multi-store search', () => {
       other.searchForStudies.mockRejectedValue(httpError(status))
       const onError = vi
         .spyOn(NotificationMiddleware, 'onError')
-        .mockImplementation(() => {})
+        .mockImplementation(() => undefined)
 
       await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
       await settleReports()
@@ -555,7 +555,9 @@ describe('DicomWebManager - multi-store search', () => {
       .mockImplementation(() => {
         throw new Error('subscriber failed')
       })
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
 
     await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
     await settleReports()
@@ -586,7 +588,7 @@ describe('DicomWebManager - multi-store search', () => {
       .mockRejectedValue(httpError(500))
     const onError = vi
       .spyOn(NotificationMiddleware, 'onError')
-      .mockImplementation(() => {})
+      .mockImplementation(() => undefined)
 
     for (let i = 0; i < 3; i++) {
       await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
@@ -615,7 +617,7 @@ describe('DicomWebManager - multi-store search', () => {
     gcpStub.searchForSeries.mockRejectedValue(httpError(403))
     const onError = vi
       .spyOn(NotificationMiddleware, 'onError')
-      .mockImplementation(() => {})
+      .mockImplementation(() => undefined)
 
     await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
     await settleReports()
@@ -898,6 +900,7 @@ describe('DicomWebManager - storeInstances and headers', () => {
     const secondaryStub = makeStubClient('secondary')
     stubManagerClients(manager, [primaryStub, secondaryStub])
 
+    /** skipcq: JS-W1042 - mockResolvedValue needs its argument */
     secondaryStub.storeInstances.mockResolvedValue(undefined)
 
     await manager.storeInstances({
