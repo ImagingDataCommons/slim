@@ -276,6 +276,28 @@ describe('useViewportLoading', () => {
     expect(result.current.overlayStatus).toBeUndefined()
   })
 
+  it('settles a bulk annotation load only with its own source', () => {
+    const { access } = createTestSession()
+    const { result } = renderHook(() => useViewportLoading(access.sessionRef))
+    const groupA = { target: { group: 'A' } }
+    const groupB = { target: { group: 'B' } }
+
+    act(() => {
+      const handlers = result.current.dmvHandlers
+      handlers.dicommicroscopyviewer_loading_started(groupA)
+      handlers.dicommicroscopyviewer_loading_started(groupB)
+      /** B ends first, and an end from a source that started nothing */
+      handlers.dicommicroscopyviewer_loading_ended(groupB)
+      handlers.dicommicroscopyviewer_loading_ended({ target: { group: 'C' } })
+    })
+    expect(result.current.overlayStatus?.label).toBe('Loading annotations')
+
+    act(() => {
+      result.current.dmvHandlers.dicommicroscopyviewer_loading_ended(groupA)
+    })
+    expect(result.current.isLoadingOverlays).toBe(false)
+  })
+
   it('stops announcing overlay loads that never report their end', () => {
     vi.useFakeTimers()
     const { access } = createTestSession()

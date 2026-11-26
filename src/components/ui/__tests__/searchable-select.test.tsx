@@ -65,6 +65,30 @@ describe('SearchableSelect', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
 
+  it('opens from the closed trigger with the arrow keys or by typing', () => {
+    renderSelect()
+    const trigger = screen.getByRole('combobox', { name: 'Series' })
+    fireEvent.keyDown(trigger, { key: 'ArrowDown' })
+    const listbox = screen.getByRole('listbox', { name: 'Series' })
+    expect(trigger).toHaveAttribute('aria-controls', listbox.id)
+    expect(within(listbox).getAllByRole('option')).toHaveLength(4)
+    fireEvent.keyDown(
+      screen.getByRole('combobox', { name: 'Filter series options' }),
+      { key: 'Escape' },
+    )
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+
+    /** A typed character opens the list filtered by it */
+    fireEvent.keyDown(trigger, { key: 'v' })
+    expect(
+      screen.getByRole('combobox', { name: 'Filter series options' }),
+    ).toHaveValue('v')
+    /** Only "Inception-V4" has a "v" */
+    expect(
+      within(screen.getByRole('listbox')).getAllByRole('option'),
+    ).toHaveLength(1)
+  })
+
   it('chooses an option with a click and marks the selected one', () => {
     const onValueChange = renderSelect()
     fireEvent.click(screen.getByRole('combobox', { name: 'Series' }))

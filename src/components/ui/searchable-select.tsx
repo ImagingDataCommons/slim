@@ -71,16 +71,45 @@ export function SearchableSelect({
     element?.scrollIntoView?.({ block: 'nearest' })
   }, [isOpen, activeId])
 
-  const openChange = (open: boolean): void => {
-    setIsOpen(open)
-    if (open) {
-      setQuery('')
-      setActiveIndex(
-        Math.max(
-          0,
-          options.findIndex((option) => option.value === value),
-        ),
-      )
+  /** Open on the selected option, or filtered by `initialQuery` */
+  const open = (initialQuery = ''): void => {
+    setIsOpen(true)
+    setQuery(initialQuery)
+    setActiveIndex(
+      initialQuery === ''
+        ? Math.max(
+            0,
+            options.findIndex((option) => option.value === value),
+          )
+        : 0,
+    )
+  }
+
+  const openChange = (next: boolean): void => {
+    if (next) open()
+    else setIsOpen(false)
+  }
+
+  /**
+   * Like the select it replaces: the arrow keys open the list, and typing on
+   * the closed trigger opens it filtered by what was typed
+   */
+  const handleTriggerKeyDown = (
+    event: React.KeyboardEvent<HTMLButtonElement>,
+  ): void => {
+    if (isOpen) return
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault()
+      open()
+    } else if (
+      event.key.length === 1 &&
+      event.key !== ' ' &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey
+    ) {
+      event.preventDefault()
+      open(event.key)
     }
   }
 
@@ -113,12 +142,18 @@ export function SearchableSelect({
   }
 
   return (
-    <Popover open={isOpen} onOpenChange={openChange}>
+    /**
+     * Modal, so the list keeps its own scrolling inside a modal sheet, whose
+     * scroll lock would otherwise block wheel and touch scrolling in it
+     */
+    <Popover open={isOpen} onOpenChange={openChange} modal>
       <PopoverTrigger
         role="combobox"
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        aria-controls={listId}
+        onKeyDown={handleTriggerKeyDown}
         className={cn(
           'flex h-control w-full items-center justify-between gap-2 rounded-lg border border-line-input bg-panel pl-2.5 pr-2 text-left text-13 text-ink focus:outline-hidden focus:border-primary focus:ring-[3px] focus:ring-primary/15',
           triggerClassName,
@@ -141,7 +176,9 @@ export function SearchableSelect({
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="w-(--radix-popover-trigger-width) min-w-64 p-0"
+        collisionPadding={8}
+        /** No taller than the room Radix finds beside the trigger */
+        className="flex max-h-(--radix-popover-content-available-height) w-(--radix-popover-trigger-width) min-w-64 flex-col p-0"
         onOpenAutoFocus={(event) => {
           /** Focus the filter field, not the first option */
           event.preventDefault()
@@ -152,7 +189,7 @@ export function SearchableSelect({
           input?.focus()
         }}
       >
-        <div className="border-b border-line-soft p-2">
+        <div className="flex-none border-b border-line-soft p-2">
           <SearchInput
             aria-label={`Filter ${ariaLabel.toLowerCase()} options`}
             placeholder={searchPlaceholder}
@@ -177,7 +214,7 @@ export function SearchableSelect({
           id={listId}
           role="listbox"
           aria-label={ariaLabel}
-          className="max-h-80 overflow-auto p-1"
+          className="max-h-80 min-h-0 flex-1 overflow-auto p-1"
         >
           {matches.length === 0 && (
             <p className="m-0 px-3 py-6 text-center text-12.5 text-ink-muted">

@@ -71,6 +71,21 @@ const COLOR_PROFILE_TIMEOUT_MS = 20_000
  */
 const OVERLAY_STALE_MS = 60_000
 
+interface AnnotationLoad {
+  key: string
+  /** The OpenLayers vector source loading, when DMV's event names it */
+  source: unknown
+}
+
+/**
+ * The source of a DMV bulk annotation loading event, which passes on the
+ * OpenLayers features load event; undefined when there is none
+ */
+function eventSource(event: unknown): unknown {
+  const target = (event as { target?: unknown } | null)?.target
+  return target ?? undefined
+}
+
 /** What a frame of this storage class draws over the slide, if anything */
 function overlayKindOf(
   sopClassUID: string | undefined,
@@ -130,28 +145,36 @@ export function useViewportLoading(
     INITIAL_OVERLAY_LOADING,
   )
   /**
-   * Bulk annotation loads in flight, oldest first. DMV's loading events carry
-   * no id, so each end settles the oldest start
+   * Bulk annotation loads in flight, oldest first, with the OpenLayers source
+   * DMV's start and end events carry. An end settles its source's oldest
+   * load, so one group's end never closes another's; DMV's error event names
+   * no source, so it settles the oldest load
    */
-  const annotationLoadsRef = useRef<string[]>([])
+  const annotationLoadsRef = useRef<AnnotationLoad[]>([])
   const annotationLoadCountRef = useRef(0)
-  const settleAnnotationLoad = (): void => {
-    const key = annotationLoadsRef.current.shift()
-    if (key !== undefined) dispatchOverlays({ type: 'settled', key })
+  const settleAnnotationLoad = (source?: unknown): void => {
+    const loads = annotationLoadsRef.current
+    const index =
+      source === undefined
+        ? 0
+        : loads.findIndex((load) => load.source === source)
+    if (index < 0 || index >= loads.length) return
+    const [load] = loads.splice(index, 1)
+    dispatchOverlays({ type: 'settled', key: load.key })
   }
 
   const dmvHandlers: LoadingEventHandlers = {
-    dicommicroscopyviewer_loading_started: () => {
+    dicommicroscopyviewer_loading_started: (event) => {
       dispatch({ type: 'loadingStarted' })
       /** DMV reports only bulk annotation loads this way */
       annotationLoadCountRef.current += 1
       const key = `annotations-${String(annotationLoadCountRef.current)}`
-      annotationLoadsRef.current.push(key)
+      annotationLoadsRef.current.push({ key, source: eventSource(event) })
       dispatchOverlays({ type: 'started', key, kind: 'annotations' })
     },
-    dicommicroscopyviewer_loading_ended: () => {
+    dicommicroscopyviewer_loading_ended: (event) => {
       dispatch({ type: 'loadingEnded' })
-      settleAnnotationLoad()
+      settleAnnotationLoad(eventSource(event))
     },
     dicommicroscopyviewer_loading_error: (error) => {
       settleAnnotationLoad()
