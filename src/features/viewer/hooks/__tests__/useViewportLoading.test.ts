@@ -220,6 +220,103 @@ describe('useViewportLoading', () => {
     expect(result.current.statusLabel).toBeUndefined()
   })
 
+  it('announces segment frames at the bottom while they load', () => {
+    const { access } = createTestSession()
+    const { result } = renderHook(() => useViewportLoading(access.sessionRef))
+    const segFrame = (frameNumber: number) => ({
+      ...frame(frameNumber, 'seg-instance'),
+      sopClassUID: StorageClasses.LABELMAP_SEGMENTATION,
+    })
+
+    act(() => {
+      const handlers = result.current.dmvHandlers
+      handlers.dicommicroscopyviewer_frame_loading_started(segFrame(1))
+      handlers.dicommicroscopyviewer_frame_loading_started(segFrame(2))
+      handlers.dicommicroscopyviewer_frame_loading_ended(segFrame(1))
+    })
+    expect(result.current.isLoadingOverlays).toBe(true)
+    expect(result.current.overlayStatus).toEqual({
+      label: 'Loading segments',
+      progress: '1 of 2 frames',
+    })
+    /** Overlay frames do not hold the slide's own loading state */
+    expect(result.current.isLoading).toBe(false)
+
+    act(() => {
+      result.current.dmvHandlers.dicommicroscopyviewer_frame_loading_ended(
+        segFrame(2),
+      )
+    })
+    expect(result.current.isLoadingOverlays).toBe(false)
+    expect(result.current.overlayStatus).toBeUndefined()
+  })
+
+  it('names overlays of several kinds together, and bulk annotations', () => {
+    const { session, access } = createTestSession()
+    const { result } = renderHook(() => useViewportLoading(access.sessionRef))
+
+    act(() => {
+      const handlers = result.current.dmvHandlers
+      handlers.dicommicroscopyviewer_loading_started(null)
+    })
+    expect(result.current.overlayStatus?.label).toBe('Loading annotations')
+
+    act(() => {
+      result.current.dmvHandlers.dicommicroscopyviewer_frame_loading_started({
+        ...frame(1, 'pm-instance'),
+        sopClassUID: StorageClasses.PARAMETRIC_MAP,
+      })
+    })
+    expect(result.current.overlayStatus?.label).toBe('Loading overlays')
+
+    /** A new slide drops what the previous one was loading */
+    act(() => {
+      result.current.reset(session)
+    })
+    expect(result.current.overlayStatus).toBeUndefined()
+  })
+
+  it('settles a bulk annotation load only with its own source', () => {
+    const { access } = createTestSession()
+    const { result } = renderHook(() => useViewportLoading(access.sessionRef))
+    const groupA = { target: { group: 'A' } }
+    const groupB = { target: { group: 'B' } }
+
+    act(() => {
+      const handlers = result.current.dmvHandlers
+      handlers.dicommicroscopyviewer_loading_started(groupA)
+      handlers.dicommicroscopyviewer_loading_started(groupB)
+      /** B ends first, and an end from a source that started nothing */
+      handlers.dicommicroscopyviewer_loading_ended(groupB)
+      handlers.dicommicroscopyviewer_loading_ended({ target: { group: 'C' } })
+    })
+    expect(result.current.overlayStatus?.label).toBe('Loading annotations')
+
+    act(() => {
+      result.current.dmvHandlers.dicommicroscopyviewer_loading_ended(groupA)
+    })
+    expect(result.current.isLoadingOverlays).toBe(false)
+  })
+
+  it('stops announcing overlay loads that never report their end', () => {
+    vi.useFakeTimers()
+    const { access } = createTestSession()
+    const { result } = renderHook(() => useViewportLoading(access.sessionRef))
+
+    act(() => {
+      result.current.dmvHandlers.dicommicroscopyviewer_frame_loading_started({
+        ...frame(1, 'seg-instance'),
+        sopClassUID: StorageClasses.SEGMENTATION,
+      })
+    })
+    expect(result.current.isLoadingOverlays).toBe(true)
+    act(() => {
+      vi.advanceTimersByTime(60_000)
+    })
+    expect(result.current.isLoadingOverlays).toBe(false)
+    vi.useRealTimers()
+  })
+
   it('ignores frame events without a session', () => {
     const { result } = renderHook(() =>
       useViewportLoading({ current: undefined }),

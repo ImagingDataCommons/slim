@@ -2,7 +2,8 @@ name: slim/deploy-to-firebase
 
 on:
   pull_request:
-    branches: [master]
+    # The redesign is reviewed in PRs into its branch; preview those too
+    branches: [master, feat/slim-modern-redesign]
     # edited: re-run when the PR body changes (e.g. add/update dmv-branch:)
     types: [opened, synchronize, reopened, edited]
   push:

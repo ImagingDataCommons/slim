@@ -1,5 +1,6 @@
 import { type ComponentProps, type JSX, useState } from 'react'
 
+import type { OverlayStatus } from '../utils/overlayLoading'
 import { DerivedLegend, type DerivedLegendProps } from './DerivedLegend'
 import { ViewerFooter } from './ViewerFooter'
 import { ViewerToolbar } from './ViewerToolbar'
@@ -14,6 +15,8 @@ export type ViewerChromeOverlaysProps = ComponentProps<
   viewerKey: string
   /** Viewport status pill text; hidden when undefined */
   statusLabel: string | undefined
+  /** Bottom pill while overlays load; hidden when undefined */
+  overlayStatus: OverlayStatus | undefined
   derivedLegend: DerivedLegendProps
 }
 
@@ -35,6 +38,7 @@ export function ViewerChromeToolbar(
 export function ViewerChromeOverlays({
   viewerKey,
   statusLabel,
+  overlayStatus,
   derivedLegend,
   ...overlayProps
 }: ViewerChromeOverlaysProps): JSX.Element {
@@ -48,6 +52,20 @@ export function ViewerChromeOverlays({
   if (statusLabel !== undefined && statusLabel !== lastStatusLabel) {
     setLastStatusLabel(statusLabel)
   }
+  const [lastOverlayStatus, setLastOverlayStatus] = useState<OverlayStatus>({
+    label: 'Loading overlays',
+    progress: undefined,
+  })
+  if (
+    overlayStatus !== undefined &&
+    (overlayStatus.label !== lastOverlayStatus.label ||
+      overlayStatus.progress !== lastOverlayStatus.progress)
+  ) {
+    setLastOverlayStatus(overlayStatus)
+  }
+  /** One pill at a time: the slide's own status comes first */
+  const showsOverlayStatus =
+    overlayStatus !== undefined && statusLabel === undefined
   const [legendShownFor, setLegendShownFor] = useState<string | undefined>()
   const hasVisibleRow = derivedLegend.rows.some((row) => row.isVisible)
   if (hasVisibleRow && legendShownFor !== viewerKey) {
@@ -81,6 +99,12 @@ export function ViewerChromeOverlays({
       <ViewportLoadingIndicator
         isVisible={statusLabel !== undefined}
         label={statusLabel ?? lastStatusLabel}
+      />
+      <ViewportLoadingIndicator
+        placement="bottom"
+        isVisible={showsOverlayStatus}
+        label={(overlayStatus ?? lastOverlayStatus).label}
+        detail={(overlayStatus ?? lastOverlayStatus).progress}
       />
     </>
   )

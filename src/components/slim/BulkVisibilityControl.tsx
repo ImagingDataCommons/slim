@@ -20,7 +20,11 @@ export interface BulkVisibilityControlProps {
 const BUTTON_CLASS =
   'rounded-sm px-1.5 py-0.5 font-medium text-primary transition-colors hover:bg-primary-soft disabled:cursor-default disabled:text-ink-fainter disabled:hover:bg-transparent'
 
-/** Compact "n of m visible · Show all · Hide all" row above panel lists. */
+/**
+ * Compact "n of m visible · Show all · Hide all" row above panel lists. Kept
+ * for a single item too, so the count and controls do not vanish when a
+ * series has one segment or map.
+ */
 export function BulkVisibilityControl({
   uids,
   visibleUids,
@@ -28,7 +32,7 @@ export function BulkVisibilityControl({
   itemLabel = 'items',
   className,
 }: BulkVisibilityControlProps): React.ReactElement | null {
-  if (uids.length < 2) return null
+  if (uids.length === 0) return null
   const visibleCount = countVisible(uids, visibleUids)
   const apply = (show: boolean): void => {
     const changes = computeBulkVisibility(uids, visibleUids, show)

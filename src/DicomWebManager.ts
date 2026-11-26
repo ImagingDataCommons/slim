@@ -188,11 +188,11 @@ const buildDedupKey = (
 ): string => {
   const parts: string[] = []
   for (const tag of tags) {
-    const v = getDicomTagValue(obj, tag)
-    if (v === undefined) {
+    const value = getDicomTagValue(obj, tag)
+    if (value === undefined) {
       return JSON.stringify(obj)
     }
-    parts.push(v)
+    parts.push(value)
   }
   return parts.join('|')
 }
@@ -223,6 +223,119 @@ const searchRows = <T>(store: Store, items: unknown): T[] => {
 }
 
 /**
+ * Failures already reported, per configured server, by kind (an HTTP status,
+ * or "unreachable"). Keyed by the configured settings, which every storage
+ * class's manager shares, so one wrong server is reported once rather than
+ * once per storage class, while a different failure later is still reported.
+ */
+const reportedSearchFailures = new WeakMap<ServerSettings, Set<string>>()
+
+/** Searches the store as a whole, to tell a wrong URL from a missing study */
+type SearchProbe = (store: Store) => Promise<unknown>
+
+/**
+ * One study from the store, unscoped: answers on a server that only lacks
+ * the study a scoped search asked for, and fails on a wrong URL. Sent as the
+ * store's client stands, without asking for authorization, since the user
+ * did not ask for it.
+ */
+const probeStudySearch: SearchProbe = async (store) =>
+  await store.client.searchForStudies({ queryParams: { limit: 1 } })
+
+/** How long a probe's answer stands before the server is probed again */
+const PROBE_ANSWER_MS = 5 * 60 * 1000
+
+/**
+ * Per server, whether it answers a plain study search: on one that does, a
+ * 404 from a search scoped to one study only means it does not hold that
+ * study. Probes in flight are shared, and an answer is reused for a while
+ * only, so a server that later breaks is reported.
+ */
+const serverProbes = new WeakMap<
+  ServerSettings,
+  { answers: Promise<boolean>; startedAt: number }
+>()
+
+/**
+ * Whether the server answers at this URL. Any response that is not a 404 or
+ * a server error counts: a refused or rejected probe (401, 403, 400 for a
+ * query parameter it does not take) still comes from a DICOMweb server.
+ */
+const serverAnswers = async (
+  store: Store,
+  probe: SearchProbe,
+): Promise<boolean> => {
+  const known = serverProbes.get(store.settings)
+  if (known !== undefined && Date.now() - known.startedAt < PROBE_ANSWER_MS) {
+    return await known.answers
+  }
+  const answers = probe(store).then(
+    () => true,
+    (error: unknown) => {
+      const status = (error as { status?: unknown } | null)?.status
+      return (
+        typeof status === 'number' &&
+        status > 0 &&
+        status !== 404 &&
+        status < 500
+      )
+    },
+  )
+  serverProbes.set(store.settings, { answers, startedAt: Date.now() })
+  return await answers
+}
+
+/**
+ * Tell the user that a store failed a search the other stores answered, once
+ * per configured server and kind of failure. Searches only fail on a wrong
+ * URL or an unreachable server (no matches is a 200), so without this a
+ * mistyped `gcp=` store would silently show nothing. Authorization failures
+ * are left to the sign-in handling.
+ *
+ * Some servers answer a search scoped to a study they do not hold with 404,
+ * so with `probe` a 404 is reported only when the store fails a plain study
+ * search too. A wrong path on a server without CORS headers on its errors
+ * gives no status at all, as does a network failure; both are reported as
+ * not reached.
+ */
+const reportFailedSearch = async (
+  store: Store,
+  error: unknown,
+  probe?: SearchProbe,
+): Promise<void> => {
+  const status = (error as { status?: unknown } | null)?.status
+  if (status === 401 || status === 403) return
+  if (
+    status === 404 &&
+    probe !== undefined &&
+    (await serverAnswers(store, probe))
+  ) {
+    return
+  }
+  const hasStatus = typeof status === 'number' && status > 0
+  const kind = hasStatus ? String(status) : 'unreachable'
+  let kinds = reportedSearchFailures.get(store.settings)
+  if (kinds === undefined) {
+    kinds = new Set()
+    reportedSearchFailures.set(store.settings, kinds)
+  }
+  if (kinds.has(kind)) return
+  kinds.add(kind)
+  const server =
+    `The DICOMweb server "${store.id}" at ` +
+    `${store.settings.url ?? store.origin}`
+  const message = hasStatus
+    ? `${server} could not be searched (HTTP ${String(status)}), so its ` +
+      'data is not shown. Check its URL.'
+    : `${server} could not be reached or searched, so its data is not ` +
+      'shown. Check its URL and the network connection.'
+  NotificationMiddleware.onError(
+    NotificationMiddlewareContext.DICOMWEB,
+    new CustomError(errorTypes.COMMUNICATION, message),
+  )
+}
+
+/**
  * Run the same DICOMweb operation against every readable store in parallel,
  * merge the results, and de-duplicate them by the supplied DICOM tag keys.
  *
@@ -241,6 +354,8 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
   call: (store: Store) => Promise<T[]>,
   /** Called with each store's rows, in configured store order */
   onStoreRows?: (store: Store, rows: T[]) => void,
+  /** For searches scoped to a study: checks a store whose search got 404 */
+  probe?: SearchProbe,
 ): Promise<T[]> => {
   const readable = readableStores(stores)
   if (readable.length === 0) {
@@ -248,6 +363,7 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
   }
   let lastError: unknown
   let failureCount = 0
+  const failures = new Map<Store, unknown>()
   const results = await Promise.all(
     readable.map(async (store) => {
       try {
@@ -255,6 +371,7 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
       } catch (error: unknown) {
         lastError = error
         failureCount += 1
+        failures.set(store, error)
         if (import.meta.env.MODE === 'development') {
           console.warn(
             `search against store "${store.id}" failed; ` +
@@ -268,6 +385,11 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
   )
   if (failureCount === readable.length) {
     throw lastError
+  }
+  for (const [store, error] of failures) {
+    reportFailedSearch(store, error, probe).catch((reportError: unknown) => {
+      console.error('failed to report a failed search:', reportError)
+    })
   }
 
   const merged: T[] = []
@@ -326,19 +448,42 @@ const retrieveWithFallback = async <T>(
 }
 
 /**
- * Per manager (keyed by its store list), maps
- * "studyInstanceUID/seriesInstanceUID" to the store that served the series.
- * Weakly held, so managers replaced by a server switch are not retained.
+ * Maps "studyInstanceUID/seriesInstanceUID" to the configured server that
+ * has the series. Shared by every manager: each storage class has its own
+ * manager over the same servers, and the one that searched for a series is
+ * often not the one that retrieves it (SEG metadata is searched through the
+ * Segmentation manager, LABELMAP frames are retrieved through the Labelmap
+ * Segmentation one). Keyed by the server settings those managers share.
  */
-const seriesStoreCaches = new WeakMap<Store[], Map<string, Store>>()
+const seriesServers = new Map<string, ServerSettings>()
 
-const getSeriesStoreCache = (stores: Store[]): Map<string, Store> => {
-  let cache = seriesStoreCaches.get(stores)
-  if (cache === undefined) {
-    cache = new Map()
-    seriesStoreCaches.set(stores, cache)
+/** Series remembered at most; the least recently found is forgotten first */
+const SERIES_SERVERS_LIMIT = 10_000
+
+/** Remember the server of a series, most recent last */
+const rememberSeriesServer = (
+  cacheKey: string,
+  settings: ServerSettings,
+): void => {
+  seriesServers.delete(cacheKey)
+  seriesServers.set(cacheKey, settings)
+  while (seriesServers.size > SERIES_SERVERS_LIMIT) {
+    const oldest = seriesServers.keys().next().value
+    if (oldest === undefined) break
+    seriesServers.delete(oldest)
   }
-  return cache
+}
+
+/** This manager's store for the server remembered for a series */
+const rememberedStore = (
+  readable: readonly Store[],
+  cacheKey: string | undefined,
+): Store | undefined => {
+  if (cacheKey == null) return undefined
+  const settings = seriesServers.get(cacheKey)
+  return settings === undefined
+    ? undefined
+    : readable.find((store) => store.settings === settings)
 }
 
 /**
@@ -370,10 +515,9 @@ const retrieveWithCachedFallback = async <T>(
   }
 
   /** Reorder stores to try the cached one first if available. */
-  const seriesStoreCache = getSeriesStoreCache(stores)
   let orderedStores = readable
-  const cachedStore = cacheKey != null ? seriesStoreCache.get(cacheKey) : null
-  if (cachedStore != null && readable.includes(cachedStore)) {
+  const cachedStore = rememberedStore(readable, cacheKey)
+  if (cachedStore !== undefined) {
     orderedStores = [cachedStore, ...readable.filter((s) => s !== cachedStore)]
   }
 
@@ -383,7 +527,7 @@ const retrieveWithCachedFallback = async <T>(
       const result = await call(store)
       /** Cache the successful store for future requests to this series. */
       if (cacheKey != null) {
-        seriesStoreCache.set(cacheKey, store)
+        rememberSeriesServer(cacheKey, store.settings)
       }
       return result
     } catch (error: unknown) {
@@ -784,7 +928,7 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
   searchForSeries = async (
     options: dwc.api.SearchForSeriesOptions,
   ): Promise<dwc.api.Series[]> => {
-    const seriesStoreCache = getSeriesStoreCache(this.stores)
+    const readable = readableStores(this.stores)
     const merged = await searchAcrossStores(
       this.stores,
       [STUDY_INSTANCE_UID_TAG, SERIES_INSTANCE_UID_TAG],
@@ -814,11 +958,17 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
             studyInstanceUID,
             seriesInstanceUID,
           )
-          if (!seriesStoreCache.has(cacheKey)) {
-            seriesStoreCache.set(cacheKey, store)
+          /**
+           * Keep a server this manager has (the first configured, or one a
+           * retrieve confirmed); replace one it does not, e.g. from before a
+           * server switch.
+           */
+          if (rememberedStore(readable, cacheKey) === undefined) {
+            rememberSeriesServer(cacheKey, store.settings)
           }
         }
       },
+      options.studyInstanceUID != null ? probeStudySearch : undefined,
     )
     return merged as unknown as dwc.api.Series[]
   }
@@ -837,6 +987,8 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
               options,
             )) as unknown as DicomJsonObject[],
         ),
+      undefined,
+      options.studyInstanceUID != null ? probeStudySearch : undefined,
     )
     return merged as unknown as dwc.api.Instance[]
   }

@@ -6,6 +6,13 @@ import { notifyVisualizationError } from '../services/derivedDataLoaders'
 import type { DmvEventHandlers } from '../services/dmvEvents'
 import type { ViewerSession, ViewerSessionRef } from '../services/viewerSession'
 import { hasIccProfile } from '../utils/iccProfile'
+import {
+  INITIAL_OVERLAY_LOADING,
+  type OverlayKind,
+  type OverlayStatus,
+  overlayLoadingReducer,
+  overlayStatus,
+} from '../utils/overlayLoading'
 import { recordFrameStatistics } from '../utils/pixelStatistics'
 import {
   INITIAL_VIEWPORT_LOADING,
@@ -38,6 +45,10 @@ export interface ViewportLoadingApi {
   statusLabel: string | undefined
   /** The image is being drawn again after an ICC profile toggle */
   isUpdatingColors: boolean
+  /** Segments, parametric maps or annotations shown are still loading */
+  isLoadingOverlays: boolean
+  /** What the overlay status pill says while they load; none otherwise */
+  overlayStatus: OverlayStatus | undefined
   /**
    * Announce the redraw that follows an ICC profile toggle; `swap` settles
    * once DMV swapped its tile loaders
@@ -53,6 +64,42 @@ export interface ViewportLoadingApi {
  * which DMV only logs), the status pill stops announcing it
  */
 const COLOR_PROFILE_TIMEOUT_MS = 20_000
+
+/**
+ * Overlay loads that report no end for this long are dropped from the pill,
+ * so a lost event cannot leave it up for good
+ */
+const OVERLAY_STALE_MS = 60_000
+
+interface AnnotationLoad {
+  key: string
+  /** The OpenLayers vector source loading, when DMV's event names it */
+  source: unknown
+}
+
+/**
+ * The source of a DMV bulk annotation loading event, which passes on the
+ * OpenLayers features load event; undefined when there is none
+ */
+function eventSource(event: unknown): unknown {
+  const target = (event as { target?: unknown } | null)?.target
+  return target ?? undefined
+}
+
+/** What a frame of this storage class draws over the slide, if anything */
+function overlayKindOf(
+  sopClassUID: string | undefined,
+): OverlayKind | undefined {
+  switch (sopClassUID) {
+    case StorageClasses.SEGMENTATION:
+    case StorageClasses.LABELMAP_SEGMENTATION:
+      return 'segments'
+    case StorageClasses.PARAMETRIC_MAP:
+      return 'maps'
+    default:
+      return undefined
+  }
+}
 
 /** SOP Instance UIDs of each session's volume images, built once per session */
 const volumeInstanceUIDs = new WeakMap<ViewerSession, ReadonlySet<string>>()
@@ -93,15 +140,44 @@ export function useViewportLoading(
     viewportLoadingReducer,
     INITIAL_VIEWPORT_LOADING,
   )
+  const [overlays, dispatchOverlays] = useReducer(
+    overlayLoadingReducer,
+    INITIAL_OVERLAY_LOADING,
+  )
+  /**
+   * Bulk annotation loads in flight, oldest first, with the OpenLayers source
+   * DMV's start and end events carry. An end settles its source's oldest
+   * load, so one group's end never closes another's; DMV's error event names
+   * no source, so it settles the oldest load
+   */
+  const annotationLoadsRef = useRef<AnnotationLoad[]>([])
+  const annotationLoadCountRef = useRef(0)
+  const settleAnnotationLoad = (source?: unknown): void => {
+    const loads = annotationLoadsRef.current
+    const index =
+      source === undefined
+        ? 0
+        : loads.findIndex((load) => load.source === source)
+    if (index < 0 || index >= loads.length) return
+    const [load] = loads.splice(index, 1)
+    dispatchOverlays({ type: 'settled', key: load.key })
+  }
 
   const dmvHandlers: LoadingEventHandlers = {
-    dicommicroscopyviewer_loading_started: () => {
+    dicommicroscopyviewer_loading_started: (event) => {
       dispatch({ type: 'loadingStarted' })
+      /** DMV reports only bulk annotation loads this way */
+      annotationLoadCountRef.current += 1
+      const key = `annotations-${String(annotationLoadCountRef.current)}`
+      annotationLoadsRef.current.push({ key, source: eventSource(event) })
+      dispatchOverlays({ type: 'started', key, kind: 'annotations' })
     },
-    dicommicroscopyviewer_loading_ended: () => {
+    dicommicroscopyviewer_loading_ended: (event) => {
       dispatch({ type: 'loadingEnded' })
+      settleAnnotationLoad(eventSource(event))
     },
     dicommicroscopyviewer_loading_error: (error) => {
+      settleAnnotationLoad()
       const message = error?.message ?? 'Failed to load data'
       logger.error(message)
       dispatch({ type: 'loadingFailed' })
@@ -109,10 +185,16 @@ export function useViewportLoading(
     },
     dicommicroscopyviewer_frame_loading_started: (frameInfo) => {
       const session = sessionRef.current
-      if (
-        session === undefined ||
-        !isVolumeFrame(session, frameInfo.sopInstanceUID)
-      ) {
+      if (session === undefined) return
+      if (!isVolumeFrame(session, frameInfo.sopInstanceUID)) {
+        const kind = overlayKindOf(frameInfo.sopClassUID)
+        if (kind !== undefined) {
+          dispatchOverlays({
+            type: 'started',
+            key: `${frameInfo.sopInstanceUID}-${frameInfo.frameNumber}`,
+            kind,
+          })
+        }
         return
       }
       session.loadingFrames.add(
@@ -125,10 +207,12 @@ export function useViewportLoading(
     },
     dicommicroscopyviewer_frame_loading_ended: (frameInfo) => {
       const session = sessionRef.current
-      if (
-        session === undefined ||
-        !isVolumeFrame(session, frameInfo.sopInstanceUID)
-      ) {
+      if (session === undefined) return
+      if (!isVolumeFrame(session, frameInfo.sopInstanceUID)) {
+        dispatchOverlays({
+          type: 'settled',
+          key: `${frameInfo.sopInstanceUID}-${frameInfo.frameNumber}`,
+        })
         return
       }
       session.loadingFrames.delete(
@@ -154,6 +238,18 @@ export function useViewportLoading(
       logger.error('Failed to load frame')
     },
   }
+
+  /** Restarted by every overlay event; fires only when they stop coming */
+  useEffect(() => {
+    if (overlays.pending.size === 0) return undefined
+    const timer = setTimeout(() => {
+      annotationLoadsRef.current = []
+      dispatchOverlays({ type: 'reset' })
+    }, OVERLAY_STALE_MS)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [overlays])
 
   const { colorProfile, isColorProfileToggle } = loading
   /** Busy cursor over the whole page while a toggle redraws the image */
@@ -203,6 +299,8 @@ export function useViewportLoading(
     isWaitingForFirstImage: isViewportLoading(loading.phase),
     statusLabel: viewportStatusLabel(loading),
     isUpdatingColors: isColorProfileToggle,
+    isLoadingOverlays: overlays.pending.size > 0,
+    overlayStatus: overlayStatus(overlays),
     colorProfileToggled: (swap) => {
       colorProfileToggleRef.current += 1
       const toggle = colorProfileToggleRef.current
@@ -219,6 +317,8 @@ export function useViewportLoading(
     },
     reset: (session) => {
       colorProfileToggleRef.current += 1
+      annotationLoadsRef.current = []
+      dispatchOverlays({ type: 'reset' })
       const image = session.slide.volumeImages[0]
       dispatch({
         type: 'reset',

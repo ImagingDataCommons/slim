@@ -522,7 +522,10 @@ export function useSlideViewerModel({
   return {
     isFluorescence: slide.areVolumeImagesMonochrome,
     showOverviewMap: preferences.showOverviewMap,
-    cursor: viewportLoading.isLoading ? 'progress' : 'default',
+    cursor:
+      viewportLoading.isLoading || viewportLoading.isLoadingOverlays
+        ? 'progress'
+        : 'default',
     volumeViewportRef,
     labelViewportRef,
     onViewportResize,
@@ -555,6 +558,7 @@ export function useSlideViewerModel({
       showZoomControls: preferences.showZoomControls,
       showViewportInfo: preferences.showViewportInfo,
       statusLabel: viewportLoading.statusLabel,
+      overlayStatus: viewportLoading.overlayStatus,
       derivedLegend: {
         rows: derivedLegendRows,
         onVisibilityChange: onDerivedLegendVisibilityChange,

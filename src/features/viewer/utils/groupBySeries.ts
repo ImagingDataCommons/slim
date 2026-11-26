@@ -50,7 +50,8 @@ export interface SeriesOption {
 
 /**
  * Picker options: an "all" entry followed by one entry per series, labeled
- * `<description> (<count> <unit>)`.
+ * `<description> (<count> <unit>)`. `unit` is plural, e.g. "segments"; a
+ * count of one takes it without its final "s".
  */
 export function buildSeriesOptions<T>({
   groups,
@@ -67,7 +68,9 @@ export function buildSeriesOptions<T>({
     { value: ALL_SERIES, label: allLabel },
     ...Array.from(groups, ([seriesUID, items]) => ({
       value: seriesUID,
-      label: `${describeSeries(seriesUID)} (${items.length} ${unit})`,
+      label: `${describeSeries(seriesUID)} (${items.length} ${
+        items.length === 1 ? unit.replace(/s$/, '') : unit
+      })`,
     })),
   ]
 }

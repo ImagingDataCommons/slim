@@ -119,4 +119,21 @@ test.describe('Error handling', () => {
     }
     await expect(dialog).toContainText(/Critical memory usage: 95\.0% used/)
   })
+
+  test('E7 a gcp= store with a wrong URL is reported in Debug', async ({
+    page,
+  }) => {
+    /** A Healthcare API store URL missing its trailing /dicomWeb answers 404 */
+    const wrongStore = 'https://wrong-store.test/v1/projects/p/dicomStores/s'
+    await page.route(`${wrongStore}/**`, (route) =>
+      route.fulfill({ status: 404 }),
+    )
+    await openViewer(page, `${heUrl}?gcp=${encodeURIComponent(wrongStore)}`)
+
+    await page.getByRole('button', { name: /^Debug info/ }).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toContainText(
+      `${wrongStore} could not be searched (HTTP 404)`,
+    )
+  })
 })

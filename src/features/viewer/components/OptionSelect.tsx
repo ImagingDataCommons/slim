@@ -1,6 +1,7 @@
 import type React from 'react'
 import { useId } from 'react'
 
+import { SearchableSelect } from '../../../components/ui/searchable-select'
 import {
   Select,
   SelectContent,
@@ -77,7 +78,10 @@ export interface SeriesSelectProps {
   onValueChange: (value: string) => void
 }
 
-/** Series picker shown above a list when it spans several series. */
+/**
+ * Series picker shown above a list when it spans several series. A study may
+ * hold many, so it can be filtered by typing.
+ */
 export function SeriesSelect({
   value,
   options,
@@ -86,11 +90,12 @@ export function SeriesSelect({
   /** The first option is the "all series" entry */
   if (options.length <= 2) return null
   return (
-    <OptionSelect
+    <SearchableSelect
       value={value}
       options={options}
       onValueChange={onValueChange}
       placeholder="Select a series"
+      searchPlaceholder="Filter series"
       triggerClassName="mb-2 w-full"
       aria-label="Series"
     />

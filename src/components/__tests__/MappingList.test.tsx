@@ -118,12 +118,20 @@ describe('MappingList', () => {
       ).toBeDisabled()
     })
 
-    it('does not render BulkVisibilityControl with fewer than 2 mappings', () => {
+    it('keeps BulkVisibilityControl for a single mapping', () => {
       renderList({
         mappings: [makeMapping('mapping-1', 'TIL Density')],
         metadata: { 'mapping-1': [] },
         defaultMappingStyles: { 'mapping-1': { opacity: 0.8 } },
       })
+      expect(screen.getByText('1 of 1 visible')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'Hide all parametric maps' }),
+      ).toBeEnabled()
+    })
+
+    it('does not render BulkVisibilityControl without mappings', () => {
+      renderList({ mappings: [], metadata: {}, defaultMappingStyles: {} })
       expect(
         screen.queryByRole('button', { name: 'Show all parametric maps' }),
       ).not.toBeInTheDocument()

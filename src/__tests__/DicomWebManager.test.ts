@@ -4,6 +4,7 @@ import type * as dwc from 'dicomweb-client'
 import type { Mock } from 'vitest'
 
 import DicomWebManager from '../DicomWebManager'
+import NotificationMiddleware from '../services/NotificationMiddleware'
 
 interface StubClient {
   baseURL: string
@@ -64,6 +65,11 @@ const stubManagerClients = (
 }
 
 const baseUri = 'https://example.test'
+
+/** Lets failure reports, which run after a search returns, finish */
+const settleReports = async (): Promise<void> => {
+  await new Promise((resolve) => setTimeout(resolve, 0))
+}
 
 /** Error shaped like the one dicomweb-client rejects with. */
 const httpError = (status: number): Error & { status: number } =>
@@ -227,6 +233,44 @@ describe('DicomWebManager - multi-store search', () => {
     expect(secondaryStub.retrieveSeriesMetadata).toHaveBeenCalledTimes(1)
   })
 
+  it('retrieves frames from the server another manager found the series on', async () => {
+    /**
+     * SEG series are searched through the Segmentation manager, LABELMAP
+     * frames retrieved through the Labelmap Segmentation one; both are built
+     * from the same server settings.
+     */
+    const settings = [
+      { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+      { id: 'gcp', url: 'https://gcp.test/dicomWeb', write: false },
+    ]
+    const searching = new DicomWebManager({ baseUri, settings })
+    const retrieving = new DicomWebManager({ baseUri, settings })
+    const search = [makeStubClient('primary'), makeStubClient('gcp')]
+    const retrieve = [makeStubClient('primary'), makeStubClient('gcp')]
+    stubManagerClients(searching, search)
+    stubManagerClients(retrieving, retrieve)
+    search[0].searchForSeries.mockResolvedValue([])
+    search[1].searchForSeries.mockResolvedValue([
+      {
+        '0020000D': { vr: 'UI', Value: ['7.7'] },
+        '0020000E': { vr: 'UI', Value: ['7.7.1'] },
+      },
+    ])
+    retrieve[0].retrieveInstanceFrames.mockRejectedValue(httpError(404))
+    retrieve[1].retrieveInstanceFrames.mockResolvedValue([new ArrayBuffer(1)])
+
+    await searching.searchForSeries({ studyInstanceUID: '7.7' })
+    await retrieving.retrieveInstanceFrames({
+      studyInstanceUID: '7.7',
+      seriesInstanceUID: '7.7.1',
+      sopInstanceUID: '7.7.1.1',
+      frameNumbers: [1],
+    })
+
+    expect(retrieve[0].retrieveInstanceFrames).not.toHaveBeenCalled()
+    expect(retrieve[1].retrieveInstanceFrames).toHaveBeenCalledTimes(1)
+  })
+
   it('merges searchForSeries results across stores and de-duplicates by SeriesInstanceUID', async () => {
     const manager = new DicomWebManager({
       baseUri,
@@ -319,6 +363,271 @@ describe('DicomWebManager - multi-store search', () => {
       (merged[0] as unknown as Record<string, { Value?: string[] }>)['0020000E']
         ?.Value?.[0],
     ).toBe('1.2.3.B')
+  })
+
+  it('reports a store that fails a search the others answer, once', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        { id: 'gcp', url: 'https://gcp.test/store', write: false },
+      ],
+    })
+    const primaryStub = makeStubClient('primary')
+    const gcpStub = makeStubClient('gcp')
+    stubManagerClients(manager, [primaryStub, gcpStub])
+    primaryStub.searchForSeries.mockResolvedValue([])
+    primaryStub.searchForInstances.mockResolvedValue([])
+    gcpStub.searchForSeries.mockRejectedValue(httpError(404))
+    gcpStub.searchForInstances.mockRejectedValue(httpError(404))
+    /** A wrong URL fails the plain study search too */
+    gcpStub.searchForStudies.mockRejectedValue(httpError(404))
+    const onError = vi
+      .spyOn(NotificationMiddleware, 'onError')
+      .mockImplementation(() => undefined)
+
+    await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
+    await manager.searchForInstances({ studyInstanceUID: '1.2.3' })
+    await settleReports()
+
+    expect(onError).toHaveBeenCalledTimes(1)
+    expect(onError.mock.calls[0][1].message).toMatch(
+      /"gcp" at https:\/\/gcp\.test\/store could not be searched \(HTTP 404\)/,
+    )
+    onError.mockRestore()
+  })
+
+  it('reports a failing server once across the managers that share it', async () => {
+    /** One manager per storage class, all built from the same settings */
+    const settings = [
+      { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+      { id: 'gcp', url: 'https://gcp.test/shared-store', write: false },
+    ]
+    const managers = [0, 1, 2].map(
+      () => new DicomWebManager({ baseUri, settings }),
+    )
+    for (const manager of managers) {
+      const primaryStub = makeStubClient('primary')
+      const gcpStub = makeStubClient('gcp')
+      stubManagerClients(manager, [primaryStub, gcpStub])
+      primaryStub.searchForSeries.mockResolvedValue([])
+      gcpStub.searchForSeries.mockRejectedValue(httpError(0))
+    }
+    const onError = vi
+      .spyOn(NotificationMiddleware, 'onError')
+      .mockImplementation(() => undefined)
+
+    for (const manager of managers) {
+      await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
+    }
+    await settleReports()
+
+    expect(onError).toHaveBeenCalledTimes(1)
+    /** No status (e.g. a CORS-blocked 404 or no network): not reached */
+    expect(onError.mock.calls[0][1].message).not.toMatch(/HTTP/)
+    expect(onError.mock.calls[0][1].message).toMatch(
+      /could not be reached or searched.*network connection/,
+    )
+    onError.mockRestore()
+  })
+
+  it('does not report a 404 for a study the store does not hold', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        { id: 'other', url: 'https://other.test/dicomWeb', write: false },
+      ],
+    })
+    const primaryStub = makeStubClient('primary')
+    const otherStub = makeStubClient('other')
+    stubManagerClients(manager, [primaryStub, otherStub])
+    primaryStub.searchForSeries.mockResolvedValue([])
+    primaryStub.searchForInstances.mockResolvedValue([])
+    /** Some servers answer a search scoped to an unknown study with 404 */
+    otherStub.searchForSeries.mockRejectedValue(httpError(404))
+    otherStub.searchForInstances.mockRejectedValue(httpError(404))
+    otherStub.searchForStudies.mockResolvedValue([])
+    const onError = vi
+      .spyOn(NotificationMiddleware, 'onError')
+      .mockImplementation(() => undefined)
+
+    await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
+    await manager.searchForInstances({ studyInstanceUID: '1.2.3' })
+    await settleReports()
+
+    expect(onError).not.toHaveBeenCalled()
+    /** Checked once: the server is known to answer from then on */
+    expect(otherStub.searchForStudies).toHaveBeenCalledTimes(1)
+    onError.mockRestore()
+  })
+
+  /** A manager whose second store answers scoped searches with 404 */
+  const managerWithScoped404 = (
+    id: string,
+  ): { manager: DicomWebManager; other: StubClient } => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        { id, url: `https://${id}.test/dicomWeb`, write: false },
+      ],
+    })
+    const primary = makeStubClient('primary')
+    const other = makeStubClient(id)
+    stubManagerClients(manager, [primary, other])
+    primary.searchForSeries.mockResolvedValue([])
+    primary.searchForInstances.mockResolvedValue([])
+    other.searchForSeries.mockRejectedValue(httpError(404))
+    other.searchForInstances.mockRejectedValue(httpError(404))
+    return { manager, other }
+  }
+
+  it('probes a store once for searches that fail together', async () => {
+    const { manager, other } = managerWithScoped404('together')
+    other.searchForStudies.mockResolvedValue([])
+    const onError = vi
+      .spyOn(NotificationMiddleware, 'onError')
+      .mockImplementation(() => undefined)
+
+    await Promise.all([
+      manager.searchForSeries({ studyInstanceUID: '1.2.3' }),
+      manager.searchForInstances({ studyInstanceUID: '1.2.3' }),
+      manager.searchForSeries({ studyInstanceUID: '4.5.6' }),
+    ])
+    await settleReports()
+
+    expect(other.searchForStudies).toHaveBeenCalledTimes(1)
+    expect(onError).not.toHaveBeenCalled()
+    onError.mockRestore()
+  })
+
+  it('probes the store again once its answer is old', async () => {
+    const { manager, other } = managerWithScoped404('later')
+    other.searchForStudies
+      .mockResolvedValueOnce([])
+      .mockRejectedValue(httpError(404))
+    const onError = vi
+      .spyOn(NotificationMiddleware, 'onError')
+      .mockImplementation(() => undefined)
+    const now = vi.spyOn(Date, 'now').mockReturnValue(0)
+
+    await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
+    await settleReports()
+    expect(onError).not.toHaveBeenCalled()
+
+    /** Past the five minutes an answer stands: the store now fails */
+    now.mockReturnValue(5 * 60 * 1000 + 1)
+    await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
+    await settleReports()
+
+    expect(other.searchForStudies).toHaveBeenCalledTimes(2)
+    expect(onError).toHaveBeenCalledTimes(1)
+    now.mockRestore()
+    onError.mockRestore()
+  })
+
+  it('takes a refused or rejected probe as a server that answers', async () => {
+    const policy = consentPolicy(true)
+    for (const status of [400, 401, 403]) {
+      const { manager, other } = managerWithScoped404(`refuses-${status}`)
+      manager.setAuthorizationPolicy(policy)
+      other.searchForStudies.mockRejectedValue(httpError(status))
+      const onError = vi
+        .spyOn(NotificationMiddleware, 'onError')
+        .mockImplementation(() => undefined)
+
+      await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
+      await settleReports()
+
+      expect(onError).not.toHaveBeenCalled()
+      onError.mockRestore()
+    }
+    /** The probe never asks for authorization */
+    expect(policy.requestAuthorization).not.toHaveBeenCalled()
+  })
+
+  it('logs a report that fails instead of rejecting unhandled', async () => {
+    const { manager, other } = managerWithScoped404('throws')
+    other.searchForStudies.mockRejectedValue(httpError(404))
+    const onError = vi
+      .spyOn(NotificationMiddleware, 'onError')
+      .mockImplementation(() => {
+        throw new Error('subscriber failed')
+      })
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
+    await settleReports()
+
+    expect(consoleError).toHaveBeenCalledWith(
+      'failed to report a failed search:',
+      expect.any(Error),
+    )
+    consoleError.mockRestore()
+    onError.mockRestore()
+  })
+
+  it('reports a later failure of another kind for the same server', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        { id: 'gcp', url: 'https://gcp.test/flaky', write: false },
+      ],
+    })
+    const primaryStub = makeStubClient('primary')
+    const gcpStub = makeStubClient('gcp')
+    stubManagerClients(manager, [primaryStub, gcpStub])
+    primaryStub.searchForSeries.mockResolvedValue([])
+    gcpStub.searchForSeries
+      .mockRejectedValueOnce(httpError(0))
+      .mockRejectedValueOnce(httpError(0))
+      .mockRejectedValue(httpError(500))
+    const onError = vi
+      .spyOn(NotificationMiddleware, 'onError')
+      .mockImplementation(() => undefined)
+
+    for (let i = 0; i < 3; i++) {
+      await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
+    }
+    await settleReports()
+
+    const messages = onError.mock.calls.map(([, error]) => error.message)
+    expect(messages).toHaveLength(2)
+    expect(messages[0]).toMatch(/could not be reached/)
+    expect(messages[1]).toMatch(/could not be searched \(HTTP 500\)/)
+    onError.mockRestore()
+  })
+
+  it('leaves an unauthorized search to the sign-in handling', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        { id: 'gcp', url: 'https://gcp.test/dicomWeb', write: false },
+      ],
+    })
+    const primaryStub = makeStubClient('primary')
+    const gcpStub = makeStubClient('gcp')
+    stubManagerClients(manager, [primaryStub, gcpStub])
+    primaryStub.searchForSeries.mockResolvedValue([])
+    gcpStub.searchForSeries.mockRejectedValue(httpError(403))
+    const onError = vi
+      .spyOn(NotificationMiddleware, 'onError')
+      .mockImplementation(() => undefined)
+
+    await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
+    await settleReports()
+
+    /** The sign-in notice may be shown; the failed-search one is not */
+    const messages = onError.mock.calls.map(([, error]) => error.message)
+    expect(
+      messages.some((message) => /could not be searched/.test(message)),
+    ).toBe(false)
+    onError.mockRestore()
   })
 
   it('throws the last error when every store fails a search', async () => {
@@ -591,6 +900,7 @@ describe('DicomWebManager - storeInstances and headers', () => {
     const secondaryStub = makeStubClient('secondary')
     stubManagerClients(manager, [primaryStub, secondaryStub])
 
+    /** skipcq: JS-W1042 - mockResolvedValue needs its argument */
     secondaryStub.storeInstances.mockResolvedValue(undefined)
 
     await manager.storeInstances({
