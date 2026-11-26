@@ -36,7 +36,11 @@ export function ViewportLoadingIndicator({
       <div
         aria-hidden={!isVisible}
         className={cn(
-          'flex items-center gap-2.5 rounded-full border border-line/60 bg-panel/85 py-2 pl-2.5 pr-3.5 text-12.5 font-medium text-ink-secondary shadow-menu backdrop-blur-md transition-[opacity,translate,scale] ease-out',
+          /**
+           * Opaque rather than blurred: the slide behind it is redrawn while
+           * it shows, and a backdrop blur would be redone on every frame
+           */
+          'flex items-center gap-2.5 rounded-full border border-line/60 bg-panel/95 py-2 pl-2.5 pr-3.5 text-12.5 font-medium text-ink-secondary shadow-menu transition-[opacity,translate,scale] ease-out',
           'max-w-full',
           /**
            * Between the scale bar and the overview map where the viewport is
@@ -50,7 +54,8 @@ export function ViewportLoadingIndicator({
       >
         <span className="relative h-4 w-4 flex-none">
           <span className="absolute inset-0 rounded-full border-2 border-primary/20" />
-          <span className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-primary" />
+          {/** Its own compositor layer, so it turns while the page is busy */}
+          <span className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-primary will-change-transform" />
         </span>
         <span className="truncate">
           {label}
