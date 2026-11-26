@@ -255,6 +255,55 @@ test.describe('LABELMAP segmentation', () => {
   test('L4 segments still loading are announced below the slide', async ({
     page,
   }) => {
+    /** All frames of the SEG load after their release, which takes a while */
+    test.setTimeout(180_000)
+    /**
+     * Count the viewer's loading events for segmentation frames (every SEG
+     * that "Show all" shows, not only this one): the announcement follows
+     * them, so it must go once they have settled
+     */
+    await page.addInitScript(
+      (segmentationClasses) => {
+        const frames = { started: 0, ended: 0, lastEvent: Date.now() }
+        Object.assign(window, { __segmentFrames: frames })
+        for (const [name, field] of [
+          ['dicommicroscopyviewer_frame_loading_started', 'started'],
+          ['dicommicroscopyviewer_frame_loading_ended', 'ended'],
+        ] as const) {
+          document.addEventListener(
+            name,
+            (event) => {
+              const detail = (event as CustomEvent).detail
+              const frameInfo = detail?.payload ?? detail
+              if (!segmentationClasses.includes(frameInfo?.sopClassUID)) return
+              frames[field] += 1
+              frames.lastEvent = Date.now()
+            },
+            true,
+          )
+        }
+      },
+      [
+        /** Segmentation and Label Map Segmentation Storage */
+        '1.2.840.10008.5.1.4.1.1.66.4',
+        '1.2.840.10008.5.1.4.1.1.66.7',
+      ],
+    )
+    const segmentFramesSettled = (): Promise<boolean> =>
+      page.evaluate(() => {
+        const { started, ended, lastEvent } = (
+          window as unknown as {
+            __segmentFrames: {
+              started: number
+              ended: number
+              lastEvent: number
+            }
+          }
+        ).__segmentFrames
+        return (
+          started > 0 && started === ended && Date.now() - lastEvent > 3_000
+        )
+      })
     /** The slide alone, so nothing of the SEG loads before Show all */
     await openViewer(
       page,
@@ -287,8 +336,22 @@ test.describe('LABELMAP segmentation', () => {
     ).toBeAttached()
 
     release()
+    /**
+     * The viewer may keep loading SEG frames for a while after their
+     * release, all at once or in waves depending on how it draws them.
+     * Once every frame it started has ended and none has for a few
+     * seconds, the announcement must go: one that never clears still fails
+     * here.
+     */
+    await expect
+      .poll(segmentFramesSettled, {
+        message: 'SEG frames settled',
+        timeout: 120_000,
+        intervals: [500],
+      })
+      .toBe(true)
     await expect(pill).toHaveAttribute('aria-hidden', 'true', {
-      timeout: 30_000,
+      timeout: 10_000,
     })
   })
 })
