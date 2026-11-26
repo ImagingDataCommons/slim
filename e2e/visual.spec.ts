@@ -1,5 +1,8 @@
+import { expect } from '@playwright/test'
+
 import { test } from './fixtures'
 import {
+  captureSettledViewport,
   expectSettledViewportScreenshot,
   expectTissueRendered,
   openViewer,
@@ -7,6 +10,7 @@ import {
   section,
   setGammaCorrection,
   slidePanel,
+  viewportDiff,
   waitForDeepLinkedLayer,
 } from './helpers'
 import { labelmap, serveLabelmap } from './labelmap'
@@ -62,6 +66,38 @@ test.describe('Visual smoke', () => {
     /** The capture must include the overlay the link turned on */
     await waitForDeepLinkedLayer(page, 'Segmentations')
     await expectSettledViewportScreenshot(page, 'vs3-binary-til-seg')
+
+    /**
+     * The binary segment covers little of the overview, so the screenshot
+     * matches its baseline even when the segment is not drawn at all.
+     * Hiding a drawn segment changes the settled viewport by about 0.27,
+     * and showing it again changes it back; when nothing is drawn, both
+     * stay near 0.005 (rendering noise). Both must change, so a late
+     * redraw of the slide cannot stand in for the segment.
+     */
+    const segments = await section(slidePanel(page), 'Segmentations')
+    const name = await segments
+      .getByRole('button', { name: /^Show (?!all)/, pressed: true })
+      .first()
+      .getAttribute('aria-label')
+    const toggle = segments
+      .getByRole('button', { name: name ?? '', exact: true })
+      .first()
+    const shown = await captureSettledViewport(page)
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    const hidden = await captureSettledViewport(page)
+    expect(
+      await viewportDiff(page, shown, hidden),
+      'hiding the binary segment changes the viewport',
+    ).toBeGreaterThan(0.05)
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    const shownAgain = await captureSettledViewport(page)
+    expect(
+      await viewportDiff(page, hidden, shownAgain),
+      'showing the binary segment again changes the viewport',
+    ).toBeGreaterThan(0.05)
   })
 
   test('VS4 parametric map', async ({ page }) => {
