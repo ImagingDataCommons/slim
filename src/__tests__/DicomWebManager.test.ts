@@ -66,6 +66,11 @@ const stubManagerClients = (
 
 const baseUri = 'https://example.test'
 
+/** Lets failure reports, which run after a search returns, finish */
+const settleReports = async (): Promise<void> => {
+  await new Promise((resolve) => setTimeout(resolve, 0))
+}
+
 /** Error shaped like the one dicomweb-client rejects with. */
 const httpError = (status: number): Error & { status: number } =>
   Object.assign(new Error(`request failed (${status})`), { status })
@@ -375,12 +380,15 @@ describe('DicomWebManager - multi-store search', () => {
     primaryStub.searchForInstances.mockResolvedValue([])
     gcpStub.searchForSeries.mockRejectedValue(httpError(404))
     gcpStub.searchForInstances.mockRejectedValue(httpError(404))
+    /** A wrong URL fails the plain study search too */
+    gcpStub.searchForStudies.mockRejectedValue(httpError(404))
     const onError = vi
       .spyOn(NotificationMiddleware, 'onError')
       .mockImplementation(() => {})
 
     await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
     await manager.searchForInstances({ studyInstanceUID: '1.2.3' })
+    await settleReports()
 
     expect(onError).toHaveBeenCalledTimes(1)
     expect(onError.mock.calls[0][1].message).toMatch(
@@ -412,10 +420,77 @@ describe('DicomWebManager - multi-store search', () => {
     for (const manager of managers) {
       await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
     }
+    await settleReports()
 
     expect(onError).toHaveBeenCalledTimes(1)
-    /** No status (e.g. a CORS-blocked 404): the message names none */
+    /** No status (e.g. a CORS-blocked 404 or no network): not reached */
     expect(onError.mock.calls[0][1].message).not.toMatch(/HTTP/)
+    expect(onError.mock.calls[0][1].message).toMatch(
+      /could not be reached or searched.*network connection/,
+    )
+    onError.mockRestore()
+  })
+
+  it('does not report a 404 for a study the store does not hold', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        { id: 'other', url: 'https://other.test/dicomWeb', write: false },
+      ],
+    })
+    const primaryStub = makeStubClient('primary')
+    const otherStub = makeStubClient('other')
+    stubManagerClients(manager, [primaryStub, otherStub])
+    primaryStub.searchForSeries.mockResolvedValue([])
+    primaryStub.searchForInstances.mockResolvedValue([])
+    /** Some servers answer a search scoped to an unknown study with 404 */
+    otherStub.searchForSeries.mockRejectedValue(httpError(404))
+    otherStub.searchForInstances.mockRejectedValue(httpError(404))
+    otherStub.searchForStudies.mockResolvedValue([])
+    const onError = vi
+      .spyOn(NotificationMiddleware, 'onError')
+      .mockImplementation(() => {})
+
+    await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
+    await manager.searchForInstances({ studyInstanceUID: '1.2.3' })
+    await settleReports()
+
+    expect(onError).not.toHaveBeenCalled()
+    /** Checked once: the server is known to answer from then on */
+    expect(otherStub.searchForStudies).toHaveBeenCalledTimes(1)
+    onError.mockRestore()
+  })
+
+  it('reports a later failure of another kind for the same server', async () => {
+    const manager = new DicomWebManager({
+      baseUri,
+      settings: [
+        { id: 'primary', url: 'https://primary.test/dicomWeb', write: false },
+        { id: 'gcp', url: 'https://gcp.test/flaky', write: false },
+      ],
+    })
+    const primaryStub = makeStubClient('primary')
+    const gcpStub = makeStubClient('gcp')
+    stubManagerClients(manager, [primaryStub, gcpStub])
+    primaryStub.searchForSeries.mockResolvedValue([])
+    gcpStub.searchForSeries
+      .mockRejectedValueOnce(httpError(0))
+      .mockRejectedValueOnce(httpError(0))
+      .mockRejectedValue(httpError(500))
+    const onError = vi
+      .spyOn(NotificationMiddleware, 'onError')
+      .mockImplementation(() => {})
+
+    for (let i = 0; i < 3; i++) {
+      await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
+    }
+    await settleReports()
+
+    const messages = onError.mock.calls.map(([, error]) => error.message)
+    expect(messages).toHaveLength(2)
+    expect(messages[0]).toMatch(/could not be reached/)
+    expect(messages[1]).toMatch(/could not be searched \(HTTP 500\)/)
     onError.mockRestore()
   })
 
@@ -437,6 +512,7 @@ describe('DicomWebManager - multi-store search', () => {
       .mockImplementation(() => {})
 
     await manager.searchForSeries({ studyInstanceUID: '1.2.3' })
+    await settleReports()
 
     /** The sign-in notice may be shown; the failed-search one is not */
     const messages = onError.mock.calls.map(([, error]) => error.message)

@@ -106,6 +106,11 @@ function matchesQuery(url: URL): boolean {
 
 async function appendToUpstream(route: Route, extra: unknown): Promise<void> {
   const response = await route.fetch()
+  if (!response.ok()) {
+    /** Pass an upstream failure through, so a test fails on its cause */
+    await route.fulfill({ response })
+    return
+  }
   const text = await response.text()
   const upstream = text.trim() === '' ? [] : (JSON.parse(text) as unknown[])
   await route.fulfill({
@@ -124,19 +129,25 @@ function json(route: Route, body: unknown): Promise<void> {
   })
 }
 
-/** One uncompressed frame as a multipart/related DICOMweb response */
-function frameResponse(route: Route, frameNumber: number): Promise<void> {
+/** Uncompressed frames, one part each, as a multipart/related response */
+function frameResponse(
+  route: Route,
+  frameNumbers: readonly number[],
+): Promise<void> {
   const boundary = 'slim-e2e-labelmap'
-  const start = (frameNumber - 1) * frameSize
-  const body = Buffer.concat([
-    Buffer.from(
-      `--${boundary}\r\n` +
-        `Content-Type: application/octet-stream; transfer-syntax=${transferSyntax}\r\n` +
-        '\r\n',
-    ),
-    frames.subarray(start, start + frameSize),
-    Buffer.from(`\r\n--${boundary}--\r\n`),
-  ])
+  const parts = frameNumbers.flatMap((frameNumber) => {
+    const start = (frameNumber - 1) * frameSize
+    return [
+      Buffer.from(
+        `--${boundary}\r\n` +
+          `Content-Type: application/octet-stream; transfer-syntax=${transferSyntax}\r\n` +
+          '\r\n',
+      ),
+      frames.subarray(start, start + frameSize),
+      Buffer.from('\r\n'),
+    ]
+  })
+  const body = Buffer.concat([...parts, Buffer.from(`--${boundary}--\r\n`)])
   return route.fulfill({
     status: 200,
     headers: {
@@ -157,10 +168,11 @@ export async function serveLabelmap(page: Page): Promise<void> {
     async (route) => {
       const url = new URL(route.request().url())
       const path = `${url.origin}${url.pathname}`
-      const frame = path.match(/\/frames\/(\d+)$/)
+      /** One frame or a comma-separated list, as DICOMweb allows */
+      const frame = path.match(/\/frames\/(\d+(?:,\d+)*)$/)
       if (path.startsWith(seriesBase)) {
         if (frame !== null) {
-          await frameResponse(route, Number(frame[1]))
+          await frameResponse(route, frame[1].split(',').map(Number))
         } else if (path.endsWith('/metadata')) {
           await json(route, [instanceMetadata])
         } else if (path === `${seriesBase}/instances`) {

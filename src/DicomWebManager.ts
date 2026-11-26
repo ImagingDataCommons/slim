@@ -223,40 +223,72 @@ const searchRows = <T>(store: Store, items: unknown): T[] => {
 }
 
 /**
- * Servers whose failed search was already reported. Keyed by the configured
- * settings, which every storage class's manager shares, so one wrong server
- * is reported once rather than once per storage class.
+ * Failures already reported, per configured server, by kind (an HTTP status,
+ * or "unreachable"). Keyed by the configured settings, which every storage
+ * class's manager shares, so one wrong server is reported once rather than
+ * once per storage class, while a different failure later is still reported.
  */
-const reportedSearchFailures = new WeakSet<ServerSettings>()
+const reportedSearchFailures = new WeakMap<ServerSettings, Set<string>>()
+
+/**
+ * Servers that answered a plain study search. On those, a 404 from a search
+ * scoped to one study only means the server does not hold that study.
+ */
+const answeringServers = new WeakSet<ServerSettings>()
+
+/** Searches the store as a whole, to tell a wrong URL from a missing study */
+type SearchProbe = (store: Store) => Promise<unknown>
 
 /**
  * Tell the user that a store failed a search the other stores answered, once
- * per configured server. Searches only fail on a wrong URL or an unreachable
- * server (no matches is a 200), so without this a mistyped `gcp=` store would
- * silently show nothing. Authorization failures are left to the sign-in
- * handling. A wrong path on a server without CORS headers on its errors
- * gives no status at all.
+ * per configured server and kind of failure. Searches only fail on a wrong
+ * URL or an unreachable server (no matches is a 200), so without this a
+ * mistyped `gcp=` store would silently show nothing. Authorization failures
+ * are left to the sign-in handling.
+ *
+ * Some servers answer a search scoped to a study they do not hold with 404,
+ * so with `probe` a 404 is reported only when the store fails a plain study
+ * search too. A wrong path on a server without CORS headers on its errors
+ * gives no status at all, as does a network failure; both are reported as
+ * not reached.
  */
-const reportFailedSearch = (store: Store, error: unknown): void => {
+const reportFailedSearch = async (
+  store: Store,
+  error: unknown,
+  probe?: SearchProbe,
+): Promise<void> => {
   const status = (error as { status?: unknown } | null)?.status
-  if (
-    status === 401 ||
-    status === 403 ||
-    reportedSearchFailures.has(store.settings)
-  ) {
-    return
+  if (status === 401 || status === 403) return
+  if (status === 404 && probe !== undefined) {
+    if (answeringServers.has(store.settings)) return
+    try {
+      await probe(store)
+      answeringServers.add(store.settings)
+      return
+    } catch {
+      /** The store fails as a whole: report the search's own failure */
+    }
   }
-  reportedSearchFailures.add(store.settings)
-  const reason =
-    typeof status === 'number' && status > 0 ? ` (HTTP ${status})` : ''
+  const hasStatus = typeof status === 'number' && status > 0
+  const kind = hasStatus ? String(status) : 'unreachable'
+  let kinds = reportedSearchFailures.get(store.settings)
+  if (kinds === undefined) {
+    kinds = new Set()
+    reportedSearchFailures.set(store.settings, kinds)
+  }
+  if (kinds.has(kind)) return
+  kinds.add(kind)
+  const server =
+    `The DICOMweb server "${store.id}" at ` +
+    `${store.settings.url ?? store.origin}`
+  const message = hasStatus
+    ? `${server} could not be searched (HTTP ${String(status)}), so its ` +
+      'data is not shown. Check its URL.'
+    : `${server} could not be reached or searched, so its data is not ` +
+      'shown. Check its URL and the network connection.'
   NotificationMiddleware.onError(
     NotificationMiddlewareContext.DICOMWEB,
-    new CustomError(
-      errorTypes.COMMUNICATION,
-      `The DICOMweb server "${store.id}" at ` +
-        `${store.settings.url ?? store.origin} could not be searched` +
-        `${reason}, so its data is not shown. Check its URL.`,
-    ),
+    new CustomError(errorTypes.COMMUNICATION, message),
   )
 }
 
@@ -279,6 +311,8 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
   call: (store: Store) => Promise<T[]>,
   /** Called with each store's rows, in configured store order */
   onStoreRows?: (store: Store, rows: T[]) => void,
+  /** For searches scoped to a study: checks a store whose search got 404 */
+  probe?: SearchProbe,
 ): Promise<T[]> => {
   const readable = readableStores(stores)
   if (readable.length === 0) {
@@ -310,7 +344,7 @@ const searchAcrossStores = async <T extends DicomJsonObject>(
     throw lastError
   }
   for (const [store, error] of failures) {
-    reportFailedSearch(store, error)
+    void reportFailedSearch(store, error, probe)
   }
 
   const merged: T[] = []
@@ -378,6 +412,23 @@ const retrieveWithFallback = async <T>(
  */
 const seriesServers = new Map<string, ServerSettings>()
 
+/** Series remembered at most; the least recently found is forgotten first */
+const SERIES_SERVERS_LIMIT = 10_000
+
+/** Remember the server of a series, most recent last */
+const rememberSeriesServer = (
+  cacheKey: string,
+  settings: ServerSettings,
+): void => {
+  seriesServers.delete(cacheKey)
+  seriesServers.set(cacheKey, settings)
+  while (seriesServers.size > SERIES_SERVERS_LIMIT) {
+    const oldest = seriesServers.keys().next().value
+    if (oldest === undefined) break
+    seriesServers.delete(oldest)
+  }
+}
+
 /** This manager's store for the server remembered for a series */
 const rememberedStore = (
   readable: readonly Store[],
@@ -431,7 +482,7 @@ const retrieveWithCachedFallback = async <T>(
       const result = await call(store)
       /** Cache the successful store for future requests to this series. */
       if (cacheKey != null) {
-        seriesServers.set(cacheKey, store.settings)
+        rememberSeriesServer(cacheKey, store.settings)
       }
       return result
     } catch (error: unknown) {
@@ -772,6 +823,17 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
     )
   }
 
+  /**
+   * One study from the store, unscoped: answers on a server that only lacks
+   * the study a scoped search asked for, and fails on a wrong URL
+   */
+  private readonly probeStudySearch: SearchProbe = async (store) =>
+    await this.callStore(
+      store,
+      async (client) =>
+        await client.searchForStudies({ queryParams: { limit: 1 } }),
+    )
+
   searchForStudies = async (
     options: dwc.api.SearchForStudiesOptions,
   ): Promise<dwc.api.Study[]> => {
@@ -868,10 +930,11 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
            * server switch.
            */
           if (rememberedStore(readable, cacheKey) === undefined) {
-            seriesServers.set(cacheKey, store.settings)
+            rememberSeriesServer(cacheKey, store.settings)
           }
         }
       },
+      options.studyInstanceUID != null ? this.probeStudySearch : undefined,
     )
     return merged as unknown as dwc.api.Series[]
   }
@@ -890,6 +953,8 @@ export default class DicomWebManager implements dwc.api.DICOMwebClient {
               options,
             )) as unknown as DicomJsonObject[],
         ),
+      undefined,
+      options.studyInstanceUID != null ? this.probeStudySearch : undefined,
     )
     return merged as unknown as dwc.api.Instance[]
   }
